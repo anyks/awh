@@ -478,6 +478,32 @@ TEST_F(QuicFixture, AckFrameMalformedTest){
 }
 
 /**
+ * @brief Метод проверки отклонения STREAM-фрейма с превышением лимита смещения (RFC 9000 §19.8)
+ *
+ */
+TEST_F(QuicFixture, StreamFrameFinalSizeTest){
+	/**
+	 * STREAM-фрейм с битами OFF и LEN (тип 0x0e), идентификатором потока 0, смещением
+	 * 2^62-1 (восьмиоктетный varint 0xff..ff) и длиной 1: сумма смещения и длины
+	 * превышает предельный размер потока и обязана быть отклонена
+	 */
+	const std::string overflow = this->unhex("0e00ffffffffffffffff0100");
+	// Разобранный фрейм STREAM
+	frame::stream_t parsed;
+	// Количество потреблённых октетов
+	size_t consumed = 0;
+	// Код ошибки транспорта
+	error_t error = error_t::NO_ERROR;
+	// Проверяем отклонение фрейма
+	ASSERT_EQ(frame::parser::stream(reinterpret_cast <const uint8_t *> (overflow.data()), overflow.size(), parsed, consumed, error), status_t::ERROR);
+	/**
+	 * Проверяем код ошибки транспорта: RFC 9000 §19.8 допускает лишь FRAME_ENCODING_ERROR
+	 * либо FLOW_CONTROL_ERROR, но не FINAL_SIZE_ERROR
+	 */
+	ASSERT_EQ(error, error_t::FRAME_ENCODING_ERROR);
+}
+
+/**
  * @brief Метод проверки полного цикла сборки и разбора фрейма CRYPTO
  *
  */

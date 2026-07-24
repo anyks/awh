@@ -600,7 +600,7 @@ awh::quic::status_t awh::quic::frame::parser::stream(const uint8_t * data, const
 	// Если сумма смещения и длины превышает лимит кодирования (RFC 9000 §19.8)
 	if((output.offset + length) > proto::VARINT_MAX){
 		// Устанавливаем код ошибки транспорта
-		error = error_t::FINAL_SIZE_ERROR;
+		error = error_t::FRAME_ENCODING_ERROR;
 		// Разбор невозможен
 		return status_t::ERROR;
 	}

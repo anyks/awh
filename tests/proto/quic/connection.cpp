@@ -762,13 +762,17 @@ TEST_F(QuicFixture, ConnectionPathRevertTest){
 	ASSERT_TRUE(::establish(client, server, now));
 	// Проверяем что путь соединения проложен по исходному адресу
 	ASSERT_EQ(client.path(), ORIGIN);
-	// Нагрузка пакета сервера из одних фреймов PADDING
+	// Нагрузка пакета сервера: непробирующий фрейм PING инициирует смену пути (RFC 9000 §9.1)
 	std::string payload = "";
-	// Выполняем сборку серии фреймов PADDING
+	// Выполняем сборку фрейма PING - делает пакет непробирующим
+	frame::serialize::ping(payload);
+	// Дополняем нагрузку серией фреймов PADDING
 	frame::serialize::padding(payload, 64);
 	/**
-	 * Сообщаем клиенту о смене адреса удалённого эндпоинта: посторонний подделал
-	 * адрес отправителя, и клиент трактует это как смену пути
+	 * Сообщаем клиенту о смене адреса удалённого эндпоинта: датаграмма с новым
+	 * адресом отправителя несёт непробирующий пакет, и клиент трактует это как
+	 * смену пути. Неаутентифицированные байты миграцию не вызывают - пакет собран
+	 * подлинными ключами сервера (RFC 9000 §9.3)
 	 */
 	client.address(SPOOFED);
 	// Доставляем нагрузку клиенту пакетом 1-RTT с подделанного адреса
@@ -863,9 +867,11 @@ TEST_F(QuicFixture, ConnectionPathChainTest){
 	ASSERT_TRUE(::establish(client, server, now));
 	// Проверяем что путь соединения проложен по исходному адресу
 	ASSERT_EQ(client.path(), ORIGIN);
-	// Нагрузка пакета сервера из одних фреймов PADDING
+	// Нагрузка пакета сервера: непробирующий фрейм PING инициирует смену пути (RFC 9000 §9.1)
 	std::string payload = "";
-	// Выполняем сборку серии фреймов PADDING
+	// Выполняем сборку фрейма PING - делает пакет непробирующим
+	frame::serialize::ping(payload);
+	// Дополняем нагрузку серией фреймов PADDING
 	frame::serialize::padding(payload, 64);
 	// Сообщаем клиенту о смене адреса удалённого эндпоинта
 	client.address(FIRST);
@@ -951,16 +957,20 @@ TEST_F(QuicFixture, ConnectionAmplificationTimerTest){
 	// Ставим объёмные данные потока в очередь отправки
 	ASSERT_EQ(client.send(sid, std::string(60000, 'x'), false), status_t::OK);
 	/**
-	 * Нагрузка пакета сервера из одних фреймов PADDING: подтверждения она не требует,
-	 * поэтому после её приёма у клиента не остаётся иных поводов взводить таймер,
-	 * кроме таймера PTO
+	 * Нагрузка пакета сервера: непробирующий фрейм PING инициирует смену пути
+	 * (RFC 9000 §9.1). Он ack-eliciting, но под лимитом анти-амплификации отправить
+	 * подтверждение всё равно нечем, поэтому единственным зондирующим таймером
+	 * остаётся PTO
 	 */
 	std::string payload = "";
-	// Выполняем сборку серии фреймов PADDING
+	// Выполняем сборку фрейма PING - делает пакет непробирующим
+	frame::serialize::ping(payload);
+	// Дополняем нагрузку серией фреймов PADDING
 	frame::serialize::padding(payload, 64);
 	/**
 	 * Сообщаем клиенту о смене адреса удалённого эндпоинта: следующая датаграмма
-	 * приходит уже с нового адреса, что клиент трактует как смену пути
+	 * приходит уже с нового адреса и несёт непробирующий пакет, что клиент трактует
+	 * как смену пути
 	 */
 	client.address("203.0.113.5:443");
 	// Доставляем нагрузку клиенту пакетом 1-RTT с нового адреса
@@ -5372,6 +5382,217 @@ TEST_F(QuicFixture, ConnectionMigrationDetectTest){
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
 	ASSERT_EQ(client.error(), error_t::NO_ERROR);
 	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест защиты миграции от неаутентифицированных и пробирующих пакетов (RFC 9000 §9.3)
+ *
+ * @details Смена адреса, сообщённая вызывающим кодом, сама по себе миграцию не
+ *          инициирует: путь меняет лишь успешно расшифрованный непробирующий пакет
+ *          с наибольшим номером. Иначе off-path атакующий, знающий только открытый
+ *          идентификатор соединения, перенаправлял бы путь и сбрасывал оценки
+ *          перегрузки одной подделанной датаграммой
+ */
+TEST_F(QuicFixture, ConnectionMigrationSpoofGuardTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Адрес удалённого сервера, подтверждённый хендшейком
+	static const std::string ORIGIN = "198.51.100.9:443";
+	// Подделанный посторонним адрес удалённого сервера
+	static const std::string SPOOFED = "203.0.113.5:443";
+	// Устанавливаем исходный адрес удалённого сервера на клиенте
+	client.address(ORIGIN);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Проверяем что путь проложен по исходному адресу и миграций не было
+	ASSERT_EQ(client.path(), ORIGIN);
+	ASSERT_EQ(client.migrations(), 0u);
+	// Сообщаем клиенту новый адрес отправителя - имитация подделки off-path атакующим
+	client.address(SPOOFED);
+	/**
+	 * Нерасшифровываемая датаграмма с нового адреса миграцию не инициирует:
+	 * off-path атакующий знает лишь открытый идентификатор соединения, но защиту
+	 * пакета подделать не может, а на неаутентифицированные байты путь не меняется
+	 */
+	::injectBroken(server, client, 5000, now);
+	// Проверяем что путь не сменился и миграция не зафиксирована
+	ASSERT_EQ(client.path(), ORIGIN);
+	ASSERT_EQ(client.migrations(), 0u);
+	// Нагрузка пакета из одних фреймов PADDING - пробирующий пакет (RFC 9000 §9.1)
+	std::string probing = "";
+	// Выполняем сборку серии фреймов PADDING
+	frame::serialize::padding(probing, 64);
+	// Доставляем клиенту аутентифицированный пробирующий пакет с нового адреса
+	ASSERT_EQ(::inject(server, client, 5001, probing, now), status_t::OK);
+	// Проверяем что пробирующий пакет миграцию тоже не инициировал
+	ASSERT_EQ(client.path(), ORIGIN);
+	ASSERT_EQ(client.migrations(), 0u);
+	// Нагрузка пакета с непробирующим фреймом PING (RFC 9000 §9.1)
+	std::string nonProbing = "";
+	// Выполняем сборку фрейма PING
+	frame::serialize::ping(nonProbing);
+	// Дополняем нагрузку серией фреймов PADDING
+	frame::serialize::padding(nonProbing, 64);
+	// Доставляем клиенту аутентифицированный непробирующий пакет с наибольшим номером
+	ASSERT_EQ(::inject(server, client, 5002, nonProbing, now), status_t::OK);
+	// Проверяем что путь сменился и миграция зафиксирована
+	ASSERT_EQ(client.path(), SPOOFED);
+	ASSERT_EQ(client.migrations(), 1u);
+	// Проверяем отсутствие ошибки транспорта на клиенте
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест сигнализации блокировки лимитом потоков (RFC 9000 §19.14)
+ *
+ * @details Упираясь в лимит удалённого эндпоинта на открытие потоков, локальный
+ *          эндпоинт обязан отправить фрейм STREAMS_BLOCKED, чтобы подтолкнуть
+ *          собеседника поднять лимит фреймом MAX_STREAMS
+ */
+TEST_F(QuicFixture, ConnectionStreamsBlockedTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Транспортные параметры сервера с тесным лимитом двунаправленных потоков
+	params::params_t params;
+	// Устанавливаем лимит данных соединения
+	params.initialMaxData = 1048576;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	params.initialMaxStreamDataUni = 262144;
+	// Устанавливаем тесный лимит двунаправленных потоков (один поток)
+	params.initialMaxStreamsBidi = 1;
+	// Устанавливаем лимит однонаправленных потоков
+	params.initialMaxStreamsUni = 100;
+	// Выполняем подготовку соединения сервера с тесным лимитом
+	::configure(server, params);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Обмениваемся датаграммами до затишья, очищая отложенные подтверждения
+	::pump(client, server, now);
+	// Открываем поток в пределах лимита сервера
+	const uint64_t sid = client.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Проверяем что следующее открытие упирается в лимит сервера
+	ASSERT_EQ(client.open(false), connection_t::INVALID_STREAM);
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	// Флаг обнаружения фрейма STREAMS_BLOCKED
+	bool blocked = false;
+	/**
+	 * Извлекаем датаграммы клиента и ищем в них фрейм STREAMS_BLOCKED двунаправленных
+	 * потоков: тип 0x16, за которым следует лимит блокировки, равный единице
+	 */
+	while(client.write(datagram, now)){
+		// Расшифрованная нагрузка пакета
+		std::string plain = "";
+		// Снимаем защиту с датаграммы ключами сервера
+		if(::unseal(server, datagram, plain)){
+			/**
+			 * Ищем фрейм STREAMS_BLOCKED_BIDI: после затишья нагрузка несёт лишь его
+			 * и фреймы PADDING (октеты 0x00), поэтому пара 0x16 0x01 однозначна
+			 */
+			for(size_t i = 0; (i + 1) < plain.size(); i++){
+				// Если найдены тип фрейма и лимит блокировки
+				if((static_cast <uint8_t> (plain[i]) == 0x16) && (static_cast <uint8_t> (plain[i + 1]) == 0x01)){
+					// Устанавливаем флаг обнаружения фрейма
+					blocked = true;
+					// Прекращаем поиск
+					break;
+				}
+			}
+		}
+		// Доставляем датаграмму серверу
+		ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now), status_t::OK);
+		// Очищаем буфер датаграммы
+		datagram.clear();
+		// Если фрейм обнаружен - прекращаем обмен
+		if(blocked)
+			// Прекращаем извлечение датаграмм
+			break;
+	}
+	// Проверяем что клиент сигнализировал блокировку лимитом потоков
+	ASSERT_TRUE(blocked);
+	// Проверяем что сервер разобрал фрейм без ошибки транспорта
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест дублирования CONNECTION_CLOSE в пространствах Initial и Handshake (RFC 9000 §10.2.3)
+ *
+ * @details До подтверждения хендшейка удалённый узел может не иметь ключей уровня
+ *          приложения, поэтому завершение, отправленное до вывода этих ключей,
+ *          дублируется в пакетах Initial и Handshake, коалесцированных в одну
+ *          датаграмму - иначе узел не прочёл бы его до истечения простоя
+ */
+TEST_F(QuicFixture, ConnectionCloseHandshakeSpacesTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Доставляем ClientHello серверу - сервер формирует свой флайт
+	ASSERT_GT(::transfer(client, server, now), 0u);
+	// Буфер датаграммы флайта сервера
+	std::string datagram = "";
+	// Извлекаем первую датаграмму флайта сервера
+	ASSERT_TRUE(server.write(datagram, now));
+	// Разобранный заголовок первого пакета датаграммы
+	packet::header_t header;
+	// Код ошибки транспорта разбора заголовка
+	error_t perror = error_t::NO_ERROR;
+	// Разбираем заголовок первого пакета (Initial с ServerHello)
+	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), connection_t::LOCAL_CID_SIZE, header, perror), status_t::OK);
+	// Проверяем что размер пакета определён
+	ASSERT_GT(header.size, 0u);
+	/**
+	 * Доставляем клиенту только первый Initial-пакет с ServerHello: клиент выведет
+	 * из него ключи уровня Handshake, но без последующих пакетов с Finished хендшейк
+	 * не завершится и ключи уровня приложения не появятся
+	 */
+	ASSERT_EQ(client.read(reinterpret_cast <const uint8_t *> (datagram.data()), header.size, now), status_t::OK);
+	// Проверяем предусловие: ключи Initial и Handshake выведены, ключей приложения нет
+	ASSERT_NE(client.handshake().encryption(level_t::INITIAL), nullptr);
+	ASSERT_NE(client.handshake().encryption(level_t::HANDSHAKE), nullptr);
+	ASSERT_EQ(client.handshake().encryption(level_t::APPLICATION), nullptr);
+	// Инициируем завершение соединения приложением до завершения хендшейка
+	client.close(0x03, "closing mid-handshake");
+	// Очищаем буфер датаграммы
+	datagram.clear();
+	// Извлекаем датаграмму завершения соединения
+	ASSERT_TRUE(client.write(datagram, now));
+	// Проверяем что завершение продублировано в пакете Initial (RFC 9000 §10.2.3)
+	ASSERT_TRUE(::contains(datagram, packet_t::INITIAL));
+	// Проверяем что завершение продублировано в пакете Handshake (RFC 9000 §10.2.3)
+	ASSERT_TRUE(::contains(datagram, packet_t::HANDSHAKE));
 }
 
 /**

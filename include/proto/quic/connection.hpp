@@ -568,6 +568,14 @@ namespace awh {
 					bool bidiQueued;
 					// Флаг необходимости отправки обновлённого лимита MAX_STREAMS (однонаправленные)
 					bool uniQueued;
+					// Флаг необходимости отправки STREAMS_BLOCKED при упоре в лимит (двунаправленные)
+					bool bidiBlocked;
+					// Флаг необходимости отправки STREAMS_BLOCKED при упоре в лимит (однонаправленные)
+					bool uniBlocked;
+					// Лимит, при котором STREAMS_BLOCKED уже отправлен (двунаправленные)
+					uint64_t bidiBlockedAt;
+					// Лимит, при котором STREAMS_BLOCKED уже отправлен (однонаправленные)
+					uint64_t uniBlockedAt;
 					/**
 					 * @brief Конструктор
 					 *
@@ -1306,12 +1314,13 @@ namespace awh {
 				/**
 				 * @brief Метод разбора и диспетчеризации фреймов расшифрованной нагрузки пакета
 				 *
-				 * @param level уровень шифрования пакета
-				 * @param data  буфер расшифрованной нагрузки
-				 * @param size  размер расшифрованной нагрузки
-				 * @return      результат разбора (OK/ERROR)
+				 * @param level       уровень шифрования пакета
+				 * @param data        буфер расшифрованной нагрузки
+				 * @param size        размер расшифрованной нагрузки
+				 * @param nonProbing  признак наличия непробирующего фрейма (RFC 9000 §9.1)
+				 * @return            результат разбора (OK/ERROR)
 				 */
-				status_t frames(const level_t level, const uint8_t * data, const size_t size) noexcept;
+				status_t frames(const level_t level, const uint8_t * data, const size_t size, bool & nonProbing) noexcept;
 			private:
 				/**
 				 * @brief Метод сборки нагрузки очередного пакета уровня шифрования

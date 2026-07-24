@@ -394,7 +394,9 @@ awh::quic::Connection::Marking::Marking() noexcept :
  */
 awh::quic::Connection::Limits::Limits() noexcept :
  openedBidi(0), openedUni(0), maxBidiRemote(0), maxUniRemote(0), acceptedBidi(0),
- acceptedUni(0), maxBidiLocal(0), maxUniLocal(0), bidiQueued(false), uniQueued(false) {}
+ acceptedUni(0), maxBidiLocal(0), maxUniLocal(0), bidiQueued(false), uniQueued(false),
+ bidiBlocked(false), uniBlocked(false), bidiBlockedAt(numeric_limits <uint64_t>::max()),
+ uniBlockedAt(numeric_limits <uint64_t>::max()) {}
 
 /**
  * @brief Конструктор
@@ -852,6 +854,16 @@ void awh::quic::Connection::requeue(const space_t space, const sent_t & packet) 
 			case frame_t::DATA_BLOCKED:
 				// Восстанавливаем флаг заблокированной отправки данных соединения
 				this->_flow.txBlocked = true;
+			break;
+			// Фрейм блокировки лимитом двунаправленных потоков STREAMS_BLOCKED
+			case frame_t::STREAMS_BLOCKED_BIDI:
+				// Восстанавливаем флаг блокировки открытия двунаправленных потоков
+				this->_limits.bidiBlocked = true;
+			break;
+			// Фрейм блокировки лимитом однонаправленных потоков STREAMS_BLOCKED
+			case frame_t::STREAMS_BLOCKED_UNI:
+				// Восстанавливаем флаг блокировки открытия однонаправленных потоков
+				this->_limits.uniBlocked = true;
 			break;
 			// Фреймы состояния потока
 			case frame_t::MAX_STREAM_DATA:
@@ -2340,7 +2352,7 @@ awh::quic::status_t awh::quic::Connection::input(const level_t level, const uint
  * @param size  размер расшифрованной нагрузки
  * @return      результат разбора (OK/ERROR)
  */
-awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uint8_t * data, const size_t size) noexcept {
+awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uint8_t * data, const size_t size, bool & nonProbing) noexcept {
 	// Смещение в буфере расшифрованной нагрузки
 	size_t offset = 0;
 	// Флаг приёма ack-eliciting фрейма (RFC 9000 §13.2.1)
@@ -2357,6 +2369,22 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 			this->fail(error_t::FRAME_ENCODING_ERROR);
 			// Выводим отрицательный результат
 			return status_t::ERROR;
+		}
+		/**
+		 * Определяем непробирующий характер пакета: пакет считается непробирующим,
+		 * если несёт хотя бы один фрейм помимо PADDING, PATH_CHALLENGE, PATH_RESPONSE
+		 * и NEW_CONNECTION_ID. Только такой пакет с наибольшим номером вправе вызвать
+		 * миграцию соединения на новый путь (RFC 9000 §9.1)
+		 */
+		switch(type){
+			// Пробирующие фреймы миграцию не инициируют
+			case frame_t::PADDING:
+			case frame_t::PATH_CHALLENGE:
+			case frame_t::PATH_RESPONSE:
+			case frame_t::NEW_CONNECTION_ID:
+			break;
+			// Любой прочий фрейм делает пакет непробирующим
+			default: nonProbing = true;
 		}
 		// Если пакет уровня ранних данных
 		if(level == level_t::EARLY_DATA){
@@ -3416,6 +3444,32 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 			// Сбрасываем флаг необходимости отправки обновлённого лимита
 			this->_limits.uniQueued = false;
 		}
+		// Если открытие двунаправленных потоков заблокировано лимитом удалённого эндпоинта
+		if(this->_limits.bidiBlocked && (budget > (output.size() + CONTROL_OVERHEAD))){
+			// Выполняем сборку фрейма STREAMS_BLOCKED (RFC 9000 §19.14)
+			frame::serialize::single(output, frame_t::STREAMS_BLOCKED_BIDI, this->_limits.maxBidiRemote);
+			// Запоминаем управляющий фрейм в учётной записи пакета
+			meta.control.emplace_back(frame_t::STREAMS_BLOCKED_BIDI, 0);
+			// Устанавливаем флаг наличия ack-eliciting фреймов
+			elicit = true;
+			// Сбрасываем флаг необходимости отправки блокировки
+			this->_limits.bidiBlocked = false;
+			// Запоминаем лимит, при котором блокировка сигнализирована
+			this->_limits.bidiBlockedAt = this->_limits.maxBidiRemote;
+		}
+		// Если открытие однонаправленных потоков заблокировано лимитом удалённого эндпоинта
+		if(this->_limits.uniBlocked && (budget > (output.size() + CONTROL_OVERHEAD))){
+			// Выполняем сборку фрейма STREAMS_BLOCKED (RFC 9000 §19.14)
+			frame::serialize::single(output, frame_t::STREAMS_BLOCKED_UNI, this->_limits.maxUniRemote);
+			// Запоминаем управляющий фрейм в учётной записи пакета
+			meta.control.emplace_back(frame_t::STREAMS_BLOCKED_UNI, 0);
+			// Устанавливаем флаг наличия ack-eliciting фреймов
+			elicit = true;
+			// Сбрасываем флаг необходимости отправки блокировки
+			this->_limits.uniBlocked = false;
+			// Запоминаем лимит, при котором блокировка сигнализирована
+			this->_limits.uniBlockedAt = this->_limits.maxUniRemote;
+		}
 		// Если отправка данных соединения заблокирована лимитом удалённого эндпоинта
 		if(this->_flow.txBlocked && (budget > (output.size() + CONTROL_OVERHEAD))){
 			// Выполняем сборку фрейма DATA_BLOCKED (RFC 9000 §19.12)
@@ -4050,46 +4104,20 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 	// Обновляем текущее время последнего вызова
 	this->_now = now;
 	/**
-	 * Отслеживаем путь соединения по адресу удалённого эндпоинта: смена адреса
-	 * при установленном соединении означает миграцию на новый путь, прежние
-	 * оценки ёмкости и задержки к которому неприменимы (RFC 9000 §9). Адрес
-	 * сообщает вызывающий код, поэтому при неизвестном адресе миграция
-	 * не отслеживается
+	 * Фиксируем адрес первичного пути соединения при первой датаграмме после
+	 * установления: достижимость этого пути подтверждена самим хендшейком. Смена
+	 * адреса миграцией здесь не считается - она отслеживается только по успешно
+	 * обработанному непробирующему пакету с наибольшим номером, а не по адресу,
+	 * который сообщает вызывающий код и который подделывается (RFC 9000 §9.3)
 	 */
-	if((this->_state == state_t::CONNECTED) && !this->_address.empty()){
-		// Если путь соединения ещё не зафиксирован
-		if(this->_path.address.empty()){
-			// Запоминаем адрес первичного пути соединения
-			this->_path.address = this->_address;
-			/**
-			 * Запоминаем адрес последним проверенным: достижимость первичного пути
-			 * подтверждена самим хендшейком, а после переезда - проверкой пути
-			 */
-			this->_path.previous = this->_address;
-		}
-		// Если адрес удалённого эндпоинта сменился
-		else if(this->_address != this->_path.address) {
-			/**
-			 * Если выполняется проверка достижимости другого адреса: отказываемся от неё
-			 * до записи нового адреса и без возврата на проверенный. Сменив адрес отправки,
-			 * эндпоинт вправе бросить проверки прочих адресов, а возврат затёр бы адрес,
-			 * на который соединение как раз переходит (RFC 9000 §9.3.1)
-			 */
-			if(this->_path.pending)
-				// Выполняем отказ от проверки достижимости прежнего адреса
-				this->abandon(false);
-			// Запоминаем адрес нового пути соединения
-			this->_path.address = this->_address;
-			// Записываем в лог сообщение о миграции соединения на новый путь
-			this->_log->print(
-				"QUIC connection migrated to a new path: %s", log_t::flag_t::INFO,
-				this->_path.address.c_str()
-			);
-			// Выполняем сброс состояния пути соединения со сменой адреса удалённого эндпоинта
-			this->repath(true);
-			// Начинаем проверку достижимости нового пути
-			this->probe();
-		}
+	if((this->_state == state_t::CONNECTED) && !this->_address.empty() && this->_path.address.empty()){
+		// Запоминаем адрес первичного пути соединения
+		this->_path.address = this->_address;
+		/**
+		 * Запоминаем адрес последним проверенным: достижимость первичного пути
+		 * подтверждена самим хендшейком, а после переезда - проверкой пути
+		 */
+		this->_path.previous = this->_address;
 	}
 	/**
 	 * Учитываем принятые октеты для контроля анти-амплификации: считаются все октеты
@@ -4653,12 +4681,58 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 		}
 		// Устанавливаем флаг обработки пакета датаграммы
 		processed = true;
+		/**
+		 * Определяем, станет ли пакет наибольшим по номеру в пространстве приложения:
+		 * миграцию вправе инициировать лишь непробирующий пакет с наибольшим номером,
+		 * поэтому признак снимается до регистрации его номера (RFC 9000 §9.3)
+		 */
+		const auto & appItem = this->_spaces[static_cast <size_t> (space_t::APPLICATION)];
+		// Признак наибольшего номера пакета уровня приложения
+		const bool largest = ((level == level_t::APPLICATION) && (!appItem.hasRx || (pn > appItem.largestRx)));
 		// Регистрируем принятый номер пакета в диапазонах пространства
 		this->record(this->space(level), pn);
+		// Признак наличия непробирующего фрейма в пакете (RFC 9000 §9.1)
+		bool nonProbing = false;
 		// Выполняем разбор и диспетчеризацию фреймов нагрузки пакета
-		if(this->frames(level, reinterpret_cast <const uint8_t *> (plain.data()), plain.size()) != status_t::OK)
+		if(this->frames(level, reinterpret_cast <const uint8_t *> (plain.data()), plain.size(), nonProbing) != status_t::OK)
 			// Выводим отрицательный результат
 			return status_t::ERROR;
+		/**
+		 * Отслеживаем миграцию соединения на новый путь: адрес отправки меняется
+		 * только в ответ на успешно обработанный непробирующий пакет с наибольшим
+		 * номером, пришедший с нового адреса. Реакция на неаутентифицированные байты
+		 * позволяла бы off-path атакующему перенаправить путь и сбросить оценки
+		 * перегрузки, поэтому проверка выполняется после снятия защиты (RFC 9000 §9.3)
+		 */
+		if((level == level_t::APPLICATION) && (this->_state == state_t::CONNECTED) && nonProbing && largest &&
+		   !this->_address.empty() && !this->_path.address.empty() && (this->_address != this->_path.address)){
+			/**
+			 * Если выполняется проверка достижимости другого адреса: отказываемся от неё
+			 * до записи нового адреса и без возврата на проверенный. Сменив адрес отправки,
+			 * эндпоинт вправе бросить проверки прочих адресов, а возврат затёр бы адрес,
+			 * на который соединение как раз переходит (RFC 9000 §9.3.1)
+			 */
+			if(this->_path.pending)
+				// Выполняем отказ от проверки достижимости прежнего адреса
+				this->abandon(false);
+			// Запоминаем адрес нового пути соединения
+			this->_path.address = this->_address;
+			// Записываем в лог сообщение о миграции соединения на новый путь
+			this->_log->print(
+				"QUIC connection migrated to a new path: %s", log_t::flag_t::INFO,
+				this->_path.address.c_str()
+			);
+			// Выполняем сброс состояния пути соединения со сменой адреса удалённого эндпоинта
+			this->repath(true);
+			/**
+			 * Возвращаем октеты вызвавшей миграцию датаграммы в лимит анти-амплификации:
+			 * repath обнулил учёт нового пути, а принятая с него датаграмма - первый
+			 * подтверждённый объём, дающий право на ответ проверкой пути (RFC 9000 §8.1)
+			 */
+			this->_amplify.received += size;
+			// Начинаем проверку достижимости нового пути
+			this->probe();
+		}
 		// Обновляем время последнего принятого и обработанного пакета (RFC 9000 §10.1)
 		this->_idleTime = this->_now;
 		/**
@@ -4825,57 +4899,83 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 	 * состоянии завершения удалённым узлом не вправе отправлять пакеты (RFC 9000 §10.2.2)
 	 */
 	if(this->_close.queued && !this->_close.sent && (this->_state != state_t::DRAINING)){
-		// Список уровней шифрования в порядке убывания предпочтения
-		static const level_t levels[] = {level_t::APPLICATION, level_t::HANDSHAKE, level_t::INITIAL};
 		/**
-		 * Перебираем список уровней шифрования
+		 * С выведенными ключами уровня приложения довольно одного пакета 1-RTT.
+		 * До этого хендшейк ещё не подтверждён, и удалённый узел может не иметь
+		 * ключей старших уровней, поэтому завершение дублируется в пакетах Initial
+		 * и Handshake, коалесцированных в одну датаграмму в порядке возрастания
+		 * уровня - так узел прочтёт его любыми доступными ключами (RFC 9000 §10.2.3/§12.2)
 		 */
-		for(auto & level : levels){
-			// Если ключи защиты исходящих пакетов уровня выведены
-			if(this->_handshake.encryption(level) != nullptr){
-				// Нагрузка пакета завершения соединения
-				string payload = "";
-				// Если ошибка приложения отправляется в пакете Initial или Handshake (RFC 9000 §10.2.3)
-				if(this->_close.app && (level != level_t::APPLICATION))
-					// Выполняем сборку фрейма CONNECTION_CLOSE с кодом APPLICATION_ERROR без причины
-					frame::serialize::connectionClose(payload, static_cast <uint64_t> (error_t::APPLICATION_ERROR), 0, "", false);
-				// Если завершение отправляется штатно
-				else
-					// Выполняем сборку фрейма CONNECTION_CLOSE (RFC 9000 §10.2.1)
-					frame::serialize::connectionClose(payload, this->_close.code, 0, this->_close.reason, this->_close.app);
-				// Если нагрузка меньше минимума для выборки защиты заголовка
-				if(payload.size() < MIN_PAYLOAD_SIZE)
-					// Дополняем нагрузку фреймами PADDING
-					frame::serialize::padding(payload, MIN_PAYLOAD_SIZE - payload.size());
-				// Выполняем сборку и защиту пакета завершения соединения
-				if(!this->seal(output, level, payload, this->_cid.destination))
-					// Выводим отрицательный результат
-					return false;
-				// Если пакет завершения не помещается в доступный объём отправки
-				if(output.size() > capacity){
-					// Откатываем буфер датаграммы
-					output.clear();
-					// Выводим отрицательный результат
-					return false;
-				}
-				// Учитываем отправленные октеты в контроле анти-амплификации
-				this->_amplify.sent += output.size();
-				// Устанавливаем флаг выполненной отправки фрейма CONNECTION_CLOSE
-				this->_close.sent = true;
-				/**
-				 * Если дедлайн периода завершения ещё не взведён: период отсчитывается
-				 * от первой отправки фрейма завершения, а его повторы, отправляемые
-				 * в ответ на приходящие пакеты, дедлайн не отодвигают (RFC 9000 §10.2)
-				 */
-				if(this->_close.deadline == 0)
-					// Взводим дедлайн периода завершения соединения
-					this->_close.deadline = (now + (CLOSING_PERIOD * this->interval(space_t::APPLICATION)));
-				// Выводим положительный результат
-				return true;
+		const bool application = (this->_handshake.encryption(level_t::APPLICATION) != nullptr);
+		// Уровень отправки завершения после вывода ключей приложения
+		static const level_t single[] = {level_t::APPLICATION};
+		// Уровни отправки завершения до подтверждения хендшейка (в порядке коалесценции)
+		static const level_t multiple[] = {level_t::INITIAL, level_t::HANDSHAKE};
+		// Выбираем список уровней отправки завершения
+		const level_t * levels = (application ? single : multiple);
+		// Количество уровней отправки завершения
+		const size_t count = (application ? 1 : 2);
+		// Флаг сборки хотя бы одного пакета завершения
+		bool prepared = false;
+		/**
+		 * Перебираем уровни шифрования отправки завершения
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Уровень шифрования очередного пакета завершения
+			const level_t level = levels[i];
+			// Если ключи защиты исходящих пакетов уровня не выведены
+			if(this->_handshake.encryption(level) == nullptr)
+				// Переходим к следующему уровню
+				continue;
+			// Нагрузка пакета завершения соединения
+			string payload = "";
+			// Если ошибка приложения отправляется в пакете Initial или Handshake (RFC 9000 §10.2.3)
+			if(this->_close.app && (level != level_t::APPLICATION))
+				// Выполняем сборку фрейма CONNECTION_CLOSE с кодом APPLICATION_ERROR без причины
+				frame::serialize::connectionClose(payload, static_cast <uint64_t> (error_t::APPLICATION_ERROR), 0, "", false);
+			// Если завершение отправляется штатно
+			else
+				// Выполняем сборку фрейма CONNECTION_CLOSE (RFC 9000 §10.2.1)
+				frame::serialize::connectionClose(payload, this->_close.code, 0, this->_close.reason, this->_close.app);
+			// Если нагрузка меньше минимума для выборки защиты заголовка
+			if(payload.size() < MIN_PAYLOAD_SIZE)
+				// Дополняем нагрузку фреймами PADDING
+				frame::serialize::padding(payload, MIN_PAYLOAD_SIZE - payload.size());
+			// Выполняем сборку и защиту пакета завершения, дописывая его в датаграмму
+			if(!this->seal(output, level, payload, this->_cid.destination)){
+				// Откатываем буфер датаграммы
+				output.clear();
+				// Выводим отрицательный результат
+				return false;
 			}
+			// Устанавливаем флаг сборки пакета завершения
+			prepared = true;
 		}
-		// Выводим отрицательный результат - ключи недоступны
-		return false;
+		// Если ни один пакет завершения не собран - ключи недоступны
+		if(!prepared)
+			// Выводим отрицательный результат
+			return false;
+		// Если датаграмма завершения не помещается в доступный объём отправки
+		if(output.size() > capacity){
+			// Откатываем буфер датаграммы
+			output.clear();
+			// Выводим отрицательный результат
+			return false;
+		}
+		// Учитываем отправленные октеты в контроле анти-амплификации
+		this->_amplify.sent += output.size();
+		// Устанавливаем флаг выполненной отправки фрейма CONNECTION_CLOSE
+		this->_close.sent = true;
+		/**
+		 * Если дедлайн периода завершения ещё не взведён: период отсчитывается
+		 * от первой отправки фрейма завершения, а его повторы, отправляемые
+		 * в ответ на приходящие пакеты, дедлайн не отодвигают (RFC 9000 §10.2)
+		 */
+		if(this->_close.deadline == 0)
+			// Взводим дедлайн периода завершения соединения
+			this->_close.deadline = (now + (CLOSING_PERIOD * this->interval(space_t::APPLICATION)));
+		// Выводим положительный результат
+		return true;
 	}
 	// Если соединение завершается либо завершено удалённым эндпоинтом
 	if((this->_state == state_t::CLOSING) || (this->_state == state_t::DRAINING))
@@ -6264,9 +6364,24 @@ uint64_t awh::quic::Connection::open(const bool unidirectional) noexcept {
 	// Получаем лимит удалённого эндпоинта на локально открываемые потоки
 	const uint64_t limit = (unidirectional ? this->_limits.maxUniRemote : this->_limits.maxBidiRemote);
 	// Если лимит потоков удалённого эндпоинта исчерпан (RFC 9000 §4.6)
-	if(opened >= limit)
+	if(opened >= limit){
+		/**
+		 * Сигнализируем удалённому эндпоинту блокировку лимитом потоков фреймом
+		 * STREAMS_BLOCKED - однократно на каждое значение лимита, чтобы не наводнять
+		 * повторами при частых попытках открытия (RFC 9000 §19.14)
+		 */
+		if(unidirectional){
+			// Если блокировка при текущем лимите ещё не сигнализирована
+			if(this->_limits.uniBlockedAt != limit)
+				// Устанавливаем флаг необходимости отправки STREAMS_BLOCKED
+				this->_limits.uniBlocked = true;
+		// Если блокировка двунаправленных потоков при текущем лимите ещё не сигнализирована
+		} else if(this->_limits.bidiBlockedAt != limit)
+			// Устанавливаем флаг необходимости отправки STREAMS_BLOCKED
+			this->_limits.bidiBlocked = true;
 		// Выводим недопустимый идентификатор потока
 		return INVALID_STREAM;
+	}
 	// Вычисляем идентификатор нового потока (RFC 9000 §2.1)
 	const uint64_t sid = ((opened << 2) | (unidirectional ? 0x02 : 0x00) | ((this->_endpoint == endpoint_t::SERVER) ? 0x01 : 0x00));
 	// Увеличиваем счётчик открытых локально потоков
