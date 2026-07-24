@@ -953,28 +953,56 @@ namespace awh {
 					 */
 					explicit Routing() noexcept;
 				} routing_t;
+				/**
+				 * @brief Структура идентификаторов соединения (RFC 9000 §5.1)
+				 *
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ Cids {
+					// Активная пара идентификаторов соединения эндпоинтов (§5.1)
+					identity_t identity;
+					// Набор выданных и выводимых из обращения идентификаторов (§5.1.1)
+					routing_t routing;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Cids() noexcept;
+				} cids_t;
+				/**
+				 * @brief Структура криптографического состояния соединения (RFC 9001)
+				 *
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ Crypto {
+					// Машина криптографического хендшейка
+					handshake_t handshake;
+					// Бит фазы ключей уровня приложения (§6)
+					phase_t phase;
+					// Состояние и лимиты защиты AEAD (§6.6)
+					aead_t aead;
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param endpoint роль локального эндпоинта на соединении
+					 * @param ctx      идентификатор шаблона контекста безопасности
+					 * @param coder    объект кодера транспортной безопасности
+					 * @param log      объект для работы с логами
+					 */
+					explicit Crypto(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept;
+				} crypto_t;
 			private:
 				// Основные скаляры состояния соединения
 				core_t _core;
 			private:
 				// Идентификаторы соединения эндпоинтов (RFC 9000 §5.1)
-				identity_t _cid;
+				cids_t _cids;
 			private:
 				// Состояние поиска размера пути (RFC 8899)
 				pmtu_t _pmtu;
 				// Токены проверки адреса соединения (RFC 9000 §8.1)
 				token_t _token;
-				// Бит фазы ключей уровня приложения (RFC 9001 §6)
-				phase_t _phase;
-			private:
-				// Набор идентификаторов соединения (RFC 9000 §5.1.1)
-				routing_t _routing;
 			private:
 				// Состояние контроля перегрузки (RFC 9002 §7)
 				congestion_t _congestion;
-			private:
-				// Состояние и лимиты защиты AEAD (RFC 9001 §6.6)
-				aead_t _aead;
 			private:
 				// Состояние пути соединения (RFC 9000 §9)
 				path_t _path;
@@ -997,8 +1025,8 @@ namespace awh {
 				// Объект для работы с логами
 				const log_t * _log;
 			private:
-				// Машина криптографического хендшейка
-				handshake_t _handshake;
+				// Криптографическое состояние соединения (RFC 9001)
+				crypto_t _crypto;
 				// Локальные и удалённые транспортные параметры (RFC 9000 §18)
 				transport_t _transport;
 			private:
@@ -1736,9 +1764,10 @@ namespace awh {
 				 * @note Доступен после подтверждения хендшейка; повторное обновление
 				 *       возможно только после подтверждения пакета текущей фазы
 				 *
-				 * @return результат инициирования (OK/ERROR)
+				 * @param now текущее время в миллисекундах
+				 * @return    результат инициирования (OK/ERROR)
 				 */
-				status_t rekey() noexcept;
+				status_t rekey(const uint64_t now) noexcept;
 				/**
 				 * @brief Метод получения бита фазы ключей уровня приложения (RFC 9001 §6)
 				 *

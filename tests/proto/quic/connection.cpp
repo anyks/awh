@@ -3618,7 +3618,7 @@ TEST_F(QuicFixture, KeyUpdateReorderTest){
 	// Проверяем что датаграммы прежней фазы собраны
 	ASSERT_FALSE(delayed.empty());
 	// Выполняем обновление ключей клиентом (RFC 9001 §6)
-	ASSERT_EQ(client.rekey(), status_t::OK);
+	ASSERT_EQ(client.rekey(now), status_t::OK);
 	// Проверяем что бит фазы ключей переключился
 	ASSERT_NE(client.phase(), phase);
 	// Ставим данные новой фазы ключей в очередь отправки
@@ -3713,7 +3713,7 @@ TEST_F(QuicFixture, KeyUpdatePreviousDiscardTest){
 	// Проверяем что датаграммы прежней фазы собраны
 	ASSERT_FALSE(delayed.empty());
 	// Выполняем обновление ключей клиентом (RFC 9001 §6)
-	ASSERT_EQ(client.rekey(), status_t::OK);
+	ASSERT_EQ(client.rekey(now), status_t::OK);
 	// Проверяем что бит фазы ключей переключился
 	ASSERT_NE(client.phase(), phase);
 	// Ставим данные новой фазы ключей в очередь отправки
@@ -3789,7 +3789,7 @@ TEST_F(QuicFixture, KeyUpdateTest){
 	// Запоминаем бит фазы ключей клиента до обновления
 	const bool phase = client.phase();
 	// Выполняем обновление ключей клиентом (RFC 9001 §6)
-	ASSERT_EQ(client.rekey(), status_t::OK);
+	ASSERT_EQ(client.rekey(now), status_t::OK);
 	// Проверяем что бит фазы ключей переключился
 	ASSERT_NE(client.phase(), phase);
 	// Ставим вторые данные в очередь отправки в новой фазе ключей
@@ -7243,7 +7243,7 @@ TEST_F(QuicFixture, ConnectionSoakTest){
 		// Если цикл требует обновления ключей уровня приложения
 		if((cycle % 3) == 2){
 			// Выполняем обновление ключей уровня приложения
-			if(client.rekey() == status_t::OK)
+			if(client.rekey(now) == status_t::OK)
 				// Считаем выполненное обновление ключей
 				rekeys++;
 			// Выполняем обмен датаграммами после обновления ключей
