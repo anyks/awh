@@ -129,6 +129,25 @@ namespace {
 			EVP_AEAD_CTX_free(ctx);
 	}
 	/**
+	 * @brief Функция освобождения развёрнутого ключа защиты заголовка
+	 *
+	 * @param key освобождаемый развёрнутый ключ AES
+	 *
+	 * @note Затирает расписание раундовых ключей до освобождения памяти: AES_KEY -
+	 *       обычный POD, освобождаемый штатным delete без затирания, а из расписания
+	 *       раундов тривиально восстанавливается исходный ключ защиты заголовка
+	 *       (RFC 9001 §6, defense-in-depth)
+	 */
+	inline void freeMask(aes_key_st * key) noexcept {
+		// Если развёрнутый ключ создан
+		if(key != nullptr){
+			// Затираем расписание раундовых ключей в памяти
+			OPENSSL_cleanse(key, sizeof(AES_KEY));
+			// Освобождаем развёрнутый ключ
+			delete key;
+		}
+	}
+	/**
 	 * @brief Функция формирования нонса AEAD из вектора инициализации и номера пакета (RFC 9001 §5.3)
 	 *
 	 * @param iv    вектор инициализации направления (12 октетов)
@@ -197,8 +216,9 @@ awh::quic::crypto::Keys::Keys() noexcept : suite(suite_t::AES_128_GCM_SHA256) {}
  *       защиты заголовка до освобождения либо перезаписи их буферов: ключевой
  *       материал не должен оставаться в куче после разрыва соединения, смены фазы
  *       или сброса уровня (RFC 9001 §6, defense-in-depth). Ключ развёрнутого
- *       контекста AEAD и развёртка ключа защиты заголовка затираются
- *       криптографической библиотекой при освобождении своих контекстов
+ *       контекста AEAD затирается криптографической библиотекой при освобождении
+ *       контекста, а расписание раундов ключа защиты заголовка - затирающим
+ *       делетером freeMask при освобождении shared_ptr
  *
  * @param keys затираемый набор ключей
  */
@@ -346,8 +366,8 @@ bool awh::quic::crypto::derive(keys_t & keys) noexcept {
 	if(keys.suite == suite_t::CHACHA20_POLY1305_SHA256)
 		// Вывод ключей выполнен успешно
 		return true;
-	// Создаём развёрнутый ключ защиты заголовка
-	shared_ptr <aes_key_st> key(new (std::nothrow) AES_KEY());
+	// Создаём развёрнутый ключ защиты заголовка с затирающим делетером
+	shared_ptr <aes_key_st> key(new (std::nothrow) AES_KEY(), &freeMask);
 	// Если память под развёрнутый ключ не выделена
 	if(!key)
 		// Вывод невозможен
@@ -383,16 +403,16 @@ bool awh::quic::crypto::initial(const cid_t & dcid, keys_t & client, keys_t & se
 	// Пакеты Initial всегда защищаются набором AES_128_GCM_SHA256 (RFC 9001 §5.2)
 	client.suite = suite_t::AES_128_GCM_SHA256;
 	server.suite = suite_t::AES_128_GCM_SHA256;
-	// Выводим секрет направления клиента
-	if(!hkdfExpandLabel(client.suite, initialSecret, "client in", 32, client.secret))
-		// Вывод невозможен
-		return false;
-	// Выводим секрет направления сервера
-	if(!hkdfExpandLabel(server.suite, initialSecret, "server in", 32, server.secret))
-		// Вывод невозможен
-		return false;
-	// Выводим ключи защиты пакетов обоих направлений
-	return (derive(client) && derive(server));
+	// Результат вывода секретов и ключей обоих направлений
+	const bool result = (
+		hkdfExpandLabel(client.suite, initialSecret, "client in", 32, client.secret) &&
+		hkdfExpandLabel(server.suite, initialSecret, "server in", 32, server.secret) &&
+		derive(client) && derive(server)
+	);
+	// Затираем общий секрет Initial на стеке (RFC 9001 §6, defense-in-depth)
+	OPENSSL_cleanse(secret, sizeof(secret));
+	// Выводим результат вывода ключей
+	return result;
 }
 /**
  * @brief Функция обновления ключей на новую фазу (RFC 9001 §6)
@@ -558,8 +578,8 @@ awh::quic::status_t awh::quic::crypto::open(uint8_t * packet, const size_t size,
 	if(!keys.aead || (keys.iv.size() < 12))
 		// Снятие защиты невозможно
 		return status_t::ERROR;
-	// Если выборка защиты заголовка не помещается в пакет
-	if(size < (pnOffset + proto::MAX_PKT_NUM_SIZE + HP_SAMPLE_SIZE))
+	// Если выборка защиты заголовка не помещается в пакет (сравнение без сложения - защита от переполнения pnOffset)
+	if((pnOffset > size) || ((size - pnOffset) < (proto::MAX_PKT_NUM_SIZE + HP_SAMPLE_SIZE)))
 		// Снятие защиты невозможно
 		return status_t::ERROR;
 	// Выборка защищённой нагрузки для защиты заголовка (RFC 9001 §5.4.2)

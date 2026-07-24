@@ -512,7 +512,7 @@ awh::quic::Connection::Streams::Streams() noexcept : cursor(0) {}
  */
 awh::quic::Connection::Pmtu::Pmtu() noexcept :
  size(MAX_DATAGRAM_SIZE), high(MAX_PROBE_SIZE), limit(MAX_PROBE_SIZE),
- probe(0), count(0), queued(false) {}
+ probe(0), count(0), blackhole(0), queued(false) {}
 
 /**
  * @brief Конструктор
@@ -539,7 +539,7 @@ awh::quic::Connection::Stream::Stream() noexcept :
  */
 awh::quic::Connection::Space::Space() noexcept :
  txPn(0), largestAcked(0), hasAcked(false), largestRx(0), hasRx(false), dedup(0),
- ackElicited(false), ackTime(0), ect0(0), ect1(0), ce(0), peerCe(0), peerEct0(0), peerEct1(0), hasPeerEcn(false), ecnSent(0),
+ ackElicited(false), ackImmediate(false), ackTime(0), ect0(0), ect1(0), ce(0), peerCe(0), peerEct0(0), peerEct1(0), hasPeerEcn(false), ecnSent(0),
  txOffset(0), txBuffer{""}, rxOffset(0), lossTime(0),
  hasLossTime(false), lastElicited(0), hasElicited(false), pingQueued(false) {}
 
@@ -594,6 +594,18 @@ void awh::quic::Connection::record(const space_t space, const uint64_t pn) noexc
 		// Если пакет отмечен маршрутизатором как испытавший перегрузку
 		case static_cast <uint8_t> (event::ecn_t::CE): item.ce++; break;
 	}
+	/**
+	 * Если пакет принят не как непосредственный преемник наибольшего принятого -
+	 * он пришёл вне очереди (переупорядочивание, заполнение либо образование
+	 * разрыва), и подтверждение отправляется без задержки: это ускоряет обнаружение
+	 * потерь удалённым эндпоинтом. Проверка выполняется до продвижения наибольшего
+	 * принятого номера и учитывает лишь текущий пакет, а не давние разрывы в наборе
+	 * принятых номеров - иначе одна невосполнимая потеря взводила бы немедленное
+	 * подтверждение до конца соединения (RFC 9000 §13.2.1/§13.2.2)
+	 */
+	if(item.hasRx && (pn != (item.largestRx + 1)))
+		// Устанавливаем флаг необходимости немедленного подтверждения
+		item.ackImmediate = true;
 	// Если пакет в пространстве принимается впервые
 	if(!item.hasRx){
 		// Устанавливаем наибольший принятый номер пакета
@@ -803,6 +815,8 @@ void awh::quic::Connection::discard(const level_t level) noexcept {
 	item.pingQueued = false;
 	// Сбрасываем флаг необходимости отправки подтверждения
 	item.ackElicited = false;
+	// Сбрасываем флаг необходимости немедленного подтверждения
+	item.ackImmediate = false;
 }
 /**
  * @brief Метод обновления оценки задержки приёма-передачи (RFC 9002 §5.3)
@@ -1090,6 +1104,30 @@ bool awh::quic::Connection::validate(const space_t space, const frame::ack_t & f
 	return congested;
 }
 /**
+ * @brief Метод учёта потери полноразмерной датаграммы для детекции чёрной дыры пути (RFC 8899 §5.4)
+ *
+ */
+void awh::quic::Connection::deflate() noexcept {
+	// Если серия подряд потерянных полноразмерных датаграмм не исчерпала предел проб
+	if((++this->_pmtu.blackhole) < PMTU_PROBES)
+		// Продолжаем накапливать серию - одиночная потеря чёрной дырой ещё не является
+		return;
+	// Опускаем подтверждённый размер исходящей датаграммы к обязательному минимуму
+	this->_pmtu.size = MAX_DATAGRAM_SIZE;
+	// Восстанавливаем верхнюю границу поиска до заданной вызывающим кодом
+	this->_pmtu.high = this->_pmtu.limit;
+	// Сбрасываем размер собираемого зонда
+	this->_pmtu.probe = 0;
+	// Обнуляем количество отправленных попыток зонда
+	this->_pmtu.count = 0;
+	// Обнуляем счётчик детекции чёрной дыры
+	this->_pmtu.blackhole = 0;
+	// Записываем в лог сообщение о понижении размера пути
+	this->_log->print("QUIC path black hole detected, maximum transmission unit lowered to %zu bytes", log_t::flag_t::WARNING, this->_pmtu.size);
+	// Начинаем поиск размера пути заново зондированием (RFC 8899 §5.4)
+	this->discover();
+}
+/**
  * @brief Метод продвижения поиска размера пути (RFC 8899 §5.3)
  *
  */
@@ -1221,6 +1259,18 @@ void awh::quic::Connection::detect(const space_t space) noexcept {
 			}
 			// Списываем потерянный пакет из октетов в полёте (RFC 9002 §B.8)
 			this->_congestion.inflight -= ::min(this->_congestion.inflight, static_cast <uint64_t> (i->size));
+			/**
+			 * Детекция чёрной дыры пути (RFC 8899 §5.4): потеря датаграммы сверх базового
+			 * размера при уже поднятом подтверждённом размере означает, что путь перестал
+			 * пропускать прежний размер (смена маршрута, туннель). Учитываем её в серии,
+			 * по исчерпании которой размер опускается к базовому. Этот путь покрывает
+			 * случай смешанных размеров, когда мелкие пакеты подтверждаются и продвигают
+			 * детекцию потерь; случай чистой чёрной дыры без единого подтверждения
+			 * закрывается учётом по срабатыванию таймера PTO
+			 */
+			if((this->_pmtu.size > MAX_DATAGRAM_SIZE) && (i->size > MAX_DATAGRAM_SIZE))
+				// Учитываем потерю полноразмерной датаграммы в детекции чёрной дыры
+				this->deflate();
 			// Запоминаем время отправки наиболее позднего потерянного пакета
 			lostTime = ::max(lostTime, i->time);
 			// Устанавливаем флаг наличия потерянных пакетов
@@ -1392,6 +1442,18 @@ void awh::quic::Connection::consume(stream_data_t & stream, const uint64_t targe
 		this->_flow.rxConsumed += (target - stream.rxCounted);
 		// Продвигаем учтённое смещение данных потока
 		stream.rxCounted = target;
+		/**
+		 * Данные сброшенного либо прекращённого потока приложению не выдаются и через
+		 * receive() лимит соединения не продвигается, поэтому MAX_DATA переанонсируется
+		 * здесь: иначе учтённые потреблёнными байты навсегда сокращают окно приёма
+		 * соединения и приём в итоге встаёт (RFC 9000 §4.1, §4.5)
+		 */
+		if((this->_flow.rxMax - this->_flow.rxConsumed) < (this->_transport.local.initialMaxData / 2)){
+			// Продвигаем анонсированный лимит приёма данных соединения
+			this->_flow.rxMax = (this->_flow.rxConsumed + this->_transport.local.initialMaxData);
+			// Устанавливаем флаг необходимости отправки обновлённого лимита MAX_DATA
+			this->_flow.rxQueued = true;
+		}
 	}
 }
 /**
@@ -1760,6 +1822,10 @@ void awh::quic::Connection::acked(const sent_t & packet) noexcept {
 		return;
 	// Списываем подтверждённый пакет из октетов в полёте
 	this->_congestion.inflight -= ::min(this->_congestion.inflight, static_cast <uint64_t> (packet.size));
+	// Подтверждение датаграммы сверх базового размера доказывает проходимость поднятого размера - сбрасываем детекцию чёрной дыры (RFC 8899 §5.4)
+	if(packet.size > MAX_DATAGRAM_SIZE)
+		// Обнуляем счётчик детекции чёрной дыры пути
+		this->_pmtu.blackhole = 0;
 	/**
 	 * Если подтверждён зонд размера пути: путь пропускает датаграммы такого размера,
 	 * поэтому подтверждённый размер поднимается до размера зонда, а поиск
@@ -2479,13 +2545,14 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 				case frame_t::CRYPTO:
 				case frame_t::NEW_TOKEN:
 				case frame_t::PATH_RESPONSE:
+				case frame_t::CONNECTION_CLOSE:
 				case frame_t::HANDSHAKE_DONE: {
 					// Ставим завершение соединения с нарушением протокола в очередь
 					this->fail(error_t::PROTOCOL_VIOLATION);
 					// Выводим отрицательный результат
 					return status_t::ERROR;
 				}
-				// Все остальные фреймы допустимы
+				// Все остальные фреймы допустимы (включая CONNECTION_CLOSE_APP 0x1d)
 				default: break;
 			}
 		// Если пакет уровня Initial или Handshake
@@ -2639,6 +2706,8 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 					if(acked){
 						// Сбрасываем счётчик срабатываний таймера PTO (RFC 9002 §6.2.1)
 						this->_rtt.ptoCount = 0;
+						// Гасим остаточный кредит проб PTO: таймер разрешён, лишний пакет не вправе выйти за окно перегрузки (RFC 9002 §7.5)
+						this->_congestion.probes = 0;
 						// Если подтверждён наибольший номер и время отправки известно
 						if(largest && (this->_times.now >= sentTime)){
 							// Задержка подтверждения удалённого эндпоинта в миллисекундах
@@ -2961,14 +3030,14 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 								// Выводим отрицательный результат
 								return status_t::ERROR;
 							}
-							// Если выведен идентификатор соединения хендшейка
-							if(value == 0){
+							// Если выведен идентификатор соединения хендшейка и он ещё не выводился
+							if((value == 0) && !this->_cids.routing.retired){
 								// Устанавливаем флаг вывода идентификатора хендшейка из обращения
 								this->_cids.routing.retired = true;
 								// Отмечаем идентификатор выведенным из обращения для маршрутизации
 								this->_cids.routing.removed.push_back(this->_cids.identity.source);
 							// Если выведен дополнительно выданный идентификатор
-							} else {
+							} else if(value != 0) {
 								// Выполняем поиск выведенного из обращения идентификатора
 								auto j = this->_cids.routing.issued.find(value);
 								// Если выведенный из обращения идентификатор найден
@@ -3075,8 +3144,26 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 					}
 					// Если порядковый номер идентификатора уже выведен из обращения
 					if(frame.seq < this->_cids.routing.retirePrior){
-						// Ставим порядковый номер в очередь отправки фрейма RETIRE_CONNECTION_ID (RFC 9000 §19.15)
-						this->_cids.routing.retireQueue.push_back(frame.seq);
+						// Флаг наличия порядкового номера в очереди вывода из обращения
+						bool queued = false;
+						// Перебираем очередь отправки фреймов RETIRE_CONNECTION_ID
+						for(const uint64_t seq : this->_cids.routing.retireQueue){
+							// Если порядковый номер уже поставлен в очередь
+							if(seq == frame.seq){
+								// Отмечаем наличие номера в очереди
+								queued = true;
+								// Прекращаем перебор
+								break;
+							}
+						}
+						/**
+						 * Ставим порядковый номер в очередь лишь однажды: повторный анонс
+						 * уже выведенного из обращения идентификатора вывода для того же
+						 * номера не требует - он уже поставлен в очередь (RFC 9000 §5.1.1)
+						 */
+						if(!queued)
+							// Ставим порядковый номер в очередь отправки фрейма RETIRE_CONNECTION_ID (RFC 9000 §19.15)
+							this->_cids.routing.retireQueue.push_back(frame.seq);
 						// Устанавливаем флаг приёма ack-eliciting фрейма
 						elicit = true;
 						// Прекращаем обработку фрейма
@@ -3343,10 +3430,12 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 		// Вычисляем задержку подтверждения в миллисекундах
 		const uint64_t delay = ((this->_times.now > item.ackTime) ? (this->_times.now - item.ackTime) : 0);
 		/**
-		 * Кодируем задержку в микросекундах с показателем степени локального
-		 * эндпоинта: пир декодирует её анонсированным нами значением (RFC 9000 §18.2)
+		 * Кодируем задержку в микросекундах с показателем степени. Показатель
+		 * ack_delay_exponent относится только к пространству приложения: в
+		 * пространствах Initial и Handshake задержка кодируется показателем 0, иначе
+		 * пир декодирует её в 2^exponent раз меньше отправленной (RFC 9000 §18.2/§13.2.5)
 		 */
-		frame.delay = ((delay * 1000) >> this->_transport.local.ackDelayExponent);
+		frame.delay = ((this->space(level) == space_t::APPLICATION) ? ((delay * 1000) >> this->_transport.local.ackDelayExponent) : (delay * 1000));
 		/**
 		 * Оцениваем количество диапазонов, помещающихся в бюджет: заголовок фрейма
 		 * занимает до 25 октетов, каждый дополнительный диапазон - до 16. Первый
@@ -3372,6 +3461,8 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 		frame::serialize::ack(output, frame);
 		// Сбрасываем флаг необходимости отправки подтверждения
 		item.ackElicited = false;
+		// Сбрасываем флаг необходимости немедленного подтверждения
+		item.ackImmediate = false;
 	}
 	// Если окно перегрузки исчерпано - отправляются только подтверждения (RFC 9002 §7)
 	if(limited){
@@ -4414,14 +4505,14 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 			// Если токен пуст либо SCID не изменился (RFC 9000 §17.2.5.2)
 			if(token.empty() || (header.scid == this->_cids.identity.destination)){
 				// Регистрируем отброшенный пакет
-				this->drop("retry integrity tag mismatch");
+				this->drop("retry token is empty or source connection id unchanged");
 				// Прекращаем разбор датаграммы - пакет игнорируется
 				break;
 			}
 			// Выполняем проверку тега целостности пакета Retry (RFC 9001 §5.8)
 			if(!crypto::retryVerify(this->_cids.identity.original, string_view(buffer.data() + offset, header.size))){
 				// Регистрируем отброшенный пакет
-				this->drop("retry token is empty");
+				this->drop("retry integrity tag mismatch");
 				// Прекращаем разбор датаграммы - пакет игнорируется
 				break;
 			}
@@ -4752,6 +4843,18 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 					// Выполняем снятие защиты ключами предыдущей фазы (отставший пакет)
 					unsealed = (crypto::open(reinterpret_cast <uint8_t *> (buffer.data()) + offset, header.size, header.pnOffset, (item.hasRx ? item.largestRx : 0), this->_crypto.phase.prevRead, pn, plain, oerror) == status_t::OK);
 				}
+			}
+			/**
+			 * Если пакет аутентифицирован (AEAD-тег верен), но несёт ненулевые
+			 * зарезервированные биты заголовка - это нарушение протокола, а не отказ
+			 * расшифровки: пакет подлинный, а нарушение обязано завершить соединение,
+			 * а не тратить попытку лимита целостности AEAD (RFC 9000 §17.2/§17.3.1)
+			 */
+			if(oerror == error_t::PROTOCOL_VIOLATION){
+				// Ставим завершение соединения с нарушением протокола в очередь
+				this->fail(error_t::PROTOCOL_VIOLATION);
+				// Выводим отрицательный результат
+				return status_t::ERROR;
 			}
 			// Если снятие защиты не выполнено ни одним набором ключей
 			if(!unsealed){
@@ -5600,7 +5703,7 @@ uint64_t awh::quic::Connection::timeout() const noexcept {
 			 * долее анонсированной локальным эндпоинтом задержки, а подтверждения
 			 * пакетов хендшейка откладывать нельзя вовсе (RFC 9000 §13.2.1)
 			 */
-			const uint64_t ack = (item.ackTime + ((static_cast <space_t> (i) == space_t::APPLICATION) ? this->_transport.local.maxAckDelay : 0));
+			const uint64_t ack = (item.ackTime + (((static_cast <space_t> (i) == space_t::APPLICATION) && !item.ackImmediate) ? this->_transport.local.maxAckDelay : 0));
 			// Если дедлайн подтверждения является ближайшим событием
 			if((result == 0) || (ack < result))
 				// Устанавливаем дедлайн отправки подтверждения
@@ -5746,6 +5849,32 @@ void awh::quic::Connection::tick(const uint64_t now) noexcept {
 			this->_rtt.ptoCount++;
 		// Разрешаем отправку зондирующих пакетов сверх окна перегрузки (RFC 9002 §7.5)
 		this->_congestion.probes = PTO_PROBES;
+		/**
+		 * Детекция чёрной дыры пути по срабатыванию таймера PTO (RFC 8899 §5.4): если
+		 * подтверждённый размер поднят зондированием, а полноразмерный пакет уровня
+		 * приложения остаётся неподтверждённым до истечения PTO - путь мог перестать
+		 * пропускать этот размер. Обычная детекция потерь тут бессильна: без единого
+		 * подтверждения наибольший подтверждённый номер не продвигается, и потеря по
+		 * порогу времени не начисляется. По исчерпании серии PTO размер опускается
+		 */
+		if((expired == space_t::APPLICATION) && (this->_pmtu.size > MAX_DATAGRAM_SIZE)){
+			// Флаг наличия неподтверждённого полноразмерного пакета в полёте
+			bool oversized = false;
+			// Перебираем отправленные пакеты пространства приложения
+			for(const auto & sent : this->_spaces[static_cast <size_t> (space_t::APPLICATION)].sent){
+				// Если пакет крупнее минимума, не является зондом размера пути и не относится к прежнему пути
+				if(!sent.stale && !sent.pmtu && (sent.size > MAX_DATAGRAM_SIZE)){
+					// Отмечаем наличие полноразмерного пакета в полёте
+					oversized = true;
+					// Прекращаем перебор
+					break;
+				}
+			}
+			// Если полноразмерный пакет остался неподтверждённым - учитываем в детекции чёрной дыры
+			if(oversized)
+				// Учитываем истечение PTO полноразмерного пакета в детекции чёрной дыры
+				this->deflate();
+		}
 		// Ставим зондирующие данные пространства в очередь отправки
 		this->probe(expired);
 		/**
@@ -5893,6 +6022,8 @@ void awh::quic::Connection::repath(const bool remote) noexcept {
 	this->_pmtu.probe = 0;
 	// Обнуляем количество отправленных попыток зонда
 	this->_pmtu.count = 0;
+	// Обнуляем счётчик детекции чёрной дыры пути
+	this->_pmtu.blackhole = 0;
 	// Сбрасываем флаг необходимости отправки зонда
 	this->_pmtu.queued = false;
 	// Учитываем выполненную смену пути соединения

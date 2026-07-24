@@ -703,8 +703,8 @@ awh::quic::status_t awh::quic::frame::parser::newConnectionId(const uint8_t * da
 		return status_t::ERROR;
 	// Если порядковый номер вывода превышает порядковый номер идентификатора (RFC 9000 §19.15)
 	if(output.retirePriorTo > output.seq){
-		// Устанавливаем код ошибки транспорта
-		error = error_t::PROTOCOL_VIOLATION;
+		// Устанавливаем код ошибки транспорта (§19.15 предписывает FRAME_ENCODING_ERROR)
+		error = error_t::FRAME_ENCODING_ERROR;
 		// Разбор невозможен
 		return status_t::ERROR;
 	}
