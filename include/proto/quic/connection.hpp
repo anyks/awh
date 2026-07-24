@@ -30,11 +30,9 @@
  */
 #include "quic.hpp"
 #include "frame.hpp"
-#include "packet.hpp"
 #include "crypto.hpp"
 #include "handshake.hpp"
 #include "../../net/tls/coder.hpp"
-#include "../../sys/global.hpp"
 
 /**
  * @brief основное пространство имён
