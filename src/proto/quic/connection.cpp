@@ -90,6 +90,17 @@ namespace {
 	 */
 	static constexpr uint64_t MAX_STREAMS_LIMIT = (static_cast <uint64_t> (1) << 60);
 	/**
+	 * @brief Санитарная верхняя граница анонсируемого начального лимита потоков (RFC 9000 §4.6)
+	 *
+	 * @note Начальный лимит задаёт окно конкурентности потоков удалённого эндпоинта,
+	 *       а неявно открытые потоки материализуются эгерно, поэтому чрезмерный
+	 *       начальный лимит позволил бы одним пакетом вынудить пропорциональную
+	 *       аллокацию. Граница ограничивает лишь окно конкурентности (стартовый
+	 *       кредит): суммарное число потоков за жизнь соединения не ограничивается -
+	 *       лимит восполняется фреймами MAX_STREAMS по мере завершения потоков
+	 */
+	static constexpr uint64_t MAX_STREAMS_ADVERTISED = (static_cast <uint64_t> (1) << 16);
+	/**
 	 * @brief Объём анонсированного лимита приёма потока на один фрагмент сборки
 	 *
 	 * @note Количество фрагментов, буферизируемых до заполнения разрывов, ограничено
@@ -230,6 +241,16 @@ namespace {
 	 *       (RFC 9000 §8.2.2)
 	 */
 	static constexpr size_t MAX_QUEUED_RESPONSES = 8;
+	/**
+	 * @brief Предельная длина очереди отправки фреймов RETIRE_CONNECTION_ID (RFC 9000 §5.1.1)
+	 *
+	 * @note Фреймы RETIRE_CONNECTION_ID ставятся в очередь по требованию удалённого
+	 *       эндпоинта фреймами NEW_CONNECTION_ID, а сливаются лишь при отправке,
+	 *       темп которой ограничен окном перегрузки. Без предела удалённый эндпоинт
+	 *       наращивал бы очередь потоком смен идентификатора быстрее слива; превышение
+	 *       предела означает злоупотребление сменой идентификаторов и рвёт соединение
+	 */
+	static constexpr size_t MAX_QUEUED_RETIRES = 128;
 	/**
 	 * @brief Начальное окно перегрузки в октетах (RFC 9002 §7.2)
 	 *
@@ -422,7 +443,7 @@ awh::quic::Connection::Limits::Limits() noexcept :
  openedBidi(0), openedUni(0), maxBidiRemote(0), maxUniRemote(0), acceptedBidi(0),
  acceptedUni(0), maxBidiLocal(0), maxUniLocal(0), bidiQueued(false), uniQueued(false),
  bidiBlocked(false), uniBlocked(false), bidiBlockedAt(numeric_limits <uint64_t>::max()),
- uniBlockedAt(numeric_limits <uint64_t>::max()) {}
+ uniBlockedAt(numeric_limits <uint64_t>::max()), cap(MAX_STREAMS_ADVERTISED) {}
 
 /**
  * @brief Конструктор
@@ -540,7 +561,7 @@ awh::quic::Connection::Stream::Stream() noexcept :
 awh::quic::Connection::Space::Space() noexcept :
  txPn(0), largestAcked(0), hasAcked(false), largestRx(0), hasRx(false), dedup(0),
  ackElicited(false), ackImmediate(false), ackTime(0), ect0(0), ect1(0), ce(0), peerCe(0), peerEct0(0), peerEct1(0), hasPeerEcn(false), ecnSent(0),
- txOffset(0), txBuffer{""}, rxOffset(0), lossTime(0),
+ txOffset(0), txBuffer{""}, rxOffset(0), rxBuffered(0), lossTime(0),
  hasLossTime(false), lastElicited(0), hasElicited(false), pingQueued(false) {}
 
 /**
@@ -807,6 +828,10 @@ void awh::quic::Connection::discard(const level_t level) noexcept {
 	item.rtxQueue.clear();
 	// Очищаем буфер исходящих CRYPTO-данных
 	item.txBuffer.clear();
+	// Очищаем буфер сборки входящих CRYPTO-данных отброшенного уровня (RFC 9001 §4.9)
+	item.rxBuffer.clear();
+	// Обнуляем учёт размера буфера сборки входящих CRYPTO-данных
+	item.rxBuffered = 0;
 	// Сбрасываем флаг взведённого таймера детекта потерь
 	item.hasLossTime = false;
 	// Сбрасываем флаг наличия отправленных ack-eliciting пакетов
@@ -917,8 +942,16 @@ void awh::quic::Connection::requeue(const space_t space, const sent_t & packet) 
 			} break;
 			// Фрейм вывода идентификатора соединения из обращения RETIRE_CONNECTION_ID
 			case frame_t::RETIRE_CONNECTION_ID:
-				// Восстанавливаем порядковый номер в очереди вывода из обращения
-				this->_cids.routing.retireQueue.push_back(control.second);
+				/**
+				 * Восстанавливаем порядковый номер в очереди вывода, если предел не
+				 * достигнут: вывод идемпотентен, а неограниченное восстановление при
+				 * потере подтверждений наращивало бы очередь сверх предела приёмного
+				 * пути. Сброшенный при переполнении фрейм не критичен - удалённый
+				 * эндпоинт лишь дольше удержит выведенный идентификатор (RFC 9000 §5.1.2)
+				 */
+				if(this->_cids.routing.retireQueue.size() < MAX_QUEUED_RETIRES)
+					// Восстанавливаем порядковый номер в очереди вывода из обращения
+					this->_cids.routing.retireQueue.push_back(control.second);
 			break;
 			/**
 			 * Фрейм ответа на проверку достижимости пути PATH_RESPONSE: ретрансмиссии
@@ -1196,6 +1229,8 @@ void awh::quic::Connection::detect(const space_t space) noexcept {
 	uint64_t lostTime = 0;
 	// Флаг наличия потерянных пакетов
 	bool lost = false;
+	// Флаг учтённой в этом проходе потери полноразмерной датаграммы (детекция чёрной дыры)
+	bool deflated = false;
 	/**
 	 * Границы периода потерь, пригодного для оценки устойчивой перегрузки: учитываются
 	 * только пакеты, отправленные после наиболее позднего подтверждённого. Всё
@@ -1266,11 +1301,16 @@ void awh::quic::Connection::detect(const space_t space) noexcept {
 			 * по исчерпании которой размер опускается к базовому. Этот путь покрывает
 			 * случай смешанных размеров, когда мелкие пакеты подтверждаются и продвигают
 			 * детекцию потерь; случай чистой чёрной дыры без единого подтверждения
-			 * закрывается учётом по срабатыванию таймера PTO
+			 * закрывается учётом по срабатыванию таймера PTO. Учитываем не более одной
+			 * потери за проход: всплеск потерь одного события перегрузки чёрной дырой не
+			 * является, серия же засчитывается по числу событий детекции (RFC 8899 §5.4)
 			 */
-			if((this->_pmtu.size > MAX_DATAGRAM_SIZE) && (i->size > MAX_DATAGRAM_SIZE))
+			if(!deflated && (this->_pmtu.size > MAX_DATAGRAM_SIZE) && (i->size > MAX_DATAGRAM_SIZE)){
+				// Отмечаем потерю полноразмерной датаграммы учтённой в этом проходе
+				deflated = true;
 				// Учитываем потерю полноразмерной датаграммы в детекции чёрной дыры
 				this->deflate();
+			}
 			// Запоминаем время отправки наиболее позднего потерянного пакета
 			lostTime = ::max(lostTime, i->time);
 			// Устанавливаем флаг наличия потерянных пакетов
@@ -2025,20 +2065,63 @@ awh::quic::Connection::stream_data_t * awh::quic::Connection::accept(const uint6
 	}
 	// Получаем счётчик принятых потоков удалённого эндпоинта
 	uint64_t & accepted = (unidirectional ? this->_limits.acceptedUni : this->_limits.acceptedBidi);
+	// Создаваемое либо запрашиваемое состояние потока
+	stream_data_t * stream = nullptr;
+	/**
+	 * Материализуем неявно открытые потоки с меньшими порядковыми номерами эгерно
+	 * (RFC 9000 §3.2): открытие потока с номером N открывает все потоки того же типа
+	 * с меньшими номерами. Создавая их объекты сразу, мы добиваемся того, что
+	 * отсутствие потока ниже accepted надёжно означает его сборку сборщиком, а не
+	 * неоткрытость - на этом строится игнорирование ретрансмиссий закрытых потоков
+	 * без хранения отдельного набора закрытых потоков (ngtcp2-подобная модель)
+	 */
+	for(uint64_t number = accepted; number <= index; number++){
+		// Собираем идентификатор потока текущего порядкового номера того же типа и инициатора
+		const uint64_t identifier = ((number << 2) | (sid & 0x03));
+		// Создаём состояние потока (неявно открытого либо запрошенного)
+		auto ret = this->_stream.list.emplace(identifier, stream_data_t());
+		// Получаем состояние созданного потока
+		stream = &ret.first->second;
+		// Устанавливаем начальный лимит приёма потока
+		stream->rxMax = this->rxWindow(identifier);
+		// Устанавливаем начальный лимит отправки потока
+		stream->txMax = this->txWindow(identifier);
+	}
 	// Если открыт поток с наибольшим порядковым номером
 	if((index + 1) > accepted)
-		// Обновляем счётчик принятых потоков (потоки с меньшими номерами открываются неявно)
+		// Обновляем счётчик принятых потоков (потоки с меньшими номерами открыты неявно)
 		accepted = (index + 1);
-	// Создаём состояние нового потока удалённого эндпоинта
-	auto ret = this->_stream.list.emplace(sid, stream_data_t());
-	// Получаем состояние созданного потока
-	stream_data_t * stream = &ret.first->second;
-	// Устанавливаем начальный лимит приёма потока
-	stream->rxMax = this->rxWindow(sid);
-	// Устанавливаем начальный лимит отправки потока
-	stream->txMax = this->txWindow(sid);
-	// Выводим состояние потока
+	// Выводим состояние запрошенного потока
 	return stream;
+}
+/**
+ * @brief Метод проверки закрытости потока (RFC 9000 §3.2)
+ *
+ * @param sid идентификатор потока
+ * @return    результат проверки (true - поток был открыт и уже собран)
+ */
+bool awh::quic::Connection::closed(const uint64_t sid) const noexcept {
+	// Если поток присутствует в списке - он не собран, обрабатывается штатно
+	if(this->_stream.list.find(sid) != this->_stream.list.end())
+		// Выводим отрицательный результат
+		return false;
+	// Вычисляем порядковый номер потока
+	const uint64_t index = (sid >> 2);
+	// Определяем инициатора потока
+	const bool local = ((sid & 0x01) == ((this->_core.endpoint == endpoint_t::SERVER) ? 0x01 : 0x00));
+	// Определяем направленность потока
+	const bool unidirectional = ((sid & 0x02) != 0);
+	/**
+	 * Отсутствующий поток закрыт, если он был открыт: локально открытые потоки
+	 * считаются счётчиками opened, открытые удалённым эндпоинтом (включая неявно
+	 * открытые эгерной материализацией) - счётчиками accepted. Порядковый номер
+	 * ниже соответствующего счётчика означает, что поток существовал и уже собран
+	 */
+	const uint64_t opened = (local ?
+	 (unidirectional ? this->_limits.openedUni : this->_limits.openedBidi) :
+	 (unidirectional ? this->_limits.acceptedUni : this->_limits.acceptedBidi));
+	// Выводим результат проверки закрытости потока
+	return (index < opened);
 }
 /**
  * @brief Метод обработки принятого фрейма STREAM (RFC 9000 §19.8)
@@ -2054,6 +2137,10 @@ awh::quic::status_t awh::quic::Connection::inputStream(const frame::stream_t & f
 		// Выводим отрицательный результат
 		return status_t::ERROR;
 	}
+	// Если поток уже закрыт и собран - фрейм является ретрансмиссией и игнорируется (RFC 9000 §3.2)
+	if(this->closed(frame.streamId))
+		// Выводим положительный результат - воскрешать завершённый поток нельзя
+		return status_t::OK;
 	// Код ошибки транспорта
 	error_t error = error_t::NO_ERROR;
 	// Получаем состояние потока (с неявным созданием)
@@ -2405,16 +2492,8 @@ awh::quic::status_t awh::quic::Connection::input(const level_t level, const uint
 		return status_t::OK;
 	// Если данные фрейма опережают непрерывно собранное смещение
 	if(offset > item.rxOffset){
-		// Суммарный размер буферизированных данных
-		size_t buffered = 0;
-		/**
-		 * Перебираем буфер сборки входящих CRYPTO-данных
-		 */
-		for(auto & chunk : item.rxBuffer)
-			// Суммируем размер буферизированных данных
-			buffered += chunk.second.size();
-		// Если лимит буфера сборки превышен (RFC 9000 §7.5)
-		if((buffered + data.size()) > MAX_CRYPTO_BUFFER){
+		// Если лимит буфера сборки превышен - счёт ведётся инкрементально, без обхода буфера (RFC 9000 §7.5)
+		if((item.rxBuffered + data.size()) > MAX_CRYPTO_BUFFER){
 			// Ставим завершение соединения с ошибкой переполнения буфера в очередь
 			this->fail(error_t::CRYPTO_BUFFER_EXCEEDED);
 			// Выводим отрицательный результат
@@ -2435,9 +2514,16 @@ awh::quic::status_t awh::quic::Connection::input(const level_t level, const uint
 			return status_t::ERROR;
 		}
 		// Если фрагмент с тем же смещением не буферизирован либо новый фрагмент длиннее
-		if((i == item.rxBuffer.end()) || (i->second.size() < data.size()))
+		if((i == item.rxBuffer.end()) || (i->second.size() < data.size())){
+			// Если фрагмент замещается более длинным - списываем прежний размер из учёта
+			if(i != item.rxBuffer.end())
+				// Списываем размер замещаемого фрагмента
+				item.rxBuffered -= i->second.size();
 			// Буферизируем фрагмент до заполнения разрыва
 			item.rxBuffer[offset] = string(data);
+			// Учитываем размер буферизированного фрагмента
+			item.rxBuffered += data.size();
+		}
 		// Выводим положительный результат - данные буферизированы
 		return status_t::OK;
 	}
@@ -2480,6 +2566,8 @@ awh::quic::status_t awh::quic::Connection::input(const level_t level, const uint
 			// Продвигаем непрерывно собранное смещение
 			item.rxOffset = chunkEnd;
 		}
+		// Списываем размер собранного фрагмента из учёта буфера
+		item.rxBuffered -= i->second.size();
 		// Удаляем собранный фрагмент из буфера
 		item.rxBuffer.erase(i);
 	}
@@ -2545,14 +2633,18 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 				case frame_t::CRYPTO:
 				case frame_t::NEW_TOKEN:
 				case frame_t::PATH_RESPONSE:
-				case frame_t::CONNECTION_CLOSE:
 				case frame_t::HANDSHAKE_DONE: {
 					// Ставим завершение соединения с нарушением протокола в очередь
 					this->fail(error_t::PROTOCOL_VIOLATION);
 					// Выводим отрицательный результат
 					return status_t::ERROR;
 				}
-				// Все остальные фреймы допустимы (включая CONNECTION_CLOSE_APP 0x1d)
+				/**
+				 * Все остальные фреймы уровня ранних данных допустимы, включая оба
+				 * варианта CONNECTION_CLOSE: транспортный 0x1c дозволен в любом
+				 * пространстве, а прикладной 0x1d - в пространстве данных приложения,
+				 * к которому относится 0-RTT (RFC 9000 §12.5)
+				 */
 				default: break;
 			}
 		// Если пакет уровня Initial или Handshake
@@ -2679,8 +2771,14 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 						}
 						// Устанавливаем флаг наличия впервые подтверждённых пакетов
 						acked = true;
-						// Если подтверждённый пакет был отправлен с маркировкой поддержки ECN
-						if(i->ecn)
+						/**
+						 * Если подтверждённый пакет был отправлен с маркировкой ECN и не
+						 * относится к прежнему пути: маркировка пакета прежнего пути уже
+						 * отражена пиром в счётчиках до смены пути, и её повторный учёт
+						 * против счётчиков нового пути ложно провалил бы проверку ECN,
+						 * навсегда отключив маркировку (RFC 9000 §13.4.2.1/§9.4)
+						 */
+						if(i->ecn && !i->stale)
 							// Считаем впервые подтверждённый помеченный пакет
 							marked++;
 						// Если подтверждён наибольший номер пакета фрейма
@@ -2853,6 +2951,13 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 						// Выводим отрицательный результат
 						return status_t::ERROR;
 					}
+					// Если поток уже закрыт и собран - фрейм является ретрансмиссией: подтверждаем и игнорируем (RFC 9000 §3.2)
+					if(this->closed(frame.streamId)){
+						// Устанавливаем флаг приёма ack-eliciting фрейма
+						elicit = true;
+						// Прекращаем обработку фрейма - воскрешать завершённый поток нельзя
+						break;
+					}
 					// Получаем состояние потока (с неявным созданием)
 					stream_data_t * stream = this->accept(frame.streamId, error);
 					// Если идентификатор потока нарушает протокол
@@ -2926,6 +3031,13 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 						this->fail(error_t::STREAM_STATE_ERROR);
 						// Выводим отрицательный результат
 						return status_t::ERROR;
+					}
+					// Если поток уже закрыт и собран - фрейм является ретрансмиссией: подтверждаем и игнорируем (RFC 9000 §3.2)
+					if(this->closed(frame.streamId)){
+						// Устанавливаем флаг приёма ack-eliciting фрейма
+						elicit = true;
+						// Прекращаем обработку фрейма - воскрешать завершённый поток нельзя
+						break;
 					}
 					// Получаем состояние потока (с неявным созданием)
 					stream_data_t * stream = this->accept(frame.streamId, error);
@@ -3093,6 +3205,13 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 						// Выводим отрицательный результат
 						return status_t::ERROR;
 					}
+					// Если поток уже закрыт и собран - фрейм является ретрансмиссией: подтверждаем и игнорируем (RFC 9000 §3.2)
+					if(this->closed(streamId)){
+						// Устанавливаем флаг приёма ack-eliciting фрейма
+						elicit = true;
+						// Прекращаем обработку фрейма - воскрешать завершённый поток нельзя
+						break;
+					}
 					// Код ошибки транспорта состояния потока
 					error_t reason = error_t::NO_ERROR;
 					/**
@@ -3141,6 +3260,13 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 							// Переходим к следующему идентификатору
 							} else ++i;
 						}
+						// Если очередь вывода превысила предел - удалённый эндпоинт злоупотребляет сменой идентификаторов (RFC 9000 §5.1.1)
+						if(this->_cids.routing.retireQueue.size() > MAX_QUEUED_RETIRES){
+							// Ставим завершение соединения с превышением лимита идентификаторов в очередь
+							this->fail(error_t::CONNECTION_ID_LIMIT_ERROR);
+							// Выводим отрицательный результат
+							return status_t::ERROR;
+						}
 					}
 					// Если порядковый номер идентификатора уже выведен из обращения
 					if(frame.seq < this->_cids.routing.retirePrior){
@@ -3164,6 +3290,13 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 						if(!queued)
 							// Ставим порядковый номер в очередь отправки фрейма RETIRE_CONNECTION_ID (RFC 9000 §19.15)
 							this->_cids.routing.retireQueue.push_back(frame.seq);
+						// Если очередь вывода превысила предел - удалённый эндпоинт злоупотребляет сменой идентификаторов (RFC 9000 §5.1.1)
+						if(this->_cids.routing.retireQueue.size() > MAX_QUEUED_RETIRES){
+							// Ставим завершение соединения с превышением лимита идентификаторов в очередь
+							this->fail(error_t::CONNECTION_ID_LIMIT_ERROR);
+							// Выводим отрицательный результат
+							return status_t::ERROR;
+						}
 						// Устанавливаем флаг приёма ack-eliciting фрейма
 						elicit = true;
 						// Прекращаем обработку фрейма
@@ -3704,7 +3837,7 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 			// Устанавливаем флаг наличия ack-eliciting фреймов
 			elicit = true;
 			// Удаляем порядковый номер из очереди отправки
-			this->_cids.routing.retireQueue.erase(this->_cids.routing.retireQueue.begin());
+			this->_cids.routing.retireQueue.pop_front();
 		}
 		/**
 		 * Перебираем список потоков приложения (управляющие фреймы потоков)
@@ -3783,6 +3916,19 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 		while(!this->_dgram.tx.empty()){
 			// Получаем первую датаграмму очереди отправки
 			const string & front = this->_dgram.tx.front();
+			/**
+			 * Если датаграмма превышает предельный размер пути и не поместится ни в
+			 * один пакет (например, после понижения размера пути детекцией чёрной
+			 * дыры уже после постановки её в очередь): она блокировала бы голову
+			 * очереди навсегда. Датаграммы ненадёжны и ретрансмиссии не подлежат,
+			 * поэтому непроходящая датаграмма отбрасывается (RFC 9221 §5.2)
+			 */
+			if(front.size() > this->datagrams()){
+				// Удаляем непомещающуюся датаграмму из очереди
+				this->_dgram.tx.pop_front();
+				// Продолжаем обработку очереди
+				continue;
+			}
 			// Если датаграмма целиком не помещается в оставшееся место
 			if(budget <= (output.size() + DATAGRAM_OVERHEAD + front.size()))
 				// Прекращаем упаковку датаграмм - остаток уйдёт следующим пакетом
@@ -4119,16 +4265,27 @@ void awh::quic::Connection::params(const quic::params::params_t & params) noexce
 	// Устанавливаем локальные транспортные параметры
 	this->_transport.local = params;
 	/**
+	 * Ограничиваем анонсируемый начальный лимит потоков настраиваемой санитарной
+	 * границей: он задаёт окно конкурентности, а неявно открытые потоки
+	 * материализуются эгерно, поэтому чрезмерный лимит позволил бы одним пакетом
+	 * вынудить пропорциональную аллокацию. Клампуем сами параметры, чтобы
+	 * анонсируемое и внутренне применяемое значения совпадали; суммарное число
+	 * потоков не ограничивается - лимит восполняется фреймами MAX_STREAMS по мере
+	 * завершения потоков. Границу задаёт вызывающий код методом streams() (RFC 9000 §4.6)
+	 */
+	this->_transport.local.initialMaxStreamsBidi = ::min(this->_transport.local.initialMaxStreamsBidi, this->_limits.cap);
+	this->_transport.local.initialMaxStreamsUni = ::min(this->_transport.local.initialMaxStreamsUni, this->_limits.cap);
+	/**
 	 * Применяем анонсируемые лимиты приёма сразу: они целиком определяются локальными
 	 * параметрами и требуются ещё до завершения хендшейка - ранние данные удалённый
 	 * узел отправляет под лимиты, анонсированные прошлым соединением, и разбираются
 	 * они на общих основаниях (RFC 9001 §4.6.1)
 	 */
-	this->_flow.rxMax = params.initialMaxData;
+	this->_flow.rxMax = this->_transport.local.initialMaxData;
 	// Устанавливаем анонсированный лимит на двунаправленные потоки удалённого эндпоинта
-	this->_limits.maxBidiLocal = params.initialMaxStreamsBidi;
+	this->_limits.maxBidiLocal = this->_transport.local.initialMaxStreamsBidi;
 	// Устанавливаем анонсированный лимит на однонаправленные потоки удалённого эндпоинта
-	this->_limits.maxUniLocal = params.initialMaxStreamsUni;
+	this->_limits.maxUniLocal = this->_transport.local.initialMaxStreamsUni;
 }
 /**
  * @brief Метод извлечения транспортных параметров удалённого узла (RFC 9000 §7.4)
@@ -6410,6 +6567,19 @@ void awh::quic::Connection::pmtu(const size_t limit) noexcept {
 size_t awh::quic::Connection::streams() const noexcept {
 	// Выводим количество обслуживаемых потоков приложения
 	return this->_stream.list.size();
+}
+/**
+ * @brief Метод установки санитарной границы анонсируемого начального лимита потоков (RFC 9000 §4.6)
+ *
+ * @param limit верхняя граница анонсируемого начального лимита потоков одного направления
+ */
+void awh::quic::Connection::streams(const uint64_t limit) noexcept {
+	/**
+	 * Ограничиваем границу протокольным максимумом кодируемого лимита: значение
+	 * задаёт окно конкурентности потоков удалённого эндпоинта и должно применяться
+	 * до установки транспортных параметров методом params() (RFC 9000 §4.6/§19.11)
+	 */
+	this->_limits.cap = ::min(limit, MAX_STREAMS_LIMIT);
 }
 /**
  * @brief Метод получения количества выполненных смен пути соединения

@@ -9026,6 +9026,334 @@ TEST_F(QuicFixture, ConnectionPmtuBlackHoleTest){
 }
 
 /**
+ * @brief Тест защиты от воскрешения закрытого потока (RFC 9000 §3.2)
+ *
+ * @details Собранный сборщиком поток не воскрешается ретрансмиссией: удалённый
+ *          эндпоинт мог не получить подтверждение завершения потока и переслать
+ *          его фрейм в новом номере пакета. Такой фрейм обязан игнорироваться,
+ *          иначе данные будут выданы приложению повторно, кредит MAX_STREAMS
+ *          начислен дважды, а финальный размер сверх начального окна ложно вызовет
+ *          FLOW_CONTROL_ERROR. Эгерная материализация неявно открытых потоков
+ *          обеспечивает надёжное отличие закрытого потока от ещё не открытого
+ */
+TEST_F(QuicFixture, ConnectionStreamResurrectionGuardTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Транспортные параметры с широкими лимитами потоков
+	params::params_t params;
+	// Устанавливаем широкий лимит данных соединения
+	params.initialMaxData = 1048576;
+	// Устанавливаем широкие лимиты данных потоков
+	params.initialMaxStreamDataBidiLocal = 1048576;
+	params.initialMaxStreamDataBidiRemote = 1048576;
+	params.initialMaxStreamDataUni = 1048576;
+	// Устанавливаем широкие лимиты числа потоков (порог сборки - 64)
+	params.initialMaxStreamsBidi = 200;
+	params.initialMaxStreamsUni = 200;
+	// Выполняем подготовку соединений
+	::configure(client, params);
+	::configure(server, params);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Полезная нагрузка одного потока (с запасом на выборку защиты заголовка)
+	const std::string data(48, 'q');
+	// Идентификатор первого однонаправленного потока клиента для повторной инъекции
+	uint64_t first = connection_t::INVALID_STREAM;
+	/**
+	 * Открываем и завершаем много однонаправленных потоков: их накопление сверх
+	 * порога вынуждает сервер собирать завершённые потоки сборщиком
+	 */
+	for(size_t i = 0; i < 80; i++){
+		// Открываем однонаправленный поток на клиенте
+		const uint64_t sid = client.open(true);
+		// Проверяем что поток открыт
+		ASSERT_NE(sid, connection_t::INVALID_STREAM);
+		// Запоминаем идентификатор первого открытого потока
+		if(first == connection_t::INVALID_STREAM)
+			// Сохраняем идентификатор первого потока
+			first = sid;
+		// Ставим данные потока в очередь отправки с завершением
+		ASSERT_EQ(client.send(sid, data, true), status_t::OK);
+		// Продвигаем часы и передаём датаграммы клиента серверу
+		now += 10;
+		::transfer(client, server, now);
+		// Продвигаем часы и передаём датаграммы сервера клиенту
+		now += 10;
+		::transfer(server, client, now);
+		// Список потоков с собранными данными
+		std::vector <uint64_t> streams;
+		// Получаем список готовых к выдаче потоков
+		server.readable(streams);
+		/**
+		 * Выдаём принятые данные приложению: выдача завершает приёмную сторону
+		 * потока и делает его пригодным к сборке сборщиком
+		 */
+		for(auto & rid : streams){
+			// Буфер принятых данных
+			std::string payload = "";
+			// Флаг завершения потока
+			bool fin = false;
+			// Выдаём принятые данные потока приложению
+			server.receive(rid, payload, fin);
+		}
+	}
+	// Проверяем что соединение здорово после массовой передачи
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	// Прогоняем дополнительный обмен, чтобы сборка гарантированно отработала
+	for(size_t i = 0; i < 4; i++){
+		// Продвигаем часы и передаём датаграммы в обе стороны
+		now += 10;
+		::transfer(client, server, now);
+		now += 10;
+		::transfer(server, client, now);
+	}
+	// Получаем ключи защиты исходящих пакетов уровня приложения клиента
+	const crypto::keys_t * keys = client.handshake().encryption(level_t::APPLICATION);
+	// Проверяем что ключи выведены
+	ASSERT_NE(keys, nullptr);
+	// Собираем короткий заголовок 1-RTT пакета с новым номером пакета
+	std::string header = "";
+	// Выполняем сборку короткого заголовка пакета
+	ASSERT_TRUE(packet::serialize::shortHeader(header, client.dcid(), 100000, 4, client.phase(), false));
+	// Собираем STREAM-фрейм первого (уже собранного) потока с завершением
+	std::string frame = "";
+	// Выполняем сборку фрейма STREAM
+	frame::serialize::stream(frame, first, 0, data, true);
+	// Собираемая датаграмма ретрансмиссии
+	std::string datagram = "";
+	// Выполняем защиту пакета: AEAD-шифрование нагрузки и защита заголовка
+	ASSERT_TRUE(crypto::seal(datagram, * keys, 100000, header, frame));
+	// Доставляем серверу ретрансмиссию фрейма закрытого потока
+	now += 10;
+	server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now);
+	// Проверяем что соединение не разорвано ложной ошибкой - воскрешение предотвращено
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	// Проверяем что соединение не переведено в завершение: ретрансмиссия закрытого потока не рвёт связь
+	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Список потоков с собранными данными после ретрансмиссии
+	std::vector <uint64_t> streams;
+	// Получаем список готовых к выдаче потоков
+	server.readable(streams);
+	// Проверяем что данные закрытого потока приложению повторно не выданы
+	ASSERT_EQ(std::find(streams.begin(), streams.end(), first), streams.end());
+	// Проверяем отсутствие ошибки транспорта на клиенте
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест санитарной границы анонсируемого лимита потоков (RFC 9000 §4.6)
+ *
+ * @details Начальный лимит потоков задаёт окно конкурентности, а неявно открытые
+ *          потоки материализуются эгерно. Чрезмерный лимит позволил бы одним
+ *          пакетом вынудить пропорциональную аллокацию, поэтому анонсируемый
+ *          начальный лимит ограничивается санитарной границей: поток с номером
+ *          на границе уже превышает применяемый лимит и отвергается
+ */
+TEST_F(QuicFixture, ConnectionStreamAdvertisedCapTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Транспортные параметры сервера с абсурдным лимитом однонаправленных потоков
+	params::params_t params;
+	// Устанавливаем широкий лимит данных соединения
+	params.initialMaxData = 1048576;
+	// Устанавливаем широкие лимиты данных потоков
+	params.initialMaxStreamDataBidiLocal = 1048576;
+	params.initialMaxStreamDataBidiRemote = 1048576;
+	params.initialMaxStreamDataUni = 1048576;
+	// Устанавливаем умеренный лимит двунаправленных потоков
+	params.initialMaxStreamsBidi = 100;
+	// Устанавливаем заведомо чрезмерный лимит однонаправленных потоков
+	params.initialMaxStreamsUni = (static_cast <uint64_t> (1) << 40);
+	// Выполняем подготовку соединения сервера с абсурдным лимитом
+	::configure(server, params);
+	// Выполняем подготовку соединения клиента с параметрами по умолчанию
+	::setup(client);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Порядковый номер потока на санитарной границе анонсируемого лимита
+	const uint64_t index = (static_cast <uint64_t> (1) << 16);
+	// Идентификатор однонаправленного потока клиента этого порядкового номера
+	const uint64_t sid = ((index << 2) | 0x02);
+	// Получаем ключи защиты исходящих пакетов уровня приложения клиента
+	const crypto::keys_t * keys = client.handshake().encryption(level_t::APPLICATION);
+	// Проверяем что ключи выведены
+	ASSERT_NE(keys, nullptr);
+	// Собираем короткий заголовок 1-RTT пакета
+	std::string header = "";
+	// Выполняем сборку короткого заголовка пакета
+	ASSERT_TRUE(packet::serialize::shortHeader(header, client.dcid(), 60000, 4, client.phase(), false));
+	// Собираем STREAM-фрейм потока с номером на границе лимита
+	std::string frame = "";
+	// Выполняем сборку фрейма STREAM
+	frame::serialize::stream(frame, sid, 0, std::string(16, 'z'), false);
+	// Собираемая датаграмма инъекции
+	std::string datagram = "";
+	// Выполняем защиту пакета: AEAD-шифрование нагрузки и защита заголовка
+	ASSERT_TRUE(crypto::seal(datagram, * keys, 60000, header, frame));
+	// Доставляем серверу фрейм потока с номером на границе лимита
+	now += 10;
+	server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now);
+	/**
+	 * Проверяем что сервер отверг поток превышением лимита: анонсируемый лимит
+	 * ограничен санитарной границей, поэтому поток на границе выходит за применяемый
+	 * лимит, а без ограничения он был бы принят с материализацией множества потоков
+	 */
+	ASSERT_EQ(server.error(), error_t::STREAM_LIMIT_ERROR);
+}
+
+/**
+ * @brief Тест настраиваемости санитарной границы лимита потоков (RFC 9000 §4.6)
+ *
+ * @details Санитарная граница анонсируемого лимита потоков задаётся вызывающим
+ *          кодом методом streams(). Заданная граница ниже умолчания применяется:
+ *          поток с номером на заданной границе выходит за применяемый лимит и
+ *          отвергается, тогда как при умолчании он был бы принят
+ */
+TEST_F(QuicFixture, ConnectionStreamCapConfigurableTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Транспортные параметры сервера с лимитом однонаправленных потоков выше заданной границы
+	params::params_t params;
+	// Устанавливаем широкий лимит данных соединения
+	params.initialMaxData = 1048576;
+	// Устанавливаем широкие лимиты данных потоков
+	params.initialMaxStreamDataBidiLocal = 1048576;
+	params.initialMaxStreamDataBidiRemote = 1048576;
+	params.initialMaxStreamDataUni = 1048576;
+	// Устанавливаем умеренный лимит двунаправленных потоков
+	params.initialMaxStreamsBidi = 100;
+	// Устанавливаем лимит однонаправленных потоков выше заданной границы
+	params.initialMaxStreamsUni = 100000;
+	// Заданная вызывающим кодом санитарная граница лимита потоков
+	const uint64_t cap = 256;
+	// Устанавливаем санитарную границу лимита потоков до установки транспортных параметров
+	server.streams(cap);
+	// Выполняем подготовку соединения сервера
+	::configure(server, params);
+	// Выполняем подготовку соединения клиента с параметрами по умолчанию
+	::setup(client);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Идентификатор однонаправленного потока клиента с номером на заданной границе
+	const uint64_t sid = ((cap << 2) | 0x02);
+	// Получаем ключи защиты исходящих пакетов уровня приложения клиента
+	const crypto::keys_t * keys = client.handshake().encryption(level_t::APPLICATION);
+	// Проверяем что ключи выведены
+	ASSERT_NE(keys, nullptr);
+	// Собираем короткий заголовок 1-RTT пакета
+	std::string header = "";
+	// Выполняем сборку короткого заголовка пакета
+	ASSERT_TRUE(packet::serialize::shortHeader(header, client.dcid(), 60000, 4, client.phase(), false));
+	// Собираем STREAM-фрейм потока с номером на заданной границе
+	std::string frame = "";
+	// Выполняем сборку фрейма STREAM
+	frame::serialize::stream(frame, sid, 0, std::string(16, 'z'), false);
+	// Собираемая датаграмма инъекции
+	std::string datagram = "";
+	// Выполняем защиту пакета: AEAD-шифрование нагрузки и защита заголовка
+	ASSERT_TRUE(crypto::seal(datagram, * keys, 60000, header, frame));
+	// Доставляем серверу фрейм потока с номером на заданной границе
+	now += 10;
+	server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now);
+	/**
+	 * Проверяем что заданная граница применена: поток на границе выходит за
+	 * применяемый лимит и отвергается, тогда как при умолчании (65536) он был бы
+	 * принят - это доказывает, что настройка границы вступила в силу
+	 */
+	ASSERT_EQ(server.error(), error_t::STREAM_LIMIT_ERROR);
+}
+
+/**
+ * @brief Тест защиты от флуда сменой идентификатора соединения (RFC 9000 §5.1.1)
+ *
+ * @details Каждый фрейм NEW_CONNECTION_ID с продвижением порога вывода вынуждает
+ *          поставить в очередь фрейм RETIRE_CONNECTION_ID, а сливается очередь лишь
+ *          при отправке, темп которой ограничен. Поток таких фреймов наращивал бы
+ *          очередь без предела и с квадратичной стоимостью, поэтому её превышение
+ *          предела рвёт соединение превышением лимита идентификаторов
+ */
+TEST_F(QuicFixture, ConnectionRetireFloodGuardTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Собираемая нагрузка из множества фреймов смены идентификатора
+	std::string payload = "";
+	/**
+	 * Собираем поток фреймов NEW_CONNECTION_ID с продвижением порога вывода на
+	 * каждом: каждый вынуждает поставить в очередь один фрейм RETIRE_CONNECTION_ID.
+	 * Порядковые номера берём заведомо выше уже выданных при установлении, чтобы
+	 * не столкнуться с реальными идентификаторами клиента (те же номера с другим
+	 * содержимым были бы нарушением протокола)
+	 */
+	for(uint64_t seq = 1000; seq <= 1200; seq++){
+		// Разобранный фрейм смены идентификатора
+		frame::new_connection_id_t frame;
+		// Устанавливаем порядковый номер идентификатора
+		frame.seq = seq;
+		// Продвигаем порог вывода из обращения на текущий номер
+		frame.retirePriorTo = seq;
+		// Устанавливаем длину нового идентификатора
+		frame.cid.size = 8;
+		// Заполняем данные нового идентификатора уникальным содержимым
+		for(size_t j = 0; j < frame.cid.size; j++)
+			// Заполняем очередной октет идентификатора
+			frame.cid.data[j] = static_cast <uint8_t> (seq + j);
+		// Заполняем токен сброса без сохранения состояния
+		for(size_t j = 0; j < sizeof(frame.resetToken); j++)
+			// Заполняем очередной октет токена сброса
+			frame.resetToken[j] = static_cast <uint8_t> (seq);
+		// Дописываем фрейм NEW_CONNECTION_ID в нагрузку
+		frame::serialize::newConnectionId(payload, frame);
+	}
+	// Получаем ключи защиты исходящих пакетов уровня приложения клиента
+	const crypto::keys_t * keys = client.handshake().encryption(level_t::APPLICATION);
+	// Проверяем что ключи выведены
+	ASSERT_NE(keys, nullptr);
+	// Собираем короткий заголовок 1-RTT пакета
+	std::string header = "";
+	// Выполняем сборку короткого заголовка пакета
+	ASSERT_TRUE(packet::serialize::shortHeader(header, client.dcid(), 50000, 4, client.phase(), false));
+	// Собираемая датаграмма флуда
+	std::string datagram = "";
+	// Выполняем защиту пакета: AEAD-шифрование нагрузки и защита заголовка
+	ASSERT_TRUE(crypto::seal(datagram, * keys, 50000, header, payload));
+	// Доставляем серверу поток смен идентификатора
+	now += 10;
+	server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now);
+	// Проверяем что флуд ограничен: соединение завершено превышением лимита идентификаторов, а не растит очередь
+	ASSERT_EQ(server.error(), error_t::CONNECTION_ID_LIMIT_ERROR);
+}
+
+/**
  * @brief Тест однократности уведомления о блокировке лимитом потока (RFC 9000 §4.1)
  *
  * @details Уведомление STREAM_DATA_BLOCKED сообщает удалённому эндпоинту, что
