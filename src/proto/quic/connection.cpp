@@ -504,7 +504,7 @@ awh::quic::Connection::Times::Times() noexcept :
  * @brief Конструктор
  *
  */
-awh::quic::Connection::Transport::Transport() noexcept {}
+awh::quic::Connection::Transport::Transport() noexcept : resumed(false) {}
 /**
  * @brief Конструктор
  *
@@ -2332,6 +2332,32 @@ bool awh::quic::Connection::established() noexcept {
 		if(this->_cids.identity.retried ? (!this->_transport.remote.hasRetryScid || !(this->_transport.remote.retryScid == this->_cids.identity.retry)) : this->_transport.remote.hasRetryScid){
 			// Ставим завершение соединения с ошибкой транспортных параметров в очередь
 			this->fail(error_t::TRANSPORT_PARAMETER_ERROR);
+			// Выводим отрицательный результат
+			return false;
+		}
+	}
+	/**
+	 * Если соединение возобновлено и ранние данные приняты: удалённый узел не вправе
+	 * занижать анонсированные лимиты относительно запомненных, под которыми ранние
+	 * данные были отправлены. Занижение любого из лимитов - нарушение протокола,
+	 * рвущее соединение (RFC 9001 §4.6.1). При отклонении ранних данных проверка не
+	 * нужна: они переотправляются под фактически анонсированными лимитами
+	 */
+	if(this->_transport.resumed && this->_crypto.handshake.early()){
+		// Ссылки на фактически анонсированные и запомненные параметры удалённого узла
+		const auto & remote = this->_transport.remote;
+		// Ссылка на запомненные параметры удалённого узла прошлого соединения
+		const auto & remembered = this->_transport.remembered;
+		// Если любой из ограничивающих ранние данные лимитов занижен относительно запомненного
+		if((remote.initialMaxData < remembered.initialMaxData) ||
+		   (remote.initialMaxStreamDataBidiLocal < remembered.initialMaxStreamDataBidiLocal) ||
+		   (remote.initialMaxStreamDataBidiRemote < remembered.initialMaxStreamDataBidiRemote) ||
+		   (remote.initialMaxStreamDataUni < remembered.initialMaxStreamDataUni) ||
+		   (remote.initialMaxStreamsBidi < remembered.initialMaxStreamsBidi) ||
+		   (remote.initialMaxStreamsUni < remembered.initialMaxStreamsUni) ||
+		   (remote.activeConnectionIdLimit < remembered.activeConnectionIdLimit)){
+			// Ставим завершение соединения с нарушением протокола в очередь
+			this->fail(error_t::PROTOCOL_VIOLATION);
 			// Выводим отрицательный результат
 			return false;
 		}
@@ -6745,6 +6771,10 @@ bool awh::quic::Connection::session(string_view session) noexcept {
 	this->_limits.maxUniRemote = params.initialMaxStreamsUni;
 	// Запоминаем транспортные параметры удалённого узла прошлого соединения
 	this->_transport.remote = params;
+	// Сохраняем запомненные параметры для проверки их незанижения после хендшейка (RFC 9001 §4.6.1)
+	this->_transport.remembered = params;
+	// Отмечаем установку возобновляемой сессии с запомненными параметрами
+	this->_transport.resumed = true;
 	// Устанавливаем возобновляемую сессию хендшейк-машине
 	return this->_crypto.handshake.session(session.substr(4 + size));
 }
