@@ -37,13 +37,64 @@
  * @brief Метод настройки тестового окружения
  *
  */
-void QuicFixture::SetUp(){}
+void QuicFixture::SetUp(){
+	// Инициализируем объект фреймворка
+	this->_fmk = std::make_unique <awh::fmk_t> ();
+	// Инициализируем объект логирования
+	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
+	// Инициализируем объект разбора сетевых адресов
+	this->_addr = std::make_unique <awh::net_addr_t> (this->_fmk.get(), this->_log.get());
+	// Инициализируем тестовое окружение транспортной безопасности
+	this->_security = std::make_unique <QuicSecurity> (this->_fmk.get(), this->_log.get());
+}
 
 /**
  * @brief Метод очистки тестового окружения
  *
  */
 void QuicFixture::TearDown(){}
+
+/**
+ * @brief Метод формирования опакового представления пути удалённого эндпоинта
+ *
+ * @param host адрес хоста удалённого эндпоинта
+ * @param port порт удалённого эндпоинта
+ * @return     опаковое представление пути соединения
+ */
+std::string QuicFixture::makePath(const std::string & host, const uint16_t port) const noexcept {
+	// Разбираем адрес хоста удалённого эндпоинта
+	this->_addr->parse(host);
+	// Формируем штатную структуру сетевого адреса удалённого эндпоинта
+	const std::unique_ptr <awh::net::addr_t> addr = this->_addr->source(awh::net_addr_t::endian_t::LITTLE);
+	// Опаковое представление пути соединения
+	std::string result = "";
+	// Если штатная структура сетевого адреса сформирована
+	if(addr != nullptr){
+		/**
+		 * Определяем разновидность сетевого адреса по его размеру
+		 */
+		switch(addr->size){
+			// Для сетевого адреса IPv4
+			case 4: {
+				// Извлекаем IPv4-адрес в чистом виде
+				const uint32_t ip = static_cast <const awh::net::addr_net_ipv4_t *> (addr.get())->address;
+				// Дописываем байты IPv4-адреса в опаковое представление пути
+				result.append(reinterpret_cast <const char *> (&ip), sizeof(ip));
+			} break;
+			// Для сетевого адреса IPv6
+			case 16: {
+				// Получаем ссылку на IPv6-адрес в чистом виде
+				const auto & ip = static_cast <const awh::net::addr_net_ipv6_t *> (addr.get())->address;
+				// Дописываем байты IPv6-адреса в опаковое представление пути
+				result.append(reinterpret_cast <const char *> (ip.data()), ip.size());
+			} break;
+		}
+		// Дописываем порт эндпоинта в опаковое представление пути
+		result.append(reinterpret_cast <const char *> (&port), sizeof(port));
+	}
+	// Возвращаем опаковое представление пути соединения
+	return result;
+}
 
 /**
  * @brief Метод преобразования шестнадцатеричной строки в бинарный буфер
@@ -340,37 +391,4 @@ QuicSecurity::~QuicSecurity() noexcept {
 	if(!this->_privateKey.empty())
 		// Удаляем файл приватного ключа
 		::remove(this->_privateKey.c_str());
-}
-/**
- * @brief Функция получения объекта фреймворка
- *
- * @return объект фреймворка
- */
-awh::fmk_t & framework() noexcept {
-	// Объект фреймворка
-	static awh::fmk_t result;
-	// Выводим объект фреймворка
-	return result;
-}
-/**
- * @brief Функция получения объекта логирования
- *
- * @return объект логирования
- */
-awh::log_t & logger() noexcept {
-	// Объект логирования
-	static awh::log_t result(&::framework());
-	// Выводим объект логирования
-	return result;
-}
-/**
- * @brief Функция получения тестового окружения транспортной безопасности
- *
- * @return тестовое окружение транспортной безопасности
- */
-QuicSecurity & security() noexcept {
-	// Тестовое окружение транспортной безопасности
-	static QuicSecurity result(&::framework(), &::logger());
-	// Выводим тестовое окружение транспортной безопасности
-	return result;
 }

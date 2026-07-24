@@ -996,12 +996,14 @@ namespace io {
 		engine::callback::read_t read;
 		// Функция обратного вызова при обработке общего события
 		engine::callback::event_t event;
+		// Функция обратного вызова инъекции объединённых данных (splice)
+		engine::callback::inject_t inject;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Mediator_Callbacks() noexcept :
-		 read(nullptr), event(nullptr) {}
+		 read(nullptr), event(nullptr), inject(nullptr) {}
 	} mediator_callbacks_t;
 
 	/**
@@ -1057,6 +1059,8 @@ namespace io {
 		engine::callback::write_t write;
 		// Функция обратного вызова при обработке общего события
 		engine::callback::event_t event;
+		// Функция обратного вызова инъекции объединённых данных (splice)
+		engine::callback::inject_t inject;
 		// Функция обратного вызова при подключении
 		engine::callback::connect_t connect;
 		// Функция обратного вызова при истечении таймаута события
@@ -1071,9 +1075,9 @@ namespace io {
 		 */
 		explicit Client_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
-		 event(nullptr), connect(nullptr),
-		 timeout(nullptr), traffic(nullptr),
-		 available(nullptr) {}
+		 event(nullptr), inject(nullptr),
+		 connect(nullptr), timeout(nullptr),
+		 traffic(nullptr), available(nullptr) {}
 	} client_callbacks_t;
 
 	/**
@@ -1087,6 +1091,8 @@ namespace io {
 		engine::callback::write_t write;
 		// Функция обратного вызова при обработке общего события
 		engine::callback::event_t event;
+		// Функция обратного вызова инъекции объединённых данных (splice)
+		engine::callback::inject_t inject;
 		// Функция обратного вызова при истечении таймаута события
 		engine::callback::timeout_t timeout;
 		// Функция обратного вызова при доступности очереди
@@ -1097,8 +1103,8 @@ namespace io {
 		 */
 		explicit Peer_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
-		 event(nullptr), timeout(nullptr),
-		 available(nullptr) {}
+		 event(nullptr), inject(nullptr),
+		 timeout(nullptr), available(nullptr) {}
 	} peer_callbacks_t;
 
 	/**
@@ -2149,7 +2155,7 @@ namespace local {
 	 * @return уникальный идентификатор
 	 */
 	static event::id_t identifier() noexcept {
-		// Переменная результата
+		// Результат работы функции
 		event::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
 		static atomic_uint32_t id{1};
@@ -2228,7 +2234,7 @@ namespace local {
 	 * @return    результат выполнения обработки
 	 */
 	static bool commit(const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -2980,7 +2986,7 @@ namespace events {
 	 * @return     результат выполнения обработки
 	 */
 	static bool read(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		// Если дескриптор сокета действительный
 		if(sock != net::invalid_socket_t){
@@ -3084,7 +3090,7 @@ namespace events {
 	 * @return     результат выполнения обработки
 	 */
 	static bool write(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		// Если дескриптор сокета действительный
 		if(sock != net::invalid_socket_t){
@@ -5764,7 +5770,7 @@ namespace io {
 	 * @return    результат выполнения обработки
 	 */
 	static bool read(::io::file_t * fs, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -5816,7 +5822,7 @@ namespace io {
 									// Вызываем функцию обратного вызова для вывода полученных данных
 									fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (buffer) + offset, size);
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								else const_cast <engine::io_t *> (io)->send(fs->dest, buffer + offset, size);
+								else const_cast <engine::io_t *> (io)->relay(fs->dest, buffer + offset, size);
 								// Отвязываем текущий маппинг
 								::munmap(buffer, fs->size);
 								// Устанавливаем новое смещение в файле
@@ -5922,7 +5928,7 @@ namespace io {
 	 * @return    результат выполнения обработки
 	 */
 	static bool read(::io::ipc_t * ipc, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -6006,7 +6012,7 @@ namespace io {
 												// Вызываем функцию обратного вызова для вывода полученных данных
 												ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+										} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 										// Если дескриптор сокета стал недействительным
 										if(ipc->transfer.fd == net::invalid_socket_t)
 											// Формируем отрицательный результат
@@ -6062,7 +6068,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода полученных данных
 											ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Возвращаем результат
 									return result;
 								}
@@ -6169,7 +6175,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для вывода полученных данных
 										ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -6225,7 +6231,7 @@ namespace io {
 									// Вызываем функцию обратного вызова для вывода полученных данных
 									ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+							} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 							// Возвращаем результат
 							return result;
 						}
@@ -6303,7 +6309,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для вывода полученных данных
 										ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -6359,7 +6365,7 @@ namespace io {
 									// Вызываем функцию обратного вызова для вывода полученных данных
 									ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+							} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 							// Возвращаем результат
 							return result;
 						}
@@ -6399,7 +6405,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 */
 	static bool read(::io::peer_t * peer, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -6561,7 +6567,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода полученных данных
 											peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+									} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если дескриптор сокета стал недействительным
 									if(peer->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -6758,7 +6764,7 @@ namespace io {
 									// Вызываем функцию обратного вызова для вывода полученных данных
 									peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+							} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если дескриптор сокета стал недействительным
 							if(peer->transfer.fd == net::invalid_socket_t)
 								// Формируем отрицательный результат
@@ -6885,7 +6891,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода полученных данных
 											peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(peer->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -7011,7 +7017,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для вывода полученных данных
 										peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->send(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(peer->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -7114,7 +7120,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool read(::io::tun_t * tunnel, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -7320,7 +7326,7 @@ namespace io {
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 												// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-												else const_cast <engine::io_t *> (io)->send(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+												else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											}
 										}
 									// Если адрес сервера не совпадает с настройками туннеля
@@ -7527,7 +7533,7 @@ namespace io {
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 												// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-												else const_cast <engine::io_t *> (io)->send(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+												else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											}
 										}
 									// Если адрес сервера не совпадает с настройками туннеля
@@ -7848,7 +7854,7 @@ namespace io {
 												// Вызываем функцию обратного вызова для вывода полученных данных
 												mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-											else const_cast <engine::io_t *> (io)->send(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+											else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 										}
 									}
 								// Если адрес сервера не совпадает с настройками туннеля
@@ -8055,7 +8061,7 @@ namespace io {
 												// Вызываем функцию обратного вызова для вывода полученных данных
 												mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-											else const_cast <engine::io_t *> (io)->send(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+											else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 										}
 									}
 								// Если адрес сервера не совпадает с настройками туннеля
@@ -8237,7 +8243,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool read(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -8399,7 +8405,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода полученных данных
 											client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -8596,7 +8602,7 @@ namespace io {
 									// Вызываем функцию обратного вызова для вывода полученных данных
 									client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+							} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если дескриптор сокета стал недействительным
 							if(client->transfer.fd == net::invalid_socket_t)
 								// Формируем отрицательный результат
@@ -8827,7 +8833,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода полученных данных
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -9063,7 +9069,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для вывода полученных данных
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -9302,7 +9308,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода полученных данных
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -9551,7 +9557,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для вывода полученных данных
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -9695,7 +9701,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода полученных данных
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -9839,7 +9845,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для вывода полученных данных
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -9992,7 +9998,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода полученных данных
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -10149,7 +10155,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для вывода полученных данных
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->send(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -10252,7 +10258,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool read(::io::server_t * server, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -10906,7 +10912,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 */
 	static bool write(::io::ipc_t * ipc, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -10957,7 +10963,7 @@ namespace io {
 											ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 											// Если дескриптор сокета стал недействительным
 											if(ipc->transfer.fd == net::invalid_socket_t)
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return result;
 										}
 										// Если есть данные для отправки в сокет
@@ -11110,7 +11116,7 @@ namespace io {
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(ipc->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если есть данные для отправки в сокет
@@ -11234,7 +11240,7 @@ namespace io {
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(ipc->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если есть данные для отправки в сокет
@@ -11364,7 +11370,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 */
 	static bool write(::io::peer_t * peer, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -11392,7 +11398,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Переменная результата
+								// Результат работы функции
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -11557,7 +11563,7 @@ namespace io {
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -11619,7 +11625,7 @@ namespace io {
 											peer->callbacks.write(peer->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(peer->transfer.fd == net::invalid_socket_t)
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -11720,7 +11726,7 @@ namespace io {
 										peer->callbacks.write(peer->id, bytes);
 										// Если дескриптор сокета стал недействительным
 										if(peer->transfer.fd == net::invalid_socket_t)
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return result;
 									}
 									// Если есть данные для отправки в сокет
@@ -11775,7 +11781,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Переменная результата
+									// Результат работы функции
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -11936,7 +11942,7 @@ namespace io {
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -11966,7 +11972,7 @@ namespace io {
 												peer->callbacks.write(peer->id, bytes);
 												// Если дескриптор сокета стал недействительным
 												if(peer->transfer.fd == net::invalid_socket_t)
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -12067,7 +12073,7 @@ namespace io {
 											peer->callbacks.write(peer->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(peer->transfer.fd == net::invalid_socket_t)
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return result;
 										}
 										// Если есть данные для отправки в сокет
@@ -12133,7 +12139,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool write(::io::origin_t * origin, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -12172,7 +12178,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Переменная результата
+								// Результат работы функции
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -12332,7 +12338,7 @@ namespace io {
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -12362,7 +12368,7 @@ namespace io {
 											origin->callbacks.write(origin->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(origin->transfer.fd == net::invalid_socket_t)
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -12458,7 +12464,7 @@ namespace io {
 										origin->callbacks.write(origin->id, bytes);
 										// Если дескриптор сокета стал недействительным
 										if(origin->transfer.fd == net::invalid_socket_t)
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return result;
 									}
 									// Если есть данные для отправки в сокет
@@ -12521,7 +12527,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool write(::io::tun_t * tunnel, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -12696,7 +12702,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool write(::io::client_t * client, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -12724,7 +12730,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Переменная результата
+								// Результат работы функции
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -12889,7 +12895,7 @@ namespace io {
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -12951,7 +12957,7 @@ namespace io {
 											client->callbacks.write(client->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(client->transfer.fd == net::invalid_socket_t)
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -13052,7 +13058,7 @@ namespace io {
 										client->callbacks.write(client->id, bytes);
 										// Если дескриптор сокета стал недействительным
 										if(client->transfer.fd == net::invalid_socket_t)
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return result;
 									}
 									// Если есть данные для отправки в сокет
@@ -13105,7 +13111,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Переменная результата
+								// Результат работы функции
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -13265,7 +13271,7 @@ namespace io {
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -13295,7 +13301,7 @@ namespace io {
 											client->callbacks.write(client->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(client->transfer.fd == net::invalid_socket_t)
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -13396,7 +13402,7 @@ namespace io {
 										client->callbacks.write(client->id, bytes);
 										// Если дескриптор сокета стал недействительным
 										if(client->transfer.fd == net::invalid_socket_t)
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return result;
 									}
 									// Если есть данные для отправки в сокет
@@ -13447,7 +13453,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Переменная результата
+								// Результат работы функции
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -13664,7 +13670,7 @@ namespace io {
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -13694,7 +13700,7 @@ namespace io {
 											client->callbacks.write(client->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(client->transfer.fd == net::invalid_socket_t)
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -13795,7 +13801,7 @@ namespace io {
 										client->callbacks.write(client->id, bytes);
 										// Если дескриптор сокета стал недействительным
 										if(client->transfer.fd == net::invalid_socket_t)
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return result;
 									}
 									// Если есть данные для отправки в сокет
@@ -13860,7 +13866,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool write(::io::server_t * server, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -14193,7 +14199,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::file_t * fs, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -14287,7 +14293,7 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Возвращаем результат работы функции
+		// Выводим результат
 		return result;
 	}
 	/**
@@ -14301,7 +14307,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::ipc_t * ipc, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -14345,7 +14351,7 @@ namespace io {
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(ipc->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return static_cast <size_t> (bytes);
 								}
 								// Если данные отправлены не полностью
@@ -14457,7 +14463,7 @@ namespace io {
 								ipc->callbacks.write(ipc->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -14553,7 +14559,7 @@ namespace io {
 											ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем удаление узла
 										::io::destroy(ipc, eth, log);
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 									}
 								}
@@ -14568,7 +14574,7 @@ namespace io {
 								ipc->callbacks.write(ipc->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -14753,7 +14759,7 @@ namespace io {
 								ipc->callbacks.write(ipc->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -14860,7 +14866,7 @@ namespace io {
 												ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 											// Выполняем удаление узла
 											::io::destroy(ipc, eth, log);
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return result;
 										}
 									}
@@ -14876,7 +14882,7 @@ namespace io {
 								ipc->callbacks.write(ipc->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -14990,7 +14996,7 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Возвращаем результат работы функции
+		// Выводим результат
 		return result;
 	}
 	/**
@@ -15004,7 +15010,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::peer_t * peer, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -15032,7 +15038,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Переменная результата
+								// Результат работы функции
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -15174,7 +15180,7 @@ namespace io {
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return result;
 							};
 							// Количество байт данных, отправленных событием
@@ -15259,7 +15265,7 @@ namespace io {
 											break;
 										}
 									}
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен, выполняем отправку данных в сокет
@@ -15274,7 +15280,7 @@ namespace io {
 									peer->callbacks.write(peer->id, bytes);
 									// Если дескриптор сокета стал недействительным
 									if(peer->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return bytes;
 								}
 								// Если данные отправлены не полностью
@@ -15401,7 +15407,7 @@ namespace io {
 								peer->callbacks.write(peer->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(peer->transfer.fd == net::invalid_socket_t)
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -15436,7 +15442,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Переменная результата
+								// Результат работы функции
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -15533,7 +15539,7 @@ namespace io {
 												peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 											// Выполняем удаление узла
 											::io::destroy(peer, eth, log);
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return result;
 										}
 									}
@@ -15557,7 +15563,7 @@ namespace io {
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -15595,7 +15601,7 @@ namespace io {
 											peer->callbacks.write(peer->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(peer->transfer.fd == net::invalid_socket_t)
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return bytes;
 										}
 										// Если данные отправлены не полностью
@@ -15911,7 +15917,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Переменная результата
+									// Результат работы функции
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -16040,7 +16046,7 @@ namespace io {
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -16063,7 +16069,7 @@ namespace io {
 												peer->callbacks.write(peer->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(peer->transfer.fd == net::invalid_socket_t)
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -16219,7 +16225,7 @@ namespace io {
 									peer->callbacks.write(peer->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(peer->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -16252,7 +16258,7 @@ namespace io {
 									 * @return       количество отправленных байт
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
-										// Переменная результата
+										// Результат работы функции
 										size_t result = 0;
 										/**
 										 * Выполняем перехват ошибок
@@ -16363,7 +16369,7 @@ namespace io {
 															peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 														// Выполняем удаление узла
 														::io::destroy(peer, eth, log);
-														// Возвращаем результат работы функции
+														// Выводим результат
 														return result;
 													}
 												}
@@ -16388,7 +16394,7 @@ namespace io {
 												log->print("%s", log_t::flag_t::CRITICAL, error.what());
 											#endif
 										}
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 									};
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -16411,7 +16417,7 @@ namespace io {
 													peer->callbacks.write(peer->id, result);
 													// Если дескриптор сокета стал недействительным
 													if(peer->transfer.fd == net::invalid_socket_t)
-														// Возвращаем результат работы функции
+														// Выводим результат
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
@@ -16570,7 +16576,7 @@ namespace io {
 									peer->callbacks.write(peer->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(peer->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -16707,7 +16713,7 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Возвращаем результат работы функции
+		// Выводим результат
 		return result;
 	}
 	/**
@@ -16721,7 +16727,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::origin_t * origin, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -16754,7 +16760,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Переменная результата
+								// Результат работы функции
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -16910,7 +16916,7 @@ namespace io {
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -16933,7 +16939,7 @@ namespace io {
 											origin->callbacks.write(origin->id, result);
 											// Если дескриптор сокета стал недействительным
 											if(origin->transfer.fd == net::invalid_socket_t)
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -17019,7 +17025,7 @@ namespace io {
 								origin->callbacks.write(origin->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(origin->transfer.fd == net::invalid_socket_t)
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -17052,7 +17058,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Переменная результата
+									// Результат работы функции
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -17187,7 +17193,7 @@ namespace io {
 														origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем удаление узла
 													::io::destroy(origin, eth, log);
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return result;
 												}
 											}
@@ -17212,7 +17218,7 @@ namespace io {
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -17235,7 +17241,7 @@ namespace io {
 												origin->callbacks.write(origin->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(origin->transfer.fd == net::invalid_socket_t)
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -17324,7 +17330,7 @@ namespace io {
 								origin->callbacks.write(origin->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(origin->transfer.fd == net::invalid_socket_t)
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -17479,7 +17485,7 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Возвращаем результат работы функции
+		// Выводим результат
 		return result;
 	}
 	/**
@@ -17493,7 +17499,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::tun_t * tunnel, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -17944,7 +17950,7 @@ namespace io {
 							if(error == event::error_t::INVALID_SOCKET){
 								// Выполняем удаление узла
 								::io::destroy(tunnel, eth, log);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return result;
 							}
 						}
@@ -18530,7 +18536,7 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Возвращаем результат работы функции
+		// Выводим результат
 		return result;
 	}
 	/**
@@ -18544,7 +18550,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::client_t * client, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -18572,7 +18578,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Переменная результата
+								// Результат работы функции
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -18714,7 +18720,7 @@ namespace io {
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return result;
 							};
 							// Количество байт данных, отправленных событием
@@ -18799,7 +18805,7 @@ namespace io {
 											break;
 										}
 									}
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен, выполняем отправку данных в сокет
@@ -18814,7 +18820,7 @@ namespace io {
 									client->callbacks.write(client->id, bytes);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return bytes;
 								}
 								// Если данные отправлены не полностью
@@ -18941,7 +18947,7 @@ namespace io {
 								client->callbacks.write(client->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(client->transfer.fd == net::invalid_socket_t)
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -18976,7 +18982,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Переменная результата
+								// Результат работы функции
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -19073,7 +19079,7 @@ namespace io {
 												client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 											// Выполняем удаление узла
 											::io::destroy(client, eth, log);
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return result;
 										}
 									}
@@ -19097,7 +19103,7 @@ namespace io {
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -19135,7 +19141,7 @@ namespace io {
 											client->callbacks.write(client->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(client->transfer.fd == net::invalid_socket_t)
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return bytes;
 										}
 										// Если данные отправлены не полностью
@@ -19451,7 +19457,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Переменная результата
+									// Результат работы функции
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -19566,7 +19572,7 @@ namespace io {
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -19589,7 +19595,7 @@ namespace io {
 												client->callbacks.write(client->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -19745,7 +19751,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -19778,7 +19784,7 @@ namespace io {
 									 * @return       количество отправленных байт
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
-										// Переменная результата
+										// Результат работы функции
 										size_t result = 0;
 										/**
 										 * Выполняем перехват ошибок
@@ -19875,7 +19881,7 @@ namespace io {
 															client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 														// Выполняем удаление узла
 														::io::destroy(client, eth, log);
-														// Возвращаем результат работы функции
+														// Выводим результат
 														return result;
 													}
 												}
@@ -19900,7 +19906,7 @@ namespace io {
 												log->print("%s", log_t::flag_t::CRITICAL, error.what());
 											#endif
 										}
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 									};
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -19923,7 +19929,7 @@ namespace io {
 													client->callbacks.write(client->id, result);
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
-														// Возвращаем результат работы функции
+														// Выводим результат
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
@@ -20082,7 +20088,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -20198,7 +20204,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Переменная результата
+									// Результат работы функции
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -20313,7 +20319,7 @@ namespace io {
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -20336,7 +20342,7 @@ namespace io {
 												client->callbacks.write(client->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -20492,7 +20498,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -20525,7 +20531,7 @@ namespace io {
 									 * @return       количество отправленных байт
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
-										// Переменная результата
+										// Результат работы функции
 										size_t result = 0;
 										/**
 										 * Выполняем перехват ошибок
@@ -20622,7 +20628,7 @@ namespace io {
 															client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 														// Выполняем удаление узла
 														::io::destroy(client, eth, log);
-														// Возвращаем результат работы функции
+														// Выводим результат
 														return result;
 													}
 												}
@@ -20647,7 +20653,7 @@ namespace io {
 												log->print("%s", log_t::flag_t::CRITICAL, error.what());
 											#endif
 										}
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 									};
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -20670,7 +20676,7 @@ namespace io {
 													client->callbacks.write(client->id, result);
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
-														// Возвращаем результат работы функции
+														// Выводим результат
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
@@ -20829,7 +20835,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -20977,7 +20983,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Переменная результата
+									// Результат работы функции
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -21119,7 +21125,7 @@ namespace io {
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -21142,7 +21148,7 @@ namespace io {
 												client->callbacks.write(client->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -21298,7 +21304,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -21331,7 +21337,7 @@ namespace io {
 									 * @return       количество отправленных байт
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
-										// Переменная результата
+										// Результат работы функции
 										size_t result = 0;
 										/**
 										 * Выполняем перехват ошибок
@@ -21455,7 +21461,7 @@ namespace io {
 															client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 														// Выполняем удаление узла
 														::io::destroy(client, eth, log);
-														// Возвращаем результат работы функции
+														// Выводим результат
 														return result;
 													}
 												}
@@ -21480,7 +21486,7 @@ namespace io {
 												log->print("%s", log_t::flag_t::CRITICAL, error.what());
 											#endif
 										}
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 									};
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -21503,7 +21509,7 @@ namespace io {
 													client->callbacks.write(client->id, result);
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
-														// Возвращаем результат работы функции
+														// Выводим результат
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
@@ -21662,7 +21668,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -21805,7 +21811,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Переменная результата
+									// Результат работы функции
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -21947,7 +21953,7 @@ namespace io {
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -21970,7 +21976,7 @@ namespace io {
 												client->callbacks.write(client->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -22126,7 +22132,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -22159,7 +22165,7 @@ namespace io {
 									 * @return       количество отправленных байт
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
-										// Переменная результата
+										// Результат работы функции
 										size_t result = 0;
 										/**
 										 * Выполняем перехват ошибок
@@ -22283,7 +22289,7 @@ namespace io {
 															client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 														// Выполняем удаление узла
 														::io::destroy(client, eth, log);
-														// Возвращаем результат работы функции
+														// Выводим результат
 														return result;
 													}
 												}
@@ -22308,7 +22314,7 @@ namespace io {
 												log->print("%s", log_t::flag_t::CRITICAL, error.what());
 											#endif
 										}
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 									};
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -22331,7 +22337,7 @@ namespace io {
 													client->callbacks.write(client->id, result);
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
-														// Возвращаем результат работы функции
+														// Выводим результат
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
@@ -22490,7 +22496,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -22668,7 +22674,7 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Возвращаем результат работы функции
+		// Выводим результат
 		return result;
 	}
 	/**
@@ -22682,7 +22688,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::server_t * server, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -22886,7 +22892,7 @@ namespace io {
 											server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем удаление узла
 										::io::destroy(server, eth, log);
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 									}
 								}
@@ -23034,7 +23040,7 @@ namespace io {
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Возвращаем результат работы функции
+		// Выводим результат
 		return result;
 	}
 };
@@ -23705,7 +23711,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 */
 	static bool user(::io::user_t * user, const engine::io_t * io, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -23728,7 +23734,7 @@ namespace io {
 							// Выполняем извлечение данных из очереди
 							user->callbacks.read(user->id, static_cast <const uint8_t *> (buffer), size);
 						// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-						else const_cast <engine::io_t *> (io)->send(user->dest, static_cast <const char *> (buffer), size);
+						else const_cast <engine::io_t *> (io)->relay(user->dest, static_cast <const char *> (buffer), size);
 						// Удаляем запись из очереди
 						user->events.pop();
 					}
@@ -25119,7 +25125,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool connected(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -25994,7 +26000,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 */
 	static bool write(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -26971,7 +26977,7 @@ namespace io {
 						// Вызываем функцию обратного вызова для вывода полученных данных
 						origin->callbacks.read(origin->id, buffer, static_cast <size_t> (size));
 				// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-				} else const_cast <engine::io_t *> (io)->send(origin->transfer.dest, buffer, static_cast <size_t> (size));
+				} else const_cast <engine::io_t *> (io)->relay(origin->transfer.dest, buffer, static_cast <size_t> (size));
 				// Если дескриптор сокета стал недействительным или серверный дескриптор сокета недействителен
 				if((origin->transfer.fd == net::invalid_socket_t) || (server->fd == net::invalid_socket_t))
 					// Формируем отрицательный результат
@@ -27502,7 +27508,7 @@ namespace io {
 				}
 			}
 		}
-		// Возвращаем результат работы функции
+		// Выводим результат
 		return true;
 	}
 };
@@ -27601,7 +27607,7 @@ namespace sctp {
 		 * @return       количество обработанных байт
 		 */
 		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log) noexcept {
-			// Переменная результата
+			// Результат работы функции
 			size_t result = 0;
 			// Если буфер данных события корректен и его размер достаточен для обработки
 			if((buffer != nullptr) && (size >= sizeof(uint16_t))){
@@ -28756,7 +28762,7 @@ namespace sctp {
 					}
 				}
 			}
-			// Возвращаем результат работы функции
+			// Выводим результат
 			return result;
 		}
 	#endif
@@ -28835,7 +28841,7 @@ namespace sctp {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Возвращаем результат работы функции
+		// Выводим результат
 		return result;
 	}
 	/**
@@ -29115,7 +29121,7 @@ namespace sctp {
 	 * @return   параметры статуса инициализации SCTP
 	 */
 	awh::net::sctp::status_t awh::engine::Stream_Control_Transmission_Protocol::status(const event::id_t id) const noexcept {
-		// Переменная результата
+		// Результат работы функции
 		net::sctp::status_t result;
 		/**
 		 * Выполняем перехват ошибок
@@ -29309,7 +29315,7 @@ namespace sctp {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Возвращаем результат работы функции
+		// Выводим результат
 		return result;
 	}
 	/**
@@ -29499,7 +29505,7 @@ namespace sctp {
 	 * @return   список событий SCTP на которые выполнена подписка
 	 */
 	const awh::net::sctp::event_types_t & awh::engine::Stream_Control_Transmission_Protocol::eventsSubscribed(const event::id_t id) const noexcept {
-		// Переменная результата
+		// Результат работы функции
 		static net::sctp::event_types_t result;
 		/**
 		 * Выполняем перехват ошибок
@@ -30319,7 +30325,7 @@ namespace sctp {
 	 * @return       результат работы функции
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -30443,7 +30449,7 @@ namespace sctp {
 	 * @return       результат работы функции
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -30606,7 +30612,7 @@ namespace sctp {
 	 * @return      результат работы функции
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept {
-		// Переменная результата
+		// Результат работы функции
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -31320,7 +31326,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
  * @return      результат выполнения удаления
  */
 bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view value) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	// Если адрес для удаления передан
 	if(!value.empty()){
@@ -31471,7 +31477,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 			#endif
 		}
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -31481,7 +31487,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
  * @return   контрольный список события
  */
 const unordered_map <string, event::address_t> & awh::engine::IO::Control_List::get(const event::id_t id) const noexcept {
-	// Переменная результата
+	// Результат работы функции
 	static const unordered_map <string, event::address_t> result;
 	/**
 	 * Выполняем перехват ошибок
@@ -31571,7 +31577,7 @@ const unordered_map <string, event::address_t> & awh::engine::IO::Control_List::
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -31594,7 +31600,7 @@ awh::engine::IO::Control_List::~Control_List() noexcept {}
  * @return   результат выполнения фиксации
  */
 bool awh::engine::IO::commit(const event::id_t id) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -35178,7 +35184,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -35670,7 +35676,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -35719,7 +35725,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 							if(peer->remote == nullptr)
 								// Прерываем выполнение
 								break;
-							// Возвращаем результат работы функции
+							// Выводим результат
 							return awh_cast <net::attr_net_t *> (peer->remote.get())->port;
 						}
 						// Если узел является одноранговым узлом-источником
@@ -35730,7 +35736,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 							if(origin->remote == nullptr)
 								// Прерываем выполнение
 								break;
-							// Возвращаем результат работы функции
+							// Выводим результат
 							return awh_cast <net::attr_net_t *> (origin->remote.get())->port;
 						}
 						// Если узел является клиентом
@@ -35755,7 +35761,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
 										// Если внутренний порт предположительно подготовлен
 										if(addr.sin_port > 0)
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return ntohs(addr.sin_port);
 									}
 								} break;
@@ -35769,12 +35775,12 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
 										// Если внутренний порт предположительно подготовлен
 										if(addr.sin6_port > 0)
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return ntohs(addr.sin6_port);
 									}
 								} break;
 							}
-							// Возвращаем результат работы функции
+							// Выводим результат
 							return awh_cast <net::attr_net_t *> (client->source.get())->port;
 						}
 						// Если узел является сервером
@@ -35812,12 +35818,12 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 											if((server->fd != net::invalid_socket_t) && (::getsockname(server->fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
 												// Если внутренний порт предположительно подготовлен
 												if(addr.sin_port > 0)
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return ntohs(addr.sin_port);
 											}
 										} break;
 									}
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return awh_cast <net::attr_net_t *> (server->host.get())->port;
 								}
 								// Для семейства IPv6
@@ -35843,12 +35849,12 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 											if((server->fd != net::invalid_socket_t) && (::getsockname(server->fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
 												// Если внутренний порт предположительно подготовлен
 												if(addr.sin6_port > 0)
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return ntohs(addr.sin6_port);
 											}
 										} break;
 									}
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return awh_cast <net::attr_net_t *> (server->host.get())->port;
 								}
 							}
@@ -35979,7 +35985,7 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 							}
 							// Устанавливаем внутренний порт клиента
 							awh_cast <net::attr_net_t *> (client->source.get())->port = port;
-							// Возвращаем результат работы функции
+							// Выводим результат
 							return true;
 						}
 						// Если узел является сервером
@@ -36012,7 +36018,7 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 							}
 							// Устанавливаем порт сервера
 							awh_cast <net::attr_net_t *> (server->host.get())->port = port;
-							// Возвращаем результат работы функции
+							// Выводим результат
 							return true;
 						}
 						// Если это какой-либо другой узел, связанный с сетью
@@ -36118,7 +36124,7 @@ uint16_t awh::engine::IO::getTargetPort(const event::id_t id) const noexcept {
 							if(client->target == nullptr)
 								// Прерываем выполнение
 								break;
-							// Возвращаем результат работы функции
+							// Выводим результат
 							return awh_cast <net::attr_net_t *> (client->target.get())->port;
 						}
 					}
@@ -36231,7 +36237,7 @@ bool awh::engine::IO::setTargetPort(const event::id_t id, const uint16_t port) n
 							}
 							// Устанавливаем порт клиента
 							awh_cast <net::attr_net_t *> (client->target.get())->port = port;
-							// Возвращаем результат работы функции
+							// Выводим результат
 							return true;
 						}
 					}
@@ -36345,7 +36351,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(remote->ip->size == 4){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(remote->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
@@ -36385,7 +36391,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(remote->ip->size == 16){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(remote->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv6
 							} else {
@@ -36446,7 +36452,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(remote->ip->size == 4){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(remote->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
@@ -36486,7 +36492,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(remote->ip->size == 16){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(remote->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
@@ -36540,7 +36546,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(target->size == 4){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(tunnel->target.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
@@ -36580,7 +36586,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(target->size == 16){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.v6(target->address, net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv6
 							} else {
@@ -36634,7 +36640,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(target->size == 4){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(mediator->host.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
@@ -36674,7 +36680,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(target->size == 16){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.v6(target->address, net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv6
 							} else {
@@ -36735,7 +36741,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(target->ip->size == 4){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
@@ -36775,7 +36781,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(target->ip->size == 16){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv6
 							} else {
@@ -36836,7 +36842,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(host->ip->size == 4){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(host->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
@@ -36876,7 +36882,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							if(host->ip->size == 16){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(host->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							// Если размер IP-адреса не соответствует IPv6
 							} else {
@@ -36975,7 +36981,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 									fs->state.address = event::address_t::FS;
 								// Устанавливаем адрес файловой системы
 								awh_cast <net::addr_fs_t *> (fs->path.get())->address = string{target};
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							// Если адрес не принадлежит к адресу файловой системы
 							} else {
@@ -37056,7 +37062,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 									fs->state.address = event::address_t::FS;
 								// Устанавливаем адрес файловой системы
 								awh_cast <net::addr_fs_t *> (fs->path.get())->address = string{target};
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							// Если адрес не принадлежит к адресу файловой системы
 							} else {
@@ -37137,7 +37143,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										tunnel->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
 									tunnel->target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
 								} else {
@@ -37179,7 +37185,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										tunnel->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
 									tunnel->target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
 								} else {
@@ -37231,7 +37237,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										mediator->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес в хост
 									mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
 								} else {
@@ -37273,7 +37279,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										mediator->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес в хост
 									mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
 								} else {
@@ -37332,7 +37338,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										client->state.address = event::address_t::UDS;
 									// Устанавливаем адрес uinix-доменного сокета
 									awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = string{target};
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если адрес не принадлежит к адресу файловой системы
 								} else {
@@ -37381,7 +37387,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										client->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
 									awh_cast <net::attr_net_t *> (client->target.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
 								} else {
@@ -37430,7 +37436,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										client->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
 									awh_cast <net::attr_net_t *> (client->target.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
 								} else {
@@ -37489,7 +37495,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										server->state.address = event::address_t::UDS;
 									// Устанавливаем адрес uinix-доменного сокета
 									awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = string{target};
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если адрес не принадлежит к адресу файловой системы
 								} else {
@@ -37538,7 +37544,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										server->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
 									awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
 								} else {
@@ -37587,7 +37593,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										server->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
 									awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
 								} else {
@@ -37653,7 +37659,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
  * @return       результат выполнения извлечения адреса хоста целевой машины
  */
 bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> & target) const noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -38362,7 +38368,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
  * @return       результат выполнения установки
  */
 bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -38500,7 +38506,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									tunnel->state.address = event::address_t::IPV4;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address = awh_cast <const net::addr_net_ipv4_t *> (target)->address;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							}
 							// Для семейства IPv6
@@ -38515,7 +38521,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									tunnel->state.address = event::address_t::IPV6;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (target)->address);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							}
 						}
@@ -38540,7 +38546,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									mediator->state.address = event::address_t::IPV4;
 								// Устанавливаем полученный IP-адрес в хост
 								awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address = awh_cast <const net::addr_net_ipv4_t *> (target)->address;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							}
 							// Для семейства IPv6
@@ -38555,7 +38561,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									mediator->state.address = event::address_t::IPV6;
 								// Устанавливаем полученный IP-адрес в хост
 								awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (target)->address);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							}
 						}
@@ -38583,7 +38589,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									client->state.address = event::address_t::UDS;
 								// Устанавливаем адрес uinix-доменного сокета
 								awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = awh_cast <const net::addr_fs_t *> (target)->address;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							}
 							// Для семейства IPv4
@@ -38603,7 +38609,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									client->state.address = event::address_t::IPV4;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (target)->address;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							}
 							// Для семейства IPv6
@@ -38623,7 +38629,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									client->state.address = event::address_t::IPV6;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (target)->address);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							}
 						}
@@ -38651,7 +38657,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									server->state.address = event::address_t::UDS;
 								// Устанавливаем адрес uinix-доменного сокета
 								awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = awh_cast <const net::addr_fs_t *> (target)->address;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							}
 							// Для семейства IPv4
@@ -38671,7 +38677,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									server->state.address = event::address_t::IPV4;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (target)->address;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							}
 							// Для семейства IPv6
@@ -38691,7 +38697,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									server->state.address = event::address_t::IPV6;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (target)->address);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return true;
 							}
 						}
@@ -38758,7 +38764,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(fs->path == nullptr)
 									// Прерываем выполнение
 									break;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
 							}
 							// Если узел является файловой системой
@@ -38769,7 +38775,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(fs->path == nullptr)
 									// Прерываем выполнение
 									break;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
 							}
 						}
@@ -38809,7 +38815,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -38886,7 +38892,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -39006,7 +39012,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -39083,7 +39089,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -39210,7 +39216,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -39285,7 +39291,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -39416,7 +39422,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
 													this->_addr.source(src.mac.get());
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return static_cast <string> (this->_addr);
 												// Если MAC-адрес не получен
 												} else {
@@ -39464,7 +39470,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -39552,7 +39558,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
 													this->_addr.source(src.mac.get());
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return static_cast <string> (this->_addr);
 												// Если MAC-адрес не получен
 												} else {
@@ -39600,7 +39606,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -39710,7 +39716,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(peer->remote == nullptr)
 									// Прерываем выполнение
 									break;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (peer->remote.get())->path.get())->address;
 							}
 							// Если узел является одноранговым узлом-источником
@@ -39721,7 +39727,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(origin->remote == nullptr)
 									// Прерываем выполнение
 									break;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (origin->remote.get())->path.get())->address;
 							}
 							// Если узел является клиентом
@@ -39732,7 +39738,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(client->target == nullptr)
 									// Прерываем выполнение
 									break;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address;
 							}
 							// Если узел является сервером
@@ -39743,7 +39749,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(server->host == nullptr)
 									// Прерываем выполнение
 									break;
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address;
 							}
 						}
@@ -39767,7 +39773,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv4-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является одноранговым узлом-источником
@@ -39780,7 +39786,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv4-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является туннелем
@@ -39793,7 +39799,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv4-адрес
 								this->_addr.source(tunnel->source.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является посредником
@@ -39806,7 +39812,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv4-адрес хоста
 								this->_addr.source(mediator->host.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является клиентом
@@ -39819,7 +39825,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv4-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является сервером
@@ -39853,14 +39859,14 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
 													// Устанавливаем полученный IPv4-адрес
 													this->_addr.v4(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return static_cast <string> (this->_addr);
 												}
 											} break;
 										}
 										// Устанавливаем полученный IPv4-адрес
 										this->_addr.source(awh_cast <net::attr_net_t *> (server->host.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return static_cast <string> (this->_addr);
 									}
 								}
@@ -39886,7 +39892,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv6-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является одноранговым узлом-источником
@@ -39899,7 +39905,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv6-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является туннелем
@@ -39912,7 +39918,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv6-адрес
 								this->_addr.source(tunnel->source.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является посредником
@@ -39925,7 +39931,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv6-адрес хоста
 								this->_addr.source(mediator->host.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является клиентом
@@ -39938,7 +39944,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv6-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем результат работы функции
+								// Выводим результат
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является сервером
@@ -39976,14 +39982,14 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 													::memcpy(&buffer[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
 													// Устанавливаем полученный IPv6-адрес
 													this->_addr.v6(buffer, net_addr_t::endian_t::LITTLE);
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return static_cast <string> (this->_addr);
 												}
 											} break;
 										}
 										// Устанавливаем полученный IPv6-адрес
 										this->_addr.source(awh_cast <net::attr_net_t *> (server->host.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return static_cast <string> (this->_addr);
 									}
 								}
@@ -40023,7 +40029,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
  * @return        результат выполнения установки
  */
 bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t address, string_view value) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -40127,7 +40133,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											fs->path = make_unique <net::addr_fs_t> ();
 										// Устанавливаем адрес файловой системы события
 										awh_cast <net::addr_fs_t *> (fs->path.get())->address = ::fs::fullpath(value, this->_log);
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return true;
 									// Если адрес не принадлежит к адресу файловой системы
 									} else {
@@ -40204,7 +40210,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											fs->path = make_unique <net::addr_fs_t> ();
 										// Устанавливаем адрес файловой системы события
 										awh_cast <net::addr_fs_t *> (fs->path.get())->address = ::fs::fullpath(value, this->_log);
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return true;
 									// Если адрес не принадлежит к адресу файловой системы
 									} else {
@@ -40675,7 +40681,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												}
 												// Устанавливаем адрес в UNIX-домене
 												awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = string{value};
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return true;
 											// Если адрес не принадлежит к адресу файловой системы
 											} else {
@@ -40726,7 +40732,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												}
 												// Устанавливаем адрес в UNIX-домене
 												awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = string{value};
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return true;
 											// Если адрес не принадлежит к адресу файловой системы
 											} else {
@@ -40974,7 +40980,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Устанавливаем IPv4-адрес в источник сетевого адреса клиента
 												awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 											}
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return result;
 										}
 										// Определяем принадлежность сетевого адреса
@@ -41434,7 +41440,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Устанавливаем IPv6-адрес в источник сетевого адреса клиента
 												awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 											}
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return result;
 										}
 										// Определяем принадлежность сетевого адреса
@@ -42284,7 +42290,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -42296,7 +42302,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
  * @return        результат выполнения извлечения адреса события
  */
 bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -43457,7 +43463,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
 													// Устанавливаем полученный IPv4-адрес
 													awh_cast <net::addr_net_ipv4_t *> (value.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return result;
 												}
 											} break;
@@ -43588,7 +43594,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
 													// Копируем полученный IPv6-адрес во временный буфер
 													::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
-													// Возвращаем результат работы функции
+													// Выводим результат
 													return result;
 												}
 											} break;
@@ -43621,7 +43627,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -43633,7 +43639,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
  * @return        результат выполнения установки
  */
 bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t address, const net::addr_t * value) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -43739,7 +43745,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										fs->path = make_unique <net::addr_fs_t> ();
 									// Устанавливаем адрес файловой системы события
 									awh_cast <net::addr_fs_t *> (fs->path.get())->address = ::fs::fullpath(awh_cast <const net::addr_fs_t *> (value)->address, this->_log);
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если типы адресов не соответствуют
 								} else {
@@ -43785,7 +43791,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										fs->path = make_unique <net::addr_fs_t> ();
 									// Устанавливаем адрес файловой системы события
 									awh_cast <net::addr_fs_t *> (fs->path.get())->address = ::fs::fullpath(awh_cast <const net::addr_fs_t *> (value)->address, this->_log);
-									// Возвращаем результат работы функции
+									// Выводим результат
 									return true;
 								// Если типы адресов не соответствуют
 								} else {
@@ -44163,7 +44169,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											}
 											// Устанавливаем адрес в UNIX-домене
 											awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = awh_cast <const net::addr_fs_t *> (value)->address;
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return true;
 										}
 										// Если узел является сервером
@@ -44183,7 +44189,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											}
 											// Устанавливаем адрес в UNIX-домене
 											awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = awh_cast <const net::addr_fs_t *> (value)->address;
-											// Возвращаем результат работы функции
+											// Выводим результат
 											return true;
 										}
 									}
@@ -44346,7 +44352,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Устанавливаем IPv4-адрес в источник сетевого адреса клиента
 											awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 										}
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 									}
 									// Устанавливаем переданный IP-адрес
@@ -44694,7 +44700,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Устанавливаем IPv6-адрес в источник сетевого адреса клиента
 											awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 										}
-										// Возвращаем результат работы функции
+										// Выводим результат
 										return result;
 									}
 									// Устанавливаем переданный IP-адрес
@@ -44955,7 +44961,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -47258,7 +47264,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
  * @return         пара идентификаторов созданных событий
  */
 std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	std::array <awh::event::id_t, 2> result = {0, 0};
 	/**
 	 * Выполняем перехват ошибок
@@ -47436,7 +47442,7 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -48398,7 +48404,7 @@ bool awh::engine::IO::setSeek(const event::id_t id, const event::seek_t seek, co
 							else fs->offset = offset;
 						} break;
 					}
-					// Возвращаем результат работы функции
+					// Выводим результат
 					return true;
 				}
 				// Если узел не является файловым
@@ -48486,7 +48492,7 @@ uint16_t awh::engine::IO::getOptions(const event::id_t id) const noexcept {
  * @return        результат выполнения установки
  */
 bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -49297,7 +49303,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -49309,7 +49315,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
  * @return       результат выполнения установки
  */
 bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, const bool mode) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -50153,7 +50159,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -51804,7 +51810,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
  * @return    результат выполнения подключения
  */
 bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -51905,7 +51911,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 															if(client->callbacks.connect != nullptr)
 																// Вызываем функцию обратного вызова для подключения
 																client->callbacks.connect(client->id, false);
-															// Возвращаем результат работы функции
+															// Выводим результат
 															return result;
 														}
 													}
@@ -52013,7 +52019,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 														}
 													} break;
 												}
-												// Возвращаем результат работы функции
+												// Выводим результат
 												return result;
 											}
 										#endif
@@ -52713,7 +52719,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -52724,7 +52730,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
  * @return    результат выполнения перевода в режим прослушивания
  */
 bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -53583,7 +53589,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -53633,7 +53639,7 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
  * @return       количество байт данных, отправленных событием
  */
 size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const size_t size) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	size_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -53684,7 +53690,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -53804,7 +53810,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -53813,8 +53819,249 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
+}
+/**
+ * @brief Метод перенаправления объединённых данных в событие-приёмник (splice)
+ *
+ * @note Если на событии-приёмнике установлена функция инъекции (транспорт
+ *       шифрует данные на уровне соединения, напр. QUIC), данные передаются
+ *       ей для отправки собственным потоком; иначе выполняется обычная
+ *       отправка байт в сокет
+ *
+ * @param id     идентификатор события-приёмника
+ * @param buffer буфер перенаправляемых данных
+ * @param size   размер перенаправляемых данных
+ * @return       количество принятых на перенаправление байт
+ */
+size_t awh::engine::IO::relay(const event::id_t id, const void * buffer, const size_t size) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если данные для перенаправления переданы
+		if((buffer != nullptr) && (size > 0)){
+			// Выполняем поиск идентификатора события-приёмника
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				// Функция инъекции объединённых данных события-приёмника
+				engine::callback::inject_t inject = nullptr;
+				{
+					// Создаём охранника узла события
+					::local::guard_t guard(i->second.get());
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если узел является одноранговым узлом
+						case static_cast <uint8_t> (event::node_t::PEER):
+							// Извлекаем функцию инъекции объединённых данных
+							inject = awh_cast <::io::peer_t *> (i->second.get())->callbacks.inject;
+						break;
+						// Если узел является одноранговым узлом-источником (в т.ч. QUIC-сессия)
+						case static_cast <uint8_t> (event::node_t::ORIGIN):
+							// Извлекаем функцию инъекции объединённых данных
+							inject = awh_cast <::io::origin_t *> (i->second.get())->callbacks.inject;
+						break;
+						// Если узел является посредником
+						case static_cast <uint8_t> (event::node_t::MEDIATOR):
+							// Извлекаем функцию инъекции объединённых данных
+							inject = awh_cast <::io::mediator_t *> (i->second.get())->callbacks.inject;
+						break;
+						// Если узел является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Извлекаем функцию инъекции объединённых данных
+							inject = awh_cast <::io::client_t *> (i->second.get())->callbacks.inject;
+						break;
+					}
+				}
+				/**
+				 * Если на событии-приёмнике установлена функция инъекции объединённых данных
+				 * (транспорт шифрует данные на уровне соединения, напр. QUIC) - передаём
+				 * данные ей для отправки собственным потоком, а не пишем сырьём в сокет
+				 */
+				if(inject != nullptr)
+					// Выводим количество принятых на перенаправление байт
+					return (inject(id, static_cast <const uint8_t *> (buffer), size) ? size : 0);
+				// Если функция инъекции объединённых данных события-приёмника не установлена - выполняем обычную отправку байт в сокет
+				else {
+					// Создаём охранника узла события
+					::local::guard_t guard(i->second.get());
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если узел является файловой системой
+						case static_cast <uint8_t> (event::node_t::FILE): {
+							// Получаем текущее значение объекта файловой системы
+							::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
+							// Если запись в файл разрешена
+							if(fs->actions & ::action::WRITE){
+								// Если событие находится не в состоянии паузы
+								if(fs->state.status != event::status_t::PAUSED)
+									// Выполняем отправку данных на узел файловой системой
+									return ::io::send(fs, buffer, size, &this->_eth, this->_log);
+							}
+						} break;
+						// Если узел является пользовательским событием
+						case static_cast <uint8_t> (event::node_t::NOTIFY): {
+							// Если размер данных для отправки пустой
+							if(size == 0)
+								// Завершаем выполнение функции, так как отправлять нечего
+								return 0;
+							// Получаем текущее значение объекта пользовательского события
+							::io::user_t * user = awh_cast <::io::user_t *> (i->second.get());
+							// Результат отправки данных в очередь событий пользователя
+							size_t result = 0;
+							// Добавляем данные в очередь событий пользователя
+							if((result = user->events.push(buffer, size)) > 0){
+								// Создаём событие триггера
+								struct kevent trigger{};
+								// Выполняем установку события триггера
+								EV_SET(&trigger, i->first, EVFILT_USER, 0, NOTE_TRIGGER, 0, user);
+								// Триггерим событие Kqueue
+								if(::kevent(::__awh_kq__, &trigger, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Записываем ошибку в лог
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог
+										this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									#endif
+									// Если функция обратного вызова для вывода записанных данных установлена
+									if(user->callbacks.write != nullptr)
+										// Вызываем функцию обратного вызова для вывода записанных данных
+										user->callbacks.write(user->id, 0);
+								// Если событие триггернуто успешно
+								} else {
+									// Если функция обратного вызова для вывода записанных данных установлена
+									if(user->callbacks.write != nullptr)
+										// Вызываем функцию обратного вызова для вывода записанных данных
+										user->callbacks.write(user->id, size);
+								}
+							// Если данные не добавлены в очередь событий пользователя
+							} else {
+								// Если функция обратного вызова для вывода записанных данных установлена
+								if(user->callbacks.write != nullptr)
+									// Вызываем функцию обратного вызова для вывода записанных данных
+									user->callbacks.write(user->id, 0);
+								// Если установлена функция обратного вызова
+								if(user->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об переполнении очереди
+									user->callbacks.status(user->id, event::status_t::QUEUE_OVERFLOW);
+								// Если функция обратного вызова для вывода доступных данных установлена
+								if(user->callbacks.available != nullptr)
+									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий пользователя
+									user->callbacks.available(user->id, event::status_t::QUEUE_OVERFLOW, user->events.available());
+							}
+							// Выводим результат отправки данных в очередь событий пользователя
+							return result;
+						}
+						// Если узел является межпроцессным взаимодействием
+						case static_cast <uint8_t> (event::node_t::IPC): {
+							// Получаем текущее значение объекта межпроцессного взаимодействия
+							::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
+							// Если записи в сокет разрешено
+							if(ipc->transfer.actions & ::action::WRITE){
+								// Если событие находится не в состоянии паузы
+								if(ipc->state.status != event::status_t::PAUSED)
+									// Выполняем отправку данных на узел межпроцессного взаимодействия
+									return ::io::send(ipc, buffer, size, &this->_eth, this->_log);
+							}
+						} break;
+						// Если узел является одноранговым узлом
+						case static_cast <uint8_t> (event::node_t::PEER): {
+							// Получаем текущее значение объекта однорангового узла
+							::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+							// Если записи в сокет разрешено
+							if(peer->transfer.actions & ::action::WRITE){
+								// Если событие находится не в состоянии паузы
+								if(peer->state.status != event::status_t::PAUSED)
+									// Выполняем отправку данных на одноранговый узел
+									return ::io::send(peer, buffer, size, &this->_eth, this->_log);
+							}
+						} break;
+						// Если узел является одноранговым узлом-источником
+						case static_cast <uint8_t> (event::node_t::ORIGIN): {
+							// Получаем текущее значение объекта однорангового узла-источника
+							::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+							// Если записи в сокет разрешено
+							if(origin->transfer.actions & ::action::WRITE){
+								// Если событие находится не в состоянии паузы
+								if(origin->state.status != event::status_t::PAUSED)
+									// Выполняем отправку данных на одноранговый узел-источника
+									return ::io::send(origin, buffer, size, &this->_eth, this->_log);
+							}
+						} break;
+						// Если узел является туннелем
+						case static_cast <uint8_t> (event::node_t::TUNNEL): {
+							// Получаем текущее значение объекта туннеля
+							::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+							// Если записи в сокет разрешено
+							if(tunnel->actions & ::action::WRITE)
+								// Выполняем отправку данных в узел туннеля
+								return ::io::send(tunnel, buffer, size, &this->_eth, this->_log);
+						} break;
+						// Если узел является посредником
+						case static_cast <uint8_t> (event::node_t::MEDIATOR):
+							// Выполняем отправку данных на связанный узел
+							return this->send(awh_cast <::io::mediator_t *> (i->second.get())->dest, buffer, size);
+						// Если узел является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем текущее значение объекта клиента
+							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+							// Если событие записи разрешено
+							if(client->transfer.actions & ::action::WRITE){
+								// Если событие находится не в состоянии паузы
+								if(client->state.status != event::status_t::PAUSED)
+									// Выполняем отправку данных на узел клиента
+									return ::io::send(client, buffer, size, &this->_eth, this->_log);
+							}
+						} break;
+						// Если узел является сервером
+						case static_cast <uint8_t> (event::node_t::SERVER): {
+							// Получаем текущее значение объекта сервера
+							::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+							// Если записи в сокет разрешено
+							if(server->actions & ::action::WRITE){
+								// Если сервер находится в запущенном состоянии
+								if(server->state.status == event::status_t::LAUNCHED)
+									// Выполняем отправку данных на узел сервера
+									return ::io::send(server, buffer, size, &this->_eth, this->_log);
+							}
+						} break;
+					}
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Функция инъекции не установлена - выполняем обычную отправку байт в сокет
+	return this->send(id, buffer, size);
 }
 /**
  * @brief Метод установки глубины очереди принятия входящих соединений события
@@ -54199,7 +54446,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
  * @return       результат выполнения установки
  */
 bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -54484,7 +54731,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -55086,14 +55333,14 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Устанавливаем максимальное количество хопов для события
 					awh_cast <::io::peer_t *> (i->second.get())->state.delivery = delivery;
-					// Возвращаем результат работы функции
+					// Выводим результат
 					return true;
 				}
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Устанавливаем максимальное количество хопов для события
 					awh_cast <::io::origin_t *> (i->second.get())->state.delivery = delivery;
-					// Возвращаем результат работы функции
+					// Выводим результат
 					return true;
 				}
 				// Если узел является посредником
@@ -55111,14 +55358,14 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Устанавливаем максимальное количество хопов для события
 					awh_cast <::io::client_t *> (i->second.get())->state.delivery = delivery;
-					// Возвращаем результат работы функции
+					// Выводим результат
 					return true;
 				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Устанавливаем максимальное количество хопов для события
 					awh_cast <::io::server_t *> (i->second.get())->state.delivery = delivery;
-					// Возвращаем результат работы функции
+					// Выводим результат
 					return true;
 				}
 				// Для других типов узлов
@@ -55268,7 +55515,7 @@ uint8_t awh::engine::IO::getCountHops(const event::id_t id) const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -55472,7 +55719,7 @@ bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noe
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -55521,7 +55768,7 @@ awh::event::hops_t awh::engine::IO::getHops(const event::id_t id) const noexcept
  * @return     результат работы функции
  */
 bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -55620,7 +55867,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) no
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -58200,7 +58447,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
  * @return      результат выполнения установки
  */
 bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -58271,7 +58518,7 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -58281,7 +58528,7 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
  * @return   результат выполнения приостановки
  */
 bool awh::engine::IO::pause(const event::id_t id) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -58602,7 +58849,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -58612,7 +58859,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
  * @return   результат выполнения возобновления
  */
 bool awh::engine::IO::resume(const event::id_t id) noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -59041,7 +59288,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -59665,7 +59912,7 @@ void awh::engine::IO::clear() noexcept {
  * @return результат выполнения операции
  */
 bool awh::engine::IO::kick() noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
@@ -59690,7 +59937,7 @@ bool awh::engine::IO::kick() noexcept {
 			#endif
 		}
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -59699,7 +59946,7 @@ bool awh::engine::IO::kick() noexcept {
  * @return результат выполнения инициализации
  */
 bool awh::engine::IO::initialize() noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	// Если Kqueue ещё не инициализирован
 	if(::__awh_kq__ == net::invalid_socket_t){
@@ -59748,7 +59995,7 @@ bool awh::engine::IO::initialize() noexcept {
 			#endif
 		}
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -59757,7 +60004,7 @@ bool awh::engine::IO::initialize() noexcept {
  * @return результат выполнения реинициализации
  */
 bool awh::engine::IO::reinitialize() noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
@@ -60342,7 +60589,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 			}
 		}
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -60351,7 +60598,7 @@ bool awh::engine::IO::reinitialize() noexcept {
  * @return результат выполнения деинициализации
  */
 bool awh::engine::IO::deinitialize() noexcept {
-	// Переменная результата
+	// Результат работы функции
 	bool result = false;
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
@@ -60641,7 +60888,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 			::timer2::clear();
 		break;
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -60707,7 +60954,7 @@ void awh::engine::IO::setInternalTimer(const event::timer_t timer) noexcept {
  * @return   размер файла
  */
 size_t awh::engine::IO::size(const event::id_t id) const noexcept {
-	// Переменная результата
+	// Результат работы функции
 	size_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -60799,7 +61046,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -61280,7 +61527,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			this->_log->print("You cannot poll for network and filesystem events until engine AWH is initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -61820,6 +62067,84 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noe
 					#else
 						// Записываем ошибку в лог
 						this->_log->print("A change callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки функции обратного вызова инъекции объединённых данных (splice)
+ *
+ * @param id идентификатор события
+ * @param cb функция обратного вызова
+ */
+void awh::engine::IO::on(const event::id_t id, engine::callback::inject_t cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Устанавливаем функцию обратного вызова инъекции объединённых данных
+					awh_cast <::io::peer_t *> (i->second.get())->callbacks.inject = ::move(cb);
+				break;
+				// Если узел является одноранговым узлом-источником (в т.ч. QUIC-сессия)
+				case static_cast <uint8_t> (event::node_t::ORIGIN):
+					// Устанавливаем функцию обратного вызова инъекции объединённых данных
+					awh_cast <::io::origin_t *> (i->second.get())->callbacks.inject = ::move(cb);
+				break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR):
+					// Устанавливаем функцию обратного вызова инъекции объединённых данных
+					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.inject = ::move(cb);
+				break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова инъекции объединённых данных
+					awh_cast <::io::client_t *> (i->second.get())->callbacks.inject = ::move(cb);
+				break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug("A data inject callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("A data inject callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
 			}

@@ -851,9 +851,9 @@ if (${CMAKE_BUILD_SAMPLES})
     option(CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE "Build SOCKS5 Protocol app sample" ON)
 
     # Устанавливаем имя клиентского приложения работы с протоколом QUIC
-    SET(QUIC_CLIENT_APP_PROTO_NAME proto-quic-client)
+    SET(QUIC_CLIENT_APP_PROTO_NAME client-quic)
     # Устанавливаем имя серверного приложения работы с протоколом QUIC
-    SET(QUIC_SERVER_APP_PROTO_NAME proto-quic-server)
+    SET(QUIC_SERVER_APP_PROTO_NAME server-quic)
     # Указываем что нужно собрать приложения работы с протоколом QUIC
     option(CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE "Build QUIC Protocol app sample" ON)
 
@@ -1393,9 +1393,9 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample QUIC Protocol: Yes\n")
         # Выполняем создание приложения работы с QUIC клиентом
-        add_sample(${QUIC_CLIENT_APP_PROTO_NAME} sample/proto/quic/client.cpp proto/quic)
+        add_sample(${QUIC_CLIENT_APP_PROTO_NAME} sample/client/quic.cpp client)
         # Выполняем создание приложения работы с QUIC сервером
-        add_sample(${QUIC_SERVER_APP_PROTO_NAME} sample/proto/quic/server.cpp proto/quic)
+        add_sample(${QUIC_SERVER_APP_PROTO_NAME} sample/server/quic.cpp server)
     # Если не нужно собирать семплы для работы с протоколом QUIC
     else()
         # Выводим сообщение о сборке семпла

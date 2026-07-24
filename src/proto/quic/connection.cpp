@@ -4327,11 +4327,70 @@ awh::quic::status_t awh::quic::Connection::peer(quic::params::params_t & params,
 /**
  * @brief Метод установки адреса удалённого эндпоинта (RFC 9000 §8.1.4)
  *
- * @param address опаковое представление адреса удалённого эндпоинта
+ * @param addr структура сетевого адреса удалённого эндпоинта
+ * @param port порт удалённого эндпоинта
  */
-void awh::quic::Connection::address(string_view address) noexcept {
-	// Устанавливаем опаковое представление адреса удалённого эндпоинта
-	this->_core.address.assign(address);
+void awh::quic::Connection::address(const net::addr_t * addr, const uint16_t port) noexcept {
+	// Сбрасываем ранее установленное опаковое представление адреса эндпоинта
+	this->_core.address.clear();
+	// Если структура сетевого адреса не передана — оставляем представление пустым
+	if(addr == nullptr)
+		return;
+	/**
+	 * Формируем опаковое сравнимое представление пути из чистых байт адреса и порта.
+	 * Порядок следования байт не важен: значение только сравнивается само с собой
+	 * для детекта миграции (RFC 9000 §8.1.4) и подмешивается в подпись Retry-токена.
+	 */
+	switch(addr->size){
+		// Для сетевого адреса IPv4
+		case 4: {
+			// Извлекаем IPv4-адрес в чистом виде
+			const uint32_t ip = static_cast <const net::addr_net_ipv4_t *> (addr)->address;
+			// Дописываем байты IPv4-адреса в опаковое представление
+			this->_core.address.append(reinterpret_cast <const char *> (&ip), sizeof(ip));
+		} break;
+		// Для сетевого адреса IPv6
+		case 16: {
+			// Получаем ссылку на IPv6-адрес в чистом виде
+			const auto & ip = static_cast <const net::addr_net_ipv6_t *> (addr)->address;
+			// Дописываем байты IPv6-адреса в опаковое представление
+			this->_core.address.append(reinterpret_cast <const char *> (ip.data()), ip.size());
+		} break;
+		// Для неизвестного размера адреса опаковое представление не формируем
+		default: return;
+	}
+	// Дописываем порт эндпоинта в опаковое представление пути
+	this->_core.address.append(reinterpret_cast <const char *> (&port), sizeof(port));
+}
+/**
+ * @brief Метод установки адреса удалённого эндпоинта (RFC 9000 §8.1.4)
+ *
+ * @param attr структура атрибутов подключения удалённого эндпоинта
+ */
+void awh::quic::Connection::address(const net::attr_t * attr) noexcept {
+	// Если структура атрибутов подключения не передана — сбрасываем адрес эндпоинта
+	if(attr == nullptr){
+		// Сбрасываем ранее установленное опаковое представление адреса эндпоинта
+		this->_core.address.clear();
+		// Выходим из метода
+		return;
+	}
+	/**
+	 * Определяем разновидность атрибутов подключения
+	 */
+	switch(static_cast <uint8_t> (attr->type)){
+		// Для сетевого адреса IPv4
+		case static_cast <uint8_t> (net::type_t::IPV4):
+		// Для сетевого адреса IPv6
+		case static_cast <uint8_t> (net::type_t::IPV6): {
+			// Получаем сетевые атрибуты подключения удалённого эндпоинта
+			const net::attr_net_t * network = static_cast <const net::attr_net_t *> (attr);
+			// Устанавливаем адрес удалённого эндпоинта из штатной структуры сетевого адреса и порта
+			this->address(network->ip.get(), network->port);
+		} break;
+		// Для прочих разновидностей атрибутов опаковое представление адреса не формируем
+		default: this->_core.address.clear();
+	}
 }
 /**
  * @brief Метод установки проверки адреса клиента через пакет Retry (RFC 9000 §8.1.2)
@@ -4450,6 +4509,19 @@ awh::quic::status_t awh::quic::Connection::connect() noexcept {
 	if(!this->_crypto.handshake.params(this->_transport.local))
 		// Выводим отрицательный результат
 		return status_t::ERROR;
+	/**
+	 * Подставляем кэшированный билет возобновления сессии из кодера по ключу
+	 * сервера: повторное соединение с тем же сервером обходится без полного
+	 * хендшейка (RFC 9001 §4.6). Возобновление прозрачно для вызывающего кода
+	 */
+	{
+		// Кэшированный билет возобновления сессии
+		string ticket;
+		// Если билет возобновления найден в кэше кодера по ключу сервера
+		if(this->_coder.session(this->_ctx, this->sessionKey(), ticket))
+			// Подставляем билет возобновления соединению
+			this->session(ticket);
+	}
 	// Выполняем начало хендшейка (формируется ClientHello)
 	if(this->_crypto.handshake.start() != status_t::OK)
 		// Выводим отрицательный результат
@@ -5260,6 +5332,12 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 	this->pull();
 	// Выводим ключи следующей фазы после подтверждения хендшейка (RFC 9001 §6)
 	this->prepare();
+	/**
+	 * Сохраняем присланный сервером билет возобновления в кэш кодера: билет
+	 * приходит уже после установления соединения, поэтому проверяется на каждой
+	 * датаграмме, пока не будет получен и сохранён (RFC 9001 §4.6)
+	 */
+	this->persist();
 	// Выводим положительный результат
 	return status_t::OK;
 }
@@ -6685,6 +6763,41 @@ bool awh::quic::Connection::rotate() noexcept {
 	return true;
 }
 /**
+ * @brief Метод формирования ключа сервера для кэша билетов возобновления (RFC 9001 §4.6)
+ *
+ * @return ключ сервера для кэша билетов возобновления
+ */
+string awh::quic::Connection::sessionKey() const noexcept {
+	// Извлекаем доменное имя сервера (SNI) шаблона контекста безопасности
+	const string sni = this->_coder.serverNameIndication(this->_ctx);
+	// Если доменное имя сервера установлено - используем его как ключ сервера
+	if(!sni.empty())
+		// Выводим доменное имя сервера в качестве ключа
+		return sni;
+	// Иначе используем опаковое представление адреса удалённого эндпоинта
+	return this->_core.address;
+}
+/**
+ * @brief Метод сохранения полученного билета возобновления в кэш кодера (RFC 9001 §4.6)
+ *
+ */
+void awh::quic::Connection::persist() noexcept {
+	// Если билет возобновления уже сохранён либо эндпоинт не является клиентом
+	if(this->_persisted || (this->_core.endpoint != endpoint_t::CLIENT))
+		// Выходим из метода
+		return;
+	// Извлекаем сериализованный билет возобновления сессии
+	const string session = this->session();
+	// Если билет возобновления сервером ещё не прислан
+	if(session.empty())
+		// Выходим из метода
+		return;
+	// Сохраняем билет возобновления в кэш кодера по ключу сервера
+	this->_coder.session(this->_ctx, this->sessionKey(), session);
+	// Отмечаем билет возобновления сохранённым (сохранение выполняется однократно)
+	this->_persisted = true;
+}
+/**
  * @brief Метод извлечения возобновляемой сессии соединения (RFC 9001 §4.6)
  *
  * @return сериализованная сессия (пусто - сессия недоступна)
@@ -7293,4 +7406,4 @@ const awh::quic::handshake_t & awh::quic::Connection::handshake() const noexcept
  * @param log      объект для работы с логами
  */
 awh::quic::Connection::Connection(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept :
- _core(endpoint), _amplify(endpoint), _log(log), _crypto(endpoint, ctx, coder, log) {}
+ _core(endpoint), _amplify(endpoint), _log(log), _ctx(ctx), _persisted(false), _coder(coder), _crypto(endpoint, ctx, coder, log) {}

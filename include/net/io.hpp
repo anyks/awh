@@ -681,6 +681,20 @@ namespace awh {
 				 * @return       количество байт данных, отправленных событием
 				 */
 				size_t send(const event::id_t id, const void * buffer, const size_t size) noexcept;
+				/**
+				 * @brief Метод перенаправления объединённых данных в событие-приёмник (splice)
+				 *
+				 * @note Если на событии-приёмнике установлена функция инъекции (транспорт
+				 *       шифрует данные на уровне соединения, напр. QUIC), данные передаются
+				 *       ей для отправки собственным потоком; иначе выполняется обычная
+				 *       отправка байт в сокет
+				 *
+				 * @param id     идентификатор события-приёмника
+				 * @param buffer буфер перенаправляемых данных
+				 * @param size   размер перенаправляемых данных
+				 * @return       количество принятых на перенаправление байт
+				 */
+				size_t relay(const event::id_t id, const void * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод установки глубины очереди принятия входящих соединений события
@@ -1026,6 +1040,13 @@ namespace awh {
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::vnode_t cb) noexcept;
+				/**
+				 * @brief Метод установки функции обратного вызова инъекции объединённых данных (splice)
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, engine::callback::inject_t cb) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обновления статуса события
 				 *

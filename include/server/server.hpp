@@ -22,6 +22,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../units/dns.hpp"
+#include "../units/quic.hpp"
 #include "../units/server.hpp"
 #include "../net/tls/coder.hpp"
 
@@ -99,8 +100,10 @@ namespace awh {
 			typedef struct __AWH_SHARED_EXPORT__ Unit {
 				// Объект работы с сетевыми адресами
 				net_addr_t addr;
-				// Объект юнита сервера
+				// Объект юнита сервера (транспорты TCP/UDP/SCTP и прикладные протоколы поверх них)
 				unit::server_t server;
+				// Объект юнита сервера QUIC (выбирается при инициализации транспортом protocol_t::QUIC)
+				unit::quic_server_t quic;
 				/**
 				 * @brief Конструктор
 				 *
@@ -128,10 +131,45 @@ namespace awh {
 			// Объект юнита сервера
 			unique_ptr <unit_t> _unit;
 		protected:
+			// Протокол транспорта сервера (выбирается при инициализации, определяет обработку данных)
+			event::protocol_t _protocol;
+		protected:
+			// Тип сокета транспорта сервера (STREAM/DATAGRAM/SEQPACKET - определяет доступность датаграмм)
+			event::type_t _type;
+		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
 			// Объект работы с логами
 			const log_t * _log;
+		protected:
+			/**
+			 * @brief Метод проверки рабочего состояния сервера
+			 *
+			 * @note Проверяет рабочее состояние активного юнита транспорта, выбираемого
+			 *       по протоколу (QUIC - выделенный юнит, остальные транспорты - общий
+			 *       юнит сервера)
+			 *
+			 * @return результат проверки рабочего состояния
+			 */
+			bool active() const noexcept;
+		protected:
+			/**
+			 * @brief Методы диспетчеризации к активному юниту транспорта
+			 *
+			 * @note Транспорт выбирается по протоколу сервера: для protocol_t::QUIC
+			 *       работает выделенный юнит сервера QUIC, для остальных транспортов -
+			 *       общий юнит сервера. Событием прослушивания выступает _id.eid
+			 */
+			bool commitUnit() noexcept;
+			bool launchUnit() noexcept;
+			bool listenUnit(const uint32_t max) noexcept;
+			void startUnit() noexcept;
+			void stopUnit() noexcept;
+			event::family_t familyUnit() const noexcept;
+			event::status_t statusUnit() const noexcept;
+			string getAddressUnit(const event::address_t address) const noexcept;
+			uint16_t getPortUnit() const noexcept;
+			bool setAddressUnit(const event::address_t address, string_view value) noexcept;
 		protected:
 			/**
 			 * @brief Метод изменения статуса сервера
@@ -148,6 +186,39 @@ namespace awh {
 			 * @param cid идентификатор клиента
 			 */
 			virtual void accept(const event::id_t eid, const event::id_t cid) noexcept;
+			/**
+			 * @brief Метод обработки установленного соединения QUIC (RFC 9000)
+			 *
+			 * @note Транслируется приложению как принятие нового соединения; рукопожатие
+			 *       TLS 1.3 ведёт само соединение QUIC, поэтому слой TLS-over-stream
+			 *       обходится (RFC 9001)
+			 *
+			 * @param cid идентификатор сессии соединения
+			 */
+			virtual void opened(const event::id_t cid) noexcept;
+			/**
+			 * @brief Метод обработки собранных данных потока соединения QUIC
+			 *
+			 * @param cid  идентификатор сессии соединения
+			 * @param sid  идентификатор потока приложения
+			 * @param data собранные данные потока
+			 * @param fin  флаг завершения потока удалённым эндпоинтом
+			 */
+			virtual void stream(const event::id_t cid, const uint64_t sid, const string & data, const bool fin) noexcept;
+			/**
+			 * @brief Метод обработки принятой датаграммы приложения QUIC (RFC 9221)
+			 *
+			 * @param cid  идентификатор сессии соединения
+			 * @param data данные принятой датаграммы
+			 */
+			virtual void message(const event::id_t cid, const string & data) noexcept;
+			/**
+			 * @brief Метод обработки завершения соединения QUIC (RFC 9000 §10)
+			 *
+			 * @param cid   идентификатор сессии соединения
+			 * @param error код ошибки завершения соединения
+			 */
+			virtual void closed(const event::id_t cid, const quic::error_t error) noexcept;
 			/**
 			 * @brief Метод обработки информационных метаданных о дейтаграммном пакете
 			 *
@@ -493,6 +564,75 @@ namespace awh {
 			 * @return       количество байт данных, отправленных клиенту
 			 */
 			virtual size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
+		public:
+			/**
+			 * @brief Метод открытия потока приложения соединения QUIC
+			 *
+			 * @param cid  идентификатор сессии соединения
+			 * @param mode режим однонаправленного потока
+			 * @return     идентификатор открытого потока
+			 */
+			virtual uint64_t open(const event::id_t cid, const bool mode = false) noexcept;
+			/**
+			 * @brief Метод отправки данных в поток приложения соединения QUIC
+			 *
+			 * @param cid    идентификатор сессии соединения
+			 * @param sid    идентификатор потока приложения
+			 * @param buffer буфер данных для отправки
+			 * @param size   размер данных для отправки
+			 * @param fin    флаг завершения потока
+			 * @return       количество байт данных, поставленных в очередь отправки
+			 */
+			virtual size_t send(const event::id_t cid, const uint64_t sid, const void * buffer, const size_t size, const bool fin = false) noexcept;
+			/**
+			 * @brief Метод отправки датаграммы приложения соединению QUIC (RFC 9221)
+			 *
+			 * @param cid    идентификатор сессии соединения
+			 * @param buffer буфер данных датаграммы для отправки
+			 * @param size   размер данных датаграммы для отправки
+			 * @return       результат отправки
+			 */
+			virtual bool datagram(const event::id_t cid, const void * buffer, const size_t size) noexcept;
+			/**
+			 * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
+			 *
+			 * @param cid идентификатор сессии соединения
+			 * @return    предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
+			 */
+			virtual size_t datagrams(const event::id_t cid) const noexcept;
+			/**
+			 * @brief Метод завершения соединения QUIC приложением (RFC 9000 §10.2)
+			 *
+			 * @param cid    идентификатор сессии соединения
+			 * @param code   код ошибки приложения
+			 * @param reason человекочитаемая причина завершения
+			 */
+			virtual void close(const event::id_t cid, const uint64_t code = 0, string_view reason = "") noexcept;
+		public:
+			/**
+			 * @brief Метод установки локальных транспортных параметров соединений QUIC (RFC 9000 §7.4)
+			 *
+			 * @note Применяется только к транспорту QUIC. Задаётся до запуска сервера
+			 *
+			 * @param params локальные транспортные параметры
+			 */
+			virtual void params(const quic::params::params_t & params) noexcept;
+			/**
+			 * @brief Метод установки проверки адреса клиента через пакет Retry QUIC (RFC 9000 §8.1.2)
+			 *
+			 * @note Применяется только к транспорту QUIC. Задаётся до запуска сервера
+			 *
+			 * @param mode режим проверки адреса клиента
+			 */
+			virtual void retry(const bool mode) noexcept;
+			/**
+			 * @brief Метод установки уведомления о перегрузке пути QUIC (RFC 9000 §13.4)
+			 *
+			 * @note Применяется только к транспорту QUIC. Задаётся до запуска сервера
+			 *
+			 * @param mode режим уведомления о перегрузке пути
+			 */
+			virtual void ecn(const bool mode) noexcept;
 		public:
 			/**
 			 * @brief Метод объединения данных между сервером и другим событием
@@ -922,6 +1062,44 @@ namespace awh {
 			 * @return список дочерних процессов
 			 */
 			virtual unordered_set <pid_t> clusterWorkers() const noexcept;
+		public:
+			/**
+			 * @brief Метод установки диапазона портов для выделения дочерним процессам кластера
+			 *
+			 * @note Применяется только к транспорту QUIC: родительский процесс раздаёт
+			 *       порты из диапазона дочерним процессам, каждый из которых поднимает
+			 *       собственный сокет сервера. На Linux/FreeBSD порт может повторяться
+			 *       (процессы делят его через SO_REUSEPORT), на прочих системах порт
+			 *       выделяется дочернему процессу монопольно. Пустой диапазон означает
+			 *       использование единственного порта прослушивания
+			 *
+			 * @param begin начальный порт диапазона (0 - использовать порт прослушивания)
+			 * @param end   конечный порт диапазона (0 - использовать порт прослушивания)
+			 */
+			virtual void clusterRange(const uint16_t begin, const uint16_t end) noexcept;
+		public:
+			/**
+			 * @brief Метод получения списка дочерних процессов, не получивших порт прослушивания
+			 *
+			 * @note Актуально только для транспорта QUIC на системах, где порт выделяется
+			 *       дочернему процессу монопольно (macOS/Solaris/OpenBSD/NetBSD): при нехватке
+			 *       портов диапазона часть дочерних процессов остаётся без сокета сервера.
+			 *       Их порт можно доотправить вручную методом clusterAssign()
+			 *
+			 * @return список идентификаторов дочерних процессов, работающих в холостую
+			 */
+			virtual unordered_set <pid_t> clusterIdle() const noexcept;
+			/**
+			 * @brief Метод отправки порта прослушивания конкретному дочернему процессу кластера
+			 *
+			 * @note Применяется только к транспорту QUIC: позволяет вручную поднять сервер
+			 *       на дочернем процессе, которому при автоматической раздаче порт не достался
+			 *
+			 * @param pid  идентификатор дочернего процесса
+			 * @param port порт прослушивания для дочернего процесса
+			 * @return     результат отправки порта дочернему процессу
+			 */
+			virtual bool clusterAssign(const pid_t pid, const uint16_t port) noexcept;
 		public:
 			/**
 			 * @brief Метод отправки сообщения родительскому процессу

@@ -22,8 +22,10 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../units/dns.hpp"
+#include "../units/quic.hpp"
 #include "../units/client.hpp"
 #include "../net/tls/coder.hpp"
+#include "../proto/quic/connection.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -80,8 +82,10 @@ namespace awh {
 			typedef struct __AWH_SHARED_EXPORT__ Unit {
 				// Объект работы с сетевыми адресами
 				net_addr_t addr;
-				// Объект юнита клиента
+				// Объект юнита клиента (транспорты TCP/UDP/SCTP и прикладные протоколы поверх них)
 				unit::client_t client;
+				// Объект юнита клиента QUIC (выбирается при инициализации транспортом protocol_t::QUIC)
+				unit::quic_client_t quic;
 				/**
 				 * @brief Конструктор
 				 *
@@ -109,10 +113,62 @@ namespace awh {
 			// Объект транспортного уровня безопасности
 			tls::coder_t * _coder;
 		protected:
+			// Протокол транспорта клиента (выбирается при инициализации, определяет обработку данных)
+			event::protocol_t _protocol;
+		protected:
+			// Тип сокета транспорта клиента (STREAM/DATAGRAM/SEQPACKET - определяет доступность датаграмм)
+			event::type_t _type;
+		protected:
+			// Идентификатор потока по умолчанию для отправки без явного sid (INVALID_STREAM - не открыт)
+			uint64_t _stream;
+		protected:
+			/**
+			 * Флаг завершения отправки данных потоковым транспортом: устанавливается
+			 * при отправке с флагом fin, а по факту записи данных в сокет соединение
+			 * завершается (для потоковых транспортов клиент всегда единственный)
+			 */
+			bool _fin;
+		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
 			// Объект работы с логами
 			const log_t * _log;
+		protected:
+			/**
+			 * @brief Метод проверки рабочего состояния клиента
+			 *
+			 * @note Проверяет рабочее состояние DNS-резолвера либо активного юнита
+			 *       транспорта, выбираемого по протоколу (QUIC - выделенный юнит,
+			 *       остальные транспорты - общий юнит клиента)
+			 *
+			 * @return результат проверки рабочего состояния
+			 */
+			bool active() const noexcept;
+		protected:
+			/**
+			 * @brief Методы диспетчеризации к активному юниту транспорта
+			 *
+			 * @note Транспорт выбирается по протоколу клиента: для protocol_t::QUIC
+			 *       работает выделенный юнит клиента QUIC, для остальных транспортов -
+			 *       общий юнит клиента. Событием во всех случаях выступает _id.eid
+			 */
+			bool commitUnit() noexcept;
+			bool launchUnit() noexcept;
+			void startUnit() noexcept;
+			void stopUnit() noexcept;
+			void destroyUnit() noexcept;
+			bool pauseUnit() noexcept;
+			bool resumeUnit() noexcept;
+			bool connectUnit() noexcept;
+			bool disconnectUnit() noexcept;
+			bool recvUnit() noexcept;
+			size_t sendUnit(const void * buffer, const size_t size) noexcept;
+			event::family_t familyUnit() const noexcept;
+			event::status_t statusUnit() const noexcept;
+			string getTargetUnit() const noexcept;
+			uint16_t getTargetPortUnit() const noexcept;
+			bool setTargetUnit(string_view target) noexcept;
+			bool setTargetUnit(const net::addr_t * target) noexcept;
 		protected:
 			/**
 			 * @brief Метод изменения статуса клиента
@@ -165,6 +221,35 @@ namespace awh {
 			 * @param size   размер данных клиента
 			 */
 			virtual void read(const event::id_t, const uint8_t * buffer, const size_t size) noexcept;
+			/**
+			 * @brief Метод обработки собранных данных потока соединения QUIC
+			 *
+			 * @param      идентификатор события
+			 * @param sid  идентификатор потока приложения
+			 * @param data собранные данные потока
+			 * @param fin  флаг завершения потока удалённым эндпоинтом
+			 */
+			virtual void stream(const event::id_t, const uint64_t sid, const string & data, const bool fin) noexcept;
+			/**
+			 * @brief Метод обработки принятой датаграммы приложения QUIC (RFC 9221)
+			 *
+			 * @param      идентификатор события
+			 * @param data данные принятой датаграммы
+			 */
+			virtual void message(const event::id_t, const string & data) noexcept;
+			/**
+			 * @brief Метод обработки готовности к отправке ранних данных QUIC (RFC 9001 §4.6)
+			 *
+			 * @param идентификатор события
+			 */
+			virtual void earlyData(const event::id_t) noexcept;
+			/**
+			 * @brief Метод обработки завершения соединения QUIC (RFC 9000 §10)
+			 *
+			 * @param       идентификатор события
+			 * @param error код ошибки завершения соединения
+			 */
+			virtual void closed(const event::id_t, const quic::error_t error) noexcept;
 			/**
 			 * @brief Метод обработки события ошибки
 			 *
@@ -321,6 +406,77 @@ namespace awh {
 			 * @return       количество байт данных, отправленных серверу
 			 */
 			virtual size_t send(const void * buffer, const size_t size) noexcept;
+		public:
+			/**
+			 * @brief Метод установки локальных транспортных параметров соединения QUIC (RFC 9000 §7.4)
+			 *
+			 * @param params локальные транспортные параметры
+			 */
+			virtual void params(const quic::params::params_t & params) noexcept;
+			/**
+			 * @brief Метод установки уведомления о перегрузке пути QUIC (RFC 9000 §13.4)
+			 *
+			 * @param mode режим уведомления о перегрузке пути
+			 */
+			virtual void ecn(const bool mode) noexcept;
+		public:
+			/**
+			 * @brief Метод извлечения сохранённого токена проверки адреса QUIC (RFC 9000 §8.1.3)
+			 *
+			 * @return токен проверки адреса (пусто - токен не получен)
+			 */
+			virtual const string & token() const noexcept;
+			/**
+			 * @brief Метод установки сохранённого токена проверки адреса QUIC (RFC 9000 §8.1.3)
+			 *
+			 * @param token токен проверки адреса
+			 */
+			virtual void token(string_view token) noexcept;
+			/**
+			 * @brief Метод проверки принятия ранних данных удалённым сервером QUIC (RFC 9001 §4.6.2)
+			 *
+			 * @return результат проверки
+			 */
+			virtual bool early() const noexcept;
+		public:
+			/**
+			 * @brief Метод открытия потока данных соединения (QUIC-поток; для потоковых транспортов - единственный поток)
+			 *
+			 * @param mode режим однонаправленного потока
+			 * @return     идентификатор открытого потока
+			 */
+			virtual uint64_t open(const bool mode = false) noexcept;
+			/**
+			 * @brief Метод отправки данных в поток соединения (QUIC/HTTP2-поток либо единственный поток потокового транспорта)
+			 *
+			 * @param sid    идентификатор потока
+			 * @param buffer буфер данных для отправки
+			 * @param size   размер данных для отправки
+			 * @param fin    флаг завершения потока
+			 * @return       количество байт данных, поставленных в очередь отправки
+			 */
+			virtual size_t send(const uint64_t sid, const void * buffer, const size_t size, const bool fin = false) noexcept;
+			/**
+			 * @brief Метод отправки датаграммы соединению (QUIC DATAGRAM по RFC 9221 либо дейтаграмма UDP)
+			 *
+			 * @param buffer буфер данных датаграммы для отправки
+			 * @param size   размер данных датаграммы для отправки
+			 * @return       результат отправки
+			 */
+			virtual bool datagram(const void * buffer, const size_t size) noexcept;
+			/**
+			 * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
+			 *
+			 * @return предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
+			 */
+			virtual size_t datagrams() const noexcept;
+			/**
+			 * @brief Метод завершения соединения (QUIC CONNECTION_CLOSE по RFC 9000 §10.2 либо уничтожение события для остальных транспортов)
+			 *
+			 * @param code   код ошибки приложения
+			 * @param reason человекочитаемая причина завершения
+			 */
+			virtual void close(const uint64_t code = 0, string_view reason = "") noexcept;
 		public:
 			/**
 			 * @brief Метод объединения данных между клиентом и другим событием

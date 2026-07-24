@@ -23,6 +23,7 @@
 #include <shared_mutex>
 #include <net/event.hpp>
 #include <unordered_set>
+#include <unordered_map>
 
 /**
  * Заголовочные файлы OpenSSL
@@ -597,12 +598,13 @@ namespace {
 	 *
 	 */
 	typedef struct Contex_Template_Security : public member_t {
-		SSL_CTX * ctx;        // Объект SSL контекста
-		X509_CRL * crl;       // Объект CRL-файла сертификата
-		string host;          // Объект хоста сервера
-		alpn_t alpn;          // Объект ALPN-протоколов
-		callback_t callback;  // Функции обратных вызовов
-		vector <uint8_t> ech; // ECHConfigList для клиентов / байты приватного HPKE ключа для серверов
+		SSL_CTX * ctx;                           // Объект SSL контекста
+		X509_CRL * crl;                          // Объект CRL-файла сертификата
+		string host;                             // Объект хоста сервера
+		alpn_t alpn;                             // Объект ALPN-протоколов
+		callback_t callback;                     // Функции обратных вызовов
+		vector <uint8_t> ech;                    // ECHConfigList для клиентов / байты приватного HPKE ключа для серверов
+		unordered_map <string, string> sessions; // Кэш билетов возобновления сессии по ключу сервера (SNI/адрес)
 		/**
 		 * @brief Конструктор
 		 *
@@ -5269,6 +5271,103 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, sni), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод извлечения кэшированного билета возобновления сессии (RFC 9001 §4.6)
+ *
+ * @note Билеты возобновления хранятся на шаблонном контексте безопасности
+ *       по ключу сервера (SNI либо адрес эндпоинта), что делает
+ *       возобновление сессии прозрачным для вызывающего кода
+ *
+ * @param id      идентификатор шаблонного контекста безопасности
+ * @param key     ключ сервера (SNI либо адрес эндпоинта)
+ * @param session объект для извлечения сериализованного билета возобновления
+ * @return        результат извлечения (билет найден)
+ */
+bool awh::tls::Coder::session(const id_t id, string_view key, string & session) const noexcept {
+	// Сбрасываем результат извлечения билета возобновления
+	session.clear();
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден и является шаблонным контекстом безопасности
+		if((pin != nullptr) && (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTS)){
+			// Выполняем извлечение объекта шаблона контекста безопасности
+			auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+			// Выполняем поиск билета возобновления по ключу сервера
+			auto i = member->sessions.find(string{key});
+			// Если билет возобновления найден
+			if(i != member->sessions.end())
+				// Возвращаем сохранённый билет возобновления сессии
+				session = i->second;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, key, session), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат извлечения билета возобновления сессии
+	return !session.empty();
+}
+/**
+ * @brief Метод сохранения билета возобновления сессии в кэш (RFC 9001 §4.6)
+ *
+ * @param id      идентификатор шаблонного контекста безопасности
+ * @param key     ключ сервера (SNI либо адрес эндпоинта)
+ * @param session сериализованный билет возобновления для сохранения
+ */
+void awh::tls::Coder::session(const id_t id, string_view key, string_view session) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден и является шаблонным контекстом безопасности
+		if((pin != nullptr) && (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTS)){
+			// Выполняем извлечение объекта шаблона контекста безопасности
+			auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+			// Если билет возобновления пуст - удаляем запись из кэша по ключу сервера
+			if(session.empty())
+				// Удаляем билет возобновления из кэша по ключу сервера
+				member->sessions.erase(string{key});
+			// Сохраняем билет возобновления в кэш по ключу сервера
+			else member->sessions[string{key}].assign(session.begin(), session.end());
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, key, session), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */

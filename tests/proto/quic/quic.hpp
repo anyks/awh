@@ -20,6 +20,7 @@
  */
 #include <string>
 #include <vector>
+#include <memory>
 #include <cstdint>
 
 /**
@@ -28,6 +29,7 @@
 #include "../../main.hpp"
 #include "../../../include/sys/fmk.hpp"
 #include "../../../include/sys/log.hpp"
+#include "../../../include/net/addr.hpp"
 #include "../../../include/net/tls/coder.hpp"
 #include "../../../include/proto/quic/quic.hpp"
 #include "../../../include/proto/quic/frame.hpp"
@@ -35,10 +37,25 @@
 #include "../../../include/proto/quic/varint.hpp"
 
 /**
+ * @brief Предварительное объявление класса тестового окружения транспортной безопасности
+ *
+ */
+class QuicSecurity;
+
+/**
  * @brief Класс фикстуры для тестов подмодуля протокола QUIC
  *
  */
 class QuicFixture : public testing::Test {
+	protected:
+		// Объект фреймворка
+		std::unique_ptr <awh::fmk_t> _fmk;
+		// Объект для работы с логами
+		std::unique_ptr <awh::log_t> _log;
+		// Объект разбора сетевых адресов
+		std::unique_ptr <awh::net_addr_t> _addr;
+		// Тестовое окружение транспортной безопасности
+		std::unique_ptr <QuicSecurity> _security;
 	public:
 		/**
 		 * @brief Метод настройки тестового окружения
@@ -50,6 +67,18 @@ class QuicFixture : public testing::Test {
 		 *
 		 */
 		void TearDown();
+	protected:
+		/**
+		 * @brief Метод формирования опакового представления пути удалённого эндпоинта
+		 *
+		 * @note Повторяет формирование опакового пути в connection_t::address() (чистые
+		 *       байты адреса и порта) для сверки с результатом connection_t::path()
+		 *
+		 * @param host адрес хоста удалённого эндпоинта
+		 * @param port порт удалённого эндпоинта
+		 * @return     опаковое представление пути соединения
+		 */
+		std::string makePath(const std::string & host, const uint16_t port) const noexcept;
 	protected:
 		/**
 		 * @brief Метод преобразования шестнадцатеричной строки в бинарный буфер
@@ -146,28 +175,5 @@ class QuicSecurity {
 		 */
 		~QuicSecurity() noexcept;
 };
-
-/**
- * @brief Функция получения объекта фреймворка
- *
- * @note Объект создаётся при первом обращении: инициализация на уровне
- *       пространства имён зависела бы от порядка инициализации статических
- *       объектов между единицами трансляции, который не определён
- *
- * @return объект фреймворка
- */
-awh::fmk_t & framework() noexcept;
-/**
- * @brief Функция получения объекта логирования
- *
- * @return объект логирования
- */
-awh::log_t & logger() noexcept;
-/**
- * @brief Функция получения тестового окружения транспортной безопасности
- *
- * @return тестовое окружение транспортной безопасности
- */
-QuicSecurity & security() noexcept;
 
 #endif // __AWH_PROTO_QUIC_TESTS__
