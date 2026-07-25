@@ -678,7 +678,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						::exit(EXIT_FAILURE);
 					}
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const pid_t, const pid_t)> ("rebase", ret.first->first, replaced);
+					this->_callback.call <void (const pid_t, const pid_t)> ("rebase", replaced, ret.first->first);
 				}
 			} break;
 		}

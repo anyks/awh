@@ -80,6 +80,24 @@ bool awh::Server::active() const noexcept {
  * @return результат выполнения фиксации
  */
 bool awh::Server::commitUnit() noexcept {
+	/**
+	 * Для операционной системы Linux или FreeBSD
+	 */
+	#if __linux__ || __FreeBSD__
+		/**
+		 * В дочернем процессе кластера обычного сервера перед привязкой пересоздаём
+		 * унаследованный слушающий сокет: на Linux/FreeBSD SO_REUSEPORT требует
+		 * собственного сокета на каждый процесс, иначе все процессы делят один
+		 * унаследованный от мастера дескриптор и балансировки соединений ядром не
+		 * происходит. Дескриптор пересоздаётся, а событие (его идентификатор, коллбэки,
+		 * опции) сохраняется. Для транспорта QUIC собственный сокет дочернего процесса
+		 * поднимается отдельным механизмом юнита QUIC, поэтому он здесь не затрагивается
+		 */
+		if((this->_protocol != event::protocol_t::QUIC) && (this->clusterMode() == event::mode_t::ENABLED) && (this->clusterFamily() == unit::cluster_t::family_t::CHILDREN))
+			// Пересоздаём дескриптор слушающего события дочернего процесса кластера
+			this->_unit->server.rebuild(this->_id.eid);
+	#endif
+	// Выполняем фиксацию настроек события на активном юните транспорта
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.commit(this->_id.eid) : this->_unit->server.commit(this->_id.eid));
 }
 /**

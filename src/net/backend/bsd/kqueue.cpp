@@ -1252,17 +1252,21 @@ namespace io {
 	 *
 	 */
 	typedef struct Inter_Process_Communication : public node_t {
+		// Идентификатор парного узла пары socketpair/pipe (для перестройки пары целиком, см. rebuild())
+		event::id_t partner;
 		// Объект передачи данных
 		transfer_t transfer;
 		// Обратные вызовы события
 		peer_callbacks_t callbacks;
+		
 		/**
 		 * @brief Конструктор
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit Inter_Process_Communication(const fmk_t * fmk, const log_t * log) noexcept : transfer(fmk, log) {}
+		explicit Inter_Process_Communication(const fmk_t * fmk, const log_t * log) noexcept :
+		 transfer(fmk, log), partner(0) {}
 	} ipc_t;
 
 	/**
@@ -35188,6 +35192,559 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 	return result;
 }
 /**
+ * @brief Метод перестройки события: пересоздание нижележащего дескриптора с сохранением самого события
+ *
+ * @note Приложение работает с идентификатором события, а не с дескриптором,
+ *       поэтому дескриптор пересоздаётся, а событие (его идентификатор,
+ *       коллбэки, адрес/порт, опции и таймеры) сохраняется - подмена
+ *       дескриптора приложению незаметна. Всё состояние, живущее на
+ *       дескрипторе (регистрации kqueue, размеры буферов, DSCP/ECN/MTU,
+ *       интерфейс), снимается до закрытия и переприменяется на новый
+ *       дескриптор, а пройденные стадии подъёма (commit/listen/launch)
+ *       переигрываются по исходному статусу события. Поддерживается для
+ *       событий типа SERVER
+ *
+ * @param id идентификатор события
+ * @return   результат выполнения перестройки
+ */
+bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события не найден
+		if(i == ::__awh_nodes__.end())
+			// Возвращаем значение по умолчанию
+			return false;
+		// Получаем объект узла события
+		::io::node_t * node = i->second.get();
+		// Создаём охранника узла события (защита от освобождения узла из вложенного коллбэка)
+		::local::guard_t guard(node);
+		/**
+		 * Определяем тип узла события
+		 */
+		switch(static_cast <uint8_t> (node->state.node)){
+			// Если узел является межпроцессным взаимодействием (пара socketpair/pipe)
+			case static_cast <uint8_t> (event::node_t::IPC): {
+				// Получаем объект первого узла пары
+				::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
+				// Если ссылка на парный узел не установлена - перестроить пару невозможно
+				if(ipc->partner == 0)
+					// Возвращаем значение по умолчанию
+					return false;
+				// Выполняем поиск парного узла
+				auto p = ::__awh_nodes__.find(ipc->partner);
+				// Если парный узел не найден - перестроить пару невозможно
+				if(p == ::__awh_nodes__.end())
+					// Возвращаем значение по умолчанию
+					return false;
+				// Получаем объект парного узла
+				::io::ipc_t * mate = awh_cast <::io::ipc_t *> (p->second.get());
+				// Создаём охранника парного узла (мы мутируем оба узла пары)
+				::local::guard_t guardMate(mate);
+				// Запоминаем исходные статусы обоих узлов пары
+				const event::status_t st0 = ipc->state.status, st1 = mate->state.status;
+				// Флаги того, что узлы были запущены (чтение включено, launch выставляет PENDING)
+				const bool launched0 = (st0 == event::status_t::PENDING), launched1 = (st1 == event::status_t::PENDING);
+				// Флаги того, что узлы были закоммичены (дескриптор зарегистрирован)
+				const bool committed0 = ((st0 != event::status_t::NONE) && (st0 != event::status_t::DESTROYED) && (st0 != event::status_t::GARBAGE));
+				// Флаг того, что парный узел был закоммичен
+				const bool committed1 = ((st1 != event::status_t::NONE) && (st1 != event::status_t::DESTROYED) && (st1 != event::status_t::GARBAGE));
+				// Флаги наличия действующих дескрипторов у обоих узлов
+				const bool present0 = (ipc->transfer.fd != net::invalid_socket_t), present1 = (mate->transfer.fd != net::invalid_socket_t);
+				// Размеры буферов приёма/отправки обоих узлов (для UDS/pipe прочие сетевые опции неприменимы)
+				size_t readBuffer0 = 0, writeBuffer0 = 0, readBuffer1 = 0, writeBuffer1 = 0;
+				// Снимаем размеры буферов первого узла
+				if(present0){
+					// Снимаем размер буфера приёма первого узла
+					readBuffer0 = this->getBufferSize(id, event::action_t::READ);
+					// Снимаем размер буфера отправки первого узла
+					writeBuffer0 = this->getBufferSize(id, event::action_t::WRITE);
+				}
+				// Снимаем размеры буферов парного узла
+				if(present1){
+					// Снимаем размер буфера приёма парного узла
+					readBuffer1 = this->getBufferSize(ipc->partner, event::action_t::READ);
+					// Снимаем размер буфера отправки парного узла
+					writeBuffer1 = this->getBufferSize(ipc->partner, event::action_t::WRITE);
+				}
+				// Если у первого узла был действующий дескриптор
+				if(ipc->transfer.fd != net::invalid_socket_t){
+					// Закрываем прежний дескриптор первого узла
+					::close(ipc->transfer.fd);
+					// Сбрасываем значение дескриптора первого узла
+					ipc->transfer.fd = net::invalid_socket_t;
+				}
+				// Если у парного узла был действующий дескриптор
+				if(mate->transfer.fd != net::invalid_socket_t){
+					// Закрываем прежний дескриптор парного узла
+					::close(mate->transfer.fd);
+					// Сбрасываем значение дескриптора парного узла
+					mate->transfer.fd = net::invalid_socket_t;
+				}
+				// Сбрасываем очереди передачи данных обоих узлов
+				ipc->transfer.queue.clear();
+				// Сбрасываем очередь передачи данных парного узла
+				mate->transfer.queue.clear();
+				// Сбрасываем изменчивые маски действий и статусы обоих узлов
+				ipc->transfer.actions = ::action::NONE;
+				// Сбрасываем маску действий парного узла
+				mate->transfer.actions = ::action::NONE;
+				// Сбрасываем статус первого узла
+				ipc->state.status = event::status_t::NONE;
+				// Сбрасываем статус парного узла
+				mate->state.status = event::status_t::NONE;
+				// Пересоздаём пару дескрипторов целиком (одну половину в отрыве создать нельзя)
+				const auto & fds = this->_eth.socket.ipc(ipc->state.family, ipc->state.type, ipc->state.protocol);
+				// Если пара дескрипторов не создана
+				if((fds[0] == net::invalid_socket_t) || (fds[1] == net::invalid_socket_t))
+					// Возвращаем значение по умолчанию
+					return false;
+				/**
+				 * Сохраняем исходный порядок концов пары: идентификаторы выдаются
+				 * монотонно, поэтому узел с меньшим идентификатором был создан первым и
+				 * получал fds[0] (для pipe это конец на чтение, порядок важен)
+				 */
+				// Первый по порядку создания узел пары
+				::io::ipc_t * first = ((id < ipc->partner) ? ipc : mate);
+				// Второй по порядку создания узел пары
+				::io::ipc_t * second = ((id < ipc->partner) ? mate : ipc);
+				// Назначаем первому узлу первый дескриптор пары
+				first->transfer.fd = fds[0];
+				// Назначаем второму узлу второй дескриптор пары
+				second->transfer.fd = fds[1];
+				// Восстанавливаем тип очереди первого узла (потоковый - TCP, иначе UDP), как в events()
+				ipc->transfer.queue.type((((ipc->state.type == event::type_t::NONE) || (ipc->state.type == event::type_t::STREAM)) ? net_queue_t::type_t::TCP : net_queue_t::type_t::UDP));
+				// Восстанавливаем тип очереди парного узла
+				mate->transfer.queue.type((((mate->state.type == event::type_t::NONE) || (mate->state.type == event::type_t::STREAM)) ? net_queue_t::type_t::TCP : net_queue_t::type_t::UDP));
+				// Переприменяем опции обоих узлов
+				this->setOptions(id, ipc->state.options);
+				// Переприменяем опции парного узла
+				this->setOptions(ipc->partner, mate->state.options);
+				// Восстанавливаем размеры буферов первого узла
+				if(present0){
+					// Восстанавливаем размер буфера приёма первого узла, если он был задан
+					if(readBuffer0 > 0)
+						// Устанавливаем размер буфера приёма первого узла
+						this->setBufferSize(id, event::action_t::READ, readBuffer0);
+					// Восстанавливаем размер буфера отправки первого узла, если он был задан
+					if(writeBuffer0 > 0)
+						// Устанавливаем размер буфера отправки первого узла
+						this->setBufferSize(id, event::action_t::WRITE, writeBuffer0);
+				}
+				// Восстанавливаем размеры буферов парного узла
+				if(present1){
+					// Восстанавливаем размер буфера приёма парного узла, если он был задан
+					if(readBuffer1 > 0)
+						// Устанавливаем размер буфера приёма парного узла
+						this->setBufferSize(ipc->partner, event::action_t::READ, readBuffer1);
+					// Восстанавливаем размер буфера отправки парного узла, если он был задан
+					if(writeBuffer1 > 0)
+						// Устанавливаем размер буфера отправки парного узла
+						this->setBufferSize(ipc->partner, event::action_t::WRITE, writeBuffer1);
+				}
+				// Переигрываем пройденные стадии подъёма для обоих узлов пары
+				result = true;
+				// Если первый узел был закоммичен - выполняем повторную фиксацию
+				if(committed0)
+					// Выполняем фиксацию настроек первого узла
+					result = this->commit(id);
+				// Если парный узел был закоммичен - выполняем повторную фиксацию
+				if(result && committed1)
+					// Выполняем фиксацию настроек парного узла
+					result = this->commit(ipc->partner);
+				// Если первый узел был запущен - выполняем повторный запуск
+				if(result && launched0)
+					// Запускаем работу первого узла
+					result = this->launch(id);
+				// Если парный узел был запущен - выполняем повторный запуск
+				if(result && launched1)
+					// Запускаем работу парного узла
+					result = this->launch(ipc->partner);
+				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
+				this->kick();
+			} break;
+			// Если узел является туннелем
+			case static_cast <uint8_t> (event::node_t::TUNNEL): {
+				// Получаем объект туннеля
+				::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
+				// Запоминаем исходный статус события
+				const event::status_t status = tunnel->state.status;
+				// Флаг того, что событие было запущено (чтение включено)
+				const bool launched = (status == event::status_t::LAUNCHED);
+				// Флаг того, что событие было закоммичено (адреса настроены, чтение зарегистрировано)
+				const bool committed = ((status != event::status_t::NONE) && (status != event::status_t::DESTROYED) && (status != event::status_t::GARBAGE));
+				// Сбрасываем очередь передачи данных туннеля
+				tunnel->queue.clear();
+				// Если процесс является родительским
+				if(::__awh_pid__ == ::getpid()){
+					/**
+					 * Для операционной системы FreeBSD
+					 */
+					#if __FreeBSD__
+						// Если туннель создан
+						if(!tunnel->iface.empty())
+							// Выполняем удаление сетевого интерфейса туннеля
+							this->_eth.iface.destroy(tunnel->iface);
+					#endif
+				}
+				// Если действующий дескриптор присутствует
+				if(tunnel->fd != net::invalid_socket_t){
+					// Закрываем прежний дескриптор устройства
+					::close(tunnel->fd);
+					// Сбрасываем значение дескриптора
+					tunnel->fd = net::invalid_socket_t;
+				}
+				// Сбрасываем маску действий и статус
+				tunnel->actions = ::action::NONE;
+				// Сбрасываем статус события в неопределённое состояние
+				tunnel->state.status = event::status_t::NONE;
+				// Пересоздаём дескриптор устройства, переиспользуя сохранённое имя интерфейса (создание живёт в event(), не в commit)
+				if((tunnel->fd = this->_eth.iface.create(event::eth_t::TUN, tunnel->iface)) == net::invalid_socket_t)
+					// Возвращаем значение по умолчанию
+					return false;
+				// Восстанавливаем тип очереди передачи данных туннеля
+				tunnel->queue.type(net_queue_t::type_t::UDP);
+				// Переигрываем стадии: commit настроит адреса и зарегистрирует чтение, launch его включит
+				result = true;
+				// Если событие было закоммичено - выполняем повторную фиксацию
+				if(committed)
+					// Выполняем фиксацию настроек события
+					result = this->commit(id);
+				// Если событие было запущено - выполняем повторный запуск
+				if(result && launched)
+					// Запускаем работу события
+					result = this->launch(id);
+				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
+				this->kick();
+			} break;
+			// Если узел является файлом
+			case static_cast <uint8_t> (event::node_t::FILE): {
+				// Получаем объект файла
+				::io::file_t * fs = awh_cast <::io::file_t *> (node);
+				// Запоминаем исходный статус события
+				const event::status_t status = fs->state.status;
+				// Флаг того, что событие было запущено (watch включён)
+				const bool launched = (status == event::status_t::PENDING);
+				// Флаг того, что событие было закоммичено (дескриптор открыт и watch зарегистрирован)
+				const bool committed = ((status != event::status_t::NONE) && (status != event::status_t::DESTROYED) && (status != event::status_t::GARBAGE));
+				// Если действующий дескриптор присутствует
+				if(fs->fd != net::invalid_socket_t){
+					// Закрываем прежний дескриптор
+					::close(fs->fd);
+					// Сбрасываем значение дескриптора
+					fs->fd = net::invalid_socket_t;
+				}
+				// Сбрасываем маску действий и статус (путь наблюдения сохранён в узле, commit переоткроет файл)
+				fs->actions = ::action::NONE;
+				// Сбрасываем статус события в неопределённое состояние
+				fs->state.status = event::status_t::NONE;
+				// Переигрываем стадии: commit переоткроет файл и зарегистрирует watch, launch включит нужные NOTE_*
+				result = true;
+				// Если событие было закоммичено - выполняем повторную фиксацию
+				if(committed)
+					// Выполняем фиксацию настроек события (переоткрытие файла)
+					result = this->commit(id);
+				// Если событие было запущено - выполняем повторный запуск
+				if(result && launched)
+					// Запускаем работу события
+					result = this->launch(id);
+				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
+				this->kick();
+			} break;
+			// Если узел является директорией
+			case static_cast <uint8_t> (event::node_t::DIR): {
+				// Получаем объект директории
+				::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
+				// Запоминаем исходный статус события
+				const event::status_t status = dir->state.status;
+				// Флаг того, что событие было запущено (watch включён)
+				const bool launched = (status == event::status_t::PENDING);
+				// Флаг того, что событие было закоммичено (директория открыта и watch зарегистрирован)
+				const bool committed = ((status != event::status_t::NONE) && (status != event::status_t::DESTROYED) && (status != event::status_t::GARBAGE));
+				// Если каталог открыт
+				if(dir->handle != nullptr){
+					// Закрываем каталог
+					::closedir(dir->handle);
+					// Сбрасываем значение указателя на каталог
+					dir->handle = nullptr;
+				}
+				// Если действующий дескриптор присутствует
+				if(dir->fd != net::invalid_socket_t){
+					// Закрываем прежний дескриптор
+					::close(dir->fd);
+					// Сбрасываем значение дескриптора
+					dir->fd = net::invalid_socket_t;
+				}
+				// Сбрасываем поток директории (commit переоткроет его через fdopendir)
+				dir->handle = nullptr;
+				// Сбрасываем маску действий и статус (путь наблюдения сохранён в узле, commit переоткроет директорию)
+				dir->actions = ::action::NONE;
+				// Сбрасываем статус события в неопределённое состояние
+				dir->state.status = event::status_t::NONE;
+				// Переигрываем стадии: commit переоткроет директорию и зарегистрирует watch, launch включит нужные NOTE_*
+				result = true;
+				// Если событие было закоммичено - выполняем повторную фиксацию
+				if(committed)
+					// Выполняем фиксацию настроек события (переоткрытие директории)
+					result = this->commit(id);
+				// Если событие было запущено - выполняем повторный запуск
+				if(result && launched)
+					// Запускаем работу события
+					result = this->launch(id);
+				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
+				this->kick();
+			} break;
+			// Если узел является клиентом
+			case static_cast <uint8_t> (event::node_t::CLIENT): {
+				// Получаем объект клиента
+				::io::client_t * client = awh_cast <::io::client_t *> (node);
+				// Запоминаем исходный статус события
+				const event::status_t status = client->state.status;
+				// Флаг того, что событие было закоммичено (дескриптор зарегистрирован)
+				const bool committed = ((status != event::status_t::NONE) && (status != event::status_t::DESTROYED) && (status != event::status_t::GARBAGE));
+				// Флаг того, что для потокового клиента запускалось соединение (нужно переустановить связь)
+				const bool connecting = ((status == event::status_t::SUCCESS) || (status == event::status_t::PENDING) || (status == event::status_t::CONNECTED) || (status == event::status_t::RECONNECTED));
+				// Флаг того, что событие было запущено (активна регистрация чтения или записи)
+				const bool running = ((client->activity & ::activity::READ) || (client->activity & ::activity::WRITE) || (status == event::status_t::LAUNCHED) || (status == event::status_t::PENDING) || (status == event::status_t::CONNECTED));
+				// Флаг наличия действующего дескриптора
+				const bool present = (client->transfer.fd != net::invalid_socket_t);
+				// Название привязанного сетевого интерфейса
+				string iface = "";
+				// Режим уведомления о перегрузке (ECN)
+				event::ecn_t ecn{};
+				// Код дифференцированного обслуживания (DSCP/TOS)
+				event::dscp_t dscp{};
+				// Режим обнаружения максимального размера пакета (MTU)
+				event::mtu_discover_t mtu{};
+				// Размеры буферов приёма и отправки
+				size_t readBuffer = 0, writeBuffer = 0;
+				// Если действующий дескриптор присутствует - снимаем снимок состояния, живущего на дескрипторе
+				if(present){
+					// Снимаем название привязанного сетевого интерфейса
+					iface = ::move(this->getIface(id));
+					// Снимаем размер буфера приёма
+					readBuffer = this->getBufferSize(id, event::action_t::READ);
+					// Снимаем размер буфера отправки
+					writeBuffer = this->getBufferSize(id, event::action_t::WRITE);
+					// Снимаем режим уведомления о перегрузке
+					ecn = this->getExplicitCongestionNotification(id, client->state.family);
+					// Снимаем режим обнаружения MTU
+					mtu = this->getMaximumTransmissionUnitDiscover(id, client->state.family);
+					// Снимаем код дифференцированного обслуживания
+					dscp = this->getDifferentiatedServicesCodePoint(id, client->state.family);
+				}
+				// Сбрасываем очередь передачи данных
+				client->transfer.queue.clear();
+				// Если действующий дескриптор присутствует
+				if(client->transfer.fd != net::invalid_socket_t){
+					// Закрываем прежний дескриптор
+					::close(client->transfer.fd);
+					// Сбрасываем значение дескриптора
+					client->transfer.fd = net::invalid_socket_t;
+				}
+				// Сбрасываем изменчивые маски регистраций и статус
+				client->activity = ::activity::NONE;
+				// Сбрасываем маску действий события
+				client->transfer.actions = ::action::NONE;
+				// Сбрасываем статус события в неопределённое состояние
+				client->state.status = event::status_t::NONE;
+				// Создаём новый (несоединённый) дескриптор из сохранённого состояния (family/type/protocol)
+				if(!::io::socket(client, &this->_eth, this->_log))
+					// Возвращаем значение по умолчанию
+					return false;
+				// Переприменяем опции из состояния узла
+				this->setOptions(id, client->state.options);
+				// Если состояние снималось с прежнего дескриптора - восстанавливаем его
+				if(present){
+					// Восстанавливаем привязку к сетевому интерфейсу, если она была
+					if(!iface.empty())
+						// Устанавливаем сетевой интерфейс
+						this->setIface(id, iface);
+					// Восстанавливаем размер буфера приёма, если он был задан
+					if(readBuffer > 0)
+						// Устанавливаем размер буфера приёма
+						this->setBufferSize(id, event::action_t::READ, readBuffer);
+					// Восстанавливаем размер буфера отправки, если он был задан
+					if(writeBuffer > 0)
+						// Устанавливаем размер буфера отправки
+						this->setBufferSize(id, event::action_t::WRITE, writeBuffer);
+					// Восстанавливаем режим уведомления о перегрузке
+					this->setExplicitCongestionNotification(id, client->state.family, ecn);
+					// Восстанавливаем код дифференцированного обслуживания
+					this->setDifferentiatedServicesCodePoint(id, client->state.family, dscp);
+					// Восстанавливаем режим обнаружения MTU
+					this->setMaximumTransmissionUnitDiscover(id, client->state.family, mtu);
+				}
+				// Переигрываем пройденные стадии: commit (регистрация) -> connect (для потокового) -> launch
+				result = true;
+				// Если событие было закоммичено - выполняем повторную фиксацию
+				if(committed){
+					// Выполняем фиксацию настроек события
+					if((result = this->commit(id))){
+						// Если для потокового клиента устанавливалось соединение - переустанавливаем связь через штатный механизм
+						if(connecting){
+							// Выполняем повторное подключение к удалённому узлу
+							result = this->connect(id);
+							// Если событие было запущено - выполняем повторный запуск
+							if(result && running)
+								// Запускаем работу события
+								result = this->launch(id);
+						// Если событие было запущено - выполняем повторный запуск
+						} else if(running)
+							// Запускаем работу события
+							result = this->launch(id);
+					}
+				}
+				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
+				this->kick();
+			} break;
+			// Если узел является сервером
+			case static_cast <uint8_t> (event::node_t::SERVER): {
+				// Получаем объект сервера
+				::io::server_t * server = awh_cast <::io::server_t *> (node);
+				// Запоминаем исходный статус события, чтобы вернуть узел в то же состояние после подмены дескриптора
+				const event::status_t status = server->state.status;
+				/**
+				 * Определяем, какие стадии подъёма сервера были пройдены до перестройки:
+				 * commit (bind), listen (::listen) и launch (включение чтения). Их и переиграем
+				 */
+				// Флаг того, что событие было переведено в режим прослушивания (потоковый сервер)
+				const bool listened = ((status == event::status_t::SUCCESS) || (status == event::status_t::LISTENING));
+				// Флаг того, что событие было закоммичено (привязано)
+				const bool committed = ((status != event::status_t::NONE) && (status != event::status_t::DESTROYED) && (status != event::status_t::GARBAGE));
+				// Флаг того, что событие было запущено (активна регистрация на чтение)
+				const bool running = ((server->activity & ::activity::READ) || (status == event::status_t::LAUNCHED) || (status == event::status_t::LISTENING));
+				// Запоминаем размер очереди прослушивания для повторного listen()
+				const uint32_t backlog = server->backlog.max;
+				/**
+				 * Снимаем снимок состояния, живущего только на дескрипторе: при перестройке
+				 * дескриптора оно теряется и должно быть переприменено на новый дескриптор
+				 */
+				// Флаг наличия действующего дескриптора
+				const bool present = (server->fd != net::invalid_socket_t);
+				// Название привязанного сетевого интерфейса
+				string iface = "";
+				// Режим уведомления о перегрузке (ECN)
+				event::ecn_t ecn{};
+				// Код дифференцированного обслуживания (DSCP/TOS)
+				event::dscp_t dscp{};
+				// Режим обнаружения максимального размера пакета (MTU)
+				event::mtu_discover_t mtu{};
+				// Размеры буферов приёма и отправки
+				size_t readBuffer = 0, writeBuffer = 0;
+				// Если действующий дескриптор присутствует
+				if(present){
+					// Снимаем название привязанного сетевого интерфейса
+					iface = ::move(this->getIface(id));
+					// Снимаем размер буфера приёма
+					readBuffer = this->getBufferSize(id, event::action_t::READ);
+					// Снимаем размер буфера отправки
+					writeBuffer = this->getBufferSize(id, event::action_t::WRITE);
+					// Снимаем режим уведомления о перегрузке
+					ecn = this->getExplicitCongestionNotification(id, server->state.family);
+					// Снимаем режим обнаружения MTU
+					mtu = this->getMaximumTransmissionUnitDiscover(id, server->state.family);
+					// Снимаем код дифференцированного обслуживания
+					dscp = this->getDifferentiatedServicesCodePoint(id, server->state.family);
+				}
+				// Если действующий дескриптор присутствует
+				if(server->fd != net::invalid_socket_t){
+					// Закрываем прежний дескриптор
+					::close(server->fd);
+					// Сбрасываем значение дескриптора
+					server->fd = net::invalid_socket_t;
+				}
+				// Сбрасываем маску действий события
+				server->actions = ::action::NONE;
+				// Сбрасываем изменчивые маски регистраций и статус, чтобы переиграть подъём с чистого состояния
+				server->activity = ::activity::NONE;
+				// Сбрасываем статус события в неопределённое состояние
+				server->state.status = event::status_t::NONE;
+				// Создаём новый дескриптор из сохранённого в узле состояния (family/type/protocol)
+				if(!::io::socket(server, &this->_eth, this->_log))
+					// Возвращаем значение по умолчанию
+					return false;
+				// Переприменяем опции из состояния узла (REUSE_ADDR/REUSE_PORT/TCP_NODELAY/...)
+				this->setOptions(id, server->state.options);
+				// Если состояние снималось с прежнего дескриптора
+				if(present){
+					// Восстанавливаем привязку к сетевому интерфейсу, если она была
+					if(!iface.empty())
+						// Устанавливаем сетевой интерфейс
+						this->setIface(id, iface);
+					// Восстанавливаем размер буфера приёма, если он был задан
+					if(readBuffer > 0)
+						// Устанавливаем размер буфера приёма
+						this->setBufferSize(id, event::action_t::READ, readBuffer);
+					// Восстанавливаем размер буфера отправки, если он был задан
+					if(writeBuffer > 0)
+						// Устанавливаем размер буфера отправки
+						this->setBufferSize(id, event::action_t::WRITE, writeBuffer);
+					// Восстанавливаем режим уведомления о перегрузке
+					this->setExplicitCongestionNotification(id, server->state.family, ecn);
+					// Восстанавливаем код дифференцированного обслуживания
+					this->setDifferentiatedServicesCodePoint(id, server->state.family, dscp);
+					// Восстанавливаем режим обнаружения MTU
+					this->setMaximumTransmissionUnitDiscover(id, server->state.family, mtu);
+				}
+				// Переигрываем ровно те стадии подъёма сервера, что были пройдены до перестройки
+				result = true;
+				// Если событие было закоммичено - выполняем повторную привязку
+				if(committed){
+					// Выполняем фиксацию настроек события (привязка дескриптора)
+					if((result = this->commit(id))){
+						// Если событие было в режиме прослушивания - выполняем повторный перевод в прослушивание
+						if(listened){
+							// Переводим событие в режим прослушивания
+							result = this->listen(id, backlog);
+							// Если событие было запущено - выполняем повторный запуск
+							if(result && running)
+								// Запускаем работу события
+								result = this->launch(id);
+						// Если событие было запущено - выполняем повторный запуск
+						} else if(running)
+							// Запускаем работу события
+							result = this->launch(id);
+					}
+				}
+				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
+				this->kick();
+			} break;
+			/**
+			 * Прочие типы узлов перестройке дескриптора не подлежат:
+			 * - PEER/ORIGIN: принятые ядром дескрипторы соединений - пересоздать нельзя;
+			 * - NOTIFY/TIMEOUT/INTERVAL: события без дескриптора;
+			 * - прочие: вне области действия метода
+			 */
+			default: return false;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
  * @brief Метод получения сетевого интерфейса события
  *
  * @param id идентификатор события
@@ -47417,6 +47974,20 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 							} break;
 						}
 					}
+				}
+			}
+			// Для IPC-пары (PIPE/UDS) связываем оба узла ссылками друг на друга - это позволяет перестроить пару целиком (см. rebuild())
+			if((family == event::family_t::PIPE) || (family == event::family_t::UDS)){
+				// Выполняем поиск первого узла пары
+				auto n0 = ::__awh_nodes__.find(result[0]);
+				// Выполняем поиск второго узла пары
+				auto n1 = ::__awh_nodes__.find(result[1]);
+				// Если оба узла пары найдены
+				if((n0 != ::__awh_nodes__.end()) && (n1 != ::__awh_nodes__.end())){
+					// Связываем первый узел пары со вторым
+					awh_cast <::io::ipc_t *> (n0->second.get())->partner = result[1];
+					// Связываем второй узел пары с первым
+					awh_cast <::io::ipc_t *> (n1->second.get())->partner = result[0];
 				}
 			}
 		}

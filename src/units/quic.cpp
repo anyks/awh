@@ -2925,6 +2925,12 @@ bool awh::unit::QuicClient::connect(const event::id_t eid) noexcept {
 	}
 	// Сбрасываем флаг выполненного оповещения о завершённом соединении
 	this->_notified = false;
+	/**
+	 * Сбрасываем идентификатор туннельного потока сплайса: нумерация потоков
+	 * ведётся в пределах соединения, поэтому на новом соединении прежний поток
+	 * недействителен и должен быть открыт заново при следующей передаче (см. inject())
+	 */
+	this->_tunnel = quic::connection_t::INVALID_STREAM;
 	// Создаём соединение QUIC на шаблоне контекста безопасности
 	this->_connection = make_unique <quic::connection_t> (
 		quic::endpoint_t::CLIENT, this->_ctx,
@@ -3050,6 +3056,10 @@ void awh::unit::QuicClient::destroy(const event::id_t eid) noexcept {
 		return;
 	// Освобождаем объект соединения QUIC
 	this->_connection.reset(nullptr);
+	// Сбрасываем состояние сплайса: туннельный поток и цель форвардинга недействительны после уничтожения события
+	this->_tunnel = quic::connection_t::INVALID_STREAM;
+	// Сбрасываем цель форвардинга сплайса
+	this->_dest = 0;
 	// Если событие интервала таймеров соединения создано
 	if(this->_tid != 0){
 		// Уничтожаем событие интервала таймеров соединения
