@@ -28,8 +28,9 @@
 #include "io.hpp"
 
 /**
- * Системный заголовочный файл
+ * Системные заголовочные файлы
  */
+#include <netinet/in.h>
 #include <sys/socket.h>
 
 /**
