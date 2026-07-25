@@ -28,6 +28,11 @@
 #include "io.hpp"
 
 /**
+ * Системный заголовочный файл
+ */
+#include <sys/socket.h>
+
+/**
  * @brief Генерация случайного порта в диапазоне 49152-65535
  *
  * @return случайный порт
@@ -84,6 +89,127 @@ TEST_F(IoFixture, ReCreateIoTest){
 	this->_io = std::make_unique <awh::engine::io_t> (this->_fmk.get(), this->_log.get());
 	// Проверяем, что объект асинхронного движка ввода-вывода создан
 	ASSERT_TRUE(this->_io != nullptr);
+}
+
+/**
+ * @note TODO: Полноценный юнит-тест сетевого движка ещё предстоит написать отдельной
+ *       задачей (сейчас движок покрыт лишь частично: create/reset, ping, таймеры).
+ *       Ниже добавлено точечное покрытие метода rebuild() - пересоздания нижележащего
+ *       дескриптора события с сохранением самого события (используется дочерними
+ *       процессами кластера для получения собственного сокета вместо унаследованного
+ *       от мастера, где SO_REUSEPORT требует отдельного сокета на процесс).
+ */
+
+/**
+ * @brief Тест перестройки серверного события до фиксации (сценарий дочернего процесса кластера)
+ *
+ */
+TEST_F(IoFixture, RebuildServerBeforeCommitTest){
+	// Генерируем случайный порт привязки
+	const uint16_t listenPort = port();
+	// Создаём серверное событие TCP
+	awh::event::id_t eid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(eid, 0);
+	// Устанавливаем адрес привязки
+	ASSERT_TRUE(this->_io->setAddress(eid, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт привязки
+	ASSERT_TRUE(this->_io->setSourcePort(eid, listenPort));
+	// Событие ещё не зафиксировано
+	ASSERT_EQ(awh::event::status_t::NONE, this->_io->status(eid));
+	// Перестраиваем дескриптор до фиксации - должно пройти успешно, статус остаётся неопределённым
+	ASSERT_TRUE(this->_io->rebuild(eid));
+	// Проверяем, что статус события не изменился
+	ASSERT_EQ(awh::event::status_t::NONE, this->_io->status(eid));
+	// Фиксируем событие (привязка нового дескриптора)
+	ASSERT_TRUE(this->_io->commit(eid));
+	// Проверяем, что порт привязки сохранился
+	ASSERT_EQ(listenPort, this->_io->getSourcePort(eid));
+	// Уничтожаем событие
+	this->_io->destroy(eid);
+}
+
+/**
+ * @brief Тест перестройки серверного события в режиме прослушивания (полный цикл commit -> listen -> launch)
+ *
+ */
+TEST_F(IoFixture, RebuildServerListeningTest){
+	// Генерируем случайный порт привязки
+	const uint16_t listenPort = port();
+	// Создаём серверное событие TCP
+	awh::event::id_t eid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(eid, 0);
+	// Устанавливаем адрес привязки
+	ASSERT_TRUE(this->_io->setAddress(eid, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт привязки
+	ASSERT_TRUE(this->_io->setSourcePort(eid, listenPort));
+	// Устанавливаем опции переиспользования адреса и порта
+	ASSERT_TRUE(this->_io->setOptions(eid, static_cast <uint16_t> (awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT)));
+	// Выполняем полный подъём сервера
+	ASSERT_TRUE(this->_io->commit(eid));
+	// Переводим событие в режим прослушивания
+	ASSERT_TRUE(this->_io->listen(eid, 128));
+	// Запускаем работу события
+	ASSERT_TRUE(this->_io->launch(eid));
+	// Проверяем, что сервер в режиме прослушивания
+	ASSERT_EQ(awh::event::status_t::LISTENING, this->_io->status(eid));
+	// Запоминаем привязанный порт
+	const uint16_t boundPort = this->_io->getSourcePort(eid);
+	// Перестраиваем дескриптор - статус и порт должны сохраниться
+	ASSERT_TRUE(this->_io->rebuild(eid));
+	// Проверяем, что событие вновь в режиме прослушивания
+	ASSERT_EQ(awh::event::status_t::LISTENING, this->_io->status(eid));
+	// Проверяем, что привязанный порт сохранился
+	ASSERT_EQ(boundPort, this->_io->getSourcePort(eid));
+	// Проверяем, что опция переиспользования порта сохранилась
+	ASSERT_TRUE(this->_io->getOptions(eid) & static_cast <uint16_t> (awh::event::options::REUSE_PORT));
+	// Уничтожаем событие
+	this->_io->destroy(eid);
+}
+
+/**
+ * @brief Тест перестройки пары IPC целиком по одному идентификатору
+ *
+ */
+TEST_F(IoFixture, RebuildIpcPairTest){
+	// Создаём пару IPC (UNIX-доменный socketpair)
+	auto ids = this->_io->events(awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
+	// Проверяем, что оба идентификатора пары созданы
+	ASSERT_GT(ids[0], 0);
+	ASSERT_GT(ids[1], 0);
+	// Перестраиваем пару целиком по одному из идентификаторов
+	ASSERT_TRUE(this->_io->rebuild(ids[0]));
+	// Проверяем, что оба узла пары остаются событиями типа IPC
+	ASSERT_EQ(awh::event::node_t::IPC, this->_io->node(ids[0]));
+	ASSERT_EQ(awh::event::node_t::IPC, this->_io->node(ids[1]));
+	// Уничтожаем оба события пары
+	this->_io->destroy(ids[0]);
+	this->_io->destroy(ids[1]);
+}
+
+/**
+ * @brief Тест того, что перестройка неприменима к событию без дескриптора (таймер)
+ *
+ */
+TEST_F(IoFixture, RebuildUnsupportedTypeTest){
+	// Создаём событие интервального таймера (без сетевого дескриптора)
+	awh::event::id_t eid = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(eid, 0);
+	// Перестройка дескриптора неприменима - метод возвращает ложь
+	ASSERT_FALSE(this->_io->rebuild(eid));
+	// Уничтожаем событие
+	this->_io->destroy(eid);
+}
+
+/**
+ * @brief Тест того, что перестройка несуществующего события возвращает ложь
+ *
+ */
+TEST_F(IoFixture, RebuildUnknownIdTest){
+	// Перестройка несуществующего идентификатора события - метод возвращает ложь
+	ASSERT_FALSE(this->_io->rebuild(static_cast <awh::event::id_t> (999999999)));
 }
 
 /**
