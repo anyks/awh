@@ -15084,7 +15084,9 @@ TEST_F(IoFixture, IoOriginKeyedRoutingTest){
 		// Выполняем запуск события клиента
 		ASSERT_TRUE(this->_io->launch(client));
 	}
-	// Запускаем опрос событий
+	/**
+	 *  Запускаем опрос событий
+	 */
 	while(!stop && this->_io->poll());
 	// Проверяем что посторонняя датаграмма отброшена
 	ASSERT_EQ(dropped, 1u);
@@ -15224,7 +15226,9 @@ TEST_F(IoFixture, IoOriginLimitTest){
 	ASSERT_TRUE(this->_io->connect(client));
 	// Выполняем запуск события клиента
 	ASSERT_TRUE(this->_io->launch(client));
-	// Запускаем опрос событий
+	/**
+	 *  Запускаем опрос событий
+	 */
 	while(!stop && this->_io->poll());
 	// Проверяем что создана только одна сессия
 	ASSERT_EQ(sessions, 1u);
@@ -15324,7 +15328,9 @@ TEST_F(IoFixture, IoOriginNamespaceTest){
 	}
 	// Закрываем сокет отправителя
 	::close(sock);
-	// Запускаем опрос событий
+	/**
+	 * Запускаем опрос событий
+	 */
 	while(!stop && this->_io->poll());
 	/**
 	 * Проверяем что каждый сервер завёл собственную сессию: ключ закреплён за
@@ -15424,7 +15430,9 @@ TEST_F(IoFixture, IoOriginBindTest){
 	target.sin_addr.s_addr = ::inet_addr("127.0.0.1");
 	// Отправляем датаграмму с исходным ключом сессии
 	ASSERT_GT(::sendto(sock, "AAAAfirst", 9, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0);
-	// Выполняем опрос событий до создания сессии
+	/**
+	 * Выполняем опрос событий до создания сессии
+	 */
 	while(!stop && (sessions == 0) && this->_io->poll());
 	// Проверяем что сессия создана
 	ASSERT_EQ(sessions, 1u);
@@ -15447,7 +15455,9 @@ TEST_F(IoFixture, IoOriginBindTest){
 	ASSERT_FALSE(this->_io->bind(0, extra));
 	// Отправляем датаграмму с дополнительным ключом маршрутизации
 	ASSERT_GT(::sendto(sock, "BBBBsecond", 10, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0);
-	// Выполняем опрос событий до приёма датаграммы
+	/**
+	 *  Выполняем опрос событий до приёма датаграммы
+	 */
 	while(!stop && this->_io->poll());
 	/**
 	 * Проверяем что датаграмма с дополнительным ключом попала в ту же сессию:
@@ -15470,7 +15480,9 @@ TEST_F(IoFixture, IoOriginBindTest){
 	stop = false;
 	// Отправляем датаграмму со снятым с маршрутизации ключом
 	ASSERT_GT(::sendto(sock, "BBBBthird", 9, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0);
-	// Выполняем опрос событий до создания новой сессии
+	/**
+	 *  Выполняем опрос событий до создания новой сессии
+	 */
 	while(!stop && (sessions < 2) && this->_io->poll());
 	// Закрываем сокет отправителя
 	::close(sock);
