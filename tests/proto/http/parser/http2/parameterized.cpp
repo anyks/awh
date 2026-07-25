@@ -360,7 +360,10 @@ TEST_P(Http2StatusCodeParameterizedFixture, StatusCodeTest){
 /**
  * @brief Инициализация параметров теста передачи статус-кодов ответа сервера
  *
+ * @note Информационные коды 1xx финальным ответом не являются и завершать поток не могут
+ *       (RFC 9113 §8.1) - они проверяются отдельно тестами InformationalResponseTest
+ *       и InformationalEndStreamTest
  */
 INSTANTIATE_TEST_SUITE_P(TestParameters, Http2StatusCodeParameterizedFixture,
-	::testing::Values(100, 101, 200, 201, 204, 206, 301, 304, 400, 401, 403, 404, 418, 500, 502, 503, 599)
+	::testing::Values(200, 201, 204, 206, 301, 304, 400, 401, 403, 404, 418, 500, 502, 503, 599)
 );

@@ -6817,8 +6817,30 @@ string awh::quic::Connection::session() const noexcept {
 	string params = "";
 	// Определяем роль удалённого узла (противоположна локальной)
 	const endpoint_t sender = ((this->_core.endpoint == endpoint_t::CLIENT) ? endpoint_t::SERVER : endpoint_t::CLIENT);
+	/**
+	 * Формируем запоминаемый набор параметров: из него исключаются значения,
+	 * специфичные для конкретного соединения - для нового соединения клиент обязан
+	 * использовать не запомненные, а полученные в хендшейке значения (RFC 9000 §7.4.1):
+	 * initial_source_connection_id, original_destination_connection_id,
+	 * retry_source_connection_id, stateless_reset_token, preferred_address, а также
+	 * ack_delay_exponent и max_ack_delay. Иначе запомненные per-connection параметры
+	 * (напр. retry_source_connection_id) при возобновлении сессии выдержали бы проверку
+	 * транспортных параметров нового соединения (§7.3) с чужими значениями
+	 */
+	quic::params::params_t remembered = this->_transport.remote;
+	// Значения по умолчанию для сброса непереносимых скалярных параметров
+	const quic::params::params_t defaults;
+	// Исключаем идентификаторы соединения и токен сброса, специфичные для соединения
+	remembered.hasOdcid = false;
+	remembered.hasInitialScid = false;
+	remembered.hasRetryScid = false;
+	remembered.hasResetToken = false;
+	remembered.hasPreferredAddress = false;
+	// Сбрасываем к значениям по умолчанию параметры подтверждений, которые не запоминаются
+	remembered.ackDelayExponent = defaults.ackDelayExponent;
+	remembered.maxAckDelay = defaults.maxAckDelay;
 	// Если сериализация транспортных параметров удалённого узла не выполнена
-	if(!quic::params::serialize::encode(params, this->_transport.remote, sender))
+	if(!quic::params::serialize::encode(params, remembered, sender))
 		// Выводим пустой результат
 		return string();
 	// Результирующий билет возобновления с транспортными параметрами

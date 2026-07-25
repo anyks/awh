@@ -249,7 +249,7 @@ namespace {
 	 * @param method значение псевдо-заголовка [:method]
 	 * @return       распознанный метод запроса либо method_t::NONE
 	 */
-	http::method_t classifyMethod(const string & method) noexcept {
+	http::method_t classifyMethod(string_view method) noexcept {
 		/**
 		 * @brief Структура записи таблицы соответствия имён методов запроса
 		 *
@@ -311,12 +311,44 @@ namespace {
 		return http::method_t::NONE;
 	}
 	/**
-	 * @brief Функция проверки того, что имя заголовка приведено к нижнему регистру (RFC 9113 §8.2)
+	 * @brief Функция проверки принадлежности символа к набору token (RFC 9110 §5.6.2)
+	 *
+	 * @note Заглавные латинские буквы исключены намеренно: в HTTP/2 имена
+	 *       заголовков передаются только в нижнем регистре (RFC 9113 §8.2.1)
+	 *
+	 * @param letter проверяемый символ
+	 * @return       результат проверки
+	 */
+	bool isTokenChar(const uint8_t letter) noexcept {
+		// Цифры и латинские буквы нижнего регистра допустимы
+		if(((letter >= '0') && (letter <= '9')) || ((letter >= 'a') && (letter <= 'z')))
+			// Символ допустим
+			return true;
+		/**
+		 * Определяем принадлежность символа к прочим разрешённым символам token
+		 */
+		switch(letter){
+			// Прочие разрешённые символы token (RFC 9110 §5.6.2)
+			case '!': case '#': case '$': case '%': case '&': case '\'':
+			case '*': case '+': case '-': case '.': case '^': case '_':
+			case '`': case '|': case '~':
+				// Символ допустим
+				return true;
+		}
+		// Символ недопустим
+		return false;
+	}
+	/**
+	 * @brief Функция проверки допустимости имени заголовка (RFC 9113 §8.2.1)
+	 *
+	 * @details Имя обязано быть непустым, целиком в нижнем регистре и состоять
+	 *          только из символов token; двоеточие допустимо исключительно
+	 *          первым символом (псевдо-заголовок).
 	 *
 	 * @param name имя заголовка
 	 * @return     результат проверки
 	 */
-	bool isLowercaseName(const string & name) noexcept {
+	bool isValidHeaderName(string_view name) noexcept {
 		// Пустое имя заголовка недопустимо
 		if(name.empty())
 			// Имя заголовка некорректно
@@ -324,9 +356,20 @@ namespace {
 		/**
 		 * Выполняем перебор всех символов имени заголовка
 		 */
-		for(const char letter : name){
-			// Если найден символ в верхнем регистре - имя заголовка некорректно
-			if((letter >= 'A') && (letter <= 'Z'))
+		for(size_t i = 0; i < name.size(); ++i){
+			// Получаем очередной символ имени заголовка
+			const uint8_t letter = static_cast <uint8_t> (name[i]);
+			// Если получено двоеточие
+			if(letter == ':'){
+				// Двоеточие допустимо только первым символом псевдо-заголовка
+				if(i > 0)
+					// Имя заголовка некорректно
+					return false;
+				// Переходим к следующему символу
+				continue;
+			}
+			// Если найден символ вне набора token (включая верхний регистр и пробелы)
+			if(!isTokenChar(letter))
 				// Имя заголовка некорректно
 				return false;
 		}
@@ -334,36 +377,110 @@ namespace {
 		return true;
 	}
 	/**
+	 * @brief Функция проверки допустимости значения заголовка (RFC 9113 §8.2.1)
+	 *
+	 * @details Значение не может содержать NUL/CR/LF (иначе при трансляции в HTTP/1.1
+	 *          получаем расщепление сообщения) и не может начинаться либо
+	 *          заканчиваться пробельным символом.
+	 *
+	 * @param value значение заголовка
+	 * @return      результат проверки
+	 */
+	bool isValidHeaderValue(string_view value) noexcept {
+		/**
+		 * Выполняем перебор всех символов значения заголовка
+		 */
+		for(const char letter : value){
+			// Если найден символ, разрывающий поле заголовка
+			if((letter == '\0') || (letter == '\n') || (letter == '\r'))
+				// Значение заголовка некорректно
+				return false;
+		}
+		// Если значение заголовка не пустое
+		if(!value.empty()){
+			// Начальный или конечный пробельный символ недопустим
+			if((value.front() == ' ') || (value.front() == '\t') ||
+			   (value.back() == ' ') || (value.back() == '\t'))
+				// Значение заголовка некорректно
+				return false;
+		}
+		// Значение заголовка корректно
+		return true;
+	}
+	/**
 	 * @brief Функция проверки принадлежности заголовка к запрещённым в HTTP/2 connection-specific заголовкам (RFC 9113 §8.2.2)
 	 *
+	 * @note Имя заголовка к этому моменту уже провалидировано и находится
+	 *       в нижнем регистре, поэтому сравнение выполняется строгое
+	 *
 	 * @param name имя заголовка
-	 * @param fmk  объект фреймворка
 	 * @return     результат проверки
 	 */
-	bool isConnectionSpecific(const string & name, const fmk_t * fmk) noexcept {
+	bool isConnectionSpecific(string_view name) noexcept {
 		// Выполняем сравнение со списком запрещённых заголовков
 		return (
-			fmk->compare("upgrade", name) ||
-			fmk->compare("keep-alive", name) ||
-			fmk->compare("connection", name) ||
-			fmk->compare("proxy-connection", name) ||
-			fmk->compare("transfer-encoding", name)
+			(name.compare("upgrade") == 0) ||
+			(name.compare("keep-alive") == 0) ||
+			(name.compare("connection") == 0) ||
+			(name.compare("proxy-connection") == 0) ||
+			(name.compare("transfer-encoding") == 0)
+		);
+	}
+	/**
+	 * @brief Функция проверки допустимости заголовка в секции трейлеров (RFC 9110 §6.5.1)
+	 *
+	 * @details В трейлерах запрещены поля управления сообщением, маршрутизации,
+	 *          аутентификации и описания содержимого: получатель может их не увидеть,
+	 *          так как секция приходит после тела.
+	 *
+	 * @param name имя заголовка
+	 * @return     результат проверки
+	 */
+	bool isForbiddenTrailer(string_view name) noexcept {
+		// Выполняем сравнение со списком запрещённых в трейлерах заголовков
+		return (
+			(name.compare("te") == 0) ||
+			(name.compare("host") == 0) ||
+			(name.compare("range") == 0) ||
+			(name.compare("expect") == 0) ||
+			(name.compare("trailer") == 0) ||
+			(name.compare("content-type") == 0) ||
+			(name.compare("cache-control") == 0) ||
+			(name.compare("content-range") == 0) ||
+			(name.compare("max-forwards") == 0) ||
+			(name.compare("authorization") == 0) ||
+			(name.compare("content-length") == 0) ||
+			(name.compare("content-encoding") == 0) ||
+			(name.compare("proxy-authorization") == 0)
 		);
 	}
 	/**
 	 * @brief Функция валидации HTTP-семантики блока заголовков (RFC 9113 §8.1-8.3)
 	 *
-	 * @param fields     декодированные заголовки блока
-	 * @param isRequest  блок принадлежит запросу клиента (true) или ответу сервера (false)
-	 * @param isTrailers блок является трейлерами
-	 * @param fmk        объект фреймворка
-	 * @return           код ошибки протокола (NO_ERROR - блок корректен, PROTOCOL_ERROR - malformed)
+	 * @param fields          декодированные заголовки блока
+	 * @param isRequest       блок принадлежит запросу клиента (true) или ответу сервера (false)
+	 * @param isTrailers      блок является трейлерами
+	 * @param connectProtocol расширенный CONNECT разрешён нашим SETTINGS (RFC 8441)
+	 * @param fmk             объект фреймворка
+	 * @return                код ошибки протокола (NO_ERROR - блок корректен, PROTOCOL_ERROR - malformed)
 	 */
-	http::h2::error_t validateHeaders(const vector <http::h2::hpack::field_t> & fields, const bool isRequest, const bool isTrailers, const fmk_t * fmk) noexcept {
+	http::h2::error_t validateHeaders(const vector <http::h2::hpack::field_view_t> & fields, const bool isRequest, const bool isTrailers, const bool connectProtocol, const fmk_t * fmk) noexcept {
 		// Значение псевдо-заголовка [:method]
-		string method{""};
+		string_view method{""};
+		// Значение псевдо-заголовка [:authority]
+		string_view authority{""};
+		// Значение заголовка [host]
+		string_view host{""};
 		// Флаг наличия обычного (не псевдо) заголовка
 		bool seenRegular = false;
+		// Флаг наличия заголовка [host]
+		bool hasHost = false;
+		// Флаг наличия заголовка [content-length]
+		bool hasLength = false;
+		// Значение заголовка [content-length]
+		string_view length{""};
+		// Флаг наличия псевдо-заголовка [:protocol] расширенного CONNECT (RFC 8441)
+		bool hasProtocol = false;
 		// Флаги наличия обязательных псевдо-заголовков
 		bool hasPath      = false,
 		     hasMethod    = false,
@@ -375,9 +492,12 @@ namespace {
 		 */
 		for(const auto & field : fields){
 			// Получаем имя заголовка
-			const string & name = field.name;
-			// Пустое имя заголовка недопустимо
-			if(name.empty())
+			const string_view name = field.name;
+			/**
+			 * Имя обязано быть непустым, в нижнем регистре и состоять из символов token,
+			 * значение - не содержать CR/LF/NUL и обрамляющих пробелов (RFC 9113 §8.2.1)
+			 */
+			if(!::isValidHeaderName(name) || !::isValidHeaderValue(field.value))
 				// Блок заголовков некорректен
 				return http::h2::error_t::PROTOCOL_ERROR;
 			// Если заголовок является псевдо-заголовком
@@ -393,25 +513,33 @@ namespace {
 				// Если блок принадлежит запросу клиента
 				if(isRequest){
 					// Если получен псевдо-заголовок [:method]
-					if(fmk->compare(":method", name)){
+					if(name.compare(":method") == 0){
 						// Повторный псевдо-заголовок недопустим
 						if(hasMethod)
 							// Блок заголовков некорректен
 							return http::h2::error_t::PROTOCOL_ERROR;
 						// Помечаем что псевдо-заголовок получен
 						hasMethod = true;
+						// Пустой метод запроса недопустим - это токен (RFC 9110 §9.1)
+						if(field.value.empty())
+							// Блок заголовков некорректен
+							return http::h2::error_t::PROTOCOL_ERROR;
 						// Запоминаем значение метода запроса
 						method = field.value;
 					// Если получен псевдо-заголовок [:scheme]
-					} else if(fmk->compare(":scheme", name)) {
+					} else if(name.compare(":scheme") == 0) {
 						// Повторный псевдо-заголовок недопустим
 						if(hasScheme)
 							// Блок заголовков некорректен
 							return http::h2::error_t::PROTOCOL_ERROR;
 						// Помечаем что псевдо-заголовок получен
 						hasScheme = true;
+						// Пустая схема запроса недопустима (RFC 9113 §8.3.1)
+						if(field.value.empty())
+							// Блок заголовков некорректен
+							return http::h2::error_t::PROTOCOL_ERROR;
 					// Если получен псевдо-заголовок [:path]
-					} else if(fmk->compare(":path", name)) {
+					} else if(name.compare(":path") == 0) {
 						// Повторный псевдо-заголовок недопустим
 						if(hasPath)
 							// Блок заголовков некорректен
@@ -423,19 +551,40 @@ namespace {
 							// Блок заголовков некорректен
 							return http::h2::error_t::PROTOCOL_ERROR;
 					// Если получен псевдо-заголовок [:authority]
-					} else if(fmk->compare(":authority", name)) {
+					} else if(name.compare(":authority") == 0) {
 						// Повторный псевдо-заголовок недопустим
 						if(hasAuthority)
 							// Блок заголовков некорректен
 							return http::h2::error_t::PROTOCOL_ERROR;
 						// Помечаем что псевдо-заголовок получен
 						hasAuthority = true;
+						// Запоминаем значение авторитета запроса
+						authority = field.value;
+					// Если получен псевдо-заголовок [:protocol] расширенного CONNECT (RFC 8441 §4)
+					} else if(name.compare(":protocol") == 0) {
+						/**
+						 * Расширенный CONNECT допустим только если мы сами его разрешили
+						 * параметром SETTINGS_ENABLE_CONNECT_PROTOCOL (RFC 8441 §3)
+						 */
+						if(!connectProtocol)
+							// Блок заголовков некорректен
+							return http::h2::error_t::PROTOCOL_ERROR;
+						// Повторный псевдо-заголовок недопустим
+						if(hasProtocol)
+							// Блок заголовков некорректен
+							return http::h2::error_t::PROTOCOL_ERROR;
+						// Пустое значение протокола недопустимо
+						if(field.value.empty())
+							// Блок заголовков некорректен
+							return http::h2::error_t::PROTOCOL_ERROR;
+						// Помечаем что псевдо-заголовок получен
+						hasProtocol = true;
 					// Неизвестный/неуместный псевдо-заголовок недопустим
 					} else return http::h2::error_t::PROTOCOL_ERROR;
 				// Если блок принадлежит ответу сервера
 				} else {
 					// Если получен псевдо-заголовок [:status]
-					if(fmk->compare(":status", name)){
+					if(name.compare(":status") == 0){
 						// Повторный псевдо-заголовок недопустим
 						if(hasStatus)
 							// Блок заголовков некорректен
@@ -444,6 +593,10 @@ namespace {
 						hasStatus = true;
 						// Статус-код обязан состоять ровно из трёх цифр (RFC 9113 §8.3.2)
 						if(field.value.size() != 3)
+							// Блок заголовков некорректен
+							return http::h2::error_t::PROTOCOL_ERROR;
+						// Статус 101 в HTTP/2 не определён - апгрейд протокола выполняется иначе (RFC 9113 §8.1)
+						if(field.value.compare("101") == 0)
 							// Блок заголовков некорректен
 							return http::h2::error_t::PROTOCOL_ERROR;
 						/**
@@ -462,38 +615,96 @@ namespace {
 			} else {
 				// Помечаем что обычный заголовок встречен
 				seenRegular = true;
-				// Имя заголовка обязано быть в нижнем регистре (RFC 9113 §8.2)
-				if(!::isLowercaseName(name))
+				// В секции трейлеров допустимы не все заголовки (RFC 9110 §6.5.1)
+				if(isTrailers && ::isForbiddenTrailer(name))
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 				// Connection-specific заголовки запрещены в HTTP/2 (RFC 9113 §8.2.2)
-				if(::isConnectionSpecific(name, fmk))
+				if(::isConnectionSpecific(name))
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 				// Заголовок [te] допускает только значение [trailers] (RFC 9113 §8.2.2)
-				if(fmk->compare("te", name) && !fmk->compare("trailers", field.value))
+				if((name.compare("te") == 0) && !fmk->compare("trailers", field.value))
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
+				// Если получен заголовок [host] - запоминаем его для сверки с [:authority]
+				if(name.compare("host") == 0){
+					// Помечаем что заголовок получен
+					hasHost = true;
+					// Запоминаем значение авторитета запроса
+					host = field.value;
+				// Если получен заголовок [content-length]
+				} else if(name.compare("content-length") == 0) {
+					// Пустое значение длины тела недопустимо (RFC 9110 §8.6)
+					if(field.value.empty())
+						// Блок заголовков некорректен
+						return http::h2::error_t::PROTOCOL_ERROR;
+					/**
+					 * Выполняем перебор всех символов длины тела
+					 */
+					for(const char letter : field.value){
+						// Если найден символ не являющийся цифрой
+						if((letter < '0') || (letter > '9'))
+							// Блок заголовков некорректен
+							return http::h2::error_t::PROTOCOL_ERROR;
+					}
+					// Повторный content-length допустим только с тем же значением (RFC 9110 §8.6)
+					if(hasLength && (length.compare(field.value) != 0))
+						// Блок заголовков некорректен
+						return http::h2::error_t::PROTOCOL_ERROR;
+					// Помечаем что заголовок получен
+					hasLength = true;
+					// Запоминаем объявленную длину тела
+					length = field.value;
+				}
 			}
 		}
 		// В трейлерах обязательных псевдо-заголовков нет
 		if(isTrailers)
 			// Блок заголовков корректен
 			return http::h2::error_t::NO_ERROR;
+		/**
+		 * Заголовок [host] и псевдо-заголовок [:authority] обязаны указывать на один
+		 * и тот же ресурс, иначе запрос считается малформированным (RFC 9113 §8.3.1):
+		 * расхождение - классический вектор десинхронизации на прокси
+		 */
+		if(hasHost && hasAuthority && !fmk->compare(host, authority))
+			// Блок заголовков некорректен
+			return http::h2::error_t::PROTOCOL_ERROR;
 		// Если блок принадлежит запросу клиента
 		if(isRequest){
-			// Если запрос выполняется методом CONNECT
-			if(fmk->compare("CONNECT", method)){
-				// Метод CONNECT требует наличия [:authority] (RFC 9113 §8.5)
-				if(!hasAuthority)
+			/**
+			 * Метод запроса - регистрозависимый токен (RFC 9110 §9.1), поэтому
+			 * сравнение выполняется строгое: [connect] методом CONNECT не является
+			 */
+			if(method.compare("CONNECT") == 0){
+				/**
+				 * Метод CONNECT требует наличия [:authority] (RFC 9113 §8.5), причём
+				 * непустого: значение задаёт хост и порт назначения туннеля, поэтому
+				 * пустая строка адресата не описывает и делает запрос малформированным
+				 */
+				if(!hasAuthority || authority.empty())
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
-				// И запрещает [:scheme]/[:path]
-				if(hasScheme || hasPath)
+				/**
+				 * Расширенный CONNECT (RFC 8441 §4), напротив, ОБЯЗАН нести [:scheme] и [:path]:
+				 * туннель поднимается к конкретному ресурсу, а не к хосту целиком
+				 */
+				if(hasProtocol){
+					// Отсутствие [:scheme] либо [:path] делает запрос некорректным
+					if(!hasScheme || !hasPath)
+						// Блок заголовков некорректен
+						return http::h2::error_t::PROTOCOL_ERROR;
+				// Классический CONNECT запрещает [:scheme]/[:path]
+				} else if(hasScheme || hasPath)
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
+			// Псевдо-заголовок [:protocol] допустим только с методом CONNECT (RFC 8441 §4)
+			} else if(hasProtocol)
+				// Блок заголовков некорректен
+				return http::h2::error_t::PROTOCOL_ERROR;
 			// Для остальных методов обязательны [:method]/[:scheme]/[:path]
-			} else if(!hasMethod || !hasScheme || !hasPath)
+			else if(!hasMethod || !hasScheme || !hasPath)
 				// Блок заголовков некорректен
 				return http::h2::error_t::PROTOCOL_ERROR;
 		// Ответ сервера обязан содержать [:status]
@@ -528,7 +739,8 @@ awh::http::Parser_HTTP2::Settings::Settings() noexcept :
  maxFrameSize(h2::proto::DEFAULT_MAX_FRAME_SIZE),
  headerTableSize(h2::proto::DEFAULT_HEADER_TABLE_SIZE),
  maxHeaderListSize(h2::proto::MAX_HEADER_LIST_SIZE),
- maxConcurrentStreams(h2::proto::MAX_COUNT_STREAMS) {}
+ maxConcurrentStreams(h2::proto::MAX_COUNT_STREAMS),
+ enableConnectProtocol(0), noRfc7540Priorities(1) {}
 
 /**
  * @brief Метод списания токенов
@@ -624,10 +836,12 @@ void awh::http::Parser_HTTP2::Stream::compactSendBuffer() noexcept {
 awh::http::Parser_HTTP2::Stream::Stream() noexcept :
  id(0), sourceEof(false), headersDone(false),
  endStreamSent(false), endStreamPending(false),
- writableNotified(false), recvBody(0),
+ writableNotified(false), recvBody(0), contentLength(-1), bodyless(false),
+ urgency(h2::proto::DEFAULT_URGENCY), incremental(false),
  localWindow(h2::proto::DEFAULT_WINDOW_SIZE),
  remoteWindow(h2::proto::DEFAULT_WINDOW_SIZE),
  sendOffset(0), sendBuffer{""},
+ headersSent(false), trailersPending(false),
  state(h2::stream_state_t::IDLE),
  source(nullptr), headers(nullptr) {}
 
@@ -644,14 +858,15 @@ awh::http::Parser_HTTP2::Ratelims::Ratelims() noexcept : now(0) {}
 awh::http::Parser_HTTP2::Window::Window() noexcept :
  local(h2::proto::DEFAULT_WINDOW_SIZE),
  remote(h2::proto::DEFAULT_WINDOW_SIZE),
- localMax(h2::proto::DEFAULT_WINDOW_SIZE) {}
+ localMax(h2::proto::DEFAULT_WINDOW_SIZE),
+ localInit(h2::proto::DEFAULT_WINDOW_SIZE) {}
 
 /**
  * @brief Конструктор
  *
  */
 awh::http::Parser_HTTP2::Buffer::Buffer() noexcept :
- input{""}, output{""}, outputPos(0) {}
+ input{""}, output{""}, inputPos(0), outputPos(0) {}
 
 /**
  * @brief Конструктор
@@ -666,9 +881,10 @@ awh::http::Parser_HTTP2::Header_Block::Header_Block() noexcept :
  */
 awh::http::Parser_HTTP2::Flags::Flags() noexcept :
  inPump(false), inParse(false),
- goawaySent(false), hbcRefused(false),
- hbcEndStream(false), settingsAcked(true),
- goawayReceived(false), prefaceReceived(false) {}
+ goawaySent(false), goawayGraceful(false), hbcRefused(false),
+ hbcEndStream(false), settingsAcked(false),
+ settingsReceived(false), prioritiesLocked(false), goawayReceived(false),
+ prefaceReceived(false) {}
 
 /**
  * @brief Конструктор
@@ -676,8 +892,10 @@ awh::http::Parser_HTTP2::Flags::Flags() noexcept :
  */
 awh::http::Parser_HTTP2::Transfer::Transfer() noexcept :
  lastStreamId(0),
+ localOpened(0),
  nextStreamId(1),
  peerStreamCount(0),
+ localStreamCount(0),
  sendLowWater(SEND_LOW_WATER),
  sendHighWater(SEND_HIGH_WATER),
  outputHighWater(OUTPUT_HIGH_WATER) {}
@@ -756,23 +974,42 @@ size_t awh::http::Parser_HTTP2::outputPending() const noexcept {
 	return (this->_buffer.output.size() - this->_buffer.outputPos);
 }
 /**
+ * @brief Метод очистки входного буфера вместе с разобранным префиксом
+ *
+ */
+void awh::http::Parser_HTTP2::clearInput() noexcept {
+	// Очищаем буфер неразобранного хвоста входящих данных
+	this->_buffer.input.clear();
+	// Сбрасываем разобранный префикс входного буфера
+	this->_buffer.inputPos = 0;
+}
+/**
+ * @brief Метод получения объёма ещё не разобранных входящих байтов
+ *
+ * @return объём не разобранных входящих байтов
+ */
+size_t awh::http::Parser_HTTP2::inputPending() const noexcept {
+	// Выводим объём входного буфера без уже разобранного префикса
+	return (this->_buffer.input.size() - this->_buffer.inputPos);
+}
+/**
  * @brief Метод разбора накопленного входного буфера (preface + поток фреймов)
  *
  * @return результат разбора (OK/ERROR)
  */
 awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput() noexcept {
-	// Позиция разбора во входном буфере
-	size_t pos = 0;
+	// Позиция разбора во входном буфере (с учётом уже разобранного префикса)
+	size_t pos = this->_buffer.inputPos;
 	// Если connection preface ещё не получен (мы - сервер)
 	if(!this->_flags.prefaceReceived){
 		// Если preface целиком ещё не пришёл - ждём больше данных
-		if(this->_buffer.input.size() < h2::proto::PREFACE.size())
+		if(this->inputPending() < h2::proto::PREFACE.size())
 			// Продолжаем ожидание данных
 			return h2::status_t::OK;
 		// Если полученные байты не совпадают с magic-строкой preface
-		if(string_view(this->_buffer.input.data(), h2::proto::PREFACE.size()) != h2::proto::PREFACE){
+		if(string_view(this->_buffer.input.data() + pos, h2::proto::PREFACE.size()) != h2::proto::PREFACE){
 			// Очищаем входной буфер
-			this->_buffer.input.clear();
+			this->clearInput();
 			// Фиксируем ошибку уровня соединения
 			return this->fail(error_t::PROTOCOL_ERROR, "invalid connection preface");
 		}
@@ -791,6 +1028,18 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput() noexcept {
 		const uint8_t * buffer = reinterpret_cast <const uint8_t *> (this->_buffer.input.data());
 		// Получаем общий размер входного буфера
 		const size_t total = this->_buffer.input.size();
+		/**
+		 * Входной буфер мог быть очищен реентрантным вызовом reset() либо clear()
+		 * из пользовательской функции: продолжать разбор по устаревшему смещению
+		 * нельзя - оно указывает за пределы буфера, а разность размеров переполняется
+		 * и обесценивает проверку доступного объёма
+		 */
+		if(pos > total){
+			// Считаем разобранным весь оставшийся буфер
+			pos = total;
+			// Прерываем разбор
+			break;
+		}
 		// Если заголовок фрейма целиком ещё не пришёл - прерываем разбор
 		if((total - pos) < h2::proto::FRAME_HEADER_SIZE)
 			// Прерываем разбор до прихода новых данных
@@ -802,7 +1051,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput() noexcept {
 		// Если размер фрейма превышает согласованный лимит (RFC 9113 §4.2)
 		if(header.length > this->_local.maxFrameSize){
 			// Очищаем входной буфер
-			this->_buffer.input.clear();
+			this->clearInput();
 			// Фиксируем ошибку уровня соединения
 			return this->fail(error_t::FRAME_SIZE_ERROR, "frame exceeds SETTINGS_MAX_FRAME_SIZE");
 		}
@@ -818,7 +1067,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput() noexcept {
 		 */
 		if((this->_hbc.stream != 0) && !((header.type == h2::frame_t::CONTINUATION) && (header.streamId == this->_hbc.stream))){
 			// Очищаем входной буфер
-			this->_buffer.input.clear();
+			this->clearInput();
 			// Фиксируем ошибку уровня соединения
 			return this->fail(error_t::PROTOCOL_ERROR, "expected CONTINUATION");
 		}
@@ -827,17 +1076,26 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput() noexcept {
 		// Если обработка фрейма завершилась ошибкой уровня соединения
 		if(status == h2::status_t::ERROR){
 			// Очищаем входной буфер
-			this->_buffer.input.clear();
+			this->clearInput();
 			// Прерываем разбор с ошибкой
 			return h2::status_t::ERROR;
 		}
 		// Пропускаем разобранный фрейм
 		pos += (h2::proto::FRAME_HEADER_SIZE + header.length);
 	}
-	// Убираем разобранный префикс, оставляя неполный хвост во входном буфере
-	if(pos > 0)
-		// Удаляем разобранный префикс входного буфера
-		this->_buffer.input.erase(0, pos);
+	// Отмечаем разобранный префикс без сдвига всего буфера
+	this->_buffer.inputPos = pos;
+	// Если входной буфер разобран полностью
+	if(this->_buffer.inputPos >= this->_buffer.input.size())
+		// Очищаем входной буфер вместе с разобранным префиксом
+		this->clearInput();
+	// Если разобранный префикс не меньше неразобранного остатка - компактифицируем буфер
+	else if(this->_buffer.inputPos >= this->inputPending()) {
+		// Удаляем разобранный префикс из буфера
+		this->_buffer.input.erase(0, this->_buffer.inputPos);
+		// Сбрасываем разобранный префикс
+		this->_buffer.inputPos = 0;
+	}
 	// Разбор выполнен успешно
 	return h2::status_t::OK;
 }
@@ -857,14 +1115,21 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	const bool endStream = this->_flags.hbcEndStream;
 	// Код ошибки протокола
 	error_t err = error_t::NO_ERROR;
-	// Декодированные заголовки блока
-	vector <h2::hpack::field_t> fields;
-	// Лимит суммарного размера распакованного списка заголовков (защита от decompression bomb)
+	// Получаем ссылку на переиспользуемый список декодированных заголовков блока
+	vector <h2::hpack::field_view_t> & fields = this->_fields;
+	/**
+	 * Лимит суммарного размера распакованного списка заголовков (защита от decompression
+	 * bomb). В обоих источниках 0 означает "без лимита", поэтому берётся не минимум,
+	 * а строжайший из заданных: иначе maxHeadersTotal == 0 обнулял бы и лимит SETTINGS
+	 */
 	uint64_t listLimit = this->_limits.maxHeadersTotal;
-	// Если лимит SETTINGS_MAX_HEADER_LIST_SIZE задан и строже - применяем его
-	if((this->_local.maxHeaderListSize != 0) && (this->_local.maxHeaderListSize < listLimit))
-		// Применяем лимит из наших параметров SETTINGS
-		listLimit = this->_local.maxHeaderListSize;
+	// Если лимит SETTINGS_MAX_HEADER_LIST_SIZE задан
+	if(this->_local.maxHeaderListSize != 0){
+		// Применяем его, если общий лимит не задан либо менее строг
+		if((listLimit == 0) || (this->_local.maxHeaderListSize < listLimit))
+			// Применяем лимит из наших параметров SETTINGS
+			listLimit = this->_local.maxHeaderListSize;
+	}
 	// Выполняем декодирование накопленного блока заголовков
 	const h2::status_t status = this->_decoder.decode(this->_hbc.buffer, fields, listLimit, err);
 	// Сбрасываем идентификатор потока собираемого блока (сборка завершена)
@@ -902,7 +1167,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	// Определяем принадлежность блока: запрос клиента (мы - сервер) или ответ сервера
 	const bool isRequest = (this->_direct == direct_t::REQUEST);
 	// Выполняем валидацию HTTP-семантики блока заголовков (RFC 9113 §8)
-	const error_t vErr = ::validateHeaders(fields, isRequest, isTrailers, this->_fmk);
+	const error_t vErr = ::validateHeaders(fields, isRequest, isTrailers, (this->_local.enableConnectProtocol != 0), this->_fmk);
 	// Если блок заголовков малформирован
 	if(vErr != error_t::NO_ERROR){
 		// Малформированный запрос/ответ - потоковая ошибка (RFC 9113 §8.1.1), соединение живёт
@@ -921,12 +1186,102 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 		// Обработка блока завершена
 		return h2::status_t::OK;
 	}
+	/**
+	 * Признак информационного (1xx) ответа сервера: он промежуточный, за ним обязан
+	 * прийти финальный блок заголовков, поэтому поток не считается получившим заголовки
+	 * и фазы приёма сообщения по нему не начинаются (RFC 9113 §8.1)
+	 */
+	bool informational = false;
+	// Если разбирается ответ сервера и это не блок трейлеров
+	if(!isRequest && !isTrailers){
+		/**
+		 * Выполняем поиск псевдо-заголовка статуса (его формат уже провалидирован)
+		 */
+		for(const h2::hpack::field_view_t & field : fields){
+			// Если псевдо-заголовок статуса найден
+			if(field.name.compare(":status") == 0){
+				// Информационным считается ответ с кодом 1xx
+				informational = (field.value.front() == '1');
+				/**
+				 * Ответы 204 и 304 тела не несут, но content-length в них допустим
+				 * и описывает тело, которого не будет (RFC 9110 §8.6, §15.4.5)
+				 */
+				if((field.value.compare("204") == 0) || (field.value.compare("304") == 0))
+					// Помечаем что сообщение не может нести тело
+					stream->bodyless = true;
+				// Прекращаем поиск
+				break;
+			}
+		}
+	}
+	// Если информационный ответ пытается завершить поток - это малформированный ответ
+	if(informational && endStream){
+		// Малформированный ответ - потоковая ошибка, соединение живёт
+		h2::frame::serialize::rstStream(this->_buffer.output, streamId, error_t::PROTOCOL_ERROR);
+		// Закрываем поток с вызовом функции обратного вызова закрытия
+		this->closeStream(streamId, error_t::PROTOCOL_ERROR);
+		// Обработка блока завершена
+		return h2::status_t::OK;
+	}
 	// Если это первый блок заголовков потока - собираем провайдер из псевдо-заголовков
 	if(!isTrailers){
+		/**
+		 * Запоминаем объявленную длину тела: её расхождение с суммой длин DATA делает
+		 * сообщение малформированным (RFC 9113 §8.1.1). Формат значения уже
+		 * провалидирован, повторы согласованы между собой. Промежуточный ответ 1xx
+		 * тела не описывает, поэтому его content-length не учитывается и не должен
+		 * пережить приход финального блока заголовков
+		 */
+		stream->contentLength = -1;
+		/**
+		 * Выполняем поиск объявленной длины тела в финальном блоке заголовков
+		 */
+		for(const h2::hpack::field_view_t & field : fields){
+			// Промежуточный ответ тела не описывает - его длину не учитываем
+			if(informational)
+				// Прекращаем поиск
+				break;
+			// Если получен заголовок объявленной длины тела
+			if(field.name.compare("content-length") == 0){
+				// Объявленная длина тела
+				uint64_t declared = 0;
+				/**
+				 * Выполняем перебор всех цифр объявленной длины тела
+				 */
+				for(const char letter : field.value){
+					// Если накопление переполняет допустимый диапазон - лимит и так будет превышен
+					if(declared > ((UINT64_MAX - static_cast <uint64_t> (letter - '0')) / 10)){
+						// Ограничиваем длину тела максимально возможной
+						declared = UINT64_MAX;
+						// Прекращаем накопление
+						break;
+					}
+					// Накапливаем объявленную длину тела
+					declared = ((declared * 10) + static_cast <uint64_t> (letter - '0'));
+				}
+				// Запоминаем объявленную длину тела потока
+				stream->contentLength = static_cast <int64_t> (::min(declared, static_cast <uint64_t> (INT64_MAX)));
+				// Прекращаем поиск
+				break;
+			}
+		}
+		/**
+		 * Применяем расширенный приоритет, объявленный заголовком (RFC 9218 §5):
+		 * кадр PRIORITY_UPDATE, пришедший позже, его переопределит
+		 */
+		for(const h2::hpack::field_view_t & field : fields){
+			// Если получен заголовок расширенного приоритета
+			if(field.name.compare("priority") == 0){
+				// Применяем расширенный приоритет к потоку
+				this->applyPriority(* stream, field.value);
+				// Прекращаем поиск
+				break;
+			}
+		}
 		// Выполняем построение провайдера заголовков потока
 		stream->headers = this->buildProvider(fields, isRequest);
-		// Уведомляем о начале приёма сообщения потока
-		if(!this->firePhase(streamId, phase_t::BEGIN, part_t::NONE))
+		// Если блок является финальным - уведомляем о начале приёма сообщения потока
+		if(!informational && !this->firePhase(streamId, phase_t::BEGIN, part_t::NONE))
 			// Обработка блока завершена (поток сброшен, соединение живёт)
 			return h2::status_t::OK;
 	// Если это блок трейлеров - тело потока принято, начинаются трейлеры
@@ -942,14 +1297,16 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	}
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.header != nullptr){
+		// Запоминаем поколение состояния соединения перед доставкой заголовков
+		const uint64_t epoch = this->_epoch;
 		// Определяем часть сообщения, к которой относятся заголовки
 		const part_t part = (isTrailers ? part_t::TRAILER : part_t::HEADERS);
 		/**
 		 * Выполняем доставку всех декодированных заголовков блока
 		 */
-		for(const h2::hpack::field_t & field : fields){
+		for(const h2::hpack::field_view_t & field : fields){
 			// Если функция обратного вызова потребовала сбросить поток
-			if(!this->_callbacks.header(streamId, string_view(field.name), string_view(field.value), part)){
+			if(!this->fireHeader(streamId, field.name, field.value, part)){
 				// Если поток ещё существует (функция обратного вызова могла его закрыть)
 				if(this->findStream(streamId) != nullptr){
 					// Сбрасываем поток с кодом CANCEL
@@ -960,6 +1317,13 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 				// Обработка блока завершена (соединение живёт)
 				return h2::status_t::OK;
 			}
+			/**
+			 * Функция обратного вызова могла реентрантно сбросить парсер: список
+			 * заголовков и арена декодера при этом уничтожены, продолжать перебор нельзя
+			 */
+			if(epoch != this->_epoch)
+				// Обработка блока завершена
+				return h2::status_t::OK;
 		}
 	}
 	/**
@@ -971,25 +1335,27 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	if(stream == nullptr)
 		// Обработка блока завершена
 		return h2::status_t::OK;
-	// Помечаем что блок заголовков потока получен (повторный HEADERS = трейлеры)
-	stream->headersDone = true;
-	// Если функция обратного вызова установлена
-	if(this->_callbacks.provider != nullptr){
-		// Если функция обратного вызова потребовала сбросить поток
-		if(!this->_callbacks.provider(streamId, (isTrailers ? nullptr : stream->headers.get()), endStream)){
-			// Если поток ещё существует (функция обратного вызова могла его закрыть)
-			if(this->findStream(streamId) != nullptr){
-				// Сбрасываем поток с кодом CANCEL
-				h2::frame::serialize::rstStream(this->_buffer.output, streamId, error_t::CANCEL);
-				// Закрываем поток с вызовом функции обратного вызова закрытия
-				this->closeStream(streamId, error_t::CANCEL);
-			}
-			// Обработка блока завершена (соединение живёт)
-			return h2::status_t::OK;
+	/**
+	 * Помечаем что блок заголовков потока получен (повторный HEADERS = трейлеры).
+	 * Информационный ответ таким блоком не является - следующий HEADERS будет финальным
+	 */
+	if(!informational)
+		// Помечаем что блок заголовков потока получен
+		stream->headersDone = true;
+	// Если функция обратного вызова потребовала сбросить поток
+	if(!this->fireProvider(streamId, (isTrailers ? nullptr : stream->headers.get()), endStream)){
+		// Если поток ещё существует (функция обратного вызова могла его закрыть)
+		if(this->findStream(streamId) != nullptr){
+			// Сбрасываем поток с кодом CANCEL
+			h2::frame::serialize::rstStream(this->_buffer.output, streamId, error_t::CANCEL);
+			// Закрываем поток с вызовом функции обратного вызова закрытия
+			this->closeStream(streamId, error_t::CANCEL);
 		}
+		// Обработка блока завершена (соединение живёт)
+		return h2::status_t::OK;
 	}
-	// Если это первый блок заголовков потока
-	if(!isTrailers){
+	// Если это первый финальный блок заголовков потока
+	if(!isTrailers && !informational){
 		// Уведомляем о завершении приёма блока заголовков потока
 		if(!this->firePhase(streamId, phase_t::END, part_t::HEADERS))
 			// Обработка блока завершена (поток сброшен, соединение живёт)
@@ -1002,7 +1368,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 				return h2::status_t::OK;
 		}
 	// Если это блок трейлеров
-	} else {
+	} else if(isTrailers) {
 		// Уведомляем о завершении приёма трейлеров потока
 		if(!this->firePhase(streamId, phase_t::END, part_t::TRAILER))
 			// Обработка блока завершена (поток сброшен, соединение живёт)
@@ -1010,6 +1376,10 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	}
 	// Если получен END_STREAM - сообщение потока полностью принято
 	if(endStream){
+		// Если объём принятого тела не совпал с объявленным - поток сброшен
+		if(!this->checkBodyLength(streamId))
+			// Обработка блока завершена (соединение живёт)
+			return h2::status_t::OK;
 		// Уведомляем о завершении приёма всего сообщения потока
 		if(!this->firePhase(streamId, phase_t::END, part_t::NONE))
 			// Обработка блока завершена (поток сброшен, соединение живёт)
@@ -1137,6 +1507,13 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 	// Код ошибки протокола
 	error_t err = error_t::NO_ERROR;
 	/**
+	 * Первым фреймом соединения пир обязан прислать SETTINGS - это часть
+	 * connection preface для обеих сторон (RFC 9113 §3.4)
+	 */
+	if(!this->_flags.settingsReceived && (header.type != h2::frame_t::SETTINGS))
+		// Фиксируем ошибку уровня соединения
+		return this->fail(error_t::PROTOCOL_ERROR, "expected SETTINGS as first frame");
+	/**
 	 * Диспетчеризация по типу фрейма
 	 */
 	switch(header.type){
@@ -1148,10 +1525,22 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			if(h2::frame::parser::settings(header, payload, items, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad SETTINGS");
-			// Если получен ACK на наш SETTINGS, помечаем что наш SETTINGS подтверждён
-			if((this->_flags.settingsAcked = (header.flags & h2::flag::ACK)))
-				// Обработка фрейма завершена
+			/**
+			 * Если получен ACK на наш SETTINGS. Обычный SETTINGS пира флаг подтверждения
+			 * не трогает: наш SETTINGS остаётся подтверждённым независимо от него
+			 */
+			if((header.flags & h2::flag::ACK) != 0){
+				// Помечаем что наш SETTINGS подтверждён
+				this->_flags.settingsAcked = true;
+				/**
+				 * Подтверждение не является объявлением параметров и требование
+				 * connection preface не закрывает (RFC 9113 §3.4): пир по-прежнему
+				 * обязан прислать свой SETTINGS до любого содержательного кадра
+				 */
 				return h2::status_t::OK;
+			}
+			// Помечаем что SETTINGS пира получен (connection preface выполнен)
+			this->_flags.settingsReceived = true;
 			// Пополняем лимит частоты управляющих фреймов по текущему времени
 			this->_ratelims.ctrl.update(this->_ratelims.now);
 			// Если лимит частоты управляющих фреймов превышен (защита от flood)
@@ -1233,14 +1622,48 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 						// Применяем полученное значение параметра
 						this->_remote.maxHeaderListSize = item.value;
 					break;
+					// Разрешение расширенного метода CONNECT (RFC 8441 §3)
+					case h2::setting_t::ENABLE_CONNECT_PROTOCOL: {
+						// Значение параметра обязано быть 0 или 1
+						if(item.value > 1)
+							// Фиксируем ошибку уровня соединения
+							return this->fail(error_t::PROTOCOL_ERROR, "invalid ENABLE_CONNECT_PROTOCOL");
+						/**
+						 * Отзыв уже данного разрешения запрещён (RFC 8441 §3): клиент мог
+						 * начать формировать расширенный CONNECT, полагаясь на анонс
+						 */
+						if((this->_remote.enableConnectProtocol == 1) && (item.value == 0))
+							// Фиксируем ошибку уровня соединения
+							return this->fail(error_t::PROTOCOL_ERROR, "ENABLE_CONNECT_PROTOCOL revoked");
+						// Применяем полученное значение параметра
+						this->_remote.enableConnectProtocol = item.value;
+					} break;
+					// Отказ от приоритетов RFC 7540 (RFC 9218 §2.1)
+					case h2::setting_t::NO_RFC7540_PRIORITIES: {
+						// Значение параметра обязано быть 0 или 1
+						if(item.value > 1)
+							// Фиксируем ошибку уровня соединения
+							return this->fail(error_t::PROTOCOL_ERROR, "invalid NO_RFC7540_PRIORITIES");
+						/**
+						 * Значение параметра фиксируется на всё соединение и не может меняться
+						 * после того, как было объявлено (RFC 9218 §2.1). Проверка привязана
+						 * к самому параметру, а не к порядку кадров: пир вправе прислать
+						 * SETTINGS ACK раньше собственного SETTINGS
+						 */
+						if(this->_flags.prioritiesLocked && (this->_remote.noRfc7540Priorities != item.value))
+							// Фиксируем ошибку уровня соединения
+							return this->fail(error_t::PROTOCOL_ERROR, "NO_RFC7540_PRIORITIES changed");
+						// Применяем полученное значение параметра
+						this->_remote.noRfc7540Priorities = item.value;
+						// Фиксируем объявленное пиром значение параметра
+						this->_flags.prioritiesLocked = true;
+					} break;
 				}
 			}
 			// Подтверждаем получение SETTINGS пира (ACK)
 			h2::frame::serialize::settings(this->_buffer.output, nullptr, 0, true);
-			// Если функция обратного вызова установлена - уведомляем о применённом SETTINGS пира
-			if(this->_callbacks.settings != nullptr)
-				// Уведомляем о применённом SETTINGS пира
-				this->_callbacks.settings();
+			// Уведомляем о применённом SETTINGS пира
+			this->fireSettings();
 			// Изменение окон могло разблокировать отправку - прокачиваем отправку
 			this->pump();
 			// Обработка фрейма завершена
@@ -1273,9 +1696,23 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Инкремент окна flow control
 			uint32_t increment = 0;
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parser::windowUpdate(header, payload, increment, err) != h2::status_t::OK)
+			if(h2::frame::parser::windowUpdate(header, payload, increment, err) != h2::status_t::OK){
+				/**
+				 * Нулевой инкремент на потоке - потоковая ошибка, соединение живёт
+				 * (RFC 9113 §6.9). Некорректная длина фрейма и нулевой инкремент
+				 * на самом соединении остаются ошибками уровня соединения
+				 */
+				if((header.streamId != 0) && (err == error_t::PROTOCOL_ERROR) && !this->idleStream(header.streamId)){
+					// Сбрасываем поток с кодом нарушения протокола
+					h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, err);
+					// Закрываем поток с вызовом функции обратного вызова закрытия
+					this->closeStream(header.streamId, err);
+					// Обработка фрейма завершена (соединение живёт)
+					return h2::status_t::OK;
+				}
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad WINDOW_UPDATE");
+			}
 			// Если обновляется окно всего соединения
 			if(header.streamId == 0){
 				// Если новое окно превышает максимально допустимое
@@ -1289,7 +1726,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				// Выполняем поиск потока
 				stream_t * stream = this->findStream(header.streamId);
 				// WINDOW_UPDATE на ещё не открытом (idle) потоке - ошибка соединения (RFC 9113 §5.1)
-				if((stream == nullptr) && (header.streamId > this->_transfer.lastStreamId))
+				if((stream == nullptr) && this->idleStream(header.streamId))
 					// Фиксируем ошибку уровня соединения
 					return this->fail(error_t::PROTOCOL_ERROR, "WINDOW_UPDATE on idle stream");
 				// Если поток найден
@@ -1317,10 +1754,34 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				return this->fail(err, "bad GOAWAY");
 			// Помечаем что GOAWAY получен
 			this->_flags.goawayReceived = true;
-			// Если функция обратного вызова установлена - уведомляем о полученном GOAWAY
-			if(this->_callbacks.goaway != nullptr)
-				// Уведомляем о полученном GOAWAY
-				this->_callbacks.goaway(goaway.lastStreamId, goaway.code, goaway.debugData);
+			// Уведомляем о полученном GOAWAY
+			this->fireGoaway(goaway.lastStreamId, goaway.code, goaway.debugData);
+			// Очищаем снимок идентификаторов потоков
+			this->_transfer.pumpIds.clear();
+			/**
+			 * Собираем наши потоки с идентификатором выше объявленного: пир их не обработал
+			 * и уже не обработает (RFC 9113 §6.8), поэтому их можно безопасно повторить
+			 * на новом соединении. Снимок нужен, так как закрытие меняет карту потоков
+			 */
+			for(const auto & item : this->_transfer.streams){
+				// Если поток инициирован нами и пиром не обработан
+				if(!this->peerInitiated(item.first) && (item.first > goaway.lastStreamId))
+					// Добавляем идентификатор потока в снимок
+					this->_transfer.pumpIds.push_back(item.first);
+			}
+			// Запоминаем поколение состояния соединения перед закрытием потоков
+			const uint64_t epoch = this->_epoch;
+			/**
+			 * Выполняем закрытие всех необработанных пиром потоков
+			 */
+			for(const uint32_t sid : this->_transfer.pumpIds){
+				// Закрываем поток с кодом отклонения (запрос можно повторить)
+				this->closeStream(sid, error_t::REFUSED_STREAM);
+				// Если функция обратного вызова закрытия сбросила парсер - снимок недействителен
+				if(epoch != this->_epoch)
+					// Прекращаем закрытие потоков
+					break;
+			}
 			// Обработка фрейма завершена
 			return h2::status_t::OK;
 		}
@@ -1333,7 +1794,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad RST_STREAM");
 			// RST_STREAM на ещё не открытом (idle) потоке - ошибка соединения (RFC 9113 §5.1)
-			if((this->findStream(header.streamId) == nullptr) && (header.streamId > this->_transfer.lastStreamId))
+			if((this->findStream(header.streamId) == nullptr) && this->idleStream(header.streamId))
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::PROTOCOL_ERROR, "RST_STREAM on idle stream");
 			// Пополняем лимит частоты входящих RST_STREAM по текущему времени
@@ -1387,7 +1848,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 					// Переводим поток в состояние OPEN
 					stream.state = h2::stream_state_t::OPEN;
 					// Если функция обратного вызова потребовала отклонить поток
-					if((this->_callbacks.begin != nullptr) && !this->_callbacks.begin(header.streamId)){
+					if(!this->fireBegin(header.streamId)){
 						// Сбрасываем поток с кодом CANCEL
 						h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::CANCEL);
 						// Закрываем поток с вызовом функции обратного вызова закрытия
@@ -1410,16 +1871,35 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 					// Поток открыт либо наша половина закрыта
 					case h2::stream_state_t::OPEN:
 					case h2::stream_state_t::HALF_CLOSED_LOCAL: {
-						// Повторный HEADERS - это трейлеры, они обязаны нести END_STREAM (RFC 9113 §8.1)
-						if(stream->headersDone && !headers.endStream)
-							// Фиксируем ошибку уровня соединения
-							return this->fail(error_t::PROTOCOL_ERROR, "trailers without END_STREAM");
+						/**
+						 * Повторный HEADERS - это трейлеры, они обязаны нести END_STREAM
+						 * (RFC 9113 §8.1). Их отсутствие делает сообщение малформированным,
+						 * а это потоковая ошибка (§8.1.1): соединение живёт, но блок
+						 * заголовков всё равно декодируется для синхронизации HPACK
+						 */
+						if(stream->headersDone && !headers.endStream){
+							// Сбрасываем поток с кодом нарушения протокола
+							h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::PROTOCOL_ERROR);
+							// Закрываем поток с вызовом функции обратного вызова закрытия
+							this->closeStream(header.streamId, error_t::PROTOCOL_ERROR);
+							// Помечаем что поток отклонён (события по нему не порождаем)
+							refused = true;
+						}
 					} break;
 					// Половина пира закрыта либо поток закрыт
 					case h2::stream_state_t::HALF_CLOSED_REMOTE:
-					case h2::stream_state_t::CLOSED:
-						// Фиксируем ошибку уровня соединения
-						return this->fail(error_t::STREAM_CLOSED, "HEADERS on closed stream");
+					case h2::stream_state_t::CLOSED: {
+						/**
+						 * HEADERS на закрытой половине потока - потоковая ошибка (RFC 9113 §5.1),
+						 * соединение живёт. Блок заголовков всё равно принимаем и декодируем,
+						 * иначе динамическая таблица HPACK рассинхронизируется
+						 */
+						h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::STREAM_CLOSED);
+						// Закрываем поток с вызовом функции обратного вызова закрытия
+						this->closeStream(header.streamId, error_t::STREAM_CLOSED);
+						// Помечаем что поток отклонён (события по нему не порождаем)
+						refused = true;
+					} break;
 					// Остальные состояния для HEADERS недопустимы
 					default:
 						// Фиксируем ошибку уровня соединения
@@ -1486,21 +1966,75 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			if(h2::frame::parser::data(header, payload, data, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad DATA");
+			/**
+			 * Flow control приёма учитывает ПОЛНУЮ длину полезной нагрузки, включая padding
+			 * (RFC 9113 §6.9.1), и делается до разбора состояния потока: принятые байты
+			 * списываются с окна соединения независимо от судьбы самого потока
+			 */
+			if(static_cast <int32_t> (header.length) > this->_window.local)
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::FLOW_CONTROL_ERROR, "connection receive window exhausted");
 			// Выполняем поиск потока
 			stream_t * stream = this->findStream(header.streamId);
 			// Если поток не найден
 			if(stream == nullptr){
 				// DATA на ещё не открытом (idle) потоке - ошибка соединения (RFC 9113 §5.1)
-				if(header.streamId > this->_transfer.lastStreamId)
+				if(this->idleStream(header.streamId))
 					// Фиксируем ошибку уровня соединения
 					return this->fail(error_t::PROTOCOL_ERROR, "DATA on idle stream");
-				// DATA на уже закрытом и удалённом потоке - ошибка соединения
-				return this->fail(error_t::STREAM_CLOSED, "DATA on closed stream");
+				/**
+				 * Поток уже закрыт и удалён: пир мог отправить данные до того, как получил
+				 * наш RST_STREAM. Это потоковая ошибка (RFC 9113 §6.1), соединение живёт,
+				 * но принятые байты обязаны быть возвращены в окно приёма соединения
+				 */
+				this->replenishReceiveWindow(nullptr, header.length);
+				// Сбрасываем поток с кодом STREAM_CLOSED
+				h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::STREAM_CLOSED);
+				// Обработка фрейма завершена (соединение живёт)
+				return h2::status_t::OK;
 			}
 			// Данные принимаем только в состояниях OPEN и HALF_CLOSED_LOCAL (RFC 9113 §5.1)
-			if((stream->state != h2::stream_state_t::OPEN) && (stream->state != h2::stream_state_t::HALF_CLOSED_LOCAL))
-				// Фиксируем ошибку уровня соединения
-				return this->fail(error_t::STREAM_CLOSED, "DATA in non-open stream state");
+			if((stream->state != h2::stream_state_t::OPEN) && (stream->state != h2::stream_state_t::HALF_CLOSED_LOCAL)){
+				// Пополняем окно приёма соединения (поток закрывается)
+				this->replenishReceiveWindow(nullptr, header.length);
+				// Сбрасываем поток с кодом STREAM_CLOSED (потоковая ошибка, RFC 9113 §6.1)
+				h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::STREAM_CLOSED);
+				// Закрываем поток с вызовом функции обратного вызова закрытия
+				this->closeStream(header.streamId, error_t::STREAM_CLOSED);
+				// Обработка фрейма завершена (соединение живёт)
+				return h2::status_t::OK;
+			}
+			/**
+			 * Тело не может прийти раньше финального блока заголовков сообщения
+			 * (RFC 9113 §8.1). Поток мог быть открыт нами и ещё не получить ответ,
+			 * либо нести только промежуточный ответ 1xx - в обоих случаях DATA
+			 * малформирован. Это потоковая ошибка, соединение живёт
+			 */
+			if(!stream->headersDone){
+				// Пополняем окно приёма соединения (поток закрывается)
+				this->replenishReceiveWindow(nullptr, header.length);
+				// Сбрасываем поток как малформированный
+				h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::PROTOCOL_ERROR);
+				// Закрываем поток с вызовом функции обратного вызова закрытия
+				this->closeStream(header.streamId, error_t::PROTOCOL_ERROR);
+				// Обработка фрейма завершена (соединение живёт)
+				return h2::status_t::OK;
+			}
+			/**
+			 * Сообщение, которое тела нести не может (ответ на HEAD, статусы 204 и 304),
+			 * с непустым телом малформировано (RFC 9110 §9.3.2, §15.3.5, §15.4.5).
+			 * Пустой DATA допустим - содержимого он не добавляет
+			 */
+			if(stream->bodyless && !data.data.empty()){
+				// Пополняем окно приёма соединения (поток закрывается)
+				this->replenishReceiveWindow(nullptr, header.length);
+				// Сбрасываем поток как малформированный
+				h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::PROTOCOL_ERROR);
+				// Закрываем поток с вызовом функции обратного вызова закрытия
+				this->closeStream(header.streamId, error_t::PROTOCOL_ERROR);
+				// Обработка фрейма завершена (соединение живёт)
+				return h2::status_t::OK;
+			}
 			/**
 			 * Защита от flood DATA-фреймами без полезной нагрузки и без END_STREAM:
 			 * учитываем фактические данные (после снятия padding), иначе padding-only
@@ -1514,19 +2048,23 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 					// Фиксируем ошибку уровня соединения
 					return this->fail(error_t::ENHANCE_YOUR_CALM, "empty DATA flood");
 			}
-			/**
-			 * Flow control приёма: учитывается ПОЛНАЯ длина полезной нагрузки, включая
-			 * padding (RFC 9113 §6.9.1). Проверяем окна и соединения, и потока
-			 */
-			if(static_cast <int32_t> (header.length) > this->_window.local)
-				// Фиксируем ошибку уровня соединения
-				return this->fail(error_t::FLOW_CONTROL_ERROR, "connection receive window exhausted");
 			// Если окно приёма потока исчерпано
 			if(static_cast <int32_t> (header.length) > stream->localWindow)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::FLOW_CONTROL_ERROR, "stream receive window exhausted");
 			// Учитываем принятые данные в суммарном размере тела потока
 			stream->recvBody += data.data.size();
+			// Если принято больше, чем объявлено заголовком content-length (RFC 9113 §8.1.1)
+			if(!stream->bodyless && (stream->contentLength >= 0) && (stream->recvBody > static_cast <uint64_t> (stream->contentLength))){
+				// Пополняем окно приёма соединения (поток закрывается)
+				this->replenishReceiveWindow(nullptr, header.length);
+				// Сбрасываем поток как малформированный (потоковая ошибка)
+				h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::PROTOCOL_ERROR);
+				// Закрываем поток с вызовом функции обратного вызова закрытия
+				this->closeStream(header.streamId, error_t::PROTOCOL_ERROR);
+				// Обработка фрейма завершена (соединение живёт)
+				return h2::status_t::OK;
+			}
 			// Если суммарный размер тела потока превысил лимит безопасности
 			if(stream->recvBody > this->_limits.maxBodySize){
 				// Пополняем окно приёма соединения (поток закрывается)
@@ -1540,22 +2078,19 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			}
 			// Запоминаем флаг END_STREAM (поток может быть удалён функцией обратного вызова)
 			const bool endStream = data.endStream;
-			// Если функция обратного вызова установлена
-			if(this->_callbacks.data != nullptr){
-				// Если функция обратного вызова потребовала сбросить поток
-				if(!this->_callbacks.data(header.streamId, data.data.data(), data.data.size(), endStream)){
-					// Пополняем окно приёма соединения (поток закрывается)
-					this->replenishReceiveWindow(nullptr, header.length);
-					// Если поток ещё существует (функция обратного вызова могла его закрыть)
-					if(this->findStream(header.streamId) != nullptr){
-						// Сбрасываем поток с кодом CANCEL
-						h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::CANCEL);
-						// Закрываем поток с вызовом функции обратного вызова закрытия
-						this->closeStream(header.streamId, error_t::CANCEL);
-					}
-					// Обработка фрейма завершена (соединение живёт)
-					return h2::status_t::OK;
+			// Если функция обратного вызова потребовала сбросить поток
+			if(!this->fireData(header.streamId, data.data.data(), data.data.size(), endStream)){
+				// Пополняем окно приёма соединения (поток закрывается)
+				this->replenishReceiveWindow(nullptr, header.length);
+				// Если поток ещё существует (функция обратного вызова могла его закрыть)
+				if(this->findStream(header.streamId) != nullptr){
+					// Сбрасываем поток с кодом CANCEL
+					h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::CANCEL);
+					// Закрываем поток с вызовом функции обратного вызова закрытия
+					this->closeStream(header.streamId, error_t::CANCEL);
 				}
+				// Обработка фрейма завершена (соединение живёт)
+				return h2::status_t::OK;
 			}
 			// Перечитываем указатель на поток (функция обратного вызова могла его удалить)
 			stream = this->findStream(header.streamId);
@@ -1563,6 +2098,10 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			this->replenishReceiveWindow(((endStream || (stream == nullptr)) ? nullptr : stream), header.length);
 			// Если получен END_STREAM и поток ещё существует
 			if(endStream && (stream != nullptr)){
+				// Если объём принятого тела не совпал с объявленным - поток сброшен
+				if(!this->checkBodyLength(header.streamId))
+					// Обработка фрейма завершена (соединение живёт)
+					return h2::status_t::OK;
 				// Уведомляем о завершении приёма тела потока
 				if(!this->firePhase(header.streamId, phase_t::END, part_t::BODY))
 					// Обработка фрейма завершена (поток сброшен, соединение живёт)
@@ -1586,10 +2125,62 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Разобранная полезная нагрузка PRIORITY
 			h2::frame::priority_t priority;
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parser::priority(header, payload, priority, err) != h2::status_t::OK)
+			if(h2::frame::parser::priority(header, payload, priority, err) != h2::status_t::OK){
+				/**
+				 * Некорректная длина PRIORITY - потоковая ошибка (RFC 9113 §6.3): сбрасываем
+				 * поток, если он существует, иначе просто игнорируем deprecated-фрейм.
+				 * Нулевой идентификатор потока остаётся ошибкой соединения
+				 */
+				if(err == error_t::FRAME_SIZE_ERROR){
+					// Если поток существует
+					if(this->findStream(header.streamId) != nullptr){
+						// Сбрасываем поток с кодом некорректного размера фрейма
+						h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, err);
+						// Закрываем поток с вызовом функции обратного вызова закрытия
+						this->closeStream(header.streamId, err);
+					}
+					// Обработка фрейма завершена (соединение живёт)
+					return h2::status_t::OK;
+				}
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad PRIORITY");
+			}
 			// Приоритеты RFC 7540 deprecated - игнорируем
+			return h2::status_t::OK;
+		}
+		// Фрейм обновления расширенного приоритета потока (RFC 9218 §7.1)
+		case h2::frame_t::PRIORITY_UPDATE: {
+			// Идентификатор приоритизируемого потока
+			uint32_t sid = 0;
+			// Значение поля приоритета
+			string_view value{};
+			// Если разбор полезной нагрузки завершился ошибкой
+			if(h2::frame::parser::priorityUpdate(header, payload, sid, value, err) != h2::status_t::OK)
+				// Фиксируем ошибку уровня соединения
+				return this->fail(err, "bad PRIORITY_UPDATE");
+			/**
+			 * Нулевой идентификатор не принадлежит ни одному потоку и приоритизирован
+			 * быть не может (RFC 9218 §7.1). Проверка обязана быть явной: по чётности
+			 * ноль неотличим от потока, инициированного сервером
+			 */
+			if(sid == 0)
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::PROTOCOL_ERROR, "PRIORITY_UPDATE for stream 0");
+			// Приоритет назначается только потокам, инициированным пиром (RFC 9218 §7.1)
+			if(!this->peerInitiated(sid))
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::PROTOCOL_ERROR, "PRIORITY_UPDATE for wrong stream");
+			// Выполняем поиск потока
+			stream_t * stream = this->findStream(sid);
+			/**
+			 * Кадр допустим и для ещё не открытого потока - приоритет запоминается
+			 * заранее (RFC 9218 §7.1). Такой поток мы не создаём: до прихода HEADERS
+			 * это позволило бы пиру заполнить карту потоков даром
+			 */
+			if(stream != nullptr)
+				// Применяем расширенный приоритет к потоку
+				this->applyPriority(* stream, value);
+			// Обработка фрейма завершена
 			return h2::status_t::OK;
 		}
 		// Фрейм анонса server push (RFC 9113 §6.6)
@@ -1610,8 +2201,14 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				return this->fail(err, "bad PUSH_PROMISE");
 			// Ассоциированный поток (на котором пришёл промис) должен существовать и быть живым
 			stream_t * assoc = this->findStream(header.streamId);
-			// Если ассоциированный поток не существует либо уже закрыт
-			if((assoc == nullptr) || (assoc->state == h2::stream_state_t::CLOSED))
+			/**
+			 * Промис допустим только на потоке, который мы открыли и который ещё не
+			 * закрыт нами (RFC 9113 §6.6): в нашей системе координат это состояния
+			 * open и half-closed(local). Промис на чужом либо на push-потоке
+			 * означает нарушение протокола
+			 */
+			if((assoc == nullptr) ||
+			   ((assoc->state != h2::stream_state_t::OPEN) && (assoc->state != h2::stream_state_t::HALF_CLOSED_LOCAL)))
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::PROTOCOL_ERROR, "PUSH_PROMISE on invalid stream");
 			// Идентификатор обещанного потока: чётный (инициирует сервер) и строго возрастающий
@@ -1681,7 +2278,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
  * @param fields      декодированные заголовки обещанного запроса
  * @return            результат обработки (OK/ERROR)
  */
-awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32_t sid, const uint32_t promisedSid, vector <h2::hpack::field_t> & fields) noexcept {
+awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32_t sid, const uint32_t promisedSid, const vector <h2::hpack::field_view_t> & fields) noexcept {
 	// Выполняем поиск обещанного потока
 	stream_t * stream = this->findStream(promisedSid);
 	// Если обещанный поток исчез - внутренняя ошибка
@@ -1689,7 +2286,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 		// Фиксируем ошибку уровня соединения
 		return this->fail(error_t::INTERNAL_ERROR, "promised stream vanished");
 	// Обещанный блок - это всегда запрос (псевдо-заголовки запроса), без трейлеров
-	const error_t vErr = ::validateHeaders(fields, true, false, this->_fmk);
+	const error_t vErr = ::validateHeaders(fields, true, false, (this->_local.enableConnectProtocol != 0), this->_fmk);
 	// Если блок заголовков малформирован
 	if(vErr != error_t::NO_ERROR){
 		// Малформированный обещанный запрос - потоковая ошибка, соединение живёт
@@ -1708,21 +2305,27 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 		// Обработка блока завершена
 		return h2::status_t::OK;
 	}
-	// Если функция обратного вызова установлена
-	if(this->_callbacks.push != nullptr){
-		// Если функция обратного вызова потребовала отклонить push
-		if(!this->_callbacks.push(sid, promisedSid)){
-			// Если обещанный поток ещё существует (функция обратного вызова могла его закрыть)
-			if(this->findStream(promisedSid) != nullptr){
-				// Отклоняем push с кодом CANCEL
-				h2::frame::serialize::rstStream(this->_buffer.output, promisedSid, error_t::CANCEL);
-				// Закрываем обещанный поток с вызовом функции обратного вызова закрытия
-				this->closeStream(promisedSid, error_t::CANCEL);
-			}
-			// Обработка блока завершена (соединение живёт)
-			return h2::status_t::OK;
+	// Запоминаем поколение состояния соединения перед пользовательскими вызовами
+	const uint64_t epoch = this->_epoch;
+	// Если функция обратного вызова потребовала отклонить push
+	if(!this->firePush(sid, promisedSid)){
+		// Если обещанный поток ещё существует (функция обратного вызова могла его закрыть)
+		if(this->findStream(promisedSid) != nullptr){
+			// Отклоняем push с кодом CANCEL
+			h2::frame::serialize::rstStream(this->_buffer.output, promisedSid, error_t::CANCEL);
+			// Закрываем обещанный поток с вызовом функции обратного вызова закрытия
+			this->closeStream(promisedSid, error_t::CANCEL);
 		}
+		// Обработка блока завершена (соединение живёт)
+		return h2::status_t::OK;
 	}
+	/**
+	 * Функция обратного вызова могла реентрантно сбросить парсер: список заголовков
+	 * и арена декодера при этом уничтожены, обращаться к ним нельзя
+	 */
+	if(epoch != this->_epoch)
+		// Обработка блока завершена
+		return h2::status_t::OK;
 	// Перечитываем указатель на обещанный поток (функция обратного вызова могла его удалить)
 	stream = this->findStream(promisedSid);
 	// Если обещанный поток удалён - обработка блока завершена
@@ -1736,9 +2339,9 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 		/**
 		 * Выполняем доставку всех декодированных заголовков обещанного запроса
 		 */
-		for(const h2::hpack::field_t & field : fields){
+		for(const h2::hpack::field_view_t & field : fields){
 			// Если функция обратного вызова потребовала сбросить поток
-			if(!this->_callbacks.header(promisedSid, string_view(field.name), string_view(field.value), part_t::HEADERS)){
+			if(!this->fireHeader(promisedSid, field.name, field.value, part_t::HEADERS)){
 				// Если обещанный поток ещё существует (функция обратного вызова могла его закрыть)
 				if(this->findStream(promisedSid) != nullptr){
 					// Сбрасываем поток с кодом CANCEL
@@ -1749,6 +2352,10 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 				// Обработка блока завершена (соединение живёт)
 				return h2::status_t::OK;
 			}
+			// Если парсер сброшен реентрантно - перебор списка заголовков продолжать нельзя
+			if(epoch != this->_epoch)
+				// Обработка блока завершена
+				return h2::status_t::OK;
 		}
 	}
 	// Перечитываем указатель на обещанный поток (функция обратного вызова могла его удалить)
@@ -1764,16 +2371,13 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 	 * Обещанный запрос завершён на END_HEADERS (тела у него нет); endStream = false -
 	 * клиент ещё ждёт ответных HEADERS сервера на этом потоке (reserved -> half-closed(local))
 	 */
-	if(this->_callbacks.provider != nullptr){
-		// Если функция обратного вызова потребовала сбросить поток
-		if(!this->_callbacks.provider(promisedSid, stream->headers.get(), false)){
-			// Если обещанный поток ещё существует (функция обратного вызова могла его закрыть)
-			if(this->findStream(promisedSid) != nullptr){
-				// Сбрасываем поток с кодом CANCEL
-				h2::frame::serialize::rstStream(this->_buffer.output, promisedSid, error_t::CANCEL);
-				// Закрываем обещанный поток с вызовом функции обратного вызова закрытия
-				this->closeStream(promisedSid, error_t::CANCEL);
-			}
+	if(!this->fireProvider(promisedSid, stream->headers.get(), false)){
+		// Если обещанный поток ещё существует (функция обратного вызова могла его закрыть)
+		if(this->findStream(promisedSid) != nullptr){
+			// Сбрасываем поток с кодом CANCEL
+			h2::frame::serialize::rstStream(this->_buffer.output, promisedSid, error_t::CANCEL);
+			// Закрываем обещанный поток с вызовом функции обратного вызова закрытия
+			this->closeStream(promisedSid, error_t::CANCEL);
 		}
 	}
 	// Обработка блока завершена
@@ -1792,8 +2396,8 @@ awh::http::Parser_HTTP2::stream_t & awh::http::Parser_HTTP2::stream(const uint32
 	if(result.id == 0){
 		// Устанавливаем идентификатор потока
 		result.id = id;
-		// Устанавливаем окно приёма потока из наших параметров SETTINGS
-		result.localWindow = this->_local.windowSize;
+		// Устанавливаем окно приёма потока из анонсированного пиру значения
+		result.localWindow = this->_window.localInit;
 		// Устанавливаем окно отправки потока из параметров SETTINGS пира
 		result.remoteWindow = this->_remote.windowSize;
 	}
@@ -1865,6 +2469,24 @@ bool awh::http::Parser_HTTP2::peerInitiated(const uint32_t id) const noexcept {
 	return (((id & 1u) != 0) == peerOdd);
 }
 /**
+ * @brief Метод проверки того, что поток ещё ни разу не использовался (состояние idle)
+ *
+ * @param id идентификатор потока
+ * @return   результат проверки
+ */
+bool awh::http::Parser_HTTP2::idleStream(const uint32_t id) const noexcept {
+	// Если поток инициирован пиром - он не использован, пока превышает наибольший принятый
+	if(this->peerInitiated(id))
+		// Выводим признак неиспользованного потока
+		return (id > this->_transfer.lastStreamId);
+	/**
+	 * Наш собственный поток использован, если его идентификатор уже выдан: без этой
+	 * ветки любой запоздалый фрейм на нашем закрытом потоке (RST_STREAM/WINDOW_UPDATE
+	 * после завершённого обмена - штатное поведение пиров) рвал бы соединение
+	 */
+	return (id >= this->_transfer.nextStreamId);
+}
+/**
  * @brief Метод удаления потока из карты с корректным учётом счётчика встречных потоков
  *
  * @param id идентификатор потока
@@ -1876,10 +2498,16 @@ void awh::http::Parser_HTTP2::eraseStream(const uint32_t id) noexcept {
 	if(i == this->_transfer.streams.end())
 		// Выходим из метода
 		return;
-	// Освобождаем слот в лимите одновременных потоков, открытых пиром
-	if(this->peerInitiated(id) && (this->_transfer.peerStreamCount > 0))
-		// Уменьшаем счётчик активных потоков пира
-		--this->_transfer.peerStreamCount;
+	// Если поток инициирован пиром - освобождаем слот в его лимите одновременных потоков
+	if(this->peerInitiated(id)){
+		// Если счётчик активных потоков пира не пуст
+		if(this->_transfer.peerStreamCount > 0)
+			// Уменьшаем счётчик активных потоков пира
+			--this->_transfer.peerStreamCount;
+	// Иначе освобождаем слот в лимите одновременных потоков, разрешённом нам пиром
+	} else if(this->_transfer.localStreamCount > 0)
+		// Уменьшаем счётчик активных потоков, открытых нами
+		--this->_transfer.localStreamCount;
 	// Удаляем поток из карты активных потоков
 	this->_transfer.streams.erase(i);
 }
@@ -1890,6 +2518,13 @@ void awh::http::Parser_HTTP2::eraseStream(const uint32_t id) noexcept {
  * @param code код ошибки закрытия
  */
 void awh::http::Parser_HTTP2::closeStream(const uint32_t id, const error_t code) noexcept {
+	/**
+	 * Если поток отсутствует в карте - закрывать нечего: метод идемпотентен, чтобы
+	 * повторный сброс уже закрытого потока не порождал лишнего события закрытия
+	 */
+	if(this->_transfer.streams.find(id) == this->_transfer.streams.end())
+		// Выходим из метода
+		return;
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.close != nullptr){
 		/**
@@ -1974,6 +2609,311 @@ bool awh::http::Parser_HTTP2::firePhase(const uint32_t id, const phase_t phase, 
 	return true;
 }
 /**
+ * @brief Метод вызова функции обратного вызова обработки применённого SETTINGS пира
+ *
+ */
+void awh::http::Parser_HTTP2::fireSettings() noexcept {
+	// Если функция обратного вызова не установлена - вызывать нечего
+	if(this->_callbacks.settings == nullptr)
+		// Выходим из метода
+		return;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Уведомляем о применённом SETTINGS пира
+		this->_callbacks.settings();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод вызова функции обратного вызова о готовности потока принимать данные
+ *
+ * @param id идентификатор потока
+ */
+void awh::http::Parser_HTTP2::fireWritable(const uint32_t id) noexcept {
+	// Если функция обратного вызова не установлена - вызывать нечего
+	if(this->_callbacks.writable == nullptr)
+		// Выходим из метода
+		return;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Уведомляем о готовности потока принимать данные
+		this->_callbacks.writable(id);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод вызова функции обратного вызова обработки открытия нового потока
+ *
+ * @param id идентификатор потока
+ * @return   результат обработки (false - поток требуется сбросить)
+ */
+bool awh::http::Parser_HTTP2::fireBegin(const uint32_t id) noexcept {
+	// Если функция обратного вызова не установлена - поток принимается
+	if(this->_callbacks.begin == nullptr)
+		// Продолжаем обработку
+		return true;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Уведомляем об открытии нового потока
+		return this->_callbacks.begin(id);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Ошибка пользовательской функции - поток сбрасывается
+	return false;
+}
+/**
+ * @brief Метод вызова функции обратного вызова обработки анонса server push
+ *
+ * @param sid         идентификатор ассоциированного потока клиента
+ * @param promisedSid идентификатор обещанного потока
+ * @return            результат обработки (false - push требуется отклонить)
+ */
+bool awh::http::Parser_HTTP2::firePush(const uint32_t sid, const uint32_t promisedSid) noexcept {
+	// Если функция обратного вызова не установлена - push принимается
+	if(this->_callbacks.push == nullptr)
+		// Продолжаем обработку
+		return true;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Уведомляем об анонсе server push
+		return this->_callbacks.push(sid, promisedSid);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, promisedSid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Ошибка пользовательской функции - push отклоняется
+	return false;
+}
+/**
+ * @brief Метод вызова функции обратного вызова обработки полученного GOAWAY
+ *
+ * @param sid   наибольший идентификатор обработанного пиром потока
+ * @param code  код ошибки завершения соединения
+ * @param debug отладочные данные пира
+ */
+void awh::http::Parser_HTTP2::fireGoaway(const uint32_t sid, const error_t code, const string_view debug) noexcept {
+	// Если функция обратного вызова не установлена - вызывать нечего
+	if(this->_callbacks.goaway == nullptr)
+		// Выходим из метода
+		return;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Уведомляем о полученном GOAWAY
+		this->_callbacks.goaway(sid, code, debug);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, static_cast <uint32_t> (code)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод вызова функции обратного вызова обработки провайдера заголовков потока
+ *
+ * @param id        идентификатор потока
+ * @param provider  провайдер заголовков потока (nullptr для трейлеров)
+ * @param endStream флаг завершения потока
+ * @return          результат обработки (false - поток требуется сбросить)
+ */
+bool awh::http::Parser_HTTP2::fireProvider(const uint32_t id, const provider_t * provider, const bool endStream) noexcept {
+	// Если функция обратного вызова не установлена - продолжаем обработку
+	if(this->_callbacks.provider == nullptr)
+		// Продолжаем обработку
+		return true;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Уведомляем о провайдере заголовков потока
+		return this->_callbacks.provider(id, provider, endStream);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, endStream), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Ошибка пользовательской функции - поток сбрасывается
+	return false;
+}
+/**
+ * @brief Метод вызова функции обратного вызова обработки фрагмента тела потока
+ *
+ * @param id        идентификатор потока
+ * @param buffer    буфер данных тела
+ * @param size      размер данных тела
+ * @param endStream флаг завершения потока
+ * @return          результат обработки (false - поток требуется сбросить)
+ */
+bool awh::http::Parser_HTTP2::fireData(const uint32_t id, const void * buffer, const size_t size, const bool endStream) noexcept {
+	// Если функция обратного вызова не установлена - продолжаем обработку
+	if(this->_callbacks.data == nullptr)
+		// Продолжаем обработку
+		return true;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Уведомляем о фрагменте тела потока
+		return this->_callbacks.data(id, buffer, size, endStream);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size, endStream), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Ошибка пользовательской функции - поток сбрасывается
+	return false;
+}
+/**
+ * @brief Метод вызова функции обратного вызова обработки заголовка или трейлера потока
+ *
+ * @param id    идентификатор потока
+ * @param name  название заголовка
+ * @param value значение заголовка
+ * @param part  часть сообщения (HEADERS или TRAILER)
+ * @return      результат обработки (false - поток требуется сбросить)
+ */
+bool awh::http::Parser_HTTP2::fireHeader(const uint32_t id, const string_view name, const string_view value, const part_t part) noexcept {
+	// Если функция обратного вызова не установлена - продолжаем обработку
+	if(this->_callbacks.header == nullptr)
+		// Продолжаем обработку
+		return true;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Уведомляем о заголовке потока
+		return this->_callbacks.header(id, name, value, part);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, string(name), string(value)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Ошибка пользовательской функции - поток сбрасывается
+	return false;
+}
+/**
  * @brief Метод прокачки отправки по всем потокам с учётом окон и порога выходного буфера
  *
  * @details Round-robin: за каждый проход отправляется не более одного DATA-фрейма
@@ -2005,15 +2945,74 @@ void awh::http::Parser_HTTP2::pump() noexcept {
 			// Добавляем идентификатор потока в снимок
 			this->_transfer.pumpIds.push_back(item.first);
 		/**
+		 * Упорядочиваем снимок по расширенному приоритету (RFC 9218 §10): сначала
+		 * более срочные потоки, внутри одной срочности неинкрементальные обслуживаются
+		 * последовательно в порядке идентификаторов, инкрементальные - поочерёдно
+		 */
+		::sort(this->_transfer.pumpIds.begin(), this->_transfer.pumpIds.end(), [this](const uint32_t first, const uint32_t second) noexcept -> bool {
+			// Выполняем поиск первого сравниваемого потока
+			const stream_t * left = this->findStream(first);
+			// Выполняем поиск второго сравниваемого потока
+			const stream_t * right = this->findStream(second);
+			// Если какой-либо из потоков отсутствует - сохраняем порядок идентификаторов
+			if((left == nullptr) || (right == nullptr))
+				// Выводим результат сравнения идентификаторов
+				return (first < second);
+			// Если срочность потоков различается - вперёд идёт более срочный
+			if(left->urgency != right->urgency)
+				// Выводим результат сравнения срочности
+				return (left->urgency < right->urgency);
+			// Внутри одной срочности неинкрементальные потоки обслуживаются первыми
+			if(left->incremental != right->incremental)
+				// Выводим результат сравнения признака инкрементальности
+				return !left->incremental;
+			// При прочих равных порядок задаёт идентификатор потока
+			return (first < second);
+		});
+		// Запоминаем поколение состояния соединения перед прокачкой потоков
+		const uint64_t epoch = this->_epoch;
+		// Срочность группы последовательно обслуживаемых потоков
+		uint16_t served = 0xFFFF;
+		/**
 		 * Выполняем прокачку отправки по всем потокам снимка
 		 */
 		for(const uint32_t id : this->_transfer.pumpIds){
 			// Выполняем поиск потока (поток мог быть удалён на предыдущей итерации)
 			stream_t * stream = this->findStream(id);
-			// Если поток существует и его прокачка сделала прогресс
-			if((stream != nullptr) && this->pumpStream(* stream))
+			// Если поток удалён - переходим к следующему
+			if(stream == nullptr)
+				// Переходим к следующему потоку снимка
+				continue;
+			/**
+			 * Неинкрементальный поток обслуживается последовательно: пока в его группе
+			 * срочности уже кто-то отправляет данные, остальные ждут (RFC 9218 §10)
+			 */
+			if(!stream->incremental && (static_cast <uint16_t> (stream->urgency) == served))
+				// Переходим к следующему потоку снимка
+				continue;
+			// Запоминаем срочность потока (прокачка может удалить объект потока)
+			const uint16_t urgency = static_cast <uint16_t> (stream->urgency);
+			// Запоминаем признак инкрементальной доставки потока
+			const bool incremental = stream->incremental;
+			// Если прокачка потока сделала прогресс
+			if(this->pumpStream(* stream)){
 				// Помечаем что прогресс отправки есть
 				progress = true;
+				// Запоминаем срочность занятой последовательной группы
+				if(!incremental)
+					// Устанавливаем срочность обслуживаемой группы
+					served = urgency;
+			}
+			/**
+			 * Функция обратного вызова готовности могла реентрантно сбросить парсер:
+			 * снимок идентификаторов при этом уничтожен, перебор продолжать нельзя
+			 */
+			if(epoch != this->_epoch){
+				// Помечаем что прокачка отправки завершена
+				this->_flags.inPump = false;
+				// Прекращаем прокачку отправки
+				return;
+			}
 		}
 	}
 	// Помечаем что прокачка отправки завершена
@@ -2028,6 +3027,16 @@ void awh::http::Parser_HTTP2::pump() noexcept {
 bool awh::http::Parser_HTTP2::pumpStream(stream_t & stream) noexcept {
 	// Запоминаем идентификатор потока
 	const uint32_t id = stream.id;
+	/**
+	 * Данные тела мы вправе слать только из состояний open и half-closed(remote)
+	 * (RFC 9113 §5.1). Зарезервированный под push поток до отправки своих заголовков
+	 * в это множество не входит - иначе DATA ушёл бы раньше блока заголовков.
+	 * Проверка стоит до обращения к источнику данных: тянуть тело в поток,
+	 * который отправлять его не может, бессмысленно
+	 */
+	if((stream.state != h2::stream_state_t::OPEN) && (stream.state != h2::stream_state_t::HALF_CLOSED_REMOTE))
+		// Прогресса отправки нет
+		return false;
 	// Дозагружаем буфер отправки из pull-источника данных (источник может сбросить и удалить поток)
 	this->refillFromSource(stream);
 	// Перечитываем указатель на поток (источник данных мог удалить поток)
@@ -2061,6 +3070,13 @@ bool awh::http::Parser_HTTP2::pumpStream(stream_t & stream) noexcept {
 		 * Окно закрыто (данные остаются в буфере отправки) либо слать нечего.
 		 * Завершение потока пустым DATA с END_STREAM не списывает окно (длина 0)
 		 */
+		if((remaining == 0) && this->sourceDone(st) && !st.endStreamSent){
+			// Если на завершение тела отложена секция трейлеров - выпускаем её
+			if(this->flushTrailers(st))
+				// Прогресс отправки есть
+				return true;
+		}
+		// Если тело отправлено полностью и требуется завершить поток
 		if((remaining == 0) && st.endStreamPending && this->sourceDone(st) && !st.endStreamSent){
 			// Отправляем пустой DATA-фрейм с флагом END_STREAM
 			h2::frame::serialize::data(this->_buffer.output, st.id, string_view{}, true);
@@ -2074,8 +3090,11 @@ bool awh::http::Parser_HTTP2::pumpStream(stream_t & stream) noexcept {
 		// Прогресса отправки нет
 		return false;
 	}
-	// Определяем является ли фрагмент последним (END_STREAM)
-	const bool last = (st.endStreamPending && (size == remaining) && this->sourceDone(st));
+	/**
+	 * Определяем является ли фрагмент последним (END_STREAM). Отложенная секция
+	 * трейлеров завершает поток вместо него, поэтому флаг на данные не ставится
+	 */
+	const bool last = (st.endStreamPending && (size == remaining) && this->sourceDone(st) && !st.trailersPending);
 	// Отправляем DATA-фрейм с фрагментом данных тела
 	h2::frame::serialize::data(this->_buffer.output, st.id, string_view(st.sendBuffer.data() + st.sendOffset, size), last);
 	// Отмечаем отправленный префикс без сдвига всего буфера
@@ -2088,12 +3107,22 @@ bool awh::http::Parser_HTTP2::pumpStream(stream_t & stream) noexcept {
 	st.remoteWindow -= static_cast <int32_t> (size);
 	// Сигнализируем о готовности потока принимать данные (если буфер просел)
 	this->maybeNotifyWritable(st);
+	/**
+	 * Функция обратного вызова готовности могла реентрантно закрыть поток
+	 * (sendRstStream) и удалить его из карты - перечитываем указатель,
+	 * иначе дальнейшая запись по нему = use-after-free
+	 */
+	sp = this->findStream(id);
+	// Если поток удалён - отправка всё равно состоялась
+	if(sp == nullptr)
+		// Прогресс отправки есть
+		return true;
 	// Если отправлен последний фрагмент
 	if(last){
 		// Помечаем что END_STREAM отправлен
-		st.endStreamSent = true;
+		sp->endStreamSent = true;
 		// Применяем отправленный END_STREAM (ссылка на поток может стать недействительной)
-		this->applyLocalEndStream(st);
+		this->applyLocalEndStream(* sp);
 	}
 	// Прогресс отправки есть
 	return true;
@@ -2187,7 +3216,7 @@ void awh::http::Parser_HTTP2::maybeNotifyWritable(stream_t & stream) noexcept {
 		// Помечаем что сигнал для текущего провала буфера подан
 		stream.writableNotified = true;
 		// Уведомляем о готовности потока принимать данные
-		this->_callbacks.writable(stream.id);
+		this->fireWritable(stream.id);
 	}
 }
 /**
@@ -2223,9 +3252,9 @@ void awh::http::Parser_HTTP2::replenishReceiveWindow(stream_t * stream, const ui
 		// Списываем принятые байты из окна приёма потока
 		stream->localWindow -= static_cast <int32_t> (consumed);
 		// Если окно приёма потока просело ниже половины начального размера
-		if(stream->localWindow < (this->_local.windowSize / 2)){
+		if(stream->localWindow < (this->_window.localInit / 2)){
 			// Вычисляем инкремент для восстановления окна до начального размера
-			const uint32_t delta = static_cast <uint32_t> (this->_local.windowSize - stream->localWindow);
+			const uint32_t delta = static_cast <uint32_t> (this->_window.localInit - stream->localWindow);
 			// Отправляем WINDOW_UPDATE для окна потока
 			h2::frame::serialize::windowUpdate(this->_buffer.output, stream->id, delta);
 			// Восстанавливаем окно приёма потока
@@ -2234,12 +3263,101 @@ void awh::http::Parser_HTTP2::replenishReceiveWindow(stream_t * stream, const ui
 	}
 }
 /**
+ * @brief Метод применения расширенного приоритета к потоку (RFC 9218 §4)
+ *
+ * @param stream объект потока
+ * @param value  значение поля приоритета
+ */
+void awh::http::Parser_HTTP2::applyPriority(stream_t & stream, string_view value) noexcept {
+	// Текущая позиция разбора значения поля приоритета
+	size_t pos = 0;
+	/**
+	 * Разбираем структурированный словарь вида "u=2, i" (RFC 8941): нас интересуют
+	 * только ключи [u] и [i], остальные по требованию RFC 9218 §4.3 игнорируются,
+	 * как и любые синтаксически некорректные элементы
+	 */
+	while(pos < value.size()){
+		// Определяем границу текущего элемента словаря
+		const size_t end = ::min(value.find(',', pos), value.size());
+		// Формируем текущий элемент словаря
+		string_view item = value.substr(pos, end - pos);
+		// Сдвигаем позицию за разделитель элементов
+		pos = (end + 1);
+		// Снимаем начальные пробельные символы элемента
+		while(!item.empty() && ((item.front() == ' ') || (item.front() == '\t')))
+			// Сдвигаем начало элемента
+			item.remove_prefix(1);
+		// Снимаем конечные пробельные символы элемента
+		while(!item.empty() && ((item.back() == ' ') || (item.back() == '\t')))
+			// Сдвигаем конец элемента
+			item.remove_suffix(1);
+		// Пустой элемент игнорируем
+		if(item.empty())
+			// Переходим к следующему элементу словаря
+			continue;
+		// Если получен ключ срочности потока
+		if((item.size() == 3) && (item.compare(0, 2, "u=") == 0)){
+			// Извлекаем значение срочности потока
+			const char letter = item[2];
+			// Значение срочности обязано быть цифрой в допустимом диапазоне
+			if((letter >= '0') && (letter <= ('0' + static_cast <char> (h2::proto::MAX_URGENCY))))
+				// Применяем срочность потока
+				stream.urgency = static_cast <uint8_t> (letter - '0');
+		// Если получен ключ инкрементальной доставки без значения (эквивалент ?1)
+		} else if(item.compare("i") == 0)
+			// Помечаем поток инкрементальным
+			stream.incremental = true;
+		// Если получен ключ инкрементальной доставки со значением
+		else if(item.compare("i=?1") == 0)
+			// Помечаем поток инкрементальным
+			stream.incremental = true;
+		// Если инкрементальная доставка явно отключена
+		else if(item.compare("i=?0") == 0)
+			// Снимаем признак инкрементальной доставки
+			stream.incremental = false;
+	}
+}
+/**
  * @brief Метод проверки декодированных заголовков на лимиты безопасности
  *
  * @param fields декодированные заголовки блока
  * @return       результат проверки (false - лимиты превышены)
  */
-bool awh::http::Parser_HTTP2::checkHeaderLimits(const vector <h2::hpack::field_t> & fields) const noexcept {
+bool awh::http::Parser_HTTP2::checkBodyLength(const uint32_t sid) noexcept {
+	// Выполняем поиск потока
+	stream_t * stream = this->findStream(sid);
+	// Если поток отсутствует либо длина тела не объявлена - проверять нечего
+	if((stream == nullptr) || (stream->contentLength < 0))
+		// Проверка пройдена
+		return true;
+	/**
+	 * Ответ на HEAD и ответы 204/304 объявляют длину тела, которого не будет:
+	 * сверять сумму длин DATA с ней нельзя (RFC 9110 §8.6, §9.3.2)
+	 */
+	if(stream->bodyless)
+		// Проверка пройдена
+		return true;
+	// Если объём принятого тела совпадает с объявленным
+	if(stream->recvBody == static_cast <uint64_t> (stream->contentLength))
+		// Проверка пройдена
+		return true;
+	/**
+	 * Сумма длин DATA не совпала с объявленной content-length: сообщение малформировано
+	 * (RFC 9113 §8.1.1). Это потоковая ошибка - соединение остаётся живым
+	 */
+	h2::frame::serialize::rstStream(this->_buffer.output, sid, error_t::PROTOCOL_ERROR);
+	// Закрываем поток с вызовом функции обратного вызова закрытия
+	this->closeStream(sid, error_t::PROTOCOL_ERROR);
+	// Проверка не пройдена
+	return false;
+}
+/**
+ * @brief Метод проверки декодированных заголовков на лимиты безопасности
+ *
+ * @param fields декодированные заголовки блока
+ * @return       результат проверки (false - лимиты превышены)
+ */
+bool awh::http::Parser_HTTP2::checkHeaderLimits(const vector <h2::hpack::field_view_t> & fields) const noexcept {
 	// Если число заголовков в блоке превышает лимит
 	if(fields.size() > this->_limits.maxHeaderCount)
 		// Лимиты превышены
@@ -2247,7 +3365,7 @@ bool awh::http::Parser_HTTP2::checkHeaderLimits(const vector <h2::hpack::field_t
 	/**
 	 * Выполняем перебор всех заголовков блока
 	 */
-	for(const h2::hpack::field_t & field : fields){
+	for(const h2::hpack::field_view_t & field : fields){
 		// Если длина имени заголовка превышает лимит
 		if(field.name.size() > this->_limits.maxHeaderName)
 			// Лимиты превышены
@@ -2261,10 +3379,174 @@ bool awh::http::Parser_HTTP2::checkHeaderLimits(const vector <h2::hpack::field_t
 	return true;
 }
 /**
- * @brief Метод отправки собранного HPACK-блока заголовков потока
+ * @brief Метод проверки допустимости отправки блока заголовков в поток
  *
- * @details Общая часть перегрузок sendHeaders: нарезка блока на
- *          HEADERS + CONTINUATION и переходы состояния потока.
+ * @param sid идентификатор потока
+ * @return    результат проверки
+ */
+bool awh::http::Parser_HTTP2::canSendHeaders(const uint32_t sid) noexcept {
+	// Нулевой идентификатор потока не принадлежит ни одному потоку (RFC 9113 §5.1.1)
+	if(sid == 0){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 headers are not allowed for stream 0", log_t::flag_t::WARNING);
+		// Отправка недопустима
+		return false;
+	}
+	// Если поток существует - блок заголовков допустим (ответ, продолжение, трейлеры)
+	if(this->findStream(sid) != nullptr)
+		// Отправка допустима
+		return true;
+	// Поток, инициируемый пиром, мы открыть не можем (RFC 9113 §5.1.1)
+	if(this->peerInitiated(sid)){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 stream %u is initiated by peer and cannot be opened locally", log_t::flag_t::WARNING, sid);
+		// Отправка недопустима
+		return false;
+	}
+	// Наш идентификатор потока обязан быть выделен методом nextStreamId()
+	if(sid >= this->_transfer.nextStreamId){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 stream %u is not allocated by nextStreamId", log_t::flag_t::WARNING, sid);
+		// Отправка недопустима
+		return false;
+	}
+	// Поток уже открывался и был закрыт - повторно открыть его нельзя (RFC 9113 §5.1)
+	if(sid <= this->_transfer.localOpened){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 stream %u is already closed", log_t::flag_t::WARNING, sid);
+		// Отправка недопустима
+		return false;
+	}
+	// Если соединение помечено на завершение - новые потоки на нём не открываются (RFC 9113 §6.8)
+	if(this->_flags.goawayReceived || this->_flags.goawaySent){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 stream %u cannot be opened after GOAWAY", log_t::flag_t::WARNING, sid);
+		// Отправка недопустима
+		return false;
+	}
+	// Если исчерпан лимит одновременных потоков, разрешённый пиром (RFC 9113 §5.1.2)
+	if(this->_transfer.localStreamCount >= this->_remote.maxConcurrentStreams){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 peer concurrent streams limit (%u) reached", log_t::flag_t::WARNING, this->_remote.maxConcurrentStreams);
+		// Отправка недопустима
+		return false;
+	}
+	// Отправка допустима
+	return true;
+}
+/**
+ * @brief Метод откладывания секции трейлеров до конца отправки тела потока
+ *
+ * @param sid       идентификатор потока
+ * @param fields    заголовки секции трейлеров
+ * @param endStream флаг завершения потока
+ * @return          результат откладывания (true - отправка отложена)
+ */
+bool awh::http::Parser_HTTP2::deferTrailers(const uint32_t sid, const vector <h2::hpack::field_t> & fields, const bool endStream) noexcept {
+	// Выполняем поиск потока
+	stream_t * stream = this->findStream(sid);
+	// Если поток отсутствует либо его заголовки ещё не отправлены - откладывать нечего
+	if((stream == nullptr) || !stream->headersSent)
+		// Откладывание не требуется
+		return false;
+	// Если тело потока отправлено полностью - трейлеры уходят сразу за ним
+	if((stream->pending() == 0) && this->sourceDone(* stream))
+		// Откладывание не требуется
+		return false;
+	// Повторная секция трейлеров недопустима
+	if(stream->trailersPending){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 trailers for stream %u are already pending", log_t::flag_t::WARNING, sid);
+		// Отправка отложена (повторную секцию отбрасываем)
+		return true;
+	}
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Запоминаем заголовки секции трейлеров
+		stream->trailers = fields;
+		// Помечаем что секция трейлеров отложена
+		stream->trailersPending = true;
+		// Если трейлеры не завершают поток - это нарушение (RFC 9113 §8.1)
+		if(!endStream)
+			// Записываем сообщение об ошибке в лог
+			this->_log->print("HTTP/2 trailers for stream %u must carry END_STREAM", log_t::flag_t::WARNING, sid);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, fields.size(), endStream), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Отправка отложена
+	return true;
+}
+/**
+ * @brief Метод отправки отложенной секции трейлеров потока
+ *
+ * @param stream объект потока (ссылка может стать недействительной после вызова)
+ * @return       признак отправки секции трейлеров
+ */
+bool awh::http::Parser_HTTP2::flushTrailers(stream_t & stream) noexcept {
+	// Если отложенной секции трейлеров нет - отправлять нечего
+	if(!stream.trailersPending)
+		// Секция трейлеров не отправлена
+		return false;
+	// Запоминаем идентификатор потока
+	const uint32_t sid = stream.id;
+	// Сбрасываем признак отложенной секции трейлеров
+	stream.trailersPending = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Закодированный HPACK-блок трейлеров
+		string block = "";
+		// Выполняем кодирование трейлеров в HPACK-блок
+		this->_encoder.encode(stream.trailers, block, true);
+		// Освобождаем память отложенных трейлеров
+		stream.trailers.clear();
+		// Отправляем блок трейлеров с завершением потока
+		h2::frame::serialize::headerBlock(this->_buffer.output, sid, block, true, this->_remote.maxFrameSize);
+		// Помечаем что END_STREAM отправлен
+		stream.endStreamSent = true;
+		// Применяем отправленный END_STREAM (ссылка на поток может стать недействительной)
+		this->applyLocalEndStream(stream);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Секция трейлеров отправлена
+	return true;
+}
+/**
+ * @brief Метод отправки собранного HPACK-блока заголовков потока
  *
  * @param sid       идентификатор потока
  * @param block     закодированный HPACK-блок заголовков
@@ -2275,11 +3557,23 @@ void awh::http::Parser_HTTP2::commitHeaders(const uint32_t sid, const string & b
 	h2::frame::serialize::headerBlock(this->_buffer.output, sid, block, endStream, this->_remote.maxFrameSize);
 	// Получаем существующий либо создаём новый объект потока
 	stream_t & stream = this->stream(sid);
+	// Помечаем что блок заголовков потока нами отправлен
+	stream.headersSent = true;
 	// Если поток ещё не использован - мы инициируем поток
-	if(stream.state == h2::stream_state_t::IDLE)
+	if(stream.state == h2::stream_state_t::IDLE){
 		// Переводим поток в состояние OPEN
 		stream.state = h2::stream_state_t::OPEN;
-	// Ответ на собственный push: reserved(local) -> half-closed(remote)
+		// Учитываем поток в лимите одновременных потоков, разрешённом нам пиром
+		++this->_transfer.localStreamCount;
+		// Запоминаем наибольший наш открытый идентификатор потока
+		if(sid > this->_transfer.localOpened)
+			// Обновляем наибольший наш открытый идентификатор потока
+			this->_transfer.localOpened = sid;
+	}
+	/**
+	 * Ответ на собственный push: reserved(local) -> half-closed(remote). Поток уже
+	 * учтён в лимите одновременных потоков при резервировании, повторно не считаем
+	 */
 	else if(stream.state == h2::stream_state_t::RESERVED_LOCAL)
 		// Переводим поток в состояние HALF_CLOSED_REMOTE
 		stream.state = h2::stream_state_t::HALF_CLOSED_REMOTE;
@@ -2298,7 +3592,7 @@ void awh::http::Parser_HTTP2::commitHeaders(const uint32_t sid, const string & b
  * @param request собирается запрос клиента (true) или ответ сервера (false)
  * @return        собранный провайдер заголовков
  */
-unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const vector <h2::hpack::field_t> & fields, const bool request) const noexcept {
+unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const vector <h2::hpack::field_view_t> & fields, const bool request) const noexcept {
 	// Результат работы функции - собранный провайдер заголовков
 	unique_ptr <provider_t> result = nullptr;
 	/**
@@ -2312,9 +3606,9 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 			/**
 			 * Выполняем перебор всех заголовков блока
 			 */
-			for(const h2::hpack::field_t & field : fields){
-				// Если получен псевдо-заголовок [:method]
-				if(this->_fmk->compare(":method", field.name)){
+			for(const h2::hpack::field_view_t & field : fields){
+				// Если получен псевдо-заголовок [:method] (имена уже провалидированы, сравнение строгое)
+				if(field.name.compare(":method") == 0){
 					// Выполняем классификацию метода запроса по его имени
 					provider->method = ::classifyMethod(field.value);
 					// Если метод запроса синтаксически корректен, но не распознан
@@ -2325,9 +3619,13 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 						provider->methodName = field.value;
 					}
 				// Если получен псевдо-заголовок [:path]
-				} else if(this->_fmk->compare(":path", field.name))
+				} else if(field.name.compare(":path") == 0)
 					// Устанавливаем параметры URI-запроса
 					provider->uri = field.value;
+				// Если получен псевдо-заголовок [:protocol] расширенного CONNECT (RFC 8441)
+				else if(field.name.compare(":protocol") == 0)
+					// Устанавливаем протокол туннеля
+					provider->protocol = field.value;
 			}
 			// Устанавливаем собранный провайдер как результат
 			result = ::move(provider);
@@ -2338,9 +3636,9 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 			/**
 			 * Выполняем перебор всех заголовков блока
 			 */
-			for(const h2::hpack::field_t & field : fields){
-				// Если получен псевдо-заголовок [:status]
-				if(this->_fmk->compare(":status", field.name)){
+			for(const h2::hpack::field_view_t & field : fields){
+				// Если получен псевдо-заголовок [:status] (имена уже провалидированы, сравнение строгое)
+				if(field.name.compare(":status") == 0){
 					// Статус-код ответа сервера
 					uint16_t code = 0;
 					/**
@@ -2412,12 +3710,26 @@ void awh::http::Parser_HTTP2::clear() noexcept {
  *          вызова сохраняются.
  */
 void awh::http::Parser_HTTP2::reset() noexcept {
+	/**
+	 * Сдвигаем поколение состояния: если сброс пришёл из пользовательской функции,
+	 * это признак для всех идущих разборов немедленно свернуться, не обращаясь
+	 * к уже освобождённым спискам заголовков и снимкам потоков
+	 */
+	++this->_epoch;
 	// Выполняем сброс состояния базового парсера (итоговый статус разбора)
 	parser_t::reset();
 	// Сбрасываем код ошибки уровня соединения
 	this->_error = error_t::NO_ERROR;
 	// Параметры SETTINGS пира - состояние соединения, сбрасываем к значениям по умолчанию
 	this->_remote = settings_t();
+	/**
+	 * По умолчанию протокол лимита одновременных потоков не задаёт (RFC 9113 §6.5.2):
+	 * консервативное значение settings_t уместно только для анонсируемых нами параметров,
+	 * а для пира оно ограничивало бы нас там, где он ограничений не ставил
+	 */
+	this->_remote.maxConcurrentStreams = 0xFFFFFFFF;
+	// Пир не заявлял отказ от приоритетов RFC 7540, пока не прислал параметр
+	this->_remote.noRfc7540Priorities = 0;
 	// Пересоздаём HPACK-кодер (свежая динамическая таблица)
 	this->_encoder = h2::hpack::encoder_t();
 	// Пересоздаём HPACK-декодер (свежая динамическая таблица пира)
@@ -2428,14 +3740,25 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 	this->_window.remote = h2::proto::DEFAULT_WINDOW_SIZE;
 	// Сбрасываем целевой размер окна приёма соединения
 	this->_window.localMax = h2::proto::DEFAULT_WINDOW_SIZE;
+	// Сбрасываем анонсированное начальное окно приёма потока
+	this->_window.localInit = h2::proto::DEFAULT_WINDOW_SIZE;
 	// Очищаем карту активных потоков
 	this->_transfer.streams.clear();
 	// Очищаем снимок идентификаторов потоков
 	this->_transfer.pumpIds.clear();
+	/**
+	 * Очищаем список декодированных заголовков: его представления ссылаются
+	 * в арену пересоздаваемого декодера и после сброса недействительны
+	 */
+	this->_fields.clear();
 	// Сбрасываем наибольший принятый идентификатор потока
 	this->_transfer.lastStreamId = 0;
+	// Сбрасываем наибольший наш открытый идентификатор потока
+	this->_transfer.localOpened = 0;
 	// Сбрасываем счётчик активных потоков, открытых пиром
 	this->_transfer.peerStreamCount = 0;
+	// Сбрасываем счётчик активных потоков, открытых нами
+	this->_transfer.localStreamCount = 0;
 	// Клиент инициирует нечётные потоки (1,3,5...), сервер - чётные (push: 2,4,6...)
 	this->_transfer.nextStreamId = ((this->_direct == direct_t::REQUEST) ? 2 : 1);
 	// Сервер ожидает клиентский preface; клиент отправляет его сам через sendPreface()
@@ -2446,12 +3769,18 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 	this->_flags.inParse = false;
 	// Сбрасываем флаг отправленного GOAWAY
 	this->_flags.goawaySent = false;
+	// Сбрасываем флаг предупреждающего GOAWAY плавного завершения
+	this->_flags.goawayGraceful = false;
 	// Сбрасываем флаг отклонённого потока
 	this->_flags.hbcRefused = false;
 	// Сбрасываем флаг END_STREAM собираемого блока заголовков
 	this->_flags.hbcEndStream = false;
 	// Сбрасываем флаг подтверждения нашего SETTINGS
 	this->_flags.settingsAcked = false;
+	// Сбрасываем флаг получения SETTINGS пира
+	this->_flags.settingsReceived = false;
+	// Сбрасываем фиксацию параметра отказа от приоритетов RFC 7540
+	this->_flags.prioritiesLocked = false;
 	// Сбрасываем флаг полученного GOAWAY
 	this->_flags.goawayReceived = false;
 	// Сбрасываем идентификатор потока собираемого блока заголовков
@@ -2463,7 +3792,7 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 	// Очищаем накопитель блока заголовков
 	this->_hbc.buffer.clear();
 	// Очищаем буфер неразобранного хвоста входящих данных
-	this->_buffer.input.clear();
+	this->clearInput();
 	// Очищаем буфер исходящих байтов
 	this->_buffer.output.clear();
 	// Сбрасываем отданный префикс буфера исходящих байтов
@@ -2543,7 +3872,7 @@ void awh::http::Parser_HTTP2::eof() noexcept {
 		// Выходим из метода
 		return;
 	// Если активных потоков нет, нет незавершённого фрейма и сборки блока заголовков
-	if(this->_transfer.streams.empty() && this->_buffer.input.empty() && (this->_hbc.stream == 0))
+	if(this->_transfer.streams.empty() && (this->inputPending() == 0) && (this->_hbc.stream == 0))
 		// Фиксируем корректное завершение соединения
 		this->_status = status_t::COMPLETE;
 	// Иначе соединение оборвано посреди работы
@@ -2699,6 +4028,45 @@ const awh::http::Parser_HTTP2::settings_t & awh::http::Parser_HTTP2::settings() 
 void awh::http::Parser_HTTP2::settings(const settings_t & settings) noexcept {
 	// Устанавливаем наши параметры SETTINGS
 	this->_local = settings;
+	/**
+	 * Приводим значения к допустимому протоколом диапазону (RFC 9113 §6.5.2). Пир
+	 * обязан оборвать соединение на некорректном параметре, поэтому отправить его
+	 * означает гарантированно потерять соединение из-за ошибки настройки
+	 */
+	if((this->_local.windowSize < 0) || (this->_local.windowSize > h2::proto::MAX_WINDOW_SIZE)){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 INITIAL_WINDOW_SIZE %d is out of range, reset to %d", log_t::flag_t::WARNING, this->_local.windowSize, h2::proto::DEFAULT_WINDOW_SIZE);
+		// Возвращаем начальное окно потока к значению по умолчанию
+		this->_local.windowSize = h2::proto::DEFAULT_WINDOW_SIZE;
+	}
+	// Если размер фрейма выходит за допустимый протоколом диапазон
+	if((this->_local.maxFrameSize < h2::proto::MIN_MAX_FRAME_SIZE) || (this->_local.maxFrameSize > h2::proto::MAX_MAX_FRAME_SIZE)){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 MAX_FRAME_SIZE %u is out of range, reset to %u", log_t::flag_t::WARNING, this->_local.maxFrameSize, h2::proto::DEFAULT_MAX_FRAME_SIZE);
+		// Возвращаем максимальный размер фрейма к значению по умолчанию
+		this->_local.maxFrameSize = h2::proto::DEFAULT_MAX_FRAME_SIZE;
+	}
+	// Если разрешение server push задано недопустимым значением
+	if(this->_local.enablePush > 1){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 ENABLE_PUSH %u is invalid, reset to 1", log_t::flag_t::WARNING, this->_local.enablePush);
+		// Возвращаем разрешение server push к значению по умолчанию
+		this->_local.enablePush = 1;
+	}
+	// Если разрешение расширенного CONNECT задано недопустимым значением
+	if(this->_local.enableConnectProtocol > 1){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 ENABLE_CONNECT_PROTOCOL %u is invalid, reset to 0", log_t::flag_t::WARNING, this->_local.enableConnectProtocol);
+		// Запрещаем расширенный метод CONNECT
+		this->_local.enableConnectProtocol = 0;
+	}
+	// Если отказ от приоритетов RFC 7540 задан недопустимым значением
+	if(this->_local.noRfc7540Priorities > 1){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 NO_RFC7540_PRIORITIES %u is invalid, reset to 1", log_t::flag_t::WARNING, this->_local.noRfc7540Priorities);
+		// Возвращаем отказ от приоритетов RFC 7540 к значению по умолчанию
+		this->_local.noRfc7540Priorities = 1;
+	}
 }
 /**
  * @brief Метод получения параметров SETTINGS пира
@@ -2717,6 +4085,15 @@ const awh::http::Parser_HTTP2::settings_t & awh::http::Parser_HTTP2::remoteSetti
 bool awh::http::Parser_HTTP2::isClosed() const noexcept {
 	// Соединение помечено на завершение, если GOAWAY отправлен или получен
 	return (this->_flags.goawaySent || this->_flags.goawayReceived);
+}
+/**
+ * @brief Метод проверки того, что наш SETTINGS подтверждён пиром
+ *
+ * @return признак получения ACK на наш SETTINGS
+ */
+bool awh::http::Parser_HTTP2::isSettingsAcked() const noexcept {
+	// Выводим признак получения ACK на наш SETTINGS
+	return this->_flags.settingsAcked;
 }
 /**
  * @brief Метод отправки исходящего preface соединения
@@ -2744,8 +4121,31 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
 	this->_decoder.setProtocolMaxSize(this->_local.headerTableSize);
 	// Ограничиваем размер динамической таблицы декодера анонсируемым значением
 	this->_decoder.table().setMaxSize(this->_local.headerTableSize);
+	/**
+	 * Изменение анонсируемого начального окна приёма сдвигает окна приёма всех уже
+	 * открытых потоков на дельту (RFC 9113 §6.9.2): без этого наш учёт принятых байт
+	 * разъезжается с учётом пира и приводит к ложным FLOW_CONTROL_ERROR
+	 */
+	if(this->_local.windowSize != this->_window.localInit){
+		// Вычисляем дельту изменения начального окна приёма
+		const int64_t delta = (static_cast <int64_t> (this->_local.windowSize) - this->_window.localInit);
+		// Запоминаем анонсируемое начальное окно приёма потока
+		this->_window.localInit = this->_local.windowSize;
+		/**
+		 * Выполняем сдвиг окон приёма всех открытых потоков. Переполнение здесь
+		 * невозможно: окно приёма потока никогда не превышает анонсированного
+		 * начального размера, а сам параметр приведён к допустимому диапазону
+		 * методом settings() - поэтому результат не выходит за новое начальное окно
+		 */
+		for(auto & item : this->_transfer.streams){
+			// Вычисляем новое окно приёма потока
+			const int64_t window = (static_cast <int64_t> (item.second.localWindow) + delta);
+			// Применяем новое окно приёма потока
+			item.second.localWindow = static_cast <int32_t> (::min(static_cast <int64_t> (h2::proto::MAX_WINDOW_SIZE), window));
+		}
+	}
 	// Список отправляемых параметров SETTINGS
-	h2::frame::setting_entry_t items[6];
+	h2::frame::setting_entry_t items[8];
 	// Количество отправляемых параметров
 	size_t count = 0;
 	// Добавляем параметр размера динамической таблицы HPACK
@@ -2778,6 +4178,20 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
 		// Устанавливаем значение параметра
 		items[count++].value = this->_local.maxHeaderListSize;
 	}
+	// Расширенный CONNECT анонсируется только когда включён (RFC 8441 §3: отзыв запрещён)
+	if(this->_local.enableConnectProtocol != 0){
+		// Добавляем параметр разрешения расширенного CONNECT
+		items[count].id = h2::setting_t::ENABLE_CONNECT_PROTOCOL;
+		// Устанавливаем значение параметра
+		items[count++].value = this->_local.enableConnectProtocol;
+	}
+	// Анонсируем отказ от приоритетов RFC 7540, если он объявлен (RFC 9218 §2.1)
+	if(this->_local.noRfc7540Priorities != 0){
+		// Добавляем параметр отказа от приоритетов RFC 7540
+		items[count].id = h2::setting_t::NO_RFC7540_PRIORITIES;
+		// Устанавливаем значение параметра
+		items[count++].value = this->_local.noRfc7540Priorities;
+	}
 	// Отправляем SETTINGS-фрейм с собранными параметрами
 	h2::frame::serialize::settings(this->_buffer.output, items, count, false);
 	// Передаём исходящие байты сетевому слою
@@ -2792,8 +4206,8 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
 void awh::http::Parser_HTTP2::sendRstStream(const uint32_t sid, const error_t code) noexcept {
 	// Отправляем фрейм RST_STREAM
 	h2::frame::serialize::rstStream(this->_buffer.output, sid, code);
-	// Удаляем поток из карты активных потоков
-	this->eraseStream(sid);
+	// Закрываем поток с вызовом функции обратного вызова закрытия (как и при входящем сбросе)
+	this->closeStream(sid, code);
 	// Передаём исходящие байты сетевому слою
 	this->flush();
 }
@@ -2808,6 +4222,61 @@ void awh::http::Parser_HTTP2::sendGoaway(const error_t code, string_view debug) 
 	h2::frame::serialize::goaway(this->_buffer.output, this->_transfer.lastStreamId, code, debug);
 	// Помечаем что GOAWAY отправлен
 	this->_flags.goawaySent = true;
+	// Передаём исходящие байты сетевому слою
+	this->flush();
+}
+/**
+ * @brief Метод начала плавного завершения соединения (RFC 9113 §6.8)
+ *
+ * @param debug необязательные отладочные данные
+ */
+void awh::http::Parser_HTTP2::sendShutdown(string_view debug) noexcept {
+	// Если соединение уже завершается - повторное предупреждение не требуется
+	if(this->_flags.goawaySent || this->_flags.goawayGraceful)
+		// Выходим из метода
+		return;
+	/**
+	 * Предупреждающий GOAWAY объявляет максимально возможный идентификатор потока:
+	 * пир узнаёт о предстоящем закрытии, но ни один поток не считается отклонённым
+	 * (RFC 9113 §6.8). Флаг отправленного GOAWAY при этом не выставляется - иначе
+	 * мы сами перестали бы открывать потоки, не дав соединению доработать
+	 */
+	h2::frame::serialize::goaway(this->_buffer.output, h2::proto::MAX_STREAM_ID, error_t::NO_ERROR, debug);
+	// Помечаем что предупреждение о завершении отправлено
+	this->_flags.goawayGraceful = true;
+	// Передаём исходящие байты сетевому слою
+	this->flush();
+}
+/**
+ * @brief Метод отправки WINDOW_UPDATE
+ *
+ * @param sid       идентификатор потока (0 - окно всего соединения)
+ * @param increment инкремент окна flow control
+ */
+void awh::http::Parser_HTTP2::sendPriority(const uint32_t sid, const uint8_t urgency, const bool incremental) noexcept {
+	// Приоритет назначается только потокам, инициированным нами (RFC 9218 §7.1)
+	if(this->peerInitiated(sid))
+		// Выходим из метода
+		return;
+	// Формируем значение поля приоритета структурированным словарём (RFC 8941)
+	string value = "u=";
+	// Дописываем срочность потока, ограниченную допустимым диапазоном
+	value.push_back(static_cast <char> ('0' + ::min(urgency, h2::proto::MAX_URGENCY)));
+	// Если требуется инкрементальная доставка потока
+	if(incremental)
+		// Дописываем признак инкрементальной доставки
+		value.append(", i");
+	// Отправляем фрейм обновления расширенного приоритета
+	h2::frame::serialize::priorityUpdate(this->_buffer.output, sid, value);
+	// Если поток уже существует - применяем приоритет и к своей стороне
+	stream_t * stream = this->findStream(sid);
+	// Если поток найден
+	if(stream != nullptr){
+		// Применяем срочность потока
+		stream->urgency = ::min(urgency, h2::proto::MAX_URGENCY);
+		// Применяем признак инкрементальной доставки
+		stream->incremental = incremental;
+	}
 	// Передаём исходящие байты сетевому слою
 	this->flush();
 }
@@ -2858,8 +4327,19 @@ size_t awh::http::Parser_HTTP2::sendData(const uint32_t sid, const void * buffer
 		if(stream->endStreamPending || stream->endStreamSent)
 			// Выводим число принятых байт
 			return result;
-		// Если наша половина потока закрыта - данные не принимаются
-		if((stream->state == h2::stream_state_t::HALF_CLOSED_LOCAL) || (stream->state == h2::stream_state_t::CLOSED))
+		/**
+		 * Данные тела допустимы только из состояний open и half-closed(remote)
+		 * (RFC 9113 §5.1): в зарезервированный под push поток до отправки его
+		 * заголовков тело слать нельзя
+		 */
+		if((stream->state != h2::stream_state_t::OPEN) && (stream->state != h2::stream_state_t::HALF_CLOSED_REMOTE)){
+			// Записываем сообщение об ошибке в лог
+			this->_log->print("HTTP/2 stream %u does not accept body in its current state", log_t::flag_t::WARNING, sid);
+			// Выводим число принятых байт
+			return result;
+		}
+		// Если секция трейлеров уже отложена - тело после неё не принимается
+		if(stream->trailersPending)
 			// Выводим число принятых байт
 			return result;
 		// Вычисляем свободное место в буфере отправки до high-water
@@ -2935,14 +4415,27 @@ uint32_t awh::http::Parser_HTTP2::sendPushPromise(const uint32_t sid, const vect
 	if((assoc->state != h2::stream_state_t::OPEN) && (assoc->state != h2::stream_state_t::HALF_CLOSED_REMOTE))
 		// Push невозможен
 		return result;
+	// Если соединение помечено на завершение - новые потоки на нём не открываются (RFC 9113 §6.8)
+	if(this->_flags.goawayReceived || this->_flags.goawaySent)
+		// Push невозможен
+		return result;
+	/**
+	 * Зарезервированный нами поток учитывается в лимите одновременных потоков,
+	 * разрешённом пиром (RFC 9113 §5.1.2)
+	 */
+	if(this->_transfer.localStreamCount >= this->_remote.maxConcurrentStreams)
+		// Push невозможен
+		return result;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
 		// Резервируем чётный push-поток
-		result = this->_transfer.nextStreamId;
-		// Смещаем следующий инициируемый нами идентификатор потока
-		this->_transfer.nextStreamId += 2;
+		result = this->nextStreamId();
+		// Если пространство идентификаторов исчерпано - push невозможен
+		if(result == 0)
+			// Выводим результат
+			return result;
 		// Закодированный HPACK-блок заголовков обещанного запроса
 		string block = "";
 		// Выполняем кодирование заголовков в HPACK-блок
@@ -2953,6 +4446,16 @@ uint32_t awh::http::Parser_HTTP2::sendPushPromise(const uint32_t sid, const vect
 		stream_t & stream = this->stream(result);
 		// Переводим push-поток в состояние RESERVED_LOCAL
 		stream.state = h2::stream_state_t::RESERVED_LOCAL;
+		/**
+		 * Учитываем поток в лимите одновременных потоков: без этого счётчик
+		 * рассинхронизировался бы с картой потоков, ведь при закрытии push-потока
+		 * он уменьшается наравне с остальными нашими потоками
+		 */
+		++this->_transfer.localStreamCount;
+		// Запоминаем наибольший наш открытый идентификатор потока
+		if(result > this->_transfer.localOpened)
+			// Обновляем наибольший наш открытый идентификатор потока
+			this->_transfer.localOpened = result;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2991,16 +4494,73 @@ uint32_t awh::http::Parser_HTTP2::sendPushPromise(const uint32_t sid, const vect
  * @param endStream флаг завершения потока (тела не будет)
  */
 void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::hpack::field_t> & fields, const bool endStream) noexcept {
+	// Если отправка блока заголовков в этот поток недопустима
+	if(!this->canSendHeaders(sid))
+		// Выходим из метода
+		return;
+	/**
+	 * Если тело потока ещё не отправлено полностью - это секция трейлеров, и она
+	 * обязана уйти строго после данных, которые завершает
+	 */
+	if(this->deferTrailers(sid, fields, endStream))
+		// Выходим из метода
+		return;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
 		// Закодированный HPACK-блок заголовков
 		string block = "";
-		// Выполняем кодирование заголовков в HPACK-блок
-		this->_encoder.encode(fields, block, true);
+		// Дописываем отложенный Dynamic Table Size Update (если требуется)
+		this->_encoder.begin(block);
+		/**
+		 * Выполняем перебор всех кодируемых заголовков
+		 */
+		for(const h2::hpack::field_t & field : fields){
+			/**
+			 * Connection-specific заголовки в HTTP/2 запрещены (RFC 9113 §8.2.2) и делают
+			 * сообщение малформированным на приёмной стороне - пропускаем их
+			 */
+			if(::isConnectionSpecific(field.name) || ((field.name.compare("te") == 0) && !this->_fmk->compare("trailers", field.value))){
+				// Записываем сообщение об ошибке в лог
+				this->_log->print("HTTP/2 connection-specific header [%s] is not allowed and skipped", log_t::flag_t::WARNING, field.name.c_str());
+				// Переходим к следующему заголовку
+				continue;
+			}
+			/**
+			 * Названия в HTTP/2 передаются только в нижнем регистре (RFC 9113 §8.2.1).
+			 * Эта перегрузка отдаёт байты как есть - она нужна в том числе для построения
+			 * нештатного трафика, поэтому название не переписывается, но о нарушении
+			 * вызывающий узнаёт из лога
+			 */
+			if(!::isValidHeaderName(field.name))
+				// Записываем сообщение об ошибке в лог
+				this->_log->print("HTTP/2 header name [%s] is not a valid lowercase token", log_t::flag_t::WARNING, field.name.c_str());
+			// Кодируем очередной заголовок
+			this->_encoder.encode(field.name, field.value, block, field.sensitive, true);
+		}
 		// Отправляем HPACK-блок заголовков потока
 		this->commitHeaders(sid, block, endStream);
+		/**
+		 * Выполняем поиск метода запроса: ответ на HEAD объявляет content-length,
+		 * но тела не несёт (RFC 9110 §9.3.2) - сверять их нельзя
+		 */
+		for(const h2::hpack::field_t & field : fields){
+			// Если получен псевдо-заголовок метода запроса
+			if(field.name.compare(":method") == 0){
+				// Если запрос выполняется методом HEAD
+				if(field.value.compare("HEAD") == 0){
+					// Выполняем поиск потока
+					stream_t * stream = this->findStream(sid);
+					// Если поток найден
+					if(stream != nullptr)
+						// Помечаем что ответ на этот поток тела не несёт
+						stream->bodyless = true;
+				}
+				// Прекращаем поиск
+				break;
+			}
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -3042,10 +4602,51 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
  * @param scheme    схема запроса для псевдо-заголовка [:scheme] (для ответа не используется)
  */
 void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & headers, const bool endStream, string_view scheme) noexcept {
+	// Если отправка блока заголовков в этот поток недопустима
+	if(!this->canSendHeaders(sid))
+		// Выходим из метода
+		return;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		// Выполняем поиск потока
+		const stream_t * stream = this->findStream(sid);
+		/**
+		 * Если тело потока ещё не отправлено полностью - это секция трейлеров. Она
+		 * обязана уйти после данных, которые завершает, поэтому заголовки собираются
+		 * в отдельный список и откладываются. Псевдо-заголовков в трейлерах нет,
+		 * поэтому сборка сводится к переносу полей контейнера
+		 */
+		if((stream != nullptr) && stream->headersSent && ((stream->pending() > 0) || !this->sourceDone(* stream))){
+			// Список заголовков секции трейлеров
+			vector <h2::hpack::field_t> fields;
+			// Резервируем память под заголовки секции трейлеров
+			fields.reserve(headers.size());
+			// Переиспользуемый буфер для названий заголовков в нижнем регистре
+			string buffer = "";
+			/**
+			 * Выполняем перебор всех заголовков контейнера
+			 */
+			for(const headers_t::header_t & header : headers){
+				// Приводим название заголовка к нижнему регистру (RFC 9113 §8.2.1)
+				const string_view name = ::lowerName(header.name, buffer);
+				// Пропускаем запрещённые в HTTP/2 connection-specific заголовки (RFC 9113 §8.2.2)
+				if(::isConnectionSpecific(name) || (name.compare("host") == 0))
+					// Переходим к следующему заголовку
+					continue;
+				// Заголовок TE допустим только со значением "trailers" (RFC 9113 §8.2.2)
+				if((name.compare("te") == 0) && !this->_fmk->compare("trailers", header.value))
+					// Переходим к следующему заголовку
+					continue;
+				// Дописываем заголовок в список секции трейлеров
+				fields.emplace_back(string(name), header.value);
+			}
+			// Откладываем секцию трейлеров до конца отправки тела
+			if(this->deferTrailers(sid, fields, endStream))
+				// Выходим из метода
+				return;
+		}
 		// Закодированный HPACK-блок заголовков
 		string block = "";
 		// Дописываем отложенный Dynamic Table Size Update (если требуется)
@@ -3064,18 +4665,34 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 					const request_t * request = static_cast <const request_t *> (provider);
 					// Кодируем псевдо-заголовок [:method]
 					this->_encoder.encode(":method", ::methodName(request), block);
-					// Для метода CONNECT псевдо-заголовки [:scheme] и [:path] запрещены (RFC 9113 §8.5)
-					if(request->method != method_t::CONNECT)
+					/**
+					 * Расширенный CONNECT (RFC 8441 §4) обязан нести [:scheme] и [:path],
+					 * тогда как классический CONNECT их запрещает (RFC 9113 §8.5)
+					 */
+					const bool extended = (!request->protocol.empty() && (request->method == method_t::CONNECT));
+					// Если псевдо-заголовки схемы и пути допустимы для этого запроса
+					if((request->method != method_t::CONNECT) || extended)
 						// Кодируем псевдо-заголовок [:scheme]
 						this->_encoder.encode(":scheme", scheme, block);
 					// Если контейнер содержит заголовок Host - конвертируем его в псевдо-заголовок [:authority]
 					if(headers.has("host"))
 						// Кодируем псевдо-заголовок [:authority]
 						this->_encoder.encode(":authority", headers.at("host"), block);
-					// Для метода CONNECT псевдо-заголовки [:scheme] и [:path] запрещены (RFC 9113 §8.5)
-					if(request->method != method_t::CONNECT)
+					/**
+					 * Для метода CONNECT псевдо-заголовок [:authority] обязателен (RFC 9113 §8.5),
+					 * а заголовка Host в таком запросе может не быть - берём цель из URI запроса
+					 */
+					else if((request->method == method_t::CONNECT) && !request->uri.empty())
+						// Кодируем псевдо-заголовок [:authority]
+						this->_encoder.encode(":authority", request->uri, block);
+					// Если псевдо-заголовки схемы и пути допустимы для этого запроса
+					if((request->method != method_t::CONNECT) || extended)
 						// Кодируем псевдо-заголовок [:path] (пустой путь запрещён - подставляем "/")
 						this->_encoder.encode(":path", (request->uri.empty() ? "/" : request->uri), block);
+					// Если запрос поднимает туннель расширенным методом CONNECT
+					if(extended)
+						// Кодируем псевдо-заголовок [:protocol] (RFC 8441 §4)
+						this->_encoder.encode(":protocol", request->protocol, block);
 				} break;
 				// Если провайдер является ответом сервера
 				case static_cast <uint8_t> (direct_t::RESPONSE): {
@@ -3110,6 +4727,16 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 		}
 		// Отправляем HPACK-блок заголовков потока
 		this->commitHeaders(sid, block, endStream);
+		// Если провайдер контейнера задаёт запрос методом HEAD
+		if((provider != nullptr) && (provider->direct == direct_t::REQUEST) &&
+		   (static_cast <const request_t *> (provider)->method == method_t::HEAD)){
+			// Выполняем поиск потока
+			stream_t * stream = this->findStream(sid);
+			// Если поток найден
+			if(stream != nullptr)
+				// Помечаем что ответ на этот поток тела не несёт (RFC 9110 §9.3.2)
+				stream->bodyless = true;
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -3142,6 +4769,18 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 uint32_t awh::http::Parser_HTTP2::nextStreamId() noexcept {
 	// Запоминаем выделяемый идентификатор потока
 	const uint32_t result = this->_transfer.nextStreamId;
+	/**
+	 * Пространство идентификаторов исчерпано (RFC 9113 §5.1.1): новые потоки на этом
+	 * соединении невозможны, требуется установить новое. Сообщаем об этом пиру
+	 */
+	if(result > h2::proto::STREAM_ID_MASK){
+		// Если GOAWAY ещё не отправлен
+		if(!this->_flags.goawaySent)
+			// Помечаем соединение завершаемым
+			this->sendGoaway(error_t::NO_ERROR, "stream identifiers exhausted");
+		// Выделить идентификатор невозможно
+		return 0;
+	}
 	// Смещаем следующий инициируемый нами идентификатор потока
 	this->_transfer.nextStreamId += 2;
 	// Выводим выделенный идентификатор потока
@@ -3383,7 +5022,11 @@ void awh::http::Parser_HTTP2::on(provider_callback_t callback) noexcept {
  * @param log    объект для работы с логами
  */
 awh::http::Parser_HTTP2::Parser_HTTP2(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
- parser_t(direct, fmk, log), _error(error_t::NO_ERROR) {
+ parser_t(direct, fmk, log), _epoch(0), _error(error_t::NO_ERROR) {
+	// Лимит одновременных потоков пира по умолчанию не задан (RFC 9113 §6.5.2)
+	this->_remote.maxConcurrentStreams = 0xFFFFFFFF;
+	// Пир не заявлял отказ от приоритетов RFC 7540, пока не прислал параметр
+	this->_remote.noRfc7540Priorities = 0;
 	// Запоминаем направление трафика
 	this->_flags.prefaceReceived = (direct != direct_t::REQUEST);
 	// Устанавливаем начальный идентификатор инициируемого нами потока

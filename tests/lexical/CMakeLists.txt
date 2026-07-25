@@ -41,7 +41,7 @@ find_package(GTest)
 # Если библиотека GTest найдена
 if (${GTest_FOUND})
     # Определяем имя для юнит-тестов
-    SET(NAME "float")
+    SET(NAME "lexical")
 
     # Переводим название теста в верхний регистр
     string(TOUPPER "${NAME}" UNIT_TEST_NAME)
@@ -61,13 +61,13 @@ if (${GTest_FOUND})
         # Убираем ненужные и глупые варинги которые не имеют ничего общего с реальностью
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-implicitly-unsigned-literal -Wno-reserved-user-defined-literal")
 
-        # Выводим сообщение о сборке тестов для модуля float
-        message(STATUS "Build tests FLOAT module: Yes\n")
+        # Выводим сообщение о сборке тестов для модуля lexical
+        message(STATUS "Build tests LEXICAL module: Yes\n")
 
         # Источники для сборки юнит-тестов
         SET(${PROJECT_NAME}_UNITTEST_SOURCES
             ../main.cpp
-            float.cpp
+            lexical.cpp
             static.cpp
             parameterized.cpp
         )
@@ -165,7 +165,7 @@ if (${GTest_FOUND})
         endif()
     # Если не нужно собрать тесты
     else()
-        # Выводим сообщение о сборке тестов для модуля float
-        message(STATUS "Build tests FLOAT module: No\n")
+        # Выводим сообщение о сборке тестов для модуля lexical
+        message(STATUS "Build tests LEXICAL module: No\n")
     endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_TESTS})
 endif()

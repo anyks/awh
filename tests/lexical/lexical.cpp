@@ -1,5 +1,5 @@
 /**
- * @file: float.cpp
+ * @file: lexical.cpp
  * @date: 2026-07-22
  * @license: GPL-3.0
  *
@@ -15,18 +15,18 @@
 /**
  * Подключаем заголовочный файл
  */
-#include "float.hpp"
+#include "lexical.hpp"
 
 /**
  * @brief Метод настройки тестового окружения
  *
  */
-void FloatFixture::SetUp() {}
+void LexicalFixture::SetUp() {}
 /**
  * @brief Метод очистки тестового окружения
  *
  */
-void FloatFixture::TearDown() {}
+void LexicalFixture::TearDown() {}
 /**
  * @brief Сравнивает биты двух double
  *
@@ -34,7 +34,7 @@ void FloatFixture::TearDown() {}
  * @param b второе значение
  * @return  true при побитовом равенстве
  */
-bool FloatFixture::sameBits(const double a, const double b) noexcept {
+bool LexicalFixture::sameBits(const double a, const double b) noexcept {
 	// Переменная для хранения побитового представления первого числа
 	uint64_t ua = 0;
 	// Переменная для хранения побитового представления второго числа
@@ -53,7 +53,7 @@ bool FloatFixture::sameBits(const double a, const double b) noexcept {
  * @param b второе значение
  * @return  true при побитовом равенстве
  */
-bool FloatFixture::sameBits(const float a, const float b) noexcept {
+bool LexicalFixture::sameBits(const float a, const float b) noexcept {
 	// Переменная для хранения побитового представления первого числа
 	uint32_t ua = 0;
 	// Переменная для хранения побитового представления второго числа
@@ -66,11 +66,11 @@ bool FloatFixture::sameBits(const float a, const float b) noexcept {
 	return (ua == ub);
 }
 /**
- * @brief Разбирает double через floating_t и сверяет со strtod
+ * @brief Разбирает double через lexical_t и сверяет со strtod
  *
  * @param text исходная строка
  */
-void FloatFixture::expectDoubleMatchesStrtod(const char * text) noexcept {
+void LexicalFixture::expectDoubleMatchesStrtod(const char * text) noexcept {
 	// Проверяем, что текст не пустой
 	ASSERT_NE(text, nullptr);
 	// Переменная для хранения фактического значения double
@@ -79,8 +79,8 @@ void FloatFixture::expectDoubleMatchesStrtod(const char * text) noexcept {
 	char * endRef = nullptr;
 	// Разбираем строку с помощью strtod для получения ожидаемого значения
 	const double expected = std::strtod(text, &endRef);
-	// Разбираем строку с помощью floating_t::fromChars
-	const auto answer = awh::floating_t::fromChars(text, text + std::strlen(text), actual);
+	// Разбираем строку с помощью lexical_t::fromChars
+	const auto answer = awh::lexical_t::fromChars(text, text + std::strlen(text), actual);
 	// Проверяем, что разбор прошёл успешно
 	ASSERT_TRUE(static_cast <bool> (answer)) << "parse failed: " << text;
 	// Проверяем, что указатель на конец разбора совпадает с ожидаемым
@@ -93,11 +93,11 @@ void FloatFixture::expectDoubleMatchesStrtod(const char * text) noexcept {
 	else ASSERT_TRUE(sameBits(actual, expected)) << "value mismatch: " << text << " got=" << actual << " expected=" << expected;
 }
 /**
- * @brief Разбирает float через floating_t и сверяет со strtof
+ * @brief Разбирает float через lexical_t и сверяет со strtof
  *
  * @param text исходная строка
  */
-void FloatFixture::expectFloatMatchesStrtof(const char * text) noexcept {
+void LexicalFixture::expectFloatMatchesStrtof(const char * text) noexcept {
 	// Проверяем, что текст не пустой
 	ASSERT_NE(text, nullptr);
 	// Переменная для хранения фактического значения float
@@ -106,8 +106,8 @@ void FloatFixture::expectFloatMatchesStrtof(const char * text) noexcept {
 	char * endRef = nullptr;
 	// Разбираем строку с помощью strtof для получения ожидаемого значения
 	const float expected = std::strtof(text, &endRef);
-	// Разбираем строку с помощью floating_t::fromChars
-	const auto answer = awh::floating_t::fromChars(text, text + std::strlen(text), actual);
+	// Разбираем строку с помощью lexical_t::fromChars
+	const auto answer = awh::lexical_t::fromChars(text, text + std::strlen(text), actual);
 	// Проверяем, что разбор прошёл успешно
 	ASSERT_TRUE(static_cast <bool> (answer)) << "parse failed: " << text;
 	// Проверяем, что указатель на конец разбора совпадает с ожидаемым

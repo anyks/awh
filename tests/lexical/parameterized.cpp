@@ -15,13 +15,13 @@
 /**
  * Подключаем заголовочный файл
  */
-#include "float.hpp"
+#include "lexical.hpp"
 
 /**
  * Используем пространства имён
  */
 using namespace awh;
-using namespace awh::floating;
+using namespace awh::lexical;
 
 /**
  * @brief Параметр теста разбора double
@@ -35,7 +35,7 @@ struct DoubleParseParameter {
  * @brief Параметризованный fixture для double
  *
  */
-class DoubleParseParameterizedFixture : public FloatFixture, public ::testing::WithParamInterface <DoubleParseParameter> {};
+class DoubleParseParameterizedFixture : public LexicalFixture, public ::testing::WithParamInterface <DoubleParseParameter> {};
 
 /**
  * @brief Сверка fromChars(double) со strtod на таблице строк
@@ -109,13 +109,13 @@ struct FloatParseParameter {
  * @brief Параметризованный fixture для float
  *
  */
-class FloatParseParameterizedFixture : public FloatFixture, public ::testing::WithParamInterface <FloatParseParameter> {};
+class LexicalParseParameterizedFixture : public LexicalFixture, public ::testing::WithParamInterface <FloatParseParameter> {};
 
 /**
  * @brief Сверка fromChars(float) со strtof на таблице строк
  *
  */
-TEST_P(FloatParseParameterizedFixture, MatchesStrtofTest){
+TEST_P(LexicalParseParameterizedFixture, MatchesStrtofTest){
 	// Проверяем совпадение с strtof
 	expectFloatMatchesStrtof(GetParam().text);
 }
@@ -124,7 +124,7 @@ TEST_P(FloatParseParameterizedFixture, MatchesStrtofTest){
  * @brief Таблица строк для float
  *
  */
-INSTANTIATE_TEST_SUITE_P(FloatParseCases, FloatParseParameterizedFixture,
+INSTANTIATE_TEST_SUITE_P(FloatParseCases, LexicalParseParameterizedFixture,
 	::testing::Values(
 		FloatParseParameter{"0"},
 		FloatParseParameter{"-0"},
@@ -158,7 +158,7 @@ struct IntegerParseParameter {
  * @brief Параметризованный fixture для целых
  *
  */
-class IntegerParseParameterizedFixture : public FloatFixture, public ::testing::WithParamInterface <IntegerParseParameter> {};
+class IntegerParseParameterizedFixture : public LexicalFixture, public ::testing::WithParamInterface <IntegerParseParameter> {};
 
 /**
  * @brief Разбор целых в разных основаниях
@@ -170,7 +170,7 @@ TEST_P(IntegerParseParameterizedFixture, ParseIntegerTest){
 	// Получаем параметры
 	const auto & p = GetParam();
 	// Выполняем разбор
-	const auto answer = floating_t::fromChars(p.text, p.text + std::strlen(p.text), value, p.base);
+	const auto answer = lexical_t::fromChars(p.text, p.text + std::strlen(p.text), value, p.base);
 	// Если ожидаемое значение корректно, проверяем совпадение
 	if(p.ok){
 		// Проверяем результат
@@ -227,7 +227,7 @@ struct Pow10Parameter {
  * @brief Параметризованный fixture для integerTimesPow10
  *
  */
-class Pow10ParameterizedFixture : public FloatFixture, public ::testing::WithParamInterface <Pow10Parameter> {};
+class Pow10ParameterizedFixture : public LexicalFixture, public ::testing::WithParamInterface <Pow10Parameter> {};
 
 /**
  * @brief Проверка integerTimesPow10 на таблице

@@ -536,7 +536,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/version.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"
-    "${CMAKE_SOURCE_DIR}/src/float/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/lexical/table.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
@@ -854,6 +854,10 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(QUIC_CLIENT_APP_PROTO_NAME client-quic)
     # Устанавливаем имя серверного приложения работы с протоколом QUIC
     SET(QUIC_SERVER_APP_PROTO_NAME server-quic)
+    # Устанавливаем имя клиентского приложения проверки QUIC-прокси на объединении данных (splice)
+    SET(QUIC_PROXY_CLIENT_APP_PROTO_NAME client-quic-proxy)
+    # Устанавливаем имя серверного приложения QUIC-прокси на объединении данных (splice)
+    SET(QUIC_PROXY_SERVER_APP_PROTO_NAME server-quic-proxy)
     # Указываем что нужно собрать приложения работы с протоколом QUIC
     option(CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE "Build QUIC Protocol app sample" ON)
 
@@ -1396,6 +1400,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${QUIC_CLIENT_APP_PROTO_NAME} sample/client/quic.cpp client)
         # Выполняем создание приложения работы с QUIC сервером
         add_sample(${QUIC_SERVER_APP_PROTO_NAME} sample/server/quic.cpp server)
+        # Выполняем создание клиентского приложения проверки QUIC-прокси на объединении данных (splice)
+        add_sample(${QUIC_PROXY_CLIENT_APP_PROTO_NAME} sample/client/quic-proxy.cpp client)
+        # Выполняем создание серверного приложения QUIC-прокси на объединении данных (splice)
+        add_sample(${QUIC_PROXY_SERVER_APP_PROTO_NAME} sample/server/quic-proxy.cpp server)
     # Если не нужно собирать семплы для работы с протоколом QUIC
     else()
         # Выводим сообщение о сборке семпла
@@ -2235,6 +2243,20 @@ if (CMAKE_SHARED_BUILD_LIB)
             # Выполняем сборку приложения работы с QUIC сервером
             target_link_libraries(
                 ${QUIC_SERVER_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку клиентского приложения проверки QUIC-прокси на объединении данных (splice)
+            target_link_libraries(
+                ${QUIC_PROXY_CLIENT_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку серверного приложения QUIC-прокси на объединении данных (splice)
+            target_link_libraries(
+                ${QUIC_PROXY_SERVER_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
@@ -3224,6 +3246,22 @@ else (CMAKE_SHARED_BUILD_LIB)
             # Выполняем сборку приложения работы с QUIC сервером
             target_link_libraries(
                 ${QUIC_SERVER_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку клиентского приложения проверки QUIC-прокси на объединении данных (splice)
+            target_link_libraries(
+                ${QUIC_PROXY_CLIENT_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку серверного приложения QUIC-прокси на объединении данных (splice)
+            target_link_libraries(
+                ${QUIC_PROXY_SERVER_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}

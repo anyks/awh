@@ -305,6 +305,20 @@ namespace awh {
 					 * @return           результат разбора (OK/ERROR)
 					 */
 					__AWH_SHARED_EXPORT__ status_t continuation(const header_t & header, const uint8_t * payload, string_view & block, bool & endHeaders, error_t & err) noexcept;
+					/**
+					 * @brief Функция разбора полезной нагрузки PRIORITY_UPDATE (RFC 9218 §7.1)
+					 *
+					 * @note Кадр относится к соединению (stream id == 0), а приоритизируемый
+					 *       поток указан в первых 4 октетах нагрузки
+					 *
+					 * @param header   заголовок фрейма
+					 * @param payload  полезная нагрузка фрейма
+					 * @param streamId идентификатор приоритизируемого потока
+					 * @param value    значение поля приоритета (zero-copy во входной буфер)
+					 * @param error    код ошибки протокола
+					 * @return         результат разбора (OK/ERROR)
+					 */
+					__AWH_SHARED_EXPORT__ status_t priorityUpdate(const header_t & header, const uint8_t * payload, uint32_t & streamId, string_view & value, error_t & error) noexcept;
 				};
 
 				/**
@@ -392,6 +406,14 @@ namespace awh {
 					 * @param weight    вес потока
 					 */
 					__AWH_SHARED_EXPORT__ void priority(string & output, const uint32_t streamId, const bool exclusive, const uint32_t streamDep, const uint8_t weight) noexcept;
+					/**
+					 * @brief Функция сборки фрейма PRIORITY_UPDATE (RFC 9218 §7.1)
+					 *
+					 * @param output   выходной буфер соединения
+					 * @param streamId идентификатор приоритизируемого потока
+					 * @param value    значение поля приоритета (структурированный словарь, например "u=2, i")
+					 */
+					__AWH_SHARED_EXPORT__ void priorityUpdate(string & output, const uint32_t streamId, string_view value) noexcept;
 					/**
 					 * @brief Функция сборки HPACK-блока в HEADERS + CONTINUATION (RFC 9113 §6.2/§6.10)
 					 *

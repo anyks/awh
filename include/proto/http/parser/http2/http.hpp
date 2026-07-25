@@ -186,6 +186,10 @@ namespace awh {
 					uint32_t maxHeaderListSize;
 					// Лимит одновременных потоков
 					uint32_t maxConcurrentStreams;
+					// Разрешён ли расширенный CONNECT (0/1) - RFC 8441 §3
+					uint32_t enableConnectProtocol;
+					// Отказ от приоритетов RFC 7540 (0/1) - RFC 9218 §2.1
+					uint32_t noRfc7540Priorities;
 					/**
 					 * @brief Конструктор
 					 *
@@ -271,7 +275,10 @@ namespace awh {
 				 *          6. (END, TRAILER)   - трейлеры доставлены (после провайдера с nullptr)
 				 *          7. (END, NONE)      - сообщение потока полностью принято (END_STREAM применён)
 				 *          Для обещанных запросов PUSH_PROMISE фазы не вызываются - фазы начнутся
-				 *          с приходом ответа на обещанном потоке.
+				 *          с приходом ответа на обещанном потоке. Для информационных ответов
+				 *          сервера (1xx) фазы также не вызываются: такой блок промежуточный и
+				 *          доставляется только через header_callback_t / provider_callback_t,
+				 *          а фазы начнутся с приходом финального блока заголовков.
 				 *          Возврат false сбрасывает поток (RST_STREAM с кодом CANCEL).
 				 *
 				 * @param sid   идентификатор потока
@@ -417,6 +424,17 @@ namespace awh {
 						bool writableNotified;
 						// Суммарный размер принятого тела потока (лимит maxBodySize)
 						uint64_t recvBody;
+						// Объявленная заголовком content-length длина тела (-1 - не объявлена)
+						int64_t contentLength;
+						/**
+						 * Сообщение не может нести тело, даже если объявляет content-length:
+						 * ответ на HEAD, а также ответы 204 и 304 (RFC 9110 §8.6)
+						 */
+						bool bodyless;
+						// Срочность потока (0 - наивысшая, 7 - наименьшая) - RFC 9218 §4.1
+						uint8_t urgency;
+						// Признак инкрементальной доставки потока - RFC 9218 §4.2
+						bool incremental;
 						// Окно приёма потока (сколько ещё можем принять)
 						int32_t localWindow;
 						// Окно отправки потока (сколько ещё можем отправить)
@@ -425,6 +443,16 @@ namespace awh {
 						size_t sendOffset;
 						// Ещё не нарезанные в DATA байты тела (ограничен high-water)
 						string sendBuffer;
+						// Блок заголовков потока уже отправлен нами
+						bool headersSent;
+						// На завершение тела отложена секция трейлеров
+						bool trailersPending;
+						/**
+						 * Отложенная секция трейлеров: хранится полями, а не закодированным
+						 * блоком. HPACK-блоки обязаны кодироваться в том же порядке, в каком
+						 * уходят в сеть, поэтому отложить можно только сами заголовки
+						 */
+						vector <h2::hpack::field_t> trailers;
 						// Состояние потока
 						h2::stream_state_t state;
 						// Pull-источник данных тела (если задан вместо sendData)
@@ -480,6 +508,8 @@ namespace awh {
 					int32_t remote;
 					// Целевой размер окна приёма соединения
 					int32_t localMax;
+					// Анонсированное пиру начальное окно приёма потока (SETTINGS_INITIAL_WINDOW_SIZE)
+					int32_t localInit;
 					/**
 					 * @brief Конструктор
 					 *
@@ -495,6 +525,8 @@ namespace awh {
 					string input;
 					// Буфер исходящих байтов
 					string output;
+					// Префикс входного буфера, уже разобранный (вместо erase(0,..))
+					size_t inputPos;
 					// Префикс буфера исходящих байтов, уже отданный в сокет (вместо erase(0,..))
 					size_t outputPos;
 					/**
@@ -533,12 +565,18 @@ namespace awh {
 					bool inParse;
 					// Отправлен GOAWAY
 					bool goawaySent;
+					// Отправлен предупреждающий GOAWAY плавного завершения (RFC 9113 §6.8)
+					bool goawayGraceful;
 					// Поток отклонён (RST_STREAM), блок декодируем только для синхронизации HPACK
 					bool hbcRefused;
 					// Флаг END_STREAM собираемого блока заголовков
 					bool hbcEndStream;
 					// Получен ACK на наш SETTINGS
 					bool settingsAcked;
+					// Получен первый SETTINGS пира (connection preface, RFC 9113 §3.4)
+					bool settingsReceived;
+					// Параметр отказа от приоритетов RFC 7540 уже зафиксирован пиром (RFC 9218 §2.1)
+					bool prioritiesLocked;
 					// Получен GOAWAY
 					bool goawayReceived;
 					// Получен connection preface (для сервера; клиент отправляет его сам)
@@ -556,10 +594,14 @@ namespace awh {
 				typedef struct __AWH_SHARED_EXPORT__ Transfer {
 					// Наибольший принятый идентификатор потока (для GOAWAY)
 					uint32_t lastStreamId;
+					// Наибольший наш идентификатор потока, по которому уже отправлен блок заголовков
+					uint32_t localOpened;
 					// Следующий инициируемый нами идентификатор потока
 					uint32_t nextStreamId;
 					// Число активных потоков, открытых пиром (лимит MAX_CONCURRENT_STREAMS)
 					uint32_t peerStreamCount;
+					// Число активных потоков, открытых нами (лимит MAX_CONCURRENT_STREAMS пира)
+					uint32_t localStreamCount;
 					// Порог сигнала writable (low-water)
 					size_t sendLowWater;
 					// Ёмкость буфера отправки потока (high-water)
@@ -652,6 +694,14 @@ namespace awh {
 				// Флаги состояния соединения
 				flags_t _flags;
 			private:
+				/**
+				 * Поколение состояния соединения: увеличивается каждым сбросом (reset/clear).
+				 * Пользовательская функция обратного вызова вправе сбросить парсер прямо
+				 * из обработчика - после этого все ссылки на разбираемые данные, снимки
+				 * потоков и списки заголовков недействительны, и разбор обязан свернуться
+				 */
+				uint64_t _epoch;
+			private:
 				// Код ошибки уровня соединения
 				error_t _error;
 			private:
@@ -681,6 +731,12 @@ namespace awh {
 				// Объект функций обратного вызова
 				callbacks_t _callbacks;
 			private:
+				/**
+				 * Переиспользуемый список декодированных заголовков блока: представления
+				 * ссылаются в арену декодера и действительны до следующего декодирования
+				 */
+				vector <h2::hpack::field_view_t> _fields;
+			private:
 				// HPACK-энкодер (наша динамическая таблица)
 				h2::hpack::encoder_t _encoder;
 				// HPACK-декодер (динамическая таблица пира)
@@ -693,6 +749,17 @@ namespace awh {
 				 *          буфере до выборки через pending()/consumePending().
 				 */
 				void flush() noexcept;
+				/**
+				 * @brief Метод очистки входного буфера вместе с разобранным префиксом
+				 *
+				 */
+				void clearInput() noexcept;
+				/**
+				 * @brief Метод получения объёма ещё не разобранных входящих байтов
+				 *
+				 * @return объём не разобранных входящих байтов
+				 */
+				size_t inputPending() const noexcept;
 				/**
 				 * @brief Метод получения логического объёма ещё не отправленных исходящих байтов
 				 *
@@ -744,7 +811,7 @@ namespace awh {
 				 * @param fields      декодированные заголовки обещанного запроса
 				 * @return            результат обработки (OK/ERROR)
 				 */
-				h2::status_t deliverPushPromise(const uint32_t sid, const uint32_t promisedSid, vector <h2::hpack::field_t> & fields) noexcept;
+				h2::status_t deliverPushPromise(const uint32_t sid, const uint32_t promisedSid, const vector <h2::hpack::field_view_t> & fields) noexcept;
 			private:
 				/**
 				 * @brief Метод получения существующего либо создания нового потока
@@ -781,6 +848,18 @@ namespace awh {
 				 * @return   результат проверки
 				 */
 				bool peerInitiated(const uint32_t id) const noexcept;
+				/**
+				 * @brief Метод проверки того, что поток ещё ни разу не использовался (состояние idle)
+				 *
+				 * @details Поток пира считается использованным, пока его идентификатор не превышает
+				 *          наибольший принятый; наш собственный - если он уже выдан nextStreamId().
+				 *          Для закрытого и удалённого из карты потока метод возвращает false:
+				 *          запоздалые фреймы на нём - штатная гонка, а не ошибка соединения
+				 *
+				 * @param id идентификатор потока
+				 * @return   результат проверки
+				 */
+				bool idleStream(const uint32_t id) const noexcept;
 			private:
 				/**
 				 * @brief Метод удаления потока из карты с корректным учётом счётчика встречных потоков
@@ -808,6 +887,73 @@ namespace awh {
 				 * @return      результат обработки (false - поток сброшен)
 				 */
 				bool firePhase(const uint32_t id, const phase_t phase, const part_t part) noexcept;
+			private:
+				/**
+				 * @brief Метод вызова функции обратного вызова обработки применённого SETTINGS пира
+				 *
+				 * @details Все методы разбора объявлены noexcept, поэтому исключение из
+				 *          пользовательской функции обязано быть перехвачено на месте вызова -
+				 *          иначе оно завершает процесс, не доходя до обработчика в parse()
+				 */
+				void fireSettings() noexcept;
+				/**
+				 * @brief Метод вызова функции обратного вызова о готовности потока принимать данные
+				 *
+				 * @param id идентификатор потока
+				 */
+				void fireWritable(const uint32_t id) noexcept;
+				/**
+				 * @brief Метод вызова функции обратного вызова обработки открытия нового потока
+				 *
+				 * @param id идентификатор потока
+				 * @return   результат обработки (false - поток требуется сбросить)
+				 */
+				bool fireBegin(const uint32_t id) noexcept;
+				/**
+				 * @brief Метод вызова функции обратного вызова обработки анонса server push
+				 *
+				 * @param sid         идентификатор ассоциированного потока клиента
+				 * @param promisedSid идентификатор обещанного потока
+				 * @return            результат обработки (false - push требуется отклонить)
+				 */
+				bool firePush(const uint32_t sid, const uint32_t promisedSid) noexcept;
+				/**
+				 * @brief Метод вызова функции обратного вызова обработки полученного GOAWAY
+				 *
+				 * @param sid   наибольший идентификатор обработанного пиром потока
+				 * @param code  код ошибки завершения соединения
+				 * @param debug отладочные данные пира
+				 */
+				void fireGoaway(const uint32_t sid, const error_t code, const string_view debug) noexcept;
+				/**
+				 * @brief Метод вызова функции обратного вызова обработки провайдера заголовков потока
+				 *
+				 * @param id        идентификатор потока
+				 * @param provider  провайдер заголовков потока (nullptr для трейлеров)
+				 * @param endStream флаг завершения потока
+				 * @return          результат обработки (false - поток требуется сбросить)
+				 */
+				bool fireProvider(const uint32_t id, const provider_t * provider, const bool endStream) noexcept;
+				/**
+				 * @brief Метод вызова функции обратного вызова обработки фрагмента тела потока
+				 *
+				 * @param id        идентификатор потока
+				 * @param buffer    буфер данных тела
+				 * @param size      размер данных тела
+				 * @param endStream флаг завершения потока
+				 * @return          результат обработки (false - поток требуется сбросить)
+				 */
+				bool fireData(const uint32_t id, const void * buffer, const size_t size, const bool endStream) noexcept;
+				/**
+				 * @brief Метод вызова функции обратного вызова обработки заголовка или трейлера потока
+				 *
+				 * @param id    идентификатор потока
+				 * @param name  название заголовка
+				 * @param value значение заголовка
+				 * @param part  часть сообщения (HEADERS или TRAILER)
+				 * @return      результат обработки (false - поток требуется сбросить)
+				 */
+				bool fireHeader(const uint32_t id, const string_view name, const string_view value, const part_t part) noexcept;
 			private:
 				/**
 				 * @brief Метод прокачки отправки по всем потокам с учётом окон и порога выходного буфера
@@ -857,7 +1003,28 @@ namespace awh {
 				 * @param fields декодированные заголовки блока
 				 * @return       результат проверки (false - лимиты превышены)
 				 */
-				bool checkHeaderLimits(const vector <h2::hpack::field_t> & fields) const noexcept;
+				bool checkHeaderLimits(const vector <h2::hpack::field_view_t> & fields) const noexcept;
+				/**
+				 * @brief Метод проверки соответствия принятого тела объявленному content-length
+				 *
+				 * @details RFC 9113 §8.1.1: расхождение суммы длин DATA с content-length делает
+				 *          сообщение малформированным. При расхождении поток сбрасывается
+				 *
+				 * @param sid идентификатор потока
+				 * @return    результат проверки (false - поток сброшен)
+				 */
+				bool checkBodyLength(const uint32_t sid) noexcept;
+				/**
+				 * @brief Метод применения расширенного приоритета к потоку (RFC 9218 §4)
+				 *
+				 * @details Значение - структурированный словарь вида "u=2, i": ключ [u] задаёт
+				 *          срочность 0..7 (по умолчанию 3), ключ [i] - инкрементальную доставку.
+				 *          Неизвестные и некорректные ключи игнорируются (RFC 9218 §4.3)
+				 *
+				 * @param stream объект потока
+				 * @param value  значение поля приоритета
+				 */
+				void applyPriority(stream_t & stream, string_view value) noexcept;
 			private:
 				/**
 				 * @brief Метод отправки собранного HPACK-блока заголовков потока
@@ -870,6 +1037,42 @@ namespace awh {
 				 * @param endStream флаг завершения потока (тела не будет)
 				 */
 				void commitHeaders(const uint32_t sid, const string & block, const bool endStream);
+				/**
+				 * @brief Метод откладывания секции трейлеров до конца отправки тела потока
+				 *
+				 * @details Трейлеры идут после тела, а тело может ждать открытия окна
+				 *          управления потоком. Отправить их сразу означает выпустить
+				 *          в сеть блок заголовков раньше данных, которые он завершает.
+				 *          Откладываются именно поля: кодирование HPACK обязано
+				 *          совпадать по порядку с отправкой
+				 *
+				 * @param sid       идентификатор потока
+				 * @param fields    заголовки секции трейлеров
+				 * @param endStream флаг завершения потока
+				 * @return          результат откладывания (true - отправка отложена)
+				 */
+				bool deferTrailers(const uint32_t sid, const vector <h2::hpack::field_t> & fields, const bool endStream) noexcept;
+				/**
+				 * @brief Метод отправки отложенной секции трейлеров потока
+				 *
+				 * @param stream объект потока (ссылка может стать недействительной после вызова)
+				 * @return       признак отправки секции трейлеров
+				 */
+				bool flushTrailers(stream_t & stream) noexcept;
+				/**
+				 * @brief Метод проверки допустимости отправки блока заголовков в поток
+				 *
+				 * @details Отправка допустима в существующий поток (ответ/трейлеры) либо
+				 *          в новый поток, идентификатор которого выделен нами через
+				 *          nextStreamId() и ещё не использовался. Проверка выполняется
+				 *          ДО кодирования блока: HPACK-кодирование меняет динамическую
+				 *          таблицу, поэтому отброшенный после кодирования блок
+				 *          рассинхронизировал бы декодер пира.
+				 *
+				 * @param sid идентификатор потока
+				 * @return    результат проверки
+				 */
+				bool canSendHeaders(const uint32_t sid) noexcept;
 			private:
 				/**
 				 * @brief Метод построения провайдера заголовков потока из псевдо-заголовков
@@ -878,7 +1081,7 @@ namespace awh {
 				 * @param request собирается запрос клиента (true) или ответ сервера (false)
 				 * @return        собранный провайдер заголовков
 				 */
-				unique_ptr <provider_t> buildProvider(const vector <h2::hpack::field_t> & fields, const bool request) const noexcept;
+				unique_ptr <provider_t> buildProvider(const vector <h2::hpack::field_view_t> & fields, const bool request) const noexcept;
 			public:
 				/**
 				 * @brief Метод полной очистки всех данных парсера
@@ -998,6 +1201,15 @@ namespace awh {
 				 * @return признак завершения (отправлен или получен GOAWAY)
 				 */
 				bool isClosed() const noexcept;
+				/**
+				 * @brief Метод проверки того, что наш SETTINGS подтверждён пиром
+				 *
+				 * @details Позволяет внешнему таймеру отследить отсутствие ACK и завершить
+				 *          соединение с кодом SETTINGS_TIMEOUT (RFC 9113 §6.5.3)
+				 *
+				 * @return признак получения ACK на наш SETTINGS
+				 */
+				bool isSettingsAcked() const noexcept;
 			public:
 				/**
 				 * @brief Метод отправки исходящего preface соединения
@@ -1015,6 +1227,9 @@ namespace awh {
 				/**
 				 * @brief Метод отправки RST_STREAM (аварийное закрытие потока)
 				 *
+				 * @note Поток удаляется из карты активных с вызовом функции обратного вызова
+				 *       закрытия - так же, как при сбросе потока пиром
+				 *
 				 * @param sid  идентификатор потока
 				 * @param code код ошибки, с которым сбрасывается поток
 				 */
@@ -1026,6 +1241,31 @@ namespace awh {
 				 * @param debug необязательные отладочные данные
 				 */
 				void sendGoaway(const error_t code, string_view debug = {}) noexcept;
+				/**
+				 * @brief Метод начала плавного завершения соединения (RFC 9113 §6.8)
+				 *
+				 * @details Отправляет предупреждающий GOAWAY с максимальным идентификатором
+				 *          потока: пир узнаёт о предстоящем закрытии, но уже начатые потоки
+				 *          не отклоняются и новые формально ещё допустимы. Через интервал
+				 *          порядка RTT (например, после ответа на PING) вызовите sendGoaway()
+				 *          с фактическим кодом - он объявит реально обработанный поток
+				 *          и запретит новые. Без второй фазы соединение не завершается.
+				 *
+				 * @param debug необязательные отладочные данные
+				 */
+				void sendShutdown(string_view debug = {}) noexcept;
+				/**
+				 * @brief Метод отправки расширенного приоритета потока (RFC 9218 §7.1)
+				 *
+				 * @details Кадр PRIORITY_UPDATE перепланирует уже открытый поток. Отправляется
+				 *          только если пир объявил отказ от приоритетов RFC 7540 либо явно
+				 *          поддерживает расширенные приоритеты
+				 *
+				 * @param sid         идентификатор потока
+				 * @param urgency     срочность потока (0 - наивысшая, 7 - наименьшая)
+				 * @param incremental признак инкрементальной доставки
+				 */
+				void sendPriority(const uint32_t sid, const uint8_t urgency, const bool incremental) noexcept;
 				/**
 				 * @brief Метод отправки WINDOW_UPDATE
 				 *

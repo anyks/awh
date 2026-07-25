@@ -73,6 +73,10 @@ string_view awh::http::h2::frameName(const frame_t type) noexcept {
 		case static_cast <uint8_t> (frame_t::CONTINUATION):
 			// Выводим название типа фрейма
 			return "CONTINUATION";
+		// Обновление расширенного приоритета потока
+		case static_cast <uint8_t> (frame_t::PRIORITY_UPDATE):
+			// Выводим название типа фрейма
+			return "PRIORITY_UPDATE";
 	}
 	// Тип фрейма неизвестен
 	return "UNKNOWN";

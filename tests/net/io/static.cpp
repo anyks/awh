@@ -214,6 +214,91 @@ TEST_F(IoFixture, RebuildUnknownIdTest){
 }
 
 /**
+ * @brief Тест допустимых комбинаций объединения данных (splice) между узлами
+ *
+ * @note Проверяется только матрица допустимости комбинаций типов узлов и установка
+ *       приёмника: сам перенос данных проверяется прогоном соединения (см.
+ *       IoUDPSpliceConnectTest) и прогоном QUIC-прокси (sample server-quic-proxy).
+ *       Объединение опирается лишь на наличие узлов в реестре, поэтому фиксация
+ *       (commit) и сокеты здесь не требуются
+ */
+TEST_F(IoFixture, SpliceValidCombinationsTest){
+	// Создаём событие клиента TCP (узел-источник)
+	awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Создаём второе событие клиента TCP (узел-приёмник)
+	awh::event::id_t client2 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Создаём серверное событие TCP (узел-приёмник)
+	awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что все идентификаторы событий созданы
+	ASSERT_GT(client, 0);
+	ASSERT_GT(client2, 0);
+	ASSERT_GT(server, 0);
+	// Объединение клиент -> сервер допустимо
+	ASSERT_TRUE(this->_io->splice(client, server));
+	// Объединение клиент -> клиент допустимо
+	ASSERT_TRUE(this->_io->splice(client, client2));
+	// Уничтожаем созданные события
+	this->_io->destroy(client);
+	this->_io->destroy(client2);
+	this->_io->destroy(server);
+}
+
+/**
+ * @brief Тест того, что серверный узел не может быть источником объединения данных
+ *
+ */
+TEST_F(IoFixture, SpliceServerSourceRejectedTest){
+	// Создаём серверное событие TCP (недопустимый узел-источник)
+	awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Создаём событие клиента TCP (узел-приёмник)
+	awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификаторы событий созданы
+	ASSERT_GT(server, 0);
+	ASSERT_GT(client, 0);
+	// Серверный узел не является допустимым источником - объединение отклоняется
+	ASSERT_FALSE(this->_io->splice(server, client));
+	// Уничтожаем созданные события
+	this->_io->destroy(server);
+	this->_io->destroy(client);
+}
+
+/**
+ * @brief Тест того, что объединение с узлом таймера отклоняется
+ *
+ */
+TEST_F(IoFixture, SpliceTimerRejectedTest){
+	// Создаём событие клиента TCP (узел-источник)
+	awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Создаём событие интервального таймера (недопустимый узел-приёмник)
+	awh::event::id_t timer = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем, что идентификаторы событий созданы
+	ASSERT_GT(client, 0);
+	ASSERT_GT(timer, 0);
+	// Узел таймера не может быть приёмником объединения - объединение отклоняется
+	ASSERT_FALSE(this->_io->splice(client, timer));
+	// Уничтожаем созданные события
+	this->_io->destroy(client);
+	this->_io->destroy(timer);
+}
+
+/**
+ * @brief Тест того, что объединение с несуществующим событием возвращает ложь
+ *
+ */
+TEST_F(IoFixture, SpliceUnknownIdTest){
+	// Создаём событие клиента TCP
+	awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(client, 0);
+	// Несуществующий узел-источник - объединение отклоняется
+	ASSERT_FALSE(this->_io->splice(static_cast <awh::event::id_t> (999999999), client));
+	// Несуществующий узел-приёмник - объединение отклоняется
+	ASSERT_FALSE(this->_io->splice(client, static_cast <awh::event::id_t> (999999999)));
+	// Уничтожаем событие
+	this->_io->destroy(client);
+}
+
+/**
  * @brief Тест набора сетевых тестов
  *
  */

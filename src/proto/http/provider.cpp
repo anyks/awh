@@ -68,6 +68,8 @@ awh::http::Request & awh::http::Request::operator = (request_t && request) noexc
 	this->uri = ::move(request.uri);
 	// Перемещаем оригинальное написание метода HTTP-запроса
 	this->methodName = ::move(request.methodName);
+	// Выполняем перемещение протокола расширенного метода CONNECT
+	this->protocol = ::move(request.protocol);
 	// Копируем метод HTTP-запроса
 	this->method = request.method;
 	// Копируем версию HTTP-протокола
@@ -90,6 +92,8 @@ awh::http::Request & awh::http::Request::operator = (const request_t & request) 
 	this->uri = request.uri;
 	// Копируем оригинальное написание метода HTTP-запроса
 	this->methodName = request.methodName;
+	// Выполняем копирование протокола расширенного метода CONNECT
+	this->protocol = request.protocol;
 	// Копируем метод HTTP-запроса
 	this->method = request.method;
 	// Копируем версию HTTP-протокола
@@ -109,7 +113,8 @@ bool awh::http::Request::operator == (const request_t & request) const noexcept 
 		(this->method == request.method) &&
 		(this->version == request.version) &&
 		(this->uri == request.uri) &&
-		(this->methodName == request.methodName)
+		(this->methodName == request.methodName) &&
+		(this->protocol == request.protocol)
 	);
 }
 /**
@@ -132,6 +137,8 @@ awh::http::Request::Request(request_t && request) noexcept : provider_t(direct_t
 	this->uri = ::move(request.uri);
 	// Перемещаем оригинальное написание метода HTTP-запроса
 	this->methodName = ::move(request.methodName);
+	// Выполняем перемещение протокола расширенного метода CONNECT
+	this->protocol = ::move(request.protocol);
 	// Копируем метод HTTP-запроса
 	this->method = request.method;
 	// Копируем версию HTTP-протокола
@@ -151,6 +158,8 @@ awh::http::Request::Request(const request_t & request) noexcept : provider_t(dir
 	this->uri = request.uri;
 	// Копируем оригинальное написание метода HTTP-запроса
 	this->methodName = request.methodName;
+	// Выполняем копирование протокола расширенного метода CONNECT
+	this->protocol = request.protocol;
 	// Копируем метод HTTP-запроса
 	this->method = request.method;
 	// Копируем версию HTTP-протокола
@@ -161,28 +170,28 @@ awh::http::Request::Request(const request_t & request) noexcept : provider_t(dir
  *
  */
 awh::http::Request::Request() noexcept :
- provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{""}, method(method_t::NONE), methodName{""} {}
+ provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{""}, method(method_t::NONE), methodName{""}, protocol{""} {}
 /**
  * @brief Конструктор
  *
  * @param uri параметры URI-запроса
  */
 awh::http::Request::Request(const string & uri) noexcept :
- provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{uri}, method(method_t::NONE), methodName{""} {}
+ provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{uri}, method(method_t::NONE), methodName{""}, protocol{""} {}
 /**
  * @brief Конструктор
  *
  * @param method метод запроса клиента
  */
 awh::http::Request::Request(const method_t method) noexcept :
- provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{""}, method(method), methodName{""} {}
+ provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{""}, method(method), methodName{""}, protocol{""} {}
 /**
  * @brief Конструктор
  *
  * @param version версия протокола
  */
 awh::http::Request::Request(const version_t version) noexcept :
- provider_t(direct_t::REQUEST, version), uri{""}, method(method_t::NONE), methodName{""} {}
+ provider_t(direct_t::REQUEST, version), uri{""}, method(method_t::NONE), methodName{""}, protocol{""} {}
 /**
  * @brief Конструктор
  *
@@ -190,7 +199,7 @@ awh::http::Request::Request(const version_t version) noexcept :
  * @param uri    параметры URI-запроса
  */
 awh::http::Request::Request(const method_t method, const string & uri) noexcept :
- provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{uri}, method(method), methodName{""} {}
+ provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{uri}, method(method), methodName{""}, protocol{""} {}
 /**
  * @brief Конструктор
  *
@@ -198,7 +207,7 @@ awh::http::Request::Request(const method_t method, const string & uri) noexcept 
  * @param uri     параметры URI-запроса
  */
 awh::http::Request::Request(const version_t version, const string & uri) noexcept :
- provider_t(direct_t::REQUEST, version), uri{uri}, method(method_t::NONE), methodName{""} {}
+ provider_t(direct_t::REQUEST, version), uri{uri}, method(method_t::NONE), methodName{""}, protocol{""} {}
 /**
  * @brief Конструктор
  *
@@ -206,7 +215,7 @@ awh::http::Request::Request(const version_t version, const string & uri) noexcep
  * @param method  метод запроса клиента
  */
 awh::http::Request::Request(const version_t version, const method_t method) noexcept :
- provider_t(direct_t::REQUEST, version), uri{""}, method(method), methodName{""} {}
+ provider_t(direct_t::REQUEST, version), uri{""}, method(method), methodName{""}, protocol{""} {}
 /**
  * @brief Конструктор
  *
@@ -215,7 +224,7 @@ awh::http::Request::Request(const version_t version, const method_t method) noex
  * @param uri     параметры URI-запроса
  */
 awh::http::Request::Request(const version_t version, const method_t method, const string & uri) noexcept :
- provider_t(direct_t::REQUEST, version), uri{uri}, method(method), methodName{""} {}
+ provider_t(direct_t::REQUEST, version), uri{uri}, method(method), methodName{""}, protocol{""} {}
 
 /**
  * @brief Метод клонирования объекта ответа

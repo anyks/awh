@@ -33,7 +33,7 @@
 /**
  * Заголовочный файл для работы с быстрыми числами с плавающей точкой
  */
-#include <float/float.hpp>
+#include <lexical/lexical.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -4130,15 +4130,28 @@ template <typename T>
  */
 T awh::Framework::atoi(string_view value) const noexcept {
 	// Переменная результата
-	T result;
+	T result = T();
+	// Если мы получили на вход перечисление
+	if constexpr (is_enum_v <T>){
+		// Если строка для конвертации не пуста
+		if(!value.empty()){
+			// Результат конвертации в базовом типе перечисления
+			underlying_type_t <T> number = 0;
+			// Вызываем метод конвертации
+			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), number);
+			// Если ошибок нет и строка разобрана полностью (в конце не осталось мусора)
+			if((answer.ec == std::errc()) && (answer.ptr == (value.data() + value.size())))
+				// Выполняем приведение результата к типу перечисления
+				result = static_cast <T> (number);
+		}
 	// Если мы получили на вход число
-	if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+	} else if constexpr (is_arithmetic_v <T>){
 		// Возвращаем значение по умолчанию
 		result = static_cast <T> (0);
 		// Если строка для конвертации не пуста
 		if(!value.empty()){
 			// Вызываем метод конвертации
-			auto answer = floating_t::fromChars(value.data(), value.data() + value.size(), result);
+			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
@@ -4182,15 +4195,28 @@ template <typename T>
  */
 T awh::Framework::atoi(const string & value) const noexcept {
 	// Переменная результата
-	T result;
+	T result = T();
+	// Если мы получили на вход перечисление
+	if constexpr (is_enum_v <T>){
+		// Если строка для конвертации не пуста
+		if(!value.empty()){
+			// Результат конвертации в базовом типе перечисления
+			underlying_type_t <T> number = 0;
+			// Вызываем метод конвертации
+			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), number);
+			// Если ошибок нет и строка разобрана полностью (в конце не осталось мусора)
+			if((answer.ec == std::errc()) && (answer.ptr == (value.data() + value.size())))
+				// Выполняем приведение результата к типу перечисления
+				result = static_cast <T> (number);
+		}
 	// Если мы получили на вход число
-	if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+	} else if constexpr (is_arithmetic_v <T>){
 		// Возвращаем значение по умолчанию
 		result = static_cast <T> (0);
 		// Если строка для конвертации не пуста
 		if(!value.empty()){
 			// Вызываем метод конвертации
-			auto answer = floating_t::fromChars(value.data(), value.data() + value.size(), result);
+			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
@@ -4235,19 +4261,29 @@ template <typename T>
  */
 T awh::Framework::atoi(const char * value, const size_t length) const noexcept {
 	// Переменная результата
-	T result;
+	T result = T();
 	// Если данные не переданы
 	if((value == nullptr) || (length == 0) || (* value == '\0'))
 		// Возвращаем значение по умолчанию
 		return static_cast <T> (0);
 	// Если мы получили на вход строку
 	else {
+		// Если мы получили на вход перечисление
+		if constexpr (is_enum_v <T>){
+			// Результат конвертации в базовом типе перечисления
+			underlying_type_t <T> number = 0;
+			// Вызываем метод конвертации
+			auto answer = lexical_t::fromChars(value, value + length, number);
+			// Если ошибок нет и строка разобрана полностью (в конце не осталось мусора)
+			if((answer.ec == std::errc()) && (answer.ptr == (value + length)))
+				// Выполняем приведение результата к типу перечисления
+				result = static_cast <T> (number);
 		// Если мы получили на вход число
-		if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+		} else if constexpr (is_arithmetic_v <T>){
 			// Возвращаем значение по умолчанию
 			result = static_cast <T> (0);
 			// Вызываем метод конвертации
-			auto answer = floating_t::fromChars(value, value + length, result);
+			auto answer = lexical_t::fromChars(value, value + length, result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value + length)))
 				// Возвращаем значение по умолчанию
@@ -4700,15 +4736,28 @@ template <typename T>
  */
 T awh::Framework::atoi(wstring_view value) const noexcept {
 	// Переменная результата
-	T result;
+	T result = T();
+	// Если мы получили на вход перечисление
+	if constexpr (is_enum_v <T>){
+		// Если строка для конвертации не пуста
+		if(!value.empty()){
+			// Результат конвертации в базовом типе перечисления
+			underlying_type_t <T> number = 0;
+			// Вызываем метод конвертации
+			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), number);
+			// Если ошибок нет и строка разобрана полностью (в конце не осталось мусора)
+			if((answer.ec == std::errc()) && (answer.ptr == (value.data() + value.size())))
+				// Выполняем приведение результата к типу перечисления
+				result = static_cast <T> (number);
+		}
 	// Если мы получили на вход число
-	if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+	} else if constexpr (is_arithmetic_v <T>){
 		// Возвращаем значение по умолчанию
 		result = static_cast <T> (0);
 		// Если строка для конвертации не пуста
 		if(!value.empty()){
 			// Вызываем метод конвертации
-			auto answer = floating_t::fromChars(value.data(), value.data() + value.size(), result);
+			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
@@ -4752,15 +4801,28 @@ template <typename T>
  */
 T awh::Framework::atoi(const wstring & value) const noexcept {
 	// Переменная результата
-	T result;
+	T result = T();
+	// Если мы получили на вход перечисление
+	if constexpr (is_enum_v <T>){
+		// Если строка для конвертации не пуста
+		if(!value.empty()){
+			// Результат конвертации в базовом типе перечисления
+			underlying_type_t <T> number = 0;
+			// Вызываем метод конвертации
+			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), number);
+			// Если ошибок нет и строка разобрана полностью (в конце не осталось мусора)
+			if((answer.ec == std::errc()) && (answer.ptr == (value.data() + value.size())))
+				// Выполняем приведение результата к типу перечисления
+				result = static_cast <T> (number);
+		}
 	// Если мы получили на вход число
-	if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+	} else if constexpr (is_arithmetic_v <T>){
 		// Возвращаем значение по умолчанию
 		result = static_cast <T> (0);
 		// Если строка для конвертации не пуста
 		if(!value.empty()){
 			// Вызываем метод конвертации
-			auto answer = floating_t::fromChars(value.data(), value.data() + value.size(), result);
+			auto answer = lexical_t::fromChars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
@@ -4805,19 +4867,29 @@ template <typename T>
  */
 T awh::Framework::atoi(const wchar_t * value, const size_t length) const noexcept {
 	// Переменная результата
-	T result;
+	T result = T();
 	// Если данные не переданы
 	if((value == nullptr) || (length == 0) || (* value == L'\0'))
 		// Возвращаем значение по умолчанию
 		return static_cast <T> (0);
 	// Если мы получили на вход строку
 	else {
+		// Если мы получили на вход перечисление
+		if constexpr (is_enum_v <T>){
+			// Результат конвертации в базовом типе перечисления
+			underlying_type_t <T> number = 0;
+			// Вызываем метод конвертации
+			auto answer = lexical_t::fromChars(value, value + length, number);
+			// Если ошибок нет и строка разобрана полностью (в конце не осталось мусора)
+			if((answer.ec == std::errc()) && (answer.ptr == (value + length)))
+				// Выполняем приведение результата к типу перечисления
+				result = static_cast <T> (number);
 		// Если мы получили на вход число
-		if constexpr (is_arithmetic_v <T> || is_enum_v <T>){
+		} else if constexpr (is_arithmetic_v <T>){
 			// Возвращаем значение по умолчанию
 			result = static_cast <T> (0);
 			// Вызываем метод конвертации
-			auto answer = floating_t::fromChars(value, value + length, result);
+			auto answer = lexical_t::fromChars(value, value + length, result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value + length)))
 				// Возвращаем значение по умолчанию

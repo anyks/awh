@@ -168,6 +168,21 @@ namespace awh {
 				 */
 				static constexpr string_view ALPN_CLEARTEXT = "h2c";
 				/**
+				 * @brief Срочность потока по умолчанию (RFC 9218 §4.1)
+				 *
+				 */
+				static constexpr uint8_t DEFAULT_URGENCY = 3;
+				/**
+				 * @brief Наименее срочный уровень расширенного приоритета (RFC 9218 §4.1)
+				 *
+				 */
+				static constexpr uint8_t MAX_URGENCY = 7;
+				/**
+				 * @brief Идентификатор потока для предупреждающего GOAWAY плавного завершения (RFC 9113 §6.8)
+				 *
+				 */
+				static constexpr uint32_t MAX_STREAM_ID = 0x7FFFFFFF;
+				/**
 				 * @brief Клиентский connection preface (24 октета), отправляется до первого SETTINGS
 				 *
 				 */
@@ -221,7 +236,8 @@ namespace awh {
 				PING          = 0x06, // Проверка живости / измерение RTT (RFC 9113 §6.7)
 				GOAWAY        = 0x07, // Завершение соединения (RFC 9113 §6.8)
 				WINDOW_UPDATE = 0x08, // Обновление окна flow control (RFC 9113 §6.9)
-				CONTINUATION  = 0x09  // Продолжение блока заголовков (RFC 9113 §6.10)
+				CONTINUATION    = 0x09, // Продолжение блока заголовков (RFC 9113 §6.10)
+				PRIORITY_UPDATE = 0x10  // Обновление расширенного приоритета потока (RFC 9218 §7.1)
 			};
 
 			/**
@@ -234,7 +250,9 @@ namespace awh {
 				MAX_CONCURRENT_STREAMS = 0x03, // Лимит одновременных потоков (по умолчанию без лимита)
 				INITIAL_WINDOW_SIZE    = 0x04, // Начальное окно потока (по умолчанию 65535)
 				MAX_FRAME_SIZE         = 0x05, // Максимальный размер фрейма (по умолчанию 16384)
-				MAX_HEADER_LIST_SIZE   = 0x06  // Лимит размера списка заголовков (по умолчанию без лимита)
+				MAX_HEADER_LIST_SIZE    = 0x06, // Лимит размера списка заголовков (по умолчанию без лимита)
+				ENABLE_CONNECT_PROTOCOL = 0x08, // Разрешён ли расширенный CONNECT (0/1, по умолчанию 0) - RFC 8441 §3
+				NO_RFC7540_PRIORITIES   = 0x09  // Отказ от приоритетов RFC 7540 (0/1, по умолчанию 0) - RFC 9218 §2.1
 			};
 
 			/**

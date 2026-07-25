@@ -89,10 +89,38 @@ namespace awh {
 				__AWH_SHARED_EXPORT__ const static_entry_t * staticTable(const size_t index) noexcept;
 
 				/**
+				 * @brief Структура пары декодированного заголовка (невладеющая)
+				 *
+				 * @details Название и значение указывают во внутреннюю арену декодера и
+				 *          действительны до следующего вызова decode() на том же декодере
+				 *          (а также до его reset/уничтожения). Если заголовок нужен дольше -
+				 *          копируйте его значение.
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ Field_View {
+					public:
+						// Название заголовка
+						string_view name;
+						// Значение заголовка
+						string_view value;
+						/**
+						 * Значение получено представлением Literal Never Indexed (RFC 7541 §6.2.3):
+						 * при перекодировании заголовок обязан остаться never indexed и не попасть
+						 * в динамическую таблицу (RFC 7541 §7.1.3)
+						 */
+						bool sensitive;
+					public:
+						/**
+						 * @brief Конструктор
+						 *
+						 */
+						explicit Field_View() noexcept;
+				} field_view_t;
+
+				/**
 				 * @brief Класс пары заголовка
 				 *
-				 * @details Название и значение - владеющие копии: после декодирования они могут
-				 *          ссылаться на динамическую таблицу, поэтому хранятся как string.
+				 * @details Название и значение - владеющие копии: используется на стороне
+				 *          кодирования, где данные принадлежат вызывающему коду.
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Field {
 					public:
@@ -152,6 +180,8 @@ namespace awh {
 					__AWH_SHARED_EXPORT__ void encode(string_view input, string & output) noexcept;
 					/**
 					 * @brief Функция декодирования Huffman-строки (RFC 7541 Appendix B)
+					 *
+					 * @note Содержимое выходного буфера замещается, а не дополняется
 					 *
 					 * @param data   входной буфер
 					 * @param size   доступно байт
@@ -273,8 +303,35 @@ namespace awh {
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Decoder {
 					private:
+						/**
+						 * @brief Структура среза декодированного заголовка в арене
+						 *
+						 * @details Во время разбора арена дописывается и может быть перевыделена,
+						 *          поэтому позиции хранятся смещениями, а string_view собираются
+						 *          один раз по завершении разбора всего блока.
+						 */
+						typedef struct Slice {
+							// Смещение названия заголовка в арене
+							size_t nameOffset;
+							// Длина названия заголовка
+							size_t nameLength;
+							// Смещение значения заголовка в арене
+							size_t valueOffset;
+							// Длина значения заголовка
+							size_t valueLength;
+							// Признак чувствительного значения (Literal Never Indexed)
+							bool sensitive;
+						} slice_t;
+					private:
 						// Динамическая таблица пира
 						dynamic_table_t _table;
+					private:
+						// Арена декодированных строк текущего блока (ёмкость переиспользуется)
+						string _arena;
+						// Буфер Huffman-декодирования одной строки (ёмкость переиспользуется)
+						string _scratch;
+						// Срезы декодированных заголовков текущего блока (ёмкость переиспользуется)
+						vector <slice_t> _slices;
 					private:
 						// Максимум размера таблицы, разрешённый нашим SETTINGS_HEADER_TABLE_SIZE
 						uint32_t _protocolMaxSize;
@@ -298,13 +355,20 @@ namespace awh {
 						/**
 						 * @brief Метод декодирования одного блока заголовков целиком
 						 *
+						 * @details Названия и значения декодируются во внутреннюю арену декодера,
+						 *          а в output попадают ссылки на неё: аллокаций в установившемся
+						 *          режиме нет. Прежнее содержимое output замещается.
+						 *
+						 * @note Полученные представления действительны до следующего вызова
+						 *       decode() на этом же декодере - копируйте то, что нужно дольше
+						 *
 						 * @param block       блок заголовков (уже собранный из HEADERS + CONTINUATION)
-						 * @param output      декодированные заголовки
+						 * @param output      декодированные заголовки (ссылки в арену декодера)
 						 * @param maxListSize лимит суммарного размера списка (защита от decompression bomb); 0 - без лимита
 						 * @param error       код ошибки протокола (COMPRESSION_ERROR / ENHANCE_YOUR_CALM)
 						 * @return            результат декодирования (OK/ERROR)
 						 */
-						status_t decode(string_view block, vector <field_t> & output, const uint64_t maxListSize, error_t & error) noexcept;
+						status_t decode(string_view block, vector <field_view_t> & output, const uint64_t maxListSize, error_t & error) noexcept;
 					public:
 						/**
 						 * @brief Конструктор
@@ -337,9 +401,13 @@ namespace awh {
 					private:
 						// Значение размера таблицы для отправляемого update
 						uint32_t _pendingSize;
+						// Наименьший размер таблицы за серию изменений между блоками (RFC 7541 §4.2)
+						uint32_t _pendingMinSize;
 					private:
 						// Требуется отправить Dynamic Table Size Update в начале следующего блока
 						bool _sizeUpdatePending;
+						// Автоматически считать чувствительными authorization/cookie и им подобные
+						bool _sensitiveHeuristic;
 					private:
 						/**
 						 * @brief Метод поиска заголовка в статической + динамической таблицах
@@ -382,6 +450,18 @@ namespace awh {
 						 * @param size новый максимальный размер таблицы
 						 */
 						void setMaxTableSize(const uint32_t size) noexcept;
+						/**
+						 * @brief Метод управления автоматическим определением чувствительных заголовков
+						 *
+						 * @details Включено по умолчанию: authorization/proxy-authorization/cookie/set-cookie
+						 *          кодируются как Literal Never Indexed и не попадают в динамическую таблицу
+						 *          (защита от CRIME-подобных атак). Выключение заметно улучшает сжатие
+						 *          cookie-тяжёлого трафика, но снимает эту защиту; явный флаг sensitive
+						 *          у отдельного заголовка продолжает действовать в любом режиме.
+						 *
+						 * @param mode режим автоматического определения
+						 */
+						void sensitiveHeuristic(const bool mode) noexcept;
 					public:
 						/**
 						 * @brief Метод кодирования списка заголовков
@@ -391,6 +471,18 @@ namespace awh {
 						 * @param useHuffman применять Huffman-кодирование к строкам
 						 */
 						void encode(const vector <field_t> & fields, string & output, const bool useHuffman = true) noexcept;
+						/**
+						 * @brief Метод кодирования списка декодированных заголовков (перекодирование)
+						 *
+						 * @details Позволяет переслать разобранный блок без промежуточных копий строк
+						 *          (прокси-сценарий). Признак sensitive сохраняется: заголовок,
+						 *          пришедший как Literal Never Indexed, таким же и уходит (RFC 7541 §7.1.3).
+						 *
+						 * @param fields     декодированные заголовки
+						 * @param output     выходной буфер блока заголовков
+						 * @param useHuffman применять Huffman-кодирование к строкам
+						 */
+						void encode(const vector <field_view_t> & fields, string & output, const bool useHuffman = true) noexcept;
 						/**
 						 * @brief Метод кодирования одного заголовка (zero-copy, без владения строками)
 						 *

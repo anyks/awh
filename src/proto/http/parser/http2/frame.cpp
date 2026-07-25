@@ -898,3 +898,50 @@ void awh::http::h2::frame::serialize::pushPromiseBlock(string & output, const ui
 		offset += chunk;
 	}
 }
+/**
+ * @brief Функция разбора полезной нагрузки PRIORITY_UPDATE (RFC 9218 §7.1)
+ *
+ * @param header   заголовок фрейма
+ * @param payload  полезная нагрузка фрейма
+ * @param streamId идентификатор приоритизируемого потока
+ * @param value    значение поля приоритета (zero-copy во входной буфер)
+ * @param error    код ошибки протокола
+ * @return         результат разбора (OK/ERROR)
+ */
+awh::http::h2::status_t awh::http::h2::frame::parser::priorityUpdate(const header_t & header, const uint8_t * payload, uint32_t & streamId, string_view & value, error_t & error) noexcept {
+	// Если фрейм принадлежит потоку (PRIORITY_UPDATE относится к соединению, stream id == 0)
+	if(header.streamId != 0){
+		// Фиксируем нарушение протокола
+		error = error_t::PROTOCOL_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Если нагрузка не содержит обязательные 4 байта идентификатора потока
+	if(header.length < 4){
+		// Фиксируем некорректный размер фрейма
+		error = error_t::FRAME_SIZE_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Извлекаем идентификатор приоритизируемого потока (сбрасывая reserved-бит)
+	streamId = (::rd32(payload) & proto::STREAM_ID_MASK);
+	// Извлекаем значение поля приоритета (zero-copy во входной буфер)
+	value = string_view(reinterpret_cast <const char *> (payload + 4), header.length - 4);
+	// Полезная нагрузка разобрана
+	return status_t::OK;
+}
+/**
+ * @brief Функция сборки фрейма PRIORITY_UPDATE (RFC 9218 §7.1)
+ *
+ * @param output   выходной буфер соединения
+ * @param streamId идентификатор приоритизируемого потока
+ * @param value    значение поля приоритета (структурированный словарь, например "u=2, i")
+ */
+void awh::http::h2::frame::serialize::priorityUpdate(string & output, const uint32_t streamId, string_view value) noexcept {
+	// Дописываем заголовок фрейма PRIORITY_UPDATE (нагрузка включает 4 октета идентификатора потока)
+	::wrHeader(output, static_cast <uint32_t> (value.size() + 4), frame_t::PRIORITY_UPDATE, flag::NONE, 0);
+	// Дописываем идентификатор приоритизируемого потока (сбрасывая reserved-бит)
+	::wr32(output, streamId & proto::STREAM_ID_MASK);
+	// Дописываем значение поля приоритета
+	output.append(value.data(), value.size());
+}
