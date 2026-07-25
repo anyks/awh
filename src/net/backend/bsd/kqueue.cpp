@@ -34243,7 +34243,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		#endif
 																	}
 																	// Выходим из приложения
-																	(::__awh_pid__ == ::getpid() ? ::exit(EXIT_FAILURE) : ::_exit(EXIT_FAILURE));
+																	::_exit(EXIT_FAILURE);
 																}
 															} break;
 															/**
@@ -34303,7 +34303,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		#endif
 																	}
 																	// Выходим из приложения
-																	(::__awh_pid__ == ::getpid() ? ::exit(EXIT_FAILURE) : ::_exit(EXIT_FAILURE));
+																	::_exit(EXIT_FAILURE);
 																}
 															} break;
 															// Для неизвестного типа сокета
@@ -34502,7 +34502,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																#endif
 															}
 															// Выходим из приложения
-															(::__awh_pid__ == ::getpid() ? ::exit(EXIT_FAILURE) : ::_exit(EXIT_FAILURE));
+															::_exit(EXIT_FAILURE);
 														// Если бинд события выполнен успешно
 														} else {
 															// Создаём объект события для Kqueue
@@ -34668,7 +34668,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																#endif
 															}
 															// Выходим из приложения
-															(::__awh_pid__ == ::getpid() ? ::exit(EXIT_FAILURE) : ::_exit(EXIT_FAILURE));
+															::_exit(EXIT_FAILURE);
 														// Если бинд события выполнен успешно
 														} else {
 															// Создаём объект события для Kqueue
@@ -60541,7 +60541,7 @@ bool awh::engine::IO::initialize() noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из приложения
-			(::__awh_pid__ == ::getpid() ? ::exit(EXIT_FAILURE) : ::_exit(EXIT_FAILURE));
+			::_exit(EXIT_FAILURE);
 		}
 		// Устанавливаем флаг автозакрытия файлового дескриптора
 		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
@@ -60607,7 +60607,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из приложения
-			(::__awh_pid__ == ::getpid() ? ::exit(EXIT_FAILURE) : ::_exit(EXIT_FAILURE));
+			::_exit(EXIT_FAILURE);
 		}
 		// Устанавливаем флаг автозакрытия файлового дескриптора
 		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
@@ -60631,7 +60631,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из приложения
-			(::__awh_pid__ == ::getpid() ? ::exit(EXIT_FAILURE) : ::_exit(EXIT_FAILURE));
+			::_exit(EXIT_FAILURE);
 		}
 		// Добавляем новое событие в список изменений
 		::events::add(::move(event));
