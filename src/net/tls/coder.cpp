@@ -3313,7 +3313,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							#endif
 						}
 						// Выходим из приложения
-						::exit(EXIT_FAILURE);
+						::_exit(EXIT_FAILURE);
 					}
 					// Если объект CRL-файла сертификата создан
 					if(member->crl != nullptr){
@@ -3494,7 +3494,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							#endif
 						}
 						// Выходим из приложения
-						::exit(EXIT_FAILURE);
+						::_exit(EXIT_FAILURE);
 					}
 					// Если объект подключения создан и сертификат передан
 					if(member->ssl != nullptr){

@@ -2784,7 +2784,7 @@ awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
 			this->_log->print("DNS resolver object is not set", log_t::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
-		::exit(EXIT_FAILURE);
+		::_exit(EXIT_FAILURE);
 	}
 }
 /**
@@ -2828,7 +2828,7 @@ awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fm
 			this->_log->print("TLS object is not set", log_t::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
-		::exit(EXIT_FAILURE);
+		::_exit(EXIT_FAILURE);
 	}
 	// Создаём объект юнита клиента
 	this->_unit = make_unique <unit_t> (fmk, log);
@@ -2914,7 +2914,7 @@ awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dn
 			this->_log->print("TLS object is not set", log_t::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
-		::exit(EXIT_FAILURE);
+		::_exit(EXIT_FAILURE);
 	}
 	// Создаём объект юнита клиента
 	this->_unit = make_unique <unit_t> (fmk, log);
@@ -2987,7 +2987,7 @@ awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dn
 			this->_log->print("DNS resolver object is not set", log_t::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
-		::exit(EXIT_FAILURE);
+		::_exit(EXIT_FAILURE);
 	}
 }
 /**

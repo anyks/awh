@@ -1757,7 +1757,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 					this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
 				#endif
 				// Выходим из приложения
-				::exit(EXIT_FAILURE);
+				::_exit(EXIT_FAILURE);
 			/**
 			 * Если возникает ошибка
 			 */

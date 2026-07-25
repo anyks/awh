@@ -263,7 +263,7 @@ void awh::unit::Unit::signal(const int32_t sig) const noexcept {
 				// Записываем в лог сообщение об завершении работы процесса
 				this->_log->print("Child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, ::getpid());
 				// Выходим из приложения
-				::exit(0);
+				::_exit(0);
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
@@ -292,7 +292,7 @@ void awh::unit::Unit::signal(const int32_t sig) const noexcept {
 			break;
 		}
 		// Выходим принудительно из приложения
-		::exit(EXIT_FAILURE);
+		::_exit(EXIT_FAILURE);
 	// Если процесс является родительским
 	} else {
 		// Выполняем получение идентификатора функции обратного вызова
@@ -302,7 +302,7 @@ void awh::unit::Unit::signal(const int32_t sig) const noexcept {
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const int32_t)> (fid, sig);
 		// Выходим из приложения
-		else ::exit(sig);
+		else ::_exit(sig);
 	}
 }
 /**
@@ -663,7 +663,7 @@ awh::unit::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
 				log->print("Event database could not be initialized: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			::_exit(EXIT_FAILURE);
 		}
 	}
 	// Увеличиваем количество ссылок на базу событий

@@ -1640,7 +1640,7 @@ void awh::unit::Server::stop() noexcept {
 				this->_log->print("This operating system is not supported", log_t::flag_t::CRITICAL);
 			#endif
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			::_exit(EXIT_FAILURE);
 		#endif
 	}
 }
@@ -1755,7 +1755,7 @@ void awh::unit::Server::start() noexcept {
 				this->_log->print("This operating system is not supported", log_t::flag_t::CRITICAL);
 			#endif
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			::_exit(EXIT_FAILURE);
 		#endif
 	}
 }

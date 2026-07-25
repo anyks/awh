@@ -270,7 +270,7 @@ void awh::unit::Cluster::create() noexcept {
 						this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, pid);
 					#endif
 					// Выходим из приложения
-					::exit(EXIT_FAILURE);
+					::_exit(EXIT_FAILURE);
 				}
 			}
 			// Выполняем функцию обратного вызова
@@ -488,7 +488,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
 				#endif
 				// Выходим из приложения
-				::exit(EXIT_FAILURE);
+				::_exit(EXIT_FAILURE);
 			} break;
 			// Если процесс является дочерним
 			case 0: {
@@ -598,7 +598,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 							this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, ret.first->first);
 						#endif
 						// Выходим из приложения
-						::exit(EXIT_FAILURE);
+						::_exit(EXIT_FAILURE);
 					}
 				// Если родительский процесс умер
 				} else {
@@ -616,7 +616,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 					#endif
 					// Выходим из приложения
-					::exit(EXIT_FAILURE);
+					::_exit(EXIT_FAILURE);
 				}
 				// Возвращаем признак дочернего процесса (создание следующих воркеров должно быть прекращено)
 				return family_t::CHILDREN;
@@ -675,7 +675,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 							this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, replaced);
 						#endif
 						// Выходим из приложения
-						::exit(EXIT_FAILURE);
+						::_exit(EXIT_FAILURE);
 					}
 					// Выполняем функцию обратного вызова
 					this->_callback.call <void (const pid_t, const pid_t)> ("rebase", replaced, ret.first->first);
@@ -718,7 +718,7 @@ void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unuse
 					// Освобождаем ресурсы всех воркеров и очищаем список активных воркеров
 					this->clear(shutdown_t::NONE);
 					// Выходим из приложения с кодом сигнала ручной остановки
-					::exit(SIGINT);
+					::_exit(SIGINT);
 				}
 				// Определяем, упал ли процесс в пределах временного окна жизни (признак быстрого/раннего падения)
 				const bool rapid = ((this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) - i->second->life) <= this->_rebirth.window);
@@ -745,7 +745,7 @@ void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unuse
 						// Освобождаем ресурсы оставшихся воркеров и очищаем список активных воркеров
 						this->clear(shutdown_t::NONE);
 						// Выходим из приложения с кодом завершения дочернего процесса
-						::exit(WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
+						::_exit(WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
 					}
 					// Выполняем создание нового процесса взамен упавшего
 					this->emplace(pid);
@@ -857,7 +857,7 @@ void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcep
 					this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
-				::exit(EXIT_FAILURE);
+				::_exit(EXIT_FAILURE);
 			}
 		}
 	}
@@ -904,7 +904,7 @@ void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const
 					this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
-				::exit(EXIT_FAILURE);
+				::_exit(EXIT_FAILURE);
 			}
 		}
 	}
@@ -939,7 +939,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 							// Удаляем завершившийся процесс из списка активных воркеров
 							this->_workers.erase(i);
 							// Завершаем работу процесса
-							::exit(EXIT_SUCCESS);
+							::_exit(EXIT_SUCCESS);
 						}
 					}
 				// Если родительский процесс умер
@@ -958,7 +958,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 						this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 					#endif
 					// Выходим из приложения
-					::exit(EXIT_FAILURE);
+					::_exit(EXIT_FAILURE);
 				}
 			}
 		} break;
@@ -998,7 +998,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 							this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 						#endif
 						// Выходим из приложения
-						::exit(EXIT_FAILURE);
+						::_exit(EXIT_FAILURE);
 					}
 				}
 			}
@@ -1047,7 +1047,7 @@ void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error
 					this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
-				::exit(EXIT_FAILURE);
+				::_exit(EXIT_FAILURE);
 			}
 		}
 	}
@@ -1094,7 +1094,7 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 					this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
-				::exit(EXIT_FAILURE);
+				::_exit(EXIT_FAILURE);
 			}
 		}
 	}
@@ -1492,7 +1492,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 					this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
-				::exit(EXIT_FAILURE);
+				::_exit(EXIT_FAILURE);
 			}
 		// Если процесс является родительским
 		} else {

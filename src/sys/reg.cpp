@@ -362,7 +362,7 @@ vector <string> awh::Regular_Expressions::exec(const char * text, const size_t s
 				#endif
 			}
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			::_exit(EXIT_FAILURE);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -519,7 +519,7 @@ vector <pair <size_t, size_t>> awh::Regular_Expressions::match(const char * text
 				#endif
 			}
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			::_exit(EXIT_FAILURE);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -738,7 +738,7 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 				#endif
 			}
 			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			::_exit(EXIT_FAILURE);
 		/**
 		 * Если возникает ошибка
 		 */
