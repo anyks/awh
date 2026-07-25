@@ -35,6 +35,43 @@
 using namespace awh::http;
 
 /**
+ * @brief Вспомогательные функции тестов (внутренняя компоновка)
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция сборки произвольного кадра HTTP/2
+	 *
+	 * @param type    тип кадра
+	 * @param flags   флаги кадра
+	 * @param sid     идентификатор потока
+	 * @param payload полезная нагрузка кадра
+	 * @return        собранный кадр
+	 */
+	std::string frame(const uint8_t type, const uint8_t flags, const uint32_t sid, const std::string & payload) noexcept {
+		// Результат работы функции - собранный кадр
+		std::string result;
+		// Дописываем 24-битную длину полезной нагрузки
+		result.push_back(static_cast <char> ((payload.size() >> 16) & 0xFF));
+		result.push_back(static_cast <char> ((payload.size() >> 8) & 0xFF));
+		result.push_back(static_cast <char> (payload.size() & 0xFF));
+		// Дописываем тип кадра
+		result.push_back(static_cast <char> (type));
+		// Дописываем флаги кадра
+		result.push_back(static_cast <char> (flags));
+		// Дописываем идентификатор потока
+		result.push_back(static_cast <char> ((sid >> 24) & 0x7F));
+		result.push_back(static_cast <char> ((sid >> 16) & 0xFF));
+		result.push_back(static_cast <char> ((sid >> 8) & 0xFF));
+		result.push_back(static_cast <char> (sid & 0xFF));
+		// Дописываем полезную нагрузку
+		result += payload;
+		// Выводим собранный кадр
+		return result;
+	}
+}
+
+/**
  * ==================== HPACK: целочисленное кодирование (RFC 7541 §5.1) ====================
  */
 
@@ -2632,6 +2669,286 @@ TEST_F(ParserHttp2Fixture, CloseFromCloseCallbackTest){
 	ASSERT_EQ(clientEvents.closes[0].first, first);
 	// Проверяем идентификатор второго закрытого потока
 	ASSERT_EQ(clientEvents.closes[1].first, second);
+}
+
+/**
+ * @brief Метод проверки сброса парсера из функции обратного вызова ошибки соединения
+ *
+ * @details Приложение вправе переиспользовать парсер под новое соединение прямо
+ *          из обработчика ошибки: GOAWAY прежнего соединения не должен оказаться
+ *          в очереди нового - там первым обязан идти connection preface
+ *
+ */
+TEST_F(ParserHttp2Fixture, ResetFromErrorCallbackTest){
+	// Создаём объект парсера клиента (pull-модель: функция записи не установлена)
+	auto client = this->make(direct_t::RESPONSE);
+	// Признак полученной ошибки уровня соединения
+	bool failed = false;
+	// Устанавливаем функцию обратного вызова ошибки уровня соединения
+	client->on(parser_http2_t::error_callback_t([&](const parser_http2_t::error_t, const std::string_view) noexcept {
+		// Помечаем что ошибка получена
+		failed = true;
+		// Приложение переиспользует парсер под новое соединение
+		client->reset();
+	}));
+	// Отправляем preface клиента
+	client->sendPreface();
+	// Подаём SETTINGS сервера на разбор
+	const std::string settings = ::frame(0x04, 0x00, 0, "");
+	// Выполняем разбор SETTINGS сервера
+	client->parse(settings.data(), settings.size());
+	// Освобождаем всю очередь исходящих данных (соединение отработало)
+	client->consumePending(client->pending().size());
+	// Формируем кадр PING недопустимой длины (7 байт вместо 8)
+	const std::string ping = ::frame(0x06, 0x00, 0, std::string(7, '\0'));
+	// Подаём некорректный кадр на разбор
+	client->parse(ping.data(), ping.size());
+	// Проверяем что ошибка уровня соединения зафиксирована
+	ASSERT_TRUE(failed);
+	// Проверяем что очередь исходящих данных пуста (GOAWAY прежнего соединения отброшен)
+	ASSERT_TRUE(client->pending().empty());
+	// Начинаем новое соединение
+	client->sendPreface();
+	// Проверяем что новое соединение начинается с magic-строки preface
+	ASSERT_EQ(client->pending().compare(0, h2::proto::PREFACE.size(), h2::proto::PREFACE), 0);
+}
+
+/**
+ * @brief Метод проверки сброса парсера из функции обратного вызова открытия потока
+ *
+ * @details Сборка блока заголовков после сброса наполнила бы динамическую таблицу
+ *          HPACK нового соединения записями, которых пир не присылал
+ *
+ */
+TEST_F(ParserHttp2Fixture, ResetFromBeginCallbackTest){
+	// Создаём объект парсера сервера (pull-модель: функция записи не установлена)
+	auto server = this->make(direct_t::REQUEST);
+	// Идентификаторы открытых пиром потоков
+	std::vector <uint32_t> begins;
+	// Устанавливаем функцию обратного вызова открытия нового потока
+	server->on(parser_http2_t::begin_callback_t([&](const uint32_t sid) noexcept -> bool {
+		// Собираем идентификатор открытого потока
+		begins.push_back(sid);
+		// Приложение переиспользует парсер под новое соединение
+		server->reset();
+		// Поток не принимаем
+		return false;
+	}));
+	// Отправляем preface сервера
+	server->sendPreface();
+	// Освобождаем всю очередь исходящих данных
+	server->consumePending(server->pending().size());
+	// Буфер входящего потока клиента
+	std::string input;
+	// Дописываем magic-строку preface клиента
+	input.append(h2::proto::PREFACE.data(), h2::proto::PREFACE.size());
+	// Дописываем SETTINGS клиента
+	input += ::frame(0x04, 0x00, 0, "");
+	// Создаём объект кодера заголовков клиента
+	h2::hpack::encoder_t encoder;
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/");
+	// Дописываем псевдо-заголовок авторитета запроса
+	fields.emplace_back(":authority", "example.com");
+	// Буфер закодированного блока заголовков
+	std::string block;
+	// Кодируем блок заголовков запроса
+	encoder.encode(fields, block, false);
+	// Дописываем кадр заголовков запроса
+	input += ::frame(0x01, 0x04, 1, block);
+	// Подаём входящий поток клиента на разбор
+	server->parse(input.data(), input.size());
+	// Проверяем что поток был открыт ровно один раз
+	ASSERT_EQ(begins.size(), 1u);
+	// Проверяем что очередь исходящих данных пуста (кадры прежнего соединения отброшены)
+	ASSERT_TRUE(server->pending().empty());
+	// Начинаем новое соединение
+	server->sendPreface();
+	// Проверяем что новое соединение начинается с кадра SETTINGS
+	ASSERT_EQ(static_cast <uint8_t> (server->pending()[3]), 0x04);
+}
+
+/**
+ * @brief Метод проверки сброса парсера из функции обратного вызова тела потока
+ *
+ * @details Учёт окна приёма относится к прежнему соединению: после сброса
+ *          WINDOW_UPDATE не должен попасть в очередь нового
+ *
+ */
+TEST_F(ParserHttp2Fixture, ResetFromDataCallbackTest){
+	// Создаём объект парсера клиента (pull-модель: функция записи не установлена)
+	auto client = this->make(direct_t::RESPONSE);
+	// Получаем параметры SETTINGS парсера
+	auto settings = client->settings();
+	// Поднимаем анонсируемый максимальный размер кадра
+	settings.maxFrameSize = 40000;
+	// Применяем параметры SETTINGS парсера
+	client->settings(settings);
+	// Суммарный объём принятого тела
+	size_t received = 0;
+	// Устанавливаем функцию обратного вызова тела потока
+	client->on(parser_http2_t::data_callback_t([&](const uint32_t, const void *, const size_t size, const bool) noexcept -> bool {
+		// Накапливаем объём принятого тела
+		received += size;
+		// Приложение переиспользует парсер под новое соединение
+		client->reset();
+		// Продолжаем разбор
+		return true;
+	}));
+	// Отправляем preface клиента
+	client->sendPreface();
+	// Подаём SETTINGS сервера на разбор
+	const std::string peer = ::frame(0x04, 0x00, 0, "");
+	// Выполняем разбор SETTINGS сервера
+	client->parse(peer.data(), peer.size());
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/");
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Отправляем заголовки запроса с завершением потока
+	client->sendHeaders(sid, fields, true);
+	// Освобождаем всю очередь исходящих данных
+	client->consumePending(client->pending().size());
+	// Создаём объект кодера заголовков сервера
+	h2::hpack::encoder_t encoder;
+	// Формируем заголовки ответа сервера
+	std::vector <h2::hpack::field_t> response;
+	// Дописываем псевдо-заголовок статуса ответа
+	response.emplace_back(":status", "200");
+	// Буфер закодированного блока заголовков
+	std::string block;
+	// Кодируем блок заголовков ответа
+	encoder.encode(response, block, false);
+	// Формируем кадр заголовков ответа сервера
+	const std::string headers = ::frame(0x01, 0x04, sid, block);
+	// Подаём клиенту заголовки ответа сервера
+	client->parse(headers.data(), headers.size());
+	// Формируем крупный кадр тела ответа
+	const std::string data = ::frame(0x00, 0x00, sid, std::string(40000, 'x'));
+	// Подаём клиенту кадр тела ответа
+	client->parse(data.data(), data.size());
+	// Проверяем что тело доставлено приложению
+	ASSERT_EQ(received, 40000u);
+	// Проверяем что очередь исходящих данных пуста (WINDOW_UPDATE прежнего соединения отброшен)
+	ASSERT_TRUE(client->pending().empty());
+	// Начинаем новое соединение
+	client->sendPreface();
+	// Проверяем что новое соединение начинается с magic-строки preface
+	ASSERT_EQ(client->pending().compare(0, h2::proto::PREFACE.size(), h2::proto::PREFACE), 0);
+}
+
+/**
+ * @brief Метод проверки лимита частоты кадров приоритета
+ *
+ * @details Кадры приоритета состояния не меняют, но обрабатываются, поэтому их
+ *          поток ограничен отдельным лимитом
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityFloodProtectionTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщики событий на все функции обратного вызова парсеров
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Формируем строгий лимит частоты кадров приоритета
+	parser_http2_t::limits_t limits;
+	// Ограничиваем стартовый запас лимита частоты кадров приоритета
+	limits.prioLimitBurst = 3;
+	// Ограничиваем пополнение лимита частоты кадров приоритета
+	limits.prioLimitRate = 1;
+	// Применяем лимиты безопасности сервера
+	server->limits(limits);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	/**
+	 * Выполняем поток кадров обновления приоритета
+	 */
+	for(size_t i = 0; i < 5; ++i){
+		// Формируем полезную нагрузку кадра обновления приоритета
+		std::string payload;
+		// Дописываем идентификатор приоритизируемого потока
+		payload.push_back(0x00);
+		payload.push_back(0x00);
+		payload.push_back(0x00);
+		payload.push_back(static_cast <char> (1 + (2 * i)));
+		// Дописываем значение поля приоритета
+		payload += "u=3";
+		// Формируем кадр обновления приоритета
+		const std::string current = ::frame(0x10, 0x00, 0, payload);
+		// Подаём кадр обновления приоритета серверу
+		server->parse(current.data(), current.size());
+	}
+	// Проверяем что сервер зафиксировал ошибку уровня соединения
+	ASSERT_EQ(server->status(), parser_t::status_t::ERROR);
+	// Проверяем код ошибки уровня соединения
+	ASSERT_EQ(server->error(), parser_http2_t::error_t::ENHANCE_YOUR_CALM);
+	// Проверяем что функция обратного вызова ошибки вызвана
+	ASSERT_TRUE(serverEvents.errorFired);
+}
+
+/**
+ * @brief Метод проверки штатного потока кадров приоритета при лимитах по умолчанию
+ *
+ * @details Переустановка приоритетов на каждый загружаемый ресурс - нормальное
+ *          поведение клиента и не должна обрываться защитой
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityBurstAllowedTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщики событий на все функции обратного вызова парсеров
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	/**
+	 * Выполняем штатный поток кадров обновления приоритета
+	 */
+	for(size_t i = 0; i < 500; ++i){
+		// Формируем полезную нагрузку кадра обновления приоритета
+		std::string payload;
+		// Дописываем идентификатор приоритизируемого потока
+		payload.push_back(0x00);
+		payload.push_back(0x00);
+		payload.push_back(0x00);
+		payload.push_back(0x01);
+		// Дописываем значение поля приоритета
+		payload += "u=5, i";
+		// Формируем кадр обновления приоритета
+		const std::string current = ::frame(0x10, 0x00, 0, payload);
+		// Подаём кадр обновления приоритета серверу
+		server->parse(current.data(), current.size());
+	}
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что ошибка уровня соединения не фиксировалась
+	ASSERT_FALSE(serverEvents.errorFired);
 }
 
 /**

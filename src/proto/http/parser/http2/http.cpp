@@ -726,6 +726,8 @@ awh::http::Parser_HTTP2::Limits::Limits() noexcept :
  rstLimitBurst(RST_LIMIT_BURST),
  ctrlLimitRate(CTRL_LIMIT_RATE),
  ctrlLimitBurst(CTRL_LIMIT_BURST),
+ prioLimitRate(PRIO_LIMIT_RATE),
+ prioLimitBurst(PRIO_LIMIT_BURST),
  maxHeaderBlockSize(MAX_HEADER_BLOCK_SIZE),
  maxContinuationFrames(MAX_CONTINUATION_FRAMES) {}
 
@@ -1434,6 +1436,8 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::fail(const error_t code, const 
 		(this->_direct == direct_t::REQUEST ? "request" : "response"),
 		message, h2::errorName(code)
 	);
+	// Запоминаем поколение состояния соединения перед уведомлением
+	const uint64_t epoch = this->_epoch;
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.error != nullptr){
 		/**
@@ -1461,6 +1465,14 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::fail(const error_t code, const 
 			#endif
 		}
 	}
+	/**
+	 * Функция обратного вызова могла реентрантно сбросить парсер, переиспользуя его
+	 * под новое соединение: GOAWAY относится к прежнему, а в очереди нового он занял бы
+	 * место перед connection preface и был бы отвергнут пиром
+	 */
+	if(epoch != this->_epoch)
+		// Выводим статус ошибки для проброса из обработчиков
+		return h2::status_t::ERROR;
 	// Ставим GOAWAY в очередь отправки (соединение необходимо закрыть)
 	this->sendGoaway(code);
 	// Выводим статус ошибки для проброса из обработчиков
@@ -1823,6 +1835,8 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				return this->fail(err, "bad HEADERS");
 			// Флаг отклонённого потока (блок декодируем только для синхронизации HPACK)
 			bool refused = false;
+			// Запоминаем поколение состояния соединения перед пользовательскими вызовами
+			const uint64_t epoch = this->_epoch;
 			// Выполняем поиск потока
 			stream_t * stream = this->findStream(header.streamId);
 			// Если поток ещё не существует - пир открывает новый поток
@@ -1854,6 +1868,14 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 					stream.state = h2::stream_state_t::OPEN;
 					// Если функция обратного вызова потребовала отклонить поток
 					if(!this->fireBegin(header.streamId)){
+						/**
+						 * Функция обратного вызова могла реентрантно сбросить парсер: сброс потока
+						 * относится к прежнему соединению, а в очереди нового этот кадр занял бы
+						 * место перед connection preface
+						 */
+						if(epoch != this->_epoch)
+							// Обработка фрейма завершена
+							return h2::status_t::OK;
 						// Сбрасываем поток с кодом CANCEL
 						h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::CANCEL);
 						// Закрываем поток с вызовом функции обратного вызова закрытия
@@ -1911,6 +1933,15 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 						return this->fail(error_t::PROTOCOL_ERROR, "HEADERS in invalid stream state");
 				}
 			}
+			/**
+			 * Пользовательская функция обратного вызова могла реентрантно сбросить парсер:
+			 * фрагмент блока ссылается во входной буфер прежнего соединения, а его сборка
+			 * и декодирование наполнили бы динамическую таблицу HPACK нового соединения
+			 * записями, которых пир не присылал
+			 */
+			if(epoch != this->_epoch)
+				// Обработка фрейма завершена
+				return h2::status_t::OK;
 			// Учитываем первый фрейм блока
 			this->_hbc.frames = 1;
 			// Начинаем сборку блока заголовков потока
@@ -2083,8 +2114,18 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			}
 			// Запоминаем флаг END_STREAM (поток может быть удалён функцией обратного вызова)
 			const bool endStream = data.endStream;
+			// Запоминаем поколение состояния соединения перед доставкой тела
+			const uint64_t epoch = this->_epoch;
 			// Если функция обратного вызова потребовала сбросить поток
 			if(!this->fireData(header.streamId, data.data.data(), data.data.size(), endStream)){
+				/**
+				 * Функция обратного вызова могла реентрантно сбросить парсер: принятые байты
+				 * учтены в окне прежнего соединения, а WINDOW_UPDATE попал бы в очередь нового
+				 * раньше его connection preface
+				 */
+				if(epoch != this->_epoch)
+					// Обработка фрейма завершена
+					return h2::status_t::OK;
 				// Пополняем окно приёма соединения (поток закрывается)
 				this->replenishReceiveWindow(nullptr, header.length);
 				// Если поток ещё существует (функция обратного вызова могла его закрыть)
@@ -2097,6 +2138,10 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				// Обработка фрейма завершена (соединение живёт)
 				return h2::status_t::OK;
 			}
+			// Если парсер сброшен реентрантно - окно прежнего соединения больше не ведётся
+			if(epoch != this->_epoch)
+				// Обработка фрейма завершена
+				return h2::status_t::OK;
 			// Перечитываем указатель на поток (функция обратного вызова могла его удалить)
 			stream = this->findStream(header.streamId);
 			// Пополняем окно приёма и при просадке шлём WINDOW_UPDATE (потоку - только если он остаётся открыт)
@@ -2127,6 +2172,17 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 		}
 		// Фрейм приоритета (RFC 9113 §6.3)
 		case h2::frame_t::PRIORITY: {
+			/**
+			 * Кадры приоритета состояния не меняют и потоков не открывают, поэтому их
+			 * поток ограничивается отдельным лимитом: он заметно щедрее лимита управляющих
+			 * фреймов, так как переустановка приоритетов на каждый загружаемый ресурс -
+			 * штатное поведение клиента
+			 */
+			this->_ratelims.prio.update(this->_ratelims.now);
+			// Если лимит частоты кадров приоритета превышен
+			if(!this->_ratelims.prio.drain(1))
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::ENHANCE_YOUR_CALM, "PRIORITY flood");
 			// Разобранная полезная нагрузка PRIORITY
 			h2::frame::priority_t priority;
 			// Если разбор полезной нагрузки завершился ошибкой
@@ -2155,6 +2211,12 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 		}
 		// Фрейм обновления расширенного приоритета потока (RFC 9218 §7.1)
 		case h2::frame_t::PRIORITY_UPDATE: {
+			// Пополняем лимит частоты кадров приоритета по текущему времени
+			this->_ratelims.prio.update(this->_ratelims.now);
+			// Если лимит частоты кадров приоритета превышен
+			if(!this->_ratelims.prio.drain(1))
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::ENHANCE_YOUR_CALM, "PRIORITY_UPDATE flood");
 			// Идентификатор приоритизируемого потока
 			uint32_t sid = 0;
 			// Значение поля приоритета
@@ -3346,10 +3408,31 @@ void awh::http::Parser_HTTP2::applyPriority(stream_t & stream, string_view value
 	}
 }
 /**
- * @brief Метод проверки декодированных заголовков на лимиты безопасности
+ * @brief Метод предупреждения о полностью снятом лимите списка заголовков
  *
- * @param fields декодированные заголовки блока
- * @return       результат проверки (false - лимиты превышены)
+ */
+void awh::http::Parser_HTTP2::checkHeaderListLimits() const noexcept {
+	/**
+	 * Оба лимита распакованного списка сняты. Блок заголовков ограничен размером
+	 * на проводе, но каждая индексная ссылка длиной в байт разворачивается в арене
+	 * декодера в полную пару название/значение из динамической таблицы: блок в 64 КиБ
+	 * ссылок даёт сотни мегабайт, и остановить это в такой конфигурации нечем
+	 */
+	if((this->_limits.maxHeadersTotal == 0) && (this->_local.maxHeaderListSize == 0))
+		// Записываем сообщение о снятом лимите в лог
+		this->_log->print(
+			"HTTP/2 decoded header list is unlimited: both maxHeadersTotal and SETTINGS_MAX_HEADER_LIST_SIZE are 0",
+			log_t::flag_t::WARNING
+		);
+}
+/**
+ * @brief Метод проверки соответствия принятого тела объявленному content-length
+ *
+ * @details RFC 9113 §8.1.1: расхождение суммы длин DATA с content-length делает
+ *          сообщение малформированным. При расхождении поток сбрасывается
+ *
+ * @param sid идентификатор потока
+ * @return    результат проверки (false - поток сброшен)
  */
 bool awh::http::Parser_HTTP2::checkBodyLength(const uint32_t sid) noexcept {
 	// Выполняем поиск потока
@@ -3833,6 +3916,8 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 	this->_ratelims.rst.init(this->_limits.rstLimitBurst, this->_limits.rstLimitRate);
 	// Инициализируем лимит частоты управляющих фреймов из лимитов безопасности
 	this->_ratelims.ctrl.init(this->_limits.ctrlLimitBurst, this->_limits.ctrlLimitRate);
+	// Инициализируем лимит частоты кадров приоритета из лимитов безопасности
+	this->_ratelims.prio.init(this->_limits.prioLimitBurst, this->_limits.prioLimitRate);
 }
 /**
  * @brief Метод клонирования объекта парсера
@@ -4038,6 +4123,10 @@ void awh::http::Parser_HTTP2::limits(const limits_t & limits) noexcept {
 	this->_ratelims.rst.init(limits.rstLimitBurst, limits.rstLimitRate);
 	// Применяем новые параметры лимита частоты управляющих фреймов
 	this->_ratelims.ctrl.init(limits.ctrlLimitBurst, limits.ctrlLimitRate);
+	// Применяем новые параметры лимита частоты кадров приоритета
+	this->_ratelims.prio.init(limits.prioLimitBurst, limits.prioLimitRate);
+	// Предупреждаем, если лимит распакованного списка заголовков снят полностью
+	this->checkHeaderListLimits();
 }
 /**
  * @brief Метод получения наших параметров SETTINGS
@@ -4097,6 +4186,8 @@ void awh::http::Parser_HTTP2::settings(const settings_t & settings) noexcept {
 		// Возвращаем отказ от приоритетов RFC 7540 к значению по умолчанию
 		this->_local.noRfc7540Priorities = 1;
 	}
+	// Предупреждаем, если лимит распакованного списка заголовков снят полностью
+	this->checkHeaderListLimits();
 }
 /**
  * @brief Метод получения параметров SETTINGS пира
@@ -5065,6 +5156,8 @@ awh::http::Parser_HTTP2::Parser_HTTP2(const direct_t direct, const fmk_t * fmk, 
 	this->_ratelims.rst.init(this->_limits.rstLimitBurst, this->_limits.rstLimitRate);
 	// Инициализируем лимит частоты управляющих фреймов из лимитов безопасности
 	this->_ratelims.ctrl.init(this->_limits.ctrlLimitBurst, this->_limits.ctrlLimitRate);
+	// Инициализируем лимит частоты кадров приоритета из лимитов безопасности
+	this->_ratelims.prio.init(this->_limits.prioLimitBurst, this->_limits.prioLimitRate);
 }
 /**
  * @brief Деструктор

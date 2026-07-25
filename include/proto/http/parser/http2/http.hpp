@@ -102,6 +102,20 @@ namespace awh {
 				 */
 				static constexpr uint64_t CTRL_LIMIT_BURST = (1000);
 				/**
+				 * @brief Пополнение лимита частоты кадров приоритета (токенов в секунду)
+				 *
+				 * @note Лимит отдельный от управляющих фреймов и заметно щедрее: клиент вправе
+				 *       переставлять приоритеты на каждый загружаемый ресурс страницы
+				 */
+				static constexpr uint64_t PRIO_LIMIT_RATE = (500);
+				/**
+				 * @brief Стартовый запас лимита частоты кадров приоритета (PRIORITY/PRIORITY_UPDATE)
+				 *
+				 * @note Лимит отдельный от управляющих фреймов и заметно щедрее: клиент вправе
+				 *       переставлять приоритеты на каждый загружаемый ресурс страницы
+				 */
+				static constexpr uint64_t PRIO_LIMIT_BURST = (5000);
+				/**
 				 * @brief Порог сигнала о готовности потока принимать данные (low-water)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
@@ -157,6 +171,10 @@ namespace awh {
 					uint64_t ctrlLimitRate;
 					// Стартовый запас лимита частоты управляющих фреймов
 					uint64_t ctrlLimitBurst;
+					// Пополнение лимита частоты кадров приоритета (токенов в секунду)
+					uint64_t prioLimitRate;
+					// Стартовый запас лимита частоты кадров приоритета
+					uint64_t prioLimitBurst;
 					// Максимальный суммарный размер блока заголовков (HEADERS + все CONTINUATION)
 					size_t maxHeaderBlockSize;
 					// Максимальное число фреймов в одном блоке заголовков
@@ -491,6 +509,8 @@ namespace awh {
 					ratelim_t rst;
 					// Лимит частоты управляющих фреймов (против flood SETTINGS/PING/пустых DATA)
 					ratelim_t ctrl;
+					// Лимит частоты кадров приоритета (против flood PRIORITY/PRIORITY_UPDATE)
+					ratelim_t prio;
 					/**
 					 * @brief Конструктор
 					 *
@@ -1011,6 +1031,13 @@ namespace awh {
 				 * @return       результат проверки (false - лимиты превышены)
 				 */
 				bool checkHeaderLimits(const vector <h2::hpack::field_view_t> & fields) const noexcept;
+				/**
+				 * @brief Метод предупреждения о полностью снятом лимите списка заголовков
+				 *
+				 * @details Вызывается при изменении лимитов безопасности и параметров SETTINGS:
+				 *          снятие обоих лимитов сразу оставляет арену декодера без границы
+				 */
+				void checkHeaderListLimits() const noexcept;
 				/**
 				 * @brief Метод проверки соответствия принятого тела объявленному content-length
 				 *

@@ -633,6 +633,13 @@ void awh::quic::Connection::record(const space_t space, const uint64_t pn) noexc
 		item.largestRx = pn;
 		// Устанавливаем флаг приёма хотя бы одного пакета
 		item.hasRx = true;
+		/**
+		 * Запоминаем время приёма наибольшего принятого пакета: задержка подтверждения
+		 * отсчитывается от приёма именно наибольшего подтверждаемого пакета, а не первого
+		 * в цикле - иначе она систематически завышалась бы, занижая оценку RTT у
+		 * удалённого эндпоинта (RFC 9000 §13.2.5)
+		 */
+		item.ackTime = this->_times.now;
 	// Если принят номер пакета выше наибольшего принятого
 	} else if(pn > item.largestRx) {
 		// Вычисляем сдвиг окна защиты от повторов
@@ -647,6 +654,8 @@ void awh::quic::Connection::record(const space_t space, const uint64_t pn) noexc
 		              ((shift == 64) ? (static_cast <uint64_t> (1) << 63) : 0));
 		// Обновляем наибольший принятый номер пакета
 		item.largestRx = pn;
+		// Запоминаем время приёма нового наибольшего подтверждаемого пакета (RFC 9000 §13.2.5)
+		item.ackTime = this->_times.now;
 	// Если принят номер пакета в пределах окна защиты от повторов
 	} else if((item.largestRx - pn) <= 64)
 		// Отмечаем номер пакета принятым в окне
@@ -1108,8 +1117,13 @@ bool awh::quic::Connection::validate(const space_t space, const frame::ack_t & f
 		}
 		// Если проверка пути пройдена
 		if(!failed){
-			// Определяем прирост счётчика пакетов с маркировкой перегрузки
-			congested = (item.hasPeerEcn && (frame.ce > item.peerCe));
+			/**
+			 * Определяем прирост счётчика пакетов с маркировкой перегрузки: на первом
+			 * подтверждении со счётчиками (hasPeerEcn ещё не установлен) базовым значением
+			 * служит ноль, иначе - ранее запомненный счётчик. Прежняя привязка к hasPeerEcn
+			 * упускала бы самую первую маркировку перегрузки на пути (RFC 9002 §7.1)
+			 */
+			congested = (frame.ce > (item.hasPeerEcn ? item.peerCe : 0));
 			// Запоминаем счётчик пакетов с маркировкой поддержки ECN
 			item.peerEct0 = frame.ect0;
 			// Запоминаем счётчик пакетов с альтернативной маркировкой поддержки ECN
@@ -1568,8 +1582,19 @@ bool awh::quic::Connection::token(const uint8_t mark, const cid_t & odcid, strin
 	 * но входит в код аутентичности, поэтому токен непригоден с чужого адреса
 	 */
 	string signed_ = output;
+	/**
+	 * Адрес клиента для заверения: Retry-токен привязываем к полному пути (IP+порт),
+	 * так как клиент повторяет попытку с того же адреса; токен NEW_TOKEN - только к
+	 * IP-адресу, поскольку вернувшийся клиент подключается уже с нового эфемерного
+	 * порта, и привязка к порту сделала бы такой токен непроверяемым (RFC 9000 §8.1.3)
+	 */
+	string address = this->_core.address;
+	// Если токен выдаётся фреймом NEW_TOKEN и адрес несёт порт - отбрасываем порт, оставляя только IP-адрес
+	if((mark == ADDRESS_TOKEN_MARK) && (address.size() > sizeof(uint16_t)))
+		// Усекаем опаковое представление адреса до IP-адреса без порта
+		address.resize(address.size() - sizeof(uint16_t));
 	// Дописываем адрес клиента в заверяемые данные
-	signed_.append(this->_core.address);
+	signed_.append(address);
 	// Буфер кода аутентичности
 	uint8_t mac[EVP_MAX_MD_SIZE];
 	// Длина кода аутентичности
@@ -1633,8 +1658,18 @@ bool awh::quic::Connection::validate(string_view token, cid_t & odcid, bool & re
 		return false;
 	// Формируем заверяемые данные из содержимого токена без кода аутентичности
 	string signed_(token.substr(0, RETRY_TOKEN_PREFIX + length));
+	/**
+	 * Адрес клиента для заверения выбираем симметрично генерации: Retry-токен - к
+	 * полному пути (IP+порт), токен NEW_TOKEN - только к IP-адресу, поскольку
+	 * вернувшийся клиент подключается уже с нового эфемерного порта (RFC 9000 §8.1.3)
+	 */
+	string address = this->_core.address;
+	// Если токен выдан фреймом NEW_TOKEN и адрес несёт порт - отбрасываем порт, оставляя только IP-адрес
+	if(!retried && (address.size() > sizeof(uint16_t)))
+		// Усекаем опаковое представление адреса до IP-адреса без порта
+		address.resize(address.size() - sizeof(uint16_t));
 	// Дописываем адрес клиента в заверяемые данные
-	signed_.append(this->_core.address);
+	signed_.append(address);
 	// Буфер ожидаемого кода аутентичности
 	uint8_t mac[EVP_MAX_MD_SIZE];
 	// Длина кода аутентичности
@@ -1751,8 +1786,15 @@ void awh::quic::Connection::collect() noexcept {
 			// Продолжаем перебор
 			continue;
 		}
-		// Флаг наличия ссылок на поток в очередях отправки
-		bool referenced = false;
+		/**
+		 * Флаг наличия ссылок на поток в очередях отправки. Поток удерживается от сборки,
+		 * пока за ним закреплены неотправленные управляющие фреймы: после потери пакета
+		 * requeue() восстанавливает флаги их повторной отправки (txReset/stopQueued/
+		 * rxMaxQueued/txBlocked), не снимая отметок Sent, поэтому удаление потока по одним
+		 * лишь Sent-отметкам потеряло бы ещё не ретранслированный RESET_STREAM либо
+		 * STOP_SENDING, и удалённый эндпоинт остался бы ждать его до таймаута (RFC 9000 §13.3)
+		 */
+		bool referenced = (stream.txReset || stream.stopQueued || stream.rxMaxQueued || stream.txBlocked);
 		/**
 		 * Перебираем очередь ретрансмиссии блоков данных потоков
 		 */
@@ -3548,19 +3590,13 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 		offset += consumed;
 	}
 	// Если принят ack-eliciting фрейм
-	if(elicit){
-		// Получаем состояние пространства номеров пакетов уровня
-		auto & item = this->_spaces[static_cast <size_t> (this->space(level))];
+	if(elicit)
 		/**
-		 * Если подтверждение ещё не поставлено в очередь - запоминаем время приёма:
-		 * задержка отсчитывается от первого неподтверждённого пакета (RFC 9000 §13.2.1)
+		 * Устанавливаем флаг необходимости отправки подтверждения. Время приёма для
+		 * расчёта задержки подтверждения фиксирует record() по приёму наибольшего
+		 * подтверждаемого пакета, а не первого ack-eliciting в цикле (RFC 9000 §13.2.5)
 		 */
-		if(!item.ackElicited)
-			// Устанавливаем время приёма ack-eliciting пакета
-			item.ackTime = this->_times.now;
-		// Устанавливаем флаг необходимости отправки подтверждения
-		item.ackElicited = true;
-	}
+		this->_spaces[static_cast <size_t> (this->space(level))].ackElicited = true;
 	// Выводим положительный результат
 	return status_t::OK;
 }
