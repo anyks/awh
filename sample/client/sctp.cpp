@@ -368,7 +368,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем функцию обратного вызова на событие подключения клиента к удалённому серверу
 		client.on <void (const bool)> ("connect", &Executor::connect, &executor, _1, &client);
 		// Регистрируем функцию обратного вызова получения состояния клиента
-		client.on <void (const event::status_t)> ("state", &Executor::state, &executor, eid, _1, _2, &sctp);
+		client.on <void (const event::status_t)> ("state", &Executor::state, &executor, eid, _1, &sctp);
 		// Регистрируем функцию обратного вызова на событие чтения данных клиентом
 		client.on <void (const uint8_t *, const size_t)> ("read", &Executor::read, &executor, _1, _2, &client);
 		// Регистрируем функцию обратного вызова на событие ошибок клиента
