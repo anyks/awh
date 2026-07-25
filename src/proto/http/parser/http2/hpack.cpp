@@ -969,6 +969,8 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	const size_t size = block.size();
 	// Указатель на данные блока заголовков
 	const uint8_t * data = reinterpret_cast <const uint8_t *> (block.data());
+	// Сбрасываем признак превышения лимита списка заголовков
+	this->_overflow = false;
 	// Очищаем арену декодированных строк (выделенная ёмкость переиспользуется)
 	this->_arena.clear();
 	// Очищаем срезы декодированных заголовков
@@ -1051,6 +1053,25 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 		return ((maxListSize == 0) || (listSize <= maxListSize));
 	};
 	/**
+	 * @brief Функция фиксации декодированного заголовка
+	 *
+	 * @details Блок сверх лимита списка разбирается до конца - иначе динамическая таблица
+	 *          рассинхронизируется с кодером пира и соединение придётся рвать, - но его
+	 *          заголовки не сохраняются: арена откатывается к состоянию до поля, поэтому
+	 *          защита от decompression bomb остаётся в силе
+	 *
+	 * @param slice срез декодированного заголовка
+	 * @param mark  размер арены до декодирования заголовка
+	 */
+	auto commit = [this](const slice_t & slice, const size_t mark) noexcept -> void {
+		// Если лимит списка заголовков превышен
+		if(this->_overflow)
+			// Откатываем арену к состоянию до декодирования заголовка
+			this->_arena.resize(mark);
+		// Иначе дописываем срез декодированного заголовка
+		else this->_slices.push_back(slice);
+	};
+	/**
 	 * Признак того, что Dynamic Table Size Update ещё допустим: он обязан идти
 	 * в самом начале блока заголовков, до первого поля (RFC 7541 §4.2)
 	 */
@@ -1063,6 +1084,8 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 		const uint8_t byte = data[pos];
 		// Создаём срез декодированного заголовка
 		slice_t slice{};
+		// Запоминаем размер арены до декодирования заголовка
+		const size_t mark = this->_arena.size();
 		// Если это Indexed Header Field (RFC 7541 §6.1, префикс 7 бит)
 		if(byte & 0x80){
 			// Дальше Dynamic Table Size Update в этом блоке недопустим
@@ -1091,15 +1114,12 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
-			// Если лимит размера списка превышен
-			if(!account(slice)){
-				// Фиксируем превышение лимита (decompression bomb)
-				error = error_t::ENHANCE_YOUR_CALM;
-				// Выводим ошибку декодирования
-				return status_t::ERROR;
-			}
-			// Дописываем срез декодированного заголовка
-			this->_slices.push_back(slice);
+			// Если лимит размера списка превышен - заголовки блока наружу не отдаются
+			if(!account(slice))
+				// Помечаем что лимит списка заголовков превышен
+				this->_overflow = true;
+			// Фиксируем декодированный заголовок
+			commit(slice, mark);
 		// Если это Literal с инкрементальной индексацией (RFC 7541 §6.2.1, префикс 6 бит)
 		} else if(byte & 0x40) {
 			// Дальше Dynamic Table Size Update в этом блоке недопустим
@@ -1145,15 +1165,12 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 				string_view(this->_arena.data() + slice.nameOffset, slice.nameLength),
 				string_view(this->_arena.data() + slice.valueOffset, slice.valueLength)
 			);
-			// Если лимит размера списка превышен
-			if(!account(slice)){
-				// Фиксируем превышение лимита (decompression bomb)
-				error = error_t::ENHANCE_YOUR_CALM;
-				// Выводим ошибку декодирования
-				return status_t::ERROR;
-			}
-			// Дописываем срез декодированного заголовка
-			this->_slices.push_back(slice);
+			// Если лимит размера списка превышен - заголовки блока наружу не отдаются
+			if(!account(slice))
+				// Помечаем что лимит списка заголовков превышен
+				this->_overflow = true;
+			// Фиксируем декодированный заголовок
+			commit(slice, mark);
 		// Если это Literal без индексации / never indexed (RFC 7541 §6.2.2/§6.2.3, префикс 4 бита)
 		} else if((byte & 0x20) == 0) {
 			// Дальше Dynamic Table Size Update в этом блоке недопустим
@@ -1200,15 +1217,12 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
-			// Если лимит размера списка превышен
-			if(!account(slice)){
-				// Фиксируем превышение лимита (decompression bomb)
-				error = error_t::ENHANCE_YOUR_CALM;
-				// Выводим ошибку декодирования
-				return status_t::ERROR;
-			}
-			// Дописываем срез декодированного заголовка
-			this->_slices.push_back(slice);
+			// Если лимит размера списка превышен - заголовки блока наружу не отдаются
+			if(!account(slice))
+				// Помечаем что лимит списка заголовков превышен
+				this->_overflow = true;
+			// Фиксируем декодированный заголовок
+			commit(slice, mark);
 		// Если это Dynamic Table Size Update (RFC 7541 §6.3, префикс 5 бит)
 		} else {
 			/**
@@ -1245,6 +1259,19 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 			this->_table.setMaxSize(static_cast <uint32_t> (newSize));
 		}
 	}
+	/**
+	 * Блок разобран целиком, динамическая таблица синхронна кодеру пира, но список
+	 * заголовков превысил лимит: наружу не отдаём ничего. Вызывающий вправе отвергнуть
+	 * один поток вместо разрыва всего соединения (RFC 9113 §10.5.1)
+	 */
+	if(this->_overflow){
+		// Очищаем срезы декодированных заголовков
+		this->_slices.clear();
+		// Фиксируем превышение лимита (decompression bomb)
+		error = error_t::ENHANCE_YOUR_CALM;
+		// Блок заголовков декодирован
+		return status_t::OK;
+	}
 	// Резервируем память под представления декодированных заголовков
 	output.reserve(this->_slices.size());
 	/**
@@ -1267,12 +1294,21 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	return status_t::OK;
 }
 /**
+ * @brief Метод проверки превышения лимита списка заголовков последним блоком
+ *
+ * @return признак превышения лимита последним декодированным блоком
+ */
+bool awh::http::h2::hpack::Decoder::overflowed() const noexcept {
+	// Выводим признак превышения лимита последним декодированным блоком
+	return this->_overflow;
+}
+/**
  * @brief Конструктор
  *
  * @param maxTableSize максимальный размер динамической таблицы
  */
 awh::http::h2::hpack::Decoder::Decoder(const uint32_t maxTableSize) noexcept :
- _table(maxTableSize), _protocolMaxSize(maxTableSize) {}
+ _table(maxTableSize), _protocolMaxSize(maxTableSize), _overflow(false) {}
 
 /**
  * @brief Метод поиска заголовка в статической + динамической таблицах
@@ -1340,6 +1376,8 @@ uint64_t awh::http::h2::hpack::Encoder::lookup(string_view name, string_view val
  * @param output выходной буфер блока заголовков
  */
 void awh::http::h2::hpack::Encoder::begin(string & output) noexcept {
+	// Сбрасываем размер списка заголовков блока (счёт начинается заново)
+	this->_listSize = 0;
 	// Если требуется отправить Dynamic Table Size Update (RFC 7541 §4.2: обязан идти в самом начале блока)
 	if(this->_sizeUpdatePending){
 		/**
@@ -1354,6 +1392,15 @@ void awh::http::h2::hpack::Encoder::begin(string & output) noexcept {
 		// Сбрасываем признак ожидающего update
 		this->_sizeUpdatePending = false;
 	}
+}
+/**
+ * @brief Метод получения размера закодированного списка заголовков до сжатия
+ *
+ * @return размер списка заголовков текущего блока до сжатия
+ */
+uint64_t awh::http::h2::hpack::Encoder::listSize() const noexcept {
+	// Выводим размер списка заголовков текущего блока до сжатия
+	return this->_listSize;
 }
 /**
  * @brief Метод получения собственной динамической таблицы
@@ -1443,6 +1490,8 @@ void awh::http::h2::hpack::Encoder::encode(const vector <field_view_t> & fields,
  * @param useHuffman применять Huffman-кодирование к строкам
  */
 void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, string & output, const bool sensitive, const bool useHuffman) noexcept {
+	// Наращиваем размер списка заголовков блока до сжатия (RFC 9113 §6.5.2)
+	this->_listSize += (name.size() + value.size() + 32);
 	// Индекс совпадения только по имени
 	uint64_t nameIndex = 0;
 	// Если значение заголовка чувствительное (явно или по названию заголовка)
@@ -1496,5 +1545,5 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
  * @param maxTableSize максимальный размер динамической таблицы
  */
 awh::http::h2::hpack::Encoder::Encoder(const uint32_t maxTableSize) noexcept :
- _table(maxTableSize), _pendingSize(0), _pendingMinSize(0),
+ _table(maxTableSize), _pendingSize(0), _pendingMinSize(0), _listSize(0),
  _sizeUpdatePending(false), _sensitiveHeuristic(true) {}

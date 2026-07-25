@@ -346,10 +346,34 @@ TEST(Http2Hpack, DecoderListSizeLimitTest){
 	std::vector <h2::hpack::field_view_t> decoded;
 	// Код ошибки протокола
 	h2::error_t err = h2::error_t::NO_ERROR;
-	// Декодируем блок с лимитом меньше распакованного размера - ожидаем ошибку
-	ASSERT_EQ(decoder.decode(block, decoded, 100, err), h2::status_t::ERROR);
+	/**
+	 * Декодируем блок с лимитом меньше распакованного размера. Блок разбирается целиком -
+	 * иначе динамическая таблица разъедется с кодером пира и соединение придётся рвать, -
+	 * но заголовки наружу не отдаются
+	 */
+	ASSERT_EQ(decoder.decode(block, decoded, 100, err), h2::status_t::OK);
+	// Проверяем что зафиксировано превышение лимита
+	ASSERT_TRUE(decoder.overflowed());
 	// Проверяем что зафиксирован код ошибки чрезмерного поведения
 	ASSERT_EQ(err, h2::error_t::ENHANCE_YOUR_CALM);
+	// Проверяем что заголовки наружу не отданы
+	ASSERT_TRUE(decoded.empty());
+	// Проверяем что заголовок всё же попал в динамическую таблицу (состояние HPACK синхронно)
+	ASSERT_EQ(decoder.table().count(), 1u);
+	// Очищаем буфер закодированного блока
+	block.clear();
+	// Кодируем тот же заголовок повторно - кодер сошлётся на запись динамической таблицы
+	encoder.encode(fields, block, true);
+	// Декодируем второй блок без ограничения размера списка
+	ASSERT_EQ(decoder.decode(block, decoded, 0, err), h2::status_t::OK);
+	// Проверяем что превышение больше не фиксируется
+	ASSERT_FALSE(decoder.overflowed());
+	// Проверяем что заголовок разрешён по индексу - таблица не рассинхронизировалась
+	ASSERT_EQ(decoded.size(), 1u);
+	// Проверяем название разрешённого заголовка
+	ASSERT_EQ(decoded.front().name, "x-large");
+	// Проверяем значение разрешённого заголовка
+	ASSERT_EQ(decoded.front().value, std::string(1024, 'a'));
 }
 
 /**
@@ -3014,6 +3038,130 @@ TEST_F(ParserHttp2Fixture, ExtendedConnectTest){
 	}
 	// Проверяем что псевдо-заголовок протокола доставлен
 	ASSERT_TRUE(hasProtocol);
+}
+
+/**
+ * @brief Метод проверки отказа от отправки расширенного CONNECT без разрешения пира
+ *
+ * @details Клиент не вправе отправлять псевдо-заголовок [:protocol], пока сервер
+ *          не анонсировал SETTINGS_ENABLE_CONNECT_PROTOCOL (RFC 8441 §3)
+ *
+ */
+TEST_F(ParserHttp2Fixture, ExtendedConnectNotAnnouncedTest){
+	// Создаём объект парсера сервера (расширенный CONNECT не разрешён)
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщики событий на все функции обратного вызова парсеров
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Проверяем что расширенный CONNECT сервером не анонсирован
+	ASSERT_EQ(client->remoteSettings().enableConnectProtocol, 0u);
+	// Формируем провайдер запроса расширенного CONNECT
+	auto request = std::make_unique <request_t> (version_t::HTTP2, method_t::CONNECT, "/chat");
+	// Устанавливаем протокол поднимаемого туннеля
+	request->protocol = "websocket";
+	// Формируем контейнер заголовков запроса
+	headers_t headers(std::move(request));
+	// Дописываем заголовок авторитета запроса
+	headers.emplace("Host", "example.com");
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Пытаемся отправить запрос расширенного CONNECT
+	client->sendHeaders(sid, headers, false);
+	// Проверяем что запрос не отправлен (поток на сервере не открыт)
+	ASSERT_TRUE(serverEvents.begins.empty());
+	// Проверяем что заголовки серверу не доставлены
+	ASSERT_TRUE(serverEvents.providers.empty());
+	// Проверяем что соединение клиента живо
+	ASSERT_EQ(client->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что соединение сервера живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+}
+
+/**
+ * @brief Метод проверки отправки блока заголовков сверх лимита списка пира
+ *
+ * @details SETTINGS_MAX_HEADER_LIST_SIZE носит рекомендательный характер
+ *          (RFC 9113 §6.5.2): отправку не блокируем, но пир вправе отвергнуть
+ *          такой блок - именно это и должно быть видно приложению
+ *
+ */
+TEST_F(ParserHttp2Fixture, PeerHeaderListLimitTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Получаем параметры SETTINGS сервера
+	auto settings = server->settings();
+	// Анонсируем строгий лимит списка заголовков
+	settings.maxHeaderListSize = 200;
+	// Применяем параметры SETTINGS сервера
+	server->settings(settings);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщики событий на все функции обратного вызова парсеров
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Проверяем что клиент принял анонсированный сервером лимит
+	ASSERT_EQ(client->remoteSettings().maxHeaderListSize, 200u);
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/");
+	// Дописываем заголовок, выводящий список за анонсированный лимит
+	fields.emplace_back("x-large", std::string(512, 'v'));
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Отправляем запрос с завершением потока
+	client->sendHeaders(sid, fields, true);
+	// Проверяем что отправка не заблокирована - поток на сервере открыт
+	ASSERT_EQ(serverEvents.begins.size(), 1u);
+	// Проверяем что сервер отверг блок сверх собственного лимита
+	ASSERT_TRUE(serverEvents.providers.empty());
+	// Проверяем что поток сброшен
+	ASSERT_EQ(serverEvents.closes.size(), 1u);
+	// Проверяем код сброса потока
+	ASSERT_EQ(serverEvents.closes.front().second, parser_http2_t::error_t::ENHANCE_YOUR_CALM);
+	/**
+	 * Проверяем что соединение осталось живо: раздутые заголовки одного сообщения
+	 * не вправе уносить с собой остальные потоки соединения
+	 */
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что клиент не получил GOAWAY
+	ASSERT_FALSE(clientEvents.goawayFired);
+	// Формируем заголовки следующего запроса
+	std::vector <h2::hpack::field_t> next;
+	// Дописываем псевдо-заголовок метода запроса
+	next.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	next.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	next.emplace_back(":path", "/next");
+	// Выделяем идентификатор следующего потока клиента
+	const uint32_t following = client->nextStreamId();
+	// Отправляем следующий запрос по тому же соединению
+	client->sendHeaders(following, next, true);
+	// Проверяем что следующий запрос доставлен - состояние HPACK не разъехалось
+	ASSERT_FALSE(serverEvents.providers.empty());
+	// Проверяем путь доставленного запроса
+	ASSERT_EQ(serverEvents.uri, "/next");
 }
 
 /**

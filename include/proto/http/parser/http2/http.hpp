@@ -1039,6 +1039,16 @@ namespace awh {
 				 */
 				void checkHeaderListLimits() const noexcept;
 				/**
+				 * @brief Метод сверки отправляемого блока заголовков с лимитом пира
+				 *
+				 * @details Пир анонсирует SETTINGS_MAX_HEADER_LIST_SIZE как рекомендацию
+				 *          (RFC 9113 §6.5.2) и вправе отвергнуть превышающий её блок.
+				 *          Отправку не блокирует - только предупреждает в лог
+				 *
+				 * @param sid идентификатор потока
+				 */
+				void checkPeerHeaderList(const uint32_t sid) const noexcept;
+				/**
 				 * @brief Метод проверки соответствия принятого тела объявленному content-length
 				 *
 				 * @details RFC 9113 §8.1.1: расхождение суммы длин DATA с content-length делает

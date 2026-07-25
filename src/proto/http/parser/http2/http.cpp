@@ -1150,6 +1150,25 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	if(status != h2::status_t::OK)
 		// Фиксируем ошибку уровня соединения
 		return this->fail(err, "HPACK decode failed");
+	/**
+	 * Список заголовков превысил лимит. Блок при этом разобран целиком, динамическая
+	 * таблица синхронна, поэтому рвать соединение незачем - отвергаем только этот поток
+	 * (RFC 9113 §10.5.1): иначе одно сообщение с раздутыми заголовками уносило бы
+	 * с собой все остальные потоки соединения
+	 */
+	if(this->_decoder.overflowed()){
+		// Если блок принадлежит PUSH_PROMISE - отвергаем обещанный поток
+		const uint32_t target = ((promised != 0) ? promised : streamId);
+		// Если поток отклонён ранее - сбрасывать нечего
+		if(!refused){
+			// Отклоняем поток с кодом чрезмерного поведения
+			h2::frame::serialize::rstStream(this->_buffer.output, target, error_t::ENHANCE_YOUR_CALM);
+			// Закрываем поток с вызовом функции обратного вызова закрытия
+			this->closeStream(target, error_t::ENHANCE_YOUR_CALM);
+		}
+		// Обработка блока завершена (соединение живёт)
+		return h2::status_t::OK;
+	}
 	// Поток отклонён по лимиту: блок декодирован (HPACK синхронен), но событий нет
 	if(refused)
 		// Обработка блока завершена
@@ -3426,6 +3445,29 @@ void awh::http::Parser_HTTP2::checkHeaderListLimits() const noexcept {
 		);
 }
 /**
+ * @brief Метод сверки отправляемого блока заголовков с лимитом пира
+ *
+ * @param sid идентификатор потока
+ */
+void awh::http::Parser_HTTP2::checkPeerHeaderList(const uint32_t sid) const noexcept {
+	// Если пир лимит списка заголовков не анонсировал - сверять не с чем
+	if(this->_remote.maxHeaderListSize == 0)
+		// Выходим из метода
+		return;
+	/**
+	 * Лимит носит рекомендательный характер (RFC 9113 §6.5.2), поэтому отправку
+	 * не блокируем: пир вправе как принять блок, так и отвергнуть его. Но молча
+	 * отправленный блок сверх лимита выглядит как беспричинный сброс потока
+	 * на стороне пира, поэтому причину фиксируем в логе
+	 */
+	if(this->_encoder.listSize() > this->_remote.maxHeaderListSize)
+		// Записываем сообщение о превышении лимита пира в лог
+		this->_log->print(
+			"HTTP/2 header list of stream %u is %llu bytes and exceeds peer SETTINGS_MAX_HEADER_LIST_SIZE (%u)",
+			log_t::flag_t::WARNING, sid, this->_encoder.listSize(), this->_remote.maxHeaderListSize
+		);
+}
+/**
  * @brief Метод проверки соответствия принятого тела объявленному content-length
  *
  * @details RFC 9113 §8.1.1: расхождение суммы длин DATA с content-length делает
@@ -3629,6 +3671,8 @@ bool awh::http::Parser_HTTP2::flushTrailers(stream_t & stream) noexcept {
 		this->_encoder.encode(stream.trailers, block, true);
 		// Освобождаем память отложенных трейлеров
 		stream.trailers.clear();
+		// Сверяем размер секции трейлеров с лимитом списка заголовков пира
+		this->checkPeerHeaderList(sid);
 		// Отправляем блок трейлеров с завершением потока
 		h2::frame::serialize::headerBlock(this->_buffer.output, sid, block, true, this->_remote.maxFrameSize);
 		// Помечаем что END_STREAM отправлен
@@ -3664,6 +3708,8 @@ bool awh::http::Parser_HTTP2::flushTrailers(stream_t & stream) noexcept {
  * @param endStream флаг завершения потока (тела не будет)
  */
 void awh::http::Parser_HTTP2::commitHeaders(const uint32_t sid, const string & block, const bool endStream) {
+	// Сверяем размер блока заголовков с лимитом списка заголовков пира
+	this->checkPeerHeaderList(sid);
 	// Отправляем блок заголовков (с автоматической нарезкой на HEADERS + CONTINUATION)
 	h2::frame::serialize::headerBlock(this->_buffer.output, sid, block, endStream, this->_remote.maxFrameSize);
 	// Получаем существующий либо создаём новый объект потока
@@ -4561,6 +4607,8 @@ uint32_t awh::http::Parser_HTTP2::sendPushPromise(const uint32_t sid, const vect
 		string block = "";
 		// Выполняем кодирование заголовков в HPACK-блок
 		this->_encoder.encode(fields, block, true);
+		// Сверяем размер блока обещанного запроса с лимитом списка заголовков пира
+		this->checkPeerHeaderList(sid);
 		// Отправляем PUSH_PROMISE (с автоматической нарезкой на PUSH_PROMISE + CONTINUATION)
 		h2::frame::serialize::pushPromiseBlock(this->_buffer.output, sid, result, block, this->_remote.maxFrameSize);
 		// Получаем объект зарезервированного push-потока
@@ -4768,12 +4816,34 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 				// Выходим из метода
 				return;
 		}
+		// Получаем объект провайдера контейнера заголовков
+		const provider_t * provider = headers.provider();
+		// Если провайдер является запросом клиента
+		if((provider != nullptr) && (provider->direct == direct_t::REQUEST)){
+			// Получаем объект провайдера запроса клиента
+			const request_t * request = static_cast <const request_t *> (provider);
+			/**
+			 * Расширенный CONNECT допустим, только если пир анонсировал его параметром
+			 * SETTINGS_ENABLE_CONNECT_PROTOCOL (RFC 8441 §3). Запрос не отправляется целиком,
+			 * а не лишается [:protocol]: без этого псевдо-заголовка получился бы обычный
+			 * туннель CONNECT - другая семантика, которой приложение не просило.
+			 * Проверка стоит до начала кодирования, иначе отложенный Dynamic Table Size Update
+			 * ушёл бы в отброшенный блок и рассинхронизировал декодер пира
+			 */
+			if(!request->protocol.empty() && (request->method == method_t::CONNECT) && (this->_remote.enableConnectProtocol == 0)){
+				// Записываем сообщение об отказе в лог
+				this->_log->print(
+					"HTTP/2 peer does not support extended CONNECT (RFC 8441), request for stream %u is not sent",
+					log_t::flag_t::WARNING, sid
+				);
+				// Выходим из метода
+				return;
+			}
+		}
 		// Закодированный HPACK-блок заголовков
 		string block = "";
 		// Дописываем отложенный Dynamic Table Size Update (если требуется)
 		this->_encoder.begin(block);
-		// Получаем объект провайдера контейнера заголовков
-		const provider_t * provider = headers.provider();
 		// Если провайдер контейнера установлен - формируем псевдо-заголовки (RFC 9113 §8.3)
 		if(provider != nullptr){
 			/**
