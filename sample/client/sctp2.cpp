@@ -297,13 +297,6 @@ int32_t main(int32_t argc, char * argv[]){
 	tls::coder_t tls(&fmk, &log);
 	// Регистрируем объект транспортного уровня безопасности
 	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::UDP);
-	// Выполняем подписку на SCTP события
-	sctp.eventsSubscribe(eid, {
-		net::sctp::event_type_t::ASSOC_CHANGE,
-		net::sctp::event_type_t::SHUTDOWN_EVENT,
-		net::sctp::event_type_t::SEND_FAILED_EVENT,
-		net::sctp::event_type_t::REMOTE_ERROR
-	});
 	// Устанавливаем ALPN протоколы TLS
 	tls.alpn(cts, {
 		{0,"http/1.1"},
@@ -349,6 +342,13 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " Successfully set event options!" << endl;
 	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
+	// Выполняем подписку на SCTP события
+	sctp.eventsSubscribe(eid, {
+		net::sctp::event_type_t::ASSOC_CHANGE,
+		net::sctp::event_type_t::SHUTDOWN_EVENT,
+		net::sctp::event_type_t::SEND_FAILED_EVENT,
+		net::sctp::event_type_t::REMOTE_ERROR
+	});
 	// Устанавливаем порт и целевой хост для клиента
 	if(client.setTarget("127.0.0.1") && client.setTargetPort(3333)){
 		// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
