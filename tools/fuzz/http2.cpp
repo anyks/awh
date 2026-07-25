@@ -21,6 +21,7 @@
 #include <random>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <cstdint>
 #include <algorithm>
 
@@ -537,6 +538,57 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					promise.emplace_back(":authority", "example.com");
 					// Отправляем анонс server push
 					parser->sendPushPromise(assoc, promise);
+				}
+				// Изредка выдаём тело второго потока pull-источником данных
+				if((rng() % 3) == 0){
+					// Выделяем идентификатор второго собственного потока
+					const uint32_t pull = parser->nextStreamId();
+					// Если идентификатор выделен
+					if(pull != 0){
+						// Отправляем блок заголовков второго потока
+						parser->sendHeaders(pull, fields, false);
+						// Остаток тела, выдаваемого источником
+						shared_ptr <size_t> rest(new size_t(1 + (rng() % 20000)));
+						/**
+						 * Назначаем pull-источник данных тела: источник вызывается для живого
+						 * объекта потока, поэтому его закрытие и сброс парсера прямо изнутри -
+						 * отдельный класс реентерабельности
+						 */
+						parser->dataSource(pull, [&, rest](const uint32_t id, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+							// Изредка приложение сбрасывает поток прямо из источника
+							if((rng() % 16) == 0){
+								// Сбрасываем собственный поток
+								parser->sendRstStream(id, parser_http2_t::error_t::CANCEL);
+								// Помечаем достижение конца тела
+								eof = true;
+								// Данных нет
+								return 0;
+							}
+							// Изредка приложение сбрасывает состояние соединения прямо из источника
+							if((rng() % 64) == 0){
+								// Выполняем сброс состояния соединения
+								parser->reset();
+								// Помечаем достижение конца тела
+								eof = true;
+								// Данных нет
+								return 0;
+							}
+							// Изредка источник нарушает контракт, объявляя больше записанного
+							if((rng() % 128) == 0)
+								// Выводим заведомо недопустимое число записанных байт
+								return static_cast <int64_t> (cap + 1);
+							// Вычисляем размер очередной порции тела
+							const size_t chunk = ::min(cap, * rest);
+							// Заполняем очередную порцию тела
+							::memset(buffer, 'p', chunk);
+							// Уменьшаем остаток тела
+							(* rest) -= chunk;
+							// Помечаем достижение конца тела
+							eof = ((* rest) == 0);
+							// Выводим число записанных байт
+							return static_cast <int64_t> (chunk);
+						});
+					}
 				}
 				// Освобождаем половину накопленных исходящих байт (pull-модель)
 				parser->consumePending(parser->pending().size() / 2);

@@ -1756,8 +1756,8 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			this->_flags.goawayReceived = true;
 			// Уведомляем о полученном GOAWAY
 			this->fireGoaway(goaway.lastStreamId, goaway.code, goaway.debugData);
-			// Очищаем снимок идентификаторов потоков
-			this->_transfer.pumpIds.clear();
+			// Очищаем снимок идентификаторов закрываемых потоков
+			this->_transfer.closeIds.clear();
 			/**
 			 * Собираем наши потоки с идентификатором выше объявленного: пир их не обработал
 			 * и уже не обработает (RFC 9113 §6.8), поэтому их можно безопасно повторить
@@ -1767,14 +1767,19 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				// Если поток инициирован нами и пиром не обработан
 				if(!this->peerInitiated(item.first) && (item.first > goaway.lastStreamId))
 					// Добавляем идентификатор потока в снимок
-					this->_transfer.pumpIds.push_back(item.first);
+					this->_transfer.closeIds.push_back(item.first);
 			}
 			// Запоминаем поколение состояния соединения перед закрытием потоков
 			const uint64_t epoch = this->_epoch;
 			/**
-			 * Выполняем закрытие всех необработанных пиром потоков
+			 * Выполняем закрытие всех необработанных пиром потоков. Перебор идёт по индексу,
+			 * а не итератором: пользовательская функция обратного вызова закрытия работает
+			 * с живым объектом парсера, и любое перевыделение снимка оставило бы висячие
+			 * итераторы прямо посреди перебора
 			 */
-			for(const uint32_t sid : this->_transfer.pumpIds){
+			for(size_t i = 0; i < this->_transfer.closeIds.size(); i++){
+				// Получаем идентификатор закрываемого потока
+				const uint32_t sid = this->_transfer.closeIds[i];
 				// Закрываем поток с кодом отклонения (запрос можно повторить)
 				this->closeStream(sid, error_t::REFUSED_STREAM);
 				// Если функция обратного вызова закрытия сбросила парсер - снимок недействителен
@@ -2525,6 +2530,13 @@ void awh::http::Parser_HTTP2::closeStream(const uint32_t id, const error_t code)
 	if(this->_transfer.streams.find(id) == this->_transfer.streams.end())
 		// Выходим из метода
 		return;
+	/**
+	 * Удаляем поток из карты ДО уведомления: пользовательская функция обратного вызова
+	 * вправе закрыть связанный поток, а тот - снова наш (парные потоки туннеля), и пока
+	 * запись остаётся в карте, проверка идемпотентности пропускает повторное закрытие -
+	 * уведомления начинают вызывать друг друга до исчерпания стека
+	 */
+	this->eraseStream(id);
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.close != nullptr){
 		/**
@@ -2552,8 +2564,6 @@ void awh::http::Parser_HTTP2::closeStream(const uint32_t id, const error_t code)
 			#endif
 		}
 	}
-	// Удаляем поток из карты активных потоков
-	this->eraseStream(id);
 }
 /**
  * @brief Метод вызова функции обратного вызова обработки фазы приёма сообщения потока
@@ -3137,26 +3147,36 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 	if((stream.source == nullptr) || stream.sourceEof)
 		// Выходим из метода
 		return;
+	// Запоминаем идентификатор потока
+	const uint32_t id = stream.id;
+	// Указатель на объект потока (источник данных вправе закрыть поток)
+	stream_t * sp = &stream;
 	/**
 	 * Держим буфер наполненным до high-water, запрашивая источник данных порциями
 	 */
-	while((stream.pending() < this->_transfer.sendHighWater) && !stream.sourceEof){
+	while((sp->pending() < this->_transfer.sendHighWater) && !sp->sourceEof){
 		// Вычисляем ёмкость запрашиваемой порции (не больше одного DATA-фрейма пира)
-		const size_t cap = ::min(static_cast <size_t> (this->_remote.maxFrameSize), this->_transfer.sendHighWater - stream.pending());
+		const size_t cap = ::min(static_cast <size_t> (this->_remote.maxFrameSize), this->_transfer.sendHighWater - sp->pending());
 		// Запоминаем текущий размер буфера отправки
-		const size_t offset = stream.sendBuffer.size();
+		const size_t offset = sp->sendBuffer.size();
 		// Резервируем место под порцию данных прямо в буфере отправки (без промежуточной копии)
-		stream.sendBuffer.resize(offset + cap);
+		sp->sendBuffer.resize(offset + cap);
 		// Флаг достижения конца тела
 		bool eof = false;
 		// Результат запроса данных у источника
 		int64_t bytes = -1;
 		/**
+		 * Забираем источник данных на время вызова: приложение вправе сбросить поток
+		 * прямо из источника, а уничтожение вызываемого объекта под собственным вызовом
+		 * недопустимо
+		 */
+		data_source_callback_t source = ::move(sp->source);
+		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Запрашиваем порцию данных у источника (источник пишет напрямую в буфер отправки)
-			bytes = stream.source(stream.id, reinterpret_cast <uint8_t *> (&stream.sendBuffer[offset]), cap, eof);
+			bytes = source(id, reinterpret_cast <uint8_t *> (&sp->sendBuffer[offset]), cap, eof);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -3166,7 +3186,7 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(stream.id), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3175,12 +3195,20 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
+		// Перечитываем указатель на поток (источник данных мог его закрыть либо сбросить парсер)
+		sp = this->findStream(id);
+		// Если поток удалён - буфер отправки уничтожен вместе с ним, дозагружать некуда
+		if(sp == nullptr)
+			// Выходим из метода
+			return;
+		// Возвращаем источник данных потоку, если из самого источника не назначен новый
+		if(sp->source == nullptr)
+			// Возвращаем источник данных обратно потоку
+			sp->source = ::move(source);
 		// Обрезаем буфер отправки до фактически записанного источником размера
-		stream.sendBuffer.resize(offset + static_cast <size_t> (((bytes > 0) && (bytes <= static_cast <int64_t> (cap))) ? bytes : 0));
+		sp->sendBuffer.resize(offset + static_cast <size_t> (((bytes > 0) && (bytes <= static_cast <int64_t> (cap))) ? bytes : 0));
 		// Если источник сообщил об ошибке данных либо нарушил контракт (записал больше ёмкости)
 		if((bytes < 0) || (bytes > static_cast <int64_t> (cap))){
-			// Запоминаем идентификатор потока
-			const uint32_t id = stream.id;
 			// Сбрасываем поток с кодом INTERNAL_ERROR
 			h2::frame::serialize::rstStream(this->_buffer.output, id, error_t::INTERNAL_ERROR);
 			// Закрываем поток с вызовом функции обратного вызова закрытия (ссылка на поток недействительна)
@@ -3191,9 +3219,9 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 		// Если достигнут конец тела источника
 		if(eof){
 			// Помечаем что конец тела источника достигнут
-			stream.sourceEof = true;
+			sp->sourceEof = true;
 			// Помечаем что на последнем фрагменте нужно выставить END_STREAM
-			stream.endStreamPending = true;
+			sp->endStreamPending = true;
 		}
 		// Если источник временно без данных - прерываем дозагрузку
 		if((bytes == 0) && !eof)
@@ -3746,6 +3774,8 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 	this->_transfer.streams.clear();
 	// Очищаем снимок идентификаторов потоков
 	this->_transfer.pumpIds.clear();
+	// Очищаем снимок идентификаторов закрываемых потоков
+	this->_transfer.closeIds.clear();
 	/**
 	 * Очищаем список декодированных заголовков: его представления ссылаются
 	 * в арену пересоздаваемого декодера и после сброса недействительны

@@ -1136,6 +1136,77 @@ TEST_F(ParserHttp2Fixture, DataSourceTest){
 }
 
 /**
+ * @brief Метод проверки сброса потока прямо из pull-источника данных тела
+ *
+ * @details Источник вызывается для живого объекта потока, поэтому его закрытие
+ *          изнутри обязано прекращать дозагрузку, а не продолжать работу
+ *          с уничтоженным буфером отправки
+ *
+ */
+TEST_F(ParserHttp2Fixture, DataSourceClosesStreamTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщики событий на все функции обратного вызова парсеров
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/download");
+	// Отправляем заголовки запроса с завершением потока
+	client->sendHeaders(sid, fields, true);
+	// Формируем заголовки ответа сервера
+	std::vector <h2::hpack::field_t> response;
+	// Дописываем псевдо-заголовок статуса ответа
+	response.emplace_back(":status", "200");
+	// Отправляем заголовки ответа (тело выдаст pull-источник)
+	server->sendHeaders(sid, response, false);
+	// Счётчик обращений к источнику данных
+	size_t calls = 0;
+	// Назначаем pull-источник данных тела, сбрасывающий поток изнутри
+	server->dataSource(sid, [&](const uint32_t id, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+		// Считаем обращения к источнику данных
+		calls++;
+		// Приложение решило прервать передачу прямо из источника
+		server->sendRstStream(id, parser_http2_t::error_t::CANCEL);
+		// Помечаем достижение конца тела
+		eof = true;
+		// Не используемые параметры
+		(void) buffer;
+		(void) cap;
+		// Данных нет
+		return 0;
+	});
+	// Проверяем что источник вызван ровно один раз (дозагрузка прекращена)
+	ASSERT_EQ(calls, 1u);
+	// Проверяем что поток сервера закрыт
+	ASSERT_EQ(serverEvents.closes.size(), 1u);
+	// Проверяем код закрытия потока сервера
+	ASSERT_EQ(serverEvents.closes.front().second, parser_http2_t::error_t::CANCEL);
+	// Проверяем что клиент получил сброс потока
+	ASSERT_EQ(clientEvents.closes.size(), 1u);
+	// Проверяем что соединение сервера осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что соединение клиента осталось живо
+	ASSERT_EQ(client->status(), parser_t::status_t::PARTIAL);
+}
+
+/**
  * @brief Метод проверки server push (PUSH_PROMISE)
  *
  */
@@ -2411,6 +2482,156 @@ TEST_F(ParserHttp2Fixture, GoawayRefusesUnprocessedStreamsTest){
 	client->sendHeaders(third, fields, false);
 	// Проверяем что поток не был открыт
 	ASSERT_EQ(serverEvents.begins.size(), 2u);
+}
+
+/**
+ * @brief Метод проверки отправки данных из функции обратного вызова закрытия по GOAWAY
+ *
+ * @details Отправка реентрантно запускает прокачку потоков, а та переиспользует
+ *          собственный снимок идентификаторов: перебор закрываемых потоков не
+ *          должен от этого разъезжаться
+ *
+ */
+TEST_F(ParserHttp2Fixture, GoawaySendFromCloseCallbackTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщики событий на все функции обратного вызова парсеров
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "POST");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/");
+	// Идентификаторы открытых потоков клиента
+	std::vector <uint32_t> ids;
+	/**
+	 * Открываем набор потоков: снимок закрываемых потоков должен быть заметно
+	 * меньше набора всех потоков, иначе перезаполнение чужого снимка незаметно
+	 */
+	for(size_t i = 0; i < 12; i++){
+		// Выделяем идентификатор очередного потока клиента
+		ids.push_back(client->nextStreamId());
+		// Открываем очередной поток
+		client->sendHeaders(ids.back(), fields, false);
+	}
+	// Признак первой отправки из функции обратного вызова
+	bool once = true;
+	// Устанавливаем функцию обратного вызова закрытия потока
+	client->on(parser_http2_t::close_callback_t([&](const uint32_t sid, const parser_http2_t::error_t code) noexcept {
+		// Собираем событие закрытия потока
+		clientEvents.closes.emplace_back(sid, code);
+		// Если отправка ещё не выполнялась
+		if(once){
+			// Сбрасываем признак первой отправки
+			once = false;
+			// Отправляем тело в первый поток (реентерабельная прокачка отправки)
+			client->sendData(ids.front(), "hello", 5, false);
+		}
+	}));
+	/**
+	 * Сервер завершает соединение, объявив обработанными все потоки кроме двух последних
+	 */
+	const uint8_t goaway[] = {
+		0x00, 0x00, 0x08, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, static_cast <uint8_t> (ids[9]),
+		0x00, 0x00, 0x00, 0x00
+	};
+	// Подаём клиенту кадр завершения соединения
+	client->parse(goaway, sizeof(goaway));
+	// Проверяем что закрыты ровно два необработанных потока
+	ASSERT_EQ(clientEvents.closes.size(), 2u);
+	// Собираем идентификаторы закрытых потоков (порядок задаёт карта потоков)
+	std::vector <uint32_t> closed;
+	/**
+	 * Выполняем перебор всех событий закрытия потоков
+	 */
+	for(const auto & item : clientEvents.closes){
+		// Собираем идентификатор закрытого потока
+		closed.push_back(item.first);
+		// Проверяем код закрытия потока (запрос можно повторить на новом соединении)
+		ASSERT_EQ(item.second, parser_http2_t::error_t::REFUSED_STREAM);
+	}
+	// Упорядочиваем идентификаторы закрытых потоков
+	std::sort(closed.begin(), closed.end());
+	// Проверяем идентификатор первого закрытого потока
+	ASSERT_EQ(closed[0], ids[10]);
+	// Проверяем идентификатор второго закрытого потока
+	ASSERT_EQ(closed[1], ids[11]);
+}
+
+/**
+ * @brief Метод проверки закрытия парного потока из функции обратного вызова закрытия
+ *
+ * @details Закрытие потока обязано быть однократным: пока запись остаётся в карте
+ *          потоков, взаимные сбросы связанных потоков вызывали бы друг друга
+ *          до исчерпания стека
+ *
+ */
+TEST_F(ParserHttp2Fixture, CloseFromCloseCallbackTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщики событий на все функции обратного вызова парсеров
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/");
+	// Выделяем идентификатор первого потока клиента
+	const uint32_t first = client->nextStreamId();
+	// Открываем первый поток
+	client->sendHeaders(first, fields, false);
+	// Выделяем идентификатор второго потока клиента
+	const uint32_t second = client->nextStreamId();
+	// Открываем второй поток
+	client->sendHeaders(second, fields, false);
+	// Глубина вложенности уведомлений о закрытии
+	size_t depth = 0;
+	// Устанавливаем функцию обратного вызова закрытия потока
+	client->on(parser_http2_t::close_callback_t([&](const uint32_t sid, const parser_http2_t::error_t code) noexcept {
+		// Собираем событие закрытия потока
+		clientEvents.closes.emplace_back(sid, code);
+		// Если вложенность вышла за пределы разумного - прекращаем сбросы
+		if(++depth > 4)
+			// Выходим из функции обратного вызова
+			return;
+		// Сбрасываем парный поток
+		client->sendRstStream(((sid == first) ? second : first), parser_http2_t::error_t::CANCEL);
+	}));
+	// Сбрасываем первый поток
+	client->sendRstStream(first, parser_http2_t::error_t::CANCEL);
+	// Проверяем что каждый поток закрыт ровно один раз
+	ASSERT_EQ(clientEvents.closes.size(), 2u);
+	// Проверяем идентификатор первого закрытого потока
+	ASSERT_EQ(clientEvents.closes[0].first, first);
+	// Проверяем идентификатор второго закрытого потока
+	ASSERT_EQ(clientEvents.closes[1].first, second);
 }
 
 /**
