@@ -147,20 +147,20 @@ TEST_F(IoFixture, RebuildServerListeningTest){
 	ASSERT_TRUE(this->_io->setSourcePort(eid, listenPort));
 	// Устанавливаем опции переиспользования адреса и порта
 	ASSERT_TRUE(this->_io->setOptions(eid, static_cast <uint16_t> (awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT)));
-	// Выполняем полный подъём сервера
+	// Фиксируем событие (привязка дескриптора)
 	ASSERT_TRUE(this->_io->commit(eid));
 	// Переводим событие в режим прослушивания
+	// (стадию launch, включающую фильтр чтения, не выполняем: ей нужен запущенный
+	//  цикл событий - поведение уровня цикла проверяется прогоном кластера, не здесь)
 	ASSERT_TRUE(this->_io->listen(eid, 128));
-	// Запускаем работу события
-	ASSERT_TRUE(this->_io->launch(eid));
-	// Проверяем, что сервер в режиме прослушивания
-	ASSERT_EQ(awh::event::status_t::LISTENING, this->_io->status(eid));
+	// Проверяем, что событие переведено в режим прослушивания
+	ASSERT_EQ(awh::event::status_t::SUCCESS, this->_io->status(eid));
 	// Запоминаем привязанный порт
 	const uint16_t boundPort = this->_io->getSourcePort(eid);
 	// Перестраиваем дескриптор - статус и порт должны сохраниться
 	ASSERT_TRUE(this->_io->rebuild(eid));
 	// Проверяем, что событие вновь в режиме прослушивания
-	ASSERT_EQ(awh::event::status_t::LISTENING, this->_io->status(eid));
+	ASSERT_EQ(awh::event::status_t::SUCCESS, this->_io->status(eid));
 	// Проверяем, что привязанный порт сохранился
 	ASSERT_EQ(boundPort, this->_io->getSourcePort(eid));
 	// Проверяем, что опция переиспользования порта сохранилась
