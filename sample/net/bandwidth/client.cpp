@@ -12,9 +12,6 @@
  * @copyright: Copyright © 2026
  */
 
-#include <iostream>
-#include <cinttypes>
-
 /**
  * Подключаем заголовочный файл проекта
  */
