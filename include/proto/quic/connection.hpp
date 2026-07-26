@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл конечного автомата соединения QUIC — класс quic::Connection,
+ *        управляющий пространствами номеров пакетов, потоками приложения, контролем перегрузки и потока, оценкой RTT,
+ *        обнаружением потерь, миграцией пути и завершением соединения (RFC 9000, RFC 9002)
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_PROTO_QUIC_CONNECTION__
@@ -67,6 +72,7 @@ namespace awh {
 		 *          передаются через read(), исходящие извлекаются через write(),
 		 *          текущее время передаётся параметром, дедлайн ближайшего события
 		 *          отдаёт timeout(), просроченные таймеры обрабатывает tick().
+		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Connection {
 			public:
@@ -98,6 +104,7 @@ namespace awh {
 				 * @note Длина одинакова у всех выдаваемых идентификаторов: пакеты
 				 *       с коротким заголовком поля длины не несут, и разобрать
 				 *       идентификатор получателя можно только зная её заранее
+				 *
 				 */
 				static constexpr size_t LOCAL_CID_SIZE = 8;
 				/**
@@ -107,6 +114,7 @@ namespace awh {
 				 *       IPv6 и UDP: на пути с IPv4-заголовком запас лишь увеличивается.
 				 *       Датаграмма сверх этого размера не отправляется никогда,
 				 *       включая зонды размера пути
+				 *
 				 */
 				static constexpr size_t MAX_PROBE_SIZE = 1452;
 			private:
@@ -618,6 +626,7 @@ namespace awh {
 				 *
 				 * @details Буферы удерживают ёмкость между вызовами: выделение памяти
 				 *          на каждую датаграмму обходилось бы дороже самой обработки
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Buffers {
 					// Буфер копии принимаемой датаграммы для снятия защиты заголовков
@@ -702,6 +711,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param endpoint роль локального эндпоинта на соединении
+					 *
 					 */
 					explicit Amplify(const endpoint_t endpoint) noexcept;
 				} amplify_t;
@@ -747,6 +757,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param endpoint роль локального эндпоинта на соединении
+					 *
 					 */
 					explicit Core(const endpoint_t endpoint) noexcept;
 				} core_t;
@@ -996,6 +1007,7 @@ namespace awh {
 					 * @param ctx      идентификатор шаблона контекста безопасности
 					 * @param coder    объект кодера транспортной безопасности
 					 * @param log      объект для работы с логами
+					 *
 					 */
 					explicit Crypto(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept;
 				} crypto_t;
@@ -1070,6 +1082,7 @@ namespace awh {
 				 *
 				 * @param level уровень шифрования
 				 * @return      пространство номеров пакетов
+				 *
 				 */
 				space_t space(const level_t level) const noexcept;
 				/**
@@ -1077,6 +1090,7 @@ namespace awh {
 				 *
 				 * @param space пространство номеров пакетов
 				 * @param pn    принятый номер пакета
+				 *
 				 */
 				void record(const space_t space, const uint64_t pn) noexcept;
 				/**
@@ -1085,6 +1099,7 @@ namespace awh {
 				 * @param space пространство номеров пакетов
 				 * @param pn    принятый номер пакета
 				 * @return      результат проверки (true - пакет уже был принят)
+				 *
 				 */
 				bool duplicate(const space_t space, const uint64_t pn) const noexcept;
 			private:
@@ -1097,6 +1112,7 @@ namespace awh {
 				 * @brief Метод постановки завершения соединения с ошибкой транспорта в очередь
 				 *
 				 * @param error код ошибки транспорта
+				 *
 				 */
 				void fail(const error_t error) noexcept;
 			private:
@@ -1104,6 +1120,7 @@ namespace awh {
 				 * @brief Метод сброса ключей уровня вместе с состоянием восстановления потерь (RFC 9001 §4.9)
 				 *
 				 * @param level уровень шифрования
+				 *
 				 */
 				void discard(const level_t level) noexcept;
 				/**
@@ -1111,6 +1128,7 @@ namespace awh {
 				 *
 				 * @param sample измеренная задержка приёма-передачи
 				 * @param delay  задержка подтверждения удалённого эндпоинта
+				 *
 				 */
 				void rtt(const uint64_t sample, const uint64_t delay) noexcept;
 				/**
@@ -1118,6 +1136,7 @@ namespace awh {
 				 *
 				 * @param space  пространство номеров пакетов
 				 * @param packet учётная запись потерянного либо зондируемого пакета
+				 *
 				 */
 				void requeue(const space_t space, const sent_t & packet) noexcept;
 				/**
@@ -1131,6 +1150,7 @@ namespace awh {
 				 * @param frame  разобранный фрейм подтверждения со счётчиками маркировок
 				 * @param marked количество впервые подтверждённых помеченных пакетов
 				 * @return       результат обнаружения прироста счётчика перегрузки
+				 *
 				 */
 				bool validate(const space_t space, const frame::ack_t & frame, const uint64_t marked) noexcept;
 				/**
@@ -1141,6 +1161,7 @@ namespace awh {
 				 *       не будут, поэтому их содержимое возвращается в очереди отправки
 				 *       немедленно, не дожидаясь детекта потерь. Событием перегрузки
 				 *       отказ не является - пакеты пути не теряли
+				 *
 				 */
 				void restore() noexcept;
 				/**
@@ -1149,6 +1170,7 @@ namespace awh {
 				 * @note Поиск ведётся делением интервала между подтверждённым размером
 				 *       и верхней границей: подтверждённый зонд поднимает нижнюю
 				 *       границу, потерянный - опускает верхнюю
+				 *
 				 */
 				void discover() noexcept;
 				/**
@@ -1158,6 +1180,7 @@ namespace awh {
 				 *       размера. По исчерпании предела проб подтверждённый размер пути
 				 *       опускается к обязательному минимуму, а поиск начинается заново:
 				 *       иначе передача навсегда встаёт на переставшем проходить размере
+				 *
 				 */
 				void deflate() noexcept;
 				/**
@@ -1170,12 +1193,14 @@ namespace awh {
 				 * @param ackedTimes времена отправки пакетов, подтверждённых текущим фреймом
 				 *                    ACK (по возрастанию), для разрыва периода устойчивой
 				 *                    перегрузки на подтверждении внутри серии потерь
+				 *
 				 */
 				void detect(const space_t space, const vector <uint64_t> & ackedTimes = {}) noexcept;
 				/**
 				 * @brief Метод постановки зондирующих данных пространства в очередь (RFC 9002 §6.2.4)
 				 *
 				 * @param space пространство номеров пакетов
+				 *
 				 */
 				void probe(const space_t space) noexcept;
 				/**
@@ -1183,6 +1208,7 @@ namespace awh {
 				 *
 				 * @param space пространство номеров пакетов
 				 * @return     интервал таймера PTO в миллисекундах
+				 *
 				 */
 				uint64_t interval(const space_t space) const noexcept;
 				/**
@@ -1190,18 +1216,21 @@ namespace awh {
 				 *
 				 * @param space пространство номеров пакетов
 				 * @return      дедлайн таймера PTO в миллисекундах (0 - таймер не взведён)
+				 *
 				 */
 				uint64_t deadline(const space_t space) const noexcept;
 				/**
 				 * @brief Метод вычисления длительности периода устойчивой перегрузки (RFC 9002 §7.6.1)
 				 *
 				 * @return длительность периода устойчивой перегрузки в миллисекундах
+				 *
 				 */
 				uint64_t persistence() const noexcept;
 				/**
 				 * @brief Метод вычисления дедлайна таймаута простоя соединения (RFC 9000 §10.1)
 				 *
 				 * @return дедлайн таймаута простоя в миллисекундах (0 - таймаут не согласован)
+				 *
 				 */
 				uint64_t idle() const noexcept;
 				/**
@@ -1209,6 +1238,7 @@ namespace awh {
 				 *
 				 * @param stream состояние потока
 				 * @param target учтённое смещение данных потока в октетах
+				 *
 				 */
 				void consume(stream_data_t & stream, const uint64_t target) noexcept;
 				/**
@@ -1221,6 +1251,7 @@ namespace awh {
 				 * @param data буфер принятой датаграммы
 				 * @param size размер принятой датаграммы
 				 * @return     результат обнаружения (true - датаграмма является сбросом)
+				 *
 				 */
 				bool stateless(const uint8_t * data, const size_t size) const noexcept;
 				/**
@@ -1231,6 +1262,7 @@ namespace awh {
 				 *       адреса удалённого эндпоинта
 				 *
 				 * @return ключ сервера для кэша билетов возобновления
+				 *
 				 */
 				string sessionKey() const noexcept;
 				/**
@@ -1239,6 +1271,7 @@ namespace awh {
 				 * @note Билет присылается сервером уже после установления соединения;
 				 *       сохранение выполняется однократно и делает возобновление сессии
 				 *       прозрачным для вызывающего кода
+				 *
 				 */
 				void persist() noexcept;
 				/**
@@ -1252,6 +1285,7 @@ namespace awh {
 				 * @param odcid  исходный DCID первого пакета Initial клиента (пустой для фрейма NEW_TOKEN)
 				 * @param output сформированный токен проверки адреса
 				 * @return       результат формирования (false - ошибка генератора либо кода аутентичности)
+				 *
 				 */
 				bool token(const uint8_t mark, const cid_t & odcid, string & output) const noexcept;
 				/**
@@ -1261,6 +1295,7 @@ namespace awh {
 				 * @param odcid   восстановленный исходный DCID первого пакета Initial клиента
 				 * @param retried признак выдачи токена пакетом Retry, а не фреймом NEW_TOKEN
 				 * @return        результат проверки (true - токен выдан этому адресу и не истёк)
+				 *
 				 */
 				bool validate(string_view token, cid_t & odcid, bool & retried) const noexcept;
 				/**
@@ -1270,6 +1305,7 @@ namespace awh {
 				 *       отправить более трёхкратного объёма принятых от него октетов
 				 *
 				 * @return доступный к отправке объём данных в октетах
+				 *
 				 */
 				size_t allowance() const noexcept;
 				/**
@@ -1280,6 +1316,7 @@ namespace awh {
 				 *       ни один пакет в него не помещается
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool stalled() const noexcept;
 				/**
@@ -1288,6 +1325,7 @@ namespace awh {
 				 * @note Поток удаляется только когда обе стороны достигли терминального
 				 *       состояния и на него не ссылаются очередь ретрансмиссии и учётные
 				 *       записи неподтверждённых пакетов
+				 *
 				 */
 				void collect() noexcept;
 			private:
@@ -1296,6 +1334,7 @@ namespace awh {
 				 *
 				 * @note Вызывается после подтверждения хендшейка - ключи следующей
 				 *       фазы выводятся заранее для приёма обновления от пира
+				 *
 				 */
 				void prepare() noexcept;
 				/**
@@ -1303,6 +1342,7 @@ namespace awh {
 				 *
 				 * @note Текущие ключи чтения сохраняются для отставших пакетов
 				 *       предыдущей фазы, выводятся ключи новой следующей фазы
+				 *
 				 */
 				void promote() noexcept;
 			private:
@@ -1310,12 +1350,14 @@ namespace awh {
 				 * @brief Метод учёта подтверждённого пакета в congestion control (RFC 9002 §7.3.1)
 				 *
 				 * @param packet учётная запись подтверждённого пакета
+				 *
 				 */
 				void acked(const sent_t & packet) noexcept;
 				/**
 				 * @brief Метод обработки события перегрузки при детекте потерь (RFC 9002 §7.3.2)
 				 *
 				 * @param time время отправки наиболее позднего потерянного пакета
+				 *
 				 */
 				void congestion(const uint64_t time) noexcept;
 			private:
@@ -1324,6 +1366,7 @@ namespace awh {
 				 *
 				 * @note Вызывается после установления соединения - количество
 				 *       ограничено лимитом active_connection_id_limit удалённого эндпоинта
+				 *
 				 */
 				void issue() noexcept;
 				/**
@@ -1335,6 +1378,7 @@ namespace awh {
 				 *
 				 * @param seq порядковый номер идентификатора соединения
 				 * @return    результат проверки
+				 *
 				 */
 				bool reserved(const uint64_t seq) const noexcept;
 			private:
@@ -1343,6 +1387,7 @@ namespace awh {
 				 *
 				 * @param sid идентификатор потока
 				 * @return    результат проверки (true - отправка допустима)
+				 *
 				 */
 				bool sendable(const uint64_t sid) const noexcept;
 				/**
@@ -1350,6 +1395,7 @@ namespace awh {
 				 *
 				 * @param sid идентификатор потока
 				 * @return    результат проверки (true - приём допустим)
+				 *
 				 */
 				bool receivable(const uint64_t sid) const noexcept;
 				/**
@@ -1357,6 +1403,7 @@ namespace awh {
 				 *
 				 * @param sid идентификатор потока
 				 * @return    начальный лимит приёма потока в октетах
+				 *
 				 */
 				uint64_t rxWindow(const uint64_t sid) const noexcept;
 				/**
@@ -1364,6 +1411,7 @@ namespace awh {
 				 *
 				 * @param sid идентификатор потока
 				 * @return    начальный лимит отправки потока в октетах
+				 *
 				 */
 				uint64_t txWindow(const uint64_t sid) const noexcept;
 				/**
@@ -1375,6 +1423,7 @@ namespace awh {
 				 * @param sid   идентификатор потока
 				 * @param error код ошибки транспорта
 				 * @return      состояние потока (nullptr - нарушение протокола)
+				 *
 				 */
 				stream_data_t * accept(const uint64_t sid, error_t & error) noexcept;
 				/**
@@ -1389,6 +1438,7 @@ namespace awh {
 				 *
 				 * @param sid идентификатор потока
 				 * @return    результат проверки (true - поток был открыт и уже собран)
+				 *
 				 */
 				bool closed(const uint64_t sid) const noexcept;
 				/**
@@ -1396,12 +1446,14 @@ namespace awh {
 				 *
 				 * @param frame принятый фрейм данных потока приложения
 				 * @return      результат обработки (OK/ERROR)
+				 *
 				 */
 				status_t inputStream(const frame::stream_t & frame) noexcept;
 				/**
 				 * @brief Метод применения транспортных параметров удалённого эндпоинта после хендшейка
 				 *
 				 * @return результат применения (true - параметры применены)
+				 *
 				 */
 				bool established() noexcept;
 				/**
@@ -1409,6 +1461,7 @@ namespace awh {
 				 *
 				 * @param sid    идентификатор потока
 				 * @param stream состояние потока
+				 *
 				 */
 				void credit(const uint64_t sid, stream_data_t & stream) noexcept;
 				/**
@@ -1416,6 +1469,7 @@ namespace awh {
 				 *
 				 * @param stream состояние потока
 				 * @return       результат проверки (true - есть что выдать приложению)
+				 *
 				 */
 				bool ready(const stream_data_t & stream) const noexcept;
 				/**
@@ -1427,6 +1481,7 @@ namespace awh {
 				 *
 				 * @param sid    идентификатор потока
 				 * @param stream состояние потока
+				 *
 				 */
 				void notify(const uint64_t sid, stream_data_t & stream) noexcept;
 			private:
@@ -1437,6 +1492,7 @@ namespace awh {
 				 * @param offset смещение данных в потоке криптографического хендшейка
 				 * @param data   данные CRYPTO-фрейма
 				 * @return       результат обработки (OK/ERROR)
+				 *
 				 */
 				status_t input(const level_t level, const uint64_t offset, string_view data) noexcept;
 				/**
@@ -1447,6 +1503,7 @@ namespace awh {
 				 * @param size        размер расшифрованной нагрузки
 				 * @param nonProbing  признак наличия непробирующего фрейма (RFC 9000 §9.1)
 				 * @return            результат разбора (OK/ERROR)
+				 *
 				 */
 				status_t frames(const level_t level, const uint8_t * data, const size_t size, bool & nonProbing) noexcept;
 			private:
@@ -1460,6 +1517,7 @@ namespace awh {
 				 * @param elicit  флаг наличия ack-eliciting фреймов в нагрузке
 				 * @param limited флаг исчерпанного окна перегрузки (только подтверждения)
 				 * @return        результат сборки (true - нагрузка не пустая)
+				 *
 				 */
 				bool payload(const level_t level, const size_t budget, string & output, sent_t & meta, bool & elicit, const bool limited) noexcept;
 				/**
@@ -1470,6 +1528,7 @@ namespace awh {
 				 * @param pnSize размер кодирования номера пакета в октетах
 				 * @param dcid   идентификатор соединения получателя пакета
 				 * @return       размер заголовка пакета в октетах
+				 *
 				 */
 				size_t headerSize(const level_t level, const uint64_t length, const size_t pnSize, const cid_t & dcid) const noexcept;
 				/**
@@ -1480,6 +1539,7 @@ namespace awh {
 				 * @param payload нагрузка пакета (фреймы)
 				 * @param dcid    идентификатор соединения получателя пакета
 				 * @return        результат сборки (false - ошибка криптографической библиотеки)
+				 *
 				 */
 				bool seal(string & output, const level_t level, string_view payload, const cid_t & dcid) noexcept;
 			public:
@@ -1490,6 +1550,7 @@ namespace awh {
 				 *       транспортной безопасности, из которого создано соединение
 				 *
 				 * @return согласованный ALPN-протокол (пустое название - согласование не выполнено)
+				 *
 				 */
 				tls::coder_t::alpn_t alpn() const noexcept;
 			public:
@@ -1502,6 +1563,7 @@ namespace awh {
 				 *       сервером, не выполняя полного хендшейка
 				 *
 				 * @return сериализованная сессия (пусто - сессия недоступна)
+				 *
 				 */
 				string session() const noexcept;
 				/**
@@ -1511,12 +1573,14 @@ namespace awh {
 				 *
 				 * @param session сериализованная сессия
 				 * @return        результат установки
+				 *
 				 */
 				bool session(string_view session) noexcept;
 				/**
 				 * @brief Метод проверки принятия ранних данных удалённым узлом (RFC 9001 §4.6.2)
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool early() const noexcept;
 				/**
@@ -1527,6 +1591,7 @@ namespace awh {
 				 *       ранние данные в очередь вовремя (RFC 9001 §4.6)
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool writable() const noexcept;
 			private:
@@ -1539,6 +1604,7 @@ namespace awh {
 				 *       отладкой, иначе поток сообщений забил бы лог
 				 *
 				 * @param reason причина отбрасывания пакета
+				 *
 				 */
 				void drop(const char * reason) const noexcept;
 			public:
@@ -1549,6 +1615,7 @@ namespace awh {
 				 *       original_destination_connection_id) заполняются автоматически
 				 *
 				 * @param params локальные транспортные параметры
+				 *
 				 */
 				void params(const quic::params::params_t & params) noexcept;
 				/**
@@ -1557,6 +1624,7 @@ namespace awh {
 				 * @param params транспортные параметры удалённого узла
 				 * @param error  код ошибки транспорта
 				 * @return       результат извлечения (OK/INCOMPLETE/ERROR)
+				 *
 				 */
 				status_t peer(quic::params::params_t & params, error_t & error) const noexcept;
 			public:
@@ -1572,6 +1640,7 @@ namespace awh {
 				 *
 				 * @param addr структура сетевого адреса удалённого эндпоинта
 				 * @param port порт удалённого эндпоинта
+				 *
 				 */
 				void address(const net::addr_t * addr, const uint16_t port) noexcept;
 				/**
@@ -1583,6 +1652,7 @@ namespace awh {
 				 *       представление пути
 				 *
 				 * @param attr структура атрибутов подключения удалённого эндпоинта
+				 *
 				 */
 				void address(const net::attr_t * attr) noexcept;
 				/**
@@ -1593,6 +1663,7 @@ namespace awh {
 				 *       соединение продолжается только с корректным токеном
 				 *
 				 * @param mode режим проверки адреса клиента
+				 *
 				 */
 				void retry(const bool mode) noexcept;
 				/**
@@ -1603,6 +1674,7 @@ namespace awh {
 				 *       обмен пакетом Retry, сэкономив круг задержки
 				 *
 				 * @param token токен проверки адреса
+				 *
 				 */
 				void token(string_view token) noexcept;
 				/**
@@ -1614,6 +1686,7 @@ namespace awh {
 				 *       сохранения состояния
 				 *
 				 * @param key общий ключ вывода токенов сброса
+				 *
 				 */
 				void resetKey(string_view key) noexcept;
 				/**
@@ -1623,6 +1696,7 @@ namespace awh {
 				 *       установления соединения, поэтому запрашивается по ходу работы
 				 *
 				 * @return токен проверки адреса (пусто - токен не присылался)
+				 *
 				 */
 				const string & token() const noexcept;
 				/**
@@ -1633,6 +1707,7 @@ namespace awh {
 				 *       накладывать далее - см. marking()
 				 *
 				 * @param mode режим маркировки исходящих датаграмм
+				 *
 				 */
 				void ecn(const bool mode) noexcept;
 				/**
@@ -1647,6 +1722,7 @@ namespace awh {
 				 *       следует отключить, а на сервере оставить включённым
 				 *
 				 * @param mode режим следования за миграцией удалённого эндпоинта
+				 *
 				 */
 				void roaming(const bool mode) noexcept;
 				/**
@@ -1657,6 +1733,7 @@ namespace awh {
 				 *       Запрашивается перед отправкой каждой датаграммы
 				 *
 				 * @return маркировка ECN для исходящих датаграмм
+				 *
 				 */
 				event::ecn_t marking() const noexcept;
 			public:
@@ -1668,6 +1745,7 @@ namespace awh {
 				 *       доступна через write()
 				 *
 				 * @return результат начала соединения (OK/ERROR)
+				 *
 				 */
 				status_t connect() noexcept;
 			public:
@@ -1682,6 +1760,7 @@ namespace awh {
 				 * @param size размер входящей UDP-датаграммы
 				 * @param now  текущее время в миллисекундах
 				 * @return     результат обработки (OK/ERROR)
+				 *
 				 */
 				status_t read(const uint8_t * data, const size_t size, const uint64_t now) noexcept;
 				/**
@@ -1697,6 +1776,7 @@ namespace awh {
 				 * @param now  текущее время в миллисекундах
 				 * @param ecn  маркировка ECN заголовка IP-пакета
 				 * @return     результат обработки (OK/ERROR)
+				 *
 				 */
 				status_t read(const uint8_t * data, const size_t size, const uint64_t now, const event::ecn_t ecn) noexcept;
 				/**
@@ -1709,6 +1789,7 @@ namespace awh {
 				 * @param output буфер исходящей UDP-датаграммы (очищается)
 				 * @param now    текущее время в миллисекундах
 				 * @return       результат сборки (true - датаграмма готова к отправке)
+				 *
 				 */
 				bool write(string & output, const uint64_t now) noexcept;
 			public:
@@ -1719,6 +1800,7 @@ namespace awh {
 				 *       истечении вызывает tick(), затем отправляет датаграммы write()
 				 *
 				 * @return дедлайн ближайшего события в миллисекундах (0 - таймер не требуется)
+				 *
 				 */
 				uint64_t timeout() const noexcept;
 				/**
@@ -1728,6 +1810,7 @@ namespace awh {
 				 *       по таймеру PTO - постановка зондирующих данных в очередь
 				 *
 				 * @param now текущее время в миллисекундах
+				 *
 				 */
 				void tick(const uint64_t now) noexcept;
 			public:
@@ -1744,6 +1827,7 @@ namespace awh {
 				 *
 				 * @param unidirectional флаг однонаправленного потока
 				 * @return               идентификатор потока (INVALID_STREAM - открытие невозможно)
+				 *
 				 */
 				uint64_t open(const bool unidirectional) noexcept;
 				/**
@@ -1756,6 +1840,7 @@ namespace awh {
 				 * @param data данные потока приложения
 				 * @param fin  флаг завершения потока (FIN)
 				 * @return     результат постановки (OK/ERROR)
+				 *
 				 */
 				status_t send(const uint64_t sid, string_view data, const bool fin) noexcept;
 				/**
@@ -1767,6 +1852,7 @@ namespace awh {
 				 *
 				 * @param data данные датаграммы приложения
 				 * @return     результат постановки (ERROR - датаграммы не поддерживаются либо размер превышен)
+				 *
 				 */
 				status_t datagram(string_view data) noexcept;
 				/**
@@ -1774,6 +1860,7 @@ namespace awh {
 				 *
 				 * @param output буфер принятой датаграммы приложения
 				 * @return       результат извлечения (false - принятых датаграмм нет)
+				 *
 				 */
 				bool datagram(string & output) noexcept;
 				/**
@@ -1784,6 +1871,7 @@ namespace awh {
 				 *       удалённым узлом не принимаются
 				 *
 				 * @return предельный размер данных отправляемой датаграммы в октетах
+				 *
 				 */
 				size_t datagrams() const noexcept;
 				/**
@@ -1796,6 +1884,7 @@ namespace awh {
 				 *       копией и от состояния соединения не зависит
 				 *
 				 * @param output список идентификаторов потоков с собранными данными либо завершением
+				 *
 				 */
 				void readable(vector <uint64_t> & output) noexcept;
 				/**
@@ -1808,6 +1897,7 @@ namespace awh {
 				 * @param output собранные данные потока (дописываются)
 				 * @param fin    флаг завершения потока удалённым эндпоинтом (FIN)
 				 * @return       результат выдачи (OK/ERROR - поток неизвестен либо сброшен)
+				 *
 				 */
 				status_t receive(const uint64_t sid, string & output, bool & fin) noexcept;
 				/**
@@ -1815,6 +1905,7 @@ namespace awh {
 				 *
 				 * @param sid  идентификатор потока
 				 * @param code код ошибки приложения
+				 *
 				 */
 				void reset(const uint64_t sid, const uint64_t code) noexcept;
 				/**
@@ -1822,6 +1913,7 @@ namespace awh {
 				 *
 				 * @param sid  идентификатор потока
 				 * @param code код ошибки приложения
+				 *
 				 */
 				void stop(const uint64_t sid, const uint64_t code) noexcept;
 				/**
@@ -1830,6 +1922,7 @@ namespace awh {
 				 * @param sid  идентификатор потока
 				 * @param code код ошибки приложения принятого фрейма RESET_STREAM
 				 * @return     результат проверки (true - поток сброшен удалённым эндпоинтом)
+				 *
 				 */
 				bool aborted(const uint64_t sid, uint64_t & code) const noexcept;
 			public:
@@ -1841,12 +1934,14 @@ namespace awh {
 				 *
 				 * @param now текущее время в миллисекундах
 				 * @return    результат инициирования (OK/ERROR)
+				 *
 				 */
 				status_t rekey(const uint64_t now) noexcept;
 				/**
 				 * @brief Метод получения бита фазы ключей уровня приложения (RFC 9001 §6)
 				 *
 				 * @return бит фазы ключей
+				 *
 				 */
 				bool phase() const noexcept;
 				/**
@@ -1859,6 +1954,7 @@ namespace awh {
 				 *
 				 * @param confidentiality предельное число пакетов на одном ключе
 				 * @param integrity       предельное число неудачных снятий защиты
+				 *
 				 */
 				void aeadLimits(const uint64_t confidentiality, const uint64_t integrity) noexcept;
 			public:
@@ -1871,6 +1967,7 @@ namespace awh {
 				 *       поэтому смена лишь собственного адреса его не возвращает
 				 *
 				 * @param remote признак смены адреса удалённого эндпоинта
+				 *
 				 */
 				void repath(const bool remote) noexcept;
 				/**
@@ -1879,6 +1976,7 @@ namespace awh {
 				 * @note Вызывается по подтверждению достижимости предпочтительного адреса:
 				 *       соединение переключается на его идентификатор, а состояние пути
 				 *       сбрасывается как при любой смене пути
+				 *
 				 */
 				void settle() noexcept;
 				/**
@@ -1891,6 +1989,7 @@ namespace awh {
 				 * @param revert признак возврата на последний проверенный адрес. Возврат
 				 *               уместен лишь когда идти больше некуда: при отказе ради
 				 *               перехода на очередной новый адрес он затёр бы этот адрес
+				 *
 				 */
 				void abandon(const bool revert) noexcept;
 				/**
@@ -1903,12 +2002,14 @@ namespace awh {
 				 *       до получения ответа отвергается
 				 *
 				 * @return результат инициирования (false - проверка уже выполняется либо соединение не установлено)
+				 *
 				 */
 				bool probe() noexcept;
 				/**
 				 * @brief Метод получения состояния проверки достижимости пути (RFC 9000 §8.2)
 				 *
 				 * @return состояние проверки (true - путь подтверждён ответом удалённого эндпоинта)
+				 *
 				 */
 				bool validated() const noexcept;
 				/**
@@ -1921,6 +2022,7 @@ namespace awh {
 				 *       и начинает проверку его достижимости
 				 *
 				 * @return результат инициирования (false - соединение не установлено либо нет неиспользованных идентификаторов)
+				 *
 				 */
 				bool migrate() noexcept;
 				/**
@@ -1931,6 +2033,7 @@ namespace awh {
 				 *       не выполнялся
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool relocatable() const noexcept;
 				/**
@@ -1944,6 +2047,7 @@ namespace awh {
 				 * @param ip   адрес сервера в сетевом порядке октетов (4 октета IPv4 либо 16 октетов IPv6)
 				 * @param port порт сервера
 				 * @return     результат извлечения (false - адрес семейства не анонсирован)
+				 *
 				 */
 				bool preferred(const bool ipv6, string & ip, uint16_t & port) const noexcept;
 				/**
@@ -1955,6 +2059,7 @@ namespace awh {
 				 *       код отправляет датаграммы именно по этому адресу
 				 *
 				 * @return адрес удалённого эндпоинта в заданном вызывающим кодом представлении
+				 *
 				 */
 				const string & path() const noexcept;
 				/**
@@ -1966,6 +2071,7 @@ namespace awh {
 				 *       пробирующие - на предпочтительный адрес, полученный из preferred()
 				 *
 				 * @return результат проверки (true - датаграмма адресована предпочтительному адресу)
+				 *
 				 */
 				bool alternate() const noexcept;
 				/**
@@ -1977,6 +2083,7 @@ namespace awh {
 				 *       проверку его достижимости
 				 *
 				 * @return результат инициирования переезда (false - переезд невозможен)
+				 *
 				 */
 				bool relocate() noexcept;
 				/**
@@ -1986,6 +2093,7 @@ namespace awh {
 				 *       и на него не ссылаются очереди отправки, после чего освобождается
 				 *
 				 * @return количество обслуживаемых потоков приложения
+				 *
 				 */
 				size_t streams() const noexcept;
 				/**
@@ -1999,18 +2107,21 @@ namespace awh {
 				 *       параметров методом params()
 				 *
 				 * @param limit верхняя граница анонсируемого начального лимита потоков одного направления
+				 *
 				 */
 				void streams(const uint64_t limit) noexcept;
 				/**
 				 * @brief Метод получения количества выполненных смен пути соединения
 				 *
 				 * @return количество выполненных смен пути
+				 *
 				 */
 				uint64_t migrations() const noexcept;
 				/**
 				 * @brief Метод получения подтверждённого размера исходящей датаграммы (RFC 8899)
 				 *
 				 * @return подтверждённый размер исходящей датаграммы в октетах
+				 *
 				 */
 				size_t pmtu() const noexcept;
 				/**
@@ -2021,6 +2132,7 @@ namespace awh {
 				 *       удалённым узлом предела
 				 *
 				 * @param limit верхняя граница размера исходящей датаграммы в октетах
+				 *
 				 */
 				void pmtu(const size_t limit) noexcept;
 				/**
@@ -2030,6 +2142,7 @@ namespace awh {
 				 *       фреймами NEW_CONNECTION_ID, прежний выводится из обращения
 				 *
 				 * @return результат ротации (false - неиспользованных идентификаторов нет)
+				 *
 				 */
 				bool rotate() noexcept;
 			public:
@@ -2037,12 +2150,14 @@ namespace awh {
 				 * @brief Метод получения окна перегрузки congestion control (RFC 9002 §7)
 				 *
 				 * @return окно перегрузки в октетах
+				 *
 				 */
 				uint64_t cwnd() const noexcept;
 				/**
 				 * @brief Метод получения количества неподтверждённых октетов в полёте
 				 *
 				 * @return количество неподтверждённых октетов в полёте
+				 *
 				 */
 				uint64_t inflight() const noexcept;
 			public:
@@ -2051,6 +2166,7 @@ namespace awh {
 				 *
 				 * @param code   код ошибки приложения
 				 * @param reason человекочитаемая причина завершения
+				 *
 				 */
 				void close(const uint64_t code, string_view reason) noexcept;
 			public:
@@ -2058,12 +2174,14 @@ namespace awh {
 				 * @brief Метод получения состояния соединения
 				 *
 				 * @return состояние соединения
+				 *
 				 */
 				state_t state() const noexcept;
 				/**
 				 * @brief Метод получения кода ошибки транспорта соединения
 				 *
 				 * @return код ошибки транспорта (NO_ERROR - ошибки нет)
+				 *
 				 */
 				error_t error() const noexcept;
 			public:
@@ -2071,6 +2189,7 @@ namespace awh {
 				 * @brief Метод получения идентификатора соединения локального эндпоинта
 				 *
 				 * @return идентификатор соединения локального эндпоинта
+				 *
 				 */
 				const cid_t & scid() const noexcept;
 				/**
@@ -2085,12 +2204,14 @@ namespace awh {
 				 *
 				 * @param added   идентификаторы, введённые в обращение
 				 * @param removed идентификаторы, выведенные из обращения
+				 *
 				 */
 				void issued(vector <cid_t> & added, vector <cid_t> & removed) noexcept;
 				/**
 				 * @brief Метод получения идентификатора соединения удалённого эндпоинта
 				 *
 				 * @return идентификатор соединения удалённого эндпоинта
+				 *
 				 */
 				const cid_t & dcid() const noexcept;
 			public:
@@ -2098,6 +2219,7 @@ namespace awh {
 				 * @brief Метод доступа к машине криптографического хендшейка
 				 *
 				 * @return машина криптографического хендшейка
+				 *
 				 */
 				const handshake_t & handshake() const noexcept;
 			public:
@@ -2123,6 +2245,7 @@ namespace awh {
 				 * @param ctx      идентификатор шаблона контекста безопасности
 				 * @param coder    объект кодера транспортной безопасности
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Connection(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept;
 		} connection_t;

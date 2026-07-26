@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля системных часов цикла событий — класс Watch,
+ *        обеспечивающий отсчёт таймеров в отдельном потоке для платформ,
+ *        где нативный механизм таймеров цикла событий недоступен
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 #ifndef __AWH_EVENT_WATCH__
@@ -95,12 +100,14 @@ namespace awh {
 			 * @brief Метод остановки работы таймера
 			 *
 			 * @return результат работы функции
+			 *
 			 */
 			bool stop() noexcept;
 			/**
 			 * @brief Метод запуска работы таймера
 			 *
 			 * @return результат работы функции
+			 *
 			 */
 			bool start() noexcept;
 		public:
@@ -108,6 +115,7 @@ namespace awh {
 			 * @brief Метод создания нового таймера
 			 *
 			 * @return файловый дескриптор для отслеживания
+			 *
 			 */
 			SOCKET create() noexcept;
 		public:
@@ -115,6 +123,7 @@ namespace awh {
 			 * @brief Метод извлечения идентификатора события
 			 *
 			 * @return идентификатор события
+			 *
 			 */
 			uint32_t event() noexcept;
 		public:
@@ -122,6 +131,7 @@ namespace awh {
 			 * @brief Метод убрать таймер из отслеживания
 			 *
 			 * @param id идентификатор таймера
+			 *
 			 */
 			void away(const uint32_t id) noexcept;
 			/**
@@ -129,6 +139,7 @@ namespace awh {
 			 *
 			 * @param id    идентификатор таймера
 			 * @param delay задержка времени в миллисекундах
+			 *
 			 */
 			void wait(const uint32_t id, const uint32_t delay) noexcept;
 		public:
@@ -137,6 +148,7 @@ namespace awh {
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit Watch(const fmk_t * fmk, const log_t * log) noexcept;
 			/**

@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пробник совместимости расширений HTTP/2 с эталонной реализацией nghttp2 —
+ *        проверка расширенного CONNECT (RFC 8441) в обе стороны,
+ *        кадра PRIORITY_UPDATE (RFC 9218) и реакции сторон на GOAWAY с необработанными потоками
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -41,6 +46,7 @@ static size_t failures = 0;
  * @brief Функция фиксации расхождения
  *
  * @param text описание расхождения
+ *
  */
 static void mismatch(const std::string & text) noexcept {
 	// Наращиваем счётчик расхождений
@@ -148,6 +154,7 @@ static int onData(nghttp2_session *, uint8_t, int32_t, const uint8_t * data, siz
  * @param state   объект состояния проверки
  * @param toPeer  накопитель байт для сессии nghttp2
  * @param toOurs  накопитель байт для нашего парсера
+ *
  */
 static void exchange(parser_http2_t & parser, nghttp2_session * session, std::string & toPeer, std::string & toOurs) noexcept {
 	/**
@@ -209,6 +216,7 @@ static void exchange(parser_http2_t & parser, nghttp2_session * session, std::st
  *
  * @param fmk объект фреймворка
  * @param log объект логов
+ *
  */
 static void checkConnect(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем название проверки
@@ -321,6 +329,7 @@ static void checkConnect(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект логов
+ *
  */
 static void checkGoaway(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем название проверки
@@ -405,6 +414,7 @@ static void checkGoaway(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект логов
+ *
  */
 static void checkPriority(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем название проверки
@@ -493,6 +503,7 @@ static void checkPriority(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект логов
+ *
  */
 static void checkConnectServer(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем название проверки

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Параметризованные тесты протокола SOCKS5 — прогон подготовленных наборов входных данных через методы модуля
+ *        с проверкой обмена сообщениями приветствия и авторизации, разбора команд и формирования ответов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -65,6 +69,7 @@ class ConnectAddressParameterizedFixture : public Socks5Fixture, public ::testin
 		 * @brief Метод создания адреса хоста согласно параметрам теста
 		 *
 		 * @return сформированный объект адреса хоста
+		 *
 		 */
 		std::unique_ptr <awh::net::attr_t> makeHost() const noexcept {
 			/**
@@ -356,6 +361,7 @@ class UDPAddressParameterizedFixture : public Socks5Fixture, public ::testing::W
 		 * @brief Метод создания адреса конечного получателя согласно параметрам теста
 		 *
 		 * @return сформированный объект адреса конечного получателя
+		 *
 		 */
 		std::unique_ptr <awh::net::attr_t> makeHost() const noexcept {
 			/**

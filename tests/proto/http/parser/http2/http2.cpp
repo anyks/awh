@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация тестовой фикстуры парсера протокола HTTP/2 —
+ *        создание объектов тестового окружения перед каждым тестом и их освобождение после его завершения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -39,6 +43,7 @@ void ParserHttp2Fixture::TearDown() {}
  *
  * @param direct направление трафика (REQUEST - мы сервер, RESPONSE - мы клиент)
  * @return       сформированный объект парсера
+ *
  */
 std::unique_ptr <awh::http::parser_http2_t> ParserHttp2Fixture::make(const awh::http::direct_t direct) const noexcept {
 	// Создаём и возвращаем объект парсера
@@ -50,6 +55,7 @@ std::unique_ptr <awh::http::parser_http2_t> ParserHttp2Fixture::make(const awh::
  *
  * @param parser объект парсера
  * @param events объект сборщика событий парсера
+ *
  */
 void ParserHttp2Fixture::attach(awh::http::parser_http2_t & parser, events_t & events) const noexcept {
 	// Устанавливаем функцию обратного вызова для обработки открытия нового потока
@@ -149,6 +155,7 @@ void ParserHttp2Fixture::attach(awh::http::parser_http2_t & parser, events_t & e
  *
  * @param client объект парсера клиента
  * @param server объект парсера сервера
+ *
  */
 void ParserHttp2Fixture::connect(awh::http::parser_http2_t & client, awh::http::parser_http2_t & server) const noexcept {
 	// Исходящие байты клиента подаём на разбор серверу
@@ -168,6 +175,7 @@ void ParserHttp2Fixture::connect(awh::http::parser_http2_t & client, awh::http::
  *
  * @param client объект парсера клиента
  * @param server объект парсера сервера
+ *
  */
 void ParserHttp2Fixture::handshake(awh::http::parser_http2_t & client, awh::http::parser_http2_t & server) const noexcept {
 	// Клиент отправляет magic-строку и свой SETTINGS

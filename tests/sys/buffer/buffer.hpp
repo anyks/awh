@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл тестовой фикстуры бинарного смарт-буфера — объявление класса фикстуры Google Test,
+ *        подготавливающего и освобождающего тестовое окружение набора тестов
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 #ifndef __AWH_BUFFER_TESTS__

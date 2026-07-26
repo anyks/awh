@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация окружения бенчмарков протокола QUIC —
+ *        генерация самоподписанного сертификата и ключа средствами BoringSSL,
+ *        настройка контекста TLS и подготовка пары клиентского и серверного соединений для замеров
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -46,6 +51,7 @@ using namespace std;
  *          отличить регрессию по количеству выделений от регрессии по времени.
  *          Учёт включается только на время измерения, поэтому подготовка
  *          сценария в статистику не попадает
+ *
  */
 namespace {
 	// Количество выполненных выделений памяти
@@ -61,6 +67,7 @@ namespace {
  *
  * @param size размер выделяемой памяти
  * @return     указатель на выделенную память
+ *
  */
 void * operator new (size_t size){
 	// Если учёт выделений памяти активен
@@ -84,6 +91,7 @@ void * operator new (size_t size){
  *
  * @param size размер выделяемой памяти
  * @return     указатель на выделенную память
+ *
  */
 void * operator new [] (size_t size){
 	// Выполняем выделение памяти
@@ -93,6 +101,7 @@ void * operator new [] (size_t size){
  * @brief Оператор освобождения памяти
  *
  * @param ptr указатель на освобождаемую память
+ *
  */
 void operator delete (void * ptr) noexcept {
 	// Выполняем освобождение памяти
@@ -102,6 +111,7 @@ void operator delete (void * ptr) noexcept {
  * @brief Оператор освобождения памяти массива
  *
  * @param ptr указатель на освобождаемую память
+ *
  */
 void operator delete [] (void * ptr) noexcept {
 	// Выполняем освобождение памяти
@@ -111,6 +121,7 @@ void operator delete [] (void * ptr) noexcept {
  * @brief Оператор освобождения памяти с указанием размера
  *
  * @param ptr указатель на освобождаемую память
+ *
  */
 void operator delete (void * ptr, size_t) noexcept {
 	// Выполняем освобождение памяти
@@ -120,6 +131,7 @@ void operator delete (void * ptr, size_t) noexcept {
  * @brief Оператор освобождения памяти массива с указанием размера
  *
  * @param ptr указатель на освобождаемую память
+ *
  */
 void operator delete [] (void * ptr, size_t) noexcept {
 	// Выполняем освобождение памяти
@@ -131,6 +143,7 @@ void operator delete [] (void * ptr, size_t) noexcept {
  *
  * @param count количество выполненных выделений
  * @param bytes суммарный объём выделенной памяти в октетах
+ *
  */
 void awh::benchmark::quic::allocations(size_t & count, size_t & bytes) noexcept {
 	// Выводим количество выполненных выделений памяти
@@ -142,6 +155,7 @@ void awh::benchmark::quic::allocations(size_t & count, size_t & bytes) noexcept 
  * @brief Функция управления учётом выделений памяти
  *
  * @param mode режим учёта выделений памяти
+ *
  */
 void awh::benchmark::quic::counting(const bool mode) noexcept {
 	// Если учёт выделений памяти включается
@@ -163,6 +177,7 @@ namespace {
 	 * @brief Функция получения пути к временному каталогу
 	 *
 	 * @return путь к временному каталогу
+	 *
 	 */
 	static std::string directory() noexcept {
 		// Получаем путь к временному каталогу из окружения
@@ -176,6 +191,7 @@ namespace {
 	 * @param path путь к создаваемому файлу
 	 * @param data записываемые данные
 	 * @return     результат записи
+	 *
 	 */
 	static bool store(const std::string & path, const std::string & data) noexcept {
 		// Открываем файл на запись
@@ -197,6 +213,7 @@ namespace {
 	 * @param certificate сертификат в формате PEM
 	 * @param privateKey  приватный ключ в формате PEM
 	 * @return            результат генерации
+	 *
 	 */
 	static bool makeCertificate(std::string & certificate, std::string & privateKey) noexcept {
 		// Результат генерации сертификата
@@ -286,6 +303,7 @@ namespace {
  * @brief Метод доступа к объекту кодера транспортной безопасности
  *
  * @return объект кодера транспортной безопасности
+ *
  */
 awh::tls::Coder & awh::benchmark::quic::Security::coder() noexcept {
 	// Выводим объект кодера транспортной безопасности
@@ -296,6 +314,7 @@ awh::tls::Coder & awh::benchmark::quic::Security::coder() noexcept {
  *
  * @param endpoint роль эндпоинта
  * @return         идентификатор шаблона контекста безопасности
+ *
  */
 awh::tls::Coder::id_t awh::benchmark::quic::Security::context(const awh::quic::endpoint_t endpoint) const noexcept {
 	// Выводим шаблон контекста безопасности запрошенной роли
@@ -306,6 +325,7 @@ awh::tls::Coder::id_t awh::benchmark::quic::Security::context(const awh::quic::e
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::benchmark::quic::Security::Security(const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
  _client(0), _server(0), _coder(fmk, log) {
@@ -372,6 +392,7 @@ awh::benchmark::quic::Security::~Security() noexcept {
  * @brief Функция получения окружения транспортной безопасности бенчмарка
  *
  * @return окружение транспортной безопасности бенчмарка
+ *
  */
 awh::benchmark::quic::Security & awh::benchmark::quic::security() noexcept {
 	// Объект фреймворка окружения
@@ -387,6 +408,7 @@ awh::benchmark::quic::Security & awh::benchmark::quic::security() noexcept {
  * @brief Функция подготовки соединения к бенчмарку
  *
  * @param connection объект соединения
+ *
  */
 void awh::benchmark::quic::configure(awh::quic::connection_t & connection) noexcept {
 	// Транспортные параметры эндпоинта
@@ -416,6 +438,7 @@ void awh::benchmark::quic::configure(awh::quic::connection_t & connection) noexc
  * @param server эндпоинт сервера
  * @param now    текущее время тестовых часов в миллисекундах
  * @return       результат установления соединения
+ *
  */
 bool awh::benchmark::quic::establish(awh::quic::connection_t & client, awh::quic::connection_t & server, uint64_t & now) noexcept {
 	// Буфер передаваемой датаграммы

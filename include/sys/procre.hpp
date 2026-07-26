@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля резольвера процессов — класс Process_Resolver,
+ *        сопоставляющий сетевое соединение (адреса, порты,
+ *        семейство и протокол) с владеющим им процессом операционной системы
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -51,6 +56,7 @@ namespace awh {
 			 * @brief Структура портов
 			 *
 			 * @details Порт источника и порт назначения процесса.
+			 *
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Ports {
 				// Порт источника
@@ -67,6 +73,7 @@ namespace awh {
 			 * @brief Структура IP-адресов процесса
 			 *
 			 * @details IP-адрес источника и IP-адрес назначения процесса.
+			 *
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Addresses {
 				// Адрес источника процесса
@@ -83,6 +90,7 @@ namespace awh {
 			 * @brief Структура информационных метаданных процесса
 			 *
 			 * @details Содержит информацию о портах, IP-адресах, семействе протокола и протоколе процесса.
+			 *
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Info {
 				// Порты процесса
@@ -109,6 +117,7 @@ namespace awh {
 			 *
 			 * @param pid  идентификатор процесса
 			 * @param info объект информационных метаданных процесса
+			 *
 			 */
 			function <void (const pid_t, const info_t &)> _callback;
 		private:
@@ -126,6 +135,7 @@ namespace awh {
 			 *
 			 * @param pid идентификатор процесса
 			 * @return    название приложения которому принадлежит процесс
+			 *
 			 */
 			string name(const pid_t pid = ::getpid()) const noexcept;
 		public:
@@ -133,6 +143,7 @@ namespace awh {
 			 * @brief Метод установки функции обратного вызова для получения информации о процессе
 			 *
 			 * @param callback функция обратного вызова
+			 *
 			 */
 			void on(function <void (const pid_t, const info_t &)> callback) noexcept;
 		public:
@@ -140,6 +151,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit Process_Resolver(const log_t * log) noexcept;
 			/**

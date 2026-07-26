@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл ядра фреймворка — класс Framework с базовыми утилитами библиотеки:
+ *        работа со строками и кодировками, регистр символов, форматирование, конвертация типов,
+ *        проверка форматов данных, разбор чисел и вспомогательные операции над контейнерами
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -132,6 +137,7 @@ namespace awh {
 			 *
 			 * @tparam A тип контейнера
 			 * @tparam B тип искомого значения
+			 *
 			 */
 			template <typename A, typename B>
 			/**
@@ -140,6 +146,7 @@ namespace awh {
 			 * @param val значение которое необходимо найти
 			 * @param map контейнер в котором нужно произвести поиск
 			 * @return    итератор найденного элемента в контейнере
+			 *
 			 */
 			typename A::const_iterator findInMap(const B & val, const A & map) const noexcept {
 				// Если нам необходимо выполнить поиск по значению строке
@@ -161,6 +168,7 @@ namespace awh {
 							 * @param a первое число для сравнения
 							 * @param b второе число для сравнения
 							 * @return  результат выполненной проверки
+							 *
 							 */
 							bool compare(const B a, const B b) const noexcept {
 								// Выполняем сравнение
@@ -172,6 +180,7 @@ namespace awh {
 							 * @param a первое число для сравнения
 							 * @param b второе число для сравнения
 							 * @return  результат выполненной проверки
+							 *
 							 */
 							bool compare(string_view a, string_view b) const noexcept {
 								// Выполняем сравнение
@@ -183,6 +192,7 @@ namespace awh {
 							 * @param a первое число для сравнения
 							 * @param b второе число для сравнения
 							 * @return  результат выполненной проверки
+							 *
 							 */
 							bool compare(wstring_view a, wstring_view b) const noexcept {
 								// Выполняем сравнение
@@ -194,6 +204,7 @@ namespace awh {
 							 *
 							 * @param item текущее проверяемое значение
 							 * @return     результат проверки
+							 *
 							 */
 							bool operator () (const typename A::value_type & item) const noexcept {
 								// Выполняем сравнение текущего полученного значения
@@ -205,6 +216,7 @@ namespace awh {
 							 *
 							 * @param value эталонное значение для стравнения
 							 * @param fmk   объект фреймворка
+							 *
 							 */
 							Check(const B & value, const Framework * fmk) noexcept : _value(value), _fmk(fmk) {}
 					} callback(val, this);
@@ -225,6 +237,7 @@ namespace awh {
 							 *
 							 * @param item текущее проверяемое значение
 							 * @return     результат проверки
+							 *
 							 */
 							bool operator () (const typename A::value_type & item) const noexcept {
 								// Выполняем сравнение текущего полученного значения
@@ -235,6 +248,7 @@ namespace awh {
 							 * @brief Конструктор
 							 *
 							 * @param value эталонное значение для стравнения
+							 *
 							 */
 							Check(const B & value) noexcept : _value(value) {}
 					};
@@ -247,6 +261,7 @@ namespace awh {
 			 * @brief Метод генерации уникального идентификатора
 			 * 
 			 * @return уникальный идентификатор
+			 *
 			 */
 			uint32_t identifier() const noexcept;
 		public:
@@ -256,6 +271,7 @@ namespace awh {
 			 * @param letter текст для проверки
 			 * @param flag   флаг проверки
 			 * @return       результат проверки
+			 *
 			 */
 			bool is(const char letter, const check_t flag) const noexcept;
 			/**
@@ -264,6 +280,7 @@ namespace awh {
 			 * @param letter текст для проверки
 			 * @param flag   флаг проверки
 			 * @return       результат проверки
+			 *
 			 */
 			bool is(const wchar_t letter, const check_t flag) const noexcept;
 		public:
@@ -273,6 +290,7 @@ namespace awh {
 			 * @param text текст для проверки
 			 * @param flag флаг проверки
 			 * @return     результат проверки
+			 *
 			 */
 			bool is(string_view text, const check_t flag) const noexcept;
 			/**
@@ -281,6 +299,7 @@ namespace awh {
 			 * @param text текст для проверки
 			 * @param flag флаг проверки
 			 * @return     результат проверки
+			 *
 			 */
 			bool is(wstring_view text, const check_t flag) const noexcept;
 		public:
@@ -290,6 +309,7 @@ namespace awh {
 			 * @param first  первое слово
 			 * @param second второе слово
 			 * @return       результат сравнения
+			 *
 			 */
 			bool compare(string_view first, string_view second) const noexcept;
 			/**
@@ -298,6 +318,7 @@ namespace awh {
 			 * @param first  первое слово
 			 * @param second второе слово
 			 * @return       результат сравнения
+			 *
 			 */
 			bool compare(const char * first, const char * second) const noexcept;
 		public:
@@ -307,6 +328,7 @@ namespace awh {
 			 * @param first  первое слово
 			 * @param second второе слово
 			 * @return       результат сравнения
+			 *
 			 */
 			bool compare(wstring_view first, wstring_view second) const noexcept;
 			/**
@@ -315,6 +337,7 @@ namespace awh {
 			 * @param first  первое слово
 			 * @param second второе слово
 			 * @return       результат сравнения
+			 *
 			 */
 			bool compare(const wchar_t * first, const wchar_t * second) const noexcept;
 		private:
@@ -325,6 +348,7 @@ namespace awh {
 			 * @param size   размер бинарных данных штампа времени
 			 * @param type   тип формируемого штампа времени
 			 * @param text   флаг извлечения данных в текстовом виде
+			 *
 			 */
 			void timestamp(void * buffer, const size_t size, const chrono_t type, const bool text) const noexcept;
 		public:
@@ -332,6 +356,7 @@ namespace awh {
 			 * @brief Шаблон метода получения штампа времени в указанных единицах измерения
 			 *
 			 * @tparam T тип данных в котором извлекаются данные
+			 *
 			 */
 			template <typename T>
 			/**
@@ -339,6 +364,7 @@ namespace awh {
 			 *
 			 * @param type тип формируемого штампа времени
 			 * @return     сгенерированный штамп времени
+			 *
 			 */
 			T timestamp(const chrono_t type) const noexcept;
 		public:
@@ -348,6 +374,7 @@ namespace awh {
 			 * @param text     текст для конвертирования
 			 * @param codepage кодировка в которую необходимо сконвертировать текст
 			 * @return         сконвертированный текст в требуемой кодировке
+			 *
 			 */
 			string transcode(string_view text, const codepage_t codepage = codepage_t::AUTO) const noexcept;
 		public:
@@ -357,6 +384,7 @@ namespace awh {
 			 * @param letter символ для трансформации
 			 * @param flag   флаг трансформации
 			 * @return       трансформированный символ
+			 *
 			 */
 			char transform(const char letter, const transform_t flag) const noexcept;
 			/**
@@ -365,6 +393,7 @@ namespace awh {
 			 * @param letter символ для трансформации
 			 * @param flag   флаг трансформации
 			 * @return       трансформированный символ
+			 *
 			 */
 			wchar_t transform(const wchar_t letter, const transform_t flag) const noexcept;
 		public:
@@ -374,6 +403,7 @@ namespace awh {
 			 * @param text текст для трансформации
 			 * @param flag флаг трансформации
 			 * @return     трансформированная строка
+			 *
 			 */
 			string & transform(string & text, const transform_t flag) const noexcept;
 			/**
@@ -382,6 +412,7 @@ namespace awh {
 			 * @param text текст для трансформации
 			 * @param flag флаг трансформации
 			 * @return     трансформированная строка
+			 *
 			 */
 			wstring & transform(wstring & text, const transform_t flag) const noexcept;
 		public:
@@ -391,6 +422,7 @@ namespace awh {
 			 * @param text текст для трансформации
 			 * @param flag флаг трансформации
 			 * @return     трансформированная строка
+			 *
 			 */
 			const string & transform(const string & text, const transform_t flag) const noexcept;
 			/**
@@ -399,6 +431,7 @@ namespace awh {
 			 * @param text текст для трансформации
 			 * @param flag флаг трансформации
 			 * @return     трансформированная строка
+			 *
 			 */
 			const wstring & transform(const wstring & text, const transform_t flag) const noexcept;
 		public:
@@ -408,6 +441,7 @@ namespace awh {
 			 * @param text текст для трансформации
 			 * @param flag флаг трансформации
 			 * @return     трансформированная строка
+			 *
 			 */
 			string transform(string_view text, const transform_t flag) const noexcept;
 			/**
@@ -416,6 +450,7 @@ namespace awh {
 			 * @param text текст для трансформации
 			 * @param flag флаг трансформации
 			 * @return     трансформированная строка
+			 *
 			 */
 			wstring transform(wstring_view text, const transform_t flag) const noexcept;
 		public:
@@ -425,6 +460,7 @@ namespace awh {
 			 * @param items список строк которые необходимо объединить
 			 * @param delim разделитель
 			 * @return      строка полученная после объединения
+			 *
 			 */
 			string join(const vector <string> & items, string_view delim) const noexcept;
 			/**
@@ -433,6 +469,7 @@ namespace awh {
 			 * @param items список строк которые необходимо объединить
 			 * @param delim разделитель
 			 * @return      строка полученная после объединения
+			 *
 			 */
 			wstring join(const vector <wstring> & items, wstring_view delim) const noexcept;
 		public:
@@ -442,6 +479,7 @@ namespace awh {
 			 * @param text      строка для парсинга
 			 * @param delim     разделитель
 			 * @param container результирующий вектор
+			 *
 			 */
 			vector <string> & split(string_view text, string_view delim, vector <string> & container) const noexcept;
 			/**
@@ -450,6 +488,7 @@ namespace awh {
 			 * @param text      строка для парсинга
 			 * @param delim     разделитель
 			 * @param container результирующий вектор
+			 *
 			 */
 			vector <wstring> & split(wstring_view text, wstring_view delim, vector <wstring> & container) const noexcept;
 		public:
@@ -458,6 +497,7 @@ namespace awh {
 			 *
 			 * @param str строка для конвертирования
 			 * @return    строка в utf-8
+			 *
 			 */
 			wstring convert(string_view str) const noexcept;
 			/**
@@ -465,6 +505,7 @@ namespace awh {
 			 *
 			 * @param str строка utf-8 для конвертирования
 			 * @return    обычная строка
+			 *
 			 */
 			string convert(wstring_view str) const noexcept;
 			/**
@@ -472,6 +513,7 @@ namespace awh {
 			 *
 			 * @param str строка для конвертирования
 			 * @return    строка в utf-8
+			 *
 			 */
 			wstring convert(const char * str) const noexcept;
 			/**
@@ -479,6 +521,7 @@ namespace awh {
 			 *
 			 * @param str строка utf-8 для конвертирования
 			 * @return    обычная строка
+			 *
 			 */
 			string convert(const wchar_t * str) const noexcept;
 			/**
@@ -486,6 +529,7 @@ namespace awh {
 			 *
 			 * @param str строка для конвертирования
 			 * @return    строка в utf-8
+			 *
 			 */
 			wstring convert(const string & str) const noexcept;
 			/**
@@ -493,6 +537,7 @@ namespace awh {
 			 *
 			 * @param str строка utf-8 для конвертирования
 			 * @return    обычная строка
+			 *
 			 */
 			string convert(const wstring & str) const noexcept;
 		public:
@@ -500,6 +545,7 @@ namespace awh {
 			 * @brief функции определения точного размера, сколько занимает число байт
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -507,6 +553,7 @@ namespace awh {
 			 *
 			 * @param num число для проверки
 			 * @return    фактический размер занимаемым числом байт
+			 *
 			 */
 			size_t size(const T num) const noexcept;
 			/**
@@ -515,6 +562,7 @@ namespace awh {
 			 * @param value значение бинарного буфера для проверки
 			 * @param size  общий размер бинарного буфера
 			 * @return      фактический размер буфера занимаемый данными
+			 *
 			 */
 			size_t size(const void * value, const size_t size) const noexcept;
 		public:
@@ -522,6 +570,7 @@ namespace awh {
 			 * @brief Шаблон функции проверки больше первое число второго или нет (бинарным методом)
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -530,6 +579,7 @@ namespace awh {
 			 * @param num1 значение первого числа в бинарном виде
 			 * @param num2 значение второго числа в бинарном виде
 			 * @return     результат проверки
+			 *
 			 */
 			bool isGreater(const T num1, const T num2) const noexcept;
 			/**
@@ -539,6 +589,7 @@ namespace awh {
 			 * @param value2 значение второго числа в бинарном виде
 			 * @param size   размер бинарного буфера числа
 			 * @return       результат проверки
+			 *
 			 */
 			bool isGreater(const void * value1, const void * value2, const size_t size) const noexcept;
 		public:
@@ -546,6 +597,7 @@ namespace awh {
 			 * @brief Шаблон функции конвертации чисел в указанную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -554,6 +606,7 @@ namespace awh {
 			 * @param value число для конвертации
 			 * @param radix система счисления
 			 * @return      полученная строка в указанной системе счисления
+			 *
 			 */
 			string itoa(const T value, const uint8_t radix) const noexcept;
 			/**
@@ -563,6 +616,7 @@ namespace awh {
 			 * @param size  размер бинарного буфера
 			 * @param radix система счисления
 			 * @return      полученная строка в указанной системе счисления
+			 *
 			 */
 			string itoa(const void * value, const size_t size, const uint8_t radix) const noexcept;
 		public:
@@ -570,6 +624,7 @@ namespace awh {
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -577,12 +632,14 @@ namespace awh {
 			 *
 			 * @param value строковое представление числа
 			 * @return      числовое значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(string_view value) const noexcept;
 			/**
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -590,12 +647,14 @@ namespace awh {
 			 *
 			 * @param value строковое представление числа
 			 * @return      числовое значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(const string & value) const noexcept;
 			/**
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -604,12 +663,14 @@ namespace awh {
 			 * @param value  строковое представление числа
 			 * @param length длина строки
 			 * @return       числовое значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(const char * value, const size_t length) const noexcept;
 			/**
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -618,12 +679,14 @@ namespace awh {
 			 * @param value число в бинарном виде для конвертации в 10-ю систему
 			 * @param radix система счисления
 			 * @return      полученное значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(string_view value, const uint8_t radix) const noexcept;
 			/**
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -632,12 +695,14 @@ namespace awh {
 			 * @param value число в бинарном виде для конвертации в 10-ю систему
 			 * @param radix система счисления
 			 * @return      полученное значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(const string & value, const uint8_t radix) const noexcept;
 			/**
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -647,6 +712,7 @@ namespace awh {
 			 * @param length длина буфера числа в бинарном виде
 			 * @param radix  система счисления
 			 * @return       полученное значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(const char * value, const size_t length, const uint8_t radix) const noexcept;
 			/**
@@ -656,6 +722,7 @@ namespace awh {
 			 * @param radix  система счисления
 			 * @param buffer бинарный буфер куда следует положить результат
 			 * @param size   размер бинарного буфера куда следует положить результат
+			 *
 			 */
 			void atoi(string_view value, const uint8_t radix, void * buffer, const size_t size) const noexcept;
 			/**
@@ -665,6 +732,7 @@ namespace awh {
 			 * @param radix  система счисления
 			 * @param buffer бинарный буфер куда следует положить результат
 			 * @param size   размер бинарного буфера куда следует положить результат
+			 *
 			 */
 			void atoi(const string & value, const uint8_t radix, void * buffer, const size_t size) const noexcept;
 			/**
@@ -675,6 +743,7 @@ namespace awh {
 			 * @param radix  система счисления
 			 * @param buffer бинарный буфер куда следует положить результат
 			 * @param size   размер бинарного буфера куда следует положить результат
+			 *
 			 */
 			void atoi(const char * value, const size_t length, const uint8_t radix, void * buffer, const size_t size) const noexcept;
 		public:
@@ -683,6 +752,7 @@ namespace awh {
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -690,12 +760,14 @@ namespace awh {
 			 *
 			 * @param value строковое представление числа
 			 * @return      числовое значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(wstring_view value) const noexcept;
 			/**
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -703,12 +775,14 @@ namespace awh {
 			 *
 			 * @param value строковое представление числа
 			 * @return      числовое значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(const wstring & value) const noexcept;
 			/**
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -717,12 +791,14 @@ namespace awh {
 			 * @param value  строковое представление числа
 			 * @param length длина строки
 			 * @return       числовое значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(const wchar_t * value, const size_t length) const noexcept;
 			/**
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -731,12 +807,14 @@ namespace awh {
 			 * @param value число в бинарном виде для конвертации в 10-ю систему
 			 * @param radix система счисления
 			 * @return      полученное значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(wstring_view value, const uint8_t radix) const noexcept;
 			/**
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -745,12 +823,14 @@ namespace awh {
 			 * @param value число в бинарном виде для конвертации в 10-ю систему
 			 * @param radix система счисления
 			 * @return      полученное значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(const wstring & value, const uint8_t radix) const noexcept;
 			/**
 			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -760,6 +840,7 @@ namespace awh {
 			 * @param length длина буфера числа в бинарном виде
 			 * @param radix  система счисления
 			 * @return       полученное значение в десятичной системе счисления
+			 *
 			 */
 			T atoi(const wchar_t * value, const size_t length, const uint8_t radix) const noexcept;
 			/**
@@ -769,6 +850,7 @@ namespace awh {
 			 * @param radix  система счисления
 			 * @param buffer бинарный буфер куда следует положить результат
 			 * @param size   размер бинарного буфера куда следует положить результат
+			 *
 			 */
 			void atoi(wstring_view value, const uint8_t radix, void * buffer, const size_t size) const noexcept;
 			/**
@@ -778,6 +860,7 @@ namespace awh {
 			 * @param radix  система счисления
 			 * @param buffer бинарный буфер куда следует положить результат
 			 * @param size   размер бинарного буфера куда следует положить результат
+			 *
 			 */
 			void atoi(const wstring & value, const uint8_t radix, void * buffer, const size_t size) const noexcept;
 			/**
@@ -788,6 +871,7 @@ namespace awh {
 			 * @param radix  система счисления
 			 * @param buffer бинарный буфер куда следует положить результат
 			 * @param size   размер бинарного буфера куда следует положить результат
+			 *
 			 */
 			void atoi(const wchar_t * value, const size_t length, const uint8_t radix, void * buffer, const size_t size) const noexcept;
 		public:
@@ -797,6 +881,7 @@ namespace awh {
 			 * @param number число для перевода
 			 * @param step   размер шага после запятой
 			 * @return       число в безэкспоненциальной форме
+			 *
 			 */
 			string noexp(const double number, const uint8_t step) const noexcept;
 			/**
@@ -805,6 +890,7 @@ namespace awh {
 			 * @param number  число для перевода
 			 * @param onlyNum выводить только числа
 			 * @return        число в безэкспоненциальной форме
+			 *
 			 */
 			string noexp(const double number, const bool onlyNum = false) const noexcept;
 		public:
@@ -814,6 +900,7 @@ namespace awh {
 			 * @param a первое число
 			 * @param b второе число
 			 * @return  результат расчёта
+			 *
 			 */
 			float rate(const float a, const float b) const noexcept;
 			/**
@@ -822,6 +909,7 @@ namespace awh {
 			 * @param x число для приведения
 			 * @param n количество символов после запятой
 			 * @return  сформированное число
+			 *
 			 */
 			double floor(const double x, const uint8_t n) const noexcept;
 		public:
@@ -830,6 +918,7 @@ namespace awh {
 			 *
 			 * @param word римское число
 			 * @return     арабское число
+			 *
 			 */
 			uint16_t rome2arabic(string_view word) const noexcept;
 			/**
@@ -837,6 +926,7 @@ namespace awh {
 			 *
 			 * @param word римское число
 			 * @return     арабское число
+			 *
 			 */
 			uint16_t rome2arabic(wstring_view word) const noexcept;
 		public:
@@ -845,6 +935,7 @@ namespace awh {
 			 *
 			 * @param number арабское число от 1 до 4999
 			 * @return       римское число
+			 *
 			 */
 			wstring arabic2rome(const uint32_t number) const noexcept;
 			/**
@@ -852,6 +943,7 @@ namespace awh {
 			 *
 			 * @param word арабское число от 1 до 4999
 			 * @return     римское число
+			 *
 			 */
 			string arabic2rome(string_view word) const noexcept;
 			/**
@@ -859,6 +951,7 @@ namespace awh {
 			 *
 			 * @param word арабское число от 1 до 4999
 			 * @return     римское число
+			 *
 			 */
 			wstring arabic2rome(wstring_view word) const noexcept;
 		public:
@@ -868,6 +961,7 @@ namespace awh {
 			 * @param word   слово в котором нужно подсчитать букву
 			 * @param letter букву которую нужно подсчитать
 			 * @return       результат подсчёта
+			 *
 			 */
 			size_t countLetter(string_view word, const wchar_t letter) const noexcept;
 			/**
@@ -876,6 +970,7 @@ namespace awh {
 			 * @param word   слово в котором нужно подсчитать букву
 			 * @param letter букву которую нужно подсчитать
 			 * @return       результат подсчёта
+			 *
 			 */
 			size_t countLetter(wstring_view word, const wchar_t letter) const noexcept;
 		public:
@@ -883,6 +978,7 @@ namespace awh {
 			 * @brief Шаблон функции проверки установлен ли бит в указанной позиции
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -891,12 +987,14 @@ namespace awh {
 			 * @param pos позиция для проверки
 			 * @param num число в бинарном виде для проверки бита
 			 * @return    результат проверки
+			 *
 			 */
 			bool isBit(const T pos, const T num) const noexcept;
 			/**
 			 * @brief Шаблон функции инверсии бита в указанной позиции
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -905,12 +1003,14 @@ namespace awh {
 			 * @param pos позиция для инверсии
 			 * @param num число в бинарном виде для инверсии бита
 			 * @return    итоговое значение числа после инверсии
+			 *
 			 */
 			T flipBit(const T pos, const T num) const noexcept;
 			/**
 			 * @brief Шаблон функции сброса бита в указанной позиции
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -919,12 +1019,14 @@ namespace awh {
 			 * @param pos позиция для сброса
 			 * @param num число в бинарном виде для сброса бита
 			 * @return    итоговое значение числа после сброса бита
+			 *
 			 */
 			T resetBit(const T pos, const T num) const noexcept;
 			/**
 			 * @brief Шаблон функции устанвки бита в указанную позицию
 			 *
 			 * @tparam T тип данных с которым работает функция
+			 *
 			 */
 			template <typename T>
 			/**
@@ -933,6 +1035,7 @@ namespace awh {
 			 * @param pos позиция для установки бита
 			 * @param num начальное значение бита
 			 * @return    итоговое значение числа после установки бита
+			 *
 			 */
 			T setBit(const T pos, const T num = 0) const noexcept;
 		public:
@@ -942,6 +1045,7 @@ namespace awh {
 			 * @param format формат строки вывода
 			 * @param args   передаваемые аргументы
 			 * @return       сформированная строка
+			 *
 			 */
 			string format(const char * format, ...) const noexcept;
 			/**
@@ -950,6 +1054,7 @@ namespace awh {
 			 * @param format формат строки вывода
 			 * @param args   передаваемые аргументы
 			 * @return       сформированная строка
+			 *
 			 */
 			wstring format(const wchar_t * format, ...) const noexcept;
 		public:
@@ -959,6 +1064,7 @@ namespace awh {
 			 * @param format формат строки вывода
 			 * @param items  список аргументов строки
 			 * @return       сформированная строка
+			 *
 			 */
 			string format(string_view format, const vector <string> & items) const noexcept;
 			/**
@@ -967,6 +1073,7 @@ namespace awh {
 			 * @param format формат строки вывода
 			 * @param items  список аргументов строки
 			 * @return       сформированная строка
+			 *
 			 */
 			wstring format(wstring_view format, const vector <wstring> & items) const noexcept;
 		public:
@@ -976,6 +1083,7 @@ namespace awh {
 			 * @param word слово для проверки
 			 * @param text текст в котором выполнения проверка
 			 * @return     результат выполнения проверки
+			 *
 			 */
 			bool exists(string_view word, string_view text) const noexcept;
 			/**
@@ -984,6 +1092,7 @@ namespace awh {
 			 * @param word слово для проверки
 			 * @param text текст в котором выполнения проверка
 			 * @return     результат выполнения проверки
+			 *
 			 */
 			bool exists(wstring_view word, wstring_view text) const noexcept;
 		public:
@@ -994,6 +1103,7 @@ namespace awh {
 			 * @param word слово для поиска
 			 * @param alt  слово на которое нужно произвести замену
 			 * @return     результирующий текст
+			 *
 			 */
 			string & replace(string & text, const string & word, const string & alt = "") const noexcept;
 			/**
@@ -1003,6 +1113,7 @@ namespace awh {
 			 * @param word слово для поиска
 			 * @param alt  слово на которое нужно произвести замену
 			 * @return     результирующий текст
+			 *
 			 */
 			wstring & replace(wstring & text, const wstring & word, const wstring & alt = L"") const noexcept;
 		public:
@@ -1013,6 +1124,7 @@ namespace awh {
 			 * @param word слово для поиска
 			 * @param alt  слово на которое нужно произвести замену
 			 * @return     результирующий текст
+			 *
 			 */
 			const string & replace(const string & text, const string & word, const string & alt = "") const noexcept;
 			/**
@@ -1022,6 +1134,7 @@ namespace awh {
 			 * @param word слово для поиска
 			 * @param alt  слово на которое нужно произвести замену
 			 * @return     результирующий текст
+			 *
 			 */
 			const wstring & replace(const wstring & text, const wstring & word, const wstring & alt = L"") const noexcept;
 		public:
@@ -1033,6 +1146,7 @@ namespace awh {
 			 * @param separator разделитель ключа и значения
 			 * @param escaping  символы экранирования
 			 * @return          список найденных элементов
+			 *
 			 */
 			unordered_map <string, string> kv(string_view text, string_view delim, string_view separator = "=", const vector <string> & escaping = {string{"\""}}) const noexcept;
 			/**
@@ -1043,6 +1157,7 @@ namespace awh {
 			 * @param separator разделитель ключа и значения
 			 * @param escaping  символы экранирования
 			 * @return          список найденных элементов
+			 *
 			 */
 			unordered_map <wstring, wstring> kv(wstring_view text, wstring_view delim, wstring_view separator = L"=", const vector <wstring> & escaping = {wstring{L"\""}}) const noexcept;
 		public:
@@ -1050,18 +1165,21 @@ namespace awh {
 			 * @brief Метод установки пользовательской зоны
 			 *
 			 * @param zone пользовательская зона
+			 *
 			 */
 			void domainZone(const string_view zone) noexcept;
 			/**
 			 * @brief Метод установки списка пользовательских зон
 			 *
 			 * @param zones список доменных зон интернета
+			 *
 			 */
 			void domainZones(const unordered_set <string> & zones) noexcept;
 			/**
 			 * @brief Метод извлечения списка пользовательских зон интернета
 			 *
 			 * @return список доменных зон
+			 *
 			 */
 			const unordered_set <string> & domainZones() const noexcept;
 		public:
@@ -1069,6 +1187,7 @@ namespace awh {
 			 * @brief Метод установки системной локали
 			 *
 			 * @param locale локализация приложения
+			 *
 			 */
 			void setLocale(string_view locale = AWH_LOCALE) noexcept;
 		public:
@@ -1077,6 +1196,7 @@ namespace awh {
 			 *
 			 * @param text текст для извлечения url адресов
 			 * @return     список координат с url адресами
+			 *
 			 */
 			unordered_map <size_t, size_t> urls(string_view text) const noexcept;
 		public:
@@ -1085,6 +1205,7 @@ namespace awh {
 			 *
 			 * @param end флаг завершения работы
 			 * @return    иконка напутствия работы
+			 *
 			 */
 			string icon(const bool end = false) const noexcept;
 		public:
@@ -1093,6 +1214,7 @@ namespace awh {
 			 *
 			 * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
 			 * @return    размер в байтах
+			 *
 			 */
 			double bytes(const string_view str) const noexcept;
 			/**
@@ -1101,6 +1223,7 @@ namespace awh {
 			 * @param value   количество байт
 			 * @param onlyNum выводить только числа
 			 * @return        полученная строка
+			 *
 			 */
 			string bytes(const double value, const bool onlyNum = false) const noexcept;
 		public:
@@ -1109,6 +1232,7 @@ namespace awh {
 			 *
 			 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
 			 * @return    количество байт в секунду
+			 *
 			 */
 			size_t bpsSize(const string_view str) const noexcept;
 			/**
@@ -1116,6 +1240,7 @@ namespace awh {
 			 *
 			 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
 			 * @return    размер буфера в байтах
+			 *
 			 */
 			size_t bpsBuffer(const string_view str) const noexcept;
 		public:
@@ -1123,6 +1248,7 @@ namespace awh {
 			 * @brief Метод установки объекта логирования
 			 *
 			 * @param log объект работы с логами
+			 *
 			 */
 			void setLogger(const Logging * log) noexcept;
 		public:
@@ -1135,6 +1261,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param locale локализация приложения
+			 *
 			 */
 			explicit Framework(string_view locale) noexcept;
 			/**

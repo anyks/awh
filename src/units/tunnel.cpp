@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля туннеля — создание и обслуживание виртуального сетевого интерфейса TUN/TAP,
+ *        настройка адресов и маршрутов и передача пакетов между интерфейсом и приложением
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -32,6 +36,7 @@ using namespace placeholders;
  *
  * @param eid    идентификатор события
  * @param status новый статус туннеля
+ *
  */
 void awh::unit::Tunnel::status(const event::id_t eid, const event::status_t status) noexcept {
 	// Если статус туннеля представляет из себя уничтожение
@@ -55,6 +60,7 @@ void awh::unit::Tunnel::status(const event::id_t eid, const event::status_t stat
  * @param eid    идентификатор события
  * @param status статус доступности очереди
  * @param size   размер доступных данных очереди
+ *
  */
 void awh::unit::Tunnel::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -66,6 +72,7 @@ void awh::unit::Tunnel::available(const event::id_t eid, const event::status_t s
  * @param eid         идентификатор события
  * @param error       тип ошибки
  * @param description описание ошибки
+ *
  */
 void awh::unit::Tunnel::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
 	// Выполняем функцию обратного вызова
@@ -78,6 +85,7 @@ void awh::unit::Tunnel::error(const event::id_t eid, const event::error_t error,
  * @param mid    идентификатор события посредника
  * @param action действие туннеля
  * @param info   информация о пакетах в туннеле
+ *
  */
 void awh::unit::Tunnel::info(const event::id_t eid, const event::id_t mid, const event::action_t action, const net::tun_info_t & info) noexcept {
 	// Выполняем функцию обратного вызова
@@ -88,6 +96,7 @@ void awh::unit::Tunnel::info(const event::id_t eid, const event::id_t mid, const
  *
  * @param eid идентификатор события туннеля
  * @return    результат выполнения фиксации
+ *
  */
 bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 	// Переменная результата
@@ -154,6 +163,7 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
  * @return       количество байт данных, отправленных через туннель
+ *
  */
 size_t awh::unit::Tunnel::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Выполняем отправку данных через туннель
@@ -164,6 +174,7 @@ size_t awh::unit::Tunnel::send(const event::id_t eid, const void * buffer, const
  *
  * @param eid идентификатор события туннеля
  * @return    опции туннеля
+ *
  */
 uint16_t awh::unit::Tunnel::getOptions(const event::id_t eid) const noexcept {
 	// Выполняем получение опций для события туннеля
@@ -175,6 +186,7 @@ uint16_t awh::unit::Tunnel::getOptions(const event::id_t eid) const noexcept {
  * @param eid     идентификатор события туннеля
  * @param options опции туннеля для установки
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::Tunnel::setOptions(const event::id_t eid, const uint16_t options) noexcept {
 	// Выполняем установку опций для события туннеля
@@ -187,6 +199,7 @@ bool awh::unit::Tunnel::setOptions(const event::id_t eid, const uint16_t options
  * @param option опция туннеля для установки
  * @param mode   режим установки опции туннеля
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Tunnel::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
 	// Выполняем установку опции для события туннеля
@@ -197,6 +210,7 @@ bool awh::unit::Tunnel::setOption(const event::id_t eid, const uint16_t option, 
  *
  * @param eid идентификатор события туннеля
  * @return    сетевой интерфейс туннеля
+ *
  */
 string awh::unit::Tunnel::getIface(const event::id_t eid) const noexcept {
 	// Выполняем получение сетевого интерфейса для события туннеля
@@ -208,6 +222,7 @@ string awh::unit::Tunnel::getIface(const event::id_t eid) const noexcept {
  * @param eid  идентификатор события туннеля
  * @param name имя сетевого интерфейса для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::Tunnel::setIface(const event::id_t eid, string_view name) noexcept {
 	// Выполняем установку сетевого интерфейса для события туннеля
@@ -218,6 +233,7 @@ bool awh::unit::Tunnel::setIface(const event::id_t eid, string_view name) noexce
  *
  * @param eid идентификатор события туннеля
  * @return    адрес хоста целевой машины
+ *
  */
 string awh::unit::Tunnel::getTarget(const event::id_t eid) const noexcept {
 	// Выполняем получение адреса хоста целевой машины для события туннеля
@@ -229,6 +245,7 @@ string awh::unit::Tunnel::getTarget(const event::id_t eid) const noexcept {
  * @param eid    идентификатор события туннеля
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Tunnel::setTarget(const event::id_t eid, string_view target) noexcept {
 	// Выполняем установку адреса хоста целевой машины для события туннеля
@@ -240,6 +257,7 @@ bool awh::unit::Tunnel::setTarget(const event::id_t eid, string_view target) noe
  * @param eid    идентификатор события туннеля
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Tunnel::setTarget(const event::id_t eid, const net::addr_t * target) noexcept {
 	// Выполняем установку адреса хоста целевой машины для события туннеля
@@ -251,6 +269,7 @@ bool awh::unit::Tunnel::setTarget(const event::id_t eid, const net::addr_t * tar
  * @param eid    идентификатор события туннеля
  * @param target объект для извлечения адреса хоста целевой машины
  * @return       результат выполнения извлечения адреса хоста целевой машины
+ *
  */
 bool awh::unit::Tunnel::getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept {
 	// Выполняем получение адреса хоста целевой машины для события туннеля
@@ -262,6 +281,7 @@ bool awh::unit::Tunnel::getTarget(const event::id_t eid, unique_ptr <net::addr_t
  * @param eid     идентификатор события туннеля
  * @param address тип адреса туннеля
  * @return        значение адреса туннеля
+ *
  */
 string awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
 	// Выполняем получение адреса туннеля для события туннеля
@@ -274,6 +294,7 @@ string awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address
  * @param address тип адреса туннеля
  * @param value   значение адреса туннеля
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
 	// Выполняем установку адреса туннеля для события туннеля
@@ -286,6 +307,7 @@ bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t
  * @param address тип адреса туннеля
  * @param value   значение адреса туннеля
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
 	// Выполняем установку адреса туннеля для события туннеля
@@ -298,6 +320,7 @@ bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t
  * @param address тип адреса туннеля
  * @param value   объект для извлечения адреса туннеля
  * @return        результат выполнения извлечения адреса туннеля
+ *
  */
 bool awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Выполняем получение адреса туннеля для события туннеля
@@ -308,6 +331,7 @@ bool awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address_t
  *
  * @param eid идентификатор события туннеля
  * @return    MTU сетевого интерфейса
+ *
  */
 uint16_t awh::unit::Tunnel::getMaximumTransmissionUnit(const event::id_t eid) const noexcept {
 	// Выполняем получение MTU сетевого интерфейса для события туннеля
@@ -319,6 +343,7 @@ uint16_t awh::unit::Tunnel::getMaximumTransmissionUnit(const event::id_t eid) co
  * @param eid идентификатор события туннеля
  * @param mtu размер MTU интерфейса
  * @return    результат установки MTU сетевого интерфейса
+ *
  */
 bool awh::unit::Tunnel::setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept {
 	// Выполняем установку MTU сетевого интерфейса для события туннеля
@@ -328,6 +353,7 @@ bool awh::unit::Tunnel::setMaximumTransmissionUnit(const event::id_t eid, const 
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::unit::Tunnel::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
@@ -343,6 +369,7 @@ void awh::unit::Tunnel::callback(const callback_t & callback) noexcept {
  * @brief Метод уничтожения события туннеля
  *
  * @param eid идентификатор события для уничтожения
+ *
  */
 void awh::unit::Tunnel::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие туннеля
@@ -353,6 +380,7 @@ void awh::unit::Tunnel::destroy(const event::id_t eid) noexcept {
  *
  * @param family семейство адресов
  * @return       идентификатор созданного туннеля
+ *
  */
 awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept {
 	// Переменная результата
@@ -400,6 +428,7 @@ awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::unit::Tunnel::Tunnel(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
 /**

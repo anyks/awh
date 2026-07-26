@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Точка входа набора бенчмарков библиотеки — хранилище зарегистрированных сценариев,
+ *        разбор параметров командной строки,
+ *        отбор и последовательный прогон сценариев с выводом собранных показателей
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -41,6 +46,7 @@ namespace {
 	 *       трансляции не определён
 	 *
 	 * @return изменяемый список зарегистрированных сценариев
+	 *
 	 */
 	static std::vector <awh::benchmark::scenario_t> & registry() noexcept {
 		// Список зарегистрированных сценариев
@@ -72,6 +78,7 @@ awh::benchmark::Scenario::Scenario() noexcept :
  * @param bound     направление сравнения с порогом
  * @param run       функция выполнения сценария
  * @return          признак успешной регистрации (для статической инициализации)
+ *
  */
 bool awh::benchmark::add(const std::string & name, const std::string & units, const double threshold, const bound_t bound, std::function <result_t ()> run) noexcept {
 	// Формируем описание сценария бенчмарка
@@ -95,6 +102,7 @@ bool awh::benchmark::add(const std::string & name, const std::string & units, co
  * @brief Функция получения списка зарегистрированных сценариев
  *
  * @return список зарегистрированных сценариев
+ *
  */
 const std::vector <awh::benchmark::scenario_t> & awh::benchmark::scenarios() noexcept {
 	// Выводим список зарегистрированных сценариев
@@ -106,6 +114,7 @@ const std::vector <awh::benchmark::scenario_t> & awh::benchmark::scenarios() noe
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char ** argv){
 	// Фильтр названий выполняемых сценариев

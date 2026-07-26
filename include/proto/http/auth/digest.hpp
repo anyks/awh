@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл схемы DIGEST-авторизации (RFC 7616) — расчёт и проверка дайджеста по nonce, cnonce,
+ *        nc и qop с контролем срока жизни nonce и защитой от повторного использования
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -48,6 +52,7 @@ namespace awh {
 				 * @brief Метод перевода алгоритма хэширования в текстовое представление
 				 *
 				 * @return название алгоритма хэширования (MD5, SHA-256 и т.д.)
+				 *
 				 */
 				string algorithm() const noexcept;
 				/**
@@ -56,6 +61,7 @@ namespace awh {
 				 * @param user логин пользователя
 				 * @param pass пароль пользователя
 				 * @return     ответ в шестнадцатеричном виде
+				 *
 				 */
 				string response(const string & user, const string & pass) const noexcept;
 			public:
@@ -63,6 +69,7 @@ namespace awh {
 				 * @brief Метод проверки учётных данных (только для сервера)
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool check() noexcept override;
 				/**
@@ -70,6 +77,7 @@ namespace awh {
 				 *
 				 * @param header значение заголовка (клиент: вызов, сервер: учётные данные)
 				 * @return       результат разбора
+				 *
 				 */
 				bool parse(const string_view header) noexcept override;
 				/**
@@ -77,6 +85,7 @@ namespace awh {
 				 *
 				 * @param full режим вывода вместе с именем заголовка
 				 * @return     значение заголовка авторизации
+				 *
 				 */
 				string header(const bool full = false) noexcept override;
 			public:
@@ -88,6 +97,7 @@ namespace awh {
 				 * @param crypto объект криптографии
 				 * @param fmk    объект фреймворка
 				 * @param log    объект для работы с логами
+				 *
 				 */
 				explicit Digest(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept;
 				/**

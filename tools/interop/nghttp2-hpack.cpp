@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пробник дифференциальной сверки HPACK-кодека с эталонной реализацией nghttp2 — прогон одной
+ *        последовательности блоков заголовков через оба кодека с общим состоянием динамических таблиц в обе стороны
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -53,6 +57,7 @@ static size_t failures = 0;
  * @param stage описание проверки
  * @param index номер блока заголовков
  * @param text  текст расхождения
+ *
  */
 static void mismatch(const char * stage, const size_t index, const std::string & text) noexcept {
 	// Наращиваем счётчик расхождений
@@ -67,6 +72,7 @@ static void mismatch(const char * stage, const size_t index, const std::string &
  * @param rng   генератор псевдослучайных чисел
  * @param index номер блока заголовков
  * @return      сформированный набор заголовков
+ *
  */
 static std::vector <field_t> generate(std::mt19937 & rng, const size_t index) noexcept {
 	// Результат работы функции - набор заголовков
@@ -127,6 +133,7 @@ static std::vector <field_t> generate(std::mt19937 & rng, const size_t index) no
  * @param block    распаковываемый блок заголовков
  * @param output   распакованный набор заголовков
  * @return         результат распаковки
+ *
  */
 static bool inflate(nghttp2_hd_inflater * inflater, const std::string & block, std::vector <field_t> & output) noexcept {
 	// Указатель на данные блока

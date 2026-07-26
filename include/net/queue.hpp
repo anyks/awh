@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл сетевой очереди — класс Network_Queue с выравниванием на границу кэш-линии, обеспечивающий
+ *        буферизацию исходящих и входящих сетевых данных фиксированной ёмкости без ложного разделения кэша между
+ *        потоками
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -39,6 +44,7 @@
 	 * @note Это ёмкость одного блока буфера очереди и одновременно верхняя граница объёма данных,
 	 *       который очередь способна удержать.
 	 *       Может быть переопределён на этапе сборки через -D.
+	 *
 	 */
 	#define AWH_NETWORK_QUEUE_BUFFER_SIZE 0x10000
 #endif
@@ -145,6 +151,7 @@ namespace awh {
 			 * @brief Метод ленивого выделения буфера очереди из пула (если ещё не выделен)
 			 *
 			 * @return результат выделения буфера (false при нехватке памяти)
+			 *
 			 */
 			bool reserve() noexcept;
 			/**
@@ -157,6 +164,7 @@ namespace awh {
 			 * @brief Метод быстрого получения размера записи (без проверок - вызывается только для валидных позиций)
 			 *
 			 * @return размер данных в очереди
+			 *
 			 */
 			size_t recordSize(const size_t pos) const noexcept;
 			/**
@@ -164,6 +172,7 @@ namespace awh {
 			 *
 			 * @param pos  позиция записи для обновления размера
 			 * @param size новый размер данных в очереди
+			 *
 			 */
 			void recordSize(const size_t pos, const size_t size) noexcept;
 		public:
@@ -177,6 +186,7 @@ namespace awh {
 			 * @brief Метод проверки на пустоту очереди
 			 *
 			 * @return результат проверки на пустоту очереди
+			 *
 			 */
 			bool empty() const noexcept;
 		public:
@@ -184,6 +194,7 @@ namespace awh {
 			 * @brief Метод получения общего размера полезных данных в очереди (без учёта метаданных)
 			 *
 			 * @return размер данных в очереди
+			 *
 			 */
 			size_t size() const noexcept;
 		public:
@@ -191,6 +202,7 @@ namespace awh {
 			 * @brief Метод получения количества записей в очереди
 			 *
 			 * @return количество записей в очереди
+			 *
 			 */
 			size_t count() const noexcept;
 		public:
@@ -199,6 +211,7 @@ namespace awh {
 			 *
 			 * @note   Возвращает размер наибольшего непрерывного свободного региона: для TCP (bip) это гарантированный максимум одной записи, для UDP - свободное место за вычетом заголовка.
 			 * @return доступное пространство для новых данных в очереди
+			 *
 			 */
 			size_t available() const noexcept;
 		public:
@@ -206,6 +219,7 @@ namespace awh {
 			 * @brief Метод получения типа сетевой очереди
 			 *
 			 * @return тип сетевой очереди
+			 *
 			 */
 			type_t type() const noexcept;
 			/**
@@ -219,6 +233,7 @@ namespace awh {
 			 *
 			 * @param size размер данных для удаления из очереди
 			 * @return     результат удаления верхней записи из очереди (true при успехе, false если очередь пуста)
+			 *
 			 */
 			bool pop(const size_t size = 0) noexcept;
 		public:
@@ -228,6 +243,7 @@ namespace awh {
 			 * @param data данные для добавления в очередь
 			 * @param size размер данных для добавления в очередь
 			 * @return     количество данных, успешно добавленных в очередь (0 при неудаче, когда недостаточно места)
+			 *
 			 */
 			size_t push(const void * data, const size_t size) noexcept;
 		public:
@@ -237,6 +253,7 @@ namespace awh {
 			 * @param data данные для получения из очереди (устанавливается указатель на данные в очереди)
 			 * @param size размер данных для получения из очереди
 			 * @return     результат (true при успехе, false если очередь пуста)
+			 *
 			 */
 			bool front(const void ** data, size_t & size) const noexcept;
 		public:
@@ -267,6 +284,7 @@ namespace awh {
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit Network_Queue(const fmk_t * fmk, const log_t * log) noexcept;
 			/**

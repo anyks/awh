@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля адресов канального уровня — класс eth::Network_Address для получения,
+ *        разбора и представления MAC-адресов и адресов сетевых интерфейсов машины
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -59,6 +63,7 @@ namespace awh {
 				 * @brief Метод заполнения источника сетевых адресов по имени сетевого интерфейса
 				 *
 				 * @param source объект источника сетевых адресов
+				 *
 				 */
 				void fillSource(net::src_t & source) const noexcept;
 				/**
@@ -66,6 +71,7 @@ namespace awh {
 				 *
 				 * @param net    сетевой адрес подсети (IP-адрес в сетевом порядке байт)
 				 * @param source объект источника сетевых адресов
+				 *
 				 */
 				void fillSource(const net::addr_t * net, net::src_t & source) const noexcept;
 				/**
@@ -73,6 +79,7 @@ namespace awh {
 				 *
 				 * @param node   тип узла события
 				 * @param source объект источника сетевых адресов
+				 *
 				 */
 				void fillSource(const event::node_t node, net::src_t & source) const noexcept;
 			public:
@@ -83,6 +90,7 @@ namespace awh {
 				 * @param net    сетевой адрес подсети в хостовом порядке
 				 * @param prefix префикс подсети
 				 * @return       результат проверки
+				 *
 				 */
 				bool isInSubnet(const uint32_t ip, const uint32_t net, const uint8_t prefix) const noexcept;
 				/**
@@ -92,6 +100,7 @@ namespace awh {
 				 * @param second Второй IPv6-адрес
 				 * @param length Длина префикса в битах
 				 * @return       Результат сравнения
+				 *
 				 */
 				bool ipv6PrefixEqual(const uint8_t * first, const uint8_t * second, const uint8_t length) const noexcept;
 			public:
@@ -105,6 +114,7 @@ namespace awh {
 				 * @param transport указатель на данные транспортного уровня
 				 * @param length    длина данных транспортного уровня
 				 * @return          вычисленная контрольная сумма
+				 *
 				 */
 				uint16_t checksum(const event::family_t family, const event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length) const noexcept;
 			public:
@@ -113,6 +123,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект работы с логами
+				 *
 				 */
 				explicit Network_Address(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

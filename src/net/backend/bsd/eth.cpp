@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация бэкенда сетевого уровня Ethernet — объединение работы с интерфейсами, шлюзами, маршрутами,
+ *        пробросом портов и сокетами канального уровня с ветвлением под конкретную операционную систему
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -59,6 +63,7 @@ namespace options {
 	 *
 	 * @param fmk объект фреймворка
 	 * @param log объект работы с логами
+	 *
 	 */
 	static void netboost(const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
 		/**
@@ -251,6 +256,7 @@ namespace options {
 	 *
 	 * @param fmk объект фреймворка
 	 * @param log объект работы с логами
+	 *
 	 */
 	awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept :
 	 addr(fmk, log), iface(fmk, log), sctp(fmk, log), socket(fmk, log),
@@ -269,6 +275,7 @@ namespace options {
 	 *
 	 * @param fmk объект фреймворка
 	 * @param log объект работы с логами
+	 *
 	 */
 	awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept :
 	 addr(fmk, log), iface(fmk, log), socket(fmk, log),

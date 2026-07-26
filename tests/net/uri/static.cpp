@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Статические тесты модуля работы с универсальными идентификаторами ресурсов —
+ *        проверка создания и сброса объекта модуля, а также корректности разбора и сборки URI, нормализации пути,
+ *        процентного кодирования и работы с параметрами запроса
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -64,6 +69,7 @@ TEST_F(UriFixture, ReCreateUriTest){
  * @brief Тест декодирования процент-последовательностей логина и пароля при парсинге
  *
  * @note Регрессионный тест: компоненты userinfo должны декодироваться так же, как остальные части URI
+ *
  */
 TEST_F(UriFixture, ParseUserinfoPercentDecodeTest){
 	// Выполняем очистку объекта работы с URI
@@ -82,6 +88,7 @@ TEST_F(UriFixture, ParseUserinfoPercentDecodeTest){
  * @brief Тест отбраковки порта, выходящего за пределы диапазона uint16_t, при парсинге
  *
  * @note Регрессионный тест: порт > 65535 не должен молча усекаться (99999 mod 65536 == 34463)
+ *
  */
 TEST_F(UriFixture, ParsePortRangeOverflowTest){
 	// Выполняем очистку объекта работы с URI
@@ -98,6 +105,7 @@ TEST_F(UriFixture, ParsePortRangeOverflowTest){
  * @brief Тест корректной обработки некорректных и обрезанных процент-последовательностей при декодировании
  *
  * @note Регрессионный тест: завершающий '%' не должен приводить к чтению за границами буфера
+ *
  */
 TEST_F(UriFixture, DecodeMalformedPercentNoCrashTest){
 	// Выполняем очистку объекта работы с URI
@@ -128,6 +136,7 @@ TEST_F(UriFixture, DecodeMalformedPercentNoCrashTest){
  * @brief Тест генерации запроса для E-mail URI без атрибутов хоста
  *
  * @note Регрессионный тест: print(REQUEST) для EMAIL без атрибутов не должен разыменовывать нулевой указатель
+ *
  */
 TEST_F(UriFixture, EmailRequestNoHostNoCrashTest){
 	// Выполняем очистку объекта работы с URI
@@ -146,6 +155,7 @@ TEST_F(UriFixture, EmailRequestNoHostNoCrashTest){
  * @brief Тест чувствительности к регистру при сравнении URI
  *
  * @note Регрессионный тест: схема и хост сравниваются без учёта регистра, путь — с учётом регистра (RFC 3986)
+ *
  */
 TEST_F(UriFixture, CaseSensitiveComparisonTest){
 	// Создаём два объекта работы с URI
@@ -184,6 +194,7 @@ TEST_F(UriFixture, CaseSensitiveComparisonTest){
  * @brief Тест сохранения нестандартного порта при генерации SMART-формата для URI без определённого типа
  *
  * @note Регрессионный тест: для типа NONE нестандартный порт не должен теряться при генерации SMART
+ *
  */
 TEST_F(UriFixture, SmartNonStandardPortForUntypedUriTest){
 	// Выполняем очистку объекта работы с URI

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля посредника — связывание двух независимых узлов в двунаправленный канал и проксирование
+ *        трафика между ними с контролем встречного давления
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -32,6 +36,7 @@ using namespace placeholders;
  *
  * @param eid    идентификатор события
  * @param action действие посредника
+ *
  */
 void awh::unit::Mediator::action(const event::id_t eid, const event::action_t action) noexcept {
 	// Выполняем функцию обратного вызова
@@ -42,6 +47,7 @@ void awh::unit::Mediator::action(const event::id_t eid, const event::action_t ac
  *
  * @param eid    идентификатор события
  * @param status новый статус посредника
+ *
  */
 void awh::unit::Mediator::status(const event::id_t eid, const event::status_t status) noexcept {
 	// Если статус посредника представляет из себя уничтожение
@@ -65,6 +71,7 @@ void awh::unit::Mediator::status(const event::id_t eid, const event::status_t st
  * @param eid  идентификатор события
  * @param data данные события получения данных посредником
  * @param size размер данных события получения данных посредником
+ *
  */
 void awh::unit::Mediator::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -76,6 +83,7 @@ void awh::unit::Mediator::read(const event::id_t eid, const uint8_t * data, cons
  * @param eid         идентификатор события
  * @param error       тип ошибки
  * @param description описание ошибки
+ *
  */
 void awh::unit::Mediator::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
 	// Выполняем функцию обратного вызова
@@ -86,6 +94,7 @@ void awh::unit::Mediator::error(const event::id_t eid, const event::error_t erro
  *
  * @param eid идентификатор события посредника
  * @return    результат выполнения фиксации
+ *
  */
 bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
 	// Переменная результата
@@ -149,6 +158,7 @@ bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
  * @return       количество байт данных, отправленных посредником
+ *
  */
 size_t awh::unit::Mediator::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Выполняем отправку данных посредником
@@ -160,6 +170,7 @@ size_t awh::unit::Mediator::send(const event::id_t eid, const void * buffer, con
  * @param eid  идентификатор события-источника
  * @param dest идентификатор события-приёмника
  * @return     результат выполнения перемещения
+ *
  */
 bool awh::unit::Mediator::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	// Выполняем перемещение данных между событием посредника и другим событием
@@ -170,6 +181,7 @@ bool awh::unit::Mediator::splice(const event::id_t eid, const event::id_t dest) 
  *
  * @param eid идентификатор события посредника
  * @return    адрес хоста целевой машины
+ *
  */
 string awh::unit::Mediator::getTarget(const event::id_t eid) const noexcept {
 	// Выполняем получение адреса хоста целевой машины для события посредника
@@ -181,6 +193,7 @@ string awh::unit::Mediator::getTarget(const event::id_t eid) const noexcept {
  * @param eid    идентификатор события посредника
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Mediator::setTarget(const event::id_t eid, string_view target) noexcept {
 	// Выполняем установку адреса хоста целевой машины для события посредника
@@ -192,6 +205,7 @@ bool awh::unit::Mediator::setTarget(const event::id_t eid, string_view target) n
  * @param eid    идентификатор события посредника
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Mediator::setTarget(const event::id_t eid, const net::addr_t * target) noexcept {
 	// Выполняем установку адреса хоста целевой машины для события посредника
@@ -203,6 +217,7 @@ bool awh::unit::Mediator::setTarget(const event::id_t eid, const net::addr_t * t
  * @param eid    идентификатор события посредника
  * @param target объект для извлечения адреса хоста целевой машины
  * @return       результат выполнения извлечения адреса хоста целевой машины
+ *
  */
 bool awh::unit::Mediator::getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept {
 	// Выполняем получение адреса хоста целевой машины для события посредника
@@ -214,6 +229,7 @@ bool awh::unit::Mediator::getTarget(const event::id_t eid, unique_ptr <net::addr
  * @param eid     идентификатор события посредника
  * @param address тип адреса посредника
  * @return        значение адреса посредника
+ *
  */
 string awh::unit::Mediator::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
 	// Выполняем получение адреса посредника для события посредника
@@ -226,6 +242,7 @@ string awh::unit::Mediator::getAddress(const event::id_t eid, const event::addre
  * @param address тип адреса посредника
  * @param value   значение адреса посредника
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::Mediator::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
 	// Выполняем установку адреса посредника для события посредника
@@ -238,6 +255,7 @@ bool awh::unit::Mediator::setAddress(const event::id_t eid, const event::address
  * @param address тип адреса посредника
  * @param value   значение адреса посредника
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::Mediator::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
 	// Выполняем установку адреса посредника для события посредника
@@ -250,6 +268,7 @@ bool awh::unit::Mediator::setAddress(const event::id_t eid, const event::address
  * @param address тип адреса посредника
  * @param value   объект для извлечения адреса посредника
  * @return        результат выполнения извлечения адреса посредника
+ *
  */
 bool awh::unit::Mediator::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Выполняем получение адреса посредника для события посредника
@@ -259,6 +278,7 @@ bool awh::unit::Mediator::getAddress(const event::id_t eid, const event::address
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::unit::Mediator::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
@@ -274,6 +294,7 @@ void awh::unit::Mediator::callback(const callback_t & callback) noexcept {
  * @brief Метод уничтожения события посредника
  *
  * @param eid идентификатор события для уничтожения
+ *
  */
 void awh::unit::Mediator::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие посредника
@@ -284,6 +305,7 @@ void awh::unit::Mediator::destroy(const event::id_t eid) noexcept {
  *
  * @param family семейство адресов
  * @return       идентификатор созданного посредника
+ *
  */
 awh::event::id_t awh::unit::Mediator::issue(const event::family_t family) noexcept {
 	// Переменная результата
@@ -333,6 +355,7 @@ awh::event::id_t awh::unit::Mediator::issue(const event::family_t family) noexce
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::unit::Mediator::Mediator(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
 /**

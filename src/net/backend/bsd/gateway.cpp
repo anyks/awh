@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация бэкенда работы со шлюзами — чтение таблицы маршрутизации,
+ *        определение шлюза по умолчанию и разбор параметров маршрута через sysctl,
+ *        netlink или системные API соответствующей платформы
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -83,6 +88,7 @@ namespace gw {
 	 *
 	 * @param prefix префикс сети
 	 * @return       маска подсети
+	 *
 	 */
 	static in_addr_t prefix2mask(const uint8_t prefix) noexcept {
 		// Если префикс равен нулю
@@ -97,6 +103,7 @@ namespace gw {
 	 *
 	 * @param addr объект текущего адреса маршрута
 	 * @return     объект следующего адреса маршрута
+	 *
 	 */
 	static struct sockaddr * advance(struct sockaddr * addr) noexcept {
 		// Получаем длину структуры адреса
@@ -109,6 +116,7 @@ namespace gw {
 	 *
 	 * @param rtm объект сообщения маршрута
 	 * @return    структура распарсенных адресов маршрута
+	 *
 	 */
 	static addrs_t parse(const struct rt_msghdr * rtm) noexcept {
 		// Результат разбора адресов маршрута
@@ -164,6 +172,7 @@ namespace gw {
 	 * @param size   размер буфера для приёма ответа маршрута
 	 * @param rtm    объект полученного маршрута (выходной параметр)
 	 * @return       результат выполнения запроса маршрута
+	 *
 	 */
 	static bool query(const struct sockaddr * dst, uint8_t * buffer, const size_t size, struct rt_msghdr ** rtm) noexcept {
 		// Создаём сокет маршрутизации
@@ -249,6 +258,7 @@ awh::eth::Gateway::Route::Route() noexcept :
  *
  * @param route объект для извлечения маршрута
  * @return      результат получения маршрута
+ *
  */
 bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	// Переменная результата
@@ -287,6 +297,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 *
 					 * @param rtm объект сообщения маршрута
 					 * @return    результат совпадения и заполнения маршрута
+					 *
 					 */
 					auto process = [&](struct rt_msghdr * rtm) -> bool {
 						// Разбираем адреса сообщения маршрута
@@ -509,6 +520,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 *
 					 * @param rtm объект сообщения маршрута
 					 * @return    результат совпадения и заполнения маршрута
+					 *
 					 */
 					auto process = [&](struct rt_msghdr * rtm) -> bool {
 						// Разбираем адреса сообщения маршрута
@@ -764,6 +776,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
  *
  * @param route объект маршрута для добавления
  * @return      результат добавления маршрута
+ *
  */
 bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 	// Переменная результата
@@ -1287,6 +1300,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
  *
  * @param route объект маршрута для удаления
  * @return      результат удаления маршрута
+ *
  */
 bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 	// Переменная результата
@@ -1904,6 +1918,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект работы с логами
+ *
  */
 awh::eth::Gateway::Gateway(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация контейнера HTTP-заголовков — регистронезависимое хранение и поиск полей, обход итераторами,
+ *        контроль лимитов на количество и размер заголовков и работа с множественными значениями одного поля
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -57,6 +61,7 @@ namespace {
 	 *
 	 * @param letter символ для приведения к нижнему регистру
 	 * @return       символ в нижнем регистре
+	 *
 	 */
 	uint8_t toLower(const uint8_t letter) noexcept {
 		// Если символ является заглавной латинской буквой - приводим его к нижнему регистру
@@ -67,6 +72,7 @@ namespace {
 	 *
 	 * @param letter символ для проверки
 	 * @return       результат проверки
+	 *
 	 */
 	bool isSpace(const uint8_t letter) noexcept {
 		// Проверяем принадлежность символа к набору пробельных символов ASCII
@@ -77,6 +83,7 @@ namespace {
 	 *
 	 * @param seed  исходный хеш-код
 	 * @param value добавочный хеш-код
+	 *
 	 */
 	void combine(size_t & seed, const size_t value) noexcept {
 		// Комбинируем хеш-коды (константа - дробная часть золотого сечения в 64 битах)
@@ -87,6 +94,7 @@ namespace {
 	 *
 	 * @param name название заголовка для вычисления хеш-кода
 	 * @return     хеш-код названия заголовка без учёта регистра
+	 *
 	 */
 	size_t hashing(string_view name) noexcept {
 		// Результат работы функции
@@ -109,6 +117,7 @@ namespace {
 	 * @param first  первая строка для сравнения
 	 * @param second вторая строка для сравнения
 	 * @return       результат сравнения строк без учёта регистра
+	 *
 	 */
 	bool equals(string_view first, string_view second) noexcept {
 		// Если длины строк не совпадают - строки заведомо не равны
@@ -131,6 +140,7 @@ namespace {
 	 * @brief Шаблон функции поиска заголовка по названию без учёта регистра
 	 *
 	 * @tparam Iterator тип итератора для поиска
+	 *
 	 */
 	template <typename Iterator>
 	/**
@@ -140,6 +150,7 @@ namespace {
 	 * @param end   конец диапазона поиска
 	 * @param name  название заголовка для поиска
 	 * @return      итератор найденного заголовка либо end
+	 *
 	 */
 	Iterator findByName(Iterator begin, Iterator end, string_view name) noexcept {
 		/**
@@ -159,6 +170,7 @@ namespace {
 	 *
 	 * @param method текстовое название метода HTTP-запроса
 	 * @return       метод HTTP-запроса
+	 *
 	 */
 	http::method_t method(string_view method) noexcept {
 		// Если название метода соответствует GET
@@ -205,6 +217,7 @@ namespace {
 	 *
 	 * @param method метод HTTP-запроса
 	 * @return       текстовое название метода HTTP-запроса
+	 *
 	 */
 	string_view method(const http::method_t method) noexcept {
 		/**
@@ -256,6 +269,7 @@ namespace {
 	 *
 	 * @param version версия протокола HTTP
 	 * @return        версия протокола HTTP в текстовом виде (например "1.1")
+	 *
 	 */
 	string version(const http::version_t version) noexcept {
 		/**
@@ -299,6 +313,7 @@ namespace {
 	 *
 	 * @param name  название заголовка, приводимое к канонической форме
 	 * @param proto версия протокола HTTP-запроса/ответа
+	 *
 	 */
 	void applyCaseName(string & name, const http::proto_t proto) noexcept {
 		/**
@@ -354,6 +369,7 @@ namespace {
 	 * @param result результирующая строка, в которую дописывается название заголовка
 	 * @param name   исходное название заголовка
 	 * @param proto  версия протокола HTTP-запроса/ответа
+	 *
 	 */
 	void appendCasedName(string & result, string_view name, const http::proto_t proto) noexcept {
 		/**
@@ -409,6 +425,7 @@ namespace {
 	 * @param result результирующая строка, в которую дописывается заголовок
 	 * @param header название и значение форматируемого заголовка
 	 * @param proto  версия протокола HTTP-запроса/ответа
+	 *
 	 */
 	void appendHeader(string & result, const http::Headers::header_t & header, const http::proto_t proto) noexcept {
 		// Дописываем название заголовка в канонической для протокола форме
@@ -424,6 +441,7 @@ namespace {
 	 * @brief Шаблон функции определения версии протокола HTTP на основе списка заголовков
 	 *
 	 * @tparam Range тип диапазона заголовков для анализа
+	 *
 	 */
 	template <typename Range>
 	/**
@@ -435,6 +453,7 @@ namespace {
 	 *
 	 * @param headers набор заголовков для анализа
 	 * @return        определённая версия протокола HTTP
+	 *
 	 */
 	http::proto_t detectProto(const Range & headers) noexcept {
 		// Флаг наличия хотя бы одного заголовка для анализа
@@ -465,6 +484,7 @@ namespace {
 	 *
 	 * @param provider объект провайдера HTTP-запроса/ответа
 	 * @return         список псевдозаголовков протокола HTTP/2
+	 *
 	 */
 	vector <http::Headers::header_t> pseudoHeaders(const http::provider_t * provider) noexcept {
 		// Результат работы функции - список псевдозаголовков
@@ -594,6 +614,7 @@ namespace {
 	 *
 	 * @param headers список заголовков для преобразования
 	 * @return        набор заголовков
+	 *
 	 */
 	http::Headers::fields_t convert(const http::Headers::multimap_t & headers) noexcept {
 		// Результирующий список заголовков
@@ -634,6 +655,7 @@ namespace {
 	 * @param func    название функции, в которой произошла ошибка
 	 * @param message текст сообщения об ошибке
 	 * @param flag    флаг важности сообщения
+	 *
 	 */
 	void printError(const log_t * log, [[maybe_unused]] const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) noexcept {
 		// Если объект лога установлен
@@ -678,6 +700,7 @@ namespace {
  * @param name  название HTTP-заголовка
  * @param value значение HTTP-заголовка
  * @return      ссылка на текущий объект заголовка
+ *
  */
 awh::http::Headers::Header & awh::http::Headers::Header::from(string_view name, string_view value) noexcept {
 	// Если название заголовка передано (пустое значение допустимо согласно RFC 9110)
@@ -701,6 +724,7 @@ awh::http::Headers::Header & awh::http::Headers::Header::from(string_view name, 
  *
  * @param other другой объект для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::http::Headers::Header::operator == (const header_t & other) const noexcept {
 	/**
@@ -715,6 +739,7 @@ bool awh::http::Headers::Header::operator == (const header_t & other) const noex
  *
  * @param header объект для вычисления хеш-кода
  * @return       хеш-код объекта
+ *
  */
 size_t awh::http::Headers::Header_Hash::operator()(const header_t & header) const noexcept {
 	// Вычисляем хеш-код названия заголовка без учёта регистра
@@ -726,6 +751,7 @@ size_t awh::http::Headers::Header_Hash::operator()(const header_t & header) cons
  *
  * @param name название заголовка для вычисления хеш-кода
  * @return     хеш-код названия заголовка
+ *
  */
 size_t awh::http::Headers::Header_Name_Hash::operator()(const string & name) const noexcept {
 	// Вычисляем хеш-код названия заголовка без учёта регистра
@@ -738,6 +764,7 @@ size_t awh::http::Headers::Header_Name_Hash::operator()(const string & name) con
  * @param first  первое название заголовка
  * @param second второе название заголовка
  * @return       результат сравнения без учёта регистра
+ *
  */
 bool awh::http::Headers::Header_Name_Equal::operator()(const string & first, const string & second) const noexcept {
 	// Выполняем регистронезависимое сравнение названий заголовков
@@ -750,6 +777,7 @@ bool awh::http::Headers::Header_Name_Equal::operator()(const string & first, con
  * @param func    название функции, в которой произошла ошибка
  * @param message текст сообщения об ошибке
  * @param flag    флаг важности сообщения
+ *
  */
 void awh::http::Headers::Iterator::_error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
 	// Выводим сообщение об ошибке в лог через общую функцию логирования
@@ -759,6 +787,7 @@ void awh::http::Headers::Iterator::_error(const char * func, const char * messag
  * @brief Оператор преобразования в сырой итератор
  *
  * @return iterator итератор для преобразования
+ *
  */
 awh::http::Headers::Iterator::operator iterator() noexcept {
 	// Выводим текущее значение итератора
@@ -768,6 +797,7 @@ awh::http::Headers::Iterator::operator iterator() noexcept {
  * @brief Оператор извлечения указателя заголовка
  *
  * @return указатель заголовка
+ *
  */
 awh::http::Headers::Iterator::pointer awh::http::Headers::Iterator::operator -> () noexcept {
 	// Выводим результат
@@ -777,6 +807,7 @@ awh::http::Headers::Iterator::pointer awh::http::Headers::Iterator::operator -> 
  * @brief Оператор разыменования заголовка
  *
  * @return значение заголовка
+ *
  */
 awh::http::Headers::Iterator::reference awh::http::Headers::Iterator::operator * () noexcept {
 	// Выводим результат
@@ -786,6 +817,7 @@ awh::http::Headers::Iterator::reference awh::http::Headers::Iterator::operator *
  * @brief Оператор смещения вперед
  *
  * @return значение текущего итератора
+ *
  */
 awh::http::Headers::Iterator & awh::http::Headers::Iterator::operator ++ () noexcept {
 	/**
@@ -809,6 +841,7 @@ awh::http::Headers::Iterator & awh::http::Headers::Iterator::operator ++ () noex
  *
  * @param other итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::http::Headers::Iterator::operator == (const iterator_t & other) const noexcept {
 	// Выводим результат
@@ -819,6 +852,7 @@ bool awh::http::Headers::Iterator::operator == (const iterator_t & other) const 
  *
  * @param other итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::http::Headers::Iterator::operator != (const iterator_t & other) const noexcept {
 	// Выводим результат
@@ -829,6 +863,7 @@ bool awh::http::Headers::Iterator::operator != (const iterator_t & other) const 
  *
  * @param other константный итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::http::Headers::Iterator::operator == (const const_iterator_t & other) const noexcept {
 	// Выводим результат
@@ -839,6 +874,7 @@ bool awh::http::Headers::Iterator::operator == (const const_iterator_t & other) 
  *
  * @param other константный итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::http::Headers::Iterator::operator != (const const_iterator_t & other) const noexcept {
 	// Выводим результат
@@ -849,6 +885,7 @@ bool awh::http::Headers::Iterator::operator != (const const_iterator_t & other) 
  *
  * @param it  итератор для установки
  * @param log объект для работы с логами
+ *
  */
 awh::http::Headers::Iterator::Iterator(iterator it, const log_t * log) noexcept :
  _it(it), _log(log) {}
@@ -859,6 +896,7 @@ awh::http::Headers::Iterator::Iterator(iterator it, const log_t * log) noexcept 
  * @param func    название функции, в которой произошла ошибка
  * @param message текст сообщения об ошибке
  * @param flag    флаг важности сообщения
+ *
  */
 void awh::http::Headers::Const_Iterator::_error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
 	// Выводим сообщение об ошибке в лог через общую функцию логирования
@@ -868,6 +906,7 @@ void awh::http::Headers::Const_Iterator::_error(const char * func, const char * 
  * @brief Оператор преобразования в сырой константный итератор
  *
  * @return const_iterator итератор для преобразования
+ *
  */
 awh::http::Headers::Const_Iterator::operator const_iterator() const noexcept {
 	// Выводим текущее значение итератора
@@ -877,6 +916,7 @@ awh::http::Headers::Const_Iterator::operator const_iterator() const noexcept {
  * @brief Оператор извлечения указателя заголовка
  *
  * @return указатель заголовка
+ *
  */
 awh::http::Headers::Const_Iterator::pointer awh::http::Headers::Const_Iterator::operator -> () const noexcept {
 	// Выводим результат
@@ -886,6 +926,7 @@ awh::http::Headers::Const_Iterator::pointer awh::http::Headers::Const_Iterator::
  * @brief Оператор разыменования заголовка
  *
  * @return значение заголовка
+ *
  */
 awh::http::Headers::Const_Iterator::reference awh::http::Headers::Const_Iterator::operator * () const noexcept {
 	// Выводим результат
@@ -895,6 +936,7 @@ awh::http::Headers::Const_Iterator::reference awh::http::Headers::Const_Iterator
  * @brief Оператор смещения вперед
  *
  * @return значение текущего итератора
+ *
  */
 awh::http::Headers::Const_Iterator & awh::http::Headers::Const_Iterator::operator ++ () noexcept {
 	/**
@@ -918,6 +960,7 @@ awh::http::Headers::Const_Iterator & awh::http::Headers::Const_Iterator::operato
  *
  * @param other итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::http::Headers::Const_Iterator::operator == (const iterator_t & other) const noexcept {
 	// Выводим результат
@@ -928,6 +971,7 @@ bool awh::http::Headers::Const_Iterator::operator == (const iterator_t & other) 
  *
  * @param other итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::http::Headers::Const_Iterator::operator != (const iterator_t & other) const noexcept {
 	// Выводим результат
@@ -938,6 +982,7 @@ bool awh::http::Headers::Const_Iterator::operator != (const iterator_t & other) 
  *
  * @param other итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::http::Headers::Const_Iterator::operator == (const const_iterator_t & other) const noexcept {
 	// Выводим результат
@@ -948,6 +993,7 @@ bool awh::http::Headers::Const_Iterator::operator == (const const_iterator_t & o
  *
  * @param other итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::http::Headers::Const_Iterator::operator != (const const_iterator_t & other) const noexcept {
 	// Выводим результат
@@ -958,6 +1004,7 @@ bool awh::http::Headers::Const_Iterator::operator != (const const_iterator_t & o
  *
  * @param it  итератор для установки
  * @param log объект для работы с логами
+ *
  */
 awh::http::Headers::Const_Iterator::Const_Iterator(const_iterator it, const log_t * log) noexcept :
  _it(it), _log(log) {}
@@ -985,6 +1032,7 @@ awh::http::Headers::Max::Max() noexcept :
  * @details Для протоколов семейства HTTP/2 названия приводятся к нижнему регистру, для остальных -
  *          к «умному» регистру. Вызывается при изменении протокола, чтобы единая семантика
  *          регистра соблюдалась при любом способе доступа к заголовкам (не только при печати).
+ *
  */
 void awh::http::Headers::_recase() noexcept {
 	/**
@@ -1010,6 +1058,7 @@ void awh::http::Headers::_recase() noexcept {
  *
  * @tparam Name    тип названия добавляемого заголовка
  * @tparam Content тип содержимого добавляемого заголовка
+ *
  */
 template <typename Name, typename Content>
 /**
@@ -1018,6 +1067,7 @@ template <typename Name, typename Content>
  * @param name    название заголовка
  * @param content содержимое заголовка
  * @return        общее количество заголовков
+ *
  */
 size_t awh::http::Headers::_emplace(Name && name, Content && content) noexcept {
 	/**
@@ -1073,6 +1123,7 @@ template size_t awh::http::Headers::_emplace <const string &, const string &> (c
  * @param func    название функции, в которой произошла ошибка
  * @param message текст сообщения об ошибке
  * @param flag    флаг важности сообщения
+ *
  */
 void awh::http::Headers::_error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
 	// Выводим сообщение об ошибке в лог через общую функцию логирования
@@ -1102,6 +1153,7 @@ void awh::http::Headers::reset() noexcept {
  * @brief Метод проверки на заполненность заголовков
  *
  * @return результат проверки
+ *
  */
 bool awh::http::Headers::empty() const noexcept {
 	// Выводим проверку на пустоту заголовков
@@ -1114,6 +1166,7 @@ bool awh::http::Headers::empty() const noexcept {
  *          Server, X-Powered-By и Date для ответа сервера. Уже установленные заголовки не изменяются.
  *
  * @return результат выполнения операции
+ *
  */
 bool awh::http::Headers::addDefaultHeaders() noexcept {
 	// Результат работы функции
@@ -1169,6 +1222,7 @@ bool awh::http::Headers::addDefaultHeaders() noexcept {
  *
  * @param date дата в формате Unix Timestamp
  * @return     штамп времени в текстовом виде
+ *
  */
 string awh::http::Headers::date(const uint64_t date) const noexcept {
 	// Результат работы функции
@@ -1226,6 +1280,7 @@ string awh::http::Headers::date(const uint64_t date) const noexcept {
  * @brief Метод получения протокола HTTP-запроса/ответа
  *
  * @return протокол HTTP-запроса/ответа
+ *
  */
 awh::http::proto_t awh::http::Headers::proto() const noexcept {
 	// Выводим протокол HTTP-запроса/ответа
@@ -1235,6 +1290,7 @@ awh::http::proto_t awh::http::Headers::proto() const noexcept {
  * @brief Метод установки протокола HTTP-запроса/ответа
  *
  * @param proto протокол HTTP-запроса/ответа
+ *
  */
 void awh::http::Headers::proto(const proto_t proto) noexcept {
 	// Если протокол действительно изменился
@@ -1249,6 +1305,7 @@ void awh::http::Headers::proto(const proto_t proto) noexcept {
  * @brief Метод получения идентификации сервиса
  *
  * @return сформированный агент
+ *
  */
 string awh::http::Headers::ident() const noexcept {
 	// Результат работы функции
@@ -1353,6 +1410,7 @@ string awh::http::Headers::ident() const noexcept {
  * @param id      идентификатор сервиса
  * @param name    название сервиса
  * @param version версия сервиса
+ *
  */
 void awh::http::Headers::ident(string_view id, string_view name, string_view version) noexcept {
 	// Если идентификатор сервиса передан
@@ -1372,6 +1430,7 @@ void awh::http::Headers::ident(string_view id, string_view name, string_view ver
  * @brief Метод получения объекта провайдера HTTP-запроса/ответа
  *
  * @return объект провайдера HTTP-запроса/ответа
+ *
  */
 const awh::http::provider_t * awh::http::Headers::provider() const noexcept {
 	// Выводим объект провайдера HTTP-запроса/ответа
@@ -1382,6 +1441,7 @@ const awh::http::provider_t * awh::http::Headers::provider() const noexcept {
  *
  * @param provider объект провайдера HTTP-запроса/ответа
  * @return         результат выполнения операции
+ *
  */
 bool awh::http::Headers::provider(unique_ptr <provider_t> & provider) const noexcept {
 	// Результат работы функции
@@ -1412,6 +1472,7 @@ bool awh::http::Headers::provider(unique_ptr <provider_t> & provider) const noex
  * @brief Метод установки объекта провайдера HTTP-запроса/ответа
  *
  * @param provider объект провайдера HTTP-запроса/ответа
+ *
  */
 void awh::http::Headers::provider(const provider_t * provider) noexcept {
 	/**
@@ -1438,6 +1499,7 @@ void awh::http::Headers::provider(const provider_t * provider) noexcept {
  * @brief Метод установки объекта провайдера HTTP-запроса/ответа
  *
  * @param provider объект провайдера HTTP-запроса/ответа
+ *
  */
 void awh::http::Headers::provider(unique_ptr <provider_t> && provider) noexcept {
 	// Устанавливаем объект провайдера HTTP-запроса/ответа
@@ -1447,6 +1509,7 @@ void awh::http::Headers::provider(unique_ptr <provider_t> && provider) noexcept 
  * @brief Метод получения стартовой строки HTTP-запроса/ответа
  *
  * @return стартовая строка HTTP-запроса/ответа
+ *
  */
 string awh::http::Headers::startline() const noexcept {
 	// Результат работы функции - собранная стартовая строка HTTP-запроса/ответа
@@ -1516,6 +1579,7 @@ string awh::http::Headers::startline() const noexcept {
  * @brief Метод установки стартовой строки HTTP-запроса/ответа
  *
  * @param startline стартовая строка HTTP-запроса/ответа
+ *
  */
 void awh::http::Headers::startline(const string_view startline) noexcept {
 	/**
@@ -1649,6 +1713,7 @@ void awh::http::Headers::startline(const string_view startline) noexcept {
  * @brief Метод удаления заголовка
  *
  * @param name название удаляемого заголовка
+ *
  */
 void awh::http::Headers::erase(string_view name) noexcept {
 	/**
@@ -1683,6 +1748,7 @@ void awh::http::Headers::erase(string_view name) noexcept {
  *
  * @param it идетартор заголовка для удаления
  * @return   следующий итератор
+ *
  */
 awh::http::Headers::iterator_t awh::http::Headers::erase(const iterator_t & it) noexcept {
 	// Результат работы функции - итератор следующий за удалённым элементом
@@ -1721,6 +1787,7 @@ awh::http::Headers::iterator_t awh::http::Headers::erase(const iterator_t & it) 
  *
  * @param name название заголовка для проверки
  * @return     результат выполнения проверки
+ *
  */
 bool awh::http::Headers::has(string_view name) const noexcept {
 	/**
@@ -1739,6 +1806,7 @@ bool awh::http::Headers::has(string_view name) const noexcept {
  * @brief Метод получения общего количества заголовков
  *
  * @return общее количество заголовков
+ *
  */
 size_t awh::http::Headers::size() const noexcept {
 	// Выводим общее количество установленных заголовков
@@ -1749,6 +1817,7 @@ size_t awh::http::Headers::size() const noexcept {
  *
  * @param name название заголовка количество которых нужно определить
  * @return     количество добавленных заголовков
+ *
  */
 size_t awh::http::Headers::count(string_view name) const noexcept {
 	// Если название заголовка не указано - возвращаем общее количество всех заголовков
@@ -1774,6 +1843,7 @@ size_t awh::http::Headers::count(string_view name) const noexcept {
  *
  * @param name название заголовка
  * @return     содержимое заголовка
+ *
  */
 const string & awh::http::Headers::at(string_view name) const noexcept {
 	// Статическая пустая строка, возвращаемая если заголовок с указанным названием не найден
@@ -1794,6 +1864,7 @@ const string & awh::http::Headers::at(string_view name) const noexcept {
  * @brief Метод извлечения названий заголовков
  *
  * @return список названий заголовков
+ *
  */
 vector <string> awh::http::Headers::names() const noexcept {
 	// Результат работы функции - список уникальных названий заголовков
@@ -1832,6 +1903,7 @@ vector <string> awh::http::Headers::names() const noexcept {
  *
  * @param name название заголовка
  * @return     список значений одинаковых заголовков
+ *
  */
 vector <string> awh::http::Headers::range(string_view name) const noexcept {
 	// Результат работы функции - список значений заголовков с указанным названием
@@ -1869,6 +1941,7 @@ vector <string> awh::http::Headers::range(string_view name) const noexcept {
  * @param content содержимое заголовка
  * @param mode    режим добавления заголовка (добавить/заменить)
  * @return        общее количество заголовков
+ *
  */
 size_t awh::http::Headers::emplace(string && name, string && content, const mode_t mode) noexcept {
 	// Если выбран режим замены и название заголовка указано - удаляем все его прежние вхождения перед заменой
@@ -1888,6 +1961,7 @@ size_t awh::http::Headers::emplace(string && name, string && content, const mode
  * @param content содержимое заголовка (переносится)
  * @param mode    режим добавления заголовка (добавить/заменить)
  * @return        общее количество заголовков
+ *
  */
 size_t awh::http::Headers::emplace(const char * name, string && content, const mode_t mode) noexcept {
 	// Нормализуем название заголовка, защищаясь от нулевого указателя
@@ -1909,6 +1983,7 @@ size_t awh::http::Headers::emplace(const char * name, string && content, const m
  * @param content содержимое заголовка (C-строка)
  * @param mode    режим добавления заголовка (добавить/заменить)
  * @return        общее количество заголовков
+ *
  */
 size_t awh::http::Headers::emplace(string && name, const char * content, const mode_t mode) noexcept {
 	// Если выбран режим замены и название заголовка указано - удаляем все его прежние вхождения перед заменой
@@ -1928,6 +2003,7 @@ size_t awh::http::Headers::emplace(string && name, const char * content, const m
  * @param content содержимое заголовка
  * @param mode    режим добавления заголовка (добавить/заменить)
  * @return        общее количество заголовков
+ *
  */
 size_t awh::http::Headers::emplace(string_view name, string_view content, const mode_t mode) noexcept {
 	// Если выбран режим замены и название заголовка указано - удаляем все его прежние вхождения перед заменой
@@ -1947,6 +2023,7 @@ size_t awh::http::Headers::emplace(string_view name, string_view content, const 
  * @param content содержимое заголовка (копируется)
  * @param mode    режим добавления заголовка (добавить/заменить)
  * @return        общее количество заголовков
+ *
  */
 size_t awh::http::Headers::emplace(string && name, const string & content, const mode_t mode) noexcept {
 	// Если выбран режим замены и название заголовка указано - удаляем все его прежние вхождения перед заменой
@@ -1966,6 +2043,7 @@ size_t awh::http::Headers::emplace(string && name, const string & content, const
  * @param content содержимое заголовка (переносится)
  * @param mode    режим добавления заголовка (добавить/заменить)
  * @return        общее количество заголовков
+ *
  */
 size_t awh::http::Headers::emplace(const string & name, string && content, const mode_t mode) noexcept {
 	// Если выбран режим замены и название заголовка указано - удаляем все его прежние вхождения перед заменой
@@ -1985,6 +2063,7 @@ size_t awh::http::Headers::emplace(const string & name, string && content, const
  * @param content содержимое заголовка (C-строка)
  * @param mode    режим добавления заголовка (добавить/заменить)
  * @return        общее количество заголовков
+ *
  */
 size_t awh::http::Headers::emplace(const char * name, const char * content, const mode_t mode) noexcept {
 	// Нормализуем название заголовка, защищаясь от нулевого указателя
@@ -2006,6 +2085,7 @@ size_t awh::http::Headers::emplace(const char * name, const char * content, cons
  * @param content содержимое заголовка (копируется)
  * @param mode    режим добавления заголовка (добавить/заменить)
  * @return        общее количество заголовков
+ *
  */
 size_t awh::http::Headers::emplace(const char * name, const string & content, const mode_t mode) noexcept {
 	// Нормализуем название заголовка, защищаясь от нулевого указателя
@@ -2027,6 +2107,7 @@ size_t awh::http::Headers::emplace(const char * name, const string & content, co
  * @param content содержимое заголовка (C-строка)
  * @param mode    режим добавления заголовка (добавить/заменить)
  * @return        общее количество заголовков
+ *
  */
 size_t awh::http::Headers::emplace(const string & name, const char * content, const mode_t mode) noexcept {
 	// Если выбран режим замены и название заголовка указано - удаляем все его прежние вхождения перед заменой
@@ -2046,6 +2127,7 @@ size_t awh::http::Headers::emplace(const string & name, const char * content, co
  * @param content содержимое заголовка (копируется)
  * @param mode    режим добавления заголовка (добавить/заменить)
  * @return        общее количество заголовков
+ *
  */
 size_t awh::http::Headers::emplace(const string & name, const string & content, const mode_t mode) noexcept {
 	// Если выбран режим замены и название заголовка указано - удаляем все его прежние вхождения перед заменой
@@ -2059,6 +2141,7 @@ size_t awh::http::Headers::emplace(const string & name, const string & content, 
  * @brief Метод печати содержимого заголовков в формате HTTP
  *
  * @return заголовки в формате HTTP
+ *
  */
 string awh::http::Headers::print(const http::proto_t proto) const noexcept {
 	// Результат работы функции - все заголовки в текстовом виде
@@ -2125,6 +2208,7 @@ string awh::http::Headers::print(const http::proto_t proto) const noexcept {
  * @param name  печать заголовка в формате HTTP
  * @param proto версия протокола
  * @return      распечатанный заголовок
+ *
  */
 string awh::http::Headers::print(string_view name, const http::proto_t proto) const noexcept {
 	// Результат работы функции - отформатированные строки заголовков с указанным названием
@@ -2156,6 +2240,7 @@ string awh::http::Headers::print(string_view name, const http::proto_t proto) co
  * @brief Метод получения текущего размера потребляемой памяти
  *
  * @return текущий размер потребляемой памяти
+ *
  */
 size_t awh::http::Headers::memory() const noexcept {
 	// Выводим накопленный объём полезной нагрузки (payload) всех заголовков за время O(1)
@@ -2165,6 +2250,7 @@ size_t awh::http::Headers::memory() const noexcept {
  * @brief Метод получения максимального размера потребления памяти
  *
  * @return максимальный размер потребления памяти
+ *
  */
 size_t awh::http::Headers::maxMemory() const noexcept {
 	// Выводим максимальный размер потребления памяти под полезную нагрузку заголовков
@@ -2174,6 +2260,7 @@ size_t awh::http::Headers::maxMemory() const noexcept {
  * @brief Метод установки максимального размера потребления памяти
  *
  * @param size максимальный размер потребления памяти
+ *
  */
 void awh::http::Headers::maxMemory(const size_t size) noexcept {
 	// Устанавливаем максимальный размер потребления памяти под полезную нагрузку заголовков
@@ -2183,6 +2270,7 @@ void awh::http::Headers::maxMemory(const size_t size) noexcept {
  * @brief Метод получения максимального количества заголовков
  *
  * @return максимальное количество заголовков
+ *
  */
 size_t awh::http::Headers::maxRecords() const noexcept {
 	// Выводим максимальное количество допустимых заголовков
@@ -2192,6 +2280,7 @@ size_t awh::http::Headers::maxRecords() const noexcept {
  * @brief Метод установки максимального количества заголовков
  *
  * @param count максимальное количество заголовков
+ *
  */
 void awh::http::Headers::maxRecords(const size_t count) noexcept {
 	// Устанавливаем максимальное количество допустимых заголовков
@@ -2201,6 +2290,7 @@ void awh::http::Headers::maxRecords(const size_t count) noexcept {
  * @brief Метод обмена заголовками
  *
  * @param headers заголовки для обмена
+ *
  */
 void awh::http::Headers::swap(Headers & headers) noexcept {
 	// Обмениваем местами наборы заголовков
@@ -2230,6 +2320,7 @@ void awh::http::Headers::swap(Headers & headers) noexcept {
  * @brief Метод слияния заголовков
  *
  * @param headers заголовки для слияния
+ *
  */
 void awh::http::Headers::merge(const Headers & headers) noexcept {
 	/**
@@ -2254,6 +2345,7 @@ void awh::http::Headers::merge(const Headers & headers) noexcept {
  * @brief Метод получения конечного итератора
  *
  * @return конечный итератор
+ *
  */
 awh::http::Headers::iterator_t awh::http::Headers::end() noexcept {
 	// Возвращаем обёртку конечного сырого итератора набора заголовков
@@ -2263,6 +2355,7 @@ awh::http::Headers::iterator_t awh::http::Headers::end() noexcept {
  * @brief Метод получения конечного константного итератора
  *
  * @return конечный константный итератор
+ *
  */
 awh::http::Headers::const_iterator_t awh::http::Headers::end() const noexcept {
 	// Возвращаем обёртку конечного сырого константного итератора набора заголовков
@@ -2272,6 +2365,7 @@ awh::http::Headers::const_iterator_t awh::http::Headers::end() const noexcept {
  * @brief Метод получения конечного константного итератора
  *
  * @return конечный константный итератор
+ *
  */
 awh::http::Headers::const_iterator_t awh::http::Headers::cend() const noexcept {
 	// Возвращаем обёртку конечного сырого константного итератора набора заголовков
@@ -2281,6 +2375,7 @@ awh::http::Headers::const_iterator_t awh::http::Headers::cend() const noexcept {
  * @brief Метод получение начального итератора
  *
  * @return начальный итератор
+ *
  */
 awh::http::Headers::iterator_t awh::http::Headers::begin() noexcept {
 	// Возвращаем обёртку начального сырого итератора набора заголовков
@@ -2290,6 +2385,7 @@ awh::http::Headers::iterator_t awh::http::Headers::begin() noexcept {
  * @brief Метод получения начального константного итератора
  *
  * @return начальный константный итератор
+ *
  */
 awh::http::Headers::const_iterator_t awh::http::Headers::begin() const noexcept {
 	// Возвращаем обёртку начального сырого константного итератора набора заголовков
@@ -2299,6 +2395,7 @@ awh::http::Headers::const_iterator_t awh::http::Headers::begin() const noexcept 
  * @brief Метод получения начального константного итератора
  *
  * @return начальный константный итератор
+ *
  */
 awh::http::Headers::const_iterator_t awh::http::Headers::cbegin() const noexcept {
 	// Возвращаем обёртку начального сырого константного итератора набора заголовков
@@ -2309,6 +2406,7 @@ awh::http::Headers::const_iterator_t awh::http::Headers::cbegin() const noexcept
  *
  * @param name название заголовка для поиска
  * @return     итератор указанного заголовка
+ *
  */
 awh::http::Headers::iterator_t awh::http::Headers::find(string_view name) noexcept {
 	// Выполняем поиск заголовка линейным перебором без учёта регистра
@@ -2319,6 +2417,7 @@ awh::http::Headers::iterator_t awh::http::Headers::find(string_view name) noexce
  *
  * @param name название заголовка для поиска
  * @return     константный итератор указанного заголовка
+ *
  */
 awh::http::Headers::const_iterator_t awh::http::Headers::find(string_view name) const noexcept {
 	// Выполняем поиск заголовка линейным перебором без учёта регистра
@@ -2328,6 +2427,7 @@ awh::http::Headers::const_iterator_t awh::http::Headers::find(string_view name) 
  * @brief Оператор получения количество заголовков
  *
  * @return количество заголовков
+ *
  */
 awh::http::Headers::operator size_t() const noexcept {
 	// Возвращаем общее количество установленных заголовков
@@ -2337,6 +2437,7 @@ awh::http::Headers::operator size_t() const noexcept {
  * @brief Оператор печати содержимого заголовков в формате HTTP
  *
  * @return заголовки в формате HTTP
+ *
  */
 awh::http::Headers::operator string() const noexcept {
 	// Возвращаем текстовое представление всех заголовков с учётом текущего протокола
@@ -2346,6 +2447,7 @@ awh::http::Headers::operator string() const noexcept {
  * @brief Оператор получения протокола HTTP-запроса/ответа
  *
  * @return протокол HTTP-запроса/ответа
+ *
  */
 awh::http::Headers::operator proto_t() const noexcept {
 	// Возвращаем текущий протокол HTTP-запроса/ответа
@@ -2355,6 +2457,7 @@ awh::http::Headers::operator proto_t() const noexcept {
  * @brief Оператор получения объекта провайдера HTTP-запроса/ответа
  *
  * @return объект провайдера HTTP-запроса/ответа
+ *
  */
 awh::http::Headers::operator const provider_t * () const noexcept {
 	// Возвращаем указатель на текущий объект провайдера HTTP-запроса/ответа
@@ -2364,6 +2467,7 @@ awh::http::Headers::operator const provider_t * () const noexcept {
  * @brief Оператор получения объекта провайдера HTTP-запроса/ответа
  *
  * @return объект провайдера HTTP-запроса/ответа
+ *
  */
 awh::http::Headers::operator unique_ptr <provider_t> () const noexcept {
 	// Результат работы функции - копия объекта провайдера HTTP-запроса/ответа
@@ -2390,6 +2494,7 @@ awh::http::Headers::operator unique_ptr <provider_t> () const noexcept {
  * @brief Оператор получения списка заголовков в том виде как они есть
  *
  * @return список всех добавленных заголовков
+ *
  */
 awh::http::Headers::operator fields_t() const noexcept {
 	// Результат работы функции - список всех добавленных заголовков
@@ -2439,6 +2544,7 @@ awh::http::Headers::operator fields_t() const noexcept {
  * @brief Оператор получения списка заголовков
  *
  * @return список всех добавленных заголовков
+ *
  */
 awh::http::Headers::operator entries_t() const noexcept {
 	// Результат работы функции - набор заголовков
@@ -2492,6 +2598,7 @@ awh::http::Headers::operator entries_t() const noexcept {
  * @brief Оператор получения списка заголовков
  *
  * @return список всех добавленных заголовков
+ *
  */
 awh::http::Headers::operator map_t() const noexcept {
 	// Результат работы функции - карта заголовков (при дублирующихся именах сохраняется первое встретившееся значение)
@@ -2522,6 +2629,7 @@ awh::http::Headers::operator map_t() const noexcept {
  * @brief Оператор получения списка заголовков
  *
  * @return список всех добавленных заголовков
+ *
  */
 awh::http::Headers::operator multimap_t() const noexcept {
 	// Результат работы функции - множественная карта заголовков
@@ -2558,6 +2666,7 @@ awh::http::Headers::operator multimap_t() const noexcept {
  *
  * @param name название заголовка для извлечения
  * @return     содержимое заголовка
+ *
  */
 const string & awh::http::Headers::operator[](string_view name) const noexcept {
 	// Возвращаем значение заголовка через метод at()
@@ -2568,6 +2677,7 @@ const string & awh::http::Headers::operator[](string_view name) const noexcept {
  *
  * @param headers заголовки для слияния
  * @return        текущий контейнер заголовков
+ *
  */
 awh::http::Headers & awh::http::Headers::operator += (const Headers & headers) noexcept {
 	// Выполняем слияние заголовков текущего контейнера с переданным
@@ -2580,6 +2690,7 @@ awh::http::Headers & awh::http::Headers::operator += (const Headers & headers) n
  *
  * @param headers заголовки для сравнения
  * @return        результат сравнения
+ *
  */
 bool awh::http::Headers::operator == (const Headers & headers) const noexcept {
 	// Если количество заголовков в списках не совпадает - контейнеры точно не равны
@@ -2629,6 +2740,7 @@ bool awh::http::Headers::operator == (const Headers & headers) const noexcept {
  *
  * @param headers заголовки для сравнения
  * @return        результат сравнения
+ *
  */
 bool awh::http::Headers::operator != (const Headers & headers) const noexcept {
 	// Инвертируем результат сравнения на равенство
@@ -2639,6 +2751,7 @@ bool awh::http::Headers::operator != (const Headers & headers) const noexcept {
  *
  * @param headers заголовки для перемещения
  * @return        текущий контейнер заголовков
+ *
  */
 awh::http::Headers & awh::http::Headers::operator = (Headers && headers) noexcept {
 	// Если передан не текущий объект
@@ -2670,6 +2783,7 @@ awh::http::Headers & awh::http::Headers::operator = (Headers && headers) noexcep
  *
  * @param headers заголовки для копирования
  * @return        текущий контейнер заголовков
+ *
  */
 awh::http::Headers & awh::http::Headers::operator = (const Headers & headers) noexcept {
 	// Если передан не текущий объект
@@ -2714,6 +2828,7 @@ awh::http::Headers & awh::http::Headers::operator = (const Headers & headers) no
  *
  * @param proto протокол HTTP-запроса/ответа
  * @return      текущий контейнер заголовков
+ *
  */
 awh::http::Headers & awh::http::Headers::operator = (const proto_t proto) noexcept {
 	// Устанавливаем протокол HTTP-запроса/ответа
@@ -2726,6 +2841,7 @@ awh::http::Headers & awh::http::Headers::operator = (const proto_t proto) noexce
  *
  * @param provider объект провайдера HTTP-запроса/ответа
  * @return         текущий контейнер заголовков
+ *
  */
 awh::http::Headers & awh::http::Headers::operator = (const provider_t * provider) noexcept {
 	// Устанавливаем объект провайдера HTTP-запроса/ответа через соответствующий метод
@@ -2738,6 +2854,7 @@ awh::http::Headers & awh::http::Headers::operator = (const provider_t * provider
  *
  * @param provider объект провайдера HTTP-запроса/ответа
  * @return         текущий контейнер заголовков
+ *
  */
 awh::http::Headers & awh::http::Headers::operator = (unique_ptr <provider_t> && provider) noexcept {
 	// Перемещаем объект провайдера HTTP-запроса/ответа через соответствующий метод
@@ -2750,6 +2867,7 @@ awh::http::Headers & awh::http::Headers::operator = (unique_ptr <provider_t> && 
  *
  * @param headers заголовки для копирования
  * @return        текущий контейнер заголовков
+ *
  */
 awh::http::Headers & awh::http::Headers::operator = (const fields_t & headers) noexcept {
 	// Очищаем текущий набор заголовков перед копированием
@@ -2790,6 +2908,7 @@ awh::http::Headers & awh::http::Headers::operator = (const fields_t & headers) n
  *
  * @param headers заголовки для копирования
  * @return        текущий контейнер заголовков
+ *
  */
 awh::http::Headers & awh::http::Headers::operator = (const entries_t & headers) noexcept {
 	// Очищаем текущий набор заголовков перед копированием
@@ -2823,6 +2942,7 @@ awh::http::Headers & awh::http::Headers::operator = (const entries_t & headers) 
  *
  * @param headers заголовки для копирования
  * @return        текущий контейнер заголовков
+ *
  */
 awh::http::Headers & awh::http::Headers::operator = (const multimap_t & headers) noexcept {
 	// Очищаем текущий набор заголовок перед копированием
@@ -2863,6 +2983,7 @@ awh::http::Headers & awh::http::Headers::operator = (const multimap_t & headers)
  *
  * @param headers заголовки для копирования
  * @return        текущий контейнер заголовков
+ *
  */
 awh::http::Headers & awh::http::Headers::operator = (initializer_list <header_t> headers) noexcept {
 	// Очищаем текущий набор заголовков перед копированием
@@ -2902,6 +3023,7 @@ awh::http::Headers & awh::http::Headers::operator = (initializer_list <header_t>
  * @brief Конструктор перемещения
  *
  * @param headers заголовки для перемещения
+ *
  */
 awh::http::Headers::Headers(Headers && headers) noexcept :
  _max(headers._max), _headers(::move(headers._headers)),
@@ -2916,6 +3038,7 @@ awh::http::Headers::Headers(Headers && headers) noexcept :
  * @brief Конструктор копирования
  *
  * @param headers заголовки для копирования
+ *
  */
 awh::http::Headers::Headers(const Headers & headers) noexcept :
  _max(headers._max), _headers(headers._headers),
@@ -2926,6 +3049,7 @@ awh::http::Headers::Headers(const Headers & headers) noexcept :
  * @brief Конструктор
  *
  * @param proto протокол HTTP-запроса/ответа
+ *
  */
 awh::http::Headers::Headers(const proto_t proto) noexcept :
  Headers(proto, static_cast <const provider_t *> (nullptr), fields_t {}, nullptr, nullptr) {}
@@ -2933,6 +3057,7 @@ awh::http::Headers::Headers(const proto_t proto) noexcept :
  * @brief Конструктор
  *
  * @param provider объект провайдера HTTP-запроса/ответа
+ *
  */
 awh::http::Headers::Headers(const provider_t * provider) noexcept :
  Headers(proto_t::NONE, provider, fields_t {}, nullptr, nullptr) {}
@@ -2940,6 +3065,7 @@ awh::http::Headers::Headers(const provider_t * provider) noexcept :
  * @brief Конструктор
  *
  * @param provider объект провайдера HTTP-запроса/ответа
+ *
  */
 awh::http::Headers::Headers(unique_ptr <provider_t> && provider) noexcept :
  Headers(proto_t::NONE, ::move(provider), fields_t {}, nullptr, nullptr) {}
@@ -2947,6 +3073,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider) noexcept :
  * @brief Конструктор
  *
  * @param headers список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const fields_t & headers) noexcept :
  Headers(proto_t::NONE, static_cast <const provider_t *> (nullptr), headers, nullptr, nullptr) {}
@@ -2954,6 +3081,7 @@ awh::http::Headers::Headers(const fields_t & headers) noexcept :
  * @brief Конструктор
  *
  * @param headers список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const entries_t & headers) noexcept :
  Headers(proto_t::NONE, static_cast <const provider_t *> (nullptr), headers, nullptr, nullptr) {}
@@ -2961,6 +3089,7 @@ awh::http::Headers::Headers(const entries_t & headers) noexcept :
  * @brief Конструктор
  *
  * @param headers список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const multimap_t & headers) noexcept :
  Headers(proto_t::NONE, static_cast <const provider_t *> (nullptr), ::convert(headers), nullptr, nullptr) {}
@@ -2968,6 +3097,7 @@ awh::http::Headers::Headers(const multimap_t & headers) noexcept :
  * @brief Конструктор
  *
  * @param headers список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(initializer_list <header_t> headers) noexcept :
  Headers(proto_t::NONE, static_cast <const provider_t *> (nullptr), fields_t (headers), nullptr, nullptr) {}
@@ -2976,6 +3106,7 @@ awh::http::Headers::Headers(initializer_list <header_t> headers) noexcept :
  *
  * @param proto   протокол HTTP-запроса/ответа
  * @param headers список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const fields_t & headers) noexcept :
  Headers(proto, static_cast <const provider_t *> (nullptr), headers, nullptr, nullptr) {}
@@ -2984,6 +3115,7 @@ awh::http::Headers::Headers(const proto_t proto, const fields_t & headers) noexc
  *
  * @param proto   протокол HTTP-запроса/ответа
  * @param headers список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const entries_t & headers) noexcept :
  Headers(proto, static_cast <const provider_t *> (nullptr), headers, nullptr, nullptr) {}
@@ -2992,6 +3124,7 @@ awh::http::Headers::Headers(const proto_t proto, const entries_t & headers) noex
  *
  * @param proto   протокол HTTP-запроса/ответа
  * @param headers список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const multimap_t & headers) noexcept :
  Headers(proto, static_cast <const provider_t *> (nullptr), ::convert(headers), nullptr, nullptr) {}
@@ -3000,6 +3133,7 @@ awh::http::Headers::Headers(const proto_t proto, const multimap_t & headers) noe
  *
  * @param proto   протокол HTTP-запроса/ответа
  * @param headers список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, initializer_list <header_t> headers) noexcept :
  Headers(proto, static_cast <const provider_t *> (nullptr), fields_t (headers), nullptr, nullptr) {}
@@ -3008,6 +3142,7 @@ awh::http::Headers::Headers(const proto_t proto, initializer_list <header_t> hea
  *
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const provider_t * provider, const fields_t & headers) noexcept :
  Headers(proto_t::NONE, provider, headers, nullptr, nullptr) {}
@@ -3016,6 +3151,7 @@ awh::http::Headers::Headers(const provider_t * provider, const fields_t & header
  *
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const provider_t * provider, const entries_t & headers) noexcept :
  Headers(proto_t::NONE, provider, headers, nullptr, nullptr) {}
@@ -3024,6 +3160,7 @@ awh::http::Headers::Headers(const provider_t * provider, const entries_t & heade
  *
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const provider_t * provider, const multimap_t & headers) noexcept :
  Headers(proto_t::NONE, provider, ::convert(headers), nullptr, nullptr) {}
@@ -3032,6 +3169,7 @@ awh::http::Headers::Headers(const provider_t * provider, const multimap_t & head
  *
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const provider_t * provider, initializer_list <header_t> headers) noexcept :
  Headers(proto_t::NONE, provider, fields_t (headers), nullptr, nullptr) {}
@@ -3040,6 +3178,7 @@ awh::http::Headers::Headers(const provider_t * provider, initializer_list <heade
  *
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const fields_t & headers) noexcept :
  Headers(proto_t::NONE, ::move(provider), headers, nullptr, nullptr) {}
@@ -3048,6 +3187,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const fields_t 
  *
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const entries_t & headers) noexcept :
  Headers(proto_t::NONE, ::move(provider), headers, nullptr, nullptr) {}
@@ -3056,6 +3196,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const entries_t
  *
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const multimap_t & headers) noexcept :
  Headers(proto_t::NONE, ::move(provider), ::convert(headers), nullptr, nullptr) {}
@@ -3064,6 +3205,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const multimap_
  *
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(unique_ptr <provider_t> && provider, initializer_list <header_t> headers) noexcept :
  Headers(proto_t::NONE, ::move(provider), fields_t (headers), nullptr, nullptr) {}
@@ -3073,6 +3215,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider, initializer_lis
  * @param proto    протокол HTTP-запроса/ответа
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, const fields_t & headers) noexcept :
  Headers(proto, provider, headers, nullptr, nullptr) {}
@@ -3082,6 +3225,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
  * @param proto    протокол HTTP-запроса/ответа
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, const entries_t & headers) noexcept :
  Headers(proto, provider, headers, nullptr, nullptr) {}
@@ -3091,6 +3235,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
  * @param proto    протокол HTTP-запроса/ответа
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, const multimap_t & headers) noexcept :
  Headers(proto, provider, ::convert(headers), nullptr, nullptr) {}
@@ -3100,6 +3245,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
  * @param proto    протокол HTTP-запроса/ответа
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, initializer_list <header_t> headers) noexcept :
  Headers(proto, provider, fields_t (headers), nullptr, nullptr) {}
@@ -3109,6 +3255,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, in
  * @param proto    протокол HTTP-запроса/ответа
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && provider, const fields_t & headers) noexcept :
  Headers(proto, ::move(provider), headers, nullptr, nullptr) {}
@@ -3118,6 +3265,7 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
  * @param proto    протокол HTTP-запроса/ответа
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && provider, const entries_t & headers) noexcept :
  Headers(proto, ::move(provider), headers, nullptr, nullptr) {}
@@ -3127,6 +3275,7 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
  * @param proto    протокол HTTP-запроса/ответа
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && provider, const multimap_t & headers) noexcept :
  Headers(proto, ::move(provider), ::convert(headers), nullptr, nullptr) {}
@@ -3136,6 +3285,7 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
  * @param proto    протокол HTTP-запроса/ответа
  * @param provider объект провайдера HTTP-запроса/ответа
  * @param headers  список заголовков инициализации
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && provider, initializer_list <header_t> headers) noexcept :
  Headers(proto, ::move(provider), fields_t (headers), nullptr, nullptr) {}
@@ -3144,6 +3294,7 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, static_cast <const provider_t *> (nullptr), fields_t {}, fmk, log) {}
@@ -3151,6 +3302,7 @@ awh::http::Headers::Headers(const fmk_t * fmk, const log_t * log) noexcept :
  * @brief Конструктор
  *
  * @param proto протокол HTTP-запроса/ответа
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto, static_cast <const provider_t *> (nullptr), fields_t {}, fmk, log) {}
@@ -3158,6 +3310,7 @@ awh::http::Headers::Headers(const proto_t proto, const fmk_t * fmk, const log_t 
  * @brief Конструктор
  *
  * @param provider объект провайдера HTTP-запроса/ответа
+ *
  */
 awh::http::Headers::Headers(const provider_t * provider, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, provider, fields_t {}, fmk, log) {}
@@ -3165,6 +3318,7 @@ awh::http::Headers::Headers(const provider_t * provider, const fmk_t * fmk, cons
  * @brief Конструктор
  *
  * @param provider объект провайдера HTTP-запроса/ответа
+ *
  */
 awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, ::move(provider), fields_t {}, fmk, log) {}
@@ -3174,6 +3328,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const fmk_t * f
  * @param headers список заголовков инициализации
  * @param fmk     объект фреймворка
  * @param log     объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, static_cast <const provider_t *> (nullptr), headers, fmk, log) {}
@@ -3183,6 +3338,7 @@ awh::http::Headers::Headers(const fields_t & headers, const fmk_t * fmk, const l
  * @param headers список заголовков инициализации
  * @param fmk     объект фреймворка
  * @param log     объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, static_cast <const provider_t *> (nullptr), headers, fmk, log) {}
@@ -3192,6 +3348,7 @@ awh::http::Headers::Headers(const entries_t & headers, const fmk_t * fmk, const 
  * @param headers список заголовков инициализации
  * @param fmk     объект фреймворка
  * @param log     объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, static_cast <const provider_t *> (nullptr), ::convert(headers), fmk, log) {}
@@ -3201,6 +3358,7 @@ awh::http::Headers::Headers(const multimap_t & headers, const fmk_t * fmk, const
  * @param headers список заголовков инициализации
  * @param fmk     объект фреймворка
  * @param log     объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, static_cast <const provider_t *> (nullptr), fields_t (headers), fmk, log) {}
@@ -3211,6 +3369,7 @@ awh::http::Headers::Headers(initializer_list <header_t> headers, const fmk_t * f
  * @param headers список заголовков инициализации
  * @param fmk     объект фреймворка
  * @param log     объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto, static_cast <const provider_t *> (nullptr), headers, fmk, log) {}
@@ -3221,6 +3380,7 @@ awh::http::Headers::Headers(const proto_t proto, const fields_t & headers, const
  * @param headers список заголовков инициализации
  * @param fmk     объект фреймворка
  * @param log     объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto, static_cast <const provider_t *> (nullptr), headers, fmk, log) {}
@@ -3231,6 +3391,7 @@ awh::http::Headers::Headers(const proto_t proto, const entries_t & headers, cons
  * @param headers список заголовков инициализации
  * @param fmk     объект фреймворка
  * @param log     объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto, static_cast <const provider_t *> (nullptr), ::convert(headers), fmk, log) {}
@@ -3241,6 +3402,7 @@ awh::http::Headers::Headers(const proto_t proto, const multimap_t & headers, con
  * @param headers список заголовков инициализации
  * @param fmk     объект фреймворка
  * @param log     объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto, static_cast <const provider_t *> (nullptr), fields_t (headers), fmk, log) {}
@@ -3251,6 +3413,7 @@ awh::http::Headers::Headers(const proto_t proto, initializer_list <header_t> hea
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const provider_t * provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, provider, headers, fmk, log) {}
@@ -3261,6 +3424,7 @@ awh::http::Headers::Headers(const provider_t * provider, const fields_t & header
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const provider_t * provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, provider, headers, fmk, log) {}
@@ -3271,6 +3435,7 @@ awh::http::Headers::Headers(const provider_t * provider, const entries_t & heade
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const provider_t * provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, provider, ::convert(headers), fmk, log) {}
@@ -3281,6 +3446,7 @@ awh::http::Headers::Headers(const provider_t * provider, const multimap_t & head
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const provider_t * provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, provider, fields_t (headers), fmk, log) {}
@@ -3291,6 +3457,7 @@ awh::http::Headers::Headers(const provider_t * provider, initializer_list <heade
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, ::move(provider), headers, fmk, log) {}
@@ -3301,6 +3468,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const fields_t 
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, ::move(provider), headers, fmk, log) {}
@@ -3311,6 +3479,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const entries_t
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, ::move(provider), ::convert(headers), fmk, log) {}
@@ -3321,6 +3490,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const multimap_
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(unique_ptr <provider_t> && provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto_t::NONE, ::move(provider), fields_t (headers), fmk, log) {}
@@ -3332,6 +3502,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider, initializer_lis
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  _memory(0), _proto(proto), _provider(nullptr), _fmk(fmk), _log(log) {
@@ -3372,6 +3543,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  _memory(0), _proto(proto), _provider(nullptr), _fmk(fmk), _log(log) {
@@ -3412,6 +3584,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto, provider, ::convert(headers), fmk, log) {}
@@ -3423,6 +3596,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto, provider, fields_t (headers), fmk, log) {}
@@ -3434,6 +3608,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, in
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  _memory(0), _proto(proto), _provider(::move(provider)), _fmk(fmk), _log(log) {
@@ -3470,6 +3645,7 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  _memory(0), _proto(proto), _provider(::move(provider)), _fmk(fmk), _log(log) {
@@ -3506,6 +3682,7 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto, ::move(provider), ::convert(headers), fmk, log) {}
@@ -3517,6 +3694,7 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
  * @param headers  список заголовков инициализации
  * @param fmk      объект фреймворка
  * @param log      объект для работы с логами
+ *
  */
 awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept :
  Headers(proto, ::move(provider), fields_t (headers), fmk, log) {}
@@ -3536,6 +3714,7 @@ awh::http::Headers::~Headers() noexcept {
  *
  * @param os      поток куда нужно вывести данные
  * @param headers контейнер заголовков
+ *
  */
 ostream & awh::operator << (ostream & os, const http::headers_t & headers) noexcept {
 	// Записываем в поток текстовое представление всех заголовков в формате протокола HTTP

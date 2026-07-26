@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация тестовой фикстуры модуля транспортного уровня безопасности —
+ *        создание объектов тестового окружения перед каждым тестом и их освобождение после его завершения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -42,6 +46,7 @@ namespace {
 	 * @brief Функция получения пути к временному каталогу
 	 *
 	 * @return путь к временному каталогу
+	 *
 	 */
 	static std::string directory() noexcept {
 		// Получаем путь к временному каталогу из окружения
@@ -55,6 +60,7 @@ namespace {
 	 * @param path путь к создаваемому файлу
 	 * @param data записываемые данные
 	 * @return     результат записи
+	 *
 	 */
 	static bool store(const std::string & path, const std::string & data) noexcept {
 		// Открываем файл на запись
@@ -118,6 +124,7 @@ void TlsFixture::TearDown(){
  * @param privateKey  путь к созданному файлу приватного ключа
  * @param host        доменное имя субъекта сертификата
  * @return            результат генерации
+ *
  */
 bool TlsFixture::makeCertificate(std::string & certificate, std::string & privateKey, const std::string & host) const noexcept {
 	// Результат генерации сертификата

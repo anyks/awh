@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл слоя пакетов QUIC (RFC 9000 §17) — структура разобранного заголовка пакета и чистые
+ *        функции разбора и сборки заголовков длинной и короткой формы, включая Initial, Handshake, 0-RTT,
+ *        Retry и Version Negotiation
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_PROTO_QUIC_PACKET__
@@ -53,6 +58,7 @@ namespace awh {
 		 *          на границе защиты заголовка (header protection), номер пакета читается
 		 *          отдельной функцией после снятия защиты. Сборка дописывает байты в string.
 		 *          Слой не хранит состояния соединения - это чистые функции над байтами.
+		 *
 		 */
 		namespace packet {
 			/**
@@ -62,6 +68,7 @@ namespace awh {
 			 *          часть (Packet Number + нагрузка) длиной length. Для Version Negotiation
 			 *          payload содержит список версий, для Retry - токен с тегом целостности,
 			 *          для 1-RTT - остаток датаграммы начиная с Packet Number.
+			 *
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Header {
 				// Тип пакета
@@ -97,6 +104,7 @@ namespace awh {
 			 * @param pn           номер отправляемого пакета
 			 * @param largestAcked наибольший подтверждённый пиром номер пакета (pn, если подтверждений ещё не было)
 			 * @return             размер кодирования номера пакета в октетах (1-4)
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ size_t packetNumberSize(const uint64_t pn, const uint64_t largestAcked) noexcept;
 
@@ -107,6 +115,7 @@ namespace awh {
 			 * @param truncated усечённый номер пакета из заголовка
 			 * @param pnSize    размер усечённого номера пакета в октетах (1-4)
 			 * @return          восстановленный полный номер пакета
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ uint64_t decodePacketNumber(const uint64_t largestPn, const uint64_t truncated, const size_t pnSize) noexcept;
 
@@ -127,6 +136,7 @@ namespace awh {
 				 * @param output   разобранный заголовок пакета
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/INCOMPLETE/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t header(const uint8_t * data, const size_t size, const size_t dcidSize, header_t & output, error_t & error) noexcept;
 				/**
@@ -137,6 +147,7 @@ namespace awh {
 				 * @param pnSize размер номера пакета в октетах (1-4, из битов первого октета)
 				 * @param output прочитанный усечённый номер пакета
 				 * @return       результат чтения (true - в буфере было достаточно байт)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ bool packetNumber(const uint8_t * data, const size_t size, const size_t pnSize, uint64_t & output) noexcept;
 				/**
@@ -146,6 +157,7 @@ namespace awh {
 				 * @param output список поддерживаемых пиром версий
 				 * @param error  код ошибки транспорта
 				 * @return       результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t versions(const header_t & header, vector <uint32_t> & output, error_t & error) noexcept;
 				/**
@@ -156,6 +168,7 @@ namespace awh {
 				 * @param tag    тег целостности пакета Retry (16 октетов)
 				 * @param error  код ошибки транспорта
 				 * @return       результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t retry(const header_t & header, string_view & token, uint8_t tag[proto::RETRY_TAG_SIZE], error_t & error) noexcept;
 			};
@@ -181,6 +194,7 @@ namespace awh {
 				 * @param pn      номер пакета
 				 * @param pnSize  размер кодирования номера пакета в октетах (1-4)
 				 * @return        результат сборки (false - некорректные параметры)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ bool longHeader(string & output, const packet_t type, const uint32_t version, const cid_t & dcid, const cid_t & scid, string_view token, const uint64_t length, const uint64_t pn, const size_t pnSize) noexcept;
 				/**
@@ -193,6 +207,7 @@ namespace awh {
 				 * @param keyPhase бит фазы ключей (RFC 9001 §6)
 				 * @param spin     бит задержки (spin bit, RFC 9000 §17.4)
 				 * @return         результат сборки (false - некорректные параметры)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ bool shortHeader(string & output, const cid_t & dcid, const uint64_t pn, const size_t pnSize, const bool keyPhase, const bool spin) noexcept;
 				/**
@@ -204,6 +219,7 @@ namespace awh {
 				 * @param versions список поддерживаемых версий
 				 * @param count    количество версий
 				 * @return         результат сборки (false - некорректные параметры)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ bool versionNegotiation(string & output, const cid_t & dcid, const cid_t & scid, const uint32_t * versions, const size_t count) noexcept;
 				/**
@@ -219,6 +235,7 @@ namespace awh {
 				 * @param token   токен для повторного пакета Initial
 				 * @param tag     тег целостности пакета Retry (16 октетов)
 				 * @return        результат сборки (false - некорректные параметры)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ bool retry(string & output, const uint32_t version, const cid_t & dcid, const cid_t & scid, string_view token, const uint8_t tag[proto::RETRY_TAG_SIZE]) noexcept;
 			};

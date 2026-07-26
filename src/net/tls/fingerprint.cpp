@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля цифровых отпечатков TLS — формирование и разбор расширений ClientHello (SNI, ALPN,
+ *        supported_groups, GREASE, Channel ID, OCSP,
+ *        SCT и других) для эмуляции отпечатка клиента и анализа входящих рукопожатий
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -125,6 +130,7 @@ namespace local {
 	 *
 	 * @param value 16-битное значение для проверки
 	 * @return      true, если значение является GREASE-значением, иначе false
+	 *
 	 */
 	static inline bool isGrease(const uint16_t value) noexcept {
 		// Получаем старший и младший байт значения
@@ -138,6 +144,7 @@ namespace local {
 	 *
 	 * @param buffer бинарный буфер с данными handshake-сообщения
 	 * @return       значение в формате big-endian
+	 *
 	 */
 	static inline uint16_t u16(const uint8_t * buffer) noexcept {
 		// Читаем 16-битное значение из буфера в формате big-endian
@@ -150,6 +157,7 @@ namespace local {
 	 * @param buffer буфер с данными record layer
 	 * @param size   размер буфера в байтах
 	 * @return       полный размер record layer или 0, если данных недостаточно
+	 *
 	 */
 	static inline size_t recordLayerSize(const uint8_t * buffer, const size_t size) noexcept {
 		// Если буфер пустой или слишком короткий
@@ -180,6 +188,7 @@ namespace local {
 	 *
 	 * @param input входная строка
 	 * @return      MD5 hex lowercase
+	 *
 	 */
 	static string md5(const string & input) noexcept {
 		// Переменная результата
@@ -204,6 +213,7 @@ namespace local {
 	 * @param buffer бинарный буфер данных
 	 * @param size   размер бинарного буфера
 	 * @return       hex-строка
+	 *
 	 */
 	static string tohex(const uint8_t * buffer, const size_t size) noexcept {
 		// Переменная результата
@@ -223,6 +233,7 @@ namespace local {
 	 *
 	 * @param cipher тип шифра
 	 * @return       wire-код (0 = неизвестный)
+	 *
 	 */
 	static inline uint16_t cipherWire(const awh::tls::cipher_t cipher) noexcept {
 		/**
@@ -335,6 +346,7 @@ namespace local {
 	 *
 	 * @param version тип версии
 	 * @return        wire-код (0 = неизвестный)
+	 *
 	 */
 	static inline uint16_t versionWire(const awh::tls::version_t version) noexcept {
 		/**
@@ -379,6 +391,7 @@ namespace local {
 	 *
 	 * @param gid тип группы
 	 * @return    wire-код (0 = неизвестный)
+	 *
 	 */
 	static inline uint16_t groupWire(const awh::tls::group_t gid) noexcept {
 		/**
@@ -451,6 +464,7 @@ namespace local {
 	 *
 	 * @param sign тип алгоритма
 	 * @return     wire-код (0 = неизвестный)
+	 *
 	 */
 	static inline uint16_t signatureWire(const awh::tls::signature_t sign) noexcept {
 		/**
@@ -543,6 +557,7 @@ namespace local {
 	 *
 	 * @param ext тип расширения
 	 * @return    wire-код (0xFFFF = неизвестный/непривязанный)
+	 *
 	 */
 	static inline uint16_t extensionWire(const awh::tls::extension_type_t ext) noexcept {
 		/**
@@ -723,6 +738,7 @@ namespace local {
 	 *
 	 * @param format формат точки
 	 * @return       wire-код (0xFF = неизвестный)
+	 *
 	 */
 	static inline uint8_t ecPointWire(const awh::tls::ec_point_format_t format) noexcept {
 		/**
@@ -751,6 +767,7 @@ namespace local {
 	 *
 	 * @param compressor метод компрессии
 	 * @return           wire-код (0xFF = нестандартный)
+	 *
 	 */
 	static inline uint8_t compressorWire(const awh::tls::compressor_t compressor) noexcept {
 		/**
@@ -783,6 +800,7 @@ namespace local {
 	 *
 	 * @param id код метода компрессии
 	 * @return   имя метода компрессии
+	 *
 	 */
 	static const char * compressALGName(const uint8_t id) noexcept {
 		/**
@@ -811,6 +829,7 @@ namespace local {
 	 *
 	 * @param version код версии TLS
 	 * @return        имя версии TLS
+	 *
 	 */
 	static const char * tlsVersionName(const uint16_t version) noexcept {
 		// Если версия является GREASE, возвращаем "GREASE"
@@ -845,6 +864,7 @@ namespace local {
 	 *
 	 * @param gid код группы эллиптических кривых
 	 * @return    имя группы эллиптических кривых
+	 *
 	 */
 	static const char * groupName(const uint16_t gid) noexcept {
 		// Если код группы является GREASE, возвращаем "GREASE"
@@ -935,6 +955,7 @@ namespace local {
 	 *
 	 * @param id код алгоритма подписи
 	 * @return   имя алгоритма подписи
+	 *
 	 */
 	static const char * signatureName(const uint16_t id) noexcept {
 		// Если код алгоритма подписи является GREASE, возвращаем "GREASE"
@@ -1031,6 +1052,7 @@ namespace local {
 	 *
 	 * @param id код шифра TLS
 	 * @return   имя шифра TLS
+	 *
 	 */
 	static const char * cipherName(const uint16_t id) noexcept {
 		// Если код шифра является GREASE, возвращаем "GREASE"
@@ -1171,6 +1193,7 @@ namespace local {
 	 *
 	 * @param type код расширения TLS
 	 * @return     имя расширения TLS
+	 *
 	 */
 	static const char * extensionName(const uint16_t type) noexcept {
 		// Если код расширения является GREASE, возвращаем "GREASE"
@@ -1368,6 +1391,7 @@ namespace fingerprint {
 	 * @param size   размер буфера
 	 * @param offset текущее смещение (увеличивается на количество прочитанных байт)
 	 * @return       прочитанное значение, или 0 если данных недостаточно
+	 *
 	 */
 	static inline uint64_t readQUICVarint(const uint8_t * buffer, const size_t size, size_t & offset) noexcept {
 		// Если смещение за пределами буфера — возвращаем 0
@@ -1452,6 +1476,7 @@ namespace fingerprint {
 	 * @param buffer бинарный буфер данных расширения
 	 * @param size   размер буфера
 	 * @param params карта для сохранения результатов
+	 *
 	 */
 	static void parseQUICTransportParamsInternal(const uint8_t * buffer, const size_t size, unordered_map <uint64_t, uint64_t> & params) noexcept {
 		// Инициализируем смещение
@@ -1498,6 +1523,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения GREASE
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseGrease(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение GREASE в список расширений браузера
@@ -1510,6 +1536,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения encrypt_then_mac
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseEncryptThenMAC(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение encrypt_then_mac в список расширений браузера
@@ -1522,6 +1549,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения signed_certificate_timestamp
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseCertificateTimestamp(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение signed_certificate_timestamp в список расширений браузера
@@ -1534,6 +1562,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения client_certificate_type
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseClientCertificateType(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение client_certificate_type в список расширений браузера
@@ -1546,6 +1575,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения server_certificate_type
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseServerCertificateType(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение server_certificate_type в список расширений браузера
@@ -1558,6 +1588,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения extended_master_secret
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseExtendedMasterSecret(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение extended_master_secret в список расширений браузера
@@ -1570,6 +1601,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения post_handshake_auth
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void postHandshakeAuth(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение post_handshake_auth в список расширений браузера
@@ -1582,6 +1614,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения oid_filters
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseOIDFilters(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение oid_filters в список расширений браузера
@@ -1594,6 +1627,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения transparency_info
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseTransparencyInfo(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение transparency_info в список расширений браузера
@@ -1606,6 +1640,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения record_size_limit
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseRecordSizeLimit(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение record_size_limit в список расширений браузера
@@ -1624,6 +1659,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения padding
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parsePadding(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение padding в список расширений браузера
@@ -1638,6 +1674,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения session_ticket
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseSessionTicket(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение session_ticket в список расширений браузера
@@ -1659,6 +1696,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения early_data
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseEarlyData(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение early_data в список расширений браузера
@@ -1681,6 +1719,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения cookie
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseCookie(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение cookie в список расширений браузера
@@ -1706,6 +1745,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения certificate_authorities
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseCertificateAuthorities(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение certificate_authorities в список расширений браузера
@@ -1750,6 +1790,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения key_share
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseKeyShare(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение key_share в список расширений браузера
@@ -1881,6 +1922,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения psk_key_exchange_modes
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parsePSKKeyExchangeModes(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение psk_key_exchange_modes в список расширений браузера
@@ -1925,6 +1967,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения supported_versions
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseSupportedVersions(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение supported_versions в список расширений браузера
@@ -2009,6 +2052,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения pre_shared_key
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parsePreSharedKey(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение pre_shared_key в список расширений браузера
@@ -2064,6 +2108,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения delegated_credential
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseDelegatedCredential(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение delegated_credential в список расширений браузера
@@ -2205,6 +2250,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения compress_certificate
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseCompressCertificate(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение compress_certificate в список расширений браузера
@@ -2266,6 +2312,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения ALPN
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseALPN(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение ALPN в список расширений браузера
@@ -2308,6 +2355,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения heartbeat
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseHeartbeat(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение heartbeat в список расширений браузера
@@ -2343,6 +2391,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения use_srtp
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseUseSRTP(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение use_srtp в список расширений браузера
@@ -2432,6 +2481,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения signature_algorithms
 	 * @param size    размер данных расширения signature_algorithms
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseSignatureAlgorithms(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение signature_algorithms в список расширений браузера
@@ -2573,6 +2623,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения signature_algorithms_cert
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseSignatureAlgorithmsCert(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение signature_algorithms_cert в список расширений браузера
@@ -2714,6 +2765,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseECPointFormats(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение ec_point_formats в список расширений браузера
@@ -2770,6 +2822,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseSupportedGroups(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение supported_groups в список расширений браузера
@@ -2886,6 +2939,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными handshake-сообщения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseStatusRequest(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение status_request в список расширений браузера
@@ -2919,6 +2973,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными handshake-сообщения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseMaxFragmentLength(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение max_fragment_length в список расширений браузера
@@ -2962,6 +3017,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными handshake-сообщения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseServerName(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение SNI в список расширений браузера
@@ -3009,6 +3065,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseQUICTransportParams(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение quic_transport_parameters в список расширений браузера
@@ -3030,6 +3087,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseQUICTransportParamsLegacy(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение quic_transport_parameters_legacy в список расширений браузера
@@ -3053,6 +3111,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseTLSFlags(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение tls_flags в список расширений браузера
@@ -3074,6 +3133,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseNPN(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение NPN в список расширений браузера
@@ -3105,6 +3165,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseApplicationSettings(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение application_settings в список расширений браузера
@@ -3148,6 +3209,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseApplicationSettingsOld(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение application_settings_old в список расширений браузера
@@ -3191,6 +3253,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseChannelID(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение channel_id в список расширений браузера
@@ -3205,6 +3268,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseTrustAnchors(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение trust_anchors в список расширений браузера
@@ -3219,6 +3283,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseECHOuterExtensions(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение ech_outer_extensions в список расширений браузера
@@ -3251,6 +3316,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseEncryptedClientHello(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение ECH в список расширений браузера
@@ -3271,6 +3337,7 @@ namespace fingerprint {
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 *
 	 */
 	static void parseRenegotiationInfo(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение renegotiation_info в список расширений браузера
@@ -3305,6 +3372,7 @@ namespace http2 {
 	 *
 	 * @param index индекс в статической таблице HPACK
 	 * @return      'a'/'m'/'p'/'s' или '\0' если не псевдо-заголовок / индекс вне диапазона
+	 *
 	 */
 	static char hpackPseudoChar(const uint32_t index) noexcept {
 		/**
@@ -3324,6 +3392,7 @@ namespace http2 {
 	 *
 	 * @param name имя заголовка из HPACK-блока
 	 * @return     'a'/'m'/'p'/'s' или '\0' если не псевдо-заголовок
+	 *
 	 */
 	static char hpackPseudoFromName(const string & name) noexcept {
 		// Если имя соответствует :authority, возвращаем 'a'
@@ -3354,6 +3423,7 @@ namespace http2 {
 	 * @param offset текущая позиция (изменяется при чтении)
 	 * @param width  ширина префикса в битах (1-8)
 	 * @return       декодированное целое число; 0 при выходе за границу буфера
+	 *
 	 */
 	static uint32_t hpackDecodeInt(const uint8_t * buffer, const size_t size, size_t & offset, const uint8_t width) noexcept {
 		// Если позиция вышла за конец буфера, возвращаем 0
@@ -3400,6 +3470,7 @@ namespace http2 {
 	 * @param size   размер буфера
 	 * @param offset текущее смещение (изменяется при чтении)
 	 * @return       декодированная строка; пустая при Huffman-кодировании или ошибке
+	 *
 	 */
 	static string hpackDecodeStr(const uint8_t * buffer, const size_t size, size_t & offset) noexcept {
 		// Если позиция вышла за конец буфера, возвращаем пустую строку
@@ -3434,6 +3505,7 @@ namespace http2 {
  * @brief Конструктор
  *
  * @param type Тип расширения
+ *
  */
 awh::tls::Fingerprint::Extension::Extension(const extension_type_t type) noexcept : type(type) {}
 
@@ -3788,6 +3860,7 @@ awh::tls::Fingerprint::ClientHello::ClientHello() noexcept : version(version_t::
  *
  * @param browser объект цифрового отпечатка браузера для сравнения
  * @return        результат сравнения
+ *
  */
 bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const noexcept {
 	// Если флаги поддержки GREASE не совпадают, объекты не равны
@@ -4237,6 +4310,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
  *
  * @param browser объект цифрового отпечатка браузера для перемещения
  * @return        текущий объект после перемещения
+ *
  */
 awh::tls::Fingerprint::Browser & awh::tls::Fingerprint::Browser::operator = (Browser && browser) noexcept {
 	// Копируем флаг поддержки GREASE
@@ -4267,6 +4341,7 @@ awh::tls::Fingerprint::Browser & awh::tls::Fingerprint::Browser::operator = (Bro
  *
  * @param browser объект цифрового отпечатка браузера для копирования
  * @return        текущий объект после копирования
+ *
  */
 awh::tls::Fingerprint::Browser & awh::tls::Fingerprint::Browser::operator = (const Browser & browser) noexcept {
 	// Копируем флаг поддержки GREASE
@@ -4586,6 +4661,7 @@ awh::tls::Fingerprint::Browser & awh::tls::Fingerprint::Browser::operator = (con
  * @brief Конструктор перемещения
  *
  * @param browser объект цифрового отпечатка браузера для перемещения
+ *
  */
 awh::tls::Fingerprint::Browser::Browser(browser_t && browser) noexcept {
 	// Копируем флаг поддержки GREASE
@@ -4613,6 +4689,7 @@ awh::tls::Fingerprint::Browser::Browser(browser_t && browser) noexcept {
  * @brief Конструктор копирования
  *
  * @param browser объект цифрового отпечатка браузера для копирования
+ *
  */
 awh::tls::Fingerprint::Browser::Browser(const browser_t & browser) noexcept {
 	// Копируем флаг поддержки GREASE
@@ -4937,6 +5014,7 @@ awh::tls::Fingerprint::Browser::Browser() noexcept : grease(false) {}
  *
  * @param i идентификатор параметра
  * @param v значение параметра
+ *
  */
 awh::tls::Fingerprint::H2Setting::H2Setting(const uint16_t i, const uint32_t v) noexcept : id(i), value(v) {}
 
@@ -4957,6 +5035,7 @@ awh::tls::Fingerprint::H2Browser::H2Browser() noexcept : windowUpdate(0) {}
  * @brief Оператор преобразования в сырой итератор
  *
  * @return iterator итератор для преобразования
+ *
  */
 awh::tls::Fingerprint::Iterator::operator awh::tls::Fingerprint::Iterator::iterator() noexcept {
 	// Возвращаем текущее значение итератора
@@ -4966,6 +5045,7 @@ awh::tls::Fingerprint::Iterator::operator awh::tls::Fingerprint::Iterator::itera
  * @brief Оператор извлечения указателя заголовка
  *
  * @return указатель заголовка
+ *
  */
 awh::tls::Fingerprint::Iterator::pointer awh::tls::Fingerprint::Iterator::operator -> () noexcept {
 	// Возвращаем результат
@@ -4975,6 +5055,7 @@ awh::tls::Fingerprint::Iterator::pointer awh::tls::Fingerprint::Iterator::operat
  * @brief Оператор разыменования заголовка
  *
  * @return значение заголовка
+ *
  */
 awh::tls::Fingerprint::Iterator::reference awh::tls::Fingerprint::Iterator::operator * () const noexcept {
 	// Возвращаем результат
@@ -4984,6 +5065,7 @@ awh::tls::Fingerprint::Iterator::reference awh::tls::Fingerprint::Iterator::oper
  * @brief Оператор смещения вперед
  *
  * @return значение текущего итератора
+ *
  */
 awh::tls::Fingerprint::Iterator & awh::tls::Fingerprint::Iterator::operator ++ () noexcept {
 	/**
@@ -5018,6 +5100,7 @@ awh::tls::Fingerprint::Iterator & awh::tls::Fingerprint::Iterator::operator ++ (
  *
  * @param other итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::tls::Fingerprint::Iterator::operator == (const Iterator & other) const noexcept {
 	// Возвращаем результат
@@ -5028,6 +5111,7 @@ bool awh::tls::Fingerprint::Iterator::operator == (const Iterator & other) const
  *
  * @param other итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::tls::Fingerprint::Iterator::operator != (const Iterator & other) const noexcept {
 	// Возвращаем результат
@@ -5039,6 +5123,7 @@ bool awh::tls::Fingerprint::Iterator::operator != (const Iterator & other) const
  * @param it  итератор для установки
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::tls::Fingerprint::Iterator::Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept : _it(it), _fmk(fmk), _log(log) {}
 
@@ -5051,6 +5136,7 @@ awh::tls::Fingerprint::Iterator::Iterator(iterator it, const fmk_t * fmk, const 
  *
  * @param browser объект с распарсенными данными ClientHello
  * @return        форматированная строка с полным описанием отпечатка
+ *
  */
 string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 	/**
@@ -5066,6 +5152,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		 *
 		 * @param num число для форматирования
 		 * @return    строка вида "0x%04X"
+		 *
 		 */
 		const auto hex16 = [](const uint16_t num) -> string {
 			// Переменная результата
@@ -5080,6 +5167,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		 *
 		 * @param num число для форматирования
 		 * @return    строка вида "0x%02X"
+		 *
 		 */
 		const auto hex8 = [](const uint8_t num) -> string {
 			// Переменная результата
@@ -5093,6 +5181,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		 * @brief Вспомогательная лямбда: секционный заголовок с количеством элементов
 		 *
 		 * @param title название секции
+		 *
 		 */
 		const auto section = [&out](const string & title) -> void {
 			// Печатаем заголовок в отладочный вывод секции с отступами и линиями-разделителями
@@ -5771,6 +5860,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
  *
  * @param h2 объект с распарсенными данными HTTP/2-соединения (из parseH2())
  * @return   строка Akamai fingerprint, пустая строка если h2.settings пуст
+ *
  */
 string awh::tls::Fingerprint::akamai(const h2_browser_t & h2) const noexcept {
 	/**
@@ -5881,6 +5971,7 @@ string awh::tls::Fingerprint::akamai(const h2_browser_t & h2) const noexcept {
  *
  * @param imp объект цифрового отпечатка для проверки
  * @return     результат проверки, принадлежит ли цифровой отпечаток реальному браузеру
+ *
  */
 bool awh::tls::Fingerprint::looksLikeBrowser(const imprint_t & imp) const noexcept {
 	// Если TLS 1.3 не согласован
@@ -5904,6 +5995,7 @@ bool awh::tls::Fingerprint::looksLikeBrowser(const imprint_t & imp) const noexce
  * @param browser объект с распарсенными данными ClientHello
  * @param result  объект для хранения всех вычисленных отпечатков
  * @return        результат вычисления цифровых отпечатков
+ *
  */
 bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & result) const noexcept {
 	/**
@@ -6269,6 +6361,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			 *
 			 * @param v вектор uint16_t для конвертации
 			 * @return  строка hex формата "xxxx,xxxx,..."
+			 *
 			 */
 			const auto makeHexList = [](const vector <uint16_t> & v) -> string {
 				// Переменная результата
@@ -6505,6 +6598,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
  * @param size    размер бинарного буфера данных цифрового отпечатка
  * @param browser объект для хранения распарсенных данных цифрового отпечатка
  * @return        результат парсинга данных цифрового отпечатка
+ *
  */
 bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, browser_t & browser) const noexcept {
 	// Переменная результата
@@ -7477,6 +7571,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
  * @param size   размер буфера в байтах
  * @param h2     объект для хранения распарсенных данных
  * @return       true если SETTINGS-фрейм был успешно разобран, иначе false
+ *
  */
 bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h2_browser_t & h2) const noexcept {
 	/**
@@ -7803,6 +7898,7 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
  *       из синхронного read_callback). Callback обязан скопировать данные.
  * @note buffer должен содержать полный TLS/DTLS record layer; при неполной
  *       записи метод возвращает пустой vector.
+ *
  */
 vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size_t size, const browser_t & browser) const noexcept {
 	// Переменная результата
@@ -7983,6 +8079,7 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 		 * @param ciphers список шифров для проверки
 		 * @param cipher  шифр для поиска
 		 * @return        результат проверки существования шифра в списке
+		 *
 		 */
 		auto hasCipher = [](const vector <cipher_t> & ciphers, const cipher_t cipher) -> bool {
 			// Ищем шифр в списке
@@ -8044,6 +8141,7 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 		 *
 		 * @param type тип расширения для поиска
 		 * @return     объект найденного расширения или nullptr, если не найдено
+		 *
 		 */
 		auto findSrcExt = [&src](const extension_type_t type) -> const extension_t * {
 			/**
@@ -8063,6 +8161,7 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 		 *
 		 * @param buffer буфер для добавления байтов
 		 * @param num    число для добавления (будет преобразовано в 2 байта big-endian)
+		 *
 		 */
 		auto u16be = [](vector <uint8_t> & buffer, const uint16_t num) -> void {
 			// Добавляем старший байт
@@ -8076,6 +8175,7 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 		 * @param buffer буфер для добавления расширения
 		 * @param type   wire-тип расширения для добавления
 		 * @param data   байты payload расширения для добавления
+		 *
 		 */
 		auto appendExt = [&u16be](vector <uint8_t> & buffer, const uint16_t type, const vector <uint8_t> & data) -> void {
 			// Добавляем wire-тип расширения (2 байта big-endian)
@@ -8284,6 +8384,7 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 					 *
 					 * @param profile профиль SRTP
 					 * @return        wire-код профиля SRTP в виде uint16_t (GREASE → 0x0A0A, неизвестные профили → 0) для использования в расширении use_srtp
+					 *
 					 */
 					auto srtpWire = [](const srtp_t profile) -> uint16_t {
 						/**
@@ -8706,6 +8807,7 @@ void awh::tls::Fingerprint::clear() noexcept {
  * @brief Метод проверки, пусто ли хранилище цифровых отпечатков браузеров
  *
  * @return результат проверки
+ *
  */
 bool awh::tls::Fingerprint::empty() const noexcept {
 	// Блокируем хранилище отпечатков для чтения
@@ -8717,6 +8819,7 @@ bool awh::tls::Fingerprint::empty() const noexcept {
  * @brief Метод получения количества цифровых отпечатков браузеров, хранящихся в хранилище
  *
  * @return количество цифровых отпечатков браузеров
+ *
  */
 size_t awh::tls::Fingerprint::size() const noexcept {
 	// Блокируем хранилище отпечатков для чтения
@@ -8728,6 +8831,7 @@ size_t awh::tls::Fingerprint::size() const noexcept {
  * @brief Метод получения списка идентификаторов всех цифровых отпечатков браузеров, хранящихся в хранилище
  *
  * @return список идентификаторов цифровых отпечатков браузеров
+ *
  */
 vector <awh::tls::Fingerprint::id_t> awh::tls::Fingerprint::list() const noexcept {
 	// Переменная результата
@@ -8747,6 +8851,7 @@ vector <awh::tls::Fingerprint::id_t> awh::tls::Fingerprint::list() const noexcep
  * @brief Метод установки режима потокобезопасности хранилища отпечатков
  *
  * @param mode флаг режима безопасности потоков
+ *
  */
 void awh::tls::Fingerprint::threadSafety(const bool mode) noexcept {
 	// Активируем работу мьютекса блокировки хранилища отпечатков
@@ -8757,6 +8862,7 @@ void awh::tls::Fingerprint::threadSafety(const bool mode) noexcept {
  *
  * @param id идентификатор цифрового отпечатка
  * @return   результат выполнения удаления цифрового отпечатка
+ *
  */
 bool awh::tls::Fingerprint::remove(const id_t id) noexcept {
 	// Переменная результата
@@ -8799,6 +8905,7 @@ bool awh::tls::Fingerprint::remove(const id_t id) noexcept {
  *
  * @param id идентификатор цифрового отпечатка
  * @return   объект с цифровым отпечатком браузера, соответствующий указанному идентификатору
+ *
  */
 const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::get(const id_t id) const noexcept {
 	// Переменная результата
@@ -8857,6 +8964,7 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::get(const id_t i
  *
  * @param browser объект с распарсенными данными ClientHello
  * @return        идентификатор добавленного цифрового отпечатка
+ *
  */
 awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser) noexcept {
 	// Переменная результата
@@ -8930,6 +9038,7 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser
  * @param buffer бинарный буфер с данными цифрового отпечатка
  * @param size   размер бинарного буфера в байтах
  * @return       идентификатор добавленного цифрового отпечатка
+ *
  */
 awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const uint8_t * buffer, const size_t size) noexcept {
 	// Переменная результата
@@ -8969,6 +9078,7 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const uint8_t * buffer, c
  * @brief Метод формирования бинарного дампа всех цифровых отпечатков браузеров
  *
  * @return бинарный буфер, содержащий дамп всех цифровых отпечатков браузеров
+ *
  */
 vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
 	// Переменная результата
@@ -9036,6 +9146,7 @@ vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
  *
  * @param buffer бинарный буфер для загрузки данных цифровых отпечатков
  * @return       результат загрузки бинарного дампа
+ *
  */
 bool awh::tls::Fingerprint::dump(const vector <uint8_t> & buffer) noexcept {
 	// Переменная результата
@@ -9120,6 +9231,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & buffer) noexcept {
  * @param input   бинарный буфер с данными цифрового отпечатка
  * @param browser объект для хранения данных цифрового отпечатка
  * @return        результат загрузки бинарного дампа цифрового отпечатка
+ *
  */
 bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & browser) const noexcept {
 	/**
@@ -9138,6 +9250,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 		 * @param buffer бинарный буфер для записи прочитанных данных
 		 * @param size   количество байт для чтения
 		 * @return       результат чтения
+		 *
 		 */
 		auto read = [&offset, &input](void * buffer, const size_t size) -> bool {
 			// Если данных в буфере недостаточно, возвращаем ошибку
@@ -10168,6 +10281,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
  * @param browser объект с распарсенными данными ClientHello
  * @param output  буфер для записи бинарного дампа цифрового отпечатка
  * @return        результат формирования бинарного дампа цифрового отпечатка
+ *
  */
 bool awh::tls::Fingerprint::dump(const browser_t & browser, vector <uint8_t> & output) const noexcept {
 	/**
@@ -10771,6 +10885,7 @@ bool awh::tls::Fingerprint::dump(const browser_t & browser, vector <uint8_t> & o
  * @brief Метод обмена заголовками
  *
  * @param fgp объект Fingerprint для обмена данными
+ *
  */
 void awh::tls::Fingerprint::swap(Fingerprint & fgp) noexcept {
 	// Блокируем оба хранилища отпечатков для записи
@@ -10783,6 +10898,7 @@ void awh::tls::Fingerprint::swap(Fingerprint & fgp) noexcept {
  * @brief Метод получения конечного итератора
  *
  * @return конечный итератор
+ *
  */
 awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
 	// Блокируем хранилище отпечатков для чтения
@@ -10794,6 +10910,7 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
  * @brief Метод получение начального итератора
  *
  * @return начальный итератор
+ *
  */
 awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::begin() noexcept {
 	// Блокируем хранилище отпечатков для чтения
@@ -10806,6 +10923,7 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::begin() noexcept {
  *
  * @param id идентификатор заголовка для поиска
  * @return   итератор указанного заголовка
+ *
  */
 awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const id_t id) noexcept {
 	// Если идентификатор заголовка передан
@@ -10845,6 +10963,7 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const id_t id) noe
  *
  * @param id идентификатор цифрового отпечатка
  * @return   цифровой отпечаток браузера
+ *
  */
 const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::operator[](const id_t id) const noexcept {
 	// Возвращаем результат
@@ -10854,6 +10973,7 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::operator[](const
  * @brief Проверка, пусто ли хранилище цифровых отпечатков браузеров
  *
  * @return результат проверки
+ *
  */
 awh::tls::Fingerprint::operator bool() const noexcept {
 	// Блокируем хранилище отпечатков для чтения
@@ -10865,6 +10985,7 @@ awh::tls::Fingerprint::operator bool() const noexcept {
  * @brief Получения количества цифровых отпечатков браузеров, хранящихся в хранилище
  *
  * @return количество цифровых отпечатков браузеров
+ *
  */
 awh::tls::Fingerprint::operator size_t() const noexcept {
 	// Блокируем хранилище отпечатков для чтения
@@ -10876,6 +10997,7 @@ awh::tls::Fingerprint::operator size_t() const noexcept {
  * @brief Получения бинарных данных дампа всех цифровых отпечатков браузеров
  *
  * @return бинарные данные буфера дампа всех цифровых отпечатков браузеров
+ *
  */
 awh::tls::Fingerprint::operator vector <uint8_t> () const noexcept {
 	// Возвращаем результат бинарных данных дампа всех цифровых отпечатков браузеров
@@ -10886,6 +11008,7 @@ awh::tls::Fingerprint::operator vector <uint8_t> () const noexcept {
  *
  * @param fgp отпечатки браузеров для сравнения
  * @return    результат сравнения
+ *
  */
 bool awh::tls::Fingerprint::operator == (const Fingerprint & fgp) const noexcept {
 	// Блокируем оба хранилища отпечатков для чтения
@@ -10914,6 +11037,7 @@ bool awh::tls::Fingerprint::operator == (const Fingerprint & fgp) const noexcept
  *
  * @param buffer бинарный буфер для загрузки данных цифровых отпечатков
  * @return       текущий контейнер отпечатков браузеров
+ *
  */
 awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const vector <uint8_t> & buffer) noexcept {
 	// Загружаем данные цифровых отпечатков из бинарного буфера
@@ -10926,6 +11050,7 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const vector <uint8_t
  *
  * @param fgp объект Fingerprint для перемещения
  * @return    текущий контейнер отпечатков браузеров
+ *
  */
 awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (Fingerprint && fgp) noexcept {
 	// Если объект для перемещения не является текущим объектом
@@ -10944,6 +11069,7 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (Fingerprint && fgp) n
  *
  * @param fgp объект Fingerprint для копирования
  * @return    текущий контейнер отпечатков браузеров
+ *
  */
 awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const Fingerprint & fgp) noexcept {
 	// Если объект для копирования не является текущим объектом
@@ -10962,6 +11088,7 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const Fingerprint & f
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::tls::Fingerprint::Fingerprint(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
 	// Мьютекс выключен по умолчанию; включается через threadSafety(true)

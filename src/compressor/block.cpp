@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация блочной (one-shot) компрессии —
+ *        сжатие и распаковка данных целиком за один вызов с управлением контекстами GZip, Zlib, Deflate, Brotli, LZ4,
+ *        Zstd, LZma, BZip2, Lzip и других поддерживаемых алгоритмов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -83,6 +88,7 @@ using namespace std;
  * @brief Полное определение непрозрачного контекста потока GZip
  *
  * @details Обёртка над потоком zlib, скрывающая прямую зависимость от zlib в публичном заголовке
+ *
  */
 struct awh::compressor::gzip_stream_t {
 	// Поток zlib
@@ -113,6 +119,7 @@ namespace driver {
 	 * @brief Шаблон RAII-обёртки для гарантированного освобождения ресурса
 	 *
 	 * @tparam F тип функции освобождения ресурса
+	 *
 	 */
 	template <typename F>
 	/**
@@ -120,6 +127,7 @@ namespace driver {
 	 *
 	 * @details Вызывает переданную функцию очистки при выходе из области видимости
 	 *          (в том числе при возникновении исключения), если не был вызван dismiss().
+	 *
 	 */
 	class Scope_Exit {
 		private:
@@ -141,6 +149,7 @@ namespace driver {
 			 * @brief Конструктор
 			 *
 			 * @param fn функция освобождения ресурса
+			 *
 			 */
 			explicit Scope_Exit(F fn) noexcept : _fn(::move(fn)), _active(true) {}
 			/**
@@ -169,6 +178,7 @@ namespace driver {
 	 * @brief Шаблон класса компрессора данных
 	 *
 	 * @tparam F тип функции освобождения ресурса
+	 *
 	 */
 	template <typename F>
 	/**
@@ -180,6 +190,7 @@ namespace driver {
 	 * @brief Шаблон функции создания RAII-обёртки освобождения ресурса
 	 *
 	 * @tparam F тип функции освобождения ресурса
+	 *
 	 */
 	template <typename F>
 	/**
@@ -187,6 +198,7 @@ namespace driver {
 	 *
 	 * @param fn функция освобождения ресурса
 	 * @return   созданная RAII-обёртка
+	 *
 	 */
 	static scope_exit_t <F> makeScopeExit(F fn) noexcept {
 		// Возвращаем созданную RAII-обёртку
@@ -196,6 +208,7 @@ namespace driver {
 	 * @brief Шаблон функции работы с компрессором LZma
 	 *
 	 * @tparam T сигнатура функции
+	 *
 	 */
 	template <typename T>
 	/**
@@ -206,6 +219,7 @@ namespace driver {
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
+	 *
 	 */
 	static void lzma(const void * buffer, const size_t size, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -359,6 +373,7 @@ namespace driver {
 	 * @brief Шаблон функции работы с компрессором BZip2
 	 *
 	 * @tparam T сигнатура функции
+	 *
 	 */
 	template <typename T>
 	/**
@@ -369,6 +384,7 @@ namespace driver {
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
+	 *
 	 */
 	static void bzip2(const void * buffer, const size_t size, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -603,6 +619,7 @@ namespace driver {
 	 * @brief Шаблон функции работы с компрессором Brotli
 	 *
 	 * @tparam T сигнатура функции
+	 *
 	 */
 	template <typename T>
 	/**
@@ -613,6 +630,7 @@ namespace driver {
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
+	 *
 	 */
 	static void brotli(const void * buffer, const size_t size, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -818,6 +836,7 @@ namespace driver {
 	 * @brief Шаблон функции работы с компрессором Snappy
 	 *
 	 * @tparam T сигнатура функции
+	 *
 	 */
 	template <typename T>
 	/**
@@ -828,6 +847,7 @@ namespace driver {
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
+	 *
 	 */
 	static void snappy(const void * buffer, const size_t size, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -885,6 +905,7 @@ namespace driver {
 	 * @brief Шаблон функции работы с компрессором Density
 	 *
 	 * @tparam T сигнатура функции
+	 *
 	 */
 	template <typename T>
 	/**
@@ -895,6 +916,7 @@ namespace driver {
 	 * @param level  уровень компрессии
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
+	 *
 	 */
 	static void density(const void * buffer, const size_t size, const uint32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -1036,6 +1058,7 @@ namespace driver {
 	 * @brief Шаблон функции работы с компрессором Lizard
 	 *
 	 * @tparam T сигнатура функции
+	 *
 	 */
 	template <typename T>
 	/**
@@ -1046,6 +1069,7 @@ namespace driver {
 	 * @param level  уровень компрессии
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
+	 *
 	 */
 	static void lizard(const void * buffer, const size_t size, const uint32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -1202,6 +1226,7 @@ namespace driver {
 	 * @brief Шаблон функции работы с компрессором Lz4
 	 *
 	 * @tparam T сигнатура функции
+	 *
 	 */
 	template <typename T>
 	/**
@@ -1213,6 +1238,7 @@ namespace driver {
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
+	 *
 	 */
 	static void lz4(const void * buffer, const size_t size, const uint32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -1371,6 +1397,7 @@ namespace driver {
 	 * @brief Шаблон функции работы с компрессором Zstandard
 	 *
 	 * @tparam T сигнатура функции
+	 *
 	 */
 	template <typename T>
 	/**
@@ -1382,6 +1409,7 @@ namespace driver {
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
+	 *
 	 */
 	static void zstd(const void * buffer, const size_t size, const uint32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -1657,6 +1685,7 @@ namespace driver {
 	 * @brief Шаблон функции работы с компрессором GZip
 	 *
 	 * @tparam T сигнатура функции
+	 *
 	 */
 	template <typename T>
 	/**
@@ -1669,6 +1698,7 @@ namespace driver {
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
+	 *
 	 */
 	static void gzip(const void * buffer, const size_t size, const uint32_t level, const int16_t wbits, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -1860,6 +1890,7 @@ namespace driver {
 	 * @brief Шаблон функции компрессии/декомпрессии данных в формате Zlib (RFC 1950)
 	 *
 	 * @tparam T выходной контейнер (например, string или vector <char>)
+	 *
 	 */
 	template <typename T>
 	/**
@@ -1875,6 +1906,7 @@ namespace driver {
 	 * @param event  событие выполнения операции
 	 * @param result выходной контейнер
 	 * @param log    объект для работы с логами
+	 *
 	 */
 	static void zlib(const void * buffer, const size_t size, const uint32_t level, const int16_t wbits, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -2073,6 +2105,7 @@ namespace driver {
 	 * @brief Шаблон функции компрессии/декомпрессии данных в формате raw deflate
 	 *
 	 * @tparam T выходной контейнер (например, string или vector <char>)
+	 *
 	 */
 	template <typename T>
 	/**
@@ -2095,6 +2128,7 @@ namespace driver {
 	 * @param event     событие выполнения операции
 	 * @param result    выходной контейнер
 	 * @param log       объект для работы с логами
+	 *
 	 */
 	static void deflate(const void * buffer, const size_t size, const uint32_t level, const int16_t wbits, const bool streaming, z_stream & stream, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -2411,6 +2445,7 @@ awh::compressor::Block::GZip::GZip() noexcept : wbits(0) {}
  * @brief Метод установки уровня компрессии
  *
  * @param level уровень компрессии
+ *
  */
 void awh::compressor::Block::level(const level_t level) noexcept {
 	// Выполняем блокировку потоков
@@ -2464,6 +2499,7 @@ void awh::compressor::Block::level(const level_t level) noexcept {
  * @brief Метод установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
+ *
  */
 void awh::compressor::Block::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности потоков
@@ -2473,6 +2509,7 @@ void awh::compressor::Block::threadSafety(const bool mode) noexcept {
  * @brief Метод установки размера скользящего окна Zlib
  *
  * @param wbits размер скользящего окна
+ *
  */
 void awh::compressor::Block::wbitsZlib(const int16_t wbits) noexcept {
 	// Выполняем блокировку потоков
@@ -2485,6 +2522,7 @@ void awh::compressor::Block::wbitsZlib(const int16_t wbits) noexcept {
  *
  * @param wbits размер скользящего окна
  * @return      результат установки размера
+ *
  */
 bool awh::compressor::Block::wbitsGZip(const int16_t wbits) noexcept {
 	// Переменная результата
@@ -2512,6 +2550,7 @@ bool awh::compressor::Block::wbitsGZip(const int16_t wbits) noexcept {
  * @param event событие выполнения операции
  * @param flag  флаг переиспользования контекста компрессии/декомпрессии
  * @return      результат установки флага
+ *
  */
 bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) noexcept {
 	// Переменная результата
@@ -2634,6 +2673,7 @@ bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) 
  *
  * @param method метод компрессии
  * @return       результат проверки
+ *
  */
 bool awh::compressor::Block::streamable(const method_t method) noexcept {
 	/**
@@ -2666,6 +2706,7 @@ bool awh::compressor::Block::streamable(const method_t method) noexcept {
  * @param method метод компрессии
  * @param event  направление операции
  * @return       объект потоковой сессии
+ *
  */
 awh::compressor::stream_t awh::compressor::Block::stream(const method_t method, const event_t event) const noexcept {
 	// Если метод не поддерживает потоковый режим, возвращаем невалидный поток
@@ -2726,6 +2767,7 @@ awh::compressor::stream_t awh::compressor::Block::stream(const method_t method, 
  * @brief Шаблон метода компрессии данных
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -2734,6 +2776,7 @@ template <typename T>
  * @param buffer буфер данных для компрессии
  * @param method метод компрессии
  * @return       результат компрессии
+ *
  */
 auto awh::compressor::Block::compress(string_view buffer, const method_t method) const noexcept -> T {
 	// Переменная результата
@@ -2765,6 +2808,7 @@ template vector <uint8_t> awh::compressor::Block::compress(string_view, const me
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
+ *
  */
 template <typename A, typename B>
 /**
@@ -2773,6 +2817,7 @@ template <typename A, typename B>
  * @param buffer буфер данных для компрессии
  * @param method метод компрессии
  * @return       результат компрессии
+ *
  */
 auto awh::compressor::Block::compress(const B & buffer, const method_t method) const noexcept -> A {
 	// Переменная результата
@@ -2833,6 +2878,7 @@ template vector <uint8_t> awh::compressor::Block::compress(const vector <uint8_t
  * @brief Шаблон метода компрессии данных
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -2842,6 +2888,7 @@ template <typename T>
  * @param size   размер данных для компрессии
  * @param method метод компрессии
  * @return       результат компрессии
+ *
  */
 auto awh::compressor::Block::compress(const void * buffer, const size_t size, const method_t method) const noexcept -> T {
 	// Переменная результата
@@ -2872,6 +2919,7 @@ template vector <uint8_t> awh::compressor::Block::compress(const void *, const s
  * @brief Шаблон метода компрессии данных
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -2881,6 +2929,7 @@ template <typename T>
  * @param size   размер данных для компрессии
  * @param method метод компрессии
  * @param result контейнер куда следует положить результат
+ *
  */
 void awh::compressor::Block::compress(const void * buffer, const size_t size, const method_t method, T & result) const noexcept {
 	// Если буфер данных передан
@@ -3149,6 +3198,7 @@ template void awh::compressor::Block::compress(const void *, const size_t, const
  * @brief Шаблон метода декомпрессии данных
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -3157,6 +3207,7 @@ template <typename T>
  * @param buffer буфер данных для декомпрессии
  * @param method метод компрессии
  * @return       результат декомпрессии
+ *
  */
 auto awh::compressor::Block::decompress(string_view buffer, const method_t method) const noexcept -> T {
 	// Переменная результата
@@ -3188,6 +3239,7 @@ template vector <uint8_t> awh::compressor::Block::decompress(string_view, const 
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
+ *
  */
 template <typename A, typename B>
 /**
@@ -3196,6 +3248,7 @@ template <typename A, typename B>
  * @param buffer буфер данных для декомпрессии
  * @param method метод компрессии
  * @return       результат декомпрессии
+ *
  */
 auto awh::compressor::Block::decompress(const B & buffer, const method_t method) const noexcept -> A {
 	// Переменная результата
@@ -3256,6 +3309,7 @@ template vector <uint8_t> awh::compressor::Block::decompress(const vector <uint8
  * @brief Шаблон метода декомпрессии данных
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -3265,6 +3319,7 @@ template <typename T>
  * @param size   размер данных для декомпрессии
  * @param method метод компрессии
  * @return       результат декомпрессии
+ *
  */
 auto awh::compressor::Block::decompress(const void * buffer, const size_t size, const method_t method) const noexcept -> T {
 	// Переменная результата
@@ -3295,6 +3350,7 @@ template vector <uint8_t> awh::compressor::Block::decompress(const void *, const
  * @brief Шаблон метода декомпрессии данных
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -3304,6 +3360,7 @@ template <typename T>
  * @param size   размер данных для декомпрессии
  * @param method метод компрессии
  * @param result контейнер куда следует положить результат
+ *
  */
 void awh::compressor::Block::decompress(const void * buffer, const size_t size, const method_t method, T & result) const noexcept {
 	// Если буфер данных передан
@@ -3572,6 +3629,7 @@ template void awh::compressor::Block::decompress(const void *, const size_t, con
  * @brief Конструктор
  *
  * @param log объект для работы с логами
+ *
  */
 awh::compressor::Block::Block(const log_t * log) noexcept :
  _level{

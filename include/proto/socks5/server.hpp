@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл серверной стороны протокола SOCKS5 — класс Server_Socks5, разбирающий запросы клиента,
+ *        выполняющий согласование метода авторизации и формирующий ответы на команды CONNECT, BIND и UDP ASSOCIATE
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -54,6 +58,7 @@ namespace awh {
 				 * @param login    логин пользователя
 				 * @param password пароль пользователя
 				 * @return         результат проверки авторизации (true - авторизация успешна, false - авторизация неуспешна)
+				 *
 				 */
 				function <bool (const string &, const string &)> _callback;
 			public:
@@ -64,6 +69,7 @@ namespace awh {
 				 * @param size   размер бинарного буфера входящих данных
 				 * @param ctx    объект для извлечения параметров сообщения
 				 * @return       результат парсинга входящих данных
+				 *
 				 */
 				bool parse(const void * buffer, const size_t size, ctx_t & ctx) noexcept;
 				/**
@@ -73,6 +79,7 @@ namespace awh {
 				 * @param size   размер бинарного буфера входящих данных
 				 * @param udp    объект для извлечения параметров UDP заголовка
 				 * @return       результат парсинга входящих данных
+				 *
 				 */
 				bool parse(const void * buffer, const size_t size, udp_head_t & udp) noexcept;
 			public:
@@ -83,6 +90,7 @@ namespace awh {
 				 * @param size   ссылка на размер буфера для извлечения данных
 				 * @param ctx    объект для установки параметров сообщения
 				 * @return 	     результат извлечения данных в буфер
+				 *
 				 */
 				bool buffer(uint8_t ** buffer, size_t & size, ctx_t & ctx) const noexcept;
 				/**
@@ -92,6 +100,7 @@ namespace awh {
 				 * @param size   ссылка на размер буфера для извлечения данных
 				 * @param udp    объект для установки параметров UDP заголовка
 				 * @return 	     результат извлечения данных в буфер
+				 *
 				 */
 				bool buffer(uint8_t ** buffer, size_t & size, const udp_head_t & udp) const noexcept;
 			public:
@@ -99,6 +108,7 @@ namespace awh {
 				 * @brief Метод добавления функции обработки авторизации
 				 *
 				 * @param callback функция обратного вызова для обработки авторизации
+				 *
 				 */
 				void on(function <bool (const string &, const string &)> callback) noexcept;
 			public:
@@ -107,6 +117,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Server_Socks5(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

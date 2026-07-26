@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля криптографии — симметричное шифрование блоками AES, хеширование (MD5, SHA, HMAC),
+ *        кодирование Base64 и работа с ключами RSA поверх криптографической библиотеки
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -58,6 +62,7 @@ namespace awh {
 	 * @brief Полное определение непрозрачного контекста ключа RSA
 	 *
 	 * @details Обёртка над контекстом OpenSSL, скрывающая прямую зависимость от OpenSSL в публичном заголовке
+	 *
 	 */
 	struct key_rsa_t {
 		// Контекст RSA ключа
@@ -75,6 +80,7 @@ namespace awh {
 	 * @brief Полное определение непрозрачного контекста стейта AES-шифрования
 	 *
 	 * @details Обёртка над контекстом OpenSSL, скрывающая прямую зависимость от OpenSSL в публичном заголовке
+	 *
 	 */
 	struct state_t {
 		// Тип хэш-суммы
@@ -114,6 +120,7 @@ namespace driver {
 	 * @brief Шаблон функции преобразования бинарного буфера в HEX-строку
 	 *
 	 * @tparam T тип результирующего буфера
+	 *
 	 */
 	template <typename T>
 	/**
@@ -122,6 +129,7 @@ namespace driver {
 	 * @param digest бинарный буфер для преобразования
 	 * @param length размер бинарного буфера в байтах
 	 * @param result результирующий буфер (должен быть выделен под length * 2 байт)
+	 *
 	 */
 	static void hex(const uint8_t * digest, const size_t length, T & result) noexcept {
 		// Таблица символов для формирования HEX-строки (кросс-платформенно, без sprintf/snprintf)
@@ -141,6 +149,7 @@ namespace driver {
 	 *
 	 * @tparam A тип возвращаемого результата
 	 * @tparam B тип буфера данных
+	 *
 	 */
 	template <typename A, typename B>
 	/**
@@ -150,6 +159,7 @@ namespace driver {
 	 * @param hash   тип хэш-суммы
 	 * @param result результат хэширования
 	 * @param log    объект для работы с логами
+	 *
 	 */
 	static void hash(const B & buffer, const crypto_t::hash_t hash, A & result, const log_t * log) noexcept {
 		// Если буфер для хэширования передан
@@ -285,6 +295,7 @@ namespace driver {
 	 *
 	 * @tparam A тип возвращаемого результата
 	 * @tparam B тип буфера данных
+	 *
 	 */
 	template <typename A, typename B, typename C>
 	/**
@@ -295,6 +306,7 @@ namespace driver {
 	 * @param hash   тип хэш-суммы
 	 * @param result результат хэширования
 	 * @param log    объект для работы с логами
+	 *
 	 */
 	static void hmac(const C & key, const B & buffer, const crypto_t::hash_t hash, A & result, const log_t * log) noexcept {
 		// Если ключ и текст для хэширования переданы
@@ -391,6 +403,7 @@ namespace driver {
 	 * @brief Шаблон функции хэширования данных
 	 *
 	 * @tparam T сигнатура функции
+	 *
 	 */
 	template <typename T>
 	/**
@@ -402,6 +415,7 @@ namespace driver {
 	 * @param state  объект стейта шифрования
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
+	 *
 	 */
 	static void hash(const char * buffer, const size_t size, const crypto_t::cipher_t cipher, const crypto_t::event_t event, state_t & state, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -699,6 +713,7 @@ namespace driver {
 	 * @param state  стейт шифрования AES
 	 * @param log    объект для работы с логами
 	 * @return       результат инициализации
+	 *
 	 */
 	static bool cipher(const crypto_t::cipher_t cipher, const crypto_t::hash_t hash, const string & pass, const string & salt, const uint32_t rounds, state_t & state, const log_t * log) noexcept {
 		// Переменная результата
@@ -891,6 +906,7 @@ awh::Crypto::Params_RSA::Params_RSA() noexcept :
  * @brief Метод установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
+ *
  */
 void awh::Crypto::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности потоков
@@ -900,6 +916,7 @@ void awh::Crypto::threadSafety(const bool mode) noexcept {
  * @brief Метод установки количества итераций PBKDF2 для вывода ключа AES
  *
  * @param round количество итераций PBKDF2
+ *
  */
 void awh::Crypto::roundAES(const uint32_t round) noexcept {
 	/**
@@ -935,6 +952,7 @@ void awh::Crypto::roundAES(const uint32_t round) noexcept {
  * @brief Метод установки соли шифрования
  *
  * @param salt соль для шифрования
+ *
  */
 void awh::Crypto::salt(string_view salt) noexcept {
 	/**
@@ -970,6 +988,7 @@ void awh::Crypto::salt(string_view salt) noexcept {
  * @brief Метод установки пароля шифрования
  *
  * @param password пароль шифрования
+ *
  */
 void awh::Crypto::password(string_view password) noexcept {
 	/**
@@ -1006,6 +1025,7 @@ void awh::Crypto::password(string_view password) noexcept {
  *
  * @param hash 128-битный хэш
  * @return     64-битный хэш
+ *
  */
 uint64_t awh::Crypto::hash128to64(const uint128_t & hash) const noexcept {
 	// Буфер для хранения 128-битного хэша
@@ -1021,6 +1041,7 @@ uint64_t awh::Crypto::hash128to64(const uint128_t & hash) const noexcept {
  * @brief Шаблон метода хэширования текста
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -1028,6 +1049,7 @@ template <typename T>
  *
  * @param text текст для хэширования
  * @return     результат хэширования
+ *
  */
 auto awh::Crypto::hash(string_view text) const noexcept -> T {
 	// Вызываем хэширование текста
@@ -1053,6 +1075,7 @@ template awh::Crypto::uint128_t awh::Crypto::hash <awh::Crypto::uint128_t> (stri
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
+ *
  */
 template <typename A, typename B>
 /**
@@ -1060,6 +1083,7 @@ template <typename A, typename B>
  *
  * @param text текст для хэширования
  * @return     результат хэширования
+ *
  */
 auto awh::Crypto::hash(const B & text) const noexcept -> A {
 	// Вызываем хэширование текста
@@ -1114,6 +1138,7 @@ template awh::Crypto::uint128_t awh::Crypto::hash <awh::Crypto::uint128_t, vecto
  * @brief Шаблон метода хэширования текста
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -1122,6 +1147,7 @@ template <typename T>
  * @param buffer буфер данных для хэширования
  * @param size   размер данных для хэширования
  * @return       результат хэширования
+ *
  */
 auto awh::Crypto::hash(const void * buffer, const size_t size) const noexcept -> T {
 	// Переменная результата
@@ -1198,6 +1224,7 @@ template awh::Crypto::uint128_t awh::Crypto::hash <awh::Crypto::uint128_t> (cons
  * @brief Шаблон метода хэширования текста c ключом
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -1206,6 +1233,7 @@ template <typename T>
  * @param text текст для хэширования
  * @param seed ключ для хэширования
  * @return     результат хэширования
+ *
  */
 auto awh::Crypto::hashWithSeed(string_view text, const T seed) const noexcept -> T {
 	// Вызываем хэширование текста с ключом
@@ -1231,6 +1259,7 @@ template awh::Crypto::uint128_t awh::Crypto::hashWithSeed <awh::Crypto::uint128_
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
+ *
  */
 template <typename A, typename B>
 /**
@@ -1239,6 +1268,7 @@ template <typename A, typename B>
  * @param text текст для хэширования
  * @param seed ключ для хэширования
  * @return     результат хэширования
+ *
  */
 auto awh::Crypto::hashWithSeed(const B & text, const A seed) const noexcept -> A {
 	// Вызываем хэширование текста с ключом
@@ -1293,6 +1323,7 @@ template awh::Crypto::uint128_t awh::Crypto::hashWithSeed <awh::Crypto::uint128_
  * @brief Шаблон метода хэширования текста c ключом
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -1302,6 +1333,7 @@ template <typename T>
  * @param size   размер данных для хэширования
  * @param seed   ключ для хэширования
  * @return       результат хэширования
+ *
  */
 auto awh::Crypto::hashWithSeed(const void * buffer, const size_t size, const T seed) const noexcept -> T {
 	// Переменная результата
@@ -1388,6 +1420,7 @@ template awh::Crypto::uint128_t awh::Crypto::hashWithSeed <awh::Crypto::uint128_
  * @brief Шаблон метода хэширования текста c несколькими ключами
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -1397,6 +1430,7 @@ template <typename T>
  * @param seed1 первый ключ для хэширования
  * @param seed2 второй ключ для хэширования
  * @return      результат хэширования
+ *
  */
 auto awh::Crypto::hashWithSeeds(string_view text, const T seed1, const T seed2) const noexcept -> T {
 	// Вызываем хэширование текста с несколькими ключами
@@ -1422,6 +1456,7 @@ template awh::Crypto::uint128_t awh::Crypto::hashWithSeeds <awh::Crypto::uint128
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
+ *
  */
 template <typename A, typename B>
 /**
@@ -1431,6 +1466,7 @@ template <typename A, typename B>
  * @param seed1 первый ключ для хэширования
  * @param seed2 второй ключ для хэширования
  * @return      результат хэширования
+ *
  */
 auto awh::Crypto::hashWithSeeds(const B & text, const A seed1, const A seed2) const noexcept -> A {
 	// Вызываем хэширование текста с несколькими ключами
@@ -1485,6 +1521,7 @@ template awh::Crypto::uint128_t awh::Crypto::hashWithSeeds <awh::Crypto::uint128
  * @brief Шаблон метода хэширования текста c несколькими ключами
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -1495,6 +1532,7 @@ template <typename T>
  * @param seed1  первый ключ для хэширования
  * @param seed2  второй ключ для хэширования
  * @return       результат хэширования
+ *
  */
 auto awh::Crypto::hashWithSeeds(const void * buffer, const size_t size, const T seed1, const T seed2) const noexcept -> T {
 	// Переменная результата
@@ -1583,6 +1621,7 @@ template awh::Crypto::uint128_t awh::Crypto::hashWithSeeds <awh::Crypto::uint128
  * @brief Шаблон метода хэширования текста
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -1591,6 +1630,7 @@ template <typename T>
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
  * @return       результат хэширования
+ *
  */
 auto awh::Crypto::hash(string_view buffer, const hash_t hash) const noexcept -> T {
 	// Переменная результата
@@ -1650,6 +1690,7 @@ template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (string_view, con
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
+ *
  */
 template <typename A, typename B>
 /**
@@ -1658,6 +1699,7 @@ template <typename A, typename B>
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
  * @return       результат хэширования
+ *
  */
 auto awh::Crypto::hash(const B & buffer, const hash_t hash) const noexcept -> A {
 	// Переменная результата
@@ -1746,6 +1788,7 @@ template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (const vector <ui
  * @brief Шаблон метода хэширования текста с ключом
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -1755,6 +1798,7 @@ template <typename T>
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
  * @return       результат хэширования
+ *
  */
 auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash) const noexcept -> T {
 	// Переменная результата
@@ -1816,6 +1860,7 @@ template vector <uint8_t> awh::Crypto::hmac(string_view, string_view, const hash
  * @brief Шаблон метода хэширования текста с ключом
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -1825,6 +1870,7 @@ template <typename T>
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
  * @return       результат хэширования
+ *
  */
 auto awh::Crypto::hmac(const string & key, string_view buffer, const hash_t hash) const noexcept -> T {
 	// Переменная результата
@@ -1887,6 +1933,7 @@ template vector <uint8_t> awh::Crypto::hmac(const string &, string_view, const h
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
+ *
  */
 template <typename A, typename B>
 /**
@@ -1896,6 +1943,7 @@ template <typename A, typename B>
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
  * @return       результат хэширования
+ *
  */
 auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash) const noexcept -> A {
 	// Переменная результата
@@ -1988,6 +2036,7 @@ template vector <uint8_t> awh::Crypto::hmac(string_view, const vector <uint8_t> 
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
+ *
  */
 template <typename A, typename B>
 /**
@@ -1997,6 +2046,7 @@ template <typename A, typename B>
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
  * @return       результат хэширования
+ *
  */
 auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash) const noexcept -> A {
 	// Переменная результата
@@ -2088,6 +2138,7 @@ template vector <uint8_t> awh::Crypto::hmac(const string &, const vector <uint8_
  * @brief Шаблон метода кодирования
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -2095,6 +2146,7 @@ template <typename T>
  *
  * @param buffer буфер куда следует положить результат
  * @return       результат финализации
+ *
  */
 bool awh::Crypto::finalize(T & buffer) noexcept {
 	// Переменная результата
@@ -2190,6 +2242,7 @@ template bool awh::Crypto::finalize(vector <uint8_t> &) noexcept;
  * @param hash   тип хэш-суммы
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
  * @return       результат инициализации
+ *
  */
 bool awh::Crypto::initialize(const event_t event, const hash_t hash, const cipher_t cipher) noexcept {
 	// Переменная результата
@@ -2328,6 +2381,7 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
  * @brief Шаблон метода кодирования
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -2337,6 +2391,7 @@ template <typename T>
  * @param hash   тип хэш-суммы
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
  * @return       результат кодирования
+ *
  */
 auto awh::Crypto::encrypt(string_view buffer, const hash_t hash, const cipher_t cipher) const noexcept -> T {
 	// Выполняем кодирование
@@ -2362,6 +2417,7 @@ template vector <uint8_t> awh::Crypto::encrypt(string_view, const hash_t, const 
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
+ *
  */
 template <typename A, typename B>
 /**
@@ -2371,6 +2427,7 @@ template <typename A, typename B>
  * @param hash   тип хэш-суммы
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
  * @return       результат кодирования
+ *
  */
 auto awh::Crypto::encrypt(const B & buffer, const hash_t hash, const cipher_t cipher) const noexcept -> A {
 	// Выполняем кодирование
@@ -2425,6 +2482,7 @@ template vector <uint8_t> awh::Crypto::encrypt(const vector <uint8_t> &, const h
  * @brief Шаблон метода кодирования
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -2435,6 +2493,7 @@ template <typename T>
  * @param hash   тип хэш-суммы
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
  * @return       результат кодирования
+ *
  */
 auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
 	// Переменная результата
@@ -2554,6 +2613,7 @@ template vector <uint8_t> awh::Crypto::encrypt(const void *, const size_t, const
  * @brief Шаблон метода декодирования
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -2563,6 +2623,7 @@ template <typename T>
  * @param hash   тип хэш-суммы
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
  * @return       результат кодирования
+ *
  */
 auto awh::Crypto::decrypt(string_view buffer, const hash_t hash, const cipher_t cipher) const noexcept -> T {
 	// Выполняем декодирование
@@ -2588,6 +2649,7 @@ template vector <uint8_t> awh::Crypto::decrypt(string_view, const hash_t, const 
  *
  * @tparam A тип возвращаемого результата
  * @tparam B тип буфера данных
+ *
  */
 template <typename A, typename B>
 /**
@@ -2597,6 +2659,7 @@ template <typename A, typename B>
  * @param hash   тип хэш-суммы
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
  * @return       результат кодирования
+ *
  */
 auto awh::Crypto::decrypt(const B & buffer, const hash_t hash, const cipher_t cipher) const noexcept -> A {
 	// Выполняем декодирование
@@ -2651,6 +2714,7 @@ template vector <uint8_t> awh::Crypto::decrypt(const vector <uint8_t> &, const h
  * @brief Шаблон метода декодирования
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -2661,6 +2725,7 @@ template <typename T>
  * @param hash   тип хэш-суммы
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
  * @return       результат кодирования
+ *
  */
 auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
 	// Переменная результата
@@ -2781,6 +2846,7 @@ template vector <uint8_t> awh::Crypto::decrypt(const void *, const size_t, const
  *
  * @param size размер ключа в битах (2048, 3072, 4096)
  * @return     результат генерации ключа
+ *
  */
 bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
 	// Переменная результата
@@ -2844,6 +2910,7 @@ bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
  * @brief Метод получения публичного ключа RSA
  *
  * @return публичный ключ RSA
+ *
  */
 string awh::Crypto::getPublicKeyRSA() const noexcept {
 	// Переменная результата
@@ -2946,6 +3013,7 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
  *
  * @param key публичный ключ RSA
  * @return    результат установки ключа
+ *
  */
 bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 	// Переменная результата
@@ -3039,6 +3107,7 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
  *
  * @param key приватный ключ RSA
  * @return    результат установки ключа
+ *
  */
 bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 	// Переменная результата
@@ -3132,6 +3201,7 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
  *
  * @param cipher тип шифрования приватного ключа
  * @return       приватный ключ RSA
+ *
  */
 string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 	// Переменная результата
@@ -3294,6 +3364,7 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
  *
  * @param path путь к файлу с публичным ключом
  * @return     результат загрузки ключа
+ *
  */
 bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 	// Переменная результата
@@ -3467,6 +3538,7 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
  *
  * @param path путь к файлу с приватным ключом
  * @return     результат загрузки ключа
+ *
  */
 bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 	// Переменная результата
@@ -3640,6 +3712,7 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
  *
  * @param path путь к файлу для сохранения публичного ключа
  * @return     результат сохранения ключа
+ *
  */
 bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 	// Переменная результата
@@ -3784,6 +3857,7 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
  * @param path   путь к файлу для сохранения приватного ключа
  * @param cipher тип шифрования приватного ключа
  * @return       результат сохранения ключа
+ *
  */
 bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) const noexcept {
 	// Переменная результата
@@ -4029,6 +4103,7 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
  *
  * @param buffer буфер данных для шифрования
  * @param result буфер куда следует положить результат
+ *
  */
 void awh::Crypto::encryptWithPublicKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept {
 	// Вызываем метод шифрования данных публичным ключом RSA
@@ -4040,6 +4115,7 @@ void awh::Crypto::encryptWithPublicKey(const vector <uint8_t> & buffer, vector <
  * @param buffer буфер данных для шифрования
  * @param size   размер данных для шифрования
  * @param result буфер куда следует положить результат
+ *
  */
 void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept {
 	/**
@@ -4200,6 +4276,7 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
  *
  * @param buffer буфер данных для дешифрования
  * @param result буфер куда следует положить результат
+ *
  */
 void awh::Crypto::decryptWithPrivateKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept {
 	// Вызываем метод дешифрования данных приватным ключом RSA
@@ -4211,6 +4288,7 @@ void awh::Crypto::decryptWithPrivateKey(const vector <uint8_t> & buffer, vector 
  * @param buffer буфер данных для дешифрования
  * @param size   размер данных для дешифрования
  * @param result буфер куда следует положить результат
+ *
  */
 void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept {
 	/**
@@ -4390,6 +4468,7 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
  * @param buffer буфер данных для подписи
  * @param hash   тип хэш-суммы
  * @param result буфер куда следует положить результат
+ *
  */
 void awh::Crypto::signWithPrivateKey(const vector <uint8_t> & buffer, const hash_t hash, vector <uint8_t> & result) const noexcept {
 	// Вызываем метод подписания данных приватным ключом RSA
@@ -4402,6 +4481,7 @@ void awh::Crypto::signWithPrivateKey(const vector <uint8_t> & buffer, const hash
  * @param size   размер данных для подписи
  * @param hash   тип хэш-суммы
  * @param result буфер куда следует положить результат
+ *
  */
 void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, const hash_t hash, vector <uint8_t> & result) const noexcept {
 	/**
@@ -4657,6 +4737,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
  * @param signature буфер с подписью данных
  * @param hash      тип хэш-суммы
  * @return          результат верификации
+ *
  */
 bool awh::Crypto::verifyWithPublicKey(const vector <uint8_t> & buffer, const vector <uint8_t> & signature, const hash_t hash) const noexcept {
 	// Вызываем метод верификации данных публичным ключом RSA
@@ -4670,6 +4751,7 @@ bool awh::Crypto::verifyWithPublicKey(const vector <uint8_t> & buffer, const vec
  * @param signature буфер с подписью данных
  * @param hash      тип хэш-суммы
  * @return          результат верификации
+ *
  */
 bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size, const vector <uint8_t> & signature, const hash_t hash) const noexcept {
 	// Переменная результата
@@ -4826,6 +4908,7 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
 	// Деактивируем мьютекс на время инициализации

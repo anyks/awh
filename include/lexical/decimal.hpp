@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл быстрого десятичного пути разбора чисел — вычисление двоичной экспоненты по степени десяти
+ *        и построение мантиссы через таблицы степеней (алгоритм Eisel-Lemire) без обращения к длинной арифметике
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -54,6 +58,7 @@ namespace awh {
 		 *
 		 * @param power показатель степени десяти
 		 * @return      смещение двоичной экспоненты
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr int32_t powerExponent(const int32_t power) noexcept {
 			// Выводим приближение произведения показателя степени на двоичный логарифм пяти
@@ -64,6 +69,7 @@ namespace awh {
 		 * @brief Шаблон требуемой точности приближения
 		 *
 		 * @tparam PRECISION требуемая точность приближения в битах
+		 *
 		 */
 		template <int32_t PRECISION>
 		/**
@@ -77,6 +83,7 @@ namespace awh {
 		 * @param power    показатель степени пяти
 		 * @param mantissa нормализованное значение мантиссы
 		 * @return         приближённое 128-битное произведение
+		 *
 		 */
 		AWH_LEXICAL_INLINE value128_t approximateProduct(const int64_t power, const uint64_t mantissa) noexcept {
 			// Выполняем проверку допустимости требуемой точности
@@ -110,6 +117,7 @@ namespace awh {
 		 * @brief Шаблон типа параметров двоичного формата
 		 *
 		 * @tparam BINARY параметры двоичного формата результата
+		 *
 		 */
 		template <typename BINARY>
 		/**
@@ -122,6 +130,7 @@ namespace awh {
 		 * @param mantissa нормализованное значение мантиссы
 		 * @param zeros    количество ведущих нулевых бит исходной мантиссы
 		 * @return         скорректированная мантисса с невалидным показателем степени
+		 *
 		 */
 		AWH_LEXICAL_INLINE mantissa_t computeErrorScaled(const int64_t power, const uint64_t mantissa, const int32_t zeros) noexcept {
 			// Дополнительный сдвиг, если старший бит мантиссы не установлен
@@ -139,6 +148,7 @@ namespace awh {
 		 * @brief Шаблон типа параметров двоичного формата
 		 *
 		 * @tparam BINARY параметры двоичного формата результата
+		 *
 		 */
 		template <typename BINARY>
 		/**
@@ -150,6 +160,7 @@ namespace awh {
 		 * @param power    показатель степени десяти
 		 * @param mantissa значение мантиссы
 		 * @return         скорректированная мантисса с невалидным показателем степени
+		 *
 		 */
 		AWH_LEXICAL_INLINE mantissa_t computeError(const int64_t power, const uint64_t mantissa) noexcept {
 			// Если показатель степени выходит за пределы таблицы степеней
@@ -170,6 +181,7 @@ namespace awh {
 		 * @brief Шаблон типа параметров двоичного формата
 		 *
 		 * @tparam BINARY параметры двоичного формата результата
+		 *
 		 */
 		template <typename BINARY>
 		/**
@@ -183,6 +195,7 @@ namespace awh {
 		 * @param power    показатель степени десяти
 		 * @param mantissa значение мантиссы
 		 * @return         скорректированная мантисса двоичного представления
+		 *
 		 */
 		inline mantissa_t computeFloat(const int64_t power, const uint64_t mantissa) noexcept {
 			// Если мантисса нулевая или показатель степени ниже представимого

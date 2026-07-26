@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация схемы BEARER/Token-авторизации (RFC 6750) —
+ *        формирование и разбор заголовка Authorization с токеном доступа и его проверка на стороне сервера
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -26,6 +30,7 @@ using namespace std;
  * @brief Метод проверки учётных данных (только для сервера)
  *
  * @return результат проверки
+ *
  */
 bool awh::http::Bearer::check() noexcept {
 	// На стороне клиента проверка не требуется
@@ -44,6 +49,7 @@ bool awh::http::Bearer::check() noexcept {
  *
  * @param header значение заголовка (клиент: вызов, сервер: учётные данные)
  * @return       результат разбора
+ *
  */
 bool awh::http::Bearer::parse(const string_view header) noexcept {
 	// Результат работы функции
@@ -99,6 +105,7 @@ bool awh::http::Bearer::parse(const string_view header) noexcept {
  *
  * @param full режим вывода вместе с именем заголовка
  * @return     значение заголовка авторизации
+ *
  */
 string awh::http::Bearer::header(const bool full) noexcept {
 	// Результат работы функции
@@ -162,6 +169,7 @@ string awh::http::Bearer::header(const bool full) noexcept {
  * @param crypto объект криптографии
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
+ *
  */
 awh::http::Bearer::Bearer(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept :
  auth_t::scheme_t(owner, params, crypto, fmk, log) {}

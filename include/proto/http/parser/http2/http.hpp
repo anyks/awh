@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл парсера сессии HTTP/2 — класс Parser_HTTP2, управляющий состояниями потоков,
+ *        окнами flow control, параметрами SETTINGS, приоритетами,
+ *        частотными лимитами и лимитами на размер распакованных заголовков и тела
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_HTTP_PARSER_HTTP2__
@@ -74,6 +79,7 @@ namespace awh {
 		 *          DATA flood), лимиты сборки блока заголовков (CONTINUATION flood, 2024),
 		 *          лимит распакованного списка заголовков (decompression bomb) и лимит
 		 *          размера тела потока.
+		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Parser_HTTP2 : public parser_t {
 			public:
@@ -81,24 +87,28 @@ namespace awh {
 				 * @brief Пополнение лимита частоты входящих RST_STREAM (токенов в секунду)
 				 *
 				 * @note Значения по умолчанию соответствуют nghttp2
+				 *
 				 */
 				static constexpr uint64_t RST_LIMIT_RATE = (33);
 				/**
 				 * @brief Пополнение лимита частоты управляющих фреймов (токенов в секунду)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr uint64_t CTRL_LIMIT_RATE = (100);
 				/**
 				 * @brief Стартовый запас лимита частоты входящих RST_STREAM (защита от Rapid Reset)
 				 *
 				 * @note Значения по умолчанию соответствуют nghttp2
+				 *
 				 */
 				static constexpr uint64_t RST_LIMIT_BURST = (1000);
 				/**
 				 * @brief Стартовый запас лимита частоты управляющих фреймов (SETTINGS/PING/пустые DATA)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr uint64_t CTRL_LIMIT_BURST = (1000);
 				/**
@@ -106,6 +116,7 @@ namespace awh {
 				 *
 				 * @note Лимит отдельный от управляющих фреймов и заметно щедрее: клиент вправе
 				 *       переставлять приоритеты на каждый загружаемый ресурс страницы
+				 *
 				 */
 				static constexpr uint64_t PRIO_LIMIT_RATE = (500);
 				/**
@@ -113,36 +124,42 @@ namespace awh {
 				 *
 				 * @note Лимит отдельный от управляющих фреймов и заметно щедрее: клиент вправе
 				 *       переставлять приоритеты на каждый загружаемый ресурс страницы
+				 *
 				 */
 				static constexpr uint64_t PRIO_LIMIT_BURST = (5000);
 				/**
 				 * @brief Порог сигнала о готовности потока принимать данные (low-water)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t SEND_LOW_WATER = (64 * 1024);
 				/**
 				 * @brief Ёмкость буфера отправки одного потока (high-water)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t SEND_HIGH_WATER = (256 * 1024);
 				/**
 				 * @brief Максимальное число фреймов в одном блоке заголовков
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr uint32_t MAX_CONTINUATION_FRAMES = (64);
 				/**
 				 * @brief Порог выходного буфера соединения (backpressure от TCP-стадии)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t OUTPUT_HIGH_WATER = (1024 * 1024);
 				/**
 				 * @brief Максимальный суммарный размер блока заголовков (HEADERS + все CONTINUATION)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t MAX_HEADER_BLOCK_SIZE = (64 * 1024);
 			public:
@@ -161,6 +178,7 @@ namespace awh {
 				 *          - maxHeaderCount - число заголовков в одном блоке;
 				 *          - maxHeadersTotal - суммарный размер распакованного списка (HPACK bomb);
 				 *          - maxBodySize - суммарный размер тела одного потока
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Limits : parser_t::limits_t {
 					// Пополнение лимита частоты входящих RST_STREAM (токенов в секунду)
@@ -190,6 +208,7 @@ namespace awh {
 				 *
 				 * @details Значения по умолчанию из RFC 9113 (кроме maxConcurrentStreams -
 				 *          безопасный дефолт вместо "без лимита").
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Settings {
 					// Начальное окно потока
@@ -227,6 +246,7 @@ namespace awh {
 				 *
 				 * @param sid идентификатор потока
 				 * @return    результат обработки (false - поток сбрасывается)
+				 *
 				 */
 				using begin_callback_t = function <bool (const uint32_t)>;
 				/**
@@ -236,6 +256,7 @@ namespace awh {
 				 *          (после частичного приёма в sendData можно отправлять дальше).
 				 *
 				 * @param sid идентификатор потока
+				 *
 				 */
 				using writable_callback_t = function <void (const uint32_t)>;
 				/**
@@ -248,6 +269,7 @@ namespace awh {
 				 *
 				 * @param buffer буфер исходящих данных
 				 * @param size   размер исходящих данных
+				 *
 				 */
 				using write_callback_t = function <void (const void *, const size_t)>;
 				/**
@@ -260,6 +282,7 @@ namespace awh {
 				 * @param sid         идентификатор ассоциированного потока клиента
 				 * @param promisedSid идентификатор обещанного потока
 				 * @return            результат обработки (false - push отклоняется)
+				 *
 				 */
 				using push_callback_t = function <bool (const uint32_t, const uint32_t)>;
 				/**
@@ -267,6 +290,7 @@ namespace awh {
 				 *
 				 * @param sid  идентификатор потока
 				 * @param code код ошибки закрытия (NO_ERROR - штатное закрытие)
+				 *
 				 */
 				using close_callback_t = function <void (const uint32_t, const error_t)>;
 				/**
@@ -277,6 +301,7 @@ namespace awh {
 				 *
 				 * @param code    код ошибки протокола
 				 * @param message текстовое описание ошибки
+				 *
 				 */
 				using error_callback_t = function <void (const error_t, const string_view)>;
 				/**
@@ -303,6 +328,7 @@ namespace awh {
 				 * @param phase фаза приёма сообщения потока
 				 * @param part  часть сообщения (заголовки, трейлеры, тело), NONE - сообщение целиком
 				 * @return      результат обработки (false - поток сбрасывается)
+				 *
 				 */
 				using phase_callback_t = function <bool (const uint32_t, const phase_t, const part_t)>;
 				/**
@@ -318,6 +344,7 @@ namespace awh {
 				 * @param provider  провайдер заголовков потока (nullptr для трейлеров)
 				 * @param endStream флаг завершения потока (тела не будет)
 				 * @return          результат обработки (false - поток сбрасывается)
+				 *
 				 */
 				using provider_callback_t = function <bool (const uint32_t, const provider_t *, const bool)>;
 				/**
@@ -328,6 +355,7 @@ namespace awh {
 				 * @param sid   наибольший идентификатор обработанного пиром потока
 				 * @param code  код ошибки завершения соединения
 				 * @param debug необязательные отладочные данные пира
+				 *
 				 */
 				using goaway_callback_t = function <void (const uint32_t, const error_t, const string_view)>;
 				/**
@@ -341,6 +369,7 @@ namespace awh {
 				 * @param size      размер данных тела
 				 * @param endStream флаг завершения потока
 				 * @return          результат обработки (false - поток сбрасывается)
+				 *
 				 */
 				using data_callback_t = function <bool (const uint32_t, const void *, const size_t, const bool)>;
 				/**
@@ -357,6 +386,7 @@ namespace awh {
 				 * @param cap    ёмкость буфера
 				 * @param eof    флаг достижения конца тела
 				 * @return       число записанных байт либо -1 при ошибке
+				 *
 				 */
 				using data_source_callback_t = function <int64_t (const uint32_t, uint8_t *, const size_t, bool &)>;
 				/**
@@ -373,6 +403,7 @@ namespace awh {
 				 * @param value значение заголовка
 				 * @param part  часть сообщения (HEADERS или TRAILER)
 				 * @return      результат обработки (false - поток сбрасывается)
+				 *
 				 */
 				using header_callback_t = function <bool (const uint32_t, const string_view, const string_view, const part_t)>;
 			private:
@@ -383,6 +414,7 @@ namespace awh {
 				 *          rate токенов в секунду до предела burst. Время задаётся извне через
 				 *          updateTime(); без обновления времени работает только стартовый запас
 				 *          burst (этого достаточно, чтобы погасить мгновенный всплеск).
+				 *
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Ratelim {
 					public:
@@ -400,12 +432,14 @@ namespace awh {
 						 *
 						 * @param value число списываемых токенов
 						 * @return      результат списания (false - токенов не хватает, превышение лимита)
+						 *
 						 */
 						bool drain(const uint64_t value) noexcept;
 						/**
 						 * @brief Метод пополнения токенов по текущему времени
 						 *
 						 * @param stamp текущее время (секунды)
+						 *
 						 */
 						void update(const uint64_t stamp) noexcept;
 						/**
@@ -413,6 +447,7 @@ namespace awh {
 						 *
 						 * @param burst стартовый запас токенов
 						 * @param rate  пополнение токенов в секунду
+						 *
 						 */
 						void init(const uint64_t burst, const uint64_t rate) noexcept;
 					public:
@@ -482,12 +517,14 @@ namespace awh {
 						 * @brief Метод получения логического объёма ещё не отправленных данных тела
 						 *
 						 * @return объём не отправленных данных (без учтённого префикса)
+						 *
 						 */
 						size_t pending() const noexcept;
 						/**
 						 * @brief Метод снятия учтённого префикса буфера отправки
 						 *
 						 * @details Очистка при полном расходе, иначе амортизированная компактификация
+						 *
 						 */
 						void compactSendBuffer() noexcept;
 					public:
@@ -776,6 +813,7 @@ namespace awh {
 				 *
 				 * @details Если функция записи не установлена - байты остаются во внутреннем
 				 *          буфере до выборки через pending()/consumePending().
+				 *
 				 */
 				void flush() noexcept;
 				/**
@@ -787,12 +825,14 @@ namespace awh {
 				 * @brief Метод получения объёма ещё не разобранных входящих байтов
 				 *
 				 * @return объём не разобранных входящих байтов
+				 *
 				 */
 				size_t inputPending() const noexcept;
 				/**
 				 * @brief Метод получения логического объёма ещё не отправленных исходящих байтов
 				 *
 				 * @return объём не отправленных исходящих байтов
+				 *
 				 */
 				size_t outputPending() const noexcept;
 			private:
@@ -800,12 +840,14 @@ namespace awh {
 				 * @brief Метод разбора накопленного входного буфера (preface + поток фреймов)
 				 *
 				 * @return результат разбора (OK/ERROR)
+				 *
 				 */
 				h2::status_t parseInput() noexcept;
 				/**
 				 * @brief Метод декодирования накопленного блока заголовков и вызова функций обратного вызова
 				 *
 				 * @return результат обработки (OK/ERROR)
+				 *
 				 */
 				h2::status_t deliverHeaders() noexcept;
 				/**
@@ -814,6 +856,7 @@ namespace awh {
 				 * @param code    код ошибки протокола
 				 * @param message текстовое описание ошибки
 				 * @return        статус ошибки (для проброса из обработчиков)
+				 *
 				 */
 				h2::status_t fail(const error_t code, const char * message) noexcept;
 				/**
@@ -822,6 +865,7 @@ namespace awh {
 				 * @param id  идентификатор потока
 				 * @param err код ошибки протокола
 				 * @return    результат проверки (OK/ERROR)
+				 *
 				 */
 				h2::status_t validateNewStream(const uint32_t id, error_t & err) noexcept;
 				/**
@@ -830,6 +874,7 @@ namespace awh {
 				 * @param header  заголовок фрейма
 				 * @param payload полезная нагрузка фрейма (ровно h.length байт)
 				 * @return        результат обработки (OK/ERROR)
+				 *
 				 */
 				h2::status_t dispatch(const h2::frame::header_t & header, const uint8_t * payload) noexcept;
 				/**
@@ -839,6 +884,7 @@ namespace awh {
 				 * @param promisedSid идентификатор обещанного потока
 				 * @param fields      декодированные заголовки обещанного запроса
 				 * @return            результат обработки (OK/ERROR)
+				 *
 				 */
 				h2::status_t deliverPushPromise(const uint32_t sid, const uint32_t promisedSid, const vector <h2::hpack::field_view_t> & fields) noexcept;
 			private:
@@ -847,6 +893,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор потока
 				 * @return   объект потока
+				 *
 				 */
 				stream_t & stream(const uint32_t id) noexcept;
 				/**
@@ -854,6 +901,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор потока
 				 * @return   объект потока либо nullptr
+				 *
 				 */
 				stream_t * findStream(const uint32_t id) noexcept;
 			private:
@@ -861,12 +909,14 @@ namespace awh {
 				 * @brief Метод применения отправленного нами END_STREAM (переход состояния, возможно закрытие потока)
 				 *
 				 * @param stream объект потока (ссылка может стать недействительной после вызова)
+				 *
 				 */
 				void applyLocalEndStream(stream_t & stream) noexcept;
 				/**
 				 * @brief Метод применения полученного END_STREAM (переход состояния, возможно закрытие потока)
 				 *
 				 * @param stream объект потока (ссылка может стать недействительной после вызова)
+				 *
 				 */
 				void applyRemoteEndStream(stream_t & stream) noexcept;
 			private:
@@ -875,6 +925,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор потока
 				 * @return   результат проверки
+				 *
 				 */
 				bool peerInitiated(const uint32_t id) const noexcept;
 				/**
@@ -887,6 +938,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор потока
 				 * @return   результат проверки
+				 *
 				 */
 				bool idleStream(const uint32_t id) const noexcept;
 			private:
@@ -894,6 +946,7 @@ namespace awh {
 				 * @brief Метод удаления потока из карты с корректным учётом счётчика встречных потоков
 				 *
 				 * @param id идентификатор потока
+				 *
 				 */
 				void eraseStream(const uint32_t id) noexcept;
 				/**
@@ -901,6 +954,7 @@ namespace awh {
 				 *
 				 * @param id   идентификатор потока
 				 * @param code код ошибки закрытия
+				 *
 				 */
 				void closeStream(const uint32_t id, const error_t code) noexcept;
 			private:
@@ -914,6 +968,7 @@ namespace awh {
 				 * @param phase фаза приёма сообщения потока
 				 * @param part  часть сообщения (заголовки, трейлеры, тело), NONE - сообщение целиком
 				 * @return      результат обработки (false - поток сброшен)
+				 *
 				 */
 				bool firePhase(const uint32_t id, const phase_t phase, const part_t part) noexcept;
 			private:
@@ -923,12 +978,14 @@ namespace awh {
 				 * @details Все методы разбора объявлены noexcept, поэтому исключение из
 				 *          пользовательской функции обязано быть перехвачено на месте вызова -
 				 *          иначе оно завершает процесс, не доходя до обработчика в parse()
+				 *
 				 */
 				void fireSettings() noexcept;
 				/**
 				 * @brief Метод вызова функции обратного вызова о готовности потока принимать данные
 				 *
 				 * @param id идентификатор потока
+				 *
 				 */
 				void fireWritable(const uint32_t id) noexcept;
 				/**
@@ -936,6 +993,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор потока
 				 * @return   результат обработки (false - поток требуется сбросить)
+				 *
 				 */
 				bool fireBegin(const uint32_t id) noexcept;
 				/**
@@ -944,6 +1002,7 @@ namespace awh {
 				 * @param sid         идентификатор ассоциированного потока клиента
 				 * @param promisedSid идентификатор обещанного потока
 				 * @return            результат обработки (false - push требуется отклонить)
+				 *
 				 */
 				bool firePush(const uint32_t sid, const uint32_t promisedSid) noexcept;
 				/**
@@ -952,6 +1011,7 @@ namespace awh {
 				 * @param sid   наибольший идентификатор обработанного пиром потока
 				 * @param code  код ошибки завершения соединения
 				 * @param debug отладочные данные пира
+				 *
 				 */
 				void fireGoaway(const uint32_t sid, const error_t code, const string_view debug) noexcept;
 				/**
@@ -961,6 +1021,7 @@ namespace awh {
 				 * @param provider  провайдер заголовков потока (nullptr для трейлеров)
 				 * @param endStream флаг завершения потока
 				 * @return          результат обработки (false - поток требуется сбросить)
+				 *
 				 */
 				bool fireProvider(const uint32_t id, const provider_t * provider, const bool endStream) noexcept;
 				/**
@@ -971,6 +1032,7 @@ namespace awh {
 				 * @param size      размер данных тела
 				 * @param endStream флаг завершения потока
 				 * @return          результат обработки (false - поток требуется сбросить)
+				 *
 				 */
 				bool fireData(const uint32_t id, const void * buffer, const size_t size, const bool endStream) noexcept;
 				/**
@@ -981,6 +1043,7 @@ namespace awh {
 				 * @param value значение заголовка
 				 * @param part  часть сообщения (HEADERS или TRAILER)
 				 * @return      результат обработки (false - поток требуется сбросить)
+				 *
 				 */
 				bool fireHeader(const uint32_t id, const string_view name, const string_view value, const part_t part) noexcept;
 			private:
@@ -990,6 +1053,7 @@ namespace awh {
 				 * @details Round-robin: за каждый проход отправляется не более одного DATA-фрейма
 				 *          с потока, пока хоть один поток делает прогресс - исключает голодание
 				 *          потоков (head-of-line blocking).
+				 *
 				 */
 				void pump() noexcept;
 				/**
@@ -997,18 +1061,21 @@ namespace awh {
 				 *
 				 * @param stream объект потока (ссылка может стать недействительной после вызова)
 				 * @return       признак прогресса отправки
+				 *
 				 */
 				bool pumpStream(stream_t & stream) noexcept;
 				/**
 				 * @brief Метод дозагрузки буфера отправки из pull-источника данных (если он задан)
 				 *
 				 * @param stream объект потока
+				 *
 				 */
 				void refillFromSource(stream_t & stream) noexcept;
 				/**
 				 * @brief Метод сигнализации о готовности потока принимать данные (один раз на провал буфера)
 				 *
 				 * @param stream объект потока
+				 *
 				 */
 				void maybeNotifyWritable(stream_t & stream) noexcept;
 				/**
@@ -1016,6 +1083,7 @@ namespace awh {
 				 *
 				 * @param stream объект потока
 				 * @return       результат проверки (нет источника данных или достигнут его eof)
+				 *
 				 */
 				bool sourceDone(const stream_t & stream) const noexcept;
 				/**
@@ -1023,6 +1091,7 @@ namespace awh {
 				 *
 				 * @param stream   объект потока (nullptr - только окно соединения)
 				 * @param consumed число принятых байт
+				 *
 				 */
 				void replenishReceiveWindow(stream_t * stream, const uint32_t consumed) noexcept;
 			private:
@@ -1031,6 +1100,7 @@ namespace awh {
 				 *
 				 * @param fields декодированные заголовки блока
 				 * @return       результат проверки (false - лимиты превышены)
+				 *
 				 */
 				bool checkHeaderLimits(const vector <h2::hpack::field_view_t> & fields) const noexcept;
 				/**
@@ -1038,6 +1108,7 @@ namespace awh {
 				 *
 				 * @details Вызывается при изменении лимитов безопасности и параметров SETTINGS:
 				 *          снятие обоих лимитов сразу оставляет арену декодера без границы
+				 *
 				 */
 				void checkHeaderListLimits() const noexcept;
 				/**
@@ -1048,6 +1119,7 @@ namespace awh {
 				 *          Отправку не блокирует - только предупреждает в лог
 				 *
 				 * @param sid идентификатор потока
+				 *
 				 */
 				void checkPeerHeaderList(const uint32_t sid) const noexcept;
 				/**
@@ -1058,6 +1130,7 @@ namespace awh {
 				 *
 				 * @param sid идентификатор потока
 				 * @return    результат проверки (false - поток сброшен)
+				 *
 				 */
 				bool checkBodyLength(const uint32_t sid) noexcept;
 				/**
@@ -1069,6 +1142,7 @@ namespace awh {
 				 *
 				 * @param stream объект потока
 				 * @param value  значение поля приоритета
+				 *
 				 */
 				void applyPriority(stream_t & stream, string_view value) noexcept;
 			private:
@@ -1081,6 +1155,7 @@ namespace awh {
 				 * @param sid       идентификатор потока
 				 * @param block     закодированный HPACK-блок заголовков
 				 * @param endStream флаг завершения потока (тела не будет)
+				 *
 				 */
 				void commitHeaders(const uint32_t sid, const string & block, const bool endStream);
 				/**
@@ -1096,6 +1171,7 @@ namespace awh {
 				 * @param fields    заголовки секции трейлеров
 				 * @param endStream флаг завершения потока
 				 * @return          результат откладывания (true - отправка отложена)
+				 *
 				 */
 				bool deferTrailers(const uint32_t sid, const vector <h2::hpack::field_t> & fields, const bool endStream) noexcept;
 				/**
@@ -1103,6 +1179,7 @@ namespace awh {
 				 *
 				 * @param stream объект потока (ссылка может стать недействительной после вызова)
 				 * @return       признак отправки секции трейлеров
+				 *
 				 */
 				bool flushTrailers(stream_t & stream) noexcept;
 				/**
@@ -1117,6 +1194,7 @@ namespace awh {
 				 *
 				 * @param sid идентификатор потока
 				 * @return    результат проверки
+				 *
 				 */
 				bool canSendHeaders(const uint32_t sid) noexcept;
 			private:
@@ -1126,6 +1204,7 @@ namespace awh {
 				 * @param fields  декодированные заголовки блока
 				 * @param request собирается запрос клиента (true) или ответ сервера (false)
 				 * @return        собранный провайдер заголовков
+				 *
 				 */
 				unique_ptr <provider_t> buildProvider(const vector <h2::hpack::field_view_t> & fields, const bool request) const noexcept;
 			public:
@@ -1135,6 +1214,7 @@ namespace awh {
 				 * @details Помимо полного сброса состояния соединения возвращает лимиты
 				 *          безопасности и параметры SETTINGS к значениям по умолчанию
 				 *          и удаляет установленные функции обратного вызова.
+				 *
 				 */
 				void clear() noexcept override;
 				/**
@@ -1145,6 +1225,7 @@ namespace awh {
 				 *          карта потоков, окна, буферы (семантика нового соединения).
 				 *          Лимиты безопасности, параметры SETTINGS и функции обратного
 				 *          вызова сохраняются.
+				 *
 				 */
 				void reset() noexcept override;
 			public:
@@ -1156,6 +1237,7 @@ namespace awh {
 				 *          состояние соединения ("фабрика с теми же настройками").
 				 *
 				 * @return копия объекта парсера
+				 *
 				 */
 				unique_ptr <parser_t> clone() const noexcept override;
 			public:
@@ -1166,6 +1248,7 @@ namespace awh {
 				 *          потоков нет) - фиксируется статус COMPLETE. Если соединение закрыто
 				 *          посреди активных потоков или незавершённого фрейма - фиксируется
 				 *          ошибка PROTOCOL_ERROR (обрыв соединения).
+				 *
 				 */
 				void eof() noexcept override;
 				/**
@@ -1184,6 +1267,7 @@ namespace awh {
 				 * @param buffer буфер данных для разбора
 				 * @param size   размер данных для разбора
 				 * @return       количество обработанных байт данных
+				 *
 				 */
 				size_t parse(const void * buffer, const size_t size) noexcept override;
 			public:
@@ -1191,12 +1275,14 @@ namespace awh {
 				 * @brief Метод получения кода ошибки уровня соединения
 				 *
 				 * @return код ошибки протокола
+				 *
 				 */
 				error_t error() const noexcept;
 				/**
 				 * @brief Метод получения человекочитаемого названия текущей ошибки разбора
 				 *
 				 * @return название текущей ошибки разбора
+				 *
 				 */
 				string_view errorName() const noexcept override;
 				/**
@@ -1204,6 +1290,7 @@ namespace awh {
 				 *
 				 * @param error код ошибки протокола
 				 * @return      название кода ошибки
+				 *
 				 */
 				static string_view errorName(const error_t error) noexcept;
 			public:
@@ -1211,12 +1298,14 @@ namespace awh {
 				 * @brief Метод получения лимитов безопасности
 				 *
 				 * @return лимиты безопасности
+				 *
 				 */
 				const limits_t & limits() const noexcept;
 				/**
 				 * @brief Метод установки лимитов безопасности
 				 *
 				 * @param limits лимиты безопасности
+				 *
 				 */
 				void limits(const limits_t & limits) noexcept;
 			public:
@@ -1224,6 +1313,7 @@ namespace awh {
 				 * @brief Метод получения наших параметров SETTINGS
 				 *
 				 * @return наши параметры SETTINGS
+				 *
 				 */
 				const settings_t & settings() const noexcept;
 				/**
@@ -1232,12 +1322,14 @@ namespace awh {
 				 * @note Отправка выполняется методами sendPreface()/sendSettings()
 				 *
 				 * @param settings наши параметры SETTINGS
+				 *
 				 */
 				void settings(const settings_t & settings) noexcept;
 				/**
 				 * @brief Метод получения параметров SETTINGS пира
 				 *
 				 * @return параметры SETTINGS пира
+				 *
 				 */
 				const settings_t & remoteSettings() const noexcept;
 			public:
@@ -1245,6 +1337,7 @@ namespace awh {
 				 * @brief Метод проверки того, что соединение помечено на завершение
 				 *
 				 * @return признак завершения (отправлен или получен GOAWAY)
+				 *
 				 */
 				bool isClosed() const noexcept;
 				/**
@@ -1254,6 +1347,7 @@ namespace awh {
 				 *          соединение с кодом SETTINGS_TIMEOUT (RFC 9113 §6.5.3)
 				 *
 				 * @return признак получения ACK на наш SETTINGS
+				 *
 				 */
 				bool isSettingsAcked() const noexcept;
 			public:
@@ -1262,6 +1356,7 @@ namespace awh {
 				 *
 				 * @details Клиент отправляет magic-строку + свой SETTINGS, сервер - только SETTINGS.
 				 *          Обязан быть первым исходящим сообщением соединения.
+				 *
 				 */
 				void sendPreface() noexcept;
 				/**
@@ -1278,6 +1373,7 @@ namespace awh {
 				 *
 				 * @param sid  идентификатор потока
 				 * @param code код ошибки, с которым сбрасывается поток
+				 *
 				 */
 				void sendRstStream(const uint32_t sid, const error_t code) noexcept;
 				/**
@@ -1285,6 +1381,7 @@ namespace awh {
 				 *
 				 * @param code  код ошибки завершения соединения
 				 * @param debug необязательные отладочные данные
+				 *
 				 */
 				void sendGoaway(const error_t code, string_view debug = {}) noexcept;
 				/**
@@ -1298,6 +1395,7 @@ namespace awh {
 				 *          и запретит новые. Без второй фазы соединение не завершается.
 				 *
 				 * @param debug необязательные отладочные данные
+				 *
 				 */
 				void sendShutdown(string_view debug = {}) noexcept;
 				/**
@@ -1310,6 +1408,7 @@ namespace awh {
 				 * @param sid         идентификатор потока
 				 * @param urgency     срочность потока (0 - наивысшая, 7 - наименьшая)
 				 * @param incremental признак инкрементальной доставки
+				 *
 				 */
 				void sendPriority(const uint32_t sid, const uint8_t urgency, const bool incremental) noexcept;
 				/**
@@ -1317,6 +1416,7 @@ namespace awh {
 				 *
 				 * @param sid       идентификатор потока (0 - окно всего соединения)
 				 * @param increment инкремент окна flow control
+				 *
 				 */
 				void sendWindowUpdate(const uint32_t sid, const uint32_t increment) noexcept;
 			public:
@@ -1334,6 +1434,7 @@ namespace awh {
 				 * @param size      размер данных тела
 				 * @param endStream флаг завершения потока
 				 * @return          число принятых байт (0..size)
+				 *
 				 */
 				size_t sendData(const uint32_t sid, const void * buffer, const size_t size, const bool endStream) noexcept;
 			public:
@@ -1347,6 +1448,7 @@ namespace awh {
 				 * @param sid    идентификатор потока клиента, в ответ на который выполняется push
 				 * @param fields заголовки обещанного запроса (псевдо-заголовки как у запроса клиента)
 				 * @return       идентификатор зарезервированного push-потока либо 0, если push невозможен
+				 *
 				 */
 				uint32_t sendPushPromise(const uint32_t sid, const vector <h2::hpack::field_t> & fields) noexcept;
 			public:
@@ -1361,6 +1463,7 @@ namespace awh {
 				 * @param sid       идентификатор потока
 				 * @param fields    заголовки (псевдо-заголовки :method/:path/... должны идти первыми)
 				 * @param endStream флаг завершения потока (тела не будет)
+				 *
 				 */
 				void sendHeaders(const uint32_t sid, const vector <h2::hpack::field_t> & fields, const bool endStream) noexcept;
 				/**
@@ -1381,6 +1484,7 @@ namespace awh {
 				 * @param headers   контейнер заголовков (провайдер контейнера задаёт псевдо-заголовки)
 				 * @param endStream флаг завершения потока (тела не будет)
 				 * @param scheme    схема запроса для псевдо-заголовка [:scheme] (для ответа не используется)
+				 *
 				 */
 				void sendHeaders(const uint32_t sid, const headers_t & headers, const bool endStream, string_view scheme = "https") noexcept;
 			public:
@@ -1391,6 +1495,7 @@ namespace awh {
 				 *          идентификатор передаётся в sendHeaders() для открытия потока.
 				 *
 				 * @return идентификатор нового потока
+				 *
 				 */
 				uint32_t nextStreamId() noexcept;
 				/**
@@ -1403,6 +1508,7 @@ namespace awh {
 				 *
 				 * @param sid    идентификатор потока
 				 * @param source pull-источник данных тела
+				 *
 				 */
 				void dataSource(const uint32_t sid, data_source_callback_t source) noexcept;
 			public:
@@ -1410,6 +1516,7 @@ namespace awh {
 				 * @brief Метод настройки порога выходного буфера соединения (backpressure от TCP-стадии)
 				 *
 				 * @param high порог выходного буфера соединения
+				 *
 				 */
 				void outputHighWater(const size_t high) noexcept;
 				/**
@@ -1417,6 +1524,7 @@ namespace awh {
 				 *
 				 * @param high ёмкость буфера отправки потока (high-water)
 				 * @param low  порог сигнала writable (low-water)
+				 *
 				 */
 				void sendWaterMarks(const size_t high, const size_t low) noexcept;
 			public:
@@ -1427,6 +1535,7 @@ namespace awh {
 				 *          без обновления времени работает только стартовый запас burst.
 				 *
 				 * @param seconds текущее монотонное время (секунды)
+				 *
 				 */
 				void updateTime(const uint64_t seconds) noexcept;
 			public:
@@ -1438,6 +1547,7 @@ namespace awh {
 				 *          отправляет WINDOW_UPDATE(0) на разницу. Только увеличение.
 				 *
 				 * @param size новый целевой размер окна приёма соединения
+				 *
 				 */
 				void connectionReceiveWindow(const int32_t size) noexcept;
 			public:
@@ -1450,12 +1560,14 @@ namespace awh {
 				 *          записи буфер опустошается автоматически.
 				 *
 				 * @return ещё не отправленные исходящие байты (zero-copy view во внутренний буфер)
+				 *
 				 */
 				string_view pending() const noexcept;
 				/**
 				 * @brief Метод освобождения отправленных байтов из исходящего буфера (амортизированно O(1))
 				 *
 				 * @param size число отправленных байт
+				 *
 				 */
 				void consumePending(const size_t size) noexcept;
 			public:
@@ -1463,72 +1575,84 @@ namespace awh {
 				 * @brief Метод установки функции обратного вызова для обработки анонса server push
 				 *
 				 * @param callback функция обратного вызова для обработки анонса server push
+				 *
 				 */
 				void on(push_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки фрагмента тела потока
 				 *
 				 * @param callback функция обратного вызова для обработки фрагмента тела потока
+				 *
 				 */
 				void on(data_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки закрытия потока
 				 *
 				 * @param callback функция обратного вызова для обработки закрытия потока
+				 *
 				 */
 				void on(close_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки ошибки уровня соединения
 				 *
 				 * @param callback функция обратного вызова для обработки ошибки уровня соединения
+				 *
 				 */
 				void on(error_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова записи исходящих байтов в сеть
 				 *
 				 * @param callback функция обратного вызова записи исходящих байтов в сеть
+				 *
 				 */
 				void on(write_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки открытия нового потока
 				 *
 				 * @param callback функция обратного вызова для обработки открытия нового потока
+				 *
 				 */
 				void on(begin_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки фазы приёма сообщения потока
 				 *
 				 * @param callback функция обратного вызова для обработки фазы приёма сообщения потока
+				 *
 				 */
 				void on(phase_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки полученного GOAWAY
 				 *
 				 * @param callback функция обратного вызова для обработки полученного GOAWAY
+				 *
 				 */
 				void on(goaway_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки заголовков или трейлеров потока
 				 *
 				 * @param callback функция обратного вызова для обработки заголовков или трейлеров потока
+				 *
 				 */
 				void on(header_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова о готовности потока принимать данные тела
 				 *
 				 * @param callback функция обратного вызова о готовности потока принимать данные тела
+				 *
 				 */
 				void on(writable_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки применённого SETTINGS пира
 				 *
 				 * @param callback функция обратного вызова для обработки применённого SETTINGS пира
+				 *
 				 */
 				void on(settings_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки провайдера заголовков потока
 				 *
 				 * @param callback функция обратного вызова для обработки провайдера заголовков потока
+				 *
 				 */
 				void on(provider_callback_t callback) noexcept;
 			public:
@@ -1538,6 +1662,7 @@ namespace awh {
 				 * @param direct направление трафика (REQUEST - мы сервер, RESPONSE - мы клиент)
 				 * @param fmk    объект фреймворка
 				 * @param log    объект для работы с логами
+				 *
 				 */
 				explicit Parser_HTTP2(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept;
 			public:

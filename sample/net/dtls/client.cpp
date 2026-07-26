@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример клиента DTLS на низкоуровневом движке ввода-вывода —
+ *        демонстрация ручной настройки контекста безопасности,
+ *        выполнения рукопожатия и обмена защищёнными датаграммами
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 #include <iostream>
@@ -37,6 +42,7 @@ using namespace placeholders;
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

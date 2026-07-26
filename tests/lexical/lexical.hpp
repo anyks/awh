@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл тестовой фикстуры модуля лексического разбора чисел —
+ *        объявление класса фикстуры Google Test, подготавливающего и освобождающего тестовое окружение набора тестов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_LEXICAL_TESTS__
@@ -64,6 +68,7 @@ class LexicalFixture : public testing::Test {
 		 * @param a первое значение
 		 * @param b второе значение
 		 * @return  true при побитовом равенстве
+		 *
 		 */
 		static bool sameBits(const double a, const double b) noexcept;
 		/**
@@ -72,6 +77,7 @@ class LexicalFixture : public testing::Test {
 		 * @param a первое значение
 		 * @param b второе значение
 		 * @return  true при побитовом равенстве
+		 *
 		 */
 		static bool sameBits(const float a, const float b) noexcept;
 	public:
@@ -79,12 +85,14 @@ class LexicalFixture : public testing::Test {
 		 * @brief Разбирает double через lexical_t и сверяет со strtod
 		 *
 		 * @param text исходная строка
+		 *
 		 */
 		static void expectDoubleMatchesStrtod(const char * text) noexcept;
 		/**
 		 * @brief Разбирает float через lexical_t и сверяет со strtof
 		 *
 		 * @param text исходная строка
+		 *
 		 */
 		static void expectFloatMatchesStrtof(const char * text) noexcept;
 };

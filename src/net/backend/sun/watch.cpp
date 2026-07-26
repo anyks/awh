@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля системных часов цикла событий — отсчёт таймеров в отдельном потоке и генерация событий
+ *        срабатывания для платформ без нативного механизма таймеров
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -171,6 +175,7 @@ void awh::Watch::receiving() noexcept {
  * @brief Метод остановки работы таймера
  *
  * @return результат работы функции
+ *
  */
 bool awh::Watch::stop() noexcept {
 	// Переменная результата
@@ -189,6 +194,7 @@ bool awh::Watch::stop() noexcept {
  * @brief Метод запуска работы таймера
  *
  * @return результат работы функции
+ *
  */
 bool awh::Watch::start() noexcept {
 	// Переменная результата
@@ -231,6 +237,7 @@ bool awh::Watch::start() noexcept {
  * @brief Метод создания нового таймера
  *
  * @return файловый дескриптор для отслеживания
+ *
  */
 SOCKET awh::Watch::create() noexcept {
 	// Выполняем создание таймера
@@ -240,6 +247,7 @@ SOCKET awh::Watch::create() noexcept {
  * @brief Метод извлечения идентификатора события
  *
  * @return идентификатор события
+ *
  */
 uint32_t awh::Watch::event() noexcept {
 	// Выполняем вывод полученного уведомления
@@ -249,6 +257,7 @@ uint32_t awh::Watch::event() noexcept {
  * @brief Метод убрать таймер из отслеживания
  *
  * @param id идентификатор таймера
+ *
  */
 void awh::Watch::away(const uint32_t id) noexcept {
 	/**
@@ -296,6 +305,7 @@ void awh::Watch::away(const uint32_t id) noexcept {
  *
  * @param id    идентификатор таймера
  * @param delay задержка времени в миллисекундах
+ *
  */
 void awh::Watch::wait(const uint32_t id, const uint32_t delay) noexcept {
 	/**
@@ -334,6 +344,7 @@ void awh::Watch::wait(const uint32_t id, const uint32_t delay) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Watch::Watch(const fmk_t * fmk, const log_t * log) noexcept :
  _working(false), _delay(TIMEOUT), _notifier(fmk, log), _fmk(fmk), _log(log) {}

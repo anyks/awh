@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример клиента QUIC, работающего через прокси — демонстрация установки QUIC-соединения с прокси-сервером и
+ *        передачи прикладного трафика по туннелю поверх датаграммного транспорта
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -41,6 +45,7 @@ using namespace placeholders;
  *          же потоком и не датаграммой, а туннельным потоком соединения (см. inject).
  *          Поэтому проверка накапливает ВСЕ принятые от сервера байты потоков (с любого
  *          потока, без опоры на флаг завершения) и сверяет их с отправленной нагрузкой
+ *
  */
 class Executor {
 	private:
@@ -64,6 +69,7 @@ class Executor {
 		 * @brief Метод формирования осмысленной полезной нагрузки для проверки эхо
 		 *
 		 * @return сформированная полезная нагрузка
+		 *
 		 */
 		string makePayload() const noexcept {
 			// Формируем распознаваемый текст как полезную нагрузку
@@ -81,6 +87,7 @@ class Executor {
 		 *
 		 * @param status новый статус клиента
 		 * @param client объект клиента
+		 *
 		 */
 		void status(const event::status_t status, client_t * client) noexcept {
 			/**
@@ -105,6 +112,7 @@ class Executor {
 		 * @param family семейство адресов клиента
 		 * @param domain доменное имя удалённого сервера
 		 * @param ip     IP-адрес удалённого сервера
+		 *
 		 */
 		void ready([[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности клиента к работе
@@ -115,6 +123,7 @@ class Executor {
 		 *
 		 * @param ok     результат подключения к серверу
 		 * @param client объект клиента
+		 *
 		 */
 		void connect(const bool ok, client_t * client) noexcept {
 			// Если подключение к серверу не выполнено
@@ -143,6 +152,7 @@ class Executor {
 		 * @brief Метод отправки полезной нагрузки прокси
 		 *
 		 * @param client объект клиента
+		 *
 		 */
 		void sendPayload(client_t * client) noexcept {
 			// Формируем осмысленную полезную нагрузку и сохраняем её как эталон для верификации
@@ -179,6 +189,7 @@ class Executor {
 		 * @param data   собранные данные потока
 		 * @param fin    флаг завершения потока
 		 * @param client объект клиента
+		 *
 		 */
 		void stream(const uint64_t sid, const string & data, [[maybe_unused]] const bool fin, client_t * client) noexcept {
 			// Если верификация уже выполнена - игнорируем остаточные данные
@@ -220,6 +231,7 @@ class Executor {
 		 *
 		 * @param error   код ошибки
 		 * @param message сообщение об ошибке
+		 *
 		 */
 		void error([[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
@@ -232,6 +244,7 @@ class Executor {
 		 * @param timer объект таймера для отложенной отправки нагрузки
 		 * @param fmk   объект фреймворка
 		 * @param log   объект логирования
+		 *
 		 */
 		Executor(unit::timer_t * timer, const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log), _timer(timer), _done(false) {}
 };
@@ -242,6 +255,7 @@ class Executor {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	// Создаём объект фреймворка

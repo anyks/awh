@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля транспортного уровня безопасности — класс tls::Coder,
+ *        управляющий контекстами TLS и DTLS, сертификатами, наборами шифров, ALPN,
+ *        верификацией пиров и выполнением защищённого рукопожатия поверх BoringSSL
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -24,6 +29,7 @@
  * @details Объявление, а не подключение заголовочного файла: публичный интерфейс
  *          модуля не должен тянуть за собой зависимости внешних библиотек на
  *          этапе подключения библиотеки потребителем.
+ *
  */
 struct ssl_ctx_st;
 
@@ -155,6 +161,7 @@ namespace awh {
 				 * @brief Структура информации о шифре
 				 *
 				 * @note Содержит информацию о шифре, используемом в TLS-соединении, включая его название, стандартное название и код шифра.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ CipherInfo {
 					bool tls13;      // Флаг, указывающий, является ли шифр TLSv1.3
@@ -179,6 +186,7 @@ namespace awh {
 				 *
 				 * @param id    идентификатор события
 				 * @param state новое состояние TLS
+				 *
 				 */
 				using state_callback_t = function <void (const id_t, const state_t)>;
 				/**
@@ -187,6 +195,7 @@ namespace awh {
 				 * @param id    идентификатор события
 				 * @param event тип события TLS
 				 * @param size  размер данных
+				 *
 				 */
 				using write_callback_t = function <void (const id_t, const event_t, const size_t)>;
 				/**
@@ -195,6 +204,7 @@ namespace awh {
 				 * @param id    идентификатор события
 				 * @param error тип ошибки TLS
 				 * @param info  дополнительная информация об ошибке
+				 *
 				 */
 				using error_callback_t = function <void (const id_t, const error_t, const string &)>;
 				/**
@@ -202,6 +212,7 @@ namespace awh {
 				 *
 				 * @param id      идентификатор события
 				 * @param browser объект отпечатка браузера
+				 *
 				 */
 				using fingerprint_callback_t = function <void (const id_t, const fgp_t::browser_t &)>;
 				/**
@@ -215,6 +226,7 @@ namespace awh {
 				 * @param event  тип события TLS
 				 * @param buffer буфер данных
 				 * @param size   размер данных
+				 *
 				 */
 				using read_callback_t = function <void (const id_t, const event_t, const uint8_t *, const size_t)>;
 			private:
@@ -234,6 +246,7 @@ namespace awh {
 				 * @brief Метод получения версии OpenSSL
 				 *
 				 * @return версия OpenSSL
+				 *
 				 */
 				string version() const noexcept;
 			public:
@@ -246,6 +259,7 @@ namespace awh {
 				 *          init OpenSSL). Методы модуля после закрепления id выполняются без
 				 *          глобального lock; синхронизацию вызовов из разных потоков должен
 				 *          обеспечивать вызывающий код.
+				 *
 				 */
 				void threadSafety(const bool mode) noexcept;
 			public:
@@ -253,6 +267,7 @@ namespace awh {
 				 * @brief Метод подключения объекта для работы с отпечатками TLS
 				 *
 				 * @param fgp объект для работы с отпечатками TLS
+				 *
 				 */
 				void fingerprint(const fgp_t * fgp) noexcept;
 			public:
@@ -261,6 +276,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   общая информация о TLS соединении
+				 *
 				 */
 				string info(const id_t id) const noexcept;
 				/**
@@ -268,6 +284,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   информация о одноразовом узле TLS
+				 *
 				 */
 				string peerInfo(const id_t id) const noexcept;
 				/**
@@ -275,6 +292,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   информация о шифре
+				 *
 				 */
 				string cipherInfo(const id_t id) const noexcept;
 				/**
@@ -282,6 +300,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   информация о сертификате
+				 *
 				 */
 				string certificateInfo(const id_t id) const noexcept;
 				/**
@@ -289,6 +308,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   информация о списке отзыва сертификатов
+				 *
 				 */
 				string certificateRevocationListInfo(const id_t id) const noexcept;
 			public:
@@ -297,6 +317,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   список доступных шифров
+				 *
 				 */
 				vector <cipher_info_t> availableCiphers(const id_t id) const noexcept;
 			public:
@@ -305,6 +326,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   активный протокол
+				 *
 				 */
 				string certificateExtract(const id_t id) const noexcept;
 			public:
@@ -318,6 +340,7 @@ namespace awh {
 				 *       по member->host.name (ожидаемое имя/SNI). На SERVER peer-сертификат —
 				 *       сертификат клиента, host.name — SNI клиента; вызывающий код должен
 				 *       понимать эту семантику (mTLS и т.п.).
+				 *
 				 */
 				bool validateCertificate(const id_t id) const noexcept;
 			public:
@@ -326,6 +349,7 @@ namespace awh {
 				 *
 				 * @param id   идентификатор события
 				 * @param mode режим проверки доменного имени сервера
+				 *
 				 */
 				void validateServerNameIndication(const id_t id, const bool mode) noexcept;
 			public:
@@ -334,6 +358,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   режим работы TLS
+				 *
 				 */
 				mode_t mode(const id_t id) const noexcept;
 				/**
@@ -341,6 +366,7 @@ namespace awh {
 				 *
 				 * @param id   идентификатор события
 				 * @param mode режим работы TLS
+				 *
 				 */
 				void mode(const id_t id, const mode_t mode) noexcept;
 			public:
@@ -349,6 +375,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   доменное имя сервера
+				 *
 				 */
 				string serverNameIndication(const id_t id) const noexcept;
 				/**
@@ -356,6 +383,7 @@ namespace awh {
 				 *
 				 * @param id  идентификатор события
 				 * @param sni доменное имя сервера
+				 *
 				 */
 				void serverNameIndication(const id_t id, string_view sni) noexcept;
 			public:
@@ -370,6 +398,7 @@ namespace awh {
 				 * @param key     ключ сервера (SNI либо адрес эндпоинта)
 				 * @param session объект для извлечения сериализованного билета возобновления
 				 * @return        результат извлечения (билет найден)
+				 *
 				 */
 				bool session(const id_t id, string_view key, string & session) const noexcept;
 				/**
@@ -378,6 +407,7 @@ namespace awh {
 				 * @param id      идентификатор шаблонного контекста безопасности
 				 * @param key     ключ сервера (SNI либо адрес эндпоинта)
 				 * @param session сериализованный билет возобновления для сохранения
+				 *
 				 */
 				void session(const id_t id, string_view key, string_view session) const noexcept;
 			public:
@@ -388,6 +418,7 @@ namespace awh {
 				 * @param ip   IP-адрес отдалённого узла
 				 * @param port порт отдалённого узла
 				 * @return     результат выполнения установки
+				 *
 				 */
 				bool peer(const id_t id, string_view ip, const uint16_t port) noexcept;
 			public:
@@ -399,6 +430,7 @@ namespace awh {
 				 *
 				 * @note После destroy() id помечается GARBAGE_MODE; дальнейшие вызовы методов
 				 *       с этим id недопустимы. Физическое удаление из реестра — при refs==0.
+				 *
 				 */
 				bool destroy(const id_t id) noexcept;
 			public:
@@ -407,6 +439,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   результат выполнения завершения
+				 *
 				 */
 				bool shutdown(const id_t id) noexcept;
 			public:
@@ -418,6 +451,7 @@ namespace awh {
 				 *
 				 * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
 				 *       Параллельные вызовы на один id должен сериализовать вызывающий код.
+				 *
 				 */
 				bool handshake(const id_t id) noexcept;
 			public:
@@ -426,6 +460,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   результат выполнения повторной передачи
+				 *
 				 */
 				bool retransmit(const id_t id) noexcept;
 			public:
@@ -440,6 +475,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор транспортного уровня или шаблона контекста безопасности
 				 * @return   нативный контекст криптографической библиотеки либо nullptr
+				 *
 				 */
 				ssl_ctx_st * native(const id_t id) const noexcept;
 			public:
@@ -448,6 +484,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор шаблона контекста безопасности
 				 * @return   идентификатор транспортного уровня
+				 *
 				 */
 				id_t transport(const id_t id) noexcept;
 				/**
@@ -456,6 +493,7 @@ namespace awh {
 				 * @param node  тип узла события
 				 * @param proto тип протокола события
 				 * @return      идентификатор шаблона контекста безопасности
+				 *
 				 */
 				id_t context(const event::node_t node, const event::protocol_t proto) noexcept;
 			public:
@@ -489,6 +527,7 @@ namespace awh {
 				 *          // getKeysECH() возвращает те же байты, которые были сохранены.
 				 *          vector <uint8_t> echDns = coder.getKeysECH(ctx);
 				 *          @endcode
+				 *
 				 */
 				vector <uint8_t> getKeysECH(const id_t id) const noexcept;
 				/**
@@ -528,6 +567,7 @@ namespace awh {
 				 *          // Получить ECHConfigList для DNS:
 				 *          vector <uint8_t> forDns = coder.getKeysECH(ctx);
 				 *          @endcode
+				 *
 				 */
 				bool setKeysECH(const id_t id, const vector <uint8_t> & keys) noexcept;
 				/**
@@ -543,6 +583,7 @@ namespace awh {
 				 *
 				 *          Для сервера если @p keys равен nullptr или @p size равен 0 —
 				 *          ключ генерируется автоматически.
+				 *
 				 */
 				bool setKeysECH(const id_t id, const uint8_t * keys, const size_t size) noexcept;
 			public:
@@ -556,6 +597,7 @@ namespace awh {
 				 *
 				 * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
 				 *       Параллельные вызовы на один id должен сериализовать вызывающий код.
+				 *
 				 */
 				bool encrypt(const id_t id, const void * buffer, const size_t size) noexcept;
 				/**
@@ -568,6 +610,7 @@ namespace awh {
 				 *
 				 * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
 				 *       Параллельные вызовы на один id должен сериализовать вызывающий код.
+				 *
 				 */
 				bool decrypt(const id_t id, const void * buffer, const size_t size) noexcept;
 			public:
@@ -576,6 +619,7 @@ namespace awh {
 				 *
 				 * @param id     идентификатор события
 				 * @param groups список поддерживаемых групп эллиптических кривых
+				 *
 				 */
 				void groups(const id_t id, const vector <group_t> & groups) noexcept;
 			public:
@@ -584,6 +628,7 @@ namespace awh {
 				 *
 				 * @param id      идентификатор события
 				 * @param ciphers список алгоритмов шифрования для установки
+				 *
 				 */
 				void ciphers(const id_t id, const vector <cipher_t> & ciphers) noexcept;
 			public:
@@ -592,6 +637,7 @@ namespace awh {
 				 *
 				 * @param id   идентификатор события
 				 * @param mode режим активации/деактивации
+				 *
 				 */
 				void grease(const id_t id, const event::mode_t mode) noexcept;
 			public:
@@ -600,6 +646,7 @@ namespace awh {
 				 *
 				 * @param id   идентификатор события
 				 * @param mode режим активации/деактивации перемешивания расширений
+				 *
 				 */
 				void permuteExtensions(const id_t id, const event::mode_t mode) noexcept;
 			public:
@@ -607,12 +654,14 @@ namespace awh {
 				 * @brief Метод активации поддержки SCT (Signed Certificate Timestamp)
 				 *
 				 * @param id идентификатор события
+				 *
 				 */
 				void signedCertificateTimestamp(const id_t id) noexcept;
 				/**
 				 * @brief Метод активации поддержки Stapling (OCSP)
 				 *
 				 * @param id идентификатор события
+				 *
 				 */
 				void onlineCertificateStatusProtocol(const id_t id) noexcept;
 				/**
@@ -620,6 +669,7 @@ namespace awh {
 				 *
 				 * @param id   идентификатор события
 				 * @param mode режим активации/деактивации поддержки расширения
+				 *
 				 */
 				void nextProtocolNegotiation(const id_t id, const event::mode_t mode) noexcept;
 			public:
@@ -628,6 +678,7 @@ namespace awh {
 				 *
 				 * @param id  идентификатор события
 				 * @param fid идентификатор цифрового отпечатка браузера
+				 *
 				 */
 				void browser(const id_t id, const fgp_t::id_t fid) noexcept;
 			public:
@@ -642,6 +693,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор транспортного уровня или шаблона контекста безопасности
 				 * @return   список поддерживаемых ALPN-протоколов
+				 *
 				 */
 				vector <alpn_t> protocols(const id_t id) const noexcept;
 			public:
@@ -650,6 +702,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   метод активного протокола
+				 *
 				 */
 				uint8_t alpn(const id_t id) const noexcept;
 				/**
@@ -657,6 +710,7 @@ namespace awh {
 				 *
 				 * @param id   идентификатор события
 				 * @param alpn список поддерживаемых ALPN-протоколов
+				 *
 				 */
 				void alpn(const id_t id, const vector <alpn_t> & alpn) noexcept;
 			public:
@@ -666,6 +720,7 @@ namespace awh {
 				 * @param id   идентификатор события
 				 * @param alps список поддерживаемых ALPS-протоколов
 				 * @param std  флаг поддерживаемого стандарта
+				 *
 				 */
 				void alps(const id_t id, const vector <alpn_t> & alps, const standard_t std) noexcept;
 			public:
@@ -674,6 +729,7 @@ namespace awh {
 				 *
 				 * @param id         идентификатор события
 				 * @param signatures список поддерживаемых алгоритмов подписи
+				 *
 				 */
 				void signature(const id_t id, const vector <signature_t> & signatures) noexcept;
 			public:
@@ -682,6 +738,7 @@ namespace awh {
 				 *
 				 * @param id     идентификатор события
 				 * @param methods список поддерживаемых алгоритмов компрессии сертификата
+				 *
 				 */
 				void compressors(const id_t id, const vector <awh::compressor::method_t> & methods) noexcept;
 			public:
@@ -691,6 +748,7 @@ namespace awh {
 				 * @param id     идентификатор события
 				 * @param groups список поддерживаемых групп эллиптических кривых для ключевого обмена
 				 * @param grease флаг активации/деактивации ложного ключа EncryptedClientHello (ECH)
+				 *
 				 */
 				void keyShare(const id_t id, const vector <group_t> & groups, const event::mode_t grease) noexcept;
 			public:
@@ -699,6 +757,7 @@ namespace awh {
 				 *
 				 * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
 				 * @param filename путь к файлу сертификата доверенных центров сертификации
+				 *
 				 */
 				void ca(const id_t id, string_view filename) noexcept;
 				/**
@@ -707,6 +766,7 @@ namespace awh {
 				 * @param id   идентификатор транспортного уровня или шаблона контекста безопасности
 				 * @param dir  адрес директории с сертификатами доверенных центров сертификации
 				 * @param file путь к файлу сертификата доверенного центра сертификации
+				 *
 				 */
 				void ca(const id_t id, string_view dir, string_view file) noexcept;
 			public:
@@ -715,6 +775,7 @@ namespace awh {
 				 *
 				 * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
 				 * @param filename путь к файлу списка отзыва сертификатов
+				 *
 				 */
 				void certificateRevocationList(const id_t id, string_view filename) noexcept;
 				/**
@@ -723,6 +784,7 @@ namespace awh {
 				 * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
 				 * @param filename путь к файлу приватного ключа клиента
 				 * @param type     тип файла приватного ключа клиента
+				 *
 				 */
 				void privateKey(const id_t id, string_view filename, const type_t type = type_t::PEM) noexcept;
 				/**
@@ -731,6 +793,7 @@ namespace awh {
 				 * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
 				 * @param filename путь к файлу клиентского сертификата
 				 * @param type     тип файла клиентского сертификата
+				 *
 				 */
 				void certificate(const id_t id, string_view filename, const type_t type = type_t::PEM) noexcept;
 			public:
@@ -740,6 +803,7 @@ namespace awh {
 				 * @param id       идентификатор транспортного уровня
 				 * @param callback функция обратного вызова для установки
 				 * @return         результат установки функции обратного вызова
+				 *
 				 */
 				bool on(const id_t id, read_callback_t callback) noexcept;
 				/**
@@ -748,6 +812,7 @@ namespace awh {
 				 * @param id       идентификатор транспортного уровня
 				 * @param callback функция обратного вызова для установки
 				 * @return         результат установки функции обратного вызова
+				 *
 				 */
 				bool on(const id_t id, write_callback_t callback) noexcept;
 				/**
@@ -756,6 +821,7 @@ namespace awh {
 				 * @param id       идентификатор транспортного уровня
 				 * @param callback функция обратного вызова для установки
 				 * @return         результат установки функции обратного вызова
+				 *
 				 */
 				bool on(const id_t id, state_callback_t callback) noexcept;
 				/**
@@ -764,6 +830,7 @@ namespace awh {
 				 * @param id       идентификатор транспортного уровня
 				 * @param callback функция обратного вызова для установки
 				 * @return         результат установки функции обратного вызова
+				 *
 				 */
 				bool on(const id_t id, error_callback_t callback) noexcept;
 				/**
@@ -772,6 +839,7 @@ namespace awh {
 				 * @param id       идентификатор транспортного уровня
 				 * @param callback функция обратного вызова для установки
 				 * @return         результат установки функции обратного вызова
+				 *
 				 */
 				bool on(const id_t id, fingerprint_callback_t callback) noexcept;
 			public:
@@ -780,6 +848,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Coder(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -788,6 +857,7 @@ namespace awh {
 				 * @param fgp объект для работы с отпечатками TLS
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) noexcept;
 				/**

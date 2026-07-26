@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля работы с файловой системой — чтение и запись файлов, обход каталогов, получение атрибутов,
+ *        создание и удаление объектов ФС с нативной поддержкой macOS, Windows, Linux, FreeBSD, NetBSD, OpenBSD,
+ *        Solaris и OpenIndiana
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -119,6 +124,7 @@ namespace {
 				 * @brief Метод проверки валидности
 				 *
 				 * @return валидность дескриптора
+				 *
 				 */
 				bool valid() const noexcept {
 					// Возвращаем результат проверки валидности дескриптора
@@ -132,6 +138,7 @@ namespace {
 				 * @brief Оператор приведения к типу
 				 *
 				 * @return объект дескриптора
+				 *
 				 */
 				operator HANDLE() const noexcept {
 					// Возвращаем объект дескриптора
@@ -142,6 +149,7 @@ namespace {
 				 * @brief Конструктор
 				 *
 				 * @param handle объект дескриптора
+				 *
 				 */
 				HandleGuard(HANDLE handle) noexcept : _handle(handle) {}
 				/**
@@ -159,6 +167,7 @@ namespace {
 		 * @brief Шаблон класса для автоматического управления COM-интерфейсами (RAII)
 		 *
 		 * @tparam T тип интерфейса
+		 *
 		 */
 		template <typename T>
 		/**
@@ -174,6 +183,7 @@ namespace {
 				 * @brief Метод получения указателя на интерфейс
 				 *
 				 * @return указатель на интерфейс
+				 *
 				 */
 				T * get() const noexcept {
 					// Возвращаем указатель на интерфейс
@@ -184,6 +194,7 @@ namespace {
 				 * @brief Метод сброса указателя на интерфейс
 				 *
 				 * @param ptr новый указатель на интерфейс
+				 *
 				 */
 				void reset(T * ptr = nullptr) noexcept {
 					// Если указатель на интерфейс установлен
@@ -198,6 +209,7 @@ namespace {
 				 * @brief Опретор получение адреса указателя (для CoCreateInstance и т.п.)
 				 *
 				 * @return адрес указателя
+				 *
 				 */
 				T ** operator & () noexcept {
 					// Возвращаем адрес указателя
@@ -207,6 +219,7 @@ namespace {
 				 * @brief Оператор доступа к членам интерфейса
 				 *
 				 * @return указатель на интерфейс
+				 *
 				 */
 				T * operator -> () const noexcept {
 					// Возвращаем указатель на интерфейс
@@ -217,6 +230,7 @@ namespace {
 				 * @brief Оператор приведения к типу bool
 				 *
 				 * @return валидность указателя
+				 *
 				 */
 				explicit operator bool() const noexcept {
 					// Возвращаем результат проверки валидности указателя
@@ -227,6 +241,7 @@ namespace {
 				 * @brief Конструктор
 				 *
 				 * @param ptr указатель на COM-интерфейс
+				 *
 				 */
 				ComGuard(T * ptr = nullptr) noexcept : _ptr(ptr) {}
 				/**
@@ -251,6 +266,7 @@ namespace {
 				 * @brief Оператор приведения к типу
 				 *
 				 * @return объект каталога
+				 *
 				 */
 				operator _WDIR * () const noexcept {
 					// Возвращаем объект каталога
@@ -261,6 +277,7 @@ namespace {
 				 * @brief Метод проверки валидности
 				 *
 				 * @return валидность каталога
+				 *
 				 */
 				bool valid() const noexcept {
 					// Возвращаем результат проверки валидности каталога
@@ -271,6 +288,7 @@ namespace {
 				 * @brief Конструктор
 				 *
 				 * @param dir объект каталога
+				 *
 				 */
 				DirGuard(_WDIR * dir) noexcept : _dir(dir) {}
 				/**
@@ -301,6 +319,7 @@ namespace {
 				 * @brief Метод проверки валидности
 				 *
 				 * @return валидность файлового дескриптора
+				 *
 				 */
 				bool valid() const noexcept {
 					// Возвращаем результат проверки валидности файлового дескриптора
@@ -311,6 +330,7 @@ namespace {
 				 * @brief Оператор приведения к типу
 				 *
 				 * @return файловый дескриптор
+				 *
 				 */
 				operator int32_t () const noexcept {
 					// Возвращаем файловый дескриптор
@@ -321,6 +341,7 @@ namespace {
 				 * @brief Конструктор
 				 *
 				 * @param fd файловый дескриптор
+				 *
 				 */
 				FdGuard(const int32_t fd) noexcept : _fd(fd) {}
 				/**
@@ -347,6 +368,7 @@ namespace {
 				 * @brief Оператор приведения к типу
 				 *
 				 * @return объект каталога
+				 *
 				 */
 				operator DIR * () const noexcept {
 					// Возвращаем объект каталога
@@ -357,6 +379,7 @@ namespace {
 				 * @brief Метод проверки валидности
 				 *
 				 * @return валидность каталога
+				 *
 				 */
 				bool valid() const noexcept {
 					// Возвращаем результат проверки валидности каталога
@@ -367,6 +390,7 @@ namespace {
 				 * @brief Конструктор
 				 *
 				 * @param dir объект каталога
+				 *
 				 */
 				DirGuard(DIR * dir) noexcept : _dir(dir) {}
 				/**
@@ -388,6 +412,7 @@ namespace {
 	 * @param input входная строка пути
 	 * @param log   объект работы с логами
 	 * @return      полная строка пути
+	 *
 	 */
 	static string fullpath(const string_view input, const log_t * log) noexcept {
 		/**
@@ -530,6 +555,7 @@ namespace {
  *
  * @param first  адрес на который нужно сделать ссылку
  * @param second адрес где должна быть создана ссылка
+ *
  */
 void awh::Filesystem::symlink(string_view first, string_view second) const noexcept {
 	// Если адреса переданы
@@ -653,6 +679,7 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
  *
  * @param first  адрес на который нужно сделать ссылку
  * @param second адрес где должна быть создана ссылка
+ *
  */
 void awh::Filesystem::hardlink(string_view first, string_view second) const noexcept {
 	// Если адреса переданы
@@ -721,6 +748,7 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
  * @param addr    полный адрес для удаления
  * @param resolve флаг резолвинга символьных ссылок
  * @return        результат удаления
+ *
  */
 bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcept {
 	// Переменная результата
@@ -944,6 +972,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
  *
  * @param addr адрес директории или файла
  * @return     тип файловой системы
+ *
  */
 awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detectLinks) const noexcept {
 	// Переменная результата
@@ -1151,6 +1180,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
  * @param addr    адрес который нужно определить
  * @param resolve флаг резолвинга символьных ссылок
  * @return        полный путь
+ *
  */
 string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noexcept {
 	// Переменная результата
@@ -1366,6 +1396,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
  *
  * @param addr путь к файлу или каталогу
  * @return     запрашиваемые метаданные
+ *
  */
 uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 	// Переменная результата
@@ -1416,6 +1447,7 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
  * @param addr путь к файлу или каталогу
  * @param mode метаданные для установки
  * @return     результат работы функции
+ *
  */
 bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcept {
 	// Переменная результата
@@ -1464,6 +1496,7 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
  * @param user  имя пользователя
  * @param group название группы пользователя
  * @return      результат работы функции
+ *
  */
 bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]] string_view group) const noexcept {
 	// Переменная результата
@@ -1653,6 +1686,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
  *
  * @param addr адрес для создания каталога
  * @return     результат создания каталога
+ *
  */
 bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 	// Переменная результата
@@ -1805,6 +1839,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
  * @param user  имя пользователя
  * @param group название группы пользователя
  * @return      результат создания каталога
+ *
  */
 bool awh::Filesystem::mkdir(string_view addr, string_view user, string_view group) const noexcept {
 	// Переменная результата
@@ -1831,6 +1866,7 @@ bool awh::Filesystem::mkdir(string_view addr, string_view user, string_view grou
  * @param addr    путь к файлу для извлечения его параметров
  * @param resolve флаг резолвинга символьных ссылок
  * @param before  флаг определения первой точки расширения слева
+ *
  */
 awh::Filesystem::components_t awh::Filesystem::components(string_view addr, const bool resolve, const bool before) const noexcept {
 	// Переменная результата
@@ -1913,6 +1949,7 @@ awh::Filesystem::components_t awh::Filesystem::components(string_view addr, cons
  * @param ext     расширение файла если требуется фильтрация
  * @param recurse флаг рекурсивного перебора каталогов
  * @return        общий размер файла/каталога
+ *
  */
 uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool recurse) const noexcept {
 	// Переменная результата
@@ -2164,6 +2201,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
  * @param ext     расширение файла если требуется фильтрация
  * @param recurse флаг рекурсивного перебора каталогов
  * @return        количество файлов в каталоге
+ *
  */
 uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool recurse) const noexcept {
 	// Переменная результата
@@ -2326,6 +2364,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
  * @brief Шаблон метода добавления в файл бинарных данных
  *
  * @tparam T тип буфера данных
+ *
  */
 template <typename T>
 /**
@@ -2333,6 +2372,7 @@ template <typename T>
  *
  * @param filename путь к файлу в который необходимо выполнить запись
  * @param buffer   бинарный буфер который необходимо записать в файл
+ *
  */
 void awh::Filesystem::append(string_view filename, const T & buffer) const noexcept {
 	// Если буфер данных передан
@@ -2382,6 +2422,7 @@ template void awh::Filesystem::append(string_view, const vector <uint8_t> &) con
  *
  * @param filename путь к файлу в который необходимо выполнить запись
  * @param buffer   бинарный буфер который необходимо записать в файл
+ *
  */
 void awh::Filesystem::append(string_view filename, const char * buffer) const noexcept {
 	// Если буфер данных передан
@@ -2394,6 +2435,7 @@ void awh::Filesystem::append(string_view filename, const char * buffer) const no
  *
  * @param filename путь к файлу в который необходимо выполнить запись
  * @param buffer   бинарный буфер который необходимо записать в файл
+ *
  */
 void awh::Filesystem::append(string_view filename, const wchar_t * buffer) const noexcept {
 	// Если буфер данных передан
@@ -2410,6 +2452,7 @@ void awh::Filesystem::append(string_view filename, const wchar_t * buffer) const
  * @param filename путь к файлу в который необходимо выполнить запись
  * @param buffer   бинарный буфер который необходимо записать в файл
  * @param size     размер бинарного буфера для записи в файл
+ *
  */
 void awh::Filesystem::append(string_view filename, const void * buffer, const size_t size) const noexcept {
 	// Если параметры для записи переданы
@@ -2488,6 +2531,7 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
  * @brief Шаблон метода чтения данных из файла
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -2497,6 +2541,7 @@ template <typename T>
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
  * @return         бинарный буфер с прочитанными данными
+ *
  */
 auto awh::Filesystem::read(string_view filename, const seek_t seek, const size_t offset) const noexcept -> T {
 	// Переменная результата
@@ -2527,6 +2572,7 @@ template vector <uint8_t> awh::Filesystem::read(string_view, const seek_t, const
  * @brief Шаблон метода чтения данных из файла
  *
  * @tparam T тип возвращаемого результата
+ *
  */
 template <typename T>
 /**
@@ -2536,6 +2582,7 @@ template <typename T>
  * @param result   контейнер куда следует положить результат
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
+ *
  */
 void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, const size_t offset) const noexcept {
 	// Если путь к файлу указан и он существует
@@ -2775,6 +2822,7 @@ template void awh::Filesystem::read(string_view, vector <uint8_t> &, const seek_
  * @param size     размер блока для чтения
  * @param callback функция обратного вызова для обработки прочитанных данных (возвращает true для продолжения чтения и false для остановки)
  * @param offset   смещение в файле с которого следует начать чтение
+ *
  */
 void awh::Filesystem::read(string_view filename, const size_t size, const function <bool (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback, const size_t offset) const noexcept {
 	// Если буфер данных передан
@@ -3016,6 +3064,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
  * @brief Шаблон метода записи в файл бинарных данных
  *
  * @tparam T тип буфера данных
+ *
  */
 template <typename T>
 /**
@@ -3025,6 +3074,7 @@ template <typename T>
  * @param buffer   бинарный буфер который необходимо записать в файл
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
+ *
  */
 void awh::Filesystem::write(string_view filename, const T & buffer, const seek_t seek, const size_t offset) const noexcept {
 	// Если буфер данных передан
@@ -3076,6 +3126,7 @@ template void awh::Filesystem::write(string_view, const vector <uint8_t> &, cons
  * @param buffer   бинарный буфер который необходимо записать в файл
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
+ *
  */
 void awh::Filesystem::write(string_view filename, const char * buffer, const seek_t seek, const size_t offset) const noexcept {
 	// Если буфер данных передан
@@ -3090,6 +3141,7 @@ void awh::Filesystem::write(string_view filename, const char * buffer, const see
  * @param buffer   бинарный буфер который необходимо записать в файл
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
+ *
  */
 void awh::Filesystem::write(string_view filename, const wchar_t * buffer, const seek_t seek, const size_t offset) const noexcept {
 	// Если буфер данных передан
@@ -3108,6 +3160,7 @@ void awh::Filesystem::write(string_view filename, const wchar_t * buffer, const 
  * @param size     размер бинарного буфера для записи в файл
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
+ *
  */
 void awh::Filesystem::write(string_view filename, const void * buffer, const size_t size, const seek_t seek, const size_t offset) const noexcept {
 	// Если параметры для записи переданы
@@ -3242,6 +3295,7 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
  * @param callback функция обратного вызова
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
+ *
  */
 void awh::Filesystem::readfile(string_view filename, const function <void (string_view)> & callback, const seek_t seek, const size_t offset) const noexcept {
 	// Если параметры для записи переданы
@@ -3261,6 +3315,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 				 *
 				 * @param data указатель на данные
 				 * @param size размер данных
+				 *
 				 */
 				auto processFn = [&](const char * data, size_t size) noexcept -> void {
 					// Если размер данных равен нулю
@@ -3565,6 +3620,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
  * @param callback функция обратного вызова
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
+ *
  */
 void awh::Filesystem::readfile(string_view filename, const size_t size, const function <void (const void *, const size_t)> & callback, const seek_t seek, const size_t offset) const noexcept {
 	// Если параметры для записи переданы
@@ -3837,6 +3893,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
  * @param recurse  флаг рекурсивного перебора каталогов
  * @param callback функция обратного вызова
  * @param resolve  флаг резолвинга символьных ссылок
+ *
  */
 void awh::Filesystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view)> & callback, const bool resolve) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
@@ -3847,6 +3904,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 		 * @param путь до каталога
 		 * @param расширение файла по которому идет фильтрация
 		 * @param флаг рекурсивного перебора каталогов
+		 *
 		 */
 		function <void (string_view, string_view, const bool)> readFn;
 		/**
@@ -3855,6 +3913,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 		 * @param path    путь до каталога
 		 * @param ext     расширение файла по которому идет фильтрация
 		 * @param recurse флаг рекурсивного перебора каталогов
+		 *
 		 */
 		readFn = [&](string_view path, string_view ext, const bool recurse) noexcept -> void {
 			/**
@@ -4027,6 +4086,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
  * @param recurse  флаг рекурсивного перебора каталогов
  * @param callback функция обратного вызова
  * @param resolve  флаг резолвинга символьных ссылок
+ *
  */
 void awh::Filesystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view, string_view)> & callback, const bool resolve) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
@@ -4116,6 +4176,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
  * @param recurse  флаг рекурсивного перебора каталогов
  * @param callback функция обратного вызова
  * @param resolve  флаг резолвинга символьных ссылок
+ *
  */
 void awh::Filesystem::readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
@@ -4202,5 +4263,6 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const size_t si
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Filesystem::Filesystem(const fmk_t * fmk, const log_t * log) noexcept : _os(log), _fmk(fmk), _log(log) {}

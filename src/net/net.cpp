@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация базовых сетевых структур — конструирование, сравнение и преобразование адресов подключения (IPv4,
+ *        IPv6, MAC, UDS), атрибутов и источников соединения, информации о датаграммах и туннелях
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -26,6 +30,7 @@ using namespace std;
  * @brief Конструктор
  *
  * @param size размер адреса
+ *
  */
 awh::net::Address::Address(const uint16_t size) noexcept : size(size) {}
 
@@ -41,6 +46,7 @@ awh::net::Address_MAC::Address_MAC() noexcept :
  *
  * @param prefix префикс сети
  * @param size   размер адреса
+ *
  */
 awh::net::Address_Network::Address_Network(const uint8_t prefix, const uint16_t size) noexcept :
  addr_t(size), prefix(prefix) {}
@@ -69,6 +75,7 @@ awh::net::Address_Filesystem::Address_Filesystem() noexcept : address{""} {}
  * @brief Конструктор
  *
  * @param ip адрес сетевого подключения
+ *
  */
 awh::net::Source::Source(unique_ptr <addr_t> ip) noexcept :
  iface{""}, ip(::move(ip)),
@@ -78,6 +85,7 @@ awh::net::Source::Source(unique_ptr <addr_t> ip) noexcept :
  * @brief Конструктор
  *
  * @param type тип адреса подключения
+ *
  */
 awh::net::Attributes::Attributes(const type_t type) noexcept : type(type) {}
 
@@ -113,6 +121,7 @@ awh::net::Origin_Key::Origin_Key() noexcept : size(0), data{0} {}
  *
  * @param data данные ключа сессии
  * @param size размер ключа сессии
+ *
  */
 awh::net::Origin_Key::Origin_Key(const uint8_t * data, const uint8_t size) noexcept : size(0), data{0} {
 	// Если данные ключа сессии переданы и укладываются в размер ключа

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля наблюдения за файловой системой — класс unit::Filesystem, отслеживающий создание,
+ *        изменение, переименование и удаление файлов и каталогов через нативные механизмы операционной системы
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -62,6 +66,7 @@ namespace awh {
 				 *
 				 * @param eid  идентификатор события файловой системы
 				 * @param size размер сообщения
+				 *
 				 */
 				void write(const event::id_t eid, const size_t size) noexcept;
 				/**
@@ -70,6 +75,7 @@ namespace awh {
 				 * @param eid  идентификатор события файловой системы
 				 * @param data данные сообщения
 				 * @param size размер сообщения
+				 *
 				 */
 				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 			private:
@@ -78,6 +84,7 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор события файловой системы
 				 * @param status статус события
+				 *
 				 */
 				void state(const event::id_t eid, const event::status_t status) noexcept;
 			private:
@@ -87,6 +94,7 @@ namespace awh {
 				 * @param eid     идентификатор события файловой системы
 				 * @param error   тип ошибки
 				 * @param message сообщение об ошибке
+				 *
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
 			private:
@@ -97,6 +105,7 @@ namespace awh {
 				 * @param action экшен события каталога (добавление/удаление)
 				 * @param vnode  событие файловой системы
 				 * @param path   адрес по которому произошло событие
+				 *
 				 */
 				void vnode(const event::id_t eid, const event::action_t action, const event::vnode_t vnode, const std::string & path) noexcept;
 			public:
@@ -104,6 +113,7 @@ namespace awh {
 				 * @brief Метод уничтожения события файловой системы
 				 *
 				 * @param eid идентификатор события файловой системы
+				 *
 				 */
 				void destroy(const event::id_t eid) noexcept;
 			public:
@@ -112,6 +122,7 @@ namespace awh {
 				 *
 				 * @param type тип файловой системы для создания
 				 * @return     идентификатор события файловой системы
+				 *
 				 */
 				event::id_t create(const type_t type) noexcept;
 			public:
@@ -120,6 +131,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события файловой системы
 				 * @return    тип ноды файловой системы
+				 *
 				 */
 				type_t type(const event::id_t eid) const noexcept;
 			public:
@@ -127,6 +139,7 @@ namespace awh {
 				 * @brief Метод установки функций обратного вызова
 				 *
 				 * @param callback функции обратного вызова
+				 *
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
@@ -135,6 +148,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события файловой системы
 				 * @return    значение адреса события
+				 *
 				 */
 				string getAddress(const event::id_t eid) const noexcept;
 				/**
@@ -143,6 +157,7 @@ namespace awh {
 				 * @param eid   идентификатор события файловой системы
 				 * @param value значение адреса события
 				 * @return      результат выполнения установки
+				 *
 				 */
 				bool setAddress(const event::id_t eid, const string & value) noexcept;
 			public:
@@ -153,6 +168,7 @@ namespace awh {
 				 * @param buffer буфер данных для отправки
 				 * @param size   размер буфера данных
 				 * @return       количество отправленных байт
+				 *
 				 */
 				size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
 			public:
@@ -162,6 +178,7 @@ namespace awh {
 				 * @param eid  идентификатор события файловой системы
 				 * @param seek тип смещения в файле события
 				 * @return     смещение в файле события
+				 *
 				 */
 				size_t getSeek(const event::id_t eid, const event::seek_t seek) noexcept;
 				/**
@@ -171,6 +188,7 @@ namespace awh {
 				 * @param seek   тип смещения в файле события
 				 * @param offset смещение в файле события
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setSeek(const event::id_t eid, const event::seek_t seek, const size_t offset) noexcept;
 			public:
@@ -179,6 +197,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события
 				 * @return    опции события
+				 *
 				 */
 				uint16_t getOptions(const event::id_t eid) const noexcept;
 				/**
@@ -187,6 +206,7 @@ namespace awh {
 				 * @param eid    идентификатор события
 				 * @param options опции события для установки
 				 * @return        результат выполнения установки
+				 *
 				 */
 				bool setOptions(const event::id_t eid, const uint16_t options) noexcept;
 				/**
@@ -196,6 +216,7 @@ namespace awh {
 				 * @param option опция события для установки
 				 * @param mode   режим установки опции события
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept;
 			public:
@@ -205,6 +226,7 @@ namespace awh {
 				 * @param eid    идентификатор события файловой системы
 				 * @param action тип действия события
 				 * @return       размер буфера события
+				 *
 				 */
 				size_t getBufferSize(const event::id_t eid, const event::action_t action) const noexcept;
 				/**
@@ -214,6 +236,7 @@ namespace awh {
 				 * @param action тип действия события
 				 * @param size   размер буфера события
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept;
 			private:
@@ -226,6 +249,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				Filesystem & operator = (const Filesystem &) = delete;
 			public:
@@ -234,6 +258,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Filesystem(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

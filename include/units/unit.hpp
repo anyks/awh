@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл базового класса модулей — класс unit::Unit,
+ *        задающий общий контракт всех модулей библиотеки: привязка к движку ввода-вывода, идентификация события,
+ *        управление состоянием и подписка на обратные вызовы
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -76,6 +81,7 @@ namespace awh {
 				 * @brief Метод вывода полученного сигнала
 				 *
 				 * @param sig идентификатор сигнала
+				 *
 				 */
 				void signal(const int32_t sig) const noexcept;
 			public:
@@ -83,6 +89,7 @@ namespace awh {
 				 * @brief Метод принудительного пинка базе событий
 				 *
 				 * @return результат выполнения операции
+				 *
 				 */
 				bool kick() noexcept;
 			public:
@@ -90,6 +97,7 @@ namespace awh {
 				 * @brief Метод определения мастер-процесса
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool master() const noexcept;
 			public:
@@ -97,6 +105,7 @@ namespace awh {
 				 * @brief Метод проверки на запуск работы
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool working() const noexcept;
 			public:
@@ -116,6 +125,7 @@ namespace awh {
 				 * @brief Метод получения количества событий в базе событий
 				 *
 				 * @return количество событий
+				 *
 				 */
 				size_t events() const noexcept;
 			public:
@@ -125,6 +135,7 @@ namespace awh {
 				 * @note База событий едина на весь процесс. Реально цикл событий останавливает только
 				 *       юнит-лаунчер (тот, что его запустил): он сбрасывает флаг работы и будит базу.
 				 *       Остальные юниты лишь переводят себя в статус DESTROYED, не затрагивая общий цикл.
+				 *
 				 */
 				virtual void stop() noexcept;
 				/**
@@ -135,6 +146,7 @@ namespace awh {
 				 *       блокирующий — поток крутится в цикле опроса до остановки. Остальные юниты,
 				 *       обнаружив, что база уже работает, цикл не запускают, не блокируются и лишь
 				 *       переводят себя в статус LAUNCHED.
+				 *
 				 */
 				virtual void start() noexcept;
 			public:
@@ -146,6 +158,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события
 				 * @return    результат выполнения перестройки
+				 *
 				 */
 				bool rebuild(const event::id_t eid) noexcept;
 			public:
@@ -154,6 +167,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события
 				 * @return    тип события
+				 *
 				 */
 				event::type_t type(const event::id_t eid) const noexcept;
 				/**
@@ -161,6 +175,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события
 				 * @return    тип узла события
+				 *
 				 */
 				event::node_t node(const event::id_t eid) const noexcept;
 				/**
@@ -168,6 +183,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события
 				 * @return    семейство адресов
+				 *
 				 */
 				event::family_t family(const event::id_t eid) const noexcept;
 				/**
@@ -175,6 +191,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события
 				 * @return    статус события
+				 *
 				 */
 				event::status_t status(const event::id_t eid) const noexcept;
 				/**
@@ -182,6 +199,7 @@ namespace awh {
 				 *
 				 * @param id идентификатор события
 				 * @return   протокол события
+				 *
 				 */
 				event::protocol_t protocol(const event::id_t id) const noexcept;
 			public:
@@ -189,12 +207,14 @@ namespace awh {
 				 * @brief Метод получения типа внутренних таймеров
 				 *
 				 * @return тип таймера для событий сетевого движка
+				 *
 				 */
 				event::timer_t getInternalTimer() const noexcept;
 				/**
 				 * @brief Метод установки типа внутренних таймеров
 				 *
 				 * @param timer тип таймера для событий сетевого движка
+				 *
 				 */
 				void setInternalTimer(const event::timer_t timer) noexcept;
 			public:
@@ -203,6 +223,7 @@ namespace awh {
 				 *
 				 * @param limiting  режим ограничения пропускной способности события (egress или ingress)
 				 * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+				 *
 				 */
 				void bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept;
 			public:
@@ -210,6 +231,7 @@ namespace awh {
 				 * @brief Метод установки времени блокировки базы событий в ожидании событий
 				 *
 				 * @param timeout время ожидания событий в миллисекундах
+				 *
 				 */
 				void rate(const int32_t timeout = -1) noexcept;
 			public:
@@ -217,6 +239,7 @@ namespace awh {
 				 * @brief Метод установки функций обратного вызова
 				 *
 				 * @param callback функции обратного вызова
+				 *
 				 */
 				virtual void callback(const callback_t & callback) noexcept;
 			public:
@@ -225,6 +248,7 @@ namespace awh {
 				 *
 				 * @tparam T    тип функции обратного вызова
 				 * @tparam Args аргументы функции обратного вызова
+				 *
 				 */
 				template <typename T, class... Args>
 				/**
@@ -233,6 +257,7 @@ namespace awh {
 				 * @param name идентификатор функции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
+				 *
 				 */
 				auto on(const char * name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
@@ -247,6 +272,7 @@ namespace awh {
 				 *
 				 * @tparam T    тип функции обратного вызова
 				 * @tparam Args аргументы функции обратного вызова
+				 *
 				 */
 				template <typename T, class... Args>
 				/**
@@ -255,6 +281,7 @@ namespace awh {
 				 * @param name идентификатор функции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
+				 *
 				 */
 				auto on(string_view name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
@@ -269,6 +296,7 @@ namespace awh {
 				 *
 				 * @tparam T    тип функции обратного вызова
 				 * @tparam Args аргументы функции обратного вызова
+				 *
 				 */
 				template <typename T, class... Args>
 				/**
@@ -277,6 +305,7 @@ namespace awh {
 				 * @param name идентификатор функции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
+				 *
 				 */
 				auto on(const string & name, Args... args) noexcept -> uint32_t {
 					// Если мы получили название функции обратного вызова
@@ -291,6 +320,7 @@ namespace awh {
 				 *
 				 * @tparam T    тип функции обратного вызова
 				 * @tparam Args аргументы функции обратного вызова
+				 *
 				 */
 				template <typename T, class... Args>
 				/**
@@ -299,6 +329,7 @@ namespace awh {
 				 * @param fid  идентификатор функции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
+				 *
 				 */
 				auto on(const uint32_t fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили идентификатор функции обратного вызова
@@ -314,6 +345,7 @@ namespace awh {
 				 * @tparam A    тип идентификатора функции
 				 * @tparam B    тип функции обратного вызова
 				 * @tparam Args аргументы функции обратного вызова
+				 *
 				 */
 				template <typename A, typename B, class... Args>
 				/**
@@ -322,6 +354,7 @@ namespace awh {
 				 * @param fid  идентификатор функции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
+				 *
 				 */
 				auto on(const A fid, Args... args) noexcept -> uint32_t {
 					// Если мы получили на вход число
@@ -336,6 +369,7 @@ namespace awh {
 				 * @brief Метод активации/деактивации перехвата сигналов
 				 *
 				 * @param mode флаг активации
+				 *
 				 */
 				void interception(const event::mode_t mode) noexcept;
 			private:
@@ -348,6 +382,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				Unit & operator = (const Unit &) = delete;
 			public:
@@ -356,6 +391,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Unit(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

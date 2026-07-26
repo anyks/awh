@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл парсера протокола HTTP/1.x — класс Parser_HTTP, выполняющий разбор стартовой строки,
+ *        заголовков и тела с кадрированием chunked и Content-Length, контроль лимитов,
+ *        сбор статистики и сборку исходящих сообщений
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_HTTP_PARSER_HTTP1__
@@ -55,6 +60,7 @@ namespace awh {
 		 *
 		 * @note Контракт версий: принимаются только HTTP/1.0 и HTTP/1.1,
 		 *       любая другая версия отвергается с ошибкой INVALID_VERSION.
+		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Parser_HTTP : public parser_t {
 			public:
@@ -63,42 +69,49 @@ namespace awh {
 				 *
 				 * @note HTTP/1.x не мультиплексируется - идентификатор существует только
 				 *       для универсальности сигнатур функций обратного вызова с HTTP/2
+				 *
 				 */
 				static constexpr uint32_t STREAM_ID = (1);
 				/**
 				 * @brief Максимальная длина строки заголовка чанка (size + chunk-ext)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t MAX_CHUNK_LINE = (16 * 1024);
 				/**
 				 * @brief Максимальная длина request-line/status-line
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t MAX_REQUEST_LINE = (8 * 1024);
 				/**
 				 * @brief Порог сигнала о готовности принимать данные тела (low-water)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t SEND_LOW_WATER = (64 * 1024);
 				/**
 				 * @brief Ёмкость выходного буфера отправки (high-water)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t SEND_HIGH_WATER = (256 * 1024);
 				/**
 				 * @brief Гранулярность порции pull-источника данных тела
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t SOURCE_CHUNK_SIZE = (16 * 1024);
 				/**
 				 * @brief Максимальный размер одного чанка
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr uint64_t MAX_CHUNK_SIZE = (1ull * 1024 * 1024 * 1024);
 			public:
@@ -136,6 +149,7 @@ namespace awh {
 				 * @details Расширяет общее ядро лимитов базового парсера лимитами,
 				 *          специфичными для HTTP/1.x: стартовая строка и кадрирование
 				 *          тела в кодировке chunked
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Limits : parser_t::limits_t {
 					// Максимальная длина строки заголовка чанка (size + chunk-ext)
@@ -157,6 +171,7 @@ namespace awh {
 				 * @details Если Content-Length не установлен, то значение bodySize == -1.
 				 *          Если Content-Length установлен, то значение поля bodySize >= 0.
 				 *          Если указан Transfer-Encoding: chunked, то значение поля bodySize == -1.
+				 *
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Message {
 					public:
@@ -198,6 +213,7 @@ namespace awh {
 						 *
 						 * @param message объект сообщения для перемещения
 						 * @return        текущее сообщение
+						 *
 						 */
 						Message & operator = (Message && message) noexcept;
 						/**
@@ -205,6 +221,7 @@ namespace awh {
 						 *
 						 * @param message объект сообщения для копирования
 						 * @return        текущее сообщение
+						 *
 						 */
 						Message & operator = (const Message & message) noexcept;
 					public:
@@ -213,6 +230,7 @@ namespace awh {
 						 *
 						 * @param message объект сообщения для сравнения
 						 * @return        результат сравнения
+						 *
 						 */
 						bool operator == (const Message & message) noexcept;
 						/**
@@ -220,6 +238,7 @@ namespace awh {
 						 *
 						 * @param message объект сообщения для сравнения
 						 * @return        результат сравнения
+						 *
 						 */
 						bool operator != (const Message & message) noexcept;
 					public:
@@ -227,12 +246,14 @@ namespace awh {
 						 * @brief Конструктор перемещения
 						 *
 						 * @param message объект сообщения для перемещения
+						 *
 						 */
 						Message(Message && message) noexcept;
 						/**
 						 * @brief Конструктор копирования
 						 *
 						 * @param message объект сообщения для копирования
+						 *
 						 */
 						Message(const Message & message) noexcept;
 					public:
@@ -252,6 +273,7 @@ namespace awh {
 				 *          сигнатура универсальна с HTTP/2.
 				 *
 				 * @param sid идентификатор потока (всегда STREAM_ID)
+				 *
 				 */
 				using writable_callback_t = function <void (const uint32_t)>;
 				/**
@@ -264,6 +286,7 @@ namespace awh {
 				 *
 				 * @param buffer буфер исходящих данных
 				 * @param size   размер исходящих данных
+				 *
 				 */
 				using write_callback_t = function <void (const void *, const size_t)>;
 				/**
@@ -284,6 +307,7 @@ namespace awh {
 				 * @param phase фаза разбора HTTP-сообщения
 				 * @param part  часть сообщения (заголовки, трейлеры, тело), NONE - сообщение целиком
 				 * @return      результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
+				 *
 				 */
 				using phase_callback_t = function <bool (const uint32_t, const phase_t, const part_t)>;
 				/**
@@ -304,6 +328,7 @@ namespace awh {
 				 * @param size      размер данных чанка
 				 * @param extension сырые расширения чанка (содержимое после ';' без CRLF), действительны ТОЛЬКО на время вызова
 				 * @return          результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
+				 *
 				 */
 				using chunk_callback_t = function <bool (const phase_t, const uint64_t, const string_view)>;
 				/**
@@ -319,6 +344,7 @@ namespace awh {
 				 * @param provider  объект провайдера заголовков сообщения (nullptr для трейлеров)
 				 * @param endStream флаг завершения сообщения (тела не будет)
 				 * @return          результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
+				 *
 				 */
 				using provider_callback_t = function <bool (const uint32_t, const provider_t *, const bool)>;
 				/**
@@ -337,6 +363,7 @@ namespace awh {
 				 * @param size      размер данных тела сообщения
 				 * @param endStream флаг завершения сообщения (фрагмент завершает тело)
 				 * @return          результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
+				 *
 				 */
 				using data_callback_t = function <bool (const uint32_t, const void *, const size_t, const bool)>;
 				/**
@@ -354,6 +381,7 @@ namespace awh {
 				 * @param cap    ёмкость буфера
 				 * @param eof    флаг достижения конца тела
 				 * @return       число записанных байт либо -1 при ошибке
+				 *
 				 */
 				using data_source_callback_t = function <int64_t (const uint32_t, uint8_t *, const size_t, bool &)>;
 				/**
@@ -369,6 +397,7 @@ namespace awh {
 				 * @param value значение заголовка (без внешних OWS)
 				 * @param part  часть сообщения (заголовки или трейлеры)
 				 * @return      результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
+				 *
 				 */
 				using header_callback_t = function <bool (const uint32_t, const string_view, const string_view, const part_t)>;
 			private:
@@ -589,12 +618,14 @@ namespace awh {
 				 * @brief Метод завершения разбора текущего заголовка/трейлера
 				 *
 				 * @return результат обработки (false - разбор прерван)
+				 *
 				 */
 				bool commitHeader() noexcept;
 				/**
 				 * @brief Метод завершения разбора стартовой строки (request-line/status-line)
 				 *
 				 * @return результат обработки (false - разбор прерван)
+				 *
 				 */
 				bool commitStartLine() noexcept;
 			private:
@@ -612,6 +643,7 @@ namespace awh {
 				 * @brief Метод проверки отсутствия тела у ответа сервера (по статус-коду и методу запроса)
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool responseHasNoBody() const noexcept;
 			private:
@@ -619,6 +651,7 @@ namespace awh {
 				 * @brief Метод фиксации ошибки разбора (код ошибки, итоговый статус и запись в лог)
 				 *
 				 * @param error код ошибки разбора
+				 *
 				 */
 				void fail(const error_t error) noexcept;
 			private:
@@ -627,12 +660,14 @@ namespace awh {
 				 *
 				 * @details Если функция записи не установлена - байты остаются во внутреннем
 				 *          буфере до выборки через pending()/consumePending().
+				 *
 				 */
 				void flush() noexcept;
 				/**
 				 * @brief Метод получения логического объёма ещё не отправленных исходящих байтов
 				 *
 				 * @return объём не отправленных исходящих байтов
+				 *
 				 */
 				size_t outputPending() const noexcept;
 			private:
@@ -643,6 +678,7 @@ namespace awh {
 				 *          кадрирование тела применяется к каждой полученной порции.
 				 *
 				 * @return число полученных от источника байт тела
+				 *
 				 */
 				size_t refillFromSource() noexcept;
 			private:
@@ -653,6 +689,7 @@ namespace awh {
 				 *          источник до конца тела либо до временного отсутствия данных.
 				 *          В pull-режиме наполняет выходной буфер до high-water однократно -
 				 *          досылка происходит по мере выборки consumePending().
+				 *
 				 */
 				void pumpSource() noexcept;
 				/**
@@ -671,6 +708,7 @@ namespace awh {
 				 *
 				 * @param buffer буфер данных тела
 				 * @param size   размер данных тела
+				 *
 				 */
 				void frameBody(const void * buffer, const size_t size) noexcept;
 			private:
@@ -680,6 +718,7 @@ namespace awh {
 				 * @param phase фаза разбора HTTP-сообщения
 				 * @param part  часть сообщения
 				 * @return      результат обработки (false - разбор прерван с ошибкой ABORTED)
+				 *
 				 */
 				bool firePhase(const phase_t phase, const part_t part) noexcept;
 				/**
@@ -688,6 +727,7 @@ namespace awh {
 				 * @param phase фаза разбора чанка
 				 * @param size  размер данных чанка
 				 * @return      результат обработки (false - разбор прерван с ошибкой ABORTED)
+				 *
 				 */
 				bool fireChunk(const phase_t phase, const uint64_t size) noexcept;
 				/**
@@ -696,6 +736,7 @@ namespace awh {
 				 * @param provider  объект провайдера заголовков сообщения (nullptr для трейлеров)
 				 * @param endStream флаг завершения сообщения (тела не будет)
 				 * @return          результат обработки (false - разбор прерван с ошибкой ABORTED)
+				 *
 				 */
 				bool fireProvider(const provider_t * provider, const bool endStream) noexcept;
 			private:
@@ -704,6 +745,7 @@ namespace awh {
 				 *
 				 * @param begin начало значения заголовка
 				 * @param end   конец значения заголовка
+				 *
 				 */
 				void applyConnection(const char * begin, const char * end) noexcept;
 				/**
@@ -712,6 +754,7 @@ namespace awh {
 				 * @param begin начало значения заголовка
 				 * @param end   конец значения заголовка
 				 * @return      результат интерпретации
+				 *
 				 */
 				bool applyContentLength(const char * begin, const char * end) noexcept;
 				/**
@@ -719,6 +762,7 @@ namespace awh {
 				 *
 				 * @param begin начало значения заголовка
 				 * @param end   конец значения заголовка
+				 *
 				 */
 				void applyTransferEncoding(const char * begin, const char * end) noexcept;
 			public:
@@ -727,6 +771,7 @@ namespace awh {
 				 *
 				 * @details Помимо сброса состояния разбора возвращает лимиты безопасности
 				 *          к значениям по умолчанию и удаляет установленные функции обратного вызова.
+				 *
 				 */
 				void clear() noexcept override;
 				/**
@@ -737,6 +782,7 @@ namespace awh {
 				 *          не пересоздаётся, а очищается (переиспользуется выделенная память).
 				 *          Метод запроса, установленный через method(), сбрасывается в NONE -
 				 *          для направления RESPONSE выставляйте его заново перед каждым ответом.
+				 *
 				 */
 				void reset() noexcept override;
 			public:
@@ -751,6 +797,7 @@ namespace awh {
 				 *          в keep-alive/конвейере.
 				 *
 				 * @param method метод запроса клиента
+				 *
 				 */
 				void method(const method_t method) noexcept;
 			public:
@@ -761,6 +808,7 @@ namespace awh {
 				 *          обратного вызова, но чистое состояние разбора ("фабрика с теми же настройками").
 				 *
 				 * @return копия объекта парсера
+				 *
 				 */
 				unique_ptr <parser_t> clone() const noexcept override;
 			public:
@@ -778,6 +826,7 @@ namespace awh {
 				 *            (нормальное закрытие keep-alive соединения);
 				 *          - если сообщение разобрано частично (заголовки или недочитанное тело
 				 *            с Content-Length) - фиксируется ошибка PREMATURE_EOF (обрыв соединения).
+				 *
 				 */
 				void eof() noexcept override;
 				/**
@@ -794,6 +843,7 @@ namespace awh {
 				 * @param buffer буфер данных для разбора
 				 * @param size   размер данных для разбора
 				 * @return       количество обработанных байт данных
+				 *
 				 */
 				size_t parse(const void * buffer, const size_t size) noexcept override;
 			public:
@@ -801,12 +851,14 @@ namespace awh {
 				 * @brief Метод получения кода ошибки разбора
 				 *
 				 * @return код ошибки
+				 *
 				 */
 				error_t error() const noexcept;
 				/**
 				 * @brief Метод получения человекочитаемого названия текущей ошибки разбора
 				 *
 				 * @return название текущей ошибки разбора
+				 *
 				 */
 				string_view errorName() const noexcept override;
 				/**
@@ -814,6 +866,7 @@ namespace awh {
 				 *
 				 * @param error код ошибки разбора
 				 * @return      название кода ошибки
+				 *
 				 */
 				static string_view errorName(const error_t error) noexcept;
 			public:
@@ -821,12 +874,14 @@ namespace awh {
 				 * @brief Метод получения лимитов безопасности
 				 *
 				 * @return лимиты безопасности
+				 *
 				 */
 				const limits_t & limits() const noexcept;
 				/**
 				 * @brief Метод установки лимитов безопасности
 				 *
 				 * @param limits лимиты безопасности
+				 *
 				 */
 				void limits(const limits_t & limits) noexcept;
 			public:
@@ -834,6 +889,7 @@ namespace awh {
 				 * @brief Метод получения разобранного сообщения
 				 *
 				 * @return разобранное сообщение
+				 *
 				 */
 				const message_t & message() const noexcept;
 			public:
@@ -844,6 +900,7 @@ namespace awh {
 				 *          кадрирование, источник данных и флаги, но НЕ трогает неотправленный
 				 *          остаток выходного буфера. Состояние разбора не затрагивается -
 				 *          для него используется reset().
+				 *
 				 */
 				void resetSender() noexcept;
 			public:
@@ -851,6 +908,7 @@ namespace awh {
 				 * @brief Метод назначения pull-источника данных тела сообщения
 				 *
 				 * @param source pull-источник данных тела
+				 *
 				 */
 				void dataSource(data_source_callback_t source) noexcept;
 			public:
@@ -859,6 +917,7 @@ namespace awh {
 				 *
 				 * @param high ёмкость выходного буфера отправки (high-water)
 				 * @param low  порог сигнала writable (low-water)
+				 *
 				 */
 				void sendWaterMarks(const size_t high, const size_t low) noexcept;
 			public:
@@ -877,6 +936,7 @@ namespace awh {
 				 *
 				 * @param headers   контейнер заголовков (провайдер контейнера задаёт стартовую строку)
 				 * @param endStream флаг завершения сообщения (тела не будет)
+				 *
 				 */
 				void sendHeaders(const headers_t & headers, const bool endStream) noexcept;
 				/**
@@ -891,6 +951,7 @@ namespace awh {
 				 * @param size      размер данных тела
 				 * @param endStream флаг завершения сообщения
 				 * @return          число принятых байт (0..size)
+				 *
 				 */
 				size_t sendData(const void * buffer, const size_t size, const bool endStream) noexcept;
 			public:
@@ -903,12 +964,14 @@ namespace awh {
 				 *          записи буфер опустошается автоматически.
 				 *
 				 * @return ещё не отправленные исходящие байты (zero-copy view во внутренний буфер)
+				 *
 				 */
 				string_view pending() const noexcept;
 				/**
 				 * @brief Метод освобождения отправленных байтов из исходящего буфера (амортизированно O(1))
 				 *
 				 * @param size число отправленных байт
+				 *
 				 */
 				void consumePending(const size_t size) noexcept;
 			public:
@@ -916,42 +979,49 @@ namespace awh {
 				 * @brief Метод установки функции обратного вызова для обработки фрагмента тела сообщения
 				 *
 				 * @param callback функция обратного вызова для обработки фрагмента тела сообщения
+				 *
 				 */
 				void on(data_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки фазы разбора HTTP-сообщения
 				 *
 				 * @param callback функция обратного вызова для обработки фазы разбора HTTP-сообщения
+				 *
 				 */
 				void on(phase_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки границ чанков
 				 *
 				 * @param callback функция обратного вызова для обработки границ чанков
+				 *
 				 */
 				void on(chunk_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова записи исходящих байтов в сеть
 				 *
 				 * @param callback функция обратного вызова записи исходящих байтов в сеть
+				 *
 				 */
 				void on(write_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки заголовков или трейлеров сообщения
 				 *
 				 * @param callback функция обратного вызова для обработки заголовков или трейлеров сообщения
+				 *
 				 */
 				void on(header_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки провайдера заголовков сообщения
 				 *
 				 * @param callback функция обратного вызова для обработки провайдера заголовков сообщения
+				 *
 				 */
 				void on(provider_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова о готовности принимать данные тела
 				 *
 				 * @param callback функция обратного вызова о готовности принимать данные тела
+				 *
 				 */
 				void on(writable_callback_t callback) noexcept;
 			public:
@@ -961,6 +1031,7 @@ namespace awh {
 				 * @param direct направление трафика (запрос/ответ)
 				 * @param fmk    объект фреймворка
 				 * @param log    объект для работы с логами
+				 *
 				 */
 				explicit Parser_HTTP(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept;
 			public:

@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля потоковой компрессии — публичный API класса compressor::Stream, выполняющего
+ *        инкрементальное сжатие и распаковку данных по мере их поступления с управлением временем жизни тяжёлого
+ *        контекста движка и финализацией потока
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -56,6 +61,7 @@ namespace awh {
 		 * @details Один объект обслуживает один поток/соединение и не является
 		 *          потокобезопасным. Тяжёлый контекст движка жив только от создания
 		 *          объекта до финализации (finish) или разрушения.
+		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Stream {
 			private:
@@ -74,12 +80,14 @@ namespace awh {
 				 * @brief Метод проверки завершённости потока
 				 *
 				 * @return true, если поток финализирован (после finish)
+				 *
 				 */
 				bool done() const noexcept;
 				/**
 				 * @brief Метод проверки валидности потока
 				 *
 				 * @return true, если движок поддержал потоковый режим и контекст создан
+				 *
 				 */
 				bool valid() const noexcept;
 			public:
@@ -87,12 +95,14 @@ namespace awh {
 				 * @brief Метод получения направления операции потока
 				 *
 				 * @return направление операции
+				 *
 				 */
 				event_t event() const noexcept;
 				/**
 				 * @brief Метод получения метода компрессии потока
 				 *
 				 * @return метод компрессии
+				 *
 				 */
 				method_t method() const noexcept;
 			public:
@@ -100,24 +110,28 @@ namespace awh {
 				 * @brief Шаблон метода принудительного выдавливания накопленного
 				 *
 				 * @tparam T тип контейнера результата
+				 *
 				 */
 				template <typename T>
 				/**
 				 * @brief Метод принудительного выдавливания накопленного (SYNC-flush)
 				 *
 				 * @param result контейнер, куда помещается готовый выход
+				 *
 				 */
 				void flush(T & result) noexcept;
 				/**
 				 * @brief Шаблон метода финализации потока
 				 *
 				 * @tparam T тип контейнера результата
+				 *
 				 */
 				template <typename T>
 				/**
 				 * @brief Метод финализации потока (дожать хвост, завершить)
 				 *
 				 * @param result контейнер, куда помещается остаток данных
+				 *
 				 */
 				void finish(T & result) noexcept;
 			public:
@@ -125,6 +139,7 @@ namespace awh {
 				 * @brief Шаблон метода подачи порции данных в поток
 				 *
 				 * @tparam T тип контейнера результата
+				 *
 				 */
 				template <typename T>
 				/**
@@ -133,12 +148,14 @@ namespace awh {
 				 * @param buffer буфер данных для обработки
 				 * @param result контейнер, куда помещается готовый выход этой порции
 				 * @param flush  режим сброса данных
+				 *
 				 */
 				void push(string_view buffer, T & result, const flush_t flush = flush_t::NONE) noexcept;
 				/**
 				 * @brief Шаблон метода подачи порции данных в поток
 				 *
 				 * @tparam T тип контейнера результата
+				 *
 				 */
 				template <typename T>
 				/**
@@ -148,6 +165,7 @@ namespace awh {
 				 * @param size   размер данных для обработки
 				 * @param result контейнер, куда помещается готовый выход этой порции
 				 * @param flush  режим сброса данных
+				 *
 				 */
 				void push(const void * buffer, const size_t size, T & result, const flush_t flush = flush_t::NONE) noexcept;
 			public:
@@ -160,6 +178,7 @@ namespace awh {
 				 * @brief Запрещаем копирование
 				 *
 				 * @return результат операции
+				 *
 				 */
 				Stream & operator = (const Stream &) = delete;
 			public:
@@ -186,6 +205,7 @@ namespace awh {
 				 * @param event  направление операции
 				 * @param params параметры инициализации
 				 * @param log    объект для работы с логами
+				 *
 				 */
 				explicit Stream(const method_t method, const event_t event, const params_t & params, const log_t * log) noexcept;
 				/**

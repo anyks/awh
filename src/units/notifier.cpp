@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля уведомителя —
+ *        пробуждение цикла событий и доставка пользовательских уведомлений между потоками
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -32,6 +36,7 @@ using namespace placeholders;
  *
  * @param eid  идентификатор события
  * @param size размер сообщения
+ *
  */
 void awh::unit::Notifier::write(const event::id_t eid, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -43,6 +48,7 @@ void awh::unit::Notifier::write(const event::id_t eid, const size_t size) noexce
  * @param eid  идентификатор события
  * @param data данные сообщения
  * @param size размер сообщения
+ *
  */
 void awh::unit::Notifier::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -53,6 +59,7 @@ void awh::unit::Notifier::read(const event::id_t eid, const uint8_t * data, cons
  *
  * @param eid    идентификатор события
  * @param status статус события
+ *
  */
 void awh::unit::Notifier::state(const event::id_t eid, const event::status_t status) noexcept {
 	// Если статус уведомителя представляет из себя уничтожение
@@ -76,6 +83,7 @@ void awh::unit::Notifier::state(const event::id_t eid, const event::status_t sta
  * @param eid     идентификатор события
  * @param error   тип ошибки
  * @param message сообщение об ошибке
+ *
  */
 void awh::unit::Notifier::error(const event::id_t eid, const event::error_t error, const string & message) noexcept {
 	// Выполняем функцию обратного вызова
@@ -87,6 +95,7 @@ void awh::unit::Notifier::error(const event::id_t eid, const event::error_t erro
  * @param eid    идентификатор события
  * @param status статус события
  * @param size   доступный размер очереди в байтах
+ *
  */
 void awh::unit::Notifier::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -96,6 +105,7 @@ void awh::unit::Notifier::available(const event::id_t eid, const event::status_t
  * @brief Метод создания события уведомителя
  *
  * @return идентификатор события уведомителя
+ *
  */
 awh::event::id_t awh::unit::Notifier::create() noexcept {
 	// Выполняем создание события уведомителя
@@ -163,6 +173,7 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
  * @brief Метод уничтожения события уведомителя
  *
  * @param eid идентификатор события уведомителя
+ *
  */
 void awh::unit::Notifier::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие уведомителя
@@ -172,6 +183,7 @@ void awh::unit::Notifier::destroy(const event::id_t eid) noexcept {
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::unit::Notifier::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
@@ -192,6 +204,7 @@ void awh::unit::Notifier::callback(const callback_t & callback) noexcept {
  * @param buffer буфер данных для отправки
  * @param size   размер буфера данных
  * @return       количество отправленных байт
+ *
  */
 size_t awh::unit::Notifier::trigger(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Триггерим событие уведомителя
@@ -202,6 +215,7 @@ size_t awh::unit::Notifier::trigger(const event::id_t eid, const void * buffer, 
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::unit::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
 /**

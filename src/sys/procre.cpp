@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля резольвера процессов — сопоставление сетевого соединения с владеющим им процессом через
+ *        нативные механизмы операционной системы (procfs, sysctl, системные API)
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -134,6 +138,7 @@ using namespace std;
 		 * @param filename путь к файлу для извлечения
 		 * @param log      объект для работы с логами
 		 * @return         содержимое файла
+		 *
 		 */
 		static string read(const string & filename, const awh::log_t * log) noexcept {
 			// Переменная результата
@@ -228,6 +233,7 @@ void awh::Process_Resolver::scanning() noexcept {
 			 * @param filename путь к файлу для извлечения
 			 * @param proto    протокол сокета
 			 * @param family   семейство адресов сокета
+			 *
 			 */
 			auto parse = [&socketsInfo](const char * filename, const event::protocol_t proto, const event::family_t family) noexcept -> void {
 				// Открываем файл для чтения
@@ -1184,6 +1190,7 @@ void awh::Process_Resolver::scanning() noexcept {
 										 *
 										 * @param addr     строка с адресом и портом
 										 * @param isSource флаг, указывающий, является ли адрес источником (true) или назначением (false)
+										 *
 										 */
 										auto parse = [&info](const string & addr, const bool isSource) noexcept -> void {
 											// Если адрес является универсальным или пустым, пропускаем его
@@ -1327,6 +1334,7 @@ void awh::Process_Resolver::scanning() noexcept {
 										 *
 										 * @param addr     строка с адресом и портом
 										 * @param isSource флаг, указывающий, является ли адрес источником (true) или назначением (false)
+										 *
 										 */
 										auto parse = [&info](const string & addr, const bool isSource) noexcept -> void {
 											// Если адрес является универсальным или пустым, пропускаем его
@@ -1618,6 +1626,7 @@ void awh::Process_Resolver::scanning() noexcept {
  *
  * @param pid идентификатор процесса
  * @return    название приложения которому принадлежит процесс
+ *
  */
 string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 	// Переменная результата
@@ -1805,6 +1814,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
  * @brief Метод установки функции обратного вызова для получения информации о процессе
  *
  * @param callback функция обратного вызова
+ *
  */
 void awh::Process_Resolver::on(function <void (const pid_t, const info_t &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -1814,6 +1824,7 @@ void awh::Process_Resolver::on(function <void (const pid_t, const info_t &)> cal
  * @brief Конструктор
  *
  * @param log объект для работы с логами
+ *
  */
 awh::Process_Resolver::Process_Resolver(const log_t * log) noexcept : _callback(nullptr), _log(log) {}
 /**

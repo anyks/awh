@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация ядра фреймворка — базовые утилиты библиотеки: работа со строками и кодировками,
+ *        смена регистра с учётом локали, форматирование, конвертация типов, проверка форматов данных и разбор чисел
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -72,6 +76,7 @@ namespace {
 	 * @param data указатель на буфер данных в кодировке UTF-8
 	 * @param size размер буфера данных в байтах
 	 * @return     результирующая широкая строка (UTF-32 при 4-байтовом wchar_t, UTF-16 при 2-байтовом)
+	 *
 	 */
 	wstring utf8ToWide(const char * data, const size_t size) noexcept {
 		// Если данные не переданы
@@ -86,6 +91,7 @@ namespace {
 		 *
 		 * @param out буфер для записи широких символов (вместимость не меньше size)
 		 * @return    количество записанных кодовых юнитов
+		 *
 		 */
 		const auto decode = [data, size](wchar_t * out) noexcept -> size_t {
 			// Счётчик записанных символов
@@ -225,6 +231,7 @@ namespace {
 	 * @param data буфер широких символов (UTF-32 при 4-байтовом wchar_t, UTF-16 при 2-байтовом)
 	 * @param size размер буфера данных в символах
 	 * @return     результирующая строка в кодировке UTF-8
+	 *
 	 */
 	string wideToUtf8(const wchar_t * data, const size_t size) noexcept {
 		// Если данные не переданы
@@ -239,6 +246,7 @@ namespace {
 		 *
 		 * @param out буфер для записи байт UTF-8 (вместимость не меньше size * 4)
 		 * @return    количество записанных байт
+		 *
 		 */
 		const auto encode = [data, size](char * out) noexcept -> size_t {
 			// Счётчик записанных байт
@@ -331,6 +339,7 @@ namespace {
 	 * @param number число в котором нужно определить количество знаков
 	 * @param log    объект работы с логами
 	 * @return       количество знаков после запятой
+	 *
 	 */
 	uint8_t decimalPlaces(double number, const awh::log_t * log) noexcept {
 		// Переменная результата
@@ -434,6 +443,7 @@ namespace {
 			 * @param to   название кодировки в которую необходимо выпоолнить конвертацию
 			 * @param log  объект работы с логами
 			 * @return     получившееся в результате значение
+			 *
 			 */
 			static string convertEncoding(string_view data, string_view from, string_view to, const awh::log_t * log){
 				// Переменная результата
@@ -527,6 +537,7 @@ namespace {
 	 * @brief Шаблон функции разделения строк на составляющие
 	 *
 	 * @tparam T тип контейнера в котором извлекается результат
+	 *
 	 */
 	template <typename T>
 	/**
@@ -537,6 +548,7 @@ namespace {
 	 * @param container контенер содержащий данные
 	 * @param log       объект работы с логами
 	 * @return          контенер содержащий данные
+	 *
 	 */
 	T & split(string_view str, string_view delim, T & container, const awh::log_t * log) noexcept {
 		/**
@@ -544,6 +556,7 @@ namespace {
 		 *
 		 * @param text текст для удаления пробелов
 		 * @return     результат работы функции
+		 *
 		 */
 		auto trimFn = [&](string & text) noexcept -> string & {
 			/**
@@ -679,6 +692,7 @@ namespace {
 	 * @brief Шаблон функции разделения строк на составляющие
 	 *
 	 * @tparam T тип контейнера в котором извлекается результат
+	 *
 	 */
 	template <typename T>
 	/**
@@ -689,6 +703,7 @@ namespace {
 	 * @param container контенер содержащий данные
 	 * @param log       объект работы с логами
 	 * @return          контенер содержащий данные
+	 *
 	 */
 	T & split(wstring_view str, wstring_view delim, T & container, const awh::log_t * log) noexcept {
 		/**
@@ -696,6 +711,7 @@ namespace {
 		 *
 		 * @param text текст для удаления пробелов
 		 * @return     результат работы функции
+		 *
 		 */
 		auto trimFn = [&](wstring & text) noexcept -> wstring & {
 			/**
@@ -865,6 +881,7 @@ namespace {
 			 *
 			 * @param num римская цифра для проверки
 			 * @return    результат проверки
+			 *
 			 */
 			bool isRome(const char num) const noexcept {
 				// Выполняем проверку сущестования цифры
@@ -875,6 +892,7 @@ namespace {
 			 *
 			 * @param num римская цифра для проверки
 			 * @return    результат проверки
+			 *
 			 */
 			bool isRome(const wchar_t num) const noexcept {
 				// Выполняем проверку сущестования цифры
@@ -886,6 +904,7 @@ namespace {
 			 *
 			 * @param num арабская цифра для проверки
 			 * @return    результат проверки
+			 *
 			 */
 			bool isArabic(const char num) const noexcept {
 				// Выполняем проверку сущестования цифры
@@ -896,6 +915,7 @@ namespace {
 			 *
 			 * @param num арабская цифра для проверки
 			 * @return    результат проверки
+			 *
 			 */
 			bool isArabic(const wchar_t num) const noexcept {
 				// Выполняем проверку сущестования цифры
@@ -907,6 +927,7 @@ namespace {
 			 *
 			 * @param letter латинская буква для проверки
 			 * @return       результат проверки
+			 *
 			 */
 			bool isLetter(const char letter) const noexcept {
 				// Выполняем проверку сущестования латинской буквы
@@ -917,6 +938,7 @@ namespace {
 			 *
 			 * @param letter латинская буква для проверки
 			 * @return       результат проверки
+			 *
 			 */
 			bool isLetter(const wchar_t letter) const noexcept {
 				// Выполняем проверку сущестования латинской буквы
@@ -928,6 +950,7 @@ namespace {
 			 *
 			 * @param num римская цифра для извлечения
 			 * @return    арабская цифрва в виде числа
+			 *
 			 */
 			uint16_t getRome(const char num) const noexcept {
 				// Переменная результата
@@ -946,6 +969,7 @@ namespace {
 			 *
 			 * @param num римская цифра для извлечения
 			 * @return    арабская цифрва в виде числа
+			 *
 			 */
 			uint16_t getRome(const wchar_t num) const noexcept {
 				// Переменная результата
@@ -965,6 +989,7 @@ namespace {
 			 *
 			 * @param num арабская цифра для извлечения
 			 * @return    арабская цифрва в виде числа
+			 *
 			 */
 			uint8_t getArabic(const char num) const noexcept {
 				// Переменная результата
@@ -983,6 +1008,7 @@ namespace {
 			 *
 			 * @param num арабская цифра для извлечения
 			 * @return    арабская цифрва в виде числа
+			 *
 			 */
 			uint8_t getArabic(const wchar_t num) const noexcept {
 				// Переменная результата
@@ -1002,6 +1028,7 @@ namespace {
 			 *
 			 * @param letter латинская буква для извлечения
 			 * @return       латинская буква в виде символа
+			 *
 			 */
 			wchar_t getLetter(const char letter) const noexcept {
 				// Переменная результата
@@ -1020,6 +1047,7 @@ namespace {
 			 *
 			 * @param letter латинская буква для извлечения
 			 * @return       латинская буква в виде символа
+			 *
 			 */
 			char getLetter(const wchar_t letter) const noexcept {
 				// Переменная результата
@@ -1121,6 +1149,7 @@ namespace {
  * @brief Метод генерации уникального идентификатора
  *
  * @return уникальный идентификатор
+ *
  */
 uint32_t awh::Framework::identifier() const noexcept {
 	// Начинаем с 1 (0 можно оставить как "invalid")
@@ -1134,6 +1163,7 @@ uint32_t awh::Framework::identifier() const noexcept {
  * @param letter текст для проверки
  * @param flag   флаг проверки
  * @return       результат проверки
+ *
  */
 bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 	// Переменная результата
@@ -1230,6 +1260,7 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
  * @param letter текст для проверки
  * @param flag   флаг проверки
  * @return       результат проверки
+ *
  */
 bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept {
 	// Переменная результата
@@ -1326,6 +1357,7 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
  * @param text текст для проверки
  * @param flag флаг проверки
  * @return     результат проверки
+ *
  */
 bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 	// Переменная результата
@@ -1437,6 +1469,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 						 * @param text  текст для проверки
 						 * @param index индекс буквы в слове
 						 * @return      результат проверки
+						 *
 						 */
 						auto checkFn = [this](string_view text, const size_t index) noexcept -> bool {
 							// Переменная результата
@@ -1707,6 +1740,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
  * @param text текст для проверки
  * @param flag флаг проверки
  * @return     результат проверки
+ *
  */
 bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 	// Переменная результата
@@ -1818,6 +1852,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 						 * @param text  текст для проверки
 						 * @param index индекс буквы в слове
 						 * @return      результат проверки
+						 *
 						 */
 						auto checkFn = [this](wstring_view text, const size_t index) noexcept -> bool {
 							// Переменная результата
@@ -2088,6 +2123,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
  * @param first  первое слово
  * @param second второе слово
  * @return       результат сравнения
+ *
  */
 bool awh::Framework::compare(string_view first, string_view second) const noexcept {
 	// Если строки пришли не пустыми
@@ -2107,6 +2143,7 @@ bool awh::Framework::compare(string_view first, string_view second) const noexce
  * @param first  первое слово
  * @param second второе слово
  * @return       результат сравнения
+ *
  */
 bool awh::Framework::compare(const char * first, const char * second) const noexcept {
 	// Если данные для сравшнения не пришли пустыми
@@ -2122,6 +2159,7 @@ bool awh::Framework::compare(const char * first, const char * second) const noex
  * @param first  первое слово
  * @param second второе слово
  * @return       результат сравнения
+ *
  */
 bool awh::Framework::compare(wstring_view first, wstring_view second) const noexcept {
 	// Если строки пришли не пустыми
@@ -2141,6 +2179,7 @@ bool awh::Framework::compare(wstring_view first, wstring_view second) const noex
  * @param first  первое слово
  * @param second второе слово
  * @return       результат сравнения
+ *
  */
 bool awh::Framework::compare(const wchar_t * first, const wchar_t * second) const noexcept {
 	// Если данные для сравшнения не пришли пустыми
@@ -2157,6 +2196,7 @@ bool awh::Framework::compare(const wchar_t * first, const wchar_t * second) cons
  * @param size   размер бинарных данных штампа времени
  * @param type   тип формируемого штампа времени
  * @param text   флаг извлечения данных в текстовом виде
+ *
  */
 void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t type, const bool text) const noexcept {
 	// Если буфер данных передан правильно
@@ -2437,6 +2477,7 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
  * @brief Шаблон метода получения штампа времени в указанных единицах измерения
  *
  * @tparam T тип данных в котором извлекаются данные
+ *
  */
 template <typename T>
 /**
@@ -2444,6 +2485,7 @@ template <typename T>
  *
  * @param type тип формируемого штампа времени
  * @return     сгенерированный штамп времени
+ *
  */
 T awh::Framework::timestamp(const chrono_t type) const noexcept {
 	// Переменная результата
@@ -2489,6 +2531,7 @@ template string awh::Framework::timestamp <string> (const chrono_t) const noexce
  * @param text     текст для конвертирования
  * @param codepage кодировка в которую необходимо сконвертировать текст
  * @return         сконвертированный текст в требуемой кодировке
+ *
  */
 string awh::Framework::transcode(string_view text, const codepage_t codepage) const noexcept {
 	// Переменная результата
@@ -2659,6 +2702,7 @@ string awh::Framework::transcode(string_view text, const codepage_t codepage) co
  * @param letter символ для трансформации
  * @param flag   флаг трансформации
  * @return       трансформированный символ
+ *
  */
 char awh::Framework::transform(const char letter, const transform_t flag) const noexcept {
 	/**
@@ -2683,6 +2727,7 @@ char awh::Framework::transform(const char letter, const transform_t flag) const 
  * @param letter символ для трансформации
  * @param flag   флаг трансформации
  * @return       трансформированный символ
+ *
  */
 wchar_t awh::Framework::transform(const wchar_t letter, const transform_t flag) const noexcept {
 	/**
@@ -2707,6 +2752,7 @@ wchar_t awh::Framework::transform(const wchar_t letter, const transform_t flag) 
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
+ *
  */
 string & awh::Framework::transform(string & text, const transform_t flag) const noexcept {
 	// Если текст для обработки передан
@@ -2817,6 +2863,7 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
+ *
  */
 wstring & awh::Framework::transform(wstring & text, const transform_t flag) const noexcept {
 	// Если текст для обработки передан
@@ -2927,6 +2974,7 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
+ *
  */
 const string & awh::Framework::transform(const string & text, const transform_t flag) const noexcept {
 	// Выполняем трансформацию текста
@@ -2938,6 +2986,7 @@ const string & awh::Framework::transform(const string & text, const transform_t 
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
+ *
  */
 const wstring & awh::Framework::transform(const wstring & text, const transform_t flag) const noexcept {
 	// Выполняем трансформацию текста
@@ -2949,6 +2998,7 @@ const wstring & awh::Framework::transform(const wstring & text, const transform_
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
+ *
  */
 string awh::Framework::transform(string_view text, const transform_t flag) const noexcept {
 	// Выполняем трансформацию текста
@@ -2960,6 +3010,7 @@ string awh::Framework::transform(string_view text, const transform_t flag) const
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
+ *
  */
 wstring awh::Framework::transform(wstring_view text, const transform_t flag) const noexcept {
 	// Выполняем трансформацию текста
@@ -2971,6 +3022,7 @@ wstring awh::Framework::transform(wstring_view text, const transform_t flag) con
  * @param items список строк которые необходимо объединить
  * @param delim разделитель
  * @return      строка полученная после объединения
+ *
  */
 string awh::Framework::join(const vector <string> & items, string_view delim) const noexcept {
 	// Переменная результата
@@ -2998,6 +3050,7 @@ string awh::Framework::join(const vector <string> & items, string_view delim) co
  * @param items список строк которые необходимо объединить
  * @param delim разделитель
  * @return      строка полученная после объединения
+ *
  */
 wstring awh::Framework::join(const vector <wstring> & items, wstring_view delim) const noexcept {
 	// Переменная результата
@@ -3025,6 +3078,7 @@ wstring awh::Framework::join(const vector <wstring> & items, wstring_view delim)
  * @param text      строка для парсинга
  * @param delim     разделитель
  * @param container результирующий вектор
+ *
  */
 vector <string> & awh::Framework::split(string_view text, string_view delim, vector <string> & container) const noexcept {
 	// Выполняем сплит текста
@@ -3036,6 +3090,7 @@ vector <string> & awh::Framework::split(string_view text, string_view delim, vec
  * @param text      строка для парсинга
  * @param delim     разделитель
  * @param container результирующий вектор
+ *
  */
 vector <wstring> & awh::Framework::split(wstring_view text, wstring_view delim, vector <wstring> & container) const noexcept {
 	// Выполняем сплит текста
@@ -3046,6 +3101,7 @@ vector <wstring> & awh::Framework::split(wstring_view text, wstring_view delim, 
  *
  * @param str строка для конвертирования
  * @return    строка в utf-8
+ *
  */
 wstring awh::Framework::convert(string_view str) const noexcept {
 	// Переменная результата
@@ -3147,6 +3203,7 @@ wstring awh::Framework::convert(string_view str) const noexcept {
  *
  * @param str строка utf-8 для конвертирования
  * @return    обычная строка
+ *
  */
 string awh::Framework::convert(wstring_view str) const noexcept {
 	// Переменная результата
@@ -3248,6 +3305,7 @@ string awh::Framework::convert(wstring_view str) const noexcept {
  *
  * @param str строка для конвертирования
  * @return    строка в utf-8
+ *
  */
 wstring awh::Framework::convert(const char * str) const noexcept {
 	// Переменная результата
@@ -3349,6 +3407,7 @@ wstring awh::Framework::convert(const char * str) const noexcept {
  *
  * @param str строка utf-8 для конвертирования
  * @return    обычная строка
+ *
  */
 string awh::Framework::convert(const wchar_t * str) const noexcept {
 	// Переменная результата
@@ -3450,6 +3509,7 @@ string awh::Framework::convert(const wchar_t * str) const noexcept {
  *
  * @param str строка для конвертирования
  * @return    строка в utf-8
+ *
  */
 wstring awh::Framework::convert(const string & str) const noexcept {
 	// Переменная результата
@@ -3551,6 +3611,7 @@ wstring awh::Framework::convert(const string & str) const noexcept {
  *
  * @param str строка utf-8 для конвертирования
  * @return    обычная строка
+ *
  */
 string awh::Framework::convert(const wstring & str) const noexcept {
 	// Переменная результата
@@ -3651,6 +3712,7 @@ string awh::Framework::convert(const wstring & str) const noexcept {
  * @brief функции определения точного размера, сколько занимает число байт
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -3658,6 +3720,7 @@ template <typename T>
  *
  * @param num число для проверки
  * @return    фактический размер занимаемым числом байт
+ *
  */
 size_t awh::Framework::size(const T num) const noexcept {
 	// Если данные являются основными
@@ -3693,6 +3756,7 @@ template size_t awh::Framework::size <double> (const double) const noexcept;
  * @param value значение бинарного буфера для проверки
  * @param size  общий размер бинарного буфера
  * @return      фактический размер буфера занимаемый данными
+ *
  */
 size_t awh::Framework::size(const void * value, const size_t size) const noexcept {
 	// Переменная результата
@@ -3766,6 +3830,7 @@ size_t awh::Framework::size(const void * value, const size_t size) const noexcep
  * @brief Шаблон функции проверки больше первое число второго или нет (бинарным методом)
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -3774,6 +3839,7 @@ template <typename T>
  * @param num1 значение первого числа в бинарном виде
  * @param num2 значение второго числа в бинарном виде
  * @return     результат проверки
+ *
  */
 bool awh::Framework::isGreater(const T num1, const T num2) const noexcept {
 	// Если данные являются основными
@@ -3810,6 +3876,7 @@ template bool awh::Framework::isGreater <double> (const double, const double) co
  * @param value2 значение второго числа в бинарном виде
  * @param size   размер бинарного буфера числа
  * @return       результат проверки
+ *
  */
 bool awh::Framework::isGreater(const void * value1, const void * value2, const size_t size) const noexcept {
 	// Переменная результата
@@ -3888,6 +3955,7 @@ bool awh::Framework::isGreater(const void * value1, const void * value2, const s
  * @brief Шаблон функции конвертации чисел в указанную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -3896,6 +3964,7 @@ template <typename T>
  * @param value число для конвертации
  * @param radix система счисления
  * @return      полученная строка в указанной системе счисления
+ *
  */
 string awh::Framework::itoa(const T value, const uint8_t radix) const noexcept {
 	// Если данные являются основными
@@ -3932,6 +4001,7 @@ template string awh::Framework::itoa <double> (const double, const uint8_t) cons
  * @param size  размер бинарного буфера
  * @param radix система счисления
  * @return      полученная строка в указанной системе счисления
+ *
  */
 string awh::Framework::itoa(const void * value, const size_t size, const uint8_t radix) const noexcept {
 	// Переменная результата
@@ -4120,6 +4190,7 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -4127,6 +4198,7 @@ template <typename T>
  *
  * @param value строковое представление числа
  * @return      числовое значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(string_view value) const noexcept {
 	// Переменная результата
@@ -4185,6 +4257,7 @@ template double awh::Framework::atoi <double> (string_view) const noexcept;
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -4192,6 +4265,7 @@ template <typename T>
  *
  * @param value строковое представление числа
  * @return      числовое значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(const string & value) const noexcept {
 	// Переменная результата
@@ -4250,6 +4324,7 @@ template double awh::Framework::atoi <double> (const string &) const noexcept;
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -4258,6 +4333,7 @@ template <typename T>
  * @param value  строковое представление числа
  * @param length длина строки
  * @return       числовое значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(const char * value, const size_t length) const noexcept {
 	// Переменная результата
@@ -4317,6 +4393,7 @@ template double awh::Framework::atoi <double> (const char *, const size_t) const
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -4325,6 +4402,7 @@ template <typename T>
  * @param value число в бинарном виде для конвертации в 10-ю систему
  * @param radix система счисления
  * @return      полученное значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(string_view value, const uint8_t radix) const noexcept {
 	// Переменная результата
@@ -4367,6 +4445,7 @@ template double awh::Framework::atoi <double> (string_view, const uint8_t) const
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -4375,6 +4454,7 @@ template <typename T>
  * @param value число в бинарном виде для конвертации в 10-ю систему
  * @param radix система счисления
  * @return      полученное значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(const string & value, const uint8_t radix) const noexcept {
 	// Переменная результата
@@ -4417,6 +4497,7 @@ template double awh::Framework::atoi <double> (const string &, const uint8_t) co
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -4426,6 +4507,7 @@ template <typename T>
  * @param length длина буфера числа в бинарном виде
  * @param radix  система счисления
  * @return       полученное значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(const char * value, const size_t length, const uint8_t radix) const noexcept {
 	// Переменная результата
@@ -4478,6 +4560,7 @@ template double awh::Framework::atoi <double> (const char *, const size_t, const
  * @param radix  система счисления
  * @param buffer бинарный буфер куда следует положить результат
  * @param size   размер бинарного буфера куда следует положить результат
+ *
  */
 void awh::Framework::atoi(string_view value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
 	// Если данные для конвертации переданы
@@ -4492,6 +4575,7 @@ void awh::Framework::atoi(string_view value, const uint8_t radix, void * buffer,
  * @param radix  система счисления
  * @param buffer бинарный буфер куда следует положить результат
  * @param size   размер бинарного буфера куда следует положить результат
+ *
  */
 void awh::Framework::atoi(const string & value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
 	// Если данные для конвертации переданы
@@ -4507,6 +4591,7 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
  * @param radix  система счисления
  * @param buffer бинарный буфер куда следует положить результат
  * @param size   размер бинарного буфера куда следует положить результат
+ *
  */
 void awh::Framework::atoi(const char * value, const size_t length, const uint8_t radix, void * buffer, const size_t size) const noexcept {
 	// Если данные для конвертации переданы
@@ -4726,6 +4811,7 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -4733,6 +4819,7 @@ template <typename T>
  *
  * @param value строковое представление числа
  * @return      числовое значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(wstring_view value) const noexcept {
 	// Переменная результата
@@ -4791,6 +4878,7 @@ template double awh::Framework::atoi <double> (wstring_view) const noexcept;
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -4798,6 +4886,7 @@ template <typename T>
  *
  * @param value строковое представление числа
  * @return      числовое значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(const wstring & value) const noexcept {
 	// Переменная результата
@@ -4856,6 +4945,7 @@ template double awh::Framework::atoi <double> (const wstring &) const noexcept;
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -4864,6 +4954,7 @@ template <typename T>
  * @param value  строковое представление числа
  * @param length длина строки
  * @return       числовое значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(const wchar_t * value, const size_t length) const noexcept {
 	// Переменная результата
@@ -4923,6 +5014,7 @@ template double awh::Framework::atoi <double> (const wchar_t *, const size_t) co
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -4931,6 +5023,7 @@ template <typename T>
  * @param value число в бинарном виде для конвертации в 10-ю систему
  * @param radix система счисления
  * @return      полученное значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(wstring_view value, const uint8_t radix) const noexcept {
 	// Переменная результата
@@ -4973,6 +5066,7 @@ template double awh::Framework::atoi <double> (wstring_view, const uint8_t) cons
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -4981,6 +5075,7 @@ template <typename T>
  * @param value число в бинарном виде для конвертации в 10-ю систему
  * @param radix система счисления
  * @return      полученное значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(const wstring & value, const uint8_t radix) const noexcept {
 	// Переменная результата
@@ -5023,6 +5118,7 @@ template double awh::Framework::atoi <double> (const wstring &, const uint8_t) c
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -5032,6 +5128,7 @@ template <typename T>
  * @param length длина буфера числа в бинарном виде
  * @param radix  система счисления
  * @return       полученное значение в десятичной системе счисления
+ *
  */
 T awh::Framework::atoi(const wchar_t * value, const size_t length, const uint8_t radix) const noexcept {
 	// Переменная результата
@@ -5084,6 +5181,7 @@ template double awh::Framework::atoi <double> (const wchar_t *, const size_t, co
  * @param radix  система счисления
  * @param buffer бинарный буфер куда следует положить результат
  * @param size   размер бинарного буфера куда следует положить результат
+ *
  */
 void awh::Framework::atoi(wstring_view value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
 	// Если данные для конвертации переданы
@@ -5098,6 +5196,7 @@ void awh::Framework::atoi(wstring_view value, const uint8_t radix, void * buffer
  * @param radix  система счисления
  * @param buffer бинарный буфер куда следует положить результат
  * @param size   размер бинарного буфера куда следует положить результат
+ *
  */
 void awh::Framework::atoi(const wstring & value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
 	// Если данные для конвертации переданы
@@ -5113,6 +5212,7 @@ void awh::Framework::atoi(const wstring & value, const uint8_t radix, void * buf
  * @param radix  система счисления
  * @param buffer бинарный буфер куда следует положить результат
  * @param size   размер бинарного буфера куда следует положить результат
+ *
  */
 void awh::Framework::atoi(const wchar_t * value, const size_t length, const uint8_t radix, void * buffer, const size_t size) const noexcept {
 	// Если данные для конвертации переданы
@@ -5334,6 +5434,7 @@ void awh::Framework::atoi(const wchar_t * value, const size_t length, const uint
  * @param number число для перевода
  * @param step   размер шага после запятой
  * @return       число в безэкспоненциальной форме
+ *
  */
 string awh::Framework::noexp(const double number, const uint8_t step) const noexcept {
 	// Переменная результата
@@ -5426,6 +5527,7 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
  * @param number  число для перевода
  * @param onlyNum выводить только числа
  * @return        число в безэкспоненциальной форме
+ *
  */
 string awh::Framework::noexp(const double number, const bool onlyNum) const noexcept {
 	// Переменная результата
@@ -5559,6 +5661,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
  * @param a первое число
  * @param b второе число
  * @return  результат расчёта
+ *
  */
 float awh::Framework::rate(const float a, const float b) const noexcept {
 	/**
@@ -5616,6 +5719,7 @@ float awh::Framework::rate(const float a, const float b) const noexcept {
  * @param x число для приведения
  * @param n количество символов после запятой
  * @return  сформированное число
+ *
  */
 double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
 	/**
@@ -5670,6 +5774,7 @@ double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
  *
  * @param word римское число
  * @return     арабское число
+ *
  */
 uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 	// Переменная результата
@@ -5934,6 +6039,7 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
  *
  * @param word римское число
  * @return     арабское число
+ *
  */
 uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 	// Переменная результата
@@ -6198,6 +6304,7 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
  *
  * @param number арабское число от 1 до 4999
  * @return       римское число
+ *
  */
 wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
 	// Переменная результата
@@ -6269,6 +6376,7 @@ wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
  *
  * @param word арабское число от 1 до 4999
  * @return     римское число
+ *
  */
 string awh::Framework::arabic2rome(string_view word) const noexcept {
 	// Переменная результата
@@ -6328,6 +6436,7 @@ string awh::Framework::arabic2rome(string_view word) const noexcept {
  *
  * @param word арабское число от 1 до 4999
  * @return     римское число
+ *
  */
 wstring awh::Framework::arabic2rome(wstring_view word) const noexcept {
 	// Переменная результата
@@ -6388,6 +6497,7 @@ wstring awh::Framework::arabic2rome(wstring_view word) const noexcept {
  * @param word   слово в котором нужно подсчитать букву
  * @param letter букву которую нужно подсчитать
  * @return       результат подсчёта
+ *
  */
 size_t awh::Framework::countLetter(string_view word, const wchar_t letter) const noexcept {
 	// Переменная результата
@@ -6476,6 +6586,7 @@ size_t awh::Framework::countLetter(string_view word, const wchar_t letter) const
  * @param word   слово в котором нужно подсчитать букву
  * @param letter букву которую нужно подсчитать
  * @return       результат подсчёта
+ *
  */
 size_t awh::Framework::countLetter(wstring_view word, const wchar_t letter) const noexcept {
 	// Переменная результата
@@ -6541,6 +6652,7 @@ size_t awh::Framework::countLetter(wstring_view word, const wchar_t letter) cons
  * @brief Шаблон функции проверки установлен ли бит в указанной позиции
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -6549,6 +6661,7 @@ template <typename T>
  * @param pos позиция для проверки
  * @param num число в бинарном виде для проверки бита
  * @return    результат проверки
+ *
  */
 bool awh::Framework::isBit(const T pos, const T num) const noexcept {
 	// Результат работы функции
@@ -6640,6 +6753,7 @@ template bool awh::Framework::isBit <uint64_t> (const uint64_t, const uint64_t) 
  * @brief Шаблон функции инверсии бита в указанной позиции
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -6648,6 +6762,7 @@ template <typename T>
  * @param pos позиция для инверсии
  * @param num число в бинарном виде для инверсии бита
  * @return    итоговое значение числа после инверсии
+ *
  */
 T awh::Framework::flipBit(const T pos, const T num) const noexcept {
 	// Результат работы функции
@@ -6739,6 +6854,7 @@ template uint64_t awh::Framework::flipBit <uint64_t> (const uint64_t, const uint
  * @brief Шаблон функции сброса бита в указанной позиции
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -6747,6 +6863,7 @@ template <typename T>
  * @param pos позиция для сброса
  * @param num число в бинарном виде для сброса бита
  * @return    итоговое значение числа после сброса бита
+ *
  */
 T awh::Framework::resetBit(const T pos, const T num) const noexcept {
 	// Результат работы функции
@@ -6838,6 +6955,7 @@ template uint64_t awh::Framework::resetBit <uint64_t> (const uint64_t, const uin
  * @brief Шаблон функции устанвки бита в указанную позицию
  *
  * @tparam T тип данных с которым работает функция
+ *
  */
 template <typename T>
 /**
@@ -6846,6 +6964,7 @@ template <typename T>
  * @param pos позиция для установки бита
  * @param num начальное значение бита
  * @return    итоговое значение числа после установки бита
+ *
  */
 T awh::Framework::setBit(const T pos, const T num) const noexcept {
 	// Переменная результата
@@ -6939,6 +7058,7 @@ template uint64_t awh::Framework::setBit <uint64_t> (const uint64_t, const uint6
  * @param format формат строки вывода
  * @param args   передаваемые аргументы
  * @return       сформированная строка
+ *
  */
 string awh::Framework::format(const char * format, ...) const noexcept {
 	// Переменная результата
@@ -7045,6 +7165,7 @@ string awh::Framework::format(const char * format, ...) const noexcept {
  * @param format формат строки вывода
  * @param args   передаваемые аргументы
  * @return       сформированная строка
+ *
  */
 wstring awh::Framework::format(const wchar_t * format, ...) const noexcept {
 	// Переменная результата
@@ -7151,6 +7272,7 @@ wstring awh::Framework::format(const wchar_t * format, ...) const noexcept {
  * @param format формат строки вывода
  * @param items  список аргументов строки
  * @return       сформированная строка
+ *
  */
 string awh::Framework::format(string_view format, const vector <string> & items) const noexcept {
 	// Переменная результата
@@ -7163,6 +7285,7 @@ string awh::Framework::format(string_view format, const vector <string> & items)
 		 * @param str  строка в которой нужно произвести замену
 		 * @param from строка которую нужно заменить
 		 * @param to   строка на которую нужно заменить
+		 *
 		 */
 		auto replaceFn = [&format, &items, this](string & str, const string & from, const string & to) noexcept {
 			/**
@@ -7285,6 +7408,7 @@ string awh::Framework::format(string_view format, const vector <string> & items)
  * @param format формат строки вывода
  * @param items  список аргументов строки
  * @return       сформированная строка
+ *
  */
 wstring awh::Framework::format(wstring_view format, const vector <wstring> & items) const noexcept {
 	// Переменная результата
@@ -7297,6 +7421,7 @@ wstring awh::Framework::format(wstring_view format, const vector <wstring> & ite
 		 * @param str  строка в которой нужно произвести замену
 		 * @param from строка которую нужно заменить
 		 * @param to   строка на которую нужно заменить
+		 *
 		 */
 		auto replaceFn = [&format, &items, this](wstring & str, const wstring & from, const wstring & to) noexcept {
 			/**
@@ -7419,6 +7544,7 @@ wstring awh::Framework::format(wstring_view format, const vector <wstring> & ite
  * @param word слово для проверки
  * @param text текст в котором выполнения проверка
  * @return     результат выполнения проверки
+ *
  */
 bool awh::Framework::exists(string_view word, string_view text) const noexcept {
 	// Если данные переданы верные
@@ -7480,6 +7606,7 @@ bool awh::Framework::exists(string_view word, string_view text) const noexcept {
  * @param word слово для проверки
  * @param text текст в котором выполнения проверка
  * @return     результат выполнения проверки
+ *
  */
 bool awh::Framework::exists(wstring_view word, wstring_view text) const noexcept {
 	// Если данные переданы верные
@@ -7542,6 +7669,7 @@ bool awh::Framework::exists(wstring_view word, wstring_view text) const noexcept
  * @param word слово для поиска
  * @param alt  слово на которое нужно произвести замену
  * @return     результирующий текст
+ *
  */
 string & awh::Framework::replace(string & text, const string & word, const string & alt) const noexcept {
 	// Если текст передан и искомое слово не равно слову для замены
@@ -7610,6 +7738,7 @@ string & awh::Framework::replace(string & text, const string & word, const strin
  * @param word слово для поиска
  * @param alt  слово на которое нужно произвести замену
  * @return     результирующий текст
+ *
  */
 wstring & awh::Framework::replace(wstring & text, const wstring & word, const wstring & alt) const noexcept {
 	// Если текст передан и искомое слово не равно слову для замены
@@ -7678,6 +7807,7 @@ wstring & awh::Framework::replace(wstring & text, const wstring & word, const ws
  * @param word слово для поиска
  * @param alt  слово на которое нужно произвести замену
  * @return     результирующий текст
+ *
  */
 const string & awh::Framework::replace(const string & text, const string & word, const string & alt) const noexcept {
 	// Выполняем замену в тексте слово на другое слово
@@ -7690,6 +7820,7 @@ const string & awh::Framework::replace(const string & text, const string & word,
  * @param word слово для поиска
  * @param alt  слово на которое нужно произвести замену
  * @return     результирующий текст
+ *
  */
 const wstring & awh::Framework::replace(const wstring & text, const wstring & word, const wstring & alt) const noexcept {
 	// Выполняем замену в тексте слово на другое слово
@@ -7703,6 +7834,7 @@ const wstring & awh::Framework::replace(const wstring & text, const wstring & wo
  * @param separator разделитель ключа и значения
  * @param escaping  символы экранирования
  * @return          список найденных элементов
+ *
  */
 unordered_map <string, string> awh::Framework::kv(string_view text, string_view delim, string_view separator, const vector <string> & escaping) const noexcept {
 	// Переменная результата
@@ -7864,6 +7996,7 @@ unordered_map <string, string> awh::Framework::kv(string_view text, string_view 
  * @param separator разделитель ключа и значения
  * @param escaping  символы экранирования
  * @return          список найденных элементов
+ *
  */
 unordered_map <wstring, wstring> awh::Framework::kv(wstring_view text, wstring_view delim, wstring_view separator, const vector <wstring> & escaping) const noexcept {
 	// Переменная результата
@@ -8022,6 +8155,7 @@ unordered_map <wstring, wstring> awh::Framework::kv(wstring_view text, wstring_v
  * @brief Метод установки пользовательской зоны
  *
  * @param zone пользовательская зона
+ *
  */
 void awh::Framework::domainZone(string_view zone) noexcept {
 	// Если зона передана, устанавливаем её
@@ -8033,6 +8167,7 @@ void awh::Framework::domainZone(string_view zone) noexcept {
  * @brief Метод установки списка пользовательских зон
  *
  * @param zones список доменных зон интернета
+ *
  */
 void awh::Framework::domainZones(const unordered_set <string> & zones) noexcept {
 	// Устанавливаем список доменных зон
@@ -8044,6 +8179,7 @@ void awh::Framework::domainZones(const unordered_set <string> & zones) noexcept 
  * @brief Метод извлечения списка пользовательских зон интернета
  *
  * @return список доменных зон
+ *
  */
 const unordered_set <string> & awh::Framework::domainZones() const noexcept {
 	// Возвращаем список доменных зон интернета
@@ -8053,6 +8189,7 @@ const unordered_set <string> & awh::Framework::domainZones() const noexcept {
  * @brief Метод установки системной локали
  *
  * @param locale локализация приложения
+ *
  */
 void awh::Framework::setLocale(string_view locale) noexcept {
 	// Устанавливаем локаль
@@ -8140,6 +8277,7 @@ void awh::Framework::setLocale(string_view locale) noexcept {
  *
  * @param text текст для извлечения url адресов
  * @return     список координат с url адресами
+ *
  */
 unordered_map <size_t, size_t> awh::Framework::urls(string_view text) const noexcept {
 	// Переменная результата
@@ -8222,6 +8360,7 @@ unordered_map <size_t, size_t> awh::Framework::urls(string_view text) const noex
  *
  * @param end флаг завершения работы
  * @return    иконка напутствия работы
+ *
  */
 string awh::Framework::icon(const bool end) const noexcept {
 	// Список иконок для начала работы
@@ -8270,6 +8409,7 @@ string awh::Framework::icon(const bool end) const noexcept {
  *
  * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
  * @return    размер в байтах
+ *
  */
 double awh::Framework::bytes(const string_view str) const noexcept {
 	// Размер количество байт
@@ -8384,6 +8524,7 @@ double awh::Framework::bytes(const string_view str) const noexcept {
  * @param value   количество байт
  * @param onlyNum выводить только числа
  * @return        полученная строка
+ *
  */
 string awh::Framework::bytes(const double value, const bool onlyNum) const noexcept {
 	// Переменная результата
@@ -8478,6 +8619,7 @@ string awh::Framework::bytes(const double value, const bool onlyNum) const noexc
  *
  * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
  * @return    количество байт в секунду
+ *
  */
 size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 	// Переменная результата
@@ -8589,6 +8731,7 @@ size_t awh::Framework::bpsSize(const string_view str) const noexcept {
  *
  * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
  * @return    размер буфера в байтах
+ *
  */
 size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 	/**
@@ -8721,6 +8864,7 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
  * @brief Метод установки объекта логирования
  *
  * @param log объект работы с логами
+ *
  */
 void awh::Framework::setLogger(const log_t * log) noexcept {
 	// Выполняем установку объекта логирования
@@ -8740,6 +8884,7 @@ awh::Framework::Framework() noexcept : _nwt(nullptr), _log(nullptr) {
  * @brief Конструктор
  *
  * @param locale локализация приложения
+ *
  */
 awh::Framework::Framework(string_view locale) noexcept : _nwt(nullptr), _log(nullptr) {
 	// Устанавливаем локализацию системы

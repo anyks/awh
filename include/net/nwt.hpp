@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля определения типов сетевых адресов — класс Network_Types,
+ *        распознающий во входной строке URL, домен, IP-адрес, MAC-адрес,
+ *        e-mail или путь файловой системы и выполняющий разбор URL-адреса на составные части
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -89,6 +94,7 @@ namespace awh {
 					 *
 					 * @param url параметры адреса
 					 * @return    параметры URL-запроса
+					 *
 					 */
 					URL & operator = (URL && url) noexcept;
 					/**
@@ -96,6 +102,7 @@ namespace awh {
 					 *
 					 * @param url параметры адреса
 					 * @return    параметры URL-запроса
+					 *
 					 */
 					URL & operator = (const URL & url) noexcept;
 				public:
@@ -104,6 +111,7 @@ namespace awh {
 					 *
 					 * @param url параметры адреса
 					 * @return    результат сравнения
+					 *
 					 */
 					bool operator == (const URL & url) const noexcept;
 				public:
@@ -111,12 +119,14 @@ namespace awh {
 					 * @brief Конструктор перемещения
 					 *
 					 * @param url параметры адреса
+					 *
 					 */
 					URL(URL && url) noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
 					 * @param url параметры адреса
+					 *
 					 */
 					URL(const URL & url) noexcept;
 				public:
@@ -143,6 +153,7 @@ namespace awh {
 			 *
 			 * @param domain домен верхнего уровня для проверки
 			 * @return       результат проверки (true, если зона известна)
+			 *
 			 */
 			bool isZone(const string & domain) const noexcept;
 		public:
@@ -156,6 +167,7 @@ namespace awh {
 			 * @brief Метод установки пользовательской зоны
 			 *
 			 * @param zone пользовательская зона
+			 *
 			 */
 			void zone(string_view zone) noexcept;
 		public:
@@ -168,6 +180,7 @@ namespace awh {
 			 * @brief Метод установки списка пользовательских зон
 			 *
 			 * @param zones список доменных зон интернета
+			 *
 			 */
 			void zones(const unordered_set <string> & zones) noexcept;
 		public:
@@ -176,6 +189,7 @@ namespace awh {
 			 *
 			 * @param text текст для парсинга
 			 * @return     параметры полученные в результате парсинга
+			 *
 			 */
 			url_t parse(string_view text) const noexcept;
 		public:
@@ -183,6 +197,7 @@ namespace awh {
 			 * @brief Метод установки объекта логирования
 			 *
 			 * @param log объект работы с логами
+			 *
 			 */
 			void setLogger(const Logging * log) noexcept;
 		public:
@@ -195,6 +210,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit Network_Types(const Logging * log) noexcept;
 			/**

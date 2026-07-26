@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля холдера — класс Holder, реализующий RAII-владение состоянием и автоматическое
+ *        восстановление предыдущего значения при выходе из области видимости
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -40,6 +44,7 @@ namespace awh {
 	 *
 	 * @tparam T         тип данных статусов холдера
 	 * @tparam MutexType тип данных внешнего мьютекса (std::mutex или std::shared_mutex)
+	 *
 	 */
 	template <typename T, typename MutexType = std::mutex>
 	/**
@@ -64,6 +69,7 @@ namespace awh {
 			 * @param hold  статус, который нужно установить (захолдить)
 			 * @param equal флаг эквивалентности (true - разрешено, если есть в comp, false - если нет)
 			 * @return      результат проверки (удалось ли захватить)
+			 *
 			 */
 			bool access(const unordered_set <T> & comp, const T hold, const bool equal = true) noexcept {
 				// Выполняем эксклюзивную блокировку потока на всю транзакцию (проверка вершины и установка холда)
@@ -87,6 +93,7 @@ namespace awh {
 			 *
 			 * @param status ссылка на стек статусов
 			 * @param mtx    ссылка на внешний мьютекс владельца стека статусов
+			 *
 			 */
 			explicit Holder(std::stack <T> & status, lock_state_t <MutexType> & mtx) noexcept :
 			 _flag(false), _status(status), _mtx(mtx) {}
@@ -109,6 +116,7 @@ namespace awh {
 	 *
 	 * @tparam T         данные статусов холдера
 	 * @tparam MutexType тип данных внешнего мьютекса (std::mutex или std::shared_mutex)
+	 *
 	 */
 	template <class T, typename MutexType = std::mutex>
 	/**

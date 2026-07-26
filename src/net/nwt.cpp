@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля определения типов сетевых адресов — распознавание во входной строке URL, домена,
+ *        IP-адреса, MAC-адреса, e-mail или пути файловой системы и разбор URL-адреса на составные части
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -66,6 +70,7 @@ namespace {
 		 *
 		 * @note Источник: https://data.iana.org/TLD/tlds-alpha-by-domain.txt
 		 * @note База корневой зоны (человекочитаемая, с типами country-code/generic и т.д.): https://www.iana.org/domains/root/db
+		 *
 		 */
 		// Создаем список национальных доменов
 		::__awh_national_domains__.emplace("ac");
@@ -609,6 +614,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	static inline bool ntIsDigit(const char letter) noexcept {
 		// Возвращаем результат проверки
@@ -619,6 +625,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	static inline bool ntIsHex(const char letter) noexcept {
 		// Возвращаем результат проверки
@@ -633,6 +640,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	static inline bool ntIsAlpha(const char letter) noexcept {
 		// Возвращаем результат проверки
@@ -646,6 +654,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	static inline bool ntIsLabel(const char letter) noexcept {
 		// Возвращаем результат проверки (не-ASCII байты считаем частью интернационализированной метки)
@@ -661,6 +670,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	static inline bool ntIsUser(const char letter) noexcept {
 		// Возвращаем результат проверки
@@ -677,6 +687,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	static inline bool ntIsPath(const char letter) noexcept {
 		// Возвращаем результат проверки
@@ -695,6 +706,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	static inline bool ntIsParam(const char letter) noexcept {
 		// Если символ является буквой, цифрой или подчёркиванием
@@ -719,6 +731,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	static inline bool ntIsAnchor(const char letter) noexcept {
 		// Возвращаем результат проверки
@@ -736,6 +749,7 @@ namespace {
 	 * @param pos  позиция начала сравнения
 	 * @param lit  литерал для сравнения
 	 * @return     результат сравнения
+	 *
 	 */
 	static bool ntMatchCI(string_view text, const size_t pos, const char * lit) noexcept {
 		// Индекс перебора литерала
@@ -769,6 +783,7 @@ namespace {
 	 *
 	 * @param tld проверяемый домен верхнего уровня
 	 * @return    результат проверки
+	 *
 	 */
 	static bool ntIsValidTLD(string_view tld) noexcept {
 		// Если домен верхнего уровня не передан
@@ -797,6 +812,7 @@ namespace {
 	 * @param text текст для парсинга
 	 * @param pos  позиция начала парсинга
 	 * @return     позиция конца адреса либо позиция начала при неудаче
+	 *
 	 */
 	static size_t ntParseIPv4(string_view text, const size_t pos) noexcept {
 		// Результат работы функции
@@ -843,6 +859,7 @@ namespace {
 	 * @param text текст для парсинга
 	 * @param pos  позиция начала парсинга
 	 * @return     позиция конца адреса либо позиция начала при неудаче
+	 *
 	 */
 	static size_t ntParseMAC(string_view text, const size_t pos) noexcept {
 		// Результат работы функции
@@ -877,6 +894,7 @@ namespace {
 	 *
 	 * @param text проверяемая строка
 	 * @return     результат проверки
+	 *
 	 */
 	static bool ntValidateIPv6(string_view text) noexcept {
 		// Размер строки
@@ -971,6 +989,7 @@ namespace {
 	 * @param text текст для парсинга
 	 * @param pos  позиция начала парсинга
 	 * @return     позиция конца адреса либо позиция начала при неудаче
+	 *
 	 */
 	static size_t ntParseIPv6Addr(string_view text, const size_t pos) noexcept {
 		// Собираем максимальный кандидат из символов IPv6-адреса (hex, ':', '.')
@@ -1002,6 +1021,7 @@ namespace {
 	 * @param host   результирующий хост (включая домен верхнего уровня)
 	 * @param domain результирующий домен верхнего уровня
 	 * @return       позиция конца хоста либо позиция начала при неудаче
+	 *
 	 */
 	static size_t ntParseHost(string_view text, const size_t pos, string & host, string & domain) noexcept {
 		// Количество разобранных меток
@@ -1066,6 +1086,7 @@ namespace {
 	 * @param pos  позиция начала парсинга
 	 * @param out  результирующие параметры URL-адреса
 	 * @return     позиция конца адреса либо позиция начала при неудаче
+	 *
 	 */
 	static size_t ntParseUrl(string_view text, const size_t pos, awh::Network_Types::url_t & out) noexcept {
 		// Результат арботы функции
@@ -1239,6 +1260,7 @@ namespace {
  *
  * @param url параметры адреса
  * @return    параметры URL-запроса
+ *
  */
 awh::Network_Types::URL & awh::Network_Types::URL::operator = (url_t && url) noexcept {
 	// Если выполняется попытка самоприсваивания
@@ -1275,6 +1297,7 @@ awh::Network_Types::URL & awh::Network_Types::URL::operator = (url_t && url) noe
  *
  * @param url параметры адреса
  * @return    параметры URL-запроса
+ *
  */
 awh::Network_Types::URL & awh::Network_Types::URL::operator = (const url_t & url) noexcept {
 	// Если выполняется попытка самоприсваивания
@@ -1311,6 +1334,7 @@ awh::Network_Types::URL & awh::Network_Types::URL::operator = (const url_t & url
  *
  * @param url параметры адреса
  * @return    результат сравнения
+ *
  */
 bool awh::Network_Types::URL::operator == (const url_t & url) const noexcept {
 	// Выполняем сравнение параметров
@@ -1332,6 +1356,7 @@ bool awh::Network_Types::URL::operator == (const url_t & url) const noexcept {
  * @brief Конструктор перемещения
  *
  * @param url параметры адреса
+ *
  */
 awh::Network_Types::URL::URL(url_t && url) noexcept {
 	// Выполняем копирование тип URL-адреса
@@ -1361,6 +1386,7 @@ awh::Network_Types::URL::URL(url_t && url) noexcept {
  * @brief Конструктор копирования
  *
  * @param url параметры адреса
+ *
  */
 awh::Network_Types::URL::URL(const url_t & url) noexcept {
 	// Выполняем копирование тип URL-адреса
@@ -1400,6 +1426,7 @@ awh::Network_Types::URL::URL() noexcept :
  *
  * @param domain домен верхнего уровня для проверки
  * @return       результат проверки (true, если зона известна)
+ *
  */
 bool awh::Network_Types::isZone(const string & domain) const noexcept {
 	// Если домен верхнего уровня не передан
@@ -1439,6 +1466,7 @@ void awh::Network_Types::clear() noexcept {
  * @brief Метод установки пользовательской зоны
  *
  * @param zone пользовательская зона
+ *
  */
 void awh::Network_Types::zone(string_view zone) noexcept {
 	/**
@@ -1501,6 +1529,7 @@ const unordered_set <string> & awh::Network_Types::zones() const noexcept {
  * @brief Метод установки списка пользовательских зон
  *
  * @param zones список доменных зон интернета
+ *
  */
 void awh::Network_Types::zones(const unordered_set <string> & zones) noexcept {
 	// Если список зон не пустой
@@ -1513,6 +1542,7 @@ void awh::Network_Types::zones(const unordered_set <string> & zones) noexcept {
  *
  * @param text текст для парсинга
  * @return     параметры полученные в результате парсинга
+ *
  */
 awh::Network_Types::url_t awh::Network_Types::parse(string_view text) const noexcept {
 	// Переменная результата
@@ -1677,6 +1707,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) const noex
  * @brief Метод установки объекта логирования
  *
  * @param log объект работы с логами
+ *
  */
 void awh::Network_Types::setLogger(const log_t * log) noexcept {
 	// Устанавливаем объект логера
@@ -1694,6 +1725,7 @@ awh::Network_Types::Network_Types() noexcept : _log(nullptr) {
  * @brief Конструктор
  *
  * @param log объект для работы с логами
+ *
  */
 awh::Network_Types::Network_Types(const log_t * log) noexcept : _log(log) {
 	// Выполняем заполнение общих списков доменных зон только один раз для всех объектов

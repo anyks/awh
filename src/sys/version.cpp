@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля работы с версиями — разбор строкового представления версии,
+ *        сравнение версий и обратное преобразование в текстовый и числовой вид
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -53,6 +57,7 @@ using namespace std;
  * @brief Метод извлечения версии в виде числа
  *
  * @return версия в виде числа
+ *
  */
 uint32_t awh::Version::num() const noexcept {
 	// Возвращаем версию в виде числа
@@ -63,6 +68,7 @@ uint32_t awh::Version::num() const noexcept {
  *
  * @param octets количество октетов
  * @return       версия в виде строки
+ *
  */
 string awh::Version::str(const uint8_t octets) const noexcept {
 	// Переменная результата
@@ -137,6 +143,7 @@ string awh::Version::str(const uint8_t octets) const noexcept {
  * @brief Метод установки версии
  *
  * @param version устанавливаемая версия
+ *
  */
 void awh::Version::set(const uint32_t version) noexcept {
 	// Устанавливаем версию в виде числа
@@ -146,6 +153,7 @@ void awh::Version::set(const uint32_t version) noexcept {
  * @brief Метод установки версии
  *
  * @param version устанавливаемая версия
+ *
  */
 void awh::Version::set(const string & version) noexcept {
 	// Если версия передана
@@ -163,6 +171,7 @@ void awh::Version::set(const string & version) noexcept {
 			 *
 			 * @param octet строковое представление октета
 			 * @return      числовое значение октета [0..255]
+			 *
 			 */
 			auto parse = [](const string & octet) -> uint8_t {
 				// Если октет пустой или содержит нецифровые символы
@@ -241,6 +250,7 @@ void awh::Version::set(const string & version) noexcept {
  * @brief Метод установки объекта логирования
  *
  * @param log объект работы с логами
+ *
  */
 void awh::Version::setLogger(const log_t * log) noexcept {
 	// Устанавливаем объект логирования
@@ -250,6 +260,7 @@ void awh::Version::setLogger(const log_t * log) noexcept {
  * @brief Оператор вывода версии в качестве числа
  *
  * @return версия в качестве числа
+ *
  */
 awh::Version::operator uint32_t() const noexcept {
 	// Возвращаем данные версии в виде числа
@@ -259,6 +270,7 @@ awh::Version::operator uint32_t() const noexcept {
  * @brief Оператор вывода версии в качестве строки
  *
  * @return версия в качестве строки
+ *
  */
 awh::Version::operator string() const noexcept {
 	// Возвращаем данные версии в виде строки
@@ -269,6 +281,7 @@ awh::Version::operator string() const noexcept {
  *
  * @param version версия для сравнения
  * @return        результат сравнения
+ *
  */
 bool awh::Version::operator < (const version_t & version) const noexcept {
 	// Возвращаем результат
@@ -279,6 +292,7 @@ bool awh::Version::operator < (const version_t & version) const noexcept {
  *
  * @param version версия для сравнения
  * @return        результат сравнения
+ *
  */
 bool awh::Version::operator > (const version_t & version) const noexcept {
 	// Возвращаем результат
@@ -289,6 +303,7 @@ bool awh::Version::operator > (const version_t & version) const noexcept {
  *
  * @param version версия для сравнения
  * @return        результат сравнения
+ *
  */
 bool awh::Version::operator <= (const version_t & version) const noexcept {
 	// Возвращаем результат
@@ -299,6 +314,7 @@ bool awh::Version::operator <= (const version_t & version) const noexcept {
  *
  * @param version версия для сравнения
  * @return        результат сравнения
+ *
  */
 bool awh::Version::operator >= (const version_t & version) const noexcept {
 	// Возвращаем результат
@@ -309,6 +325,7 @@ bool awh::Version::operator >= (const version_t & version) const noexcept {
  *
  * @param version версия для сравнения
  * @return        результат сравнения
+ *
  */
 bool awh::Version::operator != (const version_t & version) const noexcept {
 	// Возвращаем результат
@@ -319,6 +336,7 @@ bool awh::Version::operator != (const version_t & version) const noexcept {
  *
  * @param version версия для сравнения
  * @return        результат сравнения
+ *
  */
 bool awh::Version::operator == (const version_t & version) const noexcept {
 	// Возвращаем результат
@@ -329,6 +347,7 @@ bool awh::Version::operator == (const version_t & version) const noexcept {
  *
  * @param version версия для присвоения
  * @return        текущий объект
+ *
  */
 awh::Version & awh::Version::operator = (const char * version) noexcept {
 	// Устанавливаем версию
@@ -341,6 +360,7 @@ awh::Version & awh::Version::operator = (const char * version) noexcept {
  *
  * @param version версия для присвоения
  * @return        текущий объект
+ *
  */
 awh::Version & awh::Version::operator = (const string & version) noexcept {
 	// Устанавливаем версию
@@ -353,6 +373,7 @@ awh::Version & awh::Version::operator = (const string & version) noexcept {
  *
  * @param version версия для присвоения
  * @return        текущий объект
+ *
  */
 awh::Version & awh::Version::operator = (const uint32_t version) noexcept {
 	// Устанавливаем версию
@@ -365,6 +386,7 @@ awh::Version & awh::Version::operator = (const uint32_t version) noexcept {
  *
  * @param version версия для присвоения
  * @return        текущий объект
+ *
  */
 awh::Version & awh::Version::operator = (const Version & version) noexcept {
 	// Устанавливаем версию
@@ -388,6 +410,7 @@ awh::Version::Version(const log_t * log) noexcept : _version(0), _log(log) {}
  * @brief Конструктор
  *
  * @param version устанавливаемая версия
+ *
  */
 awh::Version::Version(const char * version) noexcept : _version(0), _log(nullptr) {
 	// Устанавливаем версию
@@ -397,6 +420,7 @@ awh::Version::Version(const char * version) noexcept : _version(0), _log(nullptr
  * @brief Конструктор
  *
  * @param version устанавливаемая версия
+ *
  */
 awh::Version::Version(const string & version) noexcept : _version(0), _log(nullptr) {
 	// Устанавливаем версию
@@ -406,6 +430,7 @@ awh::Version::Version(const string & version) noexcept : _version(0), _log(nullp
  * @brief Конструктор
  *
  * @param version устанавливаемая версия
+ *
  */
 awh::Version::Version(const uint32_t version) noexcept : _version(0), _log(nullptr) {
 	// Устанавливаем версию
@@ -416,6 +441,7 @@ awh::Version::Version(const uint32_t version) noexcept : _version(0), _log(nullp
  *
  * @param is      поток для чтения
  * @param version версия для присвоения
+ *
  */
 istream & awh::operator >> (istream & is, version_t & version) noexcept {
 	// Версия в текстовом виде
@@ -434,6 +460,7 @@ istream & awh::operator >> (istream & is, version_t & version) noexcept {
  *
  * @param os      поток куда нужно вывести данные
  * @param version версия извлечения
+ *
  */
 ostream & awh::operator << (ostream & os, const version_t & version) noexcept {
 	// Записываем в поток версию

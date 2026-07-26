@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация потоковой компрессии — инкрементальное сжатие и распаковка данных по мере поступления,
+ *        управление временем жизни контекста движка, режимами сброса буфера и финализацией потока
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -99,12 +103,14 @@ namespace awh {
 				 * @brief Метод проверки успешной инициализации контекста
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				virtual bool valid() const noexcept = 0;
 				/**
 				 * @brief Метод проверки завершённости потока
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				virtual bool done() const noexcept = 0;
 			public:
@@ -116,6 +122,7 @@ namespace awh {
 				 * @param flush  режим сброса
 				 * @param out    буфер, куда добавляется готовый выход
 				 * @return       результат операции (false при ошибке)
+				 *
 				 */
 				virtual bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept = 0;
 				/**
@@ -162,6 +169,7 @@ namespace {
 			 * @brief Метод проверки успешной инициализации контекста
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool valid() const noexcept override {
 				// Выводим результат проверки
@@ -171,6 +179,7 @@ namespace {
 			 * @brief Метод проверки завершённости потока
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool done() const noexcept override {
 				// Выводим результат проверки
@@ -184,6 +193,7 @@ namespace {
 			 * @param flush  режим сброса
 			 * @param out    буфер, куда добавляется готовый выход
 			 * @return       результат операции
+			 *
 			 */
 			bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept override {
 				// Если контекст не инициализирован
@@ -283,6 +293,7 @@ namespace {
 			 * @param method метод компрессии
 			 * @param event  направление операции
 			 * @param params параметры инициализации
+			 *
 			 */
 			explicit zlib_coder_t(const method_t method, const event_t event, const params_t & params) noexcept :
 			 _init(false), _done(false), _event(event) {
@@ -379,6 +390,7 @@ namespace {
 			 * @brief Метод проверки успешной инициализации контекста
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool valid() const noexcept override {
 				// Выводим результат проверки
@@ -388,6 +400,7 @@ namespace {
 			 * @brief Метод проверки завершённости потока
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool done() const noexcept override {
 				// Выводим результат проверки
@@ -402,6 +415,7 @@ namespace {
 			 * @param flush  режим сброса
 			 * @param out    буфер, куда добавляется готовый выход
 			 * @return       результат операции
+			 *
 			 */
 			bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept override {
 				// Рабочий буфер
@@ -487,6 +501,7 @@ namespace {
 			 *
 			 * @param event  направление операции
 			 * @param params параметры инициализации
+			 *
 			 */
 			explicit zstd_coder_t(const event_t event, const params_t & params) noexcept :
 			 _done(false), _event(event), _cctx(nullptr), _dctx(nullptr) {
@@ -550,6 +565,7 @@ namespace {
 			 * @brief Метод проверки успешной инициализации контекста
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool valid() const noexcept override {
 				// Выводим результат проверки
@@ -559,6 +575,7 @@ namespace {
 			 * @brief Метод проверки завершённости потока
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool done() const noexcept override {
 				// Выводим результат проверки
@@ -573,6 +590,7 @@ namespace {
 			 * @param flush  режим сброса
 			 * @param out    буфер, куда добавляется готовый выход
 			 * @return       результат операции
+			 *
 			 */
 			bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept override {
 				// Размер входных данных
@@ -663,6 +681,7 @@ namespace {
 			 *
 			 * @param event  направление операции
 			 * @param params параметры инициализации
+			 *
 			 */
 			explicit brotli_coder_t(const event_t event, [[maybe_unused]] const params_t & params) noexcept :
 			 _done(false), _event(event), _enc(nullptr), _dec(nullptr) {
@@ -717,6 +736,7 @@ namespace {
 			 * @brief Метод проверки успешной инициализации контекста
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool valid() const noexcept override {
 				// Выводим результат проверки
@@ -726,6 +746,7 @@ namespace {
 			 * @brief Метод проверки завершённости потока
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool done() const noexcept override {
 				// Выводим результат проверки
@@ -740,6 +761,7 @@ namespace {
 			 * @param flush  режим сброса
 			 * @param out    буфер, куда добавляется готовый выход
 			 * @return       результат операции
+			 *
 			 */
 			bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept override {
 				// Если контекст не инициализирован
@@ -811,6 +833,7 @@ namespace {
 			 *
 			 * @param event  направление операции
 			 * @param params параметры инициализации
+			 *
 			 */
 			explicit lzma_coder_t(const event_t event, const params_t & params) noexcept :
 			 _init(false), _done(false), _event(event) {
@@ -871,6 +894,7 @@ namespace {
 			 * @brief Метод проверки успешной инициализации контекста
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool valid() const noexcept override {
 				// Выводим результат проверки
@@ -880,6 +904,7 @@ namespace {
 			 * @brief Метод проверки завершённости потока
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool done() const noexcept override {
 				// Выводим результат проверки
@@ -894,6 +919,7 @@ namespace {
 			 * @param flush  режим сброса
 			 * @param out    буфер, куда добавляется готовый выход
 			 * @return       результат операции
+			 *
 			 */
 			bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept override {
 				// Если контекст не инициализирован
@@ -1002,6 +1028,7 @@ namespace {
 			 *
 			 * @param event  направление операции
 			 * @param params параметры инициализации
+			 *
 			 */
 			explicit bzip2_coder_t(const event_t event, const params_t & params) noexcept :
 			 _init(false), _done(false), _event(event) {
@@ -1081,6 +1108,7 @@ namespace {
 			 * @brief Метод проверки успешной инициализации контекста
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool valid() const noexcept override {
 				// Выводим результат проверки
@@ -1090,6 +1118,7 @@ namespace {
 			 * @brief Метод проверки завершённости потока
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool done() const noexcept override {
 				// Выводим результат проверки
@@ -1104,6 +1133,7 @@ namespace {
 			 * @param flush  режим сброса
 			 * @param out    буфер, куда добавляется готовый выход
 			 * @return       результат операции
+			 *
 			 */
 			bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept override {
 				// Если контекст не инициализирован
@@ -1233,6 +1263,7 @@ namespace {
 			 *
 			 * @param event  направление операции
 			 * @param params параметры инициализации
+			 *
 			 */
 			explicit lz4_coder_t(const event_t event, const params_t & params) noexcept :
 			 _init(false), _done(false), _begun(false), _event(event), _cctx(nullptr), _dctx(nullptr) {
@@ -1302,6 +1333,7 @@ namespace {
 			 * @brief Метод проверки успешной инициализации контекста
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool valid() const noexcept override {
 				// Выводим результат проверки
@@ -1311,6 +1343,7 @@ namespace {
 			 * @brief Метод проверки завершённости потока
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool done() const noexcept override {
 				// Выводим результат проверки
@@ -1325,6 +1358,7 @@ namespace {
 			 * @param flush  режим сброса
 			 * @param out    буфер, куда добавляется готовый выход
 			 * @return       результат операции
+			 *
 			 */
 			bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept override {
 				// Если контекст не инициализирован
@@ -1454,6 +1488,7 @@ namespace {
 			 *
 			 * @param event  направление операции
 			 * @param params параметры инициализации
+			 *
 			 */
 			explicit lizard_coder_t(const event_t event, const params_t & params) noexcept :
 			 _init(false), _done(false), _begun(false), _event(event), _cctx(nullptr), _dctx(nullptr) {
@@ -1503,6 +1538,7 @@ namespace {
 	 * @param event  направление операции
 	 * @param params параметры инициализации
 	 * @return       созданный бэкенд или nullptr, если метод не поддерживает потоковый режим
+	 *
 	 */
 	static unique_ptr <coder_t> makeCoder(const method_t method, const event_t event, const params_t & params) noexcept {
 		/**
@@ -1549,6 +1585,7 @@ namespace {
  * @brief Метод проверки завершённости потока
  *
  * @return результат проверки
+ *
  */
 bool awh::compressor::Stream::done() const noexcept {
 	// Выводим результат проверки
@@ -1558,6 +1595,7 @@ bool awh::compressor::Stream::done() const noexcept {
  * @brief Метод проверки валидности потока
  *
  * @return результат проверки
+ *
  */
 bool awh::compressor::Stream::valid() const noexcept {
 	// Выводим результат проверки
@@ -1567,6 +1605,7 @@ bool awh::compressor::Stream::valid() const noexcept {
  * @brief Метод получения направления операции потока
  *
  * @return направление операции
+ *
  */
 awh::compressor::event_t awh::compressor::Stream::event() const noexcept {
 	// Выводим направление операции
@@ -1576,6 +1615,7 @@ awh::compressor::event_t awh::compressor::Stream::event() const noexcept {
  * @brief Метод получения метода компрессии потока
  *
  * @return метод компрессии
+ *
  */
 awh::compressor::method_t awh::compressor::Stream::method() const noexcept {
 	// Выводим метод компрессии
@@ -1585,12 +1625,14 @@ awh::compressor::method_t awh::compressor::Stream::method() const noexcept {
  * @brief Шаблон метода принудительного выдавливания накопленного
  *
  * @tparam T тип контейнера результата
+ *
  */
 template <typename T>
 /**
  * @brief Метод принудительного выдавливания накопленного
  *
  * @param result контейнер, куда помещается готовый выход
+ *
  */
 void awh::compressor::Stream::flush(T & result) noexcept {
 	// Выполняем подачу пустой порции с режимом SYNC
@@ -1607,12 +1649,14 @@ template void awh::compressor::Stream::flush <vector <uint8_t>> (vector <uint8_t
  * @brief Шаблон метода финализации потока
  *
  * @tparam T тип контейнера результата
+ *
  */
 template <typename T>
 /**
  * @brief Метод финализации потока
  *
  * @param result контейнер, куда помещается остаток данных
+ *
  */
 void awh::compressor::Stream::finish(T & result) noexcept {
 	// Выполняем подачу пустой порции с режимом FINISH
@@ -1629,6 +1673,7 @@ template void awh::compressor::Stream::finish <vector <uint8_t>> (vector <uint8_
  * @brief Шаблон метода подачи порции данных в поток
  *
  * @tparam T тип контейнера результата
+ *
  */
 template <typename T>
 /**
@@ -1637,6 +1682,7 @@ template <typename T>
  * @param buffer буфер данных для обработки
  * @param result контейнер, куда помещается готовый выход этой порции
  * @param flush  режим сброса данных
+ *
  */
 void awh::compressor::Stream::push(string_view buffer, T & result, const flush_t flush) noexcept {
 	// Делегируем базовой реализации
@@ -1653,6 +1699,7 @@ template void awh::compressor::Stream::push <vector <uint8_t>> (string_view, vec
  * @brief Шаблон метода подачи порции данных в поток
  *
  * @tparam T тип контейнера результата
+ *
  */
 template <typename T>
 /**
@@ -1662,6 +1709,7 @@ template <typename T>
  * @param size   размер данных для обработки
  * @param result контейнер, куда помещается готовый выход этой порции
  * @param flush  режим сброса данных
+ *
  */
 void awh::compressor::Stream::push(const void * buffer, const size_t size, T & result, const flush_t flush) noexcept {
 	// Выполняем очистку результата
@@ -1698,6 +1746,7 @@ template void awh::compressor::Stream::push <vector <uint8_t>> (const void *, co
  *
  * @param stream объект для перемещения
  * @return       текущий объект
+ *
  */
 awh::compressor::Stream & awh::compressor::Stream::operator = (stream_t && stream) noexcept {
 	// Если объект не совпадает
@@ -1739,6 +1788,7 @@ awh::compressor::Stream::Stream() noexcept :
  * @param event  направление операции
  * @param params параметры инициализации
  * @param log    объект для работы с логами
+ *
  */
 awh::compressor::Stream::Stream(const method_t method, const event_t event, const params_t & params, const log_t * log) noexcept :
  _event(event), _method(method), _coder(nullptr), _log(log) {

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Тесты потоковой компрессии — проверка инкрементального сжатия и распаковки данных порциями,
+ *        режимов сброса буфера и финализации потока
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -33,6 +37,7 @@
  *          нагрузки, чтобы проверить корректность работы потока на произвольных данных.
  *
  * @return тестовые данные
+ *
  */
 static std::string makeStreamPayload() noexcept {
 	// Результирующий буфер данных
@@ -62,6 +67,7 @@ static std::string makeStreamPayload() noexcept {
  * @param chunk      размер порции обработки
  * @param flush      режим сброса данных при подаче порций
  * @return           восстановленные после декомпрессии данные
+ *
  */
 static std::string streamRoundTrip(awh::compressor::block_t * compressor, const awh::compressor::method_t method, const std::string & data, const size_t chunk, const awh::compressor::flush_t flush = awh::compressor::flush_t::NONE) noexcept {
 	// Буфер готового выхода очередной порции

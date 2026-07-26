@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Тесты низкоуровневой работы с сокетами — проверка установки неблокирующего режима, таймаутов,
+ *        размеров буферов, keep-alive и остальных опций сокета
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -311,6 +315,7 @@ TEST_F(EthFixture, SocketSwitchOptionIPv6Test){
  *
  * @note Проверяет корректность включения и отключения генерации метаданных пакета
  *       (ранее режим терялся из-за переиспользования переменной флага)
+ *
  */
 TEST_F(EthFixture, SocketTrafficInfoTest){
 	// Создаём UDP сокет IPv4
@@ -410,6 +415,7 @@ TEST_F(EthFixture, SocketDscpTest){
  *          октет заголовка IP-пакета, поэтому проверяется не только круговой
  *          обход каждого поля, но и их взаимная независимость: установка одного
  *          не должна сбрасывать другое
+ *
  */
 TEST_F(EthFixture, SocketEcnTest){
 	// Создаём UDP сокет IPv4
@@ -462,6 +468,7 @@ TEST_F(EthFixture, SocketEcnTest){
  *          доступна только служебным сообщением сокета. Без включённой
  *          генерации метаданных трафика датаграмма приходит без неё,
  *          и определить перегрузку пути невозможно
+ *
  */
 TEST_F(EthFixture, SocketEcnDeliveryTest){
 	// Создаём UDP сокет получателя
@@ -566,6 +573,7 @@ TEST_F(EthFixture, SocketMtuDiscoverTest){
  * @brief Тест установки сетевого интерфейса для multicast пакетов
  *
  * @note Косвенно проверяет работу статического кеша сетевых интерфейсов
+ *
  */
 TEST_F(EthFixture, SocketMulticastIfaceTest){
 	// Создаём UDP сокет IPv4
@@ -668,6 +676,7 @@ TEST_F(EthFixture, SocketMembershipIPv4Test){
  * @brief Тест членства в multicast группе IPv6
  *
  * @note Косвенно проверяет работу статического кеша сетевых интерфейсов для IPv6
+ *
  */
 TEST_F(EthFixture, SocketMembershipIPv6Test){
 	// Создаём UDP сокет IPv6

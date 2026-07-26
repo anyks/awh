@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Минимальный сервер HTTP/2 поверх парсера библиотеки для прогона набора проверок h2spec —
+ *        нарочно примитивный транспорт с одним блокирующим сокетом и последовательной обработкой соединений
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -46,6 +50,7 @@ using namespace awh::http;
  * @param prefix направление передачи
  * @param buffer буфер потока байт
  * @param size   размер потока байт
+ *
  */
 static void trace(const char * prefix, const void * buffer, const size_t size) noexcept {
 	// Таблица названий типов кадров

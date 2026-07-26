@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация тестовой фикстуры протокола QUIC —
+ *        создание объектов тестового окружения перед каждым тестом и их освобождение после его завершения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -60,6 +64,7 @@ void QuicFixture::TearDown(){}
  * @param host адрес хоста удалённого эндпоинта
  * @param port порт удалённого эндпоинта
  * @return     опаковое представление пути соединения
+ *
  */
 std::string QuicFixture::makePath(const std::string & host, const uint16_t port) const noexcept {
 	// Разбираем адрес хоста удалённого эндпоинта
@@ -101,6 +106,7 @@ std::string QuicFixture::makePath(const std::string & host, const uint16_t port)
  *
  * @param hex шестнадцатеричная строка
  * @return    бинарный буфер
+ *
  */
 std::string QuicFixture::unhex(const std::string & hex) const noexcept {
 	// Результирующий бинарный буфер
@@ -121,6 +127,7 @@ std::string QuicFixture::unhex(const std::string & hex) const noexcept {
  *
  * @param data бинарный буфер
  * @return     шестнадцатеричная строка
+ *
  */
 std::string QuicFixture::hex(const std::string & data) const noexcept {
 	// Таблица шестнадцатеричных символов
@@ -148,6 +155,7 @@ std::string QuicFixture::hex(const std::string & data) const noexcept {
  *
  * @param data бинарный буфер идентификатора
  * @return     сформированный идентификатор соединения
+ *
  */
 awh::quic::cid_t QuicFixture::makeCid(const std::string & data) const noexcept {
 	// Результирующий идентификатор соединения
@@ -170,6 +178,7 @@ namespace {
 	 * @brief Функция получения пути к временному каталогу
 	 *
 	 * @return путь к временному каталогу
+	 *
 	 */
 	static std::string directory() noexcept {
 		// Получаем путь к временному каталогу из окружения
@@ -183,6 +192,7 @@ namespace {
 	 * @param path путь к создаваемому файлу
 	 * @param data записываемые данные
 	 * @return     результат записи
+	 *
 	 */
 	static bool store(const std::string & path, const std::string & data) noexcept {
 		// Открываем файл на запись
@@ -204,6 +214,7 @@ namespace {
 	 * @param certificate сертификат в формате PEM
 	 * @param privateKey  приватный ключ в формате PEM
 	 * @return            результат генерации
+	 *
 	 */
 	static bool makeCertificate(std::string & certificate, std::string & privateKey) noexcept {
 		// Результат работы функции
@@ -288,6 +299,7 @@ namespace {
  * @brief Метод доступа к объекту кодера транспортной безопасности
  *
  * @return объект кодера транспортной безопасности
+ *
  */
 awh::tls::Coder & QuicSecurity::coder() noexcept {
 	// Выводим объект кодера транспортной безопасности
@@ -298,6 +310,7 @@ awh::tls::Coder & QuicSecurity::coder() noexcept {
  *
  * @param endpoint роль эндпоинта
  * @return         идентификатор шаблона контекста безопасности
+ *
  */
 awh::tls::Coder::id_t QuicSecurity::context(const awh::quic::endpoint_t endpoint) const noexcept {
 	// Выводим шаблон контекста безопасности запрошенной роли
@@ -310,6 +323,7 @@ awh::tls::Coder::id_t QuicSecurity::context(const awh::quic::endpoint_t endpoint
  * @param protocols список поддерживаемых ALPN-протоколов
  * @param validate  режим проверки сертификата удалённого узла
  * @return          идентификатор созданного шаблона контекста безопасности
+ *
  */
 awh::tls::Coder::id_t QuicSecurity::make(const awh::quic::endpoint_t endpoint, const std::vector <awh::tls::Coder::alpn_t> & protocols, const bool validate) noexcept {
 	// Определяем роль узла кодера
@@ -352,6 +366,7 @@ awh::tls::Coder::id_t QuicSecurity::make(const awh::quic::endpoint_t endpoint, c
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 QuicSecurity::QuicSecurity(const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
  _client(0), _server(0), _coder(fmk, log) {

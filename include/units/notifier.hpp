@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля уведомителя — класс unit::Notifier,
+ *        обеспечивающий пробуждение цикла событий и доставку пользовательских уведомлений между потоками
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -52,6 +56,7 @@ namespace awh {
 				 *
 				 * @param eid  идентификатор события
 				 * @param size размер сообщения
+				 *
 				 */
 				void write(const event::id_t eid, const size_t size) noexcept;
 				/**
@@ -60,6 +65,7 @@ namespace awh {
 				 * @param eid  идентификатор события
 				 * @param data данные сообщения
 				 * @param size размер сообщения
+				 *
 				 */
 				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 			private:
@@ -68,6 +74,7 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор события
 				 * @param status статус события
+				 *
 				 */
 				void state(const event::id_t eid, const event::status_t status) noexcept;
 			private:
@@ -77,6 +84,7 @@ namespace awh {
 				 * @param eid     идентификатор события
 				 * @param error   тип ошибки
 				 * @param message сообщение об ошибке
+				 *
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
 			private:
@@ -86,6 +94,7 @@ namespace awh {
 				 * @param eid    идентификатор события
 				 * @param status статус события
 				 * @param size   доступный размер очереди в байтах
+				 *
 				 */
 				void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
 			public:
@@ -93,6 +102,7 @@ namespace awh {
 				 * @brief Метод создания события уведомителя
 				 *
 				 * @return идентификатор события уведомителя
+				 *
 				 */
 				event::id_t create() noexcept;
 			public:
@@ -100,6 +110,7 @@ namespace awh {
 				 * @brief Метод уничтожения события уведомителя
 				 *
 				 * @param eid идентификатор события уведомителя
+				 *
 				 */
 				void destroy(const event::id_t eid) noexcept;
 			public:
@@ -107,6 +118,7 @@ namespace awh {
 				 * @brief Метод установки функций обратного вызова
 				 *
 				 * @param callback функции обратного вызова
+				 *
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
@@ -117,6 +129,7 @@ namespace awh {
 				 * @param buffer буфер данных для отправки
 				 * @param size   размер буфера данных
 				 * @return       количество отправленных байт
+				 *
 				 */
 				size_t trigger(const event::id_t eid, const void * buffer, const size_t size) noexcept;
 			private:
@@ -129,6 +142,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				Notifier & operator = (const Notifier &) = delete;
 			public:
@@ -137,6 +151,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Notifier(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

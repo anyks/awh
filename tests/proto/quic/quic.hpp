@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл тестовой фикстуры протокола QUIC — объявление класса фикстуры Google Test,
+ *        подготавливающего и освобождающего тестовое окружение набора тестов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_PROTO_QUIC_TESTS__
@@ -77,6 +81,7 @@ class QuicFixture : public testing::Test {
 		 * @param host адрес хоста удалённого эндпоинта
 		 * @param port порт удалённого эндпоинта
 		 * @return     опаковое представление пути соединения
+		 *
 		 */
 		std::string makePath(const std::string & host, const uint16_t port) const noexcept;
 	protected:
@@ -85,6 +90,7 @@ class QuicFixture : public testing::Test {
 		 *
 		 * @param hex шестнадцатеричная строка
 		 * @return    бинарный буфер
+		 *
 		 */
 		std::string unhex(const std::string & hex) const noexcept;
 		/**
@@ -92,6 +98,7 @@ class QuicFixture : public testing::Test {
 		 *
 		 * @param data бинарный буфер
 		 * @return     шестнадцатеричная строка
+		 *
 		 */
 		std::string hex(const std::string & data) const noexcept;
 		/**
@@ -99,6 +106,7 @@ class QuicFixture : public testing::Test {
 		 *
 		 * @param data бинарный буфер идентификатора
 		 * @return     сформированный идентификатор соединения
+		 *
 		 */
 		awh::quic::cid_t makeCid(const std::string & data) const noexcept;
 };
@@ -111,6 +119,7 @@ class QuicFixture : public testing::Test {
  *          серверном. Окружение создаётся однократно на весь прогон: генерация
  *          самоподписанного сертификата и построение контекста стоят заметно
  *          дороже самих проверок
+ *
  */
 class QuicSecurity {
 	private:
@@ -131,6 +140,7 @@ class QuicSecurity {
 		 * @brief Метод доступа к объекту кодера транспортной безопасности
 		 *
 		 * @return объект кодера транспортной безопасности
+		 *
 		 */
 		awh::tls::Coder & coder() noexcept;
 		/**
@@ -138,6 +148,7 @@ class QuicSecurity {
 		 *
 		 * @param endpoint роль эндпоинта
 		 * @return         идентификатор шаблона контекста безопасности
+		 *
 		 */
 		awh::tls::Coder::id_t context(const awh::quic::endpoint_t endpoint) const noexcept;
 		/**
@@ -151,6 +162,7 @@ class QuicSecurity {
 		 * @param protocols список поддерживаемых ALPN-протоколов
 		 * @param validate  режим проверки сертификата удалённого узла
 		 * @return          идентификатор созданного шаблона контекста безопасности
+		 *
 		 */
 		awh::tls::Coder::id_t make(const awh::quic::endpoint_t endpoint, const std::vector <awh::tls::Coder::alpn_t> & protocols, const bool validate = false) noexcept;
 	public:
@@ -167,6 +179,7 @@ class QuicSecurity {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект для работы с логами
+		 *
 		 */
 		explicit QuicSecurity(const awh::fmk_t * fmk, const awh::log_t * log) noexcept;
 		/**

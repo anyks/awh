@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл тестовой фикстуры протокола SOCKS5 — объявление класса фикстуры Google Test,
+ *        подготавливающего и освобождающего тестовое окружение набора тестов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_PROTO_SOCKS5_TESTS__
@@ -48,12 +52,14 @@ class Socks5Fixture : public testing::Test {
 		 * @brief Фабричный метод создания клиента SOCKS5
 		 *
 		 * @return сформированный объект клиента SOCKS5
+		 *
 		 */
 		std::unique_ptr <awh::proto::client_socks5_t> makeClient() const noexcept;
 		/**
 		 * @brief Фабричный метод создания сервера SOCKS5
 		 *
 		 * @return сформированный объект сервера SOCKS5
+		 *
 		 */
 		std::unique_ptr <awh::proto::server_socks5_t> makeServer() const noexcept;
 };

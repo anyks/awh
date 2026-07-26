@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля регулярных выражений —
+ *        класс Regular_Expressions поверх PCRE2 с кешированием скомпилированных шаблонов,
+ *        опциями компиляции и методами поиска, проверки и извлечения групп
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -91,6 +96,7 @@ namespace awh {
 			 *
 			 * @details Ключ кэша представляет собой пару, состоящую из набора опций и текста регулярного выражения.
 			 *          Хэш-функция вычисляет хэш для каждой части ключа и выполняет их смешивание для получения уникального значения хэша.
+			 *
 			 */
 			struct __AWH_SHARED_EXPORT__ CacheHash {
 				/**
@@ -98,6 +104,7 @@ namespace awh {
 				 *
 				 * @param key ключ кэша (пара из набора опций и текста регулярного выражения)
 				 * @return    вычисленное значение хэша
+				 *
 				 */
 				size_t operator () (const pair <int32_t, string> & key) const noexcept;
 			};
@@ -118,6 +125,7 @@ namespace awh {
 			 * @brief Метод извлечения текста ошибки регулярного выражения
 			 *
 			 * @return текст ошибки регулярного выражения
+			 *
 			 */
 			const string & error() const noexcept;
 		public:
@@ -125,6 +133,7 @@ namespace awh {
 			 * @brief Метод установки безопасности работы потоков
 			 *
 			 * @param mode флаг режима безопасности потоков
+			 *
 			 */
 			void threadSafety(const bool mode) noexcept;
 		public:
@@ -134,6 +143,7 @@ namespace awh {
 			 * @param text текст для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат проверки регулярного выражения
+			 *
 			 */
 			bool test(string_view text, const exp_t & exp) const noexcept;
 			/**
@@ -143,6 +153,7 @@ namespace awh {
 			 * @param size размер текста для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат проверки регулярного выражения
+			 *
 			 */
 			bool test(const char * text, const size_t size, const exp_t & exp) const noexcept;
 		public:
@@ -152,6 +163,7 @@ namespace awh {
 			 * @param text текст для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
+			 *
 			 */
 			vector <string> exec(string_view text, const exp_t & exp) const noexcept;
 			/**
@@ -161,6 +173,7 @@ namespace awh {
 			 * @param size размер текста для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
+			 *
 			 */
 			vector <string> exec(const char * text, const size_t size, const exp_t & exp) const noexcept;
 		public:
@@ -170,6 +183,7 @@ namespace awh {
 			 * @param text текст для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
+			 *
 			 */
 			vector <pair <size_t, size_t>> match(string_view text, const exp_t & exp) const noexcept;
 			/**
@@ -179,6 +193,7 @@ namespace awh {
 			 * @param size размер текста для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
+			 *
 			 */
 			vector <pair <size_t, size_t>> match(const char * text, const size_t size, const exp_t & exp) const noexcept;
 		public:
@@ -188,6 +203,7 @@ namespace awh {
 			 * @param pattern регулярное выражение для сборки
 			 * @param options список опций для сборки регулярного выражения
 			 * @return        результат собранного регулярного выражения
+			 *
 			 */
 			exp_t build(string_view pattern, const vector <option_t> & options = {}) const noexcept;
 		public:
@@ -195,6 +211,7 @@ namespace awh {
 			 * @brief Метод установки объекта логирования
 			 *
 			 * @param log объект работы с логами
+			 *
 			 */
 			void setLogger(const Logging * log) noexcept;
 		public:
@@ -207,6 +224,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param log объект работы с логами
+			 *
 			 */
 			explicit Regular_Expressions(const Logging * log) noexcept;
 			/**

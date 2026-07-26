@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример работы с модулем наблюдения за файловой системой — демонстрация отслеживания создания, изменения,
+ *        переименования и удаления файлов и каталогов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -33,6 +37,7 @@ using namespace placeholders;
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

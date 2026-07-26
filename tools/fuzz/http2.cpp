@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Инструмент фаззинга парсера протокола HTTP/2 — генерация случайных и полуструктурированных потоков фреймов и
+ *        подача их разборщику сессии для поиска аварийных завершений, зависаний и выходов за границы буфера
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -53,6 +57,7 @@ namespace {
 	 * @param sid     идентификатор потока
 	 * @param payload полезная нагрузка кадра
 	 * @return        собранный кадр
+	 *
 	 */
 	string frame(const uint8_t type, const uint8_t flags, const uint32_t sid, const string & payload) noexcept {
 		// Результат работы функции - собранный кадр
@@ -85,6 +90,7 @@ namespace {
 	 *
 	 * @param value записываемое число
 	 * @return      записанное число
+	 *
 	 */
 	string u32(const uint32_t value) noexcept {
 		// Результат работы функции - записанное число
@@ -118,6 +124,7 @@ namespace {
  * @param argc количество параметров командной строки
  * @param argv параметры командной строки
  * @return     код выхода процесса
+ *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Количество итераций генератора (по две сессии на итерацию - клиент и сервер)

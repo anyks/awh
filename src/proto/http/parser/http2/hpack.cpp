@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация кодека HPACK (RFC 7541) — статическая и динамическая таблицы заголовков,
+ *        кодирование и декодирование целых с префиксом,
+ *        Хаффман-кодирование и разбор блоков заголовков с защитой от decompression bomb
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -42,6 +47,7 @@ namespace {
 	 * @brief Статическая таблица HPACK (RFC 7541, Appendix A)
 	 *
 	 * @note Индекс 0 не используется - заглушка для 1-based индексации
+	 *
 	 */
 	const hpack::static_entry_t STATIC[hpack::STATIC_TABLE_SIZE + 1] = {
 		{ "", "" }, // 0 - заглушка (индексация 1-based)
@@ -117,6 +123,7 @@ namespace {
 	 *          линейно от неё, пока совпадает название.
 	 *
 	 * @return индекс статической таблицы по названию заголовка
+	 *
 	 */
 	const unordered_map <string_view, size_t> & staticNames() noexcept {
 		// Строим индекс лениво при первом обращении
@@ -145,6 +152,7 @@ namespace {
 	 *          (nghttp2, лицензия MIT); логика кодера/декодера написана заново.
 	 *          EOS (символ 256) опущен: при кодировании хвост добивается единичными
 	 *          битами (это префикс EOS), при декодировании EOS внутри потока - ошибка.
+	 *
 	 */
 	struct huff_sym_t {
 		// Длина кода в битах (5..30)
@@ -228,6 +236,7 @@ namespace {
 	 * @brief Структура узла дерева декодирования Huffman
 	 *
 	 * @details У листа sym >= 0, у внутреннего узла sym == -1.
+	 *
 	 */
 	struct huff_node_t {
 		// Декодированный символ (или -1 для внутреннего узла)
@@ -241,6 +250,7 @@ namespace {
 	 *
 	 * @details Минимальная длина кода Huffman - 5 бит, поэтому за один шаг в 4 бита
 	 *          может быть завершён не более одного символа.
+	 *
 	 */
 	struct huff_step_t {
 		// Индекс узла дерева после шага
@@ -266,6 +276,7 @@ namespace {
 	 * @brief Функция построения (один раз) дерева декодирования из таблицы кодов
 	 *
 	 * @return дерево декодирования Huffman
+	 *
 	 */
 	const vector <huff_node_t> & huffTree() noexcept {
 		// Строим дерево декодирования лениво при первом обращении
@@ -316,6 +327,7 @@ namespace {
 	 *          два обращения к таблице на байт вместо восьми разыменований узлов.
 	 *
 	 * @return табличный декодер Huffman
+	 *
 	 */
 	const huff_table_t & huffTable() noexcept {
 		// Строим таблицу декодирования лениво при первом обращении
@@ -421,6 +433,7 @@ namespace {
 	 * @param output выходной буфер декодированной строки
 	 * @param error  код ошибки протокола
 	 * @return       результат декодирования (OK/INCOMPLETE/ERROR)
+	 *
 	 */
 	status_t decodeStringRaw(const uint8_t * data, const size_t size, size_t & pos, string & output, error_t & error) noexcept {
 		// Если данных для разбора не осталось
@@ -483,6 +496,7 @@ namespace {
 	 * @param length  длина декодированной строки
 	 * @param error   код ошибки протокола
 	 * @return        результат декодирования (OK/INCOMPLETE/ERROR)
+	 *
 	 */
 	status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & arena, string & scratch, size_t & offset, size_t & length, error_t & error) noexcept {
 		// Запоминаем смещение начала строки в арене
@@ -509,6 +523,7 @@ namespace {
 	 *
 	 * @param name название заголовка
 	 * @return     результат проверки
+	 *
 	 */
 	bool isSensitiveName(string_view name) noexcept {
 		// Чувствительными считаются заголовки авторизации и cookie
@@ -523,6 +538,7 @@ namespace {
 	 * @param output     выходной буфер
 	 * @param str          кодируемая строка
 	 * @param useHuffman применять Huffman-кодирование, если оно короче литерала
+	 *
 	 */
 	void encodeStringLiteral(string & output, string_view str, const bool useHuffman) noexcept {
 		// Если Huffman-кодирование разрешено и даёт выигрыш по размеру
@@ -550,6 +566,7 @@ namespace {
  *
  * @param index индекс записи (1-based); 0 или > 61 - невалиден
  * @return      указатель на запись либо nullptr
+ *
  */
 const awh::http::h2::hpack::static_entry_t * awh::http::h2::hpack::staticTable(const size_t index) noexcept {
 	// Если индекс за пределами статической таблицы
@@ -578,6 +595,7 @@ awh::http::h2::hpack::Field::Field() noexcept :
  *
  * @param name  название заголовка
  * @param value значение заголовка
+ *
  */
 awh::http::h2::hpack::Field::Field(string name, string value) noexcept :
  name(::move(name)), value(::move(value)), sensitive(false) {}
@@ -587,6 +605,7 @@ awh::http::h2::hpack::Field::Field(string name, string value) noexcept :
  * @param name      название заголовка
  * @param value     значение заголовка
  * @param sensitive флаг чувствительного значения
+ *
  */
 awh::http::h2::hpack::Field::Field(string name, string value, const bool sensitive) noexcept :
  name(::move(name)), value(::move(value)), sensitive(sensitive) {}
@@ -596,6 +615,7 @@ awh::http::h2::hpack::Field::Field(string name, string value, const bool sensiti
  *
  * @param input строка для вычисления
  * @return      длина строки после кодирования
+ *
  */
 size_t awh::http::h2::hpack::huffman::length(string_view input) noexcept {
 	// Суммарная длина кодов в битах
@@ -614,6 +634,7 @@ size_t awh::http::h2::hpack::huffman::length(string_view input) noexcept {
  *
  * @param input  кодируемая строка
  * @param output выходной буфер закодированной строки
+ *
  */
 void awh::http::h2::hpack::huffman::encode(string_view input, string & output) noexcept {
 	// Число накопленных бит
@@ -659,6 +680,7 @@ void awh::http::h2::hpack::huffman::encode(string_view input, string & output) n
  * @param size   доступно байт
  * @param output выходной буфер декодированной строки
  * @return       результат декодирования (false - некорректная последовательность, COMPRESSION_ERROR)
+ *
  */
 bool awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t size, string & output) noexcept {
 	// Очищаем выходной буфер (декодирование замещает его содержимое, а не дописывает)
@@ -721,6 +743,7 @@ bool awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t si
  * @param value       кодируемое значение
  * @param prefixBits  размер префикса в битах (1..8)
  * @param prefixValue значение старших бит первого байта
+ *
  */
 void awh::http::h2::hpack::prefixed::encode(string & output, uint64_t value, const uint8_t prefixBits, const uint8_t prefixValue) noexcept {
 	// Максимальное значение, помещающееся в префикс
@@ -759,6 +782,7 @@ void awh::http::h2::hpack::prefixed::encode(string & output, uint64_t value, con
  * @param value      декодированное значение
  * @param consumed   количество прочитанных байт
  * @return           результат декодирования (OK / INCOMPLETE - мало данных / ERROR - переполнение)
+ *
  */
 awh::http::h2::status_t awh::http::h2::hpack::prefixed::decode(const uint8_t * data, const size_t size, const uint8_t prefixBits, uint64_t & value, size_t & consumed) noexcept {
 	// Если данных для разбора нет
@@ -849,6 +873,7 @@ void awh::http::h2::hpack::DynamicTable::evict() noexcept {
  * @brief Метод получения количества записей таблицы
  *
  * @return количество записей таблицы
+ *
  */
 size_t awh::http::h2::hpack::DynamicTable::count() const noexcept {
 	// Выводим количество записей таблицы
@@ -858,6 +883,7 @@ size_t awh::http::h2::hpack::DynamicTable::count() const noexcept {
  * @brief Метод получения текущего суммарного размера таблицы
  *
  * @return текущий суммарный размер таблицы
+ *
  */
 uint32_t awh::http::h2::hpack::DynamicTable::size() const noexcept {
 	// Выводим текущий суммарный размер таблицы
@@ -867,6 +893,7 @@ uint32_t awh::http::h2::hpack::DynamicTable::size() const noexcept {
  * @brief Метод получения лимита размера таблицы
  *
  * @return лимит размера таблицы
+ *
  */
 uint32_t awh::http::h2::hpack::DynamicTable::maxSize() const noexcept {
 	// Выводим лимит размера таблицы
@@ -876,6 +903,7 @@ uint32_t awh::http::h2::hpack::DynamicTable::maxSize() const noexcept {
  * @brief Метод изменения максимального размера таблицы (Dynamic Table Size Update)
  *
  * @param maxSize новый максимальный размер таблицы
+ *
  */
 void awh::http::h2::hpack::DynamicTable::setMaxSize(const uint32_t maxSize) noexcept {
 	// Устанавливаем новый лимит размера таблицы
@@ -888,6 +916,7 @@ void awh::http::h2::hpack::DynamicTable::setMaxSize(const uint32_t maxSize) noex
  *
  * @param index индекс записи
  * @return      указатель на запись либо nullptr
+ *
  */
 const awh::http::h2::hpack::field_t * awh::http::h2::hpack::DynamicTable::at(const size_t index) const noexcept {
 	// Если индекс за пределами таблицы
@@ -902,6 +931,7 @@ const awh::http::h2::hpack::field_t * awh::http::h2::hpack::DynamicTable::at(con
  *
  * @param name  название заголовка
  * @param value значение заголовка
+ *
  */
 void awh::http::h2::hpack::DynamicTable::add(string_view name, string_view value) noexcept {
 	// Вычисляем размер добавляемой записи (RFC 7541 §4.1)
@@ -926,6 +956,7 @@ void awh::http::h2::hpack::DynamicTable::add(string_view name, string_view value
  * @brief Конструктор
  *
  * @param maxSize максимальный размер таблицы
+ *
  */
 awh::http::h2::hpack::DynamicTable::DynamicTable(const uint32_t maxSize) noexcept :
  _size(0), _maxSize(maxSize) {}
@@ -934,6 +965,7 @@ awh::http::h2::hpack::DynamicTable::DynamicTable(const uint32_t maxSize) noexcep
  * @brief Метод получения динамической таблицы пира
  *
  * @return динамическая таблица пира
+ *
  */
 awh::http::h2::hpack::dynamic_table_t & awh::http::h2::hpack::Decoder::table() noexcept {
 	// Выводим динамическую таблицу пира
@@ -946,6 +978,7 @@ awh::http::h2::hpack::dynamic_table_t & awh::http::h2::hpack::Decoder::table() n
  *       Превышение пиром трактуется как COMPRESSION_ERROR.
  *
  * @param size верхняя граница размера таблицы
+ *
  */
 void awh::http::h2::hpack::Decoder::setProtocolMaxSize(const uint32_t size) noexcept {
 	// Устанавливаем верхнюю границу размера таблицы
@@ -959,6 +992,7 @@ void awh::http::h2::hpack::Decoder::setProtocolMaxSize(const uint32_t size) noex
  * @param maxListSize лимит суммарного размера списка (защита от decompression bomb); 0 - без лимита
  * @param error       код ошибки протокола (COMPRESSION_ERROR / ENHANCE_YOUR_CALM)
  * @return            результат декодирования (OK/ERROR)
+ *
  */
 awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block, vector <field_view_t> & output, const uint64_t maxListSize, error_t & error) noexcept {
 	// Текущая позиция разбора
@@ -983,6 +1017,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	 * @param str    дописываемая строка
 	 * @param offset смещение строки в арене
 	 * @param length длина строки
+	 *
 	 */
 	auto store = [this](string_view str, size_t & offset, size_t & length) noexcept -> void {
 		// Запоминаем смещение строки в арене
@@ -999,6 +1034,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	 * @param slice     срез заголовка, заполняемый из записи
 	 * @param needValue требуется ли извлекать значение
 	 * @return          результат получения записи
+	 *
 	 */
 	auto resolve = [this, &store](const uint64_t index, slice_t & slice, const bool needValue) noexcept -> bool {
 		// Если индекс невалиден
@@ -1045,6 +1081,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	 *
 	 * @param slice срез декодированного заголовка
 	 * @return      результат учёта (false - лимит превышен)
+	 *
 	 */
 	auto account = [&listSize, maxListSize](const slice_t & slice) noexcept -> bool {
 		// Наращиваем суммарный размер списка заголовков (RFC 7541 §4.1)
@@ -1062,6 +1099,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	 *
 	 * @param slice срез декодированного заголовка
 	 * @param mark  размер арены до декодирования заголовка
+	 *
 	 */
 	auto commit = [this](const slice_t & slice, const size_t mark) noexcept -> void {
 		// Если лимит списка заголовков превышен
@@ -1297,6 +1335,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
  * @brief Метод проверки превышения лимита списка заголовков последним блоком
  *
  * @return признак превышения лимита последним декодированным блоком
+ *
  */
 bool awh::http::h2::hpack::Decoder::overflowed() const noexcept {
 	// Выводим признак превышения лимита последним декодированным блоком
@@ -1306,6 +1345,7 @@ bool awh::http::h2::hpack::Decoder::overflowed() const noexcept {
  * @brief Конструктор
  *
  * @param maxTableSize максимальный размер динамической таблицы
+ *
  */
 awh::http::h2::hpack::Decoder::Decoder(const uint32_t maxTableSize) noexcept :
  _table(maxTableSize), _protocolMaxSize(maxTableSize), _overflow(false) {}
@@ -1320,6 +1360,7 @@ awh::http::h2::hpack::Decoder::Decoder(const uint32_t maxTableSize) noexcept :
  * @param value     значение искомого заголовка
  * @param nameIndex индекс совпадения только по имени
  * @return          индекс полного совпадения (имя+значение)
+ *
  */
 uint64_t awh::http::h2::hpack::Encoder::lookup(string_view name, string_view value, uint64_t & nameIndex) const noexcept {
 	// Сбрасываем индекс совпадения по имени
@@ -1374,6 +1415,7 @@ uint64_t awh::http::h2::hpack::Encoder::lookup(string_view name, string_view val
  *          перед пофиледным кодированием блока.
  *
  * @param output выходной буфер блока заголовков
+ *
  */
 void awh::http::h2::hpack::Encoder::begin(string & output) noexcept {
 	// Сбрасываем размер списка заголовков блока (счёт начинается заново)
@@ -1397,6 +1439,7 @@ void awh::http::h2::hpack::Encoder::begin(string & output) noexcept {
  * @brief Метод получения размера закодированного списка заголовков до сжатия
  *
  * @return размер списка заголовков текущего блока до сжатия
+ *
  */
 uint64_t awh::http::h2::hpack::Encoder::listSize() const noexcept {
 	// Выводим размер списка заголовков текущего блока до сжатия
@@ -1406,6 +1449,7 @@ uint64_t awh::http::h2::hpack::Encoder::listSize() const noexcept {
  * @brief Метод получения собственной динамической таблицы
  *
  * @return собственная динамическая таблица
+ *
  */
 awh::http::h2::hpack::dynamic_table_t & awh::http::h2::hpack::Encoder::table() noexcept {
 	// Выводим собственную динамическую таблицу
@@ -1415,6 +1459,7 @@ awh::http::h2::hpack::dynamic_table_t & awh::http::h2::hpack::Encoder::table() n
  * @brief Метод изменения максимального размера своей динамической таблицы (RFC 7541 §4.2)
  *
  * @param size новый максимальный размер таблицы
+ *
  */
 void awh::http::h2::hpack::Encoder::setMaxTableSize(const uint32_t size) noexcept {
 	// Если размер таблицы не изменился - ничего не делаем
@@ -1438,6 +1483,7 @@ void awh::http::h2::hpack::Encoder::setMaxTableSize(const uint32_t size) noexcep
  * @brief Метод управления автоматическим определением чувствительных заголовков
  *
  * @param mode режим автоматического определения
+ *
  */
 void awh::http::h2::hpack::Encoder::sensitiveHeuristic(const bool mode) noexcept {
 	// Устанавливаем режим автоматического определения чувствительных заголовков
@@ -1449,6 +1495,7 @@ void awh::http::h2::hpack::Encoder::sensitiveHeuristic(const bool mode) noexcept
  * @param fields     заголовки (псевдо-заголовки :method/:path/... должны идти первыми)
  * @param output     выходной буфер блока заголовков
  * @param useHuffman применять Huffman-кодирование к строкам
+ *
  */
 void awh::http::h2::hpack::Encoder::encode(const vector <field_t> & fields, string & output, const bool useHuffman) noexcept {
 	// Дописываем отложенный Dynamic Table Size Update (если требуется)
@@ -1466,6 +1513,7 @@ void awh::http::h2::hpack::Encoder::encode(const vector <field_t> & fields, stri
  * @param fields     декодированные заголовки
  * @param output     выходной буфер блока заголовков
  * @param useHuffman применять Huffman-кодирование к строкам
+ *
  */
 void awh::http::h2::hpack::Encoder::encode(const vector <field_view_t> & fields, string & output, const bool useHuffman) noexcept {
 	// Дописываем отложенный Dynamic Table Size Update (если требуется)
@@ -1488,6 +1536,7 @@ void awh::http::h2::hpack::Encoder::encode(const vector <field_view_t> & fields,
  * @param output     выходной буфер блока заголовков
  * @param sensitive  чувствительное значение (Literal Never Indexed, RFC 7541 §7.1.3)
  * @param useHuffman применять Huffman-кодирование к строкам
+ *
  */
 void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, string & output, const bool sensitive, const bool useHuffman) noexcept {
 	// Наращиваем размер списка заголовков блока до сжатия (RFC 9113 §6.5.2)
@@ -1543,6 +1592,7 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
  * @brief Конструктор
  *
  * @param maxTableSize максимальный размер динамической таблицы
+ *
  */
 awh::http::h2::hpack::Encoder::Encoder(const uint32_t maxTableSize) noexcept :
  _table(maxTableSize), _pendingSize(0), _pendingMinSize(0), _listSize(0),

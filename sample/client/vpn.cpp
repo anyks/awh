@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример VPN-клиента — демонстрация связывания виртуального сетевого интерфейса TUN с удалённым сервером через
+ *        модуль посредника и передачи IP-пакетов по защищённому каналу
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -85,6 +89,7 @@ class Executor {
 		 *
 		 * @param eid    идентификатор события
 		 * @param status новый статус туннеля
+		 *
 		 */
 		void statusVPN(const event::id_t eid, const event::status_t status) noexcept {
 			/**
@@ -115,6 +120,7 @@ class Executor {
 		 * @param data   бинарный буфер данных
 		 * @param size   размер данных
 		 * @param client объект клиента
+		 *
 		 */
 		void readVPN([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size, client_t * client) noexcept {
 			// Если данные получены
@@ -143,6 +149,7 @@ class Executor {
 		 * @param eid    идентификатор события туннеля
 		 * @param error  код ошибки
 		 * @param message сообщение об ошибке
+		 *
 		 */
 		void errorVPN([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
@@ -153,6 +160,7 @@ class Executor {
 		 * @brief Метод обработки событий записи данных клиентом
 		 *
 		 * @param size размер данных для записи
+		 *
 		 */
 		void write(const size_t size) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
@@ -165,6 +173,7 @@ class Executor {
 		 * @param data   бинарный буфер данных
 		 * @param size   размер данных
 		 * @param client объект клиента
+		 *
 		 */
 		void read(const event::id_t eid, const uint8_t * data, const size_t size, client_t * client) noexcept {
 			// Если данные получены
@@ -259,6 +268,7 @@ class Executor {
 		 *
 		 * @param status новый статус клиента
 		 * @param client объект клиента
+		 *
 		 */
 		void status(const event::status_t status, client_t * client) noexcept {
 			/**
@@ -286,6 +296,7 @@ class Executor {
 		 *
 		 * @param ok     результат подключения
 		 * @param client объект клиента
+		 *
 		 */
 		void connect(const bool ok, client_t * client) noexcept {
 			// Если подключение выполнено
@@ -307,6 +318,7 @@ class Executor {
 		 * @param family семейство адресов клиента
 		 * @param domain доменное имя клиента
 		 * @param ip     IP-адрес клиента
+		 *
 		 */
 		void ready([[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности клиента к работе
@@ -317,6 +329,7 @@ class Executor {
 		 *
 		 * @param error   код ошибки
 		 * @param message сообщение об ошибке
+		 *
 		 */
 		void error([[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
@@ -330,6 +343,7 @@ class Executor {
 		 * @param med объект посредника между сервером и туннелем
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
+		 *
 		 */
 		Executor(unit::tunnel_t * tun, unit::mediator_t * med, const fmk_t * fmk, const log_t * log) noexcept :
 		 _tun(0), _addr(fmk, log), _gateway(fmk, log),
@@ -342,6 +356,7 @@ class Executor {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

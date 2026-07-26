@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация вспомогательных функций протокола HTTP/2 — получение человекочитаемых названий типов фреймов,
+ *        флагов, параметров SETTINGS и кодов ошибок для диагностики и логирования
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -27,6 +31,7 @@ using namespace std;
  *
  * @param type тип фрейма
  * @return     название типа фрейма
+ *
  */
 string_view awh::http::h2::frameName(const frame_t type) noexcept {
 	/**
@@ -86,6 +91,7 @@ string_view awh::http::h2::frameName(const frame_t type) noexcept {
  *
  * @param code код ошибки протокола
  * @return     название кода ошибки
+ *
  */
 string_view awh::http::h2::errorName(const error_t code) noexcept {
 	/**

@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл криптографического рукопожатия QUIC — класс quic::Handshake,
+ *        управляющий уровнями шифрования, обменом CRYPTO-данными с BoringSSL,
+ *        установкой ключей и передачей транспортных параметров как непрозрачных байт
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_PROTO_QUIC_HANDSHAKE__
@@ -71,6 +76,7 @@ namespace awh {
 		 *          Транспортные параметры передаются в расширении quic_transport_parameters
 		 *          как непрозрачные байты - сериализация модулем params.
 		 *          Сборка/разбор пакетов и фреймов, потери и таймеры - вне этого класса.
+		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Handshake {
 			public:
@@ -166,6 +172,7 @@ namespace awh {
 				 * @brief Метод продвижения TLS-хендшейка
 				 *
 				 * @return результат продвижения (OK - хендшейк продолжается или завершён)
+				 *
 				 */
 				status_t process() noexcept;
 			public:
@@ -178,6 +185,7 @@ namespace awh {
 				 *       протокола из этого списка
 				 *
 				 * @return согласованный ALPN-протокол (пустое название - согласование не выполнено)
+				 *
 				 */
 				tls::coder_t::alpn_t alpn() const noexcept;
 			public:
@@ -190,6 +198,7 @@ namespace awh {
 				 *       сервером и отправляет ранние данные, не дожидаясь хендшейка
 				 *
 				 * @return сериализованная сессия (пусто - сессия недоступна)
+				 *
 				 */
 				string session() const noexcept;
 				/**
@@ -201,6 +210,7 @@ namespace awh {
 				 *
 				 * @param session сериализованная сессия
 				 * @return        результат установки
+				 *
 				 */
 				bool session(string_view session) noexcept;
 				/**
@@ -210,6 +220,7 @@ namespace awh {
 				 *       подлежат повторной отправке на уровне приложения (RFC 9001 §4.6.2)
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool early() const noexcept;
 				/**
@@ -220,6 +231,7 @@ namespace awh {
 				 *       отправке после завершения хендшейка
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool rejected() const noexcept;
 			public:
@@ -231,6 +243,7 @@ namespace awh {
 				 *
 				 * @param params локальные транспортные параметры
 				 * @return       результат установки (false - ошибка сериализации)
+				 *
 				 */
 				bool params(const quic::params::params_t & params) noexcept;
 				/**
@@ -242,6 +255,7 @@ namespace awh {
 				 * @param params транспортные параметры удалённого узла
 				 * @param error  код ошибки транспорта
 				 * @return       результат извлечения (OK/INCOMPLETE/ERROR)
+				 *
 				 */
 				status_t peer(quic::params::params_t & params, error_t & error) const noexcept;
 			public:
@@ -253,6 +267,7 @@ namespace awh {
 				 *
 				 * @param dcid идентификатор соединения получателя первого пакета Initial клиента
 				 * @return     результат вывода (false - ошибка криптографической библиотеки)
+				 *
 				 */
 				bool initial(const cid_t & dcid) noexcept;
 			public:
@@ -265,6 +280,7 @@ namespace awh {
 				 *       инициализирует TLS-стек и ожидает данных через crypto()
 				 *
 				 * @return результат начала хендшейка (OK/ERROR)
+				 *
 				 */
 				status_t start() noexcept;
 				/**
@@ -278,6 +294,7 @@ namespace awh {
 				 * @param data  данные CRYPTO-фрейма
 				 * @param size  размер данных CRYPTO-фрейма
 				 * @return      результат обработки (OK/ERROR)
+				 *
 				 */
 				status_t crypto(const level_t level, const uint8_t * data, const size_t size) noexcept;
 			public:
@@ -286,6 +303,7 @@ namespace awh {
 				 *
 				 * @param level уровень шифрования
 				 * @return      результат проверки (true - есть данные для отправки)
+				 *
 				 */
 				bool pending(const level_t level) const noexcept;
 				/**
@@ -296,6 +314,7 @@ namespace awh {
 				 *
 				 * @param level уровень шифрования
 				 * @return      исходящие CRYPTO-данные уровня
+				 *
 				 */
 				string data(const level_t level) noexcept;
 			public:
@@ -304,6 +323,7 @@ namespace awh {
 				 *
 				 * @param level уровень шифрования
 				 * @return      ключи защиты пакетов либо nullptr если ключи ещё не выведены
+				 *
 				 */
 				const crypto::keys_t * encryption(const level_t level) const noexcept;
 				/**
@@ -311,6 +331,7 @@ namespace awh {
 				 *
 				 * @param level уровень шифрования
 				 * @return      ключи защиты пакетов либо nullptr если ключи ещё не выведены
+				 *
 				 */
 				const crypto::keys_t * decryption(const level_t level) const noexcept;
 			public:
@@ -323,6 +344,7 @@ namespace awh {
 				 * @param level уровень шифрования
 				 * @param read  ключи снятия защиты входящих пакетов уровня
 				 * @param write ключи защиты исходящих пакетов уровня
+				 *
 				 */
 				void install(const level_t level, const crypto::keys_t & read, const crypto::keys_t & write) noexcept;
 			public:
@@ -333,6 +355,7 @@ namespace awh {
 				 *       ключи Handshake - после подтверждения хендшейка
 				 *
 				 * @param level уровень шифрования
+				 *
 				 */
 				void discard(const level_t level) noexcept;
 			public:
@@ -340,6 +363,7 @@ namespace awh {
 				 * @brief Метод получения состояния хендшейка
 				 *
 				 * @return состояние хендшейка
+				 *
 				 */
 				state_t state() const noexcept;
 				/**
@@ -349,6 +373,7 @@ namespace awh {
 				 *       при иных ошибках хендшейка - INTERNAL_ERROR
 				 *
 				 * @return код ошибки транспорта (NO_ERROR - ошибки нет)
+				 *
 				 */
 				error_t error() const noexcept;
 			public:
@@ -373,6 +398,7 @@ namespace awh {
 				 * @param ctx      идентификатор шаблона контекста безопасности
 				 * @param coder    объект кодера транспортной безопасности
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Handshake(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept;
 				/**

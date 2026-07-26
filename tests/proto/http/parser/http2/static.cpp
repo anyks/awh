@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Статические тесты парсера протокола HTTP/2 — проверка создания и сброса объекта модуля,
+ *        а также корректности разбора фреймов, управления состояниями потоков,
+ *        окнами flow control и кодирования HPACK
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -47,6 +52,7 @@ namespace {
 	 * @param sid     идентификатор потока
 	 * @param payload полезная нагрузка кадра
 	 * @return        собранный кадр
+	 *
 	 */
 	std::string frame(const uint8_t type, const uint8_t flags, const uint32_t sid, const std::string & payload) noexcept {
 		// Результат работы функции - собранный кадр
@@ -1818,6 +1824,7 @@ TEST_F(ParserHttp2Fixture, PullOutputModelTest){
 	 *
 	 * @param from парсер-отправитель
 	 * @param to   парсер-получатель
+	 *
 	 */
 	auto transfer = [](parser_http2_t & from, parser_http2_t & to) noexcept {
 		/**
@@ -3165,6 +3172,7 @@ TEST_F(ParserHttp2Fixture, EnablePushAnnouncementTest){
 	 * @param output очередь исходящих данных парсера
 	 * @param id     искомый идентификатор параметра
 	 * @return       признак наличия параметра
+	 *
 	 */
 	auto has = [](const std::string_view output, const uint16_t id) noexcept -> bool {
 		// Текущая позиция разбора очереди

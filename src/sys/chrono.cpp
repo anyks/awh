@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля работы с датой и временем — разбор и форматирование дат в различных форматах,
+ *        конвертация единиц времени, работа с временными зонами и переходами на летнее время,
+ *        получение штампов времени высокого разрешения
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -43,6 +48,7 @@ namespace {
 	 * @details Структура содержит справочные таблицы, необходимые для выполнения различных календарных вычислений,
 	 *          таких как определение дня недели, количества дней в каждом месяце, а также
 	 *          сокращённые и полные названия дней недели и месяцев.
+	 *
 	 */
 	struct Params {
 		// Коды (сдвиги) месяцев для расчёта дня недели
@@ -109,6 +115,7 @@ namespace {
 	 * @details Структура содержит два поля: begin - индекс первого символа группы (относительно начала анализируемого текста),
 	 *          end - индекс символа сразу за концом группы (относительно начала анализируемого текста).
 	 *          Если группа не найдена, оба поля устанавливаются в -1.
+	 *
 	 */
 	struct match_t {
 		// Индекс символа сразу за концом группы (относительно начала анализируемого текста)
@@ -127,6 +134,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       true если символ является цифрой
+	 *
 	 */
 	inline bool isDigitChar(const char letter) noexcept {
 		// Цифра попадает в диапазон от '0' до '9' таблицы ASCII
@@ -137,6 +145,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       true если символ является заглавной буквой
+	 *
 	 */
 	inline bool isUpperChar(const char letter) noexcept {
 		// Заглавная латинская буква попадает в диапазон от 'A' до 'Z'
@@ -147,6 +156,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       true если символ является строчной буквой
+	 *
 	 */
 	inline bool isLowerChar(const char letter) noexcept {
 		// Строчная латинская буква попадает в диапазон от 'a' до 'z'
@@ -157,6 +167,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       true если символ является буквой
+	 *
 	 */
 	inline bool isAlphaChar(const char letter) noexcept {
 		// Буквой считается как заглавная, так и строчная латинская буква
@@ -167,6 +178,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       true если символ является словесным
+	 *
 	 */
 	inline bool isWordChar(const char letter) noexcept {
 		// Словесный символ — это буква, цифра или знак подчёркивания
@@ -177,6 +189,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       true если символ является пробельным
+	 *
 	 */
 	inline bool isSpaceChar(const char letter) noexcept {
 		// Пробельными считаются пробел, табуляция, перевод строки, возврат каретки и перевод страницы
@@ -195,6 +208,7 @@ namespace {
 	 * @param min    минимальное количество цифр
 	 * @param max    максимальное количество цифр
 	 * @return       количество захваченных цифр или 0 если их меньше min
+	 *
 	 */
 	inline size_t takeDigits(const char * text, const size_t length, const size_t pos, const size_t min, const size_t max) noexcept {
 		// Счётчик подряд идущих цифр, захваченных начиная с позиции pos
@@ -218,6 +232,7 @@ namespace {
 	 * @param max    максимальное количество цифр
 	 * @param match  группа совпадения
 	 * @return       результат проверки совпадения
+	 *
 	 */
 	inline bool matchDigits(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
 		// Пробуем захватить от min до max цифр начиная с текущей позиции
@@ -244,6 +259,7 @@ namespace {
 	 * @param letter символ для совпадения
 	 * @param match  группа совпадения
 	 * @return       результат проверки совпадения
+	 *
 	 */
 	inline bool matchLiteral(const char * text, const size_t length, size_t & pos, const char letter) noexcept {
 		// За концом текста или при несовпадении символа разделитель не найден
@@ -262,6 +278,7 @@ namespace {
 	 * @param length длина анализируемого текста
 	 * @param pos    позиция в тексте
 	 * @return       результат проверки совпадения
+	 *
 	 */
 	inline bool matchSpaces(const char * text, const size_t length, size_t & pos) noexcept {
 		// Требуется хотя бы один пробельный символ — иначе совпадения нет
@@ -287,6 +304,7 @@ namespace {
 	 * @param max    максимальное количество строчных букв
 	 * @param match  группа совпадения
 	 * @return       результат проверки совпадения
+	 *
 	 */
 	inline bool matchName(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
 		// Название обязано начинаться с заглавной буквы (например, Jan или Monday)
@@ -322,6 +340,7 @@ namespace {
 	 * @param pos    позиция в тексте
 	 * @param match  группа совпадения
 	 * @return       результат проверки совпадения
+	 *
 	 */
 	inline bool matchAlpha2(const char * text, const size_t length, size_t & pos, match_t & match) noexcept {
 		// Нужны ровно две буквы подряд (например, метка AM/PM) и место под них в тексте
@@ -345,6 +364,7 @@ namespace {
 	 * @param min    минимальное количество цифр
 	 * @param max    максимальное количество цифр
 	 * @return       список групп совпадения (пустой если совпадения нет)
+	 *
 	 */
 	vector <match_t> parseDigits(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
 		// Итоговый список групп: остаётся пустым, если совпадение не найдено
@@ -380,6 +400,7 @@ namespace {
 	 * @param text   анализируемый текст
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (пустой если совпадения нет)
+	 *
 	 */
 	vector <match_t> parseWord(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если слово не найдено
@@ -417,6 +438,7 @@ namespace {
 	 * @param text   анализируемый текст
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (пустой если совпадения нет)
+	 *
 	 */
 	vector <match_t> parseAlpha2(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если пара букв не найдена
@@ -450,6 +472,7 @@ namespace {
 	 * @param min    минимальное количество строчных букв
 	 * @param max    максимальное количество строчных букв
 	 * @return       список групп совпадения (пустой если совпадения нет)
+	 *
 	 */
 	vector <match_t> parseName(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
 		// Итоговый список групп: остаётся пустым, если название не найдено
@@ -483,6 +506,7 @@ namespace {
 	 * @param sep    символ разделителя между группами
 	 * @param specs  список диапазонов [min,max] для каждой группы
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
+	 *
 	 */
 	vector <match_t> parseDigitGroups(const char * text, const size_t length, const char sep, const vector <pair <size_t, size_t>> & specs) noexcept {
 		// Итоговый список групп: остаётся пустым, если последовательность не найдена
@@ -545,6 +569,7 @@ namespace {
 	 * @param text   анализируемый текст
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
+	 *
 	 */
 	vector <match_t> parseTimeMeridiem(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если время с меткой не найдено
@@ -589,6 +614,7 @@ namespace {
 	 * @param text   анализируемый текст
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
+	 *
 	 */
 	vector <match_t> parseAsctime(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если дата asctime не найдена
@@ -639,6 +665,7 @@ namespace {
 	 * @param text   анализируемый текст
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - знак, группа 2 - блок смещения, группы 3 и 4 - часы и минуты при формате с двоеточием, группа 5 - цифровое смещение при формате без двоеточия)
+	 *
 	 */
 	vector <match_t> parseZoneOffset(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если смещение зоны не найдено
@@ -725,6 +752,7 @@ namespace {
 	 * @param text   анализируемый текст
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - слово, группа 2 - блок смещения, группа 3 - знак, группа 4 - значение смещения, группы 5 и 6 - часы и минуты при формате с двоеточием)
+	 *
 	 */
 	vector <match_t> parseZoneFull(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если ни слова, ни смещения не нашлось
@@ -859,6 +887,7 @@ namespace {
 	 * @param text   анализируемый текст
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - число, группа 2 - единица размерности)
+	 *
 	 */
 	vector <match_t> parseSeconds(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если число с единицей не найдено
@@ -1009,6 +1038,7 @@ void awh::Chrono::clear() noexcept {
  * @brief Метод установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
+ *
  */
 void awh::Chrono::threadSafety(const bool mode) noexcept {
 	/** 
@@ -1022,6 +1052,7 @@ void awh::Chrono::threadSafety(const bool mode) noexcept {
  *
  * @param value число для которого выполняется подсчёт разрядов
  * @return      количество десятичных разрядов
+ *
  */
 uint8_t awh::Chrono::digits(const uint64_t value) const noexcept {
 	// Количество десятичных разрядов
@@ -1048,6 +1079,7 @@ uint8_t awh::Chrono::digits(const uint64_t value) const noexcept {
  *
  * @param years количество прошедших лет с 1970 года
  * @return      количество високосных лет с учётом григорианского календаря
+ *
  */
 uint16_t awh::Chrono::leapYears(const uint16_t years) const noexcept {
 	// Получаем последний полный год перед началом искомого года
@@ -1062,6 +1094,7 @@ uint16_t awh::Chrono::leapYears(const uint16_t years) const noexcept {
  *
  * @param year год для которого необходимо получить начало
  * @return     штамп времени начала года в миллисекундах
+ *
  */
 uint64_t awh::Chrono::beginOfYear(const uint16_t year) const noexcept {
 	// Определяем количество прошедших лет
@@ -1082,6 +1115,7 @@ uint64_t awh::Chrono::beginOfYear(const uint16_t year) const noexcept {
  * @param day   день недели (1 - понедельник, 7 - воскресенье)
  * @param hour  количество часов (0-23)
  * @return      результат проверки действия летнего времени
+ *
  */
 bool awh::Chrono::isDST(const uint8_t month, const uint8_t date, const uint8_t day, const uint8_t hour) const noexcept {
 	// До марта и после ноября летнее время не действует
@@ -1124,6 +1158,7 @@ bool awh::Chrono::isDST(const uint8_t month, const uint8_t date, const uint8_t d
  *
  * @param dt объект даты из которой необходимо получить штамп времени
  * @return   штамп времени в миллисекундах
+ *
  */
 uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 	// Переменная результата
@@ -1194,6 +1229,7 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
  *
  * @param date дата из которой необходимо заполнить объект
  * @param dt   объект даты который необходимо заполнить
+ *
  */
 void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 	// Если дата передана
@@ -1296,6 +1332,7 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
  * @param format формат выполнения поиска
  * @param pos    начальная позиция в тексте
  * @return       конечная позиция обработанных данных в тексте
+ *
  */
 ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format, const size_t pos) const noexcept {
 	// Переменная результата
@@ -1896,6 +1933,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
  *
  * @param date дата в UnixTimestamp
  * @return     сформированная аббревиатура даты
+ *
  */
 std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t date) const noexcept {
 	// Переменная результата
@@ -1964,6 +2002,7 @@ std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t
  * @param date дата для которой необходимо получить позицию
  * @param type тип единиц измерений даты
  * @return     конец указанной даты в формате UnixTimestamp
+ *
  */
 uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept {
 	// Переменная результата
@@ -2083,6 +2122,7 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
  * @param type    тип единиц измерений даты
  * @param storage хранение значение времени
  * @return        конец текущей даты в формате UnixTimestamp
+ *
  */
 uint64_t awh::Chrono::end(const type_t type, const storage_t storage) const noexcept {
 	// Выполняем получение конца позиции текущей даты
@@ -2094,6 +2134,7 @@ uint64_t awh::Chrono::end(const type_t type, const storage_t storage) const noex
  * @param date дата для которой необходимо получить позицию
  * @param type тип единиц измерений даты
  * @return     начало указанной даты в формате UnixTimestamp
+ *
  */
 uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexcept {
 	// Переменная результата
@@ -2248,6 +2289,7 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
  * @param type    тип единиц измерений даты
  * @param storage хранение значение времени
  * @return        начало текущей даты в формате UnixTimestamp
+ *
  */
 uint64_t awh::Chrono::begin(const type_t type, const storage_t storage) const noexcept {
 	// Выполняем получение начала позиции текущей даты
@@ -2261,6 +2303,7 @@ uint64_t awh::Chrono::begin(const type_t type, const storage_t storage) const no
  * @param type   тип единиц измерений даты
  * @param actual направление актуализации
  * @return       результат вычисления
+ *
  */
 uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type_t type, const actual_t actual) const noexcept {
 	// Переменная результата
@@ -3765,6 +3808,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
  * @param actual  направление актуализации
  * @param storage хранение значение времени
  * @return        результат вычисления
+ *
  */
 uint64_t awh::Chrono::actual(const type_t value, const type_t type, const actual_t actual, const storage_t storage) const noexcept {
 	// Выполняем актуализацию текущей даты на указанное количество единиц времени
@@ -3778,6 +3822,7 @@ uint64_t awh::Chrono::actual(const type_t value, const type_t type, const actual
  * @param type   тип единиц измерений даты
  * @param offset направление смещения
  * @return       результат вычисления в формате UnixTimestamp
+ *
  */
 uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const type_t type, const offset_t offset) const noexcept {
 	// Переменная результата
@@ -4086,6 +4131,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
  * @param offset  направление смещения
  * @param storage хранение значение времени
  * @return        результат вычисления в формате UnixTimestamp
+ *
  */
 uint64_t awh::Chrono::offset(const uint64_t value, const type_t type, const offset_t offset, const storage_t storage) const noexcept {
 	// Выполняем смещение текущей даты на указанное количество единиц времени
@@ -4096,6 +4142,7 @@ uint64_t awh::Chrono::offset(const uint64_t value, const type_t type, const offs
  *
  * @param seconds количество секунд для конвертации
  * @return        обозначение времени с указанием размерности
+ *
  */
 string awh::Chrono::seconds(const double seconds) const noexcept {
 	// Переменная результата
@@ -4188,6 +4235,7 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
  *
  * @param value строка обозначения размерности (s, m, h, d, w, M, y)
  * @return      размер в секундах
+ *
  */
 double awh::Chrono::seconds(string_view value) const noexcept {
 	// Количество секунд
@@ -4289,6 +4337,7 @@ double awh::Chrono::seconds(string_view value) const noexcept {
  * @brief Метод извлечения статуса 12-и часового формата времени
  *
  * @param date дата для проверки
+ *
  */
 awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
 	// Если дата передана
@@ -4330,6 +4379,7 @@ awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
  *
  * @param storage хранение значение времени
  * @return        текущее установленное значение статуса 12-и часового формата времени
+ *
  */
 awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 	// Переменная результата
@@ -4378,6 +4428,7 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
  * @brief Метод извлечения значения года
  *
  * @param date дата для извлечения года
+ *
  */
 uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
 	// Переменная результата
@@ -4437,6 +4488,7 @@ uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
  *
  * @param storage хранение значение времени
  * @return        текущее значение года
+ *
  */
 uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 	// Переменная результата
@@ -4486,6 +4538,7 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
  *
  * @param date дата для проверки
  * @return     результат проверки
+ *
  */
 bool awh::Chrono::dst(const uint64_t date) const noexcept {
 	// Если дата передана
@@ -4527,6 +4580,7 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
  *
  * @param storage хранение значение времени
  * @return        результат проверки
+ *
  */
 bool awh::Chrono::dst(const storage_t storage) const noexcept {
 	// Выполняем проверку действия летнего времени
@@ -4537,6 +4591,7 @@ bool awh::Chrono::dst(const storage_t storage) const noexcept {
  *
  * @param year год для проверки
  * @return     результат проверки
+ *
  */
 bool awh::Chrono::leap(const uint16_t year) const noexcept {
 	// Если дата передана
@@ -4574,6 +4629,7 @@ bool awh::Chrono::leap(const uint16_t year) const noexcept {
  *
  * @param date дата для проверки
  * @return     результат проверки
+ *
  */
 bool awh::Chrono::leap(const uint64_t date) const noexcept {
 	// Если дата передана
@@ -4611,6 +4667,7 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
  *
  * @param storage хранение значение времени
  * @return        результат проверки
+ *
  */
 bool awh::Chrono::leap(const storage_t storage) const noexcept {
 	// Выполняем проверку является ли текущий год високосным
@@ -4620,6 +4677,7 @@ bool awh::Chrono::leap(const storage_t storage) const noexcept {
  * @brief Шаблон метода установки данных даты и времени
  *
  * @tparam T тип данных в котором устанавливаются данные
+ *
  */
 template <typename T>
 /**
@@ -4627,6 +4685,7 @@ template <typename T>
  *
  * @param date дата для обработки
  * @param unit элементы данных для установки
+ *
  */
 void awh::Chrono::set(const T date, const unit_t unit) noexcept {
 	// Выполняем установку данных
@@ -4660,6 +4719,7 @@ template void awh::Chrono::set(const string, const unit_t) noexcept;
  * @param size   размер бинарного буфера
  * @param unit   элементы данных для установки
  * @param text   данные переданы в виде текста
+ *
  */
 void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit, const bool text) noexcept {
 	// Если данные переданы правильно
@@ -5123,6 +5183,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
  * @brief Шаблон метода извлечения данных даты и времени
  *
  * @tparam T тип данных в котором извлекаются данные
+ *
  */
 template <typename T>
 /**
@@ -5131,6 +5192,7 @@ template <typename T>
  * @param date дата для обработки
  * @param unit элементы данных для извлечения
  * @return     значение данных даты и времени
+ *
  */
 T awh::Chrono::get(const uint64_t date, const unit_t unit) const noexcept {
 	// Переменная результата
@@ -5174,6 +5236,7 @@ template string awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
  * @brief Шаблон метода извлечения данных даты и времени
  *
  * @tparam T тип данных в котором извлекаются данные
+ *
  */
 template <typename T>
 /**
@@ -5181,6 +5244,7 @@ template <typename T>
  *
  * @param unit элементы данных для извлечения
  * @return     значение данных даты и времени
+ *
  */
 T awh::Chrono::get(const unit_t unit) const noexcept {
 	// Переменная результата
@@ -5224,6 +5288,7 @@ template string awh::Chrono::get(const unit_t) const noexcept;
  * @brief Шаблон метода извлечения данных даты и времени
  *
  * @tparam T тип данных в котором извлекаются данные
+ *
  */
 template <typename T>
 /**
@@ -5232,6 +5297,7 @@ template <typename T>
  * @param unit    элементы данных для извлечения
  * @param storage хранение значение времени
  * @return        значение данных даты и времени
+ *
  */
 T awh::Chrono::get(const unit_t unit, const storage_t storage) const noexcept {
 	// Переменная результата
@@ -5279,6 +5345,7 @@ template string awh::Chrono::get(const unit_t, const storage_t) const noexcept;
  * @param date   дата для обработки
  * @param unit   элементы данных для установки
  * @param text   данные переданы в виде текста
+ *
  */
 void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, const unit_t unit, const bool text) const noexcept {
 	// Если данные переданы правильно
@@ -5604,6 +5671,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
  * @param unit    элементы данных для установки
  * @param text    данные переданы в виде текста
  * @param storage хранение значение времени
+ *
  */
 void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const bool text, const storage_t storage) const noexcept {
 	// Если данные переданы правильно
@@ -6374,6 +6442,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
  * @brief Метод установки временной зоны
  *
  * @param zone смещение временной зоны для установки (в секундах)
+ *
  */
 void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
 	// Выполняем блокировку потока
@@ -6389,6 +6458,7 @@ void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
  * @brief Метод установки временной зоны
  *
  * @param zone временная зона для установки
+ *
  */
 void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
 	// Выполняем блокировку потока
@@ -6404,6 +6474,7 @@ void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
  * @brief Метод установки временной зоны
  *
  * @param zone временная зона для установки
+ *
  */
 void awh::Chrono::setTimeZone(string_view zone) noexcept {
 	// Выполняем блокировку потока
@@ -6420,6 +6491,7 @@ void awh::Chrono::setTimeZone(string_view zone) noexcept {
  *
  * @param zone временная зона для конвертации
  * @return     определённая временная зона
+ *
  */
 awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept {
 	// Переменная результата
@@ -6674,6 +6746,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
  *
  * @param storage хранение значение времени
  * @return        определённая временная зона
+ *
  */
 awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const noexcept {
 	// Переменная результата
@@ -6723,6 +6796,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
  *
  * @param zone временная зона для конвертации
  * @return     смещение временной зоны в секундах
+ *
  */
 int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
 	/**
@@ -7216,6 +7290,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
  *
  * @param zone временная зона для конвертации
  * @return     смещение временной зоны в секундах
+ *
  */
 int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 	// Переменная результата
@@ -7382,6 +7457,7 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
  * @param std временная зона стандартного времени
  * @param sum временная зона летнего времени
  * @return    смещение временной зоны в секундах
+ *
  */
 int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexcept {
 	/**
@@ -7426,6 +7502,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
  *
  * @param storage хранение значение времени
  * @return        смещение временной зоны в секундах
+ *
  */
 int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 	// Переменная результата
@@ -7538,6 +7615,7 @@ void awh::Chrono::clearTimeZones() noexcept {
  *
  * @param name   название временной зоны
  * @param offset смещение времени в секундах
+ *
  */
 void awh::Chrono::addTimeZone(string_view name, const int32_t offset) noexcept {
 	/**
@@ -7571,6 +7649,7 @@ void awh::Chrono::addTimeZone(string_view name, const int32_t offset) noexcept {
  * @brief Метод установки своего списка временных зон
  *
  * @param zones список временных зон для установки
+ *
  */
 void awh::Chrono::setTimeZones(const unordered_map <string, int32_t> & zones) noexcept {
 	// Выполняем блокировку потока
@@ -7592,6 +7671,7 @@ void awh::Chrono::setTimeZones(const unordered_map <string, int32_t> & zones) no
  *
  * @param date дата для установки
  * @param type единицы измерения штампа времени
+ *
  */
 void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 	// Если дата передана
@@ -7691,6 +7771,7 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
  * @param type    единицы измерения штампа времени
  * @param storage хранение значение времени
  * @return        штамп времени в указанных единицах измерения
+ *
  */
 uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) const noexcept {
 	// Переменная результата
@@ -7932,6 +8013,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
  * @param format  формат даты
  * @param storage хранение значение времени
  * @return        дата в UnixTimestamp
+ *
  */
 uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_t storage) noexcept {
 	// Переменная результата
@@ -8586,6 +8668,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
  *
  * @param zone временная зона (в секундах) в которой нужно получить результат
  * @return     строковое обозначение временной зоны
+ *
  */
 string awh::Chrono::format(const int32_t zone) const noexcept {
 	// Переменная результата
@@ -8648,6 +8731,7 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
  *
  * @param zone временная зона в которой нужно получить результат
  * @return     строковое обозначение временной зоны
+ *
  */
 string awh::Chrono::format(const zone_t zone) const noexcept {
 	/**
@@ -9507,6 +9591,7 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
  * @param dt     объект даты и времени
  * @param format формат даты
  * @return       строка содержащая дату
+ *
  */
 string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 	// Переменная результата
@@ -10072,6 +10157,7 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
  * @param date   дата в UnixTimestamp
  * @param format формат даты
  * @return       строка содержащая дату
+ *
  */
 string awh::Chrono::format(const uint64_t date, string_view format) const noexcept {
 	// Если формат даты передан
@@ -10102,6 +10188,7 @@ string awh::Chrono::format(const uint64_t date, string_view format) const noexce
  * @param zone   временная зона в которой нужно получить дату (в секундах)
  * @param format формат даты
  * @return       строка содержащая дату
+ *
  */
 string awh::Chrono::format(const uint64_t date, const int32_t zone, string_view format) const noexcept {
 	// Если формат даты передан
@@ -10132,6 +10219,7 @@ string awh::Chrono::format(const uint64_t date, const int32_t zone, string_view 
  * @param zone   временная зона в которой нужно получить дату
  * @param format формат даты
  * @return       строка содержащая дату
+ *
  */
 string awh::Chrono::format(const uint64_t date, const zone_t zone, string_view format) const noexcept {
 	// Если формат даты передан
@@ -10164,6 +10252,7 @@ string awh::Chrono::format(const uint64_t date, const zone_t zone, string_view f
  * @param zone   временная зона в которой нужно получить дату
  * @param format формат даты
  * @return       строка содержащая дату
+ *
  */
 string awh::Chrono::format(const uint64_t date, string_view zone, string_view format) const noexcept {
 	// Если формат даты передан
@@ -10195,6 +10284,7 @@ string awh::Chrono::format(const uint64_t date, string_view zone, string_view fo
  * @param format  формат даты
  * @param storage хранение значение времени
  * @return        строка содержащая дату
+ *
  */
 string awh::Chrono::format(string_view format, const storage_t storage) const noexcept {
 	// Если формат даты передан
@@ -10243,6 +10333,7 @@ string awh::Chrono::format(string_view format, const storage_t storage) const no
  * @param format  формат даты
  * @param storage хранение значение времени
  * @return        строка содержащая дату
+ *
  */
 string awh::Chrono::format(const int32_t zone, string_view format, const storage_t storage) const noexcept {
 	// Если формат даты передан
@@ -10291,6 +10382,7 @@ string awh::Chrono::format(const int32_t zone, string_view format, const storage
  * @param format  формат даты
  * @param storage хранение значение времени
  * @return        строка содержащая дату
+ *
  */
 string awh::Chrono::format(const zone_t zone, string_view format, const storage_t storage) const noexcept {
 	// Если формат даты передан
@@ -10343,6 +10435,7 @@ string awh::Chrono::format(const zone_t zone, string_view format, const storage_
  * @param format  формат даты
  * @param storage хранение значение времени
  * @return        строка содержащая дату
+ *
  */
 string awh::Chrono::format(string_view zone, string_view format, const storage_t storage) const noexcept {
 	// Если формат даты передан
@@ -10396,6 +10489,7 @@ string awh::Chrono::format(string_view zone, string_view format, const storage_t
  * @param format2 формат даты в который нужно перевести дату
  * @param storage хранение значение времени
  * @return        результат работы
+ *
  */
 string awh::Chrono::strip(string_view date, string_view format1, string_view format2, const storage_t storage) const noexcept {
 	// Если данные переданы
@@ -10437,6 +10531,7 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
 	/**

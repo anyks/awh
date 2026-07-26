@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл тестовой фикстуры контейнера HTTP-заголовков — объявление класса фикстуры Google Test,
+ *        подготавливающего и освобождающего тестовое окружение набора тестов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_HTTP_HEADERS_TESTS__
@@ -51,6 +55,7 @@ class HeadersFixture : public testing::Test {
 		 * @param name  название HTTP-заголовка
 		 * @param value значение HTTP-заголовка
 		 * @return      сформированный объект HTTP-заголовка
+		 *
 		 */
 		awh::http::headers_t::header_t header(const std::string & name, const std::string & value) const noexcept;
 };

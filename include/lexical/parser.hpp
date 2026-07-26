@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл лексического сканера чисел — посимвольный и векторизованный (SSE2, NEON) разбор знака,
+ *        целой и дробной частей,
+ *        экспоненты и специальных значений с формированием промежуточной структуры разобранного числа
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -77,6 +82,7 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -86,6 +92,7 @@ namespace awh {
 		 *          для однобайтовых скалярный разбор блока быстрее векторного.
 		 *
 		 * @return результат проверки
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr bool hasSimd() noexcept {
 			/**
@@ -108,6 +115,7 @@ namespace awh {
 		 *
 		 * @param value исходное значение
 		 * @return      значение с обратным порядком байт
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr uint64_t swapBytes(const uint64_t value) noexcept {
 			// Выполняем перестановку байт значения
@@ -127,6 +135,7 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -137,6 +146,7 @@ namespace awh {
 		 *
 		 * @param chars указатель на начало блока символов
 		 * @return      упакованное 64-битное значение
+		 *
 		 */
 		AWH_LEXICAL_INLINE uint64_t readBlock(const UC * chars) noexcept {
 			// Если символы исходной строки шире одного байта
@@ -176,6 +186,7 @@ namespace awh {
 			 *
 			 * @param data загруженный векторный регистр
 			 * @return     упакованное 64-битное значение
+			 *
 			 */
 			AWH_LEXICAL_INLINE uint64_t readBlockSimd(const __m128i data) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
@@ -207,6 +218,7 @@ namespace awh {
 			 *
 			 * @param chars указатель на начало блока символов
 			 * @return      упакованное 64-битное значение
+			 *
 			 */
 			AWH_LEXICAL_INLINE uint64_t readBlockSimd(const char16_t * chars) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
@@ -225,6 +237,7 @@ namespace awh {
 			 *
 			 * @param data загруженный векторный регистр
 			 * @return     упакованное 64-битное значение
+			 *
 			 */
 			AWH_LEXICAL_INLINE uint64_t readBlockSimd(const uint16x8_t data) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
@@ -241,6 +254,7 @@ namespace awh {
 			 *
 			 * @param chars указатель на начало блока символов
 			 * @return      упакованное 64-битное значение
+			 *
 			 */
 			AWH_LEXICAL_INLINE uint64_t readBlockSimd(const char16_t * chars) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
@@ -256,12 +270,14 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC, enableIf_t <!hasSimd <UC> ()> = 0>
 		/**
 		 * @brief Функция упаковки блока символов для типов без векторной поддержки
 		 *
 		 * @return всегда нулевое значение
+		 *
 		 */
 		inline uint64_t readBlockSimd(const UC *) noexcept {
 			// Векторный разбор для данного типа символа недоступен
@@ -273,6 +289,7 @@ namespace awh {
 		 *
 		 * @param value упакованные ASCII-коды восьми десятичных цифр
 		 * @return      числовое значение блока цифр
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr uint32_t parseBlock(uint64_t value) noexcept {
 			// Маска выделения байтовых пар результата
@@ -295,6 +312,7 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -302,6 +320,7 @@ namespace awh {
 		 *
 		 * @param chars указатель на начало блока цифр
 		 * @return      числовое значение блока цифр
+		 *
 		 */
 		AWH_LEXICAL_INLINE uint32_t parseBlock(const UC * chars) noexcept {
 			// Если векторный разбор для типа символа недоступен
@@ -317,6 +336,7 @@ namespace awh {
 		 *
 		 * @param value упакованный блок символов
 		 * @return      результат проверки
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr bool isDigitBlock(const uint64_t value) noexcept {
 			// Выполняем одновременную проверку всех байт блока на диапазон цифр
@@ -333,6 +353,7 @@ namespace awh {
 			 * @param chars указатель на начало блока символов
 			 * @param value ссылка на аккумулятор числового значения
 			 * @return      результат разбора блока
+			 *
 			 */
 			AWH_LEXICAL_INLINE bool parseBlockSimd(const char16_t * chars, uint64_t & value) noexcept {
 				/**
@@ -393,12 +414,14 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC, enableIf_t <!hasSimd <UC> ()> = 0>
 		/**
 		 * @brief Функция векторного разбора блока для типов без векторной поддержки
 		 *
 		 * @return всегда отрицательный результат
+		 *
 		 */
 		inline bool parseBlockSimd(const UC *, uint64_t &) noexcept {
 			// Векторный разбор для данного типа символа недоступен
@@ -409,6 +432,7 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC, enableIf_t <!is_same <UC, char>::value> = 0>
 		/**
@@ -420,6 +444,7 @@ namespace awh {
 		 * @param p     ссылка на текущую позицию в строке
 		 * @param pend  конец строки
 		 * @param value ссылка на аккумулятор числового значения
+		 *
 		 */
 		AWH_LEXICAL_INLINE void parseBlocks(const UC * & p, const UC * const pend, uint64_t & value) noexcept {
 			// Если векторный разбор для типа символа недоступен
@@ -443,6 +468,7 @@ namespace awh {
 		 * @param p     ссылка на текущую позицию в строке
 		 * @param pend  конец строки
 		 * @param value ссылка на аккумулятор числового значения
+		 *
 		 */
 		AWH_LEXICAL_INLINE void parseBlocks(const char * & p, const char * const pend, uint64_t & value) noexcept {
 			/**
@@ -463,6 +489,7 @@ namespace awh {
 		 * @param base  основание системы счисления
 		 * @param digit добавляемая цифра
 		 * @return      результат выполнения операции
+		 *
 		 */
 		AWH_LEXICAL_INLINE bool mulAddChecked(uint64_t & value, const uint64_t base, const uint64_t digit) noexcept {
 			/**
@@ -496,6 +523,7 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -539,6 +567,7 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -547,6 +576,7 @@ namespace awh {
 		 * @param p     позиция обнаружения ошибки
 		 * @param error код причины отказа при разборе
 		 * @return      результат разбора числовой строки
+		 *
 		 */
 		AWH_LEXICAL_INLINE parsedNumber_t <UC> reportError(const UC * p, const error_t error) noexcept {
 			// Результат разбора числовой строки
@@ -566,6 +596,7 @@ namespace awh {
 		 *
 		 * @tparam JSON включение строгих правил формата RFC 8259
 		 * @tparam UC   тип символа исходной строки
+		 *
 		 */
 		template <bool JSON, typename UC>
 		/**
@@ -577,6 +608,7 @@ namespace awh {
 		 * @param pend    конец разбираемой строки
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
+		 *
 		 */
 		inline parsedNumber_t <UC> parseNumberString(const UC * p, const UC * const pend, const options_t <UC> options) noexcept {
 			// Символ десятичной точки
@@ -815,6 +847,7 @@ namespace awh {
 		 *
 		 * @tparam T  тип целого результата разбора
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename T, typename UC>
 		/**
@@ -828,6 +861,7 @@ namespace awh {
 		 * @param value   ссылка на результат разбора
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
+		 *
 		 */
 		inline result_t <UC> parseIntString(const UC * p, const UC * const pend, T & value, const options_t <UC> options) noexcept {
 			// Основание системы счисления

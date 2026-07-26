@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл уведомителя событий для платформ без нативного механизма пробуждения — класс Notifier,
+ *        реализующий межпоточное пробуждение цикла событий через eventfd,
+ *        pipe или kqueue в зависимости от операционной системы
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 #ifndef __AWH_EVENT_NOTIFIER__
@@ -114,6 +119,7 @@ namespace awh {
 			 * @brief Метод инициализации уведомителя
 			 *
 			 * @return содержимое сокета для извлечения
+			 *
 			 */
 			SOCKET init() noexcept;
 		public:
@@ -121,6 +127,7 @@ namespace awh {
 			 * @brief Метод извлечения идентификатора события
 			 *
 			 * @return идентификатор события
+			 *
 			 */
 			uint32_t event() noexcept;
 		public:
@@ -128,6 +135,7 @@ namespace awh {
 			 * @brief Метод отправки уведомления
 			 *
 			 * @param id идентификатор для отправки
+			 *
 			 */
 			void notify(const uint32_t id) noexcept;
 		public:
@@ -136,6 +144,7 @@ namespace awh {
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit Notifier(const fmk_t * fmk, const log_t * log) noexcept;
 			/**

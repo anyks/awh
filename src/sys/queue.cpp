@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация бинарной очереди — последовательное добавление, чтение и извлечение записей произвольного размера
+ *        в непрерывной памяти с контролем лимитов и обходом итераторами
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -52,6 +56,7 @@ awh::Queue::Max::Max() noexcept :
  *
  * @param size желаемый размер выделения памяти
  * @return     результат выполнения операции
+ *
  */
 bool awh::Queue::rss(const size_t size) noexcept {
 	// Переменная результата
@@ -140,6 +145,7 @@ bool awh::Queue::rss(const size_t size) noexcept {
  * @param func    название функции, в которой произошла ошибка
  * @param size    размер данных, связанный с ошибкой
  * @param message текст сообщения об ошибке
+ *
  */
 void awh::Queue::error([[maybe_unused]] const char * func, [[maybe_unused]] const size_t size, const char * message) const noexcept {
 	// Если объект лога установлен
@@ -260,6 +266,7 @@ void awh::Queue::reset() noexcept {
  * @brief Количество добавленных элементов
  *
  * @return количество добавленных элементов
+ *
  */
 size_t awh::Queue::count() const noexcept {
 	// Выполняем блокировку потока
@@ -271,6 +278,7 @@ size_t awh::Queue::count() const noexcept {
  * @brief Метод получения размера добавленных данных
  *
  * @return размер добавленных данных
+ *
  */
 size_t awh::Queue::size() const noexcept {
 	// Переменная результата
@@ -291,6 +299,7 @@ size_t awh::Queue::size() const noexcept {
  * @brief Метод вывода размера занимаемой памяти очередью
  *
  * @return количество памяти которую занимает очередь
+ *
  */
 size_t awh::Queue::capacity() const noexcept {
 	// Выполняем блокировку потока
@@ -302,12 +311,14 @@ size_t awh::Queue::capacity() const noexcept {
  * @brief Шаблон для метода получения конечного итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получения конечного итератора
  *
  * @return конечный итератор
+ *
  */
 awh::Queue::Iterator <T> awh::Queue::end() noexcept {
 	// Выполняем установку конечного значения итератора
@@ -343,12 +354,14 @@ template awh::Queue::Iterator <double> awh::Queue::end <double> () noexcept;
  * @brief Шаблон для метода получение начального итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получение начального итератора
  *
  * @return начальный итератор
+ *
  */
 awh::Queue::Iterator <T> awh::Queue::begin() noexcept {
 	// Выполняем установку начального значения итератора
@@ -384,12 +397,14 @@ template awh::Queue::Iterator <double> awh::Queue::begin <double> () noexcept;
  * @brief Шаблон для метода получения конечного константного итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получения конечного константного итератора
  *
  * @return конечный константный итератор
+ *
  */
 awh::Queue::Const_Iterator <T> awh::Queue::end() const noexcept {
 	// Выполняем установку конечного значения итератора
@@ -399,12 +414,14 @@ awh::Queue::Const_Iterator <T> awh::Queue::end() const noexcept {
  * @brief Шаблон для метода получения конечного константного итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получения конечного константного итератора
  *
  * @return конечный константный итератор
+ *
  */
 awh::Queue::Const_Iterator <T> awh::Queue::cend() const noexcept {
 	// Выполняем установку конечного значения итератора
@@ -456,12 +473,14 @@ template awh::Queue::Const_Iterator <double> awh::Queue::cend <double> () const 
  * @brief Шаблон для метода получения начального константного итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получения начального константного итератора
  *
  * @return начальный константный итератор
+ *
  */
 awh::Queue::Const_Iterator <T> awh::Queue::begin() const noexcept {
 	// Выполняем установку начального значения итератора
@@ -471,12 +490,14 @@ awh::Queue::Const_Iterator <T> awh::Queue::begin() const noexcept {
  * @brief Шаблон для метода получения начального константного итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получения начального константного итератора
  *
  * @return начальный константный итератор
+ *
  */
 awh::Queue::Const_Iterator <T> awh::Queue::cbegin() const noexcept {
 	// Выполняем установку начального значения итератора
@@ -528,6 +549,7 @@ template awh::Queue::Const_Iterator <double> awh::Queue::cbegin <double> () cons
  * @brief Получения данных указанного элемента в очереди
  *
  * @return указатель на элемент очереди
+ *
  */
 const void * awh::Queue::data() const noexcept {
 	// Переменная результата
@@ -545,6 +567,7 @@ const void * awh::Queue::data() const noexcept {
  * @brief Метод фиксации прочитанного размера данных
  *
  * @param size размер данных для фиксации
+ *
  */
 void awh::Queue::commit(const size_t size) noexcept {
 	// Выполняем блокировку потока
@@ -567,6 +590,7 @@ void awh::Queue::commit(const size_t size) noexcept {
  *
  * @param timeout время ожидания в миллисекундах
  * @return        результат проверки
+ *
  */
 bool awh::Queue::empty(const uint32_t timeout) const noexcept {
 	// Если ожидание не требуется либо потокобезопасность отключена
@@ -592,6 +616,7 @@ bool awh::Queue::empty(const uint32_t timeout) const noexcept {
  * @param buffer бинарный буфер для добавления
  * @param size   размер бинарного буфера
  * @return       текущий размер очереди
+ *
  */
 size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 	// Переменная результата
@@ -642,6 +667,7 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
  * @param records список бинарных буферов для добавления
  * @param size    общий размер добавляемых данных
  * @return        текущий размер очереди
+ *
  */
 size_t awh::Queue::push(const vector <record_t> & records, const size_t size) noexcept {
 	// Переменная результата
@@ -713,6 +739,7 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
  * @brief Метод установки максимального размера потребления памяти
  *
  * @param size максимальный размер потребления памяти
+ *
  */
 void awh::Queue::setMaxMemory(const size_t size) noexcept {
 	// Если максимальный размер потребляемой памяти передан
@@ -727,6 +754,7 @@ void awh::Queue::setMaxMemory(const size_t size) noexcept {
  * @brief Метод установки максимального количества записей очереди
  *
  * @param count максимальное количество записей очереди
+ *
  */
 void awh::Queue::setMaxRecords(const size_t count) noexcept {
 	// Если количество записей передано
@@ -741,6 +769,7 @@ void awh::Queue::setMaxRecords(const size_t count) noexcept {
  * @brief Метод обмена очередями
  *
  * @param queue очередь для обмена
+ *
  */
 void awh::Queue::swap(queue_t & queue) noexcept {
 	// Если выполняется обмен с самим собой
@@ -853,6 +882,7 @@ void awh::Queue::swap(queue_t & queue) noexcept {
  * @brief Метод установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности работы потоков
+ *
  */
 void awh::Queue::threadSafety(const bool mode) noexcept {
 	// Активируем либо отключаем работу мьютекса блокировки доступа к данным очереди
@@ -864,6 +894,7 @@ void awh::Queue::threadSafety(const bool mode) noexcept {
  * @brief Метод установки объекта логирования
  *
  * @param log объект работы с логами
+ *
  */
 void awh::Queue::setLogger(const log_t * log) noexcept {
 	// Выполняем блокировку потока
@@ -875,6 +906,7 @@ void awh::Queue::setLogger(const log_t * log) noexcept {
  * @brief Получения размера данных в очереди
  *
  * @return размер данных в очереди
+ *
  */
 awh::Queue::operator size_t() const noexcept {
 	// Возвращаем размер очереди (блокировка выполняется внутри метода size)
@@ -884,6 +916,7 @@ awh::Queue::operator size_t() const noexcept {
  * @brief Получения бинарных данных очереди
  *
  * @return бинарные данные очереди
+ *
  */
 awh::Queue::operator const char * () const noexcept {
 	// Возвращаем данные записи очереди (блокировка выполняется внутри метода data)
@@ -893,6 +926,7 @@ awh::Queue::operator const char * () const noexcept {
  * @brief Получения бинарных данных очереди
  *
  * @return бинарные данные очереди
+ *
  */
 awh::Queue::operator const uint8_t * () const noexcept {
 	// Возвращаем данные записи очереди (блокировка выполняется внутри метода data)
@@ -903,6 +937,7 @@ awh::Queue::operator const uint8_t * () const noexcept {
  *
  * @param queue очередь для перемещения
  * @return      текущий контейнер очереди
+ *
  */
 awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 	// Если выполняется присваивание самому себе
@@ -971,6 +1006,7 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
  *
  * @param queue очередь для копирования
  * @return      текущий контейнер очереди
+ *
  */
 awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 	// Если выполняется присваивание самому себе
@@ -1031,6 +1067,7 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
  *
  * @param queue очередь для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::Queue::operator == (const queue_t & queue) const noexcept {
 	// Если выполняется сравнение с самим собой
@@ -1089,6 +1126,7 @@ awh::Queue::Queue() noexcept : _fmk(nullptr), _log(nullptr) {}
  * @brief Конструктор перемещения
  *
  * @param queue очередь для перемещения
+ *
  */
 awh::Queue::Queue(queue_t && queue) noexcept {
 	/**
@@ -1143,6 +1181,7 @@ awh::Queue::Queue(queue_t && queue) noexcept {
  * @brief Конструктор копирования
  *
  * @param queue очередь для копирования
+ *
  */
 awh::Queue::Queue(const queue_t & queue) noexcept {
 	/**
@@ -1190,6 +1229,7 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Queue::Queue(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**

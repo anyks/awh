@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Тесты криптографического рукопожатия QUIC — проверка обмена CRYPTO-данными,
+ *        смены уровней шифрования и установки ключей защиты пакетов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -43,6 +47,7 @@ namespace {
 	 * @param from эндпоинт-отправитель CRYPTO-данных
 	 * @param to   эндпоинт-получатель CRYPTO-данных
 	 * @return     результат передачи (false - ошибка обработки данных получателем)
+	 *
 	 */
 	static bool transfer(handshake_t & from, handshake_t & to) noexcept {
 		// Список уровней шифрования в порядке возрастания
@@ -70,6 +75,7 @@ namespace {
 	 * @param client эндпоинт клиента
 	 * @param server эндпоинт сервера
 	 * @return       результат выполнения хендшейка
+	 *
 	 */
 	static bool complete(handshake_t & client, handshake_t & server) noexcept {
 		/**
@@ -103,6 +109,7 @@ namespace {
 	 *
 	 * @param handshake эндпоинт хендшейка
 	 * @return          результат подготовки
+	 *
 	 */
 	static bool setup(handshake_t & handshake) noexcept {
 		// Транспортные параметры эндпоинта

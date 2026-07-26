@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример сервера TLS с несколькими сертификатами — демонстрация выбора сертификата по имени,
+ *        запрошенному клиентом в расширении SNI, и обслуживания защищённых подключений
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -40,6 +44,7 @@ using namespace placeholders;
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

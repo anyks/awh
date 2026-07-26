@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация кодирования целых переменной длины QUIC (RFC 9000 §16) —
+ *        чтение и запись varint в сетевом порядке байт длиной 1, 2, 4 или 8 октетов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -27,6 +31,7 @@ using namespace std;
  *
  * @param value кодируемое число
  * @return      размер в октетах (1/2/4/8) или 0, если число превышает 2^62-1
+ *
  */
 size_t awh::quic::varint::size(const uint64_t value) noexcept {
 	// Если число помещается в 6 бит
@@ -53,6 +58,7 @@ size_t awh::quic::varint::size(const uint64_t value) noexcept {
  *
  * @param first первый октет закодированного числа
  * @return      размер числа в октетах (1/2/4/8)
+ *
  */
 size_t awh::quic::varint::sizeAt(const uint8_t first) noexcept {
 	// Два старших бита первого октета кодируют логарифм длины числа
@@ -65,6 +71,7 @@ size_t awh::quic::varint::sizeAt(const uint8_t first) noexcept {
  * @param size  доступно байт
  * @param value прочитанное число
  * @return      количество прочитанных октетов или 0, если данных недостаточно
+ *
  */
 size_t awh::quic::varint::read(const uint8_t * data, const size_t size, uint64_t & value) noexcept {
 	// Если в буфере нет даже первого октета
@@ -94,6 +101,7 @@ size_t awh::quic::varint::read(const uint8_t * data, const size_t size, uint64_t
  * @param output выходной буфер
  * @param value  записываемое число (не более 2^62-1)
  * @return       количество записанных октетов или 0, если число превышает 2^62-1
+ *
  */
 size_t awh::quic::varint::write(string & output, const uint64_t value) noexcept {
 	// Определяем минимальный размер кодирования числа

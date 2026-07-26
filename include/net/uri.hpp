@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля работы с универсальными идентификаторами ресурсов —
+ *        класс Uniform_Resource_Identifier для разбора, сборки, нормализации и кодирования URI,
+ *        работы с параметрами запроса, пользовательскими данными и относительными ссылками
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -143,6 +148,7 @@ namespace awh {
 			 *
 			 * @param uri указатель на объект URI
 			 * @return    строка, которая будет добавлена в конец URI
+			 *
 			 */
 			function <string (const Uniform_Resource_Identifier *)> _callback;
 		private:
@@ -155,6 +161,7 @@ namespace awh {
 			 * @brief Метод определения стандартного порта для текущего типа URI
 			 *
 			 * @return стандартный порт или 0, если для типа URI он не определён
+			 *
 			 */
 			uint16_t defaultPort() const noexcept;
 		private:
@@ -162,6 +169,7 @@ namespace awh {
 			 * @brief Метод добавления схемы URI в результат с разделителем, зависящим от типа URI
 			 *
 			 * @param result результат, в который добавляется схема URI
+			 *
 			 */
 			void appendScheme(string & result) const noexcept;
 			/**
@@ -169,6 +177,7 @@ namespace awh {
 			 *
 			 * @param result    результат, в который добавляются параметры пользователя
 			 * @param delimiter флаг добавления разделителя "@" после параметров пользователя
+			 *
 			 */
 			void appendUser(string & result, const bool delimiter) const noexcept;
 		private:
@@ -177,6 +186,7 @@ namespace awh {
 			 *
 			 * @param result результат, в который добавляется хост
 			 * @param format режим формата URI для генерации
+			 *
 			 */
 			void appendHost(string & result, const format_t format) const noexcept;
 			/**
@@ -185,6 +195,7 @@ namespace awh {
 			 * @param result результат, в который добавляется порт
 			 * @param port   порт хоста, заданный явно (0 — если не задан)
 			 * @param format режим формата URI для генерации
+			 *
 			 */
 			void appendPort(string & result, const uint16_t port, const format_t format) const noexcept;
 		public:
@@ -198,6 +209,7 @@ namespace awh {
 			 * @brief Метод проверки на существование данных
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool empty() const noexcept;
 		public:
@@ -205,6 +217,7 @@ namespace awh {
 			 * @brief Метод получения типа URI
 			 *
 			 * @return тип URI
+			 *
 			 */
 			type_t type() const noexcept;
 		public:
@@ -212,12 +225,14 @@ namespace awh {
 			 * @brief Метод получения схемы URI
 			 *
 			 * @return схема URI
+			 *
 			 */
 			const string & scheme() const noexcept;
 			/**
 			 * @brief Метод установки схемы URI
 			 *
 			 * @param scheme схема URI для установки
+			 *
 			 */
 			void scheme(string_view scheme) noexcept;
 		public:
@@ -225,12 +240,14 @@ namespace awh {
 			 * @brief Метод получения параметров пользователя URI
 			 *
 			 * @return параметры пользователя URI
+			 *
 			 */
 			const user_t & user() const noexcept;
 			/**
 			 * @brief Метод установки параметров пользователя URI
 			 *
 			 * @param user параметры пользователя URI для установки
+			 *
 			 */
 			void user(const user_t & user) noexcept;
 			/**
@@ -238,6 +255,7 @@ namespace awh {
 			 *
 			 * @param username логин пользователя URI для установки
 			 * @param password пароль пользователя URI для установки
+			 *
 			 */
 			void user(string_view username, string_view password) noexcept;
 		public:
@@ -245,12 +263,14 @@ namespace awh {
 			 * @brief Метод получения якоря URI
 			 *
 			 * @return якорь URI
+			 *
 			 */
 			const string & fragment() const noexcept;
 			/**
 			 * @brief Метод установки якоря URI
 			 *
 			 * @param fragment якорь URI для установки
+			 *
 			 */
 			void fragment(string_view fragment) noexcept;
 		public:
@@ -258,12 +278,14 @@ namespace awh {
 			 * @brief Метод получения атрибутов URI
 			 *
 			 * @return атрибуты URI
+			 *
 			 */
 			const net::attr_t * attr() const noexcept;
 			/**
 			 * @brief Метод установки атрибутов URI
 			 *
 			 * @param attr атрибуты URI для установки
+			 *
 			 */
 			void attr(const net::attr_t * attr) noexcept;
 		public:
@@ -271,12 +293,14 @@ namespace awh {
 			 * @brief Метод получения хоста URI
 			 *
 			 * @return хост URI
+			 *
 			 */
 			string host() const noexcept;
 			/**
 			 * @brief Метод установки хоста URI
 			 *
 			 * @param host хост URI для установки
+			 *
 			 */
 			void host(string_view host) noexcept;
 		public:
@@ -284,12 +308,14 @@ namespace awh {
 			 * @brief Метод получения порта URI
 			 *
 			 * @return порт URI
+			 *
 			 */
 			uint16_t port() const noexcept;
 			/**
 			 * @brief Метод установки порта URI
 			 *
 			 * @param port порт URI для установки
+			 *
 			 */
 			void port(const uint16_t port) noexcept;
 		public:
@@ -297,12 +323,14 @@ namespace awh {
 			 * @brief Метод получения пути URI
 			 *
 			 * @return путь URI
+			 *
 			 */
 			const vector <string> & path() const noexcept;
 			/**
 			 * @brief Метод установки пути URI
 			 *
 			 * @param path путь URI для установки
+			 *
 			 */
 			void path(const vector <string> & path) noexcept;
 		public:
@@ -310,12 +338,14 @@ namespace awh {
 			 * @brief Метод получения параметров URI
 			 *
 			 * @return параметры URI
+			 *
 			 */
 			const unordered_map <string, string> & query() const noexcept;
 			/**
 			 * @brief Метод установки параметров URI
 			 *
 			 * @param query параметры URI для установки
+			 *
 			 */
 			void query(const unordered_map <string, string> & query) noexcept;
 		public:
@@ -324,6 +354,7 @@ namespace awh {
 			 *
 			 * @param uri строка URI-запроса для получения параметров
 			 * @return    тип URI
+			 *
 			 */
 			type_t parse(string_view uri) noexcept;
 		public:
@@ -333,6 +364,7 @@ namespace awh {
 			 * @param text текст для перевода в строку
 			 * @param size размер хэша ETag для генерации (по умолчанию 16 байт)
 			 * @return     хэш etag
+			 *
 			 */
 			string etag(string_view text, const uint8_t size = 16) const noexcept;
 		public:
@@ -342,6 +374,7 @@ namespace awh {
 			 * @param item   режим элемента URI для генерации
 			 * @param format режим формата URI для генерации
 			 * @return       строка URI
+			 *
 			 */
 			string print(const item_t item = item_t::URI, const format_t format = format_t::SMART) const noexcept;
 		public:
@@ -349,6 +382,7 @@ namespace awh {
 			 * @brief Метод установки функции обратного вызова для генерации параметра URI (например, для генерации контрольной суммы)
 			 *
 			 * @param cb функция обратного вызова для генерации параметра URI
+			 *
 			 */
 			void callback(function <string (const Uniform_Resource_Identifier *)> cb) noexcept;
 		public:
@@ -356,24 +390,28 @@ namespace awh {
 			 * @brief Оператор проверки на существование данных
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			operator bool() const noexcept;
 			/**
 			 * @brief Оператор получения типа URI
 			 *
 			 * @return тип URI
+			 *
 			 */
 			operator type_t() const noexcept;
 			/**
 			 * @brief Оператор генерации строки URI
 			 *
 			 * @return строка URI
+			 *
 			 */
 			operator string() const noexcept;
 			/**
 			 * @brief Оператор получения параметров пользователя URI
 			 *
 			 * @return параметры пользователя URI
+			 *
 			 */
 			operator user_t() const noexcept;
 		public:
@@ -381,18 +419,21 @@ namespace awh {
 			 * @brief Оператор получения атрибутов URI
 			 *
 			 * @return атрибуты URI
+			 *
 			 */
 			operator const net::attr_t * () const noexcept;
 			/**
 			 * @brief Оператор получения пути URI
 			 *
 			 * @return путь URI
+			 *
 			 */
 			operator const vector <string> & () const noexcept;
 			/**
 			 * @brief Оператор получения параметров URI
 			 *
 			 * @return параметры URI
+			 *
 			 */
 			operator const unordered_map <string, string> & () const noexcept;
 		public:
@@ -401,6 +442,7 @@ namespace awh {
 			 *
 			 * @param uri параметры URI для сравнения
 			 * @return    результат сравнения
+			 *
 			 */
 			bool operator == (const Uniform_Resource_Identifier & uri) noexcept;
 			/**
@@ -408,6 +450,7 @@ namespace awh {
 			 *
 			 * @param uri параметры URI для сравнения
 			 * @return    результат сравнения
+			 *
 			 */
 			bool operator != (const Uniform_Resource_Identifier & uri) noexcept;
 		public:
@@ -416,6 +459,7 @@ namespace awh {
 			 *
 			 * @param uri строка URI-запроса для получения параметров
 			 * @return    текущий объект
+			 *
 			 */
 			Uniform_Resource_Identifier & operator = (string_view uri) noexcept;
 			/**
@@ -423,6 +467,7 @@ namespace awh {
 			 *
 			 * @param user параметры пользователя URI для установки
 			 * @return     текущий объект
+			 *
 			 */
 			Uniform_Resource_Identifier & operator = (const user_t & user) noexcept;
 			/**
@@ -430,6 +475,7 @@ namespace awh {
 			 *
 			 * @param attr атрибуты URI для установки
 			 * @return     текущий объект
+			 *
 			 */
 			Uniform_Resource_Identifier & operator = (const net::attr_t * attr) noexcept;
 			/**
@@ -437,6 +483,7 @@ namespace awh {
 			 *
 			 * @param path путь URI для установки
 			 * @return     текущий объект
+			 *
 			 */
 			Uniform_Resource_Identifier & operator = (const vector <string> & path) noexcept;
 			/**
@@ -444,6 +491,7 @@ namespace awh {
 			 *
 			 * @param query параметры URI для установки
 			 * @return      текущий объект
+			 *
 			 */
 			Uniform_Resource_Identifier & operator = (const unordered_map <string, string> & query) noexcept;
 		public:
@@ -452,6 +500,7 @@ namespace awh {
 			 *
 			 * @param uri объект URI для получения параметров
 			 * @return    параметры URI
+			 *
 			 */
 			Uniform_Resource_Identifier & operator = (Uniform_Resource_Identifier && uri) noexcept;
 			/**
@@ -459,6 +508,7 @@ namespace awh {
 			 *
 			 * @param uri объект URI для получения параметров
 			 * @return    параметры URI
+			 *
 			 */
 			Uniform_Resource_Identifier & operator = (const Uniform_Resource_Identifier & uri) noexcept;
 		public:
@@ -466,12 +516,14 @@ namespace awh {
 			 * @brief Конструктор перемещения
 			 *
 			 * @param uri параметры URI для перемещения
+			 *
 			 */
 			explicit Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept;
 			/**
 			 * @brief Конструктор копирования
 			 *
 			 * @param uri параметры URI для копирования
+			 *
 			 */
 			explicit Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept;
 		public:
@@ -480,6 +532,7 @@ namespace awh {
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept;
 		public:
@@ -494,6 +547,7 @@ namespace awh {
 	 *
 	 * @param is  поток для чтения
 	 * @param uri URI для присвоения
+	 *
 	 */
 	__AWH_SHARED_EXPORT__ istream & operator >> (istream & is, uri_t & uri) noexcept;
 	/**
@@ -501,6 +555,7 @@ namespace awh {
 	 *
 	 * @param os  поток куда нужно вывести данные
 	 * @param uri URI для присвоения
+	 *
 	 */
 	__AWH_SHARED_EXPORT__ ostream & operator << (ostream & os, const uri_t & uri) noexcept;
 };

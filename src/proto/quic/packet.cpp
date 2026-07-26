@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация слоя пакетов QUIC (RFC 9000 §17) — разбор и сборка заголовков длинной и короткой формы,
+ *        включая Initial, Handshake, 0-RTT, Retry и Version Negotiation,
+ *        и извлечение номера пакета после снятия защиты
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -42,6 +47,7 @@ namespace {
 	 *
 	 * @param buffer буфер с данными числа
 	 * @return       прочитанное число
+	 *
 	 */
 	inline uint32_t rd32(const uint8_t * buffer) noexcept {
 		// Собираем число из четырёх байт в сетевом порядке
@@ -53,6 +59,7 @@ namespace {
 	 *
 	 * @param output выходной буфер
 	 * @param num    записываемое число
+	 *
 	 */
 	inline void wr32(string & output, const uint32_t num) noexcept {
 		// Дописываем старший байт числа
@@ -72,6 +79,7 @@ namespace {
 	 * @param output идентификатор соединения
 	 * @param valid  флаг проверки длины по лимиту QUIC v1 (20 октетов)
 	 * @return       количество прочитанных октетов или 0, если данных недостаточно или длина некорректна
+	 *
 	 */
 	inline size_t rdCid(const uint8_t * data, const size_t size, cid_t & output, bool & valid) noexcept {
 		// Считаем длину корректной по умолчанию
@@ -107,6 +115,7 @@ namespace {
 	 *
 	 * @param output выходной буфер
 	 * @param cid    идентификатор соединения
+	 *
 	 */
 	inline void wrCid(string & output, const cid_t & cid) noexcept {
 		// Дописываем октет длины идентификатора соединения
@@ -122,6 +131,7 @@ namespace {
 	 * @param output выходной буфер
 	 * @param pn     номер пакета
 	 * @param pnSize размер кодирования номера пакета в октетах (1-4)
+	 *
 	 */
 	inline void wrPacketNumber(string & output, const uint64_t pn, const size_t pnSize) noexcept {
 		/**
@@ -147,6 +157,7 @@ awh::quic::packet::Header::Header() noexcept :
  * @param pn           номер отправляемого пакета
  * @param largestAcked наибольший подтверждённый пиром номер пакета (pn, если подтверждений ещё не было)
  * @return             размер кодирования номера пакета в октетах (1-4)
+ *
  */
 size_t awh::quic::packet::packetNumberSize(const uint64_t pn, const uint64_t largestAcked) noexcept {
 	// Количество неподтверждённых пакетов (если подтверждений не было - весь диапазон от нуля)
@@ -173,6 +184,7 @@ size_t awh::quic::packet::packetNumberSize(const uint64_t pn, const uint64_t lar
  * @param truncated усечённый номер пакета из заголовка
  * @param pnSize    размер усечённого номера пакета в октетах (1-4)
  * @return          восстановленный полный номер пакета
+ *
  */
 uint64_t awh::quic::packet::decodePacketNumber(const uint64_t largestPn, const uint64_t truncated, const size_t pnSize) noexcept {
 	/**
@@ -213,6 +225,7 @@ uint64_t awh::quic::packet::decodePacketNumber(const uint64_t largestPn, const u
  * @param output   разобранный заголовок пакета
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/INCOMPLETE/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::packet::parser::header(const uint8_t * data, const size_t size, const size_t dcidSize, header_t & output, error_t & error) noexcept {
 	// Если в буфере нет даже первого октета
@@ -397,6 +410,7 @@ awh::quic::status_t awh::quic::packet::parser::header(const uint8_t * data, cons
  * @param pnSize размер номера пакета в октетах (1-4, из битов первого октета)
  * @param output прочитанный усечённый номер пакета
  * @return       результат чтения (true - в буфере было достаточно байт)
+ *
  */
 bool awh::quic::packet::parser::packetNumber(const uint8_t * data, const size_t size, const size_t pnSize, uint64_t & output) noexcept {
 	// Если размер номера пакета некорректен или номер не помещается в буфер
@@ -421,6 +435,7 @@ bool awh::quic::packet::parser::packetNumber(const uint8_t * data, const size_t 
  * @param output список поддерживаемых пиром версий
  * @param error  код ошибки транспорта
  * @return       результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::packet::parser::versions(const header_t & header, vector <uint32_t> & output, error_t & error) noexcept {
 	// Если тип пакета не соответствует или список версий пуст или не кратен четырём октетам
@@ -449,6 +464,7 @@ awh::quic::status_t awh::quic::packet::parser::versions(const header_t & header,
  * @param tag    тег целостности пакета Retry (16 октетов)
  * @param error  код ошибки транспорта
  * @return       результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::packet::parser::retry(const header_t & header, string_view & token, uint8_t tag[proto::RETRY_TAG_SIZE], error_t & error) noexcept {
 	// Если тип пакета не соответствует или нагрузка не содержит тег целостности и хотя бы октет токена
@@ -478,6 +494,7 @@ awh::quic::status_t awh::quic::packet::parser::retry(const header_t & header, st
  * @param pn      номер пакета
  * @param pnSize  размер кодирования номера пакета в октетах (1-4)
  * @return        результат сборки (false - некорректные параметры)
+ *
  */
 bool awh::quic::packet::serialize::longHeader(string & output, const packet_t type, const uint32_t version, const cid_t & dcid, const cid_t & scid, string_view token, const uint64_t length, const uint64_t pn, const size_t pnSize) noexcept {
 	// Если размер кодирования номера пакета некорректен
@@ -556,6 +573,7 @@ bool awh::quic::packet::serialize::longHeader(string & output, const packet_t ty
  * @param keyPhase бит фазы ключей (RFC 9001 §6)
  * @param spin     бит задержки (spin bit, RFC 9000 §17.4)
  * @return         результат сборки (false - некорректные параметры)
+ *
  */
 bool awh::quic::packet::serialize::shortHeader(string & output, const cid_t & dcid, const uint64_t pn, const size_t pnSize, const bool keyPhase, const bool spin) noexcept {
 	// Если размер кодирования номера пакета или длина идентификатора некорректны
@@ -592,6 +610,7 @@ bool awh::quic::packet::serialize::shortHeader(string & output, const cid_t & dc
  * @param versions список поддерживаемых версий
  * @param count    количество версий
  * @return         результат сборки (false - некорректные параметры)
+ *
  */
 bool awh::quic::packet::serialize::versionNegotiation(string & output, const cid_t & dcid, const cid_t & scid, const uint32_t * versions, const size_t count) noexcept {
 	// Если список версий пуст или длина идентификаторов превышает лимит QUIC v1
@@ -625,6 +644,7 @@ bool awh::quic::packet::serialize::versionNegotiation(string & output, const cid
  * @param token   токен для повторного пакета Initial
  * @param tag     тег целостности пакета Retry (16 октетов)
  * @return        результат сборки (false - некорректные параметры)
+ *
  */
 bool awh::quic::packet::serialize::retry(string & output, const uint32_t version, const cid_t & dcid, const cid_t & scid, string_view token, const uint8_t tag[proto::RETRY_TAG_SIZE]) noexcept {
 	// Если токен пуст или длина идентификаторов превышает лимит QUIC v1

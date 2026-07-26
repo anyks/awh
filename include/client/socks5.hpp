@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл клиента SOCKS5-прокси — публичный API класса client::Socks5,
+ *        выполняющего согласование методов авторизации, установку туннеля через прокси-сервер (CONNECT, BIND,
+ *        UDP ASSOCIATE) и проксирование прикладного трафика поверх базового клиента
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -92,6 +97,7 @@ namespace awh {
 				 *
 				 * @param index  индекс очереди запускаемого события
 				 * @param status новый статус клиента
+				 *
 				 */
 				void status(const uint8_t index, const event::status_t status) noexcept;
 			private:
@@ -100,6 +106,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор клиента
 				 * @param ok  результат подключения
+				 *
 				 */
 				void connect(const event::id_t eid, const bool ok) noexcept;
 			private:
@@ -108,6 +115,7 @@ namespace awh {
 				 *
 				 * @param      идентификатор клиента
 				 * @param size размер данных для записи
+				 *
 				 */
 				void write(const event::id_t, const size_t size) noexcept;
 				/**
@@ -115,6 +123,7 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор клиента
 				 * @param status новый статус клиента
+				 *
 				 */
 				void state(const event::id_t eid, const event::status_t status) noexcept;
 				/**
@@ -123,6 +132,7 @@ namespace awh {
 				 * @param eid    идентификатор клиента
 				 * @param buffer буфер данных клиента
 				 * @param size   размер данных клиента
+				 *
 				 */
 				void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
 			private:
@@ -133,6 +143,7 @@ namespace awh {
 				 * @param family семейство адресов (IPv4/IPv6)
 				 * @param domain доменное имя для разрешения
 				 * @param addr   указатель на структуру для хранения результата разрешения
+				 *
 				 */
 				void resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 			private:
@@ -141,6 +152,7 @@ namespace awh {
 				 *
 				 * @param       идентификатор TLS
 				 * @param state состояние TLS
+				 *
 				 */
 				void stateTLS(const tls::coder_t::id_t, const tls::coder_t::state_t state) noexcept;
 				/**
@@ -150,6 +162,7 @@ namespace awh {
 				 * @param event  тип события TLS
 				 * @param buffer буфер данных для события шифрования/дешифрования TLS
 				 * @param size   размер данных для события шифрования/дешифрования TLS
+				 *
 				 */
 				void processTLS(const tls::coder_t::id_t, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 			public:
@@ -157,12 +170,14 @@ namespace awh {
 				 * @brief Метод приостановки работы клиента
 				 *
 				 * @return результат выполнения приостановки работы
+				 *
 				 */
 				bool pause() noexcept;
 				/**
 				 * @brief Метод возобновления работы клиента
 				 *
 				 * @return результат выполнения возобновления работы
+				 *
 				 */
 				bool resume() noexcept;
 			public:
@@ -170,12 +185,14 @@ namespace awh {
 				 * @brief Метод мультиподключения клиентов к удалённым хостам (заглушка для клиента SOCKS5)
 				 *
 				 * @return результат выполнения подключения
+				 *
 				 */
 				bool connect() noexcept;
 				/**
 				 * @brief Метод отключения клиента от удалённого сервера (заглушка для клиента SOCKS5)
 				 *
 				 * @return результат выполнения отключения
+				 *
 				 */
 				bool disconnect() noexcept;
 			public:
@@ -183,6 +200,7 @@ namespace awh {
 				 * @brief Метод получения данных от сервера
 				 *
 				 * @return результат получения данных
+				 *
 				 */
 				bool recv() noexcept;
 				/**
@@ -191,6 +209,7 @@ namespace awh {
 				 * @param buffer буфер данных для отправки
 				 * @param size   размер данных для отправки
 				 * @return       количество байт данных, отправленных серверу
+				 *
 				 */
 				size_t send(const void * buffer, const size_t size) noexcept;
 			public:
@@ -198,6 +217,7 @@ namespace awh {
 				 * @brief Метод объединения данных между клиентом и другим событием (заглушка для клиента SOCKS5)
 				 *
 				 * @return результат выполнения объединения
+				 *
 				 */
 				bool splice(const event::id_t, const event::direct_t) noexcept;
 			public:
@@ -207,6 +227,7 @@ namespace awh {
 				 * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
 				 * @param bandwidth пропускная способность клиента для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
 				 * @return          результат выполнения установки
+				 *
 				 */
 				bool bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept;
 			public:
@@ -214,12 +235,14 @@ namespace awh {
 				 * @brief Метод активации/деактивации мультикаст группы (заглушка для клиента SOCKS5)
 				 *
 				 * @return результат выполнения установки
+				 *
 				 */
 				bool membership(const event::mode_t, string_view, string_view, const uint16_t) noexcept;
 				/**
 				 * @brief Метод активации/деактивации мультикаст группы (заглушка для клиента SOCKS5)
 				 *
 				 * @return результат выполнения установки
+				 *
 				 */
 				bool membership(const event::mode_t, const net::addr_t *, const net::addr_t *, const uint16_t) noexcept;
 			public:
@@ -228,6 +251,7 @@ namespace awh {
 				 *
 				 * @param username имя пользователя для авторизации на сервере
 				 * @param password пароль пользователя для авторизации на сервере
+				 *
 				 */
 				void setUser(const string & username, const string & password) noexcept;
 			public:
@@ -236,6 +260,7 @@ namespace awh {
 				 *
 				 * @param addr исходящий адрес для UDP-клиента
 				 * @return 	   результат выполнения установки исходящего адреса для UDP-клиента
+				 *
 				 */
 				bool udp(const net::attr_net_t * addr) noexcept;
 				/**
@@ -244,6 +269,7 @@ namespace awh {
 				 * @param addr исходящий адрес для UDP-клиента
 				 * @param port исходящий порт для UDP-клиента
 				 * @return     результат выполнения установки исходящего адреса для UDP-клиента
+				 *
 				 */
 				bool udp(string_view addr, const uint16_t port = 0) noexcept;
 			public:
@@ -252,6 +278,7 @@ namespace awh {
 				 *
 				 * @param attr параметры подключения для установки конечной точки
 				 * @return     результат выполнения установки конечной точки
+				 *
 				 */
 				bool endpoint(const net::attr_t * attr) noexcept;
 				/**
@@ -260,6 +287,7 @@ namespace awh {
 				 * @param addr адрес хоста для установки
 				 * @param port порт хоста для установки
 				 * @return     результат выполнения установки конечной точки
+				 *
 				 */
 				bool endpoint(string_view addr, const uint16_t port) noexcept;
 			private:
@@ -272,6 +300,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещён)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				Socks5 & operator = (const Socks5 &) = delete;
 			public:
@@ -280,6 +309,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Socks5(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -288,6 +318,7 @@ namespace awh {
 				 * @param dns объект DNS-резолвера
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -297,6 +328,7 @@ namespace awh {
 				 * @param coder объект транспортного уровня безопасности
 				 * @param fmk   объект фреймворка
 				 * @param log   объект для работы с логами
+				 *
 				 */
 				explicit Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -307,6 +339,7 @@ namespace awh {
 				 * @param dns   объект DNS-резолвера
 				 * @param fmk   объект фреймворка
 				 * @param log   объект для работы с логами
+				 *
 				 */
 				explicit Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
 			public:

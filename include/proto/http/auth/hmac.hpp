@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл схемы HMAC-авторизации HTTP-сообщений — расчёт и проверка подписи над канонической базой,
+ *        собранной из покрываемых компонентов запроса, с формированием заголовков Signature и Signature-Input
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -44,6 +48,7 @@ namespace awh {
 		 * @details Схема формирует и проверяет пару заголовков Signature-Input и Signature.
 		 *          Подпись рассчитывается методом HMAC над канонической базой подписи,
 		 *          собранной из покрываемых компонентов запроса и параметров подписи.
+		 *
 		 */
 		typedef class Hmac : public auth_t::scheme_t {
 			private:
@@ -51,6 +56,7 @@ namespace awh {
 				 * @brief Метод получения текстового имени алгоритма подписи
 				 *
 				 * @return название алгоритма подписи (hmac-sha256 и т.д.)
+				 *
 				 */
 				string algName() const noexcept;
 				/**
@@ -58,6 +64,7 @@ namespace awh {
 				 *
 				 * @param name имя компонента
 				 * @return     значение компонента (пустая строка, если не найден)
+				 *
 				 */
 				string value(string_view name) const noexcept;
 			private:
@@ -65,6 +72,7 @@ namespace awh {
 				 * @brief Метод формирования значения параметров подписи (@signature-params)
 				 *
 				 * @return значение параметров подписи
+				 *
 				 */
 				string params() noexcept;
 				/**
@@ -72,6 +80,7 @@ namespace awh {
 				 *
 				 * @param params значение параметров подписи (@signature-params)
 				 * @return       каноническая база подписи
+				 *
 				 */
 				string base(const string & params) const noexcept;
 				/**
@@ -80,6 +89,7 @@ namespace awh {
 				 * @param base каноническая база подписи
 				 * @param key  секретный ключ подписи
 				 * @return     подпись в формате BASE64
+				 *
 				 */
 				string sign(const string & base, const string & key) const noexcept;
 			private:
@@ -89,6 +99,7 @@ namespace awh {
 				 * @param input     ссылка для записи значения заголовка Signature-Input
 				 * @param signature ссылка для записи значения заголовка Signature
 				 * @return          результат формирования
+				 *
 				 */
 				bool build(string & input, string & signature) noexcept;
 			public:
@@ -97,6 +108,7 @@ namespace awh {
 				 *
 				 * @param header значение заголовка (Signature-Input либо Signature)
 				 * @return       результат разбора
+				 *
 				 */
 				bool parse(const string_view header) noexcept override;
 				/**
@@ -105,6 +117,7 @@ namespace awh {
 				 * @param name   имя входящего заголовка (Signature-Input либо Signature)
 				 * @param header значение входящего заголовка
 				 * @return       результат разбора
+				 *
 				 */
 				bool parse(const string_view name, const string_view header) noexcept override;
 			public:
@@ -112,6 +125,7 @@ namespace awh {
 				 * @brief Метод проверки учётных данных (только для сервера)
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool check() noexcept override;
 				/**
@@ -122,12 +136,14 @@ namespace awh {
 				 *
 				 * @param full режим вывода вместе с именами заголовков
 				 * @return     значение заголовка (заголовков) авторизации
+				 *
 				 */
 				string header(const bool full = false) noexcept override;
 				/**
 				 * @brief Метод формирования набора исходящих заголовков авторизации
 				 *
 				 * @param result контейнер для набора заголовков (Signature-Input и Signature)
+				 *
 				 */
 				void headers(vector <pair <string, string>> & result) noexcept override;
 			public:
@@ -139,6 +155,7 @@ namespace awh {
 				 * @param crypto объект криптографии
 				 * @param fmk    объект фреймворка
 				 * @param log    объект для работы с логами
+				 *
 				 */
 				explicit Hmac(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept;
 				/**

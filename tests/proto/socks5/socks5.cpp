@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация тестовой фикстуры протокола SOCKS5 —
+ *        создание объектов тестового окружения перед каждым тестом и их освобождение после его завершения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -38,6 +42,7 @@ void Socks5Fixture::TearDown() {}
  * @brief Фабричный метод создания клиента SOCKS5
  *
  * @return сформированный объект клиента SOCKS5
+ *
  */
 std::unique_ptr <awh::proto::client_socks5_t> Socks5Fixture::makeClient() const noexcept {
 	// Создаём и возвращаем объект клиента SOCKS5
@@ -48,6 +53,7 @@ std::unique_ptr <awh::proto::client_socks5_t> Socks5Fixture::makeClient() const 
  * @brief Фабричный метод создания сервера SOCKS5
  *
  * @return сформированный объект сервера SOCKS5
+ *
  */
 std::unique_ptr <awh::proto::server_socks5_t> Socks5Fixture::makeServer() const noexcept {
 	// Создаём и возвращаем объект сервера SOCKS5

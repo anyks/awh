@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля функций обратного вызова — класс Callback, реализующий типобезопасное хранилище
+ *        колбэков произвольных сигнатур с адресацией по идентификатору или имени,
+ *        итератором обхода и потокобезопасным вызовом
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -79,6 +84,7 @@ namespace awh {
 			 * @brief Шаблон базовой функции
 			 *
 			 * @tparam A сигнатура функции
+			 *
 			 */
 			template <typename A>
 			/**
@@ -95,6 +101,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param fn функция обратного вызова для установки
+				 *
 				 */
 				explicit BasicFunction(std::function <A> fn) noexcept : fn(std::move(fn)) {}
 			};
@@ -142,6 +149,7 @@ namespace awh {
 					 * @brief Оператор извлечения указателя заголовка
 					 *
 					 * @return указатель заголовка
+					 *
 					 */
 					pointer operator -> () const noexcept {
 						// Возвращаем результат
@@ -151,6 +159,7 @@ namespace awh {
 					 * @brief Оператор разыменования заголовка
 					 *
 					 * @return значение заголовка
+					 *
 					 */
 					reference operator * () const noexcept {
 						// Возвращаем результат
@@ -161,6 +170,7 @@ namespace awh {
 					 * @brief Оператор смещения вперед
 					 *
 					 * @return значение текущего итератора
+					 *
 					 */
 					Iterator & operator ++ () noexcept {
 						/**
@@ -194,6 +204,7 @@ namespace awh {
 					 * @brief Оператор постинкрементного смещения вперед
 					 *
 					 * @return значение итератора до смещения
+					 *
 					 */
 					Iterator operator ++ (const int32_t) noexcept {
 						// Сохраняем текущее состояние итератора
@@ -209,6 +220,7 @@ namespace awh {
 					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator == (const Iterator & other) const noexcept {
 						// Возвращаем результат
@@ -219,6 +231,7 @@ namespace awh {
 					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator != (const Iterator & other) const noexcept {
 						// Возвращаем результат
@@ -230,6 +243,7 @@ namespace awh {
 					 *
 					 * @param it  итератор для установки
 					 * @param log объект для работы с логами
+					 *
 					 */
 					explicit Iterator(iterator it, const log_t * log) noexcept : _it(it), _log(log) {}
 			} iterator_t;
@@ -249,6 +263,7 @@ namespace awh {
 			 * @param флаг типа события
 			 * @param идентификатор функции
 			 * @param функция обратного вызова в чистом виде
+			 *
 			 */
 			std::function <void (const event_t, const id_t, const fn_t &)> _callback;
 		private:
@@ -261,6 +276,7 @@ namespace awh {
 			 * @brief Шаблон метода безопасного захвата сразу двух объектов блокировки
 			 *
 			 * @tparam Fn тип исполняемого функционала под захваченными блокировками
+			 *
 			 */
 			template <typename Fn>
 			/**
@@ -272,6 +288,7 @@ namespace awh {
 			 * @param first  первый объект блокировки
 			 * @param second второй объект блокировки
 			 * @param fn     исполняемый функционал под захваченными блокировками
+			 *
 			 */
 			static void _dualLock(lock_state_t <std::recursive_mutex> & first, lock_state_t <std::recursive_mutex> & second, Fn && fn) {
 				// Если оба объекта блокировки совпадают (операция над одним и тем же контейнером)
@@ -304,6 +321,7 @@ namespace awh {
 			 *
 			 * @param name название функции для генерации идентификатора
 			 * @return     сгенерированный идентификатор функции
+			 *
 			 */
 			id_t id(string_view name) const noexcept {
 				// Переменная результата
@@ -347,6 +365,7 @@ namespace awh {
 			 * @brief Метод проверки на пустоту контейнера
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool empty() const noexcept {
 				// Выполняем блокировку потока
@@ -359,6 +378,7 @@ namespace awh {
 			 * @brief Метод установки безопасности работы потоков
 			 *
 			 * @param mode флаг режима безопасности потоков
+			 *
 			 */
 			void threadSafety(const bool mode) noexcept {
 				// Устанавливаем режим безопасности потоков
@@ -369,6 +389,7 @@ namespace awh {
 			 * @brief Метод получения дампа функций обратного вызова
 			 *
 			 * @return выводим созданный блок дампа контейнера
+			 *
 			 */
 			const unordered_map <id_t, fn_t> & dump() const noexcept {
 				// Формируем дамп функций обратного вызова
@@ -378,6 +399,7 @@ namespace awh {
 			 * @brief Метод установки дампа функций обратного вызова
 			 *
 			 * @param callbacks дамп данных функций обратного вызова
+			 *
 			 */
 			void dump(const unordered_map <id_t, fn_t> & callbacks) noexcept {
 				// Если данные функций обратного вызова переданы
@@ -449,6 +471,7 @@ namespace awh {
 			 *
 			 * @param id идентификатор функции обратного вызова
 			 * @return   результат проверки
+			 *
 			 */
 			bool _is(const id_t id) const noexcept {
 				// Выполняем блокировку потока
@@ -462,6 +485,7 @@ namespace awh {
 			 *
 			 * @param name название функции обратного вызова
 			 * @return     результат проверки
+			 *
 			 */
 			bool is(string_view name) const noexcept {
 				// Выполняем првоерку существования функции обратного вызова
@@ -472,6 +496,7 @@ namespace awh {
 			 *
 			 * @param name название функции обратного вызова
 			 * @return     результат проверки
+			 *
 			 */
 			bool is(const string & name) const noexcept {
 				// Выполняем првоерку существования функции обратного вызова
@@ -482,6 +507,7 @@ namespace awh {
 			 *
 			 * @param name название функции обратного вызова
 			 * @return     результат проверки
+			 *
 			 */
 			bool is(const char * name) const noexcept {
 				// Выполняем првоерку существования функции обратного вызова
@@ -491,6 +517,7 @@ namespace awh {
 			 * @brief Шаблон метода проверки наличия функции обратного вызова
 			 *
 			 * @tparam T тип идентификатора функции
+			 *
 			 */
 			template <typename T>
 			/**
@@ -498,6 +525,7 @@ namespace awh {
 			 *
 			 * @param id идентификатор функции обратного вызова
 			 * @return   результат проверки
+			 *
 			 */
 			bool is(const T id) const noexcept {
 				// Если мы получили на вход число
@@ -512,6 +540,7 @@ namespace awh {
 			 * @brief Метод удаления функции обратного вызова
 			 *
 			 * @param id идентификатор функции обратного вызова
+			 *
 			 */
 			void _erase(const id_t id) noexcept {
 				/**
@@ -562,6 +591,7 @@ namespace awh {
 			 * @brief Метод удаления функции обратного вызова
 			 *
 			 * @param name функция обратного вызова для удаления
+			 *
 			 */
 			void erase(string_view name) noexcept {
 				// Выполняем удаление функции обратного вызова
@@ -571,6 +601,7 @@ namespace awh {
 			 * @brief Метод удаления функции обратного вызова
 			 *
 			 * @param name функция обратного вызова для удаления
+			 *
 			 */
 			void erase(const string & name) noexcept {
 				// Выполняем удаление функции обратного вызова
@@ -580,6 +611,7 @@ namespace awh {
 			 * @brief Метод удаления функции обратного вызова
 			 *
 			 * @param name функция обратного вызова для удаления
+			 *
 			 */
 			void erase(const char * name) noexcept {
 				// Если название функции обратного вызова передано
@@ -591,12 +623,14 @@ namespace awh {
 			 * @brief Шаблон метода удаления функции обратного вызова
 			 *
 			 * @tparam T тип идентификатора функции
+			 *
 			 */
 			template <typename T>
 			/**
 			 * @brief Метод удаления функции обратного вызова
 			 *
 			 * @param id идентификатор функции обратного вызова
+			 *
 			 */
 			void erase(const T id) noexcept {
 				// Если мы получили на вход число
@@ -610,6 +644,7 @@ namespace awh {
 			 *
 			 * @param id1 идентификатор первой функции
 			 * @param id2 идентификатор второй функции
+			 *
 			 */
 			void _swap(const id_t id1, const id_t id2) noexcept {
 				/**
@@ -657,6 +692,7 @@ namespace awh {
 			 * @param id1     идентификатор первой функции
 			 * @param id2     идентификатор второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 *
 			 */
 			void _swap(const id_t id1, const id_t id2, Callback & storage) noexcept {
 				/**
@@ -704,6 +740,7 @@ namespace awh {
 			 * @brief Метод обмена функциями
 			 *
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 *
 			 */
 			void swap(Callback & storage) noexcept {
 				// Если обмен выполняется с самим собой
@@ -743,6 +780,7 @@ namespace awh {
 			 *
 			 * @param name1 название первой функции
 			 * @param name2 название второй функции
+			 *
 			 */
 			void swap(string_view name1, string_view name2) noexcept {
 				// Выполняем обмен функциями обратного вызова
@@ -753,6 +791,7 @@ namespace awh {
 			 *
 			 * @param name1 название первой функции
 			 * @param name2 название второй функции
+			 *
 			 */
 			void swap(const string & name1, const string & name2) noexcept {
 				// Выполняем обмен функциями обратного вызова
@@ -763,6 +802,7 @@ namespace awh {
 			 *
 			 * @param name1 название первой функции
 			 * @param name2 название второй функции
+			 *
 			 */
 			void swap(const char * name1, const char * name2) noexcept {
 				// Если названия переданы
@@ -774,6 +814,7 @@ namespace awh {
 			 * @brief Шаблон метода обмена функциями
 			 *
 			 * @tparam T тип идентификатора функции
+			 *
 			 */
 			template <typename T>
 			/**
@@ -781,6 +822,7 @@ namespace awh {
 			 *
 			 * @param id1 идентификатор первой функции
 			 * @param id2 идентификатор второй функции
+			 *
 			 */
 			void swap(const T id1, const T id2) noexcept {
 				// Если мы получили на вход число
@@ -794,6 +836,7 @@ namespace awh {
 			 * @param name1   название первой функции
 			 * @param name2   название второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 *
 			 */
 			void swap(string_view name1, string_view name2, Callback & storage) noexcept {
 				// Выполняем обмен функциями обратного вызова
@@ -805,6 +848,7 @@ namespace awh {
 			 * @param name1   название первой функции
 			 * @param name2   название второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 *
 			 */
 			void swap(const string & name1, const string & name2, Callback & storage) noexcept {
 				// Выполняем обмен функциями обратного вызова
@@ -816,6 +860,7 @@ namespace awh {
 			 * @param name1   название первой функции
 			 * @param name2   название второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 *
 			 */
 			void swap(const char * name1, const char * name2, Callback & storage) noexcept {
 				// Если названия переданы
@@ -827,6 +872,7 @@ namespace awh {
 			 * @brief Шаблон метода обмена функциями
 			 *
 			 * @tparam T тип идентификатора функции
+			 *
 			 */
 			template <typename T>
 			/**
@@ -835,6 +881,7 @@ namespace awh {
 			 * @param id1     идентификатор первой функции
 			 * @param id2     идентификатор второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 *
 			 */
 			void swap(const T id1, const T id2, Callback & storage) noexcept {
 				// Если мы получили на вход число
@@ -849,6 +896,7 @@ namespace awh {
 			 * @param id      идентификатор копируемой функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			id_t _set(const id_t id, const Callback & storage) noexcept {
 				/**
@@ -920,6 +968,7 @@ namespace awh {
 			 * @param id2     новый идентификатор полученной функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			id_t _set(const id_t id1, const id_t id2, const Callback & storage) noexcept {
 				/**
@@ -995,6 +1044,7 @@ namespace awh {
 			 * @param id       идентификатор устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			id_t _set(const id_t id, const fn_t & callback) noexcept {
 				/**
@@ -1058,6 +1108,7 @@ namespace awh {
 			 * @param name    название первой функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(string_view name, const Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
@@ -1069,6 +1120,7 @@ namespace awh {
 			 * @param name    название первой функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(const string & name, const Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
@@ -1080,6 +1132,7 @@ namespace awh {
 			 * @param name    название первой функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(const char * name, const Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
@@ -1089,6 +1142,7 @@ namespace awh {
 			 * @brief Шаблон метода установки функции из одного хранилища в текущее
 			 *
 			 * @tparam T тип идентификатора функции
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1097,6 +1151,7 @@ namespace awh {
 			 * @param id      идентификатор копируемой функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(const T id, const Callback & storage) noexcept -> id_t {
 				// Если мы получили на вход число
@@ -1113,6 +1168,7 @@ namespace awh {
 			 * @param name2   новое название полученной функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(string_view name1, string_view name2, Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
@@ -1125,6 +1181,7 @@ namespace awh {
 			 * @param name2   новое название полученной функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(const string & name1, const string & name2, Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
@@ -1137,6 +1194,7 @@ namespace awh {
 			 * @param name2   новое название полученной функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(const char * name1, const char * name2, Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
@@ -1146,6 +1204,7 @@ namespace awh {
 			 * @brief Шаблон метода установки функции из одного хранилища в текущее
 			 *
 			 * @tparam T тип идентификатора функции
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1155,6 +1214,7 @@ namespace awh {
 			 * @param id2     новый идентификатор полученной функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(const T id1, const T id2, const Callback & storage) noexcept -> id_t {
 				// Если мы получили на вход число
@@ -1170,6 +1230,7 @@ namespace awh {
 			 * @param name     название устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(string_view name, const fn_t & callback) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
@@ -1181,6 +1242,7 @@ namespace awh {
 			 * @param name     название устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(const string & name, const fn_t & callback) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
@@ -1192,6 +1254,7 @@ namespace awh {
 			 * @param name     название устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(const char * name, const fn_t & callback) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
@@ -1201,6 +1264,7 @@ namespace awh {
 			 * @brief Шаблон метода установки функции обратного вызова в чистом виде
 			 *
 			 * @tparam T тип идентификатора функции
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1209,6 +1273,7 @@ namespace awh {
 			 * @param id       идентификатор устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			auto set(const T id, const fn_t & callback) noexcept -> id_t {
 				// Если мы получили на вход число
@@ -1223,6 +1288,7 @@ namespace awh {
 			 * @brief Шаблон метода получения функции обратного вызова
 			 *
 			 * @tparam T тип сигнатуры функции
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1230,6 +1296,7 @@ namespace awh {
 			 *
 			 * @param id идентификатор функции обратного вызова
 			 * @return   функция обратного вызова если существует
+			 *
 			 */
 			auto _get(const id_t id) const noexcept -> function <T> {
 				// Если идентификатор функции не передан
@@ -1281,6 +1348,7 @@ namespace awh {
 			 * @brief Шаблон метода извлечения функции обратного вызова
 			 *
 			 * @tparam T тип сигнатуры функции
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1288,6 +1356,7 @@ namespace awh {
 			 *
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
+			 *
 			 */
 			auto get(string_view name) const noexcept -> function <T> {
 				// Выполняем получение функции обратного вызова
@@ -1297,6 +1366,7 @@ namespace awh {
 			 * @brief Шаблон метода извлечения функции обратного вызова
 			 *
 			 * @tparam T тип сигнатуры функции
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1304,6 +1374,7 @@ namespace awh {
 			 *
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
+			 *
 			 */
 			auto get(const string & name) const noexcept -> function <T> {
 				// Выполняем получение функции обратного вызова
@@ -1313,6 +1384,7 @@ namespace awh {
 			 * @brief Шаблон метода извлечения функции обратного вызова
 			 *
 			 * @tparam T тип сигнатуры функции
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1320,6 +1392,7 @@ namespace awh {
 			 *
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
+			 *
 			 */
 			auto get(const char * name) const noexcept -> function <T> {
 				// Выполняем получение функции обратного вызова
@@ -1329,6 +1402,7 @@ namespace awh {
 			 * @brief Шаблон метода извлечения функции обратного вызова
 			 *
 			 * @tparam T тип сигнатуры функции
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1336,6 +1410,7 @@ namespace awh {
 			 *
 			 * @param id идентификатор функции обратного вызова
 			 * @return    запрашиваемая функция обратного вызова
+			 *
 			 */
 			auto get(const id_t id) const noexcept -> function <T> {
 				// Выполняем получение функции обратного вызова
@@ -1346,6 +1421,7 @@ namespace awh {
 			 *
 			 * @tparam A тип идентификатора функции
 			 * @tparam B тип сигнатуры функции
+			 *
 			 */
 			template <typename A, typename B>
 			/**
@@ -1353,6 +1429,7 @@ namespace awh {
 			 *
 			 * @param id идентификатор функции обратного вызова
 			 * @return    запрашиваемая функция обратного вызова
+			 *
 			 */
 			auto get(const A id) const noexcept -> function <B> {
 				// Если мы получили на вход число
@@ -1367,6 +1444,7 @@ namespace awh {
 			 * @brief Шаблон метода подключения финкции обратного вызова
 			 *
 			 * @tparam T тип функции обратного вызова
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1375,6 +1453,7 @@ namespace awh {
 			 * @param id идентификатор функкции обратного вызова
 			 * @param fn функция обратного вызова для добавления
 			 * @return   идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			id_t _on(const id_t id, function <T> fn) noexcept {
 				// Если идентификатор функции или сама функция обратного вызова не переданы
@@ -1455,6 +1534,7 @@ namespace awh {
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Func      функция обратного вызова для установки
 			 * @tparam Args      аргументы функции обратного вызова
+			 *
 			 */
 			template <typename Signature, typename Func, typename... Args>
 			/**
@@ -1464,6 +1544,7 @@ namespace awh {
 			 * @param callback функция обратного вызова для подключения
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
+			 *
 			 */
 			id_t on(string_view name, Func && callback, Args &&... args) noexcept {
 				// Если название функции обратного вызова не передано
@@ -1481,6 +1562,7 @@ namespace awh {
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Func      функция обратного вызова для установки
 			 * @tparam Args      аргументы функции обратного вызова
+			 *
 			 */
 			template <typename Signature, typename Func, typename... Args>
 			/**
@@ -1490,6 +1572,7 @@ namespace awh {
 			 * @param callback функция обратного вызова для подключения
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
+			 *
 			 */
 			id_t on(const string & name, Func && callback, Args &&... args) noexcept {
 				// Выполняем подключение функции обратного вызова
@@ -1501,6 +1584,7 @@ namespace awh {
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Func      функция обратного вызова для установки
 			 * @tparam Args      аргументы функции обратного вызова
+			 *
 			 */
 			template <typename Signature, typename Func, typename... Args>
 			/**
@@ -1510,6 +1594,7 @@ namespace awh {
 			 * @param callback функция обратного вызова для подключения
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
+			 *
 			 */
 			id_t on(const char * name, Func && callback, Args &&... args) noexcept {
 				// Если название функции обратного вызова не передано
@@ -1527,6 +1612,7 @@ namespace awh {
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Func      функция обратного вызова для установки
 			 * @tparam Args      аргументы функции обратного вызова
+			 *
 			 */
 			template <typename Signature, typename Func, typename... Args>
 			/**
@@ -1536,6 +1622,7 @@ namespace awh {
 			 * @param callback функция обратного вызова для подключения
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
+			 *
 			 */
 			id_t on(const id_t id, Func && callback, Args &&... args) noexcept {
 				// Если идентификатор функции обратного вызова не передан
@@ -1554,6 +1641,7 @@ namespace awh {
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Func      функция обратного вызова для установки
 			 * @tparam Args      аргументы функции обратного вызова
+			 *
 			 */
 			template <typename A, typename Signature, typename Func, typename... Args>
 			/**
@@ -1563,6 +1651,7 @@ namespace awh {
 			 * @param callback функция обратного вызова для подключения
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
+			 *
 			 */
 			id_t on(const A id, Func && callback, Args &&... args) noexcept {
 				// Если мы получили на вход число
@@ -1576,6 +1665,7 @@ namespace awh {
 			 * @brief Шаблон метода подключения финкции обратного вызова
 			 *
 			 * @tparam T тип функции обратного вызова
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1584,6 +1674,7 @@ namespace awh {
 			 * @param name название функкции обратного вызова
 			 * @param fn   функция обратного вызова для добавления
 			 * @return     идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			id_t on(string_view name, function <T> fn) noexcept {
 				// Выполняем подключение функции обратного вызова
@@ -1593,6 +1684,7 @@ namespace awh {
 			 * @brief Шаблон метода подключения финкции обратного вызова
 			 *
 			 * @tparam T тип функции обратного вызова
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1601,6 +1693,7 @@ namespace awh {
 			 * @param name название функкции обратного вызова
 			 * @param fn   функция обратного вызова для добавления
 			 * @return     идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			id_t on(const string & name, function <T> fn) noexcept {
 				// Выполняем подключение функции обратного вызова
@@ -1610,6 +1703,7 @@ namespace awh {
 			 * @brief Шаблон метода подключения финкции обратного вызова
 			 *
 			 * @tparam T тип функции обратного вызова
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1618,6 +1712,7 @@ namespace awh {
 			 * @param name название функкции обратного вызова
 			 * @param fn   функция обратного вызова для добавления
 			 * @return     идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			id_t on(const char * name, function <T> fn) noexcept {
 				// Выполняем подключение функции обратного вызова
@@ -1627,6 +1722,7 @@ namespace awh {
 			 * @brief Шаблон метода подключения финкции обратного вызова
 			 *
 			 * @tparam T тип функции обратного вызова
+			 *
 			 */
 			template <typename T>
 			/**
@@ -1635,6 +1731,7 @@ namespace awh {
 			 * @param id идентификатор функкции обратного вызова
 			 * @param fn функция обратного вызова для добавления
 			 * @return   идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			id_t on(const id_t id, function <T> fn) noexcept {
 				// Выполняем подключение функции обратного вызова
@@ -1645,6 +1742,7 @@ namespace awh {
 			 *
 			 * @tparam A тип идентификатора функции обратного вызова
 			 * @tparam B тип функции обратного вызова
+			 *
 			 */
 			template <typename A, typename B>
 			/**
@@ -1653,6 +1751,7 @@ namespace awh {
 			 * @param id идентификатор функкции обратного вызова
 			 * @param fn функция обратного вызова для добавления
 			 * @return   идентификатор добавленной функции обратного вызова
+			 *
 			 */
 			id_t on(const A id, function <B> fn) noexcept {
 				// Если мы получили на вход число
@@ -1666,6 +1765,7 @@ namespace awh {
 			 * @brief Метод установки функции обратного события на получения событий модуля
 			 *
 			 * @param callback функция обратного вызова для установки
+			 *
 			 */
 			void on(function <void (const event_t, const id_t, const fn_t &)> callback) noexcept {
 				// Выполняем блокировку потока
@@ -1679,6 +1779,7 @@ namespace awh {
 			 *
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Args      аргументы функции обратного вызова
+			 *
 			 */
 			template <typename Signature, typename... Args>
 			/**
@@ -1687,6 +1788,7 @@ namespace awh {
 			 * @param id   идентификатор функции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
+			 *
 			 */
 			auto _call(const id_t id, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
 				// Формируем тип данных результата выполнения функции обратного вызова
@@ -1846,6 +1948,7 @@ namespace awh {
 			 *
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Args      аргументы функции обратного вызова
+			 *
 			 */
 			template <typename Signature, typename... Args>
 			/**
@@ -1854,6 +1957,7 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
+			 *
 			 */
 			auto call(string_view name, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
 				// Формируем тип данных результата выполнения функции обратного вызова
@@ -1875,6 +1979,7 @@ namespace awh {
 			 *
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Args      аргументы функции обратного вызова
+			 *
 			 */
 			template <typename Signature, typename... Args>
 			/**
@@ -1883,6 +1988,7 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
+			 *
 			 */
 			auto call(const string & name, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
 				// Выполняем функцию обратного вызова
@@ -1893,6 +1999,7 @@ namespace awh {
 			 *
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Args      аргументы функции обратного вызова
+			 *
 			 */
 			template <typename Signature, typename... Args>
 			/**
@@ -1901,6 +2008,7 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
+			 *
 			 */
 			auto call(const char * name, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
 				// Формируем тип данных результата выполнения функции обратного вызова
@@ -1922,6 +2030,7 @@ namespace awh {
 			 *
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Args      аргументы функции обратного вызова
+			 *
 			 */
 			template <typename Signature, typename... Args>
 			/**
@@ -1930,6 +2039,7 @@ namespace awh {
 			 * @param id   идентификатор функции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
+			 *
 			 */
 			auto call(const id_t id, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
 				// Выполняем функцию обратного вызова
@@ -1941,6 +2051,7 @@ namespace awh {
 			 * @tparam A         тип идентификатора функции
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Args      аргументы функции обратного вызова
+			 *
 			 */
 			template <typename A, typename Signature, typename... Args>
 			/**
@@ -1949,6 +2060,7 @@ namespace awh {
 			 * @param id   идентификатор функции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
+			 *
 			 */
 			auto call(const A id, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
 				// Если мы получили на вход число
@@ -1972,6 +2084,7 @@ namespace awh {
 			 * @brief Метод получения конечного итератора
 			 *
 			 * @return конечный итератор
+			 *
 			 */
 			iterator_t end() noexcept {
 				// Возвращаем результат
@@ -1981,6 +2094,7 @@ namespace awh {
 			 * @brief Метод получение начального итератора
 			 *
 			 * @return начальный итератор
+			 *
 			 */
 			iterator_t begin() noexcept {
 				// Возвращаем результат
@@ -1992,6 +2106,7 @@ namespace awh {
 			 *
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        текущее значение объекта
+			 *
 			 */
 			Callback & operator = (Callback && storage) noexcept {
 				// Если перемещение выполняется из самого себя
@@ -2033,6 +2148,7 @@ namespace awh {
 			 *
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        текущее значение объекта
+			 *
 			 */
 			Callback & operator = (const Callback & storage) noexcept {
 				// Если копирование выполняется из самого себя
@@ -2075,6 +2191,7 @@ namespace awh {
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit Callback(const fmk_t * fmk, const log_t * log) noexcept :
 			 _crypto(fmk, log), _fmk(fmk), _log(log) {

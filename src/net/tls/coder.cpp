@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля транспортного уровня безопасности — создание и настройка контекстов TLS и DTLS,
+ *        загрузка сертификатов и ключей, выбор наборов шифров и ALPN,
+ *        верификация пиров и выполнение защищённого рукопожатия поверх BoringSSL
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -161,6 +166,7 @@ namespace {
  *
  * @note Lock удерживается только внутри методов registry.
  * @note pin() закрепляет участника (refs++) без lock на время дальнейшей работы.
+ *
  */
 namespace ssl {
 	/**
@@ -183,6 +189,7 @@ namespace ssl {
 		 * @brief Метод получения разделяемой блокировки глобального реестра TLS
 		 *
 		 * @return объект блокировки
+		 *
 		 */
 		inline global_lock_t globalShared() noexcept {
 			// Возвращаем объект блокировки глобального реестра TLS
@@ -192,6 +199,7 @@ namespace ssl {
 		 * @brief Метод получения эксклюзивной блокировки глобального реестра TLS
 		 *
 		 * @return объект блокировки
+		 *
 		 */
 		inline global_lock_t globalExclusive() noexcept {
 			// Возвращаем объект блокировки глобального реестра TLS
@@ -202,6 +210,7 @@ namespace ssl {
 		 *
 		 * @param id идентификатор контекста TLS
 		 * @return   результат проверки
+		 *
 		 */
 		inline bool contains(const ::tls::coder_t::id_t id) noexcept {
 			// Выполняем разделяемую блокировку глобального реестра TLS
@@ -213,6 +222,7 @@ namespace ssl {
 		 * @brief Метод регистрации идентификатора TLS
 		 *
 		 * @param id идентификатор контекста TLS
+		 *
 		 */
 		inline void add(const ::tls::coder_t::id_t id) noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
@@ -226,6 +236,7 @@ namespace ssl {
 		 * @param id       идентификатор контекста TLS
 		 * @param members  контейнер участников обмена защищёнными данными
 		 * @param iterator итератор удаляемого участника
+		 *
 		 */
 		inline void drop(const ::tls::coder_t::id_t id, members_t & members, const members_t::iterator & iterator) noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
@@ -244,6 +255,7 @@ namespace ssl {
 		 *
 		 * @param item объект участника обмена защищёнными данными
 		 * @return   итератор добавленного участника
+		 *
 		 */
 		inline members_t::iterator emplace(members_t::value_type item) noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
@@ -256,6 +268,7 @@ namespace ssl {
 		 *
 		 * @param proto тип протокола события
 		 * @param host  имя хоста
+		 *
 		 */
 		inline void spliceErase(const event::protocol_t proto, const std::string & host) noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
@@ -273,6 +286,7 @@ namespace ssl {
 		 * @param proto тип протокола события
 		 * @param host  имя хоста
 		 * @param id    идентификатор контекста TLS
+		 *
 		 */
 		inline void spliceEmplace(const event::protocol_t proto, const std::string & host, const ::tls::coder_t::id_t id) noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
@@ -286,6 +300,7 @@ namespace ssl {
 		 * @param proto тип протокола события
 		 * @param host  имя хоста
 		 * @return      идентификатор контекста TLS или 0
+		 *
 		 */
 		inline ::tls::coder_t::id_t spliceResolve(const event::protocol_t proto, const std::string & host) noexcept {
 			// Выполняем разделяемую блокировку глобального реестра TLS
@@ -307,6 +322,7 @@ namespace ssl {
 		 * @brief Метод увеличения счётчика инициализации OpenSSL
 		 *
 		 * @return флаг необходимости инициализации OpenSSL
+		 *
 		 */
 		inline bool acquireInit() noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
@@ -327,6 +343,7 @@ namespace ssl {
 		 * @brief Метод уменьшения счётчика инициализации OpenSSL
 		 *
 		 * @return флаг необходимости деинициализации OpenSSL
+		 *
 		 */
 		inline bool releaseInit() noexcept {
 			// Выполняем эксклюзивную блокировку глобального реестра TLS
@@ -348,6 +365,7 @@ namespace ssl {
 	 * @brief Метод одноразовой инициализации OpenSSL для TLS-модуля
 	 *
 	 * @param log объект для работы с логами
+	 *
 	 */
 	inline void initOpenSSL(const log_t * log) noexcept {
 		// Выполняем игнорирование сигналов SIGPIPE
@@ -514,6 +532,7 @@ namespace {
 		 error(nullptr), state(nullptr) {}
 		/**
 		 * @brief Деструктор
+		 *
 		 */
 		virtual ~Callback() noexcept = default;
 	} callback_t;
@@ -562,6 +581,7 @@ namespace {
 			 * @brief Метод удаления участника обмена защищёнными данными
 			 *
 			 * @param members контейнер участников обмена защищёнными данными
+			 *
 			 */
 			void erase(members_t & members) noexcept;
 		public:
@@ -583,6 +603,7 @@ namespace {
 	 * @brief Метод удаления участника обмена защищёнными данными
 	 *
 	 * @param members контейнер участников обмена защищёнными данными
+	 *
 	 */
 	void Member::erase(members_t & members) noexcept {
 		// Удаляем участника из глобального реестра TLS
@@ -718,6 +739,7 @@ namespace {
 			 * @brief Метод проверки статуса участника обмена как мусорного
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool garbage() const noexcept;
 		public:
@@ -725,6 +747,7 @@ namespace {
 			 * @brief Конструктор
 			 *
 			 * @param member объект участника обмена защищёнными данными
+			 *
 			 */
 			explicit Guard_Transport_Layer_Security(::member_t * member) noexcept;
 		public:
@@ -750,6 +773,7 @@ namespace {
 	 * @brief Метод проверки статуса участника обмена как мусорного
 	 *
 	 * @return результат проверки
+	 *
 	 */
 	bool Guard_Transport_Layer_Security::garbage() const noexcept {
 		// Проверяем статус участника обмена
@@ -762,6 +786,7 @@ namespace {
 	 * @brief Конструктор
 	 *
 	 * @param member объект участника обмена защищёнными данными
+	 *
 	 */
 	Guard_Transport_Layer_Security::Guard_Transport_Layer_Security(::member_t * member) noexcept : _member(member) {
 		/**
@@ -819,6 +844,7 @@ namespace local {
 	 *       действителен только до возврата из callback. Callback обязан
 	 *       синхронно скопировать данные; при реентрантном вызове буфер
 	 *       может быть перезаписан.
+	 *
 	 */
 	thread_local uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
 
@@ -828,6 +854,7 @@ namespace local {
 	 * @param buffer буфер с данными record layer
 	 * @param size   размер буфера в байтах
 	 * @return       полный размер record layer или 0, если данных недостаточно
+	 *
 	 */
 	static inline size_t tlsRecordLayerSize(const uint8_t * buffer, const size_t size) noexcept {
 		// Если буфер пустой или слишком короткий
@@ -872,6 +899,7 @@ namespace ssl {
 	 * @brief Закрепление участника в глобальном реестре TLS
 	 *
 	 * @note Lock удерживается только внутри pin(). Дальнейшая работа/callbacks — без lock.
+	 *
 	 */
 	namespace registry {
 		/**
@@ -887,6 +915,7 @@ namespace ssl {
 				 * @brief Конструктор
 				 *
 				 * @param member объект участника обмена защищёнными данными
+				 *
 				 */
 				explicit pin_t(::member_t * member) noexcept : _guard(member) {}
 				/**
@@ -906,6 +935,7 @@ namespace ssl {
 		 *
 		 * @param id идентификатор контекста TLS
 		 * @return   объект закрепления или nullptr
+		 *
 		 */
 		static unique_ptr <pin_t> pin(const ::tls::coder_t::id_t id) noexcept {
 			// Эксклюзивная блокировка: find в ids и refs++ должны быть атомарны относительно drop()
@@ -942,6 +972,7 @@ namespace ssl {
 	 * @param id      идентификатор события
 	 * @param message дополнительное сообщение
 	 * @return        сформированное сообщение об ошибке
+	 *
 	 */
 	static string error(const ::tls::coder_t::id_t id, string_view message = "") noexcept {
 		// Переменная результата
@@ -1032,6 +1063,7 @@ namespace ssl {
 	 * @param member объект транспортного уровня передачи
 	 * @param id     идентификатор события
 	 * @return       результат выполнения отправки
+	 *
 	 */
 	static bool emitWriteBio(::ctl_t * member, const ::tls::coder_t::id_t id) noexcept {
 		// Количество прочитанных данных
@@ -1066,6 +1098,7 @@ namespace ssl {
 	 * @param size    размер буфера сообщения
 	 * @param ssl     объект SSL
 	 * @param ctx     передаваемый контекст
+	 *
 	 */
 	static void message(int32_t write, [[maybe_unused]] int32_t version, int32_t type, const void * buffer, size_t size, SSL * ssl, [[maybe_unused]] void * ctx) noexcept {
 		/**
@@ -1528,6 +1561,7 @@ namespace ssl {
 	 * @param key     ключ копирования
 	 * @param keySize размер ключа для копирования
 	 * @return        результат переключения протокола
+	 *
 	 */
 	static bool selectProto(uint8_t ** out, uint8_t * outSize, const uint8_t * in, const uint8_t inSize, const uint8_t * key, const uint8_t keySize) noexcept {
 		// Переменная результата
@@ -1557,6 +1591,7 @@ namespace ssl {
 	 * @param len  размер буфера данных протокола
 	 * @param ctx  передаваемый контекст
 	 * @return     результат переключения протокола
+	 *
 	 */
 	static int32_t nextProto(SSL * ssl, const uint8_t ** data, uint32_t * len, [[maybe_unused]] void * ctx) noexcept {
 		// Если объекты переданы верно
@@ -1596,6 +1631,7 @@ namespace ssl {
 	 * @param inSize  размер буфера входящего протокола
 	 * @param ctx     передаваемый контекст
 	 * @return        результат выбора протокола
+	 *
 	 */
 	static int32_t clientNextProtoSelect(SSL * ssl, uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, [[maybe_unused]] void * ctx) noexcept {
 		// Если объекты переданы верно
@@ -1649,6 +1685,7 @@ namespace ssl {
 	 * @param inSize  размер буфера входящего протокола
 	 * @param ctx     передаваемый контекст
 	 * @return        результат выбора протокола
+	 *
 	 */
 	static int32_t serverNextProtoSelect(SSL * ssl, const uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, [[maybe_unused]] void * ctx) noexcept {
 		// Если объекты переданы верно
@@ -1704,6 +1741,7 @@ namespace ssl {
 	 * @param ssl      объект SSL
 	 * @param filename путь к PEM-файлу
 	 * @return         результат выполнения функции (1 - успех, 0 - ошибка)
+	 *
 	 */
 	static int32_t useCertificateChainFile(SSL * ssl, const char * filename) noexcept {
 		// Переменная результата
@@ -1763,6 +1801,7 @@ namespace ssl {
 		 * @param name  название параметра сертификата
 		 * @param log   объект для работы с логами
 		 * @return      результат проверки
+		 *
 		 */
 		static bool addCertToStore(X509_STORE * store, string_view name, const awh::log_t * log) noexcept {
 			// Переменная результата
@@ -1846,6 +1885,7 @@ namespace compressor {
 	 * @param in   входные данные для компрессии
 	 * @param size размер входных данных
 	 * @return     результат выполнения функции
+	 *
 	 */
 	static int32_t compressionZlib(SSL * ssl, CBB * out, const uint8_t * in, const size_t size) noexcept {
 		// Если объекты переданы верно
@@ -1879,6 +1919,7 @@ namespace compressor {
 	 * @param in   входные данные для компрессии
 	 * @param size размер входных данных
 	 * @return     результат выполнения функции
+	 *
 	 */
 	static int32_t compressionBrotli(SSL * ssl, CBB * out, const uint8_t * in, const size_t size) noexcept {
 		// Если объекты переданы верно
@@ -1912,6 +1953,7 @@ namespace compressor {
 	 * @param in   входные данные для компрессии
 	 * @param size размер входных данных
 	 * @return     результат выполнения функции
+	 *
 	 */
 	static int32_t compressionZstandard(SSL * ssl, CBB * out, const uint8_t * in, const size_t size) noexcept {
 		// Если объекты переданы верно
@@ -1946,6 +1988,7 @@ namespace compressor {
 	 * @param in     входные данные для декомпрессии
 	 * @param size   размер входных данных
 	 * @return       результат выполнения функции
+	 *
 	 */
 	static int32_t decompressionZlib(SSL * ssl, CRYPTO_BUFFER ** out, const size_t length, const uint8_t * in, const size_t size) noexcept {
 		// Если объекты переданы верно
@@ -1983,6 +2026,7 @@ namespace compressor {
 	 * @param in     входные данные для декомпрессии
 	 * @param size   размер входных данных
 	 * @return       результат выполнения функции
+	 *
 	 */
 	static int32_t decompressionBrotli(SSL * ssl, CRYPTO_BUFFER ** out, const size_t length, const uint8_t * in, const size_t size) noexcept {
 		// Если объекты переданы верно
@@ -2020,6 +2064,7 @@ namespace compressor {
 	 * @param in     входные данные для декомпрессии
 	 * @param size   размер входных данных
 	 * @return       результат выполнения функции
+	 *
 	 */
 	static int32_t decompressionZstandard(SSL * ssl, CRYPTO_BUFFER ** out, const size_t length, const uint8_t * in, const size_t size) noexcept {
 		// Если объекты переданы верно
@@ -2066,6 +2111,7 @@ namespace cookie {
 	 * @param ssl    объект SSL
 	 * @param member объект транспортного уровня передачи
 	 * @return       результат проверки
+	 *
 	 */
 	static int32_t requirePeer(SSL * ssl, ::ctl_t * member) noexcept {
 		// Если адрес однорангового узла установлен
@@ -2113,6 +2159,7 @@ namespace cookie {
 	 * @param cookie данные куков
 	 * @param size   количество символов
 	 * @return       результат проверки
+	 *
 	 */
 	static int32_t generate(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
 		// Получаем объект уровня защищённых сокетов
@@ -2245,6 +2292,7 @@ namespace cookie {
 	 * @param cookie данные куков
 	 * @param size   количество символов
 	 * @return       результат проверки
+	 *
 	 */
 	static int32_t verify(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept {
 		// Получаем объект уровня защищённых сокетов
@@ -2367,6 +2415,7 @@ namespace verify {
 	 * @param first  первое доменное имя
 	 * @param second второе доменное имя
 	 * @return       результат проверки
+	 *
 	 */
 	static bool equal(string_view first, string_view second) noexcept {
 		// Переменная результата
@@ -2385,6 +2434,7 @@ namespace verify {
 	 * @param second второе доменное имя
 	 * @param max    количество начальных символов для проверки
 	 * @return       результат проверки
+	 *
 	 */
 	static bool noqual(string_view first, string_view second, size_t max) noexcept {
 		// Переменная результата
@@ -2402,6 +2452,7 @@ namespace verify {
 	 * @param host доменное имя
 	 * @param fqdn шаблон доменного имени
 	 * @return     результат проверки
+	 *
 	 */
 	static bool hostmatch(string_view host, string_view fqdn) noexcept {
 		// Переменная результата
@@ -2452,6 +2503,7 @@ namespace verify {
 	 * @param al  указатель на код ошибки
 	 * @param ctx контекст модуля
 	 * @return    результат обработки
+	 *
 	 */
 	static int32_t matchSNI(SSL * ssl, int32_t * al, [[maybe_unused]] void * ctx) noexcept {
 		// Переменная результата
@@ -2529,6 +2581,7 @@ namespace verify {
 	 * @param host доменное имя
 	 * @param fqdn шаблон доменного имени
 	 * @return     результат проверки
+	 *
 	 */
 	static bool certHostcheck(string_view host, string_view fqdn) noexcept {
 		// Переменная результата
@@ -2546,6 +2599,7 @@ namespace verify {
 	 * @param host доменное имя
 	 * @param x509 сертификат
 	 * @return     результат проверки
+	 *
 	 */
 	static status_t matchSubjectName(string_view host, const X509 * x509) noexcept {
 		// Переменная результата
@@ -2603,6 +2657,7 @@ namespace verify {
 	 * @param host доменное имя
 	 * @param x509 сертификат
 	 * @return     результат проверки
+	 *
 	 */
 	static status_t matchesCommonName(string_view host, const X509 * x509) noexcept {
 		// Переменная результата
@@ -2641,6 +2696,7 @@ namespace verify {
 	 * @param host доменное имя
 	 * @param x509 сертификат
 	 * @return     результат проверки
+	 *
 	 */
 	static status_t validateHostname(string_view host, const X509 * x509) noexcept {
 		// Переменная результата
@@ -2663,6 +2719,7 @@ namespace verify {
 	 * @param ok    результат получения сертификата
 	 * @param store хранилище сертификатов
 	 * @return      результат проверки
+	 *
 	 */
 	static int32_t certificate(const int32_t ok, X509_STORE_CTX * store) noexcept {
 		/**
@@ -2707,6 +2764,7 @@ namespace verify {
 	 * @param store хранилище сертификатов
 	 * @param ctx   передаваемый контекст
 	 * @return      результат проверки
+	 *
 	 */
 	static int32_t hostname(X509_STORE_CTX * store, void * ctx) noexcept {
 		// Результат проверки домена
@@ -2922,6 +2980,7 @@ awh::tls::Coder::CipherInfo::CipherInfo() noexcept :
  * @brief Метод получения версии OpenSSL
  *
  * @return версия OpenSSL
+ *
  */
 string awh::tls::Coder::version() const noexcept {
 	// Возвращаем версию OpenSSL
@@ -2936,6 +2995,7 @@ string awh::tls::Coder::version() const noexcept {
  *          init OpenSSL). Методы модуля после закрепления id выполняются без
  *          глобального lock; синхронизацию вызовов из разных потоков должен
  *          обеспечивать вызывающий код.
+ *
  */
 void awh::tls::Coder::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности работы потоков для компрессора
@@ -2953,6 +3013,7 @@ void awh::tls::Coder::threadSafety(const bool mode) noexcept {
  * @brief Метод подключения объекта для работы с отпечатками TLS
  *
  * @param fgp объект для работы с отпечатками TLS
+ *
  */
 void awh::tls::Coder::fingerprint(const fgp_t * fgp) noexcept {
 	// Сохраняем объект для работы с отпечатками TLS
@@ -2967,6 +3028,7 @@ void awh::tls::Coder::fingerprint(const fgp_t * fgp) noexcept {
  *
  * @param id идентификатор события
  * @return   общая информация о TLS соединении
+ *
  */
 string awh::tls::Coder::info(const id_t id) const noexcept {
 	// Переменная результата
@@ -3198,6 +3260,7 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
  *
  * @param id идентификатор события
  * @return   информация о одноразовом узле TLS
+ *
  */
 string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 	// Переменная результата
@@ -3669,6 +3732,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
  *
  * @param id идентификатор события
  * @return   информация о шифре
+ *
  */
 string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 	/**
@@ -3746,6 +3810,7 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
  *
  * @param id идентификатор события
  * @return   информация о сертификате
+ *
  */
 string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 	// Переменная результата
@@ -3869,6 +3934,7 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
  *
  * @param id идентификатор события
  * @return   информация о списке отзыва сертификатов
+ *
  */
 string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexcept {
 	// Переменная результата
@@ -4081,6 +4147,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
  *
  * @param id идентификатор события
  * @return   список доступных шифров
+ *
  */
 vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const id_t id) const noexcept {
 	// Переменная результата
@@ -4470,6 +4537,7 @@ vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const 
  *
  * @param id идентификатор события
  * @return   активный протокол
+ *
  */
 string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 	// Переменная результата
@@ -4593,6 +4661,7 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
  *       по member->host.name (ожидаемое имя/SNI). На SERVER peer-сертификат —
  *       сертификат клиента, host.name — SNI клиента; вызывающий код должен
  *       понимать эту семантику (mTLS и т.п.).
+ *
  */
 bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 	/**
@@ -4864,6 +4933,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
  *
  * @param id   идентификатор события
  * @param mode режим проверки доменного имени сервера
+ *
  */
 void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mode) noexcept {
 	/**
@@ -4972,6 +5042,7 @@ void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mod
  *
  * @param id идентификатор события
  * @return   режим работы TLS
+ *
  */
 awh::tls::Coder::mode_t awh::tls::Coder::mode(const id_t id) const noexcept {
 	/**
@@ -5036,6 +5107,7 @@ awh::tls::Coder::mode_t awh::tls::Coder::mode(const id_t id) const noexcept {
  *
  * @param id   идентификатор события
  * @param mode режим работы TLS
+ *
  */
 void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 	/**
@@ -5123,6 +5195,7 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
  *
  * @param id идентификатор события
  * @return   доменное имя сервера
+ *
  */
 string awh::tls::Coder::serverNameIndication(const id_t id) const noexcept {
 	/**
@@ -5173,6 +5246,7 @@ string awh::tls::Coder::serverNameIndication(const id_t id) const noexcept {
  *
  * @param id  идентификатор события
  * @param sni доменное имя сервера
+ *
  */
 void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexcept {
 	/**
@@ -5291,6 +5365,7 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
  * @param key     ключ сервера (SNI либо адрес эндпоинта)
  * @param session объект для извлечения сериализованного билета возобновления
  * @return        результат извлечения (билет найден)
+ *
  */
 bool awh::tls::Coder::session(const id_t id, string_view key, string & session) const noexcept {
 	// Сбрасываем результат извлечения билета возобновления
@@ -5339,6 +5414,7 @@ bool awh::tls::Coder::session(const id_t id, string_view key, string & session) 
  * @param id      идентификатор шаблонного контекста безопасности
  * @param key     ключ сервера (SNI либо адрес эндпоинта)
  * @param session сериализованный билет возобновления для сохранения
+ *
  */
 void awh::tls::Coder::session(const id_t id, string_view key, string_view session) const noexcept {
 	/**
@@ -5384,6 +5460,7 @@ void awh::tls::Coder::session(const id_t id, string_view key, string_view sessio
  * @param ip   IP-адрес отдалённого узла
  * @param port порт отдалённого узла
  * @return     результат выполнения установки
+ *
  */
 bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) noexcept {
 	/**
@@ -5553,6 +5630,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
  *
  * @note После destroy() id помечается GARBAGE_MODE; дальнейшие вызовы методов
  *       с этим id недопустимы. Физическое удаление из реестра — при refs==0.
+ *
  */
 bool awh::tls::Coder::destroy(const id_t id) noexcept {
 	// Переменная результата
@@ -5628,6 +5706,7 @@ bool awh::tls::Coder::destroy(const id_t id) noexcept {
  *
  * @param id идентификатор события
  * @return   результат выполнения завершения
+ *
  */
 bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 	// Переменная результата
@@ -5733,6 +5812,7 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
  *
  * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
  *       Параллельные вызовы на один id должен сериализовать вызывающий код.
+ *
  */
 bool awh::tls::Coder::handshake(const id_t id) noexcept {
 	// Переменная результата
@@ -6047,6 +6127,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
  *
  * @param id идентификатор события
  * @return   результат выполнения повторной передачи
+ *
  */
 bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 	// Переменная результата
@@ -6131,6 +6212,7 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
  *
  * @param id идентификатор транспортного уровня или шаблона контекста безопасности
  * @return   нативный контекст криптографической библиотеки либо nullptr
+ *
  */
 ssl_ctx_st * awh::tls::Coder::native(const id_t id) const noexcept {
 	/**
@@ -6181,6 +6263,7 @@ ssl_ctx_st * awh::tls::Coder::native(const id_t id) const noexcept {
  *
  * @param id идентификатор шаблона контекста безопасности
  * @return   идентификатор транспортного уровня
+ *
  */
 awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 	// Переменная результата
@@ -6585,6 +6668,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
  * @param node  тип узла события
  * @param proto тип протокола события
  * @return      идентификатор шаблона контекста безопасности
+ *
  */
 awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const event::protocol_t proto) noexcept {
 	// Переменная результата
@@ -7212,6 +7296,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
  *          // getKeysECH() возвращает те же байты, которые были сохранены.
  *          vector <uint8_t> echDns = coder.getKeysECH(ctx);
  *          @endcode
+ *
  */
 vector <uint8_t> awh::tls::Coder::getKeysECH(const id_t id) const noexcept {
 	/**
@@ -7294,6 +7379,7 @@ vector <uint8_t> awh::tls::Coder::getKeysECH(const id_t id) const noexcept {
  *          // Получить ECHConfigList для DNS:
  *          vector <uint8_t> forDns = coder.getKeysECH(ctx);
  *          @endcode
+ *
  */
 bool awh::tls::Coder::setKeysECH(const id_t id, const vector <uint8_t> & keys) noexcept {
 	// Если ключи не пустые
@@ -7318,6 +7404,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const vector <uint8_t> & keys) n
  *
  *          Для сервера если @p keys равен nullptr или @p size равен 0 —
  *          ключ генерируется автоматически.
+ *
  */
 bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size_t size) noexcept {
 	// Переменная результата
@@ -7621,6 +7708,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size
  *
  * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
  *       Параллельные вызовы на один id должен сериализовать вызывающий код.
+ *
  */
 bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t size) noexcept {
 	// Переменная результата
@@ -7847,6 +7935,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
  *
  * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
  *       Параллельные вызовы на один id должен сериализовать вызывающий код.
+ *
  */
 bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t size) noexcept {
 	// Переменная результата
@@ -8050,6 +8139,7 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
  *
  * @param id     идентификатор события
  * @param groups список поддерживаемых групп эллиптических кривых
+ *
  */
 void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noexcept {
 	/**
@@ -8221,6 +8311,7 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
  *
  * @param id      идентификатор события
  * @param ciphers список алгоритмов шифрования для установки
+ *
  */
 void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) noexcept {
 	/**
@@ -8464,6 +8555,7 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
  *
  * @param id   идентификатор события
  * @param mode режим активации/деактивации
+ *
  */
 void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 	/**
@@ -8606,6 +8698,7 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
  *
  * @param id   идентификатор события
  * @param mode режим активации/деактивации перемешивания расширений
+ *
  */
 void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode) noexcept {
 	/**
@@ -8747,6 +8840,7 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
  * @brief Метод активации поддержки SCT (Signed Certificate Timestamp)
  *
  * @param id идентификатор события
+ *
  */
 void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
 	/**
@@ -8804,6 +8898,7 @@ void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
  * @brief Метод активации поддержки Stapling (OCSP)
  *
  * @param id идентификатор события
+ *
  */
 void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 	/**
@@ -8864,6 +8959,7 @@ void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
  *
  * @param id   идентификатор события
  * @param mode режим активации/деактивации поддержки расширения
+ *
  */
 void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t mode) noexcept {
 	/**
@@ -9002,6 +9098,7 @@ void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t
  *
  * @param id  идентификатор события
  * @param fid идентификатор цифрового отпечатка браузера
+ *
  */
 void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 	/**
@@ -9408,6 +9505,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
  *
  * @param id идентификатор транспортного уровня или шаблона контекста безопасности
  * @return   список поддерживаемых ALPN-протоколов
+ *
  */
 vector <awh::tls::Coder::alpn_t> awh::tls::Coder::protocols(const id_t id) const noexcept {
 	// Результирующий список поддерживаемых ALPN-протоколов
@@ -9505,6 +9603,7 @@ vector <awh::tls::Coder::alpn_t> awh::tls::Coder::protocols(const id_t id) const
  *
  * @param id идентификатор события
  * @return   метод активного протокола
+ *
  */
 uint8_t awh::tls::Coder::alpn(const id_t id) const noexcept {
 	/**
@@ -9555,6 +9654,7 @@ uint8_t awh::tls::Coder::alpn(const id_t id) const noexcept {
  *
  * @param id   идентификатор события
  * @param alpn список поддерживаемых ALPN-протоколов
+ *
  */
 void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept {
 	/**
@@ -9697,6 +9797,7 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
  * @param id   идентификатор события
  * @param alps список поддерживаемых ALPS-протоколов
  * @param std  флаг поддерживаемого стандарта
+ *
  */
 void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const standard_t std) noexcept {
 	/**
@@ -9875,6 +9976,7 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
  *
  * @param id         идентификатор события
  * @param signatures список поддерживаемых алгоритмов подписи
+ *
  */
 void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & signatures) noexcept {
 	/**
@@ -10077,6 +10179,7 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
  *
  * @param id     идентификатор события
  * @param methods список поддерживаемых алгоритмов компрессии сертификата
+ *
  */
 void awh::tls::Coder::compressors(const id_t id, const vector <compressor::method_t> & methods) noexcept {
 	/**
@@ -10449,6 +10552,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <compressor::metho
  * @param id     идентификатор события
  * @param groups список поддерживаемых групп эллиптических кривых для ключевого обмена
  * @param grease флаг активации/деактивации ложного ключа EncryptedClientHello (ECH)
+ *
  */
 void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, const event::mode_t grease) noexcept {
 	/**
@@ -10653,6 +10757,7 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
  *
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename путь к файлу сертификата доверенных центров сертификации
+ *
  */
 void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 	/**
@@ -10880,6 +10985,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
  * @param id   идентификатор транспортного уровня или шаблона контекста безопасности
  * @param dir  адрес директории с сертификатами доверенных центров сертификации
  * @param file путь к файлу сертификата доверенного центра сертификации
+ *
  */
 void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexcept {
 	/**
@@ -11168,6 +11274,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
  *
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename путь к файлу списка отзыва сертификатов
+ *
  */
 void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filename) noexcept {
 	/**
@@ -11428,6 +11535,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename путь к файлу приватного ключа клиента
  * @param type     тип файла приватного ключа клиента
+ *
  */
 void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type_t type) noexcept {
 	/**
@@ -11686,6 +11794,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename путь к файлу клиентского сертификата
  * @param type     тип файла клиентского сертификата
+ *
  */
 void awh::tls::Coder::certificate(const id_t id, string_view filename, const type_t type) noexcept {
 	/**
@@ -12038,6 +12147,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
  * @param id       идентификатор транспортного уровня
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
+ *
  */
 bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
 	// Переменная результата
@@ -12085,6 +12195,7 @@ bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
  * @param id       идентификатор транспортного уровня
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
+ *
  */
 bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
 	// Переменная результата
@@ -12132,6 +12243,7 @@ bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
  * @param id       идентификатор транспортного уровня
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
+ *
  */
 bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 	// Переменная результата
@@ -12191,6 +12303,7 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
  * @param id       идентификатор транспортного уровня
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
+ *
  */
 bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
 	// Переменная результата
@@ -12250,6 +12363,7 @@ bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
  * @param id       идентификатор транспортного уровня
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
+ *
  */
 bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcept {
 	// Переменная результата
@@ -12296,6 +12410,7 @@ bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcep
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
  _addr(fmk, log), _compressor(log), _fgp(nullptr), _fmk(fmk), _log(log) {
@@ -12321,6 +12436,7 @@ awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
  * @param fgp объект для работы с отпечатками TLS
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::tls::Coder::Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) noexcept :
  _addr(fmk, log), _compressor(log), _fgp(fgp), _fmk(fmk), _log(log) {

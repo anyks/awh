@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл общих определений модуля разбора чисел — типажи поддерживаемых типов, коды ошибок,
+ *        флаги формата разбора, структуры результата и опций, 128-битная арифметика,
+ *        а также таблицы двоичных констант для float, double, float16 и bfloat16
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -65,6 +70,7 @@ namespace awh {
 		 * @brief Шаблон помощника SFINAE для шаблонных перегрузок
 		 *
 		 * @tparam Condition условие подстановки
+		 *
 		 */
 		template <bool Condition>
 		/**
@@ -77,6 +83,7 @@ namespace awh {
 		 * @brief Шаблон эквивалентного беззнакового целого типа той же ширины
 		 *
 		 * @tparam T исходный тип
+		 *
 		 */
 		template <typename T>
 		/**
@@ -95,6 +102,7 @@ namespace awh {
 		 * @brief Шаблон признака поддерживаемого типа с плавающей точкой
 		 *
 		 * @tparam T проверяемый тип
+		 *
 		 */
 		template <typename T>
 		/**
@@ -134,6 +142,7 @@ namespace awh {
 		 * @brief Шаблон признака поддерживаемого целочисленного типа
 		 *
 		 * @tparam T проверяемый тип
+		 *
 		 */
 		template <typename T>
 		/**
@@ -146,6 +155,7 @@ namespace awh {
 		 * @brief Шаблон признака поддерживаемого символьного типа
 		 *
 		 * @tparam UC проверяемый тип символа
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -184,6 +194,7 @@ namespace awh {
 		 * @brief Формат разбора числовой строки
 		 *
 		 * @details Значения являются битовыми флагами и комбинируются оператором «|».
+		 *
 		 */
 		enum class format_t : uint64_t {
 			NONE               = 0x00,                                          // Формат не установлен
@@ -206,6 +217,7 @@ namespace awh {
 		 *
 		 * @param rhs исходный формат разбора
 		 * @return    результат побитового отрицания
+		 *
 		 */
 		constexpr format_t operator ~ (const format_t rhs) noexcept {
 			// Выполняем побитовое отрицание базового типа
@@ -217,6 +229,7 @@ namespace awh {
 		 * @param lhs первый формат разбора
 		 * @param rhs второй формат разбора
 		 * @return    результат побитового «И»
+		 *
 		 */
 		constexpr format_t operator & (const format_t lhs, const format_t rhs) noexcept {
 			// Выполняем побитовое «И» базовых типов
@@ -231,6 +244,7 @@ namespace awh {
 		 * @param lhs первый формат разбора
 		 * @param rhs второй формат разбора
 		 * @return    результат побитового «ИЛИ»
+		 *
 		 */
 		constexpr format_t operator | (const format_t lhs, const format_t rhs) noexcept {
 			// Выполняем побитовое «ИЛИ» базовых типов
@@ -245,6 +259,7 @@ namespace awh {
 		 * @param lhs первый формат разбора
 		 * @param rhs второй формат разбора
 		 * @return    результат побитового исключающего «ИЛИ»
+		 *
 		 */
 		constexpr format_t operator ^ (const format_t lhs, const format_t rhs) noexcept {
 			// Выполняем побитовое исключающее «ИЛИ» базовых типов
@@ -259,6 +274,7 @@ namespace awh {
 		 * @param lhs изменяемый формат разбора
 		 * @param rhs применяемый формат разбора
 		 * @return    изменённый формат разбора
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr format_t & operator &= (format_t & lhs, const format_t rhs) noexcept {
 			// Выполняем применение операции к исходному формату
@@ -270,6 +286,7 @@ namespace awh {
 		 * @param lhs изменяемый формат разбора
 		 * @param rhs применяемый формат разбора
 		 * @return    изменённый формат разбора
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr format_t & operator |= (format_t & lhs, const format_t rhs) noexcept {
 			// Выполняем применение операции к исходному формату
@@ -281,6 +298,7 @@ namespace awh {
 		 * @param lhs изменяемый формат разбора
 		 * @param rhs применяемый формат разбора
 		 * @return    изменённый формат разбора
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr format_t & operator ^= (format_t & lhs, const format_t rhs) noexcept {
 			// Выполняем применение операции к исходному формату
@@ -292,6 +310,7 @@ namespace awh {
 		 * @param format проверяемый формат разбора
 		 * @param flag   искомый флаг формата разбора
 		 * @return       результат проверки
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr bool isFormat(const format_t format, const format_t flag) noexcept {
 			// Выполняем проверку наличия искомого флага
@@ -302,6 +321,7 @@ namespace awh {
 		 * @brief Шаблон типа символа результата разбора
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -319,6 +339,7 @@ namespace awh {
 			 * @brief Оператор проверки успешности разбора
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			constexpr explicit operator bool() const noexcept {
 				// Разбор успешен, если код ошибки не установлен
@@ -330,6 +351,7 @@ namespace awh {
 			 * @param ptr   указатель на первый символ за разобранным числом
 			 * @param ec    код ошибки стандартной библиотеки
 			 * @param error код причины отказа при разборе числовой строки
+			 *
 			 */
 			constexpr result_t(const UC * ptr = nullptr, const errc ec = errc(), const error_t error = error_t::NONE) noexcept :
 			 ec(ec), error(error), ptr(ptr) {}
@@ -339,6 +361,7 @@ namespace awh {
 		 * @brief Шаблон типа символа опций разбора
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -358,6 +381,7 @@ namespace awh {
 			 * @param format       допустимый формат записи числа
 			 * @param decimalPoint символ десятичной точки
 			 * @param base         основание системы счисления для целых чисел
+			 *
 			 */
 			constexpr explicit options_t(const format_t format = format_t::GENERAL, const UC decimalPoint = UC('.'), const int32_t base = 10) noexcept :
 			 base(base), format(format), decimalPoint(decimalPoint) {}
@@ -367,6 +391,7 @@ namespace awh {
 		 * @brief Шаблон типа элемента непрерывного диапазона
 		 *
 		 * @tparam T тип элемента диапазона
+		 *
 		 */
 		template <typename T>
 		/**
@@ -382,6 +407,7 @@ namespace awh {
 			 * @brief Метод получения количества элементов диапазона
 			 *
 			 * @return количество элементов диапазона
+			 *
 			 */
 			constexpr size_t len() const noexcept {
 				// Выводим количество элементов диапазона
@@ -392,6 +418,7 @@ namespace awh {
 			 *
 			 * @param index индекс запрашиваемого элемента
 			 * @return      запрашиваемый элемент диапазона
+			 *
 			 */
 			constexpr const T & operator [] (const size_t index) const noexcept {
 				// Выводим запрашиваемый элемент диапазона
@@ -402,6 +429,7 @@ namespace awh {
 			 *
 			 * @param ptr    указатель на начало диапазона
 			 * @param length количество элементов диапазона
+			 *
 			 */
 			constexpr span_t(const T * ptr = nullptr, const size_t length = 0) noexcept :
 			 length(length), ptr(ptr) {}
@@ -421,6 +449,7 @@ namespace awh {
 			 *
 			 * @param low  младшие 64 бита результата
 			 * @param high старшие 64 бита результата
+			 *
 			 */
 			constexpr Value128(const uint64_t low = 0, const uint64_t high = 0) noexcept :
 			 low(low), high(high) {}
@@ -432,6 +461,7 @@ namespace awh {
 		 * @details Отрицательное значение степени двойки означает, что быстрый путь
 		 *          вычисления не дал однозначного результата и требуется уточнение
 		 *          через длинную арифметику.
+		 *
 		 */
 		typedef struct Mantissa {
 			// Показатель степени двойки
@@ -443,6 +473,7 @@ namespace awh {
 			 *
 			 * @param other сравниваемая скорректированная мантисса
 			 * @return      результат сравнения
+			 *
 			 */
 			constexpr bool operator == (const Mantissa & other) const noexcept {
 				// Мантиссы равны, если совпадают оба поля
@@ -453,6 +484,7 @@ namespace awh {
 			 *
 			 * @param other сравниваемая скорректированная мантисса
 			 * @return      результат сравнения
+			 *
 			 */
 			constexpr bool operator != (const Mantissa & other) const noexcept {
 				// Мантиссы различны, если различается хотя бы одно поле
@@ -463,6 +495,7 @@ namespace awh {
 			 *
 			 * @param mantissa значение мантиссы
 			 * @param power2   показатель степени двойки
+			 *
 			 */
 			constexpr Mantissa(const uint64_t mantissa = 0, const int32_t power2 = 0) noexcept :
 			 power2(power2), mantissa(mantissa) {}
@@ -485,6 +518,7 @@ namespace awh {
 		 *
 		 * @param value исходное значение
 		 * @return      количество ведущих нулевых бит
+		 *
 		 */
 		AWH_LEXICAL_INLINE int32_t leadingZeros(const uint64_t value) noexcept {
 			// Если исходное значение нулевое, значащих бит нет
@@ -565,6 +599,7 @@ namespace awh {
 		 * @param x первый множитель
 		 * @param y второй множитель
 		 * @return  результат умножения
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr uint64_t multiply32(const uint32_t x, const uint32_t y) noexcept {
 			// Выполняем умножение с расширением разрядности
@@ -577,6 +612,7 @@ namespace awh {
 		 * @param x первый множитель
 		 * @param y второй множитель
 		 * @return  результат умножения в виде пары 64-битных слов
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr value128_t multiply128Generic(const uint64_t x, const uint64_t y) noexcept {
 			// Произведение младших слов множителей
@@ -602,6 +638,7 @@ namespace awh {
 		 * @param x первый множитель
 		 * @param y второй множитель
 		 * @return  результат умножения в виде пары 64-битных слов
+		 *
 		 */
 		AWH_LEXICAL_INLINE value128_t multiply128(const uint64_t x, const uint64_t y) noexcept {
 			/**
@@ -642,6 +679,7 @@ namespace awh {
 		 *
 		 * @tparam T типа числа с плавающей точкой
 		 * @tparam U фиктивный параметр для подстановки при специализации
+		 *
 		 */
 		template <typename T, typename U = void>
 		/**
@@ -654,6 +692,7 @@ namespace awh {
 		 * @brief Шаблон типа числа с плавающей точкой
 		 *
 		 * @tparam T тип числа с плавающей точкой
+		 *
 		 */
 		template <typename T>
 		/**
@@ -670,90 +709,105 @@ namespace awh {
 			 * @brief Функция получения максимального количества значащих десятичных цифр
 			 *
 			 * @return максимальное количество значащих десятичных цифр
+			 *
 			 */
 			static constexpr size_t maxDigits() noexcept;
 			/**
 			 * @brief Функция получения позиции бита знака
 			 *
 			 * @return позиция бита знака
+			 *
 			 */
 			static constexpr int32_t signIndex() noexcept;
 			/**
 			 * @brief Функция получения показателя степени бесконечности
 			 *
 			 * @return показатель степени бесконечности
+			 *
 			 */
 			static constexpr int32_t infinitePower() noexcept;
 			/**
 			 * @brief Функция получения маски показателя степени
 			 *
 			 * @return маска показателя степени
+			 *
 			 */
 			static constexpr equiv_uint exponentMask() noexcept;
 			/**
 			 * @brief Функция получения маски мантиссы
 			 *
 			 * @return маска мантиссы
+			 *
 			 */
 			static constexpr equiv_uint mantissaMask() noexcept;
 			/**
 			 * @brief Функция получения минимального показателя степени двойки
 			 *
 			 * @return минимальный показатель степени двойки
+			 *
 			 */
 			static constexpr int32_t minimumExponent() noexcept;
 			/**
 			 * @brief Функция получения маски скрытого бита мантиссы
 			 *
 			 * @return маска скрытого бита мантиссы
+			 *
 			 */
 			static constexpr equiv_uint hiddenBitMask() noexcept;
 			/**
 			 * @brief Функция получения наибольшего представимого показателя степени десяти
 			 *
 			 * @return наибольший представимый показатель степени десяти
+			 *
 			 */
 			static constexpr int32_t largestPowerOfTen() noexcept;
 			/**
 			 * @brief Функция получения наименьшего представимого показателя степени десяти
 			 *
 			 * @return наименьший представимый показатель степени десяти
+			 *
 			 */
 			static constexpr int32_t smallestPowerOfTen() noexcept;
 			/**
 			 * @brief Функция получения минимального показателя степени быстрого пути
 			 *
 			 * @return минимальный показатель степени быстрого пути
+			 *
 			 */
 			static constexpr int32_t minExponentFastPath() noexcept;
 			/**
 			 * @brief Функция получения максимального показателя степени быстрого пути
 			 *
 			 * @return максимальный показатель степени быстрого пути
+			 *
 			 */
 			static constexpr int32_t maxExponentFastPath() noexcept;
 			/**
 			 * @brief Функция получения количества явно хранимых бит мантиссы
 			 *
 			 * @return количество явно хранимых бит мантиссы
+			 *
 			 */
 			static constexpr int32_t mantissaExplicitBits() noexcept;
 			/**
 			 * @brief Функция получения предельной мантиссы быстрого пути
 			 *
 			 * @return предельное значение мантиссы
+			 *
 			 */
 			static constexpr uint64_t maxMantissaFastPath() noexcept;
 			/**
 			 * @brief Функция получения минимального показателя степени округления к чётному
 			 *
 			 * @return минимальный показатель степени округления к чётному
+			 *
 			 */
 			static constexpr int32_t minExponentRoundToEven() noexcept;
 			/**
 			 * @brief Функция получения максимального показателя степени округления к чётному
 			 *
 			 * @return максимальный показатель степени округления к чётному
+			 *
 			 */
 			static constexpr int32_t maxExponentRoundToEven() noexcept;
 			/**
@@ -761,6 +815,7 @@ namespace awh {
 			 *
 			 * @param power показатель степени десяти
 			 * @return      точное значение степени десяти
+			 *
 			 */
 			static constexpr T exactPowerOfTen(const int64_t power) noexcept;
 			/**
@@ -768,6 +823,7 @@ namespace awh {
 			 *
 			 * @param power показатель степени десяти
 			 * @return      предельное значение мантиссы
+			 *
 			 */
 			static constexpr uint64_t maxMantissaFastPath(const int64_t power) noexcept;
 		};
@@ -776,6 +832,7 @@ namespace awh {
 		 * @brief Шаблон фиктивного типа подстановки
 		 *
 		 * @tparam U фиктивный параметр для подстановки при специализации
+		 *
 		 */
 		template <typename U>
 		/**
@@ -828,6 +885,7 @@ namespace awh {
 		 * @brief Шаблон фиктивного типа подстановки
 		 *
 		 * @tparam U фиктивный параметр для подстановки при специализации
+		 *
 		 */
 		template <typename U>
 		/**
@@ -867,6 +925,7 @@ namespace awh {
 		 * @brief Функция получения максимального количества значащих десятичных цифр
 		 *
 		 * @return максимальное количество значащих десятичных цифр
+		 *
 		 */
 		template <> inline constexpr size_t binary_t <float>::maxDigits() noexcept {
 			// Выводим максимальное количество значащих десятичных цифр
@@ -876,6 +935,7 @@ namespace awh {
 		 * @brief Функция получения максимального количества значащих десятичных цифр
 		 *
 		 * @return максимальное количество значащих десятичных цифр
+		 *
 		 */
 		template <> inline constexpr size_t binary_t <double>::maxDigits() noexcept {
 			// Выводим максимальное количество значащих десятичных цифр
@@ -885,6 +945,7 @@ namespace awh {
 		 * @brief Функция получения позиции бита знака
 		 *
 		 * @return позиция бита знака
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <float>::signIndex() noexcept {
 			// Выводим позицию бита знака
@@ -894,6 +955,7 @@ namespace awh {
 		 * @brief Функция получения позиции бита знака
 		 *
 		 * @return позиция бита знака
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <double>::signIndex() noexcept {
 			// Выводим позицию бита знака
@@ -903,6 +965,7 @@ namespace awh {
 		 * @brief Функция получения показателя степени бесконечности
 		 *
 		 * @return значение бесконечной степени
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <float>::infinitePower() noexcept {
 			// Выводим значение бесконечной степени
@@ -912,6 +975,7 @@ namespace awh {
 		 * @brief Функция получения показателя степени бесконечности
 		 *
 		 * @return значение бесконечной степени
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <double>::infinitePower() noexcept {
 			// Выводим значение бесконечной степени
@@ -921,6 +985,7 @@ namespace awh {
 		 * @brief Функция получения маски показателя степени
 		 *
 		 * @return маска показателя степени
+		 *
 		 */
 		template <> inline constexpr binary_t <float>::equiv_uint binary_t <float>::exponentMask() noexcept {
 			// Выводим маску показателя степени
@@ -930,6 +995,7 @@ namespace awh {
 		 * @brief Функция получения маски показателя степени
 		 *
 		 * @return маска показателя степени
+		 *
 		 */
 		template <> inline constexpr binary_t <double>::equiv_uint binary_t <double>::exponentMask() noexcept {
 			// Выводим маску показателя степени
@@ -939,6 +1005,7 @@ namespace awh {
 		 * @brief Функция получения маски мантиссы
 		 *
 		 * @return маска мантиссы
+		 *
 		 */
 		template <> inline constexpr binary_t <float>::equiv_uint binary_t <float>::mantissaMask() noexcept {
 			// Выводим маску мантиссы
@@ -948,6 +1015,7 @@ namespace awh {
 		 * @brief Функция получения маски мантиссы
 		 *
 		 * @return маска мантиссы
+		 *
 		 */
 		template <> inline constexpr binary_t <double>::equiv_uint binary_t <double>::mantissaMask() noexcept {
 			// Выводим маску мантиссы
@@ -957,6 +1025,7 @@ namespace awh {
 		 * @brief Функция получения минимального показателя степени двойки
 		 *
 		 * @return минимальный показатель степени двойки
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <float>::minimumExponent() noexcept {
 			// Выводим минимальный показатель степени двойки
@@ -966,6 +1035,7 @@ namespace awh {
 		 * @brief Функция получения минимального показателя степени двойки
 		 *
 		 * @return минимальный показатель степени двойки
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <double>::minimumExponent() noexcept {
 			// Выводим минимальный показатель степени двойки
@@ -975,6 +1045,7 @@ namespace awh {
 		 * @brief Функция получения маски скрытого бита мантиссы
 		 *
 		 * @return маска скрытого бита мантиссы
+		 *
 		 */
 		template <> inline constexpr binary_t <float>::equiv_uint binary_t <float>::hiddenBitMask() noexcept {
 			// Выводим маску скрытого бита мантиссы
@@ -984,6 +1055,7 @@ namespace awh {
 		 * @brief Функция получения маски скрытого бита мантиссы
 		 *
 		 * @return маска скрытого бита мантиссы
+		 *
 		 */
 		template <> inline constexpr binary_t <double>::equiv_uint binary_t <double>::hiddenBitMask() noexcept {
 			// Выводим маску скрытого бита мантиссы
@@ -993,6 +1065,7 @@ namespace awh {
 		 * @brief Функция получения наибольшего представимого показателя степени десяти
 		 *
 		 * @return наибольший представимый показатель степени десяти
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <float>::largestPowerOfTen() noexcept {
 			// Выводим наибольший представимый показатель степени десяти
@@ -1002,6 +1075,7 @@ namespace awh {
 		 * @brief Функция получения наибольшего представимого показателя степени десяти
 		 *
 		 * @return наибольший представимый показатель степени десяти
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <double>::largestPowerOfTen() noexcept {
 			// Выводим наибольший представимый показатель степени десяти
@@ -1011,6 +1085,7 @@ namespace awh {
 		 * @brief Функция получения наименьшего представимого показателя степени десяти
 		 *
 		 * @return наименьший представимый показатель степени десяти
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <float>::smallestPowerOfTen() noexcept {
 			// Выводим наименьший представимый показатель степени десяти
@@ -1020,6 +1095,7 @@ namespace awh {
 		 * @brief Функция получения наименьшего представимого показателя степени десяти
 		 *
 		 * @return наименьший представимый показатель степени десяти
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <double>::smallestPowerOfTen() noexcept {
 			// Выводим наименьший представимый показатель степени десяти
@@ -1029,6 +1105,7 @@ namespace awh {
 		 * @brief Функция получения минимального показателя степени быстрого пути
 		 *
 		 * @return минимальный показатель степени быстрого пути
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <float>::minExponentFastPath() noexcept {
 			/**
@@ -1049,6 +1126,7 @@ namespace awh {
 		 * @brief Функция получения минимального показателя степени быстрого пути
 		 *
 		 * @return минимальный показатель степени быстрого пути
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <double>::minExponentFastPath() noexcept {
 			/**
@@ -1069,6 +1147,7 @@ namespace awh {
 		 * @brief Функция получения максимального показателя степени быстрого пути
 		 *
 		 * @return максимальный показатель степени быстрого пути
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <float>::maxExponentFastPath() noexcept {
 			// Выводим максимальный показатель степени быстрого пути
@@ -1078,6 +1157,7 @@ namespace awh {
 		 * @brief Функция получения максимального показателя степени быстрого пути
 		 *
 		 * @return максимальный показатель степени быстрого пути
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <double>::maxExponentFastPath() noexcept {
 			// Выводим максимальный показатель степени быстрого пути
@@ -1087,6 +1167,7 @@ namespace awh {
 		 * @brief Функция получения количества явно хранимых бит мантиссы
 		 *
 		 * @return количество явно хранимых бит мантиссы
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <float>::mantissaExplicitBits() noexcept {
 			// Выводим количество явно хранимых бит мантиссы
@@ -1096,6 +1177,7 @@ namespace awh {
 		 * @brief Функция получения количества явно хранимых бит мантиссы
 		 *
 		 * @return количество явно хранимых бит мантиссы
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <double>::mantissaExplicitBits() noexcept {
 			// Выводим количество явно хранимых бит мантиссы
@@ -1105,6 +1187,7 @@ namespace awh {
 		 * @brief Функция получения предельной мантиссы быстрого пути
 		 *
 		 * @return предельное значение мантиссы
+		 *
 		 */
 		template <> inline constexpr uint64_t binary_t <float>::maxMantissaFastPath() noexcept {
 			// Выводим предельное значение мантиссы быстрого пути
@@ -1114,6 +1197,7 @@ namespace awh {
 		 * @brief Функция получения предельной мантиссы быстрого пути
 		 *
 		 * @return предельное значение мантиссы
+		 *
 		 */
 		template <> inline constexpr uint64_t binary_t <double>::maxMantissaFastPath() noexcept {
 			// Выводим предельное значение мантиссы быстрого пути
@@ -1123,6 +1207,7 @@ namespace awh {
 		 * @brief Функция получения минимального показателя степени округления к чётному
 		 *
 		 * @return минимальный показатель степени округления к чётному
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <float>::minExponentRoundToEven() noexcept {
 			// Выводим минимальный показатель степени округления к чётному
@@ -1132,6 +1217,7 @@ namespace awh {
 		 * @brief Функция получения минимального показателя степени округления к чётному
 		 *
 		 * @return минимальный показатель степени округления к чётному
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <double>::minExponentRoundToEven() noexcept {
 			// Выводим минимальный показатель степени округления к чётному
@@ -1141,6 +1227,7 @@ namespace awh {
 		 * @brief Функция получения максимального показателя степени округления к чётному
 		 *
 		 * @return максимальный показатель степени округления к чётному
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <float>::maxExponentRoundToEven() noexcept {
 			// Выводим максимальный показатель степени округления к чётному
@@ -1150,6 +1237,7 @@ namespace awh {
 		 * @brief Функция получения максимального показателя степени округления к чётному
 		 *
 		 * @return максимальный показатель степени округления к чётному
+		 *
 		 */
 		template <> inline constexpr int32_t binary_t <double>::maxExponentRoundToEven() noexcept {
 			// Выводим максимальный показатель степени округления к чётному
@@ -1160,6 +1248,7 @@ namespace awh {
 		 *
 		 * @param power показатель степени десяти
 		 * @return      точное значение степени десяти
+		 *
 		 */
 		template <> inline constexpr float binary_t <float>::exactPowerOfTen(const int64_t power) noexcept {
 			// Выводим точное значение степени десяти из таблицы
@@ -1170,6 +1259,7 @@ namespace awh {
 		 *
 		 * @param power показатель степени десяти
 		 * @return      точное значение степени десяти
+		 *
 		 */
 		template <> inline constexpr double binary_t <double>::exactPowerOfTen(const int64_t power) noexcept {
 			// Выводим точное значение степени десяти из таблицы
@@ -1180,6 +1270,7 @@ namespace awh {
 		 *
 		 * @param power показатель степени десяти
 		 * @return      предельное значение мантиссы
+		 *
 		 */
 		template <> inline constexpr uint64_t binary_t <float>::maxMantissaFastPath(const int64_t power) noexcept {
 			// Выводим предельное значение мантиссы из таблицы
@@ -1190,6 +1281,7 @@ namespace awh {
 		 *
 		 * @param power показатель степени десяти
 		 * @return      предельное значение мантиссы
+		 *
 		 */
 		template <> inline constexpr uint64_t binary_t <double>::maxMantissaFastPath(const int64_t power) noexcept {
 			// Выводим предельное значение мантиссы из таблицы
@@ -1204,6 +1296,7 @@ namespace awh {
 			 * @brief Шаблон фиктивного типа подстановки
 			 *
 			 * @tparam U фиктивный параметр для подстановки при специализации
+			 *
 			 */
 			template <typename U>
 			/**
@@ -1236,6 +1329,7 @@ namespace awh {
 			 * @brief Функция получения максимального количества значащих десятичных цифр
 			 *
 			 * @return максимальное количество значащих десятичных цифр
+			 *
 			 */
 			template <> inline constexpr size_t binary_t <float16_t>::maxDigits() noexcept {
 				// Выводим максимальное количество значащих десятичных цифр
@@ -1245,6 +1339,7 @@ namespace awh {
 			 * @brief Функция получения позиции бита знака
 			 *
 			 * @return позиция бита знака
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <float16_t>::signIndex() noexcept {
 				// Выводим позицию бита знака
@@ -1254,6 +1349,7 @@ namespace awh {
 			 * @brief Функция получения показателя степени бесконечности
 			 *
 			 * @return показатель степени бесконечности
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <float16_t>::infinitePower() noexcept {
 				// Выводим показатель степени бесконечности
@@ -1263,6 +1359,7 @@ namespace awh {
 			 * @brief Функция получения маски показателя степени
 			 *
 			 * @return маска показателя степени
+			 *
 			 */
 			template <> inline constexpr binary_t <float16_t>::equiv_uint binary_t <float16_t>::exponentMask() noexcept {
 				// Выводим маску показателя степени
@@ -1272,6 +1369,7 @@ namespace awh {
 			 * @brief Функция получения маски мантиссы
 			 *
 			 * @return маска мантиссы
+			 *
 			 */
 			template <> inline constexpr binary_t <float16_t>::equiv_uint binary_t <float16_t>::mantissaMask() noexcept {
 				// Выводим маску мантиссы
@@ -1281,6 +1379,7 @@ namespace awh {
 			 * @brief Функция получения минимального показателя степени двойки
 			 *
 			 * @return минимальный показатель степени двойки
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <float16_t>::minimumExponent() noexcept {
 				// Выводим минимальный показатель степени двойки
@@ -1290,6 +1389,7 @@ namespace awh {
 			 * @brief Функция получения маски скрытого бита мантиссы
 			 *
 			 * @return маска скрытого бита мантиссы
+			 *
 			 */
 			template <> inline constexpr binary_t <float16_t>::equiv_uint binary_t <float16_t>::hiddenBitMask() noexcept {
 				// Выводим маску скрытого бита мантиссы
@@ -1299,6 +1399,7 @@ namespace awh {
 			 * @brief Функция получения наибольшего представимого показателя степени десяти
 			 *
 			 * @return наибольший представимый показатель степени десяти
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <float16_t>::largestPowerOfTen() noexcept {
 				// Выводим наибольший представимый показатель степени десяти
@@ -1308,6 +1409,7 @@ namespace awh {
 			 * @brief Функция получения наименьшего представимого показателя степени десяти
 			 *
 			 * @return наименьший представимый показатель степени десяти
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <float16_t>::smallestPowerOfTen() noexcept {
 				// Выводим наименьший представимый показатель степени десяти
@@ -1317,6 +1419,7 @@ namespace awh {
 			 * @brief Функция получения минимального показателя степени быстрого пути
 			 *
 			 * @return минимальный показатель степени быстрого пути
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <float16_t>::minExponentFastPath() noexcept {
 				// Выводим минимальный показатель степени быстрого пути
@@ -1326,6 +1429,7 @@ namespace awh {
 			 * @brief Функция получения максимального показателя степени быстрого пути
 			 *
 			 * @return максимальный показатель степени быстрого пути
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <float16_t>::maxExponentFastPath() noexcept {
 				// Выводим максимальный показатель степени быстрого пути
@@ -1335,6 +1439,7 @@ namespace awh {
 			 * @brief Функция получения количества явно хранимых бит мантиссы
 			 *
 			 * @return количество явно хранимых бит мантиссы
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <float16_t>::mantissaExplicitBits() noexcept {
 				// Выводим количество явно хранимых бит мантиссы
@@ -1344,6 +1449,7 @@ namespace awh {
 			 * @brief Функция получения предельной мантиссы быстрого пути
 			 *
 			 * @return предельное значение мантиссы
+			 *
 			 */
 			template <> inline constexpr uint64_t binary_t <float16_t>::maxMantissaFastPath() noexcept {
 				// Выводим предельное значение мантиссы быстрого пути
@@ -1353,6 +1459,7 @@ namespace awh {
 			 * @brief Функция получения минимального показателя степени округления к чётному
 			 *
 			 * @return минимальный показатель степени округления к чётному
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <float16_t>::minExponentRoundToEven() noexcept {
 				// Выводим минимальный показатель степени округления к чётному
@@ -1362,6 +1469,7 @@ namespace awh {
 			 * @brief Функция получения максимального показателя степени округления к чётному
 			 *
 			 * @return максимальный показатель степени округления к чётному
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <float16_t>::maxExponentRoundToEven() noexcept {
 				// Выводим максимальный показатель степени округления к чётному
@@ -1372,6 +1480,7 @@ namespace awh {
 			 *
 			 * @param power показатель степени десяти
 			 * @return      точное значение степени десяти
+			 *
 			 */
 			template <> inline constexpr float16_t binary_t <float16_t>::exactPowerOfTen(const int64_t power) noexcept {
 				// Выводим точное значение степени десяти из таблицы
@@ -1382,6 +1491,7 @@ namespace awh {
 			 *
 			 * @param power показатель степени десяти
 			 * @return      предельное значение мантиссы
+			 *
 			 */
 			template <> inline constexpr uint64_t binary_t <float16_t>::maxMantissaFastPath(const int64_t power) noexcept {
 				// Выводим предельное значение мантиссы из таблицы
@@ -1397,6 +1507,7 @@ namespace awh {
 			 * @brief Шаблон фиктивного типа подстановки
 			 *
 			 * @tparam U фиктивный параметр для подстановки при специализации
+			 *
 			 */
 			template <typename U>
 			/**
@@ -1428,6 +1539,7 @@ namespace awh {
 			 * @brief Функция получения максимального количества значащих десятичных цифр
 			 *
 			 * @return максимальное количество значащих десятичных цифр
+			 *
 			 */
 			template <> inline constexpr size_t binary_t <bfloat16_t>::maxDigits() noexcept {
 				// Выводим максимальное количество значащих десятичных цифр
@@ -1437,6 +1549,7 @@ namespace awh {
 			 * @brief Функция получения позиции бита знака
 			 *
 			 * @return позиция бита знака
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <bfloat16_t>::signIndex() noexcept {
 				// Выводим позицию бита знака
@@ -1446,6 +1559,7 @@ namespace awh {
 			 * @brief Функция получения показателя степени бесконечности
 			 *
 			 * @return показатель степени бесконечности
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <bfloat16_t>::infinitePower() noexcept {
 				// Выводим показатель степени бесконечности
@@ -1455,6 +1569,7 @@ namespace awh {
 			 * @brief Функция получения маски показателя степени
 			 *
 			 * @return маска показателя степени
+			 *
 			 */
 			template <> inline constexpr binary_t <bfloat16_t>::equiv_uint binary_t <bfloat16_t>::exponentMask() noexcept {
 				// Выводим маску показателя степени
@@ -1464,6 +1579,7 @@ namespace awh {
 			 * @brief Функция получения маски мантиссы
 			 *
 			 * @return маска мантиссы
+			 *
 			 */
 			template <> inline constexpr binary_t <bfloat16_t>::equiv_uint binary_t <bfloat16_t>::mantissaMask() noexcept {
 				// Выводим маску мантиссы
@@ -1473,6 +1589,7 @@ namespace awh {
 			 * @brief Функция получения минимального показателя степени двойки
 			 *
 			 * @return минимальный показатель степени двойки
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <bfloat16_t>::minimumExponent() noexcept {
 				// Выводим минимальный показатель степени двойки
@@ -1482,6 +1599,7 @@ namespace awh {
 			 * @brief Функция получения маски скрытого бита мантиссы
 			 *
 			 * @return маска скрытого бита мантиссы
+			 *
 			 */
 			template <> inline constexpr binary_t <bfloat16_t>::equiv_uint binary_t <bfloat16_t>::hiddenBitMask() noexcept {
 				// Выводим маску скрытого бита мантиссы
@@ -1491,6 +1609,7 @@ namespace awh {
 			 * @brief Функция получения наибольшего представимого показателя степени десяти
 			 *
 			 * @return наибольший представимый показатель степени десяти
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <bfloat16_t>::largestPowerOfTen() noexcept {
 				// Выводим наибольший представимый показатель степени десяти
@@ -1500,6 +1619,7 @@ namespace awh {
 			 * @brief Функция получения наименьшего представимого показателя степени десяти
 			 *
 			 * @return наименьший представимый показатель степени десяти
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <bfloat16_t>::smallestPowerOfTen() noexcept {
 				// Выводим наименьший представимый показатель степени десяти
@@ -1509,6 +1629,7 @@ namespace awh {
 			 * @brief Функция получения минимального показателя степени быстрого пути
 			 *
 			 * @return минимальный показатель степени быстрого пути
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <bfloat16_t>::minExponentFastPath() noexcept {
 				// Выводим минимальный показатель степени быстрого пути
@@ -1518,6 +1639,7 @@ namespace awh {
 			 * @brief Функция получения максимального показателя степени быстрого пути
 			 *
 			 * @return максимальный показатель степени быстрого пути
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <bfloat16_t>::maxExponentFastPath() noexcept {
 				// Выводим максимальный показатель степени быстрого пути
@@ -1527,6 +1649,7 @@ namespace awh {
 			 * @brief Функция получения количества явно хранимых бит мантиссы
 			 *
 			 * @return количество явно хранимых бит мантиссы
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <bfloat16_t>::mantissaExplicitBits() noexcept {
 				// Выводим количество явно хранимых бит мантиссы
@@ -1536,6 +1659,7 @@ namespace awh {
 			 * @brief Функция получения предельной мантиссы быстрого пути
 			 *
 			 * @return предельное значение мантиссы
+			 *
 			 */
 			template <> inline constexpr uint64_t binary_t <bfloat16_t>::maxMantissaFastPath() noexcept {
 				// Выводим предельное значение мантиссы быстрого пути
@@ -1545,6 +1669,7 @@ namespace awh {
 			 * @brief Функция получения минимального показателя степени округления к чётному
 			 *
 			 * @return минимальный показатель степени округления к чётному
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <bfloat16_t>::minExponentRoundToEven() noexcept {
 				// Выводим минимальный показатель степени округления к чётному
@@ -1554,6 +1679,7 @@ namespace awh {
 			 * @brief Функция получения максимального показателя степени округления к чётному
 			 *
 			 * @return максимальный показатель степени округления к чётному
+			 *
 			 */
 			template <> inline constexpr int32_t binary_t <bfloat16_t>::maxExponentRoundToEven() noexcept {
 				// Выводим максимальный показатель степени округления к чётному
@@ -1564,6 +1690,7 @@ namespace awh {
 			 *
 			 * @param power показатель степени десяти
 			 * @return      точное значение степени десяти
+			 *
 			 */
 			template <> inline constexpr bfloat16_t binary_t <bfloat16_t>::exactPowerOfTen(const int64_t power) noexcept {
 				// Выводим точное значение степени десяти из таблицы
@@ -1574,6 +1701,7 @@ namespace awh {
 			 *
 			 * @param power показатель степени десяти
 			 * @return      предельное значение мантиссы
+			 *
 			 */
 			template <> inline constexpr uint64_t binary_t <bfloat16_t>::maxMantissaFastPath(const int64_t power) noexcept {
 				// Выводим предельное значение мантиссы из таблицы
@@ -1607,6 +1735,7 @@ namespace awh {
 		 * @brief Шаблон типа результата сборки числа с плавающей точкой
 		 *
 		 * @tparam T тип числа с плавающей точкой
+		 *
 		 */
 		template <typename T>
 		/**
@@ -1615,6 +1744,7 @@ namespace awh {
 		 * @param negative признак отрицательного числа
 		 * @param mantissa скорректированная мантисса двоичного представления
 		 * @param value    ссылка на результат сборки
+		 *
 		 */
 		AWH_LEXICAL_INLINE void toFloat(const bool negative, const mantissa_t & mantissa, T & value) noexcept {
 			/**
@@ -1635,6 +1765,7 @@ namespace awh {
 		 * @brief Шаблон типа результата разбора двоичного представления
 		 *
 		 * @tparam T тип числа с плавающей точкой
+		 *
 		 */
 		template <typename T>
 		/**
@@ -1642,6 +1773,7 @@ namespace awh {
 		 *
 		 * @param value разбираемое число с плавающей точкой
 		 * @return      скорректированная мантисса расширенной точности
+		 *
 		 */
 		AWH_LEXICAL_INLINE mantissa_t toExtended(const T value) noexcept {
 			/**
@@ -1679,6 +1811,7 @@ namespace awh {
 		 * @brief Шаблон типа исходного числа с плавающей точкой
 		 *
 		 * @tparam T тип числа с плавающей точкой
+		 *
 		 */
 		template <typename T>
 		/**
@@ -1686,6 +1819,7 @@ namespace awh {
 		 *
 		 * @param value исходное число с плавающей точкой
 		 * @return      скорректированная мантисса середины интервала
+		 *
 		 */
 		AWH_LEXICAL_INLINE mantissa_t toExtendedHalfway(const T value) noexcept {
 			// Получаем расширенное представление исходного числа
@@ -1704,6 +1838,7 @@ namespace awh {
 		 * @brief Шаблон фиктивного типа подстановки
 		 *
 		 * @tparam U фиктивный параметр для подстановки при специализации
+		 *
 		 */
 		template <typename U = void>
 		/**
@@ -1732,6 +1867,7 @@ namespace awh {
 			 * @brief Таблица значений цифр по коду символа
 			 *
 			 * @details Значение 255 означает, что символ не является цифрой.
+			 *
 			 */
 			static constexpr uint8_t digits[] = {
 				255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
@@ -1767,6 +1903,7 @@ namespace awh {
 		 * @brief Шаблон типа символа проверяемой строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -1776,6 +1913,7 @@ namespace awh {
 		 * @param expected ожидаемая строка в нижнем регистре
 		 * @param length   количество сравниваемых символов
 		 * @return         результат сравнения
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr bool compareIgnoreCase(const UC * actual, const UC * expected, const size_t length) noexcept {
 			/**
@@ -1797,6 +1935,7 @@ namespace awh {
 		 * @brief Шаблон типа проверяемого символа
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -1804,6 +1943,7 @@ namespace awh {
 		 *
 		 * @param symbol проверяемый символ
 		 * @return       результат проверки
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr bool isSpace(const UC symbol) noexcept {
 			// Выполняем проверку по таблице пробельных символов
@@ -1814,6 +1954,7 @@ namespace awh {
 		 * @brief Шаблон типа проверяемого символа
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -1821,6 +1962,7 @@ namespace awh {
 		 *
 		 * @param symbol проверяемый символ
 		 * @return       результат проверки
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr bool isDigit(const UC symbol) noexcept {
 			// Выполняем проверку попадания символа в диапазон десятичных цифр
@@ -1831,6 +1973,7 @@ namespace awh {
 		 * @brief Шаблон типа преобразуемого символа
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -1838,6 +1981,7 @@ namespace awh {
 		 *
 		 * @param symbol преобразуемый символ
 		 * @return       значение цифры или 255 если символ цифрой не является
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr uint8_t charToDigit(const UC symbol) noexcept {
 			/**
@@ -1857,6 +2001,7 @@ namespace awh {
 		 *
 		 * @param base основание системы счисления в диапазоне от 2 до 36
 		 * @return     максимальное количество цифр
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr size_t maxDigitsU64(const int32_t base) noexcept {
 			// Выводим максимальное количество цифр из таблицы
@@ -1867,12 +2012,14 @@ namespace awh {
 		 * @brief Шаблон типа символа константной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
 		 * @brief Метод получения строковой константы нечислового значения
 		 *
 		 * @return строковая константа нечислового значения
+		 *
 		 */
 		constexpr const UC * constNan() noexcept;
 
@@ -1880,6 +2027,7 @@ namespace awh {
 		 * @brief Метод получения строковой константы нечислового значения
 		 *
 		 * @return строковая константа нечислового значения
+		 *
 		 */
 		template <> inline constexpr const char * constNan <char> () noexcept {
 			// Выводим строковую константу нечислового значения
@@ -1889,6 +2037,7 @@ namespace awh {
 		 * @brief Метод получения строковой константы нечислового значения (широкий символ)
 		 *
 		 * @return строковая константа нечислового значения
+		 *
 		 */
 		template <> inline constexpr const wchar_t * constNan <wchar_t> () noexcept {
 			// Выводим строковую константу нечислового значения (широкий символ)
@@ -1898,6 +2047,7 @@ namespace awh {
 		 * @brief Метод получения строковой константы нечислового значения (16-битный символ)
 		 *
 		 * @return строковая константа нечислового значения
+		 *
 		 */
 		template <> inline constexpr const char16_t * constNan <char16_t> () noexcept {
 			// Выводим строковую константу нечислового значения (16-битный символ)
@@ -1907,6 +2057,7 @@ namespace awh {
 		 * @brief Метод получения строковой константы нечислового значения (32-битный символ)
 		 *
 		 * @return строковая константа нечислового значения
+		 *
 		 */
 		template <> inline constexpr const char32_t * constNan <char32_t> () noexcept {
 			// Выводим строковую константу нечислового значения (32-битный символ)
@@ -1920,6 +2071,7 @@ namespace awh {
 			 * @brief Метод получения строковой константы нечислового значения (8-битный символ)
 			 *
 			 * @return строковая константа нечислового значения
+			 *
 			 */
 			template <> inline constexpr const char8_t * constNan <char8_t> () noexcept {
 				// Выводим строковую константу нечислового значения (8-битный символ)
@@ -1931,18 +2083,21 @@ namespace awh {
 		 * @brief Шаблон типа символа константной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
 		 * @brief Метод получения строковой константы бесконечности
 		 *
 		 * @return строковая константа бесконечности
+		 *
 		 */
 		constexpr const UC * constInf() noexcept;
 		/**
 		 * @brief Метод получения строковой константы бесконечности
 		 *
 		 * @return строковая константа бесконечности
+		 *
 		 */
 		template <> inline constexpr const char * constInf <char> () noexcept {
 			// Выводим строковую константу бесконечности
@@ -1952,6 +2107,7 @@ namespace awh {
 		 * @brief Метод получения строковой константы бесконечности (широкий символ)
 		 *
 		 * @return строковая константа бесконечности
+		 *
 		 */
 		template <> inline constexpr const wchar_t * constInf <wchar_t> () noexcept {
 			// Выводим строковую константу бесконечности (широкий символ)
@@ -1961,6 +2117,7 @@ namespace awh {
 		 * @brief Метод получения строковой константы бесконечности (16-битный символ)
 		 *
 		 * @return строковая константа бесконечности
+		 *
 		 */
 		template <> inline constexpr const char16_t * constInf <char16_t> () noexcept {
 			// Выводим строковую константу бесконечности (16-битный символ)
@@ -1970,6 +2127,7 @@ namespace awh {
 		 * @brief Метод получения строковой константы бесконечности (32-битный символ)
 		 *
 		 * @return строковая константа бесконечности
+		 *
 		 */
 		template <> inline constexpr const char32_t * constInf <char32_t> () noexcept {
 			// Выводим строковую константу бесконечности (32-битный символ)
@@ -1983,6 +2141,7 @@ namespace awh {
 			 * @brief Метод получения строковой константы бесконечности (8-битный символ)
 			 *
 			 * @return строковая константа бесконечности
+			 *
 			 */
 			template <> inline constexpr const char8_t * constInf <char8_t> () noexcept {
 				// Выводим строковую константу бесконечности (8-битный символ)

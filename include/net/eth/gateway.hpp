@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля работы со шлюзами — класс eth::Gateway для получения таблицы маршрутизации,
+ *        определения шлюза по умолчанию и разбора параметров маршрута на всех поддерживаемых операционных системах
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -76,6 +80,7 @@ namespace awh {
 				 *
 				 * @param route объект для извлечения маршрута
 				 * @return      результат получения маршрута
+				 *
 				 */
 				bool get(route_t & route) const noexcept;
 				/**
@@ -83,6 +88,7 @@ namespace awh {
 				 *
 				 * @param route объект маршрута для добавления
 				 * @return      результат добавления маршрута
+				 *
 				 */
 				bool add(const route_t & route) const noexcept;
 				/**
@@ -90,6 +96,7 @@ namespace awh {
 				 *
 				 * @param route объект маршрута для удаления
 				 * @return      результат удаления маршрута
+				 *
 				 */
 				bool remove(const route_t & route) const noexcept;
 			public:
@@ -98,6 +105,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект работы с логами
+				 *
 				 */
 				explicit Gateway(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

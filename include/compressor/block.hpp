@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля блочной (one-shot) компрессии — публичный API класса compressor::Block,
+ *        выполняющего сжатие и распаковку данных целиком за один вызов методами GZip, Zlib, Deflate, Brotli, LZ4,
+ *        Zstd, LZma, BZip2, Lzip и другими поддерживаемыми алгоритмами
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -51,6 +56,7 @@ namespace awh {
 		 *
 		 * @details Полное определение скрыто в модуле реализации,
 		 *          что позволяет не подключать заголовочные файлы стороннего компрессора (zlib) в публичный интерфейс.
+		 *
 		 */
 		struct gzip_stream_t;
 		/**
@@ -63,6 +69,7 @@ namespace awh {
 				 * @brief Структура буфера GZip
 				 *
 				 * @note Владеющие указатели на непрозрачный контекст (управление временем жизни в конструкторе/деструкторе Block)
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ BufferGZip {
 					// Поток GZip для компрессии
@@ -139,6 +146,7 @@ namespace awh {
 				 * @brief Метод установки уровня компрессии
 				 *
 				 * @param level уровень компрессии
+				 *
 				 */
 				void level(const level_t level) noexcept;
 			public:
@@ -146,6 +154,7 @@ namespace awh {
 				 * @brief Метод установки безопасности работы потоков
 				 *
 				 * @param mode флаг режима безопасности потоков
+				 *
 				 */
 				void threadSafety(const bool mode) noexcept;
 			public:
@@ -153,6 +162,7 @@ namespace awh {
 				 * @brief Метод установки размера скользящего окна Zlib
 				 *
 				 * @param wbits размер скользящего окна
+				 *
 				 */
 				void wbitsZlib(const int16_t wbits) noexcept;
 				/**
@@ -160,6 +170,7 @@ namespace awh {
 				 *
 				 * @param wbits размер скользящего окна
 				 * @return      результат установки размера
+				 *
 				 */
 				bool wbitsGZip(const int16_t wbits) noexcept;
 				/**
@@ -168,6 +179,7 @@ namespace awh {
 				 * @param event событие выполнения операции
 				 * @param flag  флаг переиспользования контекста компрессии/декомпрессии
 				 * @return      результат установки флага
+				 *
 				 */
 				bool takeoverGZip(const event_t event, const bool flag) noexcept;
 			public:
@@ -176,6 +188,7 @@ namespace awh {
 				 *
 				 * @param method метод компрессии
 				 * @return       результат проверки
+				 *
 				 */
 				static bool streamable(const method_t method) noexcept;
 				/**
@@ -188,6 +201,7 @@ namespace awh {
 				 * @param method метод компрессии
 				 * @param event  направление операции
 				 * @return       объект потоковой сессии
+				 *
 				 */
 				stream_t stream(const method_t method, const event_t event) const noexcept;
 			public:
@@ -195,6 +209,7 @@ namespace awh {
 				 * @brief Шаблон метода компрессии данных
 				 *
 				 * @tparam T тип возвращаемого результата
+				 *
 				 */
 				template <typename T>
 				/**
@@ -203,6 +218,7 @@ namespace awh {
 				 * @param buffer буфер данных для компрессии
 				 * @param method метод компрессии
 				 * @return       результат компрессии
+				 *
 				 */
 				auto compress(string_view buffer, const method_t method) const noexcept -> T;
 				/**
@@ -210,6 +226,7 @@ namespace awh {
 				 *
 				 * @tparam A тип возвращаемого результата
 				 * @tparam B тип буфера данных
+				 *
 				 */
 				template <typename A, typename B>
 				/**
@@ -218,12 +235,14 @@ namespace awh {
 				 * @param buffer буфер данных для компрессии
 				 * @param method метод компрессии
 				 * @return       результат компрессии
+				 *
 				 */
 				auto compress(const B & buffer, const method_t method) const noexcept -> A;
 				/**
 				 * @brief Шаблон метода компрессии данных
 				 *
 				 * @tparam T тип возвращаемого результата
+				 *
 				 */
 				template <typename T>
 				/**
@@ -233,6 +252,7 @@ namespace awh {
 				 * @param size   размер данных для компрессии
 				 * @param method метод компрессии
 				 * @return       результат компрессии
+				 *
 				 */
 				auto compress(const void * buffer, const size_t size, const method_t method) const noexcept -> T;
 			public:
@@ -240,6 +260,7 @@ namespace awh {
 				 * @brief Шаблон метода компрессии данных
 				 *
 				 * @tparam T тип возвращаемого результата
+				 *
 				 */
 				template <typename T>
 				/**
@@ -249,6 +270,7 @@ namespace awh {
 				 * @param size   размер данных для компрессии
 				 * @param method метод компрессии
 				 * @param result контейнер куда следует положить результат
+				 *
 				 */
 				void compress(const void * buffer, const size_t size, const method_t method, T & result) const noexcept;
 			public:
@@ -256,6 +278,7 @@ namespace awh {
 				 * @brief Шаблон метода декомпрессии данных
 				 *
 				 * @tparam T тип возвращаемого результата
+				 *
 				 */
 				template <typename T>
 				/**
@@ -264,6 +287,7 @@ namespace awh {
 				 * @param buffer буфер данных для декомпрессии
 				 * @param method метод компрессии
 				 * @return       результат декомпрессии
+				 *
 				 */
 				auto decompress(string_view buffer, const method_t method) const noexcept -> T;
 				/**
@@ -271,6 +295,7 @@ namespace awh {
 				 *
 				 * @tparam A тип возвращаемого результата
 				 * @tparam B тип буфера данных
+				 *
 				 */
 				template <typename A, typename B>
 				/**
@@ -279,12 +304,14 @@ namespace awh {
 				 * @param buffer буфер данных для декомпрессии
 				 * @param method метод компрессии
 				 * @return       результат декомпрессии
+				 *
 				 */
 				auto decompress(const B & buffer, const method_t method) const noexcept -> A;
 				/**
 				 * @brief Шаблон метода декомпрессии данных
 				 *
 				 * @tparam T тип возвращаемого результата
+				 *
 				 */
 				template <typename T>
 				/**
@@ -294,6 +321,7 @@ namespace awh {
 				 * @param size   размер данных для декомпрессии
 				 * @param method метод компрессии
 				 * @return       результат декомпрессии
+				 *
 				 */
 				auto decompress(const void * buffer, const size_t size, const method_t method) const noexcept -> T;
 			public:
@@ -301,6 +329,7 @@ namespace awh {
 				 * @brief Шаблон метода декомпрессии данных
 				 *
 				 * @tparam T тип возвращаемого результата
+				 *
 				 */
 				template <typename T>
 				/**
@@ -310,6 +339,7 @@ namespace awh {
 				 * @param size   размер данных для декомпрессии
 				 * @param method метод компрессии
 				 * @param result контейнер куда следует положить результат
+				 *
 				 */
 				void decompress(const void * buffer, const size_t size, const method_t method, T & result) const noexcept;
 			public:
@@ -317,6 +347,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Block(const log_t * log) noexcept;
 				/**

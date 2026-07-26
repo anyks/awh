@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Тесты управления протоколом SCTP — проверка настройки параметров ассоциаций, входящих и исходящих потоков,
+ *        heartbeat и подписки на уведомления сокета
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -46,6 +50,7 @@ namespace {
 	 *
 	 * @note Создаёт одиночный (one-to-one) SCTP-сокет и автоматически закрывает его в деструкторе.
 	 *       Если ядро не поддерживает SCTP, дескриптор будет невалидным (valid() вернёт false).
+	 *
 	 */
 	class SctpSocket {
 		public:
@@ -72,6 +77,7 @@ namespace {
 			 * @brief Метод проверки валидности сокета
 			 *
 			 * @return флаг валидности сокета
+			 *
 			 */
 			bool valid() const noexcept {
 				// Сокет валиден, если дескриптор неотрицательный
@@ -109,6 +115,7 @@ TEST_F(EthFixture, SctpInitMessages){
  *
  * @note Проверяет, что таймаут INIT устанавливается и считывается именно через SCTP_INITMSG,
  *       а не через SCTP_RTOINFO (исправление разделения INIT/DATA)
+ *
  */
 TEST_F(EthFixture, SctpTimeoutInitRoundTrip){
 	// Создаём SCTP-сокет
@@ -164,6 +171,7 @@ TEST_F(EthFixture, SctpTimeoutCookieRoundTrip){
  * @brief Тест обработки неподдерживаемых типов таймаутов SCTP
  *
  * @note Для SACK/SHUTDOWN/SHUTDOWNACK сеттер должен возвращать false, а геттер - 0
+ *
  */
 TEST_F(EthFixture, SctpTimeoutUnsupported){
 	// Создаём SCTP-сокет
@@ -211,6 +219,7 @@ TEST_F(EthFixture, SctpEventsSubscribeLegacy){
  *
  * @note Проверяет события RFC 6525 (сброс ассоциации и изменение потоков),
  *       которые отсутствуют в устаревшей структуре sctp_event_subscribe
+ *
  */
 TEST_F(EthFixture, SctpEventsSubscribeModern){
 	// Создаём SCTP-сокет
@@ -248,6 +257,7 @@ TEST_F(EthFixture, SctpEventsSubscribeMixed){
  * @brief Тест подписки на пустой список событий SCTP
  *
  * @note Пустой список не должен обнулять подписку и обязан детерминированно вернуть false
+ *
  */
 TEST_F(EthFixture, SctpEventsSubscribeEmpty){
 	// Создаём SCTP-сокет
@@ -372,6 +382,7 @@ TEST_F(EthFixture, SctpAuthenticateChunksSetEmpty){
  *
  * @note Основная цель - проверить безопасность чтения переменной длины (исправление переполнения буфера):
  *       вызов не должен приводить к порче памяти, а количество чанков должно укладываться в выделенный буфер
+ *
  */
 TEST_F(EthFixture, SctpAuthenticateChunksGetLocal){
 	// Создаём SCTP-сокет
@@ -394,6 +405,7 @@ TEST_F(EthFixture, SctpAuthenticateChunksGetLocal){
  *
  * @note На неустановленной ассоциации извлечение удалённых чанков обычно невозможно;
  *       тест проверяет лишь корректное (безопасное) завершение вызова
+ *
  */
 TEST_F(EthFixture, SctpAuthenticateChunksGetRemote){
 	// Создаём SCTP-сокет
@@ -416,6 +428,7 @@ TEST_F(EthFixture, SctpAuthenticateChunksGetRemote){
  *
  * @note На неподключённом сокете статус может быть недоступен; тест проверяет отсутствие падения
  *       и валидность возвращаемого состояния при успешном чтении
+ *
  */
 TEST_F(EthFixture, SctpStatusUnconnected){
 	// Создаём SCTP-сокет

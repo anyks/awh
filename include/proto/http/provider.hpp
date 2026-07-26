@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл провайдеров HTTP-сообщений — классы Provider, Request и Response,
+ *        формирующие и хранящие структуру HTTP-запроса клиента и HTTP-ответа сервера поверх контейнера заголовков
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_HTTP_PROVIDER__
@@ -53,6 +57,7 @@ namespace awh {
 		 *
 		 * @param code код ответа сервера
 		 * @return     стандартное сообщение либо пустое представление, если код неизвестен
+		 *
 		 */
 		inline string_view statusMessage(const uint16_t code) noexcept {
 			/**
@@ -144,6 +149,7 @@ namespace awh {
 				 *          через указатель на базовый класс без срезки (object slicing)
 				 *
 				 * @return копия объекта провайдера
+				 *
 				 */
 				virtual unique_ptr <Provider> clone() const noexcept = 0;
 			public:
@@ -151,6 +157,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param direct направление трафика (запрос/ответ)
+				 *
 				 */
 				explicit Provider(const direct_t direct) noexcept;
 				/**
@@ -158,6 +165,7 @@ namespace awh {
 				 *
 				 * @param direct  направление трафика (запрос/ответ)
 				 * @param version версия протокола
+				 *
 				 */
 				explicit Provider(const direct_t direct, const version_t version) noexcept;
 			public:
@@ -191,6 +199,7 @@ namespace awh {
 				 * @brief Метод клонирования объекта запроса
 				 *
 				 * @return копия объекта запроса
+				 *
 				 */
 				unique_ptr <provider_t> clone() const noexcept override;
 			public:
@@ -199,6 +208,7 @@ namespace awh {
 				 *
 				 * @param request объект параметров запроса клиента
 				 * @return        текущие параметры запроса клиента
+				 *
 				 */
 				Request & operator = (Request && request) noexcept;
 				/**
@@ -206,6 +216,7 @@ namespace awh {
 				 *
 				 * @param request объект параметров запроса клиента
 				 * @return        текущие параметры запроса клиента
+				 *
 				 */
 				Request & operator = (const Request & request) noexcept;
 			public:
@@ -214,6 +225,7 @@ namespace awh {
 				 *
 				 * @param request объект параметров запроса клиента
 				 * @return        результат сравнения
+				 *
 				 */
 				bool operator == (const Request & request) const noexcept;
 				/**
@@ -221,6 +233,7 @@ namespace awh {
 				 *
 				 * @param request объект параметров запроса клиента
 				 * @return        результат сравнения
+				 *
 				 */
 				bool operator != (const Request & request) const noexcept;
 			public:
@@ -228,12 +241,14 @@ namespace awh {
 				 * @brief Конструктор перемещения
 				 *
 				 * @param request объект параметров запроса клиента
+				 *
 				 */
 				Request(Request && request) noexcept;
 				/**
 				 * @brief Конструктор копирования
 				 *
 				 * @param request объект параметров запроса клиента
+				 *
 				 */
 				Request(const Request & request) noexcept;
 			public:
@@ -246,18 +261,21 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param uri параметры URI-запроса
+				 *
 				 */
 				explicit Request(const string & uri) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param method метод запроса клиента
+				 *
 				 */
 				explicit Request(const method_t method) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param version версия протокола
+				 *
 				 */
 				explicit Request(const version_t version) noexcept;
 				/**
@@ -265,6 +283,7 @@ namespace awh {
 				 *
 				 * @param method метод запроса клиента
 				 * @param uri    параметры URI-запроса
+				 *
 				 */
 				explicit Request(const method_t method, const string & uri) noexcept;
 				/**
@@ -272,6 +291,7 @@ namespace awh {
 				 *
 				 * @param version версия протокола
 				 * @param uri     параметры URI-запроса
+				 *
 				 */
 				explicit Request(const version_t version, const string & uri) noexcept;
 				/**
@@ -279,6 +299,7 @@ namespace awh {
 				 *
 				 * @param version версия протокола
 				 * @param method  метод запроса клиента
+				 *
 				 */
 				explicit Request(const version_t version, const method_t method) noexcept;
 				/**
@@ -287,6 +308,7 @@ namespace awh {
 				 * @param version версия протокола
 				 * @param method  метод запроса клиента
 				 * @param uri     параметры URI-запроса
+				 *
 				 */
 				explicit Request(const version_t version, const method_t method, const string & uri) noexcept;
 			public:
@@ -312,6 +334,7 @@ namespace awh {
 				 * @brief Метод клонирования объекта ответа
 				 *
 				 * @return копия объекта ответа
+				 *
 				 */
 				unique_ptr <provider_t> clone() const noexcept override;
 			public:
@@ -320,6 +343,7 @@ namespace awh {
 				 *
 				 * @param response объект параметров ответа сервера
 				 * @return         текущие параметры ответа сервера
+				 *
 				 */
 				Response & operator = (Response && response) noexcept;
 				/**
@@ -327,6 +351,7 @@ namespace awh {
 				 *
 				 * @param response объект параметров ответа сервера
 				 * @return         текущие параметры ответа сервера
+				 *
 				 */
 				Response & operator = (const Response & response) noexcept;
 			public:
@@ -335,6 +360,7 @@ namespace awh {
 				 *
 				 * @param response объект параметров ответа сервера
 				 * @return         результат сравнения
+				 *
 				 */
 				bool operator == (const Response & response) const noexcept;
 				/**
@@ -342,6 +368,7 @@ namespace awh {
 				 *
 				 * @param response объект параметров ответа сервера
 				 * @return         результат сравнения
+				 *
 				 */
 				bool operator != (const Response & response) const noexcept;
 			public:
@@ -349,12 +376,14 @@ namespace awh {
 				 * @brief Конструктор перемещения
 				 *
 				 * @param response объект параметров ответа сервера
+				 *
 				 */
 				Response(Response && response) noexcept;
 				/**
 				 * @brief Конструктор копирования
 				 *
 				 * @param response объект параметров ответа сервера
+				 *
 				 */
 				Response(const Response & response) noexcept;
 			public:
@@ -367,18 +396,21 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param code код ответа сервера
+				 *
 				 */
 				explicit Response(const uint16_t code) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param message сообщение сервера
+				 *
 				 */
 				explicit Response(const string & message) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param version версия протокола
+				 *
 				 */
 				explicit Response(const version_t version) noexcept;
 				/**
@@ -386,6 +418,7 @@ namespace awh {
 				 *
 				 * @param code    код ответа сервера
 				 * @param message сообщение сервера
+				 *
 				 */
 				explicit Response(const uint16_t code, const string & message) noexcept;
 				/**
@@ -393,6 +426,7 @@ namespace awh {
 				 *
 				 * @param version версия протокола
 				 * @param code    код ответа сервера
+				 *
 				 */
 				explicit Response(const version_t version, const uint16_t code) noexcept;
 				/**
@@ -400,6 +434,7 @@ namespace awh {
 				 *
 				 * @param version версия протокола
 				 * @param message сообщение сервера
+				 *
 				 */
 				explicit Response(const version_t version, const string & message) noexcept;
 				/**
@@ -408,6 +443,7 @@ namespace awh {
 				 * @param version версия протокола
 				 * @param code    код ответа сервера
 				 * @param message сообщение сервера
+				 *
 				 */
 				explicit Response(const version_t version, const uint16_t code, const string & message) noexcept;
 			public:

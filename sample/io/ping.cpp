@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример проверки доступности узла через сырой сокет — демонстрация ручной сборки ICMP-эхо-запроса,
+ *        отправки его средствами движка ввода-вывода и разбора полученного ответа
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 #include <ctime>
@@ -44,6 +48,7 @@ using namespace placeholders;
  * @param buffer буфер данных для подсчёта
  * @param size   размер данных для подсчёта
  * @return       подсчитанная контрольная сумма
+ *
  */
 uint16_t checksum(const void * buffer, const size_t size) noexcept {
 	// Переменная результата
@@ -86,6 +91,7 @@ uint16_t checksum(const void * buffer, const size_t size) noexcept {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

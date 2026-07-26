@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Общий заголовочный файл набора бенчмарков — объявление контракта сценария измерения,
+ *        средств его регистрации и структур для накопления и представления результатов замеров
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_BENCHMARK__
@@ -38,6 +42,7 @@ namespace awh {
 	 *          сборки: регрессия производительности останавливает конвейер.
 	 *          Сценарии регистрируются статически, поэтому добавление нового
 	 *          бенчмарка сводится к добавлению файла с его реализацией
+	 *
 	 */
 	namespace benchmark {
 		/**
@@ -99,6 +104,7 @@ namespace awh {
 		 * @param bound     направление сравнения с порогом
 		 * @param run       функция выполнения сценария
 		 * @return          признак успешной регистрации (для статической инициализации)
+		 *
 		 */
 		bool add(const std::string & name, const std::string & units, const double threshold, const bound_t bound, std::function <result_t ()> run) noexcept;
 
@@ -106,6 +112,7 @@ namespace awh {
 		 * @brief Функция получения списка зарегистрированных сценариев
 		 *
 		 * @return список зарегистрированных сценариев
+		 *
 		 */
 		const std::vector <scenario_t> & scenarios() noexcept;
 	};

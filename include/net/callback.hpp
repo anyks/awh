@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл прототипов функций обратного вызова сетевого движка — сигнатуры колбэков подключения,
+ *        чтения, записи, закрытия, ошибок, таймеров и событий SCTP,
+ *        на которые подписываются пользователи движка ввода-вывода
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -63,6 +68,7 @@ namespace awh {
 					 *
 					 * @param id   идентификатор события
 					 * @param info объект информационных метаданных SCTP
+					 *
 					 */
 					using minfo_t = function <void (const event::id_t, const net::sctp::minfo_t &)>;
 					/**
@@ -70,6 +76,7 @@ namespace awh {
 					 *
 					 * @param id    идентификатор события
 					 * @param event объект события SCTP
+					 *
 					 */
 					using events_t = function <void (const event::id_t, unique_ptr <net::sctp::event_t>)>;
 				};
@@ -79,6 +86,7 @@ namespace awh {
 			 *
 			 * @param id идентификатор события
 			 * @param ok результат подключения события (true - подключено, false - ошибка)
+			 *
 			 */
 			using connect_t = function <void (const event::id_t, const bool)>;
 			/**
@@ -86,6 +94,7 @@ namespace awh {
 			 *
 			 * @param id   идентификатор события
 			 * @param size размер записанных данных
+			 *
 			 */
 			using write_t = function <void (const event::id_t, const size_t)>;
 			/**
@@ -93,6 +102,7 @@ namespace awh {
 			 *
 			 * @param id   идентификатор события
 			 * @param peer идентификатор подключившегося события
+			 *
 			 */
 			using accept_t = function <void (const event::id_t, const event::id_t)>;
 			/**
@@ -100,6 +110,7 @@ namespace awh {
 			 *
 			 * @param id     идентификатор события
 			 * @param action тип события
+			 *
 			 */
 			using event_t = function <void (const event::id_t, const event::action_t)>;
 			/**
@@ -107,6 +118,7 @@ namespace awh {
 			 *
 			 * @param id     идентификатор события
 			 * @param status новый статус события
+			 *
 			 */
 			using status_t = function <void (const event::id_t, const event::status_t)>;
 			/**
@@ -114,6 +126,7 @@ namespace awh {
 			 *
 			 * @param id   идентификатор события
 			 * @param info объект информационных метаданных дейтаграммного пакета
+			 *
 			 */
 			using traffic_t = function <void (const event::id_t, const net::dgram_info_t &)>;
 			/**
@@ -122,6 +135,7 @@ namespace awh {
 			 * @param id     идентификатор события
 			 * @param buffer буфер прочитанных данных
 			 * @param size   размер прочитанных данных
+			 *
 			 */
 			using read_t = function <void (const event::id_t, const uint8_t *, const size_t)>;
 			/**
@@ -135,6 +149,7 @@ namespace awh {
 			 * @param buffer буфер перенаправляемых данных
 			 * @param size   размер перенаправляемых данных
 			 * @return       результат приёма данных на инъекцию
+			 *
 			 */
 			using inject_t = function <bool (const event::id_t, const uint8_t *, const size_t)>;
 			/**
@@ -143,6 +158,7 @@ namespace awh {
 			 * @param id    идентификатор события
 			 * @param error код ошибки события
 			 * @param text  текстовое описание ошибки события
+			 *
 			 */
 			using error_t = function <void (const event::id_t, const event::error_t, const string &)>;
 			/**
@@ -151,6 +167,7 @@ namespace awh {
 			 * @param id     идентификатор события
 			 * @param status статус события
 			 * @param size   размер доступных данных для отправки
+			 *
 			 */
 			using available_t = function <void (const event::id_t, const event::status_t, const size_t)>;
 			/**
@@ -159,6 +176,7 @@ namespace awh {
 			 * @param id     идентификатор события
 			 * @param action тип события
 			 * @param count  счётчик таймера события
+			 *
 			 */
 			using timeout_t = function <bool (const event::id_t, const event::action_t, const uint32_t)>;
 			/**
@@ -174,6 +192,7 @@ namespace awh {
 			 * @param size   размер принятой датаграммы
 			 * @param key    выводимый ключ сессии
 			 * @return       результат определения сессии
+			 *
 			 */
 			using origin_t = function <bool (const event::id_t, const uint8_t *, const size_t, net::origin_key_t &)>;
 			/**
@@ -183,6 +202,7 @@ namespace awh {
 			 * @param buffer буфер данных события
 			 * @param size   размер данных события
 			 * @return       результат обработки (true - продолжить отправку, false - прервать с ошибкой ABORTED)
+			 *
 			 */
 			using spool_t = function <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)>;
 			/**
@@ -194,6 +214,7 @@ namespace awh {
 			 * @param action тип события
 			 * @param vnode  виртуальный узел события
 			 * @param name   имя изменённого файла/каталога события
+			 *
 			 */
 			using vnode_t = function <void (const event::id_t, const event::action_t, const event::vnode_t, const string &)>;
 			/**
@@ -203,6 +224,7 @@ namespace awh {
 			 * @param peer   идентификатор удалённого узла
 			 * @param action тип события
 			 * @param info   информация о пакетах в туннельном интерфейсе
+			 *
 			 */
 			using tuninfo_t = function <void (const event::id_t, const event::id_t, const event::action_t, const net::tun_info_t &)>;
 		};

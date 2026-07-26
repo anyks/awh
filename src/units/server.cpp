@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля сервера — приём и обслуживание входящих подключений поверх движка ввода-вывода,
+ *        управление жизненным циклом клиентов и работа в кластерном режиме
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -40,6 +44,7 @@ awh::unit::Server::ClusterParams::ClusterParams() noexcept :
  * @brief Метод удаления связи клиента с сервером
  *
  * @param cid идентификатор клиентского события
+ *
  */
 void awh::unit::Server::unlinkClient(const event::id_t cid) noexcept {
 	/**
@@ -98,6 +103,7 @@ void awh::unit::Server::unlinkClient(const event::id_t cid) noexcept {
  * @brief Метод удаления всех клиентов серверного события
  *
  * @param sid идентификатор серверного события
+ *
  */
 void awh::unit::Server::unlinkServerClients(const event::id_t sid) noexcept {
 	/**
@@ -154,6 +160,7 @@ void awh::unit::Server::unlinkServerClients(const event::id_t sid) noexcept {
  *
  * @param sid идентификатор серверного события
  * @param cid идентификатор клиентского события
+ *
  */
 void awh::unit::Server::linkClient(const event::id_t sid, const event::id_t cid) noexcept {
 	/**
@@ -197,6 +204,7 @@ void awh::unit::Server::linkClient(const event::id_t sid, const event::id_t cid)
  * @brief Метод запуска/остановки работы сервера
  *
  * @param status статус запуска/остановки сервера
+ *
  */
 void awh::unit::Server::launch(const event::status_t status) noexcept {
 	/**
@@ -317,6 +325,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
  *
  * @param old старый идентификатор процесса
  * @param pid текущий идентификатор процесса
+ *
  */
 void awh::unit::Server::rebase(const pid_t old, const pid_t pid) noexcept {
 	// Выполняем функцию обратного вызова
@@ -327,6 +336,7 @@ void awh::unit::Server::rebase(const pid_t old, const pid_t pid) noexcept {
  *
  * @param pid    идентификатор процесса
  * @param signal сигнал с которым завершился процесс
+ *
  */
 void awh::unit::Server::exit(const pid_t pid, const int32_t signal) noexcept {
 	// Выполняем функцию обратного вызова
@@ -337,6 +347,7 @@ void awh::unit::Server::exit(const pid_t pid, const int32_t signal) noexcept {
  *
  * @param pid  идентификатор процесса
  * @param size размер отправленного сообщения
+ *
  */
 void awh::unit::Server::sending(const pid_t pid, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -348,6 +359,7 @@ void awh::unit::Server::sending(const pid_t pid, const size_t size) noexcept {
  * @param eid  идентификатор события
  * @param size размер данных для записи
  * @param ctx  промежуточный контекст для передачи в функцию обратного вызова
+ *
  */
 void awh::unit::Server::write(const event::id_t eid, const size_t size, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
@@ -358,6 +370,7 @@ void awh::unit::Server::write(const event::id_t eid, const size_t size, void * c
  *
  * @param eid идентификатор сервера
  * @param cid идентификатор клиента
+ *
  */
 void awh::unit::Server::accept(const event::id_t eid, const event::id_t cid) noexcept {
 	// Устанавливаем функцию обратного вызова на событие изменения действий клиента
@@ -387,6 +400,7 @@ void awh::unit::Server::accept(const event::id_t eid, const event::id_t cid) noe
  * @param eid    идентификатор события
  * @param action действие сервера
  * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
+ *
  */
 void awh::unit::Server::action(const event::id_t eid, const event::action_t action, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
@@ -397,6 +411,7 @@ void awh::unit::Server::action(const event::id_t eid, const event::action_t acti
  *
  * @param pid    идентификатор события
  * @param status новый статус кластера
+ *
  */
 void awh::unit::Server::status(const pid_t pid, const event::status_t status) noexcept {
 	// Выполняем функцию обратного вызова
@@ -408,6 +423,7 @@ void awh::unit::Server::status(const pid_t pid, const event::status_t status) no
  * @param eid    идентификатор события
  * @param status новый статус сервера
  * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
+ *
  */
 void awh::unit::Server::status(const event::id_t eid, const event::status_t status, void * ctx) noexcept {
 	// Если статус сервера представляет из себя уничтожение
@@ -434,6 +450,7 @@ void awh::unit::Server::status(const event::id_t eid, const event::status_t stat
  *
  * @param eid  идентификатор события
  * @param info информационные метаданные о дейтаграммном пакете
+ *
  */
 void awh::unit::Server::traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept {
 	// Выполняем функцию обратного вызова
@@ -444,6 +461,7 @@ void awh::unit::Server::traffic(const event::id_t eid, const net::dgram_info_t &
  *
  * @param pid   идентификатор процесса
  * @param event флаг события кластера
+ *
  */
 void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept {
 	/**
@@ -501,6 +519,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
  * @param pid  идентификатор процесса
  * @param data данные полученного сообщения
  * @param size размер данных полученного сообщения
+ *
  */
 void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -513,6 +532,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
  * @param data данные события получения данных сервером
  * @param size размер данных события получения данных сервером
  * @param ctx  промежуточный контекст для передачи в функцию обратного вызова
+ *
  */
 void awh::unit::Server::read(const event::id_t eid, const uint8_t * data, const size_t size, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
@@ -524,6 +544,7 @@ void awh::unit::Server::read(const event::id_t eid, const uint8_t * data, const 
  * @param pid    идентификатор процесса
  * @param status статус доступности очереди
  * @param size   размер доступных данных очереди
+ *
  */
 void awh::unit::Server::available(const pid_t pid, const event::status_t status, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -536,6 +557,7 @@ void awh::unit::Server::available(const pid_t pid, const event::status_t status,
  * @param status статус доступности очереди
  * @param size   размер доступных данных очереди
  * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
+ *
  */
 void awh::unit::Server::available(const event::id_t eid, const event::status_t status, const size_t size, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
@@ -549,6 +571,7 @@ void awh::unit::Server::available(const event::id_t eid, const event::status_t s
  * @param delay  задержка таймаута в миллисекундах
  * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
  * @return       нужно ли завершить клиента после истечения таймаута
+ *
  */
 bool awh::unit::Server::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay, void * ctx) noexcept {
 	// Выполняем получение идентификатора функции обратного вызова
@@ -566,6 +589,7 @@ bool awh::unit::Server::timeout(const event::id_t eid, const event::action_t act
  * @param pid         идентификатор процесса
  * @param error       тип ошибки
  * @param description описание ошибки
+ *
  */
 void awh::unit::Server::error(const pid_t pid, const event::error_t error, const string & description) noexcept {
 	// Выполняем функцию обратного вызова
@@ -578,6 +602,7 @@ void awh::unit::Server::error(const pid_t pid, const event::error_t error, const
  * @param error       тип ошибки
  * @param description описание ошибки
  * @param ctx         промежуточный контекст для передачи в функцию обратного вызова
+ *
  */
 void awh::unit::Server::error(const event::id_t eid, const event::error_t error, const string & description, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
@@ -591,6 +616,7 @@ void awh::unit::Server::error(const event::id_t eid, const event::error_t error,
  * @param data  данные, которые не получилось отправить
  * @param size  размер данных, которые не получилось отправить
  * @param ctx   промежуточный контекст для передачи в функцию обратного вызова
+ *
  */
 void awh::unit::Server::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
@@ -601,6 +627,7 @@ void awh::unit::Server::spool(const event::id_t eid, const event::send_error_t e
  *
  * @param eid идентификатор события
  * @return    результат проверки актуальности события
+ *
  */
 bool awh::unit::Server::isActual(const event::id_t eid) const noexcept {
 	// Проверяем есть ли событие сервера в списке событий сервера
@@ -611,6 +638,7 @@ bool awh::unit::Server::isActual(const event::id_t eid) const noexcept {
  *
  * @param eid идентификатор события
  * @return    результат выполнения очистки
+ *
  */
 bool awh::unit::Server::clearBlacklist(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
@@ -625,6 +653,7 @@ bool awh::unit::Server::clearBlacklist(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события
  * @return    результат выполнения очистки
+ *
  */
 bool awh::unit::Server::clearWhitelist(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
@@ -640,6 +669,7 @@ bool awh::unit::Server::clearWhitelist(const event::id_t eid) noexcept {
  * @param eid   идентификатор события
  * @param value значение адреса события
  * @return      результат выполнения установки
+ *
  */
 bool awh::unit::Server::addToBlacklist(const event::id_t eid, string_view value) noexcept {
 	// Если событие сервера является актуальным
@@ -655,6 +685,7 @@ bool awh::unit::Server::addToBlacklist(const event::id_t eid, string_view value)
  * @param eid   идентификатор события
  * @param value значение адреса события
  * @return      результат выполнения установки
+ *
  */
 bool awh::unit::Server::addToWhitelist(const event::id_t eid, string_view value) noexcept {
 	// Если событие сервера является актуальным
@@ -670,6 +701,7 @@ bool awh::unit::Server::addToWhitelist(const event::id_t eid, string_view value)
  * @param eid   идентификатор события
  * @param value адрес для удаления из чёрного списка
  * @return      результат выполнения удаления
+ *
  */
 bool awh::unit::Server::removeFromBlacklist(const event::id_t eid, string_view value) noexcept {
 	// Если событие сервера является актуальным
@@ -685,6 +717,7 @@ bool awh::unit::Server::removeFromBlacklist(const event::id_t eid, string_view v
  * @param eid   идентификатор события
  * @param value адрес для удаления из белого списка
  * @return      результат выполнения удаления
+ *
  */
 bool awh::unit::Server::removeFromWhitelist(const event::id_t eid, string_view value) noexcept {
 	// Если событие сервера является актуальным
@@ -699,6 +732,7 @@ bool awh::unit::Server::removeFromWhitelist(const event::id_t eid, string_view v
  *
  * @param eid идентификатор события
  * @return    чёрный список события
+ *
  */
 const unordered_map <string, awh::event::address_t> & awh::unit::Server::getFromBlacklist(const event::id_t eid) const noexcept {
 	// Переменная результата
@@ -715,6 +749,7 @@ const unordered_map <string, awh::event::address_t> & awh::unit::Server::getFrom
  *
  * @param eid идентификатор события
  * @return    белый список события
+ *
  */
 const unordered_map <string, awh::event::address_t> & awh::unit::Server::getFromWhitelist(const event::id_t eid) const noexcept {
 	// Переменная результата
@@ -731,6 +766,7 @@ const unordered_map <string, awh::event::address_t> & awh::unit::Server::getFrom
  *
  * @param eid идентификатор события сервера
  * @return    результат выполнения фиксации
+ *
  */
 bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 	// Переменная результата
@@ -807,6 +843,7 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события сервера
  * @return    результат выполнения запуска
+ *
  */
 bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 	// Переменная результата
@@ -863,6 +900,7 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события
  * @return    результат выполнения приостановки
+ *
  */
 bool awh::unit::Server::pause(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
@@ -877,6 +915,7 @@ bool awh::unit::Server::pause(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события
  * @return    результат выполнения возобновления
+ *
  */
 bool awh::unit::Server::resume(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
@@ -892,6 +931,7 @@ bool awh::unit::Server::resume(const event::id_t eid) noexcept {
  * @param eid идентификатор события сервера
  * @param ctx указатель на контекст события
  * @return    результат выполнения установки
+ *
  */
 bool awh::unit::Server::setContext(const event::id_t eid, void * ctx) noexcept {
 	// Переменная результата
@@ -949,6 +989,7 @@ bool awh::unit::Server::setContext(const event::id_t eid, void * ctx) noexcept {
  * @param eid идентификатор события сервера
  * @param max максимальное количество входящих соединений
  * @return    результат выполнения перевода в режим прослушивания
+ *
  */
 bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexcept {
 	// Переменная результата
@@ -1013,6 +1054,7 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexce
  *
  * @param eid идентификатор события клиента
  * @return    результат получения данных
+ *
  */
 bool awh::unit::Server::recv(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
@@ -1029,6 +1071,7 @@ bool awh::unit::Server::recv(const event::id_t eid) noexcept {
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
  * @return       количество байт данных, отправленных клиенту
+ *
  */
 size_t awh::unit::Server::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Если событие сервера является актуальным
@@ -1044,6 +1087,7 @@ size_t awh::unit::Server::send(const event::id_t eid, const void * buffer, const
  * @param eid  идентификатор события-источника
  * @param dest идентификатор события-приёмника
  * @return     результат выполнения объединения
+ *
  */
 bool awh::unit::Server::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	// Если событие сервера является актуальным
@@ -1058,6 +1102,7 @@ bool awh::unit::Server::splice(const event::id_t eid, const event::id_t dest) no
  *
  * @param eid идентификатор события сервера
  * @return    опции сервера
+ *
  */
 uint16_t awh::unit::Server::getOptions(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1073,6 +1118,7 @@ uint16_t awh::unit::Server::getOptions(const event::id_t eid) const noexcept {
  * @param eid     идентификатор события сервера
  * @param options опции сервера для установки
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::Server::setOptions(const event::id_t eid, const uint16_t options) noexcept {
 	// Если событие сервера является актуальным
@@ -1089,6 +1135,7 @@ bool awh::unit::Server::setOptions(const event::id_t eid, const uint16_t options
  * @param option опция сервера для установки
  * @param mode   режим установки опции сервера
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Server::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
 	// Если событие сервера является актуальным
@@ -1103,6 +1150,7 @@ bool awh::unit::Server::setOption(const event::id_t eid, const uint16_t option, 
  *
  * @param eid идентификатор события сервера
  * @return    метаданные последнего принятого дейтаграммного пакета
+ *
  */
 awh::net::dgram_info_t awh::unit::Server::getTrafficInfo(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1117,6 +1165,7 @@ awh::net::dgram_info_t awh::unit::Server::getTrafficInfo(const event::id_t eid) 
  *
  * @param eid идентификатор события сервера
  * @return    количество хопов последнего принятого пакета
+ *
  */
 uint8_t awh::unit::Server::getCountHops(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1132,6 +1181,7 @@ uint8_t awh::unit::Server::getCountHops(const event::id_t eid) const noexcept {
  * @param eid  идентификатор события сервера
  * @param hops количество хопов последнего принятого пакета
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::Server::setCountHops(const event::id_t eid, const uint8_t hops) noexcept {
 	// Если событие сервера является актуальным
@@ -1146,6 +1196,7 @@ bool awh::unit::Server::setCountHops(const event::id_t eid, const uint8_t hops) 
  *
  * @param eid идентификатор события сервера
  * @return    максимальное количество хопов
+ *
  */
 awh::event::hops_t awh::unit::Server::getHops(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1161,6 +1212,7 @@ awh::event::hops_t awh::unit::Server::getHops(const event::id_t eid) const noexc
  * @param eid  идентификатор события сервера
  * @param hops максимальное количество хопов
  * @return     результат работы функции
+ *
  */
 bool awh::unit::Server::setHops(const event::id_t eid, const event::hops_t hops) noexcept {
 	// Если событие сервера является актуальным
@@ -1175,6 +1227,7 @@ bool awh::unit::Server::setHops(const event::id_t eid, const event::hops_t hops)
  *
  * @param eid идентификатор события сервера
  * @return    сетевой интерфейс сервера
+ *
  */
 string awh::unit::Server::getIface(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1190,6 +1243,7 @@ string awh::unit::Server::getIface(const event::id_t eid) const noexcept {
  * @param eid  идентификатор события сервера
  * @param name имя сетевого интерфейса для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::Server::setIface(const event::id_t eid, string_view name) noexcept {
 	// Если событие сервера является актуальным
@@ -1204,6 +1258,7 @@ bool awh::unit::Server::setIface(const event::id_t eid, string_view name) noexce
  *
  * @param eid идентификатор события сервера
  * @return    порт сервера
+ *
  */
 uint16_t awh::unit::Server::getPort(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1219,6 +1274,7 @@ uint16_t awh::unit::Server::getPort(const event::id_t eid) const noexcept {
  * @param eid  идентификатор события сервера
  * @param port порт сервера для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::Server::setPort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие сервера является актуальным
@@ -1234,6 +1290,7 @@ bool awh::unit::Server::setPort(const event::id_t eid, const uint16_t port) noex
  * @param eid     идентификатор события сервера
  * @param address тип адреса сервера
  * @return        значение адреса сервера
+ *
  */
 string awh::unit::Server::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
 	// Если событие сервера является актуальным
@@ -1250,6 +1307,7 @@ string awh::unit::Server::getAddress(const event::id_t eid, const event::address
  * @param address тип адреса сервера
  * @param value   значение адреса сервера
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::Server::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
 	// Если событие сервера является актуальным
@@ -1266,6 +1324,7 @@ bool awh::unit::Server::setAddress(const event::id_t eid, const event::address_t
  * @param address тип адреса сервера
  * @param value   значение адреса сервера
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::Server::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
 	// Если событие сервера является актуальным
@@ -1282,6 +1341,7 @@ bool awh::unit::Server::setAddress(const event::id_t eid, const event::address_t
  * @param address тип адреса сервера
  * @param value   объект для извлечения адреса сервера
  * @return        результат выполнения извлечения адреса сервера
+ *
  */
 bool awh::unit::Server::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Если событие сервера является актуальным
@@ -1296,6 +1356,7 @@ bool awh::unit::Server::getAddress(const event::id_t eid, const event::address_t
  *
  * @param eid идентификатор события сервера
  * @return    MTU сетевого интерфейса
+ *
  */
 uint16_t awh::unit::Server::getMaximumTransmissionUnit(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1311,6 +1372,7 @@ uint16_t awh::unit::Server::getMaximumTransmissionUnit(const event::id_t eid) co
  * @param eid идентификатор события сервера
  * @param mtu размер MTU интерфейса
  * @return    результат установки MTU сетевого интерфейса
+ *
  */
 bool awh::unit::Server::setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept {
 	// Если событие сервера является актуальным
@@ -1325,6 +1387,7 @@ bool awh::unit::Server::setMaximumTransmissionUnit(const event::id_t eid, const 
  *
  * @param eid идентификатор события сервера
  * @return    режим трансляции пакетов (unicast, multicast, broadcast)
+ *
  */
 awh::event::delivery_mode_t awh::unit::Server::getDelivery(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1340,6 +1403,7 @@ awh::event::delivery_mode_t awh::unit::Server::getDelivery(const event::id_t eid
  * @param eid      идентификатор события сервера
  * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
  * @return         результат выполнения установки
+ *
  */
 bool awh::unit::Server::setDelivery(const event::id_t eid, const event::delivery_mode_t delivery) noexcept {
 	// Если событие сервера является актуальным
@@ -1355,6 +1419,7 @@ bool awh::unit::Server::setDelivery(const event::id_t eid, const event::delivery
  * @param eid    идентификатор события сервера
  * @param action тип действия сервера
  * @return       размер буфера сервера
+ *
  */
 size_t awh::unit::Server::getBufferSize(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если событие сервера является актуальным
@@ -1371,6 +1436,7 @@ size_t awh::unit::Server::getBufferSize(const event::id_t eid, const event::acti
  * @param action тип действия сервера
  * @param size   размер буфера сервера
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Server::setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept {
 	// Если событие сервера является актуальным
@@ -1385,6 +1451,7 @@ bool awh::unit::Server::setBufferSize(const event::id_t eid, const event::action
  *
  * @param eid идентификатор события
  * @return    режим использования таймаута на чтение события
+ *
  */
 awh::event::usage_t awh::unit::Server::getUsageReadTimeout(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1399,6 +1466,7 @@ awh::event::usage_t awh::unit::Server::getUsageReadTimeout(const event::id_t eid
  *
  * @param eid   идентификатор события
  * @param usage режим использования таймаута на чтение события (reusable или disposable)
+ *
  */
 void awh::unit::Server::setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept {
 	// Если событие сервера является актуальным
@@ -1412,6 +1480,7 @@ void awh::unit::Server::setUsageReadTimeout(const event::id_t eid, const event::
  * @param eid    идентификатор события сервера
  * @param action тип действия сервера
  * @return       значение таймаута в миллисекундах
+ *
  */
 uint32_t awh::unit::Server::getTimeout(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если событие сервера является актуальным
@@ -1427,6 +1496,7 @@ uint32_t awh::unit::Server::getTimeout(const event::id_t eid, const event::actio
  * @param eid     идентификатор события сервера
  * @param action  тип действия сервера
  * @param timeout значение таймаута в миллисекундах
+ *
  */
 void awh::unit::Server::setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept {
 	// Если событие сервера является актуальным
@@ -1441,6 +1511,7 @@ void awh::unit::Server::setTimeout(const event::id_t eid, const event::action_t 
  * @param limiting  режим ограничения пропускной способности сервера (egress или ingress)
  * @param bandwidth пропускная способность сервера для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
  * @return          результат выполнения установки
+ *
  */
 bool awh::unit::Server::bandwidth(const event::id_t eid, const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Если событие сервера является актуальным
@@ -1458,6 +1529,7 @@ bool awh::unit::Server::bandwidth(const event::id_t eid, const event::limiting_t
  * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
  * @param intvl интервал между пакетами keep-alive в секундах
  * @return      результат выполнения установки
+ *
  */
 bool awh::unit::Server::keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Если событие сервера является актуальным
@@ -1472,6 +1544,7 @@ bool awh::unit::Server::keepAlive(const event::id_t eid, const int32_t cnt, cons
  *
  * @param eid идентификатор события сервера
  * @return    значение DSCP
+ *
  */
 awh::event::dscp_t awh::unit::Server::getDifferentiatedServicesCodePoint(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1487,6 +1560,7 @@ awh::event::dscp_t awh::unit::Server::getDifferentiatedServicesCodePoint(const e
  * @param eid  идентификатор события сервера
  * @param dscp значение DSCP
  * @return     результат работы функции
+ *
  */
 bool awh::unit::Server::setDifferentiatedServicesCodePoint(const event::id_t eid, const event::dscp_t dscp) const noexcept {
 	// Если событие сервера является актуальным
@@ -1501,6 +1575,7 @@ bool awh::unit::Server::setDifferentiatedServicesCodePoint(const event::id_t eid
  *
  * @param eid идентификатор события сервера
  * @return    режим обнаружения максимального размера пакета (MTU)
+ *
  */
 awh::event::mtu_discover_t awh::unit::Server::getMaximumTransmissionUnitDiscover(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1516,6 +1591,7 @@ awh::event::mtu_discover_t awh::unit::Server::getMaximumTransmissionUnitDiscover
  * @param eid  идентификатор события сервера
  * @param mode режим обнаружения максимального размера пакета (MTU)
  * @return     результат работы функции
+ *
  */
 bool awh::unit::Server::setMaximumTransmissionUnitDiscover(const event::id_t eid, const event::mtu_discover_t mode) const noexcept {
 	// Если событие сервера является актуальным
@@ -1534,6 +1610,7 @@ bool awh::unit::Server::setMaximumTransmissionUnitDiscover(const event::id_t eid
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Server::membership(const event::id_t eid, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
 	// Если событие сервера является актуальным
@@ -1552,6 +1629,7 @@ bool awh::unit::Server::membership(const event::id_t eid, const event::mode_t mo
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Server::membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept {
 	// Если событие сервера является актуальным
@@ -1763,6 +1841,7 @@ void awh::unit::Server::start() noexcept {
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::unit::Server::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
@@ -1806,6 +1885,7 @@ void awh::unit::Server::callback(const callback_t & callback) noexcept {
  * @brief Метод уничтожения события сервера
  *
  * @param eid идентификатор события для уничтожения
+ *
  */
 void awh::unit::Server::destroy(const event::id_t eid) noexcept {
 	// Если в списке событий есть события
@@ -1839,6 +1919,7 @@ void awh::unit::Server::destroy(const event::id_t eid) noexcept {
  * @param type     тип события
  * @param protocol протокол события
  * @return         идентификатор созданного серверного события
+ *
  */
 awh::event::id_t awh::unit::Server::issue(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	// Переменная результата
@@ -1893,6 +1974,7 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
  * @brief Метод установки названия кластера
  *
  * @param name название кластера для установки
+ *
  */
 void awh::unit::Server::clusterName(string_view name) noexcept {
 	// Устанавливаем название кластера
@@ -1906,6 +1988,7 @@ void awh::unit::Server::clusterName(string_view name) noexcept {
  * @brief Метод получения семейства кластера
  *
  * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
+ *
  */
 awh::unit::cluster_t::family_t awh::unit::Server::clusterFamily() const noexcept {
 	// Если кластер инициализирован
@@ -1924,6 +2007,7 @@ awh::unit::cluster_t::family_t awh::unit::Server::clusterFamily() const noexcept
  * @brief Метод получения режима активации кластера
  *
  * @return режим активации кластера
+ *
  */
 awh::event::mode_t awh::unit::Server::clusterMode() const noexcept {
 	// Извлекаем режим активации кластера
@@ -1933,6 +2017,7 @@ awh::event::mode_t awh::unit::Server::clusterMode() const noexcept {
  * @brief Метод установки режима работы кластера
  *
  * @param mode режим активации/деактивации кластера
+ *
  */
 void awh::unit::Server::clusterMode(const event::mode_t mode) noexcept {
 	// Устанавливаем режим активации кластера
@@ -1942,6 +2027,7 @@ void awh::unit::Server::clusterMode(const event::mode_t mode) noexcept {
  * @brief Метод получения максимального количества процессов
  *
  * @return максимальное количество процессов
+ *
  */
 uint16_t awh::unit::Server::clusterCount() const noexcept {
 	// Если кластер инициализирован
@@ -1955,6 +2041,7 @@ uint16_t awh::unit::Server::clusterCount() const noexcept {
  * @brief Метод установки максимального количества процессов
  *
  * @param count максимальное количество процессов
+ *
  */
 void awh::unit::Server::clusterCount(const uint16_t count) noexcept {
 	/**
@@ -1999,6 +2086,7 @@ void awh::unit::Server::clusterCount(const uint16_t count) noexcept {
  * @brief Метод получения списка дочерних процессов
  *
  * @return список дочерних процессов
+ *
  */
 unordered_set <pid_t> awh::unit::Server::clusterWorkers() const noexcept {
 	// Если кластер инициализирован
@@ -2014,6 +2102,7 @@ unordered_set <pid_t> awh::unit::Server::clusterWorkers() const noexcept {
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::unit::Server::clusterSend(const void * buffer, const size_t size) noexcept {
 	// Если кластер инициализирован
@@ -2030,6 +2119,7 @@ size_t awh::unit::Server::clusterSend(const void * buffer, const size_t size) no
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::unit::Server::clusterSend(const pid_t pid, const void * buffer, const size_t size) noexcept {
 	// Если кластер инициализирован
@@ -2045,6 +2135,7 @@ size_t awh::unit::Server::clusterSend(const pid_t pid, const void * buffer, cons
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::unit::Server::clusterBroadcast(const void * buffer, const size_t size) noexcept {
 	// Если кластер инициализирован
@@ -2058,6 +2149,7 @@ size_t awh::unit::Server::clusterBroadcast(const void * buffer, const size_t siz
  * @brief Метод установки флага автоматического возрождения процессов
  *
  * @param mode флаг возрождения процессов
+ *
  */
 void awh::unit::Server::clusterRebirth(const bool mode) noexcept {
 	// Устанавливаем флаг автоматического возрождения процессов
@@ -2072,6 +2164,7 @@ void awh::unit::Server::clusterRebirth(const bool mode) noexcept {
  *
  * @param limit  максимальное число подряд идущих быстрых падений до остановки кластера (0 — без ограничения)
  * @param window временное окно «быстрого» (раннего) падения процесса в миллисекундах
+ *
  */
 void awh::unit::Server::clusterRebirthLimit(const uint16_t limit, const uint64_t window) noexcept {
 	// Устанавливаем максимальное число подряд идущих быстрых падений процессов
@@ -2087,6 +2180,7 @@ void awh::unit::Server::clusterRebirthLimit(const uint16_t limit, const uint64_t
  * @brief Метод получения типа протокола передачи данных между воркерами
  *
  * @return тип протокола передачи данных между воркерами
+ *
  */
 awh::event::type_t awh::unit::Server::clusterGetTypeEventMessage() const noexcept {
 	// Если кластер инициализирован
@@ -2100,6 +2194,7 @@ awh::event::type_t awh::unit::Server::clusterGetTypeEventMessage() const noexcep
  * @brief Метод установки типа протокола передачи данных между воркерами
  *
  * @param type тип протокола передачи данных между воркерами для установки
+ *
  */
 void awh::unit::Server::clusterSetTypeEventMessage(const event::type_t type) noexcept {
 	// Если кластер инициализирован
@@ -2113,6 +2208,7 @@ void awh::unit::Server::clusterSetTypeEventMessage(const event::type_t type) noe
  * @param pid    идентификатор процесса
  * @param action тип действия события
  * @return       размер буфера события
+ *
  */
 size_t awh::unit::Server::clusterGetBufferSize(const pid_t pid, const event::action_t action) const noexcept {
 	// Если кластер инициализирован
@@ -2129,6 +2225,7 @@ size_t awh::unit::Server::clusterGetBufferSize(const pid_t pid, const event::act
  * @param action тип действия события
  * @param size   размер буфера события
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Server::clusterSetBufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept {
 	// Если кластер инициализирован
@@ -2143,6 +2240,7 @@ bool awh::unit::Server::clusterSetBufferSize(const pid_t pid, const event::actio
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::unit::Server::Server(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log), _cluster(nullptr) {}
 /**

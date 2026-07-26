@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля обработки сигналов — перехват SIGINT, SIGTERM, SIGSEGV, SIGBUS, SIGILL, SIGFPE и SIGABRT
+ *        через sigaction на POSIX-системах и через signal() на MS Windows с передачей события пользовательскому
+ *        обработчику
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -76,6 +81,7 @@ namespace signals {
 		 *
 		 * @details Структура имеет фиксированный размер меньше PIPE_BUF, поэтому её запись
 		 *          в самопайп атомарна и безопасна внутри обработчика сигнала.
+		 *
 		 */
 		typedef struct Payload {
 			// Идентификатор процесса-отправителя
@@ -112,6 +118,7 @@ namespace signals {
 			 *
 			 * @param signal номер проверяемого сигнала
 			 * @return        признак фатального синхронного сигнала
+			 *
 			 */
 			static bool fatal(const int32_t signal) noexcept {
 				// Определяем принадлежность сигнала к фатальным синхронным
@@ -135,6 +142,7 @@ namespace signals {
 		 * @param sig  номер сигнала полученного системой
 		 * @param info объект информации полученный системой
 		 * @param ctx  передаваемый внутренний контекст
+		 *
 		 */
 		static void handler(const int32_t sig, siginfo_t * info, [[maybe_unused]] void * ctx) noexcept {
 			// Запоминаем текущее значение errno, чтобы не повредить его в прерванном коде
@@ -204,6 +212,7 @@ namespace signals {
 		 *
 		 * @details На MS Windows обработчик сигнала имеет сигнатуру void(int) и не позволяет
 		 *          передать контекст, поэтому синхронизация выносится в область модуля.
+		 *
 		 */
 		static struct Self {
 			// Мьютекс защиты очереди сигналов
@@ -220,6 +229,7 @@ namespace signals {
 		 * @brief Функция фильтр перехватчика сигналов
 		 *
 		 * @param sig номер сигнала полученного системой
+		 *
 		 */
 		static void handler(const int32_t sig) noexcept {
 			// Если перехват сигналов активен
@@ -381,6 +391,7 @@ void awh::Signals::disarm() noexcept {
 	 * @param sig номер полученного сигнала
 	 * @param pid идентификатор процесса-отправителя
 	 * @param uid идентификатор пользователя-отправителя
+	 *
 	 */
 	void awh::Signals::process(const int32_t sig, const pid_t pid, const uid_t uid) noexcept {
 		// Если произошло убийство приложения и установлен объект логирования
@@ -528,6 +539,7 @@ void awh::Signals::disarm() noexcept {
 	 * @brief Метод обработки полученного сигнала вне контекста обработчика
 	 *
 	 * @param sig номер полученного сигнала
+	 *
 	 */
 	void awh::Signals::process(const int32_t sig) noexcept {
 		// Снимаем перехватчики, чтобы повторный сигнал обрабатывался системой по умолчанию
@@ -812,6 +824,7 @@ void awh::Signals::start() noexcept {
  * @brief Метод установки функции обратного вызова, которая должна сработать при получении сигнала
  *
  * @param callback функция обратного вызова
+ *
  */
 void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
 	// Формируем блокировку операций управления
@@ -824,6 +837,7 @@ void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Signals::Signals(const fmk_t * fmk, const log_t * log) noexcept :
  _mode(false), _exit(false), _fmk(fmk), _log(log), _callback(nullptr) {

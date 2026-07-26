@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация базового класса модулей — общая логика привязки модуля к движку ввода-вывода,
+ *        управления идентификатором события, состоянием и подпиской на функции обратного вызова
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -250,6 +254,7 @@ namespace {
  * @brief Метод вывода полученного сигнала
  *
  * @param sig идентификатор сигнала
+ *
  */
 void awh::unit::Unit::signal(const int32_t sig) const noexcept {
 	// Если процесс является дочерним
@@ -309,6 +314,7 @@ void awh::unit::Unit::signal(const int32_t sig) const noexcept {
  * @brief Метод принудительного пинка базе событий
  *
  * @return результат выполнения операции
+ *
  */
 bool awh::unit::Unit::kick() noexcept {
 	// Выполняем принудительный пинок базе событий
@@ -318,6 +324,7 @@ bool awh::unit::Unit::kick() noexcept {
  * @brief Метод определения мастер-процесса
  *
  * @return результат проверки
+ *
  */
 bool awh::unit::Unit::master() const noexcept {
 	// Возвращаем результат проверки
@@ -327,6 +334,7 @@ bool awh::unit::Unit::master() const noexcept {
  * @brief Метод проверки на запуск работы
  *
  * @return результат проверки
+ *
  */
 bool awh::unit::Unit::working() const noexcept {
 	// Выполняем проверку запущена ли работа базы событий
@@ -366,6 +374,7 @@ void awh::unit::Unit::reinit() noexcept {
  * @brief Метод получения количества событий в базе событий
  *
  * @return количество событий
+ *
  */
 size_t awh::unit::Unit::events() const noexcept {
 	// Возвращаем количество событий в базе событий
@@ -377,6 +386,7 @@ size_t awh::unit::Unit::events() const noexcept {
  * @note База событий едина на весь процесс. Реально цикл событий останавливает только
  *       юнит-лаунчер (тот, что его запустил): он сбрасывает флаг работы и будит базу.
  *       Остальные юниты лишь переводят себя в статус DESTROYED, не затрагивая общий цикл.
+ *
  */
 void awh::unit::Unit::stop() noexcept {
 	/**
@@ -426,6 +436,7 @@ void awh::unit::Unit::stop() noexcept {
  *       блокирующий — поток крутится в цикле опроса до остановки. Остальные юниты,
  *       обнаружив, что база уже работает, цикл не запускают, не блокируются и лишь
  *       переводят себя в статус LAUNCHED.
+ *
  */
 void awh::unit::Unit::start() noexcept {
 	/**
@@ -498,6 +509,7 @@ void awh::unit::Unit::start() noexcept {
  *
  * @param eid идентификатор события
  * @return    результат выполнения перестройки
+ *
  */
 bool awh::unit::Unit::rebuild(const event::id_t eid) noexcept {
 	// Пересоздаём дескриптор события, сохраняя само событие (его идентификатор, коллбэки, параметры)
@@ -508,6 +520,7 @@ bool awh::unit::Unit::rebuild(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события
  * @return    тип события
+ *
  */
 awh::event::type_t awh::unit::Unit::type(const event::id_t eid) const noexcept {
 	// Возвращаем тип события
@@ -518,6 +531,7 @@ awh::event::type_t awh::unit::Unit::type(const event::id_t eid) const noexcept {
  *
  * @param eid идентификатор события
  * @return    тип узла события
+ *
  */
 awh::event::node_t awh::unit::Unit::node(const event::id_t eid) const noexcept {
 	// Возвращаем тип узла события
@@ -528,6 +542,7 @@ awh::event::node_t awh::unit::Unit::node(const event::id_t eid) const noexcept {
  *
  * @param eid идентификатор события
  * @return    семейство адресов
+ *
  */
 awh::event::family_t awh::unit::Unit::family(const event::id_t eid) const noexcept {
 	// Возвращаем семейство адресов
@@ -538,6 +553,7 @@ awh::event::family_t awh::unit::Unit::family(const event::id_t eid) const noexce
  *
  * @param eid идентификатор события
  * @return    статус события
+ *
  */
 awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexcept {
 	// Возвращаем статус события
@@ -548,6 +564,7 @@ awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexce
  *
  * @param id идентификатор события
  * @return   протокол события
+ *
  */
 awh::event::protocol_t awh::unit::Unit::protocol(const event::id_t id) const noexcept {
 	// Возвращаем протокол события
@@ -557,6 +574,7 @@ awh::event::protocol_t awh::unit::Unit::protocol(const event::id_t id) const noe
  * @brief Метод получения типа внутренних таймеров
  *
  * @return тип таймера для событий сетевого движка
+ *
  */
 awh::event::timer_t awh::unit::Unit::getInternalTimer() const noexcept {
 	// Возвращаем тип таймера для событий сетевого движка
@@ -566,6 +584,7 @@ awh::event::timer_t awh::unit::Unit::getInternalTimer() const noexcept {
  * @brief Метод установки типа внутренних таймеров
  *
  * @param timer тип таймера для событий сетевого движка
+ *
  */
 void awh::unit::Unit::setInternalTimer(const event::timer_t timer) noexcept {
 	// Устанавливаем тип таймера для событий сетевого движка
@@ -576,6 +595,7 @@ void awh::unit::Unit::setInternalTimer(const event::timer_t timer) noexcept {
  *
  * @param limiting  режим ограничения пропускной способности события (egress или ingress)
  * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+ *
  */
 void awh::unit::Unit::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Выполняем установку пропускной способности события для события
@@ -585,6 +605,7 @@ void awh::unit::Unit::bandwidth(const event::limiting_t limiting, string_view ba
  * @brief Метод установки времени блокировки базы событий в ожидании событий
  *
  * @param timeout время ожидания событий в миллисекундах
+ *
  */
 void awh::unit::Unit::rate(const int32_t timeout) noexcept {
 	// Устанавливаем время блокировки базы событий
@@ -594,6 +615,7 @@ void awh::unit::Unit::rate(const int32_t timeout) noexcept {
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::unit::Unit::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова при краше приложения
@@ -607,6 +629,7 @@ void awh::unit::Unit::callback(const callback_t & callback) noexcept {
  * @brief Метод активации/деактивации перехвата сигналов
  *
  * @param mode флаг активации
+ *
  */
 void awh::unit::Unit::interception(const event::mode_t mode) noexcept {
 	// Если флаг перехвата сигналов не соответствует
@@ -637,6 +660,7 @@ void awh::unit::Unit::interception(const event::mode_t mode) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::unit::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _timeout(-1),

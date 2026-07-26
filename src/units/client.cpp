@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля клиента — установка соединения с удалённым узлом поверх движка ввода-вывода,
+ *        обмен данными, обработка разрыва связи, переподключение и уведомление подписчиков о событиях
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -31,6 +35,7 @@ using namespace placeholders;
  * @brief Метод запуска/остановки работы клиента
  *
  * @param status статус запуска/остановки клиента
+ *
  */
 void awh::unit::Client::launch(const event::status_t status) noexcept {
 	/**
@@ -74,6 +79,7 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
  *
  * @param eid идентификатор события
  * @param ok  результат подключения
+ *
  */
 void awh::unit::Client::connect(const event::id_t eid, const bool ok) noexcept {
 	// Выполняем функцию обратного вызова
@@ -84,6 +90,7 @@ void awh::unit::Client::connect(const event::id_t eid, const bool ok) noexcept {
  *
  * @param eid  идентификатор события
  * @param size размер данных для записи
+ *
  */
 void awh::unit::Client::write(const event::id_t eid, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -94,6 +101,7 @@ void awh::unit::Client::write(const event::id_t eid, const size_t size) noexcept
  *
  * @param eid    идентификатор события
  * @param status новый статус клиента
+ *
  */
 void awh::unit::Client::status(const event::id_t eid, const event::status_t status) noexcept {
 	// Если событие клиента уничтожено
@@ -113,6 +121,7 @@ void awh::unit::Client::status(const event::id_t eid, const event::status_t stat
  *
  * @param eid    идентификатор события
  * @param action действие клиента
+ *
  */
 void awh::unit::Client::action(const event::id_t eid, const event::action_t action) noexcept {
 	// Выполняем функцию обратного вызова
@@ -123,6 +132,7 @@ void awh::unit::Client::action(const event::id_t eid, const event::action_t acti
  *
  * @param eid  идентификатор события
  * @param info информационные метаданные о дейтаграммном пакете
+ *
  */
 void awh::unit::Client::traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept {
 	// Выполняем функцию обратного вызова
@@ -134,6 +144,7 @@ void awh::unit::Client::traffic(const event::id_t eid, const net::dgram_info_t &
  * @param eid  идентификатор события
  * @param data данные события получения данных клиентом
  * @param size размер данных события получения данных клиентом
+ *
  */
 void awh::unit::Client::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -145,6 +156,7 @@ void awh::unit::Client::read(const event::id_t eid, const uint8_t * data, const 
  * @param eid    идентификатор события
  * @param status статус доступности очереди
  * @param size   размер доступных данных очереди
+ *
  */
 void awh::unit::Client::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -157,6 +169,7 @@ void awh::unit::Client::available(const event::id_t eid, const event::status_t s
  * @param action тип действия для истекшего таймаута
  * @param delay  задержка таймаута в миллисекундах
  * @return       нужно ли завершить клиента после истечения таймаута
+ *
  */
 bool awh::unit::Client::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Выполняем получение идентификатора функции обратного вызова
@@ -174,6 +187,7 @@ bool awh::unit::Client::timeout(const event::id_t eid, const event::action_t act
  * @param eid         идентификатор события
  * @param error       тип ошибки
  * @param description описание ошибки
+ *
  */
 void awh::unit::Client::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
 	// Выполняем функцию обратного вызова
@@ -186,6 +200,7 @@ void awh::unit::Client::error(const event::id_t eid, const event::error_t error,
  * @param error тип ошибки отправки данных
  * @param data  данные, которые не получилось отправить
  * @param size  размер данных, которые не получилось отправить
+ *
  */
 void awh::unit::Client::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -196,6 +211,7 @@ void awh::unit::Client::spool(const event::id_t eid, const event::send_error_t e
  *
  * @param eid идентификатор события
  * @return    результат проверки актуальности события
+ *
  */
 bool awh::unit::Client::isActual(const event::id_t eid) const noexcept {
 	// Проверяем есть ли событие клиента в списке событий клиента
@@ -206,6 +222,7 @@ bool awh::unit::Client::isActual(const event::id_t eid) const noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения фиксации
+ *
  */
 bool awh::unit::Client::commit(const event::id_t eid) noexcept {
 	// Переменная результата
@@ -264,6 +281,7 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения запуска
+ *
  */
 bool awh::unit::Client::launch(const event::id_t eid) noexcept {
 	// Переменная результата
@@ -322,6 +340,7 @@ bool awh::unit::Client::launch(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения приостановки работы
+ *
  */
 bool awh::unit::Client::pause(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
@@ -336,6 +355,7 @@ bool awh::unit::Client::pause(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения возобновления работы
+ *
  */
 bool awh::unit::Client::resume(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
@@ -350,6 +370,7 @@ bool awh::unit::Client::resume(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения отключения
+ *
  */
 bool awh::unit::Client::disconnect(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
@@ -364,6 +385,7 @@ bool awh::unit::Client::disconnect(const event::id_t eid) noexcept {
  *
  * @param ids список идентификаторов событий для подключения
  * @return    результат выполнения подключения
+ *
  */
 bool awh::unit::Client::connect(const vector <event::id_t> & ids) noexcept {
 	// Если количество идентификаторов событий для подключения больше количества событий клиента
@@ -386,6 +408,7 @@ bool awh::unit::Client::connect(const vector <event::id_t> & ids) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат получения данных
+ *
  */
 bool awh::unit::Client::recv(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
@@ -402,6 +425,7 @@ bool awh::unit::Client::recv(const event::id_t eid) noexcept {
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
  * @return       количество байт, отправленных удалённому узлу
+ *
  */
 size_t awh::unit::Client::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Если событие клиента является актуальным
@@ -417,6 +441,7 @@ size_t awh::unit::Client::send(const event::id_t eid, const void * buffer, const
  * @param eid  идентификатор события-источника
  * @param dest идентификатор события-приёмника
  * @return     результат объединения
+ *
  */
 bool awh::unit::Client::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	// Объединение возможно только когда оба события актуальны
@@ -431,6 +456,7 @@ bool awh::unit::Client::splice(const event::id_t eid, const event::id_t dest) no
  *
  * @param eid идентификатор события клиента
  * @return    опции клиента
+ *
  */
 uint16_t awh::unit::Client::getOptions(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -446,6 +472,7 @@ uint16_t awh::unit::Client::getOptions(const event::id_t eid) const noexcept {
  * @param eid     идентификатор события клиента
  * @param options опции клиента для установки
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::Client::setOptions(const event::id_t eid, const uint16_t options) noexcept {
 	// Если событие клиента является актуальным
@@ -462,6 +489,7 @@ bool awh::unit::Client::setOptions(const event::id_t eid, const uint16_t options
  * @param option опция клиента для установки
  * @param mode   режим установки опции клиента
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Client::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
 	// Если событие клиента является актуальным
@@ -476,6 +504,7 @@ bool awh::unit::Client::setOption(const event::id_t eid, const uint16_t option, 
  *
  * @param eid идентификатор события клиента
  * @return    метаданные последнего принятого дейтаграммного пакета
+ *
  */
 awh::net::dgram_info_t awh::unit::Client::getTrafficInfo(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -490,6 +519,7 @@ awh::net::dgram_info_t awh::unit::Client::getTrafficInfo(const event::id_t eid) 
  *
  * @param eid идентификатор события клиента
  * @return    количество хопов последнего принятого пакета
+ *
  */
 uint8_t awh::unit::Client::getCountHops(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -505,6 +535,7 @@ uint8_t awh::unit::Client::getCountHops(const event::id_t eid) const noexcept {
  * @param eid  идентификатор события клиента
  * @param hops количество хопов последнего принятого пакета
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::Client::setCountHops(const event::id_t eid, const uint8_t hops) noexcept {
 	// Если событие клиента является актуальным
@@ -519,6 +550,7 @@ bool awh::unit::Client::setCountHops(const event::id_t eid, const uint8_t hops) 
  *
  * @param eid идентификатор события клиента
  * @return    максимальное количество хопов
+ *
  */
 awh::event::hops_t awh::unit::Client::getHops(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -534,6 +566,7 @@ awh::event::hops_t awh::unit::Client::getHops(const event::id_t eid) const noexc
  * @param eid  идентификатор события клиента
  * @param hops максимальное количество хопов
  * @return     результат работы функции
+ *
  */
 bool awh::unit::Client::setHops(const event::id_t eid, const event::hops_t hops) noexcept {
 	// Если событие клиента является актуальным
@@ -548,6 +581,7 @@ bool awh::unit::Client::setHops(const event::id_t eid, const event::hops_t hops)
  *
  * @param eid идентификатор события клиента
  * @return    сетевой интерфейс клиента
+ *
  */
 string awh::unit::Client::getIface(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -563,6 +597,7 @@ string awh::unit::Client::getIface(const event::id_t eid) const noexcept {
  * @param eid  идентификатор события клиента
  * @param name имя сетевого интерфейса для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::Client::setIface(const event::id_t eid, string_view name) noexcept {
 	// Если событие клиента является актуальным
@@ -577,6 +612,7 @@ bool awh::unit::Client::setIface(const event::id_t eid, string_view name) noexce
  *
  * @param eid идентификатор события
  * @return    внутренний порт события
+ *
  */
 uint16_t awh::unit::Client::getSourcePort(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -592,6 +628,7 @@ uint16_t awh::unit::Client::getSourcePort(const event::id_t eid) const noexcept 
  * @param eid  идентификатор события
  * @param port внутренний порт события
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::Client::setSourcePort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
@@ -606,6 +643,7 @@ bool awh::unit::Client::setSourcePort(const event::id_t eid, const uint16_t port
  *
  * @param eid идентификатор события клиента
  * @return    порт удалённого узла
+ *
  */
 uint16_t awh::unit::Client::getTargetPort(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -621,6 +659,7 @@ uint16_t awh::unit::Client::getTargetPort(const event::id_t eid) const noexcept 
  * @param eid  идентификатор события клиента
  * @param port порт удалённого узла для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::Client::setTargetPort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
@@ -635,6 +674,7 @@ bool awh::unit::Client::setTargetPort(const event::id_t eid, const uint16_t port
  *
  * @param eid идентификатор события клиента
  * @return    адрес хоста целевой машины
+ *
  */
 string awh::unit::Client::getTarget(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -650,6 +690,7 @@ string awh::unit::Client::getTarget(const event::id_t eid) const noexcept {
  * @param eid    идентификатор события клиента
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Client::setTarget(const event::id_t eid, string_view target) noexcept {
 	// Если событие клиента является актуальным
@@ -665,6 +706,7 @@ bool awh::unit::Client::setTarget(const event::id_t eid, string_view target) noe
  * @param eid    идентификатор события клиента
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Client::setTarget(const event::id_t eid, const net::addr_t * target) noexcept {
 	// Если событие клиента является актуальным
@@ -680,6 +722,7 @@ bool awh::unit::Client::setTarget(const event::id_t eid, const net::addr_t * tar
  * @param eid    идентификатор события клиента
  * @param target объект для извлечения адреса хоста целевой машины
  * @return       результат выполнения извлечения адреса хоста целевой машины
+ *
  */
 bool awh::unit::Client::getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept {
 	// Если событие клиента является актуальным
@@ -695,6 +738,7 @@ bool awh::unit::Client::getTarget(const event::id_t eid, unique_ptr <net::addr_t
  * @param eid     идентификатор события клиента
  * @param address тип адреса клиента
  * @return        значение адреса клиента
+ *
  */
 string awh::unit::Client::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
 	// Если событие клиента является актуальным
@@ -711,6 +755,7 @@ string awh::unit::Client::getAddress(const event::id_t eid, const event::address
  * @param address тип адреса клиента
  * @param value   значение адреса клиента
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
 	// Если событие клиента является актуальным
@@ -727,6 +772,7 @@ bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t
  * @param address тип адреса клиента
  * @param value   значение адреса клиента
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
 	// Если событие клиента является актуальным
@@ -743,6 +789,7 @@ bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t
  * @param address тип адреса клиента
  * @param value   объект для извлечения адреса клиента
  * @return        результат выполнения извлечения адреса клиента
+ *
  */
 bool awh::unit::Client::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Если событие клиента является актуальным
@@ -757,6 +804,7 @@ bool awh::unit::Client::getAddress(const event::id_t eid, const event::address_t
  *
  * @param eid идентификатор события клиента
  * @return    MTU сетевого интерфейса
+ *
  */
 uint16_t awh::unit::Client::getMaximumTransmissionUnit(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -772,6 +820,7 @@ uint16_t awh::unit::Client::getMaximumTransmissionUnit(const event::id_t eid) co
  * @param eid идентификатор события клиента
  * @param mtu размер MTU интерфейса
  * @return    результат установки MTU сетевого интерфейса
+ *
  */
 bool awh::unit::Client::setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept {
 	// Если событие клиента является актуальным
@@ -786,6 +835,7 @@ bool awh::unit::Client::setMaximumTransmissionUnit(const event::id_t eid, const 
  *
  * @param eid идентификатор события клиента
  * @return    режим трансляции пакетов (unicast, multicast, broadcast)
+ *
  */
 awh::event::delivery_mode_t awh::unit::Client::getDelivery(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -801,6 +851,7 @@ awh::event::delivery_mode_t awh::unit::Client::getDelivery(const event::id_t eid
  * @param eid      идентификатор события клиента
  * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
  * @return         результат выполнения установки
+ *
  */
 bool awh::unit::Client::setDelivery(const event::id_t eid, const event::delivery_mode_t delivery) noexcept {
 	// Если событие клиента является актуальным
@@ -816,6 +867,7 @@ bool awh::unit::Client::setDelivery(const event::id_t eid, const event::delivery
  * @param eid    идентификатор события клиента
  * @param action тип действия клиента
  * @return       размер буфера клиента
+ *
  */
 size_t awh::unit::Client::getBufferSize(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если событие клиента является актуальным
@@ -832,6 +884,7 @@ size_t awh::unit::Client::getBufferSize(const event::id_t eid, const event::acti
  * @param action тип действия клиента
  * @param size   размер буфера клиента
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Client::setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept {
 	// Если событие клиента является актуальным
@@ -846,6 +899,7 @@ bool awh::unit::Client::setBufferSize(const event::id_t eid, const event::action
  *
  * @param eid идентификатор события
  * @return    режим использования таймаута на чтение события
+ *
  */
 awh::event::usage_t awh::unit::Client::getUsageReadTimeout(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -860,6 +914,7 @@ awh::event::usage_t awh::unit::Client::getUsageReadTimeout(const event::id_t eid
  *
  * @param eid   идентификатор события
  * @param usage режим использования таймаута на чтение события (reusable или disposable)
+ *
  */
 void awh::unit::Client::setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept {
 	// Если событие клиента является актуальным
@@ -873,6 +928,7 @@ void awh::unit::Client::setUsageReadTimeout(const event::id_t eid, const event::
  * @param eid    идентификатор события клиента
  * @param action тип действия клиента
  * @return       значение таймаута в миллисекундах
+ *
  */
 uint32_t awh::unit::Client::getTimeout(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если событие клиента является актуальным
@@ -888,6 +944,7 @@ uint32_t awh::unit::Client::getTimeout(const event::id_t eid, const event::actio
  * @param eid     идентификатор события клиента
  * @param action  тип действия клиента
  * @param timeout значение таймаута в миллисекундах
+ *
  */
 void awh::unit::Client::setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept {
 	// Если событие клиента является актуальным
@@ -902,6 +959,7 @@ void awh::unit::Client::setTimeout(const event::id_t eid, const event::action_t 
  * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
  * @param bandwidth пропускная способность клиента для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
  * @return          результат выполнения установки
+ *
  */
 bool awh::unit::Client::bandwidth(const event::id_t eid, const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Если событие клиента является актуальным
@@ -919,6 +977,7 @@ bool awh::unit::Client::bandwidth(const event::id_t eid, const event::limiting_t
  * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
  * @param intvl интервал между пакетами keep-alive в секундах
  * @return      результат выполнения установки
+ *
  */
 bool awh::unit::Client::keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Если событие клиента является актуальным
@@ -933,6 +992,7 @@ bool awh::unit::Client::keepAlive(const event::id_t eid, const int32_t cnt, cons
  *
  * @param eid идентификатор события клиента
  * @return    значение DSCP
+ *
  */
 awh::event::dscp_t awh::unit::Client::getDifferentiatedServicesCodePoint(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -948,6 +1008,7 @@ awh::event::dscp_t awh::unit::Client::getDifferentiatedServicesCodePoint(const e
  * @param eid  идентификатор события клиента
  * @param dscp значение DSCP
  * @return     результат работы функции
+ *
  */
 bool awh::unit::Client::setDifferentiatedServicesCodePoint(const event::id_t eid, const event::dscp_t dscp) const noexcept {
 	// Если событие клиента является актуальным
@@ -962,6 +1023,7 @@ bool awh::unit::Client::setDifferentiatedServicesCodePoint(const event::id_t eid
  *
  * @param eid идентификатор события клиента
  * @return    текущий режим обнаружения MTU
+ *
  */
 awh::event::mtu_discover_t awh::unit::Client::getMaximumTransmissionUnitDiscover(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -977,6 +1039,7 @@ awh::event::mtu_discover_t awh::unit::Client::getMaximumTransmissionUnitDiscover
  * @param eid  идентификатор события клиента
  * @param mode режим обнаружения максимального размера пакета (MTU)
  * @return     результат работы функции
+ *
  */
 bool awh::unit::Client::setMaximumTransmissionUnitDiscover(const event::id_t eid, const event::mtu_discover_t mode) const noexcept {
 	// Если событие клиента является актуальным
@@ -995,6 +1058,7 @@ bool awh::unit::Client::setMaximumTransmissionUnitDiscover(const event::id_t eid
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
@@ -1013,6 +1077,7 @@ bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mo
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
@@ -1055,6 +1120,7 @@ void awh::unit::Client::start() noexcept {
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::unit::Client::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
@@ -1084,6 +1150,7 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
  * @brief Метод уничтожения события клиента
  *
  * @param eid идентификатор события для уничтожения
+ *
  */
 void awh::unit::Client::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие клиента
@@ -1105,6 +1172,7 @@ void awh::unit::Client::destroy(const event::id_t eid) noexcept {
  * @param type     тип события
  * @param protocol протокол события
  * @return         идентификатор созданного клиента
+ *
  */
 awh::event::id_t awh::unit::Client::issue(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	// Переменная результата
@@ -1166,6 +1234,7 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::unit::Client::Client(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
 /**

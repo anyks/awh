@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл кодирования целых переменной длины QUIC (RFC 9000 §16) —
+ *        функции чтения и записи varint в сетевом порядке байт с длиной 1, 2, 4 или 8 октетов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_PROTO_QUIC_VARINT__
@@ -50,6 +54,7 @@ namespace awh {
 		 *          00 - 1 октет (6 бит), 01 - 2 октета (14 бит),
 		 *          10 - 4 октета (30 бит), 11 - 8 октетов (62 бита).
 		 *          Значения кодируются в сетевом (big-endian) порядке байт.
+		 *
 		 */
 		namespace varint {
 			/**
@@ -57,6 +62,7 @@ namespace awh {
 			 *
 			 * @param value кодируемое число
 			 * @return      размер в октетах (1/2/4/8) или 0, если число превышает 2^62-1
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ size_t size(const uint64_t value) noexcept;
 			/**
@@ -64,6 +70,7 @@ namespace awh {
 			 *
 			 * @param first первый октет закодированного числа
 			 * @return      размер числа в октетах (1/2/4/8)
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ size_t sizeAt(const uint8_t first) noexcept;
 			/**
@@ -73,6 +80,7 @@ namespace awh {
 			 * @param size  доступно байт
 			 * @param value прочитанное число
 			 * @return      количество прочитанных октетов или 0, если данных недостаточно
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ size_t read(const uint8_t * data, const size_t size, uint64_t & value) noexcept;
 			/**
@@ -81,6 +89,7 @@ namespace awh {
 			 * @param output выходной буфер
 			 * @param value  записываемое число (не более 2^62-1)
 			 * @return       количество записанных октетов или 0, если число превышает 2^62-1
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ size_t write(string & output, const uint64_t value) noexcept;
 		};

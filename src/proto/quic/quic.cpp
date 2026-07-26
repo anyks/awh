@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация общих функций протокола QUIC — генерация и проверка идентификаторов соединения,
+ *        расчёт токенов сброса и Retry-целостности, а также человекочитаемые названия типов пакетов,
+ *        фреймов и кодов ошибок
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -46,6 +51,7 @@ awh::quic::Cid::Cid() noexcept : size(0), data{0} {}
  * @param a первый идентификатор соединения
  * @param b второй идентификатор соединения
  * @return  результат сравнения
+ *
  */
 bool awh::quic::operator == (const cid_t & a, const cid_t & b) noexcept {
 	// Идентификаторы равны при совпадении длины и содержимого
@@ -59,6 +65,7 @@ bool awh::quic::operator == (const cid_t & a, const cid_t & b) noexcept {
  * @param length длина идентификаторов, выдаваемых локальным эндпоинтом
  * @param key    извлечённый идентификатор соединения получателя
  * @return       результат извлечения (false - датаграмма не является пакетом QUIC)
+ *
  */
 bool awh::quic::route(const uint8_t * data, const size_t size, const uint8_t length, net::origin_key_t & key) noexcept {
 	// Если данные датаграммы не переданы либо она пустая
@@ -112,6 +119,7 @@ bool awh::quic::route(const uint8_t * data, const size_t size, const uint8_t len
  *
  * @param type тип пакета
  * @return     название типа пакета
+ *
  */
 string_view awh::quic::packetName(const packet_t type) noexcept {
 	/**
@@ -151,6 +159,7 @@ string_view awh::quic::packetName(const packet_t type) noexcept {
  *
  * @param type тип фрейма
  * @return     название типа фрейма
+ *
  */
 string_view awh::quic::frameName(const frame_t type) noexcept {
 	// Значение типа фрейма
@@ -268,6 +277,7 @@ string_view awh::quic::frameName(const frame_t type) noexcept {
  *
  * @param code код ошибки транспорта
  * @return     название кода ошибки
+ *
  */
 string_view awh::quic::errorName(const error_t code) noexcept {
 	// Значение кода ошибки транспорта
@@ -364,6 +374,7 @@ string_view awh::quic::errorName(const error_t code) noexcept {
  * @param cid   идентификатор соединения локального эндпоинта
  * @param token выведенный токен сброса без сохранения состояния
  * @return      результат вывода (false - пустой ключ либо ошибка кода аутентичности)
+ *
  */
 bool awh::quic::resetToken(string_view key, const cid_t & cid, uint8_t token[proto::RESET_TOKEN_SIZE]) noexcept {
 	// Если общий ключ вывода токенов не задан
@@ -399,6 +410,7 @@ bool awh::quic::resetToken(string_view key, const cid_t & cid, uint8_t token[pro
  * @param cid     идентификатор соединения получателя из вызвавшей датаграммы
  * @param trigger размер вызвавшей сброс датаграммы
  * @return        результат сборки (false - датаграмма слишком мала либо ошибка вывода токена)
+ *
  */
 bool awh::quic::reset(string & output, string_view key, const cid_t & cid, const size_t trigger) noexcept {
 	/**
@@ -455,6 +467,7 @@ bool awh::quic::reset(string & output, string_view key, const cid_t & cid, const
  *
  * @param output сгенерированный общий ключ вывода токенов сброса
  * @return       результат генерации (false - ошибка генератора случайных чисел)
+ *
  */
 bool awh::quic::resetKey(string & output) noexcept {
 	// Размер общего ключа вывода токенов сброса

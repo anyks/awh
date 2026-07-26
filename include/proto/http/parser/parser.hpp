@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл базового класса HTTP-парсера — общий контракт разбора сообщений: фазы обработки,
+ *        части сообщения, статусы и базовые лимиты, конкретизируемые наследниками для HTTP/1.x и HTTP/2
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_HTTP_PARSER__
@@ -55,6 +59,7 @@ namespace awh {
 		 *          и единую точку подачи байтов из сети. Всё специфичное для конкретной
 		 *          версии протокола (коды ошибок, флаги, структура сообщения, расширенные
 		 *          лимиты) определяется в классах-наследниках.
+		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Parser {
 			public:
@@ -62,30 +67,35 @@ namespace awh {
 				 * @brief Максимальное число заголовков
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t MAX_HEADER_COUNT = (128);
 				/**
 				 * @brief Максимальная длина имени заголовка
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t MAX_HEADER_NAME = (1 * 1024);
 				/**
 				 * @brief Максимальная длина значения заголовка
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t MAX_HEADER_VALUE = (16 * 1024);
 				/**
 				 * @brief Суммарный размер всех заголовков
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr size_t MAX_HEADERS_TOTAL = (64 * 1024);
 				/**
 				 * @brief Максимальный размер тела
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr uint64_t MAX_BODY_SIZE = (64ull * 1024 * 1024);
 			public:
@@ -113,6 +123,7 @@ namespace awh {
 				 *
 				 * @details Для мультиплексируемых протоколов (HTTP/2, HTTP/3) статус
 				 *          относится к соединению в целом, а не к отдельному сообщению
+				 *
 				 */
 				enum class status_t : uint8_t {
 					NONE     = 0x00, // Статус не определён (разбор ещё не начинался)
@@ -128,6 +139,7 @@ namespace awh {
 				 *          Парсеры конкретных версий расширяют структуру своими лимитами
 				 *          (HTTP/1.x — чанки и стартовая строка, HTTP/2 — блоки заголовков,
 				 *          CONTINUATION-фреймы, частотные лимиты и т.д.)
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Limits {
 					// Максимальная длина имени заголовка
@@ -166,6 +178,7 @@ namespace awh {
 				 * @brief Метод получения итогового статуса разбора
 				 *
 				 * @return итоговый статус разбора
+				 *
 				 */
 				status_t status() const noexcept;
 			public:
@@ -175,6 +188,7 @@ namespace awh {
 				 * @details Помимо сброса состояния разбора возвращает настройки парсера
 				 *          (лимиты безопасности, функции обратного вызова) к значениям
 				 *          по умолчанию — детали определяются классом-наследником
+				 *
 				 */
 				virtual void clear() noexcept;
 				/**
@@ -184,6 +198,7 @@ namespace awh {
 				 *          функции обратного вызова): для HTTP/1.x — подготовка к разбору
 				 *          следующего сообщения в том же соединении (keep-alive/pipelining),
 				 *          для мультиплексируемых протоколов — полный сброс соединения
+				 *
 				 */
 				virtual void reset() noexcept;
 			public:
@@ -195,6 +210,7 @@ namespace awh {
 				 *          база гарантирует только текстовое представление для логов
 				 *
 				 * @return название текущей ошибки разбора
+				 *
 				 */
 				virtual string_view errorName() const noexcept = 0;
 			public:
@@ -206,6 +222,7 @@ namespace awh {
 				 *          ("фабрика с теми же настройками")
 				 *
 				 * @return копия объекта парсера
+				 *
 				 */
 				virtual unique_ptr <Parser> clone() const noexcept = 0;
 			public:
@@ -216,6 +233,7 @@ namespace awh {
 				 *          удалённой стороной (получен FIN/EOF сокета). Реакция определяется
 				 *          протоколом: HTTP/1.x завершает тело "до закрытия соединения" либо
 				 *          фиксирует обрыв, HTTP/2 проверяет корректность завершения сессии
+				 *
 				 */
 				virtual void eof() noexcept = 0;
 				/**
@@ -230,6 +248,7 @@ namespace awh {
 				 * @param buffer буфер данных для разбора
 				 * @param size   размер данных для разбора
 				 * @return       количество обработанных байт данных
+				 *
 				 */
 				virtual size_t parse(const void * buffer, const size_t size) noexcept = 0;
 			public:
@@ -239,6 +258,7 @@ namespace awh {
 				 * @param direct направление потока данных
 				 * @param fmk    объект фреймворка
 				 * @param log    объект для работы с логами
+				 *
 				 */
 				explicit Parser(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept;
 				/**

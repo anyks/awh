@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля партнёрских сокетов — класс Files_Descriptors для создания связанных пар файловых
+ *        дескрипторов и передачи дескрипторов между процессами через управляющие сообщения
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -57,6 +61,7 @@ namespace awh {
 			 *
 			 * @param actual  текущее значение установленных файловых дескрипторов
 			 * @param desired желаемое значение для установки файловых дескрипторов
+			 *
 			 */
 			void help(const uint32_t actual, const uint32_t desired) const noexcept;
 		public:
@@ -65,12 +70,14 @@ namespace awh {
 			 *
 			 * @param limit желаемое количество файловых дескрипторов
 			 * @return      результат установки
+			 *
 			 */
 			bool limit(const uint32_t limit) const noexcept;
 			/**
 			 * @brief Метод получения лимита файловых дескрипторов установленных в операционной системе
 			 *
 			 * @return количество файловых дескрипторов установленных в файловой системе
+			 *
 			 */
 			std::pair <uint32_t, uint32_t> limit() const noexcept;
 			/**
@@ -78,6 +85,7 @@ namespace awh {
 			 *
 			 * @param max верхний предел пробинга (0 - использовать значение по умолчанию)
 			 * @return    пара значений (оценка доступного количества сокетов, верхний предел пробинга)
+			 *
 			 */
 			std::pair <uint32_t, uint32_t> sockets(const uint32_t max = 0) const noexcept;
 		public:
@@ -85,6 +93,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit Files_Descriptors(const log_t * log) noexcept;
 			/**

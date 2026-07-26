@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример сервера TLS — демонстрация приёма защищённых потоковых подключений через фасад сервера,
+ *        загрузки сертификата и обмена данными с клиентами
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -48,6 +52,7 @@ class Executor {
 		 *
 		 * @param eid  идентификатор клиента
 		 * @param size размер данных для записи
+		 *
 		 */
 		void write(const event::id_t eid, const size_t size, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
@@ -60,6 +65,7 @@ class Executor {
 		 * @param data   бинарный буфер данных
 		 * @param size   размер данных
 		 * @param server объект сервера
+		 *
 		 */
 		void read([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size, [[maybe_unused]] void * ctx, server_t * server) noexcept {
 			// Если данные получены
@@ -78,6 +84,7 @@ class Executor {
 		 *
 		 * @param status новый статус сервера
 		 * @param server объект сервера
+		 *
 		 */
 		void status(const event::status_t status, server_t * server) noexcept {
 			/**
@@ -108,6 +115,7 @@ class Executor {
 		 * @param tid    идентификатор клиента TLS
 		 * @param server объект сервера
 		 * @param tls  объект TLS кодера
+		 *
 		 */
 		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server, tls::coder_t * tls) noexcept {
 			// Записываем в лог сообщение об успешной установке опций события
@@ -135,6 +143,7 @@ class Executor {
 		 * @param family семейство адресов сервера
 		 * @param domain доменное имя сервера
 		 * @param ip     IP-адрес сервера
+		 *
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
@@ -146,6 +155,7 @@ class Executor {
 		 * @param eid    идентификатор сервера
 		 * @param error  код ошибки
 		 * @param message сообщение об ошибке
+		 *
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
@@ -157,6 +167,7 @@ class Executor {
 		 * @param id      идентификатор TLS
 		 * @param error   код ошибки TLS
 		 * @param message сообщение об ошибке TLS
+		 *
 		 */
 		void errorTLS([[maybe_unused]] const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог TLS
@@ -169,6 +180,7 @@ class Executor {
 		 * @param eid     идентификатор события сервера
 		 * @param browser информация о браузере клиента
 		 * @param fgp     объект отпечатка браузера
+		 *
 		 */
 		void fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser, tls::fgp_t * fgp) noexcept {
 			// Записываем в лог информацию о браузере клиента, который подключился к серверу
@@ -180,6 +192,7 @@ class Executor {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
+		 *
 		 */
 		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
@@ -190,6 +203,7 @@ class Executor {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

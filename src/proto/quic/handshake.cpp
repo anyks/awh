@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация криптографического рукопожатия QUIC — управление уровнями шифрования,
+ *        обмен CRYPTO-данными с BoringSSL, установка ключей защиты и передача транспортных параметров соединения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -46,6 +50,7 @@ namespace {
 	 *
 	 * @param level уровень шифрования BoringSSL
 	 * @return      внутренний уровень шифрования
+	 *
 	 */
 	static awh::quic::level_t levelFromSSL(const enum ssl_encryption_level_t level) noexcept {
 		/**
@@ -77,6 +82,7 @@ namespace {
 	 *
 	 * @param level внутренний уровень шифрования
 	 * @return      уровень шифрования BoringSSL
+	 *
 	 */
 	static enum ssl_encryption_level_t levelToSSL(const awh::quic::level_t level) noexcept {
 		/**
@@ -109,6 +115,7 @@ namespace {
 	 * @param cipher шифр согласованный TLS-стеком
 	 * @param suite  определённый криптографический набор
 	 * @return       результат определения (false - шифр не поддерживается QUIC)
+	 *
 	 */
 	static bool suiteFromCipher(const SSL_CIPHER * cipher, awh::quic::crypto::suite_t & suite) noexcept {
 		/**
@@ -156,6 +163,7 @@ namespace {
 	 * @param secret секрет направления чтения
 	 * @param size   размер секрета
 	 * @return       результат установки (0 - завершить хендшейк с ошибкой)
+	 *
 	 */
 	static int32_t setReadSecret(SSL * ssl, enum ssl_encryption_level_t level, const SSL_CIPHER * cipher, const uint8_t * secret, size_t size) noexcept;
 	/**
@@ -167,6 +175,7 @@ namespace {
 	 * @param secret секрет направления записи
 	 * @param size   размер секрета
 	 * @return       результат установки (0 - завершить хендшейк с ошибкой)
+	 *
 	 */
 	static int32_t setWriteSecret(SSL * ssl, enum ssl_encryption_level_t level, const SSL_CIPHER * cipher, const uint8_t * secret, size_t size) noexcept;
 	/**
@@ -177,6 +186,7 @@ namespace {
 	 * @param data  данные хендшейка
 	 * @param size  размер данных хендшейка
 	 * @return      результат добавления (0 - завершить хендшейк с ошибкой)
+	 *
 	 */
 	static int32_t addHandshakeData(SSL * ssl, enum ssl_encryption_level_t level, const uint8_t * data, size_t size) noexcept;
 	/**
@@ -184,6 +194,7 @@ namespace {
 	 *
 	 * @param ssl объект TLS-соединения
 	 * @return    результат завершения (0 - завершить хендшейк с ошибкой)
+	 *
 	 */
 	static int32_t flushFlight(SSL * ssl) noexcept;
 	/**
@@ -193,6 +204,7 @@ namespace {
 	 * @param level уровень шифрования BoringSSL
 	 * @param alert код TLS-алерта
 	 * @return      результат отправки (0 - завершить хендшейк с ошибкой)
+	 *
 	 */
 	static int32_t sendAlert(SSL * ssl, enum ssl_encryption_level_t level, uint8_t alert) noexcept;
 	/**
@@ -218,6 +230,7 @@ class awh::quic::HandshakeHook {
 		 *
 		 * @param handshake объект хендшейка
 		 * @param session   сессия возобновления
+		 *
 		 */
 		static void ticket(handshake_t * handshake, SSL_SESSION * session) noexcept {
 			// Данные сериализованной сессии
@@ -244,6 +257,7 @@ class awh::quic::HandshakeHook {
 		 * @param secret    секрет направления
 		 * @param size      размер секрета
 		 * @return          результат установки
+		 *
 		 */
 		static bool secret(handshake_t * handshake, const level_t level, const bool write, const SSL_CIPHER * cipher, const uint8_t * secret, const size_t size) noexcept {
 			// Криптографический набор защиты пакетов
@@ -280,6 +294,7 @@ class awh::quic::HandshakeHook {
 		 * @param level     уровень шифрования
 		 * @param data      данные хендшейка
 		 * @param size      размер данных хендшейка
+		 *
 		 */
 		static void data(handshake_t * handshake, const level_t level, const uint8_t * data, const size_t size) noexcept {
 			// Добавляем данные в очередь исходящих CRYPTO-данных уровня
@@ -290,6 +305,7 @@ class awh::quic::HandshakeHook {
 		 *
 		 * @param handshake объект хендшейка
 		 * @param alert     код TLS-алерта
+		 *
 		 */
 		static void alert(handshake_t * handshake, const uint8_t alert) noexcept {
 			// Устанавливаем код фатального TLS-алерта
@@ -314,6 +330,7 @@ namespace {
 	 * @param ssl     объект TLS-соединения
 	 * @param session сессия возобновления
 	 * @return        признак принятия владения сессией
+	 *
 	 */
 	static int32_t newSession(SSL * ssl, SSL_SESSION * session) noexcept {
 		// Извлекаем объект хендшейка из обратного указателя TLS-соединения
@@ -336,6 +353,7 @@ namespace {
 	 * @param secret секрет направления чтения
 	 * @param size   размер секрета
 	 * @return       результат установки (0 - завершить хендшейк с ошибкой)
+	 *
 	 */
 	static int32_t setReadSecret(SSL * ssl, enum ssl_encryption_level_t level, const SSL_CIPHER * cipher, const uint8_t * secret, size_t size) noexcept {
 		// Получаем объект хендшейка
@@ -352,6 +370,7 @@ namespace {
 	 * @param secret секрет направления записи
 	 * @param size   размер секрета
 	 * @return       результат установки (0 - завершить хендшейк с ошибкой)
+	 *
 	 */
 	static int32_t setWriteSecret(SSL * ssl, enum ssl_encryption_level_t level, const SSL_CIPHER * cipher, const uint8_t * secret, size_t size) noexcept {
 		// Получаем объект хендшейка
@@ -367,6 +386,7 @@ namespace {
 	 * @param data  данные хендшейка
 	 * @param size  размер данных хендшейка
 	 * @return      результат добавления (0 - завершить хендшейк с ошибкой)
+	 *
 	 */
 	static int32_t addHandshakeData(SSL * ssl, enum ssl_encryption_level_t level, const uint8_t * data, size_t size) noexcept {
 		// Получаем объект хендшейка
@@ -381,6 +401,7 @@ namespace {
 	 *
 	 * @param ssl объект TLS-соединения
 	 * @return    результат завершения (0 - завершить хендшейк с ошибкой)
+	 *
 	 */
 	static int32_t flushFlight([[maybe_unused]] SSL * ssl) noexcept {
 		// Данные уже накоплены по уровням - упаковку в пакеты выполняет вызывающий код
@@ -393,6 +414,7 @@ namespace {
 	 * @param level уровень шифрования BoringSSL
 	 * @param alert код TLS-алерта
 	 * @return      результат отправки (0 - завершить хендшейк с ошибкой)
+	 *
 	 */
 	static int32_t sendAlert(SSL * ssl, [[maybe_unused]] enum ssl_encryption_level_t level, uint8_t alert) noexcept {
 		// Получаем объект хендшейка
@@ -414,6 +436,7 @@ awh::quic::Handshake::Level::Level() noexcept : hasRead(false), hasWrite(false),
  * @brief Метод продвижения TLS-хендшейка
  *
  * @return результат продвижения (OK - хендшейк продолжается или завершён)
+ *
  */
 awh::quic::status_t awh::quic::Handshake::process() noexcept {
 	// Выполняем шаг TLS-хендшейка
@@ -506,6 +529,7 @@ awh::quic::status_t awh::quic::Handshake::process() noexcept {
  * @brief Метод извлечения согласованного ALPN-протокола
  *
  * @return согласованный ALPN-протокол (пустое название - согласование не выполнено)
+ *
  */
 awh::tls::coder_t::alpn_t awh::quic::Handshake::alpn() const noexcept {
 	// Согласованный ALPN-протокол
@@ -547,6 +571,7 @@ awh::tls::coder_t::alpn_t awh::quic::Handshake::alpn() const noexcept {
  * @brief Метод извлечения возобновляемой сессии хендшейка (RFC 9001 §4.6)
  *
  * @return сериализованная сессия (пусто - сессия недоступна)
+ *
  */
 string awh::quic::Handshake::session() const noexcept {
 	// Выводим принятый от удалённого узла билет возобновления
@@ -557,6 +582,7 @@ string awh::quic::Handshake::session() const noexcept {
  *
  * @param session сериализованная сессия
  * @return        результат установки
+ *
  */
 bool awh::quic::Handshake::session(string_view session) noexcept {
 	// Если хендшейк уже начат либо эндпоинт не является клиентом
@@ -572,6 +598,7 @@ bool awh::quic::Handshake::session(string_view session) noexcept {
  * @brief Метод проверки принятия ранних данных удалённым узлом
  *
  * @return результат проверки
+ *
  */
 bool awh::quic::Handshake::early() const noexcept {
 	// Если TLS-соединение не создано либо в ранних данных отказано
@@ -585,6 +612,7 @@ bool awh::quic::Handshake::early() const noexcept {
  * @brief Метод проверки отказа удалённого узла в ранних данных (RFC 9001 §4.6.2)
  *
  * @return результат проверки
+ *
  */
 bool awh::quic::Handshake::rejected() const noexcept {
 	// Выводим флаг отказа удалённого узла в ранних данных
@@ -595,6 +623,7 @@ bool awh::quic::Handshake::rejected() const noexcept {
  *
  * @param params локальные транспортные параметры
  * @return       результат установки (false - ошибка сериализации)
+ *
  */
 bool awh::quic::Handshake::params(const quic::params::params_t & params) noexcept {
 	// Очищаем сериализованные локальные транспортные параметры
@@ -614,6 +643,7 @@ bool awh::quic::Handshake::params(const quic::params::params_t & params) noexcep
  * @param params транспортные параметры удалённого узла
  * @param error  код ошибки транспорта
  * @return       результат извлечения (OK/INCOMPLETE/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Handshake::peer(quic::params::params_t & params, error_t & error) const noexcept {
 	// Если TLS-соединение не создано, выводим результат отсутствия данных
@@ -640,6 +670,7 @@ awh::quic::status_t awh::quic::Handshake::peer(quic::params::params_t & params, 
  *
  * @param dcid идентификатор соединения получателя первого пакета Initial клиента
  * @return     результат вывода (false - ошибка криптографической библиотеки)
+ *
  */
 bool awh::quic::Handshake::initial(const cid_t & dcid) noexcept {
 	// Ключи защиты пакетов клиента
@@ -676,6 +707,7 @@ bool awh::quic::Handshake::initial(const cid_t & dcid) noexcept {
  * @brief Метод начала хендшейка
  *
  * @return результат начала хендшейка (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Handshake::start() noexcept {
 	// Если хендшейк уже начат либо не установлены транспортные параметры
@@ -796,6 +828,7 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
  * @param data  данные CRYPTO-фрейма
  * @param size  размер данных CRYPTO-фрейма
  * @return      результат обработки (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Handshake::crypto(const level_t level, const uint8_t * data, const size_t size) noexcept {
 	// Если хендшейк не начат либо завершился ошибкой
@@ -829,6 +862,7 @@ awh::quic::status_t awh::quic::Handshake::crypto(const level_t level, const uint
  *
  * @param level уровень шифрования
  * @return      результат проверки (true - есть данные для отправки)
+ *
  */
 bool awh::quic::Handshake::pending(const level_t level) const noexcept {
 	// Выводим результат проверки наличия исходящих CRYPTO-данных уровня
@@ -839,6 +873,7 @@ bool awh::quic::Handshake::pending(const level_t level) const noexcept {
  *
  * @param level уровень шифрования
  * @return      исходящие CRYPTO-данные уровня
+ *
  */
 string awh::quic::Handshake::data(const level_t level) noexcept {
 	// Результат работы функции
@@ -853,6 +888,7 @@ string awh::quic::Handshake::data(const level_t level) noexcept {
  *
  * @param level уровень шифрования
  * @return      ключи защиты пакетов либо nullptr если ключи ещё не выведены
+ *
  */
 const awh::quic::crypto::keys_t * awh::quic::Handshake::encryption(const level_t level) const noexcept {
 	// Получаем состояние уровня шифрования
@@ -865,6 +901,7 @@ const awh::quic::crypto::keys_t * awh::quic::Handshake::encryption(const level_t
  *
  * @param level уровень шифрования
  * @return      ключи защиты пакетов либо nullptr если ключи ещё не выведены
+ *
  */
 const awh::quic::crypto::keys_t * awh::quic::Handshake::decryption(const level_t level) const noexcept {
 	// Получаем состояние уровня шифрования
@@ -878,6 +915,7 @@ const awh::quic::crypto::keys_t * awh::quic::Handshake::decryption(const level_t
  * @param level уровень шифрования
  * @param read  ключи снятия защиты входящих пакетов уровня
  * @param write ключи защиты исходящих пакетов уровня
+ *
  */
 void awh::quic::Handshake::install(const level_t level, const crypto::keys_t & read, const crypto::keys_t & write) noexcept {
 	// Получаем состояние уровня шифрования
@@ -895,6 +933,7 @@ void awh::quic::Handshake::install(const level_t level, const crypto::keys_t & r
  * @brief Метод сброса ключей уровня шифрования (RFC 9001 §4.9)
  *
  * @param level уровень шифрования
+ *
  */
 void awh::quic::Handshake::discard(const level_t level) noexcept {
 	// Получаем состояние уровня шифрования
@@ -914,6 +953,7 @@ void awh::quic::Handshake::discard(const level_t level) noexcept {
  * @brief Метод получения состояния хендшейка
  *
  * @return состояние хендшейка
+ *
  */
 awh::quic::Handshake::state_t awh::quic::Handshake::state() const noexcept {
 	// Выводим состояние хендшейка
@@ -923,6 +963,7 @@ awh::quic::Handshake::state_t awh::quic::Handshake::state() const noexcept {
  * @brief Метод получения кода ошибки транспорта (RFC 9001 §4.8)
  *
  * @return код ошибки транспорта (NO_ERROR - ошибки нет)
+ *
  */
 awh::quic::error_t awh::quic::Handshake::error() const noexcept {
 	// Если получен фатальный TLS-алерт
@@ -943,6 +984,7 @@ awh::quic::error_t awh::quic::Handshake::error() const noexcept {
  * @param ctx      идентификатор шаблона контекста безопасности
  * @param coder    объект кодера транспортной безопасности
  * @param log      объект для работы с логами
+ *
  */
 awh::quic::Handshake::Handshake(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept :
  _endpoint(endpoint), _state(state_t::NONE), _alert(0), _hasAlert(false),

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля кластера — класс unit::Cluster для запуска и контроля дочерних воркеров,
+ *        обмена сообщениями между процессами, перезапуска упавших воркеров и защиты от цикла быстрых перезапусков
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -81,6 +85,7 @@ namespace awh {
 				 * @brief Структура воркера
 				 *
 				 * @details Содержит идентификатор процесса, время жизни и идентификатор события для обмена сообщениями между процессами.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Worker {
 					// Идентификатор процесса
@@ -101,6 +106,7 @@ namespace awh {
 				 * @details Содержит флаг автоматического возрождения процессов,
 				 *          максимальное число подряд идущих быстрых падений воркеров до остановки кластера,
 				 *          временное окно «быстрого» (раннего) падения воркера в миллисекундах и счётчик подряд идущих быстрых (ранних) падений воркеров для защиты от цикла перезапусков.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Rebirth {
 					// Флаг автоматического возрождения процессов (по умолчанию false)
@@ -147,6 +153,7 @@ namespace awh {
 				 * @brief Метод размещения нового дочернего процесса
 				 *
 				 * @param pid идентификатор убитого процесса
+				 *
 				 */
 				void emplace(const pid_t pid) noexcept;
 			private:
@@ -154,6 +161,7 @@ namespace awh {
 				 * @brief Метод освобождения ресурсов воркера
 				 *
 				 * @param eid идентификатор события воркера
+				 *
 				 */
 				void release(const event::id_t eid) noexcept;
 			private:
@@ -161,6 +169,7 @@ namespace awh {
 				 * @brief Метод запуска/остановки работы кластера
 				 *
 				 * @param status статус запуска/остановки кластера
+				 *
 				 */
 				void launch(const event::status_t status) noexcept;
 			private:
@@ -170,6 +179,7 @@ namespace awh {
 				 * @param replaced идентификатор замещаемого (упавшего) процесса, либо 0 при первичном создании
 				 * @param deferred флаг отложенного запуска события (true — фиксация/запуск выполняются позже пакетно)
 				 * @return         семейство процесса: MASTER — родитель, CHILDREN — дочерний, NONE — ошибка создания
+				 *
 				 */
 				family_t spawn(const pid_t replaced, const bool deferred) noexcept;
 			private:
@@ -178,6 +188,7 @@ namespace awh {
 				 *
 				 * @param pid    идентификатор упавшего процесса
 				 * @param status статус остановившегося процесса
+				 *
 				 */
 				void process(const pid_t pid, const int32_t status) noexcept;
 				/**
@@ -186,6 +197,7 @@ namespace awh {
 				 * @param eid  идентификатор события пробуждения
 				 * @param data данные события пробуждения
 				 * @param size размер данных события пробуждения
+				 *
 				 */
 				void reap(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 			private:
@@ -195,6 +207,7 @@ namespace awh {
 				 * @param signal номер сигнала полученного системой
 				 * @param info   объект информации полученный системой
 				 * @param ctx    передаваемый внутренний контекст
+				 *
 				 */
 				static void child(int32_t signal, siginfo_t * info, void * ctx) noexcept;
 			private:
@@ -203,6 +216,7 @@ namespace awh {
 				 *
 				 * @param eid  идентификатор события
 				 * @param size размер сообщения
+				 *
 				 */
 				void write(const event::id_t eid, const size_t size) noexcept;
 				/**
@@ -211,6 +225,7 @@ namespace awh {
 				 * @param eid  идентификатор события
 				 * @param data данные сообщения
 				 * @param size размер сообщения
+				 *
 				 */
 				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 			private:
@@ -219,6 +234,7 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор события
 				 * @param status статус события
+				 *
 				 */
 				void state(const event::id_t eid, const event::status_t status) noexcept;
 			private:
@@ -228,6 +244,7 @@ namespace awh {
 				 * @param eid     идентификатор события
 				 * @param error   тип ошибки
 				 * @param message сообщение об ошибке
+				 *
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
 			private:
@@ -237,6 +254,7 @@ namespace awh {
 				 * @param eid    идентификатор события
 				 * @param status статус события
 				 * @param size   доступный размер очереди в байтах
+				 *
 				 */
 				void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
 			public:
@@ -255,6 +273,7 @@ namespace awh {
 				 * @brief Метод очистки всех выделенных ресурсов
 				 *
 				 * @param shutdown тип завершения работы кластера
+				 *
 				 */
 				void clear(const shutdown_t shutdown) noexcept;
 			public:
@@ -268,6 +287,7 @@ namespace awh {
 				 *
 				 * @param pid      идентификатор процесса
 				 * @param shutdown тип завершения работы кластера
+				 *
 				 */
 				void erase(const pid_t pid, const shutdown_t shutdown) noexcept;
 			public:
@@ -275,12 +295,14 @@ namespace awh {
 				 * @brief Метод получения типа протокола передачи данных между воркерами
 				 *
 				 * @return тип протокола передачи данных между воркерами
+				 *
 				 */
 				event::type_t getTypeEventMessage() const noexcept;
 				/**
 				 * @brief Метод установки типа протокола передачи данных между воркерами
 				 *
 				 * @param type тип протокола передачи данных между воркерами для установки
+				 *
 				 */
 				void setTypeEventMessage(const event::type_t type) noexcept;
 			public:
@@ -288,6 +310,7 @@ namespace awh {
 				 * @brief Метод установки флага автоматического возрождения процессов
 				 *
 				 * @param mode флаг возрождения процессов
+				 *
 				 */
 				void rebirth(const bool mode) noexcept;
 				/**
@@ -295,6 +318,7 @@ namespace awh {
 				 *
 				 * @param limit  максимальное число подряд идущих быстрых падений до остановки кластера (0 — без ограничения)
 				 * @param window временное окно «быстрого» (раннего) падения воркера в миллисекундах
+				 *
 				 */
 				void rebirthLimit(const uint16_t limit, const uint64_t window) noexcept;
 			public:
@@ -302,6 +326,7 @@ namespace awh {
 				 * @brief Метод установки названия кластера
 				 *
 				 * @param name название кластера для установки
+				 *
 				 */
 				void name(string_view name) noexcept;
 			public:
@@ -309,12 +334,14 @@ namespace awh {
 				 * @brief Метод получения максимального количества процессов
 				 *
 				 * @return максимальное количество процессов
+				 *
 				 */
 				uint16_t count() const noexcept;
 				/**
 				 * @brief Метод установки максимального количества процессов
 				 *
 				 * @param count максимальное количество процессов
+				 *
 				 */
 				void count(const uint16_t count) noexcept;
 			public:
@@ -322,6 +349,7 @@ namespace awh {
 				 * @brief Метод получения списка дочерних процессов
 				 *
 				 * @return список дочерних процессов
+				 *
 				 */
 				unordered_set <pid_t> workers() const noexcept;
 			public:
@@ -329,6 +357,7 @@ namespace awh {
 				 * @brief Метод установки функций обратного вызова
 				 *
 				 * @param callback функции обратного вызова
+				 *
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
@@ -338,6 +367,7 @@ namespace awh {
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 * @return       количество байт отправленного сообщения
+				 *
 				 */
 				size_t send(const void * buffer, const size_t size) noexcept;
 				/**
@@ -347,6 +377,7 @@ namespace awh {
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 * @return       количество байт отправленного сообщения
+				 *
 				 */
 				size_t send(const pid_t pid, const void * buffer, const size_t size) noexcept;
 			public:
@@ -356,6 +387,7 @@ namespace awh {
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 * @return       количество байт отправленного сообщения
+				 *
 				 */
 				size_t broadcast(const void * buffer, const size_t size) noexcept;
 			public:
@@ -365,6 +397,7 @@ namespace awh {
 				 * @param pid    идентификатор процесса
 				 * @param action тип действия события
 				 * @return       размер буфера события
+				 *
 				 */
 				size_t getBufferSize(const pid_t pid, const event::action_t action) const noexcept;
 				/**
@@ -374,6 +407,7 @@ namespace awh {
 				 * @param action тип действия события
 				 * @param size   размер буфера события
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setBufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept;
 			private:
@@ -386,6 +420,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				Cluster & operator = (const Cluster &) = delete;
 			public:
@@ -394,6 +429,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Cluster(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

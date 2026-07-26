@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Тесты защищённого рукопожатия — проверка полного цикла согласования TLS и DTLS между клиентом и сервером,
+ *        верификации сертификатов и выбора протокола ALPN
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -40,6 +44,7 @@ namespace {
 	 *          с событием шифрования, а входящий принимает методом расшифровки.
 	 *          Эндпоинт накапливает исходящий шифртекст и выданный приложению
 	 *          открытый текст, что позволяет прогнать рукопожатие без сокетов
+	 *
 	 */
 	typedef struct Endpoint {
 		// Идентификатор шаблона контекста безопасности
@@ -67,6 +72,7 @@ namespace {
 	 *
 	 * @param coder    объект кодера транспортной безопасности
 	 * @param endpoint эндпоинт тестового обмена
+	 *
 	 */
 	static void subscribe(tls::Coder & coder, endpoint_t & endpoint) noexcept {
 		// Устанавливаем функцию обратного вызова чтения
@@ -115,6 +121,7 @@ namespace {
 	 * @param from  эндпоинт-отправитель
 	 * @param to    эндпоинт-получатель
 	 * @return      количество переданных октетов
+	 *
 	 */
 	static size_t transfer(tls::Coder & coder, endpoint_t & from, endpoint_t & to) noexcept {
 		// Если исходящих данных нет
@@ -137,6 +144,7 @@ namespace {
 	 * @param client эндпоинт клиента
 	 * @param server эндпоинт сервера
 	 * @return       результат выполнения рукопожатия
+	 *
 	 */
 	static bool establish(tls::Coder & coder, endpoint_t & client, endpoint_t & server) noexcept {
 		/**
@@ -180,6 +188,7 @@ namespace {
  *          Тест задействует весь тракт кодера - создание контекстов, настройку
  *          сертификата, функции обратного вызова уровня контекста и передачу
  *          прикладных данных после рукопожатия
+ *
  */
 TEST_F(TlsFixture, HandshakeLoopbackTest){
 	// Проверяем что сертификат тестового узла сгенерирован
@@ -248,6 +257,7 @@ TEST_F(TlsFixture, HandshakeLoopbackTest){
  *
  * @details Задействует функцию обратного вызова выбора протокола на сервере -
  *          одну из устанавливаемых на шаблон контекста безопасности
+ *
  */
 TEST_F(TlsFixture, HandshakeAlpnTest){
 	// Эндпоинт клиента
@@ -304,6 +314,7 @@ TEST_F(TlsFixture, HandshakeAlpnTest){
  *
  * @details Клиент без указанного доверенного центра сертификации не должен
  *          принимать самоподписанный сертификат сервера
+ *
  */
 TEST_F(TlsFixture, HandshakeUntrustedCertificateTest){
 	// Эндпоинт клиента

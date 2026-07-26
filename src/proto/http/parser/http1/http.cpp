@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация парсера протокола HTTP/1.x — разбор стартовой строки,
+ *        заголовков и тела с кадрированием chunked и Content-Length, контроль лимитов и версий,
+ *        сбор статистики и сборка исходящих сообщений
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -121,6 +126,7 @@ namespace {
 	 * @brief Функция генерации таблицы токенов (RFC 7230): ALPHA / DIGIT / "!#$%&'*+-.^_`|~"
 	 *
 	 * @return таблица токенов
+	 *
 	 */
 	constexpr array <bool, 256> makeTokenTable() noexcept {
 		// Результат работы функции
@@ -151,6 +157,7 @@ namespace {
 	 *        HTAB / SP / VCHAR(0x21..0x7E) / obs-text(0x80..0xFF)
 	 *
 	 * @return таблица допустимых символов значения заголовка
+	 *
 	 */
 	constexpr array <bool, 256> makeValueTable() noexcept {
 		// Результат работы функции
@@ -172,6 +179,7 @@ namespace {
 	 * @brief Функция генерации таблицы допустимых символов request-target: VCHAR без пробела (0x21..0x7E)
 	 *
 	 * @return таблица допустимых символов request-target
+	 *
 	 */
 	constexpr array <bool, 256> makeTargetTable() noexcept {
 		// Результат работы функции
@@ -207,6 +215,7 @@ namespace {
 	 *
 	 * @param c проверяемый символ
 	 * @return  результат проверки
+	 *
 	 */
 	inline bool isToken(const uint8_t letter) noexcept {
 		// Выполняем проверку по таблице токенов
@@ -217,6 +226,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	inline bool isValueCh(const uint8_t letter) noexcept {
 		// Выполняем проверку по таблице допустимых символов значения заголовка
@@ -227,6 +237,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	inline bool isTargetCh(const uint8_t letter) noexcept {
 		// Выполняем проверку по таблице допустимых символов request-target
@@ -237,6 +248,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	inline bool isDigit(const uint8_t letter) noexcept {
 		// Выполняем проверку принадлежности символа к десятичным цифрам
@@ -247,6 +259,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       числовое значение цифры либо -1, если символ не является hex-цифрой
+	 *
 	 */
 	inline int8_t hexVal(const uint8_t letter) noexcept {
 		// Если символ является десятичной цифрой
@@ -269,6 +282,7 @@ namespace {
 	 *
 	 * @param letter приводимый символ
 	 * @return       символ в нижнем регистре
+	 *
 	 */
 	inline char lower(const char letter) noexcept {
 		// Выполняем приведение символа к нижнему регистру
@@ -281,6 +295,7 @@ namespace {
 	 * @param size     размер сравниваемой строки
 	 * @param litLower литерал в нижнем регистре
 	 * @return         результат сравнения
+	 *
 	 */
 	bool iequalsLit(const char * str, const size_t size, const char * litLower) noexcept {
 		/**
@@ -305,6 +320,7 @@ namespace {
 	 * @param str      сравниваемая строка
 	 * @param litLower литерал в нижнем регистре
 	 * @return         результат сравнения
+	 *
 	 */
 	bool iequalsLit(const string & str, const char * litLower) noexcept {
 		// Выполняем сравнение строки с литералом
@@ -317,6 +333,7 @@ namespace {
 	 * @param size размер строки с числом
 	 * @param out  результирующее число
 	 * @return     результат разбора
+	 *
 	 */
 	bool parseDecimal(const char * str, const size_t size, uint64_t & out) noexcept {
 		// Пустая строка числом не является
@@ -352,6 +369,7 @@ namespace {
 	 *
 	 * @param begin начало подстроки
 	 * @param end   конец подстроки
+	 *
 	 */
 	void trimOWS(const char *& begin, const char *& end) noexcept {
 		/**
@@ -373,6 +391,7 @@ namespace {
 	 * @param method имя метода запроса
 	 * @param fmk    объект фреймворка
 	 * @return       распознанный метод запроса либо method_t::NONE
+	 *
 	 */
 	http::method_t classifyMethod(const string & method, const fmk_t * fmk) noexcept {
 		/**
@@ -576,6 +595,7 @@ awh::http::Parser_HTTP::Message::Flags::Flags() noexcept :
  *
  * @param message объект сообщения для перемещения
  * @return        текущее сообщение
+ *
  */
 awh::http::Parser_HTTP::Message & awh::http::Parser_HTTP::Message::operator = (Message && message) noexcept {
 	// Если перемещаемое сообщение не является текущим объектом
@@ -607,6 +627,7 @@ awh::http::Parser_HTTP::Message & awh::http::Parser_HTTP::Message::operator = (M
  *
  * @param message объект сообщения для копирования
  * @return        текущее сообщение
+ *
  */
 awh::http::Parser_HTTP::Message & awh::http::Parser_HTTP::Message::operator = (const Message & message) noexcept {
 	// Если копируемое сообщение не является текущим объектом
@@ -630,6 +651,7 @@ awh::http::Parser_HTTP::Message & awh::http::Parser_HTTP::Message::operator = (c
  *
  * @param message объект сообщения для сравнения
  * @return        результат сравнения
+ *
  */
 bool awh::http::Parser_HTTP::Message::operator == (const Message & message) noexcept {
 	// Выполняем сравнение всех параметров сообщения кроме провайдера
@@ -680,6 +702,7 @@ bool awh::http::Parser_HTTP::Message::operator == (const Message & message) noex
  *
  * @param message объект сообщения для сравнения
  * @return        результат сравнения
+ *
  */
 bool awh::http::Parser_HTTP::Message::operator != (const Message & message) noexcept {
 	// Выполняем сравнение всех параметров сообщения
@@ -689,6 +712,7 @@ bool awh::http::Parser_HTTP::Message::operator != (const Message & message) noex
  * @brief Конструктор перемещения
  *
  * @param message объект сообщения для перемещения
+ *
  */
 awh::http::Parser_HTTP::Message::Message(Message && message) noexcept :
  part(message.part),
@@ -700,6 +724,7 @@ awh::http::Parser_HTTP::Message::Message(Message && message) noexcept :
  * @brief Конструктор копирования
  *
  * @param message объект сообщения для копирования
+ *
  */
 awh::http::Parser_HTTP::Message::Message(const Message & message) noexcept :
  part(message.part),
@@ -932,6 +957,7 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
  * @brief Метод завершения разбора текущего заголовка/трейлера
  *
  * @return результат обработки (false - разбор прерван)
+ *
  */
 bool awh::http::Parser_HTTP::commitHeader() noexcept {
 	/**
@@ -1054,6 +1080,7 @@ bool awh::http::Parser_HTTP::commitHeader() noexcept {
  * @brief Метод завершения разбора стартовой строки (request-line/status-line)
  *
  * @return результат обработки (false - разбор прерван)
+ *
  */
 bool awh::http::Parser_HTTP::commitStartLine() noexcept {
 	// Переходим к разбору заголовков
@@ -1138,6 +1165,7 @@ void awh::http::Parser_HTTP::chunkSizeComplete() noexcept {
  * @brief Метод проверки отсутствия тела у ответа сервера (по статус-коду и методу запроса)
  *
  * @return результат проверки
+ *
  */
 bool awh::http::Parser_HTTP::responseHasNoBody() const noexcept {
 	// Получаем статус-код ответа сервера
@@ -1165,6 +1193,7 @@ bool awh::http::Parser_HTTP::responseHasNoBody() const noexcept {
  * @brief Метод фиксации ошибки разбора (код ошибки, итоговый статус и запись в лог)
  *
  * @param error код ошибки разбора
+ *
  */
 void awh::http::Parser_HTTP::fail(const error_t error) noexcept {
 	// Фиксируем код ошибки разбора
@@ -1184,6 +1213,7 @@ void awh::http::Parser_HTTP::fail(const error_t error) noexcept {
  *
  * @details Если функция записи не установлена - байты остаются во внутреннем
  *          буфере до выборки через pending()/consumePending().
+ *
  */
 void awh::http::Parser_HTTP::flush() noexcept {
 	// Если функция обратного вызова записи не установлена - работаем в pull-модели
@@ -1235,6 +1265,7 @@ void awh::http::Parser_HTTP::flush() noexcept {
  * @brief Метод получения логического объёма ещё не отправленных исходящих байтов
  *
  * @return объём не отправленных исходящих байтов
+ *
  */
 size_t awh::http::Parser_HTTP::outputPending() const noexcept {
 	// Выводим объём буфера исходящих байтов без уже отданного префикса
@@ -1247,6 +1278,7 @@ size_t awh::http::Parser_HTTP::outputPending() const noexcept {
  *          кадрирование тела применяется к каждой полученной порции.
  *
  * @return число полученных от источника байт тела
+ *
  */
 size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
 	// Результат работы функции - число полученных от источника байт тела
@@ -1369,6 +1401,7 @@ size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
  *          источник до конца тела либо до временного отсутствия данных.
  *          В pull-режиме наполняет выходной буфер до high-water однократно -
  *          досылка происходит по мере выборки consumePending().
+ *
  */
 void awh::http::Parser_HTTP::pumpSource() noexcept {
 	// Если сообщение не находится в фазе отправки тела - качать нечего
@@ -1434,6 +1467,7 @@ void awh::http::Parser_HTTP::finishBody() noexcept {
  *
  * @param buffer буфер данных тела
  * @param size   размер данных тела
+ *
  */
 void awh::http::Parser_HTTP::frameBody(const void * buffer, const size_t size) noexcept {
 	// Если данных для кадрирования нет
@@ -1471,6 +1505,7 @@ void awh::http::Parser_HTTP::frameBody(const void * buffer, const size_t size) n
  * @param phase фаза разбора HTTP-сообщения
  * @param part  часть сообщения
  * @return      результат обработки (false - разбор прерван)
+ *
  */
 bool awh::http::Parser_HTTP::firePhase(const phase_t phase, const part_t part) noexcept {
 	// Если функция обратного вызова установлена
@@ -1518,6 +1553,7 @@ bool awh::http::Parser_HTTP::firePhase(const phase_t phase, const part_t part) n
  * @param phase фаза разбора чанка
  * @param size  размер данных чанка
  * @return      результат обработки (false - разбор прерван)
+ *
  */
 bool awh::http::Parser_HTTP::fireChunk(const phase_t phase, const uint64_t size) noexcept {
 	// Если функция обратного вызова установлена
@@ -1565,6 +1601,7 @@ bool awh::http::Parser_HTTP::fireChunk(const phase_t phase, const uint64_t size)
  * @param provider  объект провайдера заголовков сообщения (nullptr для трейлеров)
  * @param endStream флаг завершения сообщения (тела не будет)
  * @return          результат обработки (false - разбор прерван с ошибкой ABORTED)
+ *
  */
 bool awh::http::Parser_HTTP::fireProvider(const provider_t * provider, const bool endStream) noexcept {
 	// Если функция обратного вызова установлена
@@ -1611,6 +1648,7 @@ bool awh::http::Parser_HTTP::fireProvider(const provider_t * provider, const boo
  *
  * @param begin начало значения заголовка
  * @param end   конец значения заголовка
+ *
  */
 void awh::http::Parser_HTTP::applyConnection(const char * begin, const char * end) noexcept {
 	// Указатель на текущую позицию разбора
@@ -1660,6 +1698,7 @@ void awh::http::Parser_HTTP::applyConnection(const char * begin, const char * en
  * @param begin начало значения заголовка
  * @param end   конец значения заголовка
  * @return      результат интерпретации
+ *
  */
 bool awh::http::Parser_HTTP::applyContentLength(const char * begin, const char * end) noexcept {
 	// Первое полученное значение
@@ -1737,6 +1776,7 @@ bool awh::http::Parser_HTTP::applyContentLength(const char * begin, const char *
  *
  * @param begin начало значения заголовка
  * @param end   конец значения заголовка
+ *
  */
 void awh::http::Parser_HTTP::applyTransferEncoding(const char * begin, const char * end) noexcept {
 	// Помечаем что заголовок Transfer-Encoding получен
@@ -1792,6 +1832,7 @@ void awh::http::Parser_HTTP::applyTransferEncoding(const char * begin, const cha
  *
  * @details Помимо сброса состояния разбора возвращает лимиты безопасности
  *          к значениям по умолчанию и удаляет установленные функции обратного вызова.
+ *
  */
 void awh::http::Parser_HTTP::clear() noexcept {
 	// Выполняем сброс состояния разбора
@@ -1809,6 +1850,7 @@ void awh::http::Parser_HTTP::clear() noexcept {
  * @details Дешёвый сброс между сообщениями (keep-alive/pipelining): сохраняет лимиты
  *          безопасности и установленные функции обратного вызова, провайдер заголовков
  *          не пересоздаётся, а очищается (переиспользуется выделенная память).
+ *
  */
 void awh::http::Parser_HTTP::reset() noexcept {
 	// Выполняем сброс состояния базового парсера (итоговый статус разбора)
@@ -1913,6 +1955,7 @@ void awh::http::Parser_HTTP::reset() noexcept {
  *          в keep-alive/конвейере.
  *
  * @param method метод запроса клиента
+ *
  */
 void awh::http::Parser_HTTP::method(const method_t method) noexcept {
 	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
@@ -1925,6 +1968,7 @@ void awh::http::Parser_HTTP::method(const method_t method) noexcept {
  *          обратного вызова, но чистое состояние разбора ("фабрика с теми же настройками").
  *
  * @return копия объекта парсера
+ *
  */
 unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP::clone() const noexcept {
 	// Результат работы функции - копия объекта парсера
@@ -1982,6 +2026,7 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP::clone() const noexcept 
  *            (нормальное закрытие keep-alive соединения);
  *          - если сообщение разобрано частично (заголовки или недочитанное тело
  *            с Content-Length) - фиксируется ошибка PREMATURE_EOF (обрыв соединения).
+ *
  */
 void awh::http::Parser_HTTP::eof() noexcept {
 	// Если ранее зафиксирована ошибка разбора - ничего не делаем
@@ -2028,6 +2073,7 @@ void awh::http::Parser_HTTP::eof() noexcept {
  * @param buffer буфер данных для разбора
  * @param size   размер данных для разбора
  * @return       количество обработанных байт данных
+ *
  */
 size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noexcept {
 	// Если ранее зафиксирована ошибка разбора
@@ -3353,6 +3399,7 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
  * @brief Метод получения кода ошибки разбора
  *
  * @return код ошибки
+ *
  */
 awh::http::Parser_HTTP::error_t awh::http::Parser_HTTP::error() const noexcept {
 	// Выводим код ошибки разбора
@@ -3362,6 +3409,7 @@ awh::http::Parser_HTTP::error_t awh::http::Parser_HTTP::error() const noexcept {
  * @brief Метод получения человекочитаемого названия текущей ошибки разбора
  *
  * @return название текущей ошибки разбора
+ *
  */
 string_view awh::http::Parser_HTTP::errorName() const noexcept {
 	// Выводим название текущего кода ошибки разбора
@@ -3372,6 +3420,7 @@ string_view awh::http::Parser_HTTP::errorName() const noexcept {
  *
  * @param error код ошибки разбора
  * @return      название кода ошибки
+ *
  */
 string_view awh::http::Parser_HTTP::errorName(const error_t error) noexcept {
 	/**
@@ -3470,6 +3519,7 @@ string_view awh::http::Parser_HTTP::errorName(const error_t error) noexcept {
  * @brief Метод получения лимитов безопасности
  *
  * @return лимиты безопасности
+ *
  */
 const awh::http::Parser_HTTP::limits_t & awh::http::Parser_HTTP::limits() const noexcept {
 	// Выводим настроенные лимиты безопасности
@@ -3479,6 +3529,7 @@ const awh::http::Parser_HTTP::limits_t & awh::http::Parser_HTTP::limits() const 
  * @brief Метод установки лимитов безопасности
  *
  * @param limits лимиты безопасности
+ *
  */
 void awh::http::Parser_HTTP::limits(const limits_t & limits) noexcept {
 	// Устанавливаем новые лимиты безопасности
@@ -3488,6 +3539,7 @@ void awh::http::Parser_HTTP::limits(const limits_t & limits) noexcept {
  * @brief Метод получения разобранного сообщения
  *
  * @return разобранное сообщение
+ *
  */
 const awh::http::Parser_HTTP::message_t & awh::http::Parser_HTTP::message() const noexcept {
 	// Выводим результат разбора сообщения
@@ -3500,6 +3552,7 @@ const awh::http::Parser_HTTP::message_t & awh::http::Parser_HTTP::message() cons
  *          кадрирование, источник данных и флаги, но НЕ трогает неотправленный
  *          остаток выходного буфера. Состояние разбора не затрагивается -
  *          для него используется reset().
+ *
  */
 void awh::http::Parser_HTTP::resetSender() noexcept {
 	// Сбрасываем остаток тела до полного Content-Length
@@ -3521,6 +3574,7 @@ void awh::http::Parser_HTTP::resetSender() noexcept {
  * @brief Метод назначения pull-источника данных тела сообщения
  *
  * @param source pull-источник данных тела
+ *
  */
 void awh::http::Parser_HTTP::dataSource(data_source_callback_t source) noexcept {
 	// Сбрасываем признак достижения конца тела источника
@@ -3535,6 +3589,7 @@ void awh::http::Parser_HTTP::dataSource(data_source_callback_t source) noexcept 
  *
  * @param high ёмкость выходного буфера отправки (high-water)
  * @param low  порог сигнала writable (low-water)
+ *
  */
 void awh::http::Parser_HTTP::sendWaterMarks(const size_t high, const size_t low) noexcept {
 	// Устанавливаем порог сигнала writable
@@ -3557,6 +3612,7 @@ void awh::http::Parser_HTTP::sendWaterMarks(const size_t high, const size_t low)
  *
  * @param headers   контейнер заголовков (провайдер контейнера задаёт стартовую строку)
  * @param endStream флаг завершения сообщения (тела не будет)
+ *
  */
 void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool endStream) noexcept {
 	/**
@@ -3661,6 +3717,7 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
  * @param size      размер данных тела
  * @param endStream флаг завершения сообщения
  * @return          число принятых байт (0..size)
+ *
  */
 size_t awh::http::Parser_HTTP::sendData(const void * buffer, const size_t size, const bool endStream) noexcept {
 	// Результат работы функции - число принятых байт
@@ -3736,6 +3793,7 @@ size_t awh::http::Parser_HTTP::sendData(const void * buffer, const size_t size, 
  *          записи буфер опустошается автоматически.
  *
  * @return ещё не отправленные исходящие байты (zero-copy view во внутренний буфер)
+ *
  */
 string_view awh::http::Parser_HTTP::pending() const noexcept {
 	// Выводим ещё не отправленные исходящие байты
@@ -3745,6 +3803,7 @@ string_view awh::http::Parser_HTTP::pending() const noexcept {
  * @brief Метод освобождения отправленных байтов из исходящего буфера (амортизированно O(1))
  *
  * @param size число отправленных байт
+ *
  */
 void awh::http::Parser_HTTP::consumePending(const size_t size) noexcept {
 	// Сдвигаем отданный префикс вместо удаления; физическую память освобождаем амортизированно
@@ -3773,6 +3832,7 @@ void awh::http::Parser_HTTP::consumePending(const size_t size) noexcept {
  * @brief Метод установки функции обратного вызова для обработки фрагмента тела сообщения
  *
  * @param callback функция обратного вызова для обработки фрагмента тела сообщения
+ *
  */
 void awh::http::Parser_HTTP::on(data_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения
@@ -3782,6 +3842,7 @@ void awh::http::Parser_HTTP::on(data_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки фазы разбора HTTP-сообщения
  *
  * @param callback функция обратного вызова для обработки фазы разбора HTTP-сообщения
+ *
  */
 void awh::http::Parser_HTTP::on(phase_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки фазы разбора HTTP-сообщения
@@ -3791,6 +3852,7 @@ void awh::http::Parser_HTTP::on(phase_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки границ чанков
  *
  * @param callback функция обратного вызова для обработки границ чанков
+ *
  */
 void awh::http::Parser_HTTP::on(chunk_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки границ чанков
@@ -3800,6 +3862,7 @@ void awh::http::Parser_HTTP::on(chunk_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова записи исходящих байтов в сеть
  *
  * @param callback функция обратного вызова записи исходящих байтов в сеть
+ *
  */
 void awh::http::Parser_HTTP::on(write_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
@@ -3811,6 +3874,7 @@ void awh::http::Parser_HTTP::on(write_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки заголовков или трейлеров сообщения
  *
  * @param callback функция обратного вызова для обработки заголовков или трейлеров сообщения
+ *
  */
 void awh::http::Parser_HTTP::on(header_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки заголовков или трейлеров сообщения
@@ -3820,6 +3884,7 @@ void awh::http::Parser_HTTP::on(header_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки провайдера заголовков сообщения
  *
  * @param callback функция обратного вызова для обработки провайдера заголовков сообщения
+ *
  */
 void awh::http::Parser_HTTP::on(provider_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки провайдера заголовков сообщения
@@ -3829,6 +3894,7 @@ void awh::http::Parser_HTTP::on(provider_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова о готовности принимать данные тела
  *
  * @param callback функция обратного вызова о готовности принимать данные тела
+ *
  */
 void awh::http::Parser_HTTP::on(writable_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова о готовности принимать данные тела
@@ -3840,6 +3906,7 @@ void awh::http::Parser_HTTP::on(writable_callback_t callback) noexcept {
  * @param direct направление трафика (запрос/ответ)
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
+ *
  */
 awh::http::Parser_HTTP::Parser_HTTP(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
  parser_t(direct, fmk, log), _error(error_t::NONE),

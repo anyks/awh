@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Тесты криптографического слоя QUIC — проверка вывода начальных секретов и ключей,
+ *        шифрования и расшифровки пакетов и снятия заголовочной защиты
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -372,6 +376,7 @@ TEST_F(QuicFixture, CryptoOpenTamperedTest){
  * @details Зарезервированные биты первого октета проверяются только после снятия
  *          обеих защит, поэтому пакет собирается с ненулевым битом и защищается
  *          штатно. Снятие защиты обязано дать нарушение протокола, а не ошибку AEAD
+ *
  */
 TEST_F(QuicFixture, CryptoReservedBitsTest){
 	// Ключи защиты пакетов обоих направлений
@@ -411,6 +416,7 @@ TEST_F(QuicFixture, CryptoReservedBitsTest){
  *
  * @details При невозможности собрать пакет выходной буфер обязан остаться
  *          нетронутым: иначе в датаграмме оставался бы обрывок пакета
+ *
  */
 TEST_F(QuicFixture, CryptoSealRollbackTest){
 	// Ключи защиты пакетов обоих направлений
@@ -455,6 +461,7 @@ TEST_F(QuicFixture, CryptoSealRollbackTest){
  *
  * @details Ключи без выведенного AEAD-контекста обязаны отвергаться до обращения
  *          к криптографической библиотеке
+ *
  */
 TEST_F(QuicFixture, CryptoOpenWithoutKeysTest){
 	// Буфер пакета достаточной длины для выборки защиты заголовка
@@ -476,6 +483,7 @@ TEST_F(QuicFixture, CryptoOpenWithoutKeysTest){
  *
  * @details Ключ защиты заголовка при смене фазы не меняется, поэтому маска,
  *          вычисленная новыми и прежними ключами, обязана совпадать
+ *
  */
 TEST_F(QuicFixture, CryptoUpdateHeaderKeyTest){
 	// Ключи защиты пакетов обоих направлений

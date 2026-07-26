@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля ICMP-клиента — формирование и отправка эхо-запросов, приём и разбор ответов,
+ *        измерение времени отклика, контроль TTL, номеров последовательности и количества повторов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -121,6 +125,7 @@ namespace {
 	 * @brief Функция генерации уникального идентификатора
 	 *
 	 * @return уникальный идентификатор
+	 *
 	 */
 	unit::icmp_t::id_t identifier() noexcept {
 		// Начинаем с 1 (0 можно оставить как "invalid")
@@ -146,6 +151,7 @@ namespace {
 	 * @brief Генератор случайных чисел для полезной нагрузки ICMP
 	 *
 	 * @return ссылка на генератор случайных чисел
+	 *
 	 */
 	mt19937 & icmpRng() noexcept {
 		// Генератор случайных чисел для текущего потока
@@ -158,6 +164,7 @@ namespace {
 	 * @brief Функция генерации полезной нагрузки ICMP-запроса
 	 *
 	 * @return случайное значение полезной нагрузки
+	 *
 	 */
 	uint64_t icmpPayload() noexcept {
 		// Распределение случайных чисел для полезной нагрузки
@@ -171,6 +178,7 @@ namespace {
 	 *
 	 * @param sum  текущая сумма
 	 * @param word добавляемое слово
+	 *
 	 */
 	void checksumAdd(uint32_t & sum, const uint16_t word) noexcept {
 		// Добавляем слово в сумму
@@ -187,6 +195,7 @@ namespace {
 	 * @param sum    текущая сумма
 	 * @param buffer буфер данных
 	 * @param size   размер буфера
+	 *
 	 */
 	void checksumAdd(uint32_t & sum, const void * buffer, const size_t size) noexcept {
 		// Если данные переданы верные
@@ -217,6 +226,7 @@ namespace {
 	 * @param buffer буфер ICMP-сообщения
 	 * @param size   размер ICMP-сообщения
 	 * @return       подсчитанная контрольная сумма
+	 *
 	 */
 	uint16_t checksum6(const uint8_t src[16], const uint8_t dst[16], const void * buffer, const size_t size) noexcept {
 		// Контрольная сумма расчёта
@@ -250,6 +260,7 @@ namespace {
 	 * @param buffer буфер данных для подсчёта
 	 * @param size   размер данных для подсчёта
 	 * @return       подсчитанная контрольная сумма
+	 *
 	 */
 	uint16_t checksum(const void * buffer, const size_t size) noexcept {
 		// Переменная результата
@@ -302,6 +313,7 @@ namespace dns {
 	 *
 	 * @param domain доменное имя удалённого сервера
 	 * @return       список IP-адресов удалённого сервера
+	 *
 	 */
 	static vector <unique_ptr <net::addr_t>> resolve(string_view domain) noexcept {
 		// Список полученных IP-адресов
@@ -409,6 +421,7 @@ void awh::unit::ICMP::destroyClient() noexcept {
  * @param id       идентификатор ICMP-запроса
  * @param sequence номер последовательности запроса
  * @return         количество отправленных байт
+ *
  */
 size_t awh::unit::ICMP::sendEcho(const event::id_t eid, const id_t id, const uint16_t sequence) noexcept {
 	// Создаём объект заголовков
@@ -475,6 +488,7 @@ size_t awh::unit::ICMP::sendEcho(const event::id_t eid, const id_t id, const uin
  * @param eid         идентификатор события ICMP-клиента
  * @param error       код ошибки события ICMP-клиента
  * @param description описание ошибки события ICMP-клиента
+ *
  */
 void awh::unit::ICMP::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
 	// Выполняем функцию обратного вызова
@@ -487,6 +501,7 @@ void awh::unit::ICMP::error(const event::id_t eid, const event::error_t error, c
  * @param action действие события таймера ICMP-клиента
  * @param delay  задержка таймера ICMP-клиента
  * @return       нужно ли завершить клиента после истечения таймаута
+ *
  */
 bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Снимаем флаг ожидания ответа от сервера
@@ -528,6 +543,7 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const even
  * @param mode режим обработки события чтения ICMP-ответа
  * @param data данные события чтения ICMP-ответа
  * @param size размер данных события чтения ICMP-ответа
+ *
  */
 void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size) noexcept {
 	/**
@@ -818,6 +834,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
  *
  * @param family семейство протоколов (например: IPv4 или IPv6)
  * @return       результат инициализации события ICMP-клиента
+ *
  */
 bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 	// Переменная результата
@@ -1000,6 +1017,7 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова (ping, timeout, datagram)
+ *
  */
 void awh::unit::ICMP::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
@@ -1015,6 +1033,7 @@ void awh::unit::ICMP::callback(const callback_t & callback) noexcept {
  * @brief Метод установки таймаута для ожидания ответа от сервера
  *
  * @param delay время ожидания ответа от сервера (в миллисекундах)
+ *
  */
 void awh::unit::ICMP::setTimeout(const uint32_t delay) noexcept {
 	// Устанавливаем время ожидания ответа от сервера
@@ -1024,6 +1043,7 @@ void awh::unit::ICMP::setTimeout(const uint32_t delay) noexcept {
  * @brief Метод получения типа события
  *
  * @return тип события
+ *
  */
 awh::event::type_t awh::unit::ICMP::type() const noexcept {
 	// Получаем тип события ICMP-клиента
@@ -1033,6 +1053,7 @@ awh::event::type_t awh::unit::ICMP::type() const noexcept {
  * @brief Метод получения типа узла события
  *
  * @return тип узла события
+ *
  */
 awh::event::node_t awh::unit::ICMP::node() const noexcept {
 	// Получаем тип узла события ICMP-клиента
@@ -1042,6 +1063,7 @@ awh::event::node_t awh::unit::ICMP::node() const noexcept {
  * @brief Метод получения семейства события
  *
  * @return семейство адресов
+ *
  */
 awh::event::family_t awh::unit::ICMP::family() const noexcept {
 	// Получаем семейство события ICMP-клиента
@@ -1051,6 +1073,7 @@ awh::event::family_t awh::unit::ICMP::family() const noexcept {
  * @brief Метод получения статуса события
  *
  * @return статус события
+ *
  */
 awh::event::status_t awh::unit::ICMP::status() const noexcept {
 	// Получаем статус события ICMP-клиента
@@ -1061,6 +1084,7 @@ awh::event::status_t awh::unit::ICMP::status() const noexcept {
  *
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 	// Переменная результата
@@ -1145,6 +1169,7 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
  *
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::ICMP::setTarget(const net::addr_t * target) noexcept {
 	/**
@@ -1204,6 +1229,7 @@ bool awh::unit::ICMP::setTarget(const net::addr_t * target) noexcept {
  * @param family семейство IP-адресов IPv4/IPv6
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target) noexcept {
 	// Переменная результата
@@ -1266,6 +1292,7 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
  *
  * @param source адрес сети для выполнения запроса
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::ICMP::setSource(string_view source) noexcept {
 	// Переменная результата
@@ -1326,6 +1353,7 @@ bool awh::unit::ICMP::setSource(string_view source) noexcept {
  *
  * @param source адрес сети для выполнения запроса
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 	/**
@@ -1391,6 +1419,7 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
  * @param family семейство IP-адресов IPv4/IPv6
  * @param source адрес сети для выполнения запроса
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::ICMP::setSource(const event::family_t family, string_view source) noexcept {
 	// Переменная результата
@@ -1453,6 +1482,7 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
  * @brief Метод получения идентификатора ICMP-клиента для выполнения запроса к удалённому серверу
  *
  * @return идентификатор ICMP-клиента для выполнения запроса к удалённому серверу
+ *
  */
 awh::unit::ICMP::id_t awh::unit::ICMP::issue() const noexcept {
 	// Генерируем идентификатор ICMP-запроса
@@ -1465,6 +1495,7 @@ awh::unit::ICMP::id_t awh::unit::ICMP::issue() const noexcept {
  * @param count количество выполняемых запросов
  * @param mode  режим выполнения запросов
  * @return      результат выполнения запроса
+ *
  */
 bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mode) noexcept {
 	// Переменная результата
@@ -1697,6 +1728,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::unit::ICMP::ICMP(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log), _addr(fmk, log) {}
 /**

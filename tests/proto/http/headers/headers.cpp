@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация тестовой фикстуры контейнера HTTP-заголовков —
+ *        создание объектов тестового окружения перед каждым тестом и их освобождение после его завершения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -42,6 +46,7 @@ void HeadersFixture::TearDown() {}
  * @param name  название HTTP-заголовка
  * @param value значение HTTP-заголовка
  * @return      сформированный объект HTTP-заголовка
+ *
  */
 awh::http::headers_t::header_t HeadersFixture::header(const std::string & name, const std::string & value) const noexcept {
 	// Результирующий объект HTTP-заголовка

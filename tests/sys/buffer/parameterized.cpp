@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Параметризованные тесты бинарного смарт-буфера — прогон подготовленных наборов входных данных через методы
+ *        модуля с проверкой добавления и извлечения записей, обхода итераторами и транзакционной записи с откатом
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -163,6 +167,7 @@ class FrameBufferParameterizedFixture : public BufferFixture, public ::testing::
 		 * @param size размер генерируемых данных
 		 * @param seed начальное значение для генерации
 		 * @return     сгенерированные данные
+		 *
 		 */
 		std::string generate(const size_t size, const size_t seed) const noexcept {
 			// Результирующие данные

@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл окружения бенчмарков протокола QUIC —
+ *        объявление вспомогательных средств подготовки соединений,
+ *        криптографического контекста и общих параметров сценариев измерения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_PROTO_QUIC_BENCHMARK__
@@ -54,12 +59,14 @@ namespace awh {
 			 *
 			 * @param count количество выполненных выделений
 			 * @param bytes суммарный объём выделенной памяти в октетах
+			 *
 			 */
 			void allocations(size_t & count, size_t & bytes) noexcept;
 			/**
 			 * @brief Функция управления учётом выделений памяти
 			 *
 			 * @param mode режим учёта выделений памяти
+			 *
 			 */
 			void counting(const bool mode) noexcept;
 			/**
@@ -71,6 +78,7 @@ namespace awh {
 			 *          весь прогон: генерация сертификата и построение контекста
 			 *          к измеряемой работе отношения не имеют и в замер попадать
 			 *          не должны
+			 *
 			 */
 			class Security {
 				private:
@@ -91,6 +99,7 @@ namespace awh {
 					 * @brief Метод доступа к объекту кодера транспортной безопасности
 					 *
 					 * @return объект кодера транспортной безопасности
+					 *
 					 */
 					awh::tls::Coder & coder() noexcept;
 					/**
@@ -98,6 +107,7 @@ namespace awh {
 					 *
 					 * @param endpoint роль эндпоинта
 					 * @return         идентификатор шаблона контекста безопасности
+					 *
 					 */
 					awh::tls::Coder::id_t context(const awh::quic::endpoint_t endpoint) const noexcept;
 				public:
@@ -114,6 +124,7 @@ namespace awh {
 					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
+					 *
 					 */
 					explicit Security(const awh::fmk_t * fmk, const awh::log_t * log) noexcept;
 					/**
@@ -126,6 +137,7 @@ namespace awh {
 			 * @brief Функция получения окружения транспортной безопасности бенчмарка
 			 *
 			 * @return окружение транспортной безопасности бенчмарка
+			 *
 			 */
 			Security & security() noexcept;
 			/**
@@ -136,6 +148,7 @@ namespace awh {
 			 *       транспортным параметрам
 			 *
 			 * @param connection объект соединения
+			 *
 			 */
 			void configure(awh::quic::connection_t & connection) noexcept;
 			/**
@@ -145,6 +158,7 @@ namespace awh {
 			 * @param server эндпоинт сервера
 			 * @param now    текущее время тестовых часов в миллисекундах
 			 * @return       результат установления соединения
+			 *
 			 */
 			bool establish(awh::quic::connection_t & client, awh::quic::connection_t & server, uint64_t & now) noexcept;
 		};

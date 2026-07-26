@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля работы с операционной системой — определение семейства и версии ОС,
+ *        получение информации о процессоре и потреблении памяти, управление лимитами процесса,
+ *        привилегиями и системными параметрами
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -175,6 +180,7 @@ using namespace std;
 	 *
 	 * @param buffer буфер бинарных данных
 	 * @param result результат работф функции
+	 *
 	 */
 	static void metadata(const vector <char> & buffer, string & result) noexcept {
 		// Если буфер данных передан
@@ -186,6 +192,7 @@ using namespace std;
 	 * @brief Шаблон метода чтения метаданных из бинарного контейнера
 	 *
 	 * @tparam T Тип данных выводимого результата
+	 *
 	 */
 	template <typename T>
 	/**
@@ -193,6 +200,7 @@ using namespace std;
 	 *
 	 * @param buffer буфер бинарных данных
 	 * @param result результат работф функции
+	 *
 	 */
 	static void metadata(const vector <char> & buffer, vector <T> & result) noexcept {
 		// Если буфер данных передан
@@ -207,6 +215,7 @@ using namespace std;
 	 * @brief Шаблон метода чтения метаданных из бинарного контейнера
 	 *
 	 * @tparam T Тип данных выводимого результата
+	 *
 	 */
 	template <typename T>
 	/**
@@ -214,6 +223,7 @@ using namespace std;
 	 *
 	 * @param buffer буфер бинарных данных
 	 * @param result результат работф функции
+	 *
 	 */
 	static void metadata(const vector <char> & buffer, T & result) noexcept {
 		// Если данные являются основными
@@ -251,6 +261,7 @@ using namespace std;
 	 * @param buffer буфер данных для извлечения
 	 * @param data   указатель на извлечённые данные пользователя
 	 * @return       результат извлечения данных
+	 *
 	 */
 	static bool getUserById(const uid_t uid, struct passwd & pwd, vector <char> & buffer, struct passwd ** data) noexcept {
 		// Получаем рекомендованный системой размер буфера данных
@@ -276,6 +287,7 @@ using namespace std;
 	 * @param buffer буфер данных для извлечения
 	 * @param data   указатель на извлечённые данные пользователя
 	 * @return       результат извлечения данных
+	 *
 	 */
 	static bool getUserByName(const char * name, struct passwd & pwd, vector <char> & buffer, struct passwd ** data) noexcept {
 		// Получаем рекомендованный системой размер буфера данных
@@ -301,6 +313,7 @@ using namespace std;
 	 * @param buffer буфер данных для извлечения
 	 * @param data   указатель на извлечённые данные группы пользователя
 	 * @return       результат извлечения данных
+	 *
 	 */
 	static bool getGroupById(const gid_t gid, struct group & grp, vector <char> & buffer, struct group ** data) noexcept {
 		// Получаем рекомендованный системой размер буфера данных
@@ -326,6 +339,7 @@ using namespace std;
 	 * @param buffer буфер данных для извлечения
 	 * @param data   указатель на извлечённые данные группы пользователя
 	 * @return       результат извлечения данных
+	 *
 	 */
 	static bool getGroupByName(const char * name, struct group & grp, vector <char> & buffer, struct group ** data) noexcept {
 		// Получаем рекомендованный системой размер буфера данных
@@ -348,6 +362,7 @@ using namespace std;
 	 *
 	 * @param name   название записи для получения настроек
 	 * @param buffer бинарный буфер с извлечёнными значениями
+	 *
 	 */
 	static void sysctl(string_view name, vector <char> & buffer) noexcept {
 		// Если название параметра и тип извлекаемого значения переданы
@@ -499,6 +514,7 @@ using namespace std;
 	 * @param buffer буфер бинарных данных записи для установки настроек
 	 * @param size   размер буфера данных
 	 * @return       результат выполнения установки
+	 *
 	 */
 	static bool sysctl(string_view name, const void * buffer, const size_t size) noexcept {
 		// Если название параметра передано
@@ -548,6 +564,7 @@ using namespace std;
 	 *
 	 * @param text текст для конвертации
 	 * @return     результат проверки
+	 *
 	 */
 	static string convert(wstring_view text) noexcept {
 		// Переменная результата
@@ -577,6 +594,7 @@ using namespace std;
 	 *
 	 * @param text текст для конвертации
 	 * @return     результат проверки
+	 *
 	 */
 	static wstring convert(string_view text) noexcept {
 		// Переменная результата
@@ -606,6 +624,7 @@ using namespace std;
  * @brief isAdmin Метод проверпи запущено ли приложение под суперпользователем
  *
  * @return результат проверки
+ *
  */
 bool awh::Operating_System::isAdmin() const noexcept {
 	/**
@@ -642,6 +661,7 @@ bool awh::Operating_System::isAdmin() const noexcept {
  * @brief Метод определения операционной системы
  *
  * @return семейство операционных систем
+ *
  */
 awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
 	/**
@@ -718,6 +738,7 @@ awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
  * @brief Метод определение архитектуры процессора
  *
  * @return архитектура процессора
+ *
  */
 awh::Operating_System::cpu_t awh::Operating_System::architecture() const noexcept {
 	/**
@@ -769,6 +790,7 @@ awh::Operating_System::cpu_t awh::Operating_System::architecture() const noexcep
  *
  * @param mode режим потребления памяти
  * @return     размер расхода памяти
+ *
  */
 size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 	// Переменная результата
@@ -1231,6 +1253,7 @@ void awh::Operating_System::releaseFreeMemory() const noexcept {
  *
  * @param size размер резервированной памяти
  * @return     результат выполнения операции
+ *
  */
 bool awh::Operating_System::warmup(const size_t size) const noexcept {
 	// Если размер резервированной памяти передан
@@ -1263,6 +1286,7 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
  *
  * @param mode флаг активации/деактивации
  * @return     результат выполнения операции
+ *
  */
 bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode) const noexcept {
 	// Переменная результата
@@ -1357,6 +1381,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @brief Метод получения идентификатора текущего пользователя
 	 *
 	 * @return идентификатор текущего пользователя
+	 *
 	 */
 	uid_t awh::Operating_System::user() const noexcept {
 		// Возвращаем идентификатор текущего пользователя
@@ -1366,6 +1391,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @brief Метод получения группы текущего пользователя
 	 *
 	 * @return идентификатор группы текущего пользователя
+	 *
 	 */
 	gid_t awh::Operating_System::group() const noexcept {
 		// Возвращаем идентификатор группы пользователя
@@ -1375,6 +1401,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @brief Метод получения списка групп текущего пользователя
 	 *
 	 * @return список групп текущего пользователя
+	 *
 	 */
 	vector <gid_t> awh::Operating_System::groups() const noexcept {
 		// Переменная результата
@@ -1439,6 +1466,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 *
 	 * @param uid идентификатор пользователя
 	 * @return    имя запрашиваемого пользователя
+	 *
 	 */
 	string awh::Operating_System::user(const uid_t uid) const noexcept {
 		// Буфер данных для извлечения данных
@@ -1475,6 +1503,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 *
 	 * @param gid идентификатор группы пользователя
 	 * @return    название группы пользователя
+	 *
 	 */
 	string awh::Operating_System::group(const gid_t gid) const noexcept {
 		// Буфер данных для извлечения данных
@@ -1511,6 +1540,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 *
 	 * @param name название группы пользователя
 	 * @return     идентификатор группы пользователя
+	 *
 	 */
 	gid_t awh::Operating_System::group(string_view name) const noexcept {
 		// Если название группы пользователя передано
@@ -1552,6 +1582,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 *
 	 * @param name имя пользователя
 	 * @return     полученный идентификатор пользователя
+	 *
 	 */
 	uid_t awh::Operating_System::uid(string_view name) const noexcept {
 		// Если имя пользователя передано
@@ -1593,6 +1624,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 *
 	 * @param name имя пользователя
 	 * @return     полученный идентификатор группы пользователя
+	 *
 	 */
 	gid_t awh::Operating_System::gid(string_view name) const noexcept {
 		// Если имя пользователя передано
@@ -1634,6 +1666,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 *
 	 * @param user имя пользователя чьи группы следует получить
 	 * @return     список групп пользователя
+	 *
 	 */
 	vector <gid_t> awh::Operating_System::groups(string_view user) const noexcept {
 		// Переменная результата
@@ -1703,6 +1736,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 *
 	 * @param uid идентификатор пользователя
 	 * @return    результат выполнения операции
+	 *
 	 */
 	bool awh::Operating_System::chown(const uid_t uid) const noexcept {
 		// Если идентификатор пользователя успешно установлен
@@ -1734,6 +1768,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param uid идентификатор пользователя
 	 * @param gid идентификатор группы пользователя
 	 * @return    результат выполнения операции
+	 *
 	 */
 	bool awh::Operating_System::chown(const uid_t uid, const gid_t gid) const noexcept {
 		// Если идентификатор пользователя успешно установлен
@@ -1785,6 +1820,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param user  название пользователя
 	 * @param group название группы пользователя
 	 * @return      результат выполнения операции
+	 *
 	 */
 	bool awh::Operating_System::chown(string_view user, string_view group) const noexcept {
 		// Если имя пользователя и название группы пользователя переданы
@@ -1857,6 +1893,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @brief Метод получения идентификатора текущего пользователя
 	 *
 	 * @return идентификатор текущего пользователя
+	 *
 	 */
 	wstring awh::Operating_System::user() const noexcept {
 		// Переменная результата
@@ -1975,6 +2012,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @brief Метод получения списка групп текущего пользователя
 	 *
 	 * @return список групп текущего пользователя
+	 *
 	 */
 	vector <wstring> awh::Operating_System::groups() const noexcept {
 		// Переменная результата
@@ -2099,6 +2137,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 *
 	 * @param sid идентификатор пользователя/группы
 	 * @return    имя запрашиваемого пользователя/группы
+	 *
 	 */
 	string awh::Operating_System::account(wstring_view sid) const noexcept {
 		// Переменная результата
@@ -2190,6 +2229,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 *
 	 * @param name название пользователя/группы
 	 * @return     полученный идентификатор пользователя/группы
+	 *
 	 */
 	wstring awh::Operating_System::account(string_view name) const noexcept {
 		// Переменная результата
@@ -2266,6 +2306,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 *
 	 * @param user имя пользователя чьи группы следует получить
 	 * @return     список групп пользователя
+	 *
 	 */
 	vector <wstring> awh::Operating_System::groups(string_view user) const noexcept {
 		// Переменная результата
@@ -2449,6 +2490,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @brief Шаблон метода извлечения настроек ядра операционной системы
 	 *
 	 * @tparam T Тип данных выводимого результата
+	 *
 	 */
 	template <typename T>
 	/**
@@ -2456,6 +2498,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 *
 	 * @param name название записи для получения настроек
 	 * @return     полученное значение записи
+	 *
 	 */
 	T awh::Operating_System::sysctl(string_view name) const noexcept {
 		// Переменная результата (для скалярных типов выполняется нулевая инициализация)
@@ -2520,6 +2563,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @brief Шаблон метода установки настроек ядра операционной системы
 	 *
 	 * @tparam T Тип данных для установки
+	 *
 	 */
 	template <typename T>
 	/**
@@ -2528,6 +2572,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param name  название записи для установки настроек
 	 * @param value значение записи для установки настроек
 	 * @return      результат выполнения установки
+	 *
 	 */
 	bool awh::Operating_System::sysctl(string_view name, const T value) const noexcept {
 		// Если название записи для установки настроек передано
@@ -2581,6 +2626,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param name  название записи для установки настроек
 	 * @param value значение записи для установки настроек
 	 * @return      результат выполнения установки
+	 *
 	 */
 	bool awh::Operating_System::sysctl(string_view name, string_view value) const noexcept {
 		// Если название записи для установки настроек передано
@@ -2596,6 +2642,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param name  название записи для установки настроек
 	 * @param value значение записи для установки настроек
 	 * @return      результат выполнения установки
+	 *
 	 */
 	bool awh::Operating_System::sysctl(string_view name, const char * value) const noexcept {
 		// Если название записи для установки настроек передано
@@ -2609,6 +2656,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @brief Шаблон метода установки настроек ядра операционной системы
 	 *
 	 * @tparam T Тип данных списка для установки
+	 *
 	 */
 	template <typename T>
 	/**
@@ -2617,6 +2665,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param name  название записи для установки настроек
 	 * @param items значение записи для установки настроек
 	 * @return      результат выполнения установки
+	 *
 	 */
 	bool awh::Operating_System::sysctl(string_view name, const vector <T> & items) const noexcept {
 		// Если название записи для установки настроек передано
@@ -2690,6 +2739,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param name  название записи для установки настроек
 	 * @param items значение записи для установки настроек
 	 * @return      результат выполнения установки
+	 *
 	 */
 	bool awh::Operating_System::sysctl(string_view name, const vector <string> & items) const noexcept {
 		// Если название записи для установки настроек передано
@@ -2719,6 +2769,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @param name  название записи для установки настроек
 	 * @param items значение записи для установки настроек
 	 * @return      результат выполнения установки
+	 *
 	 */
 	bool awh::Operating_System::sysctl(string_view name, const vector <const char *> & items) const noexcept {
 		// Если название записи для установки настроек передано
@@ -2748,6 +2799,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
  *
  * @param cmd       команда запуска
  * @param multiline данные должны вернутся многострочные
+ *
  */
 string awh::Operating_System::exec(string_view cmd, const bool multiline) const noexcept {
 	// Полученный результат

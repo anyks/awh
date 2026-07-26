@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример клиента SCTP в потоковом режиме — демонстрация установки ассоциации,
+ *        настройки параметров инициализации и обмена непрерывным потоком данных
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 #include <iostream>
@@ -36,6 +40,7 @@ using namespace placeholders;
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

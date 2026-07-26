@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля работы с операционной системой —
+ *        класс Operating_System для определения семейства и версии ОС, получения информации о процессоре и памяти,
+ *        управления лимитами процесса, привилегиями и системными параметрами
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -182,6 +187,7 @@ namespace awh {
 			 * @brief isAdmin Метод проверпи запущено ли приложение под суперпользователем
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool isAdmin() const noexcept;
 		public:
@@ -189,6 +195,7 @@ namespace awh {
 			 * @brief Метод определения операционной системы
 			 *
 			 * @return семейство операционных систем
+			 *
 			 */
 			family_t family() const noexcept;
 		public:
@@ -196,6 +203,7 @@ namespace awh {
 			 * @brief Метод определение архитектуры процессора
 			 *
 			 * @return архитектура процессора
+			 *
 			 */
 			cpu_t architecture() const noexcept;
 		public:
@@ -204,6 +212,7 @@ namespace awh {
 			 *
 			 * @param mode режим потребления памяти
 			 * @return     размер расхода памяти
+			 *
 			 */
 			size_t rss(const rss_t mode) const noexcept;
 		public:
@@ -224,6 +233,7 @@ namespace awh {
 			 *
 			 * @param size размер резервированной памяти
 			 * @return     результат выполнения операции
+			 *
 			 */
 			bool warmup(const size_t size) const noexcept;
 		public:
@@ -232,6 +242,7 @@ namespace awh {
 			 *
 			 * @param mode флаг активации/деактивации
 			 * @return     результат выполнения операции
+			 *
 			 */
 			bool disableReturnMemory(const bool mode) const noexcept;
 	/**
@@ -243,18 +254,21 @@ namespace awh {
 			 * @brief Метод получения идентификатора текущего пользователя
 			 *
 			 * @return идентификатор текущего пользователя
+			 *
 			 */
 			uid_t user() const noexcept;
 			/**
 			 * @brief Метод получения группы текущего пользователя
 			 *
 			 * @return идентификатор группы текущего пользователя
+			 *
 			 */
 			gid_t group() const noexcept;
 			/**
 			 * @brief Метод получения списка групп текущего пользователя
 			 *
 			 * @return список групп текущего пользователя
+			 *
 			 */
 			vector <gid_t> groups() const noexcept;
 		public:
@@ -263,6 +277,7 @@ namespace awh {
 			 *
 			 * @param uid идентификатор пользователя
 			 * @return    имя запрашиваемого пользователя
+			 *
 			 */
 			string user(const uid_t uid) const noexcept;
 			/**
@@ -270,6 +285,7 @@ namespace awh {
 			 *
 			 * @param gid идентификатор группы пользователя
 			 * @return    название группы пользователя
+			 *
 			 */
 			string group(const gid_t gid) const noexcept;
 			/**
@@ -277,6 +293,7 @@ namespace awh {
 			 *
 			 * @param name название группы пользователя
 			 * @return     идентификатор группы пользователя
+			 *
 			 */
 			gid_t group(string_view name) const noexcept;
 		public:
@@ -285,6 +302,7 @@ namespace awh {
 			 *
 			 * @param name имя пользователя
 			 * @return     полученный идентификатор пользователя
+			 *
 			 */
 			uid_t uid(string_view name) const noexcept;
 			/**
@@ -292,6 +310,7 @@ namespace awh {
 			 *
 			 * @param name имя пользователя
 			 * @return     полученный идентификатор группы пользователя
+			 *
 			 */
 			gid_t gid(string_view name) const noexcept;
 		public:
@@ -300,6 +319,7 @@ namespace awh {
 			 *
 			 * @param user имя пользователя чьи группы следует получить
 			 * @return     список групп пользователя
+			 *
 			 */
 			vector <gid_t> groups(string_view user) const noexcept;
 		public:
@@ -308,6 +328,7 @@ namespace awh {
 			 *
 			 * @param uid идентификатор пользователя
 			 * @return    результат выполнения операции
+			 *
 			 */
 			bool chown(const uid_t uid) const noexcept;
 			/**
@@ -316,6 +337,7 @@ namespace awh {
 			 * @param uid идентификатор пользователя
 			 * @param gid идентификатор группы пользователя
 			 * @return    результат выполнения операции
+			 *
 			 */
 			bool chown(const uid_t uid, const gid_t gid) const noexcept;
 			/**
@@ -324,6 +346,7 @@ namespace awh {
 			 * @param user  название пользователя
 			 * @param group название группы пользователя
 			 * @return      результат выполнения операции
+			 *
 			 */
 			bool chown(string_view user, string_view group = "") const noexcept;
 	/**
@@ -335,12 +358,14 @@ namespace awh {
 			 * @brief Метод получения идентификатора текущего пользователя
 			 *
 			 * @return идентификатор текущего пользователя
+			 *
 			 */
 			wstring user() const noexcept;
 			/**
 			 * @brief Метод получения списка групп текущего пользователя
 			 *
 			 * @return список групп текущего пользователя
+			 *
 			 */
 			vector <wstring> groups() const noexcept;
 		public:
@@ -349,6 +374,7 @@ namespace awh {
 			 *
 			 * @param sid идентификатор пользователя/группы
 			 * @return    имя запрашиваемого пользователя/группы
+			 *
 			 */
 			string account(wstring_view sid) const noexcept;
 			/**
@@ -356,6 +382,7 @@ namespace awh {
 			 *
 			 * @param name название пользователя/группы
 			 * @return     полученный идентификатор пользователя/группы
+			 *
 			 */
 			wstring account(string_view name) const noexcept;
 		public:
@@ -364,6 +391,7 @@ namespace awh {
 			 *
 			 * @param user имя пользователя чьи группы следует получить
 			 * @return     список групп пользователя
+			 *
 			 */
 			vector <wstring> groups(string_view user) const noexcept;
 	#endif
@@ -376,6 +404,7 @@ namespace awh {
 			 * @brief Шаблон метода извлечения настроек ядра операционной системы
 			 *
 			 * @tparam T Тип данных выводимого результата
+			 *
 			 */
 			template <typename T>
 			/**
@@ -383,6 +412,7 @@ namespace awh {
 			 *
 			 * @param name название записи для получения настроек
 			 * @return     полученное значение записи
+			 *
 			 */
 			T sysctl(string_view name) const noexcept;
 		public:
@@ -390,6 +420,7 @@ namespace awh {
 			 * @brief Шаблон метода установки настроек ядра операционной системы
 			 *
 			 * @tparam T Тип данных для установки
+			 *
 			 */
 			template <typename T>
 			/**
@@ -398,6 +429,7 @@ namespace awh {
 			 * @param name  название записи для установки настроек
 			 * @param value значение записи для установки настроек
 			 * @return      результат выполнения установки
+			 *
 			 */
 			bool sysctl(string_view name, const T value) const noexcept;
 			/**
@@ -406,6 +438,7 @@ namespace awh {
 			 * @param name  название записи для установки настроек
 			 * @param value значение записи для установки настроек
 			 * @return      результат выполнения установки
+			 *
 			 */
 			bool sysctl(string_view name, string_view value) const noexcept;
 			/**
@@ -414,12 +447,14 @@ namespace awh {
 			 * @param name  название записи для установки настроек
 			 * @param value значение записи для установки настроек
 			 * @return      результат выполнения установки
+			 *
 			 */
 			bool sysctl(string_view name, const char * value) const noexcept;
 			/**
 			 * @brief Шаблон метода установки настроек ядра операционной системы
 			 *
 			 * @tparam T Тип данных списка для установки
+			 *
 			 */
 			template <typename T>
 			/**
@@ -428,6 +463,7 @@ namespace awh {
 			 * @param name  название записи для установки настроек
 			 * @param items значение записи для установки настроек
 			 * @return      результат выполнения установки
+			 *
 			 */
 			bool sysctl(string_view name, const vector <T> & items) const noexcept;
 			/**
@@ -436,6 +472,7 @@ namespace awh {
 			 * @param name  название записи для установки настроек
 			 * @param items значение записи для установки настроек
 			 * @return      результат выполнения установки
+			 *
 			 */
 			bool sysctl(string_view name, const vector <string> & items) const noexcept;
 			/**
@@ -444,6 +481,7 @@ namespace awh {
 			 * @param name  название записи для установки настроек
 			 * @param items значение записи для установки настроек
 			 * @return      результат выполнения установки
+			 *
 			 */
 			bool sysctl(string_view name, const vector <const char *> & items) const noexcept;
 	#endif
@@ -453,6 +491,7 @@ namespace awh {
 			 *
 			 * @param cmd       команда запуска
 			 * @param multiline данные должны вернутся многострочные
+			 *
 			 */
 			string exec(string_view cmd, const bool multiline = true) const noexcept;
 		public:
@@ -460,6 +499,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit Operating_System(const log_t * log) noexcept : _log(log) {}
 	} os_t;

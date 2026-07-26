@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля таймера — создание,
+ *        перезапуск и остановка одиночных и периодических таймеров цикла событий с миллисекундным разрешением
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -32,6 +36,7 @@ using namespace placeholders;
  *
  * @param eid    идентификатор таймера
  * @param status новый статус таймера
+ *
  */
 void awh::unit::Timer::state(const event::id_t eid, const event::status_t status) noexcept {
 	/**
@@ -88,6 +93,7 @@ void awh::unit::Timer::clear() noexcept {
  * @brief Метод очистки таймера
  *
  * @param eid идентификатор таймера для очистки
+ *
  */
 void awh::unit::Timer::clear(const event::id_t eid) noexcept {
 	// Удаляем функцию обратного вызова для события таймера
@@ -104,6 +110,7 @@ void awh::unit::Timer::clear(const event::id_t eid) noexcept {
  *
  * @param delay задержка времени в миллисекундах
  * @return      идентификатор таймера
+ *
  */
 awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 	// Создаём новое событие таймера
@@ -166,6 +173,7 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
  *
  * @param delay задержка времени в миллисекундах
  * @return      идентификатор таймера
+ *
  */
 awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 	// Создаём новое событие таймера
@@ -227,6 +235,7 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::unit::Timer::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
@@ -243,6 +252,7 @@ void awh::unit::Timer::callback(const callback_t & callback) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::unit::Timer::Timer(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
 /**

@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля ICMP-клиента — класс unit::ICMP,
+ *        выполняющий проверку доступности удалённого узла (ping) с контролем TTL, номеров последовательности,
+ *        времени отклика и количества повторов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -65,6 +70,7 @@ namespace awh {
 				 * @details Содержит информацию о размере ответа, времени выполнения запроса,
 				 *          индексе последовательности запроса, времени жизни пакета (TTL) и адресе удалённого сервера,
 				 *          от которого пришёл ответ на запрос ICMP-клиента.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Response {
 					// Размер полученного ответа от удалённого сервера на запрос ICMP-клиента
@@ -89,6 +95,7 @@ namespace awh {
 				 *
 				 * @details Содержит информацию о времени ожидания ответа от удалённого сервера, идентификаторе события ICMP-клиента,
 				 *          адресе удалённого сервера для выполнения запросов и локальном адресе, с которого выполняется запрос.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Client {
 					// Время ожидания ответа от удалённого сервера (в миллисекундах, по умолчанию 5000 мс)
@@ -111,6 +118,7 @@ namespace awh {
 				 * @details Содержит информацию о текущем идентификаторе запроса, флаге ожидания ответа от удалённого сервера,
 				 *          количестве повторений запросов, номере последовательности последнего отправленного запроса
 				 *          и штампе времени начала запроса.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Transfer {
 					// Активный идентификатор запроса
@@ -154,6 +162,7 @@ namespace awh {
 				 * @param id       идентификатор ICMP-запроса
 				 * @param sequence номер последовательности запроса
 				 * @return         количество отправленных байт
+				 *
 				 */
 				size_t sendEcho(const event::id_t eid, const id_t id, const uint16_t sequence) noexcept;
 			private:
@@ -163,6 +172,7 @@ namespace awh {
 				 * @param eid         идентификатор события ICMP-клиента
 				 * @param error       код ошибки события ICMP-клиента
 				 * @param description описание ошибки события ICMP-клиента
+				 *
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
 			private:
@@ -173,6 +183,7 @@ namespace awh {
 				 * @param action действие события таймера ICMP-клиента
 				 * @param delay  задержка таймера ICMP-клиента
 				 * @return       нужно ли завершить клиента после истечения таймаута
+				 *
 				 */
 				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 				/**
@@ -182,6 +193,7 @@ namespace awh {
 				 * @param mode режим обработки события чтения ICMP-ответа
 				 * @param data данные события чтения ICMP-ответа
 				 * @param size размер данных события чтения ICMP-ответа
+				 *
 				 */
 				void response(const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size) noexcept;
 			public:
@@ -190,6 +202,7 @@ namespace awh {
 				 *
 				 * @param family семейство протоколов (например: IPv4 или IPv6)
 				 * @return       результат инициализации события ICMP-клиента
+				 *
 				 */
 				bool init(const event::family_t family) noexcept;
 			public:
@@ -197,6 +210,7 @@ namespace awh {
 				 * @brief Метод установки функций обратного вызова
 				 *
 				 * @param callback функции обратного вызова (ping, timeout, datagram)
+				 *
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
@@ -204,6 +218,7 @@ namespace awh {
 				 * @brief Метод установки таймаута для ожидания ответа от сервера
 				 *
 				 * @param delay время ожидания ответа от сервера (в миллисекундах)
+				 *
 				 */
 				void setTimeout(const uint32_t delay) noexcept;
 			public:
@@ -211,24 +226,28 @@ namespace awh {
 				 * @brief Метод получения типа события
 				 *
 				 * @return тип события
+				 *
 				 */
 				event::type_t type() const noexcept;
 				/**
 				 * @brief Метод получения типа узла события
 				 *
 				 * @return тип узла события
+				 *
 				 */
 				event::node_t node() const noexcept;
 				/**
 				 * @brief Метод получения семейства события
 				 *
 				 * @return семейство адресов
+				 *
 				 */
 				event::family_t family() const noexcept;
 				/**
 				 * @brief Метод получения статуса события
 				 *
 				 * @return статус события
+				 *
 				 */
 				event::status_t status() const noexcept;
 			public:
@@ -237,6 +256,7 @@ namespace awh {
 				 *
 				 * @param target адрес хоста целевой машины
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setTarget(string_view target) noexcept;
 				/**
@@ -244,6 +264,7 @@ namespace awh {
 				 *
 				 * @param target адрес хоста целевой машины
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setTarget(const net::addr_t * target) noexcept;
 				/**
@@ -252,6 +273,7 @@ namespace awh {
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param target адрес хоста целевой машины
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setTarget(const event::family_t family, string_view target) noexcept;
 			public:
@@ -260,6 +282,7 @@ namespace awh {
 				 *
 				 * @param source адрес сети для выполнения запроса
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setSource(string_view source) noexcept;
 				/**
@@ -267,6 +290,7 @@ namespace awh {
 				 *
 				 * @param source адрес сети для выполнения запроса
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setSource(const net::addr_t * source) noexcept;
 				/**
@@ -275,6 +299,7 @@ namespace awh {
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param source адрес сети для выполнения запроса
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setSource(const event::family_t family, string_view source) noexcept;
 			public:
@@ -282,6 +307,7 @@ namespace awh {
 				 * @brief Метод получения идентификатора ICMP-клиента для выполнения запроса к удалённому серверу
 				 *
 				 * @return идентификатор ICMP-клиента для выполнения запроса к удалённому серверу
+				 *
 				 */
 				id_t issue() const noexcept;
 			public:
@@ -292,6 +318,7 @@ namespace awh {
 				 * @param count количество выполняемых запросов
 				 * @param mode  режим выполнения запросов
 				 * @return      результат выполнения запроса
+				 *
 				 */
 				bool ping(const id_t id, const uint16_t count, const mode_t mode) noexcept;
 			private:
@@ -304,6 +331,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				ICMP & operator = (const ICMP &) = delete;
 			public:
@@ -312,6 +340,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit ICMP(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля таймера —
+ *        класс unit::Timer для создания одиночных и периодических таймеров цикла событий с миллисекундным разрешением
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -57,6 +61,7 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор таймера
 				 * @param status новый статус таймера
+				 *
 				 */
 				void state(const event::id_t eid, const event::status_t status) noexcept;
 			public:
@@ -69,6 +74,7 @@ namespace awh {
 				 * @brief Метод очистки таймера
 				 *
 				 * @param eid идентификатор таймера для очистки
+				 *
 				 */
 				void clear(const event::id_t eid) noexcept;
 			public:
@@ -77,6 +83,7 @@ namespace awh {
 				 *
 				 * @param delay задержка времени в миллисекундах
 				 * @return      идентификатор таймера
+				 *
 				 */
 				event::id_t timeout(const uint32_t delay) noexcept;
 				/**
@@ -84,6 +91,7 @@ namespace awh {
 				 *
 				 * @param delay задержка времени в миллисекундах
 				 * @return      идентификатор таймера
+				 *
 				 */
 				event::id_t interval(const uint32_t delay) noexcept;
 			public:
@@ -91,6 +99,7 @@ namespace awh {
 				 * @brief Метод установки функций обратного вызова
 				 *
 				 * @param callback функции обратного вызова
+				 *
 				 */
 				void callback(const callback_t & callback) noexcept;
 			private:
@@ -103,6 +112,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				Timer & operator = (const Timer &) = delete;
 			public:
@@ -111,6 +121,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Timer(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

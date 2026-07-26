@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модулей QUIC — классы unit::QuicServer и unit::QuicClient,
+ *        связывающие конечный автомат соединения QUIC с движком ввода-вывода: управление сессиями,
+ *        миграция клиентского адреса, кластеризация сервера и возобновление сессии по 0-RTT
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -62,6 +67,7 @@ namespace awh {
 		 *          маршрутизацией движка после каждой обработанной датаграммы,
 		 *          поэтому смена адреса клиента соединение не разрывает
 		 *          (RFC 9000 §9), а забыть синхронизацию невозможно.
+		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ QuicServer : public unit_t {
 			private:
@@ -96,6 +102,7 @@ namespace awh {
 				 * @brief Структура параметров кластера
 				 *
 				 * @details Параметры кластера задаются при его создании и не могут быть изменены в процессе работы.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ ClusterParams {
 					// Имя кластера
@@ -214,6 +221,7 @@ namespace awh {
 				 * @brief Метод получения текущего времени в миллисекундах
 				 *
 				 * @return текущее время в миллисекундах
+				 *
 				 */
 				uint64_t date() const noexcept;
 				/**
@@ -221,6 +229,7 @@ namespace awh {
 				 *
 				 * @param oid идентификатор события сессии
 				 * @return    адрес удалённого эндпоинта в виде "адрес:порт"
+				 *
 				 */
 				string peer(const event::id_t oid) const noexcept;
 				/**
@@ -233,6 +242,7 @@ namespace awh {
 				 *
 				 * @param oid        идентификатор события сессии
 				 * @param connection соединение, которому устанавливается адрес эндпоинта
+				 *
 				 */
 				void endpoint(const event::id_t oid, quic::connection_t * connection) const noexcept;
 			private:
@@ -244,6 +254,7 @@ namespace awh {
 				 * @param size размер датаграммы
 				 * @param key  выводимый ключ сессии
 				 * @return     результат определения сессии
+				 *
 				 */
 				bool origin(const event::id_t eid, const uint8_t * data, const size_t size, net::origin_key_t & key) noexcept;
 				/**
@@ -251,6 +262,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @param oid идентификатор события сессии
+				 *
 				 */
 				void accept(const event::id_t eid, const event::id_t oid) noexcept;
 				/**
@@ -259,6 +271,7 @@ namespace awh {
 				 * @param oid  идентификатор события сессии
 				 * @param data данные датаграммы
 				 * @param size размер датаграммы
+				 *
 				 */
 				void read(const event::id_t oid, const uint8_t * data, const size_t size) noexcept;
 				/**
@@ -266,6 +279,7 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор события интервала
 				 * @param status статус события интервала
+				 *
 				 */
 				void tick(const event::id_t eid, const event::status_t status) noexcept;
 			private:
@@ -279,18 +293,21 @@ namespace awh {
 				 *
 				 * @param oid     идентификатор события сессии
 				 * @param session сессия соединения
+				 *
 				 */
 				void reroute(const event::id_t oid, session_t & session) noexcept;
 				/**
 				 * @brief Метод выдачи собранных данных потоков приложения
 				 *
 				 * @param oid идентификатор события сессии
+				 *
 				 */
 				void process(const event::id_t oid) noexcept;
 				/**
 				 * @brief Метод применения маркировки соединения к сокету события сервера
 				 *
 				 * @param marking требуемая маркировка исходящих датаграмм
+				 *
 				 */
 				void mark(const event::ecn_t marking) noexcept;
 				/**
@@ -298,6 +315,7 @@ namespace awh {
 				 *
 				 * @param oid     идентификатор события сессии
 				 * @param session сессия соединения
+				 *
 				 */
 				bool flush(const event::id_t oid, session_t & session) noexcept;
 				/**
@@ -312,6 +330,7 @@ namespace awh {
 				 * @param data данные для отправки в туннельный поток
 				 * @param size размер данных для отправки
 				 * @return     результат постановки данных в очередь отправки
+				 *
 				 */
 				bool inject(const event::id_t oid, const uint8_t * data, const size_t size) noexcept;
 				/**
@@ -323,6 +342,7 @@ namespace awh {
 				 *
 				 * @param dest идентификатор события-приёмника объединения данных
 				 * @param data данные для перенаправления
+				 *
 				 */
 				void forward(const event::id_t dest, string_view data) noexcept;
 				/**
@@ -336,12 +356,14 @@ namespace awh {
 				 * @param data данные вызвавшей сброс датаграммы
 				 * @param size размер вызвавшей сброс датаграммы
 				 * @return     результат отправки
+				 *
 				 */
 				bool drop(const event::id_t oid, const uint8_t * data, const size_t size) noexcept;
 				/**
 				 * @brief Метод завершения сессии соединения
 				 *
 				 * @param oid идентификатор события сессии
+				 *
 				 */
 				void erase(const event::id_t oid) noexcept;
 			private:
@@ -350,6 +372,7 @@ namespace awh {
 				 *
 				 * @param old старый идентификатор процесса
 				 * @param pid текущий идентификатор процесса
+				 *
 				 */
 				void rebase(const pid_t old, const pid_t pid) noexcept;
 				/**
@@ -357,6 +380,7 @@ namespace awh {
 				 *
 				 * @param pid    идентификатор процесса
 				 * @param signal сигнал с которым завершился процесс
+				 *
 				 */
 				void exit(const pid_t pid, const int32_t signal) noexcept;
 				/**
@@ -364,6 +388,7 @@ namespace awh {
 				 *
 				 * @param pid  идентификатор процесса
 				 * @param size размер отправленного сообщения
+				 *
 				 */
 				void sending(const pid_t pid, const size_t size) noexcept;
 				/**
@@ -377,6 +402,7 @@ namespace awh {
 				 *
 				 * @param pid   идентификатор процесса
 				 * @param event флаг события кластера
+				 *
 				 */
 				void cluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept;
 				/**
@@ -385,6 +411,7 @@ namespace awh {
 				 * @param pid  идентификатор процесса
 				 * @param data данные полученного сообщения
 				 * @param size размер данных полученного сообщения
+				 *
 				 */
 				void message(const pid_t pid, const uint8_t * data, const size_t size) noexcept;
 				/**
@@ -392,6 +419,7 @@ namespace awh {
 				 *
 				 * @param pid    идентификатор процесса
 				 * @param status новый статус процесса кластера
+				 *
 				 */
 				void status(const pid_t pid, const event::status_t status) noexcept;
 				/**
@@ -400,6 +428,7 @@ namespace awh {
 				 * @param pid         идентификатор процесса
 				 * @param error       тип ошибки
 				 * @param description описание ошибки
+				 *
 				 */
 				void error(const pid_t pid, const event::error_t error, const string & description) noexcept;
 				/**
@@ -408,6 +437,7 @@ namespace awh {
 				 * @param pid    идентификатор процесса
 				 * @param status статус доступности очереди
 				 * @param size   размер доступных данных очереди
+				 *
 				 */
 				void available(const pid_t pid, const event::status_t status, const size_t size) noexcept;
 				/**
@@ -416,6 +446,7 @@ namespace awh {
 				 * @param pid  идентификатор дочернего процесса
 				 * @param port выделяемый порт прослушивания
 				 * @return     результат отправки
+				 *
 				 */
 				bool sendPort(const pid_t pid, const uint16_t port) noexcept;
 			private:
@@ -423,6 +454,7 @@ namespace awh {
 				 * @brief Метод запуска/остановки работы сервера
 				 *
 				 * @param status статус запуска/остановки сервера
+				 *
 				 */
 				void launch(const event::status_t status) noexcept;
 			public:
@@ -434,6 +466,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события
 				 * @return    результат проверки актуальности события
+				 *
 				 */
 				bool isActual(const event::id_t eid) const noexcept;
 				/**
@@ -448,6 +481,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события, переданный фасадом
 				 * @return    актуальный идентификатор события сервера
+				 *
 				 */
 				event::id_t actual(const event::id_t eid) const noexcept;
 				/**
@@ -459,18 +493,21 @@ namespace awh {
 				 *
 				 * @param coder объект кодера транспортной безопасности
 				 * @param ctx   идентификатор шаблона контекста безопасности
+				 *
 				 */
 				void context(const tls::coder_t & coder, const tls::coder_t::id_t ctx) noexcept;
 				/**
 				 * @brief Метод установки локальных транспортных параметров соединений (RFC 9000 §7.4)
 				 *
 				 * @param params локальные транспортные параметры
+				 *
 				 */
 				void params(const quic::params::params_t & params) noexcept;
 				/**
 				 * @brief Метод установки проверки адреса клиента через пакет Retry (RFC 9000 §8.1.2)
 				 *
 				 * @param mode режим проверки адреса клиента
+				 *
 				 */
 				void retry(const bool mode) noexcept;
 				/**
@@ -484,6 +521,7 @@ namespace awh {
 				 *       датаграммы, что снижает пропускную способность приёма
 				 *
 				 * @param mode режим уведомления о перегрузке пути
+				 *
 				 */
 				void ecn(const bool mode) noexcept;
 				/**
@@ -494,6 +532,7 @@ namespace awh {
 				 *       в пределах жизни процесса, но не переживёт его перезапуск
 				 *
 				 * @param key общий ключ вывода токенов сброса
+				 *
 				 */
 				void resetKey(string_view key) noexcept;
 			public:
@@ -508,6 +547,7 @@ namespace awh {
 				 * @param type     тип события (игнорируется, приводится к DATAGRAM)
 				 * @param protocol протокол события (игнорируется, приводится к UDP)
 				 * @return         идентификатор созданного события сервера
+				 *
 				 */
 				event::id_t issue(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
 			public:
@@ -516,6 +556,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    результат выполнения фиксации
+				 *
 				 */
 				bool commit(const event::id_t eid) noexcept;
 				/**
@@ -523,6 +564,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    результат выполнения запуска
+				 *
 				 */
 				bool launch(const event::id_t eid) noexcept;
 				/**
@@ -531,6 +573,7 @@ namespace awh {
 				 * @param eid идентификатор события сервера
 				 * @param max максимальный размер очереди ожидания соединений
 				 * @return    результат выполнения прослушивания
+				 *
 				 */
 				bool listen(const event::id_t eid, const uint32_t max) noexcept;
 				/**
@@ -538,6 +581,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    результат выполнения приостановки работы
+				 *
 				 */
 				bool pause(const event::id_t eid) noexcept;
 				/**
@@ -545,6 +589,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    результат выполнения возобновления работы
+				 *
 				 */
 				bool resume(const event::id_t eid) noexcept;
 				/**
@@ -552,6 +597,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    результат получения данных
+				 *
 				 */
 				bool recv(const event::id_t eid) noexcept;
 				/**
@@ -565,6 +611,7 @@ namespace awh {
 				 * @param buffer буфер данных для отправки
 				 * @param size   размер данных для отправки
 				 * @return       количество байт, поставленных в очередь отправки
+				 *
 				 */
 				size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
 				/**
@@ -577,6 +624,7 @@ namespace awh {
 				 * @param eid  идентификатор события-источника
 				 * @param dest идентификатор события-приёмника
 				 * @return     результат объединения
+				 *
 				 */
 				bool splice(const event::id_t eid, const event::id_t dest) noexcept;
 				/**
@@ -589,12 +637,14 @@ namespace awh {
 				 * @param eid идентификатор события клиента
 				 * @param ctx контекст события клиента
 				 * @return    результат выполнения установки
+				 *
 				 */
 				bool setContext(const event::id_t eid, void * ctx) noexcept;
 				/**
 				 * @brief Метод уничтожения события сервера
 				 *
 				 * @param eid идентификатор события для уничтожения
+				 *
 				 */
 				void destroy(const event::id_t eid) noexcept;
 			public:
@@ -603,6 +653,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    опции события сервера
+				 *
 				 */
 				uint16_t getOptions(const event::id_t eid) const noexcept;
 				/**
@@ -611,6 +662,7 @@ namespace awh {
 				 * @param eid     идентификатор события сервера
 				 * @param options опции события сервера для установки
 				 * @return        результат выполнения установки
+				 *
 				 */
 				bool setOptions(const event::id_t eid, const uint16_t options) noexcept;
 				/**
@@ -620,6 +672,7 @@ namespace awh {
 				 * @param option опция события сервера для установки
 				 * @param mode   режим установки опции события сервера
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept;
 			public:
@@ -628,6 +681,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    метаданные последнего принятого дейтаграммного пакета
+				 *
 				 */
 				net::dgram_info_t getTrafficInfo(const event::id_t eid) const noexcept;
 			public:
@@ -636,6 +690,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    количество хопов последнего принятого пакета
+				 *
 				 */
 				uint8_t getCountHops(const event::id_t eid) const noexcept;
 				/**
@@ -644,6 +699,7 @@ namespace awh {
 				 * @param eid  идентификатор события сервера
 				 * @param hops количество хопов последнего принятого пакета
 				 * @return     результат выполнения установки
+				 *
 				 */
 				bool setCountHops(const event::id_t eid, const uint8_t hops) noexcept;
 				/**
@@ -651,6 +707,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    максимальное количество хопов
+				 *
 				 */
 				event::hops_t getHops(const event::id_t eid) const noexcept;
 				/**
@@ -659,6 +716,7 @@ namespace awh {
 				 * @param eid  идентификатор события сервера
 				 * @param hops максимальное количество хопов
 				 * @return     результат работы функции
+				 *
 				 */
 				bool setHops(const event::id_t eid, const event::hops_t hops) noexcept;
 			public:
@@ -667,6 +725,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    сетевой интерфейс сервера
+				 *
 				 */
 				string getIface(const event::id_t eid) const noexcept;
 				/**
@@ -675,6 +734,7 @@ namespace awh {
 				 * @param eid  идентификатор события сервера
 				 * @param name имя сетевого интерфейса для установки
 				 * @return     результат выполнения установки
+				 *
 				 */
 				bool setIface(const event::id_t eid, string_view name) noexcept;
 			public:
@@ -686,6 +746,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    семейство адресов события сервера
+				 *
 				 */
 				event::family_t family(const event::id_t eid) const noexcept;
 				/**
@@ -693,6 +754,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    порт сервера
+				 *
 				 */
 				uint16_t getPort(const event::id_t eid) const noexcept;
 				/**
@@ -701,6 +763,7 @@ namespace awh {
 				 * @param eid  идентификатор события сервера
 				 * @param port порт сервера для установки
 				 * @return     результат выполнения установки
+				 *
 				 */
 				bool setPort(const event::id_t eid, const uint16_t port) noexcept;
 			public:
@@ -710,6 +773,7 @@ namespace awh {
 				 * @param eid     идентификатор события сервера
 				 * @param address тип адреса сервера
 				 * @return        значение адреса сервера
+				 *
 				 */
 				string getAddress(const event::id_t eid, const event::address_t address) const noexcept;
 				/**
@@ -719,6 +783,7 @@ namespace awh {
 				 * @param address тип адреса сервера
 				 * @param value   значение адреса сервера
 				 * @return        результат выполнения установки
+				 *
 				 */
 				bool setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept;
 				/**
@@ -728,6 +793,7 @@ namespace awh {
 				 * @param address тип адреса сервера
 				 * @param value   структура сетевого адреса сервера
 				 * @return        результат выполнения установки
+				 *
 				 */
 				bool setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept;
 				/**
@@ -737,6 +803,7 @@ namespace awh {
 				 * @param address тип адреса сервера
 				 * @param value   объект для извлечения адреса сервера
 				 * @return        результат выполнения извлечения адреса сервера
+				 *
 				 */
 				bool getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
 			public:
@@ -745,6 +812,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    MTU сетевого интерфейса
+				 *
 				 */
 				uint16_t getMaximumTransmissionUnit(const event::id_t eid) const noexcept;
 				/**
@@ -753,6 +821,7 @@ namespace awh {
 				 * @param eid идентификатор события сервера
 				 * @param mtu размер MTU интерфейса
 				 * @return    результат установки MTU сетевого интерфейса
+				 *
 				 */
 				bool setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept;
 				/**
@@ -760,6 +829,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    текущий режим обнаружения MTU
+				 *
 				 */
 				event::mtu_discover_t getMaximumTransmissionUnitDiscover(const event::id_t eid) const noexcept;
 				/**
@@ -768,6 +838,7 @@ namespace awh {
 				 * @param eid  идентификатор события сервера
 				 * @param mode режим обнаружения максимального размера пакета (MTU)
 				 * @return     результат работы функции
+				 *
 				 */
 				bool setMaximumTransmissionUnitDiscover(const event::id_t eid, const event::mtu_discover_t mode) const noexcept;
 			public:
@@ -776,6 +847,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    режим трансляции пакетов (unicast, multicast, broadcast)
+				 *
 				 */
 				event::delivery_mode_t getDelivery(const event::id_t eid) const noexcept;
 				/**
@@ -784,6 +856,7 @@ namespace awh {
 				 * @param eid      идентификатор события сервера
 				 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
 				 * @return         результат выполнения установки
+				 *
 				 */
 				bool setDelivery(const event::id_t eid, const event::delivery_mode_t delivery) noexcept;
 			public:
@@ -793,6 +866,7 @@ namespace awh {
 				 * @param eid    идентификатор события сервера
 				 * @param action тип действия сервера
 				 * @return       размер буфера сервера
+				 *
 				 */
 				size_t getBufferSize(const event::id_t eid, const event::action_t action) const noexcept;
 				/**
@@ -802,6 +876,7 @@ namespace awh {
 				 * @param action тип действия сервера
 				 * @param size   размер буфера сервера
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept;
 			public:
@@ -810,6 +885,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события
 				 * @return    режим использования таймаута на чтение события
+				 *
 				 */
 				event::usage_t getUsageReadTimeout(const event::id_t eid) const noexcept;
 				/**
@@ -817,6 +893,7 @@ namespace awh {
 				 *
 				 * @param eid   идентификатор события
 				 * @param usage режим использования таймаута на чтение события (reusable или disposable)
+				 *
 				 */
 				void setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept;
 				/**
@@ -825,6 +902,7 @@ namespace awh {
 				 * @param eid    идентификатор события сервера
 				 * @param action тип действия сервера
 				 * @return       значение таймаута в миллисекундах
+				 *
 				 */
 				uint32_t getTimeout(const event::id_t eid, const event::action_t action) const noexcept;
 				/**
@@ -833,6 +911,7 @@ namespace awh {
 				 * @param eid     идентификатор события сервера
 				 * @param action  тип действия сервера
 				 * @param timeout значение таймаута в миллисекундах
+				 *
 				 */
 				void setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept;
 			public:
@@ -843,6 +922,7 @@ namespace awh {
 				 * @param limiting  режим ограничения пропускной способности сервера (egress или ingress)
 				 * @param bandwidth пропускная способность сервера для установки
 				 * @return          результат выполнения установки
+				 *
 				 */
 				bool bandwidth(const event::id_t eid, const event::limiting_t limiting, string_view bandwidth) noexcept;
 				/**
@@ -853,6 +933,7 @@ namespace awh {
 				 * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
 				 * @param intvl интервал между пакетами keep-alive в секундах
 				 * @return      результат выполнения установки
+				 *
 				 */
 				bool keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
@@ -861,6 +942,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события сервера
 				 * @return    значение DSCP
+				 *
 				 */
 				event::dscp_t getDifferentiatedServicesCodePoint(const event::id_t eid) const noexcept;
 				/**
@@ -869,6 +951,7 @@ namespace awh {
 				 * @param eid  идентификатор события сервера
 				 * @param dscp значение DSCP
 				 * @return     результат работы функции
+				 *
 				 */
 				bool setDifferentiatedServicesCodePoint(const event::id_t eid, const event::dscp_t dscp) const noexcept;
 			public:
@@ -881,6 +964,7 @@ namespace awh {
 				 * @param source адрес сетевого интерфейса с которого выполняется подписка
 				 * @param port   порт мультикаст-группы с которого выполняется подписка
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool membership(const event::id_t eid, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept;
 				/**
@@ -892,6 +976,7 @@ namespace awh {
 				 * @param source адрес сетевого интерфейса с которого выполняется подписка
 				 * @param port   порт мультикаст-группы с которого выполняется подписка
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept;
 			public:
@@ -899,6 +984,7 @@ namespace awh {
 				 * @brief Метод установки названия кластера
 				 *
 				 * @param name название кластера для установки
+				 *
 				 */
 				void clusterName(string_view name) noexcept;
 			public:
@@ -906,6 +992,7 @@ namespace awh {
 				 * @brief Метод получения семейства кластера
 				 *
 				 * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
+				 *
 				 */
 				cluster_t::family_t clusterFamily() const noexcept;
 			public:
@@ -913,12 +1000,14 @@ namespace awh {
 				 * @brief Метод получения режима активации кластера
 				 *
 				 * @return режим активации кластера
+				 *
 				 */
 				event::mode_t clusterMode() const noexcept;
 				/**
 				 * @brief Метод установки режима работы кластера
 				 *
 				 * @param mode режим активации/деактивации кластера
+				 *
 				 */
 				void clusterMode(const event::mode_t mode) noexcept;
 			public:
@@ -926,12 +1015,14 @@ namespace awh {
 				 * @brief Метод получения максимального количества процессов
 				 *
 				 * @return максимальное количество процессов
+				 *
 				 */
 				uint16_t clusterCount() const noexcept;
 				/**
 				 * @brief Метод установки максимального количества процессов
 				 *
 				 * @param count максимальное количество процессов
+				 *
 				 */
 				void clusterCount(const uint16_t count) noexcept;
 			public:
@@ -939,6 +1030,7 @@ namespace awh {
 				 * @brief Метод получения списка дочерних процессов
 				 *
 				 * @return список дочерних процессов
+				 *
 				 */
 				unordered_set <pid_t> clusterWorkers() const noexcept;
 			public:
@@ -953,6 +1045,7 @@ namespace awh {
 				 *
 				 * @param begin начальный порт диапазона (0 - использовать порт прослушивания)
 				 * @param end   конечный порт диапазона (0 - использовать порт прослушивания)
+				 *
 				 */
 				void clusterRange(const uint16_t begin, const uint16_t end) noexcept;
 			public:
@@ -966,6 +1059,7 @@ namespace awh {
 				 *       вручную методом clusterAssign()
 				 *
 				 * @return список идентификаторов дочерних процессов, работающих в холостую
+				 *
 				 */
 				unordered_set <pid_t> clusterIdle() const noexcept;
 				/**
@@ -978,6 +1072,7 @@ namespace awh {
 				 * @param pid  идентификатор дочернего процесса
 				 * @param port порт прослушивания для дочернего процесса
 				 * @return     результат отправки порта дочернему процессу
+				 *
 				 */
 				bool clusterAssign(const pid_t pid, const uint16_t port) noexcept;
 			public:
@@ -987,6 +1082,7 @@ namespace awh {
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 * @return       количество байт отправленного сообщения
+				 *
 				 */
 				size_t clusterSend(const void * buffer, const size_t size) noexcept;
 				/**
@@ -996,6 +1092,7 @@ namespace awh {
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 * @return       количество байт отправленного сообщения
+				 *
 				 */
 				size_t clusterSend(const pid_t pid, const void * buffer, const size_t size) noexcept;
 			public:
@@ -1005,6 +1102,7 @@ namespace awh {
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 * @return       количество байт отправленного сообщения
+				 *
 				 */
 				size_t clusterBroadcast(const void * buffer, const size_t size) noexcept;
 			public:
@@ -1012,6 +1110,7 @@ namespace awh {
 				 * @brief Метод установки флага автоматического возрождения процессов
 				 *
 				 * @param mode флаг возрождения процессов
+				 *
 				 */
 				void clusterRebirth(const bool mode) noexcept;
 				/**
@@ -1019,6 +1118,7 @@ namespace awh {
 				 *
 				 * @param limit  максимальное число подряд идущих быстрых падений до остановки кластера (0 — без ограничения)
 				 * @param window временное окно «быстрого» (раннего) падения процесса в миллисекундах
+				 *
 				 */
 				void clusterRebirthLimit(const uint16_t limit, const uint64_t window) noexcept;
 			public:
@@ -1026,12 +1126,14 @@ namespace awh {
 				 * @brief Метод получения типа протокола передачи данных между воркерами
 				 *
 				 * @return тип протокола передачи данных между воркерами
+				 *
 				 */
 				event::type_t clusterGetTypeEventMessage() const noexcept;
 				/**
 				 * @brief Метод установки типа протокола передачи данных между воркерами
 				 *
 				 * @param type тип протокола передачи данных между воркерами для установки
+				 *
 				 */
 				void clusterSetTypeEventMessage(const event::type_t type) noexcept;
 			public:
@@ -1041,6 +1143,7 @@ namespace awh {
 				 * @param pid    идентификатор процесса
 				 * @param action тип действия события
 				 * @return       размер буфера события
+				 *
 				 */
 				size_t clusterGetBufferSize(const pid_t pid, const event::action_t action) const noexcept;
 				/**
@@ -1050,6 +1153,7 @@ namespace awh {
 				 * @param action тип действия события
 				 * @param size   размер буфера события
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool clusterSetBufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept;
 			public:
@@ -1070,6 +1174,7 @@ namespace awh {
 				 * @param oid  идентификатор события сессии
 				 * @param mode режим однонаправленного потока
 				 * @return     идентификатор открытого потока
+				 *
 				 */
 				uint64_t open(const event::id_t oid, const bool mode = false) noexcept;
 				/**
@@ -1080,6 +1185,7 @@ namespace awh {
 				 * @param data отправляемые данные
 				 * @param fin  флаг завершения потока
 				 * @return     результат постановки данных в очередь отправки
+				 *
 				 */
 				bool send(const event::id_t oid, const uint64_t sid, string_view data, const bool fin = false) noexcept;
 				/**
@@ -1092,6 +1198,7 @@ namespace awh {
 				 * @param oid  идентификатор события сессии
 				 * @param data данные датаграммы приложения
 				 * @return     результат отправки
+				 *
 				 */
 				bool datagram(const event::id_t oid, string_view data) noexcept;
 				/**
@@ -1099,6 +1206,7 @@ namespace awh {
 				 *
 				 * @param oid идентификатор события сессии
 				 * @return    предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
+				 *
 				 */
 				size_t datagrams(const event::id_t oid) const noexcept;
 				/**
@@ -1107,6 +1215,7 @@ namespace awh {
 				 * @param oid    идентификатор события сессии
 				 * @param code   код ошибки приложения
 				 * @param reason человекочитаемая причина завершения
+				 *
 				 */
 				void close(const event::id_t oid, const uint64_t code = 0, string_view reason = "") noexcept;
 			public:
@@ -1115,6 +1224,7 @@ namespace awh {
 				 *
 				 * @param oid идентификатор события сессии
 				 * @return    согласованный ALPN-протокол
+				 *
 				 */
 				tls::coder_t::alpn_t alpn(const event::id_t oid) const noexcept;
 				/**
@@ -1122,6 +1232,7 @@ namespace awh {
 				 *
 				 * @param oid идентификатор события сессии
 				 * @return    адрес удалённого эндпоинта в виде "адрес:порт"
+				 *
 				 */
 				string address(const event::id_t oid) const noexcept;
 			public:
@@ -1134,6 +1245,7 @@ namespace awh {
 				 *       на завершённое соединение
 				 *
 				 * @param callback функции обратного вызова
+				 *
 				 */
 				void callback(const callback_t & callback) noexcept;
 			private:
@@ -1146,6 +1258,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				QuicServer & operator = (const QuicServer &) = delete;
 			public:
@@ -1154,6 +1267,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit QuicServer(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1171,6 +1285,7 @@ namespace awh {
 		 *          установления соединения, сохраняется модулем и подставляется
 		 *          при следующем подключении, поэтому повторное соединение с тем
 		 *          же сервером обходится без полного хендшейка (RFC 9001 §4.6)
+		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ QuicClient : public unit_t {
 			private:
@@ -1231,6 +1346,7 @@ namespace awh {
 				 * @brief Метод получения текущего времени в миллисекундах
 				 *
 				 * @return текущее время в миллисекундах
+				 *
 				 */
 				uint64_t date() const noexcept;
 			private:
@@ -1240,6 +1356,7 @@ namespace awh {
 				 * @param eid  идентификатор события клиента
 				 * @param data данные датаграммы
 				 * @param size размер датаграммы
+				 *
 				 */
 				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
@@ -1247,6 +1364,7 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор события интервала
 				 * @param status статус события интервала
+				 *
 				 */
 				void tick(const event::id_t eid, const event::status_t status) noexcept;
 				/**
@@ -1254,6 +1372,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @param ok  результат подключения к серверу
+				 *
 				 */
 				void connected(const event::id_t eid, const bool ok) noexcept;
 			private:
@@ -1269,12 +1388,14 @@ namespace awh {
 				 *       истечении периода завершения, выдерживаемого после завершения
 				 *       соединения самим приложением (RFC 9000 §10.2). Оповещение
 				 *       выполняется однократно
+				 *
 				 */
 				void complete() noexcept;
 				/**
 				 * @brief Метод применения маркировки соединения к сокету события клиента
 				 *
 				 * @param marking требуемая маркировка исходящих датаграмм
+				 *
 				 */
 				void mark(const event::ecn_t marking) noexcept;
 				/**
@@ -1292,12 +1413,14 @@ namespace awh {
 				 * @param data данные для отправки в туннельный поток
 				 * @param size размер данных для отправки
 				 * @return     результат постановки данных в очередь отправки
+				 *
 				 */
 				bool inject(const uint8_t * data, const size_t size) noexcept;
 				/**
 				 * @brief Метод перенаправления собранных данных соединения в событие-приёмник объединения
 				 *
 				 * @param data данные для перенаправления
+				 *
 				 */
 				void forward(string_view data) noexcept;
 			private:
@@ -1306,12 +1429,14 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события
 				 * @return    результат проверки актуальности события
+				 *
 				 */
 				bool isActual(const event::id_t eid) const noexcept;
 				/**
 				 * @brief Метод запуска/остановки работы клиента
 				 *
 				 * @param status статус запуска/остановки клиента
+				 *
 				 */
 				void launch(const event::status_t status) noexcept;
 			public:
@@ -1320,6 +1445,7 @@ namespace awh {
 				 *
 				 * @param coder объект кодера транспортной безопасности
 				 * @param ctx   идентификатор шаблона контекста безопасности
+				 *
 				 */
 				void context(const tls::coder_t & coder, const tls::coder_t::id_t ctx) noexcept;
 				/**
@@ -1330,12 +1456,14 @@ namespace awh {
 				 *       маркировку, соединение выявляет само и маркировку снимает
 				 *
 				 * @param mode режим уведомления о перегрузке пути
+				 *
 				 */
 				void ecn(const bool mode) noexcept;
 				/**
 				 * @brief Метод установки локальных транспортных параметров соединения (RFC 9000 §7.4)
 				 *
 				 * @param params локальные транспортные параметры
+				 *
 				 */
 				void params(const quic::params::params_t & params) noexcept;
 			public:
@@ -1347,12 +1475,14 @@ namespace awh {
 				 *       к предъявлению между запусками приложения
 				 *
 				 * @return токен проверки адреса (пусто - токен не получен)
+				 *
 				 */
 				const string & token() const noexcept;
 				/**
 				 * @brief Метод установки сохранённого токена проверки адреса (RFC 9000 §8.1.3)
 				 *
 				 * @param token токен проверки адреса
+				 *
 				 */
 				void token(string_view token) noexcept;
 			public:
@@ -1364,6 +1494,7 @@ namespace awh {
 				 *       нужна приложению, которому важно знать, состоялся ли 0-RTT
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool early() const noexcept;
 			public:
@@ -1378,6 +1509,7 @@ namespace awh {
 				 * @param type     тип события (игнорируется, приводится к DATAGRAM)
 				 * @param protocol протокол события (игнорируется, приводится к UDP)
 				 * @return         идентификатор созданного события клиента
+				 *
 				 */
 				event::id_t issue(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
 			public:
@@ -1386,6 +1518,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    результат выполнения фиксации
+				 *
 				 */
 				bool commit(const event::id_t eid) noexcept;
 				/**
@@ -1393,6 +1526,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    результат выполнения запуска
+				 *
 				 */
 				bool launch(const event::id_t eid) noexcept;
 				/**
@@ -1400,6 +1534,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    результат выполнения приостановки работы
+				 *
 				 */
 				bool pause(const event::id_t eid) noexcept;
 				/**
@@ -1407,6 +1542,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    результат выполнения возобновления работы
+				 *
 				 */
 				bool resume(const event::id_t eid) noexcept;
 				/**
@@ -1414,6 +1550,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    результат выполнения отключения
+				 *
 				 */
 				bool disconnect(const event::id_t eid) noexcept;
 			public:
@@ -1426,6 +1563,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    результат выполнения подключения
+				 *
 				 */
 				bool connect(const event::id_t eid) noexcept;
 				/**
@@ -1433,6 +1571,7 @@ namespace awh {
 				 *
 				 * @param ids список идентификаторов событий для подключения
 				 * @return    результат выполнения подключения
+				 *
 				 */
 				bool connect(const vector <event::id_t> & ids) noexcept;
 				/**
@@ -1440,6 +1579,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    результат получения данных
+				 *
 				 */
 				bool recv(const event::id_t eid) noexcept;
 				/**
@@ -1453,6 +1593,7 @@ namespace awh {
 				 * @param buffer буфер данных для отправки
 				 * @param size   размер данных для отправки
 				 * @return       количество байт, поставленных в очередь отправки
+				 *
 				 */
 				size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
 				/**
@@ -1465,12 +1606,14 @@ namespace awh {
 				 * @param eid  идентификатор события-источника
 				 * @param dest идентификатор события-приёмника
 				 * @return     результат объединения
+				 *
 				 */
 				bool splice(const event::id_t eid, const event::id_t dest) noexcept;
 				/**
 				 * @brief Метод уничтожения события клиента
 				 *
 				 * @param eid идентификатор события для уничтожения
+				 *
 				 */
 				void destroy(const event::id_t eid) noexcept;
 			public:
@@ -1479,6 +1622,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    опции события клиента
+				 *
 				 */
 				uint16_t getOptions(const event::id_t eid) const noexcept;
 				/**
@@ -1487,6 +1631,7 @@ namespace awh {
 				 * @param eid     идентификатор события клиента
 				 * @param options опции события клиента для установки
 				 * @return        результат выполнения установки
+				 *
 				 */
 				bool setOptions(const event::id_t eid, const uint16_t options) noexcept;
 				/**
@@ -1496,6 +1641,7 @@ namespace awh {
 				 * @param option опция события клиента для установки
 				 * @param mode   режим установки опции события клиента
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept;
 			public:
@@ -1504,6 +1650,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    метаданные последнего принятого дейтаграммного пакета
+				 *
 				 */
 				net::dgram_info_t getTrafficInfo(const event::id_t eid) const noexcept;
 			public:
@@ -1512,6 +1659,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    количество хопов последнего принятого пакета
+				 *
 				 */
 				uint8_t getCountHops(const event::id_t eid) const noexcept;
 				/**
@@ -1520,6 +1668,7 @@ namespace awh {
 				 * @param eid  идентификатор события клиента
 				 * @param hops количество хопов последнего принятого пакета
 				 * @return     результат выполнения установки
+				 *
 				 */
 				bool setCountHops(const event::id_t eid, const uint8_t hops) noexcept;
 				/**
@@ -1527,6 +1676,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    максимальное количество хопов
+				 *
 				 */
 				event::hops_t getHops(const event::id_t eid) const noexcept;
 				/**
@@ -1535,6 +1685,7 @@ namespace awh {
 				 * @param eid  идентификатор события клиента
 				 * @param hops максимальное количество хопов
 				 * @return     результат работы функции
+				 *
 				 */
 				bool setHops(const event::id_t eid, const event::hops_t hops) noexcept;
 			public:
@@ -1543,6 +1694,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    сетевой интерфейс клиента
+				 *
 				 */
 				string getIface(const event::id_t eid) const noexcept;
 				/**
@@ -1551,6 +1703,7 @@ namespace awh {
 				 * @param eid  идентификатор события клиента
 				 * @param name имя сетевого интерфейса для установки
 				 * @return     результат выполнения установки
+				 *
 				 */
 				bool setIface(const event::id_t eid, string_view name) noexcept;
 			public:
@@ -1559,6 +1712,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события
 				 * @return    внутренний порт события
+				 *
 				 */
 				uint16_t getSourcePort(const event::id_t eid) const noexcept;
 				/**
@@ -1567,6 +1721,7 @@ namespace awh {
 				 * @param eid  идентификатор события
 				 * @param port внутренний порт события
 				 * @return     результат выполнения установки
+				 *
 				 */
 				bool setSourcePort(const event::id_t eid, const uint16_t port) noexcept;
 				/**
@@ -1574,6 +1729,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    порт удалённого сервера
+				 *
 				 */
 				uint16_t getTargetPort(const event::id_t eid) const noexcept;
 				/**
@@ -1582,6 +1738,7 @@ namespace awh {
 				 * @param eid  идентификатор события клиента
 				 * @param port порт удалённого сервера для установки
 				 * @return     результат выполнения установки
+				 *
 				 */
 				bool setTargetPort(const event::id_t eid, const uint16_t port) noexcept;
 			public:
@@ -1590,6 +1747,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    адрес хоста целевой машины
+				 *
 				 */
 				string getTarget(const event::id_t eid) const noexcept;
 				/**
@@ -1598,6 +1756,7 @@ namespace awh {
 				 * @param eid    идентификатор события клиента
 				 * @param target адрес хоста целевой машины
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setTarget(const event::id_t eid, string_view target) noexcept;
 				/**
@@ -1606,6 +1765,7 @@ namespace awh {
 				 * @param eid    идентификатор события клиента
 				 * @param target структура сетевого адреса хоста целевой машины
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setTarget(const event::id_t eid, const net::addr_t * target) noexcept;
 				/**
@@ -1614,6 +1774,7 @@ namespace awh {
 				 * @param eid    идентификатор события клиента
 				 * @param target объект для извлечения адреса хоста целевой машины
 				 * @return       результат выполнения извлечения адреса хоста целевой машины
+				 *
 				 */
 				bool getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept;
 			public:
@@ -1623,6 +1784,7 @@ namespace awh {
 				 * @param eid     идентификатор события клиента
 				 * @param address тип адреса клиента
 				 * @return        значение адреса клиента
+				 *
 				 */
 				string getAddress(const event::id_t eid, const event::address_t address) const noexcept;
 				/**
@@ -1632,6 +1794,7 @@ namespace awh {
 				 * @param address тип адреса клиента
 				 * @param value   значение адреса клиента
 				 * @return        результат выполнения установки
+				 *
 				 */
 				bool setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept;
 				/**
@@ -1641,6 +1804,7 @@ namespace awh {
 				 * @param address тип адреса клиента
 				 * @param value   структура сетевого адреса клиента
 				 * @return        результат выполнения установки
+				 *
 				 */
 				bool setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept;
 				/**
@@ -1650,6 +1814,7 @@ namespace awh {
 				 * @param address тип адреса клиента
 				 * @param value   объект для извлечения адреса клиента
 				 * @return        результат выполнения извлечения адреса клиента
+				 *
 				 */
 				bool getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
 			public:
@@ -1658,6 +1823,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    MTU сетевого интерфейса
+				 *
 				 */
 				uint16_t getMaximumTransmissionUnit(const event::id_t eid) const noexcept;
 				/**
@@ -1666,6 +1832,7 @@ namespace awh {
 				 * @param eid идентификатор события клиента
 				 * @param mtu размер MTU интерфейса
 				 * @return    результат установки MTU сетевого интерфейса
+				 *
 				 */
 				bool setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept;
 				/**
@@ -1673,6 +1840,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    текущий режим обнаружения MTU
+				 *
 				 */
 				event::mtu_discover_t getMaximumTransmissionUnitDiscover(const event::id_t eid) const noexcept;
 				/**
@@ -1681,6 +1849,7 @@ namespace awh {
 				 * @param eid  идентификатор события клиента
 				 * @param mode режим обнаружения максимального размера пакета (MTU)
 				 * @return     результат работы функции
+				 *
 				 */
 				bool setMaximumTransmissionUnitDiscover(const event::id_t eid, const event::mtu_discover_t mode) const noexcept;
 			public:
@@ -1689,6 +1858,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    режим трансляции пакетов (unicast, multicast, broadcast)
+				 *
 				 */
 				event::delivery_mode_t getDelivery(const event::id_t eid) const noexcept;
 				/**
@@ -1697,6 +1867,7 @@ namespace awh {
 				 * @param eid      идентификатор события клиента
 				 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
 				 * @return         результат выполнения установки
+				 *
 				 */
 				bool setDelivery(const event::id_t eid, const event::delivery_mode_t delivery) noexcept;
 			public:
@@ -1706,6 +1877,7 @@ namespace awh {
 				 * @param eid    идентификатор события клиента
 				 * @param action тип действия клиента
 				 * @return       размер буфера клиента
+				 *
 				 */
 				size_t getBufferSize(const event::id_t eid, const event::action_t action) const noexcept;
 				/**
@@ -1715,6 +1887,7 @@ namespace awh {
 				 * @param action тип действия клиента
 				 * @param size   размер буфера клиента
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept;
 			public:
@@ -1723,6 +1896,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события
 				 * @return    режим использования таймаута на чтение события
+				 *
 				 */
 				event::usage_t getUsageReadTimeout(const event::id_t eid) const noexcept;
 				/**
@@ -1730,6 +1904,7 @@ namespace awh {
 				 *
 				 * @param eid   идентификатор события
 				 * @param usage режим использования таймаута на чтение события (reusable или disposable)
+				 *
 				 */
 				void setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept;
 				/**
@@ -1738,6 +1913,7 @@ namespace awh {
 				 * @param eid    идентификатор события клиента
 				 * @param action тип действия клиента
 				 * @return       значение таймаута в миллисекундах
+				 *
 				 */
 				uint32_t getTimeout(const event::id_t eid, const event::action_t action) const noexcept;
 				/**
@@ -1746,6 +1922,7 @@ namespace awh {
 				 * @param eid     идентификатор события клиента
 				 * @param action  тип действия клиента
 				 * @param timeout значение таймаута в миллисекундах
+				 *
 				 */
 				void setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept;
 			public:
@@ -1756,6 +1933,7 @@ namespace awh {
 				 * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
 				 * @param bandwidth пропускная способность клиента для установки
 				 * @return          результат выполнения установки
+				 *
 				 */
 				bool bandwidth(const event::id_t eid, const event::limiting_t limiting, string_view bandwidth) noexcept;
 				/**
@@ -1766,6 +1944,7 @@ namespace awh {
 				 * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
 				 * @param intvl интервал между пакетами keep-alive в секундах
 				 * @return      результат выполнения установки
+				 *
 				 */
 				bool keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
@@ -1774,6 +1953,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    значение DSCP
+				 *
 				 */
 				event::dscp_t getDifferentiatedServicesCodePoint(const event::id_t eid) const noexcept;
 				/**
@@ -1782,6 +1962,7 @@ namespace awh {
 				 * @param eid  идентификатор события клиента
 				 * @param dscp значение DSCP
 				 * @return     результат работы функции
+				 *
 				 */
 				bool setDifferentiatedServicesCodePoint(const event::id_t eid, const event::dscp_t dscp) const noexcept;
 			public:
@@ -1794,6 +1975,7 @@ namespace awh {
 				 * @param source адрес сетевого интерфейса с которого выполняется подписка
 				 * @param port   порт мультикаст-группы с которого выполняется подписка
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool membership(const event::id_t eid, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept;
 				/**
@@ -1805,6 +1987,7 @@ namespace awh {
 				 * @param source адрес сетевого интерфейса с которого выполняется подписка
 				 * @param port   порт мультикаст-группы с которого выполняется подписка
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept;
 			public:
@@ -1824,6 +2007,7 @@ namespace awh {
 				 *
 				 * @param mode режим однонаправленного потока
 				 * @return     идентификатор открытого потока
+				 *
 				 */
 				uint64_t open(const bool mode = false) noexcept;
 				/**
@@ -1833,6 +2017,7 @@ namespace awh {
 				 * @param data отправляемые данные
 				 * @param fin  флаг завершения потока
 				 * @return     результат постановки данных в очередь отправки
+				 *
 				 */
 				bool send(const uint64_t sid, string_view data, const bool fin = false) noexcept;
 				/**
@@ -1844,12 +2029,14 @@ namespace awh {
 				 *
 				 * @param data данные датаграммы приложения
 				 * @return     результат отправки
+				 *
 				 */
 				bool datagram(string_view data) noexcept;
 				/**
 				 * @brief Метод получения предельного размера отправляемой датаграммы (RFC 9221 §3)
 				 *
 				 * @return предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
+				 *
 				 */
 				size_t datagrams() const noexcept;
 				/**
@@ -1857,6 +2044,7 @@ namespace awh {
 				 *
 				 * @param code   код ошибки приложения
 				 * @param reason человекочитаемая причина завершения
+				 *
 				 */
 				void close(const uint64_t code = 0, string_view reason = "") noexcept;
 			public:
@@ -1864,6 +2052,7 @@ namespace awh {
 				 * @brief Метод получения согласованного ALPN-протокола соединения
 				 *
 				 * @return согласованный ALPN-протокол
+				 *
 				 */
 				tls::coder_t::alpn_t alpn() const noexcept;
 			public:
@@ -1876,6 +2065,7 @@ namespace awh {
 				 *       на завершённое соединение
 				 *
 				 * @param callback функции обратного вызова
+				 *
 				 */
 				void callback(const callback_t & callback) noexcept;
 			private:
@@ -1888,6 +2078,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				QuicClient & operator = (const QuicClient &) = delete;
 			public:
@@ -1896,6 +2087,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit QuicClient(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

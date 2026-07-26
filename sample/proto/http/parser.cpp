@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример работы с парсером протокола HTTP/1.x — демонстрация подписки на события разбора стартовой строки,
+ *        заголовков и тела, обработки кадрирования chunked и сборки исходящих сообщений
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -39,6 +43,7 @@ using namespace awh::http;
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleRequest(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -83,6 +88,7 @@ static void sampleRequest(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleStreaming(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -116,6 +122,7 @@ static void sampleStreaming(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleChunked(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -180,6 +187,7 @@ static void sampleChunked(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void samplePipelining(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -217,6 +225,7 @@ static void samplePipelining(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleHead(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -242,6 +251,7 @@ static void sampleHead(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleUntilClose(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -275,6 +285,7 @@ static void sampleUntilClose(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleErrors(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -296,6 +307,7 @@ static void sampleErrors(const fmk_t * fmk, const log_t * log) noexcept {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

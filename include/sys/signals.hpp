@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля обработки сигналов — класс Signals для перехвата SIGINT, SIGTERM, SIGSEGV, SIGBUS,
+ *        SIGILL, SIGFPE и SIGABRT через sigaction на POSIX-системах и через signal() на MS Windows
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -77,6 +81,7 @@ namespace awh {
 				 *
 				 * @details Для операционной системы не являющейся MS Windows используется структура sigaction для установки обработчика сигнала,
 				 *          которая позволяет передать контекст в обработчик сигнала.
+				 *
 				 */
 				typedef struct Events {
 					// Перехватчик сигнала SIGINT
@@ -114,6 +119,7 @@ namespace awh {
 				 *
 				 * @details Для операционной системы MS Windows используется функция signal() для установки обработчика сигнала,
 				 *          которая возвращает указатель на предыдущий обработчик сигнала.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Events {
 					// Перехватчик сигнала SIGINT
@@ -167,6 +173,7 @@ namespace awh {
 			 * @brief Функция обратного вызова при получении сигнала
 			 *
 			 * @param sig номер полученного сигнала
+			 *
 			 */
 			function <void (const int32_t)> _callback;
 		private:
@@ -191,6 +198,7 @@ namespace awh {
 				 * @param sig номер полученного сигнала
 				 * @param pid идентификатор процесса-отправителя
 				 * @param uid идентификатор пользователя-отправителя
+				 *
 				 */
 				void process(const int32_t sig, const pid_t pid, const uid_t uid) noexcept;
 			/**
@@ -201,6 +209,7 @@ namespace awh {
 				 * @brief Метод обработки полученного сигнала вне контекста обработчика
 				 *
 				 * @param sig номер полученного сигнала
+				 *
 				 */
 				void process(const int32_t sig) noexcept;
 			#endif
@@ -220,6 +229,7 @@ namespace awh {
 			 * @brief Метод установки функции обратного вызова, которая должна сработать при получении сигнала
 			 *
 			 * @param callback функция обратного вызова
+			 *
 			 */
 			void on(function <void (const int32_t)> callback) noexcept;
 		public:
@@ -228,6 +238,7 @@ namespace awh {
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit Signals(const fmk_t * fmk, const log_t * log) noexcept;
 			/**

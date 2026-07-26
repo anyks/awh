@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля кластера — запуск и контроль дочерних воркеров, обмен сообщениями между процессами,
+ *        перезапуск упавших воркеров и защита от цикла быстрых перезапусков
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -90,6 +94,7 @@ using namespace placeholders;
 			 *
 			 * @param cmd команда для выполнения
 			 * @return    стандартный вывод выполненной команды
+			 *
 			 */
 			string __awh_exec_command__(const string & cmd) noexcept {
 				// Результат выполнения команды
@@ -117,6 +122,7 @@ using namespace placeholders;
 			 *
 			 * @param pc адрес инструкции из бэктрейса
 			 * @return   строка вида «функция файл:строка», либо пустая строка, если позицию определить не удалось
+			 *
 			 */
 			string __awh_resolve_line__(void * pc) noexcept {
 				// Результат определения позиции в исходном коде
@@ -166,6 +172,7 @@ using namespace placeholders;
 			 * @brief Функция выводи трейса ошибок дочернего потока
 			 *
 			 * @param sig номер сигнала вызвавшего краш
+			 *
 			 */
 			void childCrashHandler(const int32_t sig) noexcept {
 				// Буфер для формирования ошибки
@@ -299,6 +306,7 @@ void awh::unit::Cluster::create() noexcept {
  * @brief Метод размещения нового дочернего процесса
  *
  * @param pid идентификатор убитого процесса
+ *
  */
 void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 	/**
@@ -335,6 +343,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
  * @brief Метод освобождения ресурсов воркера
  *
  * @param eid идентификатор события воркера
+ *
  */
 void awh::unit::Cluster::release([[maybe_unused]] const event::id_t eid) noexcept {
 	/**
@@ -353,6 +362,7 @@ void awh::unit::Cluster::release([[maybe_unused]] const event::id_t eid) noexcep
  * @brief Метод запуска/остановки работы кластера
  *
  * @param status статус запуска/остановки кластера
+ *
  */
 void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 	/**
@@ -438,6 +448,7 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
  * @param replaced идентификатор замещаемого (упавшего) процесса, либо 0 при первичном создании
  * @param deferred флаг отложенного запуска события (true — фиксация/запуск выполняются позже пакетно)
  * @return         семейство процесса: MASTER — родитель, CHILDREN — дочерний, NONE — ошибка создания
+ *
  */
 awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const pid_t replaced, [[maybe_unused]] const bool deferred) noexcept {
 	/**
@@ -697,6 +708,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
  *
  * @param pid    идентификатор упавшего процесса
  * @param status статус остановившегося процесса
+ *
  */
 void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unused]] const int32_t status) noexcept {
 	/**
@@ -766,6 +778,7 @@ void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unuse
  * @param eid  идентификатор события пробуждения
  * @param data данные события пробуждения
  * @param size размер данных события пробуждения
+ *
  */
 void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept {
 	/**
@@ -791,6 +804,7 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
  * @param signal номер сигнала полученного системой
  * @param info   объект информации полученный системой
  * @param ctx    передаваемый внутренний контекст
+ *
  */
 void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]] siginfo_t * info, [[maybe_unused]] void * ctx) noexcept {
 	/**
@@ -821,6 +835,7 @@ void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]]
  *
  * @param eid  идентификатор события
  * @param size размер сообщения
+ *
  */
 void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcept {
 	// Выполняем получение идентификатора функции обратного вызова
@@ -868,6 +883,7 @@ void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcep
  * @param eid  идентификатор события
  * @param data данные сообщения
  * @param size размер сообщения
+ *
  */
 void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
 	// Выполняем получение идентификатора функции обратного вызова
@@ -914,6 +930,7 @@ void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const
  *
  * @param eid    идентификатор события
  * @param status статус события
+ *
  */
 void awh::unit::Cluster::state(const event::id_t eid, const event::status_t status) noexcept {
 	/**
@@ -1011,6 +1028,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
  * @param eid     идентификатор события
  * @param error   тип ошибки
  * @param message сообщение об ошибке
+ *
  */
 void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error, const string & message) noexcept {
 	// Выполняем получение идентификатора функции обратного вызова
@@ -1058,6 +1076,7 @@ void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error
  * @param eid    идентификатор события
  * @param status статус события
  * @param size   доступный размер очереди в байтах
+ *
  */
 void awh::unit::Cluster::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
 	// Выполняем получение идентификатора функции обратного вызова
@@ -1212,6 +1231,7 @@ void awh::unit::Cluster::start() noexcept {
  * @brief Метод очистки всех выделенных ресурсов
  *
  * @param shutdown тип завершения работы кластера
+ *
  */
 void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
 	// Если процесс является родительским
@@ -1306,6 +1326,7 @@ void awh::unit::Cluster::emplace() noexcept {
  *
  * @param pid       идентификатор процесса
  * @param shutdown тип завершения работы кластера
+ *
  */
 void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexcept {
 	// Если процесс является родительским
@@ -1349,6 +1370,7 @@ void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexc
  * @brief Метод получения типа протокола передачи данных между воркерами
  *
  * @return тип протокола передачи данных между воркерами
+ *
  */
 awh::event::type_t awh::unit::Cluster::getTypeEventMessage() const noexcept {
 	// Получаем тип протокола передачи данных между воркерами
@@ -1358,6 +1380,7 @@ awh::event::type_t awh::unit::Cluster::getTypeEventMessage() const noexcept {
  * @brief Метод установки типа протокола передачи данных между воркерами
  *
  * @param type тип протокола передачи данных между воркерами для установки
+ *
  */
 void awh::unit::Cluster::setTypeEventMessage(const event::type_t type) noexcept {
 	// Устанавливаем тип протокола передачи данных между воркерами
@@ -1367,6 +1390,7 @@ void awh::unit::Cluster::setTypeEventMessage(const event::type_t type) noexcept 
  * @brief Метод установки флага автоматического возрождения процессов
  *
  * @param mode флаг возрождения процессов
+ *
  */
 void awh::unit::Cluster::rebirth(const bool mode) noexcept {
 	// Устанавливаем флаг автоматического возрождения процессов
@@ -1377,6 +1401,7 @@ void awh::unit::Cluster::rebirth(const bool mode) noexcept {
  *
  * @param limit  максимальное число подряд идущих быстрых падений до остановки кластера (0 — без ограничения)
  * @param window временное окно «быстрого» (раннего) падения воркера в миллисекундах
+ *
  */
 void awh::unit::Cluster::rebirthLimit(const uint16_t limit, const uint64_t window) noexcept {
 	// Устанавливаем максимальное число подряд идущих быстрых падений воркеров
@@ -1388,6 +1413,7 @@ void awh::unit::Cluster::rebirthLimit(const uint16_t limit, const uint64_t windo
  * @brief Метод установки названия кластера
  *
  * @param name название кластера для установки
+ *
  */
 void awh::unit::Cluster::name(string_view name) noexcept {
 	// Устанавливаем название кластера
@@ -1397,6 +1423,7 @@ void awh::unit::Cluster::name(string_view name) noexcept {
  * @brief Метод получения максимального количества процессов
  *
  * @return максимальное количество процессов
+ *
  */
 uint16_t awh::unit::Cluster::count() const noexcept {
 	// Получаем максимальное количество процессов
@@ -1406,6 +1433,7 @@ uint16_t awh::unit::Cluster::count() const noexcept {
  * @brief Метод установки максимального количества процессов
  *
  * @param count максимальное количество процессов
+ *
  */
 void awh::unit::Cluster::count(const uint16_t count) noexcept {
 	// Устанавливаем максимальное количество процессов
@@ -1415,6 +1443,7 @@ void awh::unit::Cluster::count(const uint16_t count) noexcept {
  * @brief Метод получения списка дочерних процессов
  *
  * @return список дочерних процессов
+ *
  */
 unordered_set <pid_t> awh::unit::Cluster::workers() const noexcept {
 	// Переменная результата
@@ -1435,6 +1464,7 @@ unordered_set <pid_t> awh::unit::Cluster::workers() const noexcept {
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::unit::Cluster::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
@@ -1460,6 +1490,7 @@ void awh::unit::Cluster::callback(const callback_t & callback) noexcept {
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept {
 	/**
@@ -1538,6 +1569,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size_t size) noexcept {
 	/**
@@ -1595,6 +1627,7 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noexcept {
 	/**
@@ -1659,6 +1692,7 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
  * @param pid    идентификатор процесса
  * @param action тип действия события
  * @return       размер буфера события
+ *
  */
 size_t awh::unit::Cluster::getBufferSize(const pid_t pid, const event::action_t action) const noexcept {
 	// Если процесс является родительским
@@ -1688,6 +1722,7 @@ size_t awh::unit::Cluster::getBufferSize(const pid_t pid, const event::action_t 
  * @param action тип действия события
  * @param size   размер буфера события
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::Cluster::setBufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept {
 	// Если процесс является родительским
@@ -1715,6 +1750,7 @@ bool awh::unit::Cluster::setBufferSize(const pid_t pid, const event::action_t ac
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _name{AWH_SHORT_NAME},

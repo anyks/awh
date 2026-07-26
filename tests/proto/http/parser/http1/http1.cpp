@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация тестовой фикстуры парсера протокола HTTP/1.x —
+ *        создание объектов тестового окружения перед каждым тестом и их освобождение после его завершения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -39,6 +43,7 @@ void ParserFixture::TearDown() {}
  *
  * @param direct направление трафика (запрос/ответ)
  * @return       сформированный объект парсера
+ *
  */
 std::unique_ptr <awh::http::parser_http_t> ParserFixture::make(const awh::http::direct_t direct) const noexcept {
 	// Создаём и возвращаем объект парсера
@@ -50,6 +55,7 @@ std::unique_ptr <awh::http::parser_http_t> ParserFixture::make(const awh::http::
  *
  * @param parser объект парсера
  * @param events объект сборщика событий парсера
+ *
  */
 void ParserFixture::attach(awh::http::parser_http_t & parser, events_t & events) const noexcept {
 	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения

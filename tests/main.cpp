@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Точка входа набора автоматических тестов библиотеки — инициализация Google Test и Google Mock,
+ *        разбор параметров командной строки и запуск всех зарегистрированных наборов тестов
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -23,6 +27,7 @@
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char ** argv){
 	// Инициализируем Google Test и Google Mock

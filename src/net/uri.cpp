@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля работы с универсальными идентификаторами ресурсов — разбор, сборка,
+ *        нормализация и процентное кодирование URI, работа с параметрами запроса,
+ *        пользовательскими данными и относительными ссылками
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -66,6 +71,7 @@ namespace uri {
 	 *
 	 * @param letter символ для проверки
 	 * @return       результат проверки
+	 *
 	 */
 	[[nodiscard]] static inline bool isSchemeLetter(const char letter) noexcept {
 		/**
@@ -91,6 +97,7 @@ namespace uri {
 	 * @param query    ссылка для сохранения параметров URI
 	 * @param fragment ссылка для сохранения якоря URI
 	 * @return         результат парсинга
+	 *
 	 */
 	[[nodiscard]] static bool parse(
 		string_view uri,
@@ -611,6 +618,7 @@ namespace uri {
 	 * @param letter символ для проверки
 	 * @param item   тип элемента URI, для которого выполняется проверка
 	 * @return       результат проверки
+	 *
 	 */
 	[[nodiscard]] static bool isalnum(const char letter, const uri_t::item_t item) noexcept {
 		/**
@@ -704,6 +712,7 @@ namespace uri {
 	 * @param item тип элемента URI, для которого выполняется кодирование (например, путь, запрос, фрагмент)
 	 * @param log  объект работы с логами
 	 * @return     результат кодирования
+	 *
 	 */
 	[[nodiscard]] static string encode(string_view text, const uri_t::item_t item, const log_t * log) noexcept {
 		// Переменная результата
@@ -767,6 +776,7 @@ namespace uri {
 	 * @param text строка текста для декодирования
 	 * @param log  объект работы с логами
 	 * @return     результат декодирования
+	 *
 	 */
 	[[nodiscard]] static string decode(string_view text, const log_t * log) noexcept {
 		// Переменная результата
@@ -792,6 +802,7 @@ namespace uri {
 				 *
 				 * @param letter символ для проверки
 				 * @return       результат проверки
+				 *
 				 */
 				auto isHex = [](const char letter) noexcept -> bool {
 					// Возвращаем результат проверки символа на шестнадцатеричную цифру
@@ -886,6 +897,7 @@ void awh::Uniform_Resource_Identifier::clear() noexcept {
  * @brief Метод проверки на существование данных
  *
  * @return результат проверки
+ *
  */
 bool awh::Uniform_Resource_Identifier::empty() const noexcept {
 	// Проверяем, что все компоненты URI пустые
@@ -903,6 +915,7 @@ bool awh::Uniform_Resource_Identifier::empty() const noexcept {
  * @brief Метод получения типа URI
  *
  * @return тип URI
+ *
  */
 awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::type() const noexcept {
 	// Возвращаем тип URI
@@ -912,6 +925,7 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::type(
  * @brief Метод получения схемы URI
  *
  * @return схема URI
+ *
  */
 const string & awh::Uniform_Resource_Identifier::scheme() const noexcept {
 	// Возвращаем схему URI
@@ -921,6 +935,7 @@ const string & awh::Uniform_Resource_Identifier::scheme() const noexcept {
  * @brief Метод установки схемы URI
  *
  * @param scheme схема URI для установки
+ *
  */
 void awh::Uniform_Resource_Identifier::scheme(string_view scheme) noexcept {
 	// Устанавливаем схему URI
@@ -988,6 +1003,7 @@ void awh::Uniform_Resource_Identifier::scheme(string_view scheme) noexcept {
  * @brief Метод получения параметров пользователя URI
  *
  * @return параметры пользователя URI
+ *
  */
 const awh::Uniform_Resource_Identifier::user_t & awh::Uniform_Resource_Identifier::user() const noexcept {
 	// Возвращаем параметры пользователя URI
@@ -997,6 +1013,7 @@ const awh::Uniform_Resource_Identifier::user_t & awh::Uniform_Resource_Identifie
  * @brief Метод установки параметров пользователя URI
  *
  * @param user параметры пользователя URI для установки
+ *
  */
 void awh::Uniform_Resource_Identifier::user(const user_t & user) noexcept {
 	// Устанавливаем параметры пользователя URI
@@ -1007,6 +1024,7 @@ void awh::Uniform_Resource_Identifier::user(const user_t & user) noexcept {
  *
  * @param username логин пользователя URI для установки
  * @param password пароль пользователя URI для установки
+ *
  */
 void awh::Uniform_Resource_Identifier::user(string_view username, string_view password) noexcept {
 	// Устанавливаем пароль пользователя URI
@@ -1018,6 +1036,7 @@ void awh::Uniform_Resource_Identifier::user(string_view username, string_view pa
  * @brief Метод получения якоря URI
  *
  * @return якорь URI
+ *
  */
 const string & awh::Uniform_Resource_Identifier::fragment() const noexcept {
 	// Возвращаем якорь URI
@@ -1027,6 +1046,7 @@ const string & awh::Uniform_Resource_Identifier::fragment() const noexcept {
  * @brief Метод установки якоря URI
  *
  * @param fragment якорь URI для установки
+ *
  */
 void awh::Uniform_Resource_Identifier::fragment(string_view fragment) noexcept {
 	// Устанавливаем якорь URI
@@ -1036,6 +1056,7 @@ void awh::Uniform_Resource_Identifier::fragment(string_view fragment) noexcept {
  * @brief Метод получения атрибутов URI
  *
  * @return атрибуты URI
+ *
  */
 const awh::net::attr_t * awh::Uniform_Resource_Identifier::attr() const noexcept {
 	// Возвращаем атрибуты URI
@@ -1045,6 +1066,7 @@ const awh::net::attr_t * awh::Uniform_Resource_Identifier::attr() const noexcept
  * @brief Метод установки атрибутов URI
  *
  * @param attr атрибуты URI для установки
+ *
  */
 void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 	/**
@@ -1138,6 +1160,7 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
  * @brief Метод получения хоста URI
  *
  * @return хост URI
+ *
  */
 string awh::Uniform_Resource_Identifier::host() const noexcept {
 	/**
@@ -1194,6 +1217,7 @@ string awh::Uniform_Resource_Identifier::host() const noexcept {
  * @brief Метод установки хоста URI
  *
  * @param host хост URI для установки
+ *
  */
 void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 	/**
@@ -1305,6 +1329,7 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
  * @brief Метод определения стандартного порта для текущего типа URI
  *
  * @return стандартный порт или 0, если для типа URI он не определён
+ *
  */
 uint16_t awh::Uniform_Resource_Identifier::defaultPort() const noexcept {
 	/**
@@ -1341,6 +1366,7 @@ uint16_t awh::Uniform_Resource_Identifier::defaultPort() const noexcept {
  * @brief Метод добавления схемы URI в результат с разделителем, зависящим от типа URI
  *
  * @param result результат, в который добавляется схема URI
+ *
  */
 void awh::Uniform_Resource_Identifier::appendScheme(string & result) const noexcept {
 	// Если схема URI пустая, то добавлять нечего
@@ -1381,6 +1407,7 @@ void awh::Uniform_Resource_Identifier::appendScheme(string & result) const noexc
  *
  * @param result    результат, в который добавляются параметры пользователя
  * @param delimiter флаг добавления разделителя "@" после параметров пользователя
+ *
  */
 void awh::Uniform_Resource_Identifier::appendUser(string & result, const bool delimiter) const noexcept {
 	// Если логин пользователя URI пустой, то добавлять нечего
@@ -1403,6 +1430,7 @@ void awh::Uniform_Resource_Identifier::appendUser(string & result, const bool de
  *
  * @param result результат, в который добавляется хост
  * @param format режим формата URI для генерации
+ *
  */
 void awh::Uniform_Resource_Identifier::appendHost(string & result, const format_t format) const noexcept {
 	/**
@@ -1479,6 +1507,7 @@ void awh::Uniform_Resource_Identifier::appendHost(string & result, const format_
  * @param result результат, в который добавляется порт
  * @param port   порт хоста, заданный явно (0 — если не задан)
  * @param format режим формата URI для генерации
+ *
  */
 void awh::Uniform_Resource_Identifier::appendPort(string & result, const uint16_t port, const format_t format) const noexcept {
 	// Определяем стандартный порт для текущего типа URI
@@ -1509,6 +1538,7 @@ void awh::Uniform_Resource_Identifier::appendPort(string & result, const uint16_
  * @brief Метод получения порта URI
  *
  * @return порт URI
+ *
  */
 uint16_t awh::Uniform_Resource_Identifier::port() const noexcept {
 	/**
@@ -1568,6 +1598,7 @@ uint16_t awh::Uniform_Resource_Identifier::port() const noexcept {
  * @brief Метод установки порта URI
  *
  * @param port порт URI для установки
+ *
  */
 void awh::Uniform_Resource_Identifier::port(const uint16_t port) noexcept {
 	/**
@@ -1617,6 +1648,7 @@ void awh::Uniform_Resource_Identifier::port(const uint16_t port) noexcept {
  * @brief Метод получения пути URI
  *
  * @return путь URI
+ *
  */
 const vector <string> & awh::Uniform_Resource_Identifier::path() const noexcept {
 	// Возвращаем путь URI
@@ -1626,6 +1658,7 @@ const vector <string> & awh::Uniform_Resource_Identifier::path() const noexcept 
  * @brief Метод установки пути URI
  *
  * @param path путь URI для установки
+ *
  */
 void awh::Uniform_Resource_Identifier::path(const vector <string> & path) noexcept {
 	// Устанавливаем путь URI
@@ -1635,6 +1668,7 @@ void awh::Uniform_Resource_Identifier::path(const vector <string> & path) noexce
  * @brief Метод получения параметров URI
  *
  * @return параметры URI
+ *
  */
 const unordered_map <string, string> & awh::Uniform_Resource_Identifier::query() const noexcept {
 	// Возвращаем параметры URI
@@ -1644,6 +1678,7 @@ const unordered_map <string, string> & awh::Uniform_Resource_Identifier::query()
  * @brief Метод установки параметров URI
  *
  * @param query параметры URI для установки
+ *
  */
 void awh::Uniform_Resource_Identifier::query(const unordered_map <string, string> & query) noexcept {
 	// Устанавливаем параметры URI
@@ -1654,6 +1689,7 @@ void awh::Uniform_Resource_Identifier::query(const unordered_map <string, string
  *
  * @param uri строка URI-запроса для получения параметров
  * @return    тип URI
+ *
  */
 awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse(string_view uri) noexcept {
 	/**
@@ -1972,6 +2008,7 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
  * @param text текст для перевода в строку
  * @param size размер хэша ETag для генерации (по умолчанию 16 байт)
  * @return     хэш etag
+ *
  */
 string awh::Uniform_Resource_Identifier::etag(string_view text, const uint8_t size) const noexcept {
 	// Если текст передан и размер хэша больше 0
@@ -2044,6 +2081,7 @@ string awh::Uniform_Resource_Identifier::etag(string_view text, const uint8_t si
  * @param item   режим элемента URI для генерации
  * @param format режим формата URI для генерации
  * @return       строка URI
+ *
  */
 string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t format) const noexcept {
 	// Переменная результата
@@ -2536,6 +2574,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
  * @brief Метод установки функции обратного вызова для генерации параметра URI (например, для генерации контрольной суммы)
  *
  * @param cb функция обратного вызова для генерации параметра URI
+ *
  */
 void awh::Uniform_Resource_Identifier::callback(function <string (const Uniform_Resource_Identifier *)> cb) noexcept {
 	// Устанавливаем функцию обратного вызова для генерации параметра URI
@@ -2545,6 +2584,7 @@ void awh::Uniform_Resource_Identifier::callback(function <string (const Uniform_
  * @brief Оператор проверки на существование данных
  *
  * @return результат проверки
+ *
  */
 awh::Uniform_Resource_Identifier::operator bool() const noexcept {
 	// Возвращаем результат проверки
@@ -2554,6 +2594,7 @@ awh::Uniform_Resource_Identifier::operator bool() const noexcept {
  * @brief Оператор получения типа URI
  *
  * @return тип URI
+ *
  */
 awh::Uniform_Resource_Identifier::operator awh::Uniform_Resource_Identifier::type_t() const noexcept {
 	// Возвращаем тип URI
@@ -2563,6 +2604,7 @@ awh::Uniform_Resource_Identifier::operator awh::Uniform_Resource_Identifier::typ
  * @brief Оператор генерации строки URI
  *
  * @return строка URI
+ *
  */
 awh::Uniform_Resource_Identifier::operator string() const noexcept {
 	// Возвращаем строку URI в кратком формате
@@ -2572,6 +2614,7 @@ awh::Uniform_Resource_Identifier::operator string() const noexcept {
  * @brief Оператор получения параметров пользователя URI
  *
  * @return параметры пользователя URI
+ *
  */
 awh::Uniform_Resource_Identifier::operator awh::Uniform_Resource_Identifier::user_t() const noexcept {
 	// Возвращаем параметры пользователя URI
@@ -2581,6 +2624,7 @@ awh::Uniform_Resource_Identifier::operator awh::Uniform_Resource_Identifier::use
  * @brief Оператор получения атрибутов URI
  *
  * @return атрибуты URI
+ *
  */
 awh::Uniform_Resource_Identifier::operator const awh::net::attr_t * () const noexcept {
 	// Возвращаем атрибуты URI
@@ -2590,6 +2634,7 @@ awh::Uniform_Resource_Identifier::operator const awh::net::attr_t * () const noe
  * @brief Оператор получения пути URI
  *
  * @return путь URI
+ *
  */
 awh::Uniform_Resource_Identifier::operator const vector <string> & () const noexcept {
 	// Возвращаем путь URI
@@ -2599,6 +2644,7 @@ awh::Uniform_Resource_Identifier::operator const vector <string> & () const noex
  * @brief Оператор получения параметров URI
  *
  * @return параметры URI
+ *
  */
 awh::Uniform_Resource_Identifier::operator const unordered_map <string, string> & () const noexcept {
 	// Возвращаем параметры URI
@@ -2609,6 +2655,7 @@ awh::Uniform_Resource_Identifier::operator const unordered_map <string, string> 
  *
  * @param uri параметры URI для сравнения
  * @return    результат сравнения
+ *
  */
 bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Identifier & uri) noexcept {
 	// Переменная результата
@@ -2770,6 +2817,7 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
  *
  * @param uri параметры URI для сравнения
  * @return    результат сравнения
+ *
  */
 bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Identifier & uri) noexcept {
 	// Переменная результата
@@ -2931,6 +2979,7 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
  *
  * @param uri строка URI-запроса для получения параметров
  * @return    текущий объект
+ *
  */
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (string_view uri) noexcept {
 	// Парсим URI-запрос
@@ -2943,6 +2992,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  * @param user параметры пользователя URI для установки
  * @return     текущий объект
+ *
  */
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const user_t & user) noexcept {
 	// Устанавливаем параметры пользователя URI
@@ -2955,6 +3005,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  * @param attr атрибуты URI для установки
  * @return     текущий объект
+ *
  */
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const net::attr_t * attr) noexcept {
 	// Устанавливаем атрибуты URI
@@ -2967,6 +3018,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  * @param path путь URI для установки
  * @return     текущий объект
+ *
  */
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const vector <string> & path) noexcept {
 	// Устанавливаем путь URI
@@ -2979,6 +3031,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  * @param query параметры URI для установки
  * @return      текущий объект
+ *
  */
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const unordered_map <string, string> & query) noexcept {
 	// Устанавливаем параметры URI
@@ -2991,6 +3044,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  * @param uri объект URI для получения параметров
  * @return    параметры URI
+ *
  */
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (awh::Uniform_Resource_Identifier && uri) noexcept {
 	/**
@@ -3039,6 +3093,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  * @param uri объект URI для получения параметров
  * @return    параметры URI
+ *
  */
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const awh::Uniform_Resource_Identifier & uri) noexcept {
 	/**
@@ -3156,6 +3211,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  * @brief Конструктор перемещения
  *
  * @param uri параметры URI для перемещения
+ *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept :
  _type(type_t::NONE), _scheme{""}, _fragment{""},
@@ -3209,6 +3265,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
  * @brief Конструктор копирования
  *
  * @param uri параметры URI для копирования
+ *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept :
  _type(type_t::NONE), _scheme{""}, _fragment{""},
@@ -3333,6 +3390,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept :
  _type(type_t::NONE), _scheme{""}, _fragment{""},
@@ -3350,6 +3408,7 @@ awh::Uniform_Resource_Identifier::~Uniform_Resource_Identifier() noexcept {}
  *
  * @param is  поток для чтения
  * @param uri URI для присвоения
+ *
  */
 istream & awh::operator >> (istream & is, uri_t & uri) noexcept {
 	// Адрес URI в виде строки
@@ -3368,6 +3427,7 @@ istream & awh::operator >> (istream & is, uri_t & uri) noexcept {
  *
  * @param os  поток куда нужно вывести данные
  * @param uri URI для присвоения
+ *
  */
 ostream & awh::operator << (ostream & os, const uri_t & uri) noexcept {
 	// Записываем в поток URI адрес в виде строки

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля HTTP-авторизации — класс http::Authorization, объединяющий схемы авторизации,
+ *        генерацию и проверку заголовков, управление nonce и защиту от replay-атак на стороне клиента и сервера
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -177,6 +181,7 @@ namespace awh {
 		 * auth.entity(requestBody);    // обязательно: тело запроса для расчёта HA2
 		 * const string & credentials = auth.header();
 		 * @endcode
+		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Authorization {
 			public:
@@ -229,6 +234,7 @@ namespace awh {
 				 *
 				 * @details Поля mode.nonceMaxAge, mode.signMaxAge и mode.signStrictMaxAge
 				 *          используются схемами Digest/HMAC для ограничения срока жизни nonce/signature.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Mode_Digest {
 					// Флаг наличия параметра qop (RFC 7616, иначе legacy RFC 2069)
@@ -252,6 +258,7 @@ namespace awh {
 				 *          внутренне схемой Digest. На сервере lncs хранит последние принятые
 				 *          значения nc по ключу «логин + nonce» для защиты от replay-атак.
 				 *          Таблица сбрасывается при выдаче нового nonce и при reset()/type().
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Digest {
 					// Флаги состояния авторизации (для внутреннего использования схемой Digest)
@@ -294,6 +301,7 @@ namespace awh {
 				 *
 				 * @details Поля created и expires включаются в Signature-Input и участвуют
 				 *          в расчёте подписи. На сервере usedNonces хранит уже принятые значения nonce для защиты от повторного использования подписи.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Sign_Date {
 					// Штамп времени создания подписи в секундах
@@ -312,6 +320,7 @@ namespace awh {
 				 * @details Поля created, expires и nonce включаются в Signature-Input и участвуют
 				 *          в расчёте подписи. На сервере usedNonces хранит уже принятые значения
 				 *          nonce для защиты от повторного использования подписи.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Sign {
 					// Параметры даты подписи (created/expires)
@@ -355,6 +364,7 @@ namespace awh {
 				 *          для проверки учётных данных, извлечения пароля пользователя или
 				 *          секретного ключа подписи по идентификатору.
 				 *          Функции должны быть зарегистрированы через методы callback*() до вызова parse().
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Callback {
 					/**
@@ -362,6 +372,7 @@ namespace awh {
 					 *
 					 * @param token токен доступа
 					 * @return      результат проверки токена (true - токен действителен, false - токен недействителен)
+					 *
 					 */
 					function <bool (const string &)> checkToken;
 					/**
@@ -369,6 +380,7 @@ namespace awh {
 					 *
 					 * @param keyId идентификатор ключа
 					 * @return      секретный ключ (пустая строка — ключ не найден)
+					 *
 					 */
 					function <string (const string &)> extractKey;
 					/**
@@ -376,6 +388,7 @@ namespace awh {
 					 *
 					 * @param user логин пользователя
 					 * @return     пароль пользователя (пустая строка — пользователь не найден)
+					 *
 					 */
 					function <string (const string &)> extractPass;
 					/**
@@ -384,6 +397,7 @@ namespace awh {
 					 * @param user логин пользователя
 					 * @param pass пароль пользователя
 					 * @return     результат проверки пары (true - пара действительна, false - пара недействительна)
+					 *
 					 */
 					function <bool (const string &, const string &)> checkUser;
 					/**
@@ -399,6 +413,7 @@ namespace awh {
 				 * @details Поля clockSkew задаёт допуск (в секундах) при проверке created/expires
 				 *          подписи HMAC на сервере. Значение по умолчанию — 60 секунд.
 				 *          signMaxAge ограничивает срок жизни подписи без expires (0 — без лимита).
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Mode_Params {
 					// Флаг работы через прокси (Proxy-Authorization/Proxy-Authenticate)
@@ -425,6 +440,7 @@ namespace awh {
 				 * @details clockSkew задаёт допуск (в секундах) при проверке created/expires
 				 *          подписи HMAC на сервере. Значение по умолчанию — 60 секунд.
 				 *          signMaxAge ограничивает срок жизни подписи без expires (0 — без лимита).
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Params {
 					// Режим работы параметров авторизации
@@ -460,6 +476,7 @@ namespace awh {
 				 * @details Конкретные схемы (Basic/Digest/Bearer/HMAC) реализуют интерфейс
 				 *          scheme_t и делегируют ему методы parse()/header()/check().
 				 *          Интерфейс scheme_t не должен использоваться напрямую.
+				 *
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Scheme {
 					protected:
@@ -484,6 +501,7 @@ namespace awh {
 						 *          (WWW-Authenticate либо Proxy-Authenticate для прокси)
 						 *
 						 * @return имя заголовка авторизации
+						 *
 						 */
 						string name() const noexcept;
 						/**
@@ -496,6 +514,7 @@ namespace awh {
 						 * @param left  первая строка
 						 * @param right вторая строка
 						 * @return      результат сравнения
+						 *
 						 */
 						static bool secureCompare(const string_view left, const string_view right) noexcept;
 						/**
@@ -509,6 +528,7 @@ namespace awh {
 						 * @param scheme  название схемы (Basic, Bearer, Digest)
 						 * @param payload полезная нагрузка после схемы
 						 * @return        результат извлечения
+						 *
 						 */
 						bool schemePayload(const string_view header, const string_view scheme, string & payload) const noexcept;
 					public:
@@ -516,6 +536,7 @@ namespace awh {
 						 * @brief Метод проверки учётных данных (только для сервера)
 						 *
 						 * @return результат проверки
+						 *
 						 */
 						virtual bool check() noexcept = 0;
 					public:
@@ -524,6 +545,7 @@ namespace awh {
 						 *
 						 * @param full режим вывода вместе с именем заголовка
 						 * @return     значение заголовка авторизации
+						 *
 						 */
 						virtual string header(const bool full = false) noexcept = 0;
 						/**
@@ -533,6 +555,7 @@ namespace awh {
 						 *          Многозаголовочные схемы (HMAC) переопределяют метод.
 						 *
 						 * @param result контейнер для набора заголовков (имя -> значение)
+						 *
 						 */
 						virtual void headers(vector <pair <string, string>> & result) noexcept;
 					public:
@@ -541,6 +564,7 @@ namespace awh {
 						 *
 						 * @param header значение заголовка (клиент: вызов, сервер: учётные данные)
 						 * @return       результат разбора
+						 *
 						 */
 						virtual bool parse(const string_view header) noexcept = 0;
 						/**
@@ -552,6 +576,7 @@ namespace awh {
 						 * @param name   имя входящего заголовка
 						 * @param header значение входящего заголовка
 						 * @return       результат разбора
+						 *
 						 */
 						virtual bool parse(const string_view name, const string_view header) noexcept;
 					public:
@@ -563,6 +588,7 @@ namespace awh {
 						 * @param crypto объект криптографии
 						 * @param fmk    объект фреймворка
 						 * @param log    объект для работы с логами
+						 *
 						 */
 						explicit Scheme(const owner_t owner, params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept;
 						/**
@@ -594,6 +620,7 @@ namespace awh {
 				 * @brief Метод получения стороны работы модуля
 				 *
 				 * @return сторона работы (клиент/сервер)
+				 *
 				 */
 				owner_t owner() const noexcept;
 			public:
@@ -601,6 +628,7 @@ namespace awh {
 				 * @brief Метод получения типа авторизации
 				 *
 				 * @return тип авторизации
+				 *
 				 */
 				type_t type() const noexcept;
 				/**
@@ -612,6 +640,7 @@ namespace awh {
 				 *
 				 * @param type тип авторизации для установки
 				 * @param hash алгоритм хэширования (для DIGEST/HMAC)
+				 *
 				 */
 				void type(const type_t type, const hash_t hash = hash_t::MD5) noexcept;
 			public:
@@ -619,6 +648,7 @@ namespace awh {
 				 * @brief Метод установки логина пользователя
 				 *
 				 * @param user логин пользователя
+				 *
 				 */
 				void user(string_view user) noexcept;
 				/**
@@ -628,12 +658,14 @@ namespace awh {
 				 *          не поддерживается (RFC 7617: user-pass = userid \":\" password).
 				 *
 				 * @param pass пароль пользователя
+				 *
 				 */
 				void pass(string_view pass) noexcept;
 				/**
 				 * @brief Метод установки токена доступа (BEARER)
 				 *
 				 * @param token токен доступа
+				 *
 				 */
 				void token(string_view token) noexcept;
 			public:
@@ -644,6 +676,7 @@ namespace awh {
 				 *          вместо Authorization/WWW-Authenticate
 				 *
 				 * @param mode флаг работы через прокси
+				 *
 				 */
 				void proxy(const bool mode) noexcept;
 			public:
@@ -651,6 +684,7 @@ namespace awh {
 				 * @brief Метод получения режима строгости проверки учётных данных
 				 *
 				 * @return режим строгости проверки (SIMPLE/STRICT)
+				 *
 				 */
 				mode_t mode() const noexcept;
 				/**
@@ -665,6 +699,7 @@ namespace awh {
 				 *          Влияет только на проверку на стороне сервера.
 				 *
 				 * @param mode режим строгости проверки (SIMPLE/STRICT)
+				 *
 				 */
 				void mode(const mode_t mode) noexcept;
 			public:
@@ -672,18 +707,21 @@ namespace awh {
 				 * @brief Метод установки секретного ключа подписи (HMAC)
 				 *
 				 * @param key секретный ключ подписи
+				 *
 				 */
 				void key(string_view key) noexcept;
 				/**
 				 * @brief Метод установки идентификатора ключа подписи (HMAC)
 				 *
 				 * @param keyId идентификатор ключа подписи
+				 *
 				 */
 				void keyId(string_view keyId) noexcept;
 				/**
 				 * @brief Метод установки метки подписи (HMAC)
 				 *
 				 * @param label метка подписи (например, sig1)
+				 *
 				 */
 				void label(string_view label) noexcept;
 			public:
@@ -695,6 +733,7 @@ namespace awh {
 				 *          проверка подписи с тем же nonce отклоняется (защита от replay).
 				 *
 				 * @param nonce одноразовое значение
+				 *
 				 */
 				void signNonce(string_view nonce) noexcept;
 				/**
@@ -706,6 +745,7 @@ namespace awh {
 				 *          штамп времени (fmk_t::timestamp).
 				 *
 				 * @param stamp штамп времени в секундах (0 — автоматически при формировании)
+				 *
 				 */
 				void signCreated(const uint64_t stamp) noexcept;
 				/**
@@ -716,6 +756,7 @@ namespace awh {
 				 *          Значение 0 означает, что срок действия не ограничен.
 				 *
 				 * @param stamp штамп времени в секундах (0 — не задано)
+				 *
 				 */
 				void signExpires(const uint64_t stamp) noexcept;
 			public:
@@ -727,6 +768,7 @@ namespace awh {
 				 *
 				 * @param name  имя компонента
 				 * @param value значение компонента
+				 *
 				 */
 				void component(string_view name, string_view value) noexcept;
 			public:
@@ -734,12 +776,14 @@ namespace awh {
 				 * @brief Метод установки параметров HTTP-запроса (DIGEST, клиент)
 				 *
 				 * @param uri параметры HTTP-запроса (request-uri)
+				 *
 				 */
 				void uri(string_view uri) noexcept;
 				/**
 				 * @brief Метод установки HTTP-метода запроса (DIGEST)
 				 *
 				 * @param method HTTP-метод запроса
+				 *
 				 */
 				void method(string_view method) noexcept;
 				/**
@@ -749,6 +793,7 @@ namespace awh {
 				 *          до формирования или проверки учётных данных.
 				 *
 				 * @param entity тело HTTP-запроса (entity-body)
+				 *
 				 */
 				void entity(string_view entity) noexcept;
 			public:
@@ -756,18 +801,21 @@ namespace awh {
 				 * @brief Метод установки названия сервера (realm)
 				 *
 				 * @param realm название сервера
+				 *
 				 */
 				void realm(string_view realm) noexcept;
 				/**
 				 * @brief Метод установки уникального ключа сервера (nonce)
 				 *
 				 * @param nonce уникальный ключ, выдаваемый сервером
+				 *
 				 */
 				void nonce(string_view nonce) noexcept;
 				/**
 				 * @brief Метод установки временного ключа сессии сервера (opaque)
 				 *
 				 * @param opaque временный ключ сессии сервера
+				 *
 				 */
 				void opaque(string_view opaque) noexcept;
 			public:
@@ -779,6 +827,7 @@ namespace awh {
 				 *          добавляется суффикс -sess (например, SHA-256-sess)
 				 *
 				 * @param mode флаг сессионного режима алгоритма
+				 *
 				 */
 				void session(const bool mode) noexcept;
 			public:
@@ -786,6 +835,7 @@ namespace awh {
 				 * @brief Метод получения допустимого расхождения локальных часов (HMAC)
 				 *
 				 * @return допуск в секундах (по умолчанию 60)
+				 *
 				 */
 				uint64_t clockSkew() const noexcept;
 				/**
@@ -798,6 +848,7 @@ namespace awh {
 				 *          проверки без допуска.
 				 *
 				 * @param seconds допуск при проверке created/expires (0 — только точное совпадение)
+				 *
 				 */
 				void clockSkew(const uint64_t seconds) noexcept;
 			public:
@@ -805,6 +856,7 @@ namespace awh {
 				 * @brief Метод получения максимального возраста HMAC-подписи без expires
 				 *
 				 * @return лимит в секундах (0 — не ограничен)
+				 *
 				 */
 				uint64_t signMaxAge() const noexcept;
 				/**
@@ -816,6 +868,7 @@ namespace awh {
 				 *          Для production-серверов HMAC рекомендуется задавать ненулевой лимит.
 				 *
 				 * @param seconds максимальный возраст подписи (0 — без ограничения)
+				 *
 				 */
 				void signMaxAge(const uint64_t seconds) noexcept;
 			public:
@@ -823,6 +876,7 @@ namespace awh {
 				 * @brief Метод получения максимального возраста Digest-nonce
 				 *
 				 * @return лимит в секундах (0 — без ограничения по времени)
+				 *
 				 */
 				uint64_t nonceMaxAge() const noexcept;
 				/**
@@ -835,6 +889,7 @@ namespace awh {
 				 *          ограничение по времени жизни nonce.
 				 *
 				 * @param seconds максимальный возраст nonce (0 — без ограничения)
+				 *
 				 */
 				void nonceMaxAge(const uint64_t seconds) noexcept;
 			public:
@@ -842,6 +897,7 @@ namespace awh {
 				 * @brief Метод получения максимального возраста HMAC-подписи без expires для строгого режима
 				 *
 				 * @return лимит в секундах (0 — не ограничен)
+				 *
 				 */
 				uint64_t signStrictMaxAge() const noexcept;
 				/**
@@ -852,6 +908,7 @@ namespace awh {
 				 *          Передайте 0, чтобы отключить ограничение по умолчанию даже в строгом режиме.
 				 *
 				 * @param seconds максимальный возраст подписи в строгом режиме (0 — без ограничения)
+				 *
 				 */
 				void signStrictMaxAge(const uint64_t seconds) noexcept;
 			public:
@@ -861,6 +918,7 @@ namespace awh {
 				 * @details На стороне CLIENT всегда возвращает true (проверка не выполняется).
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool check() noexcept;
 			public:
@@ -879,6 +937,7 @@ namespace awh {
 				 *
 				 *          Вызывается автоматически из type(). Имеет смысл вызывать вручную
 				 *          при повторном цикле авторизации на том же auth_t без смены схемы.
+				 *
 				 */
 				void reset() noexcept;
 			public:
@@ -890,6 +949,7 @@ namespace awh {
 				 *
 				 * @param full режим вывода вместе с именем заголовка
 				 * @return     значение заголовка авторизации
+				 *
 				 */
 				string header(const bool full = false) noexcept;
 				/**
@@ -900,6 +960,7 @@ namespace awh {
 				 *          (Signature-Input и Signature)
 				 *
 				 * @param result контейнер для набора заголовков (имя -> значение)
+				 *
 				 */
 				void headers(vector <pair <string, string>> & result) noexcept;
 			public:
@@ -918,6 +979,7 @@ namespace awh {
 				 *
 				 * @param header значение заголовка (клиент: вызов сервера, сервер: учётные данные)
 				 * @return       результат разбора
+				 *
 				 */
 				bool parse(const string_view header) noexcept;
 				/**
@@ -928,6 +990,7 @@ namespace awh {
 				 * @param name   имя входящего заголовка
 				 * @param header значение входящего заголовка
 				 * @return       результат разбора
+				 *
 				 */
 				bool parse(const string_view name, const string_view header) noexcept;
 			public:
@@ -935,24 +998,28 @@ namespace awh {
 				 * @brief Метод установки функции проверки токена доступа (BEARER, сервер)
 				 *
 				 * @param callback функция проверки токена доступа
+				 *
 				 */
 				void callbackCheckToken(function <bool (const string &)> callback) noexcept;
 				/**
 				 * @brief Метод установки функции извлечения секретного ключа (HMAC, сервер)
 				 *
 				 * @param callback функция извлечения секретного ключа по идентификатору
+				 *
 				 */
 				void callbackExtractKey(function <string (const string &)> callback) noexcept;
 				/**
 				 * @brief Метод установки функции извлечения пароля (DIGEST, сервер)
 				 *
 				 * @param callback функция извлечения пароля по логину
+				 *
 				 */
 				void callbackExtractPass(function <string (const string &)> callback) noexcept;
 				/**
 				 * @brief Метод установки функции проверки пары «логин/пароль» (BASIC, сервер)
 				 *
 				 * @param callback функция проверки пары «логин/пароль»
+				 *
 				 */
 				void callbackCheckUser(function <bool (const string &, const string &)> callback) noexcept;
 			public:
@@ -962,6 +1029,7 @@ namespace awh {
 				 * @param owner сторона работы (клиент/сервер)
 				 * @param fmk   объект фреймворка
 				 * @param log   объект для работы с логами
+				 *
 				 */
 				explicit Authorization(const owner_t owner, const fmk_t * fmk, const log_t * log) noexcept;
 				/**

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля проброса портов — класс eth::Port_Mapping, выполняющий автоматическое открытие
+ *        портов на маршрутизаторе средствами UPnP и NAT-PMP и управление правилами перенаправления
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -110,6 +114,7 @@ namespace awh {
 				 * @brief Метод установки безопасности работы потоков
 				 *
 				 * @param mode флаг режима безопасности потоков
+				 *
 				 */
 				void threadSafety(const bool mode) noexcept;
 			public:
@@ -117,6 +122,7 @@ namespace awh {
 				 * @brief Метод получения списка проброшенных портов на маршрутизаторе
 				 *
 				 * @return список параметров проброшенных портов на маршрутизаторе
+				 *
 				 */
 				vector <fwd_t> mappings() const noexcept;
 			public:
@@ -128,6 +134,7 @@ namespace awh {
 				 * @param fwd  объект параметров проброса порта (при успехе обновляется назначенным внешним портом)
 				 * @param mode режим включения/выключения проброса порта
 				 * @return     результат выполнения установки
+				 *
 				 */
 				bool mapping(fwd_t & fwd, const event::mode_t mode) const noexcept;
 			public:
@@ -136,6 +143,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект работы с логами
+				 *
 				 */
 				explicit Port_Mapping(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

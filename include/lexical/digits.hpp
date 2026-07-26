@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл работы с десятичными разрядами модуля разбора чисел — таблицы степеней десятки,
+ *        накопление значащих цифр, нормализация мантиссы и медленный точный путь разбора через длинную арифметику
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -78,12 +82,14 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
 		 * @brief Функция получения упакованного блока нулевых десятичных цифр
 		 *
 		 * @return упакованный блок символов нуля
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr uint64_t zerosPattern() noexcept {
 			// Выполняем проверку допустимости разрядности символа
@@ -100,12 +106,14 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
 		 * @brief Функция получения количества символов в упакованном блоке
 		 *
 		 * @return количество символов в упакованном блоке
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr size_t patternLength() noexcept {
 			// Выводим количество символов, помещающихся в 64-битное слово
@@ -122,6 +130,7 @@ namespace awh {
 		 * @param mantissa значение мантиссы
 		 * @param exponent исходный показатель степени
 		 * @return         показатель степени в научной записи
+		 *
 		 */
 		AWH_LEXICAL_INLINE constexpr int32_t scientificExponent(uint64_t mantissa, int32_t exponent) noexcept {
 			/**
@@ -159,6 +168,7 @@ namespace awh {
 		 * @brief Шаблон типа обработчика решения об округлении
 		 *
 		 * @tparam CALLBACK тип обработчика решения об округлении
+		 *
 		 */
 		template <typename CALLBACK>
 		/**
@@ -167,6 +177,7 @@ namespace awh {
 		 * @param mantissa ссылка на округляемую мантиссу
 		 * @param shift    количество отбрасываемых младших бит
 		 * @param callback обработчик решения об округлении вверх
+		 *
 		 */
 		AWH_LEXICAL_INLINE void roundNearestTieEven(mantissa_t & mantissa, const int32_t shift, CALLBACK callback) noexcept {
 			// Маска отбрасываемых младших бит
@@ -198,6 +209,7 @@ namespace awh {
 		 *
 		 * @param mantissa ссылка на округляемую мантиссу
 		 * @param shift    количество отбрасываемых младших бит
+		 *
 		 */
 		AWH_LEXICAL_INLINE void roundDown(mantissa_t & mantissa, const int32_t shift) noexcept {
 			// Если отбрасывается вся мантисса
@@ -215,6 +227,7 @@ namespace awh {
 		 *
 		 * @tparam T        тип числа с плавающей точкой
 		 * @tparam CALLBACK тип обработчика сдвига и округления
+		 *
 		 */
 		template <typename T, typename CALLBACK>
 		/**
@@ -222,6 +235,7 @@ namespace awh {
 		 *
 		 * @param mantissa ссылка на приводимую мантиссу
 		 * @param callback обработчик сдвига и округления мантиссы
+		 *
 		 */
 		AWH_LEXICAL_INLINE void roundMantissa(mantissa_t & mantissa, CALLBACK callback) noexcept {
 			// Величина сдвига для нормализованного числа
@@ -259,6 +273,7 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -266,6 +281,7 @@ namespace awh {
 		 *
 		 * @param first ссылка на начало диапазона символов
 		 * @param last  конец диапазона символов
+		 *
 		 */
 		AWH_LEXICAL_INLINE void skipZeros(const UC * & first, const UC * const last) noexcept {
 			// Упакованный блок символов
@@ -300,6 +316,7 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -310,6 +327,7 @@ namespace awh {
 		 * @param first начало диапазона символов
 		 * @param last  конец диапазона символов
 		 * @return      результат проверки
+		 *
 		 */
 		AWH_LEXICAL_INLINE bool isTruncated(const UC * first, const UC * const last) noexcept {
 			// Упакованный блок символов
@@ -346,6 +364,7 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -353,6 +372,7 @@ namespace awh {
 		 *
 		 * @param range проверяемый диапазон символов
 		 * @return      результат проверки
+		 *
 		 */
 		AWH_LEXICAL_INLINE bool isTruncated(const span_t <UC> range) noexcept {
 			// Выполняем проверку диапазона символов
@@ -366,6 +386,7 @@ namespace awh {
 		 * @param power    множитель в виде степени десятки
 		 * @param addition добавляемое значение
 		 * @return         результат выполнения операции
+		 *
 		 */
 		AWH_LEXICAL_INLINE bool mulAdd(bigint_t & value, const limb_t power, const limb_t addition) noexcept {
 			// Выполняем умножение значения на степень десятки
@@ -380,6 +401,7 @@ namespace awh {
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename UC>
 		/**
@@ -394,6 +416,7 @@ namespace awh {
 		 * @param maxDigits максимальное количество значащих цифр
 		 * @param digits    ссылка на количество разобранных цифр
 		 * @return          результат выполнения операции
+		 *
 		 */
 		inline bool parseMantissa(bigint_t & result, const parsedNumber_t <UC> & number, const size_t maxDigits, size_t & digits) noexcept {
 			// Количество цифр, накопленных в текущем блоке
@@ -566,6 +589,7 @@ namespace awh {
 		 * @brief Шаблон типа числа с плавающей точкой
 		 *
 		 * @tparam T тип числа с плавающей точкой
+		 *
 		 */
 		template <typename T>
 		/**
@@ -575,6 +599,7 @@ namespace awh {
 		 * @param exponent неотрицательный десятичный показатель степени
 		 * @param result   ссылка на результат округления
 		 * @return         результат выполнения операции
+		 *
 		 */
 		inline bool positiveDigitComp(bigint_t & digits, const int32_t exponent, mantissa_t & result) noexcept {
 			// Выполняем умножение значащих цифр на степень десятки
@@ -605,6 +630,7 @@ namespace awh {
 		 * @brief Шаблон типа числа с плавающей точкой
 		 *
 		 * @tparam T тип числа с плавающей точкой
+		 *
 		 */
 		template <typename T>
 		/**
@@ -620,6 +646,7 @@ namespace awh {
 		 * @param exponent отрицательный десятичный показатель степени
 		 * @param result   ссылка на результат округления
 		 * @return         результат выполнения операции
+		 *
 		 */
 		inline bool negativeDigitComp(bigint_t & digits, const mantissa_t & source, const int32_t exponent, mantissa_t & result) noexcept {
 			// Копия исходной мантиссы для округления вниз
@@ -690,6 +717,7 @@ namespace awh {
 		 *
 		 * @tparam T  тип числа с плавающей точкой
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename T, typename UC>
 		/**
@@ -705,6 +733,7 @@ namespace awh {
 		 * @param number разобранная числовая строка
 		 * @param source исходная скорректированная мантисса с невалидным показателем
 		 * @return       скорректированная мантисса двоичного представления
+		 *
 		 */
 		inline mantissa_t digitComp(const parsedNumber_t <UC> & number, mantissa_t source) noexcept {
 			// Выполняем снятие смещения невалидного показателя степени

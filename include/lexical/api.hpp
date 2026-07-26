@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл публичного интерфейса модуля лексического разбора чисел —
+ *        точки входа разбора целых чисел и чисел с плавающей точкой,
+ *        проверка режима округления FPU и диспетчеризация по формату и типу результата
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -58,6 +63,7 @@ namespace awh {
 		 * @see https://lemire.me/blog/2022/11/16/a-fast-function-to-check-your-floating-point-rounding-mode/
 		 *
 		 * @return результат проверки
+		 *
 		 */
 		AWH_LEXICAL_INLINE bool roundsToNearest() noexcept {
 			/**
@@ -131,6 +137,7 @@ namespace awh {
 		 * @brief Шаблон типа числа с плавающей точкой
 		 *
 		 * @tparam T тип числа с плавающей точкой
+		 *
 		 */
 		template <typename T>
 		/**
@@ -144,6 +151,7 @@ namespace awh {
 		 * @param negative признак отрицательного числа
 		 * @param value    ссылка на результат преобразования
 		 * @return         результат выполнения быстрого пути
+		 *
 		 */
 		AWH_LEXICAL_INLINE bool clingerFastPath(const uint64_t mantissa, const int64_t exponent, const bool negative, T & value) noexcept {
 			// Если показатель степени выходит за пределы быстрого пути
@@ -208,6 +216,7 @@ namespace awh {
 		 *
 		 * @tparam T  тип числа с плавающей точкой
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename T, typename UC>
 		/**
@@ -220,6 +229,7 @@ namespace awh {
 		 * @param value   ссылка на результат разбора
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
+		 *
 		 */
 		inline result_t <UC> parseInfNan(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 			// Определяем знак разбираемого значения
@@ -284,6 +294,7 @@ namespace awh {
 		 *
 		 * @tparam T  тип числа с плавающей точкой
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename T, typename UC>
 		/**
@@ -292,6 +303,7 @@ namespace awh {
 		 * @param number разобранная числовая строка
 		 * @param value  ссылка на результат преобразования
 		 * @return       результат преобразования
+		 *
 		 */
 		inline result_t <UC> fromParsedNumber(const parsedNumber_t <UC> & number, T & value) noexcept {
 			// Выполняем проверку поддержки типа результата
@@ -331,6 +343,7 @@ namespace awh {
 		 *
 		 * @tparam T  тип числа с плавающей точкой
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename T, typename UC>
 		/**
@@ -341,6 +354,7 @@ namespace awh {
 		 * @param value   ссылка на результат разбора
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
+		 *
 		 */
 		inline result_t <UC> fromCharsFloat(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 			// Выполняем проверку поддержки типа результата
@@ -382,6 +396,7 @@ namespace awh {
 		 *
 		 * @tparam T  тип целого числа
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename T, typename UC>
 		/**
@@ -392,6 +407,7 @@ namespace awh {
 		 * @param value   ссылка на результат разбора
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
+		 *
 		 */
 		inline result_t <UC> fromCharsInt(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 			// Выполняем проверку поддержки типа результата
@@ -423,6 +439,7 @@ namespace awh {
 		 * @brief Шаблон индекса категории типа результата
 		 *
 		 * @tparam INDEX индекс категории типа результата
+		 *
 		 */
 		template <size_t INDEX>
 		/**
@@ -444,6 +461,7 @@ namespace awh {
 			 *
 			 * @tparam T  тип числа с плавающей точкой
 			 * @tparam UC тип символа исходной строки
+			 *
 			 */
 			template <typename T, typename UC>
 			/**
@@ -454,6 +472,7 @@ namespace awh {
 			 * @param value   ссылка на результат разбора
 			 * @param options опции разбора числовой строки
 			 * @return        результат разбора числовой строки
+			 *
 			 */
 			static result_t <UC> call(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 				// Выполняем разбор числа с плавающей точкой
@@ -471,6 +490,7 @@ namespace awh {
 			 *
 			 * @tparam T  тип целого числа
 			 * @tparam UC тип символа исходной строки
+			 *
 			 */
 			template <typename T, typename UC>
 			/**
@@ -481,6 +501,7 @@ namespace awh {
 			 * @param value   ссылка на результат разбора
 			 * @param options опции разбора числовой строки
 			 * @return        результат разбора числовой строки
+			 *
 			 */
 			static result_t <UC> call(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 				// Выполняем разбор целого числа
@@ -493,6 +514,7 @@ namespace awh {
 		 *
 		 * @tparam T  тип результата разбора
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename T, typename UC = char>
 		/**
@@ -505,6 +527,7 @@ namespace awh {
 		 * @param value   ссылка на результат разбора
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
+		 *
 		 */
 		inline result_t <UC> fromCharsAdvanced(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 			// Выполняем разбор числа диспетчером по категории типа результата
@@ -519,6 +542,7 @@ namespace awh {
 		 *
 		 * @tparam T  тип числа с плавающей точкой
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename T, typename UC = char, enableIf_t <is_supported_float <T>::value> = 0>
 		/**
@@ -534,6 +558,7 @@ namespace awh {
 		 * @param value  ссылка на результат разбора
 		 * @param format допустимый формат записи числа
 		 * @return       результат разбора числовой строки
+		 *
 		 */
 		inline result_t <UC> fromChars(const UC * first, const UC * const last, T & value, const format_t format = format_t::GENERAL) noexcept {
 			// Выполняем разбор числа с плавающей точкой
@@ -545,6 +570,7 @@ namespace awh {
 		 *
 		 * @tparam T  тип целого числа
 		 * @tparam UC тип символа исходной строки
+		 *
 		 */
 		template <typename T, typename UC = char, enableIf_t <is_supported_integer <T>::value> = 0>
 		/**
@@ -557,6 +583,7 @@ namespace awh {
 		 * @param value ссылка на результат разбора
 		 * @param base  основание системы счисления в диапазоне от 2 до 36
 		 * @return      результат разбора числовой строки
+		 *
 		 */
 		inline result_t <UC> fromChars(const UC * first, const UC * const last, T & value, const int32_t base = 10) noexcept {
 			// Выполняем разбор целого числа
@@ -567,6 +594,7 @@ namespace awh {
 		 * @brief Шаблон типа результата
 		 *
 		 * @tparam T тип числа с плавающей точкой
+		 *
 		 */
 		template <typename T, enableIf_t <is_supported_float <T>::value> = 0>
 		/**
@@ -579,6 +607,7 @@ namespace awh {
 		 * @param mantissa значение мантиссы
 		 * @param exponent десятичный показатель степени
 		 * @return         результат умножения
+		 *
 		 */
 		inline T integerTimesPow10(const uint64_t mantissa, const int32_t exponent) noexcept {
 			// Результат умножения
@@ -597,6 +626,7 @@ namespace awh {
 		 * @brief Шаблон типа результата
 		 *
 		 * @tparam T тип числа с плавающей точкой
+		 *
 		 */
 		template <typename T, enableIf_t <is_supported_float <T>::value> = 0>
 		/**
@@ -609,6 +639,7 @@ namespace awh {
 		 * @param mantissa значение мантиссы
 		 * @param exponent десятичный показатель степени
 		 * @return         результат умножения
+		 *
 		 */
 		inline T integerTimesPow10(const int64_t mantissa, const int32_t exponent) noexcept {
 			// Определяем знак значения мантиссы
@@ -634,6 +665,7 @@ namespace awh {
 		 *
 		 * @tparam T   тип числа с плавающей точкой
 		 * @tparam INT тип исходного целого числа
+		 *
 		 */
 		template <typename T = double, typename INT, enableIf_t <is_supported_float <T>::value && is_integral <INT>::value> = 0>
 		/**
@@ -642,6 +674,7 @@ namespace awh {
 		 * @param mantissa значение мантиссы
 		 * @param exponent десятичный показатель степени
 		 * @return         результат умножения
+		 *
 		 */
 		inline T integerTimesPow10(const INT mantissa, const int32_t exponent) noexcept {
 			/**

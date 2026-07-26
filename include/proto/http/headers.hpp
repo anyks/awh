@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл контейнера HTTP-заголовков — класс http::Headers с регистронезависимым хранением,
+ *        итераторами, специализациями хеш-функций,
+ *        лимитами на количество и размер заголовков и поддержкой множественных значений одного поля
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_HTTP_HEADERS__
@@ -99,6 +104,7 @@ namespace awh {
 						 * @param name  название HTTP-заголовка
 						 * @param value значение HTTP-заголовка
 						 * @return      ссылка на текущий объект заголовка
+						 *
 						 */
 						Header & from(string_view name, string_view value) noexcept;
 					public:
@@ -107,6 +113,7 @@ namespace awh {
 						 *
 						 * @param other другой объект для сравнения
 						 * @return      результат сравнения
+						 *
 						 */
 						bool operator == (const Header & other) const noexcept;
 					public:
@@ -128,6 +135,7 @@ namespace awh {
 						 *
 						 * @param header объект для вычисления хеш-кода
 						 * @return       хеш-код объекта
+						 *
 						 */
 						size_t operator()(const header_t & header) const noexcept;
 					public:
@@ -149,6 +157,7 @@ namespace awh {
 						 *
 						 * @param name название заголовка для вычисления хеш-кода
 						 * @return     хеш-код названия заголовка
+						 *
 						 */
 						size_t operator()(const string & name) const noexcept;
 					public:
@@ -171,6 +180,7 @@ namespace awh {
 						 * @param first  первое название заголовка
 						 * @param second второе название заголовка
 						 * @return       результат сравнения без учёта регистра
+						 *
 						 */
 						bool operator()(const string & first, const string & second) const noexcept;
 					public:
@@ -187,6 +197,7 @@ namespace awh {
 				 * @details В отличие от карты, список позволяет хранить несколько одноимённых заголовков,
 				 *          что необходимо для корректной работы с протоколами HTTP/1.1 и HTTP/2.
 				 *          Список также содержит псевдо-заголовки, которые используются в протоколе HTTP/2 для передачи служебной информации.
+				 *
 				 */
 				using fields_t = vector <header_t>;
 				/**
@@ -195,6 +206,7 @@ namespace awh {
 				 * @details Набор позволяет хранить несколько одноимённых заголовков,
 				 *          что необходимо для корректной работы с протоколами HTTP/1.1 и HTTP/2.
 				 *          Набор также содержит псевдо-заголовки, которые используются в протоколе HTTP/2 для передачи служебной информации.
+				 *
 				 */
 				using entries_t = unordered_multiset <header_t, header_hash_t>;
 				/**
@@ -203,6 +215,7 @@ namespace awh {
 				 * @details Карта позволяет хранить только уникальные заголовки,
 				 *          что необходимо для корректной работы с протоколами HTTP/1.1 и HTTP/2.
 				 *          Карта не содержит псевдо-заголовков, так-как они предназначены только для протокола HTTP/2.
+				 *
 				 */
 				using map_t = unordered_map <string, string, header_name_hash_t, header_name_equal_t>;
 				/**
@@ -211,6 +224,7 @@ namespace awh {
 				 * @details Мультикарта позволяет хранить несколько одноимённых заголовков,
 				 *          что необходимо для корректной работы с протоколами HTTP/1.1 и HTTP/2.
 				 *          Мультикарта не содержит псевдо-заголовков, так-как они предназначены только для протокола HTTP/2.
+				 *
 				 */
 				using multimap_t = unordered_multimap <string, string, header_name_hash_t, header_name_equal_t>;
 			public:
@@ -260,6 +274,7 @@ namespace awh {
 						 * @param func    название функции, в которой произошла ошибка
 						 * @param message текст сообщения об ошибке
 						 * @param flag    флаг важности сообщения
+						 *
 						 */
 						void _error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
 					public:
@@ -267,6 +282,7 @@ namespace awh {
 						 * @brief Оператор преобразования в сырой итератор
 						 *
 						 * @return iterator итератор для преобразования
+						 *
 						 */
 						operator iterator() noexcept;
 					public:
@@ -274,12 +290,14 @@ namespace awh {
 						 * @brief Оператор извлечения указателя заголовка
 						 *
 						 * @return указатель заголовка
+						 *
 						 */
 						pointer operator -> () noexcept;
 						/**
 						 * @brief Оператор разыменования заголовка
 						 *
 						 * @return значение заголовка
+						 *
 						 */
 						reference operator * () noexcept;
 					public:
@@ -287,6 +305,7 @@ namespace awh {
 						 * @brief Оператор смещения вперед
 						 *
 						 * @return значение текущего итератора
+						 *
 						 */
 						Iterator & operator ++ () noexcept;
 					public:
@@ -295,6 +314,7 @@ namespace awh {
 						 *
 						 * @param other итератор для сравнения
 						 * @return      результат сравнения
+						 *
 						 */
 						bool operator == (const Iterator & other) const noexcept;
 						/**
@@ -302,6 +322,7 @@ namespace awh {
 						 *
 						 * @param other итератор для сравнения
 						 * @return      результат сравнения
+						 *
 						 */
 						bool operator != (const Iterator & other) const noexcept;
 					public:
@@ -310,6 +331,7 @@ namespace awh {
 						 *
 						 * @param other константный итератор для сравнения
 						 * @return      результат сравнения
+						 *
 						 */
 						bool operator == (const Const_Iterator & other) const noexcept;
 						/**
@@ -317,6 +339,7 @@ namespace awh {
 						 *
 						 * @param other константный итератор для сравнения
 						 * @return      результат сравнения
+						 *
 						 */
 						bool operator != (const Const_Iterator & other) const noexcept;
 					public:
@@ -325,6 +348,7 @@ namespace awh {
 						 *
 						 * @param it  итератор для установки
 						 * @param log объект для работы с логами
+						 *
 						 */
 						explicit Iterator(iterator it, const log_t * log) noexcept;
 				} iterator_t;
@@ -369,6 +393,7 @@ namespace awh {
 						 * @param func    название функции, в которой произошла ошибка
 						 * @param message текст сообщения об ошибке
 						 * @param flag    флаг важности сообщения
+						 *
 						 */
 						void _error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
 					public:
@@ -376,6 +401,7 @@ namespace awh {
 						 * @brief Оператор преобразования в сырой константный итератор
 						 *
 						 * @return const_iterator итератор для преобразования
+						 *
 						 */
 						operator const_iterator() const noexcept;
 					public:
@@ -383,12 +409,14 @@ namespace awh {
 						 * @brief Оператор извлечения указателя заголовка
 						 *
 						 * @return указатель заголовка
+						 *
 						 */
 						pointer operator -> () const noexcept;
 						/**
 						 * @brief Оператор разыменования заголовка
 						 *
 						 * @return значение заголовка
+						 *
 						 */
 						reference operator * () const noexcept;
 					public:
@@ -396,6 +424,7 @@ namespace awh {
 						 * @brief Оператор смещения вперед
 						 *
 						 * @return значение текущего итератора
+						 *
 						 */
 						Const_Iterator & operator ++ () noexcept;
 					public:
@@ -404,6 +433,7 @@ namespace awh {
 						 *
 						 * @param other итератор для сравнения
 						 * @return      результат сравнения
+						 *
 						 */
 						bool operator == (const Iterator & other) const noexcept;
 						/**
@@ -411,6 +441,7 @@ namespace awh {
 						 *
 						 * @param other итератор для сравнения
 						 * @return      результат сравнения
+						 *
 						 */
 						bool operator != (const Iterator & other) const noexcept;
 					public:
@@ -419,6 +450,7 @@ namespace awh {
 						 *
 						 * @param other итератор для сравнения
 						 * @return      результат сравнения
+						 *
 						 */
 						bool operator == (const Const_Iterator & other) const noexcept;
 						/**
@@ -426,6 +458,7 @@ namespace awh {
 						 *
 						 * @param other итератор для сравнения
 						 * @return      результат сравнения
+						 *
 						 */
 						bool operator != (const Const_Iterator & other) const noexcept;
 					public:
@@ -434,6 +467,7 @@ namespace awh {
 						 *
 						 * @param it  итератор для установки
 						 * @param log объект для работы с логами
+						 *
 						 */
 						explicit Const_Iterator(const_iterator it, const log_t * log) noexcept;
 				} const_iterator_t;
@@ -500,6 +534,7 @@ namespace awh {
 				 * @details Для протоколов семейства HTTP/2 названия приводятся к нижнему регистру, для остальных -
 				 *          к «умному» регистру. Вызывается при изменении протокола, чтобы единая семантика
 				 *          регистра соблюдалась при любом способе доступа к заголовкам (не только при печати).
+				 *
 				 */
 				void _recase() noexcept;
 			private:
@@ -508,6 +543,7 @@ namespace awh {
 				 *
 				 * @tparam Name    тип названия добавляемого заголовка
 				 * @tparam Content тип содержимого добавляемого заголовка
+				 *
 				 */
 				template <typename Name, typename Content>
 				/**
@@ -516,6 +552,7 @@ namespace awh {
 				 * @param name    название заголовка
 				 * @param content содержимое заголовка
 				 * @return        общее количество заголовков
+				 *
 				 */
 				size_t _emplace(Name && name, Content && content) noexcept;
 			private:
@@ -525,6 +562,7 @@ namespace awh {
 				 * @param func    название функции, в которой произошла ошибка
 				 * @param message текст сообщения об ошибке
 				 * @param flag    флаг важности сообщения
+				 *
 				 */
 				void _error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
 			public:
@@ -544,6 +582,7 @@ namespace awh {
 				 * @brief Метод проверки на заполненность заголовков
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool empty() const noexcept;
 			public:
@@ -554,6 +593,7 @@ namespace awh {
 				 *          Server, X-Powered-By и Date для ответа сервера. Уже установленные заголовки не изменяются.
 				 *
 				 * @return результат выполнения операции
+				 *
 				 */
 				bool addDefaultHeaders() noexcept;
 			public:
@@ -564,6 +604,7 @@ namespace awh {
 				 *
 				 * @param date дата в формате Unix Timestamp
 				 * @return     штамп времени в текстовом виде
+				 *
 				 */
 				string date(const uint64_t date = 0) const noexcept;
 			public:
@@ -571,12 +612,14 @@ namespace awh {
 				 * @brief Метод получения протокола HTTP-запроса/ответа
 				 *
 				 * @return протокол HTTP-запроса/ответа
+				 *
 				 */
 				proto_t proto() const noexcept;
 				/**
 				 * @brief Метод установки протокола HTTP-запроса/ответа
 				 *
 				 * @param proto протокол HTTP-запроса/ответа
+				 *
 				 */
 				void proto(const proto_t proto) noexcept;
 			public:
@@ -584,6 +627,7 @@ namespace awh {
 				 * @brief Метод получения идентификации сервиса
 				 *
 				 * @return сформированный агент
+				 *
 				 */
 				string ident() const noexcept;
 				/**
@@ -592,6 +636,7 @@ namespace awh {
 				 * @param id      идентификатор сервиса
 				 * @param name    название сервиса
 				 * @param version версия сервиса
+				 *
 				 */
 				void ident(string_view id, string_view name, string_view version) noexcept;
 			public:
@@ -599,6 +644,7 @@ namespace awh {
 				 * @brief Метод получения объекта провайдера HTTP-запроса/ответа
 				 *
 				 * @return объект провайдера HTTP-запроса/ответа
+				 *
 				 */
 				const provider_t * provider() const noexcept;
 				/**
@@ -606,6 +652,7 @@ namespace awh {
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @return         результат выполнения операции
+				 *
 				 */
 				bool provider(unique_ptr <provider_t> & provider) const noexcept;
 			public:
@@ -613,12 +660,14 @@ namespace awh {
 				 * @brief Метод установки объекта провайдера HTTP-запроса/ответа
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
+				 *
 				 */
 				void provider(const provider_t * provider) noexcept;
 				/**
 				 * @brief Метод установки объекта провайдера HTTP-запроса/ответа
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
+				 *
 				 */
 				void provider(unique_ptr <provider_t> && provider) noexcept;
 			public:
@@ -626,12 +675,14 @@ namespace awh {
 				 * @brief Метод получения стартовой строки HTTP-запроса/ответа
 				 *
 				 * @return стартовая строка HTTP-запроса/ответа
+				 *
 				 */
 				string startline() const noexcept;
 				/**
 				 * @brief Метод установки стартовой строки HTTP-запроса/ответа
 				 *
 				 * @param startline стартовая строка HTTP-запроса/ответа
+				 *
 				 */
 				void startline(const string_view startline) noexcept;
 			public:
@@ -639,6 +690,7 @@ namespace awh {
 				 * @brief Метод удаления заголовка
 				 *
 				 * @param name название удаляемого заголовка
+				 *
 				 */
 				void erase(string_view name) noexcept;
 				/**
@@ -646,6 +698,7 @@ namespace awh {
 				 *
 				 * @param it идетартор заголовка для удаления
 				 * @return   следующий итератор
+				 *
 				 */
 				iterator_t erase(const iterator_t & it) noexcept;
 			public:
@@ -654,6 +707,7 @@ namespace awh {
 				 *
 				 * @param name название заголовка для проверки
 				 * @return     результат выполнения проверки
+				 *
 				 */
 				bool has(string_view name) const noexcept;
 			public:
@@ -661,6 +715,7 @@ namespace awh {
 				 * @brief Метод получения общего количества заголовков
 				 *
 				 * @return общее количество заголовков
+				 *
 				 */
 				size_t size() const noexcept;
 			public:
@@ -669,6 +724,7 @@ namespace awh {
 				 *
 				 * @param name название заголовка количество которых нужно определить
 				 * @return     количество добавленных заголовков
+				 *
 				 */
 				size_t count(string_view name = "") const noexcept;
 			public:
@@ -677,6 +733,7 @@ namespace awh {
 				 *
 				 * @param name название заголовка
 				 * @return     содержимое заголовка
+				 *
 				 */
 				const string & at(string_view name) const noexcept;
 			public:
@@ -684,6 +741,7 @@ namespace awh {
 				 * @brief Метод извлечения названий заголовков
 				 *
 				 * @return список названий заголовков
+				 *
 				 */
 				vector <string> names() const noexcept;
 			public:
@@ -692,6 +750,7 @@ namespace awh {
 				 *
 				 * @param name название заголовка
 				 * @return     список значений одинаковых заголовков
+				 *
 				 */
 				vector <string> range(string_view name) const noexcept;
 			public:
@@ -706,6 +765,7 @@ namespace awh {
 				 * @param content содержимое заголовка
 				 * @param mode    режим добавления заголовка (добавить/заменить)
 				 * @return        общее количество заголовков
+				 *
 				 */
 				size_t emplace(string && name, string && content, const mode_t mode = mode_t::REPLACE) noexcept;
 				/**
@@ -719,6 +779,7 @@ namespace awh {
 				 * @param content содержимое заголовка (переносится)
 				 * @param mode    режим добавления заголовка (добавить/заменить)
 				 * @return        общее количество заголовков
+				 *
 				 */
 				size_t emplace(const char * name, string && content, const mode_t mode = mode_t::REPLACE) noexcept;
 				/**
@@ -732,6 +793,7 @@ namespace awh {
 				 * @param content содержимое заголовка (C-строка)
 				 * @param mode    режим добавления заголовка (добавить/заменить)
 				 * @return        общее количество заголовков
+				 *
 				 */
 				size_t emplace(string && name, const char * content, const mode_t mode = mode_t::REPLACE) noexcept;
 				/**
@@ -745,6 +807,7 @@ namespace awh {
 				 * @param content содержимое заголовка
 				 * @param mode    режим добавления заголовка (добавить/заменить)
 				 * @return        общее количество заголовков
+				 *
 				 */
 				size_t emplace(string_view name, string_view content, const mode_t mode = mode_t::REPLACE) noexcept;
 				/**
@@ -758,6 +821,7 @@ namespace awh {
 				 * @param content содержимое заголовка (копируется)
 				 * @param mode    режим добавления заголовка (добавить/заменить)
 				 * @return        общее количество заголовков
+				 *
 				 */
 				size_t emplace(string && name, const string & content, const mode_t mode = mode_t::REPLACE) noexcept;
 				/**
@@ -771,6 +835,7 @@ namespace awh {
 				 * @param content содержимое заголовка (переносится)
 				 * @param mode    режим добавления заголовка (добавить/заменить)
 				 * @return        общее количество заголовков
+				 *
 				 */
 				size_t emplace(const string & name, string && content, const mode_t mode = mode_t::REPLACE) noexcept;
 				/**
@@ -784,6 +849,7 @@ namespace awh {
 				 * @param content содержимое заголовка (C-строка)
 				 * @param mode    режим добавления заголовка (добавить/заменить)
 				 * @return        общее количество заголовков
+				 *
 				 */
 				size_t emplace(const char * name, const char * content, const mode_t mode = mode_t::REPLACE) noexcept;
 				/**
@@ -797,6 +863,7 @@ namespace awh {
 				 * @param content содержимое заголовка (копируется)
 				 * @param mode    режим добавления заголовка (добавить/заменить)
 				 * @return        общее количество заголовков
+				 *
 				 */
 				size_t emplace(const char * name, const string & content, const mode_t mode = mode_t::REPLACE) noexcept;
 				/**
@@ -810,6 +877,7 @@ namespace awh {
 				 * @param content содержимое заголовка (C-строка)
 				 * @param mode    режим добавления заголовка (добавить/заменить)
 				 * @return        общее количество заголовков
+				 *
 				 */
 				size_t emplace(const string & name, const char * content, const mode_t mode = mode_t::REPLACE) noexcept;
 				/**
@@ -823,6 +891,7 @@ namespace awh {
 				 * @param content содержимое заголовка (копируется)
 				 * @param mode    режим добавления заголовка (добавить/заменить)
 				 * @return        общее количество заголовков
+				 *
 				 */
 				size_t emplace(const string & name, const string & content, const mode_t mode = mode_t::REPLACE) noexcept;
 			public:
@@ -830,6 +899,7 @@ namespace awh {
 				 * @brief Метод печати содержимого заголовков в формате HTTP
 				 *
 				 * @return заголовки в формате HTTP
+				 *
 				 */
 				string print(const http::proto_t proto = http::proto_t::HTTP1) const noexcept;
 				/**
@@ -838,6 +908,7 @@ namespace awh {
 				 * @param name  печать заголовка в формате HTTP
 				 * @param proto версия протокола
 				 * @return      распечатанный заголовок
+				 *
 				 */
 				string print(string_view name, const http::proto_t proto = http::proto_t::HTTP1) const noexcept;
 			public:
@@ -845,6 +916,7 @@ namespace awh {
 				 * @brief Метод получения текущего размера потребляемой памяти
 				 *
 				 * @return текущий размер потребляемой памяти
+				 *
 				 */
 				size_t memory() const noexcept;
 			public:
@@ -852,12 +924,14 @@ namespace awh {
 				 * @brief Метод получения максимального размера потребления памяти
 				 *
 				 * @return максимальный размер потребления памяти
+				 *
 				 */
 				size_t maxMemory() const noexcept;
 				/**
 				 * @brief Метод установки максимального размера потребления памяти
 				 *
 				 * @param size максимальный размер потребления памяти
+				 *
 				 */
 				void maxMemory(const size_t size) noexcept;
 			public:
@@ -865,12 +939,14 @@ namespace awh {
 				 * @brief Метод получения максимального количества заголовков
 				 *
 				 * @return максимальное количество заголовков
+				 *
 				 */
 				size_t maxRecords() const noexcept;
 				/**
 				 * @brief Метод установки максимального количества заголовков
 				 *
 				 * @param count максимальное количество заголовков
+				 *
 				 */
 				void maxRecords(const size_t count) noexcept;
 			public:
@@ -878,12 +954,14 @@ namespace awh {
 				 * @brief Метод обмена заголовками
 				 *
 				 * @param headers заголовки для обмена
+				 *
 				 */
 				void swap(Headers & headers) noexcept;
 				/**
 				 * @brief Метод слияния заголовков
 				 *
 				 * @param headers заголовки для слияния
+				 *
 				 */
 				void merge(const Headers & headers) noexcept;
 			public:
@@ -891,18 +969,21 @@ namespace awh {
 				 * @brief Метод получения конечного итератора
 				 *
 				 * @return конечный итератор
+				 *
 				 */
 				iterator_t end() noexcept;
 				/**
 				 * @brief Метод получения конечного константного итератора
 				 *
 				 * @return конечный константный итератор
+				 *
 				 */
 				const_iterator_t end() const noexcept;
 				/**
 				 * @brief Метод получения конечного константного итератора
 				 *
 				 * @return конечный константный итератор
+				 *
 				 */
 				const_iterator_t cend() const noexcept;
 			public:
@@ -910,18 +991,21 @@ namespace awh {
 				 * @brief Метод получение начального итератора
 				 *
 				 * @return начальный итератор
+				 *
 				 */
 				iterator_t begin() noexcept;
 				/**
 				 * @brief Метод получения начального константного итератора
 				 *
 				 * @return начальный константный итератор
+				 *
 				 */
 				const_iterator_t begin() const noexcept;
 				/**
 				 * @brief Метод получения начального константного итератора
 				 *
 				 * @return начальный константный итератор
+				 *
 				 */
 				const_iterator_t cbegin() const noexcept;
 			public:
@@ -930,6 +1014,7 @@ namespace awh {
 				 *
 				 * @param name название заголовка для поиска
 				 * @return     итератор указанного заголовка
+				 *
 				 */
 				iterator_t find(string_view name) noexcept;
 				/**
@@ -937,6 +1022,7 @@ namespace awh {
 				 *
 				 * @param name название заголовка для поиска
 				 * @return     константный итератор указанного заголовка
+				 *
 				 */
 				const_iterator_t find(string_view name) const noexcept;
 			public:
@@ -944,12 +1030,14 @@ namespace awh {
 				 * @brief Оператор получения количество заголовков
 				 *
 				 * @return количество заголовков
+				 *
 				 */
 				explicit operator size_t() const noexcept;
 				/**
 				 * @brief Оператор печати содержимого заголовков в формате HTTP
 				 *
 				 * @return заголовки в формате HTTP
+				 *
 				 */
 				explicit operator string() const noexcept;
 			public:
@@ -957,6 +1045,7 @@ namespace awh {
 				 * @brief Оператор получения протокола HTTP-запроса/ответа
 				 *
 				 * @return протокол HTTP-запроса/ответа
+				 *
 				 */
 				explicit operator proto_t() const noexcept;
 			public:
@@ -964,12 +1053,14 @@ namespace awh {
 				 * @brief Оператор получения объекта провайдера HTTP-запроса/ответа
 				 *
 				 * @return объект провайдера HTTP-запроса/ответа
+				 *
 				 */
 				explicit operator const provider_t * () const noexcept;
 				/**
 				 * @brief Оператор получения объекта провайдера HTTP-запроса/ответа
 				 *
 				 * @return объект провайдера HTTP-запроса/ответа
+				 *
 				 */
 				explicit operator unique_ptr <provider_t> () const noexcept;
 			public:
@@ -977,12 +1068,14 @@ namespace awh {
 				 * @brief Оператор получения списка заголовков в том виде как они есть
 				 *
 				 * @return список всех добавленных заголовков
+				 *
 				 */
 				explicit operator fields_t() const noexcept;
 				/**
 				 * @brief Оператор получения списка заголовков
 				 *
 				 * @return список всех добавленных заголовков
+				 *
 				 */
 				explicit operator entries_t() const noexcept;
 			public:
@@ -990,12 +1083,14 @@ namespace awh {
 				 * @brief Оператор получения списка заголовков
 				 *
 				 * @return список всех добавленных заголовков
+				 *
 				 */
 				explicit operator map_t() const noexcept;
 				/**
 				 * @brief Оператор получения списка заголовков
 				 *
 				 * @return список всех добавленных заголовков
+				 *
 				 */
 				explicit operator multimap_t() const noexcept;
 			public:
@@ -1009,6 +1104,7 @@ namespace awh {
 				 *
 				 * @param name название заголовка для извлечения
 				 * @return     содержимое заголовка
+				 *
 				 */
 				const string & operator[](string_view name) const noexcept;
 			public:
@@ -1017,6 +1113,7 @@ namespace awh {
 				 *
 				 * @param headers заголовки для слияния
 				 * @return        текущий контейнер заголовков
+				 *
 				 */
 				Headers & operator += (const Headers & headers) noexcept;
 			public:
@@ -1025,6 +1122,7 @@ namespace awh {
 				 *
 				 * @param headers заголовки для сравнения
 				 * @return        результат сравнения
+				 *
 				 */
 				bool operator == (const Headers & headers) const noexcept;
 				/**
@@ -1032,6 +1130,7 @@ namespace awh {
 				 *
 				 * @param headers заголовки для сравнения
 				 * @return        результат сравнения
+				 *
 				 */
 				bool operator != (const Headers & headers) const noexcept;
 			public:
@@ -1040,6 +1139,7 @@ namespace awh {
 				 *
 				 * @param headers заголовки для перемещения
 				 * @return        текущий контейнер заголовков
+				 *
 				 */
 				Headers & operator = (Headers && headers) noexcept;
 				/**
@@ -1047,6 +1147,7 @@ namespace awh {
 				 *
 				 * @param headers заголовки для копирования
 				 * @return        текущий контейнер заголовков
+				 *
 				 */
 				Headers & operator = (const Headers & headers) noexcept;
 			public:
@@ -1055,6 +1156,7 @@ namespace awh {
 				 *
 				 * @param proto протокол HTTP-запроса/ответа
 				 * @return      текущий контейнер заголовков
+				 *
 				 */
 				Headers & operator = (const proto_t proto) noexcept;
 				/**
@@ -1062,6 +1164,7 @@ namespace awh {
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @return         текущий контейнер заголовков
+				 *
 				 */
 				Headers & operator = (const provider_t * provider) noexcept;
 				/**
@@ -1069,6 +1172,7 @@ namespace awh {
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @return         текущий контейнер заголовков
+				 *
 				 */
 				Headers & operator = (unique_ptr <provider_t> && provider) noexcept;
 			public:
@@ -1077,6 +1181,7 @@ namespace awh {
 				 *
 				 * @param headers заголовки для копирования
 				 * @return        текущий контейнер заголовков
+				 *
 				 */
 				Headers & operator = (const fields_t & headers) noexcept;
 				/**
@@ -1084,6 +1189,7 @@ namespace awh {
 				 *
 				 * @param headers заголовки для копирования
 				 * @return        текущий контейнер заголовков
+				 *
 				 */
 				Headers & operator = (const entries_t & headers) noexcept;
 				/**
@@ -1091,6 +1197,7 @@ namespace awh {
 				 *
 				 * @param headers заголовки для копирования
 				 * @return        текущий контейнер заголовков
+				 *
 				 */
 				Headers & operator = (const multimap_t & headers) noexcept;
 				/**
@@ -1098,6 +1205,7 @@ namespace awh {
 				 *
 				 * @param headers заголовки для копирования
 				 * @return        текущий контейнер заголовков
+				 *
 				 */
 				Headers & operator = (initializer_list <header_t> headers) noexcept;
 			public:
@@ -1111,12 +1219,14 @@ namespace awh {
 				 * @brief Конструктор перемещения
 				 *
 				 * @param headers заголовки для перемещения
+				 *
 				 */
 				Headers(Headers && headers) noexcept;
 				/**
 				 * @brief Конструктор копирования
 				 *
 				 * @param headers заголовки для копирования
+				 *
 				 */
 				Headers(const Headers & headers) noexcept;
 			public:
@@ -1124,18 +1234,21 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param proto протокол HTTP-запроса/ответа
+				 *
 				 */
 				explicit Headers(const proto_t proto) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
+				 *
 				 */
 				explicit Headers(const provider_t * provider) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
+				 *
 				 */
 				explicit Headers(unique_ptr <provider_t> && provider) noexcept;
 			public:
@@ -1143,24 +1256,28 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param headers список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const fields_t & headers) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param headers список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const entries_t & headers) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param headers список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const multimap_t & headers) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param headers список заголовков инициализации
+				 *
 				 */
 				explicit Headers(initializer_list <header_t> headers) noexcept;
 			public:
@@ -1169,6 +1286,7 @@ namespace awh {
 				 *
 				 * @param proto   протокол HTTP-запроса/ответа
 				 * @param headers список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, const fields_t & headers) noexcept;
 				/**
@@ -1176,6 +1294,7 @@ namespace awh {
 				 *
 				 * @param proto   протокол HTTP-запроса/ответа
 				 * @param headers список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, const entries_t & headers) noexcept;
 				/**
@@ -1183,6 +1302,7 @@ namespace awh {
 				 *
 				 * @param proto   протокол HTTP-запроса/ответа
 				 * @param headers список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, const multimap_t & headers) noexcept;
 				/**
@@ -1190,6 +1310,7 @@ namespace awh {
 				 *
 				 * @param proto   протокол HTTP-запроса/ответа
 				 * @param headers список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, initializer_list <header_t> headers) noexcept;
 			public:
@@ -1198,6 +1319,7 @@ namespace awh {
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const provider_t * provider, const fields_t & headers) noexcept;
 				/**
@@ -1205,6 +1327,7 @@ namespace awh {
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const provider_t * provider, const entries_t & headers) noexcept;
 				/**
@@ -1212,6 +1335,7 @@ namespace awh {
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const provider_t * provider, const multimap_t & headers) noexcept;
 				/**
@@ -1219,6 +1343,7 @@ namespace awh {
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const provider_t * provider, initializer_list <header_t> headers) noexcept;
 			public:
@@ -1227,6 +1352,7 @@ namespace awh {
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(unique_ptr <provider_t> && provider, const fields_t & headers) noexcept;
 				/**
@@ -1234,6 +1360,7 @@ namespace awh {
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(unique_ptr <provider_t> && provider, const entries_t & headers) noexcept;
 				/**
@@ -1241,6 +1368,7 @@ namespace awh {
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(unique_ptr <provider_t> && provider, const multimap_t & headers) noexcept;
 				/**
@@ -1248,6 +1376,7 @@ namespace awh {
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(unique_ptr <provider_t> && provider, initializer_list <header_t> headers) noexcept;
 			public:
@@ -1257,6 +1386,7 @@ namespace awh {
 				 * @param proto    протокол HTTP-запроса/ответа
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, const provider_t * provider, const fields_t & headers) noexcept;
 				/**
@@ -1265,6 +1395,7 @@ namespace awh {
 				 * @param proto    протокол HTTP-запроса/ответа
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, const provider_t * provider, const entries_t & headers) noexcept;
 				/**
@@ -1273,6 +1404,7 @@ namespace awh {
 				 * @param proto    протокол HTTP-запроса/ответа
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, const provider_t * provider, const multimap_t & headers) noexcept;
 				/**
@@ -1281,6 +1413,7 @@ namespace awh {
 				 * @param proto    протокол HTTP-запроса/ответа
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, const provider_t * provider, initializer_list <header_t> headers) noexcept;
 			public:
@@ -1290,6 +1423,7 @@ namespace awh {
 				 * @param proto    протокол HTTP-запроса/ответа
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, const fields_t & headers) noexcept;
 				/**
@@ -1298,6 +1432,7 @@ namespace awh {
 				 * @param proto    протокол HTTP-запроса/ответа
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, const entries_t & headers) noexcept;
 				/**
@@ -1306,6 +1441,7 @@ namespace awh {
 				 * @param proto    протокол HTTP-запроса/ответа
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, const multimap_t & headers) noexcept;
 				/**
@@ -1314,6 +1450,7 @@ namespace awh {
 				 * @param proto    протокол HTTP-запроса/ответа
 				 * @param provider объект провайдера HTTP-запроса/ответа
 				 * @param headers  список заголовков инициализации
+				 *
 				 */
 				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, initializer_list <header_t> headers) noexcept;
 			public:
@@ -1322,24 +1459,28 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Headers(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param proto протокол HTTP-запроса/ответа
+				 *
 				 */
 				explicit Headers(const proto_t proto, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
+				 *
 				 */
 				explicit Headers(const provider_t * provider, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param provider объект провайдера HTTP-запроса/ответа
+				 *
 				 */
 				explicit Headers(unique_ptr <provider_t> && provider, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
@@ -1349,6 +1490,7 @@ namespace awh {
 				 * @param headers список заголовков инициализации
 				 * @param fmk     объект фреймворка
 				 * @param log     объект для работы с логами
+				 *
 				 */
 				explicit Headers(const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1357,6 +1499,7 @@ namespace awh {
 				 * @param headers список заголовков инициализации
 				 * @param fmk     объект фреймворка
 				 * @param log     объект для работы с логами
+				 *
 				 */
 				explicit Headers(const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1365,6 +1508,7 @@ namespace awh {
 				 * @param headers список заголовков инициализации
 				 * @param fmk     объект фреймворка
 				 * @param log     объект для работы с логами
+				 *
 				 */
 				explicit Headers(const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1373,6 +1517,7 @@ namespace awh {
 				 * @param headers список заголовков инициализации
 				 * @param fmk     объект фреймворка
 				 * @param log     объект для работы с логами
+				 *
 				 */
 				explicit Headers(initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
@@ -1383,6 +1528,7 @@ namespace awh {
 				 * @param headers список заголовков инициализации
 				 * @param fmk     объект фреймворка
 				 * @param log     объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1392,6 +1538,7 @@ namespace awh {
 				 * @param headers список заголовков инициализации
 				 * @param fmk     объект фреймворка
 				 * @param log     объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1401,6 +1548,7 @@ namespace awh {
 				 * @param headers список заголовков инициализации
 				 * @param fmk     объект фреймворка
 				 * @param log     объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1410,6 +1558,7 @@ namespace awh {
 				 * @param headers список заголовков инициализации
 				 * @param fmk     объект фреймворка
 				 * @param log     объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
@@ -1420,6 +1569,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const provider_t * provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1429,6 +1579,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const provider_t * provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1438,6 +1589,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const provider_t * provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1447,6 +1599,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const provider_t * provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
@@ -1457,6 +1610,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(unique_ptr <provider_t> && provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1466,6 +1620,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(unique_ptr <provider_t> && provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1475,6 +1630,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(unique_ptr <provider_t> && provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1484,6 +1640,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(unique_ptr <provider_t> && provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
@@ -1495,6 +1652,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, const provider_t * provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1505,6 +1663,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, const provider_t * provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1515,6 +1674,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, const provider_t * provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1525,6 +1685,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, const provider_t * provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
@@ -1536,6 +1697,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1546,6 +1708,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1556,6 +1719,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1566,6 +1730,7 @@ namespace awh {
 				 * @param headers  список заголовков инициализации
 				 * @param fmk      объект фреймворка
 				 * @param log      объект для работы с логами
+				 *
 				 */
 				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
@@ -1581,6 +1746,7 @@ namespace awh {
 	 *
 	 * @param os      поток куда нужно вывести данные
 	 * @param headers контейнер заголовков
+	 *
 	 */
 	__AWH_SHARED_EXPORT__ ostream & operator << (ostream & os, const http::headers_t & headers) noexcept;
 };

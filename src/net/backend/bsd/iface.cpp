@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация бэкенда работы с сетевыми интерфейсами — перечисление интерфейсов машины, получение их адресов,
+ *        флагов, MTU и состояния,
+ *        создание и настройка TUN/TAP-устройств на каждой поддерживаемой операционной системе
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -92,6 +97,7 @@ namespace iface {
 	 *
 	 * @param prefix префикс сети
 	 * @return       маска подсети
+	 *
 	 */
 	static in_addr_t prefix2mask(const uint8_t prefix) noexcept {
 		// Если префикс равен нулю
@@ -106,6 +112,7 @@ namespace iface {
 	 *
 	 * @param mask маска подсети
 	 * @return     префикс сети
+	 *
 	 */
 	static uint8_t mask2prefix(const struct in_addr & mask) noexcept {
 		// Переменная результата
@@ -129,6 +136,7 @@ namespace iface {
 	 *
 	 * @param buffer буфер назначения фиксированного размера IFNAMSIZ
 	 * @param name   имя сетевого интерфейса (может быть не нуль-терминированным string_view)
+	 *
 	 */
 	static void copyName(char (& buffer)[IFNAMSIZ], const string_view name) noexcept {
 		// Определяем количество копируемых байт с учётом завершающего нуля
@@ -143,6 +151,7 @@ namespace iface {
 	 *
 	 * @param type тип интерфейса канального уровня (sdl_type)
 	 * @return     результат проверки
+	 *
 	 */
 	static bool isTunnelLinkType(const uint8_t type) noexcept {
 		/**
@@ -178,6 +187,7 @@ namespace iface {
 	 *
 	 * @param type тип интерфейса канального уровня (sdl_type)
 	 * @return     результат проверки
+	 *
 	 */
 	static bool isVirtualLinkType(const uint8_t type) noexcept {
 		/**
@@ -230,6 +240,7 @@ namespace iface {
 	 * @param list список сетевых интерфейсов
 	 * @param addr адрес сетевого подключения
 	 * @return     имя найденного сетевого интерфейса
+	 *
 	 */
 	static string findNameByAddr(struct ifaddrs * list, const awh::net::addr_t * addr) noexcept {
 		/**
@@ -296,6 +307,7 @@ namespace iface {
 	 * @param virt режим классификации: true - виртуальный, false - туннельный
 	 * @param fmk  объект фреймворка
 	 * @return     результат классификации интерфейса
+	 *
 	 */
 	static bool classify(struct ifaddrs * list, const string_view name, const bool virt, const awh::fmk_t * fmk) noexcept {
 		// Переменная результата
@@ -337,6 +349,7 @@ namespace iface {
 	 * @param prefix префикс подсети
 	 * @param log    объект работы с логами
 	 * @return       результат применения адреса
+	 *
 	 */
 	static bool applyAddress(const awh::net::socket_t sock, const string_view name, const awh::net::addr_t * ip, const awh::net::addr_t * peer, const uint8_t prefix, const awh::log_t * log) noexcept {
 		// Переменная результата
@@ -477,6 +490,7 @@ namespace iface {
 	 * @param name   имя сетевого интерфейса
 	 * @param log    объект работы с логами
 	 * @return       дескриптор созданного сетевого интерфейса
+	 *
 	 */
 	static awh::net::socket_t clonable(string_view driver, string & name, const awh::log_t * log) noexcept {
 		// Если название драйвера передано
@@ -587,6 +601,7 @@ namespace iface {
  *
  * @param name имя сетевого интерфейса
  * @return     результат удаления сетевого интерфейса
+ *
  */
 bool awh::eth::Interface::destroy(string_view name) const noexcept {
 	// Переменная результата
@@ -665,6 +680,7 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
  * @brief Метод получения списка сетевых интерфейсов системы
  *
  * @return список сетевых интерфейсов системы
+ *
  */
 unordered_set <string> awh::eth::Interface::available() const noexcept {
 	// Переменная результата
@@ -727,6 +743,7 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
  *
  * @param name имя сетевого интерфейса
  * @return     результат проверки доступности сетевого интерфейса
+ *
  */
 bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 	// Переменная результата
@@ -794,6 +811,7 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
  *
  * @param name имя сетевого интерфейса
  * @return     результат проверки туннельного сетевого интерфейса
+ *
  */
 bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 	// Переменная результата
@@ -840,6 +858,7 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
  *
  * @param addr адрес сетевого подключения
  * @return     результат проверки туннельного сетевого интерфейса
+ *
  */
 bool awh::eth::Interface::isTunnel(const net::addr_t * addr) const noexcept {
 	// Переменная результата
@@ -890,6 +909,7 @@ bool awh::eth::Interface::isTunnel(const net::addr_t * addr) const noexcept {
  *
  * @param name имя сетевого интерфейса
  * @return     результат проверки виртуального сетевого интерфейса
+ *
  */
 bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 	// Переменная результата
@@ -936,6 +956,7 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
  *
  * @param addr адрес сетевого подключения
  * @return     результат проверки виртуального сетевого интерфейса
+ *
  */
 bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
 	// Переменная результата
@@ -986,6 +1007,7 @@ bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
  *
  * @param addr адрес сетевого подключения
  * @return     имя сетевого интерфейса
+ *
  */
 string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 	// Переменная результата
@@ -1049,6 +1071,7 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
  * @param type тип сетевого интерфейса
  * @param name имя сетевого интерфейса
  * @return     дескриптор созданного сетевого интерфейса
+ *
  */
 awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string & name) const noexcept {
 	// Переменная результата
@@ -1468,6 +1491,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
  *
  * @param name имя сетевого интерфейса
  * @return     MTU сетевого интерфейса
+ *
  */
 uint16_t awh::eth::Interface::mtu(string_view name) const noexcept {
 	// Если название сетевого интерфейса передано
@@ -1552,6 +1576,7 @@ uint16_t awh::eth::Interface::mtu(string_view name) const noexcept {
  * @param name имя сетевого интерфейса
  * @param mtu  размер MTU интерфейса
  * @return     результат установки MTU сетевого интерфейса
+ *
  */
 bool awh::eth::Interface::mtu(string_view name, const uint16_t mtu) const noexcept {
 	// Переменная результата
@@ -1653,6 +1678,7 @@ bool awh::eth::Interface::mtu(string_view name, const uint16_t mtu) const noexce
  *
  * @param name имя сетевого интерфейса
  * @return     флаги сетевого интерфейса
+ *
  */
 unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view name) const noexcept {
 	// Переменная результата
@@ -1778,6 +1804,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
  * @param flag флаг сетевого интерфейса
  * @param mode режим включения/выключения флага
  * @return     результат установки флага сетевого интерфейса
+ *
  */
 bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept {
 	// Переменная результата
@@ -1995,6 +2022,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
  * @param peer   адрес удалённого пира (для точка-точка)
  * @param prefix префикс подсети
  * @return       результат установки IP-адреса
+ *
  */
 bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const uint8_t prefix) const noexcept {
 	// Переменная результата
@@ -2057,6 +2085,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
  * @param name   имя сетевого интерфейса
  * @param family семейство протоколов (IPv4 или IPv6)
  * @return       IP-адрес сетевого интерфейса
+ *
  */
 unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, const event::family_t family) const noexcept {
 	// Переменная результата
@@ -2192,6 +2221,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
  * @param peer   адрес удалённого пира (для точка-точка)
  * @param prefix префикс подсети
  * @return       результат установки параметров сетевого интерфейса точка-точка
+ *
  */
 bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) const noexcept {
 	// Переменная результата
@@ -2256,6 +2286,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
  * @param peer   адрес удалённого пира (для точка-точка)
  * @param prefix префикс подсети
  * @return       результат изменения параметров сетевого интерфейса точка-точка
+ *
  */
 bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept {
 	// Переменная результата
@@ -2414,6 +2445,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
  * @param prefix префикс подсети
  * @param mtu    размер MTU интерфейса (0 - не изменять)
  * @return       результат комплексной настройки сетевого интерфейса
+ *
  */
 bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint16_t mtu) const noexcept {
 	// Делегируем выполнение комплексной настройке без адреса удалённого пира
@@ -2428,6 +2460,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
  * @param prefix префикс подсети
  * @param mtu    размер MTU интерфейса (0 - не изменять)
  * @return       результат комплексной настройки сетевого интерфейса
+ *
  */
 bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint16_t mtu) const noexcept {
 	// Переменная результата
@@ -2563,6 +2596,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
  *
  * @param fmk объект фреймворка
  * @param log объект работы с логами
+ *
  */
 awh::eth::Interface::Interface(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**

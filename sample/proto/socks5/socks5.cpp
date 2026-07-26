@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример работы с протоколом SOCKS5 — демонстрация обмена сообщениями приветствия,
+ *        авторизации и команд между клиентской и серверной сторонами протокола
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -62,6 +66,7 @@ using namespace awh::proto;
  * @param title название выводимого кадра
  * @param data  бинарный буфер данных кадра
  * @param size  размер бинарного буфера данных кадра
+ *
  */
 static void printFrame(const string & title, const uint8_t * data, const size_t size) noexcept {
 	// Выводим название и размер кадра
@@ -80,6 +85,7 @@ static void printFrame(const string & title, const uint8_t * data, const size_t 
  *
  * @param host параметры адреса хоста
  * @return     текстовое представление адреса хоста
+ *
  */
 static string hostToString(const net::attr_t * host) noexcept {
 	// Если параметры адреса хоста не установлены
@@ -122,6 +128,7 @@ static string hostToString(const net::attr_t * host) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleHandshake(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -189,6 +196,7 @@ static void sampleHandshake(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleAuth(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -246,6 +254,7 @@ static void sampleAuth(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleAuthFailed(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -297,6 +306,7 @@ static void sampleAuthFailed(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleFraming(const fmk_t * fmk, const log_t * log) noexcept {
 	// Игнорируем неиспользуемые параметры
@@ -335,6 +345,7 @@ static void sampleFraming(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleUDP(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -382,6 +393,7 @@ static void sampleUDP(const fmk_t * fmk, const log_t * log) noexcept {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

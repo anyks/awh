@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Общий заголовочный файл набора автоматических тестов —
+ *        подключение Google Test и Google Mock и настройка глобальных параметров тестового окружения
+ *
  * @copyright: Copyright © 2025
+ *
  */
  
 #ifndef __AWH_TESTS__

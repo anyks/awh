@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация асинхронного движка ввода-вывода —
+ *        цикл событий поверх нативных механизмов операционной системы (kqueue, epoll, event ports, IOCP),
+ *        управление подписками на сокеты, файлы и каталоги, внутренние таймеры и списки контроля доступа
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -396,6 +401,7 @@ namespace {
 			 *
 			 * @param addr структура параметров подключения инициатора запроса
 			 * @return     идентификатор инициатора запроса
+			 *
 			 */
 			Origin_Identifier & from(const struct sockaddr_in6 & addr) noexcept {
 				// Устанавливаем порт
@@ -414,6 +420,7 @@ namespace {
 			 *
 			 * @param addr структура параметров подключения инициатора запроса
 			 * @return     идентификатор инициатора запроса
+			 *
 			 */
 			Origin_Identifier & from(const struct sockaddr_in & addr) noexcept {
 				// Устанавливаем порт
@@ -430,6 +437,7 @@ namespace {
 			 *
 			 * @param event идентификатор события-владельца
 			 * @return      идентификатор инициатора запроса
+			 *
 			 */
 			Origin_Identifier & owner(const event::id_t event) noexcept {
 				// Устанавливаем идентификатор события-владельца
@@ -443,6 +451,7 @@ namespace {
 			 * @param event идентификатор события сервера
 			 * @param key   опаковый ключ сессии
 			 * @return      идентификатор инициатора запроса
+			 *
 			 */
 			Origin_Identifier & from(const event::id_t event, const net::origin_key_t & key) noexcept {
 				// Копируем опаковый ключ сессии
@@ -459,6 +468,7 @@ namespace {
 			 *
 			 * @param addr структура параметров подключения инициатора запроса
 			 * @return     идентификатор инициатора запроса
+			 *
 			 */
 			Origin_Identifier & from(const struct sockaddr_un & addr) noexcept {
 				// Обнуляем, чтобы избежать мусора
@@ -483,6 +493,7 @@ namespace {
 			 *
 			 * @param other другой объект для сравнения
 			 * @return      результат сравнения
+			 *
 			 */
 			bool operator == (const Origin_Identifier & other) const noexcept {
 				// Если признак опакового ключа сессии различается
@@ -541,6 +552,7 @@ namespace {
 	 *
 	 * @tparam A тип объекта к которому необходимо привести объект B
 	 * @tparam B тип объекта который необходимо привести объекту A
+	 *
 	 */
 	template <typename A, typename B>
 	/**
@@ -548,6 +560,7 @@ namespace {
 	 *
 	 * @param obj объект для приведения
 	 * @return    результат приведения типа
+	 *
 	 */
 	static A & trust_cast(B & obj) noexcept {
 		// Выполняем приведение типа
@@ -576,6 +589,7 @@ namespace std {
 			 *
 			 * @param seed  исходный хеш-код
 			 * @param value добавочный хеш-код
+			 *
 			 */
 			static void combine(size_t & seed, const size_t value) noexcept {
 				// Комбинируем хеш-коды
@@ -587,6 +601,7 @@ namespace std {
 			 *
 			 * @param id объект для вычисления хеш-кода
 			 * @return   хеш-код объекта
+			 *
 			 */
 			size_t operator()(const origin_id_t & id) const noexcept {
 				// Если идентификатор задан опаковым ключом сессии
@@ -780,6 +795,7 @@ namespace io {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
+		 *
 		 */
 		explicit Transfer(const fmk_t * fmk, const log_t * log) noexcept :
 		 fd(net::invalid_socket_t), dest(0),
@@ -857,6 +873,7 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 * @param id идентификатор таймаута
+		 *
 		 */
 		explicit Timeout(const uint8_t id) noexcept :
 		 id(id), delay(0),
@@ -920,6 +937,7 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 * @param tid идентификатор таймаута пропускной способности
+		 *
 		 */
 		explicit Ratewidth(const uint8_t tid) noexcept :
 		 tokens(0.), time(0), limit(0), timeout(tid) {}
@@ -1167,6 +1185,7 @@ namespace io {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
+		 *
 		 */
 		explicit User(const fmk_t * fmk, const log_t * log) noexcept :
 		 dest(0), events(fmk, log) {}
@@ -1264,6 +1283,7 @@ namespace io {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
+		 *
 		 */
 		explicit Inter_Process_Communication(const fmk_t * fmk, const log_t * log) noexcept :
 		 transfer(fmk, log), partner(0) {}
@@ -1295,6 +1315,7 @@ namespace io {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
+		 *
 		 */
 		explicit Tunnel(const fmk_t * fmk, const log_t * log) noexcept :
 		 fd(net::invalid_socket_t),
@@ -1364,6 +1385,7 @@ namespace io {
 		 * @param num общее количество подключений сервера
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
+		 *
 		 */
 		explicit Peer(uint32_t & num, const fmk_t * fmk, const log_t * log) noexcept :
 		 activity(::activity::NONE), transfer(fmk, log), peers(num) {}
@@ -1397,6 +1419,7 @@ namespace io {
 		 * @param num общее количество подключений сервера
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
+		 *
 		 */
 		explicit Origin(uint32_t & num, const fmk_t * fmk, const log_t * log) noexcept :
 		 wrate(5), transfer(fmk, log), origins(num), server(0) {}
@@ -1430,6 +1453,7 @@ namespace io {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
+		 *
 		 */
 		explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
 		 activity(::activity::NONE),
@@ -1478,6 +1502,7 @@ namespace io {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
+		 *
 		 */
 		explicit Server(const fmk_t * fmk, const log_t * log) noexcept :
 		 fd(net::invalid_socket_t),
@@ -1574,6 +1599,7 @@ namespace fs {
 	 * @param input входная строка пути
 	 * @param log   объект работы с логами
 	 * @return      полная строка пути
+	 *
 	 */
 	static string fullpath(const string_view input, const log_t * log) noexcept {
 		/**
@@ -1715,6 +1741,7 @@ namespace fs {
 	 * @param addr структура параметров подключения инициатора запроса
 	 * @param size размер структуры параметров подключения
 	 * @return     строка адреса UNIX-сокета
+	 *
 	 */
 	static string unixSocketAddress(const struct sockaddr_un & addr, const socklen_t size) noexcept {
 		// Проверяем корректность длины структуры
@@ -1767,6 +1794,7 @@ namespace {
 			 * @brief Метод проверки статуса узла события как мусорного
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool garbage() const noexcept;
 		public:
@@ -1774,6 +1802,7 @@ namespace {
 			 * @brief Конструктор
 			 *
 			 * @param node объект узла события
+			 *
 			 */
 			explicit Guard_Transport_Layer_Node(::io::node_t * node) noexcept;
 		public:
@@ -1799,6 +1828,7 @@ namespace {
 	 * @brief Метод проверки статуса узла события как мусорного
 	 *
 	 * @return результат проверки
+	 *
 	 */
 	bool Guard_Transport_Layer_Node::garbage() const noexcept {
 		// Проверяем статус узла события
@@ -1811,6 +1841,7 @@ namespace {
 	 * @brief Конструктор
 	 *
 	 * @param node объект узла события
+	 *
 	 */
 	Guard_Transport_Layer_Node::Guard_Transport_Layer_Node(::io::node_t * node) noexcept : _node(node) {
 		// Увеличиваем счётчик ссылок узла
@@ -2157,6 +2188,7 @@ namespace local {
 	 * @brief Функция генерации уникального идентификатора
 	 *
 	 * @return уникальный идентификатор
+	 *
 	 */
 	static event::id_t identifier() noexcept {
 		// Результат работы функции
@@ -2176,6 +2208,7 @@ namespace local {
 	 * @brief Функция получения текущего штампа времени в наносекундах
 	 *
 	 * @return текущее время в наносекундах
+	 *
 	 */
 	static uint64_t nanostamp() noexcept {
 		// Объект структуры для хранения времени
@@ -2191,6 +2224,7 @@ namespace local {
 	 * @tparam A тип данных первого аргумента
 	 * @tparam B тип данных второго аргумента
 	 * @tparam C тип данных третьего аргумента
+	 *
 	 */
 	template <typename A, typename B, typename C>
 	/**
@@ -2200,6 +2234,7 @@ namespace local {
 	 * @param b второй аргумент
 	 * @param c третий аргумент
 	 * @return  минимальное значение из трёх аргументов
+	 *
 	 */
 	static A min(const A a, const B b, const C c) noexcept {
 		// Возвращаем минимальное значение из трёх аргументов
@@ -2214,6 +2249,7 @@ namespace local {
 	 * @tparam A тип данных первого аргумента
 	 * @tparam B тип данных второго аргумента
 	 * @tparam C тип данных третьего аргумента
+	 *
 	 */
 	template <typename A, typename B, typename C>
 	/**
@@ -2223,6 +2259,7 @@ namespace local {
 	 * @param b второй аргумент
 	 * @param c третий аргумент
 	 * @return  максимальное значение из трёх аргументов
+	 *
 	 */
 	static A max(const A a, const B b, const C c) noexcept {
 		// Возвращаем максимальное значение из трёх аргументов
@@ -2236,6 +2273,7 @@ namespace local {
 	 *
 	 * @param log объект работы с логами
 	 * @return    результат выполнения обработки
+	 *
 	 */
 	static bool commit(const log_t * log) noexcept {
 		// Результат работы функции
@@ -2660,6 +2698,7 @@ namespace eth {
 	 * @brief Генерация случайного порта в диапазоне 49152-65535
 	 *
 	 * @return случайный порт
+	 *
 	 */
 	static uint16_t port() noexcept {
 		/**
@@ -2677,6 +2716,7 @@ namespace eth {
 	 * @param data   указатель на данные
 	 * @param length длина данных
 	 * @return       вычисленная контрольная сумма
+	 *
 	 */
 	static uint16_t checksum(const void * data, size_t length) noexcept {
 		// Получаем нужного вида буфер входящих данных
@@ -2721,6 +2761,7 @@ namespace events {
 	 * @brief Функция добавления события в список изменений
 	 *
 	 * @param ev событие для добавления
+	 *
 	 */
 	static void add(struct kevent && ev) noexcept {
 		/**
@@ -2988,6 +3029,7 @@ namespace events {
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool read(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate, const log_t * log) noexcept {
 		// Результат работы функции
@@ -3092,6 +3134,7 @@ namespace events {
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool write(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate, const log_t * log) noexcept {
 		// Результат работы функции
@@ -3206,6 +3249,7 @@ namespace io {
 	 * @param  объект работы с сетевыми интерфейсами
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
+	 *
 	 */
 	static bool destroy(::io::node_t *, const eth_t *, const log_t *) noexcept;
 	/**
@@ -3215,6 +3259,7 @@ namespace io {
 	 * @param  объект работы с асинхронными событиями
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
+	 *
 	 */
 	static bool user(::io::user_t *, const engine::io_t *, const log_t *) noexcept;
 	/**
@@ -3224,6 +3269,7 @@ namespace io {
 	 * @param  объект работы с сетевыми интерфейсами
 	 * @param  объект работы с логами
 	 * @return результат создания сокета
+	 *
 	 */
 	static bool socket(::io::node_t *, const eth_t *, const log_t *) noexcept;
 	/**
@@ -3233,6 +3279,7 @@ namespace io {
 	 * @param  код ошибки
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
+	 *
 	 */
 	static bool error(::io::node_t *, const int32_t, const log_t *) noexcept;
 	/**
@@ -3242,6 +3289,7 @@ namespace io {
 	 * @param  режим ограничения пропускной способности события (egress или ingress)
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
+	 *
 	 */
 	static bool tokens(::io::node_t *, const event::limiting_t, const log_t *) noexcept;
 	/**
@@ -3252,6 +3300,7 @@ namespace io {
 	 * @param  объект фреймворка
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
+	 *
 	 */
 	static bool change(::io::dir_t *, const engine::io_t *, const fmk_t *, const log_t *) noexcept;
 	/**
@@ -3262,6 +3311,7 @@ namespace io {
 	 * @param  объект работы с сетевыми интерфейсами
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
+	 *
 	 */
 	static bool connected(::io::client_t *, const engine::io_t *, const eth_t *, const log_t *) noexcept;
 	/**
@@ -3273,6 +3323,7 @@ namespace io {
 	 * @param  объект фреймворка
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
+	 *
 	 */
 	static bool accept(::io::server_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *) noexcept;
 	/**
@@ -3284,6 +3335,7 @@ namespace io {
 	 * @param  объект фреймворка
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
+	 *
 	 */
 	static bool write(::io::node_t *, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 	/**
@@ -3296,6 +3348,7 @@ namespace io {
 	 * @param  объект фреймворка
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
+	 *
 	 */
 	static bool read(::io::node_t *, const engine::io_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *) noexcept;
 	/**
@@ -3308,6 +3361,7 @@ namespace io {
 	 * @param  объект фреймворка
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
+	 *
 	 */
 	static bool polling(struct kevent &, const engine::io_t *, const eth_t *, const net_addr_t * addr, const fmk_t *, const log_t *) noexcept;
 	/**
@@ -3322,6 +3376,7 @@ namespace io {
 	 * @param  объект фреймворка
 	 * @param  объект работы с логами
 	 * @return результат выполнения обработки
+	 *
 	 */
 	static bool origin(::io::server_t *, const uint8_t *, const size_t, const engine::io_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *) noexcept;
 };
@@ -3364,6 +3419,7 @@ namespace timer {
 	 * @brief Функция получения текущего штампа времени в миллисекундах
 	 *
 	 * @return текущее время в миллисекундах
+	 *
 	 */
 	static uint64_t timestamp() noexcept {
 		// Объект структуры для хранения времени
@@ -3400,6 +3456,7 @@ namespace timer1 {
 		 *
 		 * @param key ключ таймера для сравнения
 		 * @return    результат сравнения
+		 *
 		 */
 		bool operator == (const Key & key) const noexcept {
 			// Сравниваем упакованные ключи таймеров для определения их равенства
@@ -3410,6 +3467,7 @@ namespace timer1 {
 		 *
 		 * @param id  идентификатор таймера (для внутреннего использования)
 		 * @param eid идентификатор события для которого устанавливается таймер
+		 *
 		 */
 		Key(const uint8_t id, const event::id_t eid) noexcept :
 		 packed((static_cast <uint64_t> (eid) << 8) | id) {}
@@ -3425,6 +3483,7 @@ namespace timer1 {
 		 *
 		 * @param key ключ таймера для хеширования
 		 * @return    хешированное значение ключа таймера
+		 *
 		 */
 		size_t operator()(const Key & key) const noexcept {
 			// Для 64-битного ключа: быстрое перемешивание (FNV-1a или splitmix64)
@@ -3460,6 +3519,7 @@ namespace timer1 {
 		 *
 		 * @param timer другой таймер для сравнения
 		 * @return      результат сравнения
+		 *
 		 */
 		bool operator < (const Timer & timer) const noexcept {
 			// Если сроки истечения таймеров не равны, выполняем первичную сортировку по сроку истечения
@@ -3500,6 +3560,7 @@ namespace timer1 {
 	 *
 	 * @param rate режим ограничения скорости события для которого устанавливается таймер
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void __reschedule_kernel_timer__(const event::rate_t rate, const log_t * log) noexcept {
 		/**
@@ -3592,6 +3653,7 @@ namespace timer1 {
 	 * @brief Функция проверки, пуста ли очередь таймеров
 	 *
 	 * @return результат проверки
+	 *
 	 */
 	static bool empty() noexcept {
 		// Проверяем, пуста ли очередь таймеров
@@ -3602,6 +3664,7 @@ namespace timer1 {
 	 * @brief Функция получения количества активных таймеров (для метрик)
 	 *
 	 * @return количество активных таймеров
+	 *
 	 */
 	static size_t size() noexcept {
 		// Получаем количество активных таймеров в очереди таймеров
@@ -3612,6 +3675,7 @@ namespace timer1 {
 	 * @brief Функция извлечения дедлайна ближайшего таймера (для ручного расчёта timeout)
 	 *
 	 * @return UINT64_MAX если очередь пуста, иначе абсолютное время в мс
+	 *
 	 */
 	static uint64_t deadline() noexcept {
 		// Возвращаем дедлайн ближайшего таймера, если очередь пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
@@ -3634,6 +3698,7 @@ namespace timer1 {
 	 *
 	 * @param tm  объект таймера для отмены
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
 		// Если таймаут ожидания уже активирован для данного события
@@ -3659,6 +3724,7 @@ namespace timer1 {
 	 * @param tm1 объект первого таймаута
 	 * @param tm2 объект второго таймаута
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
 		// Отменяем первый таймер для данного события, так-как он больше не нужен
@@ -3674,6 +3740,7 @@ namespace timer1 {
 	 * @param tm2 объект второго таймаута
 	 * @param tm3 объект третьего таймаута
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
 		// Отменяем первый таймер для данного события, так-как он больше не нужен
@@ -3692,6 +3759,7 @@ namespace timer1 {
 	 * @param tm3 объект третьего таймаута
 	 * @param tm4 объект четвёртого таймаута
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
 		// Отменяем первый таймер для данного события, так-как он больше не нужен
@@ -3713,6 +3781,7 @@ namespace timer1 {
 	 * @param tm4 объект четвёртого таймаута
 	 * @param tm5 объект пятого таймаута
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
 		// Отменяем первый таймер для данного события, так-как он больше не нужен
@@ -3737,6 +3806,7 @@ namespace timer1 {
 	 * @param tm5 объект пятого таймаута
 	 * @param tm6 объект шестого таймаута
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
 		// Отменяем первый таймер для данного события, так-как он больше не нужен
@@ -3761,6 +3831,7 @@ namespace timer1 {
 	 * @param flag флаг активации таймера
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::io::timeout_t & tm, const event::id_t eid, const ::timer::flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
 		/**
@@ -3865,6 +3936,7 @@ namespace timer1 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем таймер на основе переданных параметров
@@ -3887,6 +3959,7 @@ namespace timer1 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec1, ::timer::record_t rec2, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем первый таймер на основе переданных параметров
@@ -3917,6 +3990,7 @@ namespace timer1 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем первый таймер на основе переданных параметров
@@ -3950,6 +4024,7 @@ namespace timer1 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем первый таймер на основе переданных параметров
@@ -3987,6 +4062,7 @@ namespace timer1 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, ::timer::record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем первый таймер на основе переданных параметров
@@ -4028,6 +4104,7 @@ namespace timer1 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, ::timer::record_t rec5, ::timer::record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем первый таймер на основе переданных параметров
@@ -4069,6 +4146,7 @@ namespace timer1 {
 	 * @param fmk  объект фреймворка
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
@@ -4473,6 +4551,7 @@ namespace timer2 {
 	 *
 	 * @param eid идентификатор события
 	 * @return    объект чанка для данного события
+	 *
 	 */
 	static Chunk * __get_chunk__(const event::id_t eid) noexcept {
 		// Вычисляем индекс чанка для данного идентификатора события
@@ -4527,6 +4606,7 @@ namespace timer2 {
 	 * @brief Функция освобождения чанка, если в нём нет активных таймеров, с возвратом в пул для переиспользования
 	 *
 	 * @param eid идентификатор события
+	 *
 	 */
 	static void __try_release_chunk__(const event::id_t eid) noexcept {
 		// Вычисляем индекс чанка для данного идентификатора события
@@ -4563,6 +4643,7 @@ namespace timer2 {
 	 *
 	 * @param timer объект таймера
 	 * @param idx   индекс таймера в куче
+	 *
 	 */
 	static void __set_slot__(const Timer & timer, const int32_t idx) noexcept {
 		// Вычисляем индекс чанка для данного идентификатора события
@@ -4586,6 +4667,7 @@ namespace timer2 {
 	 *
 	 * @param a индекс первого элемента в куче
 	 * @param b индекс второго элемента в куче
+	 *
 	 */
 	static void __swap_heap__(const int32_t a, const int32_t b) noexcept {
 		// Обмениваем два элемента в куче
@@ -4599,6 +4681,7 @@ namespace timer2 {
 	 * @brief Функция подъёма элемента вверх по куче для восстановления свойства кучи после изменения дедлайна таймера
 	 *
 	 * @param index индекс элемента в куче
+	 *
 	 */
 	static void __sift_up__(int32_t index) noexcept {
 		// Индекс родительского элемента в куче, который будет использоваться для сравнения и возможного обмена
@@ -4627,6 +4710,7 @@ namespace timer2 {
 	 * @brief Функция опускания элемента вниз по куче для восстановления свойства кучи после изменения дедлайна таймера или удаления элемента
 	 *
 	 * @param index индекс элемента в куче
+	 *
 	 */
 	static void __sift_down__(int32_t index) noexcept {
 		// Индексы наименьшего элемента, левого потомка и правого потомка, которые будут использоваться для сравнения и возможного обмена
@@ -4670,6 +4754,7 @@ namespace timer2 {
 	 *
 	 * @param rate режим ограничения скорости события для которого устанавливается таймер
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void __reschedule_kernel_timer__(const event::rate_t rate, const log_t * log) noexcept {
 		/**
@@ -4762,6 +4847,7 @@ namespace timer2 {
 	 * @brief Функция проверки, пуста ли очередь таймеров
 	 *
 	 * @return результат проверки
+	 *
 	 */
 	static bool empty() noexcept {
 		// Проверяем, пуста ли очередь таймеров
@@ -4772,6 +4858,7 @@ namespace timer2 {
 	 * @brief Функция получения количества активных таймеров (для метрик)
 	 *
 	 * @return количество активных таймеров
+	 *
 	 */
 	static size_t size() noexcept {
 		// Получаем количество активных таймеров в очереди таймеров
@@ -4815,6 +4902,7 @@ namespace timer2 {
 	 * @brief Функция извлечения дедлайна ближайшего таймера (для ручного расчёта timeout)
 	 *
 	 * @return UINT64_MAX если куча пуста, иначе абсолютное время в мс
+	 *
 	 */
 	static uint64_t deadline() noexcept {
 		// Возвращаем дедлайн ближайшего таймера, если куча пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
@@ -4826,6 +4914,7 @@ namespace timer2 {
 	 *
 	 * @param tm  объект таймера для отмены
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
 		// Если таймаут ожидания уже активирован для данного события
@@ -4902,6 +4991,7 @@ namespace timer2 {
 	 * @param tm1 объект первого таймаута
 	 * @param tm2 объект второго таймаута
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, const event::id_t eid) noexcept {
 		// Отменяем первый таймер для данного события, так-как он больше не нужен
@@ -4917,6 +5007,7 @@ namespace timer2 {
 	 * @param tm2 объект второго таймаута
 	 * @param tm3 объект третьего таймаута
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, const event::id_t eid) noexcept {
 		// Отменяем первый таймер для данного события, так-как он больше не нужен
@@ -4935,6 +5026,7 @@ namespace timer2 {
 	 * @param tm3 объект третьего таймаута
 	 * @param tm4 объект четвёртого таймаута
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, const event::id_t eid) noexcept {
 		// Отменяем первый таймер для данного события, так-как он больше не нужен
@@ -4956,6 +5048,7 @@ namespace timer2 {
 	 * @param tm4 объект четвёртого таймаута
 	 * @param tm5 объект пятого таймаута
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
 		// Отменяем первый таймер для данного события, так-как он больше не нужен
@@ -4980,6 +5073,7 @@ namespace timer2 {
 	 * @param tm5 объект пятого таймаута
 	 * @param tm6 объект шестого таймаута
 	 * @param eid идентификатор события для которого устанавливается таймер
+	 *
 	 */
 	static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, ::io::timeout_t & tm6, const event::id_t eid) noexcept {
 		// Отменяем первый таймер для данного события, так-как он больше не нужен
@@ -5004,6 +5098,7 @@ namespace timer2 {
 	 * @param flag флаг активации таймера
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::io::timeout_t & tm, const event::id_t eid, const ::timer::flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
 		/**
@@ -5153,6 +5248,7 @@ namespace timer2 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем таймер на основе переданных параметров
@@ -5178,6 +5274,7 @@ namespace timer2 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec1, ::timer::record_t rec2, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем первый таймер на основе переданных параметров
@@ -5208,6 +5305,7 @@ namespace timer2 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем первый таймер на основе переданных параметров
@@ -5241,6 +5339,7 @@ namespace timer2 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем первый таймер на основе переданных параметров
@@ -5278,6 +5377,7 @@ namespace timer2 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, ::timer::record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем первый таймер на основе переданных параметров
@@ -5319,6 +5419,7 @@ namespace timer2 {
 	 * @param eid  идентификатор события для которого устанавливается таймер
 	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
+	 *
 	 */
 	static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, ::timer::record_t rec5, ::timer::record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 		// Устанавливаем первый таймер на основе переданных параметров
@@ -5360,6 +5461,7 @@ namespace timer2 {
 	 * @param fmk  объект фреймворка
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
@@ -5739,6 +5841,7 @@ namespace sctp {
 		 *
 		 * @param info   структура информации SCTP
 		 * @param result внутренняя структура информации SCTP
+		 *
 		 */
 		static void info(const struct sctp_sndrcvinfo & info, net::sctp::minfo_t & result) noexcept;
 		/**
@@ -5749,6 +5852,7 @@ namespace sctp {
 		 * @param size	 размер буфера данных события
 		 * @param log    объект работы с логами
 		 * @return       количество обработанных байт
+		 *
 		 */
 		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log) noexcept;
 	#endif
@@ -5772,6 +5876,7 @@ namespace io {
 	 * @param eth объект работы с сетевыми интерфейсами
 	 * @param log объект работы с логами
 	 * @return    результат выполнения обработки
+	 *
 	 */
 	static bool read(::io::file_t * fs, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -5930,6 +6035,7 @@ namespace io {
 	 * @param eth объект работы с сетевыми интерфейсами
 	 * @param log объект работы с логами
 	 * @return    результат выполнения обработки
+	 *
 	 */
 	static bool read(::io::ipc_t * ipc, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -6407,6 +6513,7 @@ namespace io {
 	 * @param eth  объект работы с сетевыми интерфейсами
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool read(::io::peer_t * peer, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -7122,6 +7229,7 @@ namespace io {
 	 * @param fmk    объект фреймворка
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
+	 *
 	 */
 	static bool read(::io::tun_t * tunnel, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		// Результат работы функции
@@ -8245,6 +8353,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
+	 *
 	 */
 	static bool read(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -10260,6 +10369,7 @@ namespace io {
 	 * @param fmk    объект фреймворка
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
+	 *
 	 */
 	static bool read(::io::server_t * server, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		// Результат работы функции
@@ -10914,6 +11024,7 @@ namespace io {
 	 * @param eth  объект работы с сетевыми интерфейсами
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool write(::io::ipc_t * ipc, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -11372,6 +11483,7 @@ namespace io {
 	 * @param eth  объект работы с сетевыми интерфейсами
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool write(::io::peer_t * peer, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -11400,6 +11512,7 @@ namespace io {
 							 * @param buffer буфер данных для отправки
 							 * @param size   размер данных для отправки
 							 * @return       количество отправленных байт
+							 *
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
 								// Результат работы функции
@@ -11783,6 +11896,7 @@ namespace io {
 								 * @param buffer буфер данных для отправки
 								 * @param size   размер данных для отправки
 								 * @return       количество отправленных байт
+								 *
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
 									// Результат работы функции
@@ -12141,6 +12255,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
+	 *
 	 */
 	static bool write(::io::origin_t * origin, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -12180,6 +12295,7 @@ namespace io {
 							 * @param buffer буфер данных для отправки
 							 * @param size   размер данных для отправки
 							 * @return       количество отправленных байт
+							 *
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
 								// Результат работы функции
@@ -12529,6 +12645,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
+	 *
 	 */
 	static bool write(::io::tun_t * tunnel, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -12704,6 +12821,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
+	 *
 	 */
 	static bool write(::io::client_t * client, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -12732,6 +12850,7 @@ namespace io {
 							 * @param buffer буфер данных для отправки
 							 * @param size   размер данных для отправки
 							 * @return       количество отправленных байт
+							 *
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
 								// Результат работы функции
@@ -13113,6 +13232,7 @@ namespace io {
 							 * @param buffer буфер данных для отправки
 							 * @param size   размер данных для отправки
 							 * @return       количество отправленных байт
+							 *
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
 								// Результат работы функции
@@ -13455,6 +13575,7 @@ namespace io {
 							 * @param buffer буфер данных для отправки
 							 * @param size   размер данных для отправки
 							 * @return       количество отправленных байт
+							 *
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
 								// Результат работы функции
@@ -13868,6 +13989,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
+	 *
 	 */
 	static bool write(::io::server_t * server, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -14201,6 +14323,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       количество байт данных, отправленных событием
+	 *
 	 */
 	static size_t send(::io::file_t * fs, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -14309,6 +14432,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       количество байт данных, отправленных событием
+	 *
 	 */
 	static size_t send(::io::ipc_t * ipc, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -15012,6 +15136,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       количество байт данных, отправленных событием
+	 *
 	 */
 	static size_t send(::io::peer_t * peer, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -15040,6 +15165,7 @@ namespace io {
 							 * @param buffer буфер данных для отправки
 							 * @param size   размер данных для отправки
 							 * @return       количество отправленных байт
+							 *
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
 								// Результат работы функции
@@ -15444,6 +15570,7 @@ namespace io {
 							 * @param buffer буфер данных для отправки
 							 * @param size   размер данных для отправки
 							 * @return       количество отправленных байт
+							 *
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
 								// Результат работы функции
@@ -15919,6 +16046,7 @@ namespace io {
 								 * @param buffer буфер данных для отправки
 								 * @param size   размер данных для отправки
 								 * @return       количество отправленных байт
+								 *
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
 									// Результат работы функции
@@ -16260,6 +16388,7 @@ namespace io {
 									 * @param buffer буфер данных для отправки
 									 * @param size   размер данных для отправки
 									 * @return       количество отправленных байт
+									 *
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
 										// Результат работы функции
@@ -16729,6 +16858,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       количество байт данных, отправленных событием
+	 *
 	 */
 	static size_t send(::io::origin_t * origin, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -16762,6 +16892,7 @@ namespace io {
 							 * @param buffer буфер данных для отправки
 							 * @param size   размер данных для отправки
 							 * @return       количество отправленных байт
+							 *
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
 								// Результат работы функции
@@ -17060,6 +17191,7 @@ namespace io {
 								 * @param buffer буфер данных для отправки
 								 * @param size   размер данных для отправки
 								 * @return       количество отправленных байт
+								 *
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
 									// Результат работы функции
@@ -17501,6 +17633,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       количество байт данных, отправленных событием
+	 *
 	 */
 	static size_t send(::io::tun_t * tunnel, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -18552,6 +18685,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       количество байт данных, отправленных событием
+	 *
 	 */
 	static size_t send(::io::client_t * client, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -18580,6 +18714,7 @@ namespace io {
 							 * @param buffer буфер данных для отправки
 							 * @param size   размер данных для отправки
 							 * @return       количество отправленных байт
+							 *
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
 								// Результат работы функции
@@ -18984,6 +19119,7 @@ namespace io {
 							 * @param buffer буфер данных для отправки
 							 * @param size   размер данных для отправки
 							 * @return       количество отправленных байт
+							 *
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
 								// Результат работы функции
@@ -19459,6 +19595,7 @@ namespace io {
 								 * @param buffer буфер данных для отправки
 								 * @param size   размер данных для отправки
 								 * @return       количество отправленных байт
+								 *
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
 									// Результат работы функции
@@ -19786,6 +19923,7 @@ namespace io {
 									 * @param buffer буфер данных для отправки
 									 * @param size   размер данных для отправки
 									 * @return       количество отправленных байт
+									 *
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
 										// Результат работы функции
@@ -20206,6 +20344,7 @@ namespace io {
 								 * @param buffer буфер данных для отправки
 								 * @param size   размер данных для отправки
 								 * @return       количество отправленных байт
+								 *
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
 									// Результат работы функции
@@ -20533,6 +20672,7 @@ namespace io {
 									 * @param buffer буфер данных для отправки
 									 * @param size   размер данных для отправки
 									 * @return       количество отправленных байт
+									 *
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
 										// Результат работы функции
@@ -20985,6 +21125,7 @@ namespace io {
 								 * @param buffer буфер данных для отправки
 								 * @param size   размер данных для отправки
 								 * @return       количество отправленных байт
+								 *
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
 									// Результат работы функции
@@ -21339,6 +21480,7 @@ namespace io {
 									 * @param buffer буфер данных для отправки
 									 * @param size   размер данных для отправки
 									 * @return       количество отправленных байт
+									 *
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
 										// Результат работы функции
@@ -21813,6 +21955,7 @@ namespace io {
 								 * @param buffer буфер данных для отправки
 								 * @param size   размер данных для отправки
 								 * @return       количество отправленных байт
+								 *
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
 									// Результат работы функции
@@ -22167,6 +22310,7 @@ namespace io {
 									 * @param buffer буфер данных для отправки
 									 * @param size   размер данных для отправки
 									 * @return       количество отправленных байт
+									 *
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
 										// Результат работы функции
@@ -22690,6 +22834,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       количество байт данных, отправленных событием
+	 *
 	 */
 	static size_t send(::io::server_t * server, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -23066,6 +23211,7 @@ namespace io {
 	 * @param eth  объект работы с сетевыми интерфейсами
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool destroy(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
 		/**
@@ -23713,6 +23859,7 @@ namespace io {
 	 * @param io   объект работы с асинхронными событиями
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool user(::io::user_t * user, const engine::io_t * io, const log_t * log) noexcept {
 		// Результат работы функции
@@ -23787,6 +23934,7 @@ namespace io {
 	 * @param eth  объект работы с сетевыми интерфейсами
 	 * @param log  объект работы с логами
 	 * @return     результат создания сокета
+	 *
 	 */
 	static bool socket(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
 		/**
@@ -23859,6 +24007,7 @@ namespace io {
 	 * @param code код ошибки
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool error(::io::node_t * node, const int32_t code, const log_t * log) noexcept {
 		/**
@@ -24265,6 +24414,7 @@ namespace io {
 	 * @param limiting режим ограничения пропускной способности события (egress или ingress)
 	 * @param log      объект работы с логами
 	 * @return         результат выполнения обработки
+	 *
 	 */
 	static bool tokens(::io::node_t * node, const event::limiting_t limiting, const log_t * log) noexcept {
 		/**
@@ -25006,6 +25156,7 @@ namespace io {
 	 * @param fmk объект фреймворка
 	 * @param log объект работы с логами
 	 * @return    результат выполнения обработки
+	 *
 	 */
 	static bool change(::io::dir_t * dir, const engine::io_t * io, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
@@ -25127,6 +25278,7 @@ namespace io {
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
+	 *
 	 */
 	static bool connected(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
@@ -25241,6 +25393,7 @@ namespace io {
 	 * @param fmk    объект фреймворка
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
+	 *
 	 */
 	static bool accept(::io::server_t * server, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
@@ -26002,6 +26155,7 @@ namespace io {
 	 * @param fmk  объект фреймворка
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool write(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
 		// Результат работы функции
@@ -26122,6 +26276,7 @@ namespace io {
 	 * @param fmk  объект фреймворка
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool read(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
@@ -26298,6 +26453,7 @@ namespace io {
 	 * @param fmk  объект фреймворка
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
+	 *
 	 */
 	static bool polling(struct kevent & ev, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		// Значение узла для обработки изменений
@@ -26863,6 +27019,7 @@ namespace io {
 	 * @param fmk    объект фреймворка
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
+	 *
 	 */
 	static bool origin(::io::server_t * server, const uint8_t * buffer, const size_t size, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		// Идентификатор сессии источника
@@ -27536,6 +27693,7 @@ namespace sctp {
 		 *
 		 * @param info   структура информации SCTP
 		 * @param result внутренняя структура информации SCTP
+		 *
 		 */
 		static void info(const struct sctp_sndrcvinfo & info, net::sctp::minfo_t & result) noexcept {
 			/**
@@ -27609,6 +27767,7 @@ namespace sctp {
 		 * @param size	 размер буфера данных события
 		 * @param log    объект работы с логами
 		 * @return       количество обработанных байт
+		 *
 		 */
 		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log) noexcept {
 			// Результат работы функции
@@ -28781,6 +28940,7 @@ namespace sctp {
 	 *
 	 * @param id идентификатор события
 	 * @return   информационные метаданные SCTP сообщения
+	 *
 	 */
 	awh::net::sctp::minfo_t awh::engine::Stream_Control_Transmission_Protocol::messageInfo(const event::id_t id) const noexcept {
 		// Резузльтат работы функции
@@ -28853,6 +29013,7 @@ namespace sctp {
 	 *
 	 * @param id   идентификатор события
 	 * @param info информационные метаданные SCTP сообщения
+	 *
 	 */
 	void awh::engine::Stream_Control_Transmission_Protocol::messageInfo(const event::id_t id, const net::sctp::minfo_t & info) noexcept {
 		/**
@@ -29123,6 +29284,7 @@ namespace sctp {
 	 *
 	 * @param id идентификатор события
 	 * @return   параметры статуса инициализации SCTP
+	 *
 	 */
 	awh::net::sctp::status_t awh::engine::Stream_Control_Transmission_Protocol::status(const event::id_t id) const noexcept {
 		// Результат работы функции
@@ -29327,6 +29489,7 @@ namespace sctp {
 	 *
 	 * @param id      идентификатор события
 	 * @param initmsg параметры инициализации SCTP события
+	 *
 	 */
 	void awh::engine::Stream_Control_Transmission_Protocol::initMessages(const event::id_t id, const net::sctp::initmsg_t & initmsg) noexcept {
 		/**
@@ -29507,6 +29670,7 @@ namespace sctp {
 	 *
 	 * @param id идентификатор события
 	 * @return   список событий SCTP на которые выполнена подписка
+	 *
 	 */
 	const awh::net::sctp::event_types_t & awh::engine::Stream_Control_Transmission_Protocol::eventsSubscribed(const event::id_t id) const noexcept {
 		// Результат работы функции
@@ -29565,6 +29729,7 @@ namespace sctp {
 	 *
 	 * @param id     идентификатор события
 	 * @param events список событий SCTP для подписки
+	 *
 	 */
 	void awh::engine::Stream_Control_Transmission_Protocol::eventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept {
 		/**
@@ -29684,6 +29849,7 @@ namespace sctp {
 	 * @param id   идентификатор события
 	 * @param type тип таймаута
 	 * @return     значение таймаута в миллисекундах
+	 *
 	 */
 	uint32_t awh::engine::Stream_Control_Transmission_Protocol::getTimeout(const event::id_t id, const net::sctp::timeout_t type) const noexcept {
 		/**
@@ -29873,6 +30039,7 @@ namespace sctp {
 	 * @param type    тип таймаута
 	 * @param timeout значение таймаута в миллисекундах
 	 * @return        результат работы функции
+	 *
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::setTimeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept {
 		/**
@@ -30062,6 +30229,7 @@ namespace sctp {
 	 * @param num номер ключа аутентификации
 	 * @param key ключ аутентификации
 	 * @return    результат работы функции
+	 *
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateKey(const event::id_t id, const uint16_t num, string_view key) noexcept {
 		/**
@@ -30184,6 +30352,7 @@ namespace sctp {
 	 * @param mode режим установки действия события
 	 * @param num  номер ключа аутентификации
 	 * @return     результат работы функции
+	 *
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept {
 		/**
@@ -30327,6 +30496,7 @@ namespace sctp {
 	 * @param id     идентификатор события
 	 * @param chunks список чанков подлежащих аутентификации
 	 * @return       результат работы функции
+	 *
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept {
 		// Результат работы функции
@@ -30451,6 +30621,7 @@ namespace sctp {
 	 * @param origin источник события
 	 * @param chunks список чанков подлежащих аутентификации
 	 * @return       результат работы функции
+	 *
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
 		// Результат работы функции
@@ -30614,6 +30785,7 @@ namespace sctp {
 	 * @param id    идентификатор события
 	 * @param types список поддерживаемых алгоритмов аутентификации
 	 * @return      результат работы функции
+	 *
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept {
 		// Результат работы функции
@@ -30774,6 +30946,7 @@ namespace sctp {
 	 *
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
+	 *
 	 */
 	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, engine::callback::sctp::minfo_t cb) noexcept {
 		/**
@@ -30847,6 +31020,7 @@ namespace sctp {
 	 *
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
+	 *
 	 */
 	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, engine::callback::sctp::events_t cb) noexcept {
 		/**
@@ -30920,6 +31094,7 @@ namespace sctp {
 	 *
 	 * @param fmk объект фреймворка
 	 * @param log объект работы с логами
+	 *
 	 */
 	awh::engine::Stream_Control_Transmission_Protocol::Stream_Control_Transmission_Protocol(const fmk_t * fmk, const log_t * log) noexcept :
 	 _eth(fmk, log), _fmk(fmk), _log(log) {}
@@ -30935,6 +31110,7 @@ namespace sctp {
  *
  * @param id идентификатор события
  * @return   результат выполнения очистки
+ *
  */
 bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 	/**
@@ -31044,6 +31220,7 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
  * @param id    идентификатор события
  * @param value значение адреса события
  * @return      результат выполнения установки
+ *
  */
 bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value) noexcept {
 	// Если адрес для удаления передан
@@ -31328,6 +31505,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
  * @param id    идентификатор события
  * @param value адрес для удаления из контрольного списка
  * @return      результат выполнения удаления
+ *
  */
 bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view value) noexcept {
 	// Результат работы функции
@@ -31489,6 +31667,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
  *
  * @param id идентификатор события
  * @return   контрольный список события
+ *
  */
 const unordered_map <string, event::address_t> & awh::engine::IO::Control_List::get(const event::id_t id) const noexcept {
 	// Результат работы функции
@@ -31588,6 +31767,7 @@ const unordered_map <string, event::address_t> & awh::engine::IO::Control_List::
  * @brief Конструктор
  *
  * @param type тип контрольного списка
+ *
  */
 awh::engine::IO::Control_List::Control_List(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept :
  _addr(fmk, log), _type(type), _fmk(fmk), _log(log) {}
@@ -31602,6 +31782,7 @@ awh::engine::IO::Control_List::~Control_List() noexcept {}
  *
  * @param id идентификатор события
  * @return   результат выполнения фиксации
+ *
  */
 bool awh::engine::IO::commit(const event::id_t id) noexcept {
 	// Результат работы функции
@@ -35206,6 +35387,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
  *
  * @param id идентификатор события
  * @return   результат выполнения перестройки
+ *
  */
 bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 	// Результат работы функции
@@ -35749,6 +35931,7 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
  *
  * @param id идентификатор события
  * @return   сетевой интерфейс события
+ *
  */
 string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 	/**
@@ -35968,6 +36151,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
  * @param id   идентификатор события
  * @param name имя сетевого интерфейса для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept {
 	// Результат выполнения функции
@@ -36241,6 +36425,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
  *
  * @param id идентификатор события
  * @return   внутренний порт события
+ *
  */
 uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 	/**
@@ -36479,6 +36664,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
  * @param id   идентификатор события
  * @param port внутренний порт события
  * @return     результат выполнения установки
+ *
  */
 bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) noexcept {
 	/**
@@ -36640,6 +36826,7 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
  *
  * @param id идентификатор события
  * @return   порт назначения события
+ *
  */
 uint16_t awh::engine::IO::getTargetPort(const event::id_t id) const noexcept {
 	/**
@@ -36731,6 +36918,7 @@ uint16_t awh::engine::IO::getTargetPort(const event::id_t id) const noexcept {
  * @param id   идентификатор события
  * @param port порт назначения события
  * @return     результат выполнения установки
+ *
  */
 bool awh::engine::IO::setTargetPort(const event::id_t id, const uint16_t port) noexcept {
 	/**
@@ -36843,6 +37031,7 @@ bool awh::engine::IO::setTargetPort(const event::id_t id, const uint16_t port) n
  *
  * @param id идентификатор события
  * @return   адрес хоста целевой машины
+ *
  */
 string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 	/**
@@ -37502,6 +37691,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
  * @param id     идентификатор события
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexcept {
 	/**
@@ -38214,6 +38404,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
  * @param id     идентификатор события
  * @param target объект для извлечения адреса хоста целевой машины
  * @return       результат выполнения извлечения адреса хоста целевой машины
+ *
  */
 bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> & target) const noexcept {
 	// Результат работы функции
@@ -38923,6 +39114,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
  * @param id     идентификатор события
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target) noexcept {
 	// Результат работы функции
@@ -39289,6 +39481,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
  * @param id      идентификатор события
  * @param address тип адреса события
  * @return        значение адреса события
+ *
  */
 string awh::engine::IO::getAddress(const event::id_t id, const event::address_t address) const noexcept {
 	/**
@@ -40584,6 +40777,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
  * @param address тип адреса события
  * @param value   значение адреса события
  * @return        результат выполнения установки
+ *
  */
 bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t address, string_view value) noexcept {
 	// Результат работы функции
@@ -42857,6 +43051,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
  * @param address тип адреса события
  * @param value   объект для извлечения адреса события
  * @return        результат выполнения извлечения адреса события
+ *
  */
 bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Результат работы функции
@@ -44194,6 +44389,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
  * @param address тип адреса события
  * @param value   значение адреса события
  * @return        результат выполнения установки
+ *
  */
 bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t address, const net::addr_t * value) noexcept {
 	// Результат работы функции
@@ -45526,6 +45722,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
  *
  * @param id идентификатор события
  * @return   MTU сетевого интерфейса
+ *
  */
 uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const noexcept {
 	/**
@@ -45779,6 +45976,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
  * @param id  идентификатор события
  * @param mtu размер MTU интерфейса
  * @return    результат установки MTU сетевого интерфейса
+ *
  */
 bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uint16_t mtu) const noexcept {
 	/**
@@ -46032,6 +46230,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
  * @param id     идентификатор события
  * @param family семейство протоколов (IPv4 или IPv6)
  * @return       значение DSCP
+ *
  */
 awh::event::dscp_t awh::engine::IO::getDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family) const noexcept {
 	/**
@@ -46106,6 +46305,7 @@ awh::event::dscp_t awh::engine::IO::getDifferentiatedServicesCodePoint(const eve
  * @param family семейство протоколов (IPv4 или IPv6)
  * @param dscp   значение DSCP
  * @return       результат работы функции
+ *
  */
 bool awh::engine::IO::setDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family, const event::dscp_t dscp) const noexcept {
 	/**
@@ -46184,6 +46384,7 @@ bool awh::engine::IO::setDifferentiatedServicesCodePoint(const event::id_t id, c
  * @param id     идентификатор события
  * @param family семейство протоколов (IPv4 или IPv6)
  * @return       значение ECN
+ *
  */
 awh::event::ecn_t awh::engine::IO::getExplicitCongestionNotification(const event::id_t id, const event::family_t family) const noexcept {
 	/**
@@ -46262,6 +46463,7 @@ awh::event::ecn_t awh::engine::IO::getExplicitCongestionNotification(const event
  * @param family семейство протоколов (IPv4 или IPv6)
  * @param ecn    значение ECN
  * @return       результат работы функции
+ *
  */
 bool awh::engine::IO::setExplicitCongestionNotification(const event::id_t id, const event::family_t family, const event::ecn_t ecn) const noexcept {
 	/**
@@ -46336,6 +46538,7 @@ bool awh::engine::IO::setExplicitCongestionNotification(const event::id_t id, co
  * @param id     идентификатор события
  * @param family семейство протоколов (IPv4 или IPv6)
  * @return       режим обнаружения максимального размера пакета (MTU)
+ *
  */
 awh::event::mtu_discover_t awh::engine::IO::getMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family) const noexcept {
 	/**
@@ -46410,6 +46613,7 @@ awh::event::mtu_discover_t awh::engine::IO::getMaximumTransmissionUnitDiscover(c
  * @param family семейство протоколов (IPv4 или IPv6)
  * @param mode   режим обнаружения максимального размера пакета (MTU)
  * @return       результат работы функции
+ *
  */
 bool awh::engine::IO::setMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family, const event::mtu_discover_t mode) const noexcept {
 	/**
@@ -46487,6 +46691,7 @@ bool awh::engine::IO::setMaximumTransmissionUnitDiscover(const event::id_t id, c
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
 	/**
@@ -47129,6 +47334,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept {
 	/**
@@ -47509,6 +47715,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
  * @param id  идентификатор события сессии
  * @param key привязываемый ключ сессии
  * @return    результат привязки (false - ключ занят другой сессией)
+ *
  */
 bool awh::engine::IO::bind(const event::id_t id, const net::origin_key_t & key) noexcept {
 	// Если ключ сессии пустой
@@ -47580,6 +47787,7 @@ bool awh::engine::IO::bind(const event::id_t id, const net::origin_key_t & key) 
  * @param id  идентификатор события сессии
  * @param key снимаемый ключ сессии
  * @return    результат снятия
+ *
  */
 bool awh::engine::IO::unbind(const event::id_t id, const net::origin_key_t & key) noexcept {
 	// Если ключ сессии пустой
@@ -47664,6 +47872,7 @@ bool awh::engine::IO::unbind(const event::id_t id, const net::origin_key_t & key
  *
  * @param id идентификатор события
  * @return   предельное количество одновременных подключений
+ *
  */
 uint32_t awh::engine::IO::getMaxConnections(const event::id_t id) const noexcept {
 	/**
@@ -47714,6 +47923,7 @@ uint32_t awh::engine::IO::getMaxConnections(const event::id_t id) const noexcept
  * @param id  идентификатор события
  * @param max предельное количество одновременных подключений
  * @return    результат установки
+ *
  */
 bool awh::engine::IO::setMaxConnections(const event::id_t id, const uint32_t max) noexcept {
 	// Если предел одновременных подключений не задан
@@ -47779,6 +47989,7 @@ bool awh::engine::IO::setMaxConnections(const event::id_t id, const uint32_t max
  *
  * @param id идентификатор события
  * @return   результат выполнения удаления
+ *
  */
 bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 	/**
@@ -47819,6 +48030,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
  * @param type     тип сокета
  * @param protocol протокол сокета
  * @return         пара идентификаторов созданных событий
+ *
  */
 std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	// Результат работы функции
@@ -48024,6 +48236,7 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
  * @param type     тип сокета
  * @param protocol протокол сокета
  * @return         идентификатор созданного события
+ *
  */
 awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	/**
@@ -48842,6 +49055,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
  * @param id   идентификатор события
  * @param seek тип смещения в файле события
  * @return     смещение в файле события
+ *
  */
 size_t awh::engine::IO::getSeek(const event::id_t id, const event::seek_t seek) noexcept {
 	/**
@@ -48931,6 +49145,7 @@ size_t awh::engine::IO::getSeek(const event::id_t id, const event::seek_t seek) 
  * @param seek   тип смещения в файле события
  * @param offset смещение в файле события
  * @return       результат выполнения установки
+ *
  */
 bool awh::engine::IO::setSeek(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept {
 	/**
@@ -49022,6 +49237,7 @@ bool awh::engine::IO::setSeek(const event::id_t id, const event::seek_t seek, co
  *
  * @param id идентификатор события
  * @return   опции события
+ *
  */
 uint16_t awh::engine::IO::getOptions(const event::id_t id) const noexcept {
 	/**
@@ -49061,6 +49277,7 @@ uint16_t awh::engine::IO::getOptions(const event::id_t id) const noexcept {
  * @param id      идентификатор события
  * @param options опции события для установки
  * @return        результат выполнения установки
+ *
  */
 bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) noexcept {
 	// Результат работы функции
@@ -49884,6 +50101,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
  * @param option опция события для установки
  * @param mode   режим установки опции события
  * @return       результат выполнения установки
+ *
  */
 bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, const bool mode) noexcept {
 	// Результат работы функции
@@ -50739,6 +50957,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
  * @param eid  идентификатор события-источника
  * @param dest идентификатор события-приёмника
  * @return     результат выполнения объединения
+ *
  */
 bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	/**
@@ -51745,6 +51964,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
  *
  * @param id идентификатор события
  * @return   результат выполнения запуска
+ *
  */
 bool awh::engine::IO::launch(const event::id_t id) noexcept {
 	/**
@@ -52266,6 +52486,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
  *
  * @param id идентификатор события
  * @return   результат выполнения отключения
+ *
  */
 bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 	/**
@@ -52379,6 +52600,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
  *
  * @param ids список идентификаторов событий для подключения
  * @return    результат выполнения подключения
+ *
  */
 bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 	// Результат работы функции
@@ -53299,6 +53521,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
  * @param id  идентификатор события
  * @param max максимальное количество входящих соединений
  * @return    результат выполнения перевода в режим прослушивания
+ *
  */
 bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept {
 	// Результат работы функции
@@ -54168,6 +54391,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
  *
  * @param id идентификатор события
  * @return   результат получения данных
+ *
  */
 bool awh::engine::IO::recv(const event::id_t id) noexcept {
 	/**
@@ -54208,6 +54432,7 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
  * @return       количество байт данных, отправленных событием
+ *
  */
 size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const size_t size) noexcept {
 	// Результат работы функции
@@ -54405,6 +54630,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
  * @param buffer буфер перенаправляемых данных
  * @param size   размер перенаправляемых данных
  * @return       количество принятых на перенаправление байт
+ *
  */
 size_t awh::engine::IO::relay(const event::id_t id, const void * buffer, const size_t size) noexcept {
 	/**
@@ -54640,6 +54866,7 @@ size_t awh::engine::IO::relay(const event::id_t id, const void * buffer, const s
  * @param id       идентификатор события
  * @param depth    глубина очереди принятия входящих соединений
  * @param adaptive флаг адаптивной глубины очереди принятия входящих соединений
+ *
  */
 void awh::engine::IO::backlog(const event::id_t id, const uint16_t depth, const bool adaptive) noexcept {
 	/**
@@ -54706,6 +54933,7 @@ void awh::engine::IO::backlog(const event::id_t id, const uint16_t depth, const 
  * @param id     идентификатор события
  * @param action тип действия события
  * @return       размер буфера события
+ *
  */
 size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_t action) const noexcept {
 	/**
@@ -55015,6 +55243,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
  * @param action тип действия события
  * @param size   размер буфера события
  * @return       результат выполнения установки
+ *
  */
 bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept {
 	// Результат работы функции
@@ -55310,6 +55539,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
  *
  * @param limiting  режим ограничения пропускной способности события (egress или ingress)
  * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+ *
  */
 void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
 	/**
@@ -55365,6 +55595,7 @@ void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view ba
  * @param limiting  режим ограничения пропускной способности события (egress или ingress)
  * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
  * @return          результат выполнения установки
+ *
  */
 bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t limiting, string_view bandwidth) noexcept {
 	/**
@@ -55847,6 +56078,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
  *
  * @param id идентификатор события
  * @return   режим трансляции пакетов (unicast, multicast, broadcast)
+ *
  */
 awh::event::delivery_mode_t awh::engine::IO::getDelivery(const event::id_t id) const noexcept {
 	/**
@@ -55886,6 +56118,7 @@ awh::event::delivery_mode_t awh::engine::IO::getDelivery(const event::id_t id) c
  * @param id       идентификатор события
  * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
  * @return         результат выполнения установки
+ *
  */
 bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept {
 	/**
@@ -55983,6 +56216,7 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
  *
  * @param id идентификатор события
  * @return   метаданные последнего принятого дейтаграммного пакета
+ *
  */
 awh::net::dgram_info_t awh::engine::IO::getTrafficInfo(const event::id_t id) const noexcept {
 	/**
@@ -56033,6 +56267,7 @@ awh::net::dgram_info_t awh::engine::IO::getTrafficInfo(const event::id_t id) con
  *
  * @param id идентификатор события
  * @return   количество хопов последнего принятого пакета
+ *
  */
 uint8_t awh::engine::IO::getCountHops(const event::id_t id) const noexcept {
 	/**
@@ -56084,6 +56319,7 @@ uint8_t awh::engine::IO::getCountHops(const event::id_t id) const noexcept {
  * @param id   идентификатор события
  * @param hops количество хопов последнего принятого пакета
  * @return     результат выполнения установки
+ *
  */
 bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noexcept {
 	// Результат работы функции
@@ -56298,6 +56534,7 @@ bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noe
  *
  * @param id идентификатор события
  * @return   максимальное количество хопов
+ *
  */
 awh::event::hops_t awh::engine::IO::getHops(const event::id_t id) const noexcept {
 	/**
@@ -56337,6 +56574,7 @@ awh::event::hops_t awh::engine::IO::getHops(const event::id_t id) const noexcept
  * @param id   идентификатор события
  * @param hops максимальное количество хопов
  * @return     результат работы функции
+ *
  */
 bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) noexcept {
 	// Результат работы функции
@@ -56446,6 +56684,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) no
  *
  * @param id идентификатор события
  * @return   режим использования таймаута для обработки события чтения
+ *
  */
 awh::event::usage_t awh::engine::IO::getUsageReadTimeout(const event::id_t id) const noexcept {
 	/**
@@ -56504,6 +56743,7 @@ awh::event::usage_t awh::engine::IO::getUsageReadTimeout(const event::id_t id) c
  *
  * @param id    идентификатор события
  * @param usage режим использования таймаута для обработки события чтения (reusable или disposable)
+ *
  */
 void awh::engine::IO::setUsageReadTimeout(const event::id_t id, const event::usage_t usage) noexcept {
 	/**
@@ -56567,6 +56807,7 @@ void awh::engine::IO::setUsageReadTimeout(const event::id_t id, const event::usa
  * @param id     идентификатор события
  * @param action тип действия события
  * @return       значение таймаута в миллисекундах
+ *
  */
 uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t action) const noexcept {
 	/**
@@ -56721,6 +56962,7 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
  * @param id      идентификатор события
  * @param action  тип действия события
  * @param timeout значение таймаута в миллисекундах
+ *
  */
 void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept {
 	/**
@@ -57177,6 +57419,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
  * @param id     идентификатор события
  * @param action тип действия события
  * @return       режим действия события
+ *
  */
 awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event::action_t action) const noexcept {
 	/**
@@ -57670,6 +57913,7 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
  * @param action тип действия события
  * @param mode   режим установки действия события
  * @return       результат выполнения установки
+ *
  */
 bool awh::engine::IO::setAction(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept {
 	/**
@@ -59016,6 +59260,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
  * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
  * @param intvl интервал между пакетами keep-alive в секундах
  * @return      результат выполнения установки
+ *
  */
 bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Результат работы функции
@@ -59097,6 +59342,7 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
  *
  * @param id идентификатор события
  * @return   результат выполнения приостановки
+ *
  */
 bool awh::engine::IO::pause(const event::id_t id) noexcept {
 	// Результат работы функции
@@ -59428,6 +59674,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
  *
  * @param id идентификатор события
  * @return   результат выполнения возобновления
+ *
  */
 bool awh::engine::IO::resume(const event::id_t id) noexcept {
 	// Результат работы функции
@@ -59867,6 +60114,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
  *
  * @param id идентификатор события
  * @return   состояние события
+ *
  */
 bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 	/**
@@ -60481,6 +60729,7 @@ void awh::engine::IO::clear() noexcept {
  * @brief Метод принудительного пинка базе событий
  *
  * @return результат выполнения операции
+ *
  */
 bool awh::engine::IO::kick() noexcept {
 	// Результат работы функции
@@ -60515,6 +60764,7 @@ bool awh::engine::IO::kick() noexcept {
  * @brief Метод инициализации сетевого движка
  *
  * @return результат выполнения инициализации
+ *
  */
 bool awh::engine::IO::initialize() noexcept {
 	// Результат работы функции
@@ -60573,6 +60823,7 @@ bool awh::engine::IO::initialize() noexcept {
  * @brief Метод реинициализации сетевого движка
  *
  * @return результат выполнения реинициализации
+ *
  */
 bool awh::engine::IO::reinitialize() noexcept {
 	// Результат работы функции
@@ -61167,6 +61418,7 @@ bool awh::engine::IO::reinitialize() noexcept {
  * @brief Метод деинициализации сетевого движка
  *
  * @return результат выполнения деинициализации
+ *
  */
 bool awh::engine::IO::deinitialize() noexcept {
 	// Результат работы функции
@@ -61466,6 +61718,7 @@ bool awh::engine::IO::deinitialize() noexcept {
  * @brief Метод проверки состояния инициализации сетевого движка
  *
  * @return состояние инициализации
+ *
  */
 bool awh::engine::IO::isInitialized() const noexcept {
 	// Возвращаем результат проверки состояния инициализации
@@ -61475,6 +61728,7 @@ bool awh::engine::IO::isInitialized() const noexcept {
  * @brief Метод получения количества событий в сетевом движке
  *
  * @return количество событий
+ *
  */
 size_t awh::engine::IO::eventsCount() const noexcept {
 	// Возвращаем количество событий в сетевом движке
@@ -61484,6 +61738,7 @@ size_t awh::engine::IO::eventsCount() const noexcept {
  * @brief Метод получения типа внутренних таймеров
  *
  * @return тип таймера для событий сетевого движка
+ *
  */
 awh::event::timer_t awh::engine::IO::getInternalTimer() const noexcept {
 	// Возвращаем тип таймера для событий сетевого движка
@@ -61493,6 +61748,7 @@ awh::event::timer_t awh::engine::IO::getInternalTimer() const noexcept {
  * @brief Метод установки типа внутренних таймеров
  *
  * @param timer тип таймера для событий сетевого движка
+ *
  */
 void awh::engine::IO::setInternalTimer(const event::timer_t timer) noexcept {
 	// Если тип таймера для событий сетевого движка не совпадает с новым типом таймера
@@ -61523,6 +61779,7 @@ void awh::engine::IO::setInternalTimer(const event::timer_t timer) noexcept {
  *
  * @param id идентификатор события
  * @return   размер файла
+ *
  */
 size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 	// Результат работы функции
@@ -61625,6 +61882,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
  *
  * @param id идентификатор события
  * @return   количество байт, доступных для записи
+ *
  */
 size_t awh::engine::IO::available(const event::id_t id) const noexcept {
 	/**
@@ -61707,6 +61965,7 @@ size_t awh::engine::IO::available(const event::id_t id) const noexcept {
  *
  * @param id идентификатор события
  * @return   тип события
+ *
  */
 awh::event::type_t awh::engine::IO::type(const event::id_t id) const noexcept {
 	/**
@@ -61745,6 +62004,7 @@ awh::event::type_t awh::engine::IO::type(const event::id_t id) const noexcept {
  *
  * @param id идентификатор события
  * @return   тип узла события
+ *
  */
 awh::event::node_t awh::engine::IO::node(const event::id_t id) const noexcept {
 	/**
@@ -61783,6 +62043,7 @@ awh::event::node_t awh::engine::IO::node(const event::id_t id) const noexcept {
  *
  * @param id идентификатор события
  * @return   семейство адресов
+ *
  */
 awh::event::family_t awh::engine::IO::family(const event::id_t id) const noexcept {
 	/**
@@ -61821,6 +62082,7 @@ awh::event::family_t awh::engine::IO::family(const event::id_t id) const noexcep
  *
  * @param id идентификатор события
  * @return   статус события
+ *
  */
 awh::event::status_t awh::engine::IO::status(const event::id_t id) const noexcept {
 	/**
@@ -61859,6 +62121,7 @@ awh::event::status_t awh::engine::IO::status(const event::id_t id) const noexcep
  *
  * @param id идентификатор события
  * @return   протокол события
+ *
  */
 awh::event::protocol_t awh::engine::IO::protocol(const event::id_t id) const noexcept {
 	/**
@@ -61897,6 +62160,7 @@ awh::event::protocol_t awh::engine::IO::protocol(const event::id_t id) const noe
  *
  * @param timeout таймаут опроса в миллисекундах
  * @return        результат выполнения опроса
+ *
  */
 bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 	// Результат выполнения опроса
@@ -62106,6 +62370,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::read_t cb) noexcept {
 	/**
@@ -62199,6 +62464,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::read_t cb) noex
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::write_t cb) noexcept {
 	/**
@@ -62292,6 +62558,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::write_t cb) noe
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::spool_t cb) noexcept {
 	/**
@@ -62380,6 +62647,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::spool_t cb) noe
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::event_t cb) noexcept {
 	/**
@@ -62483,6 +62751,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::event_t cb) noe
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::error_t cb) noexcept {
 	/**
@@ -62598,6 +62867,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::error_t cb) noe
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noexcept {
 	/**
@@ -62666,6 +62936,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noe
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::inject_t cb) noexcept {
 	/**
@@ -62744,6 +63015,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::inject_t cb) no
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::status_t cb) noexcept {
 	/**
@@ -62859,6 +63131,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::status_t cb) no
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) noexcept {
 	/**
@@ -62926,6 +63199,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::origin_t cb) noexcept {
 	/**
@@ -62985,6 +63259,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::origin_t cb) no
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::traffic_t cb) noexcept {
 	/**
@@ -63053,6 +63328,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::traffic_t cb) n
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) noexcept {
 	/**
@@ -63116,6 +63392,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) n
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) noexcept {
 	/**
@@ -63179,6 +63456,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) n
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) noexcept {
 	/**
@@ -63252,6 +63530,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) n
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
+ *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::available_t cb) noexcept {
 	/**
@@ -63340,6 +63619,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::available_t cb)
  *
  * @param fmk объект фреймворка
  * @param log объект работы с логами
+ *
  */
 awh::engine::IO::IO(const fmk_t * fmk, const log_t * log) noexcept :
  engine_t(fmk, log),

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Тесты конечного автомата соединения QUIC — проверка смены состояний, работы потоков приложения,
+ *        контроля перегрузки и потока, обнаружения потерь и завершения соединения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -52,6 +56,7 @@ namespace {
 	 *
 	 * @param connection объект соединения
 	 * @param params     транспортные параметры эндпоинта
+	 *
 	 */
 	static void configure(connection_t & connection, const params::params_t & params) noexcept {
 		// Устанавливаем транспортные параметры
@@ -61,6 +66,7 @@ namespace {
 	 * @brief Функция подготовки соединения со стандартными настройками
 	 *
 	 * @param connection объект соединения
+	 *
 	 */
 	static void setup(connection_t & connection) noexcept {
 		// Транспортные параметры эндпоинта
@@ -89,6 +95,7 @@ namespace {
 	 * @param history список переданных датаграмм (для повторов в тестах)
 	 * @param ecn     маркировка ECN, с которой датаграммы доставляются получателю
 	 * @return        количество переданных датаграмм
+	 *
 	 */
 	static size_t transfer(connection_t & from, connection_t & to, uint64_t & now, std::vector <std::string> * history = nullptr, const awh::event::ecn_t ecn = awh::event::ecn_t::NOT_ECT) noexcept {
 		// Количество переданных датаграмм
@@ -122,6 +129,7 @@ namespace {
 	 * @param server эндпоинт сервера
 	 * @param now    текущее время тестовых часов в миллисекундах
 	 * @param ecn    маркировка ECN, с которой датаграммы клиента доставляются серверу
+	 *
 	 */
 	static void pump(connection_t & client, connection_t & server, uint64_t & now, const awh::event::ecn_t ecn = awh::event::ecn_t::NOT_ECT) noexcept {
 		// Выполняем обмен датаграммами (с запасом итераций)
@@ -145,6 +153,7 @@ namespace {
 	 * @param history список переданных датаграмм сервера (для повторов в тестах)
 	 * @param ecn     маркировка ECN, с которой датаграммы клиента доставляются серверу
 	 * @return        результат установления соединения
+	 *
 	 */
 	static bool establish(connection_t & client, connection_t & server, uint64_t & now, std::vector <std::string> * history = nullptr, const awh::event::ecn_t ecn = awh::event::ecn_t::NOT_ECT) noexcept {
 		/**
@@ -179,6 +188,7 @@ namespace {
 	 * @param now     текущее время тестовых часов в миллисекундах
 	 * @param ecn     маркировка ECN, с которой датаграмма доставляется получателю
 	 * @return        результат обработки нагрузки получателем
+	 *
 	 */
 	static status_t inject(connection_t & from, connection_t & to, const uint64_t pn, const std::string & payload, const uint64_t now, const awh::event::ecn_t ecn = awh::event::ecn_t::NOT_ECT) noexcept {
 		// Получаем ключи защиты исходящих пакетов уровня приложения отправителя
@@ -215,6 +225,7 @@ namespace {
 	 * @param pn   номер отправляемого пакета
 	 * @param now  текущее время тестовых часов в миллисекундах
 	 * @return     результат обработки нагрузки получателем
+	 *
 	 */
 	static status_t injectBroken(connection_t & from, connection_t & to, const uint64_t pn, const uint64_t now) noexcept {
 		// Получаем ключи защиты исходящих пакетов уровня приложения отправителя
@@ -255,6 +266,7 @@ namespace {
 	 * @param payload нагрузка пакета (фреймы)
 	 * @param output  буфер собираемой датаграммы
 	 * @return        результат сборки
+	 *
 	 */
 	static bool build(connection_t & from, const level_t level, const packet_t type, const uint64_t pn, const std::string & payload, std::string & output) noexcept {
 		// Получаем ключи защиты исходящих пакетов уровня отправителя
@@ -284,6 +296,7 @@ namespace {
 	 * @param datagram принятая датаграмма
 	 * @param output   расшифрованная нагрузка пакета
 	 * @return         результат снятия защиты
+	 *
 	 */
 	static bool unseal(connection_t & to, const std::string & datagram, std::string & output) noexcept {
 		// Получаем ключи снятия защиты входящих пакетов уровня приложения
@@ -317,6 +330,7 @@ namespace {
 	 * @param datagram датаграмма для обхода
 	 * @param type     искомый тип пакета
 	 * @return         результат поиска
+	 *
 	 */
 	static bool contains(const std::string & datagram, const packet_t type) noexcept {
 		// Смещение очередного пакета в датаграмме
@@ -493,6 +507,7 @@ TEST_F(QuicFixture, ConnectionCloseTest){
  *          эндпоинт уже завершил. Ошибка разбора в этом остатке поставила бы в
  *          очередь собственное завершение, а отправлять его в состоянии завершения
  *          удалённым узлом запрещено
+ *
  */
 TEST_F(QuicFixture, ConnectionCloseTrailingFrameTest){
 	// Создаём соединение клиента
@@ -538,6 +553,7 @@ TEST_F(QuicFixture, ConnectionCloseTrailingFrameTest){
  *          содержит недопустимый на своём уровне фрейм. Разбор второго вернул бы
  *          соединение из завершённого состояния в состояние отправки собственного
  *          завершения, отправлять которое уже запрещено
+ *
  */
 TEST_F(QuicFixture, ConnectionCloseCoalescedPacketTest){
 	// Создаём соединение клиента
@@ -602,6 +618,7 @@ TEST_F(QuicFixture, ConnectionCloseCoalescedPacketTest){
  *          упакованных данных при этом обязан сброситься вместе с буфером: иначе
  *          завершённость отправки не наступает никогда, и поток остаётся в списке
  *          до конца соединения
+ *
  */
 TEST_F(QuicFixture, ConnectionStopSendingCollectTest){
 	// Создаём соединение клиента
@@ -671,6 +688,7 @@ TEST_F(QuicFixture, ConnectionStopSendingCollectTest){
  *          адрес отправителя, посторонний способен увести отправку на чужой адрес
  *          с любой стороны соединения, поэтому до проверки нового пути объём
  *          отправки ограничен трёхкратным объёмом принятого
+ *
  */
 TEST_F(QuicFixture, ConnectionClientAmplificationTest){
 	// Создаём соединение клиента
@@ -740,6 +758,7 @@ TEST_F(QuicFixture, ConnectionClientAmplificationTest){
  *          посторонний. Непройденная проверка подделанного адреса обязана возвращать
  *          соединение на последний проверенный: иначе одна поддельная датаграмма
  *          уводила бы соединение на недостижимый адрес насовсем
+ *
  */
 TEST_F(QuicFixture, ConnectionPathRevertTest){
 	// Создаём соединение клиента
@@ -846,6 +865,7 @@ TEST_F(QuicFixture, ConnectionPathRevertTest){
  *          на проверенный адрес не выполняет: возврат затёр бы адрес, на который
  *          соединение как раз переходит, и очередная датаграмма с него запускала
  *          бы ту же схему по кругу
+ *
  */
 TEST_F(QuicFixture, ConnectionPathChainTest){
 	// Создаём соединение клиента
@@ -940,6 +960,7 @@ TEST_F(QuicFixture, ConnectionPathChainTest){
  * @details Пока лимит запрещает отправку, зондировать нечем: срабатывания таймера
  *          PTO лишь наращивали бы экспоненциальную выдержку вхолостую, а разблокирует
  *          отправку приём датаграммы, а не таймер
+ *
  */
 TEST_F(QuicFixture, ConnectionAmplificationTimerTest){
 	// Создаём соединение клиента
@@ -1046,6 +1067,7 @@ TEST_F(QuicFixture, ConnectionAmplificationTimerTest){
  *          пространству номеров за всё соединение, а не по пути. Обнуление
  *          локального учёта при смене пути сделало бы первый же присланный им
  *          счётчик недостоверно большим, и маркировка отключилась бы навсегда
+ *
  */
 TEST_F(QuicFixture, ConnectionEcnMigrationTest){
 	// Создаём соединение клиента
@@ -1117,6 +1139,7 @@ TEST_F(QuicFixture, ConnectionEcnMigrationTest){
  * @details Окно перегрузки характеризует конкретный путь. Отправленное прежним
  *          путём не занимает ёмкости нового, иначе окно нового пути оказалось бы
  *          исчерпанным ещё до первой отправки - включая проверку его достижимости
+ *
  */
 TEST_F(QuicFixture, ConnectionMigrateCongestionResetTest){
 	// Создаём соединение клиента
@@ -1195,6 +1218,7 @@ TEST_F(QuicFixture, ConnectionMigrateCongestionResetTest){
  *          поставленное в очередь подтверждение обязано отражаться дедлайном
  *          таймера: иначе вызывающий код, не собирающий датаграммы после каждого
  *          приёма, не отправил бы его вовсе
+ *
  */
 TEST_F(QuicFixture, ConnectionAckDelayTimeoutTest){
 	// Создаём соединение клиента
@@ -1243,6 +1267,7 @@ TEST_F(QuicFixture, ConnectionAckDelayTimeoutTest){
  * @details На каждый принятый фрейм PATH_CHALLENGE отправляется свой фрейм
  *          PATH_RESPONSE с его данными. Одного слота хранения недостаточно:
  *          вторая проверка, принятая до сборки ответа, затёрла бы первую
+ *
  */
 TEST_F(QuicFixture, ConnectionPathResponseQueueTest){
 	// Создаём соединение клиента
@@ -1296,6 +1321,7 @@ TEST_F(QuicFixture, ConnectionPathResponseQueueTest){
  * @details Проверка достижимости подтверждает не сам факт доставки, а пригодность
  *          пути к переносу датаграмм минимального размера, поэтому датаграммы
  *          с фреймами проверки дополняются до него
+ *
  */
 TEST_F(QuicFixture, ConnectionPathValidationPaddingTest){
 	// Создаём соединение клиента
@@ -1351,6 +1377,7 @@ TEST_F(QuicFixture, ConnectionPathValidationPaddingTest){
  * @details Поток криптографического хендшейка переписыванию не подлежит: данные
  *          по одному смещению одни и те же, а расхождение означает неисправный
  *          либо злонамеренный удалённый эндпоинт
+ *
  */
 TEST_F(QuicFixture, ConnectionCryptoOverlapMismatchTest){
 	// Создаём соединение клиента
@@ -1420,6 +1447,7 @@ TEST_F(QuicFixture, ConnectionCryptoOverlapMismatchTest){
  *
  * @details Идентификаторы потоков кодируются varint, поэтому лимит сверх 2^60
  *          разрешал бы открытие потока с некодируемым идентификатором
+ *
  */
 TEST_F(QuicFixture, ConnectionMaxStreamsBoundTest){
 	// Создаём соединение клиента
@@ -1462,6 +1490,7 @@ TEST_F(QuicFixture, ConnectionMaxStreamsBoundTest){
  * @details Октет потока по своему смещению один и тот же сколько бы раз он ни был
  *          прислан. Расхождение означает неисправный либо злонамеренный удалённый
  *          эндпоинт, а собранные данные без сверки зависели бы от порядка приёма
+ *
  */
 TEST_F(QuicFixture, ConnectionStreamOverlapMismatchTest){
 	// Создаём соединение клиента
@@ -1517,6 +1546,7 @@ TEST_F(QuicFixture, ConnectionStreamOverlapMismatchTest){
  * @details Лимит приёма ограничивает объём данных потока, но не их дробление:
  *          хранение каждого фрагмента обходится многократно дороже несомых им
  *          данных, поэтому число буферизируемых фрагментов ограничено отдельно
+ *
  */
 TEST_F(QuicFixture, ConnectionStreamFragmentLimitTest){
 	// Создаём соединение клиента
@@ -1588,6 +1618,7 @@ TEST_F(QuicFixture, ConnectionStreamFragmentLimitTest){
  * @details Отсчёт перезапускается не только приёмом пакета, но и отправкой
  *          ack-eliciting пакета после долгой паузы: иначе начатая перед самым
  *          истечением таймаута активность оборвалась бы, не дождавшись ответа
+ *
  */
 TEST_F(QuicFixture, ConnectionIdleRestartOnSendTest){
 	// Создаём соединение клиента
@@ -1714,6 +1745,7 @@ TEST_F(QuicFixture, ConnectionClosingPeriodTest){
  *          соединения в очередь и его отправкой: отправлять что-либо после приёма
  *          сброса эндпоинт не вправе, поэтому фрейм CONNECTION_CLOSE из очереди
  *          отправлен быть уже не может
+ *
  */
 TEST_F(QuicFixture, ConnectionCloseAbortedByResetTest){
 	// Создаём соединение клиента
@@ -2721,6 +2753,7 @@ TEST_F(QuicFixture, RetryTest){
  *          и дополнительные идентификаторы соединения одним флайтом. Потеря его
  *          иначе осталась бы незамеченной: соединение работает, но без запасных
  *          идентификаторов, то есть без возможности сменить путь
+ *
  */
 TEST_F(QuicFixture, ConnectionLostHandshakeFlightTest){
 	// Создаём соединение клиента
@@ -2842,6 +2875,7 @@ TEST_F(QuicFixture, ConnectionLostHandshakeFlightTest){
  *          Потерянный, он обязан отправляться заново: иначе выдавшая сторона считает
  *          идентификатор действующим, держит его в обороте и не выдаёт замену -
  *          стороны молча расходятся в представлении о наборе идентификаторов
+ *
  */
 TEST_F(QuicFixture, ConnectionRetireRetransmitTest){
 	// Создаём соединение клиента
@@ -2968,6 +3002,7 @@ TEST_F(QuicFixture, ConnectionRetireRetransmitTest){
  *          отправки, и потерянное не будет отправлено уже никогда. Учёт принятых
  *          номеров ведётся диапазонами со слиянием и вытеснением, поэтому проверяется
  *          не отдельный узор, а множество случайных
+ *
  */
 TEST_F(QuicFixture, ConnectionAckIntegrityTest){
 	// Состояние генератора псевдослучайных чисел с фиксированным зерном
@@ -2976,6 +3011,7 @@ TEST_F(QuicFixture, ConnectionAckIntegrityTest){
 	 * @brief Функция получения очередного псевдослучайного числа
 	 *
 	 * @return псевдослучайное число
+	 *
 	 */
 	auto random = [&seed]() noexcept -> uint64_t {
 		// Перемешиваем состояние генератора сдвигами
@@ -3095,6 +3131,7 @@ TEST_F(QuicFixture, ConnectionAckIntegrityTest){
  *          и подтверждение кодируется несколькими диапазонами. Пришедший позже пакет
  *          способен сомкнуть два соседних диапазона в один: без слияния подтверждение
  *          росло бы диапазонами до предела их числа, теряя сведения о принятом
+ *
  */
 TEST_F(QuicFixture, ConnectionAckRangeMergeTest){
 	// Создаём соединение клиента
@@ -3121,6 +3158,7 @@ TEST_F(QuicFixture, ConnectionAckRangeMergeTest){
 	 * @brief Функция извлечения количества диапазонов подтверждения клиента
 	 *
 	 * @return количество диапазонов в собранном клиентом подтверждении
+	 *
 	 */
 	auto ranges = [&client, &server, &now]() noexcept -> size_t {
 		// Буфер исходящей датаграммы клиента
@@ -3196,6 +3234,7 @@ TEST_F(QuicFixture, ConnectionAckRangeMergeTest){
  *          его пакеты в любом порядке. Данные криптографического потока при этом
  *          приходят с разрывами и подлежат сборке по смещениям: без неё хендшейк
  *          на переставляющем пути не завершается вовсе
+ *
  */
 TEST_F(QuicFixture, ConnectionHandshakeReorderTest){
 	// Создаём соединение клиента
@@ -3217,6 +3256,7 @@ TEST_F(QuicFixture, ConnectionHandshakeReorderTest){
 	 *
 	 * @param from эндпоинт-отправитель датаграмм
 	 * @param to   эндпоинт-получатель датаграмм
+	 *
 	 */
 	auto deliver = [&reordered, &now](connection_t & from, connection_t & to) noexcept -> void {
 		// Список извлечённых датаграмм отправителя
@@ -3290,6 +3330,7 @@ TEST_F(QuicFixture, ConnectionHandshakeReorderTest){
  *          хендшейка, лимиты данных и потоков, выдачу идентификаторов, токен проверки
  *          адреса. Потерянный такой фрейм обязан отправляться заново - иначе стороны
  *          расходятся в представлении о состоянии молча, без всякой ошибки
+ *
  */
 TEST_F(QuicFixture, ConnectionLossyControlTest){
 	// Создаём соединение клиента
@@ -3338,6 +3379,7 @@ TEST_F(QuicFixture, ConnectionLossyControlTest){
 	 *
 	 * @param from эндпоинт-отправитель датаграмм
 	 * @param to   эндпоинт-получатель датаграмм
+	 *
 	 */
 	auto deliver = [&counter, &dropped, &now](connection_t & from, connection_t & to) noexcept -> void {
 		// Буфер исходящей датаграммы
@@ -3447,6 +3489,7 @@ TEST_F(QuicFixture, ConnectionLossyControlTest){
  *          переставляется. Между тем именно потери приводят в действие детект по
  *          порогу времени, ретрансмиссию данных и управляющих фреймов, а перестановка -
  *          слияние диапазонов подтверждений. Без потерь эти механизмы не исполняются
+ *
  */
 TEST_F(QuicFixture, ConnectionLossyPathTest){
 	// Создаём соединение клиента
@@ -3505,6 +3548,7 @@ TEST_F(QuicFixture, ConnectionLossyPathTest){
 	 *
 	 * @param from эндпоинт-отправитель датаграмм
 	 * @param to   эндпоинт-получатель датаграмм
+	 *
 	 */
 	auto deliver = [&counter, &dropped, &now](connection_t & from, connection_t & to) noexcept -> void {
 		// Список извлечённых датаграмм отправителя
@@ -3591,6 +3635,7 @@ TEST_F(QuicFixture, ConnectionLossyPathTest){
  *          приходят уже после переключения и обязаны расшифровываться ключами
  *          прежней фазы. Отброшенный такой пакет означал бы потерю данных
  *          на ровном месте при каждом обновлении ключей
+ *
  */
 TEST_F(QuicFixture, KeyUpdateReorderTest){
 	// Создаём соединение клиента
@@ -3689,6 +3734,7 @@ TEST_F(QuicFixture, KeyUpdateReorderTest){
  *          отставший пакет прежней фазы, пришедший позже, расшифровать уже нечем: он
  *          молча отбрасывается, не разрывая соединение. Тот же обмен без выдержки
  *          (KeyUpdateReorderTest) нагрузку принимает - разница только во времени
+ *
  */
 TEST_F(QuicFixture, KeyUpdatePreviousDiscardTest){
 	// Создаём соединение клиента
@@ -4075,6 +4121,7 @@ TEST_F(QuicFixture, CongestionControlTest){
  * @details До подтверждения адреса клиента сервер не вправе отправить более
  *          трёхкратного объёма принятых от него октетов. Проверка выполняется
  *          на повторных срабатываниях таймера PTO без ответа клиента
+ *
  */
 TEST_F(QuicFixture, AntiAmplificationLimitTest){
 	// Создаём соединение клиента
@@ -4135,6 +4182,7 @@ TEST_F(QuicFixture, AntiAmplificationLimitTest){
  *
  * @details Исчерпав лимит, сервер обязан замолчать до прихода новых октетов
  *          от клиента и возобновить отправку после их получения
+ *
  */
 TEST_F(QuicFixture, AntiAmplificationResumeTest){
 	// Создаём соединение клиента
@@ -4205,6 +4253,7 @@ TEST_F(QuicFixture, AntiAmplificationResumeTest){
  * @details Проверяются оба пути расчёта бюджета: сборка нагрузки уровня и
  *          дополнение датаграммы с пакетом Initial. Режим Retry включён, чтобы
  *          заголовок пакета Initial содержал токен проверки адреса
+ *
  */
 TEST_F(QuicFixture, DatagramSizeBudgetTest){
 	// Создаём соединение клиента
@@ -4342,6 +4391,7 @@ TEST_F(QuicFixture, DatagramSizeBudgetTest){
  *          в этом тесте намеренно не доставляется: он вернул бы кредит по другому
  *          пути и замаскировал дефект, а по RFC 9000 §3.5 пир в состоянии Data Recvd
  *          отвечать на STOP_SENDING не обязан
+ *
  */
 TEST_F(QuicFixture, StreamStopSendingBeforeFinCreditTest){
 	// Создаём соединение клиента
@@ -4409,6 +4459,7 @@ TEST_F(QuicFixture, StreamStopSendingBeforeFinCreditTest){
  * @details Завершение потока принято, но данные приложению не выданы, после чего
  *          приложение прекращает приём через stop(). Кредит MAX_STREAMS обязан
  *          вернуться на самом вызове stop(), не дожидаясь выдачи данных
+ *
  */
 TEST_F(QuicFixture, StreamStopSendingAfterFinCreditTest){
 	// Создаём соединение клиента
@@ -4470,6 +4521,7 @@ TEST_F(QuicFixture, StreamStopSendingAfterFinCreditTest){
  * @details Все потоки с данными обязаны получать эфир. Обход списка потоков
  *          с начала отдавал бы датаграммы потоку с наименьшим идентификатором,
  *          а остальные простаивали бы до полной его передачи
+ *
  */
 TEST_F(QuicFixture, StreamRoundRobinTest){
 	// Создаём соединение клиента
@@ -4547,6 +4599,7 @@ TEST_F(QuicFixture, StreamRoundRobinTest){
  * @details Сборка запускается при превышении порога числа потоков и обязана
  *          удалять только потоки, на которые не ссылаются очередь ретрансмиссии
  *          и учётные записи неподтверждённых пакетов
+ *
  */
 TEST_F(QuicFixture, StreamCollectTest){
 	// Создаём соединение клиента
@@ -4629,6 +4682,7 @@ TEST_F(QuicFixture, StreamCollectTest){
  * @details Повторно доставленные датаграммы обязаны отбрасываться без выдачи
  *          дублирующих данных приложению и без нарушения flow control. Проверка
  *          выполняется на длинной серии пакетов, выходящей за пределы окна защиты
+ *
  */
 TEST_F(QuicFixture, ConnectionReplayWindowTest){
 	// Создаём соединение клиента
@@ -4718,6 +4772,7 @@ TEST_F(QuicFixture, ConnectionReplayWindowTest){
  * @details Длительный обрыв связи, при котором подряд теряются пакеты за период
  *          дольше порогового, обязан вернуть окно перегрузки к минимальному:
  *          иначе на восстановлении отправитель бьёт полным окном в перегруженный путь
+ *
  */
 TEST_F(QuicFixture, CongestionPersistentTest){
 	// Создаём соединение клиента
@@ -4820,6 +4875,7 @@ TEST_F(QuicFixture, CongestionPersistentTest){
  *          период устойчивой перегрузки. Прогоняем два прохода одинаковой
  *          топологии потерь - без внутреннего подтверждения (контроль: окно
  *          обязано схлопнуться) и с ним (окно обязано устоять)
+ *
  */
 TEST_F(QuicFixture, CongestionPersistentReorderTest){
 	/**
@@ -4925,6 +4981,7 @@ TEST_F(QuicFixture, CongestionPersistentReorderTest){
  * @details Удалённый эндпоинт сообщает во фрейме ACK собственную задержку
  *          подтверждения. Без её вычитания оценка задержки приёма-передачи
  *          завышается на всё время ожидания, а вслед за ней завышается таймер PTO
+ *
  */
 TEST_F(QuicFixture, ConnectionAckDelayTest){
 	// Дедлайны таймера клиента для немедленного и отложенного подтверждения
@@ -5035,6 +5092,7 @@ TEST_F(QuicFixture, ConnectionAckDelayTest){
  *
  * @details Эндпоинт в состоянии завершения отвечает на принятые пакеты только
  *          повторным фреймом CONNECTION_CLOSE и никаких иных фреймов не обрабатывает
+ *
  */
 TEST_F(QuicFixture, ConnectionClosingIgnoresFramesTest){
 	// Создаём соединение клиента
@@ -5099,6 +5157,7 @@ TEST_F(QuicFixture, ConnectionClosingIgnoresFramesTest){
  * @details Удалённый эндпоинт, утративший состояние соединения, отвечает
  *          датаграммой с токеном сброса. Опознав её, локальный эндпоинт обязан
  *          молча перейти в состояние завершения и прекратить любую отправку
+ *
  */
 TEST_F(QuicFixture, ConnectionStatelessResetTest){
 	// Создаём соединение клиента
@@ -5177,6 +5236,7 @@ TEST_F(QuicFixture, ConnectionStatelessResetTest){
  *
  * @details Датаграмма, хвост которой не совпадает ни с одним известным токеном,
  *          сбросом не является и соединение затрагивать не должна
+ *
  */
 TEST_F(QuicFixture, ConnectionForeignResetTokenTest){
 	// Создаём соединение клиента
@@ -5218,6 +5278,7 @@ TEST_F(QuicFixture, ConnectionForeignResetTokenTest){
  * @details Токен пакета Retry заверен кодом аутентичности от адреса клиента.
  *          Повтор токена с другого адреса обязан быть отвергнут, иначе проверка
  *          адреса теряет смысл: перехваченный токен работал бы откуда угодно
+ *
  */
 TEST_F(QuicFixture, RetryTokenAddressBindingTest){
 	// Создаём соединение клиента
@@ -5296,6 +5357,7 @@ TEST_F(QuicFixture, RetryTokenAddressBindingTest){
  *
  * @details Токен несёт отметку времени выдачи и после истечения срока годности
  *          обязан отвергаться: иначе перехваченный токен пригоден бессрочно
+ *
  */
 TEST_F(QuicFixture, RetryTokenExpiryTest){
 	// Создаём соединение клиента
@@ -5357,6 +5419,7 @@ TEST_F(QuicFixture, RetryTokenExpiryTest){
  * @details Проверка сертификата без указания доверенных центров опирается на
  *          системное хранилище, в котором самоподписанного сертификата нет.
  *          Указание файла делает его доверенным якорем, и хендшейк проходит
+ *
  */
 TEST_F(QuicFixture, ConnectionVerifyWithCaTest){
 	// Создаём шаблон контекста клиента с включённой проверкой сертификата
@@ -5393,6 +5456,7 @@ TEST_F(QuicFixture, ConnectionVerifyWithCaTest){
  * @details Тот же сертификат без указания доверенного центра доверия не
  *          заслуживает: хендшейк обязан завершиться ошибкой криптографического
  *          уровня, а не пройти молча
+ *
  */
 TEST_F(QuicFixture, ConnectionVerifyWithoutCaTest){
 	// Получаем объект кодера транспортной безопасности
@@ -5446,6 +5510,7 @@ TEST_F(QuicFixture, ConnectionVerifyWithoutCaTest){
  *          Тест подтверждает контракт: шаблон контекста безопасности допускает
  *          создание объектов TLS сторонним модулем, и функции обратного вызова
  *          уровня контекста это переносят
+ *
  */
 TEST_F(QuicFixture, ConnectionExternalContextTest){
 	// Объект фреймворка
@@ -5498,6 +5563,7 @@ TEST_F(QuicFixture, ConnectionExternalContextTest){
  * @details Локальный эндпоинт отправляет фрейм PATH_CHALLENGE со случайными
  *          данными, удалённый обязан вернуть их фреймом PATH_RESPONSE.
  *          До получения ответа путь подтверждённым не считается
+ *
  */
 TEST_F(QuicFixture, ConnectionPathValidationTest){
 	// Создаём соединение клиента
@@ -5542,6 +5608,7 @@ TEST_F(QuicFixture, ConnectionPathValidationTest){
  *          Смена адреса удалённого эндпоинта при установленном соединении
  *          означает новый сетевой путь: прежние оценки ёмкости и задержки
  *          к нему неприменимы, а достижимость требует подтверждения
+ *
  */
 TEST_F(QuicFixture, ConnectionMigrationDetectTest){
 	// Создаём соединение клиента
@@ -5619,6 +5686,7 @@ TEST_F(QuicFixture, ConnectionMigrationDetectTest){
  *          с наибольшим номером. Иначе off-path атакующий, знающий только открытый
  *          идентификатор соединения, перенаправлял бы путь и сбрасывал оценки
  *          перегрузки одной подделанной датаграммой
+ *
  */
 TEST_F(QuicFixture, ConnectionMigrationSpoofGuardTest){
 	// Создаём соединение клиента
@@ -5689,6 +5757,7 @@ TEST_F(QuicFixture, ConnectionMigrationSpoofGuardTest){
  *          непробирующему пакету - это строгая модель §9, где миграцию отслеживает
  *          только сервер. С включённым режимом тот же пакет вызывает миграцию
  *          (ConnectionMigrationSpoofGuardTest)
+ *
  */
 TEST_F(QuicFixture, ConnectionMigrationRoamingDisabledTest){
 	// Создаём соединение клиента
@@ -5740,6 +5809,7 @@ TEST_F(QuicFixture, ConnectionMigrationRoamingDisabledTest){
  * @details Упираясь в лимит удалённого эндпоинта на открытие потоков, локальный
  *          эндпоинт обязан отправить фрейм STREAMS_BLOCKED, чтобы подтолкнуть
  *          собеседника поднять лимит фреймом MAX_STREAMS
+ *
  */
 TEST_F(QuicFixture, ConnectionStreamsBlockedTest){
 	// Создаём соединение клиента
@@ -5827,6 +5897,7 @@ TEST_F(QuicFixture, ConnectionStreamsBlockedTest){
  *          сигнала, устаревший STREAMS_BLOCKED снимается без отправки, а повторное
  *          исчерпание уже нового лимита обязано сигнализироваться заново. Иначе
  *          отметка об отправленном лимите заглушила бы позднюю настоящую блокировку
+ *
  */
 TEST_F(QuicFixture, ConnectionStreamsBlockedRaiseTest){
 	// Создаём соединение клиента
@@ -5929,6 +6000,7 @@ TEST_F(QuicFixture, ConnectionStreamsBlockedRaiseTest){
  *          приложения, поэтому завершение, отправленное до вывода этих ключей,
  *          дублируется в пакетах Initial и Handshake, коалесцированных в одну
  *          датаграмму - иначе узел не прочёл бы его до истечения простоя
+ *
  */
 TEST_F(QuicFixture, ConnectionCloseHandshakeSpacesTest){
 	// Создаём соединение клиента
@@ -5990,6 +6062,7 @@ TEST_F(QuicFixture, ConnectionCloseHandshakeSpacesTest){
  * @details Локальный эндпоинт переключается на новый путь сам: берёт
  *          неиспользованный идентификатор удалённого эндпоинта, сбрасывает
  *          состояние пути и начинает проверку достижимости
+ *
  */
 TEST_F(QuicFixture, ConnectionMigrateTest){
 	// Создаём соединение клиента
@@ -6075,6 +6148,7 @@ TEST_F(QuicFixture, ConnectionMigrateTest){
  * @details Принимающий эндпоинт считает маркировки заголовка IP-пакета и
  *          возвращает счётчики пиру во фрейме ACK_ECN. Без маркировок фрейм
  *          подтверждения счётчиков не несёт
+ *
  */
 TEST_F(QuicFixture, ConnectionEcnEchoTest){
 	// Создаём соединение клиента
@@ -6127,6 +6201,7 @@ TEST_F(QuicFixture, ConnectionEcnEchoTest){
  *          Сравниваются два одинаковых прогона - с маркировкой и без неё:
  *          абсолютная величина окна зависит от числа подтверждений, поэтому
  *          значима именно разница между прогонами
+ *
  */
 TEST_F(QuicFixture, ConnectionEcnCongestionTest){
 	/**
@@ -6134,6 +6209,7 @@ TEST_F(QuicFixture, ConnectionEcnCongestionTest){
 	 *
 	 * @param ecn маркировка ECN датаграмм отправителя
 	 * @return    окно перегрузки отправителя по завершении прогона
+	 *
 	 */
 	auto run = [](QuicSecurity * security, awh::log_t * log, const awh::event::ecn_t ecn) noexcept -> uint64_t {
 		// Создаём соединение клиента
@@ -6208,6 +6284,7 @@ TEST_F(QuicFixture, ConnectionEcnCongestionTest){
  * @details Сервер присылает билет возобновления после установления соединения.
  *          Сохранённая по нему сессия позволяет клиенту возобновить соединение
  *          с тем же сервером, не выполняя полного хендшейка
+ *
  */
 TEST_F(QuicFixture, ConnectionSessionResumeTest){
 	// Сериализованная сессия возобновления, полученная от сервера
@@ -6317,6 +6394,7 @@ TEST_F(QuicFixture, ConnectionSessionResumeTest){
  *          ходу работы. Изменения выдаются однократно и сбрасываются: вызывающий
  *          код синхронизирует по ним маршрутизацию, и повторная выдача привела бы
  *          к попытке привязать уже привязанное
+ *
  */
 TEST_F(QuicFixture, ConnectionIssuedCidsTest){
 	// Создаём соединение клиента
@@ -6394,6 +6472,7 @@ TEST_F(QuicFixture, ConnectionIssuedCidsTest){
  * @details Возобновление сессии позволяет клиенту открыть поток и отправить
  *          данные сразу, не дожидаясь хендшейка: ключи защиты ранних данных
  *          выданы, а лимиты потоков взяты из прошлого соединения
+ *
  */
 TEST_F(QuicFixture, ConnectionEarlyDataTest){
 	// Сериализованный билет возобновления, полученный от сервера
@@ -6508,6 +6587,7 @@ TEST_F(QuicFixture, ConnectionEarlyDataTest){
  *          узел в ранних данных отказывает. Отказ отказом хендшейка не является -
  *          отправленные ранние данные возвращаются в очереди отправки и уходят
  *          повторно защитой уровня приложения
+ *
  */
 TEST_F(QuicFixture, ConnectionEarlyDataRejectTest){
 	// Сериализованный билет возобновления, полученный от сервера
@@ -6630,6 +6710,7 @@ TEST_F(QuicFixture, ConnectionEarlyDataRejectTest){
  *          пути вправе её стереть. Отправитель выявляет это по счётчикам маркировок
  *          в подтверждениях: путь, не вернувший ни одной маркировки, проверку
  *          не проходит, и маркировать его датаграммы далее бессмысленно
+ *
  */
 TEST_F(QuicFixture, ConnectionEcnValidationTest){
 	// Создаём соединение клиента
@@ -6675,6 +6756,7 @@ TEST_F(QuicFixture, ConnectionEcnValidationTest){
  * @details Путь, доставляющий маркировку в сохранности, проверку проходит:
  *          счётчики маркировок возвращаются подтверждениями и растут ровно
  *          на число помеченных пакетов, поэтому маркировка сохраняется
+ *
  */
 TEST_F(QuicFixture, ConnectionEcnValidationPassTest){
 	// Создаём соединение клиента
@@ -6733,6 +6815,7 @@ TEST_F(QuicFixture, ConnectionEcnValidationPassTest){
  * @details Промежуточный узел вправе стирать маркировку не на всех датаграммах.
  *          Счётчики при этом возвращаются, но растут медленнее числа подтверждённых
  *          помеченных пакетов - этого достаточно, чтобы проверку не пройти
+ *
  */
 TEST_F(QuicFixture, ConnectionEcnValidationPartialTest){
 	// Создаём соединение клиента
@@ -6792,6 +6875,7 @@ TEST_F(QuicFixture, ConnectionEcnValidationPartialTest){
  *          токен фреймом NEW_TOKEN. Предъявление токена в первом пакете следующего
  *          соединения подтверждает адрес клиента сразу, поэтому обмен пакетом
  *          Retry не выполняется и круг задержки экономится
+ *
  */
 TEST_F(QuicFixture, ConnectionNewTokenTest){
 	// Токен проверки адреса, выданный сервером
@@ -6925,6 +7009,7 @@ TEST_F(QuicFixture, ConnectionNewTokenTest){
  * @details Токен, не прошедший проверку, адрес клиента не подтверждает: соединение
  *          продолжается обычным порядком через выдачу пакета Retry, а не
  *          отбрасыванием датаграммы
+ *
  */
 TEST_F(QuicFixture, ConnectionNewTokenRejectTest){
 	// Создаём соединение клиента
@@ -6986,6 +7071,7 @@ TEST_F(QuicFixture, ConnectionNewTokenRejectTest){
  *          клиенту следует переехать после хендшейка. Переезд выполняется на
  *          выданный вместе с адресом идентификатор соединения, а достижимость
  *          нового пути подтверждается проверкой
+ *
  */
 TEST_F(QuicFixture, ConnectionPreferredAddressTest){
 	// Создаём соединение клиента
@@ -7135,6 +7221,7 @@ TEST_F(QuicFixture, ConnectionPreferredAddressTest){
  * @details Ответа на проверку можно не дождаться вовсе. Переотправлять её
  *          бесконечно незачем: по истечении отведённого срока путь признаётся
  *          непригодным, а начатый переезд на него отменяется
+ *
  */
 TEST_F(QuicFixture, ConnectionPathValidationTimeoutTest){
 	// Создаём соединение клиента
@@ -7290,6 +7377,7 @@ TEST_F(QuicFixture, ConnectionPathValidationTimeoutTest){
  *          работают вперемешку на одном соединении: потоки открываются и
  *          закрываются, ключи обновляются, путь меняется, датаграммы уходят мимо
  *          потоков. Взаимное влияние их состояний ловится только совместным прогоном
+ *
  */
 TEST_F(QuicFixture, ConnectionSoakTest){
 	// Создаём соединение клиента
@@ -7436,6 +7524,7 @@ TEST_F(QuicFixture, ConnectionSoakTest){
  *          когда на него не ссылаются учётные записи неподтверждённых пакетов.
  *          Освобождённый раньше времени, он лишил бы ретрансмиссию данных, которые
  *          при потере пакета придётся отправлять заново
+ *
  */
 TEST_F(QuicFixture, ConnectionCollectReferencedTest){
 	// Создаём соединение клиента
@@ -7534,6 +7623,7 @@ TEST_F(QuicFixture, ConnectionCollectReferencedTest){
  *          способен кто угодно, и это самая доступная постороннему поверхность
  *          модуля. Разбор заголовков, согласование версий, проверка токена и
  *          вывод ключей выполняются здесь до всякой аутентификации
+ *
  */
 TEST_F(QuicFixture, ConnectionFuzzUnauthenticatedTest){
 	// Состояние генератора псевдослучайных чисел с фиксированным зерном
@@ -7542,6 +7632,7 @@ TEST_F(QuicFixture, ConnectionFuzzUnauthenticatedTest){
 	 * @brief Функция получения очередного псевдослучайного числа
 	 *
 	 * @return псевдослучайное число
+	 *
 	 */
 	auto random = [&seed]() noexcept -> uint64_t {
 		// Перемешиваем состояние генератора сдвигами
@@ -7654,6 +7745,7 @@ TEST_F(QuicFixture, ConnectionFuzzUnauthenticatedTest){
  *          уже вырезанной из пакета. Здесь произвольные октеты доставляются
  *          настоящим пакетом под настоящей защитой: они проходят снятие защиты
  *          и попадают в разбор и диспетчеризацию фреймов установленного соединения
+ *
  */
 TEST_F(QuicFixture, ConnectionFuzzPayloadTest){
 	// Состояние генератора псевдослучайных чисел с фиксированным зерном
@@ -7662,6 +7754,7 @@ TEST_F(QuicFixture, ConnectionFuzzPayloadTest){
 	 * @brief Функция получения очередного псевдослучайного числа
 	 *
 	 * @return псевдослучайное число
+	 *
 	 */
 	auto random = [&seed]() noexcept -> uint64_t {
 		// Перемешиваем состояние генератора сдвигами
@@ -7854,6 +7947,7 @@ TEST_F(QuicFixture, ConnectionFuzzPayloadTest){
  *          пути, поэтому отказ обязан наступать до этих действий: иначе неудача
  *          запуска новой проверки оставила бы соединение с повёрнутым идентификатором
  *          на сброшенном пути, достижимость которого никто не проверяет
+ *
  */
 TEST_F(QuicFixture, ConnectionMigrateGuardTest){
 	// Создаём соединение клиента
@@ -7909,6 +8003,7 @@ TEST_F(QuicFixture, ConnectionMigrateGuardTest){
  *          занимает один из двух слотов, и свободных для обычной смены пути не
  *          остаётся вовсе. Миграция обязана отказать, не тронув состояние: забрав
  *          резервный идентификатор, она сделала бы переезд невозможным
+ *
  */
 TEST_F(QuicFixture, ConnectionMigrateReservedOnlyTest){
 	// Создаём соединение клиента
@@ -8017,6 +8112,7 @@ TEST_F(QuicFixture, ConnectionMigrateReservedOnlyTest){
  * @details Удалённый эндпоинт вправе вывести используемый идентификатор из обращения
  *          полем Retire Prior To. Продолжать пользоваться выведенным нельзя, но и
  *          закреплённый за предпочтительным адресом брать незачем, пока есть прочие
+ *
  */
 TEST_F(QuicFixture, ConnectionForcedRetireCidTest){
 	// Создаём соединение клиента
@@ -8172,6 +8268,7 @@ TEST_F(QuicFixture, ConnectionForcedRetireCidTest){
  *          адресом. Обычная смена пути забирать его не вправе: забрав, соединение
  *          сделало бы переезд невозможным, а сам идентификатор применило бы не
  *          к тому адресу
+ *
  */
 TEST_F(QuicFixture, ConnectionPreferredCidReservedTest){
 	// Создаём соединение клиента
@@ -8307,6 +8404,7 @@ TEST_F(QuicFixture, ConnectionPreferredCidReservedTest){
  * @details Переезжать дозволено лишь на проверенный адрес, поэтому до подтверждения
  *          его достижимости на предпочтительный адрес уходят одни пробирующие
  *          датаграммы, а данные приложения продолжают идти по текущему пути
+ *
  */
 TEST_F(QuicFixture, ConnectionRelocationProbingTest){
 	// Создаём соединение клиента
@@ -8450,6 +8548,7 @@ TEST_F(QuicFixture, ConnectionRelocationProbingTest){
  * @details Датаграммы доставляются вне потоков: flow control им не подчиняется,
  *          потерянные повторно не отправляются. Отправка возможна только когда
  *          удалённый узел анонсировал приём транспортным параметром
+ *
  */
 TEST_F(QuicFixture, ConnectionDatagramTest){
 	/**
@@ -8457,6 +8556,7 @@ TEST_F(QuicFixture, ConnectionDatagramTest){
 	 *
 	 * @param limit предельный размер принимаемого фрейма DATAGRAM
 	 * @return      транспортные параметры эндпоинта
+	 *
 	 */
 	auto options = [](const uint64_t limit) noexcept -> params::params_t {
 		// Транспортные параметры эндпоинта
@@ -8535,6 +8635,7 @@ TEST_F(QuicFixture, ConnectionDatagramTest){
  * @details Эндпоинт, не анонсировавший приём датаграмм, их не принимает:
  *          отправка ему запрещена, а фрейм DATAGRAM в его адрес является
  *          нарушением протокола
+ *
  */
 TEST_F(QuicFixture, ConnectionDatagramUnsupportedTest){
 	// Создаём соединение клиента
@@ -8569,6 +8670,7 @@ TEST_F(QuicFixture, ConnectionDatagramUnsupportedTest){
  *          поэтому воспроизводится и после утраты состояния соединения: сервер,
  *          забывший о соединении, сбрасывает его немедленно, а не оставляет
  *          удалённый узел ждать таймаута простоя
+ *
  */
 TEST_F(QuicFixture, ConnectionStatelessResetKeyTest){
 	// Общий ключ вывода токенов сброса без сохранения состояния
@@ -8632,6 +8734,7 @@ TEST_F(QuicFixture, ConnectionStatelessResetKeyTest){
  * @details Токен выводится на общем ключе, поэтому собранный на другом ключе
  *          сброс соединение не разрывает: иначе разорвать чужое соединение
  *          мог бы любой, знающий идентификатор
+ *
  */
 TEST_F(QuicFixture, ConnectionStatelessResetForeignTest){
 	// Общий ключ вывода токенов сброса соединения сервера
@@ -8677,6 +8780,7 @@ TEST_F(QuicFixture, ConnectionStatelessResetForeignTest){
  *
  * @details Сброс обязан быть меньше вызвавшей его датаграммы: иначе два эндпоинта,
  *          утративших состояние, отвечали бы друг другу сбросами неограниченно долго
+ *
  */
 TEST_F(QuicFixture, ConnectionStatelessResetBoundsTest){
 	// Общий ключ вывода токенов сброса
@@ -8728,6 +8832,7 @@ TEST_F(QuicFixture, ConnectionStatelessResetBoundsTest){
  * @details Эндпоинт, анонсировавший запрет, не поддерживает смену локального
  *          адреса удалённым узлом: активная миграция ему запрещена. На переезд
  *          по анонсированному предпочтительному адресу запрет не распространяется
+ *
  */
 TEST_F(QuicFixture, ConnectionDisableActiveMigrationTest){
 	// Создаём соединение клиента
@@ -8809,6 +8914,7 @@ TEST_F(QuicFixture, ConnectionDisableActiveMigrationTest){
  * @details Соединение начинает с размера датаграммы, который обязан пропускать
  *          любой путь, и наращивает его зондами. Подтверждённый зонд поднимает
  *          подтверждённый размер, потерянный - опускает верхнюю границу поиска
+ *
  */
 TEST_F(QuicFixture, ConnectionPmtuDiscoveryTest){
 	// Создаём соединение клиента
@@ -8868,6 +8974,7 @@ TEST_F(QuicFixture, ConnectionPmtuDiscoveryTest){
  * @details Смена пути начинает поиск размера заново, но заданное вызывающим кодом
  *          ограничение относится не к пути, а к самому соединению, поэтому
  *          обязано применяться и на новом пути
+ *
  */
 TEST_F(QuicFixture, ConnectionPmtuLimitMigrationTest){
 	// Создаём соединение клиента
@@ -8942,6 +9049,7 @@ TEST_F(QuicFixture, ConnectionPmtuLimitMigrationTest){
  * @details Путь, не пропускающий датаграммы сверх своего размера, обнаруживается
  *          по потере зондов: верхняя граница поиска опускается, и подтверждённый
  *          размер не превышает пропускаемого путём
+ *
  */
 TEST_F(QuicFixture, ConnectionPmtuNarrowPathTest){
 	// Создаём соединение клиента
@@ -9014,6 +9122,7 @@ TEST_F(QuicFixture, ConnectionPmtuNarrowPathTest){
  * @details Зонд теряется потому, что не помещается в путь, а не из-за затора,
  *          поэтому его потеря событием перегрузки не является и окно отправителя
  *          сокращать не вправе
+ *
  */
 TEST_F(QuicFixture, ConnectionPmtuCongestionTest){
 	// Создаём соединение клиента
@@ -9078,6 +9187,7 @@ TEST_F(QuicFixture, ConnectionPmtuCongestionTest){
  *          размер обязан опуститься к обязательному минимуму, иначе передача
  *          навсегда встаёт на непроходящем размере, переупаковывая потери в
  *          датаграммы того же непроходящего размера
+ *
  */
 TEST_F(QuicFixture, ConnectionPmtuBlackHoleTest){
 	// Создаём соединение клиента
@@ -9182,6 +9292,7 @@ TEST_F(QuicFixture, ConnectionPmtuBlackHoleTest){
  *          начислен дважды, а финальный размер сверх начального окна ложно вызовет
  *          FLOW_CONTROL_ERROR. Эгерная материализация неявно открытых потоков
  *          обеспечивает надёжное отличие закрытого потока от ещё не открытого
+ *
  */
 TEST_F(QuicFixture, ConnectionStreamResurrectionGuardTest){
 	// Создаём соединение клиента
@@ -9301,6 +9412,7 @@ TEST_F(QuicFixture, ConnectionStreamResurrectionGuardTest){
  *          пакетом вынудить пропорциональную аллокацию, поэтому анонсируемый
  *          начальный лимит ограничивается санитарной границей: поток с номером
  *          на границе уже превышает применяемый лимит и отвергается
+ *
  */
 TEST_F(QuicFixture, ConnectionStreamAdvertisedCapTest){
 	// Создаём соединение клиента
@@ -9367,6 +9479,7 @@ TEST_F(QuicFixture, ConnectionStreamAdvertisedCapTest){
  *          кодом методом streams(). Заданная граница ниже умолчания применяется:
  *          поток с номером на заданной границе выходит за применяемый лимит и
  *          отвергается, тогда как при умолчании он был бы принят
+ *
  */
 TEST_F(QuicFixture, ConnectionStreamCapConfigurableTest){
 	// Создаём соединение клиента
@@ -9436,6 +9549,7 @@ TEST_F(QuicFixture, ConnectionStreamCapConfigurableTest){
  *          при отправке, темп которой ограничен. Поток таких фреймов наращивал бы
  *          очередь без предела и с квадратичной стоимостью, поэтому её превышение
  *          предела рвёт соединение превышением лимита идентификаторов
+ *
  */
 TEST_F(QuicFixture, ConnectionRetireFloodGuardTest){
 	// Создаём соединение клиента
@@ -9507,6 +9621,7 @@ TEST_F(QuicFixture, ConnectionRetireFloodGuardTest){
  *          отправитель упёрся в выданный лимит. Пока лимит не поднят, сообщать
  *          об одном и том же состоянии повторно бессмысленно: эндпоинт обязан
  *          замолчать, а не заполнять путь уведомлениями до конца блокировки
+ *
  */
 TEST_F(QuicFixture, ConnectionStreamBlockedOnceTest){
 	// Создаём соединение клиента

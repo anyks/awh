@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл клиентской стороны протокола SOCKS5 — класс Client_Socks5,
+ *        формирующий запросы приветствия, авторизации и команд подключения и разбирающий ответы прокси-сервера
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -56,6 +60,7 @@ namespace awh {
 				 * @param size   размер бинарного буфера входящих данных
 				 * @param ctx    объект для извлечения параметров сообщения
 				 * @return       результат парсинга входящих данных
+				 *
 				 */
 				bool parse(const void * buffer, const size_t size, ctx_t & ctx) noexcept;
 				/**
@@ -65,6 +70,7 @@ namespace awh {
 				 * @param size   размер бинарного буфера входящих данных
 				 * @param udp    объект для извлечения параметров UDP заголовка
 				 * @return       результат парсинга входящих данных
+				 *
 				 */
 				bool parse(const void * buffer, const size_t size, udp_head_t & udp) noexcept;
 			public:
@@ -75,6 +81,7 @@ namespace awh {
 				 * @param size   ссылка на размер буфера для извлечения данных
 				 * @param ctx    объект для установки параметров сообщения
 				 * @return 	     результат извлечения данных в буфер
+				 *
 				 */
 				bool buffer(uint8_t ** buffer, size_t & size, ctx_t & ctx) const noexcept;
 				/**
@@ -84,6 +91,7 @@ namespace awh {
 				 * @param size   ссылка на размер буфера для извлечения данных
 				 * @param udp    объект для установки параметров UDP заголовка
 				 * @return 	     результат извлечения данных в буфер
+				 *
 				 */
 				bool buffer(uint8_t ** buffer, size_t & size, const udp_head_t & udp) const noexcept;
 			public:
@@ -92,6 +100,7 @@ namespace awh {
 				 *
 				 * @param username имя пользователя для авторизации на сервере
 				 * @param password пароль пользователя для авторизации на сервере
+				 *
 				 */
 				void setUser(const string & username, const string & password) noexcept;
 			public:
@@ -100,6 +109,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Client_Socks5(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

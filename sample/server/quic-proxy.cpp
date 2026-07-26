@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример прокси-сервера QUIC — демонстрация приёма QUIC-соединений и туннелирования прикладного трафика
+ *        клиентов в исходящие TCP-подключения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -47,6 +51,7 @@ using namespace placeholders;
  *          Такой же приём (client-юнит + двусторонний splice) использует прокси SOCKS5:
  *          посредник (mediator) для этого не годится, так как рассчитан на raw-IP/TUN
  *          и не имеет понятия порта назначения
+ *
  */
 class Proxy {
 	private:
@@ -74,6 +79,7 @@ class Proxy {
 		 * @brief Метод обработки событий изменения статуса QUIC-сервера
 		 *
 		 * @param status новый статус сервера
+		 *
 		 */
 		void status(const event::status_t status) noexcept {
 			/**
@@ -102,6 +108,7 @@ class Proxy {
 		 * @param eid идентификатор события сервера
 		 * @param cid идентификатор сессии соединения QUIC
 		 * @param tid идентификатор шаблона контекста безопасности
+		 *
 		 */
 		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder_t::id_t tid) noexcept {
 			// Записываем в лог сообщение об установленном соединении QUIC
@@ -166,6 +173,7 @@ class Proxy {
 		 *
 		 * @param cid   идентификатор сессии соединения QUIC
 		 * @param error код ошибки завершения соединения
+		 *
 		 */
 		void disconnect(const event::id_t cid, const quic::error_t error) noexcept {
 			// Записываем в лог сообщение о завершении соединения QUIC
@@ -191,6 +199,7 @@ class Proxy {
 		 * @param family семейство адресов сервера
 		 * @param domain доменное имя сервера
 		 * @param ip     IP-адрес сервера
+		 *
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
@@ -202,6 +211,7 @@ class Proxy {
 		 * @param eid     идентификатор события сервера
 		 * @param error   код ошибки
 		 * @param message сообщение об ошибке
+		 *
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
@@ -213,6 +223,7 @@ class Proxy {
 		 *
 		 * @param bid идентификатор события бэкенда
 		 * @param ok  результат подключения к бэкенду
+		 *
 		 */
 		void connectBackend(const event::id_t bid, const bool ok) noexcept {
 			// Выполняем поиск сессии QUIC, связанной с этим событием бэкенда
@@ -244,6 +255,7 @@ class Proxy {
 		 *
 		 * @param bid    идентификатор события бэкенда
 		 * @param status новый статус бэкенда
+		 *
 		 */
 		void stateBackend(const event::id_t bid, const event::status_t status) noexcept {
 			// Если бэкенд подлежит уничтожению
@@ -265,6 +277,7 @@ class Proxy {
 		 * @param bid     идентификатор события бэкенда
 		 * @param error   код ошибки
 		 * @param message сообщение об ошибке
+		 *
 		 */
 		void errorBackend([[maybe_unused]] const event::id_t bid, [[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
@@ -275,6 +288,7 @@ class Proxy {
 		 * @brief Метод снятия сопоставлений и уничтожения события бэкенда
 		 *
 		 * @param bid идентификатор события бэкенда
+		 *
 		 */
 		void closeBackend(const event::id_t bid) noexcept {
 			// Выполняем поиск сессии QUIC, связанной с этим событием бэкенда
@@ -299,6 +313,7 @@ class Proxy {
 		 * @param port   порт хоста бэкенда
 		 * @param fmk    объект фреймворка
 		 * @param log    объект логирования
+		 *
 		 */
 		Proxy(server_t * server, unit::client_t * client, string_view host, const uint16_t port, const fmk_t * fmk, const log_t * log) noexcept :
 		 _fmk(fmk), _log(log), _server(server), _client(client), _host(host), _port(port) {}
@@ -310,6 +325,7 @@ class Proxy {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	// Создаём объект фреймворка

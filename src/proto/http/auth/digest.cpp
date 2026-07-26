@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация схемы DIGEST-авторизации (RFC 7616) — расчёт и проверка дайджеста по nonce, cnonce,
+ *        nc и qop с контролем срока жизни nonce и защитой от повторного использования счётчика
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -55,6 +59,7 @@ namespace nc {
 	 *
 	 * @param nc значение счётчика в шестнадцатеричном виде
 	 * @return   результат проверки
+	 *
 	 */
 	static bool valid(const string & nc) noexcept {
 		// Счётчик должен содержать ровно 8 шестнадцатеричных цифр
@@ -82,6 +87,7 @@ namespace nc {
 	 *          штампу времени и realm.
 	 *
 	 * @return случайное значение в текстовом виде
+	 *
 	 */
 	static string entropy() noexcept {
 		// Инициализируем генератор случайных чисел единожды на поток
@@ -98,6 +104,7 @@ namespace nc {
 	 * @param nc    значение счётчика
 	 * @param value полученное числовое значение
 	 * @return      результат разбора
+	 *
 	 */
 	static bool parse(const string & nc, uint32_t & value) noexcept {
 		// Если формат счётчика некорректен
@@ -123,6 +130,7 @@ namespace nc {
 	 * @param digest параметры Digest-авторизации
 	 * @param key    ключ пары «логин + nonce»
 	 * @param value  последний принятый nc
+	 *
 	 */
 	static void touchLRU(http::auth_t::digest_t & digest, const string & key, const string & value) noexcept {
 		// Если запись уже существует — обновляем nc и переносим ключ в конец очереди
@@ -152,6 +160,7 @@ namespace nc {
  * @brief Метод перевода алгоритма хэширования в текстовое представление
  *
  * @return название алгоритма хэширования (MD5, SHA-256 и т.д.)
+ *
  */
 string awh::http::Digest::algorithm() const noexcept {
 	// Название базового алгоритма (по умолчанию MD5)
@@ -204,6 +213,7 @@ string awh::http::Digest::algorithm() const noexcept {
  * @param user логин пользователя
  * @param pass пароль пользователя
  * @return     ответ в шестнадцатеричном виде
+ *
  */
 string awh::http::Digest::response(const string & user, const string & pass) const noexcept {
 	// Результат работы функции
@@ -305,6 +315,7 @@ string awh::http::Digest::response(const string & user, const string & pass) con
  * @brief Метод проверки учётных данных (только для сервера)
  *
  * @return результат проверки
+ *
  */
 bool awh::http::Digest::check() noexcept {
 	/**
@@ -545,6 +556,7 @@ bool awh::http::Digest::check() noexcept {
  *
  * @param header значение заголовка (клиент: вызов, сервер: учётные данные)
  * @return       результат разбора
+ *
  */
 bool awh::http::Digest::parse(const string_view header) noexcept {
 	// Результат работы функции
@@ -734,6 +746,7 @@ bool awh::http::Digest::parse(const string_view header) noexcept {
  *
  * @param full режим вывода вместе с именем заголовка
  * @return     значение заголовка авторизации
+ *
  */
 string awh::http::Digest::header(const bool full) noexcept {
 	// Результат работы функции
@@ -901,6 +914,7 @@ string awh::http::Digest::header(const bool full) noexcept {
  * @param crypto объект криптографии
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
+ *
  */
 awh::http::Digest::Digest(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept :
  auth_t::scheme_t(owner, params, crypto, fmk, log) {}

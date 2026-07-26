@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация тестовой фикстуры модуля HTTP-авторизации —
+ *        создание объектов тестового окружения перед каждым тестом и их освобождение после его завершения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -39,6 +43,7 @@ void AuthFixture::TearDown() {}
  *
  * @param owner сторона работы (клиент/сервер)
  * @return      сформированный объект модуля авторизации
+ *
  */
 std::unique_ptr <awh::http::auth_t> AuthFixture::make(const awh::http::auth_t::owner_t owner) const noexcept {
 	// Создаём и возвращаем объект модуля авторизации

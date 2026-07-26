@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Параметризованные тесты парсера протокола HTTP/2 —
+ *        прогон подготовленных наборов входных данных через методы модуля с проверкой разбора фреймов,
+ *        управления состояниями потоков, окнами flow control и кодирования HPACK
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -363,6 +368,7 @@ TEST_P(Http2StatusCodeParameterizedFixture, StatusCodeTest){
  * @note Информационные коды 1xx финальным ответом не являются и завершать поток не могут
  *       (RFC 9113 §8.1) - они проверяются отдельно тестами InformationalResponseTest
  *       и InformationalEndStreamTest
+ *
  */
 INSTANTIATE_TEST_SUITE_P(TestParameters, Http2StatusCodeParameterizedFixture,
 	::testing::Values(200, 201, 204, 206, 301, 304, 400, 401, 403, 404, 418, 500, 502, 503, 599)

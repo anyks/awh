@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл схемы BASIC-авторизации (RFC 7617) —
+ *        формирование и разбор заголовка Authorization с логином и паролем в кодировке Base64
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -48,6 +52,7 @@ namespace awh {
 				 * @brief Метод проверки учётных данных (только для сервера)
 				 *
 				 * @return результат проверки
+				 *
 				 */
 				bool check() noexcept override;
 				/**
@@ -55,6 +60,7 @@ namespace awh {
 				 *
 				 * @param header значение заголовка (клиент: вызов, сервер: учётные данные)
 				 * @return       результат разбора
+				 *
 				 */
 				bool parse(const string_view header) noexcept override;
 				/**
@@ -62,6 +68,7 @@ namespace awh {
 				 *
 				 * @param full режим вывода вместе с именем заголовка
 				 * @return     значение заголовка авторизации
+				 *
 				 */
 				string header(const bool full = false) noexcept override;
 			public:
@@ -73,6 +80,7 @@ namespace awh {
 				 * @param crypto объект криптографии
 				 * @param fmk    объект фреймворка
 				 * @param log    объект для работы с логами
+				 *
 				 */
 				explicit Basic(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept;
 				/**

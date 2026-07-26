@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля работы с дочерним потоком — класс Screen, обеспечивающий передачу данных между
+ *        основным и рабочим потоком через очередь с контролем переполнения и состояния здоровья потока
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -44,6 +48,7 @@ namespace awh {
 	 * @brief Шаблон формата данных передаваемого между потоками
 	 *
 	 * @tparam T данные передаваемые между потоками
+	 *
 	 */
 	template <typename T>
 	/**
@@ -132,6 +137,7 @@ namespace awh {
 			 * @brief Функция обратного вызова которая срабатывает при передачи данных в дочерний поток
 			 *
 			 * @param data данные передаваемые в дочерний поток
+			 *
 			 */
 			std::function <void (const T &)> _callback;
 			/**
@@ -139,6 +145,7 @@ namespace awh {
 			 *
 			 * @param state состояние очереди (увеличение/уменьшение)
 			 * @param size  размер очереди после изменения
+			 *
 			 */
 			std::function <void (const state_t, const size_t)> _state;
 		private:
@@ -146,6 +153,7 @@ namespace awh {
 			 * @brief Метод гарантирования существования рабочих примитивов синхронизации с учётом смены процесса
 			 *
 			 * @note Выполняет ленивое создание примитивов и их пересоздание после fork()
+			 *
 			 */
 			void _ensureProcess() noexcept {
 				// Получаем идентификатор текущего процесса
@@ -203,6 +211,7 @@ namespace awh {
 			 *
 			 * @param lock захваченная блокировка мьютекса очереди
 			 * @return     результат: true - можно добавлять данные, false - сообщение отбрасывается
+			 *
 			 */
 			bool _admit(std::unique_lock <std::mutex> & lock) noexcept {
 				// Если очередь не ограничена либо свободное место есть, разрешаем добавление
@@ -245,6 +254,7 @@ namespace awh {
 			 * @brief Метод вывода ошибки работы дочернего потока
 			 *
 			 * @param error объект перехваченной ошибки
+			 *
 			 */
 			void _error([[maybe_unused]] const std::exception & error) const noexcept {
 				/**
@@ -356,6 +366,7 @@ namespace awh {
 			 * @brief Метод получения идентификатора потока
 			 *
 			 * @return идентификатор потока
+			 *
 			 */
 			uint64_t id() const noexcept {
 				// Возвращаем идентификатор потока
@@ -366,6 +377,7 @@ namespace awh {
 			 * @brief Метод получения размера очереди
 			 *
 			 * @return размер очереди для получения
+			 *
 			 */
 			size_t size() const noexcept {
 				// Возвращаем размер очереди
@@ -375,6 +387,7 @@ namespace awh {
 			 * @brief Метод проверки запущен ли в данный момент модуль
 			 *
 			 * @return результат проверки запущен ли модуль
+			 *
 			 */
 			bool launched() const noexcept {
 				// Возвращаем результат проверки
@@ -385,6 +398,7 @@ namespace awh {
 			 * @brief Метод установки максимального размера очереди
 			 *
 			 * @param size максимальный размер очереди (0 - очередь не ограничена)
+			 *
 			 */
 			void capacity(const size_t size) noexcept {
 				// Выполняем установку максимального размера очереди
@@ -394,6 +408,7 @@ namespace awh {
 			 * @brief Метод установки политики поведения при переполнении очереди
 			 *
 			 * @param overflow политика поведения при переполнении очереди
+			 *
 			 */
 			void overflow(const overflow_t overflow) noexcept {
 				// Выполняем установку политики поведения при переполнении очереди
@@ -404,6 +419,7 @@ namespace awh {
 			 * @brief Метод установки функции обратного вызова активации триггера
 			 *
 			 * @param callback функция обратного вызова для установки
+			 *
 			 */
 			void on(std::function <void ()> callback) noexcept {
 				/**
@@ -428,6 +444,7 @@ namespace awh {
 			 * @brief Метод установки функции обратного вызова
 			 *
 			 * @param callback функция обратного вызова для установки
+			 *
 			 */
 			void on(std::function <void (const T &)> callback) noexcept {
 				/**
@@ -452,6 +469,7 @@ namespace awh {
 			 * @brief Метод установки функции обратного вызова получения состояния очереди
 			 *
 			 * @param callback функция обратного вызова для установки
+			 *
 			 */
 			void on(std::function <void (const state_t, const size_t)> callback) noexcept {
 				/**
@@ -477,6 +495,7 @@ namespace awh {
 			 * @brief Метод установки таймаута в миллисекундах
 			 *
 			 * @param delay значение таймаута для установки в миллисекундах
+			 *
 			 */
 			void timeout(const uint32_t delay) noexcept {
 				/**
@@ -502,6 +521,7 @@ namespace awh {
 			 * @brief Метод отправки сообщения в экран
 			 *
 			 * @param data данные отправляемого сообщения
+			 *
 			 */
 			void send(T && data) noexcept {
 				/**
@@ -542,6 +562,7 @@ namespace awh {
 			 * @brief Метод отправки сообщения в экран
 			 *
 			 * @param data данные отправляемого сообщения
+			 *
 			 */
 			void send(const T & data) noexcept {
 				/**
@@ -654,6 +675,7 @@ namespace awh {
 			 * @brief Оператор проверки запущен ли в данный момент модуль
 			 *
 			 * @return результат проверки запущен ли модуль
+			 *
 			 */
 			operator bool() const noexcept {
 				// Возвращаем результат проверки
@@ -663,6 +685,7 @@ namespace awh {
 			 * @brief Оператор получения размера очереди
 			 *
 			 * @return размер очереди для получения
+			 *
 			 */
 			operator size_t() const noexcept {
 				// Возвращаем результат проверки
@@ -674,6 +697,7 @@ namespace awh {
 			 *
 			 * @param data данные отправляемого сообщения
 			 * @return     текущий объект
+			 *
 			 */
 			Screen & operator = (T && data) noexcept {
 				// Выполняем отправку данных в экран
@@ -686,6 +710,7 @@ namespace awh {
 			 *
 			 * @param data данные отправляемого сообщения
 			 * @return     текущий объект
+			 *
 			 */
 			Screen & operator = (const T & data) noexcept {
 				// Выполняем отправку данных в экран
@@ -698,6 +723,7 @@ namespace awh {
 			 *
 			 * @param delay значение таймаута для установки в миллисекундах
 			 * @return      текущий объект
+			 *
 			 */
 			Screen & operator = (const uint32_t delay) noexcept {
 				// Выполняем установку таймаута
@@ -710,6 +736,7 @@ namespace awh {
 			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
+			 *
 			 */
 			Screen & operator = (std::function <void ()> callback) noexcept {
 				// Выполняем установку функции обратного вызова
@@ -722,6 +749,7 @@ namespace awh {
 			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
+			 *
 			 */
 			Screen & operator = (std::function <void (const T &)> callback) noexcept {
 				// Выполняем установку функции обратного вызова
@@ -734,6 +762,7 @@ namespace awh {
 			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
+			 *
 			 */
 			Screen & operator = (std::function <void (const state_t, const size_t)> callback) noexcept {
 				// Выполняем установку функции обратного вызова
@@ -771,6 +800,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param health статус здоровья
+			 *
 			 */
 			explicit Screen(const health_t health) noexcept :
 			 _id(0), _capacity(0),
@@ -797,6 +827,7 @@ namespace awh {
 	 * @brief Шаблон формата данных передаваемого между потоками
 	 *
 	 * @tparam T данные передаваемые между потоками
+	 *
 	 */
 	template <class T>
 	/**

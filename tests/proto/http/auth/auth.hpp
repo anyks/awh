@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл тестовой фикстуры модуля HTTP-авторизации — объявление класса фикстуры Google Test,
+ *        подготавливающего и освобождающего тестовое окружение набора тестов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_HTTP_AUTH_TESTS__
@@ -48,6 +52,7 @@ class AuthFixture : public testing::Test {
 		 *
 		 * @param owner сторона работы (клиент/сервер)
 		 * @return      сформированный объект модуля авторизации
+		 *
 		 */
 		std::unique_ptr <awh::http::auth_t> make(const awh::http::auth_t::owner_t owner) const noexcept;
 };

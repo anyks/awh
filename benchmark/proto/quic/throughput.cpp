@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Сценарий измерения пропускной способности протокола QUIC —
+ *        прогон потока данных через пару соединений с подсчётом скорости передачи,
+ *        числа пакетов и накладных расходов протокола
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -64,6 +69,7 @@ namespace {
 	 *          Показательный пример такой регрессии: вырезание упакованных данных
 	 *          из начала буфера отправки вместо продвижения курсора даёт квадратичную
 	 *          стоимость и роняет показатель более чем в двадцать раз
+	 *
 	 */
 	static constexpr double SINGLE_STREAM_THRESHOLD = 150.0;
 	/**
@@ -78,6 +84,7 @@ namespace {
 	 *          появление попакетного выделения в горячем пути. В отличие от
 	 *          пропускной способности показатель от машины и режима сборки
 	 *          не зависит, поэтому порог задан вплотную к измеренному значению
+	 *
 	 */
 	static constexpr double ALLOCATIONS_THRESHOLD = 4.0;
 
@@ -110,6 +117,7 @@ namespace {
 	 * @param streams количество потоков передачи
 	 * @param output  итоги прогона передачи
 	 * @return        результат прогона (false - соединение не установлено)
+	 *
 	 */
 	static bool transfer(const size_t streams, transfer_t & output) noexcept {
 		// Объект фреймворка
@@ -278,6 +286,7 @@ namespace {
 	 *
 	 * @param streams количество потоков передачи
 	 * @return        результат измерения
+	 *
 	 */
 	static awh::benchmark::result_t throughput(const size_t streams) noexcept {
 		// Результат измерения
@@ -315,6 +324,7 @@ namespace {
 	 * @brief Функция измерения количества выделений памяти на датаграмму
 	 *
 	 * @return результат измерения
+	 *
 	 */
 	static awh::benchmark::result_t allocations() noexcept {
 		// Результат измерения

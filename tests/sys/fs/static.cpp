@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Статические тесты модуля работы с файловой системой — проверка создания и сброса объекта модуля,
+ *        а также корректности чтения и записи файлов, обхода каталогов, получения атрибутов и построения путей
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -342,6 +346,7 @@ TEST_F(FSFixture, ReadfileLineEndingsTest){
 	 * @param name    имя файла
 	 * @param content содержимое для записи
 	 * @return        список прочитанных строк
+	 *
 	 */
 	auto readLines = [&](const std::string & name, const std::string & content) -> std::vector <std::string> {
 		// Путь к файлу

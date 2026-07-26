@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл криптографического слоя QUIC (RFC 9001) — вывод начальных секретов,
+ *        ключей и заголовочной защиты,
+ *        шифрование и расшифровка пакетов на AEAD-примитивах BoringSSL без хранения состояния соединения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_PROTO_QUIC_CRYPTO__
@@ -59,6 +64,7 @@ namespace awh {
 		 *          обновление ключей ("quic ku") и тег целостности пакета Retry.
 		 *          Криптографические примитивы - BoringSSL. Слой не хранит состояния
 		 *          соединения - ключи передаются явно в каждую функцию.
+		 *
 		 */
 		namespace crypto {
 			/**
@@ -135,6 +141,7 @@ namespace awh {
 				 * @note Затирает секрет и выведенные ключи в памяти до освобождения,
 				 *       чтобы ключевой материал не оставался в куче после разрыва
 				 *       соединения либо смены фазы (RFC 9001 §6, defense-in-depth)
+				 *
 				 */
 				~Keys() noexcept;
 			} keys_t;
@@ -148,6 +155,7 @@ namespace awh {
 			 * @param length требуемая длина выводимого материала
 			 * @param output выводимый ключевой материал
 			 * @return       результат вывода (false - ошибка криптографической библиотеки)
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ bool hkdfExpandLabel(const suite_t suite, string_view secret, string_view label, const size_t length, string & output) noexcept;
 			/**
@@ -160,6 +168,7 @@ namespace awh {
 			 * @param client ключи защиты пакетов клиента
 			 * @param server ключи защиты пакетов сервера
 			 * @return       результат вывода (false - ошибка криптографической библиотеки)
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ bool initial(const cid_t & dcid, keys_t & client, keys_t & server) noexcept;
 			/**
@@ -169,6 +178,7 @@ namespace awh {
 			 *
 			 * @param keys ключи защиты пакетов (заполняются key/iv/hp)
 			 * @return     результат вывода (false - ошибка криптографической библиотеки)
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ bool derive(keys_t & keys) noexcept;
 			/**
@@ -179,6 +189,7 @@ namespace awh {
 			 * @param current текущие ключи защиты пакетов
 			 * @param next    ключи защиты пакетов следующей фазы
 			 * @return        результат обновления (false - ошибка криптографической библиотеки)
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ bool update(const keys_t & current, keys_t & next) noexcept;
 			/**
@@ -188,6 +199,7 @@ namespace awh {
 			 * @param sample выборка защищённой нагрузки (16 октетов)
 			 * @param mask   вычисленная маска защиты заголовка (5 октетов)
 			 * @return       результат вычисления (false - ошибка криптографической библиотеки)
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ bool hpMask(const keys_t & keys, const uint8_t sample[HP_SAMPLE_SIZE], uint8_t mask[HP_MASK_SIZE]) noexcept;
 			/**
@@ -202,6 +214,7 @@ namespace awh {
 			 * @param header  собранный незащищённый заголовок пакета (включая Packet Number)
 			 * @param payload незашифрованная нагрузка пакета (фреймы)
 			 * @return        результат защиты (false - ошибка криптографической библиотеки)
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ bool seal(string & output, const keys_t & keys, const uint64_t pn, string_view header, string_view payload) noexcept;
 			/**
@@ -219,6 +232,7 @@ namespace awh {
 			 * @param output    расшифрованная нагрузка пакета (фреймы)
 			 * @param error     код ошибки транспорта
 			 * @return          результат снятия защиты (OK/ERROR)
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ status_t open(uint8_t * packet, const size_t size, const size_t pnOffset, const uint64_t largestPn, const keys_t & keys, uint64_t & pn, string & output, error_t & error) noexcept;
 			/**
@@ -228,6 +242,7 @@ namespace awh {
 			 * @param packet пакет Retry без тега целостности
 			 * @param tag    вычисленный тег целостности (16 октетов)
 			 * @return       результат вычисления (false - ошибка криптографической библиотеки)
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ bool retryTag(const cid_t & odcid, string_view packet, uint8_t tag[proto::RETRY_TAG_SIZE]) noexcept;
 			/**
@@ -236,6 +251,7 @@ namespace awh {
 			 * @param odcid  DCID первого пакета Initial клиента
 			 * @param packet пакет Retry целиком (включая тег целостности)
 			 * @return       результат проверки (true - тег целостности корректен)
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ bool retryVerify(const cid_t & odcid, string_view packet) noexcept;
 		};

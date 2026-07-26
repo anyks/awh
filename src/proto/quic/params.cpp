@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация транспортных параметров QUIC (RFC 9000 §18) — разбор и сборка параметров соединения с проверкой
+ *        ролевых ограничений и обработкой предпочтительного адреса сервера
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -88,6 +92,7 @@ namespace {
 	 *
 	 * @param buffer буфер с данными числа
 	 * @return       прочитанное число
+	 *
 	 */
 	inline uint16_t rd16(const uint8_t * buffer) noexcept {
 		// Собираем число из двух байт в сетевом порядке
@@ -98,6 +103,7 @@ namespace {
 	 *
 	 * @param output выходной буфер
 	 * @param num    записываемое число
+	 *
 	 */
 	inline void wr16(string & output, const uint16_t num) noexcept {
 		// Дописываем старший байт числа
@@ -112,6 +118,7 @@ namespace {
 	 * @param length длина значения параметра
 	 * @param value  прочитанное значение
 	 * @return       результат чтения (false - значение закодировано некорректно)
+	 *
 	 */
 	inline bool rdValue(const uint8_t * data, const size_t length, uint64_t & value) noexcept {
 		// Если значение параметра пустое (целочисленный параметр обязан содержать число)
@@ -127,6 +134,7 @@ namespace {
 	 * @param output выходной буфер
 	 * @param id     идентификатор параметра
 	 * @param value  значение параметра
+	 *
 	 */
 	inline void wrScalar(string & output, const params::id_t id, const uint64_t value) noexcept {
 		// Дописываем идентификатор параметра
@@ -142,6 +150,7 @@ namespace {
 	 * @param output выходной буфер
 	 * @param id     идентификатор параметра
 	 * @param cid    идентификатор соединения
+	 *
 	 */
 	inline void wrCid(string & output, const params::id_t id, const cid_t & cid) noexcept {
 		// Дописываем идентификатор параметра
@@ -185,6 +194,7 @@ awh::quic::params::Params::Params() noexcept :
  * @param output разобранные параметры транспорта
  * @param error  код ошибки транспорта
  * @return       результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::params::parser::decode(const uint8_t * data, const size_t size, const endpoint_t sender, params_t & output, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -488,6 +498,7 @@ awh::quic::status_t awh::quic::params::parser::decode(const uint8_t * data, cons
  * @param params параметры транспорта
  * @param sender роль эндпоинта, кодирующего параметры
  * @return       результат сборки (false - некорректные параметры)
+ *
  */
 bool awh::quic::params::serialize::encode(string & output, const params_t & params, const endpoint_t sender) noexcept {
 	// Если клиент пытается закодировать параметры только для сервера (RFC 9000 §18.2)
@@ -619,6 +630,7 @@ bool awh::quic::params::serialize::encode(string & output, const params_t & para
  * @param output выходной буфер контекста ранних данных
  * @param params параметры транспорта
  * @return       результат сборки (false - некорректные параметры)
+ *
  */
 bool awh::quic::params::serialize::early(string & output, const params_t & params) noexcept {
 	/**

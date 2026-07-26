@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл тестовой фикстуры модуля транспортного уровня безопасности —
+ *        объявление класса фикстуры Google Test, подготавливающего и освобождающего тестовое окружение набора тестов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_TLS_CODER_TESTS__
@@ -36,6 +40,7 @@
  * @details Набор характеризационный: он фиксирует наблюдаемое поведение кодера
  *          таким, какое оно есть, чтобы последующие изменения модуля опирались
  *          на проверяемый контракт, а не на чтение тринадцати тысяч строк
+ *
  */
 class TlsFixture : public testing::Test {
 	protected:
@@ -69,6 +74,7 @@ class TlsFixture : public testing::Test {
 		 * @param privateKey  путь к созданному файлу приватного ключа
 		 * @param host        доменное имя субъекта сертификата
 		 * @return            результат генерации
+		 *
 		 */
 		bool makeCertificate(std::string & certificate, std::string & privateKey, const std::string & host = "localhost") const noexcept;
 };

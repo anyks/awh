@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация конечного автомата соединения QUIC — управление пространствами номеров пакетов,
+ *        потоками приложения, контролем перегрузки и потока, оценкой RTT, обнаружением и ретрансмиссией потерь,
+ *        миграцией пути и завершением соединения (RFC 9000, RFC 9002)
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -87,6 +92,7 @@ namespace {
 	 * @note Идентификаторы потоков кодируются varint, поэтому лимит сверх 2^60
 	 *       разрешал бы открытие потока с некодируемым идентификатором
 	 *       (RFC 9000 §19.11/§19.14)
+	 *
 	 */
 	static constexpr uint64_t MAX_STREAMS_LIMIT = (static_cast <uint64_t> (1) << 60);
 	/**
@@ -98,6 +104,7 @@ namespace {
 	 *       аллокацию. Граница ограничивает лишь окно конкурентности (стартовый
 	 *       кредит): суммарное число потоков за жизнь соединения не ограничивается -
 	 *       лимит восполняется фреймами MAX_STREAMS по мере завершения потоков
+	 *
 	 */
 	static constexpr uint64_t MAX_STREAMS_ADVERTISED = (static_cast <uint64_t> (1) << 16);
 	/**
@@ -107,6 +114,7 @@ namespace {
 	 *       долей от анонсированного лимита приёма потока. Сами данные лимитом
 	 *       уже ограничены, а вот их дробление - нет: тысячи однооктетных фрагментов
 	 *       занимают на порядки больше памяти, чем несут данных (RFC 9000 §4.1)
+	 *
 	 */
 	static constexpr uint64_t STREAM_CHUNK_SHARE = 512;
 	/**
@@ -114,6 +122,7 @@ namespace {
 	 *
 	 * @note Предел не опускается ниже: перестановка пакетов в сети образует разрывы
 	 *       и на потоках с малым лимитом приёма
+	 *
 	 */
 	static constexpr size_t MIN_STREAM_CHUNKS = 64;
 	/**
@@ -156,6 +165,7 @@ namespace {
 	 *
 	 * @note Формат общий с токеном пакета Retry, различается меткой: обработка
 	 *       у них разная, а отличить один от другого сервер обязан (RFC 9000 §8.1.4)
+	 *
 	 */
 	static constexpr uint8_t ADDRESS_TOKEN_MARK = 0x02;
 	/**
@@ -164,6 +174,7 @@ namespace {
 	 * @note Токен предъявляется в первом пакете следующего соединения, между
 	 *       которыми проходит сколько угодно времени, поэтому срок годности
 	 *       несопоставим со сроком годности токена пакета Retry (RFC 9000 §8.1.3)
+	 *
 	 */
 	static constexpr uint64_t ADDRESS_TOKEN_LIFETIME = 86400000;
 	/**
@@ -178,6 +189,7 @@ namespace {
 	 *       CONNECTION_CLOSE: за него отставшие пакеты удалённого узла получают
 	 *       повторный фрейм завершения, после чего состояние соединения
 	 *       подлежит освобождению (RFC 9000 §10.2)
+	 *
 	 */
 	static constexpr uint64_t CLOSING_PERIOD = 3;
 	/**
@@ -189,6 +201,7 @@ namespace {
 	 *
 	 * @param output ключ подписи токенов проверки адреса
 	 * @return       результат получения (false - ошибка генератора случайных чисел)
+	 *
 	 */
 	static bool tokenKey(std::string & output) noexcept {
 		/**
@@ -231,6 +244,7 @@ namespace {
 	 * @note Датаграммы flow control не подчиняются, поэтому очереди ограничены
 	 *       сверху: без предела не читающее их приложение исчерпало бы память,
 	 *       а ненадёжность доставки позволяет отбрасывать лишние
+	 *
 	 */
 	static constexpr size_t MAX_QUEUED_DATAGRAMS = 64;
 	/**
@@ -239,6 +253,7 @@ namespace {
 	 * @note Ответы ретрансмиссии не подлежат, поэтому неограниченная очередь
 	 *       позволяла бы удалённому эндпоинту наращивать её потоком проверок
 	 *       (RFC 9000 §8.2.2)
+	 *
 	 */
 	static constexpr size_t MAX_QUEUED_RESPONSES = 8;
 	/**
@@ -249,6 +264,7 @@ namespace {
 	 *       темп которой ограничен окном перегрузки. Без предела удалённый эндпоинт
 	 *       наращивал бы очередь потоком смен идентификатора быстрее слива; превышение
 	 *       предела означает злоупотребление сменой идентификаторов и рвёт соединение
+	 *
 	 */
 	static constexpr size_t MAX_QUEUED_RETIRES = 128;
 	/**
@@ -282,6 +298,7 @@ namespace {
 	 * @details Взят наименьший лимит среди применяемых наборов (ChaCha20-Poly1305, 2^36):
 	 *          завершение соединения не позже требуемого спецификацией допустимо
 	 *          для любого набора
+	 *
 	 */
 	static constexpr uint64_t AEAD_INTEGRITY_LIMIT = (static_cast <uint64_t> (1) << 36);
 	/**
@@ -290,6 +307,7 @@ namespace {
 	 * @details Взят наименьший лимит среди применяемых наборов (AES-GCM, 2^23):
 	 *          обновление ключей не позже требуемого спецификацией допустимо
 	 *          для любого набора
+	 *
 	 */
 	static constexpr uint64_t AEAD_CONFIDENTIALITY_LIMIT = (static_cast <uint64_t> (1) << 23);
 	/**
@@ -297,6 +315,7 @@ namespace {
 	 *
 	 * @details Сборка требует обхода очередей отправки, поэтому запускается только
 	 *          когда список потоков вырос настолько, что обход себя окупает
+	 *
 	 */
 	static constexpr size_t COLLECT_THRESHOLD = 64;
 	/**
@@ -329,6 +348,7 @@ namespace {
 	 *
 	 * @note Поиск прекращается, когда интервал сузился до этой величины:
 	 *       дальнейшее уточнение зондами себя не окупает
+	 *
 	 */
 	static constexpr size_t PMTU_GRANULARITY = 16;
 	/**
@@ -341,6 +361,7 @@ namespace {
 	 *
 	 * @details Тип, порядковый номер, номер вывода из обращения, октет длины,
 	 *          идентификатор соединения предельной длины и токен сброса
+	 *
 	 */
 	static constexpr size_t NEW_CID_OVERHEAD = (1 + 8 + 8 + 1 + awh::quic::proto::MAX_CID_SIZE + awh::quic::proto::RESET_TOKEN_SIZE);
 	/**
@@ -348,6 +369,7 @@ namespace {
 	 *
 	 * @param cid генерируемый идентификатор соединения
 	 * @return    результат генерации (false - ошибка генератора случайных чисел)
+	 *
 	 */
 	static bool makeCid(awh::quic::cid_t & cid) noexcept {
 		// Устанавливаем длину идентификатора соединения
@@ -477,6 +499,7 @@ awh::quic::Connection::Identity::Identity() noexcept :
  * @brief Конструктор
  *
  * @param endpoint роль локального эндпоинта на соединении
+ *
  */
 awh::quic::Connection::Amplify::Amplify(const endpoint_t endpoint) noexcept :
  received(0), sent(0), validated(endpoint == endpoint_t::CLIENT) {}
@@ -490,6 +513,7 @@ awh::quic::Connection::AEAD::AEAD() noexcept :
  * @brief Конструктор
  *
  * @param endpoint роль локального эндпоинта на соединении
+ *
  */
 awh::quic::Connection::Core::Core(const endpoint_t endpoint) noexcept :
  endpoint(endpoint), state(state_t::NONE), error(error_t::NO_ERROR),
@@ -517,6 +541,7 @@ awh::quic::Connection::Cids::Cids() noexcept {}
  * @param ctx      идентификатор шаблона контекста безопасности
  * @param coder    объект кодера транспортной безопасности
  * @param log      объект для работы с логами
+ *
  */
 awh::quic::Connection::Crypto::Crypto(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept :
  handshake(endpoint, ctx, coder, log) {}
@@ -569,6 +594,7 @@ awh::quic::Connection::Space::Space() noexcept :
  *
  * @param level уровень шифрования
  * @return      пространство номеров пакетов
+ *
  */
 awh::quic::Connection::space_t awh::quic::Connection::space(const level_t level) const noexcept {
 	/**
@@ -597,6 +623,7 @@ awh::quic::Connection::space_t awh::quic::Connection::space(const level_t level)
  *
  * @param space пространство номеров пакетов
  * @param pn    принятый номер пакета
+ *
  */
 void awh::quic::Connection::record(const space_t space, const uint64_t pn) noexcept {
 	// Получаем состояние пространства номеров пакетов
@@ -739,6 +766,7 @@ void awh::quic::Connection::record(const space_t space, const uint64_t pn) noexc
  * @param space пространство номеров пакетов
  * @param pn    принятый номер пакета
  * @return      результат проверки (true - пакет уже был принят)
+ *
  */
 bool awh::quic::Connection::duplicate(const space_t space, const uint64_t pn) const noexcept {
 	// Получаем состояние пространства номеров пакетов
@@ -788,6 +816,7 @@ void awh::quic::Connection::pull() noexcept {
  * @brief Метод постановки завершения соединения с ошибкой транспорта в очередь
  *
  * @param error код ошибки транспорта
+ *
  */
 void awh::quic::Connection::fail(const error_t error) noexcept {
 	/**
@@ -824,6 +853,7 @@ void awh::quic::Connection::fail(const error_t error) noexcept {
  * @brief Метод сброса ключей уровня вместе с состоянием восстановления потерь (RFC 9001 §4.9)
  *
  * @param level уровень шифрования
+ *
  */
 void awh::quic::Connection::discard(const level_t level) noexcept {
 	// Сбрасываем ключи уровня шифрования
@@ -862,6 +892,7 @@ void awh::quic::Connection::discard(const level_t level) noexcept {
  *
  * @param sample измеренная задержка приёма-передачи
  * @param delay  задержка подтверждения удалённого эндпоинта
+ *
  */
 void awh::quic::Connection::rtt(const uint64_t sample, const uint64_t delay) noexcept {
 	// Устанавливаем последнюю измеренную задержку приёма-передачи
@@ -899,6 +930,7 @@ void awh::quic::Connection::rtt(const uint64_t sample, const uint64_t delay) noe
  *
  * @param space  пространство номеров пакетов
  * @param packet учётная запись потерянного либо зондируемого пакета
+ *
  */
 void awh::quic::Connection::requeue(const space_t space, const sent_t & packet) noexcept {
 	// Получаем состояние пространства номеров пакетов
@@ -1075,6 +1107,7 @@ void awh::quic::Connection::restore() noexcept {
  * @param frame  разобранный фрейм подтверждения со счётчиками маркировок
  * @param marked количество впервые подтверждённых помеченных пакетов
  * @return       результат обнаружения прироста счётчика перегрузки
+ *
  */
 bool awh::quic::Connection::validate(const space_t space, const frame::ack_t & frame, const uint64_t marked) noexcept {
 	/**
@@ -1230,6 +1263,7 @@ void awh::quic::Connection::discover() noexcept {
  * @brief Метод детекта потерянных пакетов пространства (RFC 9002 §6.1)
  *
  * @param space пространство номеров пакетов
+ *
  */
 void awh::quic::Connection::detect(const space_t space, const vector <uint64_t> & ackedTimes) noexcept {
 	// Получаем состояние пространства номеров пакетов
@@ -1427,6 +1461,7 @@ void awh::quic::Connection::detect(const space_t space, const vector <uint64_t> 
  * @brief Метод постановки зондирующих данных пространства в очередь (RFC 9002 §6.2.4)
  *
  * @param space пространство номеров пакетов
+ *
  */
 void awh::quic::Connection::probe(const space_t space) noexcept {
 	// Получаем состояние пространства номеров пакетов
@@ -1451,6 +1486,7 @@ void awh::quic::Connection::probe(const space_t space) noexcept {
  *
  * @param space пространство номеров пакетов
  * @return     интервал таймера PTO в миллисекундах
+ *
  */
 uint64_t awh::quic::Connection::interval(const space_t space) const noexcept {
 	// Базовый интервал таймера PTO: сглаженная задержка + максимум из учетверённой вариативности и гранулярности
@@ -1467,6 +1503,7 @@ uint64_t awh::quic::Connection::interval(const space_t space) const noexcept {
  *
  * @param space пространство номеров пакетов
  * @return      дедлайн таймера PTO в миллисекундах (0 - таймер не взведён)
+ *
  */
 uint64_t awh::quic::Connection::deadline(const space_t space) const noexcept {
 	// Получаем состояние пространства номеров пакетов
@@ -1503,6 +1540,7 @@ uint64_t awh::quic::Connection::deadline(const space_t space) const noexcept {
  * @brief Метод вычисления длительности периода устойчивой перегрузки (RFC 9002 §7.6.1)
  *
  * @return длительность периода устойчивой перегрузки в миллисекундах
+ *
  */
 uint64_t awh::quic::Connection::persistence() const noexcept {
 	// Базовый интервал таймера PTO без экспоненциальной выдержки
@@ -1518,6 +1556,7 @@ uint64_t awh::quic::Connection::persistence() const noexcept {
  * @brief Метод вычисления дедлайна таймаута простоя соединения (RFC 9000 §10.1)
  *
  * @return дедлайн таймаута простоя в миллисекундах (0 - таймаут не согласован)
+ *
  */
 uint64_t awh::quic::Connection::idle() const noexcept {
 	// Таймаут простоя локального эндпоинта
@@ -1540,6 +1579,7 @@ uint64_t awh::quic::Connection::idle() const noexcept {
  *
  * @param stream состояние потока
  * @param target учтённое смещение данных потока в октетах
+ *
  */
 void awh::quic::Connection::consume(stream_data_t & stream, const uint64_t target) noexcept {
 	// Если смещение ещё не учтено потреблённым (защита от повторных фреймов)
@@ -1568,6 +1608,7 @@ void awh::quic::Connection::consume(stream_data_t & stream, const uint64_t targe
  * @param data буфер принятой датаграммы
  * @param size размер принятой датаграммы
  * @return     результат обнаружения (true - датаграмма является сбросом)
+ *
  */
 bool awh::quic::Connection::stateless(const uint8_t * data, const size_t size) const noexcept {
 	/**
@@ -1605,6 +1646,7 @@ bool awh::quic::Connection::stateless(const uint8_t * data, const size_t size) c
  * @param odcid  исходный DCID первого пакета Initial клиента
  * @param output сформированный токен проверки адреса
  * @return       результат формирования (false - ошибка генератора либо кода аутентичности)
+ *
  */
 bool awh::quic::Connection::token(const uint8_t mark, const cid_t & odcid, string & output) const noexcept {
 	/**
@@ -1679,6 +1721,7 @@ bool awh::quic::Connection::token(const uint8_t mark, const cid_t & odcid, strin
  * @param token принятый токен проверки адреса
  * @param odcid восстановленный исходный DCID первого пакета Initial клиента
  * @return      результат проверки (true - токен выдан этому адресу и не истёк)
+ *
  */
 bool awh::quic::Connection::validate(string_view token, cid_t & odcid, bool & retried) const noexcept {
 	/**
@@ -1782,6 +1825,7 @@ bool awh::quic::Connection::validate(string_view token, cid_t & odcid, bool & re
  * @brief Метод вычисления доступного к отправке объёма данных (RFC 9000 §8.1)
  *
  * @return доступный к отправке объём данных в октетах
+ *
  */
 size_t awh::quic::Connection::allowance() const noexcept {
 	/**
@@ -1805,6 +1849,7 @@ size_t awh::quic::Connection::allowance() const noexcept {
  * @brief Метод проверки невозможности отправки под лимитом анти-амплификации (RFC 9002 §6.2.2.1)
  *
  * @return результат проверки
+ *
  */
 bool awh::quic::Connection::stalled() const noexcept {
 	// Если адрес удалённого эндпоинта подтверждён - лимит отправку не ограничивает
@@ -1961,6 +2006,7 @@ void awh::quic::Connection::promote() noexcept {
  * @brief Метод учёта подтверждённого пакета в congestion control (RFC 9002 §7.3.1)
  *
  * @param packet учётная запись подтверждённого пакета
+ *
  */
 void awh::quic::Connection::acked(const sent_t & packet) noexcept {
 	/**
@@ -2010,6 +2056,7 @@ void awh::quic::Connection::acked(const sent_t & packet) noexcept {
  * @brief Метод обработки события перегрузки при детекте потерь (RFC 9002 §7.3.2)
  *
  * @param time время отправки наиболее позднего потерянного пакета
+ *
  */
 void awh::quic::Connection::congestion(const uint64_t time) noexcept {
 	// Если потерянный пакет отправлен в текущем периоде восстановления
@@ -2073,6 +2120,7 @@ void awh::quic::Connection::issue() noexcept {
  *
  * @param seq порядковый номер идентификатора соединения
  * @return    результат проверки
+ *
  */
 bool awh::quic::Connection::reserved(const uint64_t seq) const noexcept {
 	// Выводим результат проверки закреплённости идентификатора за предпочтительным адресом
@@ -2083,6 +2131,7 @@ bool awh::quic::Connection::reserved(const uint64_t seq) const noexcept {
  *
  * @param sid идентификатор потока
  * @return    результат проверки (true - отправка допустима)
+ *
  */
 bool awh::quic::Connection::sendable(const uint64_t sid) const noexcept {
 	// Если поток двунаправленный - отправка допустима всегда
@@ -2097,6 +2146,7 @@ bool awh::quic::Connection::sendable(const uint64_t sid) const noexcept {
  *
  * @param sid идентификатор потока
  * @return    результат проверки (true - приём допустим)
+ *
  */
 bool awh::quic::Connection::receivable(const uint64_t sid) const noexcept {
 	// Если поток двунаправленный - приём допустим всегда
@@ -2111,6 +2161,7 @@ bool awh::quic::Connection::receivable(const uint64_t sid) const noexcept {
  *
  * @param sid идентификатор потока
  * @return    начальный лимит приёма потока в октетах
+ *
  */
 uint64_t awh::quic::Connection::rxWindow(const uint64_t sid) const noexcept {
 	// Определяем инициатора потока
@@ -2127,6 +2178,7 @@ uint64_t awh::quic::Connection::rxWindow(const uint64_t sid) const noexcept {
  *
  * @param sid идентификатор потока
  * @return    начальный лимит отправки потока в октетах
+ *
  */
 uint64_t awh::quic::Connection::txWindow(const uint64_t sid) const noexcept {
 	// Определяем инициатора потока
@@ -2144,6 +2196,7 @@ uint64_t awh::quic::Connection::txWindow(const uint64_t sid) const noexcept {
  * @param sid   идентификатор потока
  * @param error код ошибки транспорта
  * @return      состояние потока (nullptr - нарушение протокола)
+ *
  */
 awh::quic::Connection::stream_data_t * awh::quic::Connection::accept(const uint64_t sid, error_t & error) noexcept {
 	// Ищем поток по идентификатору
@@ -2210,6 +2263,7 @@ awh::quic::Connection::stream_data_t * awh::quic::Connection::accept(const uint6
  *
  * @param sid идентификатор потока
  * @return    результат проверки (true - поток был открыт и уже собран)
+ *
  */
 bool awh::quic::Connection::closed(const uint64_t sid) const noexcept {
 	// Если поток присутствует в списке - он не собран, обрабатывается штатно
@@ -2239,6 +2293,7 @@ bool awh::quic::Connection::closed(const uint64_t sid) const noexcept {
  *
  * @param frame принятый фрейм данных потока приложения
  * @return      результат обработки (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Connection::inputStream(const frame::stream_t & frame) noexcept {
 	// Если приём данных потока локальным эндпоинтом недопустим (RFC 9000 §4.6)
@@ -2417,6 +2472,7 @@ awh::quic::status_t awh::quic::Connection::inputStream(const frame::stream_t & f
  * @brief Метод применения транспортных параметров удалённого эндпоинта после хендшейка
  *
  * @return результат применения (true - параметры применены)
+ *
  */
 bool awh::quic::Connection::established() noexcept {
 	// Код ошибки транспорта
@@ -2560,6 +2616,7 @@ bool awh::quic::Connection::established() noexcept {
  *
  * @param sid    идентификатор потока
  * @param stream состояние потока
+ *
  */
 void awh::quic::Connection::credit(const uint64_t sid, stream_data_t & stream) noexcept {
 	// Если завершение потока уже учтено
@@ -2591,6 +2648,7 @@ void awh::quic::Connection::credit(const uint64_t sid, stream_data_t & stream) n
  *
  * @param stream состояние потока
  * @return       результат проверки (true - есть что выдать приложению)
+ *
  */
 bool awh::quic::Connection::ready(const stream_data_t & stream) const noexcept {
 	/**
@@ -2605,6 +2663,7 @@ bool awh::quic::Connection::ready(const stream_data_t & stream) const noexcept {
  *
  * @param sid    идентификатор потока
  * @param stream состояние потока
+ *
  */
 void awh::quic::Connection::notify(const uint64_t sid, stream_data_t & stream) noexcept {
 	// Если поток готов к выдаче и в списке готовых ещё не числится
@@ -2622,6 +2681,7 @@ void awh::quic::Connection::notify(const uint64_t sid, stream_data_t & stream) n
  * @param offset смещение данных в потоке криптографического хендшейка
  * @param data   данные CRYPTO-фрейма
  * @return       результат обработки (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Connection::input(const level_t level, const uint64_t offset, string_view data) noexcept {
 	// Получаем состояние пространства номеров пакетов
@@ -2723,6 +2783,7 @@ awh::quic::status_t awh::quic::Connection::input(const level_t level, const uint
  * @param data  буфер расшифрованной нагрузки
  * @param size  размер расшифрованной нагрузки
  * @return      результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uint8_t * data, const size_t size, bool & nonProbing) noexcept {
 	// Смещение в буфере расшифрованной нагрузки
@@ -3697,6 +3758,7 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
  * @param elicit  флаг наличия ack-eliciting фреймов в нагрузке
  * @param limited флаг исчерпанного окна перегрузки (только подтверждения)
  * @return        результат сборки (true - нагрузка не пустая)
+ *
  */
 bool awh::quic::Connection::payload(const level_t level, const size_t budget, string & output, sent_t & meta, bool & elicit, const bool limited) noexcept {
 	// Получаем состояние пространства номеров пакетов
@@ -4284,6 +4346,7 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
  * @param pnSize размер кодирования номера пакета в октетах
  * @param dcid   идентификатор соединения получателя пакета
  * @return       размер заголовка пакета в октетах
+ *
  */
 size_t awh::quic::Connection::headerSize(const level_t level, const uint64_t length, const size_t pnSize, const cid_t & dcid) const noexcept {
 	// Если пакет уровня приложения (короткий заголовок)
@@ -4309,6 +4372,7 @@ size_t awh::quic::Connection::headerSize(const level_t level, const uint64_t len
  * @param payload нагрузка пакета (фреймы)
  * @param dcid    идентификатор соединения получателя пакета
  * @return        результат сборки (false - ошибка криптографической библиотеки)
+ *
  */
 bool awh::quic::Connection::seal(string & output, const level_t level, string_view payload, const cid_t & dcid) noexcept {
 	// Получаем ключи защиты исходящих пакетов уровня
@@ -4400,6 +4464,7 @@ bool awh::quic::Connection::seal(string & output, const level_t level, string_vi
  * @brief Метод извлечения согласованного ALPN-протокола
  *
  * @return согласованный ALPN-протокол (пустое название - согласование не выполнено)
+ *
  */
 awh::tls::coder_t::alpn_t awh::quic::Connection::alpn() const noexcept {
 	// Выводим согласованный ALPN-протокол хендшейк-машины
@@ -4409,6 +4474,7 @@ awh::tls::coder_t::alpn_t awh::quic::Connection::alpn() const noexcept {
  * @brief Метод установки локальных транспортных параметров (RFC 9000 §7.4)
  *
  * @param params локальные транспортные параметры
+ *
  */
 void awh::quic::Connection::params(const quic::params::params_t & params) noexcept {
 	// Устанавливаем локальные транспортные параметры
@@ -4442,6 +4508,7 @@ void awh::quic::Connection::params(const quic::params::params_t & params) noexce
  * @param params транспортные параметры удалённого узла
  * @param error  код ошибки транспорта
  * @return       результат извлечения (OK/INCOMPLETE/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Connection::peer(quic::params::params_t & params, error_t & error) const noexcept {
 	// Извлекаем транспортные параметры удалённого узла у хендшейк-машины
@@ -4452,6 +4519,7 @@ awh::quic::status_t awh::quic::Connection::peer(quic::params::params_t & params,
  *
  * @param addr структура сетевого адреса удалённого эндпоинта
  * @param port порт удалённого эндпоинта
+ *
  */
 void awh::quic::Connection::address(const net::addr_t * addr, const uint16_t port) noexcept {
 	// Сбрасываем ранее установленное опаковое представление адреса эндпоинта
@@ -4489,6 +4557,7 @@ void awh::quic::Connection::address(const net::addr_t * addr, const uint16_t por
  * @brief Метод установки адреса удалённого эндпоинта (RFC 9000 §8.1.4)
  *
  * @param attr структура атрибутов подключения удалённого эндпоинта
+ *
  */
 void awh::quic::Connection::address(const net::attr_t * attr) noexcept {
 	// Если структура атрибутов подключения не передана — сбрасываем адрес эндпоинта
@@ -4519,6 +4588,7 @@ void awh::quic::Connection::address(const net::attr_t * attr) noexcept {
  * @brief Метод установки проверки адреса клиента через пакет Retry (RFC 9000 §8.1.2)
  *
  * @param mode режим проверки адреса клиента
+ *
  */
 void awh::quic::Connection::retry(const bool mode) noexcept {
 	// Если эндпоинт является сервером и соединение не начато
@@ -4530,6 +4600,7 @@ void awh::quic::Connection::retry(const bool mode) noexcept {
  * @brief Метод установки токена проверки адреса для первого пакета (RFC 9000 §8.1.3)
  *
  * @param token токен проверки адреса
+ *
  */
 void awh::quic::Connection::token(string_view token) noexcept {
 	// Если соединение уже начато
@@ -4543,6 +4614,7 @@ void awh::quic::Connection::token(string_view token) noexcept {
  * @brief Метод установки общего ключа вывода токенов сброса (RFC 9000 §10.3.2)
  *
  * @param key общий ключ вывода токенов сброса
+ *
  */
 void awh::quic::Connection::resetKey(string_view key) noexcept {
 	// Если соединение уже начато
@@ -4556,6 +4628,7 @@ void awh::quic::Connection::resetKey(string_view key) noexcept {
  * @brief Метод получения токена проверки адреса для будущих соединений (RFC 9000 §8.1.3)
  *
  * @return токен проверки адреса (пусто - токен не присылался)
+ *
  */
 const string & awh::quic::Connection::token() const noexcept {
 	// Выводим принятый от удалённого узла токен проверки адреса
@@ -4565,6 +4638,7 @@ const string & awh::quic::Connection::token() const noexcept {
  * @brief Метод установки маркировки исходящих датаграмм поддержкой ECN (RFC 9000 §13.4)
  *
  * @param mode режим маркировки исходящих датаграмм
+ *
  */
 void awh::quic::Connection::ecn(const bool mode) noexcept {
 	// Устанавливаем режим маркировки исходящих датаграмм
@@ -4576,6 +4650,7 @@ void awh::quic::Connection::ecn(const bool mode) noexcept {
  * @brief Метод установки режима следования за миграцией удалённого эндпоинта (RFC 9000 §9)
  *
  * @param mode режим следования за миграцией удалённого эндпоинта
+ *
  */
 void awh::quic::Connection::roaming(const bool mode) noexcept {
 	// Если следование за миграцией включается
@@ -4589,6 +4664,7 @@ void awh::quic::Connection::roaming(const bool mode) noexcept {
  * @brief Метод получения маркировки для исходящих датаграмм (RFC 9000 §13.4.2)
  *
  * @return маркировка ECN для исходящих датаграмм
+ *
  */
 awh::event::ecn_t awh::quic::Connection::marking() const noexcept {
 	/**
@@ -4602,6 +4678,7 @@ awh::event::ecn_t awh::quic::Connection::marking() const noexcept {
  * @brief Метод начала соединения клиентом
  *
  * @return результат начала соединения (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Connection::connect() noexcept {
 	// Если эндпоинт не является клиентом либо соединение уже начато
@@ -4663,6 +4740,7 @@ awh::quic::status_t awh::quic::Connection::connect() noexcept {
  * @param size размер входящей UDP-датаграммы
  * @param now  текущее время в миллисекундах
  * @return     результат обработки (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size_t size, const uint64_t now, const event::ecn_t ecn) noexcept {
 	// Запоминаем маркировку ECN принимаемой датаграммы
@@ -4681,6 +4759,7 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
  * @param size размер датаграммы
  * @param now  текущее время в миллисекундах
  * @return     результат обработки (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size_t size, const uint64_t now) noexcept {
 	// Если данные датаграммы отсутствуют
@@ -5470,6 +5549,7 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
  * @param output буфер исходящей UDP-датаграммы (очищается)
  * @param now    текущее время в миллисекундах
  * @return       результат сборки (true - датаграмма готова к отправке)
+ *
  */
 bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept {
 	// Очищаем буфер исходящей датаграммы
@@ -6041,6 +6121,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
  * @brief Метод получения дедлайна ближайшего события таймера (RFC 9002 §6)
  *
  * @return дедлайн ближайшего события в миллисекундах (0 - таймер не требуется)
+ *
  */
 uint64_t awh::quic::Connection::timeout() const noexcept {
 	/**
@@ -6122,6 +6203,7 @@ uint64_t awh::quic::Connection::timeout() const noexcept {
  * @brief Метод обработки просроченных таймеров (RFC 9002 §6.2)
  *
  * @param now текущее время в миллисекундах
+ *
  */
 void awh::quic::Connection::tick(const uint64_t now) noexcept {
 	/**
@@ -6275,6 +6357,7 @@ void awh::quic::Connection::tick(const uint64_t now) noexcept {
  * @brief Метод инициирования обновления ключей уровня приложения (RFC 9001 §6)
  *
  * @return результат инициирования (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Connection::rekey(const uint64_t now) noexcept {
 	// Обновляем текущее время последнего вызова
@@ -6298,6 +6381,7 @@ awh::quic::status_t awh::quic::Connection::rekey(const uint64_t now) noexcept {
  * @brief Метод получения бита фазы ключей уровня приложения (RFC 9001 §6)
  *
  * @return бит фазы ключей
+ *
  */
 bool awh::quic::Connection::phase() const noexcept {
 	// Выводим бит фазы ключей уровня приложения
@@ -6308,6 +6392,7 @@ bool awh::quic::Connection::phase() const noexcept {
  *
  * @param confidentiality предельное число пакетов на одном ключе
  * @param integrity       предельное число неудачных снятий защиты
+ *
  */
 void awh::quic::Connection::aeadLimits(const uint64_t confidentiality, const uint64_t integrity) noexcept {
 	/**
@@ -6429,6 +6514,7 @@ void awh::quic::Connection::repath(const bool remote) noexcept {
  * @brief Метод инициирования проверки достижимости пути (RFC 9000 §8.2)
  *
  * @return результат инициирования (false - проверка уже выполняется либо соединение не установлено)
+ *
  */
 bool awh::quic::Connection::probe() noexcept {
 	// Если соединение не установлено либо проверка пути уже выполняется
@@ -6459,6 +6545,7 @@ bool awh::quic::Connection::probe() noexcept {
  * @brief Метод отказа от проверки достижимости пути (RFC 9000 §8.2.4)
  *
  * @param revert признак возврата на последний проверенный адрес
+ *
  */
 void awh::quic::Connection::abandon(const bool revert) noexcept {
 	// Сбрасываем флаг ожидания ответа на проверку пути
@@ -6517,6 +6604,7 @@ void awh::quic::Connection::abandon(const bool revert) noexcept {
  * @brief Метод получения состояния проверки достижимости пути (RFC 9000 §8.2)
  *
  * @return состояние проверки (true - путь подтверждён ответом удалённого эндпоинта)
+ *
  */
 bool awh::quic::Connection::validated() const noexcept {
 	// Выводим состояние проверки достижимости пути
@@ -6526,6 +6614,7 @@ bool awh::quic::Connection::validated() const noexcept {
  * @brief Метод инициирования миграции соединения на новый путь (RFC 9000 §9)
  *
  * @return результат инициирования (false - соединение не установлено либо нет неиспользованных идентификаторов)
+ *
  */
 bool awh::quic::Connection::migrate() noexcept {
 	// Если соединение не установлено
@@ -6574,6 +6663,7 @@ bool awh::quic::Connection::migrate() noexcept {
  * @brief Метод проверки наличия анонсированного предпочтительного адреса сервера (RFC 9000 §9.6)
  *
  * @return результат проверки
+ *
  */
 bool awh::quic::Connection::relocatable() const noexcept {
 	/**
@@ -6591,6 +6681,7 @@ bool awh::quic::Connection::relocatable() const noexcept {
  * @param ip   адрес сервера в сетевом порядке октетов (4 октета IPv4 либо 16 октетов IPv6)
  * @param port порт сервера
  * @return     результат извлечения (false - адрес семейства не анонсирован)
+ *
  */
 bool awh::quic::Connection::preferred(const bool ipv6, string & ip, uint16_t & port) const noexcept {
 	// Если предпочтительный адрес сервера не анонсирован
@@ -6638,6 +6729,7 @@ bool awh::quic::Connection::preferred(const bool ipv6, string & ip, uint16_t & p
  * @brief Метод переезда соединения на предпочтительный адрес сервера (RFC 9000 §9.6)
  *
  * @return результат инициирования переезда (false - переезд невозможен)
+ *
  */
 bool awh::quic::Connection::relocate() noexcept {
 	// Если переезд на предпочтительный адрес невозможен
@@ -6757,6 +6849,7 @@ void awh::quic::Connection::settle() noexcept {
  * @brief Метод получения адреса удалённого эндпоинта текущего пути (RFC 9000 §9.3)
  *
  * @return адрес удалённого эндпоинта в заданном вызывающим кодом представлении
+ *
  */
 const awh::string & awh::quic::Connection::path() const noexcept {
 	// Выводим адрес удалённого эндпоинта текущего пути
@@ -6766,6 +6859,7 @@ const awh::string & awh::quic::Connection::path() const noexcept {
  * @brief Метод получения адресата собранной датаграммы (RFC 9000 §9.6.2)
  *
  * @return результат проверки (true - датаграмма адресована предпочтительному адресу)
+ *
  */
 bool awh::quic::Connection::alternate() const noexcept {
 	// Выводим признак адресации собранной датаграммы предпочтительному адресу
@@ -6775,6 +6869,7 @@ bool awh::quic::Connection::alternate() const noexcept {
  * @brief Метод получения подтверждённого размера исходящей датаграммы (RFC 8899)
  *
  * @return подтверждённый размер исходящей датаграммы в октетах
+ *
  */
 size_t awh::quic::Connection::pmtu() const noexcept {
 	// Выводим подтверждённый размер исходящей датаграммы
@@ -6784,6 +6879,7 @@ size_t awh::quic::Connection::pmtu() const noexcept {
  * @brief Метод установки верхней границы поиска размера пути (RFC 8899 §5.1)
  *
  * @param limit верхняя граница размера исходящей датаграммы в октетах
+ *
  */
 void awh::quic::Connection::pmtu(const size_t limit) noexcept {
 	/**
@@ -6800,6 +6896,7 @@ void awh::quic::Connection::pmtu(const size_t limit) noexcept {
  * @brief Метод получения количества обслуживаемых потоков приложения
  *
  * @return количество обслуживаемых потоков приложения
+ *
  */
 size_t awh::quic::Connection::streams() const noexcept {
 	// Выводим количество обслуживаемых потоков приложения
@@ -6809,6 +6906,7 @@ size_t awh::quic::Connection::streams() const noexcept {
  * @brief Метод установки санитарной границы анонсируемого начального лимита потоков (RFC 9000 §4.6)
  *
  * @param limit верхняя граница анонсируемого начального лимита потоков одного направления
+ *
  */
 void awh::quic::Connection::streams(const uint64_t limit) noexcept {
 	/**
@@ -6822,6 +6920,7 @@ void awh::quic::Connection::streams(const uint64_t limit) noexcept {
  * @brief Метод получения количества выполненных смен пути соединения
  *
  * @return количество выполненных смен пути
+ *
  */
 uint64_t awh::quic::Connection::migrations() const noexcept {
 	// Выводим количество выполненных смен пути соединения
@@ -6831,6 +6930,7 @@ uint64_t awh::quic::Connection::migrations() const noexcept {
  * @brief Метод ротации идентификатора соединения удалённого эндпоинта (RFC 9000 §5.1.1)
  *
  * @return результат ротации (false - неиспользованных идентификаторов нет)
+ *
  */
 bool awh::quic::Connection::rotate() noexcept {
 	// Если соединение не установлено
@@ -6899,6 +6999,7 @@ bool awh::quic::Connection::rotate() noexcept {
  * @brief Метод формирования ключа сервера для кэша билетов возобновления (RFC 9001 §4.6)
  *
  * @return ключ сервера для кэша билетов возобновления
+ *
  */
 string awh::quic::Connection::sessionKey() const noexcept {
 	// Извлекаем доменное имя сервера (SNI) шаблона контекста безопасности
@@ -6934,6 +7035,7 @@ void awh::quic::Connection::persist() noexcept {
  * @brief Метод извлечения возобновляемой сессии соединения (RFC 9001 §4.6)
  *
  * @return сериализованная сессия (пусто - сессия недоступна)
+ *
  */
 string awh::quic::Connection::session() const noexcept {
 	// Извлекаем билет возобновления хендшейк-машины
@@ -6996,6 +7098,7 @@ string awh::quic::Connection::session() const noexcept {
  *
  * @param session сериализованная сессия
  * @return        результат установки
+ *
  */
 bool awh::quic::Connection::session(string_view session) noexcept {
 	// Если соединение уже начато
@@ -7050,6 +7153,7 @@ bool awh::quic::Connection::session(string_view session) noexcept {
  * @brief Метод проверки принятия ранних данных удалённым узлом (RFC 9001 §4.6.2)
  *
  * @return результат проверки
+ *
  */
 bool awh::quic::Connection::early() const noexcept {
 	// Выводим результат принятия ранних данных хендшейк-машиной
@@ -7059,6 +7163,7 @@ bool awh::quic::Connection::early() const noexcept {
  * @brief Метод получения окна перегрузки congestion control (RFC 9002 §7)
  *
  * @return окно перегрузки в октетах
+ *
  */
 uint64_t awh::quic::Connection::cwnd() const noexcept {
 	// Выводим окно перегрузки
@@ -7068,6 +7173,7 @@ uint64_t awh::quic::Connection::cwnd() const noexcept {
  * @brief Метод получения количества неподтверждённых октетов в полёте
  *
  * @return количество неподтверждённых октетов в полёте
+ *
  */
 uint64_t awh::quic::Connection::inflight() const noexcept {
 	// Выводим количество неподтверждённых октетов в полёте
@@ -7078,6 +7184,7 @@ uint64_t awh::quic::Connection::inflight() const noexcept {
  *
  * @param code   код ошибки приложения
  * @param reason человекочитаемая причина завершения
+ *
  */
 void awh::quic::Connection::close(const uint64_t code, string_view reason) noexcept {
 	// Если завершение соединения ещё не поставлено в очередь
@@ -7098,6 +7205,7 @@ void awh::quic::Connection::close(const uint64_t code, string_view reason) noexc
  * @brief Метод регистрации отброшенного пакета
  *
  * @param reason причина отбрасывания пакета
+ *
  */
 void awh::quic::Connection::drop([[maybe_unused]] const char * reason) const noexcept {
 	/**
@@ -7121,6 +7229,7 @@ void awh::quic::Connection::drop([[maybe_unused]] const char * reason) const noe
  *          соединения, и данные уходят, не дожидаясь хендшейка (RFC 9001 §4.6)
  *
  * @return результат проверки
+ *
  */
 bool awh::quic::Connection::writable() const noexcept {
 	// Если соединение установлено
@@ -7139,6 +7248,7 @@ bool awh::quic::Connection::writable() const noexcept {
  *
  * @param unidirectional флаг однонаправленного потока
  * @return               идентификатор потока (INVALID_STREAM - открытие невозможно)
+ *
  */
 uint64_t awh::quic::Connection::open(const bool unidirectional) noexcept {
 	// Если соединение к отправке данных приложения не готово
@@ -7188,6 +7298,7 @@ uint64_t awh::quic::Connection::open(const bool unidirectional) noexcept {
  * @param data данные потока приложения
  * @param fin  флаг завершения потока (FIN)
  * @return     результат постановки (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::Connection::send(const uint64_t sid, string_view data, const bool fin) noexcept {
 	// Если соединение к отправке данных приложения не готово
@@ -7222,6 +7333,7 @@ awh::quic::status_t awh::quic::Connection::send(const uint64_t sid, string_view 
  *
  * @param data данные датаграммы приложения
  * @return     результат постановки (ERROR - датаграммы не поддерживаются либо размер превышен)
+ *
  */
 awh::quic::status_t awh::quic::Connection::datagram(string_view data) noexcept {
 	// Если соединение к отправке данных приложения не готово
@@ -7252,6 +7364,7 @@ awh::quic::status_t awh::quic::Connection::datagram(string_view data) noexcept {
  *
  * @param output буфер принятой датаграммы приложения
  * @return       результат извлечения (false - принятых датаграмм нет)
+ *
  */
 bool awh::quic::Connection::datagram(string & output) noexcept {
 	// Если принятых датаграмм приложения нет
@@ -7269,6 +7382,7 @@ bool awh::quic::Connection::datagram(string & output) noexcept {
  * @brief Метод получения предельного размера отправляемой датаграммы (RFC 9221 §3)
  *
  * @return предельный размер данных отправляемой датаграммы в октетах
+ *
  */
 size_t awh::quic::Connection::datagrams() const noexcept {
 	// Получаем анонсированный удалённым узлом предел размера фрейма
@@ -7296,6 +7410,7 @@ size_t awh::quic::Connection::datagrams() const noexcept {
  * @brief Метод получения списка потоков с данными для приложения
  *
  * @return список идентификаторов потоков с собранными данными либо завершением
+ *
  */
 void awh::quic::Connection::readable(vector <uint64_t> & output) noexcept {
 	// Очищаем список идентификаторов потоков
@@ -7337,6 +7452,7 @@ void awh::quic::Connection::readable(vector <uint64_t> & output) noexcept {
  * @param output собранные данные потока (дописываются)
  * @param fin    флаг завершения потока удалённым эндпоинтом (FIN)
  * @return       результат выдачи (OK/ERROR - поток неизвестен либо сброшен)
+ *
  */
 awh::quic::status_t awh::quic::Connection::receive(const uint64_t sid, string & output, bool & fin) noexcept {
 	// Сбрасываем флаг завершения потока
@@ -7405,6 +7521,7 @@ awh::quic::status_t awh::quic::Connection::receive(const uint64_t sid, string & 
  *
  * @param sid  идентификатор потока
  * @param code код ошибки приложения
+ *
  */
 void awh::quic::Connection::reset(const uint64_t sid, const uint64_t code) noexcept {
 	// Если отправка данных в поток локальным эндпоинтом недопустима
@@ -7433,6 +7550,7 @@ void awh::quic::Connection::reset(const uint64_t sid, const uint64_t code) noexc
  *
  * @param sid  идентификатор потока
  * @param code код ошибки приложения
+ *
  */
 void awh::quic::Connection::stop(const uint64_t sid, const uint64_t code) noexcept {
 	// Если приём данных потока локальным эндпоинтом недопустим
@@ -7473,6 +7591,7 @@ void awh::quic::Connection::stop(const uint64_t sid, const uint64_t code) noexce
  * @param sid  идентификатор потока
  * @param code код ошибки приложения принятого фрейма RESET_STREAM
  * @return     результат проверки (true - поток сброшен удалённым эндпоинтом)
+ *
  */
 bool awh::quic::Connection::aborted(const uint64_t sid, uint64_t & code) const noexcept {
 	// Ищем поток по идентификатору
@@ -7491,6 +7610,7 @@ bool awh::quic::Connection::aborted(const uint64_t sid, uint64_t & code) const n
  * @brief Метод получения состояния соединения
  *
  * @return состояние соединения
+ *
  */
 awh::quic::Connection::state_t awh::quic::Connection::state() const noexcept {
 	// Выводим состояние соединения
@@ -7500,6 +7620,7 @@ awh::quic::Connection::state_t awh::quic::Connection::state() const noexcept {
  * @brief Метод получения кода ошибки транспорта соединения
  *
  * @return код ошибки транспорта (NO_ERROR - ошибки нет)
+ *
  */
 awh::quic::error_t awh::quic::Connection::error() const noexcept {
 	// Выводим код ошибки транспорта соединения
@@ -7509,6 +7630,7 @@ awh::quic::error_t awh::quic::Connection::error() const noexcept {
  * @brief Метод получения идентификатора соединения локального эндпоинта
  *
  * @return идентификатор соединения локального эндпоинта
+ *
  */
 const awh::quic::cid_t & awh::quic::Connection::scid() const noexcept {
 	// Выводим идентификатор соединения локального эндпоинта
@@ -7519,6 +7641,7 @@ const awh::quic::cid_t & awh::quic::Connection::scid() const noexcept {
  *
  * @param added   идентификаторы, введённые в обращение
  * @param removed идентификаторы, выведенные из обращения
+ *
  */
 void awh::quic::Connection::issued(vector <cid_t> & added, vector <cid_t> & removed) noexcept {
 	// Выполняем очистку списка введённых в обращение идентификаторов
@@ -7538,6 +7661,7 @@ void awh::quic::Connection::issued(vector <cid_t> & added, vector <cid_t> & remo
  * @brief Метод получения идентификатора соединения удалённого эндпоинта
  *
  * @return идентификатор соединения удалённого эндпоинта
+ *
  */
 const awh::quic::cid_t & awh::quic::Connection::dcid() const noexcept {
 	// Выводим идентификатор соединения удалённого эндпоинта
@@ -7547,6 +7671,7 @@ const awh::quic::cid_t & awh::quic::Connection::dcid() const noexcept {
  * @brief Метод доступа к машине криптографического хендшейка
  *
  * @return машина криптографического хендшейка
+ *
  */
 const awh::quic::handshake_t & awh::quic::Connection::handshake() const noexcept {
 	// Выводим машину криптографического хендшейка
@@ -7559,6 +7684,7 @@ const awh::quic::handshake_t & awh::quic::Connection::handshake() const noexcept
  * @param ctx      идентификатор шаблона контекста безопасности
  * @param coder    объект кодера транспортной безопасности
  * @param log      объект для работы с логами
+ *
  */
 awh::quic::Connection::Connection(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept :
  _core(endpoint), _amplify(endpoint), _log(log), _ctx(ctx), _persisted(false), _coder(coder), _crypto(endpoint, ctx, coder, log) {}

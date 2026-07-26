@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл таблиц степеней модуля разбора чисел —
+ *        объявления предвычисленных 128-битных таблиц степеней пятёрки и границ показателей,
+ *        обеспечивающих корректное округление при быстром пути разбора
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -64,6 +69,7 @@ namespace awh {
 			 * @brief Количество 64-битных слов таблицы степеней пятёрки
 			 *
 			 * @details Каждая степень хранится парой слов: старшим и младшим.
+			 *
 			 */
 			constexpr int32_t ENTRIES = (2 * (LARGEST_POWER - SMALLEST_POWER + 1));
 
@@ -72,6 +78,7 @@ namespace awh {
 			 *
 			 * @details Определение таблицы размещено в файле src/lexical/table.cpp,
 			 *          что даёт одну копию данных на всю программу.
+			 *
 			 */
 			extern const uint64_t POWER_OF_FIVE[ENTRIES];
 
@@ -80,6 +87,7 @@ namespace awh {
 			 *
 			 * @param power проверяемый показатель степени десяти
 			 * @return      результат проверки
+			 *
 			 */
 			AWH_LEXICAL_INLINE constexpr bool isSupported(const int64_t power) noexcept {
 				// Выполняем проверку попадания показателя степени в диапазон таблицы

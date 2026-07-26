@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация фасада клиента — сборка транспорта, TLS и DNS-резолвера в единый объект подключения,
+ *        маршрутизация событий движка ввода-вывода в пользовательские функции обратного вызова и управление жизненным
+ *        циклом клиентских соединений TCP, UDP, SCTP, UDS, DTLS и QUIC
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -45,6 +50,7 @@ awh::Client::Identifier::Identifier() noexcept : eid(0), ctl(0) {}
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Client::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
  addr(fmk, log), client(fmk, log), quic(fmk, log) {}
@@ -52,6 +58,7 @@ awh::Client::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
  * @brief Метод проверки рабочего состояния клиента
  *
  * @return результат проверки рабочего состояния
+ *
  */
 bool awh::Client::active() const noexcept {
 	// Если объект DNS-резолвера установлен - проверяем его рабочее состояние
@@ -72,6 +79,7 @@ bool awh::Client::active() const noexcept {
  * @brief Метод фиксации настроек события клиента на активном юните транспорта
  *
  * @return результат выполнения фиксации
+ *
  */
 bool awh::Client::commitUnit() noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.commit(this->_id.eid) : this->_unit->client.commit(this->_id.eid));
@@ -80,6 +88,7 @@ bool awh::Client::commitUnit() noexcept {
  * @brief Метод запуска работы события клиента на активном юните транспорта
  *
  * @return результат выполнения запуска
+ *
  */
 bool awh::Client::launchUnit() noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.launch(this->_id.eid) : this->_unit->client.launch(this->_id.eid));
@@ -118,6 +127,7 @@ void awh::Client::destroyUnit() noexcept {
  * @brief Метод приостановки работы события клиента на активном юните транспорта
  *
  * @return результат выполнения приостановки работы
+ *
  */
 bool awh::Client::pauseUnit() noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.pause(this->_id.eid) : this->_unit->client.pause(this->_id.eid));
@@ -126,6 +136,7 @@ bool awh::Client::pauseUnit() noexcept {
  * @brief Метод возобновления работы события клиента на активном юните транспорта
  *
  * @return результат выполнения возобновления работы
+ *
  */
 bool awh::Client::resumeUnit() noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.resume(this->_id.eid) : this->_unit->client.resume(this->_id.eid));
@@ -134,6 +145,7 @@ bool awh::Client::resumeUnit() noexcept {
  * @brief Метод подключения события клиента на активном юните транспорта
  *
  * @return результат выполнения подключения
+ *
  */
 bool awh::Client::connectUnit() noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.connect(this->_id.eid) : this->_unit->client.connect(this->_id.eid));
@@ -142,6 +154,7 @@ bool awh::Client::connectUnit() noexcept {
  * @brief Метод отключения события клиента на активном юните транспорта
  *
  * @return результат выполнения отключения
+ *
  */
 bool awh::Client::disconnectUnit() noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.disconnect(this->_id.eid) : this->_unit->client.disconnect(this->_id.eid));
@@ -150,6 +163,7 @@ bool awh::Client::disconnectUnit() noexcept {
  * @brief Метод получения данных на активном юните транспорта
  *
  * @return результат получения данных
+ *
  */
 bool awh::Client::recvUnit() noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.recv(this->_id.eid) : this->_unit->client.recv(this->_id.eid));
@@ -160,6 +174,7 @@ bool awh::Client::recvUnit() noexcept {
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
  * @return       количество байт, отправленных удалённому серверу
+ *
  */
 size_t awh::Client::sendUnit(const void * buffer, const size_t size) noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.send(this->_id.eid, buffer, size) : this->_unit->client.send(this->_id.eid, buffer, size));
@@ -168,6 +183,7 @@ size_t awh::Client::sendUnit(const void * buffer, const size_t size) noexcept {
  * @brief Метод получения семейства адресов события клиента на активном юните транспорта
  *
  * @return семейство адресов события клиента
+ *
  */
 awh::event::family_t awh::Client::familyUnit() const noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.family(this->_id.eid) : this->_unit->client.family(this->_id.eid));
@@ -176,6 +192,7 @@ awh::event::family_t awh::Client::familyUnit() const noexcept {
  * @brief Метод получения статуса события клиента на активном юните транспорта
  *
  * @return статус события клиента
+ *
  */
 awh::event::status_t awh::Client::statusUnit() const noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? awh_cast <const unit::unit_t *> (&this->_unit->quic)->status(this->_id.eid) : awh_cast <const unit::unit_t *> (&this->_unit->client)->status(this->_id.eid));
@@ -184,6 +201,7 @@ awh::event::status_t awh::Client::statusUnit() const noexcept {
  * @brief Метод получения адреса хоста целевой машины на активном юните транспорта
  *
  * @return адрес хоста целевой машины
+ *
  */
 string awh::Client::getTargetUnit() const noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTarget(this->_id.eid) : this->_unit->client.getTarget(this->_id.eid));
@@ -192,6 +210,7 @@ string awh::Client::getTargetUnit() const noexcept {
  * @brief Метод получения порта удалённого сервера на активном юните транспорта
  *
  * @return порт удалённого сервера
+ *
  */
 uint16_t awh::Client::getTargetPortUnit() const noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTargetPort(this->_id.eid) : this->_unit->client.getTargetPort(this->_id.eid));
@@ -201,6 +220,7 @@ uint16_t awh::Client::getTargetPortUnit() const noexcept {
  *
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::Client::setTargetUnit(string_view target) noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTarget(this->_id.eid, target) : this->_unit->client.setTarget(this->_id.eid, target));
@@ -210,6 +230,7 @@ bool awh::Client::setTargetUnit(string_view target) noexcept {
  *
  * @param target структура сетевого адреса хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::Client::setTargetUnit(const net::addr_t * target) noexcept {
 	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTarget(this->_id.eid, target) : this->_unit->client.setTarget(this->_id.eid, target));
@@ -220,6 +241,7 @@ bool awh::Client::setTargetUnit(const net::addr_t * target) noexcept {
  *
  * @param index  индекс очереди запускаемого события
  * @param status новый статус клиента
+ *
  */
 void awh::Client::status(const uint8_t index, const event::status_t status) noexcept {
 	/**
@@ -324,6 +346,7 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
  *
  * @param    идентификатор клиента
  * @param ok результат подключения
+ *
  */
 void awh::Client::connect(const event::id_t, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -381,6 +404,7 @@ void awh::Client::connect(const event::id_t, const bool ok) noexcept {
  *
  * @param      идентификатор клиента
  * @param size размер данных для записи
+ *
  */
 void awh::Client::write(const event::id_t, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -403,6 +427,7 @@ void awh::Client::write(const event::id_t, const size_t size) noexcept {
  *
  * @param        идентификатор клиента
  * @param status новый статус клиента
+ *
  */
 void awh::Client::state(const event::id_t, const event::status_t status) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -427,6 +452,7 @@ void awh::Client::state(const event::id_t, const event::status_t status) noexcep
  *
  * @param        идентификатор клиента
  * @param action действие клиента
+ *
  */
 void awh::Client::action(const event::id_t, const event::action_t action) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -439,6 +465,7 @@ void awh::Client::action(const event::id_t, const event::action_t action) noexce
  *
  * @param      идентификатор события
  * @param info информационные метаданные о дейтаграммном пакете
+ *
  */
 void awh::Client::traffic(const event::id_t, const net::dgram_info_t & info) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -452,6 +479,7 @@ void awh::Client::traffic(const event::id_t, const net::dgram_info_t & info) noe
  * @param        идентификатор клиента
  * @param buffer буфер данных клиента
  * @param size   размер данных клиента
+ *
  */
 void awh::Client::read(const event::id_t, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -487,6 +515,7 @@ void awh::Client::read(const event::id_t, const uint8_t * buffer, const size_t s
  * @param         идентификатор события
  * @param error   код ошибки
  * @param message сообщение об ошибке
+ *
  */
 void awh::Client::error(const event::id_t, const event::error_t error, const string & message) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -500,6 +529,7 @@ void awh::Client::error(const event::id_t, const event::error_t error, const str
  * @param        идентификатор клиента
  * @param status статус доступности очереди
  * @param size   размер доступных данных очереди
+ *
  */
 void awh::Client::available(const event::id_t, const event::status_t status, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -514,6 +544,7 @@ void awh::Client::available(const event::id_t, const event::status_t status, con
  * @param action тип действия для истекшего таймаута
  * @param delay  задержка таймаута в миллисекундах
  * @return       нужно ли завершить клиента после истечения таймаута
+ *
  */
 bool awh::Client::timeout(const event::id_t, const event::action_t action, const uint32_t delay) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -534,6 +565,7 @@ bool awh::Client::timeout(const event::id_t, const event::action_t action, const
  * @param          идентификатор DNS-запроса
  * @param domain   доменное имя для резолвинга
  * @param attempts количество попыток подключения
+ *
  */
 void awh::Client::attempts(const unit::dns_t::id_t, const string & domain, const uint8_t attempts) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии
@@ -547,6 +579,7 @@ void awh::Client::attempts(const unit::dns_t::id_t, const string & domain, const
  * @param        идентификатор DNS-запроса
  * @param record тип записи DNS
  * @param domain доменное имя
+ *
  */
 void awh::Client::failure(const unit::dns_t::id_t, const unit::dns_t::record_t record, const string & domain) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии
@@ -566,6 +599,7 @@ void awh::Client::failure(const unit::dns_t::id_t, const unit::dns_t::record_t r
  * @param error  тип ошибки отправки данных
  * @param buffer данные, которые не удалось отправить
  * @param size   размер данных, которые не удалось отправить
+ *
  */
 void awh::Client::spool(const event::id_t, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -580,6 +614,7 @@ void awh::Client::spool(const event::id_t, const event::send_error_t error, cons
  * @param family семейство адресов (IPv4/IPv6)
  * @param domain доменное имя для резолвинга
  * @param addr   указатель на структуру для хранения результата резолвинга
+ *
  */
 void awh::Client::resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии
@@ -604,6 +639,7 @@ void awh::Client::resolve(const unit::dns_t::id_t, const event::family_t family,
  *
  * @param       идентификатор TLS
  * @param state состояние TLS
+ *
  */
 void awh::Client::stateTLS(const tls::coder_t::id_t, const tls::coder_t::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -622,6 +658,7 @@ void awh::Client::stateTLS(const tls::coder_t::id_t, const tls::coder_t::state_t
  * @param         идентификатор TLS
  * @param error   код ошибки TLS
  * @param message сообщение об ошибке TLS
+ *
  */
 void awh::Client::errorTLS(const tls::coder_t::id_t, const tls::coder_t::error_t error, const string & message) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -652,6 +689,7 @@ void awh::Client::errorTLS(const tls::coder_t::id_t, const tls::coder_t::error_t
  * @param event  тип события TLS
  * @param buffer буфер данных для события шифрования/дешифрования TLS
  * @param size   размер полезной нагрузки в буфере для события шифрования/дешифрования TLS
+ *
  */
 void awh::Client::processTLS(const tls::coder_t::id_t, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -778,6 +816,7 @@ void awh::Client::start() noexcept {
  * @brief Метод приостановки работы клиента
  *
  * @return результат выполнения приостановки работы
+ *
  */
 bool awh::Client::pause() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
@@ -810,6 +849,7 @@ bool awh::Client::pause() noexcept {
  * @brief Метод возобновления работы клиента
  *
  * @return результат выполнения возобновления работы
+ *
  */
 bool awh::Client::resume() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
@@ -871,6 +911,7 @@ void awh::Client::destroy() noexcept {
  * @brief Метод проверки, жив ли клиент
  *
  * @return результат проверки
+ *
  */
 bool awh::Client::isAlive() const noexcept {
 	// Возвращаем результат проверки активности клиента
@@ -880,6 +921,7 @@ bool awh::Client::isAlive() const noexcept {
  * @brief Метод подключения клиента к удалённому хосту
  *
  * @return результат выполнения подключения
+ *
  */
 bool awh::Client::connect() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
@@ -912,6 +954,7 @@ bool awh::Client::connect() noexcept {
  * @brief Метод отключения клиента от удалённого сервера
  *
  * @return результат выполнения отключения
+ *
  */
 bool awh::Client::disconnect() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
@@ -944,6 +987,7 @@ bool awh::Client::disconnect() noexcept {
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::Client::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова на событие получение данных от сервера
@@ -985,6 +1029,7 @@ void awh::Client::callback(const callback_t & callback) noexcept {
  * @brief Метод получения данных от сервера
  *
  * @return результат получения данных
+ *
  */
 bool awh::Client::recv() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
@@ -1019,6 +1064,7 @@ bool awh::Client::recv() noexcept {
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
  * @return       количество байт данных, отправленных серверу
+ *
  */
 size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
@@ -1075,6 +1121,7 @@ size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
  * @param sid  идентификатор потока приложения
  * @param data собранные данные потока
  * @param fin  флаг завершения потока удалённым эндпоинтом
+ *
  */
 void awh::Client::stream(const event::id_t, const uint64_t sid, const string & data, const bool fin) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -1087,6 +1134,7 @@ void awh::Client::stream(const event::id_t, const uint64_t sid, const string & d
  *
  * @param      идентификатор события
  * @param data данные принятой датаграммы
+ *
  */
 void awh::Client::message(const event::id_t, const string & data) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -1098,6 +1146,7 @@ void awh::Client::message(const event::id_t, const string & data) noexcept {
  * @brief Метод обработки готовности к отправке ранних данных QUIC (RFC 9001 §4.6)
  *
  * @param идентификатор события
+ *
  */
 void awh::Client::earlyData(const event::id_t) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -1110,6 +1159,7 @@ void awh::Client::earlyData(const event::id_t) noexcept {
  *
  * @param       идентификатор события
  * @param error код ошибки завершения соединения
+ *
  */
 void awh::Client::closed(const event::id_t, const quic::error_t error) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -1121,6 +1171,7 @@ void awh::Client::closed(const event::id_t, const quic::error_t error) noexcept 
  * @brief Метод установки локальных транспортных параметров соединения QUIC (RFC 9000 §7.4)
  *
  * @param params локальные транспортные параметры
+ *
  */
 void awh::Client::params(const quic::params::params_t & params) noexcept {
 	// Устанавливаем локальные транспортные параметры соединения QUIC
@@ -1130,6 +1181,7 @@ void awh::Client::params(const quic::params::params_t & params) noexcept {
  * @brief Метод установки уведомления о перегрузке пути QUIC (RFC 9000 §13.4)
  *
  * @param mode режим уведомления о перегрузке пути
+ *
  */
 void awh::Client::ecn(const bool mode) noexcept {
 	// Устанавливаем режим уведомления о перегрузке пути QUIC
@@ -1139,6 +1191,7 @@ void awh::Client::ecn(const bool mode) noexcept {
  * @brief Метод извлечения сохранённого токена проверки адреса QUIC (RFC 9000 §8.1.3)
  *
  * @return токен проверки адреса (пусто - токен не получен)
+ *
  */
 const string & awh::Client::token() const noexcept {
 	// Выводим сохранённый токен проверки адреса QUIC
@@ -1148,6 +1201,7 @@ const string & awh::Client::token() const noexcept {
  * @brief Метод установки сохранённого токена проверки адреса QUIC (RFC 9000 §8.1.3)
  *
  * @param token токен проверки адреса
+ *
  */
 void awh::Client::token(string_view token) noexcept {
 	// Устанавливаем сохранённый токен проверки адреса QUIC
@@ -1157,6 +1211,7 @@ void awh::Client::token(string_view token) noexcept {
  * @brief Метод проверки принятия ранних данных удалённым сервером QUIC (RFC 9001 §4.6.2)
  *
  * @return результат проверки
+ *
  */
 bool awh::Client::early() const noexcept {
 	// Выводим результат принятия ранних данных соединением QUIC
@@ -1167,6 +1222,7 @@ bool awh::Client::early() const noexcept {
  *
  * @param mode режим однонаправленного потока
  * @return     идентификатор открытого потока
+ *
  */
 uint64_t awh::Client::open(const bool mode) noexcept {
 	/**
@@ -1193,6 +1249,7 @@ uint64_t awh::Client::open(const bool mode) noexcept {
  * @param size   размер данных для отправки
  * @param fin    флаг завершения потока
  * @return       количество байт данных, поставленных в очередь отправки
+ *
  */
 size_t awh::Client::send(const uint64_t sid, const void * buffer, const size_t size, const bool fin) noexcept {
 	/**
@@ -1228,6 +1285,7 @@ size_t awh::Client::send(const uint64_t sid, const void * buffer, const size_t s
  * @param buffer буфер данных датаграммы для отправки
  * @param size   размер данных датаграммы для отправки
  * @return       результат отправки
+ *
  */
 bool awh::Client::datagram(const void * buffer, const size_t size) noexcept {
 	/**
@@ -1255,6 +1313,7 @@ bool awh::Client::datagram(const void * buffer, const size_t size) noexcept {
  * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
  *
  * @return предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
+ *
  */
 size_t awh::Client::datagrams() const noexcept {
 	/**
@@ -1288,6 +1347,7 @@ size_t awh::Client::datagrams() const noexcept {
  *
  * @param code   код ошибки приложения
  * @param reason человекочитаемая причина завершения
+ *
  */
 void awh::Client::close(const uint64_t code, string_view reason) noexcept {
 	/**
@@ -1313,6 +1373,7 @@ void awh::Client::close(const uint64_t code, string_view reason) noexcept {
  * @param eid    идентификатор события
  * @param direct направление объединения данных (клиент -> событие, событие -> клиент)
  * @return       результат выполнения объединения
+ *
  */
 bool awh::Client::splice(const event::id_t eid, const event::direct_t direct) noexcept {
 	// Если идентификатор клиента установлен
@@ -1356,6 +1417,7 @@ bool awh::Client::splice(const event::id_t eid, const event::direct_t direct) no
  * @brief Метод получения опций клиента
  *
  * @return опции клиента
+ *
  */
 uint16_t awh::Client::getOptions() const noexcept {
 	// Если идентификатор клиента установлен
@@ -1386,6 +1448,7 @@ uint16_t awh::Client::getOptions() const noexcept {
  *
  * @param options опции клиента для установки
  * @return        результат выполнения установки
+ *
  */
 bool awh::Client::setOptions(const uint16_t options) noexcept {
 	// Если идентификатор клиента установлен
@@ -1417,6 +1480,7 @@ bool awh::Client::setOptions(const uint16_t options) noexcept {
  * @param option опция клиента для установки
  * @param mode   режим установки опции клиента
  * @return       результат выполнения установки
+ *
  */
 bool awh::Client::setOption(const uint16_t option, const bool mode) noexcept {
 	// Если идентификатор клиента установлен
@@ -1446,6 +1510,7 @@ bool awh::Client::setOption(const uint16_t option, const bool mode) noexcept {
  * @brief Метод получения метаданных последнего принятого дейтаграммного пакета
  *
  * @return метаданные последнего принятого дейтаграммного пакета
+ *
  */
 awh::net::dgram_info_t awh::Client::getTrafficInfo() const noexcept {
 	// Если идентификатор клиента установлен
@@ -1475,6 +1540,7 @@ awh::net::dgram_info_t awh::Client::getTrafficInfo() const noexcept {
  * @brief Метод получения количества хопов последнего принятого пакета
  *
  * @return количество хопов последнего принятого пакета
+ *
  */
 uint8_t awh::Client::getCountHops() const noexcept {
 	// Если идентификатор клиента установлен
@@ -1505,6 +1571,7 @@ uint8_t awh::Client::getCountHops() const noexcept {
  *
  * @param hops количество хопов последнего принятого пакета
  * @return     результат выполнения установки
+ *
  */
 bool awh::Client::setCountHops(const uint8_t hops) noexcept {
 	// Если идентификатор клиента установлен
@@ -1534,6 +1601,7 @@ bool awh::Client::setCountHops(const uint8_t hops) noexcept {
  * @brief Метод получения максимального количества хопов, через которые может пройти пакет
  *
  * @return максимальное количество хопов
+ *
  */
 awh::event::hops_t awh::Client::getHops() const noexcept {
 	// Если идентификатор клиента установлен
@@ -1564,6 +1632,7 @@ awh::event::hops_t awh::Client::getHops() const noexcept {
  *
  * @param hops максимальное количество хопов
  * @return     результат работы функции
+ *
  */
 bool awh::Client::setHops(const event::hops_t hops) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -1596,6 +1665,7 @@ bool awh::Client::setHops(const event::hops_t hops) noexcept {
  * @brief Метод получения сетевого интерфейса клиента
  *
  * @return сетевой интерфейс клиента
+ *
  */
 string awh::Client::getIface() const noexcept {
 	// Если идентификатор клиента установлен
@@ -1626,6 +1696,7 @@ string awh::Client::getIface() const noexcept {
  *
  * @param name имя сетевого интерфейса для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::Client::setIface(string_view name) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -1658,6 +1729,7 @@ bool awh::Client::setIface(string_view name) noexcept {
  * @brief Метод получения внутреннего порта события
  *
  * @return внутренний порт события
+ *
  */
 uint16_t awh::Client::getSourcePort() const noexcept {
 	// Если идентификатор клиента установлен
@@ -1688,6 +1760,7 @@ uint16_t awh::Client::getSourcePort() const noexcept {
  *
  * @param port внутренний порт события
  * @return     результат выполнения установки
+ *
  */
 bool awh::Client::setSourcePort(const uint16_t port) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -1720,6 +1793,7 @@ bool awh::Client::setSourcePort(const uint16_t port) noexcept {
  * @brief Метод получения порта удаленного сервера
  *
  * @return порт удаленного сервера
+ *
  */
 uint16_t awh::Client::getTargetPort() const noexcept {
 	// Если идентификатор клиента установлен
@@ -1750,6 +1824,7 @@ uint16_t awh::Client::getTargetPort() const noexcept {
  *
  * @param port порт удаленного сервера для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::Client::setTargetPort(const uint16_t port) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -1782,6 +1857,7 @@ bool awh::Client::setTargetPort(const uint16_t port) noexcept {
  * @brief Метод получения адреса хоста целевой машины
  *
  * @return адрес хоста целевой машины
+ *
  */
 string awh::Client::getTarget() const noexcept {
 	// Если сохранённый адрес хоста целевой машины для клиента не пустой
@@ -1816,6 +1892,7 @@ string awh::Client::getTarget() const noexcept {
  *
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::Client::setTarget(string_view target) noexcept {
 	// Переменная результата
@@ -1874,6 +1951,7 @@ bool awh::Client::setTarget(string_view target) noexcept {
  *
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::Client::setTarget(const net::addr_t * target) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -1913,6 +1991,7 @@ bool awh::Client::setTarget(const net::addr_t * target) noexcept {
  *
  * @param target объект для извлечения адреса хоста целевой машины
  * @return       результат выполнения извлечения адреса хоста целевой машины
+ *
  */
 bool awh::Client::getTarget(unique_ptr <net::addr_t> & target) const noexcept {
 	// Если идентификатор клиента установлен
@@ -1943,6 +2022,7 @@ bool awh::Client::getTarget(unique_ptr <net::addr_t> & target) const noexcept {
  *
  * @param address тип адреса клиента
  * @return        значение адреса клиента
+ *
  */
 string awh::Client::getAddress(const event::address_t address) const noexcept {
 	// Если идентификатор клиента установлен
@@ -1974,6 +2054,7 @@ string awh::Client::getAddress(const event::address_t address) const noexcept {
  * @param address тип адреса клиента
  * @param value   значение адреса клиента
  * @return        результат выполнения установки
+ *
  */
 bool awh::Client::setAddress(const event::address_t address, string_view value) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -2008,6 +2089,7 @@ bool awh::Client::setAddress(const event::address_t address, string_view value) 
  * @param address тип адреса клиента
  * @param value   значение адреса клиента
  * @return        результат выполнения установки
+ *
  */
 bool awh::Client::setAddress(const event::address_t address, const net::addr_t * value) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -2042,6 +2124,7 @@ bool awh::Client::setAddress(const event::address_t address, const net::addr_t *
  * @param address тип адреса клиента
  * @param value   объект для извлечения адреса клиента
  * @return        результат выполнения извлечения адреса клиента
+ *
  */
 bool awh::Client::getAddress(const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Если идентификатор клиента установлен
@@ -2071,6 +2154,7 @@ bool awh::Client::getAddress(const event::address_t address, unique_ptr <net::ad
  * @brief Метод получения режима трансляции пакетов клиента
  *
  * @return режим трансляции пакетов (unicast, multicast, broadcast)
+ *
  */
 awh::event::delivery_mode_t awh::Client::getDelivery() const noexcept {
 	// Если идентификатор клиента установлен
@@ -2101,6 +2185,7 @@ awh::event::delivery_mode_t awh::Client::getDelivery() const noexcept {
  *
  * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
  * @return         результат выполнения установки
+ *
  */
 bool awh::Client::setDelivery(const event::delivery_mode_t delivery) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -2134,6 +2219,7 @@ bool awh::Client::setDelivery(const event::delivery_mode_t delivery) noexcept {
  *
  * @param action тип действия клиента
  * @return       размер буфера клиента
+ *
  */
 size_t awh::Client::getBufferSize(const event::action_t action) const noexcept {
 	// Если идентификатор клиента установлен
@@ -2165,6 +2251,7 @@ size_t awh::Client::getBufferSize(const event::action_t action) const noexcept {
  * @param action тип действия клиента
  * @param size   размер буфера клиента
  * @return       результат выполнения установки
+ *
  */
 bool awh::Client::setBufferSize(const event::action_t action, const size_t size) noexcept {
 	// Если идентификатор клиента установлен
@@ -2194,6 +2281,7 @@ bool awh::Client::setBufferSize(const event::action_t action, const size_t size)
  * @brief Метод получения времени жизни DNS запроса
  *
  * @return время жизни DNS запроса в миллисекундах
+ *
  */
 uint32_t awh::Client::getAliveDNS() const noexcept {
 	// Если идентификатор клиента установлен
@@ -2223,6 +2311,7 @@ uint32_t awh::Client::getAliveDNS() const noexcept {
  * @brief Метод установки времени жизни DNS запроса
  *
  * @param alive время жизни DNS запроса в миллисекундах
+ *
  */
 void awh::Client::setAliveDNS(const uint32_t alive) noexcept {
 	// Устанавливаем время жизни DNS запроса для клиента
@@ -2232,6 +2321,7 @@ void awh::Client::setAliveDNS(const uint32_t alive) noexcept {
  * @brief Метод получения режима использования таймаута на чтение события
  *
  * @return режим использования таймаута на чтение события
+ *
  */
 awh::event::usage_t awh::Client::getUsageReadTimeout() const noexcept {
 	// Если идентификатор клиента установлен
@@ -2261,6 +2351,7 @@ awh::event::usage_t awh::Client::getUsageReadTimeout() const noexcept {
  * @brief Метод установки режима использования таймаута на чтение события
  *
  * @param usage режим использования таймаута на чтение события (reusable или disposable)
+ *
  */
 void awh::Client::setUsageReadTimeout(const event::usage_t usage) noexcept {
 	// Если идентификатор клиента установлен
@@ -2289,6 +2380,7 @@ void awh::Client::setUsageReadTimeout(const event::usage_t usage) noexcept {
  *
  * @param action тип действия клиента
  * @return       значение таймаута в миллисекундах
+ *
  */
 uint32_t awh::Client::getTimeout(const event::action_t action) const noexcept {
 	// Если идентификатор клиента установлен
@@ -2319,6 +2411,7 @@ uint32_t awh::Client::getTimeout(const event::action_t action) const noexcept {
  *
  * @param action  тип действия клиента
  * @param timeout значение таймаута в миллисекундах
+ *
  */
 void awh::Client::setTimeout(const event::action_t action, const uint32_t timeout) noexcept {
 	// Если идентификатор клиента установлен
@@ -2348,6 +2441,7 @@ void awh::Client::setTimeout(const event::action_t action, const uint32_t timeou
  * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
  * @param bandwidth пропускная способность клиента для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
  * @return          результат выполнения установки
+ *
  */
 bool awh::Client::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Если идентификатор клиента установлен
@@ -2380,6 +2474,7 @@ bool awh::Client::bandwidth(const event::limiting_t limiting, string_view bandwi
  * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
  * @param intvl интервал между пакетами keep-alive в секундах
  * @return      результат выполнения установки
+ *
  */
 bool awh::Client::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Если идентификатор клиента установлен
@@ -2409,6 +2504,7 @@ bool awh::Client::keepAlive(const int32_t cnt, const int32_t idle, const int32_t
  * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
  *
  * @return значение DSCP
+ *
  */
 awh::event::dscp_t awh::Client::getDifferentiatedServicesCodePoint() const noexcept {
 	// Если идентификатор клиента установлен
@@ -2439,6 +2535,7 @@ awh::event::dscp_t awh::Client::getDifferentiatedServicesCodePoint() const noexc
  *
  * @param dscp значение DSCP
  * @return     результат работы функции
+ *
  */
 bool awh::Client::setDifferentiatedServicesCodePoint(const event::dscp_t dscp) const noexcept {
 	// Если идентификатор клиента установлен
@@ -2468,6 +2565,7 @@ bool awh::Client::setDifferentiatedServicesCodePoint(const event::dscp_t dscp) c
  * @brief Метод получения режима обнаружения максимального размера пакета (MTU)
  *
  * @return режим обнаружения максимального размера пакета (MTU)
+ *
  */
 awh::event::mtu_discover_t awh::Client::getMaximumTransmissionUnitDiscover() const noexcept {
 	// Если идентификатор клиента установлен
@@ -2498,6 +2596,7 @@ awh::event::mtu_discover_t awh::Client::getMaximumTransmissionUnitDiscover() con
  *
  * @param mode режим обнаружения максимального размера пакета (MTU)
  * @return     результат работы функции
+ *
  */
 bool awh::Client::setMaximumTransmissionUnitDiscover(const event::mtu_discover_t mode) const noexcept {
 	// Если идентификатор клиента установлен
@@ -2531,6 +2630,7 @@ bool awh::Client::setMaximumTransmissionUnitDiscover(const event::mtu_discover_t
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::Client::membership(const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -2567,6 +2667,7 @@ bool awh::Client::membership(const event::mode_t mode, string_view group, string
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::Client::membership(const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -2602,6 +2703,7 @@ bool awh::Client::membership(const event::mode_t mode, const net::addr_t * group
  * @param type     тип события
  * @param protocol протокол события
  * @return         идентификатор созданного клиента
+ *
  */
 awh::event::id_t awh::Client::init(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	// Если идентификатор клиента не установлен
@@ -2659,6 +2761,7 @@ awh::event::id_t awh::Client::init(const event::family_t family, const event::ty
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Client::Client(const fmk_t * fmk, const log_t * log) noexcept :
  _host{""}, _callback(fmk, log), _unit(nullptr), _coder(nullptr), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _stream(quic::connection_t::INVALID_STREAM), _fin(false), _fmk(fmk), _log(log) {
@@ -2710,6 +2813,7 @@ awh::Client::Client(const fmk_t * fmk, const log_t * log) noexcept :
  * @param dns объект DNS-резолвера
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  _host{""}, _callback(fmk, log), _unit(nullptr), _coder(nullptr), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _stream(quic::connection_t::INVALID_STREAM), _fin(false), _fmk(fmk), _log(log) {
@@ -2794,6 +2898,7 @@ awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
  * @param coder объект транспортного уровня безопасности
  * @param fmk   объект фреймворка
  * @param log   объект для работы с логами
+ *
  */
 awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
  _host{""}, _callback(fmk, log), _unit(nullptr), _coder(coder), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _stream(quic::connection_t::INVALID_STREAM), _fin(false), _fmk(fmk), _log(log) {
@@ -2880,6 +2985,7 @@ awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fm
  * @param dns   объект DNS-резолвера
  * @param fmk   объект фреймворка
  * @param log   объект для работы с логами
+ *
  */
 awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  _host{""}, _callback(fmk, log), _unit(nullptr), _coder(coder), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _stream(quic::connection_t::INVALID_STREAM), _fin(false), _fmk(fmk), _log(log) {

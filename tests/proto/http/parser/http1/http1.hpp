@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл тестовой фикстуры парсера протокола HTTP/1.x — объявление класса фикстуры Google Test,
+ *        подготавливающего и освобождающего тестовое окружение набора тестов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_HTTP_PARSER_HTTP1_TESTS__
@@ -76,6 +80,7 @@ class ParserFixture : public testing::Test {
 		 *
 		 * @param direct направление трафика (запрос/ответ)
 		 * @return       сформированный объект парсера
+		 *
 		 */
 		std::unique_ptr <awh::http::parser_http_t> make(const awh::http::direct_t direct) const noexcept;
 		/**
@@ -83,6 +88,7 @@ class ParserFixture : public testing::Test {
 		 *
 		 * @param parser объект парсера
 		 * @param events объект сборщика событий парсера
+		 *
 		 */
 		void attach(awh::http::parser_http_t & parser, events_t & events) const noexcept;
 };

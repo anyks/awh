@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл бинарной очереди —
+ *        класс Queue для последовательного хранения записей произвольного размера в непрерывной памяти с итераторами,
+ *        лимитами и невладеющими обёртками доступа
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -73,6 +78,7 @@ namespace awh {
 			 * @brief Структура диапазонов записей
 			 *
 			 * @note Структура является внутренней и используется для хранения диапазонов записей в очереди
+			 *
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Range {
 				size_t end;    // Конец записи
@@ -89,6 +95,7 @@ namespace awh {
 			 * @brief Структура параметров максимальных значений
 			 *
 			 * @note Структура является внутренней и используется для хранения максимальных значений очереди
+			 *
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Max {
 				// Максимальный размер выделения памяти (по умолчанию 1 МБ)
@@ -110,6 +117,7 @@ namespace awh {
 			 * @brief Шаблон типа данных итератора
 			 *
 			 * @tparam T тип итератора
+			 *
 			 */
 			template <typename T>
 			/**
@@ -121,6 +129,7 @@ namespace awh {
 			 * @brief Шаблон типа данных итератора
 			 *
 			 * @tparam T тип итератора
+			 *
 			 */
 			template <typename T>
 			/**
@@ -142,6 +151,7 @@ namespace awh {
 					 * @brief Оператор разыменования
 					 *
 					 * @return значение элемента
+					 *
 					 */
 					const T & operator * () const noexcept {
 						// Извлекаем значение сдвига итератора
@@ -152,6 +162,7 @@ namespace awh {
 					 * @brief Оператор смещения вперед
 					 *
 					 * @return значение текущего итератора
+					 *
 					 */
 					Iterator & operator ++ () noexcept {
 						// Выполняем смещение текущего значения итератора
@@ -163,6 +174,7 @@ namespace awh {
 					 * @brief Оператор смещения назад
 					 *
 					 * @return значение текущего итератора
+					 *
 					 */
 					Iterator & operator -- () noexcept {
 						// Выполняем смещение текущего значения итератора
@@ -176,6 +188,7 @@ namespace awh {
 					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator == (const Iterator & other) const noexcept {
 						// Выполняем сравнение итератора
@@ -186,6 +199,7 @@ namespace awh {
 					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator != (const Iterator & other) const noexcept {
 						// Выполняем сравнение итератора
@@ -196,6 +210,7 @@ namespace awh {
 					 *
 					 * @param other константный итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator == (const Const_Iterator <T> & other) const noexcept {
 						// Выполняем сравнение итератора
@@ -206,6 +221,7 @@ namespace awh {
 					 *
 					 * @param other константный итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator != (const Const_Iterator <T> & other) const noexcept {
 						// Выполняем сравнение итератора
@@ -216,6 +232,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param ptr позиция в контейнере
+					 *
 					 */
 					explicit Iterator(T * ptr) noexcept : _ptr(ptr) {}
 			};
@@ -223,6 +240,7 @@ namespace awh {
 			 * @brief Шаблон типа данных итератора
 			 *
 			 * @tparam T тип итератора
+			 *
 			 */
 			template <typename T>
 			/**
@@ -234,6 +252,7 @@ namespace awh {
 			 * @brief Шаблон типа данных константного итератора
 			 *
 			 * @tparam T тип итератора
+			 *
 			 */
 			template <typename T>
 			/**
@@ -255,6 +274,7 @@ namespace awh {
 					 * @brief Оператор разыменования
 					 *
 					 * @return значение элемента
+					 *
 					 */
 					const T & operator * () const noexcept {
 						// Извлекаем значение сдвига итератора
@@ -265,6 +285,7 @@ namespace awh {
 					 * @brief Оператор смещения вперед
 					 *
 					 * @return значение текущего итератора
+					 *
 					 */
 					Const_Iterator & operator ++ () noexcept {
 						// Выполняем смещение текущего значения итератора
@@ -276,6 +297,7 @@ namespace awh {
 					 * @brief Оператор смещения назад
 					 *
 					 * @return значение текущего итератора
+					 *
 					 */
 					Const_Iterator & operator -- () noexcept {
 						// Выполняем смещение текущего значения итератора
@@ -289,6 +311,7 @@ namespace awh {
 					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator == (const Const_Iterator & other) const noexcept {
 						// Выполняем сравнение итератора
@@ -299,6 +322,7 @@ namespace awh {
 					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator != (const Const_Iterator & other) const noexcept {
 						// Выполняем сравнение итератора
@@ -309,6 +333,7 @@ namespace awh {
 					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator == (const Iterator <T> & other) const noexcept {
 						// Выполняем сравнение итератора
@@ -319,6 +344,7 @@ namespace awh {
 					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator != (const Iterator <T> & other) const noexcept {
 						// Выполняем сравнение итератора
@@ -329,6 +355,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param ptr позиция в контейнере
+					 *
 					 */
 					explicit Const_Iterator(const T * ptr) noexcept : _ptr(ptr) {}
 			};
@@ -336,6 +363,7 @@ namespace awh {
 			 * @brief Шаблон типа данных константного итератора
 			 *
 			 * @tparam T тип итератора
+			 *
 			 */
 			template <typename T>
 			/**
@@ -367,6 +395,7 @@ namespace awh {
 			 *
 			 * @param size желаемый размер выделения памяти
 			 * @return     результат выполнения операции
+			 *
 			 */
 			bool rss(const size_t size) noexcept;
 		private:
@@ -376,6 +405,7 @@ namespace awh {
 			 * @param func    название функции, в которой произошла ошибка
 			 * @param size    размер данных, связанный с ошибкой
 			 * @param message текст сообщения об ошибке
+			 *
 			 */
 			void error(const char * func, const size_t size, const char * message) const noexcept;
 		public:
@@ -401,6 +431,7 @@ namespace awh {
 			 * @brief Количество добавленных элементов
 			 *
 			 * @return количество добавленных элементов
+			 *
 			 */
 			size_t count() const noexcept;
 		public:
@@ -408,6 +439,7 @@ namespace awh {
 			 * @brief Метод получения размера добавленных данных
 			 *
 			 * @return размер добавленных данных
+			 *
 			 */
 			size_t size() const noexcept;
 		public:
@@ -415,6 +447,7 @@ namespace awh {
 			 * @brief Метод вывода размера занимаемой памяти очередью
 			 *
 			 * @return количество памяти которую занимает очередь
+			 *
 			 */
 			size_t capacity() const noexcept;
 		public:
@@ -422,72 +455,84 @@ namespace awh {
 			 * @brief Шаблон для метода получения конечного итератора
 			 *
 			 * @tparam T тип данных для подсчёта
+			 *
 			 */
 			template <typename T>
 			/**
 			 * @brief Метод получения конечного итератора
 			 *
 			 * @return конечный итератор
+			 *
 			 */
 			iterator_t <T> end() noexcept;
 			/**
 			 * @brief Шаблон для метода получение начального итератора
 			 *
 			 * @tparam T тип данных для подсчёта
+			 *
 			 */
 			template <typename T>
 			/**
 			 * @brief Метод получение начального итератора
 			 *
 			 * @return начальный итератор
+			 *
 			 */
 			iterator_t <T> begin() noexcept;
 			/**
 			 * @brief Шаблон для метода получения конечного константного итератора
 			 *
 			 * @tparam T тип данных для подсчёта
+			 *
 			 */
 			template <typename T>
 			/**
 			 * @brief Метод получения конечного константного итератора
 			 *
 			 * @return конечный константный итератор
+			 *
 			 */
 			const_iterator_t <T> end() const noexcept;
 			/**
 			 * @brief Шаблон для метода получения конечного константного итератора
 			 *
 			 * @tparam T тип данных для подсчёта
+			 *
 			 */
 			template <typename T>
 			/**
 			 * @brief Метод получения конечного константного итератора
 			 *
 			 * @return конечный константный итератор
+			 *
 			 */
 			const_iterator_t <T> cend() const noexcept;
 			/**
 			 * @brief Шаблон для метода получения начального константного итератора
 			 *
 			 * @tparam T тип данных для подсчёта
+			 *
 			 */
 			template <typename T>
 			/**
 			 * @brief Метод получения начального константного итератора
 			 *
 			 * @return начальный константный итератор
+			 *
 			 */
 			const_iterator_t <T> begin() const noexcept;
 			/**
 			 * @brief Шаблон для метода получения начального константного итератора
 			 *
 			 * @tparam T тип данных для подсчёта
+			 *
 			 */
 			template <typename T>
 			/**
 			 * @brief Метод получения начального константного итератора
 			 *
 			 * @return начальный константный итератор
+			 *
 			 */
 			const_iterator_t <T> cbegin() const noexcept;
 		public:
@@ -495,6 +540,7 @@ namespace awh {
 			 * @brief Получения данных указанного элемента в очереди
 			 *
 			 * @return указатель на элемент очереди
+			 *
 			 */
 			const void * data() const noexcept;
 		public:
@@ -502,6 +548,7 @@ namespace awh {
 			 * @brief Метод фиксации прочитанного размера данных
 			 *
 			 * @param size размер данных для фиксации
+			 *
 			 */
 			void commit(const size_t size) noexcept;
 		public:
@@ -513,6 +560,7 @@ namespace awh {
 			 *
 			 * @param timeout время ожидания в миллисекундах
 			 * @return        результат проверки
+			 *
 			 */
 			bool empty(const uint32_t timeout = 0) const noexcept;
 		public:
@@ -522,6 +570,7 @@ namespace awh {
 			 * @param buffer бинарный буфер для добавления
 			 * @param size   размер бинарного буфера
 			 * @return       текущий размер очереди
+			 *
 			 */
 			size_t push(const void * buffer, const size_t size) noexcept;
 			/**
@@ -530,6 +579,7 @@ namespace awh {
 			 * @param records список бинарных буферов для добавления
 			 * @param size    общий размер добавляемых данных
 			 * @return        текущий размер очереди
+			 *
 			 */
 			size_t push(const vector <record_t> & records, const size_t size) noexcept;
 		public:
@@ -537,12 +587,14 @@ namespace awh {
 			 * @brief Метод установки максимального размера потребления памяти
 			 *
 			 * @param size максимальный размер потребления памяти
+			 *
 			 */
 			void setMaxMemory(const size_t size) noexcept;
 			/**
 			 * @brief Метод установки максимального количества записей очереди
 			 *
 			 * @param count максимальное количество записей очереди
+			 *
 			 */
 			void setMaxRecords(const size_t count) noexcept;
 		public:
@@ -550,6 +602,7 @@ namespace awh {
 			 * @brief Метод обмена очередями
 			 *
 			 * @param queue очередь для обмена
+			 *
 			 */
 			void swap(Queue & queue) noexcept;
 		public:
@@ -557,6 +610,7 @@ namespace awh {
 			 * @brief Метод установки безопасности работы потоков
 			 *
 			 * @param mode флаг режима безопасности работы потоков
+			 *
 			 */
 			void threadSafety(const bool mode) noexcept;
 		public:
@@ -564,6 +618,7 @@ namespace awh {
 			 * @brief Метод установки объекта логирования
 			 *
 			 * @param log объект работы с логами
+			 *
 			 */
 			void setLogger(const log_t * log) noexcept;
 		public:
@@ -571,18 +626,21 @@ namespace awh {
 			 * @brief Получения размера данных в очереди
 			 *
 			 * @return размер данных в очереди
+			 *
 			 */
 			operator size_t() const noexcept;
 			/**
 			 * @brief Получения бинарных данных очереди
 			 *
 			 * @return бинарные данные очереди
+			 *
 			 */
 			operator const char * () const noexcept;
 			/**
 			 * @brief Получения бинарных данных очереди
 			 *
 			 * @return бинарные данные очереди
+			 *
 			 */
 			operator const uint8_t * () const noexcept;
 		public:
@@ -591,6 +649,7 @@ namespace awh {
 			 *
 			 * @param queue очередь для перемещения
 			 * @return      текущий контейнер очереди
+			 *
 			 */
 			Queue & operator = (Queue && queue) noexcept;
 			/**
@@ -598,6 +657,7 @@ namespace awh {
 			 *
 			 * @param queue очередь для копирования
 			 * @return      текущий контейнер очереди
+			 *
 			 */
 			Queue & operator = (const Queue & queue) noexcept;
 		public:
@@ -606,6 +666,7 @@ namespace awh {
 			 *
 			 * @param queue очередь для сравнения
 			 * @return      результат сравнения
+			 *
 			 */
 			bool operator == (const Queue & queue) const noexcept;
 		public:
@@ -618,12 +679,14 @@ namespace awh {
 			 * @brief Конструктор перемещения
 			 *
 			 * @param queue очередь для перемещения
+			 *
 			 */
 			explicit Queue(Queue && queue) noexcept;
 			/**
 			 * @brief Конструктор копирования
 			 *
 			 * @param queue очередь для копирования
+			 *
 			 */
 			explicit Queue(const Queue & queue) noexcept;
 			/**
@@ -631,6 +694,7 @@ namespace awh {
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit Queue(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
@@ -643,6 +707,7 @@ namespace awh {
 			 * @brief Шаблон типа данных обёртки очереди
 			 *
 			 * @tparam T тип итератора
+			 *
 			 */
 			template <typename T>
 			/**
@@ -657,6 +722,7 @@ namespace awh {
 				 * @brief Метод получения конечного итератора
 				 *
 				 * @return конечный итератор очереди
+				 *
 				 */
 				auto end() noexcept -> decltype(this->_queue.template end <T> ()) {
 					// Возвращаем конечный итератор очереди
@@ -666,6 +732,7 @@ namespace awh {
 				 * @brief Метод получения начального итератора
 				 *
 				 * @return начальный итератор очереди
+				 *
 				 */
 				auto begin() noexcept -> decltype(this->_queue.template begin <T> ()) {
 					// Возвращаем начальный итератор очереди
@@ -676,6 +743,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param queue обёртываемая очередь
+				 *
 				 */
 				explicit view(Queue & queue) noexcept : _queue(queue) {}
 			};
@@ -684,12 +752,14 @@ namespace awh {
 			 * @brief Шаблон типа данных обёртки очереди
 			 *
 			 * @tparam T тип итератора
+			 *
 			 */
 			template <typename T>
 			/**
 			 * @brief Метод обёртки бинарной очереди
 			 *
 			 * @return обёрнутая бинарная очередь
+			 *
 			 */
 			view <T> as() & {
 				// Возвращаем очередь по ссылке — только для lvalue
@@ -700,6 +770,7 @@ namespace awh {
 			 * @brief Шаблон типа данных константной обёртки очереди
 			 *
 			 * @tparam T тип итератора
+			 *
 			 */
 			template <typename T>
 			/**
@@ -714,6 +785,7 @@ namespace awh {
 				 * @brief Метод получения конечного итератора
 				 *
 				 * @return конечный итератор очереди
+				 *
 				 */
 				auto end() const noexcept -> decltype(this->_queue.template end <T> ()) {
 					// Возвращаем конечный итератор очереди
@@ -723,6 +795,7 @@ namespace awh {
 				 * @brief Метод получения начального итератора
 				 *
 				 * @return начальный итератор очереди
+				 *
 				 */
 				auto begin() const noexcept -> decltype(this->_queue.template begin <T> ()) {
 					// Возвращаем начальный итератор очереди
@@ -733,6 +806,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param queue обёртываемая очередь
+				 *
 				 */
 				explicit const_view(const Queue & queue) noexcept : _queue(queue) {}
 			};
@@ -741,12 +815,14 @@ namespace awh {
 			 * @brief Шаблон типа данных константной обёртки очереди
 			 *
 			 * @tparam T тип итератора
+			 *
 			 */
 			template <typename T>
 			/**
 			 * @brief Метод константной обёртки бинарной очереди
 			 *
 			 * @return обёрнутая бинарная очередь
+			 *
 			 */
 			const_view <T> as() const & {
 				// Возвращаем очередь по константной ссылке — только для lvalue

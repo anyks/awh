@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация криптографического слоя QUIC (RFC 9001) — вывод начальных секретов,
+ *        ключей пакетов и заголовочной защиты, шифрование и расшифровка пакетов на AEAD-примитивах BoringSSL
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -79,6 +83,7 @@ namespace {
 	 *
 	 * @param suite криптографический набор защиты пакетов
 	 * @return      хеш-функция набора
+	 *
 	 */
 	inline const EVP_MD * digest(const crypto::suite_t suite) noexcept {
 		// Набор AES_256_GCM_SHA384 использует SHA-384, остальные - SHA-256
@@ -89,6 +94,7 @@ namespace {
 	 *
 	 * @param suite криптографический набор защиты пакетов
 	 * @return      AEAD-алгоритм набора
+	 *
 	 */
 	inline const EVP_AEAD * aead(const crypto::suite_t suite) noexcept {
 		/**
@@ -112,6 +118,7 @@ namespace {
 	 *
 	 * @param suite криптографический набор защиты пакетов
 	 * @return      длина ключа AEAD в октетах
+	 *
 	 */
 	inline size_t keySize(const crypto::suite_t suite) noexcept {
 		// Набор AES_128_GCM использует 16-октетный ключ, остальные - 32-октетный
@@ -121,6 +128,7 @@ namespace {
 	 * @brief Функция освобождения AEAD-контекста
 	 *
 	 * @param ctx освобождаемый AEAD-контекст
+	 *
 	 */
 	inline void freeAead(EVP_AEAD_CTX * ctx) noexcept {
 		// Если контекст создан
@@ -137,6 +145,7 @@ namespace {
 	 *       обычный POD, освобождаемый штатным delete без затирания, а из расписания
 	 *       раундов тривиально восстанавливается исходный ключ защиты заголовка
 	 *       (RFC 9001 §6, defense-in-depth)
+	 *
 	 */
 	inline void freeMask(aes_key_st * key) noexcept {
 		// Если развёрнутый ключ создан
@@ -153,6 +162,7 @@ namespace {
 	 * @param iv    вектор инициализации направления (12 октетов)
 	 * @param pn    полный номер пакета
 	 * @param nonce сформированный нонс AEAD (12 октетов)
+	 *
 	 */
 	inline void makeNonce(const string & iv, const uint64_t pn, uint8_t nonce[12]) noexcept {
 		// Копируем вектор инициализации в нонс
@@ -171,6 +181,7 @@ namespace {
 	 * @param packet пакет Retry без тега целостности
 	 * @param tag    вычисленный тег целостности (16 октетов)
 	 * @return       результат вычисления (false - ошибка криптографической библиотеки)
+	 *
 	 */
 	bool computeRetryTag(const cid_t & odcid, string_view packet, uint8_t tag[proto::RETRY_TAG_SIZE]) noexcept {
 		// Формируем псевдопакет Retry: октет длины ODCID, ODCID и пакет без тега
@@ -221,6 +232,7 @@ awh::quic::crypto::Keys::Keys() noexcept : suite(suite_t::AES_128_GCM_SHA256) {}
  *       делетером freeMask при освобождении shared_ptr
  *
  * @param keys затираемый набор ключей
+ *
  */
 static void wipeKeys(awh::quic::crypto::keys_t & keys) noexcept {
 	if(!keys.secret.empty())
@@ -241,6 +253,7 @@ static void wipeKeys(awh::quic::crypto::keys_t & keys) noexcept {
  *
  * @param keys копируемый набор ключей
  * @return     набор ключей текущего объекта
+ *
  */
 awh::quic::crypto::Keys & awh::quic::crypto::Keys::operator = (const Keys & keys) noexcept {
 	// Если присваивание выполняется не самому себе
@@ -266,6 +279,7 @@ awh::quic::crypto::Keys & awh::quic::crypto::Keys::operator = (const Keys & keys
  *
  * @param keys перемещаемый набор ключей
  * @return     набор ключей текущего объекта
+ *
  */
 awh::quic::crypto::Keys & awh::quic::crypto::Keys::operator = (Keys && keys) noexcept {
 	// Если присваивание выполняется не самому себе
@@ -304,6 +318,7 @@ awh::quic::crypto::Keys::~Keys() noexcept {
  * @param length требуемая длина выводимого материала
  * @param output выводимый ключевой материал
  * @return       результат вывода (false - ошибка криптографической библиотеки)
+ *
  */
 bool awh::quic::crypto::hkdfExpandLabel(const suite_t suite, string_view secret, string_view label, const size_t length, string & output) noexcept {
 	// Формируем структуру HkdfLabel (RFC 8446 §7.1)
@@ -334,6 +349,7 @@ bool awh::quic::crypto::hkdfExpandLabel(const suite_t suite, string_view secret,
  *
  * @param keys ключи защиты пакетов (заполняются key/iv/hp)
  * @return     результат вывода (false - ошибка криптографической библиотеки)
+ *
  */
 bool awh::quic::crypto::derive(keys_t & keys) noexcept {
 	// Длина ключа AEAD криптографического набора
@@ -388,6 +404,7 @@ bool awh::quic::crypto::derive(keys_t & keys) noexcept {
  * @param client ключи защиты пакетов клиента
  * @param server ключи защиты пакетов сервера
  * @return       результат вывода (false - ошибка криптографической библиотеки)
+ *
  */
 bool awh::quic::crypto::initial(const cid_t & dcid, keys_t & client, keys_t & server) noexcept {
 	// Общий секрет Initial (размер выхода SHA-256)
@@ -420,6 +437,7 @@ bool awh::quic::crypto::initial(const cid_t & dcid, keys_t & client, keys_t & se
  * @param current текущие ключи защиты пакетов
  * @param next    ключи защиты пакетов следующей фазы
  * @return        результат обновления (false - ошибка криптографической библиотеки)
+ *
  */
 bool awh::quic::crypto::update(const keys_t & current, keys_t & next) noexcept {
 	// Криптографический набор не меняется
@@ -448,6 +466,7 @@ bool awh::quic::crypto::update(const keys_t & current, keys_t & next) noexcept {
  * @param sample выборка защищённой нагрузки (16 октетов)
  * @param mask   вычисленная маска защиты заголовка (5 октетов)
  * @return       результат вычисления (false - ошибка криптографической библиотеки)
+ *
  */
 bool awh::quic::crypto::hpMask(const keys_t & keys, const uint8_t sample[HP_SAMPLE_SIZE], uint8_t mask[HP_MASK_SIZE]) noexcept {
 	// Если набор использует ChaCha20 (RFC 9001 §5.4.4)
@@ -484,6 +503,7 @@ bool awh::quic::crypto::hpMask(const keys_t & keys, const uint8_t sample[HP_SAMP
  * @param header  собранный незащищённый заголовок пакета (включая Packet Number)
  * @param payload незашифрованная нагрузка пакета (фреймы)
  * @return        результат защиты (false - ошибка криптографической библиотеки)
+ *
  */
 bool awh::quic::crypto::seal(string & output, const keys_t & keys, const uint64_t pn, string_view header, string_view payload) noexcept {
 	// Если заголовок пуст либо AEAD-контекст не подготовлен выводом ключей
@@ -570,6 +590,7 @@ bool awh::quic::crypto::seal(string & output, const keys_t & keys, const uint64_
  * @param output    расшифрованная нагрузка пакета (фреймы)
  * @param error     код ошибки транспорта
  * @return          результат снятия защиты (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::crypto::open(uint8_t * packet, const size_t size, const size_t pnOffset, const uint64_t largestPn, const keys_t & keys, uint64_t & pn, string & output, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи снятия защиты
@@ -660,6 +681,7 @@ awh::quic::status_t awh::quic::crypto::open(uint8_t * packet, const size_t size,
  * @param packet пакет Retry без тега целостности
  * @param tag    вычисленный тег целостности (16 октетов)
  * @return       результат вычисления (false - ошибка криптографической библиотеки)
+ *
  */
 bool awh::quic::crypto::retryTag(const cid_t & odcid, string_view packet, uint8_t tag[proto::RETRY_TAG_SIZE]) noexcept {
 	// Вычисляем тег целостности по псевдопакету
@@ -671,6 +693,7 @@ bool awh::quic::crypto::retryTag(const cid_t & odcid, string_view packet, uint8_
  * @param odcid  DCID первого пакета Initial клиента
  * @param packet пакет Retry целиком (включая тег целостности)
  * @return       результат проверки (true - тег целостности корректен)
+ *
  */
 bool awh::quic::crypto::retryVerify(const cid_t & odcid, string_view packet) noexcept {
 	// Если пакет не содержит даже тега целостности

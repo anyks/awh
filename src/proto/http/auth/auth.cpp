@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля HTTP-авторизации — выбор и переключение схем авторизации,
+ *        генерация и проверка заголовков на стороне клиента и сервера, выдача и учёт nonce,
+ *        контроль срока жизни и защита от replay-атак
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -45,6 +50,7 @@ namespace {
 	 * @brief Функция очистки разобранных учётных данных предыдущего запроса (сервер)
 	 *
 	 * @param params общие параметры авторизации
+	 *
 	 */
 	void clearParsedCredentials(auth_t::params_t & params) noexcept {
 		/**
@@ -154,6 +160,7 @@ awh::http::Authorization::Params::Params() noexcept :
  *          (WWW-Authenticate либо Proxy-Authenticate для прокси)
  *
  * @return имя заголовка авторизации
+ *
  */
 string awh::http::Authorization::Scheme::name() const noexcept {
 	// На стороне клиента формируем имя заголовка учётных данных
@@ -173,6 +180,7 @@ string awh::http::Authorization::Scheme::name() const noexcept {
  * @param left  первая строка
  * @param right вторая строка
  * @return      результат сравнения
+ *
  */
 bool awh::http::Authorization::Scheme::secureCompare(const string_view left, const string_view right) noexcept {
 	// Если длины строк не совпадают
@@ -201,6 +209,7 @@ bool awh::http::Authorization::Scheme::secureCompare(const string_view left, con
  * @param scheme  название схемы (Basic, Bearer, Digest)
  * @param payload полезная нагрузка после схемы
  * @return        результат извлечения
+ *
  */
 bool awh::http::Authorization::Scheme::schemePayload(const string_view header, const string_view scheme, string & payload) const noexcept {
 	// Если заголовок или схема не переданы
@@ -247,6 +256,7 @@ bool awh::http::Authorization::Scheme::schemePayload(const string_view header, c
  *          Многозаголовочные схемы (HMAC) переопределяют метод.
  *
  * @param result контейнер для набора заголовков (имя -> значение)
+ *
  */
 void awh::http::Authorization::Scheme::headers(vector <pair <string, string>> & result) noexcept {
 	// Формируем значение заголовка авторизации
@@ -265,6 +275,7 @@ void awh::http::Authorization::Scheme::headers(vector <pair <string, string>> & 
  * @param name   имя входящего заголовка
  * @param header значение входящего заголовка
  * @return       результат разбора
+ *
  */
 bool awh::http::Authorization::Scheme::parse([[maybe_unused]] const string_view name, const string_view header) noexcept {
 	// Делегируем разбор значению заголовка
@@ -278,6 +289,7 @@ bool awh::http::Authorization::Scheme::parse([[maybe_unused]] const string_view 
  * @param crypto объект криптографии
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
+ *
  */
 awh::http::Authorization::Scheme::Scheme(const owner_t owner, params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept :
  _owner(owner), _params(params), _fmk(fmk), _log(log), _crypto(crypto) {}
@@ -291,6 +303,7 @@ awh::http::Authorization::Scheme::~Scheme() noexcept {}
  * @brief Метод получения стороны работы модуля
  *
  * @return сторона работы (клиент/сервер)
+ *
  */
 awh::http::Authorization::owner_t awh::http::Authorization::owner() const noexcept {
 	// Выводим сторону работы модуля
@@ -300,6 +313,7 @@ awh::http::Authorization::owner_t awh::http::Authorization::owner() const noexce
  * @brief Метод получения типа авторизации
  *
  * @return тип авторизации
+ *
  */
 awh::http::Authorization::type_t awh::http::Authorization::type() const noexcept {
 	// Выводим тип авторизации
@@ -312,6 +326,7 @@ awh::http::Authorization::type_t awh::http::Authorization::type() const noexcept
  *
  * @param type тип авторизации для установки
  * @param hash алгоритм хэширования (для DIGEST/HMAC)
+ *
  */
 void awh::http::Authorization::type(const type_t type, const hash_t hash) noexcept {
 	// Временная стратегия выбранной схемы авторизации
@@ -378,6 +393,7 @@ void awh::http::Authorization::type(const type_t type, const hash_t hash) noexce
  * @brief Метод установки логина пользователя
  *
  * @param user логин пользователя
+ *
  */
 void awh::http::Authorization::user(string_view user) noexcept {
 	// Устанавливаем логин пользователя
@@ -390,6 +406,7 @@ void awh::http::Authorization::user(string_view user) noexcept {
  *          не поддерживается (RFC 7617: user-pass = userid \":\" password).
  *
  * @param pass пароль пользователя
+ *
  */
 void awh::http::Authorization::pass(string_view pass) noexcept {
 	// Устанавливаем пароль пользователя
@@ -399,6 +416,7 @@ void awh::http::Authorization::pass(string_view pass) noexcept {
  * @brief Метод установки токена доступа (BEARER)
  *
  * @param token токен доступа
+ *
  */
 void awh::http::Authorization::token(string_view token) noexcept {
 	// Устанавливаем токен доступа
@@ -411,6 +429,7 @@ void awh::http::Authorization::token(string_view token) noexcept {
  *          вместо Authorization/WWW-Authenticate
  *
  * @param mode флаг работы через прокси
+ *
  */
 void awh::http::Authorization::proxy(const bool mode) noexcept {
 	// Устанавливаем режим работы через прокси
@@ -420,6 +439,7 @@ void awh::http::Authorization::proxy(const bool mode) noexcept {
  * @brief Метод получения режима строгости проверки учётных данных
  *
  * @return режим строгости проверки (SIMPLE/STRICT)
+ *
  */
 awh::http::Authorization::mode_t awh::http::Authorization::mode() const noexcept {
 	// Выводим режим строгости проверки учётных данных
@@ -435,6 +455,7 @@ awh::http::Authorization::mode_t awh::http::Authorization::mode() const noexcept
  *          (RFC 9421). Влияет только на проверку на стороне сервера.
  *
  * @param mode режим строгости проверки (SIMPLE/STRICT)
+ *
  */
 void awh::http::Authorization::mode(const mode_t mode) noexcept {
 	// Устанавливаем режим строгости проверки учётных данных
@@ -444,6 +465,7 @@ void awh::http::Authorization::mode(const mode_t mode) noexcept {
  * @brief Метод установки секретного ключа подписи (HMAC)
  *
  * @param key секретный ключ подписи
+ *
  */
 void awh::http::Authorization::key(string_view key) noexcept {
 	// Устанавливаем секретный ключ подписи
@@ -453,6 +475,7 @@ void awh::http::Authorization::key(string_view key) noexcept {
  * @brief Метод установки идентификатора ключа подписи (HMAC)
  *
  * @param keyId идентификатор ключа подписи
+ *
  */
 void awh::http::Authorization::keyId(string_view keyId) noexcept {
 	// Устанавливаем идентификатор ключа подписи
@@ -462,6 +485,7 @@ void awh::http::Authorization::keyId(string_view keyId) noexcept {
  * @brief Метод установки метки подписи (HMAC)
  *
  * @param label метка подписи (например, sig1)
+ *
  */
 void awh::http::Authorization::label(string_view label) noexcept {
 	// Если метка подписи передана
@@ -477,6 +501,7 @@ void awh::http::Authorization::label(string_view label) noexcept {
  *          проверка подписи с тем же nonce отклоняется (защита от replay).
  *
  * @param nonce одноразовое значение
+ *
  */
 void awh::http::Authorization::signNonce(string_view nonce) noexcept {
 	// Устанавливаем одноразовое значение подписи
@@ -491,6 +516,7 @@ void awh::http::Authorization::signNonce(string_view nonce) noexcept {
  *          штамп времени (fmk_t::timestamp).
  *
  * @param stamp штамп времени в секундах (0 — автоматически при формировании)
+ *
  */
 void awh::http::Authorization::signCreated(const uint64_t stamp) noexcept {
 	// Устанавливаем штамп времени создания подписи
@@ -504,6 +530,7 @@ void awh::http::Authorization::signCreated(const uint64_t stamp) noexcept {
  *          Значение 0 означает, что срок действия не ограничен.
  *
  * @param stamp штамп времени в секундах (0 — не задано)
+ *
  */
 void awh::http::Authorization::signExpires(const uint64_t stamp) noexcept {
 	// Устанавливаем штамп времени истечения подписи
@@ -517,6 +544,7 @@ void awh::http::Authorization::signExpires(const uint64_t stamp) noexcept {
  *
  * @param name  имя компонента
  * @param value значение компонента
+ *
  */
 void awh::http::Authorization::component(string_view name, string_view value) noexcept {
 	// Если имя компонента передано
@@ -542,6 +570,7 @@ void awh::http::Authorization::component(string_view name, string_view value) no
  * @brief Метод установки параметров HTTP-запроса (DIGEST, клиент)
  *
  * @param uri параметры HTTP-запроса (request-uri)
+ *
  */
 void awh::http::Authorization::uri(string_view uri) noexcept {
 	// Если параметры HTTP-запроса переданы
@@ -553,6 +582,7 @@ void awh::http::Authorization::uri(string_view uri) noexcept {
  * @brief Метод установки HTTP-метода запроса (DIGEST)
  *
  * @param method HTTP-метод запроса
+ *
  */
 void awh::http::Authorization::method(string_view method) noexcept {
 	// Если HTTP-метод запроса передан
@@ -567,6 +597,7 @@ void awh::http::Authorization::method(string_view method) noexcept {
  *          до формирования или проверки учётных данных.
  *
  * @param entity тело HTTP-запроса (entity-body)
+ *
  */
 void awh::http::Authorization::entity(string_view entity) noexcept {
 	// Устанавливаем тело HTTP-запроса
@@ -576,6 +607,7 @@ void awh::http::Authorization::entity(string_view entity) noexcept {
  * @brief Метод установки названия сервера (realm)
  *
  * @param realm название сервера
+ *
  */
 void awh::http::Authorization::realm(string_view realm) noexcept {
 	// Устанавливаем название сервера
@@ -585,6 +617,7 @@ void awh::http::Authorization::realm(string_view realm) noexcept {
  * @brief Метод установки уникального ключа сервера (nonce)
  *
  * @param nonce уникальный ключ, выдаваемый сервером
+ *
  */
 void awh::http::Authorization::nonce(string_view nonce) noexcept {
 	// Если уникальный ключ сервера передан
@@ -601,6 +634,7 @@ void awh::http::Authorization::nonce(string_view nonce) noexcept {
  * @brief Метод установки временного ключа сессии сервера (opaque)
  *
  * @param opaque временный ключ сессии сервера
+ *
  */
 void awh::http::Authorization::opaque(string_view opaque) noexcept {
 	// Если временный ключ сессии сервера передан
@@ -621,6 +655,7 @@ void awh::http::Authorization::opaque(string_view opaque) noexcept {
  *          добавляется суффикс -sess (например, SHA-256-sess)
  *
  * @param mode флаг сессионного режима алгоритма
+ *
  */
 void awh::http::Authorization::session(const bool mode) noexcept {
 	// Устанавливаем сессионный режим алгоритма Digest
@@ -630,6 +665,7 @@ void awh::http::Authorization::session(const bool mode) noexcept {
  * @brief Метод получения допустимого расхождения локальных часов (HMAC)
  *
  * @return допуск в секундах (по умолчанию 60)
+ *
  */
 uint64_t awh::http::Authorization::clockSkew() const noexcept {
 	// Выводим допуск расхождения локальных часов
@@ -645,6 +681,7 @@ uint64_t awh::http::Authorization::clockSkew() const noexcept {
  *          проверки без допуска.
  *
  * @param seconds допуск при проверке created/expires (0 — только точное совпадение)
+ *
  */
 void awh::http::Authorization::clockSkew(const uint64_t seconds) noexcept {
 	// Устанавливаем допуск расхождения локальных часов
@@ -654,6 +691,7 @@ void awh::http::Authorization::clockSkew(const uint64_t seconds) noexcept {
  * @brief Метод получения максимального возраста HMAC-подписи без expires
  *
  * @return лимит в секундах (0 — не ограничен)
+ *
  */
 uint64_t awh::http::Authorization::signMaxAge() const noexcept {
 	// Выводим максимальный возраст подписи без expires
@@ -668,6 +706,7 @@ uint64_t awh::http::Authorization::signMaxAge() const noexcept {
  *          Для production-серверов HMAC рекомендуется задавать ненулевой лимит.
  *
  * @param seconds максимальный возраст подписи (0 — без ограничения)
+ *
  */
 void awh::http::Authorization::signMaxAge(const uint64_t seconds) noexcept {
 	// Устанавливаем максимальный возраст подписи без expires
@@ -677,6 +716,7 @@ void awh::http::Authorization::signMaxAge(const uint64_t seconds) noexcept {
  * @brief Метод получения максимального возраста Digest-nonce
  *
  * @return лимит в секундах (0 — без ограничения по времени)
+ *
  */
 uint64_t awh::http::Authorization::nonceMaxAge() const noexcept {
 	// Выводим максимальный возраст Digest-nonce
@@ -692,6 +732,7 @@ uint64_t awh::http::Authorization::nonceMaxAge() const noexcept {
  *          ограничение по времени жизни nonce.
  *
  * @param seconds максимальный возраст nonce (0 — без ограничения)
+ *
  */
 void awh::http::Authorization::nonceMaxAge(const uint64_t seconds) noexcept {
 	// Устанавливаем максимальный возраст Digest-nonce
@@ -701,6 +742,7 @@ void awh::http::Authorization::nonceMaxAge(const uint64_t seconds) noexcept {
  * @brief Метод получения максимального возраста HMAC-подписи без expires для строгого режима
  *
  * @return лимит в секундах (0 — не ограничен)
+ *
  */
 uint64_t awh::http::Authorization::signStrictMaxAge() const noexcept {
 	// Выводим максимальный возраст подписи без expires для строгого режима
@@ -714,6 +756,7 @@ uint64_t awh::http::Authorization::signStrictMaxAge() const noexcept {
  *          Передайте 0, чтобы отключить ограничение по умолчанию даже в строгом режиме.
  *
  * @param seconds максимальный возраст подписи в строгом режиме (0 — без ограничения)
+ *
  */
 void awh::http::Authorization::signStrictMaxAge(const uint64_t seconds) noexcept {
 	// Устанавливаем максимальный возраст подписи без expires для строгого режима
@@ -725,6 +768,7 @@ void awh::http::Authorization::signStrictMaxAge(const uint64_t seconds) noexcept
  * @details На стороне CLIENT всегда возвращает true (проверка не выполняется).
  *
  * @return результат проверки
+ *
  */
 bool awh::http::Authorization::check() noexcept {
 	// Если активная стратегия установлена - делегируем проверку ей
@@ -749,6 +793,7 @@ bool awh::http::Authorization::check() noexcept {
  *
  *          Вызывается автоматически из type(). Имеет смысл вызывать вручную
  *          при повторном цикле авторизации на том же auth_t без смены схемы.
+ *
  */
 void awh::http::Authorization::reset() noexcept {
 	/**
@@ -792,6 +837,7 @@ void awh::http::Authorization::reset() noexcept {
  *
  * @param full режим вывода вместе с именем заголовка
  * @return     значение заголовка авторизации
+ *
  */
 string awh::http::Authorization::header(const bool full) noexcept {
 	// Если активная стратегия установлена - делегируем формирование ей
@@ -809,6 +855,7 @@ string awh::http::Authorization::header(const bool full) noexcept {
  *          (Signature-Input и Signature)
  *
  * @param result контейнер для набора заголовков (имя -> значение)
+ *
  */
 void awh::http::Authorization::headers(vector <pair <string, string>> & result) noexcept {
 	// Если активная стратегия установлена - делегируем формирование ей
@@ -831,6 +878,7 @@ void awh::http::Authorization::headers(vector <pair <string, string>> & result) 
  *
  * @param header значение заголовка (клиент: вызов сервера, сервер: учётные данные)
  * @return       результат разбора
+ *
  */
 bool awh::http::Authorization::parse(const string_view header) noexcept {
 	// На сервере очищаем учётные данные предыдущего запроса перед разбором
@@ -859,6 +907,7 @@ bool awh::http::Authorization::parse(const string_view header) noexcept {
  * @param name   имя входящего заголовка
  * @param header значение входящего заголовка
  * @return       результат разбора
+ *
  */
 bool awh::http::Authorization::parse(const string_view name, const string_view header) noexcept {
 	// На сервере очищаем stale-данные в начале разбора Signature-Input
@@ -883,6 +932,7 @@ bool awh::http::Authorization::parse(const string_view name, const string_view h
  * @brief Метод установки функции проверки токена доступа (BEARER, сервер)
  *
  * @param callback функция проверки токена доступа
+ *
  */
 void awh::http::Authorization::callbackCheckToken(function <bool (const string &)> callback) noexcept {
 	// Устанавливаем функцию проверки токена доступа
@@ -892,6 +942,7 @@ void awh::http::Authorization::callbackCheckToken(function <bool (const string &
  * @brief Метод установки функции извлечения секретного ключа (HMAC, сервер)
  *
  * @param callback функция извлечения секретного ключа по идентификатору
+ *
  */
 void awh::http::Authorization::callbackExtractKey(function <string (const string &)> callback) noexcept {
 	// Устанавливаем функцию извлечения секретного ключа
@@ -901,6 +952,7 @@ void awh::http::Authorization::callbackExtractKey(function <string (const string
  * @brief Метод установки функции извлечения пароля (DIGEST, сервер)
  *
  * @param callback функция извлечения пароля по логину
+ *
  */
 void awh::http::Authorization::callbackExtractPass(function <string (const string &)> callback) noexcept {
 	// Устанавливаем функцию извлечения пароля
@@ -910,6 +962,7 @@ void awh::http::Authorization::callbackExtractPass(function <string (const strin
  * @brief Метод установки функции проверки пары «логин/пароль» (BASIC, сервер)
  *
  * @param callback функция проверки пары «логин/пароль»
+ *
  */
 void awh::http::Authorization::callbackCheckUser(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию проверки пары «логин/пароль»
@@ -921,6 +974,7 @@ void awh::http::Authorization::callbackCheckUser(function <bool (const string &,
  * @param owner сторона работы (клиент/сервер)
  * @param fmk   объект фреймворка
  * @param log   объект для работы с логами
+ *
  */
 awh::http::Authorization::Authorization(const owner_t owner, const fmk_t * fmk, const log_t * log) noexcept :
  _type(type_t::NONE), _owner(owner), _crypto(fmk, log), _scheme(nullptr), _fmk(fmk), _log(log) {}

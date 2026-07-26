@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля работы с сетевым уровнем Ethernet — класс Ethernet,
+ *        объединяющий работу с сетевыми интерфейсами, шлюзами, маршрутами,
+ *        пробросом портов и сокетами канального уровня
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -87,6 +92,7 @@ namespace awh {
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект работы с логами
+			 *
 			 */
 			explicit Ethernet(const fmk_t * fmk, const log_t * log) noexcept;
 			/**

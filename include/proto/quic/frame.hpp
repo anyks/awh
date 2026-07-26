@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл слоя фреймов QUIC (RFC 9000 §19) — структуры фреймов ACK, STREAM, CRYPTO, RESET_STREAM,
+ *        STOP_SENDING, NEW_CONNECTION_ID, CONNECTION_CLOSE и чистые функции их разбора и сборки над байтовым буфером
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_PROTO_QUIC_FRAME__
@@ -53,6 +57,7 @@ namespace awh {
 		 *          с указателем в буфер расшифрованной нагрузки. Каждая функция разбора
 		 *          читает тип фрейма сама и возвращает количество потреблённых октетов.
 		 *          Слой не хранит состояния соединения - это чистые функции над байтами.
+		 *
 		 */
 		namespace frame {
 			/**
@@ -62,6 +67,7 @@ namespace awh {
 			 *          их помещается несколько сотен, а сопоставление каждого диапазона
 			 *          с отправленными пакетами стоит процессорного времени. Превышение
 			 *          лимита трактуется как FRAME_ENCODING_ERROR
+			 *
 			 */
 			static constexpr size_t MAX_ACK_RANGES = 256;
 
@@ -214,6 +220,7 @@ namespace awh {
 			 * @details Каждая функция ожидает буфер, указывающий на октет типа фрейма,
 			 *          проверяет соответствие типа и возвращает количество потреблённых
 			 *          октетов через параметр consumed
+			 *
 			 */
 			namespace parser {
 				/**
@@ -223,6 +230,7 @@ namespace awh {
 				 * @param size   доступно байт
 				 * @param output определённый тип фрейма (UNKNOWN - тип не распознан)
 				 * @return       результат определения (true - в буфере было достаточно байт)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ bool type(const uint8_t * data, const size_t size, frame_t & output) noexcept;
 				/**
@@ -233,6 +241,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов (длина серии PADDING)
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t padding(const uint8_t * data, const size_t size, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -243,6 +252,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t ping(const uint8_t * data, const size_t size, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -257,6 +267,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t ack(const uint8_t * data, const size_t size, ack_t & output, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -268,6 +279,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t resetStream(const uint8_t * data, const size_t size, reset_stream_t & output, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -279,6 +291,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t stopSending(const uint8_t * data, const size_t size, stop_sending_t & output, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -290,6 +303,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t crypto(const uint8_t * data, const size_t size, crypto_t & output, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -301,6 +315,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t newToken(const uint8_t * data, const size_t size, string_view & token, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -316,6 +331,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t datagram(const uint8_t * data, const size_t size, string_view & output, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -327,6 +343,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t stream(const uint8_t * data, const size_t size, stream_t & output, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -343,6 +360,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t single(const uint8_t * data, const size_t size, const frame_t type, uint64_t & value, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -358,6 +376,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t pair(const uint8_t * data, const size_t size, const frame_t type, uint64_t & streamId, uint64_t & value, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -369,6 +388,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t newConnectionId(const uint8_t * data, const size_t size, new_connection_id_t & output, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -381,6 +401,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t path(const uint8_t * data, const size_t size, const frame_t type, uint8_t output[proto::PATH_DATA_SIZE], size_t & consumed, error_t & error) noexcept;
 				/**
@@ -392,6 +413,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t connectionClose(const uint8_t * data, const size_t size, connection_close_t & output, size_t & consumed, error_t & error) noexcept;
 				/**
@@ -402,6 +424,7 @@ namespace awh {
 				 * @param consumed количество потреблённых октетов
 				 * @param error    код ошибки транспорта
 				 * @return         результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t handshakeDone(const uint8_t * data, const size_t size, size_t & consumed, error_t & error) noexcept;
 			};
@@ -416,12 +439,14 @@ namespace awh {
 				 *
 				 * @param output выходной буфер нагрузки пакета
 				 * @param count  количество октетов заполнения
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void padding(string & output, const size_t count) noexcept;
 				/**
 				 * @brief Функция сборки фрейма PING (фрейм дописывается в output)
 				 *
 				 * @param output выходной буфер нагрузки пакета
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void ping(string & output) noexcept;
 				/**
@@ -432,6 +457,7 @@ namespace awh {
 				 * @param output выходной буфер нагрузки пакета
 				 * @param frame  фрейм подтверждения приёма пакетов
 				 * @return       результат сборки (false - некорректные диапазоны)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ bool ack(string & output, const ack_t & frame) noexcept;
 				/**
@@ -441,6 +467,7 @@ namespace awh {
 				 * @param streamId  идентификатор потока
 				 * @param code      код ошибки приложения
 				 * @param finalSize финальный размер потока в октетах
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void resetStream(string & output, const uint64_t streamId, const uint64_t code, const uint64_t finalSize) noexcept;
 				/**
@@ -449,6 +476,7 @@ namespace awh {
 				 * @param output   выходной буфер нагрузки пакета
 				 * @param streamId идентификатор потока
 				 * @param code     код ошибки приложения
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void stopSending(string & output, const uint64_t streamId, const uint64_t code) noexcept;
 				/**
@@ -457,6 +485,7 @@ namespace awh {
 				 * @param output выходной буфер нагрузки пакета
 				 * @param offset смещение данных в потоке криптографического хендшейка
 				 * @param data   данные криптографического хендшейка
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void crypto(string & output, const uint64_t offset, string_view data) noexcept;
 				/**
@@ -465,6 +494,7 @@ namespace awh {
 				 * @param output выходной буфер нагрузки пакета
 				 * @param token  токен для будущих соединений клиента (не пустой)
 				 * @return       результат сборки (false - пустой токен запрещён)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ bool newToken(string & output, string_view token) noexcept;
 				/**
@@ -476,6 +506,7 @@ namespace awh {
 				 *
 				 * @param output выходной буфер нагрузки пакета
 				 * @param data   данные датаграммы приложения
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void datagram(string & output, string_view data) noexcept;
 				/**
@@ -489,6 +520,7 @@ namespace awh {
 				 * @param offset   смещение данных в потоке
 				 * @param data     данные потока приложения
 				 * @param fin      флаг завершения потока (FIN)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void stream(string & output, const uint64_t streamId, const uint64_t offset, string_view data, const bool fin) noexcept;
 				/**
@@ -500,6 +532,7 @@ namespace awh {
 				 * @param output выходной буфер нагрузки пакета
 				 * @param type   тип фрейма
 				 * @param value  значение целочисленного поля
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void single(string & output, const frame_t type, const uint64_t value) noexcept;
 				/**
@@ -511,6 +544,7 @@ namespace awh {
 				 * @param type     тип фрейма
 				 * @param streamId идентификатор потока
 				 * @param value    значение лимита
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void pair(string & output, const frame_t type, const uint64_t streamId, const uint64_t value) noexcept;
 				/**
@@ -519,6 +553,7 @@ namespace awh {
 				 * @param output выходной буфер нагрузки пакета
 				 * @param frame  фрейм анонса нового идентификатора соединения
 				 * @return       результат сборки (false - некорректная длина идентификатора)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ bool newConnectionId(string & output, const new_connection_id_t & frame) noexcept;
 				/**
@@ -527,6 +562,7 @@ namespace awh {
 				 * @param output выходной буфер нагрузки пакета
 				 * @param type   тип фрейма (PATH_CHALLENGE или PATH_RESPONSE)
 				 * @param data   данные проверки пути (8 октетов)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void path(string & output, const frame_t type, const uint8_t data[proto::PATH_DATA_SIZE]) noexcept;
 				/**
@@ -537,12 +573,14 @@ namespace awh {
 				 * @param frameType тип фрейма, вызвавшего ошибку (игнорируется для ошибки приложения)
 				 * @param reason    человекочитаемая причина завершения
 				 * @param app       флаг ошибки приложения (тип фрейма 0x1D)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void connectionClose(string & output, const uint64_t code, const uint64_t frameType, string_view reason, const bool app) noexcept;
 				/**
 				 * @brief Функция сборки фрейма HANDSHAKE_DONE (фрейм дописывается в output)
 				 *
 				 * @param output выходной буфер нагрузки пакета
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ void handshakeDone(string & output) noexcept;
 			};

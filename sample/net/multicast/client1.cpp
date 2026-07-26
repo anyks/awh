@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример мультикаст-клиента для сценария однорангового обнаружения (mDNS,
+ *        SSDP) — демонстрация отправки запроса в мультикаст-группу и приёма ответов от обнаруженных узлов
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -42,6 +46,7 @@ using namespace placeholders;
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

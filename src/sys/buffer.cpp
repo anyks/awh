@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация бинарного смарт-буфера — учёт диапазонов записей,
+ *        транзакционная запись с откатом при отсутствии фиксации,
+ *        обход итераторами и предоставление невладеющих обёрток доступа к данным
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -43,6 +48,7 @@ awh::Buffer::Range::Range() noexcept :
  * @brief Метод получения указателя на зарезервированную область
  *
  * @return указатель для записи данных либо nullptr при ошибке резервирования
+ *
  */
 void * awh::Buffer::Writer::get() noexcept {
 	// Возвращаем указатель на зарезервированную область
@@ -52,6 +58,7 @@ void * awh::Buffer::Writer::get() noexcept {
  * @brief Метод получения размера зарезервированной области
  *
  * @return размер доступного для записи места
+ *
  */
 size_t awh::Buffer::Writer::size() const noexcept {
 	// Возвращаем размер зарезервированной области
@@ -61,6 +68,7 @@ size_t awh::Buffer::Writer::size() const noexcept {
  * @brief Метод проверки корректности резервирования
  *
  * @return результат проверки
+ *
  */
 bool awh::Buffer::Writer::valid() const noexcept {
 	// Возвращаем результат проверки
@@ -78,6 +86,7 @@ void awh::Buffer::Writer::cancel() noexcept {
  * @brief Метод немедленной фиксации записанных данных в буфер
  *
  * @return количество зафиксированных байт
+ *
  */
 size_t awh::Buffer::Writer::apply() noexcept {
 	// Результат фиксации
@@ -97,6 +106,7 @@ size_t awh::Buffer::Writer::apply() noexcept {
  *
  * @param size количество записанных байт
  * @return     количество байт которое будет зафиксировано
+ *
  */
 size_t awh::Buffer::Writer::commit(const size_t size) noexcept {
 	// Ограничиваем количество фиксируемых данных зарезервированным размером
@@ -108,6 +118,7 @@ size_t awh::Buffer::Writer::commit(const size_t size) noexcept {
  * @brief Конструктор перемещения
  *
  * @param other обёртка для перемещения
+ *
  */
 awh::Buffer::Writer::Writer(Writer && other) noexcept :
  _applied(other._applied),
@@ -131,6 +142,7 @@ awh::Buffer::Writer::Writer(Writer && other) noexcept :
  * @param buffer   буфер для записи
  * @param data     указатель на зарезервированную область
  * @param capacity размер зарезервированной области
+ *
  */
 awh::Buffer::Writer::Writer(Buffer * buffer, void * data, const size_t capacity) noexcept :
  _applied(false), _capacity(capacity), _committed(0), _data(data), _buffer(buffer) {}
@@ -152,6 +164,7 @@ awh::Buffer::Writer::~Writer() noexcept {
  *
  * @param size желаемый размер свободного места в хвосте буфера
  * @return     результат выполнения операции
+ *
  */
 bool awh::Buffer::rss(const size_t size) noexcept {
 	// Если выделять ничего не требуется
@@ -213,6 +226,7 @@ bool awh::Buffer::rss(const size_t size) noexcept {
  * @param func    название функции в которой произошла ошибка
  * @param message текст сообщения об ошибке
  * @param flag    флаг важности сообщения
+ *
  */
 void awh::Buffer::error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
 	// Если объект лога установлен
@@ -275,6 +289,7 @@ void awh::Buffer::reset() noexcept {
  * @brief Метод проверки на заполненность буфера
  *
  * @return результат проверки
+ *
  */
 bool awh::Buffer::empty() const noexcept {
 	// Возвращаем результат проверки
@@ -284,6 +299,7 @@ bool awh::Buffer::empty() const noexcept {
  * @brief Метод получения размера добавленных данных
  *
  * @return размер всех добавленных данных
+ *
  */
 size_t awh::Buffer::size() const noexcept {
 	// Возвращаем размер добавленных данных в буфер
@@ -293,6 +309,7 @@ size_t awh::Buffer::size() const noexcept {
  * @brief Метод вывода размера занимаемой памяти очередью
  *
  * @return количество памяти которую занимает буфер
+ *
  */
 size_t awh::Buffer::capacity() const noexcept {
 	// Возвращаем количество выделенной памяти
@@ -305,6 +322,7 @@ size_t awh::Buffer::capacity() const noexcept {
  *          и усекает буфер до их размера, после чего возвращает его как есть.
  *
  * @return буфер сырых данных
+ *
  */
 const vector <uint8_t> & awh::Buffer::raw() const noexcept {
 	// Получаем неконстантный указатель на текущий объект
@@ -350,12 +368,14 @@ const vector <uint8_t> & awh::Buffer::raw() const noexcept {
  * @brief Шаблон для метода получения конечного итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получения конечного итератора
  *
  * @return конечный итератор
+ *
  */
 awh::Buffer::Iterator <T> awh::Buffer::end() noexcept {
 	// Выполняем установку конечного значения итератора
@@ -391,12 +411,14 @@ template awh::Buffer::Iterator <double> awh::Buffer::end <double> () noexcept;
  * @brief Шаблон для метода получение начального итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получение начального итератора
  *
  * @return начальный итератор
+ *
  */
 awh::Buffer::Iterator <T> awh::Buffer::begin() noexcept {
 	// Выполняем установку начального значения итератора
@@ -432,12 +454,14 @@ template awh::Buffer::Iterator <double> awh::Buffer::begin <double> () noexcept;
  * @brief Шаблон для метода получения конечного константного итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получения конечного константного итератора
  *
  * @return конечный константный итератор
+ *
  */
 awh::Buffer::Const_Iterator <T> awh::Buffer::end() const noexcept {
 	// Выполняем установку конечного значения итератора
@@ -447,12 +471,14 @@ awh::Buffer::Const_Iterator <T> awh::Buffer::end() const noexcept {
  * @brief Шаблон для метода получения конечного константного итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получения конечного константного итератора
  *
  * @return конечный константный итератор
+ *
  */
 awh::Buffer::Const_Iterator <T> awh::Buffer::cend() const noexcept {
 	// Выполняем установку конечного значения итератора
@@ -504,12 +530,14 @@ template awh::Buffer::Const_Iterator <double> awh::Buffer::cend <double> () cons
  * @brief Шаблон для метода получения начального константного итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получения начального константного итератора
  *
  * @return начальный константный итератор
+ *
  */
 awh::Buffer::Const_Iterator <T> awh::Buffer::begin() const noexcept {
 	// Выполняем установку начального значения итератора
@@ -519,12 +547,14 @@ awh::Buffer::Const_Iterator <T> awh::Buffer::begin() const noexcept {
  * @brief Шаблон для метода получения начального константного итератора
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получения начального константного итератора
  *
  * @return начальный константный итератор
+ *
  */
 awh::Buffer::Const_Iterator <T> awh::Buffer::cbegin() const noexcept {
 	// Выполняем установку начального значения итератора
@@ -576,6 +606,7 @@ template awh::Buffer::Const_Iterator <double> awh::Buffer::cbegin <double> () co
  * @brief Шаблон для метода удаления верхних записей
  *
  * @tparam T тип данных для удаления
+ *
  */
 template <typename T>
 /**
@@ -618,12 +649,14 @@ template void awh::Buffer::pop <double> () noexcept;
  * @brief Шаблон для метода получения количества элементов в бинарном буфере
  *
  * @tparam T тип данных для подсчёта
+ *
  */
 template <typename T>
 /**
  * @brief Метод получения количества элементов в бинарном буфере
  *
  * @return количество всех добавленных лементов
+ *
  */
 size_t awh::Buffer::count() const noexcept {
 	// Если мы не дошли до конца
@@ -663,12 +696,14 @@ template size_t awh::Buffer::count <double> () const noexcept;
  * @brief Шаблон для метода извлечения нижнего значения в буфере
  *
  * @tparam T тип данных для извлечения
+ *
  */
 template <typename T>
 /**
  * @brief Метод извлечения нижнего значения в буфере
  *
  * @return данные содержащиеся в буфере
+ *
  */
 T awh::Buffer::back() const noexcept {
 	// Переменная результата
@@ -715,12 +750,14 @@ template double awh::Buffer::back() const noexcept;
  * @brief Шаблон для метода извлечения верхнего значения в буфере
  *
  * @tparam T тип данных для извлечения
+ *
  */
 template <typename T>
 /**
  * @brief Метод извлечения верхнего значения в буфере
  *
  * @return данные содержащиеся в буфере
+ *
  */
 T awh::Buffer::front() const noexcept {
 	// Переменная результата
@@ -767,6 +804,7 @@ template double awh::Buffer::front() const noexcept;
  * @brief Шаблон для метода извлечения содержимого контейнера по его индексу
  *
  * @tparam T тип данных для извлечения
+ *
  */
 template <typename T>
 /**
@@ -774,6 +812,7 @@ template <typename T>
  *
  * @param index индекс массива для извлечения
  * @return      данные содержащиеся в буфере
+ *
  */
 T awh::Buffer::at(const size_t index) const noexcept {
 	// Переменная результата
@@ -824,6 +863,7 @@ template double awh::Buffer::at(const size_t) const noexcept;
  * @brief Шаблон для метода установки значений в уже существующем буфере
  *
  * @tparam T тип данных для установки
+ *
  */
 template <typename T>
 /**
@@ -831,6 +871,7 @@ template <typename T>
  *
  * @param value значение для установки
  * @param index индекс значения для установки
+ *
  */
 void awh::Buffer::set(const T value, const size_t index) noexcept {
 	// Если контейнер не пустой
@@ -877,6 +918,7 @@ template void awh::Buffer::set(const double, const size_t) noexcept;
  * @brief Получения данных указанного элемента в буфера
  *
  * @return указатель на элемент буфера
+ *
  */
 const void * awh::Buffer::data() const noexcept {
 	// Если буфер данных не пустой
@@ -890,6 +932,7 @@ const void * awh::Buffer::data() const noexcept {
  * @brief Метод удаления указанного количества байт из начала буфера
  *
  * @param size количество байт для удаления
+ *
  */
 void awh::Buffer::erase(const size_t size) noexcept {
 	// Если буфер данных не пустой
@@ -908,6 +951,7 @@ void awh::Buffer::erase(const size_t size) noexcept {
  * @brief Метод извлечения (удаления) указанного количества уже обработанных байт из начала буфера
  *
  * @param size количество байт для извлечения
+ *
  */
 void awh::Buffer::consume(const size_t size) noexcept {
 	// Выполняем удаление указанного количества байт из начала буфера
@@ -922,6 +966,7 @@ void awh::Buffer::consume(const size_t size) noexcept {
  *
  * @param size требуемое количество свободных байт в хвосте буфера
  * @return     указатель на начало свободной области либо nullptr при ошибке
+ *
  */
 void * awh::Buffer::prepare(const size_t size) noexcept {
 	// Если размер выделения не передан
@@ -950,6 +995,7 @@ void * awh::Buffer::prepare(const size_t size) noexcept {
  *
  * @param size количество фактически записанных в хвост байт
  * @return     количество зафиксированных байт
+ *
  */
 size_t awh::Buffer::commit(const size_t size) noexcept {
 	// Определяем количество свободного места в хвосте буфера
@@ -966,6 +1012,7 @@ size_t awh::Buffer::commit(const size_t size) noexcept {
  *
  * @param size требуемое количество свободных байт в хвосте буфера
  * @return     объект записи с автоматической фиксацией данных
+ *
  */
 awh::Buffer::Writer awh::Buffer::write(const size_t size) noexcept {
 	// Выполняем подготовку места в хвосте буфера
@@ -977,6 +1024,7 @@ awh::Buffer::Writer awh::Buffer::write(const size_t size) noexcept {
  * @brief Метод резервирования размера буфера
  *
  * @param size размер выделяемой памяти
+ *
  */
 void awh::Buffer::reserve(const size_t size) noexcept {
 	/**
@@ -997,6 +1045,7 @@ void awh::Buffer::reserve(const size_t size) noexcept {
  * @brief Шаблон для добавления числа в буфер
  *
  * @tparam T тип данных для добавления
+ *
  */
 template <typename T>
 /**
@@ -1004,6 +1053,7 @@ template <typename T>
  *
  * @param value значение для добавления
  * @return       результат добавления данных
+ *
  */
 bool awh::Buffer::push(const T value) noexcept {
 	// Выполняем добавление числа
@@ -1040,6 +1090,7 @@ template bool awh::Buffer::push(const double) noexcept;
  *
  * @param text текст для добавления
  * @return     результат добавления данных
+ *
  */
 bool awh::Buffer::push(const char * text) noexcept {
 	// Если текст передан не пустой
@@ -1054,6 +1105,7 @@ bool awh::Buffer::push(const char * text) noexcept {
  *
  * @param text текст для добавления
  * @return     результат добавления данных
+ *
  */
 bool awh::Buffer::push(string_view text) noexcept {
 	// Если текст передан не пустой
@@ -1068,6 +1120,7 @@ bool awh::Buffer::push(string_view text) noexcept {
  *
  * @param text текст для добавления
  * @return     результат добавления данных
+ *
  */
 bool awh::Buffer::push(const string & text) noexcept {
 	// Если текст передан не пустой
@@ -1085,6 +1138,7 @@ bool awh::Buffer::push(const string & text) noexcept {
  *
  * @param buffer бинарный буфер для добавления
  * @return       результат добавления данных
+ *
  */
 bool awh::Buffer::push(buffer_t && buffer) noexcept {
 	// Если сторонний буфер пустой
@@ -1133,6 +1187,7 @@ bool awh::Buffer::push(buffer_t && buffer) noexcept {
  *
  * @param buffer бинарный буфер для добавления
  * @return       результат добавления данных
+ *
  */
 bool awh::Buffer::push(const buffer_t & buffer) noexcept {
 	// Если буфер данных передан не пустой
@@ -1147,6 +1202,7 @@ bool awh::Buffer::push(const buffer_t & buffer) noexcept {
  *
  * @param buffer бинарный буфер для добавления
  * @return       результат добавления данных
+ *
  */
 bool awh::Buffer::push(const vector <uint8_t> & buffer) noexcept {
 	// Если буфер данных передан не пустой
@@ -1162,6 +1218,7 @@ bool awh::Buffer::push(const vector <uint8_t> & buffer) noexcept {
  * @param buffer бинарный буфер для добавления
  * @param size   размер бинарного буфера
  * @return       результат добавления данных
+ *
  */
 bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 	// Если данные переданы неверные
@@ -1196,6 +1253,7 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
  * @brief Метод установки максимального размера потребления памяти
  *
  * @param size максимальный размер потребления памяти
+ *
  */
 void awh::Buffer::setMaxMemory(const size_t size) noexcept {
 	// Если максимальный размер потребляемой памяти передан
@@ -1207,6 +1265,7 @@ void awh::Buffer::setMaxMemory(const size_t size) noexcept {
  * @brief Метод обмена очередями
  *
  * @param buffer бинарный буфер для обмена
+ *
  */
 void awh::Buffer::swap(Buffer & buffer) noexcept {
 	// Если объект фреймворка установлен у стороннего буфера
@@ -1236,6 +1295,7 @@ void awh::Buffer::swap(Buffer & buffer) noexcept {
  * @brief Метод установки объекта логирования
  *
  * @param log объект работы с логами
+ *
  */
 void awh::Buffer::setLogger(const log_t * log) noexcept {
 	// Выполняем установку объекта логирования
@@ -1245,6 +1305,7 @@ void awh::Buffer::setLogger(const log_t * log) noexcept {
  * @brief Получения размера данных в буфера
  *
  * @return размер данных в буфера
+ *
  */
 awh::Buffer::operator size_t() const noexcept {
 	// Возвращаем размер буфера
@@ -1254,6 +1315,7 @@ awh::Buffer::operator size_t() const noexcept {
  * @brief Получения бинарных данных буфера
  *
  * @return бинарные данные буфера
+ *
  */
 awh::Buffer::operator const char * () const noexcept {
 	// Возвращаем буфер данных
@@ -1263,6 +1325,7 @@ awh::Buffer::operator const char * () const noexcept {
  * @brief Получения бинарных данных буфера
  *
  * @return бинарные данные буфера
+ *
  */
 awh::Buffer::operator const uint8_t * () const noexcept {
 	// Возвращаем буфер данных
@@ -1272,6 +1335,7 @@ awh::Buffer::operator const uint8_t * () const noexcept {
  * @brief Получения бинарных данных буфера
  *
  * @return бинарные данные буфера
+ *
  */
 awh::Buffer::operator const vector <uint8_t> & () const noexcept {
 	// Возвращаем результат
@@ -1282,6 +1346,7 @@ awh::Buffer::operator const vector <uint8_t> & () const noexcept {
  *
  * @param buffer бинарный буфер для копирования
  * @return       текущий контейнер буфера
+ *
  */
 awh::Buffer & awh::Buffer::operator = (const char * buffer) noexcept {
 	/**
@@ -1318,6 +1383,7 @@ awh::Buffer & awh::Buffer::operator = (const char * buffer) noexcept {
  *
  * @param buffer бинарный буфер для перемещения
  * @return       текущий контейнер буфера
+ *
  */
 awh::Buffer & awh::Buffer::operator = (string && buffer) noexcept {
 	/**
@@ -1347,6 +1413,7 @@ awh::Buffer & awh::Buffer::operator = (string && buffer) noexcept {
  *
  * @param buffer бинарный буфер для копирования
  * @return       текущий контейнер буфера
+ *
  */
 awh::Buffer & awh::Buffer::operator = (const string & buffer) noexcept {
 	/**
@@ -1374,6 +1441,7 @@ awh::Buffer & awh::Buffer::operator = (const string & buffer) noexcept {
  *
  * @param buffer бинарный буфер для перемещения
  * @return       текущий контейнер буфера
+ *
  */
 awh::Buffer & awh::Buffer::operator = (vector <uint8_t> && buffer) noexcept {
 	/**
@@ -1401,6 +1469,7 @@ awh::Buffer & awh::Buffer::operator = (vector <uint8_t> && buffer) noexcept {
  *
  * @param buffer бинарный буфер для копирования
  * @return       текущий контейнер буфера
+ *
  */
 awh::Buffer & awh::Buffer::operator = (const vector <uint8_t> & buffer) noexcept {
 	/**
@@ -1428,6 +1497,7 @@ awh::Buffer & awh::Buffer::operator = (const vector <uint8_t> & buffer) noexcept
  *
  * @param buffer бинарный буфер для перемещения
  * @return       текущий контейнер буфера
+ *
  */
 awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 	/**
@@ -1469,6 +1539,7 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
  *
  * @param buffer бинарный буфер для копирования
  * @return       текущий контейнер буфера
+ *
  */
 awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 	/**
@@ -1506,6 +1577,7 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
  *
  * @param buffer бинарный буфер для сравнения
  * @return       результат сравнения
+ *
  */
 bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
 	/**
@@ -1543,6 +1615,7 @@ awh::Buffer::Buffer() noexcept : _fmk(nullptr), _log(nullptr) {}
  * @brief Конструктор перемещения
  *
  * @param buffer бинарный буфер для перемещения
+ *
  */
 awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 	/**
@@ -1581,6 +1654,7 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
  * @brief Конструктор копирования
  *
  * @param buffer бинарный буфер для копирования
+ *
  */
 awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 	/**
@@ -1616,6 +1690,7 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Buffer::Buffer(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**
@@ -1629,6 +1704,7 @@ awh::Buffer::~Buffer() noexcept {}
  *
  * @param is     поток для чтения
  * @param buffer буфер для присвоения
+ *
  */
 istream & awh::operator >> (istream & is, buffer_t & buffer) noexcept {
 	// Буфер данных в текстовом виде
@@ -1647,6 +1723,7 @@ istream & awh::operator >> (istream & is, buffer_t & buffer) noexcept {
  *
  * @param os     поток куда нужно вывести данные
  * @param buffer буфер извлечения
+ *
  */
 ostream & awh::operator << (ostream & os, const buffer_t & buffer) noexcept {
 	// Получаем размер полезных данных буфера

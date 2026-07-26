@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация серверной стороны протокола SOCKS5 — разбор запросов клиента,
+ *        согласование метода авторизации и формирование ответов на команды CONNECT, BIND и UDP ASSOCIATE
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -202,12 +206,14 @@ namespace {
 	 * @brief Шаблон функции добавления полезной нагрузки в буфер
 	 *
 	 * @tparam T тип данных для добавления в буфер
+	 *
 	 */
 	template <typename T>
 	/**
 	 * @brief Функция добавления полезной нагрузки в буфер
 	 *
 	 * @param data данные для добавления в буфер
+	 *
 	 */
 	void addPayload(const T & data) noexcept {
 		// Получаем размер данных для добавления в буфер
@@ -225,6 +231,7 @@ namespace {
 	 * @brief Функция добавления полезной нагрузки в буфер
 	 *
 	 * @param data данные для добавления в буфер
+	 *
 	 */
 	void addPayload(const string & data) noexcept {
 		// Если данных слишком много для буфера
@@ -245,6 +252,7 @@ namespace {
  * @param size   размер бинарного буфера входящих данных
  * @param ctx    объект для извлечения параметров сообщения
  * @return       результат парсинга входящих данных
+ *
  */
 bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ctx_t & ctx) noexcept {
 	// Переменная результата
@@ -553,6 +561,7 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ct
  * @param size   размер бинарного буфера входящих данных
  * @param udp    объект для извлечения параметров UDP заголовка
  * @return       результат парсинга входящих данных
+ *
  */
 bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, udp_head_t & udp) noexcept {
 	// Переменная результата
@@ -686,6 +695,7 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ud
  * @param size   ссылка на размер буфера для извлечения данных
  * @param ctx    объект для установки параметров сообщения
  * @return 	     результат извлечения данных в буфер
+ *
  */
 bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t & ctx) const noexcept {
 	// Переменная результата
@@ -851,6 +861,7 @@ bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
  * @param size   ссылка на размер буфера для извлечения данных
  * @param udp    объект для установки параметров UDP заголовка
  * @return 	     результат извлечения данных в буфер
+ *
  */
 bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, const udp_head_t & udp) const noexcept {
 	// Переменная результата
@@ -936,6 +947,7 @@ bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, const u
  * @brief Метод добавления функции обработки авторизации
  *
  * @param callback функция обратного вызова для обработки авторизации
+ *
  */
 void awh::proto::Server_Socks5::on(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки авторизации
@@ -946,6 +958,7 @@ void awh::proto::Server_Socks5::on(function <bool (const string &, const string 
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::proto::Server_Socks5::Server_Socks5(const fmk_t * fmk, const log_t * log) noexcept :
  socks5_t(fmk, log), _callback(nullptr) {}

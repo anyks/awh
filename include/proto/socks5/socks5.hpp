@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл базового класса протокола SOCKS5 (RFC 1928) — общий конечный автомат обмена,
+ *        коды команд и статусов, структура UDP-заголовка и разбор адресов,
+ *        разделяемые клиентской и серверной реализациями
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -153,6 +158,7 @@ namespace awh {
 				 *
 				 * @param code код статуса
 				 * @return     текстовое значение кода статуса
+				 *
 				 */
 				static string statusMessage(const status_t code) noexcept;
 			public:
@@ -163,6 +169,7 @@ namespace awh {
 				 * @param data  буфер входящих данных
 				 * @param size  размер буфера входящих данных
 				 * @return      0 — кадр неполный; SIZE_MAX — кадр некорректный; иначе размер кадра
+				 *
 				 */
 				static size_t frameSize(const state_t state, const uint8_t * data, const size_t size) noexcept;
 			public:
@@ -173,6 +180,7 @@ namespace awh {
 				 * @param size   размер бинарного буфера входящих данных
 				 * @param ctx    объект для извлечения параметров сообщения
 				 * @return       результат парсинга входящих данных
+				 *
 				 */
 				virtual bool parse(const void * buffer, const size_t size, ctx_t & ctx) noexcept = 0;
 				/**
@@ -182,6 +190,7 @@ namespace awh {
 				 * @param size   размер бинарного буфера входящих данных
 				 * @param udp    объект для извлечения параметров UDP заголовка
 				 * @return       результат парсинга входящих данных
+				 *
 				 */
 				virtual bool parse(const void * buffer, const size_t size, udp_head_t & udp) noexcept = 0;
 			public:
@@ -192,6 +201,7 @@ namespace awh {
 				 * @param size   ссылка на размер буфера для извлечения данных
 				 * @param ctx    объект для установки параметров сообщения
 				 * @return 	     результат извлечения данных в буфер
+				 *
 				 */
 				virtual bool buffer(uint8_t ** buffer, size_t & size, ctx_t & ctx) const noexcept = 0;
 				/**
@@ -201,6 +211,7 @@ namespace awh {
 				 * @param size   ссылка на размер буфера для извлечения данных
 				 * @param udp    объект для установки параметров UDP заголовка
 				 * @return 	     результат извлечения данных в буфер
+				 *
 				 */
 				virtual bool buffer(uint8_t ** buffer, size_t & size, const udp_head_t & udp) const noexcept = 0;
 			public:
@@ -209,6 +220,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Socks5(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация сетевой очереди — буферизация исходящих и входящих сетевых данных фиксированной ёмкости с
+ *        выравниванием на границу кэш-линии для предотвращения ложного разделения кэша между потоками
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -45,6 +49,7 @@ using namespace std;
  *
  * @note Сетевой реактор работает по модели «один поток на воркер-процесс», поэтому пул
  *       сделан потоко-локальным (thread_local) и не требует блокировок.
+ *
  */
 namespace {
 	/**
@@ -88,6 +93,7 @@ namespace {
 	 * @brief Функция получения блока буфера из пула (или выделения нового)
 	 *
 	 * @return блок буфера (nullptr при нехватке памяти)
+	 *
 	 */
 	inline uint8_t * acquireBlock() noexcept {
 		// Если пул доступен и в нём есть свободные блоки
@@ -106,6 +112,7 @@ namespace {
 	 * @brief Функция возврата блока буфера в пул (или его освобождения при переполнении пула)
 	 *
 	 * @param block возвращаемый блок буфера
+	 *
 	 */
 	inline void releaseBlock(uint8_t * block) noexcept {
 		// Если блок не выделен, ничего не делаем
@@ -154,6 +161,7 @@ void awh::Network_Queue::compact() noexcept {
  * @brief Метод ленивого выделения буфера очереди из пула (если ещё не выделен)
  *
  * @return результат выделения буфера (false при нехватке памяти)
+ *
  */
 bool awh::Network_Queue::reserve() noexcept {
 	// Если буфер уже выделен, выделение не требуется
@@ -182,6 +190,7 @@ void awh::Network_Queue::release() noexcept {
  * @brief Метод быстрого получения размера записи (без проверок - вызывается только для валидных позиций)
  *
  * @return размер данных в очереди
+ *
  */
 size_t awh::Network_Queue::recordSize(const size_t pos) const noexcept {
 	/**
@@ -206,6 +215,7 @@ size_t awh::Network_Queue::recordSize(const size_t pos) const noexcept {
  *
  * @param pos  позиция записи для обновления размера
  * @param size новый размер данных в очереди
+ *
  */
 void awh::Network_Queue::recordSize(const size_t pos, const size_t size) noexcept {
 	/**
@@ -257,6 +267,7 @@ void awh::Network_Queue::clear() noexcept {
  * @brief Метод проверки на пустоту очереди
  *
  * @return результат проверки на пустоту очереди
+ *
  */
 bool awh::Network_Queue::empty() const noexcept {
 	// Очередь пуста, когда в ней нет полезных данных (учитывает оба региона bip-режима)
@@ -266,6 +277,7 @@ bool awh::Network_Queue::empty() const noexcept {
  * @brief Метод получения общего размера полезных данных в очереди (без учёта метаданных)
  *
  * @return размер данных в очереди
+ *
  */
 size_t awh::Network_Queue::size() const noexcept {
 	// Возвращаем кэшированный размер полезных данных в очереди
@@ -275,6 +287,7 @@ size_t awh::Network_Queue::size() const noexcept {
  * @brief Метод получения количества записей в очереди
  *
  * @return количество записей в очереди
+ *
  */
 size_t awh::Network_Queue::count() const noexcept {
 	// Возвращаем количество записей в очереди
@@ -285,6 +298,7 @@ size_t awh::Network_Queue::count() const noexcept {
  *
  * @note   Возвращает размер наибольшего непрерывного свободного региона: для TCP (bip) это гарантированный максимум одной записи, для UDP - свободное место за вычетом заголовка.
  * @return доступное пространство для новых данных в очереди
+ *
  */
 size_t awh::Network_Queue::available() const noexcept {
 	/**
@@ -319,6 +333,7 @@ size_t awh::Network_Queue::available() const noexcept {
  * @brief Метод получения типа сетевой очереди
  *
  * @return тип сетевой очереди
+ *
  */
 awh::Network_Queue::type_t awh::Network_Queue::type() const noexcept {
 	// Возвращаем текущий тип сетевой очереди
@@ -337,6 +352,7 @@ void awh::Network_Queue::type(const type_t type) noexcept {
  *
  * @param size размер данных для удаления из очереди
  * @return     результат удаления верхней записи из очереди (true при успехе, false если очередь пуста)
+ *
  */
 bool awh::Network_Queue::pop(const size_t size) noexcept {
 	// Если очередь пуста, нет данных для удаления
@@ -438,6 +454,7 @@ bool awh::Network_Queue::pop(const size_t size) noexcept {
  * @param data данные для добавления в очередь
  * @param size размер данных для добавления в очередь
  * @return     количество данных, успешно добавленных в очередь (0 при неудаче, когда недостаточно места)
+ *
  */
 size_t awh::Network_Queue::push(const void * data, const size_t size) noexcept {
 	// Переменная результата
@@ -548,6 +565,7 @@ size_t awh::Network_Queue::push(const void * data, const size_t size) noexcept {
  * @param data данные для получения из очереди (устанавливается указатель на данные в очереди)
  * @param size размер данных для получения из очереди
  * @return     результат (true при успехе, false если очередь пуста)
+ *
  */
 bool awh::Network_Queue::front(const void ** data, size_t & size) const noexcept {
 	// Если очередь пуста, нет данных для чтения
@@ -581,6 +599,7 @@ bool awh::Network_Queue::front(const void ** data, size_t & size) const noexcept
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Network_Queue::Network_Queue(const fmk_t * fmk, const log_t * log) noexcept :
  _type(type_t::NONE), _read(0), _write(0), _total(0),

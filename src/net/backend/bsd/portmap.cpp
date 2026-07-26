@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация бэкенда проброса портов — открытие портов на маршрутизаторе средствами UPnP и NAT-PMP, создание,
+ *        обновление и удаление правил перенаправления
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -67,6 +71,7 @@ namespace {
 	 * @brief Время жизни кеша обнаруженного IGD в миллисекундах
 	 *
 	 * @note Шлюз может перезагрузиться или сменить IP-адрес, поэтому кеш периодически обновляется
+	 *
 	 */
 	constexpr uint64_t AWH_IGD_CACHE_TTL = 0xEA60;
 
@@ -74,6 +79,7 @@ namespace {
 	 * @brief Время жизни кеша шлюза по умолчанию в миллисекундах
 	 *
 	 * @note Маршрут по умолчанию может смениться при переключении сети, поэтому кеш периодически обновляется
+	 *
 	 */
 	constexpr uint64_t AWH_GATEWAY_CACHE_TTL = 0xEA60;
 
@@ -81,6 +87,7 @@ namespace {
 	 * @brief Время жизни кеша публичного IP-адреса NAT-PMP в миллисекундах
 	 *
 	 * @note Внешний (публичный) IP-адрес может смениться у провайдера, поэтому кеш периодически обновляется
+	 *
 	 */
 	constexpr uint64_t AWH_NATPMP_PUBLIC_CACHE_TTL = 0xEA60;
 
@@ -127,6 +134,7 @@ namespace {
 	 *
 	 * @note Храним только владеющие строки (std::string), а не UPNPUrls,
 	 *       чтобы не тащить ручное освобождение через FreeUPNPUrls в статический кеш
+	 *
 	 */
 	struct IgdCache {
 		// Абсолютное время истечения кеша в миллисекундах (0 - кеш пустой)
@@ -153,6 +161,7 @@ namespace {
 	 * @param status результат выполнения операции UPnP (1 - успех, 0 - шлюз не обнаружен, иначе код ошибки UPnP)
 	 * @param now    текущая метка времени в миллисекундах
 	 * @return       результат получения параметров IGD-шлюза
+	 *
 	 */
 	static bool resolveIGD(IgdCache & out, int32_t & status, const uint64_t now) noexcept {
 		/**
@@ -256,6 +265,7 @@ namespace {
 	 * @param family  семейство IP-адресов (AF_INET или AF_INET6)
 	 * @param now     текущая метка времени в миллисекундах
 	 * @return        результат получения адреса шлюза
+	 *
 	 */
 	static bool resolveGateway(const eth::gateway_t & gateway, eth::gateway_t::route_t & route, const int32_t family, const uint64_t now) noexcept {
 		/**
@@ -316,6 +326,7 @@ namespace {
 	 * @brief Структура кеша публичного IPv4-адреса NAT-PMP
 	 *
 	 * @note NAT-PMP определяет только IPv4-адрес публичной точки доступа (RFC 6886)
+	 *
 	 */
 	struct NatPmpPublicCache {
 		// Флаг наличия закешированного публичного IPv4-адреса
@@ -343,6 +354,7 @@ namespace options {
 	 * @param sock сетевой сокет
 	 * @param log  объект работы с логами
 	 * @return     результат установки опции
+	 *
 	 */
 	static bool reuseAddress(const awh::net::socket_t sock, const awh::log_t * log) noexcept {
 		// Флаги установки опции
@@ -375,6 +387,7 @@ namespace options {
 	 * @param event событие сокета
 	 * @param msec  время таймаута в миллисекундах
 	 * @return      результат установки таймаута
+	 *
 	 */
 	static bool timeout(const awh::net::socket_t sock, const awh::net::socket_event_t event, const uint32_t msec, const awh::log_t * log) noexcept {
 		// Переменная результата
@@ -452,6 +465,7 @@ namespace {
 	 * @param now    текущая метка времени в миллисекундах
 	 * @param log    объект работы с логами
 	 * @return       результат получения публичного IPv4-адреса
+	 *
 	 */
 	static bool resolveNatPmpPublicIP(uint32_t & out, const struct sockaddr_storage & server, const int32_t family, const uint64_t now, const log_t * log) noexcept {
 		/**
@@ -556,6 +570,7 @@ awh::eth::Port_Mapping::Forwarding::Forwarding() noexcept :
  * @brief Метод установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
+ *
  */
 void awh::eth::Port_Mapping::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности потоков
@@ -571,6 +586,7 @@ void awh::eth::Port_Mapping::threadSafety(const bool mode) noexcept {
  * @brief Метод получения списка проброшенных портов на маршрутизаторе
  *
  * @return список параметров проброшенных портов на маршрутизаторе
+ *
  */
 vector <awh::eth::Port_Mapping::fwd_t> awh::eth::Port_Mapping::mappings() const noexcept {
 	// Переменная результата
@@ -731,6 +747,7 @@ vector <awh::eth::Port_Mapping::fwd_t> awh::eth::Port_Mapping::mappings() const 
  * @param fwd  объект параметров проброса порта (при успехе обновляется назначенным внешним портом)
  * @param mode режим включения/выключения проброса порта
  * @return     результат выполнения установки
+ *
  */
 bool awh::eth::Port_Mapping::mapping(fwd_t & fwd, const event::mode_t mode) const noexcept {
 	// Переменная результата
@@ -1985,6 +2002,7 @@ bool awh::eth::Port_Mapping::mapping(fwd_t & fwd, const event::mode_t mode) cons
  *
  * @param fmk объект фреймворка
  * @param log объект работы с логами
+ *
  */
 awh::eth::Port_Mapping::Port_Mapping(const fmk_t * fmk, const log_t * log) noexcept :
  _gateway(fmk, log), _addr(fmk, log), _fmk(fmk), _log(log) {

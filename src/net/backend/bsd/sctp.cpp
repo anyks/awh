@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация бэкенда протокола SCTP — настройка параметров ассоциаций, входящих и исходящих потоков,
+ *        heartbeat, авторизации и подписки на уведомления SCTP-сокета для Linux и FreeBSD
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -41,6 +45,7 @@ using namespace std;
  * @param sock   сетевой сокет
  * @param status объект для извлечения статуса инициализации SCTP сокета
  * @return       результат работы функции
+ *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t sock, net::sctp::status_t & status) const noexcept {
 	// Переменная результата
@@ -147,6 +152,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t 
  * @param sock    сетевой сокет
  * @param initmsg параметры инициализации SCTP сокета
  * @return        результат работы функции
+ *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept {
 	// Переменная результата
@@ -186,6 +192,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::soc
  * @param sock   сетевой сокет
  * @param events список событий SCTP для активации
  * @return       результат работы функции
+ *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept {
 	// Если список событий для подписки пустой
@@ -340,6 +347,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
  * @param sock  сетевой сокет
  * @param types список поддерживаемых алгоритмов аутентификации
  * @return      результат работы функции
+ *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorithms(const net::socket_t sock, const vector <net::sctp::auth_type_t> & types) const noexcept {
 	// Переменная результата
@@ -409,6 +417,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorith
  * @param num  номер ключа аутентификации
  * @param key  ключ аутентификации
  * @return     результат работы функции
+ *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::socket_t sock, const uint16_t num, string_view key) const noexcept {
 	// Переменная результата
@@ -461,6 +470,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
  * @param id   идентификатор ассоциации
  * @param num  номер ключа аутентификации
  * @return     результат работы функции
+ *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) const noexcept {
 	// Переменная результата
@@ -523,6 +533,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
  * @param sock   сетевой сокет
  * @param chunks список чанков подлежащих аутентификации
  * @return       результат работы функции
+ *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const net::socket_t sock, const vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
 	// Переменная результата
@@ -651,6 +662,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
  * @param id     идентификатор ассоциации
  * @param chunks список чанков подлежащих аутентификации
  * @return       результат работы функции
+ *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
 	// Переменная результата
@@ -817,6 +829,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
  * @param type тип таймаута
  * @param ctx  контекст установки таймаута
  * @return     значение таймаута в миллисекундах
+ *
  */
 uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, void * ctx) const noexcept {
 	// Переменная результата
@@ -964,6 +977,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
  * @param timeout значение таймаута в миллисекундах
  * @param ctx     контекст установки таймаута
  * @return        результат работы функции
+ *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx) const noexcept {
 	// Переменная результата

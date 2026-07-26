@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл контейнера бинарных данных — класс BinBox, хранящий последовательность записей
+ *        произвольного размера в непрерывном буфере с итератором обхода и минимальными накладными расходами на запись
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -54,6 +58,7 @@ namespace awh {
 			 * @brief Структура контейнера бинарных данных
 			 *
 			 * @details Содержит размер записи и буфер бинарных данных.
+			 *
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Record {
 				uintmax_t size;                 // Размер записи данных
@@ -98,6 +103,7 @@ namespace awh {
 					 * @brief Оператор преобразования в сырой итератор
 					 *
 					 * @return iterator итератор для преобразования
+					 *
 					 */
 					operator iterator() noexcept;
 				public:
@@ -105,12 +111,14 @@ namespace awh {
 					 * @brief Оператор извлечения указателя заголовка
 					 *
 					 * @return указатель заголовка
+					 *
 					 */
 					pointer operator -> () noexcept;
 					/**
 					 * @brief Оператор разыменования заголовка
 					 *
 					 * @return значение заголовка
+					 *
 					 */
 					reference operator * () const noexcept;
 				public:
@@ -118,6 +126,7 @@ namespace awh {
 					 * @brief Оператор смещения вперед
 					 *
 					 * @return значение текущего итератора
+					 *
 					 */
 					Iterator & operator ++ () noexcept;
 				public:
@@ -126,6 +135,7 @@ namespace awh {
 					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator == (const Iterator & other) const noexcept;
 					/**
@@ -133,6 +143,7 @@ namespace awh {
 					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
+					 *
 					 */
 					bool operator != (const Iterator & other) const noexcept;
 				public:
@@ -142,6 +153,7 @@ namespace awh {
 					 * @param it  итератор для установки
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
+					 *
 					 */
 					explicit Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept;
 			} iterator_t;
@@ -177,6 +189,7 @@ namespace awh {
 			 * @brief Метод проверки на пустое значение контейнера
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool empty() const noexcept;
 		public:
@@ -184,6 +197,7 @@ namespace awh {
 			 * @brief Метод получения количества записей в контейнере
 			 *
 			 * @return количество записей в контейнере
+			 *
 			 */
 			size_t count() const noexcept;
 		public:
@@ -191,12 +205,14 @@ namespace awh {
 			 * @brief Метод получения названия контейнера
 			 *
 			 * @return название контейнера
+			 *
 			 */
 			string getName() const noexcept;
 			/**
 			 * @brief Метод установки названия контейнера
 			 *
 			 * @param name название контейнера
+			 *
 			 */
 			void setName(string_view name) noexcept;
 		public:
@@ -204,12 +220,14 @@ namespace awh {
 			 * @brief Метод получения версии контейнера
 			 *
 			 * @return версия контейнера
+			 *
 			 */
 			string getVersion() const noexcept;
 			/**
 			 * @brief Метод установки версии контейнера
 			 *
 			 * @param version версия контейнера для установки
+			 *
 			 */
 			void setVersion(string_view version) noexcept;
 		public:
@@ -218,6 +236,7 @@ namespace awh {
 			 *
 			 * @param key ключ для удаления записи
 			 * @return    результат работы функции
+			 *
 			 */
 			bool erase(string_view key) noexcept;
 			/**
@@ -225,6 +244,7 @@ namespace awh {
 			 *
 			 * @param idw идентификатор ключа для удаления записи
 			 * @return    результат работы функции
+			 *
 			 */
 			bool erase(const uint64_t idw) noexcept;
 			/**
@@ -232,6 +252,7 @@ namespace awh {
 			 *
 			 * @param it итератор записи для удаления
 			 * @return   следующий итератор
+			 *
 			 */
 			iterator_t erase(const iterator_t & it) noexcept;
 		public:
@@ -239,12 +260,14 @@ namespace awh {
 			 * @brief Метод загрузки контейнера из файла
 			 *
 			 * @param filename путь к файлу для загрузки
+			 *
 			 */
 			void load(string_view filename) noexcept;
 			/**
 			 * @brief Метод сохранения контейнера в файл
 			 *
 			 * @param filename путь к файлу для сохранения
+			 *
 			 */
 			void save(string_view filename) noexcept;
 		public:
@@ -253,6 +276,7 @@ namespace awh {
 			 *
 			 * @param key ключ для генерации
 			 * @return    идентификатор ключа
+			 *
 			 */
 			uint64_t idw(string_view key) const noexcept;
 		public:
@@ -261,6 +285,7 @@ namespace awh {
 			 *
 			 * @param key ключ для проверки
 			 * @return    результат проверки
+			 *
 			 */
 			bool has(string_view key) noexcept;
 			/**
@@ -268,6 +293,7 @@ namespace awh {
 			 *
 			 * @param idw идентификатор ключа для проверки
 			 * @return    результат проверки
+			 *
 			 */
 			bool has(const uint64_t idw) noexcept;
 		public:
@@ -276,6 +302,7 @@ namespace awh {
 			 *
 			 * @param key ключ записи
 			 * @return    размер данных записи
+			 *
 			 */
 			size_t size(string_view key) const noexcept;
 			/**
@@ -283,6 +310,7 @@ namespace awh {
 			 *
 			 * @param idw идентификатор ключа
 			 * @return    размер данных записи
+			 *
 			 */
 			size_t size(const uint64_t idw) const noexcept;
 		public:
@@ -291,6 +319,7 @@ namespace awh {
 			 *
 			 * @param key ключ записи
 			 * @return    запрашиваемые данные по ключу
+			 *
 			 */
 			void * get(string_view key) const noexcept;
 			/**
@@ -298,6 +327,7 @@ namespace awh {
 			 *
 			 * @param idw идентификатор ключа
 			 * @return    запрашиваемые данные по идентификатору ключа
+			 *
 			 */
 			void * get(const uint64_t idw) const noexcept;
 		public:
@@ -305,6 +335,7 @@ namespace awh {
 			 * @brief Шаблон метода чтения бинарных данных из бинарного контейнера
 			 *
 			 * @tparam T тип извлекаемого значения
+			 *
 			 */
 			template <typename T>
 			/**
@@ -312,12 +343,14 @@ namespace awh {
 			 *
 			 * @param key ключ записи
 			 * @return    результат работы функции
+			 *
 			 */
 			T get(string_view key) noexcept;
 			/**
 			 * @brief Шаблон метода чтения данных из бинарного контейнера
 			 *
 			 * @tparam T тип извлекаемого значения
+			 *
 			 */
 			template <typename T>
 			/**
@@ -325,6 +358,7 @@ namespace awh {
 			 *
 			 * @param idw идентификатор ключа
 			 * @return    результат работы функции
+			 *
 			 */
 			T get(const uint64_t idw) noexcept;
 		public:
@@ -334,6 +368,7 @@ namespace awh {
 			 * @param key    ключ записи
 			 * @param buffer бинарный буфер для чтения данных
 			 * @return       результат работы функции
+			 *
 			 */
 			bool get(string_view key, vector <uint8_t> & buffer) noexcept;
 			/**
@@ -342,6 +377,7 @@ namespace awh {
 			 * @param idw    идентификатор ключа
 			 * @param buffer бинарный буфер для чтения данных
 			 * @return       результат работы функции
+			 *
 			 */
 			bool get(const uint64_t idw, vector <uint8_t> & buffer) noexcept;
 		public:
@@ -352,6 +388,7 @@ namespace awh {
 			 * @param buffer бинарный буфер для чтения данных
 			 * @param size   размер извлекаемых бинарных данных
 			 * @return       результат работы функции
+			 *
 			 */
 			bool get(string_view key, uint8_t ** buffer, size_t * size) noexcept;
 			/**
@@ -361,6 +398,7 @@ namespace awh {
 			 * @param buffer бинарный буфер для чтения данных
 			 * @param size   размер извлекаемых бинарных данных
 			 * @return       результат работы функции
+			 *
 			 */
 			bool get(const uint64_t idw, uint8_t ** buffer, size_t * size) noexcept;
 		public:
@@ -368,6 +406,7 @@ namespace awh {
 			 * @brief Шаблон метода добавления данных в бинарный контейнер
 			 *
 			 * @tparam T тип добавляемого значения
+			 *
 			 */
 			template <typename T>
 			/**
@@ -376,12 +415,14 @@ namespace awh {
 			 * @param idw   идентификатор ключа
 			 * @param value значение данных
 			 * @return      результат работы функции
+			 *
 			 */
 			bool add(const uint64_t idw, const T value) noexcept;
 			/**
 			 * @brief Шаблон метода добавления бинарного буфера данных
 			 *
 			 * @tparam T тип устанавливаемого значения
+			 *
 			 */
 			template <typename T>
 			/**
@@ -390,6 +431,7 @@ namespace awh {
 			 * @param idw   идентификатор ключа
 			 * @param value значение данных
 			 * @return      результат работы функции
+			 *
 			 */
 			bool add(const uint64_t idw, const vector <T> & value) noexcept;
 		public:
@@ -399,6 +441,7 @@ namespace awh {
 			 * @param idw   идентификатор ключа
 			 * @param value значение данных
 			 * @return      результат работы функции
+			 *
 			 */
 			bool add(const uint64_t idw, const string & value) noexcept;
 			/**
@@ -408,6 +451,7 @@ namespace awh {
 			 * @param buffer буфер для записи данных
 			 * @param size   размер буфера для записи данных
 			 * @return       результат работы функции
+			 *
 			 */
 			bool add(const uint64_t idw, const void * buffer, const size_t size) noexcept;
 		public:
@@ -415,6 +459,7 @@ namespace awh {
 			 * @brief Шаблон метода добавления данных в бинарный контейнер
 			 *
 			 * @tparam T тип добавляемого значения
+			 *
 			 */
 			template <typename T>
 			/**
@@ -423,12 +468,14 @@ namespace awh {
 			 * @param key   ключ записи
 			 * @param value значение данных
 			 * @return      результат работы функции
+			 *
 			 */
 			bool add(string_view key, const T value) noexcept;
 			/**
 			 * @brief Шаблон метода добавления данных в бинарный контейнер
 			 *
 			 * @tparam T тип добавляемого значения
+			 *
 			 */
 			template <typename T>
 			/**
@@ -437,6 +484,7 @@ namespace awh {
 			 * @param key   ключ записи
 			 * @param value значение данных
 			 * @return      результат работы функции
+			 *
 			 */
 			bool add(string_view key, const vector <T> & value) noexcept;
 		public:
@@ -446,6 +494,7 @@ namespace awh {
 			 * @param key   ключ записи
 			 * @param value значение данных
 			 * @return      результат работы функции
+			 *
 			 */
 			bool add(string_view key, const string & value) noexcept;
 			/**
@@ -455,6 +504,7 @@ namespace awh {
 			 * @param buffer буфер для записи данных
 			 * @param size   размер буфера для записи данных
 			 * @return       результат работы функции
+			 *
 			 */
 			bool add(string_view key, const void * buffer, const size_t size) noexcept;
 		public:
@@ -462,6 +512,7 @@ namespace awh {
 			 * @brief Метод обмена данными контейнерами
 			 *
 			 * @param binbox объект для обмена
+			 *
 			 */
 			void swap(BinBox & binbox) noexcept;
 		public:
@@ -469,12 +520,14 @@ namespace awh {
 			 * @brief Метод получения конечного итератора
 			 *
 			 * @return конечный итератор
+			 *
 			 */
 			iterator_t end() noexcept;
 			/**
 			 * @brief Метод получение начального итератора
 			 *
 			 * @return начальный итератор
+			 *
 			 */
 			iterator_t begin() noexcept;
 		public:
@@ -483,6 +536,7 @@ namespace awh {
 			 *
 			 * @param key ключ для поиска записи
 			 * @return     итератор указанного ключа
+			 *
 			 */
 			iterator_t find(string_view key) noexcept;
 			/**
@@ -490,6 +544,7 @@ namespace awh {
 			 *
 			 * @param idw идентификатор ключа для поиска записи
 			 * @return    итератор указанного идентификатора ключа
+			 *
 			 */
 			iterator_t find(const uint64_t idw) noexcept;
 		public:
@@ -497,12 +552,14 @@ namespace awh {
 			 * @brief Оператор проверки на существование контейнера
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			operator bool() const noexcept;
 			/**
 			 * @brief Оператор извлечения бинарного буфера данных
 			 *
 			 * @return бинарный буфер данных
+			 *
 			 */
 			operator vector <uint8_t> () const noexcept;
 		public:
@@ -511,6 +568,7 @@ namespace awh {
 			 *
 			 * @param binbox объект для перемещения
 			 * @return       текущий контейнер буфера
+			 *
 			 */
 			BinBox & operator = (BinBox && binbox) noexcept;
 		public:
@@ -519,6 +577,7 @@ namespace awh {
 			 *
 			 * @param buffer буфер бинарных данных
 			 * @return       текущий объект
+			 *
 			 */
 			BinBox & operator = (const vector <uint8_t> & buffer) noexcept;
 		public:
@@ -526,6 +585,7 @@ namespace awh {
 			 * @brief Конструктор перемещения
 			 *
 			 * @param binbox объект для перемещения
+			 *
 			 */
 			explicit BinBox(BinBox && binbox) noexcept;
 		public:
@@ -534,6 +594,7 @@ namespace awh {
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
+			 *
 			 */
 			explicit BinBox(const fmk_t * fmk, const log_t * log) noexcept;
 			/**

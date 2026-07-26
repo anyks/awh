@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация схемы HMAC-авторизации HTTP-сообщений —
+ *        сборка канонической базы подписи из покрываемых компонентов запроса,
+ *        расчёт и проверка подписи и формирование заголовков Signature и Signature-Input
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -52,6 +57,7 @@ namespace {
 	 *
 	 * @param sign  параметры подписи
 	 * @param nonce одноразовое значение
+	 *
 	 */
 	void rememberNonce(http::auth_t::sign_t & sign, const string & nonce) noexcept {
 		// Если nonce уже сохранён — повторно не добавляем
@@ -75,6 +81,7 @@ namespace {
 	 *
 	 * @param params значение параметров подписи (@signature-params)
 	 * @param fmk    объект фреймворка
+	 *
 	 */
 	void normalizeSignatureParamKeys(string & params, const fmk_t * fmk) noexcept {
 		// Выполняем поиск конца списка покрываемых компонентов
@@ -129,6 +136,7 @@ namespace {
  * @brief Метод получения текстового имени алгоритма подписи
  *
  * @return название алгоритма подписи (hmac-sha256 и т.д.)
+ *
  */
 string awh::http::Hmac::algName() const noexcept {
 	/**
@@ -168,6 +176,7 @@ string awh::http::Hmac::algName() const noexcept {
  *
  * @param name имя компонента
  * @return     значение компонента (пустая строка, если не найден)
+ *
  */
 string awh::http::Hmac::value(string_view name) const noexcept {
 	// Формируем ключ компонента в нижнем регистре
@@ -185,6 +194,7 @@ string awh::http::Hmac::value(string_view name) const noexcept {
  * @brief Метод формирования значения параметров подписи (@signature-params)
  *
  * @return значение параметров подписи
+ *
  */
 string awh::http::Hmac::params() noexcept {
 	// Результат работы функции
@@ -268,6 +278,7 @@ string awh::http::Hmac::params() noexcept {
  *
  * @param params значение параметров подписи (@signature-params)
  * @return       каноническая база подписи
+ *
  */
 string awh::http::Hmac::base(const string & params) const noexcept {
 	// Результат работы функции
@@ -316,6 +327,7 @@ string awh::http::Hmac::base(const string & params) const noexcept {
  * @param base каноническая база подписи
  * @param key  секретный ключ подписи
  * @return     подпись в формате BASE64
+ *
  */
 string awh::http::Hmac::sign(const string & base, const string & key) const noexcept {
 	// Результат работы функции
@@ -363,6 +375,7 @@ string awh::http::Hmac::sign(const string & base, const string & key) const noex
  * @param input     ссылка для записи значения заголовка Signature-Input
  * @param signature ссылка для записи значения заголовка Signature
  * @return          результат формирования
+ *
  */
 bool awh::http::Hmac::build(string & input, string & signature) noexcept {
 	// Получаем ссылку на параметры подписи
@@ -393,6 +406,7 @@ bool awh::http::Hmac::build(string & input, string & signature) noexcept {
  *
  * @param header значение заголовка (Signature-Input либо Signature)
  * @return       результат разбора
+ *
  */
 bool awh::http::Hmac::parse(const string_view header) noexcept {
 	// Если заголовок содержит список покрываемых компонентов - это Signature-Input
@@ -408,6 +422,7 @@ bool awh::http::Hmac::parse(const string_view header) noexcept {
  * @param name   имя входящего заголовка (Signature-Input либо Signature)
  * @param header значение входящего заголовка
  * @return       результат разбора
+ *
  */
 bool awh::http::Hmac::parse(const string_view name, const string_view header) noexcept {
 	// Результат работы функции
@@ -625,6 +640,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
  * @brief Метод проверки учётных данных (только для сервера)
  *
  * @return результат проверки
+ *
  */
 bool awh::http::Hmac::check() noexcept {
 	// На стороне клиента проверка не требуется
@@ -707,6 +723,7 @@ bool awh::http::Hmac::check() noexcept {
  *
  * @param full режим вывода вместе с именами заголовков
  * @return     значение заголовка (заголовков) авторизации
+ *
  */
 string awh::http::Hmac::header(const bool full) noexcept {
 	// Результат работы функции
@@ -732,6 +749,7 @@ string awh::http::Hmac::header(const bool full) noexcept {
  * @brief Метод формирования набора исходящих заголовков авторизации
  *
  * @param result контейнер для набора заголовков (Signature-Input и Signature)
+ *
  */
 void awh::http::Hmac::headers(vector <pair <string, string>> & result) noexcept {
 	// Подпись формируется только на стороне клиента
@@ -755,6 +773,7 @@ void awh::http::Hmac::headers(vector <pair <string, string>> & result) noexcept 
  * @param crypto объект криптографии
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
+ *
  */
 awh::http::Hmac::Hmac(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept :
  auth_t::scheme_t(owner, params, crypto, fmk, log) {}

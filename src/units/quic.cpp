@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модулей QUIC — связывание конечного автомата соединения QUIC с движком ввода-вывода:
+ *        приём и отправка датаграмм, управление сессиями, миграция клиентского адреса,
+ *        кластеризация сервера и возобновление сессии по 0-RTT
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -62,6 +67,7 @@ awh::unit::QuicServer::ClusterParams::ClusterParams() noexcept :
  * @brief Метод получения текущего времени в миллисекундах
  *
  * @return текущее время в миллисекундах
+ *
  */
 uint64_t awh::unit::QuicServer::date() const noexcept {
 	// Выводим текущий штамп времени в миллисекундах
@@ -72,6 +78,7 @@ uint64_t awh::unit::QuicServer::date() const noexcept {
  *
  * @param oid идентификатор события сессии
  * @return    адрес удалённого эндпоинта в виде "адрес:порт"
+ *
  */
 string awh::unit::QuicServer::peer(const event::id_t oid) const noexcept {
 	// Извлекаем адрес удалённого эндпоинта сессии
@@ -88,6 +95,7 @@ string awh::unit::QuicServer::peer(const event::id_t oid) const noexcept {
  *
  * @param oid        идентификатор события сессии
  * @param connection соединение, которому устанавливается адрес эндпоинта
+ *
  */
 void awh::unit::QuicServer::endpoint(const event::id_t oid, quic::connection_t * connection) const noexcept {
 	// Структура сетевого адреса удалённого эндпоинта сессии
@@ -107,6 +115,7 @@ void awh::unit::QuicServer::endpoint(const event::id_t oid, quic::connection_t *
  * @param size размер датаграммы
  * @param key  выводимый ключ сессии
  * @return     результат определения сессии
+ *
  */
 bool awh::unit::QuicServer::origin([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size, net::origin_key_t & key) noexcept {
 	// Выводим идентификатор соединения получателя в качестве ключа сессии
@@ -117,6 +126,7 @@ bool awh::unit::QuicServer::origin([[maybe_unused]] const event::id_t eid, const
  *
  * @param eid идентификатор события сервера
  * @param oid идентификатор события сессии
+ *
  */
 void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const event::id_t oid) noexcept {
 	// Если шаблон контекста безопасности не установлен
@@ -166,6 +176,7 @@ void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const
  * @param oid  идентификатор события сессии
  * @param data данные датаграммы
  * @param size размер датаграммы
+ *
  */
 void awh::unit::QuicServer::read(const event::id_t oid, const uint8_t * data, const size_t size) noexcept {
 	// Выполняем поиск сессии соединения
@@ -255,6 +266,7 @@ void awh::unit::QuicServer::read(const event::id_t oid, const uint8_t * data, co
  *
  * @param eid    идентификатор события интервала
  * @param status статус события интервала
+ *
  */
 void awh::unit::QuicServer::tick([[maybe_unused]] const event::id_t eid, const event::status_t status) noexcept {
 	// Если статус события интервала не успешен
@@ -297,6 +309,7 @@ void awh::unit::QuicServer::tick([[maybe_unused]] const event::id_t eid, const e
  *
  * @param oid     идентификатор события сессии
  * @param session сессия соединения
+ *
  */
 void awh::unit::QuicServer::reroute(const event::id_t oid, session_t & session) noexcept {
 	// Идентификаторы, введённые в обращение
@@ -323,6 +336,7 @@ void awh::unit::QuicServer::reroute(const event::id_t oid, session_t & session) 
  *
  * @param oid     идентификатор события сессии
  * @param session сессия соединения
+ *
  */
 void awh::unit::QuicServer::process(const event::id_t oid) noexcept {
 	/**
@@ -414,6 +428,7 @@ void awh::unit::QuicServer::process(const event::id_t oid) noexcept {
  *
  * @param oid     идентификатор события сессии
  * @param session сессия соединения
+ *
  */
 bool awh::unit::QuicServer::flush(const event::id_t oid, session_t & session) noexcept {
 	// Флаг отправки хотя бы одной датаграммы
@@ -447,6 +462,7 @@ bool awh::unit::QuicServer::flush(const event::id_t oid, session_t & session) no
  * @param data данные для отправки в туннельный поток
  * @param size размер данных для отправки
  * @return     результат постановки данных в очередь отправки
+ *
  */
 bool awh::unit::QuicServer::inject(const event::id_t oid, const uint8_t * data, const size_t size) noexcept {
 	// Если данные для отправки отсутствуют
@@ -481,6 +497,7 @@ bool awh::unit::QuicServer::inject(const event::id_t oid, const uint8_t * data, 
  *
  * @param dest идентификатор события-приёмника объединения данных
  * @param data данные для перенаправления
+ *
  */
 void awh::unit::QuicServer::forward(const event::id_t dest, string_view data) noexcept {
 	// Если данные для перенаправления присутствуют и приёмник задан
@@ -500,6 +517,7 @@ void awh::unit::QuicServer::forward(const event::id_t dest, string_view data) no
  * @param data данные вызвавшей сброс датаграммы
  * @param size размер вызвавшей сброс датаграммы
  * @return     результат отправки
+ *
  */
 bool awh::unit::QuicServer::drop(const event::id_t oid, const uint8_t * data, const size_t size) noexcept {
 	// Ключ маршрутизации вызвавшей сброс датаграммы
@@ -537,6 +555,7 @@ bool awh::unit::QuicServer::drop(const event::id_t oid, const uint8_t * data, co
  * @brief Метод применения маркировки соединения к сокету события сервера
  *
  * @param marking требуемая маркировка исходящих датаграмм
+ *
  */
 void awh::unit::QuicServer::mark(const event::ecn_t marking) noexcept {
 	// Если уведомление о перегрузке пути отключено либо маркировка уже установлена
@@ -557,6 +576,7 @@ void awh::unit::QuicServer::mark(const event::ecn_t marking) noexcept {
  * @brief Метод завершения сессии соединения
  *
  * @param oid идентификатор события сессии
+ *
  */
 void awh::unit::QuicServer::erase(const event::id_t oid) noexcept {
 	// Выполняем поиск сессии соединения
@@ -587,6 +607,7 @@ void awh::unit::QuicServer::erase(const event::id_t oid) noexcept {
  *
  * @param coder объект кодера транспортной безопасности
  * @param ctx   идентификатор шаблона контекста безопасности
+ *
  */
 void awh::unit::QuicServer::context(const tls::coder_t & coder, const tls::coder_t::id_t ctx) noexcept {
 	// Устанавливаем объект кодера транспортной безопасности
@@ -598,6 +619,7 @@ void awh::unit::QuicServer::context(const tls::coder_t & coder, const tls::coder
  * @brief Метод установки локальных транспортных параметров соединений (RFC 9000 §7.4)
  *
  * @param params локальные транспортные параметры
+ *
  */
 void awh::unit::QuicServer::params(const quic::params::params_t & params) noexcept {
 	// Устанавливаем локальные транспортные параметры соединений
@@ -607,6 +629,7 @@ void awh::unit::QuicServer::params(const quic::params::params_t & params) noexce
  * @brief Метод установки проверки адреса клиента через пакет Retry (RFC 9000 §8.1.2)
  *
  * @param mode режим проверки адреса клиента
+ *
  */
 void awh::unit::QuicServer::retry(const bool mode) noexcept {
 	// Устанавливаем режим проверки адреса клиента
@@ -616,6 +639,7 @@ void awh::unit::QuicServer::retry(const bool mode) noexcept {
  * @brief Метод установки уведомления о перегрузке пути (RFC 9000 §13.4)
  *
  * @param mode режим уведомления о перегрузке пути
+ *
  */
 void awh::unit::QuicServer::ecn(const bool mode) noexcept {
 	// Устанавливаем режим уведомления о перегрузке пути
@@ -625,6 +649,7 @@ void awh::unit::QuicServer::ecn(const bool mode) noexcept {
  * @brief Метод установки общего ключа вывода токенов сброса (RFC 9000 §10.3.2)
  *
  * @param key общий ключ вывода токенов сброса
+ *
  */
 void awh::unit::QuicServer::resetKey(string_view key) noexcept {
 	// Устанавливаем общий ключ вывода токенов сброса
@@ -635,6 +660,7 @@ void awh::unit::QuicServer::resetKey(string_view key) noexcept {
  *
  * @param eid идентификатор события
  * @return    результат проверки актуальности события
+ *
  */
 bool awh::unit::QuicServer::isActual(const event::id_t eid) const noexcept {
 	// Событие актуально, если это событие сервера (в т.ч. унаследованное фасадом) либо активная сессия соединения
@@ -645,6 +671,7 @@ bool awh::unit::QuicServer::isActual(const event::id_t eid) const noexcept {
  *
  * @param eid идентификатор события, переданный фасадом
  * @return    актуальный идентификатор события сервера
+ *
  */
 awh::event::id_t awh::unit::QuicServer::actual(const event::id_t eid) const noexcept {
 	/**
@@ -664,6 +691,7 @@ awh::event::id_t awh::unit::QuicServer::actual(const event::id_t eid) const noex
  *
  * @param eid идентификатор события сервера
  * @return    семейство адресов события сервера
+ *
  */
 awh::event::family_t awh::unit::QuicServer::family(const event::id_t eid) const noexcept {
 	// Приводим унаследованный дочерним процессом кластера идентификатор к собственному
@@ -673,6 +701,7 @@ awh::event::family_t awh::unit::QuicServer::family(const event::id_t eid) const 
  * @brief Метод запуска/остановки работы сервера
  *
  * @param status статус запуска/остановки сервера
+ *
  */
 void awh::unit::QuicServer::launch(const event::status_t status) noexcept {
 	/**
@@ -745,6 +774,7 @@ void awh::unit::QuicServer::launch(const event::status_t status) noexcept {
  * @param type     тип события (игнорируется, приводится к DATAGRAM)
  * @param protocol протокол события (игнорируется, приводится к UDP)
  * @return         идентификатор созданного события сервера
+ *
  */
 awh::event::id_t awh::unit::QuicServer::issue(const event::family_t family, [[maybe_unused]] const event::type_t type, [[maybe_unused]] const event::protocol_t protocol) noexcept {
 	// Если событие сервера уже создано
@@ -801,6 +831,7 @@ awh::event::id_t awh::unit::QuicServer::issue(const event::family_t family, [[ma
  *
  * @param eid идентификатор события сервера
  * @return    результат выполнения фиксации
+ *
  */
 bool awh::unit::QuicServer::commit(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
@@ -824,6 +855,7 @@ bool awh::unit::QuicServer::commit(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события сервера
  * @return    результат выполнения запуска
+ *
  */
 bool awh::unit::QuicServer::launch(const event::id_t eid) noexcept {
 	/**
@@ -858,6 +890,7 @@ bool awh::unit::QuicServer::launch(const event::id_t eid) noexcept {
  * @param eid идентификатор события сервера
  * @param max максимальный размер очереди ожидания соединений
  * @return    результат выполнения прослушивания
+ *
  */
 bool awh::unit::QuicServer::listen(const event::id_t eid, const uint32_t max) noexcept {
 	// Если событие сервера является актуальным
@@ -883,6 +916,7 @@ bool awh::unit::QuicServer::listen(const event::id_t eid, const uint32_t max) no
  *
  * @param eid идентификатор события сервера
  * @return    результат выполнения приостановки работы
+ *
  */
 bool awh::unit::QuicServer::pause(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
@@ -897,6 +931,7 @@ bool awh::unit::QuicServer::pause(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события сервера
  * @return    результат выполнения возобновления работы
+ *
  */
 bool awh::unit::QuicServer::resume(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
@@ -911,6 +946,7 @@ bool awh::unit::QuicServer::resume(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат получения данных
+ *
  */
 bool awh::unit::QuicServer::recv([[maybe_unused]] const event::id_t eid) noexcept {
 	// Для транспорта QUIC приём датаграмм сессий выполняется самим модулем по событию сервера
@@ -923,6 +959,7 @@ bool awh::unit::QuicServer::recv([[maybe_unused]] const event::id_t eid) noexcep
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
  * @return       количество байт, поставленных в очередь отправки
+ *
  */
 size_t awh::unit::QuicServer::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Если данные для отправки отсутствуют
@@ -954,6 +991,7 @@ size_t awh::unit::QuicServer::send(const event::id_t eid, const void * buffer, c
  * @param eid  идентификатор события-источника
  * @param dest идентификатор события-приёмника
  * @return     результат объединения
+ *
  */
 bool awh::unit::QuicServer::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	/**
@@ -996,6 +1034,7 @@ bool awh::unit::QuicServer::splice(const event::id_t eid, const event::id_t dest
  * @param eid идентификатор события клиента
  * @param ctx контекст события клиента
  * @return    результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::setContext([[maybe_unused]] const event::id_t eid, [[maybe_unused]] void * ctx) noexcept {
 	// Для транспорта QUIC контекст сессии ведётся самим модулем по идентификатору события сессии
@@ -1005,6 +1044,7 @@ bool awh::unit::QuicServer::setContext([[maybe_unused]] const event::id_t eid, [
  * @brief Метод уничтожения события сервера
  *
  * @param eid идентификатор события для уничтожения
+ *
  */
 void awh::unit::QuicServer::destroy(const event::id_t eid) noexcept {
 	// Если событие сервера не актуально
@@ -1068,6 +1108,7 @@ void awh::unit::QuicServer::destroy(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события сервера
  * @return    опции события сервера
+ *
  */
 uint16_t awh::unit::QuicServer::getOptions(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1083,6 +1124,7 @@ uint16_t awh::unit::QuicServer::getOptions(const event::id_t eid) const noexcept
  * @param eid     идентификатор события сервера
  * @param options опции события сервера для установки
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::setOptions(const event::id_t eid, const uint16_t options) noexcept {
 	// Если событие сервера является актуальным
@@ -1099,6 +1141,7 @@ bool awh::unit::QuicServer::setOptions(const event::id_t eid, const uint16_t opt
  * @param option опция события сервера для установки
  * @param mode   режим установки опции события сервера
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
 	// Если событие сервера является актуальным
@@ -1113,6 +1156,7 @@ bool awh::unit::QuicServer::setOption(const event::id_t eid, const uint16_t opti
  *
  * @param eid идентификатор события сервера
  * @return    метаданные последнего принятого дейтаграммного пакета
+ *
  */
 awh::net::dgram_info_t awh::unit::QuicServer::getTrafficInfo(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1127,6 +1171,7 @@ awh::net::dgram_info_t awh::unit::QuicServer::getTrafficInfo(const event::id_t e
  *
  * @param eid идентификатор события сервера
  * @return    количество хопов последнего принятого пакета
+ *
  */
 uint8_t awh::unit::QuicServer::getCountHops(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1142,6 +1187,7 @@ uint8_t awh::unit::QuicServer::getCountHops(const event::id_t eid) const noexcep
  * @param eid  идентификатор события сервера
  * @param hops количество хопов последнего принятого пакета
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::setCountHops(const event::id_t eid, const uint8_t hops) noexcept {
 	// Если событие сервера является актуальным
@@ -1156,6 +1202,7 @@ bool awh::unit::QuicServer::setCountHops(const event::id_t eid, const uint8_t ho
  *
  * @param eid идентификатор события сервера
  * @return    максимальное количество хопов
+ *
  */
 awh::event::hops_t awh::unit::QuicServer::getHops(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1171,6 +1218,7 @@ awh::event::hops_t awh::unit::QuicServer::getHops(const event::id_t eid) const n
  * @param eid  идентификатор события сервера
  * @param hops максимальное количество хопов
  * @return     результат работы функции
+ *
  */
 bool awh::unit::QuicServer::setHops(const event::id_t eid, const event::hops_t hops) noexcept {
 	// Если событие сервера является актуальным
@@ -1185,6 +1233,7 @@ bool awh::unit::QuicServer::setHops(const event::id_t eid, const event::hops_t h
  *
  * @param eid идентификатор события сервера
  * @return    сетевой интерфейс сервера
+ *
  */
 string awh::unit::QuicServer::getIface(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1200,6 +1249,7 @@ string awh::unit::QuicServer::getIface(const event::id_t eid) const noexcept {
  * @param eid  идентификатор события сервера
  * @param name имя сетевого интерфейса для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::setIface(const event::id_t eid, string_view name) noexcept {
 	// Если событие сервера является актуальным
@@ -1214,6 +1264,7 @@ bool awh::unit::QuicServer::setIface(const event::id_t eid, string_view name) no
  *
  * @param eid идентификатор события сервера
  * @return    порт сервера
+ *
  */
 uint16_t awh::unit::QuicServer::getPort(const event::id_t eid) const noexcept {
 	// Если событие актуально (для события сервера - порт прослушивания, для сессии - порт пира)
@@ -1229,6 +1280,7 @@ uint16_t awh::unit::QuicServer::getPort(const event::id_t eid) const noexcept {
  * @param eid  идентификатор события сервера
  * @param port порт сервера для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::setPort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие сервера является актуальным
@@ -1249,6 +1301,7 @@ bool awh::unit::QuicServer::setPort(const event::id_t eid, const uint16_t port) 
  * @param eid     идентификатор события сервера
  * @param address тип адреса сервера
  * @return        значение адреса сервера
+ *
  */
 string awh::unit::QuicServer::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
 	// Если событие актуально (для события сервера - адрес прослушивания, для сессии - адрес пира)
@@ -1265,6 +1318,7 @@ string awh::unit::QuicServer::getAddress(const event::id_t eid, const event::add
  * @param address тип адреса сервера
  * @param value   значение адреса сервера
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
 	// Если событие сервера является актуальным
@@ -1289,6 +1343,7 @@ bool awh::unit::QuicServer::setAddress(const event::id_t eid, const event::addre
  * @param address тип адреса сервера
  * @param value   структура сетевого адреса сервера
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
 	// Если событие сервера является актуальным
@@ -1305,6 +1360,7 @@ bool awh::unit::QuicServer::setAddress(const event::id_t eid, const event::addre
  * @param address тип адреса сервера
  * @param value   объект для извлечения адреса сервера
  * @return        результат выполнения извлечения адреса сервера
+ *
  */
 bool awh::unit::QuicServer::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Если событие актуально (для события сервера - адрес прослушивания, для сессии - адрес пира)
@@ -1319,6 +1375,7 @@ bool awh::unit::QuicServer::getAddress(const event::id_t eid, const event::addre
  *
  * @param eid идентификатор события сервера
  * @return    MTU сетевого интерфейса
+ *
  */
 uint16_t awh::unit::QuicServer::getMaximumTransmissionUnit(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1334,6 +1391,7 @@ uint16_t awh::unit::QuicServer::getMaximumTransmissionUnit(const event::id_t eid
  * @param eid идентификатор события сервера
  * @param mtu размер MTU интерфейса
  * @return    результат установки MTU сетевого интерфейса
+ *
  */
 bool awh::unit::QuicServer::setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept {
 	// Если событие сервера является актуальным
@@ -1348,6 +1406,7 @@ bool awh::unit::QuicServer::setMaximumTransmissionUnit(const event::id_t eid, co
  *
  * @param eid идентификатор события сервера
  * @return    текущий режим обнаружения MTU
+ *
  */
 awh::event::mtu_discover_t awh::unit::QuicServer::getMaximumTransmissionUnitDiscover(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1363,6 +1422,7 @@ awh::event::mtu_discover_t awh::unit::QuicServer::getMaximumTransmissionUnitDisc
  * @param eid  идентификатор события сервера
  * @param mode режим обнаружения максимального размера пакета (MTU)
  * @return     результат работы функции
+ *
  */
 bool awh::unit::QuicServer::setMaximumTransmissionUnitDiscover(const event::id_t eid, const event::mtu_discover_t mode) const noexcept {
 	// Если событие сервера является актуальным
@@ -1377,6 +1437,7 @@ bool awh::unit::QuicServer::setMaximumTransmissionUnitDiscover(const event::id_t
  *
  * @param eid идентификатор события сервера
  * @return    режим трансляции пакетов (unicast, multicast, broadcast)
+ *
  */
 awh::event::delivery_mode_t awh::unit::QuicServer::getDelivery(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1392,6 +1453,7 @@ awh::event::delivery_mode_t awh::unit::QuicServer::getDelivery(const event::id_t
  * @param eid      идентификатор события сервера
  * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
  * @return         результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::setDelivery(const event::id_t eid, const event::delivery_mode_t delivery) noexcept {
 	// Если событие сервера является актуальным
@@ -1407,6 +1469,7 @@ bool awh::unit::QuicServer::setDelivery(const event::id_t eid, const event::deli
  * @param eid    идентификатор события сервера
  * @param action тип действия сервера
  * @return       размер буфера сервера
+ *
  */
 size_t awh::unit::QuicServer::getBufferSize(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если событие сервера является актуальным
@@ -1423,6 +1486,7 @@ size_t awh::unit::QuicServer::getBufferSize(const event::id_t eid, const event::
  * @param action тип действия сервера
  * @param size   размер буфера сервера
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept {
 	// Если событие сервера является актуальным
@@ -1437,6 +1501,7 @@ bool awh::unit::QuicServer::setBufferSize(const event::id_t eid, const event::ac
  *
  * @param eid идентификатор события
  * @return    режим использования таймаута на чтение события
+ *
  */
 awh::event::usage_t awh::unit::QuicServer::getUsageReadTimeout(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1451,6 +1516,7 @@ awh::event::usage_t awh::unit::QuicServer::getUsageReadTimeout(const event::id_t
  *
  * @param eid   идентификатор события
  * @param usage режим использования таймаута на чтение события (reusable или disposable)
+ *
  */
 void awh::unit::QuicServer::setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept {
 	// Если событие сервера является актуальным
@@ -1464,6 +1530,7 @@ void awh::unit::QuicServer::setUsageReadTimeout(const event::id_t eid, const eve
  * @param eid    идентификатор события сервера
  * @param action тип действия сервера
  * @return       значение таймаута в миллисекундах
+ *
  */
 uint32_t awh::unit::QuicServer::getTimeout(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если событие сервера является актуальным
@@ -1479,6 +1546,7 @@ uint32_t awh::unit::QuicServer::getTimeout(const event::id_t eid, const event::a
  * @param eid     идентификатор события сервера
  * @param action  тип действия сервера
  * @param timeout значение таймаута в миллисекундах
+ *
  */
 void awh::unit::QuicServer::setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept {
 	// Если событие сервера является актуальным
@@ -1493,6 +1561,7 @@ void awh::unit::QuicServer::setTimeout(const event::id_t eid, const event::actio
  * @param limiting  режим ограничения пропускной способности сервера (egress или ingress)
  * @param bandwidth пропускная способность сервера для установки
  * @return          результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::bandwidth(const event::id_t eid, const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Если событие сервера является актуальным
@@ -1510,6 +1579,7 @@ bool awh::unit::QuicServer::bandwidth(const event::id_t eid, const event::limiti
  * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
  * @param intvl интервал между пакетами keep-alive в секундах
  * @return      результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Если событие сервера является актуальным
@@ -1524,6 +1594,7 @@ bool awh::unit::QuicServer::keepAlive(const event::id_t eid, const int32_t cnt, 
  *
  * @param eid идентификатор события сервера
  * @return    значение DSCP
+ *
  */
 awh::event::dscp_t awh::unit::QuicServer::getDifferentiatedServicesCodePoint(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
@@ -1539,6 +1610,7 @@ awh::event::dscp_t awh::unit::QuicServer::getDifferentiatedServicesCodePoint(con
  * @param eid  идентификатор события сервера
  * @param dscp значение DSCP
  * @return     результат работы функции
+ *
  */
 bool awh::unit::QuicServer::setDifferentiatedServicesCodePoint(const event::id_t eid, const event::dscp_t dscp) const noexcept {
 	// Если событие сервера является актуальным
@@ -1557,6 +1629,7 @@ bool awh::unit::QuicServer::setDifferentiatedServicesCodePoint(const event::id_t
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::membership(const event::id_t eid, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
 	// Если событие сервера является актуальным
@@ -1575,6 +1648,7 @@ bool awh::unit::QuicServer::membership(const event::id_t eid, const event::mode_
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept {
 	// Если событие сервера является актуальным
@@ -1690,6 +1764,7 @@ void awh::unit::QuicServer::start() noexcept {
  * @param oid  идентификатор события сессии
  * @param mode режим однонаправленного потока
  * @return     идентификатор открытого потока
+ *
  */
 uint64_t awh::unit::QuicServer::open(const event::id_t oid, const bool mode) noexcept {
 	// Выполняем поиск сессии соединения
@@ -1709,6 +1784,7 @@ uint64_t awh::unit::QuicServer::open(const event::id_t oid, const bool mode) noe
  * @param data отправляемые данные
  * @param fin  флаг завершения потока
  * @return     результат постановки данных в очередь отправки
+ *
  */
 bool awh::unit::QuicServer::send(const event::id_t oid, const uint64_t sid, string_view data, const bool fin) noexcept {
 	// Выполняем поиск сессии соединения
@@ -1732,6 +1808,7 @@ bool awh::unit::QuicServer::send(const event::id_t oid, const uint64_t sid, stri
  * @param oid  идентификатор события сессии
  * @param data данные датаграммы приложения
  * @return     результат отправки
+ *
  */
 bool awh::unit::QuicServer::datagram(const event::id_t oid, string_view data) noexcept {
 	// Выполняем поиск сессии соединения
@@ -1754,6 +1831,7 @@ bool awh::unit::QuicServer::datagram(const event::id_t oid, string_view data) no
  *
  * @param oid идентификатор события сессии
  * @return    предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
+ *
  */
 size_t awh::unit::QuicServer::datagrams(const event::id_t oid) const noexcept {
 	// Выполняем поиск сессии соединения
@@ -1771,6 +1849,7 @@ size_t awh::unit::QuicServer::datagrams(const event::id_t oid) const noexcept {
  * @param oid    идентификатор события сессии
  * @param code   код ошибки приложения
  * @param reason человекочитаемая причина завершения
+ *
  */
 void awh::unit::QuicServer::close(const event::id_t oid, const uint64_t code, string_view reason) noexcept {
 	// Выполняем поиск сессии соединения
@@ -1789,6 +1868,7 @@ void awh::unit::QuicServer::close(const event::id_t oid, const uint64_t code, st
  *
  * @param oid идентификатор события сессии
  * @return    согласованный ALPN-протокол
+ *
  */
 awh::tls::coder_t::alpn_t awh::unit::QuicServer::alpn(const event::id_t oid) const noexcept {
 	// Выполняем поиск сессии соединения
@@ -1805,6 +1885,7 @@ awh::tls::coder_t::alpn_t awh::unit::QuicServer::alpn(const event::id_t oid) con
  *
  * @param oid идентификатор события сессии
  * @return    адрес удалённого эндпоинта в виде "адрес:порт"
+ *
  */
 string awh::unit::QuicServer::address(const event::id_t oid) const noexcept {
 	// Если сессия соединения не найдена
@@ -1818,6 +1899,7 @@ string awh::unit::QuicServer::address(const event::id_t oid) const noexcept {
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::unit::QuicServer::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова на установленное соединение
@@ -1850,6 +1932,7 @@ void awh::unit::QuicServer::callback(const callback_t & callback) noexcept {
  *
  * @param old старый идентификатор процесса
  * @param pid текущий идентификатор процесса
+ *
  */
 void awh::unit::QuicServer::rebase(const pid_t old, const pid_t pid) noexcept {
 	/**
@@ -1879,6 +1962,7 @@ void awh::unit::QuicServer::rebase(const pid_t old, const pid_t pid) noexcept {
  *
  * @param pid    идентификатор процесса
  * @param signal сигнал с которым завершился процесс
+ *
  */
 void awh::unit::QuicServer::exit(const pid_t pid, const int32_t signal) noexcept {
 	// Выполняем функцию обратного вызова
@@ -1889,6 +1973,7 @@ void awh::unit::QuicServer::exit(const pid_t pid, const int32_t signal) noexcept
  *
  * @param pid  идентификатор процесса
  * @param size размер отправленного сообщения
+ *
  */
 void awh::unit::QuicServer::sending(const pid_t pid, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -1899,6 +1984,7 @@ void awh::unit::QuicServer::sending(const pid_t pid, const size_t size) noexcept
  *
  * @param pid   идентификатор процесса
  * @param event флаг события кластера
+ *
  */
 void awh::unit::QuicServer::cluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept {
 	/**
@@ -1961,6 +2047,7 @@ void awh::unit::QuicServer::cluster(const pid_t pid, const unit::cluster_t::even
 							 *       диапазона: несколько процессов делят его через SO_REUSEPORT,
 							 *       а ядро распределяет между ними входящие датаграммы. Частный
 							 *       случай единственного порта диапазона - он достаётся всем
+							 *
 							 */
 							#if __linux__ || __FreeBSD__
 								// Отправляем дочернему процессу последний порт диапазона
@@ -1973,6 +2060,7 @@ void awh::unit::QuicServer::cluster(const pid_t pid, const unit::cluster_t::even
 							 *       работать на общем порту), поэтому оставшийся без порта
 							 *       дочерний процесс работает в холостую: его идентификатор
 							 *       сохраняется для ручной доотправки порта методом clusterAssign()
+							 *
 							 */
 							#else
 								// Сохраняем дочерний процесс в списке работающих в холостую
@@ -2045,6 +2133,7 @@ void awh::unit::QuicServer::cluster(const pid_t pid, const unit::cluster_t::even
  * @param pid  идентификатор процесса
  * @param data данные полученного сообщения
  * @param size размер данных полученного сообщения
+ *
  */
 void awh::unit::QuicServer::message(const pid_t pid, const uint8_t * data, const size_t size) noexcept {
 	/**
@@ -2092,6 +2181,7 @@ void awh::unit::QuicServer::message(const pid_t pid, const uint8_t * data, const
  *
  * @param pid    идентификатор процесса
  * @param status новый статус процесса кластера
+ *
  */
 void awh::unit::QuicServer::status(const pid_t pid, const event::status_t status) noexcept {
 	// Выполняем функцию обратного вызова
@@ -2103,6 +2193,7 @@ void awh::unit::QuicServer::status(const pid_t pid, const event::status_t status
  * @param pid         идентификатор процесса
  * @param error       тип ошибки
  * @param description описание ошибки
+ *
  */
 void awh::unit::QuicServer::error(const pid_t pid, const event::error_t error, const string & description) noexcept {
 	// Выполняем функцию обратного вызова
@@ -2114,6 +2205,7 @@ void awh::unit::QuicServer::error(const pid_t pid, const event::error_t error, c
  * @param pid    идентификатор процесса
  * @param status статус доступности очереди
  * @param size   размер доступных данных очереди
+ *
  */
 void awh::unit::QuicServer::available(const pid_t pid, const event::status_t status, const size_t size) noexcept {
 	// Выполняем функцию обратного вызова
@@ -2123,6 +2215,7 @@ void awh::unit::QuicServer::available(const pid_t pid, const event::status_t sta
  * @brief Метод установки названия кластера
  *
  * @param name название кластера для установки
+ *
  */
 void awh::unit::QuicServer::clusterName(string_view name) noexcept {
 	// Устанавливаем название кластера
@@ -2136,6 +2229,7 @@ void awh::unit::QuicServer::clusterName(string_view name) noexcept {
  * @brief Метод получения семейства кластера
  *
  * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
+ *
  */
 awh::unit::cluster_t::family_t awh::unit::QuicServer::clusterFamily() const noexcept {
 	// Если кластер инициализирован
@@ -2154,6 +2248,7 @@ awh::unit::cluster_t::family_t awh::unit::QuicServer::clusterFamily() const noex
  * @brief Метод получения режима активации кластера
  *
  * @return режим активации кластера
+ *
  */
 awh::event::mode_t awh::unit::QuicServer::clusterMode() const noexcept {
 	// Извлекаем режим активации кластера
@@ -2163,6 +2258,7 @@ awh::event::mode_t awh::unit::QuicServer::clusterMode() const noexcept {
  * @brief Метод установки режима работы кластера
  *
  * @param mode режим активации/деактивации кластера
+ *
  */
 void awh::unit::QuicServer::clusterMode(const event::mode_t mode) noexcept {
 	// Устанавливаем режим активации кластера
@@ -2172,6 +2268,7 @@ void awh::unit::QuicServer::clusterMode(const event::mode_t mode) noexcept {
  * @brief Метод получения максимального количества процессов
  *
  * @return максимальное количество процессов
+ *
  */
 uint16_t awh::unit::QuicServer::clusterCount() const noexcept {
 	// Если кластер инициализирован
@@ -2185,6 +2282,7 @@ uint16_t awh::unit::QuicServer::clusterCount() const noexcept {
  * @brief Метод установки максимального количества процессов
  *
  * @param count максимальное количество процессов
+ *
  */
 void awh::unit::QuicServer::clusterCount(const uint16_t count) noexcept {
 	/**
@@ -2229,6 +2327,7 @@ void awh::unit::QuicServer::clusterCount(const uint16_t count) noexcept {
  * @brief Метод получения списка дочерних процессов
  *
  * @return список дочерних процессов
+ *
  */
 unordered_set <pid_t> awh::unit::QuicServer::clusterWorkers() const noexcept {
 	// Если кластер инициализирован
@@ -2243,6 +2342,7 @@ unordered_set <pid_t> awh::unit::QuicServer::clusterWorkers() const noexcept {
  *
  * @param begin начальный порт диапазона (0 - использовать порт прослушивания)
  * @param end   конечный порт диапазона (0 - использовать порт прослушивания)
+ *
  */
 void awh::unit::QuicServer::clusterRange(const uint16_t begin, const uint16_t end) noexcept {
 	// Устанавливаем начальный порт диапазона выделения портов дочерним процессам
@@ -2254,6 +2354,7 @@ void awh::unit::QuicServer::clusterRange(const uint16_t begin, const uint16_t en
  * @brief Метод получения списка дочерних процессов, не получивших порт прослушивания
  *
  * @return список идентификаторов дочерних процессов, работающих в холостую
+ *
  */
 unordered_set <pid_t> awh::unit::QuicServer::clusterIdle() const noexcept {
 	// Возвращаем список дочерних процессов, не получивших порт прослушивания
@@ -2265,6 +2366,7 @@ unordered_set <pid_t> awh::unit::QuicServer::clusterIdle() const noexcept {
  * @param pid  идентификатор дочернего процесса
  * @param port выделяемый порт прослушивания
  * @return     результат отправки
+ *
  */
 bool awh::unit::QuicServer::sendPort(const pid_t pid, const uint16_t port) noexcept {
 	// Буфер IPC-сообщения: тег типа сообщения и выделенный порт
@@ -2291,6 +2393,7 @@ bool awh::unit::QuicServer::sendPort(const pid_t pid, const uint16_t port) noexc
  * @param pid  идентификатор дочернего процесса
  * @param port порт прослушивания для дочернего процесса
  * @return     результат отправки порта дочернему процессу
+ *
  */
 bool awh::unit::QuicServer::clusterAssign(const pid_t pid, const uint16_t port) noexcept {
 	// Отправляем порт прослушивания дочернему процессу
@@ -2309,6 +2412,7 @@ bool awh::unit::QuicServer::clusterAssign(const pid_t pid, const uint16_t port) 
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::unit::QuicServer::clusterSend(const void * buffer, const size_t size) noexcept {
 	// Если кластер инициализирован
@@ -2325,6 +2429,7 @@ size_t awh::unit::QuicServer::clusterSend(const void * buffer, const size_t size
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::unit::QuicServer::clusterSend(const pid_t pid, const void * buffer, const size_t size) noexcept {
 	// Если кластер инициализирован
@@ -2340,6 +2445,7 @@ size_t awh::unit::QuicServer::clusterSend(const pid_t pid, const void * buffer, 
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::unit::QuicServer::clusterBroadcast(const void * buffer, const size_t size) noexcept {
 	// Если кластер инициализирован
@@ -2353,6 +2459,7 @@ size_t awh::unit::QuicServer::clusterBroadcast(const void * buffer, const size_t
  * @brief Метод установки флага автоматического возрождения процессов
  *
  * @param mode флаг возрождения процессов
+ *
  */
 void awh::unit::QuicServer::clusterRebirth(const bool mode) noexcept {
 	// Устанавливаем флаг автоматического возрождения процессов
@@ -2367,6 +2474,7 @@ void awh::unit::QuicServer::clusterRebirth(const bool mode) noexcept {
  *
  * @param limit  максимальное число подряд идущих быстрых падений до остановки кластера (0 — без ограничения)
  * @param window временное окно «быстрого» (раннего) падения процесса в миллисекундах
+ *
  */
 void awh::unit::QuicServer::clusterRebirthLimit(const uint16_t limit, const uint64_t window) noexcept {
 	// Устанавливаем максимальное число подряд идущих быстрых падений процессов
@@ -2382,6 +2490,7 @@ void awh::unit::QuicServer::clusterRebirthLimit(const uint16_t limit, const uint
  * @brief Метод получения типа протокола передачи данных между воркерами
  *
  * @return тип протокола передачи данных между воркерами
+ *
  */
 awh::event::type_t awh::unit::QuicServer::clusterGetTypeEventMessage() const noexcept {
 	// Если кластер инициализирован
@@ -2395,6 +2504,7 @@ awh::event::type_t awh::unit::QuicServer::clusterGetTypeEventMessage() const noe
  * @brief Метод установки типа протокола передачи данных между воркерами
  *
  * @param type тип протокола передачи данных между воркерами для установки
+ *
  */
 void awh::unit::QuicServer::clusterSetTypeEventMessage(const event::type_t type) noexcept {
 	// Если кластер инициализирован
@@ -2408,6 +2518,7 @@ void awh::unit::QuicServer::clusterSetTypeEventMessage(const event::type_t type)
  * @param pid    идентификатор процесса
  * @param action тип действия события
  * @return       размер буфера события
+ *
  */
 size_t awh::unit::QuicServer::clusterGetBufferSize(const pid_t pid, const event::action_t action) const noexcept {
 	// Если кластер инициализирован
@@ -2424,6 +2535,7 @@ size_t awh::unit::QuicServer::clusterGetBufferSize(const pid_t pid, const event:
  * @param action тип действия события
  * @param size   размер буфера события
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::QuicServer::clusterSetBufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept {
 	// Если кластер инициализирован
@@ -2438,6 +2550,7 @@ bool awh::unit::QuicServer::clusterSetBufferSize(const pid_t pid, const event::a
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::unit::QuicServer::QuicServer(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _eid(0), _tid(0), _inheritedEid(0), _retry(false), _ecn(false), _family(event::family_t::IPV4),
@@ -2474,6 +2587,7 @@ awh::unit::QuicServer::~QuicServer() noexcept {
  * @brief Метод получения текущего времени в миллисекундах
  *
  * @return текущее время в миллисекундах
+ *
  */
 uint64_t awh::unit::QuicClient::date() const noexcept {
 	// Выводим текущий штамп времени в миллисекундах
@@ -2485,6 +2599,7 @@ uint64_t awh::unit::QuicClient::date() const noexcept {
  * @param eid  идентификатор события клиента
  * @param data данные датаграммы
  * @param size размер датаграммы
+ *
  */
 void awh::unit::QuicClient::read([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
 	// Если соединение не создано
@@ -2557,6 +2672,7 @@ void awh::unit::QuicClient::complete() noexcept {
  *
  * @param eid    идентификатор события интервала
  * @param status статус события интервала
+ *
  */
 void awh::unit::QuicClient::tick([[maybe_unused]] const event::id_t eid, const event::status_t status) noexcept {
 	// Если статус события интервала не успешен либо соединение не создано
@@ -2586,6 +2702,7 @@ void awh::unit::QuicClient::tick([[maybe_unused]] const event::id_t eid, const e
  *
  * @param eid идентификатор события клиента
  * @param ok  результат подключения к серверу
+ *
  */
 void awh::unit::QuicClient::connected([[maybe_unused]] const event::id_t eid, const bool ok) noexcept {
 	// Если подключение к серверу не выполнено либо соединение не создано
@@ -2725,6 +2842,7 @@ void awh::unit::QuicClient::flush() noexcept {
  * @param data данные для отправки в туннельный поток
  * @param size размер данных для отправки
  * @return     результат постановки данных в очередь отправки
+ *
  */
 bool awh::unit::QuicClient::inject(const uint8_t * data, const size_t size) noexcept {
 	// Если данные для отправки отсутствуют либо соединение не создано
@@ -2752,6 +2870,7 @@ bool awh::unit::QuicClient::inject(const uint8_t * data, const size_t size) noex
  * @brief Метод перенаправления собранных данных соединения в событие-приёмник объединения
  *
  * @param data данные для перенаправления
+ *
  */
 void awh::unit::QuicClient::forward(string_view data) noexcept {
 	// Если данные для перенаправления присутствуют и приёмник задан
@@ -2768,6 +2887,7 @@ void awh::unit::QuicClient::forward(string_view data) noexcept {
  * @brief Метод применения маркировки соединения к сокету события клиента
  *
  * @param marking требуемая маркировка исходящих датаграмм
+ *
  */
 void awh::unit::QuicClient::mark(const event::ecn_t marking) noexcept {
 	// Если уведомление о перегрузке пути отключено либо маркировка уже установлена
@@ -2789,6 +2909,7 @@ void awh::unit::QuicClient::mark(const event::ecn_t marking) noexcept {
  *
  * @param coder объект кодера транспортной безопасности
  * @param ctx   идентификатор шаблона контекста безопасности
+ *
  */
 void awh::unit::QuicClient::context(const tls::coder_t & coder, const tls::coder_t::id_t ctx) noexcept {
 	// Устанавливаем объект кодера транспортной безопасности
@@ -2800,6 +2921,7 @@ void awh::unit::QuicClient::context(const tls::coder_t & coder, const tls::coder
  * @brief Метод установки уведомления о перегрузке пути (RFC 9000 §13.4)
  *
  * @param mode режим уведомления о перегрузке пути
+ *
  */
 void awh::unit::QuicClient::ecn(const bool mode) noexcept {
 	// Устанавливаем режим уведомления о перегрузке пути
@@ -2809,6 +2931,7 @@ void awh::unit::QuicClient::ecn(const bool mode) noexcept {
  * @brief Метод установки локальных транспортных параметров соединения (RFC 9000 §7.4)
  *
  * @param params локальные транспортные параметры
+ *
  */
 void awh::unit::QuicClient::params(const quic::params::params_t & params) noexcept {
 	// Устанавливаем локальные транспортные параметры соединения
@@ -2818,6 +2941,7 @@ void awh::unit::QuicClient::params(const quic::params::params_t & params) noexce
  * @brief Метод извлечения сохранённого токена проверки адреса (RFC 9000 §8.1.3)
  *
  * @return токен проверки адреса (пусто - токен не получен)
+ *
  */
 const string & awh::unit::QuicClient::token() const noexcept {
 	// Выводим сохранённый токен проверки адреса
@@ -2827,6 +2951,7 @@ const string & awh::unit::QuicClient::token() const noexcept {
  * @brief Метод установки сохранённого токена проверки адреса (RFC 9000 §8.1.3)
  *
  * @param token токен проверки адреса
+ *
  */
 void awh::unit::QuicClient::token(string_view token) noexcept {
 	// Устанавливаем сохранённый токен проверки адреса
@@ -2837,6 +2962,7 @@ void awh::unit::QuicClient::token(string_view token) noexcept {
  *
  * @param eid идентификатор события
  * @return    результат проверки актуальности события
+ *
  */
 bool awh::unit::QuicClient::isActual(const event::id_t eid) const noexcept {
 	// Событие клиента актуально, если оно создано и совпадает с идентификатором события клиента
@@ -2846,6 +2972,7 @@ bool awh::unit::QuicClient::isActual(const event::id_t eid) const noexcept {
  * @brief Метод запуска/остановки работы клиента
  *
  * @param status статус запуска/остановки клиента
+ *
  */
 void awh::unit::QuicClient::launch(const event::status_t status) noexcept {
 	/**
@@ -2898,6 +3025,7 @@ void awh::unit::QuicClient::launch(const event::status_t status) noexcept {
  * @param type     тип события (игнорируется, приводится к DATAGRAM)
  * @param protocol протокол события (игнорируется, приводится к UDP)
  * @return         идентификатор созданного события клиента
+ *
  */
 awh::event::id_t awh::unit::QuicClient::issue(const event::family_t family, [[maybe_unused]] const event::type_t type, [[maybe_unused]] const event::protocol_t protocol) noexcept {
 	// Если шаблон контекста безопасности не установлен
@@ -2965,6 +3093,7 @@ awh::event::id_t awh::unit::QuicClient::issue(const event::family_t family, [[ma
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения фиксации
+ *
  */
 bool awh::unit::QuicClient::commit(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
@@ -2979,6 +3108,7 @@ bool awh::unit::QuicClient::commit(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения запуска
+ *
  */
 bool awh::unit::QuicClient::launch(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
@@ -2993,6 +3123,7 @@ bool awh::unit::QuicClient::launch(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения приостановки работы
+ *
  */
 bool awh::unit::QuicClient::pause(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
@@ -3007,6 +3138,7 @@ bool awh::unit::QuicClient::pause(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения возобновления работы
+ *
  */
 bool awh::unit::QuicClient::resume(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
@@ -3021,6 +3153,7 @@ bool awh::unit::QuicClient::resume(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения отключения
+ *
  */
 bool awh::unit::QuicClient::disconnect(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
@@ -3035,6 +3168,7 @@ bool awh::unit::QuicClient::disconnect(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения подключения
+ *
  */
 bool awh::unit::QuicClient::connect(const event::id_t eid) noexcept {
 	// Если событие клиента не актуально
@@ -3087,6 +3221,7 @@ bool awh::unit::QuicClient::connect(const event::id_t eid) noexcept {
  *
  * @param ids список идентификаторов событий для подключения
  * @return    результат выполнения подключения
+ *
  */
 bool awh::unit::QuicClient::connect(const vector <event::id_t> & ids) noexcept {
 	// Для транспорта QUIC поддерживается единственное соединение на событие клиента
@@ -3101,6 +3236,7 @@ bool awh::unit::QuicClient::connect(const vector <event::id_t> & ids) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат получения данных
+ *
  */
 bool awh::unit::QuicClient::recv(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
@@ -3117,6 +3253,7 @@ bool awh::unit::QuicClient::recv(const event::id_t eid) noexcept {
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
  * @return       количество байт, поставленных в очередь отправки
+ *
  */
 size_t awh::unit::QuicClient::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Если событие не актуально либо соединение не создано либо данные отсутствуют
@@ -3144,6 +3281,7 @@ size_t awh::unit::QuicClient::send(const event::id_t eid, const void * buffer, c
  * @param eid  идентификатор события-источника
  * @param dest идентификатор события-приёмника
  * @return     результат объединения
+ *
  */
 bool awh::unit::QuicClient::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	/**
@@ -3182,6 +3320,7 @@ bool awh::unit::QuicClient::splice(const event::id_t eid, const event::id_t dest
  * @brief Метод уничтожения события клиента
  *
  * @param eid идентификатор события для уничтожения
+ *
  */
 void awh::unit::QuicClient::destroy(const event::id_t eid) noexcept {
 	// Если событие клиента не актуально
@@ -3215,6 +3354,7 @@ void awh::unit::QuicClient::destroy(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    опции события клиента
+ *
  */
 uint16_t awh::unit::QuicClient::getOptions(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3230,6 +3370,7 @@ uint16_t awh::unit::QuicClient::getOptions(const event::id_t eid) const noexcept
  * @param eid     идентификатор события клиента
  * @param options опции события клиента для установки
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setOptions(const event::id_t eid, const uint16_t options) noexcept {
 	// Если событие клиента является актуальным
@@ -3246,6 +3387,7 @@ bool awh::unit::QuicClient::setOptions(const event::id_t eid, const uint16_t opt
  * @param option опция события клиента для установки
  * @param mode   режим установки опции события клиента
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
 	// Если событие клиента является актуальным
@@ -3260,6 +3402,7 @@ bool awh::unit::QuicClient::setOption(const event::id_t eid, const uint16_t opti
  *
  * @param eid идентификатор события клиента
  * @return    метаданные последнего принятого дейтаграммного пакета
+ *
  */
 awh::net::dgram_info_t awh::unit::QuicClient::getTrafficInfo(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3274,6 +3417,7 @@ awh::net::dgram_info_t awh::unit::QuicClient::getTrafficInfo(const event::id_t e
  *
  * @param eid идентификатор события клиента
  * @return    количество хопов последнего принятого пакета
+ *
  */
 uint8_t awh::unit::QuicClient::getCountHops(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3289,6 +3433,7 @@ uint8_t awh::unit::QuicClient::getCountHops(const event::id_t eid) const noexcep
  * @param eid  идентификатор события клиента
  * @param hops количество хопов последнего принятого пакета
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setCountHops(const event::id_t eid, const uint8_t hops) noexcept {
 	// Если событие клиента является актуальным
@@ -3303,6 +3448,7 @@ bool awh::unit::QuicClient::setCountHops(const event::id_t eid, const uint8_t ho
  *
  * @param eid идентификатор события клиента
  * @return    максимальное количество хопов
+ *
  */
 awh::event::hops_t awh::unit::QuicClient::getHops(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3318,6 +3464,7 @@ awh::event::hops_t awh::unit::QuicClient::getHops(const event::id_t eid) const n
  * @param eid  идентификатор события клиента
  * @param hops максимальное количество хопов
  * @return     результат работы функции
+ *
  */
 bool awh::unit::QuicClient::setHops(const event::id_t eid, const event::hops_t hops) noexcept {
 	// Если событие клиента является актуальным
@@ -3332,6 +3479,7 @@ bool awh::unit::QuicClient::setHops(const event::id_t eid, const event::hops_t h
  *
  * @param eid идентификатор события клиента
  * @return    сетевой интерфейс клиента
+ *
  */
 string awh::unit::QuicClient::getIface(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3347,6 +3495,7 @@ string awh::unit::QuicClient::getIface(const event::id_t eid) const noexcept {
  * @param eid  идентификатор события клиента
  * @param name имя сетевого интерфейса для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setIface(const event::id_t eid, string_view name) noexcept {
 	// Если событие клиента является актуальным
@@ -3361,6 +3510,7 @@ bool awh::unit::QuicClient::setIface(const event::id_t eid, string_view name) no
  *
  * @param eid идентификатор события
  * @return    внутренний порт события
+ *
  */
 uint16_t awh::unit::QuicClient::getSourcePort(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3376,6 +3526,7 @@ uint16_t awh::unit::QuicClient::getSourcePort(const event::id_t eid) const noexc
  * @param eid  идентификатор события
  * @param port внутренний порт события
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setSourcePort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
@@ -3390,6 +3541,7 @@ bool awh::unit::QuicClient::setSourcePort(const event::id_t eid, const uint16_t 
  *
  * @param eid идентификатор события клиента
  * @return    порт удалённого сервера
+ *
  */
 uint16_t awh::unit::QuicClient::getTargetPort(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3405,6 +3557,7 @@ uint16_t awh::unit::QuicClient::getTargetPort(const event::id_t eid) const noexc
  * @param eid  идентификатор события клиента
  * @param port порт удалённого сервера для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setTargetPort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие клиента не актуально
@@ -3421,6 +3574,7 @@ bool awh::unit::QuicClient::setTargetPort(const event::id_t eid, const uint16_t 
  *
  * @param eid идентификатор события клиента
  * @return    адрес хоста целевой машины
+ *
  */
 string awh::unit::QuicClient::getTarget(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3436,6 +3590,7 @@ string awh::unit::QuicClient::getTarget(const event::id_t eid) const noexcept {
  * @param eid    идентификатор события клиента
  * @param target адрес хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setTarget(const event::id_t eid, string_view target) noexcept {
 	// Если событие клиента не актуально
@@ -3457,6 +3612,7 @@ bool awh::unit::QuicClient::setTarget(const event::id_t eid, string_view target)
  * @param eid    идентификатор события клиента
  * @param target структура сетевого адреса хоста целевой машины
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setTarget(const event::id_t eid, const net::addr_t * target) noexcept {
 	// Если событие клиента не актуально
@@ -3498,6 +3654,7 @@ bool awh::unit::QuicClient::setTarget(const event::id_t eid, const net::addr_t *
  * @param eid    идентификатор события клиента
  * @param target объект для извлечения адреса хоста целевой машины
  * @return       результат выполнения извлечения адреса хоста целевой машины
+ *
  */
 bool awh::unit::QuicClient::getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept {
 	// Если событие клиента является актуальным
@@ -3513,6 +3670,7 @@ bool awh::unit::QuicClient::getTarget(const event::id_t eid, unique_ptr <net::ad
  * @param eid     идентификатор события клиента
  * @param address тип адреса клиента
  * @return        значение адреса клиента
+ *
  */
 string awh::unit::QuicClient::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
 	// Если событие клиента является актуальным
@@ -3529,6 +3687,7 @@ string awh::unit::QuicClient::getAddress(const event::id_t eid, const event::add
  * @param address тип адреса клиента
  * @param value   значение адреса клиента
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
 	// Если событие клиента является актуальным
@@ -3545,6 +3704,7 @@ bool awh::unit::QuicClient::setAddress(const event::id_t eid, const event::addre
  * @param address тип адреса клиента
  * @param value   структура сетевого адреса клиента
  * @return        результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
 	// Если событие клиента является актуальным
@@ -3561,6 +3721,7 @@ bool awh::unit::QuicClient::setAddress(const event::id_t eid, const event::addre
  * @param address тип адреса клиента
  * @param value   объект для извлечения адреса клиента
  * @return        результат выполнения извлечения адреса клиента
+ *
  */
 bool awh::unit::QuicClient::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Если событие клиента является актуальным
@@ -3575,6 +3736,7 @@ bool awh::unit::QuicClient::getAddress(const event::id_t eid, const event::addre
  *
  * @param eid идентификатор события клиента
  * @return    MTU сетевого интерфейса
+ *
  */
 uint16_t awh::unit::QuicClient::getMaximumTransmissionUnit(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3590,6 +3752,7 @@ uint16_t awh::unit::QuicClient::getMaximumTransmissionUnit(const event::id_t eid
  * @param eid идентификатор события клиента
  * @param mtu размер MTU интерфейса
  * @return    результат установки MTU сетевого интерфейса
+ *
  */
 bool awh::unit::QuicClient::setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept {
 	// Если событие клиента является актуальным
@@ -3604,6 +3767,7 @@ bool awh::unit::QuicClient::setMaximumTransmissionUnit(const event::id_t eid, co
  *
  * @param eid идентификатор события клиента
  * @return    текущий режим обнаружения MTU
+ *
  */
 awh::event::mtu_discover_t awh::unit::QuicClient::getMaximumTransmissionUnitDiscover(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3619,6 +3783,7 @@ awh::event::mtu_discover_t awh::unit::QuicClient::getMaximumTransmissionUnitDisc
  * @param eid  идентификатор события клиента
  * @param mode режим обнаружения максимального размера пакета (MTU)
  * @return     результат работы функции
+ *
  */
 bool awh::unit::QuicClient::setMaximumTransmissionUnitDiscover(const event::id_t eid, const event::mtu_discover_t mode) const noexcept {
 	// Если событие клиента является актуальным
@@ -3633,6 +3798,7 @@ bool awh::unit::QuicClient::setMaximumTransmissionUnitDiscover(const event::id_t
  *
  * @param eid идентификатор события клиента
  * @return    режим трансляции пакетов (unicast, multicast, broadcast)
+ *
  */
 awh::event::delivery_mode_t awh::unit::QuicClient::getDelivery(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3648,6 +3814,7 @@ awh::event::delivery_mode_t awh::unit::QuicClient::getDelivery(const event::id_t
  * @param eid      идентификатор события клиента
  * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
  * @return         результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setDelivery(const event::id_t eid, const event::delivery_mode_t delivery) noexcept {
 	// Если событие клиента является актуальным
@@ -3663,6 +3830,7 @@ bool awh::unit::QuicClient::setDelivery(const event::id_t eid, const event::deli
  * @param eid    идентификатор события клиента
  * @param action тип действия клиента
  * @return       размер буфера клиента
+ *
  */
 size_t awh::unit::QuicClient::getBufferSize(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если событие клиента является актуальным
@@ -3679,6 +3847,7 @@ size_t awh::unit::QuicClient::getBufferSize(const event::id_t eid, const event::
  * @param action тип действия клиента
  * @param size   размер буфера клиента
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept {
 	// Если событие клиента является актуальным
@@ -3693,6 +3862,7 @@ bool awh::unit::QuicClient::setBufferSize(const event::id_t eid, const event::ac
  *
  * @param eid идентификатор события
  * @return    режим использования таймаута на чтение события
+ *
  */
 awh::event::usage_t awh::unit::QuicClient::getUsageReadTimeout(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3707,6 +3877,7 @@ awh::event::usage_t awh::unit::QuicClient::getUsageReadTimeout(const event::id_t
  *
  * @param eid   идентификатор события
  * @param usage режим использования таймаута на чтение события (reusable или disposable)
+ *
  */
 void awh::unit::QuicClient::setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept {
 	// Если событие клиента является актуальным
@@ -3720,6 +3891,7 @@ void awh::unit::QuicClient::setUsageReadTimeout(const event::id_t eid, const eve
  * @param eid    идентификатор события клиента
  * @param action тип действия клиента
  * @return       значение таймаута в миллисекундах
+ *
  */
 uint32_t awh::unit::QuicClient::getTimeout(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если событие клиента является актуальным
@@ -3735,6 +3907,7 @@ uint32_t awh::unit::QuicClient::getTimeout(const event::id_t eid, const event::a
  * @param eid     идентификатор события клиента
  * @param action  тип действия клиента
  * @param timeout значение таймаута в миллисекундах
+ *
  */
 void awh::unit::QuicClient::setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept {
 	// Если событие клиента является актуальным
@@ -3749,6 +3922,7 @@ void awh::unit::QuicClient::setTimeout(const event::id_t eid, const event::actio
  * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
  * @param bandwidth пропускная способность клиента для установки
  * @return          результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::bandwidth(const event::id_t eid, const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Если событие клиента является актуальным
@@ -3766,6 +3940,7 @@ bool awh::unit::QuicClient::bandwidth(const event::id_t eid, const event::limiti
  * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
  * @param intvl интервал между пакетами keep-alive в секундах
  * @return      результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Если событие клиента является актуальным
@@ -3780,6 +3955,7 @@ bool awh::unit::QuicClient::keepAlive(const event::id_t eid, const int32_t cnt, 
  *
  * @param eid идентификатор события клиента
  * @return    значение DSCP
+ *
  */
 awh::event::dscp_t awh::unit::QuicClient::getDifferentiatedServicesCodePoint(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
@@ -3795,6 +3971,7 @@ awh::event::dscp_t awh::unit::QuicClient::getDifferentiatedServicesCodePoint(con
  * @param eid  идентификатор события клиента
  * @param dscp значение DSCP
  * @return     результат работы функции
+ *
  */
 bool awh::unit::QuicClient::setDifferentiatedServicesCodePoint(const event::id_t eid, const event::dscp_t dscp) const noexcept {
 	// Если событие клиента является актуальным
@@ -3813,6 +3990,7 @@ bool awh::unit::QuicClient::setDifferentiatedServicesCodePoint(const event::id_t
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::membership(const event::id_t eid, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
@@ -3831,6 +4009,7 @@ bool awh::unit::QuicClient::membership(const event::id_t eid, const event::mode_
  * @param source адрес сетевого интерфейса с которого выполняется подписка
  * @param port   порт мультикаст-группы с которого выполняется подписка
  * @return       результат выполнения установки
+ *
  */
 bool awh::unit::QuicClient::membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
@@ -3874,6 +4053,7 @@ void awh::unit::QuicClient::start() noexcept {
  *
  * @param mode режим однонаправленного потока
  * @return     идентификатор открытого потока
+ *
  */
 uint64_t awh::unit::QuicClient::open(const bool mode) noexcept {
 	// Если соединение не создано
@@ -3887,6 +4067,7 @@ uint64_t awh::unit::QuicClient::open(const bool mode) noexcept {
  * @brief Метод проверки принятия ранних данных удалённым сервером (RFC 9001 §4.6.2)
  *
  * @return результат проверки
+ *
  */
 bool awh::unit::QuicClient::early() const noexcept {
 	// Если соединение не создано
@@ -3903,6 +4084,7 @@ bool awh::unit::QuicClient::early() const noexcept {
  * @param data отправляемые данные
  * @param fin  флаг завершения потока
  * @return     результат постановки данных в очередь отправки
+ *
  */
 bool awh::unit::QuicClient::send(const uint64_t sid, string_view data, const bool fin) noexcept {
 	// Если соединение не создано
@@ -3923,6 +4105,7 @@ bool awh::unit::QuicClient::send(const uint64_t sid, string_view data, const boo
  *
  * @param data данные датаграммы приложения
  * @return     результат отправки
+ *
  */
 bool awh::unit::QuicClient::datagram(string_view data) noexcept {
 	// Если соединение не создано
@@ -3942,6 +4125,7 @@ bool awh::unit::QuicClient::datagram(string_view data) noexcept {
  * @brief Метод получения предельного размера отправляемой датаграммы (RFC 9221 §3)
  *
  * @return предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
+ *
  */
 size_t awh::unit::QuicClient::datagrams() const noexcept {
 	// Если соединение не создано
@@ -3956,6 +4140,7 @@ size_t awh::unit::QuicClient::datagrams() const noexcept {
  *
  * @param code   код ошибки приложения
  * @param reason человекочитаемая причина завершения
+ *
  */
 void awh::unit::QuicClient::close(const uint64_t code, string_view reason) noexcept {
 	// Если соединение не создано
@@ -3971,6 +4156,7 @@ void awh::unit::QuicClient::close(const uint64_t code, string_view reason) noexc
  * @brief Метод получения согласованного ALPN-протокола соединения
  *
  * @return согласованный ALPN-протокол
+ *
  */
 awh::tls::coder_t::alpn_t awh::unit::QuicClient::alpn() const noexcept {
 	// Если соединение не создано
@@ -3984,6 +4170,7 @@ awh::tls::coder_t::alpn_t awh::unit::QuicClient::alpn() const noexcept {
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::unit::QuicClient::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова на готовность отправки ранних данных
@@ -4002,6 +4189,7 @@ void awh::unit::QuicClient::callback(const callback_t & callback) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::unit::QuicClient::QuicClient(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _eid(0), _tid(0), _connected(false), _notified(false), _ecn(false),

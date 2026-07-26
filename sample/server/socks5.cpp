@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример SOCKS5-прокси-сервера — демонстрация авторизации клиентов,
+ *        обработки команд CONNECT и UDP ASSOCIATE и проксирования трафика к удалённым узлам
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -44,6 +48,7 @@ class Executor {
 		 * @param eid  идентификатор клиента
 		 * @param host адрес хоста
 		 * @param port порт хоста
+		 *
 		 */
 		void launch(const event::id_t eid, const string & host, const uint16_t port) noexcept {
 			// Записываем в лог информацию о событии запуска клиента
@@ -54,6 +59,7 @@ class Executor {
 		 *
 		 * @param eid  идентификатор клиента
 		 * @param size размер данных для записи
+		 *
 		 */
 		void write(const event::id_t eid, const size_t size, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
@@ -65,6 +71,7 @@ class Executor {
 		 * @param username имя пользователя
 		 * @param password пароль пользователя
 		 * @return         результат аутентификации
+		 *
 		 */
 		bool auth(const string & username, const string & password) noexcept {
 			// Записываем в лог информацию о событии аутентификации клиента
@@ -77,6 +84,7 @@ class Executor {
 		 *
 		 * @param status новый статус сервера
 		 * @param server объект сервера
+		 *
 		 */
 		void status(const event::status_t status, server_t * server) noexcept {
 			/**
@@ -105,6 +113,7 @@ class Executor {
 		 * @param eid    идентификатор сервера
 		 * @param cid    идентификатор клиента
 		 * @param server объект сервера
+		 *
 		 */
 		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, server::socks5_t * server) noexcept {
 			// Устананавливаем опции события
@@ -120,6 +129,7 @@ class Executor {
 		 * @param domain доменное имя сервера
 		 * @param ip     IP-адрес сервера
 		 * @param server объект сервера
+		 *
 		 */
 		void ready(const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip, server::socks5_t * server) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
@@ -131,6 +141,7 @@ class Executor {
 		 * @param eid    идентификатор сервера
 		 * @param error  код ошибки
 		 * @param message сообщение об ошибке
+		 *
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
@@ -142,6 +153,7 @@ class Executor {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
+		 *
 		 */
 		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
@@ -152,6 +164,7 @@ class Executor {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

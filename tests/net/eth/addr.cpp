@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Тесты адресов канального уровня — проверка получения MAC-адресов и адресов сетевых интерфейсов машины,
+ *        их разбора и текстового представления
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -40,6 +44,7 @@ namespace {
 	 * @param data   указатель на данные
 	 * @param length длина данных
 	 * @return       инвертированная контрольная сумма
+	 *
 	 */
 	uint16_t sum16(const uint8_t * data, size_t length) noexcept {
 		// Получаем нужного вида буфер входящих данных
@@ -79,6 +84,7 @@ namespace {
 	 * @param length    длина данных транспортного уровня
 	 * @param applyUdp  применять ли правило UDP (нулевая сумма → 0xFFFF)
 	 * @return          эталонная контрольная сумма
+	 *
 	 */
 	uint16_t refChecksum(const awh::event::family_t family, const awh::event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length, const bool applyUdp = true) noexcept {
 		// Смещение поля контрольной суммы в транспортном заголовке

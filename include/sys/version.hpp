@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля работы с версиями — класс Version для разбора,
+ *        сравнения и представления версий в текстовом и числовом виде с поддержкой произвольного количества разрядов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -60,6 +64,7 @@ namespace awh {
 			 * @brief Метод извлечения версии в виде числа
 			 *
 			 * @return версия в виде числа
+			 *
 			 */
 			uint32_t num() const noexcept;
 		public:
@@ -68,6 +73,7 @@ namespace awh {
 			 *
 			 * @param octets количество октетов
 			 * @return      версия в виде строки
+			 *
 			 */
 			string str(const uint8_t octets = 3) const noexcept;
 		public:
@@ -75,12 +81,14 @@ namespace awh {
 			 * @brief Метод установки версии
 			 *
 			 * @param version устанавливаемая версия
+			 *
 			 */
 			void set(const uint32_t version) noexcept;
 			/**
 			 * @brief Метод установки версии
 			 *
 			 * @param version устанавливаемая версия
+			 *
 			 */
 			void set(const string & version) noexcept;
 		public:
@@ -88,6 +96,7 @@ namespace awh {
 			 * @brief Метод установки объекта логирования
 			 *
 			 * @param log объект работы с логами
+			 *
 			 */
 			void setLogger(const log_t * log) noexcept;
 		public:
@@ -95,12 +104,14 @@ namespace awh {
 			 * @brief Оператор вывода версии в качестве числа
 			 *
 			 * @return версия в качестве числа
+			 *
 			 */
 			operator uint32_t() const noexcept;
 			/**
 			 * @brief Оператор вывода версии в качестве строки
 			 *
 			 * @return версия в качестве строки
+			 *
 			 */
 			operator string() const noexcept;
 		public:
@@ -109,6 +120,7 @@ namespace awh {
 			 *
 			 * @param version версия для сравнения
 			 * @return        результат сравнения
+			 *
 			 */
 			bool operator < (const Version & version) const noexcept;
 			/**
@@ -116,6 +128,7 @@ namespace awh {
 			 *
 			 * @param version версия для сравнения
 			 * @return        результат сравнения
+			 *
 			 */
 			bool operator > (const Version & version) const noexcept;
 			/**
@@ -123,6 +136,7 @@ namespace awh {
 			 *
 			 * @param version версия для сравнения
 			 * @return        результат сравнения
+			 *
 			 */
 			bool operator <= (const Version & version) const noexcept;
 			/**
@@ -130,6 +144,7 @@ namespace awh {
 			 *
 			 * @param version версия для сравнения
 			 * @return        результат сравнения
+			 *
 			 */
 			bool operator >= (const Version & version) const noexcept;
 			/**
@@ -137,6 +152,7 @@ namespace awh {
 			 *
 			 * @param version версия для сравнения
 			 * @return        результат сравнения
+			 *
 			 */
 			bool operator != (const Version & version) const noexcept;
 			/**
@@ -144,6 +160,7 @@ namespace awh {
 			 *
 			 * @param version версия для сравнения
 			 * @return        результат сравнения
+			 *
 			 */
 			bool operator == (const Version & version) const noexcept;
 		public:
@@ -152,6 +169,7 @@ namespace awh {
 			 *
 			 * @param version версия для присвоения
 			 * @return        текущий объект
+			 *
 			 */
 			Version & operator = (const char * version) noexcept;
 			/**
@@ -159,6 +177,7 @@ namespace awh {
 			 *
 			 * @param version версия для присвоения
 			 * @return        текущий объект
+			 *
 			 */
 			Version & operator = (const string & version) noexcept;
 			/**
@@ -166,6 +185,7 @@ namespace awh {
 			 *
 			 * @param version версия для присвоения
 			 * @return        текущий объект
+			 *
 			 */
 			Version & operator = (const uint32_t version) noexcept;
 			/**
@@ -173,6 +193,7 @@ namespace awh {
 			 *
 			 * @param version версия для присвоения
 			 * @return        текущий объект
+			 *
 			 */
 			Version & operator = (const Version & version) noexcept;
 		public:
@@ -190,18 +211,21 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param version устанавливаемая версия
+			 *
 			 */
 			explicit Version(const char * version) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param version устанавливаемая версия
+			 *
 			 */
 			explicit Version(const string & version) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param version устанавливаемая версия
+			 *
 			 */
 			explicit Version(const uint32_t version) noexcept;
 			/**
@@ -215,6 +239,7 @@ namespace awh {
 	 *
 	 * @param is      поток для чтения
 	 * @param version версия для присвоения
+	 *
 	 */
 	__AWH_SHARED_EXPORT__ istream & operator >> (istream & is, version_t & version) noexcept;
 	/**
@@ -222,6 +247,7 @@ namespace awh {
 	 *
 	 * @param os      поток куда нужно вывести данные
 	 * @param version версия извлечения
+	 *
 	 */
 	__AWH_SHARED_EXPORT__ ostream & operator << (ostream & os, const version_t & version) noexcept;
 };

@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Параметризованные тесты асинхронного движка ввода-вывода —
+ *        прогон подготовленных наборов входных данных через методы модуля с проверкой регистрации событий,
+ *        управления подписками, работы таймеров и корректной остановки цикла событий
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -96,6 +101,7 @@ class IoPingParameterizedFixture : public IoFixture, public ::testing::WithParam
 		 * @param buffer буфер данных для подсчёта
 		 * @param size   размер данных для подсчёта
 		 * @return       подсчитанная контрольная сумма
+		 *
 		 */
 		static uint16_t checksum(const void * buffer, const size_t size) noexcept {
 			// Переменная результата

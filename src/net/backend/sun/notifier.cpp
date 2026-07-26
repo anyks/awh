@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация уведомителя событий — межпоточное пробуждение цикла событий через eventfd на Linux,
+ *        канал на OpenBSD и Solaris и нативный триггер на macOS, FreeBSD и NetBSD
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -69,6 +73,7 @@ namespace {
 		 *
 		 * @param sock сокет для установки режима
 		 * @param log  объект для работы с логами
+		 *
 		 */
 		void noblocking(const SOCKET sock, const awh::log_t * log) noexcept {
 			// Формируем флаг разблокировки
@@ -94,6 +99,7 @@ namespace {
 		 * @param socks      список сокетов которые будут инициализированы
 		 * @param overlapped флаг установки использования перекрывающихся операций ввода-вывода
 		 * @return           результат выполнения операции
+		 *
 		 */
 		int64_t socketpair(SOCKET socks[2], const bool overlapped = true) noexcept {
 			/**
@@ -207,6 +213,7 @@ namespace {
 		 *
 		 * @param sock сокет для установки режима
 		 * @param log  объект для работы с логами
+		 *
 		 */
 		void noblocking(const SOCKET sock, const awh::log_t * log) noexcept {
 			// Флаги сетевого сокета
@@ -337,6 +344,7 @@ void awh::Notifier::reset() noexcept {
  * @brief Метод инициализации уведомителя
  *
  * @return содержимое сокета для извлечения
+ *
  */
 SOCKET awh::Notifier::init() noexcept {
 	// Переменная результата
@@ -517,6 +525,7 @@ SOCKET awh::Notifier::init() noexcept {
  * @brief Метод извлечения идентификатора события
  *
  * @return идентификатор события
+ *
  */
 uint32_t awh::Notifier::event() noexcept {
 	// Переменная результата
@@ -679,6 +688,7 @@ uint32_t awh::Notifier::event() noexcept {
  * @brief Метод отправки уведомления
  *
  * @param id идентификатор для отправки
+ *
  */
 void awh::Notifier::notify(const uint32_t id) noexcept {
 	/**
@@ -820,6 +830,7 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
 		/**

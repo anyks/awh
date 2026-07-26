@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл длинной арифметики модуля разбора чисел —
+ *        реализация BigInt на массиве машинных слов с таблицами степеней пятёрки,
+ *        используемая для точного доведения мантиссы, когда быстрый путь разбора не дал однозначного результата
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -52,6 +57,7 @@ namespace awh {
 		 *          разряд, что позволяет эффективно получать старшую и младшую
 		 *          части произведения. На остальных платформах используется
 		 *          32-битный разряд.
+		 *
 		 */
 		#if defined(AWH_LEXICAL_64BIT) && !defined(__sparc)
 			/**
@@ -96,6 +102,7 @@ namespace awh {
 		 *
 		 * @details Точное округление требует не менее log2(10^(769 + 342)) ≈ 3700 бит,
 		 *          округляем требование вверх до 4000 бит.
+		 *
 		 */
 		constexpr size_t BIGINT_BITS = 4000;
 
@@ -109,6 +116,7 @@ namespace awh {
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
+		 *
 		 */
 		template <uint16_t SIZE>
 		/**
@@ -116,6 +124,7 @@ namespace awh {
 		 *
 		 * @details Буфер разрядов намеренно не инициализируется: значимыми
 		 *          считаются только первые length элементов.
+		 *
 		 */
 		struct limbs_t {
 			// Буфер разрядов длинной арифметики
@@ -151,6 +160,7 @@ namespace awh {
 			 * @brief Метод получения количества значимых разрядов
 			 *
 			 * @return количество значимых разрядов
+			 *
 			 */
 			size_t len() const noexcept {
 				// Выводим количество значимых разрядов
@@ -160,6 +170,7 @@ namespace awh {
 			 * @brief Метод получения ёмкости вектора разрядов
 			 *
 			 * @return максимальное количество разрядов
+			 *
 			 */
 			size_t capacity() const noexcept {
 				// Выводим ёмкость вектора разрядов
@@ -169,6 +180,7 @@ namespace awh {
 			 * @brief Метод проверки вектора разрядов на пустоту
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool isEmpty() const noexcept {
 				// Вектор пуст, если значимых разрядов нет
@@ -178,6 +190,7 @@ namespace awh {
 			 * @brief Метод установки количества значимых разрядов
 			 *
 			 * @param count устанавливаемое количество значимых разрядов
+			 *
 			 */
 			void setLen(const size_t count) noexcept {
 				// Выполняем проверку соблюдения ёмкости вектора
@@ -190,6 +203,7 @@ namespace awh {
 			 *
 			 * @param index индекс запрашиваемого разряда
 			 * @return      ссылка на запрашиваемый разряд
+			 *
 			 */
 			limb_t & operator [] (const size_t index) noexcept {
 				// Выполняем проверку соблюдения границ вектора
@@ -202,6 +216,7 @@ namespace awh {
 			 *
 			 * @param index индекс запрашиваемого разряда
 			 * @return      константная ссылка на запрашиваемый разряд
+			 *
 			 */
 			const limb_t & operator [] (const size_t index) const noexcept {
 				// Выполняем проверку соблюдения границ вектора
@@ -214,6 +229,7 @@ namespace awh {
 			 *
 			 * @param index индекс запрашиваемого разряда от старшего конца
 			 * @return      константная ссылка на запрашиваемый разряд
+			 *
 			 */
 			const limb_t & rindex(const size_t index) const noexcept {
 				// Выполняем проверку соблюдения границ вектора
@@ -226,6 +242,7 @@ namespace awh {
 			 *
 			 * @param value добавляемый разряд
 			 * @return      результат выполнения операции
+			 *
 			 */
 			bool push(const limb_t value) noexcept {
 				// Если ёмкость вектора исчерпана
@@ -244,6 +261,7 @@ namespace awh {
 			 *
 			 * @param values добавляемый диапазон разрядов
 			 * @return       результат выполнения операции
+			 *
 			 */
 			bool extend(const limbSpan_t values) noexcept {
 				// Если ёмкости вектора недостаточно
@@ -263,6 +281,7 @@ namespace awh {
 			 * @param count устанавливаемое количество значимых разрядов
 			 * @param value значение для заполнения добавляемых разрядов
 			 * @return      результат выполнения операции
+			 *
 			 */
 			bool resize(const size_t count, const limb_t value) noexcept {
 				// Если ёмкости вектора недостаточно
@@ -283,6 +302,7 @@ namespace awh {
 			 *
 			 * @param index индекс начала проверки от старшего конца
 			 * @return      результат проверки
+			 *
 			 */
 			bool nonzero(size_t index) const noexcept {
 				/**
@@ -319,6 +339,7 @@ namespace awh {
 		 * @param value     нормализуемое значение
 		 * @param truncated ссылка на признак отброшенных значащих бит
 		 * @return          нормализованные старшие 64 бита
+		 *
 		 */
 		AWH_LEXICAL_INLINE uint64_t toHigh64(const uint64_t value, bool & truncated) noexcept {
 			// Отбрасывать при нормализации одного слова нечего
@@ -338,6 +359,7 @@ namespace awh {
 		 * @param low       младшее слово
 		 * @param truncated ссылка на признак отброшенных значащих бит
 		 * @return          нормализованные старшие 64 бита
+		 *
 		 */
 		AWH_LEXICAL_INLINE uint64_t toHigh64(const uint64_t high, const uint64_t low, bool & truncated) noexcept {
 			// Если старшее слово является нулевым
@@ -369,6 +391,7 @@ namespace awh {
 		 * @param low       младшее слово
 		 * @param truncated ссылка на признак отброшенных значащих бит
 		 * @return          нормализованные старшие 64 бита
+		 *
 		 */
 		AWH_LEXICAL_INLINE uint64_t toHigh64(const uint32_t high, const uint32_t low, bool & truncated) noexcept {
 			// Выводим результат нормализации объединённого значения
@@ -383,6 +406,7 @@ namespace awh {
 		 * @param low       младшее слово
 		 * @param truncated ссылка на признак отброшенных значащих бит
 		 * @return          нормализованные старшие 64 бита
+		 *
 		 */
 		AWH_LEXICAL_INLINE uint64_t toHigh64(const uint32_t high, const uint32_t middle, const uint32_t low, bool & truncated) noexcept {
 			// Выводим результат сборки старшего слова и объединённых младших
@@ -400,6 +424,7 @@ namespace awh {
 		 * @param y        второе слагаемое
 		 * @param overflow ссылка на признак переполнения разряда
 		 * @return         сумма по модулю разрядности
+		 *
 		 */
 		AWH_LEXICAL_INLINE limb_t scalarAdd(const limb_t x, const limb_t y, bool & overflow) noexcept {
 			// Результат сложения разрядов
@@ -430,6 +455,7 @@ namespace awh {
 		 * @param y     второй множитель
 		 * @param carry ссылка на входящий и исходящий перенос
 		 * @return      младшая часть произведения
+		 *
 		 */
 		AWH_LEXICAL_INLINE limb_t scalarMul(const limb_t x, const limb_t y, limb_t & carry) noexcept {
 			/**
@@ -486,6 +512,7 @@ namespace awh {
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
+		 *
 		 */
 		template <uint16_t SIZE>
 		/**
@@ -495,6 +522,7 @@ namespace awh {
 		 * @param value добавляемое значение
 		 * @param start индекс разряда, с которого начинается добавление
 		 * @return      результат выполнения операции
+		 *
 		 */
 		inline bool smallAddFrom(limbs_t <SIZE> & limbs, const limb_t value, const size_t start) noexcept {
 			// Текущий индекс обрабатываемого разряда
@@ -526,6 +554,7 @@ namespace awh {
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
+		 *
 		 */
 		template <uint16_t SIZE>
 		/**
@@ -534,6 +563,7 @@ namespace awh {
 		 * @param limbs целевой вектор разрядов
 		 * @param value добавляемое значение
 		 * @return      результат выполнения операции
+		 *
 		 */
 		AWH_LEXICAL_INLINE bool smallAdd(limbs_t <SIZE> & limbs, const limb_t value) noexcept {
 			// Выполняем добавление скаляра с нулевого разряда
@@ -544,6 +574,7 @@ namespace awh {
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
+		 *
 		 */
 		template <uint16_t SIZE>
 		/**
@@ -552,6 +583,7 @@ namespace awh {
 		 * @param limbs целевой вектор разрядов
 		 * @param value множитель
 		 * @return      результат выполнения операции
+		 *
 		 */
 		inline bool smallMul(limbs_t <SIZE> & limbs, const limb_t value) noexcept {
 			// Текущее значение переноса
@@ -574,6 +606,7 @@ namespace awh {
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
+		 *
 		 */
 		template <uint16_t SIZE>
 		/**
@@ -583,6 +616,7 @@ namespace awh {
 		 * @param values добавляемый диапазон разрядов
 		 * @param start  индекс разряда, с которого начинается добавление
 		 * @return       результат выполнения операции
+		 *
 		 */
 		inline bool largeAddFrom(limbs_t <SIZE> & limbs, const limbSpan_t values, const size_t start) noexcept {
 			// Если текущей длины вектора недостаточно для добавления диапазона
@@ -627,6 +661,7 @@ namespace awh {
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
+		 *
 		 */
 		template <uint16_t SIZE>
 		/**
@@ -638,6 +673,7 @@ namespace awh {
 		 * @param limbs  целевой вектор разрядов
 		 * @param values множитель
 		 * @return       результат выполнения операции
+		 *
 		 */
 		inline bool longMul(limbs_t <SIZE> & limbs, const limbSpan_t values) noexcept {
 			// Копия исходного значения для формирования частичных произведений
@@ -687,6 +723,7 @@ namespace awh {
 		 * @brief Шаблон ёмкости вектора разрядов
 		 *
 		 * @tparam SIZE максимальное количество разрядов
+		 *
 		 */
 		template <uint16_t SIZE>
 		/**
@@ -695,6 +732,7 @@ namespace awh {
 		 * @param limbs  целевой вектор разрядов
 		 * @param values множитель
 		 * @return       результат выполнения операции
+		 *
 		 */
 		inline bool largeMul(limbs_t <SIZE> & limbs, const limbSpan_t values) noexcept {
 			// Если множитель состоит из одного разряда
@@ -709,6 +747,7 @@ namespace awh {
 		 * @brief Шаблон фиктивного типа подстановки
 		 *
 		 * @tparam U фиктивный параметр для подстановки при специализации
+		 *
 		 */
 		template <typename U = void>
 		/**
@@ -770,6 +809,7 @@ namespace awh {
 		 * @details Разряды хранятся в порядке от младшего к старшему. Все операции
 		 *          возвращают признак успеха: отказ означает исчерпание ёмкости
 		 *          буфера и обязан быть обработан вызывающей стороной.
+		 *
 		 */
 		typedef struct BigInt : pow5_t <> {
 			// Вектор разрядов значения длинной арифметики
@@ -803,6 +843,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param value исходное 64-битное значение
+			 *
 			 */
 			explicit BigInt(const uint64_t value) noexcept : vec() {
 				/**
@@ -828,6 +869,7 @@ namespace awh {
 			 *
 			 * @param truncated ссылка на признак отброшенных значащих бит
 			 * @return          старшие 64 бита значения
+			 *
 			 */
 			uint64_t hi64(bool & truncated) const noexcept {
 				// Сбрасываем признак отброшенных значащих бит
@@ -881,6 +923,7 @@ namespace awh {
 			 *
 			 * @param other сравниваемое значение длинной арифметики
 			 * @return      результат сравнения
+			 *
 			 */
 			int32_t compare(const BigInt & other) const noexcept {
 				// Если текущее значение содержит больше разрядов
@@ -911,6 +954,7 @@ namespace awh {
 			 * @brief Метод получения количества ведущих нулевых бит старшего разряда
 			 *
 			 * @return количество ведущих нулевых бит
+			 *
 			 */
 			int32_t ctlz() const noexcept {
 				// Если значение содержит значимые разряды
@@ -936,6 +980,7 @@ namespace awh {
 			 * @brief Метод получения количества значащих бит значения
 			 *
 			 * @return количество значащих бит
+			 *
 			 */
 			int32_t bitLength() const noexcept {
 				// Выводим количество значащих бит значения
@@ -946,6 +991,7 @@ namespace awh {
 			 *
 			 * @param value множитель
 			 * @return      результат выполнения операции
+			 *
 			 */
 			bool mul(const limb_t value) noexcept {
 				// Выполняем умножение вектора разрядов на скаляр
@@ -956,6 +1002,7 @@ namespace awh {
 			 *
 			 * @param value слагаемое
 			 * @return      результат выполнения операции
+			 *
 			 */
 			bool add(const limb_t value) noexcept {
 				// Выполняем добавление скаляра к вектору разрядов
@@ -966,6 +1013,7 @@ namespace awh {
 			 *
 			 * @param count величина сдвига в диапазоне от 1 до LIMB_BITS - 1
 			 * @return      результат выполнения операции
+			 *
 			 */
 			bool shlBits(const size_t count) noexcept {
 				// Выполняем проверку допустимости величины сдвига
@@ -999,6 +1047,7 @@ namespace awh {
 			 *
 			 * @param count количество разрядов сдвига
 			 * @return      результат выполнения операции
+			 *
 			 */
 			bool shlLimbs(const size_t count) noexcept {
 				// Выполняем проверку допустимости величины сдвига
@@ -1024,6 +1073,7 @@ namespace awh {
 			 *
 			 * @param count величина сдвига в битах
 			 * @return      результат выполнения операции
+			 *
 			 */
 			bool shl(const size_t count) noexcept {
 				// Величина сдвига внутри разряда
@@ -1049,6 +1099,7 @@ namespace awh {
 			 *
 			 * @param exponent показатель степени двойки
 			 * @return         результат выполнения операции
+			 *
 			 */
 			bool pow2(const uint32_t exponent) noexcept {
 				// Выполняем сдвиг значения влево на показатель степени
@@ -1059,6 +1110,7 @@ namespace awh {
 			 *
 			 * @param exponent показатель степени пятёрки
 			 * @return         результат выполнения операции
+			 *
 			 */
 			bool pow5(uint32_t exponent) noexcept {
 				// Диапазон разрядов значения пятёрки в степени крупного шага
@@ -1114,6 +1166,7 @@ namespace awh {
 			 *
 			 * @param exponent показатель степени десятки
 			 * @return         результат выполнения операции
+			 *
 			 */
 			bool pow10(const uint32_t exponent) noexcept {
 				// Выполняем умножение на степень пятёрки

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Статические тесты сетевой очереди — проверка создания и сброса объекта модуля,
+ *        а также корректности буферизации данных, контроля ёмкости и корректности порядка извлечения записей
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -39,6 +43,7 @@
  * @brief Функция получения текущего резидентного размера памяти процесса (RSS) в байтах
  *
  * @return текущий RSS процесса в байтах (0 если измерение недоступно)
+ *
  */
 static size_t currentRSS() noexcept {
 	/**
@@ -397,6 +402,7 @@ TEST_F(NetworkQueueFixture, EmptyQueueOperationsTest){
  *
  * @note При опустошении очереди буфер возвращается в потоко-локальный пул, а следующая запись
  *       переиспользует блок из пула. Тест прогоняет множество циклов и проверяет целостность данных.
+ *
  */
 TEST_F(NetworkQueueFixture, BufferPoolReuseCycleTest){
 	// Очищаем очередь
@@ -659,6 +665,7 @@ TEST_F(NetworkQueueFixture, ClearAndSwitchTypeTest){
  *
  * @note Помечен префиксом DISABLED_ и не входит в обычный прогон из-за крупных аллокаций - запускать явно:
  *       ./unit-tests/net --gtest_also_run_disabled_tests --gtest_filter='*RssFootprintBenchmark*'
+ *
  */
 TEST_F(NetworkQueueFixture, DISABLED_RssFootprintBenchmark){
 	// Количество эмулируемых соединений (каждое со своей очередью отправки)
@@ -729,6 +736,7 @@ TEST_F(NetworkQueueFixture, DISABLED_RssFootprintBenchmark){
  * @param sorted отсортированный по возрастанию массив задержек (нс)
  * @param p      перцентиль в диапазоне [0.0, 1.0]
  * @return       значение задержки на заданном перцентиле
+ *
  */
 static double percentile(const std::vector <double> & sorted, const double p) noexcept {
 	// Если массив пуст - возвращаем 0
@@ -746,6 +754,7 @@ static double percentile(const std::vector <double> & sorted, const double p) no
  *
  * @note Помечен префиксом DISABLED_ и не входит в обычный прогон - запускать явно:
  *       ./unit-tests/net --gtest_also_run_disabled_tests --gtest_filter='*LatencyBenchmark*'
+ *
  */
 TEST_F(NetworkQueueFixture, DISABLED_LatencyBenchmark){
 	// Размер одного блока данных в байтах

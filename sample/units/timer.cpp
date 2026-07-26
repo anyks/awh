@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример работы с модулем таймера — демонстрация создания одиночных и периодических таймеров цикла событий,
+ *        их перезапуска и остановки
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -38,6 +42,7 @@ using namespace placeholders;
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

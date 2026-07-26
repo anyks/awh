@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример клиента DTLS — демонстрация установки защищённого датаграммного соединения через фасад клиента,
+ *        подписки на события подключения, чтения и записи и обмена данными с удалённым сервером
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -42,6 +46,7 @@ class Executor {
 		 * @brief Метод обработки событий записи данных клиентом
 		 *
 		 * @param size размер данных для записи
+		 *
 		 */
 		void write(const size_t size) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
@@ -53,6 +58,7 @@ class Executor {
 		 * @param data   бинарный буфер данных
 		 * @param size   размер данных
 		 * @param client объект клиента
+		 *
 		 */
 		void read(const uint8_t * data, const size_t size, client_t * client) noexcept {
 			// Если данные получены
@@ -69,6 +75,7 @@ class Executor {
 		 *
 		 * @param status новый статус клиента
 		 * @param client объект клиента
+		 *
 		 */
 		void status(const event::status_t status, client_t * client) noexcept {
 			/**
@@ -96,6 +103,7 @@ class Executor {
 		 *
 		 * @param ok     результат подключения
 		 * @param client объект клиента
+		 *
 		 */
 		void connect(const bool ok, client_t * client) noexcept {
 			// Если подключение выполнено
@@ -120,6 +128,7 @@ class Executor {
 		 * @param family семейство адресов клиента
 		 * @param domain доменное имя клиента
 		 * @param ip     IP-адрес клиента
+		 *
 		 */
 		void ready([[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности клиента к работе
@@ -130,6 +139,7 @@ class Executor {
 		 *
 		 * @param error   код ошибки
 		 * @param message сообщение об ошибке
+		 *
 		 */
 		void error([[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
@@ -140,6 +150,7 @@ class Executor {
 		 *
 		 * @param error   код ошибки TLS
 		 * @param message сообщение об ошибке TLS
+		 *
 		 */
 		void errorTLS([[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог TLS
@@ -151,6 +162,7 @@ class Executor {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
+		 *
 		 */
 		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
@@ -161,6 +173,7 @@ class Executor {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля посредника — класс unit::Mediator, связывающий два независимых узла в
+ *        двунаправленный канал передачи данных и обеспечивающий проксирование трафика между ними
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -52,6 +56,7 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор события
 				 * @param action действие посредника
+				 *
 				 */
 				void action(const event::id_t eid, const event::action_t action) noexcept;
 				/**
@@ -59,6 +64,7 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор события
 				 * @param status новый статус посредника
+				 *
 				 */
 				void status(const event::id_t eid, const event::status_t status) noexcept;
 				/**
@@ -67,6 +73,7 @@ namespace awh {
 				 * @param eid  идентификатор события
 				 * @param data данные события получения данных посредником
 				 * @param size размер данных события получения данных посредником
+				 *
 				 */
 				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
@@ -75,6 +82,7 @@ namespace awh {
 				 * @param eid         идентификатор события
 				 * @param error       тип ошибки
 				 * @param description описание ошибки
+				 *
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
 			public:
@@ -83,6 +91,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события посредника
 				 * @return    результат выполнения фиксации
+				 *
 				 */
 				bool commit(const event::id_t eid) noexcept;
 			public:
@@ -93,6 +102,7 @@ namespace awh {
 				 * @param buffer буфер данных для отправки
 				 * @param size   размер данных для отправки
 				 * @return       количество байт данных, отправленных посредником
+				 *
 				 */
 				size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
 			public:
@@ -102,6 +112,7 @@ namespace awh {
 				 * @param eid  идентификатор события-источника
 				 * @param dest идентификатор события-приёмника
 				 * @return     результат выполнения перемещения
+				 *
 				 */
 				bool splice(const event::id_t eid, const event::id_t dest) noexcept;
 			public:
@@ -110,6 +121,7 @@ namespace awh {
 				 *
 				 * @param eid идентификатор события посредника
 				 * @return    адрес хоста целевой машины
+				 *
 				 */
 				string getTarget(const event::id_t eid) const noexcept;
 				/**
@@ -118,6 +130,7 @@ namespace awh {
 				 * @param eid    идентификатор события посредника
 				 * @param target адрес хоста целевой машины
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setTarget(const event::id_t eid, string_view target) noexcept;
 			public:
@@ -127,6 +140,7 @@ namespace awh {
 				 * @param eid    идентификатор события посредника
 				 * @param target адрес хоста целевой машины
 				 * @return       результат выполнения установки
+				 *
 				 */
 				bool setTarget(const event::id_t eid, const net::addr_t * target) noexcept;
 				/**
@@ -135,6 +149,7 @@ namespace awh {
 				 * @param eid    идентификатор события посредника
 				 * @param target объект для извлечения адреса хоста целевой машины
 				 * @return       результат выполнения извлечения адреса хоста целевой машины
+				 *
 				 */
 				bool getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept;
 			public:
@@ -144,6 +159,7 @@ namespace awh {
 				 * @param eid     идентификатор события посредника
 				 * @param address тип адреса посредника
 				 * @return        значение адреса посредника
+				 *
 				 */
 				string getAddress(const event::id_t eid, const event::address_t address) const noexcept;
 				/**
@@ -153,6 +169,7 @@ namespace awh {
 				 * @param address тип адреса посредника
 				 * @param value   значение адреса посредника
 				 * @return        результат выполнения установки
+				 *
 				 */
 				bool setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept;
 			public:
@@ -163,6 +180,7 @@ namespace awh {
 				 * @param address тип адреса посредника
 				 * @param value   значение адреса посредника
 				 * @return        результат выполнения установки
+				 *
 				 */
 				bool setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept;
 				/**
@@ -172,6 +190,7 @@ namespace awh {
 				 * @param address тип адреса посредника
 				 * @param value   объект для извлечения адреса посредника
 				 * @return        результат выполнения извлечения адреса посредника
+				 *
 				 */
 				bool getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
 			public:
@@ -179,6 +198,7 @@ namespace awh {
 				 * @brief Метод установки функций обратного вызова
 				 *
 				 * @param callback функции обратного вызова
+				 *
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
@@ -186,6 +206,7 @@ namespace awh {
 				 * @brief Метод уничтожения события посредника
 				 *
 				 * @param eid идентификатор события для уничтожения
+				 *
 				 */
 				void destroy(const event::id_t eid) noexcept;
 			public:
@@ -194,6 +215,7 @@ namespace awh {
 				 *
 				 * @param family семейство адресов
 				 * @return       идентификатор созданного посредника
+				 *
 				 */
 				event::id_t issue(const event::family_t family) noexcept;
 			private:
@@ -206,6 +228,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				Mediator & operator = (const Mediator &) = delete;
 			public:
@@ -214,6 +237,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit Mediator(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл общих типов протокола QUIC (RFC 9000) — перечисления типов пакетов, уровней шифрования,
+ *        типов фреймов, кодов ошибок и статусов, структура идентификатора соединения и константы протокола
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_PROTO_QUIC__
@@ -45,6 +49,7 @@ namespace awh {
 	 *          переменной длины (varint.hpp), слоя пакетов (packet.hpp) и слоя фреймов
 	 *          (frame.hpp). Логики здесь нет — только перечисления, константы протокола
 	 *          и объявления функций человекочитаемых названий.
+	 *
 	 */
 	namespace quic {
 		/**
@@ -153,6 +158,7 @@ namespace awh {
 		 *
 		 * @details Фреймы STREAM занимают диапазон 0x08-0x0F: три младших бита типа
 		 *          кодируют наличие полей Offset (0x04), Length (0x02) и флага FIN (0x01)
+		 *
 		 */
 		enum class frame_t : uint64_t {
 			PADDING             = 0x00, // Заполнение без полезной нагрузки (RFC 9000 §19.1)
@@ -231,6 +237,7 @@ namespace awh {
 		 * @param a первый идентификатор соединения
 		 * @param b второй идентификатор соединения
 		 * @return  результат сравнения
+		 *
 		 */
 		__AWH_SHARED_EXPORT__ bool operator == (const cid_t & a, const cid_t & b) noexcept;
 
@@ -247,6 +254,7 @@ namespace awh {
 		 * @param length длина идентификаторов, выдаваемых локальным эндпоинтом
 		 * @param key    извлечённый идентификатор соединения получателя
 		 * @return       результат извлечения (false - датаграмма не является пакетом QUIC)
+		 *
 		 */
 		__AWH_SHARED_EXPORT__ bool route(const uint8_t * data, const size_t size, const uint8_t length, net::origin_key_t & key) noexcept;
 
@@ -261,6 +269,7 @@ namespace awh {
 		 * @param cid   идентификатор соединения локального эндпоинта
 		 * @param token выведенный токен сброса без сохранения состояния
 		 * @return      результат вывода (false - пустой ключ либо ошибка кода аутентичности)
+		 *
 		 */
 		__AWH_SHARED_EXPORT__ bool resetToken(string_view key, const cid_t & cid, uint8_t token[proto::RESET_TOKEN_SIZE]) noexcept;
 
@@ -273,6 +282,7 @@ namespace awh {
 		 *
 		 * @param output сгенерированный общий ключ вывода токенов сброса
 		 * @return       результат генерации (false - ошибка генератора случайных чисел)
+		 *
 		 */
 		__AWH_SHARED_EXPORT__ bool resetKey(string & output) noexcept;
 
@@ -289,6 +299,7 @@ namespace awh {
 		 * @param cid     идентификатор соединения получателя из вызвавшей датаграммы
 		 * @param trigger размер вызвавшей сброс датаграммы
 		 * @return        результат сборки (false - датаграмма слишком мала либо ошибка вывода токена)
+		 *
 		 */
 		__AWH_SHARED_EXPORT__ bool reset(string & output, string_view key, const cid_t & cid, const size_t trigger) noexcept;
 
@@ -297,6 +308,7 @@ namespace awh {
 		 *
 		 * @param type тип пакета
 		 * @return     название типа пакета
+		 *
 		 */
 		__AWH_SHARED_EXPORT__ string_view packetName(const packet_t type) noexcept;
 
@@ -305,6 +317,7 @@ namespace awh {
 		 *
 		 * @param type тип фрейма
 		 * @return     название типа фрейма
+		 *
 		 */
 		__AWH_SHARED_EXPORT__ string_view frameName(const frame_t type) noexcept;
 
@@ -313,6 +326,7 @@ namespace awh {
 		 *
 		 * @param code код ошибки транспорта
 		 * @return     название кода ошибки
+		 *
 		 */
 		__AWH_SHARED_EXPORT__ string_view errorName(const error_t code) noexcept;
 	};

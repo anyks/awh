@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация клиента SOCKS5-прокси — согласование методов авторизации с прокси-сервером,
+ *        выполнение команд CONNECT, BIND и UDP ASSOCIATE,
+ *        установка туннеля и прозрачное проксирование прикладного трафика поверх базового клиента
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -103,6 +108,7 @@ awh::client::Socks5::Endpoint::Endpoint() noexcept : attr(nullptr) {}
  *
  * @param index  индекс очереди запускаемого события
  * @param status новый статус клиента
+ *
  */
 void awh::client::Socks5::status(const uint8_t index, const event::status_t status) noexcept {
 	/**
@@ -248,6 +254,7 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
  *
  * @param eid идентификатор клиента
  * @param ok  результат подключения
+ *
  */
 void awh::client::Socks5::connect(const event::id_t eid, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -289,6 +296,7 @@ void awh::client::Socks5::connect(const event::id_t eid, const bool ok) noexcept
  *
  * @param      идентификатор клиента
  * @param size размер данных для записи
+ *
  */
 void awh::client::Socks5::write(const event::id_t, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -301,6 +309,7 @@ void awh::client::Socks5::write(const event::id_t, const size_t size) noexcept {
  *
  * @param eid    идентификатор клиента
  * @param status новый статус клиента
+ *
  */
 void awh::client::Socks5::state(const event::id_t eid, const event::status_t status) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -333,6 +342,7 @@ void awh::client::Socks5::state(const event::id_t eid, const event::status_t sta
  * @param eid    идентификатор клиента
  * @param buffer буфер данных клиента
  * @param size   размер данных клиента
+ *
  */
 void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -911,6 +921,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
  * @param family семейство адресов (IPv4/IPv6)
  * @param domain доменное имя для разрешения
  * @param addr   указатель на структуру для хранения результата разрешения
+ *
  */
 void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept {
 	/**
@@ -1064,6 +1075,7 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
  *
  * @param       идентификатор TLS
  * @param state состояние TLS
+ *
  */
 void awh::client::Socks5::stateTLS(const tls::coder_t::id_t, const tls::coder_t::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -1083,6 +1095,7 @@ void awh::client::Socks5::stateTLS(const tls::coder_t::id_t, const tls::coder_t:
  * @param event  тип события TLS
  * @param buffer буфер данных для события шифрования/дешифрования TLS
  * @param size   размер данных для события шифрования/дешифрования TLS
+ *
  */
 void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -1288,6 +1301,7 @@ void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_
  * @brief Метод приостановки работы клиента
  *
  * @return результат выполнения приостановки работы
+ *
  */
 bool awh::client::Socks5::pause() noexcept {
 	// Переменная результата
@@ -1349,6 +1363,7 @@ bool awh::client::Socks5::pause() noexcept {
  * @brief Метод возобновления работы клиента
  *
  * @return результат выполнения возобновления работы
+ *
  */
 bool awh::client::Socks5::resume() noexcept {
 	// Переменная результата
@@ -1410,6 +1425,7 @@ bool awh::client::Socks5::resume() noexcept {
  * @brief Метод мультиподключения клиентов к удалённым хостам (заглушка для клиента SOCKS5)
  *
  * @return результат выполнения подключения
+ *
  */
 bool awh::client::Socks5::connect() noexcept {
 	// Возвращаем значение по умолчанию
@@ -1419,6 +1435,7 @@ bool awh::client::Socks5::connect() noexcept {
  * @brief Метод отключения клиента от удалённого сервера (заглушка для клиента SOCKS5)
  *
  * @return результат выполнения отключения
+ *
  */
 bool awh::client::Socks5::disconnect() noexcept {
 	// Возвращаем значение по умолчанию
@@ -1428,6 +1445,7 @@ bool awh::client::Socks5::disconnect() noexcept {
  * @brief Метод получения данных от сервера
  *
  * @return результат получения данных
+ *
  */
 bool awh::client::Socks5::recv() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
@@ -1470,6 +1488,7 @@ bool awh::client::Socks5::recv() noexcept {
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
  * @return       количество байт данных, отправленных серверу
+ *
  */
 size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
@@ -1641,6 +1660,7 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
  * @brief Метод объединения данных между клиентом и другим событием (заглушка для клиента SOCKS5)
  *
  * @return результат выполнения объединения
+ *
  */
 bool awh::client::Socks5::splice(const event::id_t, const event::direct_t) noexcept {
 	// Возвращаем значение по умолчанию
@@ -1652,6 +1672,7 @@ bool awh::client::Socks5::splice(const event::id_t, const event::direct_t) noexc
  * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
  * @param bandwidth пропускная способность клиента для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
  * @return          результат выполнения установки
+ *
  */
 bool awh::client::Socks5::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Переменная результата
@@ -1710,6 +1731,7 @@ bool awh::client::Socks5::bandwidth(const event::limiting_t limiting, string_vie
  * @brief Метод активации/деактивации мультикаст группы (заглушка для клиента SOCKS5)
  *
  * @return результат выполнения установки
+ *
  */
 bool awh::client::Socks5::membership(const event::mode_t, string_view, string_view, const uint16_t) noexcept {
 	// Возвращаем значение по умолчанию
@@ -1719,6 +1741,7 @@ bool awh::client::Socks5::membership(const event::mode_t, string_view, string_vi
  * @brief Метод активации/деактивации мультикаст группы (заглушка для клиента SOCKS5)
  *
  * @return результат выполнения установки
+ *
  */
 bool awh::client::Socks5::membership(const event::mode_t, const net::addr_t *, const net::addr_t *, const uint16_t) noexcept {
 	// Возвращаем значение по умолчанию
@@ -1729,6 +1752,7 @@ bool awh::client::Socks5::membership(const event::mode_t, const net::addr_t *, c
  *
  * @param username имя пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
+ *
  */
 void awh::client::Socks5::setUser(const string & username, const string & password) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -1741,6 +1765,7 @@ void awh::client::Socks5::setUser(const string & username, const string & passwo
  *
  * @param addr исходящий адрес для UDP-клиента
  * @return 	   результат выполнения установки исходящего адреса для UDP-клиента
+ *
  */
 bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 	// Переменная результата
@@ -1897,6 +1922,7 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
  * @param addr исходящий адрес для UDP-клиента
  * @param port исходящий порт для UDP-клиента
  * @return     результат выполнения установки исходящего адреса для UDP-клиента
+ *
  */
 bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
 	// Переменная результата
@@ -2051,6 +2077,7 @@ bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
  *
  * @param attr параметры подключения для установки конечной точки
  * @return     результат выполнения установки конечной точки
+ *
  */
 bool awh::client::Socks5::endpoint(const net::attr_t * attr) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -2134,6 +2161,7 @@ bool awh::client::Socks5::endpoint(const net::attr_t * attr) noexcept {
  * @param addr адрес хоста для установки
  * @param port порт хоста для установки
  * @return     результат выполнения установки конечной точки
+ *
  */
 bool awh::client::Socks5::endpoint(string_view addr, const uint16_t port) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
@@ -2227,6 +2255,7 @@ bool awh::client::Socks5::endpoint(string_view addr, const uint16_t port) noexce
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::client::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept :
  client_t(fmk, log), _socks5(fmk, log) {}
@@ -2236,6 +2265,7 @@ awh::client::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept :
  * @param dns объект DNS-резолвера
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::client::Socks5::Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  client_t(dns, fmk, log), _socks5(fmk, log) {}
@@ -2246,6 +2276,7 @@ awh::client::Socks5::Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * 
  * @param coder объект транспортного уровня безопасности
  * @param fmk   объект фреймворка
  * @param log   объект для работы с логами
+ *
  */
 awh::client::Socks5::Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
  client_t(ctl, coder, fmk, log), _socks5(fmk, log) {}
@@ -2257,6 +2288,7 @@ awh::client::Socks5::Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, 
  * @param dns   объект DNS-резолвера
  * @param fmk   объект фреймворка
  * @param log   объект для работы с логами
+ *
  */
 awh::client::Socks5::Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  client_t(ctl, coder, dns, fmk, log), _socks5(fmk, log) {}

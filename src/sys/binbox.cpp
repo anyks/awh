@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация контейнера бинарных данных — добавление,
+ *        чтение и удаление записей произвольного размера в непрерывном буфере и обход записей итератором
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -43,6 +47,7 @@ namespace binbox {
 	 *
 	 * @param buffer буфер бинарных данных
 	 * @param result результат работы функции
+	 *
 	 */
 	static void extract(const vector <uint8_t> & buffer, string & result) noexcept {
 		// Если буфер данных передан
@@ -54,6 +59,7 @@ namespace binbox {
 	 * @brief Шаблон метода чтения бинарных данных из бинарного контейнера
 	 *
 	 * @tparam T тип данных извлекаемого результата
+	 *
 	 */
 	template <typename T>
 	/**
@@ -61,6 +67,7 @@ namespace binbox {
 	 *
 	 * @param buffer буфер бинарных данных
 	 * @param result результат работы функции
+	 *
 	 */
 	static void extract(const vector <uint8_t> & buffer, vector <T> & result) noexcept {
 		// Если буфер данных передан
@@ -79,6 +86,7 @@ namespace binbox {
 	 * @brief Шаблон метода чтения бинарных данных из бинарного контейнера
 	 *
 	 * @tparam T тип данных извлекаемого результата
+	 *
 	 */
 	template <typename T>
 	/**
@@ -86,6 +94,7 @@ namespace binbox {
 	 *
 	 * @param buffer буфер бинарных данных
 	 * @param result результат работы функции
+	 *
 	 */
 	static void extract(const vector <uint8_t> & buffer, T & result) noexcept {
 		// Если данные являются основными
@@ -102,6 +111,7 @@ namespace binbox {
 	 * @param result  результат бинарного буфера куда будет помещён итоговый дамп
 	 * @param fmk     объект фреймворка
 	 * @param log     объект для работы с логами
+	 *
 	 */
 	static void dump(const string & name, const uint32_t version, const unordered_map <uint64_t, binbox_t::record_t> & records, vector <uint8_t> & result, const fmk_t * fmk, const log_t * log) noexcept {
 		// Если список записей передан
@@ -187,6 +197,7 @@ namespace binbox {
 	 * @param result  результирующий контейнер для извлечения записей из бинарного буфера
 	 * @param fmk     объект фреймворка
 	 * @param log     объект для работы с логами
+	 *
 	 */
 	static void dump(const string & name, const uint32_t version, const vector <uint8_t> & buffer, unordered_map <uint64_t, binbox_t::record_t> & result, const fmk_t * fmk, const log_t * log) noexcept {
 		// Если буфер данных передан
@@ -341,6 +352,7 @@ awh::BinBox::Record::Record() noexcept : size(0), buffer(nullptr) {}
  * @brief Оператор преобразования в сырой итератор
  *
  * @return iterator итератор для преобразования
+ *
  */
 awh::BinBox::Iterator::operator awh::BinBox::Iterator::iterator() noexcept {
 	// Возвращаем текущее значение итератора
@@ -350,6 +362,7 @@ awh::BinBox::Iterator::operator awh::BinBox::Iterator::iterator() noexcept {
  * @brief Оператор извлечения указателя заголовка
  *
  * @return указатель заголовка
+ *
  */
 awh::BinBox::Iterator::pointer awh::BinBox::Iterator::operator -> () noexcept {
 	// Возвращаем результат
@@ -359,6 +372,7 @@ awh::BinBox::Iterator::pointer awh::BinBox::Iterator::operator -> () noexcept {
  * @brief Оператор разыменования заголовка
  *
  * @return значение заголовка
+ *
  */
 awh::BinBox::Iterator::reference awh::BinBox::Iterator::operator * () const noexcept {
 	// Возвращаем результат
@@ -368,6 +382,7 @@ awh::BinBox::Iterator::reference awh::BinBox::Iterator::operator * () const noex
  * @brief Оператор смещения вперед
  *
  * @return значение текущего итератора
+ *
  */
 awh::BinBox::Iterator & awh::BinBox::Iterator::operator ++ () noexcept {
 	/**
@@ -420,6 +435,7 @@ awh::BinBox::Iterator & awh::BinBox::Iterator::operator ++ () noexcept {
  *
  * @param other итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::BinBox::Iterator::operator == (const Iterator & other) const noexcept {
 	// Возвращаем результат
@@ -430,6 +446,7 @@ bool awh::BinBox::Iterator::operator == (const Iterator & other) const noexcept 
  *
  * @param other итератор для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::BinBox::Iterator::operator != (const Iterator & other) const noexcept {
 	// Возвращаем результат
@@ -441,6 +458,7 @@ bool awh::BinBox::Iterator::operator != (const Iterator & other) const noexcept 
  * @param it  итератор для установки
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::BinBox::Iterator::Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept :
  _it(it), _fmk(fmk), _log(log) {}
@@ -457,6 +475,7 @@ void awh::BinBox::clear() noexcept {
  * @brief Метод проверки на пустое значение контейнера
  *
  * @return результат проверки
+ *
  */
 bool awh::BinBox::empty() const noexcept {
 	// Возвращаем проверку на пустоту очереди
@@ -466,6 +485,7 @@ bool awh::BinBox::empty() const noexcept {
  * @brief Метод получения количества записей в контейнере
  *
  * @return количество записей в контейнере
+ *
  */
 size_t awh::BinBox::count() const noexcept {
 	// Возвращаем количество записей в контейнере
@@ -475,6 +495,7 @@ size_t awh::BinBox::count() const noexcept {
  * @brief Метод получения названия контейнера
  *
  * @return название контейнера
+ *
  */
 string awh::BinBox::getName() const noexcept {
 	// Возвращаем название контейнера
@@ -484,6 +505,7 @@ string awh::BinBox::getName() const noexcept {
  * @brief Метод установки названия контейнера
  *
  * @param name название контейнера
+ *
  */
 void awh::BinBox::setName(string_view name) noexcept {
 	// Устанавливаем название контейнера
@@ -493,6 +515,7 @@ void awh::BinBox::setName(string_view name) noexcept {
  * @brief Метод получения версии контейнера
  *
  * @return версия контейнера
+ *
  */
 string awh::BinBox::getVersion() const noexcept {
 	// Возвращаем версию контейнера
@@ -502,6 +525,7 @@ string awh::BinBox::getVersion() const noexcept {
  * @brief Метод установки версии контейнера
  *
  * @param version версия контейнера для установки
+ *
  */
 void awh::BinBox::setVersion(string_view version) noexcept {
 	// Получаем версию контейнера (создаём строку, так как string_view не гарантирует нуль-терминацию)
@@ -512,6 +536,7 @@ void awh::BinBox::setVersion(string_view version) noexcept {
  *
  * @param key ключ для удаления записи
  * @return    результат работы функции
+ *
  */
 bool awh::BinBox::erase(string_view key) noexcept {
 	// Если ключ передан
@@ -526,6 +551,7 @@ bool awh::BinBox::erase(string_view key) noexcept {
  *
  * @param idw идентификатор ключа для удаления записи
  * @return    результат работы функции
+ *
  */
 bool awh::BinBox::erase(const uint64_t idw) noexcept {
 	// Переменная результата
@@ -547,6 +573,7 @@ bool awh::BinBox::erase(const uint64_t idw) noexcept {
  *
  * @param it итератор записи для удаления
  * @return   следующий итератор
+ *
  */
 awh::BinBox::iterator_t awh::BinBox::erase(const iterator_t & it) noexcept {
 	// Выполняем удаление указанного заголовка
@@ -558,6 +585,7 @@ awh::BinBox::iterator_t awh::BinBox::erase(const iterator_t & it) noexcept {
  * @brief Метод загрузки контейнера из файла
  *
  * @param filename путь к файлу для загрузки
+ *
  */
 void awh::BinBox::load(string_view filename) noexcept {
 	// Если путь к файлу указан и объект работы с файловой системой создан
@@ -574,6 +602,7 @@ void awh::BinBox::load(string_view filename) noexcept {
  * @brief Метод сохранения контейнера в файл
  *
  * @param filename путь к файлу для сохранения
+ *
  */
 void awh::BinBox::save(string_view filename) noexcept {
 	// Если путь к файлу указан и объект работы с файловой системой создан
@@ -593,6 +622,7 @@ void awh::BinBox::save(string_view filename) noexcept {
  *
  * @param key ключ для генерации
  * @return    идентификатор ключа
+ *
  */
 uint64_t awh::BinBox::idw(string_view key) const noexcept {
 	// Переменная результата
@@ -634,6 +664,7 @@ uint64_t awh::BinBox::idw(string_view key) const noexcept {
  *
  * @param key ключ для проверки
  * @return    результат проверки
+ *
  */
 bool awh::BinBox::has(string_view key) noexcept {
 	// Если ключ передан
@@ -648,6 +679,7 @@ bool awh::BinBox::has(string_view key) noexcept {
  *
  * @param idw идентификатор ключа для проверки
  * @return    результат проверки
+ *
  */
 bool awh::BinBox::has(const uint64_t idw) noexcept {
 	// Если ключ передан
@@ -665,6 +697,7 @@ bool awh::BinBox::has(const uint64_t idw) noexcept {
  *
  * @param key ключ записи
  * @return    размер данных записи
+ *
  */
 size_t awh::BinBox::size(string_view key) const noexcept {
 	// Выполняем извлечение размера данных в бинарном контейнере
@@ -675,6 +708,7 @@ size_t awh::BinBox::size(string_view key) const noexcept {
  *
  * @param idw идентификатор ключа
  * @return    размер данных записи
+ *
  */
 size_t awh::BinBox::size(const uint64_t idw) const noexcept {
 	// Если ключ передан
@@ -724,6 +758,7 @@ size_t awh::BinBox::size(const uint64_t idw) const noexcept {
  *
  * @param key ключ записи
  * @return    запрашиваемые данные по ключу
+ *
  */
 void * awh::BinBox::get(string_view key) const noexcept {
 	// Выполняем извлечение данных из бинарного контейнера
@@ -734,6 +769,7 @@ void * awh::BinBox::get(string_view key) const noexcept {
  *
  * @param idw идентификатор ключа
  * @return    запрашиваемые данные по идентификатору ключа
+ *
  */
 void * awh::BinBox::get(const uint64_t idw) const noexcept {
 	// Если ключ передан
@@ -782,6 +818,7 @@ void * awh::BinBox::get(const uint64_t idw) const noexcept {
  * @brief Шаблон метода чтения бинарных данных из бинарного контейнера
  *
  * @tparam T тип извлекаемого значения
+ *
  */
 template <typename T>
 /**
@@ -789,6 +826,7 @@ template <typename T>
  *
  * @param key ключ записи
  * @return    результат работы функции
+ *
  */
 T awh::BinBox::get(string_view key) noexcept {
 	// Выполняем извлечение данных из бинарного контейнера
@@ -828,6 +866,7 @@ template vector <uint8_t> awh::BinBox::get <vector <uint8_t>> (string_view) noex
  * @brief Шаблон метода чтения данных из бинарного контейнера
  *
  * @tparam T тип извлекаемого значения
+ *
  */
 template <typename T>
 /**
@@ -835,6 +874,7 @@ template <typename T>
  *
  * @param idw идентификатор ключа
  * @return    результат работы функции
+ *
  */
 T awh::BinBox::get(const uint64_t idw) noexcept {
 	// Переменная результата
@@ -902,6 +942,7 @@ template vector <uint8_t> awh::BinBox::get <vector <uint8_t>> (const uint64_t) n
  * @param key    ключ записи
  * @param buffer бинарный буфер для чтения данных
  * @return       результат работы функции
+ *
  */
 bool awh::BinBox::get(string_view key, vector <uint8_t> & buffer) noexcept {
 	// Если ключ передан
@@ -917,6 +958,7 @@ bool awh::BinBox::get(string_view key, vector <uint8_t> & buffer) noexcept {
  * @param idw    идентификатор ключа
  * @param buffer бинарный буфер для чтения данных
  * @return       результат работы функции
+ *
  */
 bool awh::BinBox::get(const uint64_t idw, vector <uint8_t> & buffer) noexcept {
 	// Переменная результата
@@ -972,6 +1014,7 @@ bool awh::BinBox::get(const uint64_t idw, vector <uint8_t> & buffer) noexcept {
  * @param buffer бинарный буфер для чтения данных
  * @param size   размер извлекаемых бинарных данных
  * @return       результат работы функции
+ *
  */
 bool awh::BinBox::get(string_view key, uint8_t ** buffer, size_t * size) noexcept {
 	// Если ключ передан
@@ -988,6 +1031,7 @@ bool awh::BinBox::get(string_view key, uint8_t ** buffer, size_t * size) noexcep
  * @param buffer бинарный буфер для чтения данных
  * @param size   размер извлекаемых бинарных данных
  * @return       результат работы функции
+ *
  */
 bool awh::BinBox::get(const uint64_t idw, uint8_t ** buffer, size_t * size) noexcept {
 	// Переменная результата
@@ -1040,6 +1084,7 @@ bool awh::BinBox::get(const uint64_t idw, uint8_t ** buffer, size_t * size) noex
  * @brief Шаблон метода добавления данных в бинарный контейнер
  *
  * @tparam T тип добавляемого значения
+ *
  */
 template <typename T>
 /**
@@ -1048,6 +1093,7 @@ template <typename T>
  * @param idw   идентификатор ключа
  * @param value значение данных
  * @return      результат работы функции
+ *
  */
 bool awh::BinBox::add(const uint64_t idw, const T value) noexcept {
 	// Если ключ записи передан и данные являются простыми
@@ -1088,6 +1134,7 @@ template bool awh::BinBox::add <double> (const uint64_t, const double) noexcept;
  * @brief Шаблон метода добавления бинарного буфера данных
  *
  * @tparam T тип устанавливаемого значения
+ *
  */
 template <typename T>
 /**
@@ -1096,6 +1143,7 @@ template <typename T>
  * @param idw   идентификатор ключа
  * @param value значение данных
  * @return      результат работы функции
+ *
  */
 bool awh::BinBox::add(const uint64_t idw, const vector <T> & value) noexcept {
 	// Если ключ записи передан и данные являются массивом
@@ -1137,6 +1185,7 @@ template bool awh::BinBox::add <double> (const uint64_t, const vector <double> &
  * @param idw   идентификатор ключа
  * @param value значение данных
  * @return      результат работы функции
+ *
  */
 bool awh::BinBox::add(const uint64_t idw, const string & value) noexcept {
 	// Если ключ записи передан
@@ -1153,6 +1202,7 @@ bool awh::BinBox::add(const uint64_t idw, const string & value) noexcept {
  * @param buffer буфер для записи данных
  * @param size   размер буфера для записи данных
  * @return       результат работы функции
+ *
  */
 bool awh::BinBox::add(const uint64_t idw, const void * buffer, const size_t size) noexcept {
 	// Переменная результата
@@ -1214,6 +1264,7 @@ bool awh::BinBox::add(const uint64_t idw, const void * buffer, const size_t size
  * @brief Шаблон метода добавления данных в бинарный контейнер
  *
  * @tparam T тип добавляемого значения
+ *
  */
 template <typename T>
 /**
@@ -1222,6 +1273,7 @@ template <typename T>
  * @param key   ключ записи
  * @param value значение данных
  * @return      результат работы функции
+ *
  */
 bool awh::BinBox::add(string_view key, const T value) noexcept {
 	// Если ключ записи передан и данные являются простыми
@@ -1262,6 +1314,7 @@ template bool awh::BinBox::add <double> (string_view, const double) noexcept;
  * @brief Шаблон метода добавления данных в бинарный контейнер
  *
  * @tparam T тип добавляемого значения
+ *
  */
 template <typename T>
 /**
@@ -1270,6 +1323,7 @@ template <typename T>
  * @param key   ключ записи
  * @param value значение данных
  * @return      результат работы функции
+ *
  */
 bool awh::BinBox::add(string_view key, const vector <T> & value) noexcept {
 	// Если ключ записи передан и данные являются массивом
@@ -1311,6 +1365,7 @@ template bool awh::BinBox::add <double> (string_view, const vector <double> &) n
  * @param key   ключ записи
  * @param value значение данных
  * @return      результат работы функции
+ *
  */
 bool awh::BinBox::add(string_view key, const string & value) noexcept {
 	// Если ключ и данные для записи переданы
@@ -1327,6 +1382,7 @@ bool awh::BinBox::add(string_view key, const string & value) noexcept {
  * @param buffer буфер для записи данных
  * @param size   размер буфера для записи данных
  * @return       результат работы функции
+ *
  */
 bool awh::BinBox::add(string_view key, const void * buffer, const size_t size) noexcept {
 	// Если ключ и данные для записи переданы
@@ -1340,6 +1396,7 @@ bool awh::BinBox::add(string_view key, const void * buffer, const size_t size) n
  * @brief Метод обмена данными контейнерами
  *
  * @param binbox объект для обмена
+ *
  */
 void awh::BinBox::swap(BinBox & binbox) noexcept {
 	// Выполняем обмен названиями контейнеров
@@ -1355,6 +1412,7 @@ void awh::BinBox::swap(BinBox & binbox) noexcept {
  * @brief Метод получения конечного итератора
  *
  * @return конечный итератор
+ *
  */
 awh::BinBox::iterator_t awh::BinBox::end() noexcept {
 	// Возвращаем результат
@@ -1364,6 +1422,7 @@ awh::BinBox::iterator_t awh::BinBox::end() noexcept {
  * @brief Метод получение начального итератора
  *
  * @return начальный итератор
+ *
  */
 awh::BinBox::iterator_t awh::BinBox::begin() noexcept {
 	// Возвращаем результат
@@ -1374,6 +1433,7 @@ awh::BinBox::iterator_t awh::BinBox::begin() noexcept {
  *
  * @param key ключ для поиска записи
  * @return     итератор указанного ключа
+ *
  */
 awh::BinBox::iterator_t awh::BinBox::find(string_view key) noexcept {
 	// Если ключ для поиска передан
@@ -1429,6 +1489,7 @@ awh::BinBox::iterator_t awh::BinBox::find(string_view key) noexcept {
  *
  * @param idw идентификатор ключа для поиска записи
  * @return    итератор указанного идентификатора ключа
+ *
  */
 awh::BinBox::iterator_t awh::BinBox::find(const uint64_t idw) noexcept {
 	// Если идентификатор записи передан
@@ -1483,6 +1544,7 @@ awh::BinBox::iterator_t awh::BinBox::find(const uint64_t idw) noexcept {
  * @brief Оператор проверки на существование контейнера
  *
  * @return результат проверки
+ *
  */
 awh::BinBox::operator bool() const noexcept {
 	// Возвращаем результат проверки
@@ -1492,6 +1554,7 @@ awh::BinBox::operator bool() const noexcept {
  * @brief Оператор извлечения бинарного буфера данных
  *
  * @return бинарный буфер данных
+ *
  */
 awh::BinBox::operator vector <uint8_t> () const noexcept {
 	// Переменная результата
@@ -1506,6 +1569,7 @@ awh::BinBox::operator vector <uint8_t> () const noexcept {
  *
  * @param binbox объект для перемещения
  * @return       текущий контейнер буфера
+ *
  */
 awh::BinBox & awh::BinBox::operator = (BinBox && binbox) noexcept {
 	// Выполняем копирование объекта работы с файловой системой
@@ -1530,6 +1594,7 @@ awh::BinBox & awh::BinBox::operator = (BinBox && binbox) noexcept {
  *
  * @param buffer буфер бинарных данных
  * @return       текущий объект
+ *
  */
 awh::BinBox & awh::BinBox::operator = (const vector <uint8_t> & buffer) noexcept {
 	// Извлекаем из бинарного буфера дампа, записи контейнера
@@ -1541,6 +1606,7 @@ awh::BinBox & awh::BinBox::operator = (const vector <uint8_t> & buffer) noexcept
  * @brief Конструктор перемещения
  *
  * @param binbox объект для перемещения
+ *
  */
 awh::BinBox::BinBox(BinBox && binbox) noexcept {
 	// Выполняем копирование объекта работы с файловой системой
@@ -1563,6 +1629,7 @@ awh::BinBox::BinBox(BinBox && binbox) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::BinBox::BinBox(const fmk_t * fmk, const log_t * log) noexcept :
  _name{AWH_SHORT_NAME}, _fs(nullptr), _crypto(nullptr), _fmk(fmk), _log(log) {

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация тестовой фикстуры модуля лексического разбора чисел —
+ *        создание объектов тестового окружения перед каждым тестом и их освобождение после его завершения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -33,6 +37,7 @@ void LexicalFixture::TearDown() {}
  * @param a первое значение
  * @param b второе значение
  * @return  true при побитовом равенстве
+ *
  */
 bool LexicalFixture::sameBits(const double a, const double b) noexcept {
 	// Переменная для хранения побитового представления первого числа
@@ -52,6 +57,7 @@ bool LexicalFixture::sameBits(const double a, const double b) noexcept {
  * @param a первое значение
  * @param b второе значение
  * @return  true при побитовом равенстве
+ *
  */
 bool LexicalFixture::sameBits(const float a, const float b) noexcept {
 	// Переменная для хранения побитового представления первого числа
@@ -69,6 +75,7 @@ bool LexicalFixture::sameBits(const float a, const float b) noexcept {
  * @brief Разбирает double через lexical_t и сверяет со strtod
  *
  * @param text исходная строка
+ *
  */
 void LexicalFixture::expectDoubleMatchesStrtod(const char * text) noexcept {
 	// Проверяем, что текст не пустой
@@ -96,6 +103,7 @@ void LexicalFixture::expectDoubleMatchesStrtod(const char * text) noexcept {
  * @brief Разбирает float через lexical_t и сверяет со strtof
  *
  * @param text исходная строка
+ *
  */
 void LexicalFixture::expectFloatMatchesStrtof(const char * text) noexcept {
 	// Проверяем, что текст не пустой

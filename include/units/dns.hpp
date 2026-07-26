@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля DNS-резолвера — класс unit::DNS,
+ *        выполняющий асинхронный разбор доменных имён по записям A, AAAA, MX, TXT и другим, с пулом DNS-серверов,
+ *        раунд-робин распределением, кешированием и контролем таймаутов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -78,6 +83,7 @@ namespace awh {
 				 * @brief Структура буфера полезной нагрузки
 				 *
 				 * @details Используется для хранения данных DNS-запроса или DNS-ответа.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Payload {
 					// Размер буфера
@@ -100,6 +106,7 @@ namespace awh {
 				 * @brief Класс активного пакета при выполнении DNS-запросов
 				 *
 				 * @details Хранит информацию о текущем DNS-запросе, включая время жизни, количество попыток и полезную нагрузку.
+				 *
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Packet {
 					public:
@@ -115,6 +122,7 @@ namespace awh {
 						 *
 						 * @param packet объект параметров пакета
 						 * @return       текущие параметры пакета
+						 *
 						 */
 						Packet & operator = (Packet && packet) noexcept;
 						/**
@@ -122,6 +130,7 @@ namespace awh {
 						 *
 						 * @param packet объект параметров пакета
 						 * @return        текущие параметры пакета
+						 *
 						 */
 						Packet & operator = (const Packet & packet) noexcept;
 					public:
@@ -129,12 +138,14 @@ namespace awh {
 						 * @brief Конструктор перемещения
 						 *
 						 * @param packet объект параметров пакета
+						 *
 						 */
 						explicit Packet(Packet && packet) noexcept;
 						/**
 						 * @brief Конструктор копирования
 						 *
 						 * @param packet объект параметров пакета
+						 *
 						 */
 						explicit Packet(const Packet & packet) noexcept;
 					public:
@@ -153,6 +164,7 @@ namespace awh {
 				 * @brief Класс для управления очередью идентификаторов событий
 				 *
 				 * @details Используется для хранения идентификаторов событий DNS-резолвера, которые могут быть повторно использованы.
+				 *
 				 */
 				typedef class __AWH_SHARED_EXPORT__ SimpleQueue {
 					private:
@@ -169,6 +181,7 @@ namespace awh {
 						 * @brief Метод получения размера очереди идентификаторов событий
 						 *
 						 * @return размер очереди идентификаторов событий
+						 *
 						 */
 						size_t size() const noexcept;
 					public:
@@ -176,6 +189,7 @@ namespace awh {
 						 * @brief Метод добавления идентификатора события в очередь
 						 *
 						 * @param eid идентификатор события для добавления в очередь
+						 *
 						 */
 						void push(event::id_t eid) noexcept;
 					public:
@@ -184,6 +198,7 @@ namespace awh {
 						 *
 						 * @param eid идентификатор события для извлечения из очереди
 						 * @return    результат извлечения идентификатора
+						 *
 						 */
 						bool pop(event::id_t & eid) noexcept;
 					public:
@@ -191,6 +206,7 @@ namespace awh {
 						 * @brief Метод удаления идентификатора события из очереди
 						 *
 						 * @param eid идентификатор события для удаления из очереди
+						 *
 						 */
 						void remove(const event::id_t eid) noexcept;
 					public:
@@ -210,6 +226,7 @@ namespace awh {
 				 *
 				 * @details Хранит список DNS-серверов для выполнения запросов,
 				 *          поддерживает раунд-робин распределение нагрузки и инициализацию из переменных окружения.
+				 *
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Servers {
 					private:
@@ -238,6 +255,7 @@ namespace awh {
 						 * @brief Метод сброса списка DNS-серверов
 						 *
 						 * @param family семейство IP-адресов IPv4/IPv6
+						 *
 						 */
 						void reset(const event::family_t family) noexcept;
 					public:
@@ -246,6 +264,7 @@ namespace awh {
 						 *
 						 * @param family семейство IP-адресов IPv4/IPv6
 						 * @return       объект DNS-сервера для выполнения запроса
+						 *
 						 */
 						const net::addr_t * get(const event::family_t family) noexcept;
 					public:
@@ -253,6 +272,7 @@ namespace awh {
 						 * @brief Метод добавления DNS-сервера в список
 						 *
 						 * @param server объект DNS-сервера для добавления в список
+						 *
 						 */
 						void push(const net::addr_t * server) noexcept;
 					public:
@@ -273,6 +293,7 @@ namespace awh {
 				 *
 				 * @details Хранит настройки DNS-резолвера, включая префикс для переменных окружения,
 				 *          порт, таймаут, очередь идентификаторов событий и список DNS-серверов.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Resolver {
 					// Префикс для переменных окружения (по умолчанию "AWH")
@@ -310,6 +331,7 @@ namespace awh {
 				 * @details Хранит количество попыток DNS-запроса, максимальное количество пакетов в очереди,
 				 *          очередь пакетов, ожидающих отправки, активные DNS-запросы, ожидающие ответа,
 				 *          и соответствие между идентификатором события и идентификатором запроса.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Transfer {
 					// Количество попыток DNS-запроса (по умолчанию 3)
@@ -352,6 +374,7 @@ namespace awh {
 				 *
 				 * @param tid    идентификатор таймера DNS-резолвера
 				 * @param status статус события таймера DNS-резолвера
+				 *
 				 */
 				void dumping(const event::id_t, const event::status_t status) noexcept;
 				/**
@@ -359,6 +382,7 @@ namespace awh {
 				 *
 				 * @param tid    идентификатор таймера DNS-резолвера
 				 * @param status статус события таймера DNS-резолвера
+				 *
 				 */
 				void collector(const event::id_t, const event::status_t status) noexcept;
 			private:
@@ -368,6 +392,7 @@ namespace awh {
 				 * @param      идентификатор события загрузки локальных хостов
 				 * @param data данные события загрузки локальных хостов
 				 * @param size размер данных события загрузки локальных хостов
+				 *
 				 */
 				void hosts(const event::id_t, const uint8_t * data, const size_t size) noexcept;
 			private:
@@ -377,6 +402,7 @@ namespace awh {
 				 * @param eid  идентификатор события чтения из DNS-резолвера
 				 * @param data данные события чтения из DNS-резолвера
 				 * @param size размер данных события чтения из DNS-резолвера
+				 *
 				 */
 				void response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
@@ -386,6 +412,7 @@ namespace awh {
 				 * @param action тип действия для истекшего таймаута
 				 * @param delay  длительность таймаута в миллисекундах
 				 * @return       нужно ли завершить обработчик после истечения таймаута
+				 *
 				 */
 				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 				/**
@@ -394,6 +421,7 @@ namespace awh {
 				 * @param eid         идентификатор события DNS-резолвера
 				 * @param error       код ошибки события DNS-резолвера
 				 * @param description описание ошибки события DNS-резолвера
+				 *
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
 			public:
@@ -401,6 +429,7 @@ namespace awh {
 				 * @brief Метод установки функций обратного вызова
 				 *
 				 * @param callback функции обратного вызова
+				 *
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
@@ -408,6 +437,7 @@ namespace awh {
 				 * @brief Метод установки числа попыток DNS-запроса
 				 *
 				 * @param attempts количество попыток DNS-запроса
+				 *
 				 */
 				void setAttempts(const uint8_t attempts) noexcept;
 			public:
@@ -415,6 +445,7 @@ namespace awh {
 				 * @brief Метод установки максимального количества пакетов в очереди ожидания выполнения запроса к DNS-серверу
 				 *
 				 * @param count максимальное количество пакетов
+				 *
 				 */
 				void setMaxPackets(const uint16_t count) noexcept;
 			public:
@@ -423,6 +454,7 @@ namespace awh {
 				 *
 				 * @param domain доменное имя для кодирования
 				 * @return       результат работы кодирования
+				 *
 				 */
 				string encode(string_view domain) const noexcept;
 				/**
@@ -430,6 +462,7 @@ namespace awh {
 				 *
 				 * @param domain доменное имя для декодирования
 				 * @return       результат работы декодирования
+				 *
 				 */
 				string decode(string_view domain) const noexcept;
 			public:
@@ -438,6 +471,7 @@ namespace awh {
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param domain доменное имя соответствующее IP-адресу
+				 *
 				 */
 				void shuffle(const event::family_t family, string_view domain) noexcept;
 			public:
@@ -450,6 +484,7 @@ namespace awh {
 				 * @brief Метод очистки чёрного списка
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
+				 *
 				 */
 				void clearBlacklist(const event::family_t family) noexcept;
 			public:
@@ -457,12 +492,14 @@ namespace awh {
 				 * @brief Метод удаления IP-адреса из чёрного списка
 				 *
 				 * @param ip адрес для удаления из чёрного списка
+				 *
 				 */
 				void removeAddressInBlacklist(string_view ip) noexcept;
 				/**
 				 * @brief Метод удаления IP-адреса из чёрного списка
 				 *
 				 * @param ip адрес для удаления из чёрного списка
+				 *
 				 */
 				void removeAddressInBlacklist(const net::addr_t * ip) noexcept;
 				/**
@@ -470,6 +507,7 @@ namespace awh {
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param ip     адрес для удаления из чёрного списка
+				 *
 				 */
 				void removeAddressInBlacklist(const event::family_t family, string_view ip) noexcept;
 			public:
@@ -477,12 +515,14 @@ namespace awh {
 				 * @brief Метод добавления IP-адреса в чёрный список
 				 *
 				 * @param ip адрес для добавления в чёрный список
+				 *
 				 */
 				void pushAddressToBlacklist(string_view ip) noexcept;
 				/**
 				 * @brief Метод добавления IP-адреса в чёрный список
 				 *
 				 * @param ip адрес для добавления в чёрный список
+				 *
 				 */
 				void pushAddressToBlacklist(const net::addr_t * ip) noexcept;
 				/**
@@ -490,6 +530,7 @@ namespace awh {
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param ip     адрес для добавления в чёрный список
+				 *
 				 */
 				void pushAddressToBlacklist(const event::family_t family, string_view ip) noexcept;
 			public:
@@ -498,6 +539,7 @@ namespace awh {
 				 *
 				 * @param ip адрес для проверки наличия в чёрном списке
 				 * @return   результат проверки наличия IP-адреса в чёрном списке
+				 *
 				 */
 				bool checkAddressInBlacklist(string_view ip) const noexcept;
 				/**
@@ -505,6 +547,7 @@ namespace awh {
 				 *
 				 * @param ip адрес для проверки наличия в чёрном списке
 				 * @return   результат проверки наличия IP-адреса в чёрном списке
+				 *
 				 */
 				bool checkAddressInBlacklist(const net::addr_t * ip) const noexcept;
 				/**
@@ -513,6 +556,7 @@ namespace awh {
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param ip     адрес для проверки наличия в чёрном списке
 				 * @return       результат проверки наличия IP-адреса в чёрном списке
+				 *
 				 */
 				bool checkAddressInBlacklist(const event::family_t family, string_view ip) const noexcept;
 			public:
@@ -525,6 +569,7 @@ namespace awh {
 				 * @brief Метод очистки кэша
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
+				 *
 				 */
 				void clearCache(const event::family_t family) noexcept;
 			public:
@@ -532,6 +577,7 @@ namespace awh {
 				 * @brief Метод очистки кэша для указанного доменного имени
 				 *
 				 * @param domain доменное имя, для которого выполняется очистка кэша
+				 *
 				 */
 				void clearCache(string_view domain) noexcept;
 				/**
@@ -539,6 +585,7 @@ namespace awh {
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param domain доменное имя, для которого выполняется очистка кэша
+				 *
 				 */
 				void clearCache(const event::family_t family, string_view domain) noexcept;
 			public:
@@ -548,6 +595,7 @@ namespace awh {
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @return       IP-адрес находящийся в кэше
+				 *
 				 */
 				string extractAddressFromCache(const event::family_t family, string_view domain) noexcept;
 				/**
@@ -557,6 +605,7 @@ namespace awh {
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param value  IP-адрес находящийся в кэше
 				 * @return       результат выполнения операции
+				 *
 				 */
 				bool extractAddressFromCache(const event::family_t family, string_view domain, unique_ptr <net::addr_t> & value) noexcept;
 			public:
@@ -566,6 +615,7 @@ namespace awh {
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param ip     адрес для добавления в кэш
 				 * @param ttl    время жизни кэша доменного имени (в секундах)
+				 *
 				 */
 				void pushAddressToCache(string_view domain, string_view ip, const uint32_t ttl) noexcept;
 				/**
@@ -574,6 +624,7 @@ namespace awh {
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param ip     адрес для добавления в кэш
 				 * @param ttl    время жизни кэша доменного имени (в секундах)
+				 *
 				 */
 				void pushAddressToCache(string_view domain, const net::addr_t * ip, const uint32_t ttl) noexcept;
 				/**
@@ -583,6 +634,7 @@ namespace awh {
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param ip     адрес для добавления в кэш
 				 * @param ttl    время жизни кэша доменного имени (в секундах)
+				 *
 				 */
 				void pushAddressToCache(const event::family_t family, string_view domain, string_view ip, const uint32_t ttl) noexcept;
 			public:
@@ -590,6 +642,7 @@ namespace awh {
 				 * @brief Метод установки безопасности работы потоков
 				 *
 				 * @param mode флаг режима безопасности потоков
+				 *
 				 */
 				void threadSafety(const bool mode) noexcept;
 			public:
@@ -597,6 +650,7 @@ namespace awh {
 				 * @brief Метод установки префикса переменной окружения
 				 *
 				 * @param prefix префикс переменной окружения для установки
+				 *
 				 */
 				void setPrefixEnvironment(string_view prefix) noexcept;
 			public:
@@ -604,6 +658,7 @@ namespace awh {
 				 * @brief Метод установки пути к файлу локальных хостов
 				 *
 				 * @param filename путь к файлу /etc/hosts или аналогу
+				 *
 				 */
 				void setHostsAddress(string_view filename) noexcept;
 			public:
@@ -612,6 +667,7 @@ namespace awh {
 				 *
 				 * @param filename путь к файлу дампа кэша
 				 * @param interval интервал сохранения дампа кэша в миллисекундах
+				 *
 				 */
 				void setDumpAddress(string_view filename, const uint32_t interval) noexcept;
 			public:
@@ -619,6 +675,7 @@ namespace awh {
 				 * @brief Метод установки таймаута для ожидания ответа от DNS-сервера
 				 *
 				 * @param delay время ожидания ответа от DNS-сервера (в миллисекундах)
+				 *
 				 */
 				void setTimeout(const uint32_t delay) noexcept;
 			public:
@@ -627,6 +684,7 @@ namespace awh {
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @return       количество DNS-резолверов
+				 *
 				 */
 				uint16_t resolvers(const event::family_t family) const noexcept;
 			public:
@@ -636,6 +694,7 @@ namespace awh {
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param count  количество DNS-резолверов для инициализации
 				 * @return       результат выполнения операции
+				 *
 				 */
 				bool init(const event::family_t family, const uint16_t count) noexcept;
 			public:
@@ -643,12 +702,14 @@ namespace awh {
 				 * @brief Метод получения UDP-порта DNS-сервера
 				 *
 				 * @return UDP-порт DNS-сервера
+				 *
 				 */
 				uint16_t getTargetPort() const noexcept;
 				/**
 				 * @brief Метод установки UDP-порта DNS-сервера
 				 *
 				 * @param port UDP-порт DNS-сервера
+				 *
 				 */
 				void setTargetPort(const uint16_t port) noexcept;
 			public:
@@ -656,12 +717,14 @@ namespace awh {
 				 * @brief Метод установки адреса DNS-сервера
 				 *
 				 * @param server адрес DNS-сервера для установки
+				 *
 				 */
 				void setServer(string_view server) noexcept;
 				/**
 				 * @brief Метод установки адреса DNS-сервера
 				 *
 				 * @param server адрес DNS-сервера для установки
+				 *
 				 */
 				void setServer(const net::addr_t * server) noexcept;
 				/**
@@ -669,6 +732,7 @@ namespace awh {
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param server адрес DNS-сервера для установки
+				 *
 				 */
 				void setServer(const event::family_t family, string_view server) noexcept;
 			public:
@@ -676,12 +740,14 @@ namespace awh {
 				 * @brief Метод добавления адреса DNS-сервера
 				 *
 				 * @param server адрес DNS-сервера для добавления
+				 *
 				 */
 				void addServer(string_view server) noexcept;
 				/**
 				 * @brief Метод добавления адреса DNS-сервера
 				 *
 				 * @param server адрес DNS-сервера для добавления
+				 *
 				 */
 				void addServer(const net::addr_t * server) noexcept;
 				/**
@@ -689,6 +755,7 @@ namespace awh {
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param server адрес DNS-сервера для добавления
+				 *
 				 */
 				void addServer(const event::family_t family, string_view server) noexcept;
 			public:
@@ -696,12 +763,14 @@ namespace awh {
 				 * @brief Метод установки списка адресов DNS-серверов
 				 *
 				 * @param servers адреса DNS-серверов для установки
+				 *
 				 */
 				void setServers(const vector <string> & servers) noexcept;
 				/**
 				 * @brief Метод установки списка адресов DNS-серверов
 				 *
 				 * @param servers адреса DNS-серверов для установки
+				 *
 				 */
 				void setServers(const vector <const net::addr_t *> & servers) noexcept;
 				/**
@@ -709,6 +778,7 @@ namespace awh {
 				 *
 				 * @param family  семейство IP-адресов IPv4/IPv6
 				 * @param servers адреса DNS-серверов для установки
+				 *
 				 */
 				void setServers(const event::family_t family, const vector <string> & servers) noexcept;
 			public:
@@ -716,12 +786,14 @@ namespace awh {
 				 * @brief Метод установки адреса сети с которого будет выполняться запрос
 				 *
 				 * @param source адрес сети для выполнения запроса
+				 *
 				 */
 				void setSource(string_view source) noexcept;
 				/**
 				 * @brief Метод установки адреса сети с которого будет выполняться запрос
 				 *
 				 * @param source адрес сети для выполнения запроса
+				 *
 				 */
 				void setSource(const net::addr_t * source) noexcept;
 				/**
@@ -729,6 +801,7 @@ namespace awh {
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param source адрес сети для выполнения запроса
+				 *
 				 */
 				void setSource(const event::family_t family, string_view source) noexcept;
 			public:
@@ -736,6 +809,7 @@ namespace awh {
 				 * @brief Метод генерации идентификатора DNS-запроса
 				 *
 				 * @return уникальный идентификатор DNS-запроса
+				 *
 				 */
 				id_t issue() const noexcept;
 			public:
@@ -746,6 +820,7 @@ namespace awh {
 				 * @param ip    адрес для обратного DNS-запроса
 				 * @param alive срок ожидания ответа (в миллисекундах)
 				 * @return      результат постановки запроса в очередь
+				 *
 				 */
 				bool search(const id_t id, string_view ip, const uint32_t alive = 0) noexcept;
 				/**
@@ -755,6 +830,7 @@ namespace awh {
 				 * @param ip    адрес для обратного DNS-запроса
 				 * @param alive срок ожидания ответа (в миллисекундах)
 				 * @return      результат постановки запроса в очередь
+				 *
 				 */
 				bool search(const id_t id, const net::addr_t * ip, const uint32_t alive = 0) noexcept;
 				/**
@@ -765,6 +841,7 @@ namespace awh {
 				 * @param ip     адрес для обратного DNS-запроса
 				 * @param alive  срок ожидания ответа (в миллисекундах)
 				 * @return       результат постановки запроса в очередь
+				 *
 				 */
 				bool search(const id_t id, const event::family_t family, string_view ip, const uint32_t alive = 0) noexcept;
 			public:
@@ -776,6 +853,7 @@ namespace awh {
 				 * @param domain доменное имя
 				 * @param alive  срок ожидания ответа (в миллисекундах)
 				 * @return       результат постановки запроса в очередь
+				 *
 				 */
 				bool request(const id_t id, const record_t record, string_view domain, const uint32_t alive = 0) noexcept;
 			public:
@@ -786,6 +864,7 @@ namespace awh {
 				 * @param domain доменное имя
 				 * @param alive  срок ожидания ответа (в миллисекундах)
 				 * @return       результат постановки запроса в очередь
+				 *
 				 */
 				bool resolve(const id_t id, string_view domain, const uint32_t alive = 0) noexcept;
 				/**
@@ -796,6 +875,7 @@ namespace awh {
 				 * @param domain доменное имя
 				 * @param alive  срок ожидания ответа (в миллисекундах)
 				 * @return       результат постановки запроса в очередь
+				 *
 				 */
 				bool resolve(const id_t id, const event::family_t family, string_view domain, const uint32_t alive = 0) noexcept;
 			private:
@@ -808,6 +888,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				DNS & operator = (const DNS &) = delete;
 			public:
@@ -816,6 +897,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit DNS(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -824,6 +906,7 @@ namespace awh {
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param fmk    объект фреймворка
 				 * @param log    объект для работы с логами
+				 *
 				 */
 				explicit DNS(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept;
 				/**

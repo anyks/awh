@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация слоя фреймов QUIC (RFC 9000 §19) — разбор и сборка фреймов ACK, STREAM, CRYPTO, RESET_STREAM,
+ *        STOP_SENDING, NEW_CONNECTION_ID, CONNECTION_CLOSE и остальных типов над байтовым буфером
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -45,6 +49,7 @@ namespace {
 	 * @param expected ожидаемый тип фрейма
 	 * @param offset   смещение разбора (сдвигается за тип фрейма)
 	 * @return         результат чтения (false - тип не соответствует или данных недостаточно)
+	 *
 	 */
 	inline bool rdType(const uint8_t * data, const size_t size, const frame_t expected, size_t & offset) noexcept {
 		// Прочитанное значение типа фрейма
@@ -68,6 +73,7 @@ namespace {
 	 * @param offset смещение разбора (сдвигается за числом)
 	 * @param value  прочитанное число
 	 * @return       результат чтения (false - данных недостаточно)
+	 *
 	 */
 	inline bool rdVarint(const uint8_t * data, const size_t size, size_t & offset, uint64_t & value) noexcept {
 		// Читаем целое число переменной длины
@@ -144,6 +150,7 @@ awh::quic::frame::Connection_Close::Connection_Close() noexcept :
  * @param size   доступно байт
  * @param output определённый тип фрейма (UNKNOWN - тип не распознан)
  * @return       результат определения (true - в буфере было достаточно байт)
+ *
  */
 bool awh::quic::frame::parser::type(const uint8_t * data, const size_t size, frame_t & output) noexcept {
 	// Прочитанное значение типа фрейма
@@ -183,6 +190,7 @@ bool awh::quic::frame::parser::type(const uint8_t * data, const size_t size, fra
  * @param consumed количество потреблённых октетов (длина серии PADDING)
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::padding(const uint8_t * data, const size_t size, size_t & consumed, error_t & error) noexcept {
 	// Если буфер не начинается с фрейма PADDING
@@ -211,6 +219,7 @@ awh::quic::status_t awh::quic::frame::parser::padding(const uint8_t * data, cons
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::ping(const uint8_t * data, const size_t size, size_t & consumed, error_t & error) noexcept {
 	// Если буфер не начинается с фрейма PING
@@ -232,6 +241,7 @@ awh::quic::status_t awh::quic::frame::parser::ping(const uint8_t * data, const s
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::ack(const uint8_t * data, const size_t size, ack_t & output, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -356,6 +366,7 @@ awh::quic::status_t awh::quic::frame::parser::ack(const uint8_t * data, const si
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::resetStream(const uint8_t * data, const size_t size, reset_stream_t & output, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -392,6 +403,7 @@ awh::quic::status_t awh::quic::frame::parser::resetStream(const uint8_t * data, 
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::stopSending(const uint8_t * data, const size_t size, stop_sending_t & output, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -424,6 +436,7 @@ awh::quic::status_t awh::quic::frame::parser::stopSending(const uint8_t * data, 
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::crypto(const uint8_t * data, const size_t size, crypto_t & output, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -468,6 +481,7 @@ awh::quic::status_t awh::quic::frame::parser::crypto(const uint8_t * data, const
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::newToken(const uint8_t * data, const size_t size, string_view & token, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -504,6 +518,7 @@ awh::quic::status_t awh::quic::frame::parser::newToken(const uint8_t * data, con
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::datagram(const uint8_t * data, const size_t size, string_view & output, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -553,6 +568,7 @@ awh::quic::status_t awh::quic::frame::parser::datagram(const uint8_t * data, con
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::stream(const uint8_t * data, const size_t size, stream_t & output, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -621,6 +637,7 @@ awh::quic::status_t awh::quic::frame::parser::stream(const uint8_t * data, const
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::single(const uint8_t * data, const size_t size, const frame_t type, uint64_t & value, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -651,6 +668,7 @@ awh::quic::status_t awh::quic::frame::parser::single(const uint8_t * data, const
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::pair(const uint8_t * data, const size_t size, const frame_t type, uint64_t & streamId, uint64_t & value, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -683,6 +701,7 @@ awh::quic::status_t awh::quic::frame::parser::pair(const uint8_t * data, const s
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::newConnectionId(const uint8_t * data, const size_t size, new_connection_id_t & output, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -752,6 +771,7 @@ awh::quic::status_t awh::quic::frame::parser::newConnectionId(const uint8_t * da
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::path(const uint8_t * data, const size_t size, const frame_t type, uint8_t output[proto::PATH_DATA_SIZE], size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -786,6 +806,7 @@ awh::quic::status_t awh::quic::frame::parser::path(const uint8_t * data, const s
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::connectionClose(const uint8_t * data, const size_t size, connection_close_t & output, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
@@ -841,6 +862,7 @@ awh::quic::status_t awh::quic::frame::parser::connectionClose(const uint8_t * da
  * @param consumed количество потреблённых октетов
  * @param error    код ошибки транспорта
  * @return         результат разбора (OK/ERROR)
+ *
  */
 awh::quic::status_t awh::quic::frame::parser::handshakeDone(const uint8_t * data, const size_t size, size_t & consumed, error_t & error) noexcept {
 	// Если буфер не начинается с фрейма HANDSHAKE_DONE
@@ -858,6 +880,7 @@ awh::quic::status_t awh::quic::frame::parser::handshakeDone(const uint8_t * data
  *
  * @param output выходной буфер нагрузки пакета
  * @param count  количество октетов заполнения
+ *
  */
 void awh::quic::frame::serialize::padding(string & output, const size_t count) noexcept {
 	// Дописываем заполнение нулевыми октетами
@@ -867,6 +890,7 @@ void awh::quic::frame::serialize::padding(string & output, const size_t count) n
  * @brief Функция сборки фрейма PING (фрейм дописывается в output)
  *
  * @param output выходной буфер нагрузки пакета
+ *
  */
 void awh::quic::frame::serialize::ping(string & output) noexcept {
 	// Дописываем тип фрейма PING
@@ -878,6 +902,7 @@ void awh::quic::frame::serialize::ping(string & output) noexcept {
  * @param output выходной буфер нагрузки пакета
  * @param frame  фрейм подтверждения приёма пакетов
  * @return       результат сборки (false - некорректные диапазоны)
+ *
  */
 bool awh::quic::frame::serialize::ack(string & output, const ack_t & frame) noexcept {
 	// Если список диапазонов пуст
@@ -935,6 +960,7 @@ bool awh::quic::frame::serialize::ack(string & output, const ack_t & frame) noex
  * @param streamId  идентификатор потока
  * @param code      код ошибки приложения
  * @param finalSize финальный размер потока в октетах
+ *
  */
 void awh::quic::frame::serialize::resetStream(string & output, const uint64_t streamId, const uint64_t code, const uint64_t finalSize) noexcept {
 	// Дописываем тип фрейма RESET_STREAM
@@ -952,6 +978,7 @@ void awh::quic::frame::serialize::resetStream(string & output, const uint64_t st
  * @param output   выходной буфер нагрузки пакета
  * @param streamId идентификатор потока
  * @param code     код ошибки приложения
+ *
  */
 void awh::quic::frame::serialize::stopSending(string & output, const uint64_t streamId, const uint64_t code) noexcept {
 	// Дописываем тип фрейма STOP_SENDING
@@ -967,6 +994,7 @@ void awh::quic::frame::serialize::stopSending(string & output, const uint64_t st
  * @param output выходной буфер нагрузки пакета
  * @param offset смещение данных в потоке криптографического хендшейка
  * @param data   данные криптографического хендшейка
+ *
  */
 void awh::quic::frame::serialize::crypto(string & output, const uint64_t offset, string_view data) noexcept {
 	// Дописываем тип фрейма CRYPTO
@@ -986,6 +1014,7 @@ void awh::quic::frame::serialize::crypto(string & output, const uint64_t offset,
  * @param output выходной буфер нагрузки пакета
  * @param token  токен для будущих соединений клиента (не пустой)
  * @return       результат сборки (false - пустой токен запрещён)
+ *
  */
 bool awh::quic::frame::serialize::newToken(string & output, string_view token) noexcept {
 	// Если токен пуст (RFC 9000 §19.7)
@@ -1006,6 +1035,7 @@ bool awh::quic::frame::serialize::newToken(string & output, string_view token) n
  *
  * @param output выходной буфер нагрузки пакета
  * @param data   данные датаграммы приложения
+ *
  */
 void awh::quic::frame::serialize::datagram(string & output, string_view data) noexcept {
 	// Дописываем тип фрейма с признаком наличия поля Length
@@ -1023,6 +1053,7 @@ void awh::quic::frame::serialize::datagram(string & output, string_view data) no
  * @param offset   смещение данных в потоке
  * @param data     данные потока приложения
  * @param fin      флаг завершения потока (FIN)
+ *
  */
 void awh::quic::frame::serialize::stream(string & output, const uint64_t streamId, const uint64_t offset, string_view data, const bool fin) noexcept {
 	// Тип фрейма STREAM с битом наличия поля Length
@@ -1056,6 +1087,7 @@ void awh::quic::frame::serialize::stream(string & output, const uint64_t streamI
  * @param output выходной буфер нагрузки пакета
  * @param type   тип фрейма
  * @param value  значение целочисленного поля
+ *
  */
 void awh::quic::frame::serialize::single(string & output, const frame_t type, const uint64_t value) noexcept {
 	// Дописываем тип фрейма
@@ -1070,6 +1102,7 @@ void awh::quic::frame::serialize::single(string & output, const frame_t type, co
  * @param type     тип фрейма
  * @param streamId идентификатор потока
  * @param value    значение лимита
+ *
  */
 void awh::quic::frame::serialize::pair(string & output, const frame_t type, const uint64_t streamId, const uint64_t value) noexcept {
 	// Дописываем тип фрейма
@@ -1085,6 +1118,7 @@ void awh::quic::frame::serialize::pair(string & output, const frame_t type, cons
  * @param output выходной буфер нагрузки пакета
  * @param frame  фрейм анонса нового идентификатора соединения
  * @return       результат сборки (false - некорректная длина идентификатора)
+ *
  */
 bool awh::quic::frame::serialize::newConnectionId(string & output, const new_connection_id_t & frame) noexcept {
 	// Если длина идентификатора вне диапазона 1-20 или порядковые номера некорректны
@@ -1112,6 +1146,7 @@ bool awh::quic::frame::serialize::newConnectionId(string & output, const new_con
  * @param output выходной буфер нагрузки пакета
  * @param type   тип фрейма (PATH_CHALLENGE или PATH_RESPONSE)
  * @param data   данные проверки пути (8 октетов)
+ *
  */
 void awh::quic::frame::serialize::path(string & output, const frame_t type, const uint8_t data[proto::PATH_DATA_SIZE]) noexcept {
 	// Дописываем тип фрейма проверки пути
@@ -1127,6 +1162,7 @@ void awh::quic::frame::serialize::path(string & output, const frame_t type, cons
  * @param frameType тип фрейма, вызвавшего ошибку (игнорируется для ошибки приложения)
  * @param reason    человекочитаемая причина завершения
  * @param app       флаг ошибки приложения (тип фрейма 0x1D)
+ *
  */
 void awh::quic::frame::serialize::connectionClose(string & output, const uint64_t code, const uint64_t frameType, string_view reason, const bool app) noexcept {
 	// Дописываем тип фрейма CONNECTION_CLOSE соответствующего варианта
@@ -1148,6 +1184,7 @@ void awh::quic::frame::serialize::connectionClose(string & output, const uint64_
  * @brief Функция сборки фрейма HANDSHAKE_DONE (фрейм дописывается в output)
  *
  * @param output выходной буфер нагрузки пакета
+ *
  */
 void awh::quic::frame::serialize::handshakeDone(string & output) noexcept {
 	// Дописываем тип фрейма HANDSHAKE_DONE

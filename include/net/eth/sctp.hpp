@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля управления протоколом SCTP —
+ *        класс eth::Stream_Control_Transmission_Protocol для настройки параметров ассоциаций, потоков, heartbeat,
+ *        авторизации и уведомлений SCTP-сокета
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -57,6 +62,7 @@ namespace awh {
 				 * @param sock   сетевой сокет
 				 * @param status объект для извлечения статуса инициализации SCTP сокета
 				 * @return       результат работы функции
+				 *
 				 */
 				bool status(const net::socket_t sock, net::sctp::status_t & status) const noexcept;
 			public:
@@ -66,6 +72,7 @@ namespace awh {
 				 * @param sock    сетевой сокет
 				 * @param initmsg параметры инициализации SCTP сокета
 				 * @return        результат работы функции
+				 *
 				 */
 				bool initMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept;
 			public:
@@ -75,6 +82,7 @@ namespace awh {
 				 * @param sock   сетевой сокет
 				 * @param events список событий SCTP для активации
 				 * @return       результат работы функции
+				 *
 				 */
 				bool eventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept;
 			public:
@@ -84,6 +92,7 @@ namespace awh {
 				 * @param sock  сетевой сокет
 				 * @param types список поддерживаемых алгоритмов аутентификации
 				 * @return      результат работы функции
+				 *
 				 */
 				bool authenticateSupportAlgorithms(const net::socket_t sock, const vector <net::sctp::auth_type_t> & types) const noexcept;
 			public:
@@ -94,6 +103,7 @@ namespace awh {
 				 * @param num  номер ключа аутентификации
 				 * @param key  ключ аутентификации
 				 * @return     результат работы функции
+				 *
 				 */
 				bool authenticateKey(const net::socket_t sock, const uint16_t num, string_view key) const noexcept;
 				/**
@@ -104,6 +114,7 @@ namespace awh {
 				 * @param id   идентификатор ассоциации
 				 * @param num  номер ключа аутентификации
 				 * @return     результат работы функции
+				 *
 				 */
 				bool authenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) const noexcept;
 			public:
@@ -113,6 +124,7 @@ namespace awh {
 				 * @param sock   сетевой сокет
 				 * @param chunks список чанков подлежащих аутентификации
 				 * @return       результат работы функции
+				 *
 				 */
 				bool authenticateChunks(const net::socket_t sock, const vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
 				/**
@@ -123,6 +135,7 @@ namespace awh {
 				 * @param id     идентификатор ассоциации
 				 * @param chunks список чанков подлежащих аутентификации
 				 * @return       результат работы функции
+				 *
 				 */
 				bool authenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept;
 			public:
@@ -134,6 +147,7 @@ namespace awh {
 				 * @param type тип таймаута
 				 * @param ctx  контекст установки таймаута
 				 * @return     значение таймаута в миллисекундах
+				 *
 				 */
 				uint32_t timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, void * ctx = nullptr) const noexcept;
 				/**
@@ -145,6 +159,7 @@ namespace awh {
 				 * @param timeout значение таймаута в миллисекундах
 				 * @param ctx     контекст установки таймаута
 				 * @return        результат работы функции
+				 *
 				 */
 				bool timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx = nullptr) const noexcept;
 			public:
@@ -153,6 +168,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект работы с логами
+				 *
 				 */
 				Stream_Control_Transmission_Protocol(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 				/**

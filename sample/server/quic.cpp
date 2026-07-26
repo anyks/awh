@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример сервера QUIC — демонстрация приёма соединений по протоколу QUIC через фасад сервера,
+ *        выполнения рукопожатия и обслуживания потоков клиентов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -48,6 +52,7 @@ class Executor {
 		 *
 		 * @param status новый статус сервера
 		 * @param server объект сервера
+		 *
 		 */
 		void status(const event::status_t status, server_t * server) noexcept {
 			/**
@@ -77,6 +82,7 @@ class Executor {
 		 * @param cid    идентификатор сессии соединения
 		 * @param tid    идентификатор шаблона контекста безопасности
 		 * @param server объект сервера
+		 *
 		 */
 		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder_t::id_t tid, server_t * server) noexcept {
 			// Записываем в лог сообщение об установленном соединении
@@ -90,6 +96,7 @@ class Executor {
 		 * @param data   собранные данные потока
 		 * @param fin    флаг завершения потока
 		 * @param server объект сервера
+		 *
 		 */
 		void stream(const event::id_t cid, const uint64_t sid, const string & data, const bool fin, server_t * server) noexcept {
 			// Записываем в лог сведения о полученной части данных потока
@@ -111,6 +118,7 @@ class Executor {
 		 * @param cid    идентификатор сессии соединения
 		 * @param data   данные датаграммы приложения
 		 * @param server объект сервера
+		 *
 		 */
 		void datagram(const event::id_t cid, const string & data, server_t * server) noexcept {
 			// Записываем в лог сведения о принятой датаграмме приложения
@@ -129,6 +137,7 @@ class Executor {
 		 *
 		 * @param cid   идентификатор сессии соединения
 		 * @param error код ошибки завершения соединения
+		 *
 		 */
 		void disconnect(const event::id_t cid, const quic::error_t error) noexcept {
 			// Записываем в лог сообщение о завершении соединения
@@ -141,6 +150,7 @@ class Executor {
 		 * @param family семейство адресов сервера
 		 * @param domain доменное имя сервера
 		 * @param ip     IP-адрес сервера
+		 *
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
@@ -152,6 +162,7 @@ class Executor {
 		 * @param eid     идентификатор события сервера
 		 * @param error   код ошибки
 		 * @param message сообщение об ошибке
+		 *
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
@@ -163,6 +174,7 @@ class Executor {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
+		 *
 		 */
 		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
@@ -173,6 +185,7 @@ class Executor {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	// Создаём объект фреймворка

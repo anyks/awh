@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация модуля регулярных выражений — компиляция и кеширование шаблонов PCRE2,
+ *        выполнение поиска и проверки соответствия, извлечение групп совпадений
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -42,6 +46,7 @@ using namespace std;
  *
  * @param key ключ кэша (пара из набора опций и текста регулярного выражения)
  * @return    вычисленное значение хэша
+ *
  */
 size_t awh::Regular_Expressions::CacheHash::operator () (const pair <int32_t, string> & key) const noexcept {
 	// Вычисляем хэш для набора опций
@@ -56,6 +61,7 @@ size_t awh::Regular_Expressions::CacheHash::operator () (const pair <int32_t, st
  * @brief Класс регулярного выражения
  *
  * @details Класс представляет собой обёртку над объектом регулярного выражения, предоставляя методы для его инициализации, выполнения и освобождения ресурсов.
+ *
  */
 class awh::Regular_Expressions::Expression {
 	private:
@@ -69,6 +75,7 @@ class awh::Regular_Expressions::Expression {
 		 * @brief Оператор проверки на инициализацию регулярного выражения
 		 *
 		 * @return результат проверки
+		 *
 		 */
 		operator bool() const noexcept;
 	public:
@@ -77,6 +84,7 @@ class awh::Regular_Expressions::Expression {
 		 *
 		 * @param mode флаг инициализации для установки
 		 * @return     текущий объект регулярного выражения
+		 *
 		 */
 		Expression & operator = (const bool mode) noexcept;
 	public:
@@ -96,6 +104,7 @@ class awh::Regular_Expressions::Expression {
  * @brief Оператор проверки на инициализацию регулярного выражения
  *
  * @return результат проверки
+ *
  */
 awh::Regular_Expressions::Expression::operator bool() const noexcept {
 	// Возвращаем результат проверки инициализации
@@ -106,6 +115,7 @@ awh::Regular_Expressions::Expression::operator bool() const noexcept {
  *
  * @param mode флаг инициализации для установки
  * @return     текущий объект регулярного выражения
+ *
  */
 awh::Regular_Expressions::Expression & awh::Regular_Expressions::Expression::operator = (const bool mode) noexcept {
 	// Выполняем установку флага инициализации
@@ -136,6 +146,7 @@ awh::Regular_Expressions::Expression::~Expression() noexcept {
  * @brief Метод извлечения текста ошибки регулярного выражения
  *
  * @return текст ошибки регулярного выражения
+ *
  */
 const string & awh::Regular_Expressions::error() const noexcept {
 	// Выполняем извлечение текста ошибки регулярного выражения
@@ -145,6 +156,7 @@ const string & awh::Regular_Expressions::error() const noexcept {
  * @brief Метод установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
+ *
  */
 void awh::Regular_Expressions::threadSafety(const bool mode) noexcept {
 	/**
@@ -158,6 +170,7 @@ void awh::Regular_Expressions::threadSafety(const bool mode) noexcept {
  * @param text текст для обработки
  * @param exp  объект регулярного выражения
  * @return     результат проверки регулярного выражения
+ *
  */
 bool awh::Regular_Expressions::test(string_view text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
@@ -174,6 +187,7 @@ bool awh::Regular_Expressions::test(string_view text, const exp_t & exp) const n
  * @param size размер текста для обработки
  * @param exp  объект регулярного выражения
  * @return     результат проверки регулярного выражения
+ *
  */
 bool awh::Regular_Expressions::test(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Переменная результата
@@ -254,6 +268,7 @@ bool awh::Regular_Expressions::test(const char * text, const size_t size, const 
  * @param text текст для обработки
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
+ *
  */
 vector <string> awh::Regular_Expressions::exec(string_view text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
@@ -270,6 +285,7 @@ vector <string> awh::Regular_Expressions::exec(string_view text, const exp_t & e
  * @param size размер текста для обработки
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
+ *
  */
 vector <string> awh::Regular_Expressions::exec(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Переменная результата
@@ -409,6 +425,7 @@ vector <string> awh::Regular_Expressions::exec(const char * text, const size_t s
  * @param text текст для обработки
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
+ *
  */
 vector <pair <size_t, size_t>> awh::Regular_Expressions::match(string_view text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
@@ -425,6 +442,7 @@ vector <pair <size_t, size_t>> awh::Regular_Expressions::match(string_view text,
  * @param size размер текста для обработки
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
+ *
  */
 vector <pair <size_t, size_t>> awh::Regular_Expressions::match(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Переменная результата
@@ -566,6 +584,7 @@ vector <pair <size_t, size_t>> awh::Regular_Expressions::match(const char * text
  * @param pattern регулярное выражение для сборки
  * @param options список опций для сборки регулярного выражения
  * @return        результат собранного регулярного выражения
+ *
  */
 awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view pattern, const vector <option_t> & options) const noexcept {
 	// Переменная результата
@@ -783,6 +802,7 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
  * @brief Метод установки объекта логирования
  *
  * @param log объект работы с логами
+ *
  */
 void awh::Regular_Expressions::setLogger(const log_t * log) noexcept {
 	// Выполняем установку объекта логирования
@@ -802,6 +822,7 @@ awh::Regular_Expressions::Regular_Expressions() noexcept : _error{""}, _log(null
  * @brief Конструктор
  *
  * @param log объект работы с логами
+ *
  */
 awh::Regular_Expressions::Regular_Expressions(const log_t * log) noexcept : _error{""}, _log(log) {
 	/**

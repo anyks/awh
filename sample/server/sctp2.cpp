@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример сервера SCTP с настройкой параметров ассоциации —
+ *        демонстрация установки количества входящих и исходящих потоков,
+ *        числа попыток подключения и обслуживания клиентов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -48,6 +53,7 @@ class Executor {
 		 *
 		 * @param eid  идентификатор клиента
 		 * @param size размер данных для записи
+		 *
 		 */
 		void write(const event::id_t eid, const size_t size, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
@@ -60,6 +66,7 @@ class Executor {
 		 * @param data   бинарный буфер данных
 		 * @param size   размер данных
 		 * @param server объект сервера
+		 *
 		 */
 		void read([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size, [[maybe_unused]] void * ctx, server_t * server) noexcept {
 			// Если данные получены
@@ -80,6 +87,7 @@ class Executor {
 		 * @param status новый статус сервера
 		 * @param server объект сервера
 		 * @param sctp   объект SCTP протокола
+		 *
 		 */
 		void status(const event::id_t eid, const event::status_t status, server_t * server, engine::sctp_t * sctp) noexcept {
 			/**
@@ -121,6 +129,7 @@ class Executor {
 		 * @param server объект сервера
 		 * @param tls  объект TLS кодера
 		 * @param sctp   объект SCTP протокола
+		 *
 		 */
 		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server, tls::coder_t * tls, engine::sctp_t * sctp) noexcept {
 			// Записываем в лог сообщение об успешной установке опций события
@@ -179,6 +188,7 @@ class Executor {
 		 * @param address адрес сервера
 		 * @param port    порт сервера
 		 * @param server  объект сервера
+		 *
 		 */
 		void launch(const string & address, const uint16_t port, server_t * server) noexcept {
 			// Записываем в лог сообщение о запуске сервера
@@ -190,6 +200,7 @@ class Executor {
 		 * @param eid   идентификатор клиента
 		 * @param event событие SCTP
 		 * @param sctp  объект SCTP
+		 *
 		 */
 		void sctp([[maybe_unused]] const event::id_t eid, net::sctp_event_t event, engine::sctp_t * sctp) noexcept {
 			// Записываем в лог сообщение с идентификатором событий SCTP
@@ -272,6 +283,7 @@ class Executor {
 		 *
 		 * @param eid    идентификатор клиента
 		 * @param minfo  информация о сообщении SCTP-сокета
+		 *
 		 */
 		void minfo(const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept {
 			// Записываем в лог информацию о сообщении SCTP-сокета
@@ -287,6 +299,7 @@ class Executor {
 		 * @param family семейство адресов сервера
 		 * @param domain доменное имя сервера
 		 * @param ip     IP-адрес сервера
+		 *
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
@@ -298,6 +311,7 @@ class Executor {
 		 * @param eid    идентификатор сервера
 		 * @param error  код ошибки
 		 * @param message сообщение об ошибке
+		 *
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
@@ -309,6 +323,7 @@ class Executor {
 		 * @param id      идентификатор TLS
 		 * @param error   код ошибки TLS
 		 * @param message сообщение об ошибке TLS
+		 *
 		 */
 		void errorTLS([[maybe_unused]] const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог TLS
@@ -321,6 +336,7 @@ class Executor {
 		 * @param eid     идентификатор события сервера
 		 * @param browser информация о браузере клиента
 		 * @param fgp     объект отпечатка браузера
+		 *
 		 */
 		void fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser, tls::fgp_t * fgp) noexcept {
 			// Записываем в лог информацию о браузере клиента, который подключился к серверу
@@ -332,6 +348,7 @@ class Executor {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
+		 *
 		 */
 		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
@@ -342,6 +359,7 @@ class Executor {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример работы с HTTP-авторизацией — демонстрация формирования и проверки заголовков схем Basic, Bearer,
+ *        Digest и HMAC на стороне клиента и сервера
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -41,6 +45,7 @@ using namespace awh::http;
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleBasic(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -76,6 +81,7 @@ static void sampleBasic(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleBearer(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -112,6 +118,7 @@ static void sampleBearer(const fmk_t * fmk, const log_t * log) noexcept {
  * @param hash алгоритм хэширования
  * @param name название алгоритма для вывода
  * @param sess флаг сессионного режима алгоритма (-sess)
+ *
  */
 static void sampleDigest(const fmk_t * fmk, const log_t * log, const auth_t::hash_t hash, const string & name, const bool sess) noexcept {
 	// Печатаем заголовок демонстрации
@@ -159,6 +166,7 @@ static void sampleDigest(const fmk_t * fmk, const log_t * log, const auth_t::has
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleDigestReplay(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -212,6 +220,7 @@ static void sampleDigestReplay(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleHmac(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -269,6 +278,7 @@ static void sampleHmac(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleProxy(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -302,6 +312,7 @@ static void sampleProxy(const fmk_t * fmk, const log_t * log) noexcept {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

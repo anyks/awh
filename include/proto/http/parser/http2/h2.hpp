@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл констант протокола HTTP/2 (RFC 9113) — перечисления типов фреймов, флагов,
+ *        параметров SETTINGS, состояний потоков и кодов ошибок, общие для слоя фреймов, HPACK-кодека и парсера сессии
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_HTTP_PARSER_HTTP2_H2__
@@ -48,6 +52,7 @@ namespace awh {
 		 * @details Содержит базовые типы и константы протокола, общие для framing-слоя (frame.hpp),
 		 *          HPACK-кодека (hpack.hpp) и парсера сессии (http.hpp). Логики здесь нет —
 		 *          только перечисления, константы протокола и POD-структуры.
+		 *
 		 */
 		namespace h2 {
 			/**
@@ -55,6 +60,7 @@ namespace awh {
 			 *
 			 * @details Один и тот же бит означает разное для разных типов фреймов,
 			 *          поэтому это набор констант, а не enum class.
+			 *
 			 */
 			namespace flag {
 				/**
@@ -103,18 +109,21 @@ namespace awh {
 				 * @brief Флаг разрешения server push (SETTINGS_ENABLE_PUSH)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr uint32_t DEFAULT_ENABLE_PUSH = 1;
 				/**
 				 * @brief Максимальное число одновременных потоков в соединении
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
+				 *
 				 */
 				static constexpr uint32_t MAX_COUNT_STREAMS = 128;
 				/**
 				 * @brief Максимальный размер списка заголовков
 				 *
 				 * @note 0 - без лимита в SETTINGS, действует maxHeadersTotal
+				 *
 				 */
 				static constexpr uint64_t MAX_HEADER_LIST_SIZE = 0;
 				/**
@@ -281,6 +290,7 @@ namespace awh {
 			 *
 			 * @param type тип фрейма
 			 * @return     название типа фрейма
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ string_view frameName(const frame_t type) noexcept;
 
@@ -289,6 +299,7 @@ namespace awh {
 			 *
 			 * @param code код ошибки протокола
 			 * @return     название кода ошибки
+			 *
 			 */
 			__AWH_SHARED_EXPORT__ string_view errorName(const error_t code) noexcept;
 		}

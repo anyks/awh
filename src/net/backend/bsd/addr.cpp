@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация бэкенда адресов канального уровня — получение MAC-адресов и адресов сетевых интерфейсов машины,
+ *        а также списка системных DNS-серверов средствами конкретной операционной системы
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -125,6 +129,7 @@ namespace {
 	 * @param data   указатель на данные
 	 * @param length длина данных
 	 * @return       вычисленная контрольная сумма
+	 *
 	 */
 	uint16_t checksum(const void * data, size_t length) noexcept {
 		// Получаем нужного вида буфер входящих данных
@@ -159,6 +164,7 @@ namespace {
  * @brief Метод заполнения источника сетевых адресов по имени сетевого интерфейса
  *
  * @param source объект источника сетевых адресов
+ *
  */
 void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 	/**
@@ -335,6 +341,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
  *
  * @param net    сетевой адрес подсети (IP-адрес в сетевом порядке байт)
  * @param source объект источника сетевых адресов
+ *
  */
 void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t & source) const noexcept {
 	/**
@@ -542,6 +549,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
  *
  * @param node   тип узла события
  * @param source объект источника сетевых адресов
+ *
  */
 void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t & source) const noexcept {
 	/**
@@ -1139,6 +1147,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
  * @param net    сетевой адрес подсети в хостовом порядке
  * @param prefix префикс подсети
  * @return       результат проверки
+ *
  */
 bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net, const uint8_t prefix) const noexcept {
 	/**
@@ -1181,6 +1190,7 @@ bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net
  * @param second Второй IPv6-адрес
  * @param length Длина префикса в битах
  * @return       Результат сравнения
+ *
  */
 bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uint8_t * second, const uint8_t length) const noexcept {
 	/**
@@ -1238,6 +1248,7 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
  * @param transport указатель на данные транспортного уровня
  * @param length    длина данных транспортного уровня
  * @return          вычисленная контрольная сумма
+ *
  */
 uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length) const noexcept {
 	// Переменная результата
@@ -1441,6 +1452,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
  *
  * @param fmk объект фреймворка
  * @param log объект работы с логами
+ *
  */
 awh::eth::Network_Address::Network_Address(const fmk_t * fmk, const log_t * log) noexcept :
  _iface(fmk, log), _fmk(fmk), _log(log) {}

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля пула потоков — класс Threadpool, распределяющий пользовательские задачи по
+ *        фиксированному набору рабочих потоков с общей очередью и корректным завершением работы
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -54,6 +58,7 @@ namespace awh {
 			 * @brief Тип очереди задач
 			 *
 			 * @details Очередь задач хранит объекты типа std::function<void()>, представляющие задачи для выполнения в пуле потоков.
+			 *
 			 */
 			typedef std::queue <function <void()>> task_t;
 		private:
@@ -80,6 +85,7 @@ namespace awh {
 			 * @brief Метод проверки завершения заморозки потока
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool check() const noexcept {
 				/**
@@ -142,6 +148,7 @@ namespace awh {
 			 * @brief Метод проверки на инициализацию тредпула
 			 *
 			 * @return результат проверки
+			 *
 			 */
 			bool initialized() const noexcept {
 				// Возвращаем результат проверки
@@ -227,6 +234,7 @@ namespace awh {
 			 * @brief Метод инициализации работы тредпула
 			 *
 			 * @param count количество потоков
+			 *
 			 */
 			void init(const uint16_t count = 0) noexcept {
 				// Если пул уже инициализирован, повторная инициализация не требуется
@@ -257,6 +265,7 @@ namespace awh {
 			 * @brief Метод возврата количества сообщений в очереди задач на исполнение
 			 *
 			 * @return результат работы функции
+			 *
 			 */
 			size_t getTaskQueueSize() const noexcept {
 				// Выполняем блокировку уникальным мютексом
@@ -269,6 +278,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param count количество потоков
+			 *
 			 */
 			explicit Threadpool(const uint16_t count = 0) noexcept : _threads(0), _stop(false), _wait(false) {
 				// Ели количество потоков передано
@@ -296,6 +306,7 @@ namespace awh {
 			 *
 			 * @tparam Func тип данных функции обратного вызова
 			 * @tparam Args аргумента функции обратного вызова
+			 *
 			 */
 			template <class Func, class ... Args>
 			/**
@@ -303,6 +314,7 @@ namespace awh {
 			 *
 			 * @param func функция для обработки
 			 * @param args аргументы для передачи в функцию
+			 *
 			 */
 			auto push(Func && func, Args && ... args) noexcept -> std::future <typename std::invoke_result <Func, Args...>::type> {
 				// Устанавливаем тип возвращаемого значения

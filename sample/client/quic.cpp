@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример клиента QUIC — демонстрация установки соединения по протоколу QUIC через фасад клиента,
+ *        выполнения рукопожатия, открытия потоков и обмена данными с сервером
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -64,6 +68,7 @@ class Executor {
 		 *       датаграммой (либо датаграммы не поддерживаются удалённым сервером)
 		 *
 		 * @param client объект клиента
+		 *
 		 */
 		void maybeFinish(client_t * client) noexcept {
 			// Если обмен потоком и датаграммой завершены
@@ -79,6 +84,7 @@ class Executor {
 		 *       его без изменений, а клиент сверяет принятое с отправленным
 		 *
 		 * @return сформированная полезная нагрузка
+		 *
 		 */
 		string makePayload() const noexcept {
 			// Формируем распознаваемый текст HTTP-запроса как полезную нагрузку
@@ -96,6 +102,7 @@ class Executor {
 		 *
 		 * @param status новый статус клиента
 		 * @param client объект клиента
+		 *
 		 */
 		void status(const event::status_t status, client_t * client) noexcept {
 			/**
@@ -120,6 +127,7 @@ class Executor {
 		 * @param family семейство адресов клиента
 		 * @param domain доменное имя удалённого сервера
 		 * @param ip     IP-адрес удалённого сервера
+		 *
 		 */
 		void ready([[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности клиента к работе
@@ -130,6 +138,7 @@ class Executor {
 		 *
 		 * @param ok     результат подключения к серверу
 		 * @param client объект клиента
+		 *
 		 */
 		void connect(const bool ok, client_t * client) noexcept {
 			// Если подключение к серверу не выполнено
@@ -207,6 +216,7 @@ class Executor {
 		 * @param data   собранные данные потока
 		 * @param fin    флаг завершения потока
 		 * @param client объект клиента
+		 *
 		 */
 		void stream(const uint64_t sid, const string & data, const bool fin, client_t * client) noexcept {
 			// Накапливаем принятый от сервера эхо-ответ (поток может прийти частями)
@@ -248,6 +258,7 @@ class Executor {
 		 *
 		 * @param data   данные принятой датаграммы
 		 * @param client объект клиента
+		 *
 		 */
 		void datagram(const string & data, client_t * client) noexcept {
 			// Печатаем принятую от сервера эхо-датаграмму, чтобы видеть её содержимое
@@ -277,6 +288,7 @@ class Executor {
 		 *
 		 * @param error   код ошибки
 		 * @param message сообщение об ошибке
+		 *
 		 */
 		void error([[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
@@ -288,6 +300,7 @@ class Executor {
 		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
+		 *
 		 */
 		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log), _sid(quic::connection_t::INVALID_STREAM), _streamDone(false), _datagramDone(false) {}
 };
@@ -298,6 +311,7 @@ class Executor {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	// Создаём объект фреймворка

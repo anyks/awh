@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля логирования — класс Logging с уровнями важности, форматированием сообщений,
+ *        ротацией файлов и набором приёмников вывода: консоль, файл,
+ *        SysLog и пользовательская функция обратного вызова
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -83,6 +88,7 @@ namespace awh {
 			 * @brief Политика поведения при переполнении очереди асинхронного вывода
 			 *
 			 * @note значения совпадают с awh::Screen::overflow_t для прямого преобразования
+			 *
 			 */
 			enum class overflow_t : uint8_t {
 				WAIT     = 0x00, // Блокировать поставщика до появления свободного места
@@ -128,6 +134,7 @@ namespace awh {
 			 * @brief Класс полезной нагрузки
 			 *
 			 * @details Полезная нагрузка формируется в момент вызова логирования и содержит текст сообщения, дату формирования и флаг типа сообщения.
+			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Payload {
 				public:
@@ -143,6 +150,7 @@ namespace awh {
 					 *
 					 * @param payload объект полезной нагрузки для перемещения
 					 * @return        текущий объект полезной нагрузки
+					 *
 					 */
 					Payload & operator = (Payload && payload) noexcept;
 					/**
@@ -150,6 +158,7 @@ namespace awh {
 					 *
 					 * @param payload объект полезной нагрузки для копирования
 					 * @return        текущий объект полезной нагрузки
+					 *
 					 */
 					Payload & operator = (const Payload & payload) noexcept;
 				public:
@@ -158,6 +167,7 @@ namespace awh {
 					 *
 					 * @param payload объект полезной нагрузки для сравнения
 					 * @return        результат сравнения
+					 *
 					 */
 					bool operator == (const Payload & payload) noexcept;
 				public:
@@ -165,12 +175,14 @@ namespace awh {
 					 * @brief Конструктор перемещения
 					 *
 					 * @param payload объект полезной нагрузки для перемещения
+					 *
 					 */
 					explicit Payload(Payload && payload) noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
 					 * @param payload объект полезной нагрузки для копирования
+					 *
 					 */
 					explicit Payload(const Payload & payload) noexcept;
 				public:
@@ -192,6 +204,7 @@ namespace awh {
 			 *
 			 * @details Приёмник вывода логов может быть реализован в виде консольного вывода,
 			 *          записи в файл, отправки в SysLog или передачи в функцию обратного вызова.
+			 *
 			 */
 			class __AWH_SHARED_EXPORT__ Sink {
 				protected:
@@ -202,6 +215,7 @@ namespace awh {
 					 * @brief Метод записи полезной нагрузки в приёмник
 					 *
 					 * @param payload объект полезной нагрузки
+					 *
 					 */
 					virtual void write(const payload_t & payload) const noexcept = 0;
 				public:
@@ -209,6 +223,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param log объект логирования
+					 *
 					 */
 					explicit Sink(const Logging * log) noexcept;
 					/**
@@ -221,6 +236,7 @@ namespace awh {
 			 * @brief Приёмник вывода логов в консоль
 			 *
 			 * @details Приёмник вывода логов в консоль может быть реализован в виде стандартного вывода (stdout) или стандартного потока ошибок (stderr).
+			 *
 			 */
 			class __AWH_SHARED_EXPORT__ ConsoleSink : public Sink {
 				public:
@@ -228,6 +244,7 @@ namespace awh {
 					 * @brief Метод записи полезной нагрузки в консоль
 					 *
 					 * @param payload объект полезной нагрузки
+					 *
 					 */
 					void write(const payload_t & payload) const noexcept override;
 				public:
@@ -235,6 +252,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param log объект логирования
+					 *
 					 */
 					explicit ConsoleSink(const Logging * log) noexcept;
 					/**
@@ -247,6 +265,7 @@ namespace awh {
 			 * @brief Приёмник вывода логов в файл
 			 *
 			 * @details Приёмник вывода логов в файл может быть реализован в виде записи в указанный файл с возможностью ротации и удаления устаревших архивов.
+			 *
 			 */
 			class __AWH_SHARED_EXPORT__ FileSink : public Sink {
 				private:
@@ -281,6 +300,7 @@ namespace awh {
 					 * @brief Метод формирования уникального имени архива логов
 					 *
 					 * @return путь к файлу архива, гарантированно не конфликтующий с существующими
+					 *
 					 */
 					string nextArchive() const noexcept;
 				public:
@@ -288,6 +308,7 @@ namespace awh {
 					 * @brief Метод записи полезной нагрузки в файл
 					 *
 					 * @param payload объект полезной нагрузки
+					 *
 					 */
 					void write(const payload_t & payload) const noexcept override;
 				public:
@@ -295,6 +316,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param log объект логирования
+					 *
 					 */
 					explicit FileSink(const Logging * log) noexcept;
 					/**
@@ -307,6 +329,7 @@ namespace awh {
 			 * @brief Приёмник отправки логов в SysLog
 			 *
 			 * @details Приёмник отправки логов в SysLog может быть реализован в виде отправки сообщений в системный журнал.
+			 *
 			 */
 			class __AWH_SHARED_EXPORT__ SyslogSink : public Sink {
 				public:
@@ -314,6 +337,7 @@ namespace awh {
 					 * @brief Метод отправки полезной нагрузки в SysLog
 					 *
 					 * @param payload объект полезной нагрузки
+					 *
 					 */
 					void write(const payload_t & payload) const noexcept override;
 				public:
@@ -321,6 +345,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param log объект логирования
+					 *
 					 */
 					explicit SyslogSink(const Logging * log) noexcept;
 					/**
@@ -333,6 +358,7 @@ namespace awh {
 			 * @brief Приёмник передачи логов в функцию обратного вызова
 			 *
 			 * @details Приёмник передачи логов в функцию обратного вызова может быть реализован в виде вызова пользовательской функции, которая будет обрабатывать полезную нагрузку.
+			 *
 			 */
 			class __AWH_SHARED_EXPORT__ CallbackSink : public Sink {
 				public:
@@ -340,6 +366,7 @@ namespace awh {
 					 * @brief Метод передачи полезной нагрузки в функцию обратного вызова
 					 *
 					 * @param payload объект полезной нагрузки
+					 *
 					 */
 					void write(const payload_t & payload) const noexcept override;
 				public:
@@ -347,6 +374,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param log объект логирования
+					 *
 					 */
 					explicit CallbackSink(const Logging * log) noexcept;
 					/**
@@ -415,6 +443,7 @@ namespace awh {
 			 *
 			 * @param flag    флаг типа логирования
 			 * @param message текстовое описание полезной нагрузки
+			 *
 			 */
 			function <void (const flag_t, string_view)> _callback;
 		private:
@@ -425,6 +454,7 @@ namespace awh {
 			 * @brief Шаблон метода определения количества аргументов
 			 *
 			 * @tparam TupType тип аргументов
+			 *
 			 */
 			template <typename TupType>
 			/**
@@ -432,6 +462,7 @@ namespace awh {
 			 *
 			 * @param args аргументы для определения их количества
 			 * @return     количество найденных аргументов
+			 *
 			 */
 			size_t count(TupType) const noexcept {
 				// Возвращаем количество переданных аргументов
@@ -443,6 +474,7 @@ namespace awh {
 			 *
 			 * @tparam TupType тип аргументов
 			 * @tparam I       список последовательности
+			 *
 			 */
 			template <class TupType, size_t... I>
 			/**
@@ -450,6 +482,7 @@ namespace awh {
 			 *
 			 * @param args аргументы для формирования строки
 			 * @return     сформированная строка аргументов
+			 *
 			 */
 			string formation(const TupType & args, index_sequence <I...>) const noexcept {
 				// Создаём объект строкового потока
@@ -467,6 +500,7 @@ namespace awh {
 			 * @brief Шаблон входных параметров для серриализатора
 			 *
 			 * @tparam TupType тип аргументов
+			 *
 			 */
 			template <class... TupType>
 			/**
@@ -474,6 +508,7 @@ namespace awh {
 			 *
 			 * @param args аргументы для серриализации
 			 * @return     сформированная строка аргументов
+			 *
 			 */
 			string serialization(const tuple <TupType...> & args) const noexcept {
 				// Выполняем серриализацию полученных аргументов
@@ -491,6 +526,7 @@ namespace awh {
 			 *
 			 * @param flag флаг типа логирования
 			 * @return     результат проверки соответствия уровню логирования
+			 *
 			 */
 			bool allowed(const flag_t flag) const noexcept;
 		private:
@@ -499,6 +535,7 @@ namespace awh {
 			 *
 			 * @param text текст для очистки
 			 * @return     очищенный текст
+			 *
 			 */
 			string & cleaner(string & text) const noexcept;
 		private:
@@ -506,6 +543,7 @@ namespace awh {
 			 * @brief Метод маршрутизации полезной нагрузки в приёмники (синхронно или асинхронно)
 			 *
 			 * @param payload объект полезной нагрузки
+			 *
 			 */
 			void dispatch(payload_t && payload) const noexcept;
 		private:
@@ -513,6 +551,7 @@ namespace awh {
 			 * @brief Метод получения данных
 			 *
 			 * @param payload объект полезной нагрузки
+			 *
 			 */
 			void receiving(const payload_t & payload) const noexcept;
 		private:
@@ -521,6 +560,7 @@ namespace awh {
 			 *
 			 * @param filename адрес где находится файл
 			 * @return         параметры компонента (адрес, название файла без расширения)
+			 *
 			 */
 			std::pair <string, string> components(string_view filename) const noexcept;
 		private:
@@ -530,6 +570,7 @@ namespace awh {
 			 * @param payload объект полезной нагрузки
 			 * @param colored нужно ли добавлять символы цветового форматирования
 			 * @return        сформированная строка лога
+			 *
 			 */
 			string compose(const payload_t & payload, const bool colored) const noexcept;
 		public:
@@ -538,6 +579,7 @@ namespace awh {
 			 *
 			 * @tparam T    тип входных аргументов функции
 			 * @tparam Args список входящих аргументов
+			 *
 			 */
 			template <class... T, typename... Args>
 			/**
@@ -548,6 +590,7 @@ namespace awh {
 			 * @param params параметры переданные в метод
 			 * @param flag   флаг типа логирования
 			 * @param args   аргументы формирования лога
+			 *
 			 */
 			void debug(string_view format, string_view method, const tuple <T...> & params, flag_t flag, Args&&... args) const noexcept {
 				// Если формат строки вывода передан
@@ -584,6 +627,7 @@ namespace awh {
 			 *
 			 * @tparam T    тип входных аргументов функции
 			 * @tparam Args список входящих аргументов
+			 *
 			 */
 			template <class... T, typename... Args>
 			/**
@@ -594,6 +638,7 @@ namespace awh {
 			 * @param params параметры переданные в метод
 			 * @param flag   флаг типа логирования
 			 * @param args   аргументы формирования лога
+			 *
 			 */
 			void debug(wstring_view format, string_view method, const tuple <T...> & params, flag_t flag, Args&&... args) const noexcept {
 				// Если формат строки вывода передан
@@ -630,6 +675,7 @@ namespace awh {
 			 * @brief Шаблон метода вывода текстовой информации в консоль или файл
 			 *
 			 * @tparam T тип входных аргументов функции
+			 *
 			 */
 			template <class... T>
 			/**
@@ -640,6 +686,7 @@ namespace awh {
 			 * @param params параметры переданные в метод
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
+			 *
 			 */
 			void debug(string_view format, string_view method, const tuple <T...> & params, flag_t flag, const vector <string> & args) const noexcept {
 				// Если формат строки вывода передан
@@ -675,6 +722,7 @@ namespace awh {
 			 * @brief Шаблон метода вывода текстовой информации в консоль или файл
 			 *
 			 * @tparam T тип входных аргументов функции
+			 *
 			 */
 			template <class... T>
 			/**
@@ -685,6 +733,7 @@ namespace awh {
 			 * @param params параметры переданные в метод
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
+			 *
 			 */
 			void debug(wstring_view format, string_view method, const tuple <T...> & params, flag_t flag, const vector <wstring> & args) const noexcept {
 				// Если формат строки вывода передан
@@ -722,6 +771,7 @@ namespace awh {
 			 *
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
+			 *
 			 */
 			void print(string_view format, flag_t flag, ...) const noexcept;
 			/**
@@ -729,6 +779,7 @@ namespace awh {
 			 *
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
+			 *
 			 */
 			void print(wstring_view format, flag_t flag, ...) const noexcept;
 		public:
@@ -738,6 +789,7 @@ namespace awh {
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
+			 *
 			 */
 			void print(string_view format, flag_t flag, const vector <string> & args) const noexcept;
 			/**
@@ -746,6 +798,7 @@ namespace awh {
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
+			 *
 			 */
 			void print(wstring_view format, flag_t flag, const vector <wstring> & args) const noexcept;
 		public:
@@ -753,6 +806,7 @@ namespace awh {
 			 * @brief Метод установки безопасности работы потоков
 			 *
 			 * @param mode флаг режима безопасности потоков
+			 *
 			 */
 			void threadSafety(const bool mode) noexcept;
 		public:
@@ -760,12 +814,14 @@ namespace awh {
 			 * @brief Метод извлечения установленного формата лога
 			 *
 			 * @return формат лога для извлечения
+			 *
 			 */
 			const string & format() const noexcept;
 			/**
 			 * @brief Метод установки формата даты и времени для вывода лога
 			 *
 			 * @param format формат даты и времени для вывода лога
+			 *
 			 */
 			void format(string_view format) noexcept;
 		public:
@@ -773,12 +829,14 @@ namespace awh {
 			 * @brief Метод получения установленных режимов вывода логов
 			 *
 			 * @return список режимов вывода логов
+			 *
 			 */
 			const unordered_set <mode_t> & mode() const noexcept;
 			/**
 			 * @brief Метод добавления режимов вывода логов
 			 *
 			 * @param mode список режимов вывода логов
+			 *
 			 */
 			void mode(const unordered_set <mode_t> & mode) noexcept;
 		public:
@@ -786,60 +844,70 @@ namespace awh {
 			 * @brief Метод установки название сервиса для вывода лога
 			 *
 			 * @param name название сервиса для вывода лога
+			 *
 			 */
 			void name(string_view name) noexcept;
 			/**
 			 * @brief Метод установки флага асинхронного режима работы
 			 *
 			 * @param mode флаг асинхронного режима работы
+			 *
 			 */
 			void async(const bool mode) noexcept;
 			/**
 			 * @brief Метод установки максимального размера файла логов
 			 *
 			 * @param size максимальный размер файла логов
+			 *
 			 */
 			void maxSize(const float size) noexcept;
 			/**
 			 * @brief Метод установки размера текста для формирования разделителя
 			 *
 			 * @param size размер текста для формирования разделителя
+			 *
 			 */
 			void sepSize(const size_t size) noexcept;
 			/**
 			 * @brief Метод установки уровня логирования
 			 *
 			 * @param level уровень логирования для установки
+			 *
 			 */
 			void level(const level_t level) noexcept;
 			/**
 			 * @brief Метод установки максимального размера очереди асинхронного вывода
 			 *
 			 * @param size максимальный размер очереди (0 - без ограничения)
+			 *
 			 */
 			void maxQueue(const size_t size) noexcept;
 			/**
 			 * @brief Метод установки максимального количества хранимых архивов логов
 			 *
 			 * @param count максимальное количество архивов (0 - без ограничения)
+			 *
 			 */
 			void maxFiles(const size_t count) noexcept;
 			/**
 			 * @brief Метод установки файла для сохранения логов
 			 *
 			 * @param filename путь к файлу для сохранения логов
+			 *
 			 */
 			void filename(string_view filename) noexcept;
 			/**
 			 * @brief Метод установки разделителя сообщений логирования
 			 *
 			 * @param sep разделитель для установки
+			 *
 			 */
 			void separator(const separator_t sep) noexcept;
 			/**
 			 * @brief Метод установки политики поведения при переполнении очереди асинхронного вывода
 			 *
 			 * @param overflow политика поведения при переполнении очереди
+			 *
 			 */
 			void overflow(const overflow_t overflow) noexcept;
 		public:
@@ -847,6 +915,7 @@ namespace awh {
 			 * @brief Метод подписки на события логов
 			 *
 			 * @param callback функция обратного вызова
+			 *
 			 */
 			void subscribe(function <void (const flag_t, string_view)> callback) noexcept;
 		public:
@@ -855,6 +924,7 @@ namespace awh {
 			 *
 			 * @param fmk      объект фреймворка
 			 * @param filename путь к файлу для сохранения логов
+			 *
 			 */
 			explicit Logging(const fmk_t * fmk, string_view filename = "") noexcept;
 			/**

@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пробник дифференциальной сверки обработки ошибок HTTP/2 с эталонной реализацией nghttp2 —
+ *        подача одного потока некорректных кадров обоим серверным парсерам и сравнение класса реакции:
+ *        ошибка соединения, потоковая ошибка или приём без возражений
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -41,6 +46,7 @@ using namespace awh::http;
  * @param sid     идентификатор потока
  * @param payload полезная нагрузка кадра
  * @return        собранный кадр
+ *
  */
 static std::string frame(const uint8_t type, const uint8_t flags, const uint32_t sid, const std::string & payload) noexcept {
 	// Результат работы функции - собранный кадр
@@ -69,6 +75,7 @@ static std::string frame(const uint8_t type, const uint8_t flags, const uint32_t
  *
  * @param value упаковываемое значение
  * @return      четыре байта значения
+ *
  */
 static std::string u32(const uint32_t value) noexcept {
 	// Результат работы функции - четыре байта значения
@@ -87,6 +94,7 @@ static std::string u32(const uint32_t value) noexcept {
  *
  * @param fields кодируемые заголовки
  * @return       закодированный блок заголовков
+ *
  */
 static std::string block(const std::vector <std::pair <std::string, std::string>> & fields) noexcept {
 	// Создаём объект кодера заголовков
@@ -117,6 +125,7 @@ static bool verbose = false;
  *
  * @param prefix описание источника потока
  * @param output исходящий поток байт
+ *
  */
 static void dump(const char * prefix, const std::string & output) noexcept {
 	// Таблица названий типов кадров
@@ -154,6 +163,7 @@ static void dump(const char * prefix, const std::string & output) noexcept {
  *
  * @param output исходящий поток байт эндпоинта
  * @return       текстовое описание класса реакции
+ *
  */
 static std::string reaction(const std::string & output) noexcept {
 	// Результат работы функции - описание реакции
@@ -207,6 +217,7 @@ static std::string reaction(const std::string & output) noexcept {
  * @param log   объект логов
  * @param input подаваемый поток байт
  * @return      описание класса реакции
+ *
  */
 static std::string ours(const fmk_t * fmk, const log_t * log, const std::string & input) noexcept {
 	// Создаём объект парсера сервера
@@ -251,6 +262,7 @@ static std::string ours(const fmk_t * fmk, const log_t * log, const std::string 
  *
  * @param input подаваемый поток байт
  * @return      описание класса реакции
+ *
  */
 static std::string reference(const std::string & input) noexcept {
 	// Объект набора функций обратного вызова nghttp2

@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля NTP-клиента — класс unit::NTP,
+ *        выполняющий синхронизацию времени с пулом NTP-серверов,
+ *        расчёт смещения относительно локальных часов и контроль таймаутов запросов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -59,6 +64,7 @@ namespace awh {
 				 * @brief Класс для управления списком NTP-серверов
 				 *
 				 * @details Содержит методы для инициализации, сброса и получения текущего NTP-сервера из списка.
+				 *
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Servers {
 					private:
@@ -87,6 +93,7 @@ namespace awh {
 						 * @brief Метод сброса списка NTP-серверов
 						 *
 						 * @param family семейство IP-адресов IPv4/IPv6
+						 *
 						 */
 						void reset(const event::family_t family) noexcept;
 					public:
@@ -95,6 +102,7 @@ namespace awh {
 						 *
 						 * @param family семейство IP-адресов IPv4/IPv6
 						 * @return       объект NTP-сервера для выполнения запроса
+						 *
 						 */
 						const net::addr_t * get(const event::family_t family) noexcept;
 					public:
@@ -102,6 +110,7 @@ namespace awh {
 						 * @brief Метод добавления NTP-сервера в список
 						 *
 						 * @param server объект NTP-сервера для добавления в список
+						 *
 						 */
 						void push(const net::addr_t * server) noexcept;
 					public:
@@ -120,6 +129,7 @@ namespace awh {
 				 * @brief Структура для управления состоянием NTP-клиента
 				 *
 				 * @details Содержит параметры для выполнения запросов к NTP-серверам и хранения состояния NTP-клиента.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Client {
 					// Префикс для переменных окружения (по умолчанию: AWH_SHORT_NAME)
@@ -149,6 +159,7 @@ namespace awh {
 				 * @brief Структура для управления передачей данных при выполнении запросов NTP-клиента
 				 *
 				 * @details Содержит параметры для управления передачей данных при выполнении запросов NTP-клиента.
+				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Transfer {
 					// Флаг ожидания ответа от NTP-сервера
@@ -189,6 +200,7 @@ namespace awh {
 				 * @param eid         идентификатор события NTP-клиента
 				 * @param error       код ошибки события NTP-клиента
 				 * @param description описание ошибки события NTP-клиента
+				 *
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
 			private:
@@ -198,6 +210,7 @@ namespace awh {
 				 * @param eid  идентификатор события чтения
 				 * @param data данные, полученные от NTP-сервера
 				 * @param size размер полученных данных
+				 *
 				 */
 				void response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
@@ -207,6 +220,7 @@ namespace awh {
 				 * @param action тип действия для истекшего таймаута
 				 * @param delay  длительность таймаута в миллисекундах
 				 * @return       нужно ли завершить обработчик после истечения таймаута
+				 *
 				 */
 				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 			public:
@@ -215,6 +229,7 @@ namespace awh {
 				 *
 				 * @param family семейство протоколов (например: IPv4 или IPv6)
 				 * @return       результат инициализации события NTP-клиента
+				 *
 				 */
 				bool init(const event::family_t family) noexcept;
 			public:
@@ -222,6 +237,7 @@ namespace awh {
 				 * @brief Метод установки функций обратного вызова
 				 *
 				 * @param callback функции обратного вызова
+				 *
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
@@ -229,6 +245,7 @@ namespace awh {
 				 * @brief Метод установки таймаута для ожидания ответа от NTP-сервера
 				 *
 				 * @param delay время ожидания ответа от NTP-сервера (в миллисекундах)
+				 *
 				 */
 				void setTimeout(const uint32_t delay) noexcept;
 			public:
@@ -236,6 +253,7 @@ namespace awh {
 				 * @brief Метод установки количества попыток получения ответа от NTP-сервера
 				 *
 				 * @param attempts количество попыток получения ответа от NTP-сервера
+				 *
 				 */
 				void setAttempts(const uint8_t attempts) noexcept;
 			public:
@@ -243,6 +261,7 @@ namespace awh {
 				 * @brief Метод установки префикса переменной окружения
 				 *
 				 * @param prefix префикс переменной окружения для установки
+				 *
 				 */
 				void setPrefixEnvironment(string_view prefix) noexcept;
 			public:
@@ -250,24 +269,28 @@ namespace awh {
 				 * @brief Метод получения типа события
 				 *
 				 * @return тип события
+				 *
 				 */
 				event::type_t type() const noexcept;
 				/**
 				 * @brief Метод получения типа узла события
 				 *
 				 * @return тип узла события
+				 *
 				 */
 				event::node_t node() const noexcept;
 				/**
 				 * @brief Метод получения семейства события
 				 *
 				 * @return семейство адресов
+				 *
 				 */
 				event::family_t family() const noexcept;
 				/**
 				 * @brief Метод получения статуса события
 				 *
 				 * @return статус события
+				 *
 				 */
 				event::status_t status() const noexcept;
 			public:
@@ -275,12 +298,14 @@ namespace awh {
 				 * @brief Метод получения порта NTP-сервера
 				 *
 				 * @return порт NTP-сервера
+				 *
 				 */
 				uint16_t getTargetPort() const noexcept;
 				/**
 				 * @brief Метод установки порта NTP-сервера
 				 *
 				 * @param port порт NTP-сервера для установки
+				 *
 				 */
 				void setTargetPort(const uint16_t port) noexcept;
 			public:
@@ -288,12 +313,14 @@ namespace awh {
 				 * @brief Метод установки адреса NTP-сервера
 				 *
 				 * @param server адрес NTP-сервера для установки
+				 *
 				 */
 				void setServer(string_view server) noexcept;
 				/**
 				 * @brief Метод установки адреса NTP-сервера
 				 *
 				 * @param server адрес NTP-сервера для установки
+				 *
 				 */
 				void setServer(const net::addr_t * server) noexcept;
 				/**
@@ -301,6 +328,7 @@ namespace awh {
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param server адрес NTP-сервера для установки
+				 *
 				 */
 				void setServer(const event::family_t family, string_view server) noexcept;
 			public:
@@ -308,12 +336,14 @@ namespace awh {
 				 * @brief Метод добавления адреса NTP-сервера
 				 *
 				 * @param server адрес NTP-сервера для добавления
+				 *
 				 */
 				void addServer(string_view server) noexcept;
 				/**
 				 * @brief Метод добавления адреса NTP-сервера
 				 *
 				 * @param server адрес NTP-сервера для добавления
+				 *
 				 */
 				void addServer(const net::addr_t * server) noexcept;
 				/**
@@ -321,6 +351,7 @@ namespace awh {
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param server адрес NTP-сервера для добавления
+				 *
 				 */
 				void addServer(const event::family_t family, string_view server) noexcept;
 			public:
@@ -328,12 +359,14 @@ namespace awh {
 				 * @brief Метод установки списка адресов NTP-серверов
 				 *
 				 * @param servers адреса NTP-серверов для установки
+				 *
 				 */
 				void setServers(const vector <string> & servers) noexcept;
 				/**
 				 * @brief Метод установки списка адресов NTP-серверов
 				 *
 				 * @param servers адреса NTP-серверов для установки
+				 *
 				 */
 				void setServers(const vector <const net::addr_t *> & servers) noexcept;
 				/**
@@ -341,6 +374,7 @@ namespace awh {
 				 *
 				 * @param family  семейство IP-адресов IPv4/IPv6
 				 * @param servers адреса NTP-серверов для установки
+				 *
 				 */
 				void setServers(const event::family_t family, const vector <string> & servers) noexcept;
 			public:
@@ -348,12 +382,14 @@ namespace awh {
 				 * @brief Метод установки локального адреса для выполнения запроса
 				 *
 				 * @param source адрес сети для выполнения запроса
+				 *
 				 */
 				void setSource(string_view source) noexcept;
 				/**
 				 * @brief Метод установки локального адреса для выполнения запроса
 				 *
 				 * @param source адрес сети для выполнения запроса
+				 *
 				 */
 				void setSource(const net::addr_t * source) noexcept;
 				/**
@@ -361,6 +397,7 @@ namespace awh {
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param source адрес сети для выполнения запроса
+				 *
 				 */
 				void setSource(const event::family_t family, string_view source) noexcept;
 			public:
@@ -369,6 +406,7 @@ namespace awh {
 				 *
 				 * @param version версия протокола NTP для выполнения запроса
 				 * @return        результат выполнения запроса
+				 *
 				 */
 				bool sync(const version_t version = version_t::V4) noexcept;
 			private:
@@ -381,6 +419,7 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
+				 *
 				 */
 				NTP & operator = (const NTP &) = delete;
 			public:
@@ -389,6 +428,7 @@ namespace awh {
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
+				 *
 				 */
 				explicit NTP(const fmk_t * fmk, const log_t * log) noexcept;
 				/**

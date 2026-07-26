@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация парсера сессии HTTP/2 — управление состояниями потоков, окнами flow control, обменом SETTINGS,
+ *        приоритетами, частотными лимитами и сборка исходящих фреймов соединения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -42,6 +46,7 @@ namespace {
 	 *
 	 * @param request провайдер запроса клиента
 	 * @return        имя метода запроса (для UNKNOWN - оригинальное написание метода)
+	 *
 	 */
 	string_view methodName(const http::request_t * request) noexcept {
 		/**
@@ -214,6 +219,7 @@ namespace {
 	 * @param name   название заголовка
 	 * @param buffer переиспользуемый буфер для приведённого названия
 	 * @return       название заголовка в нижнем регистре
+	 *
 	 */
 	string_view lowerName(string_view name, string & buffer) noexcept {
 		/**
@@ -248,6 +254,7 @@ namespace {
 	 *
 	 * @param method значение псевдо-заголовка [:method]
 	 * @return       распознанный метод запроса либо method_t::NONE
+	 *
 	 */
 	http::method_t classifyMethod(string_view method) noexcept {
 		/**
@@ -318,6 +325,7 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       результат проверки
+	 *
 	 */
 	bool isTokenChar(const uint8_t letter) noexcept {
 		// Цифры и латинские буквы нижнего регистра допустимы
@@ -347,6 +355,7 @@ namespace {
 	 *
 	 * @param name имя заголовка
 	 * @return     результат проверки
+	 *
 	 */
 	bool isValidHeaderName(string_view name) noexcept {
 		// Пустое имя заголовка недопустимо
@@ -385,6 +394,7 @@ namespace {
 	 *
 	 * @param value значение заголовка
 	 * @return      результат проверки
+	 *
 	 */
 	bool isValidHeaderValue(string_view value) noexcept {
 		/**
@@ -415,6 +425,7 @@ namespace {
 	 *
 	 * @param name имя заголовка
 	 * @return     результат проверки
+	 *
 	 */
 	bool isConnectionSpecific(string_view name) noexcept {
 		// Выполняем сравнение со списком запрещённых заголовков
@@ -435,6 +446,7 @@ namespace {
 	 *
 	 * @param name имя заголовка
 	 * @return     результат проверки
+	 *
 	 */
 	bool isForbiddenTrailer(string_view name) noexcept {
 		// Выполняем сравнение со списком запрещённых в трейлерах заголовков
@@ -463,6 +475,7 @@ namespace {
 	 * @param connectProtocol расширенный CONNECT разрешён нашим SETTINGS (RFC 8441)
 	 * @param fmk             объект фреймворка
 	 * @return                код ошибки протокола (NO_ERROR - блок корректен, PROTOCOL_ERROR - malformed)
+	 *
 	 */
 	http::h2::error_t validateHeaders(const vector <http::h2::hpack::field_view_t> & fields, const bool isRequest, const bool isTrailers, const bool connectProtocol, const fmk_t * fmk) noexcept {
 		// Значение псевдо-заголовка [:method]
@@ -749,6 +762,7 @@ awh::http::Parser_HTTP2::Settings::Settings() noexcept :
  *
  * @param value число списываемых токенов
  * @return      результат списания (false - токенов не хватает, превышение лимита)
+ *
  */
 bool awh::http::Parser_HTTP2::Ratelim::drain(const uint64_t value) noexcept {
 	// Если токенов не хватает - фиксируем превышение лимита
@@ -764,6 +778,7 @@ bool awh::http::Parser_HTTP2::Ratelim::drain(const uint64_t value) noexcept {
  * @brief Метод пополнения токенов по текущему времени
  *
  * @param stamp текущее время (секунды)
+ *
  */
 void awh::http::Parser_HTTP2::Ratelim::update(const uint64_t stamp) noexcept {
 	// Если время не продвинулось вперёд - пополнять нечего
@@ -786,6 +801,7 @@ void awh::http::Parser_HTTP2::Ratelim::update(const uint64_t stamp) noexcept {
  *
  * @param burst стартовый запас токенов
  * @param rate  пополнение токенов в секунду
+ *
  */
 void awh::http::Parser_HTTP2::Ratelim::init(const uint64_t burst, const uint64_t rate) noexcept {
 	// Сбрасываем последний момент обновления
@@ -806,6 +822,7 @@ awh::http::Parser_HTTP2::Ratelim::Ratelim() noexcept :
  * @brief Метод получения логического объёма ещё не отправленных данных тела
  *
  * @return объём не отправленных данных (без учтённого префикса)
+ *
  */
 size_t awh::http::Parser_HTTP2::Stream::pending() const noexcept {
 	// Выводим объём буфера отправки без уже отправленного префикса
@@ -815,6 +832,7 @@ size_t awh::http::Parser_HTTP2::Stream::pending() const noexcept {
  * @brief Метод снятия учтённого префикса буфера отправки
  *
  * @details Очистка при полном расходе, иначе амортизированная компактификация
+ *
  */
 void awh::http::Parser_HTTP2::Stream::compactSendBuffer() noexcept {
 	// Если буфер отправки израсходован полностью
@@ -920,6 +938,7 @@ awh::http::Parser_HTTP2::Callbacks::Callbacks() noexcept :
  *
  * @details Если функция записи не установлена - байты остаются во внутреннем
  *          буфере до выборки через pending()/consumePending().
+ *
  */
 void awh::http::Parser_HTTP2::flush() noexcept {
 	// Если функция обратного вызова записи не установлена - работаем в pull-модели
@@ -971,6 +990,7 @@ void awh::http::Parser_HTTP2::flush() noexcept {
  * @brief Метод получения логического объёма ещё не отправленных исходящих байтов
  *
  * @return объём не отправленных исходящих байтов
+ *
  */
 size_t awh::http::Parser_HTTP2::outputPending() const noexcept {
 	// Выводим объём буфера исходящих байтов без уже отданного префикса
@@ -990,6 +1010,7 @@ void awh::http::Parser_HTTP2::clearInput() noexcept {
  * @brief Метод получения объёма ещё не разобранных входящих байтов
  *
  * @return объём не разобранных входящих байтов
+ *
  */
 size_t awh::http::Parser_HTTP2::inputPending() const noexcept {
 	// Выводим объём входного буфера без уже разобранного префикса
@@ -999,6 +1020,7 @@ size_t awh::http::Parser_HTTP2::inputPending() const noexcept {
  * @brief Метод разбора накопленного входного буфера (preface + поток фреймов)
  *
  * @return результат разбора (OK/ERROR)
+ *
  */
 awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput() noexcept {
 	// Позиция разбора во входном буфере (с учётом уже разобранного префикса)
@@ -1106,6 +1128,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput() noexcept {
  * @brief Метод декодирования накопленного блока заголовков и вызова функций обратного вызова
  *
  * @return результат обработки (OK/ERROR)
+ *
  */
 awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	// Запоминаем идентификатор потока собираемого блока
@@ -1428,6 +1451,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
  * @param code    код ошибки протокола
  * @param message текстовое описание ошибки
  * @return        статус ошибки (для проброса из обработчиков)
+ *
  */
 awh::http::h2::status_t awh::http::Parser_HTTP2::fail(const error_t code, const char * message) noexcept {
 	/**
@@ -1504,6 +1528,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::fail(const error_t code, const 
  * @param id  идентификатор потока
  * @param err код ошибки протокола
  * @return    результат проверки (OK/ERROR)
+ *
  */
 awh::http::h2::status_t awh::http::Parser_HTTP2::validateNewStream(const uint32_t id, error_t & err) noexcept {
 	/**
@@ -1534,6 +1559,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::validateNewStream(const uint32_
  * @param header  заголовок фрейма
  * @param payload полезная нагрузка фрейма (ровно h.length байт)
  * @return        результат обработки (OK/ERROR)
+ *
  */
 awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::header_t & header, const uint8_t * payload) noexcept {
 	// Код ошибки протокола
@@ -2443,6 +2469,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
  * @param promisedSid идентификатор обещанного потока
  * @param fields      декодированные заголовки обещанного запроса
  * @return            результат обработки (OK/ERROR)
+ *
  */
 awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32_t sid, const uint32_t promisedSid, const vector <h2::hpack::field_view_t> & fields) noexcept {
 	// Выполняем поиск обещанного потока
@@ -2554,6 +2581,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
  *
  * @param id идентификатор потока
  * @return   объект потока
+ *
  */
 awh::http::Parser_HTTP2::stream_t & awh::http::Parser_HTTP2::stream(const uint32_t id) noexcept {
 	// Получаем существующий либо создаём новый объект потока
@@ -2575,6 +2603,7 @@ awh::http::Parser_HTTP2::stream_t & awh::http::Parser_HTTP2::stream(const uint32
  *
  * @param id идентификатор потока
  * @return   объект потока либо nullptr
+ *
  */
 awh::http::Parser_HTTP2::stream_t * awh::http::Parser_HTTP2::findStream(const uint32_t id) noexcept {
 	// Выполняем поиск потока в карте активных потоков
@@ -2586,6 +2615,7 @@ awh::http::Parser_HTTP2::stream_t * awh::http::Parser_HTTP2::findStream(const ui
  * @brief Метод применения отправленного нами END_STREAM (переход состояния, возможно закрытие потока)
  *
  * @param stream объект потока (ссылка может стать недействительной после вызова)
+ *
  */
 void awh::http::Parser_HTTP2::applyLocalEndStream(stream_t & stream) noexcept {
 	// RFC 9113 §5.1: отправка END_STREAM закрывает локальную половину потока
@@ -2606,6 +2636,7 @@ void awh::http::Parser_HTTP2::applyLocalEndStream(stream_t & stream) noexcept {
  * @brief Метод применения полученного END_STREAM (переход состояния, возможно закрытие потока)
  *
  * @param stream объект потока (ссылка может стать недействительной после вызова)
+ *
  */
 void awh::http::Parser_HTTP2::applyRemoteEndStream(stream_t & stream) noexcept {
 	// RFC 9113 §5.1: получение END_STREAM закрывает удалённую половину потока
@@ -2627,6 +2658,7 @@ void awh::http::Parser_HTTP2::applyRemoteEndStream(stream_t & stream) noexcept {
  *
  * @param id идентификатор потока
  * @return   результат проверки
+ *
  */
 bool awh::http::Parser_HTTP2::peerInitiated(const uint32_t id) const noexcept {
 	// Пир инициирует нечётные потоки, если мы - сервер (разбираем запросы)
@@ -2639,6 +2671,7 @@ bool awh::http::Parser_HTTP2::peerInitiated(const uint32_t id) const noexcept {
  *
  * @param id идентификатор потока
  * @return   результат проверки
+ *
  */
 bool awh::http::Parser_HTTP2::idleStream(const uint32_t id) const noexcept {
 	// Если поток инициирован пиром - он не использован, пока превышает наибольший принятый
@@ -2656,6 +2689,7 @@ bool awh::http::Parser_HTTP2::idleStream(const uint32_t id) const noexcept {
  * @brief Метод удаления потока из карты с корректным учётом счётчика встречных потоков
  *
  * @param id идентификатор потока
+ *
  */
 void awh::http::Parser_HTTP2::eraseStream(const uint32_t id) noexcept {
 	// Выполняем поиск потока в карте активных потоков
@@ -2682,6 +2716,7 @@ void awh::http::Parser_HTTP2::eraseStream(const uint32_t id) noexcept {
  *
  * @param id   идентификатор потока
  * @param code код ошибки закрытия
+ *
  */
 void awh::http::Parser_HTTP2::closeStream(const uint32_t id, const error_t code) noexcept {
 	/**
@@ -2733,6 +2768,7 @@ void awh::http::Parser_HTTP2::closeStream(const uint32_t id, const error_t code)
  * @param phase фаза приёма сообщения потока
  * @param part  часть сообщения (заголовки, трейлеры, тело), NONE - сообщение целиком
  * @return      результат обработки (false - поток сброшен)
+ *
  */
 bool awh::http::Parser_HTTP2::firePhase(const uint32_t id, const phase_t phase, const part_t part) noexcept {
 	// Если функция обратного вызова установлена
@@ -2817,6 +2853,7 @@ void awh::http::Parser_HTTP2::fireSettings() noexcept {
  * @brief Метод вызова функции обратного вызова о готовности потока принимать данные
  *
  * @param id идентификатор потока
+ *
  */
 void awh::http::Parser_HTTP2::fireWritable(const uint32_t id) noexcept {
 	// Если функция обратного вызова не установлена - вызывать нечего
@@ -2853,6 +2890,7 @@ void awh::http::Parser_HTTP2::fireWritable(const uint32_t id) noexcept {
  *
  * @param id идентификатор потока
  * @return   результат обработки (false - поток требуется сбросить)
+ *
  */
 bool awh::http::Parser_HTTP2::fireBegin(const uint32_t id) noexcept {
 	// Если функция обратного вызова не установлена - поток принимается
@@ -2892,6 +2930,7 @@ bool awh::http::Parser_HTTP2::fireBegin(const uint32_t id) noexcept {
  * @param sid         идентификатор ассоциированного потока клиента
  * @param promisedSid идентификатор обещанного потока
  * @return            результат обработки (false - push требуется отклонить)
+ *
  */
 bool awh::http::Parser_HTTP2::firePush(const uint32_t sid, const uint32_t promisedSid) noexcept {
 	// Если функция обратного вызова не установлена - push принимается
@@ -2931,6 +2970,7 @@ bool awh::http::Parser_HTTP2::firePush(const uint32_t sid, const uint32_t promis
  * @param sid   наибольший идентификатор обработанного пиром потока
  * @param code  код ошибки завершения соединения
  * @param debug отладочные данные пира
+ *
  */
 void awh::http::Parser_HTTP2::fireGoaway(const uint32_t sid, const error_t code, const string_view debug) noexcept {
 	// Если функция обратного вызова не установлена - вызывать нечего
@@ -2969,6 +3009,7 @@ void awh::http::Parser_HTTP2::fireGoaway(const uint32_t sid, const error_t code,
  * @param provider  провайдер заголовков потока (nullptr для трейлеров)
  * @param endStream флаг завершения потока
  * @return          результат обработки (false - поток требуется сбросить)
+ *
  */
 bool awh::http::Parser_HTTP2::fireProvider(const uint32_t id, const provider_t * provider, const bool endStream) noexcept {
 	// Если функция обратного вызова не установлена - продолжаем обработку
@@ -3010,6 +3051,7 @@ bool awh::http::Parser_HTTP2::fireProvider(const uint32_t id, const provider_t *
  * @param size      размер данных тела
  * @param endStream флаг завершения потока
  * @return          результат обработки (false - поток требуется сбросить)
+ *
  */
 bool awh::http::Parser_HTTP2::fireData(const uint32_t id, const void * buffer, const size_t size, const bool endStream) noexcept {
 	// Если функция обратного вызова не установлена - продолжаем обработку
@@ -3051,6 +3093,7 @@ bool awh::http::Parser_HTTP2::fireData(const uint32_t id, const void * buffer, c
  * @param value значение заголовка
  * @param part  часть сообщения (HEADERS или TRAILER)
  * @return      результат обработки (false - поток требуется сбросить)
+ *
  */
 bool awh::http::Parser_HTTP2::fireHeader(const uint32_t id, const string_view name, const string_view value, const part_t part) noexcept {
 	// Если функция обратного вызова не установлена - продолжаем обработку
@@ -3090,6 +3133,7 @@ bool awh::http::Parser_HTTP2::fireHeader(const uint32_t id, const string_view na
  * @details Round-robin: за каждый проход отправляется не более одного DATA-фрейма
  *          с потока, пока хоть один поток делает прогресс - исключает голодание
  *          потоков (head-of-line blocking).
+ *
  */
 void awh::http::Parser_HTTP2::pump() noexcept {
 	// Защита от реентерабельности (writable -> sendData -> pump)
@@ -3194,6 +3238,7 @@ void awh::http::Parser_HTTP2::pump() noexcept {
  *
  * @param stream объект потока (ссылка может стать недействительной после вызова)
  * @return       признак прогресса отправки
+ *
  */
 bool awh::http::Parser_HTTP2::pumpStream(stream_t & stream) noexcept {
 	// Запоминаем идентификатор потока
@@ -3302,6 +3347,7 @@ bool awh::http::Parser_HTTP2::pumpStream(stream_t & stream) noexcept {
  * @brief Метод дозагрузки буфера отправки из pull-источника данных (если он задан)
  *
  * @param stream объект потока
+ *
  */
 void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 	// Если источник данных не задан либо его тело уже закончилось - дозагружать нечего
@@ -3394,6 +3440,7 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
  * @brief Метод сигнализации о готовности потока принимать данные (один раз на провал буфера)
  *
  * @param stream объект потока
+ *
  */
 void awh::http::Parser_HTTP2::maybeNotifyWritable(stream_t & stream) noexcept {
 	// Сигнал отдаём только для push-модели (sendData), не для pull-источника данных
@@ -3413,6 +3460,7 @@ void awh::http::Parser_HTTP2::maybeNotifyWritable(stream_t & stream) noexcept {
  *
  * @param stream объект потока
  * @return       результат проверки (нет источника данных или достигнут его eof)
+ *
  */
 bool awh::http::Parser_HTTP2::sourceDone(const stream_t & stream) const noexcept {
 	// Источник данных не задан либо конец его тела достигнут
@@ -3423,6 +3471,7 @@ bool awh::http::Parser_HTTP2::sourceDone(const stream_t & stream) const noexcept
  *
  * @param stream   объект потока (nullptr - только окно соединения)
  * @param consumed число принятых байт
+ *
  */
 void awh::http::Parser_HTTP2::replenishReceiveWindow(stream_t * stream, const uint32_t consumed) noexcept {
 	// Списываем принятые байты из окна приёма соединения
@@ -3456,6 +3505,7 @@ void awh::http::Parser_HTTP2::replenishReceiveWindow(stream_t * stream, const ui
  *
  * @param stream объект потока
  * @param value  значение поля приоритета
+ *
  */
 void awh::http::Parser_HTTP2::applyPriority(stream_t & stream, string_view value) noexcept {
 	// Текущая позиция разбора значения поля приоритета
@@ -3528,6 +3578,7 @@ void awh::http::Parser_HTTP2::checkHeaderListLimits() const noexcept {
  * @brief Метод сверки отправляемого блока заголовков с лимитом пира
  *
  * @param sid идентификатор потока
+ *
  */
 void awh::http::Parser_HTTP2::checkPeerHeaderList(const uint32_t sid) const noexcept {
 	// Если пир лимит списка заголовков не анонсировал - сверять не с чем
@@ -3555,6 +3606,7 @@ void awh::http::Parser_HTTP2::checkPeerHeaderList(const uint32_t sid) const noex
  *
  * @param sid идентификатор потока
  * @return    результат проверки (false - поток сброшен)
+ *
  */
 bool awh::http::Parser_HTTP2::checkBodyLength(const uint32_t sid) noexcept {
 	// Выполняем поиск потока
@@ -3589,6 +3641,7 @@ bool awh::http::Parser_HTTP2::checkBodyLength(const uint32_t sid) noexcept {
  *
  * @param fields декодированные заголовки блока
  * @return       результат проверки (false - лимиты превышены)
+ *
  */
 bool awh::http::Parser_HTTP2::checkHeaderLimits(const vector <h2::hpack::field_view_t> & fields) const noexcept {
 	// Если число заголовков в блоке превышает лимит
@@ -3616,6 +3669,7 @@ bool awh::http::Parser_HTTP2::checkHeaderLimits(const vector <h2::hpack::field_v
  *
  * @param sid идентификатор потока
  * @return    результат проверки
+ *
  */
 bool awh::http::Parser_HTTP2::canSendHeaders(const uint32_t sid) noexcept {
 	// Нулевой идентификатор потока не принадлежит ни одному потоку (RFC 9113 §5.1.1)
@@ -3674,6 +3728,7 @@ bool awh::http::Parser_HTTP2::canSendHeaders(const uint32_t sid) noexcept {
  * @param fields    заголовки секции трейлеров
  * @param endStream флаг завершения потока
  * @return          результат откладывания (true - отправка отложена)
+ *
  */
 bool awh::http::Parser_HTTP2::deferTrailers(const uint32_t sid, const vector <h2::hpack::field_t> & fields, const bool endStream) noexcept {
 	// Выполняем поиск потока
@@ -3731,6 +3786,7 @@ bool awh::http::Parser_HTTP2::deferTrailers(const uint32_t sid, const vector <h2
  *
  * @param stream объект потока (ссылка может стать недействительной после вызова)
  * @return       признак отправки секции трейлеров
+ *
  */
 bool awh::http::Parser_HTTP2::flushTrailers(stream_t & stream) noexcept {
 	// Если отложенной секции трейлеров нет - отправлять нечего
@@ -3786,6 +3842,7 @@ bool awh::http::Parser_HTTP2::flushTrailers(stream_t & stream) noexcept {
  * @param sid       идентификатор потока
  * @param block     закодированный HPACK-блок заголовков
  * @param endStream флаг завершения потока (тела не будет)
+ *
  */
 void awh::http::Parser_HTTP2::commitHeaders(const uint32_t sid, const string & block, const bool endStream) {
 	// Сверяем размер блока заголовков с лимитом списка заголовков пира
@@ -3828,6 +3885,7 @@ void awh::http::Parser_HTTP2::commitHeaders(const uint32_t sid, const string & b
  * @param fields  декодированные заголовки блока
  * @param request собирается запрос клиента (true) или ответ сервера (false)
  * @return        собранный провайдер заголовков
+ *
  */
 unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const vector <h2::hpack::field_view_t> & fields, const bool request) const noexcept {
 	// Результат работы функции - собранный провайдер заголовков
@@ -3920,6 +3978,7 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
  * @details Помимо полного сброса состояния соединения возвращает лимиты
  *          безопасности и параметры SETTINGS к значениям по умолчанию
  *          и удаляет установленные функции обратного вызова.
+ *
  */
 void awh::http::Parser_HTTP2::clear() noexcept {
 	// Возвращаем лимиты безопасности к значениям по умолчанию
@@ -3945,6 +4004,7 @@ void awh::http::Parser_HTTP2::clear() noexcept {
  *          карта потоков, окна, буферы (семантика нового соединения).
  *          Лимиты безопасности, параметры SETTINGS и функции обратного
  *          вызова сохраняются.
+ *
  */
 void awh::http::Parser_HTTP2::reset() noexcept {
 	/**
@@ -4055,6 +4115,7 @@ void awh::http::Parser_HTTP2::reset() noexcept {
  *          состояние соединения ("фабрика с теми же настройками").
  *
  * @return копия объекта парсера
+ *
  */
 unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP2::clone() const noexcept {
 	// Результат работы функции - копия объекта парсера
@@ -4108,6 +4169,7 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP2::clone() const noexcept
  *          COMPLETE. Если соединение закрыто посреди активных потоков или
  *          незавершённого фрейма - фиксируется ошибка PROTOCOL_ERROR
  *          (обрыв соединения).
+ *
  */
 void awh::http::Parser_HTTP2::eof() noexcept {
 	// Если разбор уже завершился ошибкой - состояние не меняем
@@ -4137,6 +4199,7 @@ void awh::http::Parser_HTTP2::eof() noexcept {
  * @param buffer буфер данных для разбора
  * @param size   размер данных для разбора
  * @return       количество обработанных байт данных
+ *
  */
 size_t awh::http::Parser_HTTP2::parse(const void * buffer, const size_t size) noexcept {
 	// Если разбор уже завершился ошибкой уровня соединения - данные игнорируются
@@ -4206,6 +4269,7 @@ size_t awh::http::Parser_HTTP2::parse(const void * buffer, const size_t size) no
  * @brief Метод получения кода ошибки уровня соединения
  *
  * @return код ошибки протокола
+ *
  */
 awh::http::Parser_HTTP2::error_t awh::http::Parser_HTTP2::error() const noexcept {
 	// Выводим код ошибки уровня соединения
@@ -4215,6 +4279,7 @@ awh::http::Parser_HTTP2::error_t awh::http::Parser_HTTP2::error() const noexcept
  * @brief Метод получения человекочитаемого названия текущей ошибки разбора
  *
  * @return название текущей ошибки разбора
+ *
  */
 string_view awh::http::Parser_HTTP2::errorName() const noexcept {
 	// Выводим название текущей ошибки разбора
@@ -4225,6 +4290,7 @@ string_view awh::http::Parser_HTTP2::errorName() const noexcept {
  *
  * @param error код ошибки протокола
  * @return      название кода ошибки
+ *
  */
 string_view awh::http::Parser_HTTP2::errorName(const error_t error) noexcept {
 	// Выводим название кода ошибки
@@ -4234,6 +4300,7 @@ string_view awh::http::Parser_HTTP2::errorName(const error_t error) noexcept {
  * @brief Метод получения лимитов безопасности
  *
  * @return лимиты безопасности
+ *
  */
 const awh::http::Parser_HTTP2::limits_t & awh::http::Parser_HTTP2::limits() const noexcept {
 	// Выводим лимиты безопасности
@@ -4243,6 +4310,7 @@ const awh::http::Parser_HTTP2::limits_t & awh::http::Parser_HTTP2::limits() cons
  * @brief Метод установки лимитов безопасности
  *
  * @param limits лимиты безопасности
+ *
  */
 void awh::http::Parser_HTTP2::limits(const limits_t & limits) noexcept {
 	// Устанавливаем лимиты безопасности
@@ -4260,6 +4328,7 @@ void awh::http::Parser_HTTP2::limits(const limits_t & limits) noexcept {
  * @brief Метод получения наших параметров SETTINGS
  *
  * @return наши параметры SETTINGS
+ *
  */
 const awh::http::Parser_HTTP2::settings_t & awh::http::Parser_HTTP2::settings() const noexcept {
 	// Выводим наши параметры SETTINGS
@@ -4271,6 +4340,7 @@ const awh::http::Parser_HTTP2::settings_t & awh::http::Parser_HTTP2::settings() 
  * @note Отправка выполняется методами sendPreface()/sendSettings()
  *
  * @param settings наши параметры SETTINGS
+ *
  */
 void awh::http::Parser_HTTP2::settings(const settings_t & settings) noexcept {
 	// Устанавливаем наши параметры SETTINGS
@@ -4321,6 +4391,7 @@ void awh::http::Parser_HTTP2::settings(const settings_t & settings) noexcept {
  * @brief Метод получения параметров SETTINGS пира
  *
  * @return параметры SETTINGS пира
+ *
  */
 const awh::http::Parser_HTTP2::settings_t & awh::http::Parser_HTTP2::remoteSettings() const noexcept {
 	// Выводим параметры SETTINGS пира
@@ -4330,6 +4401,7 @@ const awh::http::Parser_HTTP2::settings_t & awh::http::Parser_HTTP2::remoteSetti
  * @brief Метод проверки того, что соединение помечено на завершение
  *
  * @return признак завершения (отправлен или получен GOAWAY)
+ *
  */
 bool awh::http::Parser_HTTP2::isClosed() const noexcept {
 	// Соединение помечено на завершение, если GOAWAY отправлен или получен
@@ -4339,6 +4411,7 @@ bool awh::http::Parser_HTTP2::isClosed() const noexcept {
  * @brief Метод проверки того, что наш SETTINGS подтверждён пиром
  *
  * @return признак получения ACK на наш SETTINGS
+ *
  */
 bool awh::http::Parser_HTTP2::isSettingsAcked() const noexcept {
 	// Выводим признак получения ACK на наш SETTINGS
@@ -4349,6 +4422,7 @@ bool awh::http::Parser_HTTP2::isSettingsAcked() const noexcept {
  *
  * @details Клиент отправляет magic-строку + свой SETTINGS, сервер - только SETTINGS.
  *          Обязан быть первым исходящим сообщением соединения.
+ *
  */
 void awh::http::Parser_HTTP2::sendPreface() noexcept {
 	// Если мы - клиент (разбираем ответы сервера) - отправляем magic-строку preface
@@ -4459,6 +4533,7 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
  *
  * @param sid  идентификатор потока
  * @param code код ошибки, с которым сбрасывается поток
+ *
  */
 void awh::http::Parser_HTTP2::sendRstStream(const uint32_t sid, const error_t code) noexcept {
 	// Запоминаем поток, оборванный сбросом: кадры на нём ещё могут быть в полёте
@@ -4475,6 +4550,7 @@ void awh::http::Parser_HTTP2::sendRstStream(const uint32_t sid, const error_t co
  *
  * @param code  код ошибки завершения соединения
  * @param debug необязательные отладочные данные
+ *
  */
 void awh::http::Parser_HTTP2::sendGoaway(const error_t code, string_view debug) noexcept {
 	// Отправляем фрейм GOAWAY с наибольшим принятым идентификатором потока
@@ -4488,6 +4564,7 @@ void awh::http::Parser_HTTP2::sendGoaway(const error_t code, string_view debug) 
  * @brief Метод начала плавного завершения соединения (RFC 9113 §6.8)
  *
  * @param debug необязательные отладочные данные
+ *
  */
 void awh::http::Parser_HTTP2::sendShutdown(string_view debug) noexcept {
 	// Если соединение уже завершается - повторное предупреждение не требуется
@@ -4511,6 +4588,7 @@ void awh::http::Parser_HTTP2::sendShutdown(string_view debug) noexcept {
  *
  * @param sid       идентификатор потока (0 - окно всего соединения)
  * @param increment инкремент окна flow control
+ *
  */
 void awh::http::Parser_HTTP2::sendPriority(const uint32_t sid, const uint8_t urgency, const bool incremental) noexcept {
 	// Приоритет назначается только потокам, инициированным нами (RFC 9218 §7.1)
@@ -4544,6 +4622,7 @@ void awh::http::Parser_HTTP2::sendPriority(const uint32_t sid, const uint8_t urg
  *
  * @param sid       идентификатор потока (0 - окно всего соединения)
  * @param increment инкремент окна flow control
+ *
  */
 void awh::http::Parser_HTTP2::sendWindowUpdate(const uint32_t sid, const uint32_t increment) noexcept {
 	// Отправляем фрейм WINDOW_UPDATE
@@ -4565,6 +4644,7 @@ void awh::http::Parser_HTTP2::sendWindowUpdate(const uint32_t sid, const uint32_
  * @param size      размер данных тела
  * @param endStream флаг завершения потока
  * @return          число принятых байт (0..size)
+ *
  */
 size_t awh::http::Parser_HTTP2::sendData(const uint32_t sid, const void * buffer, const size_t size, const bool endStream) noexcept {
 	// Результат работы функции - число принятых байт
@@ -4652,6 +4732,7 @@ size_t awh::http::Parser_HTTP2::sendData(const uint32_t sid, const void * buffer
  * @param sid    идентификатор потока клиента, в ответ на который выполняется push
  * @param fields заголовки обещанного запроса (псевдо-заголовки как у запроса клиента)
  * @return       идентификатор зарезервированного push-потока либо 0, если push невозможен
+ *
  */
 uint32_t awh::http::Parser_HTTP2::sendPushPromise(const uint32_t sid, const vector <h2::hpack::field_t> & fields) noexcept {
 	// Результат работы функции - идентификатор зарезервированного push-потока
@@ -4753,6 +4834,7 @@ uint32_t awh::http::Parser_HTTP2::sendPushPromise(const uint32_t sid, const vect
  * @param sid       идентификатор потока
  * @param fields    заголовки (псевдо-заголовки :method/:path/... должны идти первыми)
  * @param endStream флаг завершения потока (тела не будет)
+ *
  */
 void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::hpack::field_t> & fields, const bool endStream) noexcept {
 	// Если отправка блока заголовков в этот поток недопустима
@@ -4861,6 +4943,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
  * @param headers   контейнер заголовков (провайдер контейнера задаёт псевдо-заголовки)
  * @param endStream флаг завершения потока (тела не будет)
  * @param scheme    схема запроса для псевдо-заголовка [:scheme] (для ответа не используется)
+ *
  */
 void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & headers, const bool endStream, string_view scheme) noexcept {
 	// Если отправка блока заголовков в этот поток недопустима
@@ -5048,6 +5131,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
  *          идентификатор передаётся в sendHeaders() для открытия потока.
  *
  * @return идентификатор нового потока
+ *
  */
 uint32_t awh::http::Parser_HTTP2::nextStreamId() noexcept {
 	// Запоминаем выделяемый идентификатор потока
@@ -5074,6 +5158,7 @@ uint32_t awh::http::Parser_HTTP2::nextStreamId() noexcept {
  *
  * @param sid    идентификатор потока
  * @param source pull-источник данных тела
+ *
  */
 void awh::http::Parser_HTTP2::dataSource(const uint32_t sid, data_source_callback_t source) noexcept {
 	// Выполняем поиск потока
@@ -5095,6 +5180,7 @@ void awh::http::Parser_HTTP2::dataSource(const uint32_t sid, data_source_callbac
  * @brief Метод настройки порога выходного буфера соединения (backpressure от TCP-стадии)
  *
  * @param high порог выходного буфера соединения
+ *
  */
 void awh::http::Parser_HTTP2::outputHighWater(const size_t high) noexcept {
 	// Устанавливаем порог выходного буфера соединения
@@ -5105,6 +5191,7 @@ void awh::http::Parser_HTTP2::outputHighWater(const size_t high) noexcept {
  *
  * @param high ёмкость буфера отправки потока (high-water)
  * @param low  порог сигнала writable (low-water)
+ *
  */
 void awh::http::Parser_HTTP2::sendWaterMarks(const size_t high, const size_t low) noexcept {
 	// Устанавливаем порог сигнала writable
@@ -5119,6 +5206,7 @@ void awh::http::Parser_HTTP2::sendWaterMarks(const size_t high, const size_t low
  *          без обновления времени работает только стартовый запас burst.
  *
  * @param seconds текущее монотонное время (секунды)
+ *
  */
 void awh::http::Parser_HTTP2::updateTime(const uint64_t seconds) noexcept {
 	// Устанавливаем текущее время rate-лимитов
@@ -5132,6 +5220,7 @@ void awh::http::Parser_HTTP2::updateTime(const uint64_t seconds) noexcept {
  *          отправляет WINDOW_UPDATE(0) на разницу. Только увеличение.
  *
  * @param size новый целевой размер окна приёма соединения
+ *
  */
 void awh::http::Parser_HTTP2::connectionReceiveWindow(const int32_t size) noexcept {
 	// Допускается только увеличение окна
@@ -5158,6 +5247,7 @@ void awh::http::Parser_HTTP2::connectionReceiveWindow(const int32_t size) noexce
  *          записи буфер опустошается автоматически.
  *
  * @return ещё не отправленные исходящие байты (zero-copy view во внутренний буфер)
+ *
  */
 string_view awh::http::Parser_HTTP2::pending() const noexcept {
 	// Выводим ещё не отправленные исходящие байты
@@ -5167,6 +5257,7 @@ string_view awh::http::Parser_HTTP2::pending() const noexcept {
  * @brief Метод освобождения отправленных байтов из исходящего буфера (амортизированно O(1))
  *
  * @param size число отправленных байт
+ *
  */
 void awh::http::Parser_HTTP2::consumePending(const size_t size) noexcept {
 	// Сдвигаем отданный префикс вместо удаления; физическую память освобождаем амортизированно
@@ -5193,6 +5284,7 @@ void awh::http::Parser_HTTP2::consumePending(const size_t size) noexcept {
  * @brief Метод установки функции обратного вызова для обработки анонса server push
  *
  * @param callback функция обратного вызова для обработки анонса server push
+ *
  */
 void awh::http::Parser_HTTP2::on(push_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5202,6 +5294,7 @@ void awh::http::Parser_HTTP2::on(push_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки фрагмента тела потока
  *
  * @param callback функция обратного вызова для обработки фрагмента тела потока
+ *
  */
 void awh::http::Parser_HTTP2::on(data_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5211,6 +5304,7 @@ void awh::http::Parser_HTTP2::on(data_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки закрытия потока
  *
  * @param callback функция обратного вызова для обработки закрытия потока
+ *
  */
 void awh::http::Parser_HTTP2::on(close_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5220,6 +5314,7 @@ void awh::http::Parser_HTTP2::on(close_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки ошибки уровня соединения
  *
  * @param callback функция обратного вызова для обработки ошибки уровня соединения
+ *
  */
 void awh::http::Parser_HTTP2::on(error_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5229,6 +5324,7 @@ void awh::http::Parser_HTTP2::on(error_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова записи исходящих байтов в сеть
  *
  * @param callback функция обратного вызова записи исходящих байтов в сеть
+ *
  */
 void awh::http::Parser_HTTP2::on(write_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5238,6 +5334,7 @@ void awh::http::Parser_HTTP2::on(write_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки открытия нового потока
  *
  * @param callback функция обратного вызова для обработки открытия нового потока
+ *
  */
 void awh::http::Parser_HTTP2::on(begin_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5247,6 +5344,7 @@ void awh::http::Parser_HTTP2::on(begin_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки фазы приёма сообщения потока
  *
  * @param callback функция обратного вызова для обработки фазы приёма сообщения потока
+ *
  */
 void awh::http::Parser_HTTP2::on(phase_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5256,6 +5354,7 @@ void awh::http::Parser_HTTP2::on(phase_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки полученного GOAWAY
  *
  * @param callback функция обратного вызова для обработки полученного GOAWAY
+ *
  */
 void awh::http::Parser_HTTP2::on(goaway_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5265,6 +5364,7 @@ void awh::http::Parser_HTTP2::on(goaway_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки заголовков или трейлеров потока
  *
  * @param callback функция обратного вызова для обработки заголовков или трейлеров потока
+ *
  */
 void awh::http::Parser_HTTP2::on(header_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5274,6 +5374,7 @@ void awh::http::Parser_HTTP2::on(header_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова о готовности потока принимать данные тела
  *
  * @param callback функция обратного вызова о готовности потока принимать данные тела
+ *
  */
 void awh::http::Parser_HTTP2::on(writable_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5283,6 +5384,7 @@ void awh::http::Parser_HTTP2::on(writable_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки применённого SETTINGS пира
  *
  * @param callback функция обратного вызова для обработки применённого SETTINGS пира
+ *
  */
 void awh::http::Parser_HTTP2::on(settings_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5292,6 +5394,7 @@ void awh::http::Parser_HTTP2::on(settings_callback_t callback) noexcept {
  * @brief Метод установки функции обратного вызова для обработки провайдера заголовков потока
  *
  * @param callback функция обратного вызова для обработки провайдера заголовков потока
+ *
  */
 void awh::http::Parser_HTTP2::on(provider_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
@@ -5303,6 +5406,7 @@ void awh::http::Parser_HTTP2::on(provider_callback_t callback) noexcept {
  * @param direct направление трафика (REQUEST - мы сервер, RESPONSE - мы клиент)
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
+ *
  */
 awh::http::Parser_HTTP2::Parser_HTTP2(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
  parser_t(direct, fmk, log), _epoch(0), _error(error_t::NO_ERROR) {

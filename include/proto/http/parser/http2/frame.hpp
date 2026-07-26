@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл слоя фреймов HTTP/2 (RFC 9113) — структуры полезной нагрузки DATA, HEADERS, PRIORITY,
+ *        SETTINGS, GOAWAY и PUSH_PROMISE,
+ *        а также чистые функции разбора и сборки фреймов без хранения состояния соединения
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_HTTP_PARSER_HTTP2_FRAME__
@@ -56,6 +61,7 @@ namespace awh {
 			 *          во входной буфер. Сборка дописывает байты в string (выходной буфер соединения).
 			 *          Слой не хранит состояния соединения - это чистые функции над байтами. Логика
 			 *          состояний потоков, flow control и HPACK живёт в http.hpp / hpack.hpp.
+			 *
 			 */
 			namespace frame {
 				/**
@@ -196,6 +202,7 @@ namespace awh {
 					 * @param size   доступно байт
 					 * @param output разобранный заголовок фрейма
 					 * @return       результат разбора (true - в буфере было достаточно байт и заголовок разобран)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ bool header(const uint8_t * data, const size_t size, header_t & output) noexcept;
 					/**
@@ -208,6 +215,7 @@ namespace awh {
 					 * @param output  разобранная полезная нагрузка
 					 * @param error   код ошибки протокола (PROTOCOL_ERROR на некорректном padding)
 					 * @return        результат разбора (OK/ERROR)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t data(const header_t & header, const uint8_t * payload, data_t & output, error_t & error) noexcept;
 					/**
@@ -218,6 +226,7 @@ namespace awh {
 					 * @param opaque  извлечённые opaque-данные
 					 * @param error   код ошибки протокола
 					 * @return        результат разбора (OK/ERROR)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t ping(const header_t & header, const uint8_t * payload, uint8_t opaque[8], error_t & error) noexcept;
 					/**
@@ -228,6 +237,7 @@ namespace awh {
 					 * @param code    код ошибки, с которым сброшен поток
 					 * @param error   код ошибки протокола
 					 * @return        результат разбора (OK/ERROR)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t rstStream(const header_t & header, const uint8_t * payload, error_t & code, error_t & error) noexcept;
 					/**
@@ -238,6 +248,7 @@ namespace awh {
 					 * @param output  разобранная полезная нагрузка
 					 * @param error   код ошибки протокола
 					 * @return        результат разбора (OK/ERROR)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t goaway(const header_t & header, const uint8_t * payload, goaway_t & output, error_t & error) noexcept;
 					/**
@@ -248,6 +259,7 @@ namespace awh {
 					 * @param output  разобранная полезная нагрузка
 					 * @param error   код ошибки протокола
 					 * @return        результат разбора (OK/ERROR)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t headers(const header_t & header, const uint8_t * payload, headers_t & output, error_t & error) noexcept;
 					/**
@@ -258,6 +270,7 @@ namespace awh {
 					 * @param output  разобранная полезная нагрузка
 					 * @param error   код ошибки протокола
 					 * @return        результат разбора (OK/ERROR)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t priority(const header_t & header, const uint8_t * payload, priority_t & output, error_t & error) noexcept;
 					/**
@@ -270,6 +283,7 @@ namespace awh {
 					 * @param increment извлечённый инкремент окна
 					 * @param error     код ошибки протокола
 					 * @return          результат разбора (OK/ERROR)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t windowUpdate(const header_t & header, const uint8_t * payload, uint32_t & increment, error_t & error) noexcept;
 					/**
@@ -280,6 +294,7 @@ namespace awh {
 					 * @param output  разобранная полезная нагрузка
 					 * @param error   код ошибки протокола
 					 * @return        результат разбора (OK/ERROR)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t pushPromise(const header_t & header, const uint8_t * payload, push_promise_t & output, error_t & error) noexcept;
 					/**
@@ -292,6 +307,7 @@ namespace awh {
 					 * @param output  список разобранных параметров
 					 * @param error   код ошибки протокола
 					 * @return        результат разбора (OK/ERROR)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t settings(const header_t & header, const uint8_t * payload, vector <setting_entry_t> & output, error_t & error) noexcept;
 					/**
@@ -303,6 +319,7 @@ namespace awh {
 					 * @param endHeaders флаг завершения блока заголовков
 					 * @param err        код ошибки протокола
 					 * @return           результат разбора (OK/ERROR)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t continuation(const header_t & header, const uint8_t * payload, string_view & block, bool & endHeaders, error_t & err) noexcept;
 					/**
@@ -317,6 +334,7 @@ namespace awh {
 					 * @param value    значение поля приоритета (zero-copy во входной буфер)
 					 * @param error    код ошибки протокола
 					 * @return         результат разбора (OK/ERROR)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t priorityUpdate(const header_t & header, const uint8_t * payload, uint32_t & streamId, string_view & value, error_t & error) noexcept;
 				};
@@ -332,6 +350,7 @@ namespace awh {
 					 * @param output выходной буфер соединения
 					 * @param opaque произвольные opaque-данные (8 байт)
 					 * @param ack    флаг подтверждения получения PING пира
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void ping(string & output, const uint8_t opaque[8], const bool ack) noexcept;
 					/**
@@ -340,6 +359,7 @@ namespace awh {
 					 * @param output   выходной буфер соединения
 					 * @param streamId идентификатор потока
 					 * @param error    код ошибки, с которым сбрасывается поток
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void rstStream(string & output, const uint32_t streamId, const error_t error) noexcept;
 					/**
@@ -348,6 +368,7 @@ namespace awh {
 					 * @param output    выходной буфер соединения
 					 * @param streamId  идентификатор потока (0 - окно всего соединения)
 					 * @param increment инкремент окна flow control
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void windowUpdate(string & output, const uint32_t streamId, const uint32_t increment) noexcept;
 					/**
@@ -357,6 +378,7 @@ namespace awh {
 					 * @param streamId  идентификатор потока
 					 * @param data      данные тела
 					 * @param endStream флаг завершения потока
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void data(string & output, const uint32_t streamId, string_view data, const bool endStream) noexcept;
 					/**
@@ -366,6 +388,7 @@ namespace awh {
 					 * @param items  список параметров (для ACK игнорируется)
 					 * @param count  количество параметров
 					 * @param ack    флаг подтверждения получения SETTINGS пира
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void settings(string & output, const setting_entry_t * items, const size_t count, const bool ack) noexcept;
 					/**
@@ -375,6 +398,7 @@ namespace awh {
 					 * @param lastStreamId наибольший идентификатор обработанного потока
 					 * @param error        код ошибки завершения соединения
 					 * @param debugData    необязательные отладочные данные
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void goaway(string & output, const uint32_t lastStreamId, const error_t error, string_view debugData) noexcept;
 					/**
@@ -384,6 +408,7 @@ namespace awh {
 					 * @param streamId   идентификатор потока
 					 * @param block      фрагмент блока заголовков HPACK
 					 * @param endHeaders флаг завершения блока заголовков
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void continuation(string & output, const uint32_t streamId, string_view block, const bool endHeaders) noexcept;
 					/**
@@ -394,6 +419,7 @@ namespace awh {
 					 * @param block      фрагмент блока заголовков HPACK
 					 * @param endStream  флаг завершения потока
 					 * @param endHeaders флаг завершения блока заголовков
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void headers(string & output, const uint32_t streamId, string_view block, const bool endStream, const bool endHeaders) noexcept;
 					/**
@@ -404,6 +430,7 @@ namespace awh {
 					 * @param exclusive флаг эксклюзивной зависимости потока
 					 * @param streamDep идентификатор потока, от которого зависит текущий
 					 * @param weight    вес потока
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void priority(string & output, const uint32_t streamId, const bool exclusive, const uint32_t streamDep, const uint8_t weight) noexcept;
 					/**
@@ -412,6 +439,7 @@ namespace awh {
 					 * @param output   выходной буфер соединения
 					 * @param streamId идентификатор приоритизируемого потока
 					 * @param value    значение поля приоритета (структурированный словарь, например "u=2, i")
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void priorityUpdate(string & output, const uint32_t streamId, string_view value) noexcept;
 					/**
@@ -425,6 +453,7 @@ namespace awh {
 					 * @param block           блок заголовков HPACK целиком
 					 * @param endStream       флаг завершения потока
 					 * @param maxFramePayload максимальный размер полезной нагрузки одного фрейма (SETTINGS_MAX_FRAME_SIZE пира)
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void headerBlock(string & output, const uint32_t streamId, string_view block, const bool endStream, const uint32_t maxFramePayload) noexcept;
 					/**
@@ -435,6 +464,7 @@ namespace awh {
 					 * @param promisedStreamId идентификатор обещанного потока
 					 * @param block            фрагмент блока заголовков HPACK
 					 * @param endHeaders       флаг завершения блока заголовков
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void pushPromise(string & output, const uint32_t streamId, const uint32_t promisedStreamId, string_view block, const bool endHeaders) noexcept;
 					/**
@@ -448,6 +478,7 @@ namespace awh {
 					 * @param promisedStreamId идентификатор обещанного потока
 					 * @param block            блок заголовков HPACK целиком
 					 * @param maxFramePayload  максимальный размер полезной нагрузки одного фрейма
+					 *
 					 */
 					__AWH_SHARED_EXPORT__ void pushPromiseBlock(string & output, const uint32_t streamId, const uint32_t promisedStreamId, string_view block, const uint32_t maxFramePayload) noexcept;
 				};

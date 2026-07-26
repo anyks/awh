@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Тесты проброса портов — проверка обнаружения маршрутизатора средствами UPnP и NAT-PMP и создания,
+ *        обновления и удаления правил перенаправления
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -38,6 +42,7 @@ namespace {
 	 *       и включаются установкой переменной окружения AWH_PORTMAP_LIVE
 	 *
 	 * @return флаг необходимости запуска сетевых тестов
+	 *
 	 */
 	bool liveTestsEnabled() noexcept {
 		// Получаем значение переменной окружения
@@ -52,6 +57,7 @@ namespace {
 	 * @param type       тип проброса порта
 	 * @param internalIp внутренний IPv4-адрес в строковом виде
 	 * @return           заполненная структура проброса порта
+	 *
 	 */
 	awh::eth::portmap_t::fwd_t makeForwarding(awh::net_addr_t * addr, const awh::eth::portmap_t::type_t type, const char * internalIp) noexcept {
 		// Создаём структуру проброса порта
@@ -128,6 +134,7 @@ TEST_F(EthFixture, PortMapMappingsInvariants){
  * @brief Тест безопасного завершения проброса для неопределённого типа
  *
  * @note Для типа NONE метод mapping() не выполняет сетевых операций и должен детерминированно вернуть false
+ *
  */
 TEST_F(EthFixture, PortMapMappingTypeNone){
 	// Формируем структуру проброса порта с неопределённым типом
@@ -141,6 +148,7 @@ TEST_F(EthFixture, PortMapMappingTypeNone){
  * @brief Тест переключения режима потокобезопасности
  *
  * @note Переключение режима не должно приводить к падению и должно быть идемпотентным
+ *
  */
 TEST_F(EthFixture, PortMapThreadSafetyToggle){
 	/**
@@ -166,6 +174,7 @@ TEST_F(EthFixture, PortMapThreadSafetyToggle){
  *
  * @note Проверяет отсутствие гонок при одновременном обращении нескольких потоков
  *       к статическому кешу IGD/шлюза (по умолчанию выполняется параллельное обнаружение)
+ *
  */
 TEST_F(EthFixture, PortMapConcurrentMappings){
 	// Включаем потокобезопасность для защиты доступа к общему кешу
@@ -213,6 +222,7 @@ TEST_F(EthFixture, PortMapConcurrentMappings){
  *
  * @note Требует маршрутизатор с поддержкой NAT-PMP. Включается переменной окружения AWH_PORTMAP_LIVE.
  *       Результат проброса зависит от внешней инфраструктуры, поэтому проверяются только инварианты при успехе.
+ *
  */
 TEST_F(EthFixture, PortMapNatPmpLive){
 	// Если сетевые тесты не включены
@@ -248,6 +258,7 @@ TEST_F(EthFixture, PortMapNatPmpLive){
  * @brief Сетевой тест проброса/удаления порта по протоколу UPnP (best-effort)
  *
  * @note Требует маршрутизатор с поддержкой UPnP IGD. Включается переменной окружения AWH_PORTMAP_LIVE.
+ *
  */
 TEST_F(EthFixture, PortMapUpnpLive){
 	// Если сетевые тесты не включены
@@ -272,6 +283,7 @@ TEST_F(EthFixture, PortMapUpnpLive){
  * @brief Сетевой тест проброса/удаления порта по протоколу PCP (best-effort)
  *
  * @note Требует маршрутизатор с поддержкой PCP. Включается переменной окружения AWH_PORTMAP_LIVE.
+ *
  */
 TEST_F(EthFixture, PortMapPcpLive){
 	// Если сетевые тесты не включены

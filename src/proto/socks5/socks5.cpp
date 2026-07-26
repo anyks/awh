@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация базового класса протокола SOCKS5 (RFC 1928) — общий конечный автомат обмена,
+ *        разбор и сборка адресов и UDP-заголовка, обработка кодов команд и статусов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -48,6 +52,7 @@ namespace {
 	 * @param data буфер входящих данных
 	 * @param size размер буфера входящих данных
 	 * @return     0 — кадр неполный; SIZE_MAX — кадр
+	 *
 	 */
 	size_t connectAddrSize(const uint8_t * data, const size_t size) noexcept {
 		// Если данных недостаточно для определения типа адреса
@@ -115,6 +120,7 @@ awh::proto::Socks5::Context::Context() noexcept :
  *
  * @param code код статуса
  * @return     текстовое значение кода статуса
+ *
  */
 string awh::proto::Socks5::statusMessage(const status_t code) noexcept {
 	/**
@@ -183,6 +189,7 @@ string awh::proto::Socks5::statusMessage(const status_t code) noexcept {
  * @param data  буфер входящих данных
  * @param size  размер буфера входящих данных
  * @return      0 — кадр неполный; SIZE_MAX — кадр некорректный; иначе размер кадра
+ *
  */
 size_t awh::proto::Socks5::frameSize(const socks5_t::state_t state, const uint8_t * data, const size_t size) noexcept {
 	// Если буфер входящих данных не передан
@@ -262,6 +269,7 @@ size_t awh::proto::Socks5::frameSize(const socks5_t::state_t state, const uint8_
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::proto::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример клиента для измерения пропускной способности канала — демонстрация непрерывной отправки данных на
+ *        сервер средствами движка ввода-вывода и подсчёта достигнутой скорости передачи
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -33,6 +37,7 @@ using namespace placeholders;
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка
@@ -72,6 +77,7 @@ int32_t main(int32_t argc, char * argv[]){
 				 * @brief Функция бесконечной отправки данных клиенту
 				 *
 				 * @param id идентификатор события
+				 *
 				 */
 				auto sendMessage = [&io, &log](const event::id_t id) noexcept -> void {
 					// Сообщение для отправки

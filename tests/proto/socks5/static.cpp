@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Статические тесты протокола SOCKS5 — проверка создания и сброса объекта модуля,
+ *        а также корректности обмена сообщениями приветствия и авторизации, разбора команд и формирования ответов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -43,6 +47,7 @@ using command_t = socks5_t::command_t;
  * @param domain доменное имя хоста
  * @param port   порт хоста
  * @return       сформированный объект адреса хоста
+ *
  */
 static std::unique_ptr <awh::net::attr_t> makeFQDN(const std::string & domain, const uint16_t port) noexcept {
 	// Создаём объект FQDN-адреса хоста

@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Пример работы с контейнером HTTP-заголовков — демонстрация добавления, поиска и удаления полей,
+ *        обхода итераторами и работы с множественными значениями одного заголовка
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -40,6 +44,7 @@ using namespace awh::http;
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleBasic(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -74,6 +79,7 @@ static void sampleBasic(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleMulti(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -114,6 +120,7 @@ static void sampleMulti(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleIterate(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -146,6 +153,7 @@ static void sampleIterate(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleRequest(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -170,6 +178,7 @@ static void sampleRequest(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleResponse(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -196,6 +205,7 @@ static void sampleResponse(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleHttp2(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -216,6 +226,7 @@ static void sampleHttp2(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleMerge(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -248,6 +259,7 @@ static void sampleMerge(const fmk_t * fmk, const log_t * log) noexcept {
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 static void sampleConvert(const fmk_t * fmk, const log_t * log) noexcept {
 	// Печатаем заголовок демонстрации
@@ -277,6 +289,7 @@ static void sampleConvert(const fmk_t * fmk, const log_t * log) noexcept {
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения
+ *
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка

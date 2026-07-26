@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл транспортных параметров QUIC (RFC 9000 §18) —
+ *        структура параметров соединения с значениями по умолчанию,
+ *        предпочтительный адрес сервера и функции их разбора и сборки с контролем ролевых ограничений
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 #ifndef __AWH_PROTO_QUIC_PARAMS__
@@ -51,6 +56,7 @@ namespace awh {
 		 *          без общего заголовка. Неизвестные параметры игнорируются, дубликаты и
 		 *          нарушение ролевых ограничений - TRANSPORT_PARAMETER_ERROR (RFC 9000 §7.4).
 		 *          Слой не хранит состояния соединения - это чистые функции над байтами.
+		 *
 		 */
 		namespace params {
 			/**
@@ -107,6 +113,7 @@ namespace awh {
 			 *
 			 * @details Скалярные поля инициализируются значениями по умолчанию из RFC 9000 §18.2.
 			 *          Наличие параметров без значений по умолчанию отражают флаги has*
+			 *
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Params {
 				// Флаг наличия исходного DCID первого пакета Initial клиента
@@ -183,6 +190,7 @@ namespace awh {
 				 * @param output разобранные параметры транспорта
 				 * @param error  код ошибки транспорта
 				 * @return       результат разбора (OK/ERROR)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ status_t decode(const uint8_t * data, const size_t size, const endpoint_t sender, params_t & output, error_t & error) noexcept;
 			};
@@ -202,6 +210,7 @@ namespace awh {
 				 * @param params параметры транспорта
 				 * @param sender роль эндпоинта, кодирующего параметры
 				 * @return       результат сборки (false - некорректные параметры)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ bool encode(string & output, const params_t & params, const endpoint_t sender) noexcept;
 				/**
@@ -216,6 +225,7 @@ namespace awh {
 				 * @param output выходной буфер контекста ранних данных
 				 * @param params параметры транспорта
 				 * @return       результат сборки (false - некорректные параметры)
+				 *
 				 */
 				__AWH_SHARED_EXPORT__ bool early(string & output, const params_t & params) noexcept;
 			};

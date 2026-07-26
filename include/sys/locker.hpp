@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Заголовочный файл модуля блокировок — классы Locker, LockState и Enabled_Property,
+ *        обеспечивающие управление исключительными и разделяемыми мьютексами,
+ *        отслеживание состояния блокировок и булевы свойства с уведомлением об изменении
+ *
  * @copyright: Copyright © 2025
+ *
  */
 
 /**
@@ -48,6 +53,7 @@ namespace awh {
 	 * @note Работает в C++17 через SFINAE
 	 *
 	 * @tparam T тип данных для проверки поддержки shared_lock
+	 *
 	 */
 	template <typename T, typename = void>
 	/**
@@ -62,6 +68,7 @@ namespace awh {
 	 * @note Работает в C++17 через SFINAE
 	 *
 	 * @tparam T тип данных для проверки поддержки shared_lock
+	 *
 	 */
 	template <typename T>
 	/**
@@ -86,6 +93,7 @@ namespace awh {
 			 * @brief Функция обратного вызова для дополнительных действий при изменении значения свойства
 			 *
 			 * @param value новое значение свойства
+			 *
 			 */
 			function <void (bool)> _callback;
 		public:
@@ -93,6 +101,7 @@ namespace awh {
 			 * @brief Оператор преобразования к булевому типу для получения текущего значения свойства
 			 *
 			 * @return текущее значение свойства
+			 *
 			 */
 			operator bool() const noexcept {
 				// Возвращаем текущее значение свойства
@@ -104,6 +113,7 @@ namespace awh {
 			 *
 			 * @param value булевое значение для сравнения
 			 * @return      результат сравнения
+			 *
 			 */
 			bool operator != (const bool value) const noexcept {
 				// Сравниваем текущее значение свойства с заданным значением
@@ -114,6 +124,7 @@ namespace awh {
 			 *
 			 * @param value булевое значение для сравнения
 			 * @return      результат сравнения
+			 *
 			 */
 			bool operator == (const bool value) const noexcept {
 				// Сравниваем текущее значение свойства с заданным значением
@@ -125,6 +136,7 @@ namespace awh {
 			 *
 			 * @param other другое свойство для копирования значения
 			 * @return      ссылка на текущий объект для цепочки присваиваний
+			 *
 			 */
 			Enabled_Property & operator = (const Enabled_Property & other) noexcept {
 				// Копируем значение из другого свойства
@@ -136,6 +148,7 @@ namespace awh {
 			 *
 			 * @param value новое значение свойства
 			 * @return      ссылка на текущий объект для цепочки присваиваний
+			 *
 			 */
 			Enabled_Property & operator = (const bool value) noexcept {
 				// Если значение изменилось
@@ -156,6 +169,7 @@ namespace awh {
 			 *
 			 * @param value    начальное значение свойства
 			 * @param callback функция обратного вызова для дополнительных действий при изменении значения 
+			 *
 			 */
 			Enabled_Property(const bool value, function <void (bool)> callback = nullptr) noexcept :
 			 _value(value), _callback(callback) {}
@@ -165,6 +179,7 @@ namespace awh {
 	 * @brief Шаблон формата данных состояния блокировок
 	 *
 	 * @tparam MutexType тип данных состояния блокировок
+	 *
 	 */
 	template <typename MutexType = std::mutex>
 	/**
@@ -177,6 +192,7 @@ namespace awh {
 			 * @brief Шаблон формата данных локера
 			 *
 			 * @tparam T тип данных локера
+			 *
 			 */
 			template <typename T>
 			/**
@@ -203,6 +219,7 @@ namespace awh {
 			 * @note Выполняет ленивое создание мьютекса и его пересоздание после fork
 			 *
 			 * @return указатель на актуальный рабочий мьютекс
+			 *
 			 */
 			MutexType * _ensure() noexcept {
 				// Если идентификатор процесса не совпадает (например, после fork)
@@ -226,6 +243,7 @@ namespace awh {
 			 * @brief Метод, который будет вызван при изменении флага активации/деактивации блокировок
 			 *
 			 * @param value новое значение флага
+			 *
 			 */
 			void onEnabledChanged(const bool value) noexcept {
 				// Устанавливаем новое значение флага активации/деактивации блокировок
@@ -275,6 +293,7 @@ namespace awh {
 				 * @brief Функция обратного вызова для изменения флага активации/деактивации блокировок
 				 *
 				 * @param value новое значение флага
+				 *
 				 */
 				[this](const bool value) noexcept {
 					// Устанавливаем новое значение флага активации/деактивации блокировок
@@ -289,6 +308,7 @@ namespace awh {
 	 * @brief Шаблон формата данных состояния блокировок
 	 *
 	 * @tparam T данные состояния блокировок
+	 *
 	 */
 	template <typename MutexType = std::mutex>
 	/**
@@ -301,6 +321,7 @@ namespace awh {
 	 * @brief Шаблон формата данных состояния блокировок
 	 *
 	 * @tparam MutexType тип данных состояния блокировок
+	 *
 	 */
 	template <typename MutexType = std::mutex>
 	/**
@@ -347,6 +368,7 @@ namespace awh {
 			 * @brief Шаблон метода блокировки в эксклюзивном режиме
 			 *
 			 * @tparam M тип данных мьютекса
+			 *
 			 */
 			template <typename M = MutexType>
 			/**
@@ -363,6 +385,7 @@ namespace awh {
 			 * @brief Шаблон метода разблокировки в эксклюзивном режиме
 			 *
 			 * @tparam M тип данных мьютекса
+			 *
 			 */
 			template <typename M = MutexType>
 			/**
@@ -380,12 +403,14 @@ namespace awh {
 			 * @brief Шаблон метода разделённой блокировки
 			 *
 			 * @tparam M тип данных мьютекса
+			 *
 			 */
 			template <typename M = MutexType>
 			/**
 			 * @brief Метод разделённой блокировки
 			 *
 			 * @return результат выполнения операции
+			 *
 			 */
 			typename std::enable_if <has_shared_lock <M>::value, void>::type _lockImpl(std::true_type) noexcept {
 				// Если мьютекс существует
@@ -397,12 +422,14 @@ namespace awh {
 			 * @brief Шаблон метода уникальной блокировки при поддержке shared_lock
 			 *
 			 * @tparam M тип данных мьютекса
+			 *
 			 */
 			template <typename M = MutexType>
 			/**
 			 * @brief Метод уникальной блокировки при отсутствии поддержки shared_lock
 			 *
 			 * @return результат выполнения операции
+			 *
 			 */
 			typename std::enable_if <!has_shared_lock <M>::value, void>::type _lockImpl(std::true_type) noexcept {
 				// Если мьютекс существует
@@ -415,12 +442,14 @@ namespace awh {
 			 * @brief Шаблон метода разделённой разблокировки
 			 *
 			 * @tparam M тип данных мьютекса
+			 *
 			 */
 			template <typename M = MutexType>
 			/**
 			 * @brief Метод разделённой разблокировки
 			 *
 			 * @return результат выполнения операции
+			 *
 			 */
 			typename std::enable_if <has_shared_lock <M>::value, void>::type _unlockImpl(std::true_type) noexcept {
 				// Если мьютекс существует
@@ -432,12 +461,14 @@ namespace awh {
 			 * @brief Шаблон метода уникальной разблокировки при поддержке shared_lock
 			 *
 			 * @tparam M тип данных мьютекса
+			 *
 			 */
 			template <typename M = MutexType>
 			/**
 			 * @brief Метод уникальной разблокировки при отсутствии поддержки shared_lock
 			 *
 			 * @return результат выполнения операции
+			 *
 			 */
 			typename std::enable_if <!has_shared_lock <M>::value, void>::type _unlockImpl(std::true_type) noexcept {
 				// Если мьютекс существует
@@ -484,6 +515,7 @@ namespace awh {
 			 *
 			 * @param state объект состояния блокировок
 			 * @param mode  режим блокировки (по умолчанию Exclusive для обратной совместимости)
+			 *
 			 */
 			explicit Locker(LockState <MutexType> & state, mode_t mode = mode_t::EXCLUSIVE) noexcept
 			 : _locked(false), _mode(mode), _state(state), _held(nullptr) {
@@ -514,6 +546,7 @@ namespace awh {
 	 * @brief Шаблон формата данных локера
 	 *
 	 * @tparam MutexType данные локера
+	 *
 	 */
 	template <typename MutexType = std::mutex>
 	/**

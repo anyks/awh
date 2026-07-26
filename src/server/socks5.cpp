@@ -9,7 +9,12 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Реализация сервера SOCKS5-прокси — авторизация клиентов,
+ *        установка исходящих соединений по командам CONNECT и BIND,
+ *        проксирование трафика и обслуживание UDP-ассоциаций через пул выделенных UDP-серверов
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -96,6 +101,7 @@ namespace {
 			 * @brief Метод получения количества доступных портов для выделения
 			 *
 			 * @return количество доступных портов для выделения
+			 *
 			 */
 			size_t available() const noexcept {
 				// Возвращаем количество доступных портов для выделения
@@ -106,6 +112,7 @@ namespace {
 			 * @brief Метод возвращения порта в пул после его использования
 			 *
 			 * @param port порт для возвращения в пул
+			 *
 			 */
 			void release(const uint16_t port) noexcept {
 				// Защита от дублирования порта при повторном освобождении
@@ -118,6 +125,7 @@ namespace {
 			 * @brief Метод выделения порта для UDP сервера
 			 *
 			 * @return выделенный порт или nullopt, если порты закончились
+			 *
 			 */
 			optional <uint16_t> allocate() noexcept {
 				// Если список портов для выделения пуст
@@ -140,6 +148,7 @@ namespace {
 			 * @param min минимальный порт для выделения
 			 * @param max максимальный порт для выделения
 			 * @throws    std::invalid_argument если диапазон портов некорректный
+			 *
 			 */
 			void init(const uint32_t min, const uint32_t max) noexcept {
 				// Очищаем множество свободных портов
@@ -202,6 +211,7 @@ namespace {
 	 * @param events список идентификаторов UDP-серверов
 	 * @param eid    идентификатор события
 	 * @return       результат проверки
+	 *
 	 */
 	bool udpEventHas(const unordered_set <event::id_t> & events, const event::id_t eid) noexcept {
 		// Выполняем поиск идентификатора события в множестве
@@ -213,6 +223,7 @@ namespace {
 	 *
 	 * @param events список идентификаторов UDP-серверов
 	 * @param eid    идентификатор события
+	 *
 	 */
 	void udpEventRemove(vector <event::id_t> & events, unordered_set <event::id_t> & eventSet, const event::id_t eid) noexcept {
 		// Выполняем поиск идентификатора события в списке
@@ -282,6 +293,7 @@ namespace {
 	 *
 	 * @param seed  исходный хеш-код
 	 * @param value добавочный хеш-код
+	 *
 	 */
 	void combine(size_t & seed, const size_t value) noexcept {
 		// Комбинируем хеш-коды
@@ -318,6 +330,7 @@ namespace {
  *
  * @param addr объект параметров подключения инициатора запроса
  * @return     идентификатор инициатора запроса
+ *
  */
 awh::server::Socks5::Origin & awh::server::Socks5::Origin::from(const net::attr_t * addr) noexcept {
 	// Если объект параметров подключения инициатора запроса передан корректно
@@ -369,6 +382,7 @@ awh::server::Socks5::Origin & awh::server::Socks5::Origin::from(const net::attr_
  *
  * @param other другой объект для сравнения
  * @return      результат сравнения
+ *
  */
 bool awh::server::Socks5::Origin::operator == (const Origin & other) const noexcept {
 	// Сравниваем семейство адресов
@@ -415,6 +429,7 @@ awh::server::Socks5::Origin::Origin() noexcept : type(net::type_t::NONE) {};
  *
  * @param id объект для вычисления хеш-кода
  * @return   хеш-код объекта
+ *
  */
 size_t awh::server::Socks5::Origin_Hash::operator()(const origin_t & id) const noexcept {
 	// Вычисляем начальный хеш-код по семейству адресов
@@ -474,6 +489,7 @@ awh::server::Socks5::UDP_Server::UDP_Server() noexcept :
  * @brief Метод удаления связи DNS-запроса с пиром
  *
  * @param did идентификатор DNS-запроса
+ *
  */
 void awh::server::Socks5::dropResolve(const unit::dns_t::id_t did) noexcept {
 	// Выполняем поиск идентификатора DNS-запроса
@@ -490,6 +506,7 @@ void awh::server::Socks5::dropResolve(const unit::dns_t::id_t did) noexcept {
  * @param ctx      контекст протокола SOCKS5
  * @param dropPeer закрыть пира после ответа об ошибке
  * @return         результат отправки ответа
+ *
  */
 bool awh::server::Socks5::sendReply(const event::id_t eid, proto::socks5_t::ctx_t & ctx, const bool dropPeer) noexcept {
 	// Размер буфера данных
@@ -533,6 +550,7 @@ bool awh::server::Socks5::sendReply(const event::id_t eid, proto::socks5_t::ctx_
  *
  * @param index  индекс очереди запускаемого события
  * @param status новый статус сервера
+ *
  */
 void awh::server::Socks5::status(const uint8_t index, const event::status_t status) noexcept {
 	/**
@@ -952,6 +970,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
  *
  * @param pid   идентификатор процесса
  * @param event событие кластера
+ *
  */
 void awh::server::Socks5::eventsCluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept {
 	/**
@@ -1054,6 +1073,7 @@ void awh::server::Socks5::eventsCluster(const pid_t pid, const unit::cluster_t::
  * @param pid  идентификатор процесса
  * @param data данные полученного сообщения
  * @param size размер данных полученного сообщения
+ *
  */
 void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, const size_t size) noexcept {
 	// Если данные получены успешно и размер данных больше нуля
@@ -1323,6 +1343,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
  *
  * @param eid идентификатор клиента
  * @param ok  результат подключения
+ *
  */
 void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
@@ -1482,6 +1503,7 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
  *
  * @param eid    идентификатор события клиента
  * @param status новый статус события
+ *
  */
 void awh::server::Socks5::statusClient(const event::id_t eid, const event::status_t status) noexcept {
 	// Ищем идентификатор клиента в списке сопоставления идентификаторов клиентов с пирами которым они принадлежат
@@ -1510,6 +1532,7 @@ void awh::server::Socks5::statusClient(const event::id_t eid, const event::statu
  * @param eid    идентификатор клиента
  * @param buffer буфер данных клиента
  * @param size   размер данных клиента
+ *
  */
 void awh::server::Socks5::readClient(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
 	// Ищем идентификатор клиента в списке сопоставления идентификаторов клиентов с пирами которым они принадлежат
@@ -1614,6 +1637,7 @@ void awh::server::Socks5::readClient(const event::id_t eid, const uint8_t * buff
  * @param eid     идентификатор события
  * @param error   код ошибки
  * @param message сообщение об ошибке
+ *
  */
 void awh::server::Socks5::errorClient(const event::id_t eid, const event::error_t error, const string & message) noexcept {
 	// Выполняем получение идентификатора функции обратного вызова
@@ -1635,6 +1659,7 @@ void awh::server::Socks5::errorClient(const event::id_t eid, const event::error_
  * @param action тип действия для истекшего таймаута
  * @param delay  задержка таймаута в миллисекундах
  * @return       нужно ли завершить клиента после истечения таймаута
+ *
  */
 bool awh::server::Socks5::timeoutClient(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
@@ -1659,6 +1684,7 @@ bool awh::server::Socks5::timeoutClient(const event::id_t eid, const event::acti
  *
  * @param eid идентификатор сервера
  * @param cid идентификатор клиента
+ *
  */
 void awh::server::Socks5::accept(const event::id_t eid, const event::id_t cid) noexcept {
 	/**
@@ -1794,6 +1820,7 @@ void awh::server::Socks5::accept(const event::id_t eid, const event::id_t cid) n
  * @param eid    идентификатор клиента
  * @param status новый статус сервера
  * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
+ *
  */
 void awh::server::Socks5::state(const event::id_t eid, const event::status_t status, void * ctx) noexcept {
 	/**
@@ -1915,6 +1942,7 @@ void awh::server::Socks5::state(const event::id_t eid, const event::status_t sta
  * @param buffer буфер данных сервера
  * @param size   размер данных сервера
  * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
+ *
  */
 void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size_t size, [[maybe_unused]] void * ctx) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
@@ -2980,6 +3008,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
  * @param id     идентификатор DNS-запроса
  * @param record тип записи DNS
  * @param domain доменное имя
+ *
  */
 void awh::server::Socks5::failure(const unit::dns_t::id_t id, const unit::dns_t::record_t record, const string & domain) noexcept {
 	// Если DNS-резолвер не установлен или не находится в рабочем состоянии
@@ -3060,6 +3089,7 @@ void awh::server::Socks5::failure(const unit::dns_t::id_t id, const unit::dns_t:
  * @param family семейство адресов (IPv4/IPv6)
  * @param domain доменное имя для резолвинга
  * @param addr   указатель на структуру для хранения результата резолвинга
+ *
  */
 void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept {
 	// Если DNS-резолвер не установлен или не находится в рабочем состоянии
@@ -3530,6 +3560,7 @@ void awh::server::Socks5::start() noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения приостановки работы
+ *
  */
 bool awh::server::Socks5::pause(const event::id_t eid) noexcept {
 	/**
@@ -3568,6 +3599,7 @@ bool awh::server::Socks5::pause(const event::id_t eid) noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения возобновления работы
+ *
  */
 bool awh::server::Socks5::resume(const event::id_t eid) noexcept {
 	/**
@@ -3605,6 +3637,7 @@ bool awh::server::Socks5::resume(const event::id_t eid) noexcept {
  * @brief Метод уничтожения события клиента
  *
  * @param eid идентификатор события клиента для уничтожения
+ *
  */
 void awh::server::Socks5::destroy(const event::id_t eid) noexcept {
 	/**
@@ -3647,6 +3680,7 @@ void awh::server::Socks5::destroy(const event::id_t eid) noexcept {
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
+ *
  */
 void awh::server::Socks5::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
@@ -3660,6 +3694,7 @@ void awh::server::Socks5::callback(const callback_t & callback) noexcept {
  * @brief Метод получения данных от клиента (заглушка для сервера SOCKS5)
  *
  * @return результат получения данных
+ *
  */
 bool awh::server::Socks5::recv(const event::id_t) noexcept {
 	// Возвращаем значение по умолчанию
@@ -3669,6 +3704,7 @@ bool awh::server::Socks5::recv(const event::id_t) noexcept {
  * @brief Метод отправки данных клиенту (заглушка для сервера SOCKS5)
  *
  * @return количество байт данных, отправленных клиенту
+ *
  */
 size_t awh::server::Socks5::send(const event::id_t, const void *, const size_t) noexcept {
 	// Возвращаем значение по умолчанию
@@ -3678,6 +3714,7 @@ size_t awh::server::Socks5::send(const event::id_t, const void *, const size_t) 
  * @brief Метод перемещения данных между сервером и другим событием (заглушка для сервера SOCKS5)
  *
  * @return результат выполнения перемещения
+ *
  */
 bool awh::server::Socks5::splice(const event::id_t, const event::id_t) noexcept {
 	// Возвращаем значение по умолчанию
@@ -3688,6 +3725,7 @@ bool awh::server::Socks5::splice(const event::id_t, const event::id_t) noexcept 
  *
  * @param eid идентификатор события клиента
  * @return    опции клиента
+ *
  */
 uint16_t awh::server::Socks5::getOptions(const event::id_t eid) const noexcept {
 	/**
@@ -3734,6 +3772,7 @@ uint16_t awh::server::Socks5::getOptions(const event::id_t eid) const noexcept {
  * @param eid     идентификатор события клиента
  * @param options опции клиента для установки
  * @return        результат выполнения установки
+ *
  */
 bool awh::server::Socks5::setOptions(const event::id_t eid, const uint16_t options) noexcept {
 	/**
@@ -3786,6 +3825,7 @@ bool awh::server::Socks5::setOptions(const event::id_t eid, const uint16_t optio
  * @param option опция клиента для установки
  * @param mode   режим установки опции клиента
  * @return       результат выполнения установки
+ *
  */
 bool awh::server::Socks5::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
 	/**
@@ -3834,6 +3874,7 @@ bool awh::server::Socks5::setOption(const event::id_t eid, const uint16_t option
  * @brief Метод получения сетевого интерфейса для подключения к сети клиентов
  *
  * @return сетевой интерфейс сервера
+ *
  */
 string awh::server::Socks5::getIface() const noexcept {
 	// Если идентификатор сервера установлен
@@ -3864,6 +3905,7 @@ string awh::server::Socks5::getIface() const noexcept {
  *
  * @param eid идентификатор события сервера
  * @return    сетевой интерфейс сервера
+ *
  */
 string awh::server::Socks5::getIface(const event::id_t eid) const noexcept {
 	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
@@ -3903,6 +3945,7 @@ string awh::server::Socks5::getIface(const event::id_t eid) const noexcept {
  *
  * @param name имя сетевого интерфейса для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::server::Socks5::setIface(string_view name) noexcept {
 	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
@@ -3937,6 +3980,7 @@ bool awh::server::Socks5::setIface(string_view name) noexcept {
  * @param eid  идентификатор события сервера
  * @param name имя сетевого интерфейса для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::server::Socks5::setIface(const event::id_t eid, string_view name) noexcept {
 	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
@@ -3977,6 +4021,7 @@ bool awh::server::Socks5::setIface(const event::id_t eid, string_view name) noex
  * @brief Метод получения порта сервера
  *
  * @return порт сервера
+ *
  */
 uint16_t awh::server::Socks5::getSourcePort() const noexcept {
 	// Если идентификатор сервера установлен
@@ -4007,6 +4052,7 @@ uint16_t awh::server::Socks5::getSourcePort() const noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    внутренний порт клиента
+ *
  */
 uint16_t awh::server::Socks5::getSourcePort(const event::id_t eid) const noexcept {
 	/**
@@ -4045,6 +4091,7 @@ uint16_t awh::server::Socks5::getSourcePort(const event::id_t eid) const noexcep
  *
  * @param port порт сервера для установки
  * @return     результат выполнения установки
+ *
  */
 bool awh::server::Socks5::setSourcePort(const uint16_t port) noexcept {
 	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
@@ -4078,6 +4125,7 @@ bool awh::server::Socks5::setSourcePort(const uint16_t port) noexcept {
  *
  * @param eid идентификатор события клиента или сервера
  * @return    порт удалённого клиента или текущего сервера
+ *
  */
 uint16_t awh::server::Socks5::getTargetPort(const event::id_t eid) const noexcept {
 	// Выполняем поиск идентификатор события подключённого пира
@@ -4110,6 +4158,7 @@ uint16_t awh::server::Socks5::getTargetPort(const event::id_t eid) const noexcep
  *
  * @param eid идентификатор события клиента
  * @return    адрес хоста целевой машины
+ *
  */
 string awh::server::Socks5::getTarget(const event::id_t eid) const noexcept {
 	/**
@@ -4149,6 +4198,7 @@ string awh::server::Socks5::getTarget(const event::id_t eid) const noexcept {
  * @param eid    идентификатор события клиента
  * @param target объект для извлечения адреса хоста целевой машины
  * @return       результат выполнения извлечения адреса хоста целевой машины
+ *
  */
 bool awh::server::Socks5::getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept {
 	/**
@@ -4188,6 +4238,7 @@ bool awh::server::Socks5::getTarget(const event::id_t eid, unique_ptr <net::addr
  * @param address тип адреса сервера
  * @param value   значение адреса сервера
  * @return        результат выполнения установки
+ *
  */
 bool awh::server::Socks5::setAddress(const event::address_t address, string_view value) noexcept {
 	// Переменная результата
@@ -4245,6 +4296,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, string_view
  * @param address тип адреса сервера
  * @param value   значение адреса сервера
  * @return        результат выполнения установки
+ *
  */
 bool awh::server::Socks5::setAddress(const event::address_t address, const net::addr_t * value) noexcept {
 	// Переменная результата
@@ -4303,6 +4355,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, const net::
  * @param address тип адреса сервера
  * @param value   значение адреса сервера
  * @return        результат выполнения установки
+ *
  */
 bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
 	/**
@@ -4352,6 +4405,7 @@ bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address
  * @param address тип адреса сервера
  * @param value   значение адреса сервера
  * @return        результат выполнения установки
+ *
  */
 bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
 	/**
@@ -4399,6 +4453,7 @@ bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address
  *
  * @param address тип адреса сервера
  * @return        значение адреса сервера
+ *
  */
 string awh::server::Socks5::getAddress(const event::address_t address) const noexcept {
 	// Если идентификатор сервера установлен
@@ -4430,6 +4485,7 @@ string awh::server::Socks5::getAddress(const event::address_t address) const noe
  * @param address тип адреса сервера
  * @param value   объект для извлечения адреса сервера
  * @return        результат выполнения извлечения адреса сервера
+ *
  */
 bool awh::server::Socks5::getAddress(const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Если идентификатор сервера установлен
@@ -4461,6 +4517,7 @@ bool awh::server::Socks5::getAddress(const event::address_t address, unique_ptr 
  * @param eid     идентификатор события клиента или сервера
  * @param address тип адреса клиента или сервера
  * @return        значение адреса клиента или сервера
+ *
  */
 string awh::server::Socks5::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
 	/**
@@ -4506,6 +4563,7 @@ string awh::server::Socks5::getAddress(const event::id_t eid, const event::addre
  * @param address тип адреса клиента или сервера
  * @param value   объект для извлечения адреса клиента или сервера
  * @return        результат выполнения извлечения адреса клиента или сервера
+ *
  */
 bool awh::server::Socks5::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	/**
@@ -4550,6 +4608,7 @@ bool awh::server::Socks5::getAddress(const event::id_t eid, const event::address
  * @param eid    идентификатор события клиента
  * @param action тип действия клиента
  * @return       размер буфера клиента
+ *
  */
 size_t awh::server::Socks5::getBufferSize(const event::id_t eid, const event::action_t action) const noexcept {
 	/**
@@ -4590,6 +4649,7 @@ size_t awh::server::Socks5::getBufferSize(const event::id_t eid, const event::ac
  * @param action тип действия клиента
  * @param size   размер буфера клиента
  * @return       результат выполнения установки
+ *
  */
 bool awh::server::Socks5::setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept {
 	/**
@@ -4627,6 +4687,7 @@ bool awh::server::Socks5::setBufferSize(const event::id_t eid, const event::acti
  * @brief Метод получения режима использования таймаута на чтение события
  *
  * @return режим использования таймаута на чтение события
+ *
  */
 awh::event::usage_t awh::server::Socks5::getUsageReadTimeout() const noexcept {
 	// Если идентификатор сервера установлен
@@ -4657,6 +4718,7 @@ awh::event::usage_t awh::server::Socks5::getUsageReadTimeout() const noexcept {
  *
  * @param eid идентификатор события клиента
  * @return    режим использования таймаута на чтение события клиента
+ *
  */
 awh::event::usage_t awh::server::Socks5::getUsageReadTimeout(const event::id_t eid) const noexcept {
 	/**
@@ -4694,6 +4756,7 @@ awh::event::usage_t awh::server::Socks5::getUsageReadTimeout(const event::id_t e
  * @brief Метод установки режима использования таймаута на чтение события
  *
  * @param usage режим использования таймаута на чтение события (reusable или disposable)
+ *
  */
 void awh::server::Socks5::setUsageReadTimeout(const event::usage_t usage) noexcept {
 	// Если идентификатор сервера установлен
@@ -4722,6 +4785,7 @@ void awh::server::Socks5::setUsageReadTimeout(const event::usage_t usage) noexce
  *
  * @param eid   идентификатор события клиента
  * @param usage режим использования таймаута на чтение события клиента (reusable или disposable)
+ *
  */
 void awh::server::Socks5::setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept {
 	/**
@@ -4758,6 +4822,7 @@ void awh::server::Socks5::setUsageReadTimeout(const event::id_t eid, const event
  *
  * @param action тип действия сервера
  * @return       значение таймаута в миллисекундах
+ *
  */
 uint32_t awh::server::Socks5::getTimeout(const event::action_t action) const noexcept {
 	// Если идентификатор сервера установлен
@@ -4789,6 +4854,7 @@ uint32_t awh::server::Socks5::getTimeout(const event::action_t action) const noe
  * @param eid    идентификатор события клиента
  * @param action тип действия клиента
  * @return       значение таймаута в миллисекундах
+ *
  */
 uint32_t awh::server::Socks5::getTimeout(const event::id_t eid, const event::action_t action) const noexcept {
 	/**
@@ -4827,6 +4893,7 @@ uint32_t awh::server::Socks5::getTimeout(const event::id_t eid, const event::act
  *
  * @param action  тип действия сервера
  * @param timeout значение таймаута в миллисекундах
+ *
  */
 void awh::server::Socks5::setTimeout(const event::action_t action, const uint32_t timeout) noexcept {
 	// Если идентификатор сервера установлен
@@ -4856,6 +4923,7 @@ void awh::server::Socks5::setTimeout(const event::action_t action, const uint32_
  * @param eid     идентификатор события клиента
  * @param action  тип действия клиента
  * @param timeout значение таймаута в миллисекундах
+ *
  */
 void awh::server::Socks5::setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept {
 	/**
@@ -4893,6 +4961,7 @@ void awh::server::Socks5::setTimeout(const event::id_t eid, const event::action_
  * @param limiting  режим ограничения пропускной способности сервера (egress или ingress)
  * @param bandwidth пропускная способность сервера для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
  * @return          результат выполнения установки
+ *
  */
 bool awh::server::Socks5::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Если идентификатор сервера установлен
@@ -4925,6 +4994,7 @@ bool awh::server::Socks5::bandwidth(const event::limiting_t limiting, string_vie
  * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
  * @param bandwidth пропускная способность клиента для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
  * @return          результат выполнения установки
+ *
  */
 bool awh::server::Socks5::bandwidth(const event::id_t eid, const event::limiting_t limiting, string_view bandwidth) noexcept {
 	/**
@@ -4966,6 +5036,7 @@ bool awh::server::Socks5::bandwidth(const event::id_t eid, const event::limiting
  * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
  * @param intvl интервал между пакетами keep-alive в секундах
  * @return      результат выполнения установки
+ *
  */
 bool awh::server::Socks5::keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	/**
@@ -5006,6 +5077,7 @@ bool awh::server::Socks5::keepAlive(const event::id_t eid, const int32_t cnt, co
  * @brief Метод активации/деактивации мультикаст группы (заглушка для сервера SOCKS5)
  *
  * @return результат выполнения установки
+ *
  */
 bool awh::server::Socks5::membership(const event::mode_t, string_view, string_view, const uint16_t) noexcept {
 	// Возвращаем значение по умолчанию
@@ -5015,6 +5087,7 @@ bool awh::server::Socks5::membership(const event::mode_t, string_view, string_vi
  * @brief Метод активации/деактивации мультикаст группы (заглушка для сервера SOCKS5)
  *
  * @return результат выполнения установки
+ *
  */
 bool awh::server::Socks5::membership(const event::mode_t, const net::addr_t *, const net::addr_t *, const uint16_t) noexcept {
 	// Возвращаем значение по умолчанию
@@ -5026,6 +5099,7 @@ bool awh::server::Socks5::membership(const event::mode_t, const net::addr_t *, c
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::server::Socks5::clusterSend(const void * buffer, const size_t size) noexcept {
 	/**
@@ -5090,6 +5164,7 @@ size_t awh::server::Socks5::clusterSend(const void * buffer, const size_t size) 
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::server::Socks5::clusterSend(const pid_t pid, const void * buffer, const size_t size) noexcept {
 	/**
@@ -5153,6 +5228,7 @@ size_t awh::server::Socks5::clusterSend(const pid_t pid, const void * buffer, co
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  * @return       количество байт отправленного сообщения
+ *
  */
 size_t awh::server::Socks5::clusterBroadcast(const void * buffer, const size_t size) noexcept {
 	/**
@@ -5217,6 +5293,7 @@ size_t awh::server::Socks5::clusterBroadcast(const void * buffer, const size_t s
  * @param begin начальный порт диапазона для выделения
  * @param end   конечный порт диапазона для выделения
  * @param addr  адрес для запуска UDP-серверов
+ *
  */
 void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const uint16_t end, string_view addr) noexcept {
 	/**
@@ -5282,6 +5359,7 @@ void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const 
  * @param begin начальный порт диапазона для выделения
  * @param end   конечный порт диапазона для выделения
  * @param addr  адрес для запуска UDP-серверов
+ *
  */
 void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const uint16_t end, const net::addr_t * addr) noexcept {
 	/**
@@ -5360,6 +5438,7 @@ void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const 
  *
  * @param addr  объект параметров подключения внутреннего адреса
  * @param alias объект параметров подключения алиаса для внутреннего адреса
+ *
  */
 void awh::server::Socks5::setAlias(const net::attr_t * addr, const net::attr_t * alias) noexcept {
 	/**
@@ -5471,6 +5550,7 @@ void awh::server::Socks5::setAlias(const net::attr_t * addr, const net::attr_t *
  * @param intPort порт внутреннего адреса работающий за NAT
  * @param alias   внешний адрес для алиаса внутреннего адреса
  * @param extPort внешний порт для алиаса внутреннего адреса
+ *
  */
 void awh::server::Socks5::setAlias(string_view addr, const uint16_t intPort, string_view alias, const uint16_t extPort) noexcept {
 	/**
@@ -5594,6 +5674,7 @@ void awh::server::Socks5::setAlias(string_view addr, const uint16_t intPort, str
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::server::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept :
  server_t(fmk, log), _eth(fmk, log), _client(fmk, log), _socks5(fmk, log) {
@@ -5618,6 +5699,7 @@ awh::server::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept :
  * @param dns объект DNS-резолвера
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
 awh::server::Socks5::Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  server_t(dns, fmk, log), _eth(fmk, log), _client(fmk, log), _socks5(fmk, log) {

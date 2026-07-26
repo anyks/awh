@@ -9,7 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * @brief Тесты сборки исходящих сообщений HTTP/1.x — проверка формирования стартовой строки,
+ *        заголовков и тела с кадрированием chunked и Content-Length
+ *
  * @copyright: Copyright © 2026
+ *
  */
 
 /**
@@ -42,6 +46,7 @@ namespace {
 	 *
 	 * @param sender   объект парсера-отправителя
 	 * @param receiver объект парсера-приёмника
+	 *
 	 */
 	void drain(parser_http_t & sender, parser_http_t & receiver) noexcept {
 		/**
