@@ -1821,7 +1821,7 @@ auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash) c
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
 						static_cast <uint16_t> (hash)
 					), log_t::flag_t::WARNING,
-					key.data(),
+					string(key).c_str(),
 					string(reinterpret_cast <const char *> (buffer.data()), buffer.size()).c_str()
 				);
 			/**
@@ -1832,7 +1832,7 @@ auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash) c
 				this->_log->print(
 					"Key \"%s\" and text \"%s\" hashing could not be performed",
 					log_t::flag_t::WARNING,
-					key.c_str(),
+					string(key).c_str(),
 					string(reinterpret_cast <const char *> (buffer.data()), buffer.size()).c_str()
 				);
 			#endif
@@ -1966,7 +1966,7 @@ auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash) con
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
 						static_cast <uint16_t> (hash)
 					), log_t::flag_t::WARNING,
-					key.data(),
+					string(key).c_str(),
 					string(reinterpret_cast <const char *> (buffer.data()), buffer.size()).c_str()
 				);
 			/**
@@ -1977,7 +1977,7 @@ auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash) con
 				this->_log->print(
 					"Key \"%s\" and text \"%s\" hashing could not be performed",
 					log_t::flag_t::WARNING,
-					key.c_str(),
+					string(key).c_str(),
 					string(reinterpret_cast <const char *> (buffer.data()), buffer.size()).c_str()
 				);
 			#endif

@@ -272,3 +272,174 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, ErrorParameterizedFixture,
 		ErrorTestParameter({"HTTP/2.0 200 OK\r\n\r\n", direct_t::RESPONSE, parser_http_t::error_t::INVALID_VERSION})
 	)
 );
+
+/**
+ * @brief Метод тестирования отсутствия удержания входного буфера парсером
+ *
+ * @details Каждый фрагмент подаётся из отдельного одноразового буфера, который
+ *          сразу после возврата из parse затирается и освобождается. Если парсер
+ *          удерживал бы указатель во входные данные (вместо копирования в свои
+ *          накопители и отдачи наружу только на время вызова), результат разбора
+ *          оказался бы искажён
+ *
+ */
+TEST_P(FragmentParameterizedFixture, PoisonedInputParsingTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* parser, events);
+	/**
+	 * Формируем запрос, задействующий все накопители парсера: метод, URI-адрес,
+	 * имена и значения заголовков, расширения чанков, данные тела и трейлеры
+	 */
+	const std::string message =
+		"POST /path/to/resource?query=value HTTP/1.1\r\n"
+		"Host: anyks.com\r\n"
+		"X-Long-Header-Name: value with spaces\r\n"
+		"Transfer-Encoding: chunked\r\n"
+		"\r\n"
+		"6;name=first\r\nAWH is\r\n"
+		"9;name=second\r\n awesome!\r\n"
+		"0\r\n"
+		"X-Check: done\r\n"
+		"\r\n";
+	// Общее количество обработанных байт
+	size_t total = 0;
+	/**
+	 * Выполняем подачу данных фрагментами заданного размера из одноразовых буферов
+	 */
+	for(size_t i = 0; i < message.size(); i += this->_fragment){
+		// Определяем размер очередного фрагмента данных
+		const size_t size = ((message.size() - i) < this->_fragment ? (message.size() - i) : this->_fragment);
+		// Формируем одноразовый буфер под очередной фрагмент данных
+		std::unique_ptr <char []> scratch(new char[size]);
+		// Копируем очередной фрагмент данных в одноразовый буфер
+		std::memcpy(scratch.get(), (message.data() + i), size);
+		// Выполняем разбор очередного фрагмента данных и считаем обработанные байты
+		const size_t bytes = parser->parse(scratch.get(), size);
+		// Проверяем что фрагмент обработан целиком (парсер не требует повторной подачи хвоста)
+		ASSERT_EQ(bytes, size);
+		// Учитываем обработанные байты
+		total += bytes;
+		// Затираем отданный фрагмент до следующего вызова парсера
+		std::memset(scratch.get(), 0xEE, size);
+	}
+	// Проверяем что все данные обработаны
+	ASSERT_EQ(total, message.size());
+	// Проверяем что сообщение полностью разобрано
+	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+	// Получаем объект провайдера заголовков запроса клиента
+	const request_t * request = static_cast <const request_t *> (parser->message().provider.get());
+	// Проверяем что метод запроса разобран без искажений
+	ASSERT_EQ(request->method, method_t::POST);
+	// Проверяем что URI-адрес запроса разобран без искажений
+	ASSERT_EQ(request->uri, "/path/to/resource?query=value");
+	// Проверяем что разобраны все три заголовка
+	ASSERT_EQ(events.headers.size(), 3u);
+	// Проверяем что имя длинного заголовка разобрано без искажений
+	ASSERT_EQ(events.headers[1].first, "X-Long-Header-Name");
+	// Проверяем что значение длинного заголовка разобрано без искажений
+	ASSERT_EQ(events.headers[1].second, "value with spaces");
+	// Проверяем что тело сообщения собрано без искажений
+	ASSERT_EQ(events.body, "AWH is awesome!");
+	// Проверяем что расширения первого чанка разобраны без искажений
+	ASSERT_EQ(std::get <2> (events.chunks.front()), "name=first");
+	// Проверяем что разобран один трейлер
+	ASSERT_EQ(events.trailers.size(), 1u);
+	// Проверяем что имя трейлера разобрано без искажений
+	ASSERT_EQ(events.trailers[0].first, "X-Check");
+	// Проверяем что значение трейлера разобрано без искажений
+	ASSERT_EQ(events.trailers[0].second, "done");
+}
+
+/**
+ * @brief Метод тестирования эквивалентности быстрого и посимвольного путей разбора заголовков
+ *
+ * @details Строка заголовка разбирается быстрым путём только когда присутствует
+ *          во входном буфере целиком, поэтому размер фрагмента подачи сам по себе
+ *          переключает пути: подача по одному октету не даёт быстрому пути
+ *          сработать ни разу, подача целиком задействует его на каждой строке.
+ *          Поток событий обязан совпадать при любом размере фрагмента - иначе
+ *          быстрый путь меняет наблюдаемое поведение разбора
+ *
+ */
+TEST_P(FragmentParameterizedFixture, HeaderFastPathEquivalenceTest){
+	/**
+	 * @brief Функция разбора сообщения с заданным размером фрагмента подачи
+	 *
+	 * @param parser   объект парсера
+	 * @param events   объект сборщика событий парсера
+	 * @param message  разбираемое сообщение
+	 * @param fragment размер фрагмента подачи
+	 *
+	 */
+	auto feed = [](parser_http_t & parser, const std::string & message, const size_t fragment) noexcept -> void {
+		/**
+		 * Выполняем подачу данных фрагментами заданного размера
+		 */
+		for(size_t i = 0; i < message.size(); i += fragment)
+			// Выполняем разбор очередного фрагмента данных
+			parser.parse(message.data() + i, std::min(fragment, (message.size() - i)));
+	};
+	/**
+	 * Набор сообщений, покрывающих как безусловно корректные строки заголовков,
+	 * так и отклонения, которые быстрый путь обязан передавать посимвольному:
+	 * пустые значения, OWS по краям, obs-fold, пробел перед двоеточием,
+	 * недопустимые символы значения и трейлеры
+	 */
+	const std::vector <std::string> messages = {
+		"GET / HTTP/1.1\r\nHost: anyks.com\r\n\r\n",
+		"GET / HTTP/1.1\r\nHost: anyks.com\r\nX-Empty:\r\nX-Spaces:   value   \r\nX-Tab:\tvalue\t\r\n\r\n",
+		"POST / HTTP/1.1\r\nHost: anyks.com\r\nContent-Length: 5\r\n\r\nhello",
+		"POST / HTTP/1.1\r\nHost: anyks.com\r\nTransfer-Encoding: chunked\r\n\r\n3;x=1\r\nabc\r\n0\r\nX-Check: done\r\n\r\n",
+		"GET / HTTP/1.1\r\nHost : anyks.com\r\n\r\n",
+		"GET / HTTP/1.1\r\nHost: anyks.com\r\n obsfold\r\n\r\n",
+		std::string("GET / HTTP/1.1\r\nHost: any\x01ks.com\r\n\r\n"),
+		"POST / HTTP/1.1\r\nContent-Length: 5\r\nContent-Length: 6\r\n\r\n",
+		"POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\nContent-Length: 5\r\n\r\n",
+		"GET / HTTP/1.1\r\nHost: anyks.com\nX-Mixed: value\r\nX-Bare: value\n\r\n",
+		"GET / HTTP/1.1\nHost: anyks.com\n\n",
+		"GET / HTTP/1.1\r\nHost: anyks.com\r\nX-Trail-OWS: value \t \r\nX-Colon-Value: a:b:c\r\n\r\n"
+	};
+	/**
+	 * Выполняем перебор всех проверяемых сообщений
+	 */
+	for(const auto & message : messages){
+		// Создаём объект парсера эталонного разбора (подача по одному октету)
+		auto reference = this->make(direct_t::REQUEST);
+		// Создаём объект сборщика событий эталонного разбора
+		events_t expected;
+		// Подписываем сборщик событий эталонного разбора
+		this->attach(* reference, expected);
+		// Выполняем эталонный разбор посимвольной подачей
+		feed(* reference, message, 1);
+		// Создаём объект парсера проверяемого разбора
+		auto parser = this->make(direct_t::REQUEST);
+		// Создаём объект сборщика событий проверяемого разбора
+		events_t actual;
+		// Подписываем сборщик событий проверяемого разбора
+		this->attach(* parser, actual);
+		// Выполняем проверяемый разбор подачей фрагментами заданного размера
+		feed(* parser, message, this->_fragment);
+		// Проверяем что итоговый статус разбора совпадает
+		ASSERT_EQ(parser->status(), reference->status()) << message;
+		// Проверяем что код ошибки разбора совпадает
+		ASSERT_EQ(parser->error(), reference->error()) << message;
+		// Проверяем что собранное тело сообщения совпадает
+		ASSERT_EQ(actual.body, expected.body) << message;
+		// Проверяем что набор разобранных заголовков совпадает
+		ASSERT_EQ(actual.headers, expected.headers) << message;
+		// Проверяем что набор разобранных трейлеров совпадает
+		ASSERT_EQ(actual.trailers, expected.trailers) << message;
+		// Проверяем что последовательность фазовых событий совпадает
+		ASSERT_EQ(actual.phases, expected.phases) << message;
+		// Проверяем что последовательность событий границ чанков совпадает
+		ASSERT_EQ(actual.chunks, expected.chunks) << message;
+		// Проверяем что кадрирование тела определено одинаково
+		ASSERT_EQ(parser->message().flags.chunked, reference->message().flags.chunked) << message;
+		// Проверяем что размер тела определён одинаково
+		ASSERT_EQ(parser->message().bodySize, reference->message().bodySize) << message;
+	}
+}

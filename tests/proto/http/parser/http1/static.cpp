@@ -749,3 +749,347 @@ TEST_F(ParserFixture, ChunkTransparentRelayTest){
 	// Проверяем что реконструированный поток байт-в-байт совпадает с исходным
 	ASSERT_EQ(relay, chunked);
 }
+
+/**
+ * @brief Метод проверки регистрозависимости метода запроса (RFC 9110 §9.1)
+ *
+ */
+TEST_F(ParserFixture, MethodCaseSensitivityTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Формируем данные HTTP-запроса с методом в неканоническом регистре
+	const std::string message = "get / HTTP/1.1\r\nHost: anyks.com\r\n\r\n";
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что сообщение полностью разобрано (синтаксис метода корректен)
+	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+	// Получаем объект провайдера заголовков запроса клиента
+	const request_t * request = static_cast <const request_t *> (parser->message().provider.get());
+	// Проверяем что метод в неканоническом регистре не приравнен к GET
+	ASSERT_EQ(request->method, method_t::UNKNOWN);
+	// Проверяем что оригинальное написание метода сохранено
+	ASSERT_EQ(request->methodName, "get");
+}
+
+/**
+ * @brief Метод проверки строгого режима окончания строк (запрет одиночного LF)
+ *
+ */
+TEST_F(ParserFixture, StrictEndOfLineTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Формируем данные HTTP-запроса с одиночным LF в качестве окончания строк
+	const std::string message = "GET / HTTP/1.1\nHost: anyks.com\n\n";
+	// Выполняем разбор данных HTTP-запроса в толерантном режиме
+	parser->parse(message.data(), message.size());
+	// Проверяем что в толерантном режиме сообщение разобрано
+	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+	// Создаём объект парсера запросов клиента для строгого режима
+	auto strict = this->make(direct_t::REQUEST);
+	// Получаем текущие лимиты безопасности
+	parser_http_t::limits_t limits = strict->limits();
+	// Включаем требование строгого окончания строк
+	limits.strictEOL = true;
+	// Применяем изменённые лимиты безопасности
+	strict->limits(limits);
+	// Выполняем разбор данных HTTP-запроса в строгом режиме
+	strict->parse(message.data(), message.size());
+	// Проверяем что зафиксирована ошибка разбора
+	ASSERT_EQ(strict->status(), parser_t::status_t::ERROR);
+	// Проверяем что ошибка соответствует некорректному окончанию строки
+	ASSERT_EQ(strict->error(), parser_http_t::error_t::INVALID_EOL);
+}
+
+/**
+ * @brief Метод проверки строгого режима пробелов стартовой строки
+ *
+ */
+TEST_F(ParserFixture, StrictSpacesTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Получаем текущие лимиты безопасности
+	parser_http_t::limits_t limits = parser->limits();
+	// Включаем запрет лишних пробелов внутри стартовой строки
+	limits.strictSpaces = true;
+	// Применяем изменённые лимиты безопасности
+	parser->limits(limits);
+	// Формируем данные HTTP-запроса с удвоенным разделителем стартовой строки
+	const std::string message = "GET  / HTTP/1.1\r\nHost: anyks.com\r\n\r\n";
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что зафиксирована ошибка разбора
+	ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
+	// Проверяем что ошибка соответствует некорректному request-target
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::INVALID_TARGET);
+}
+
+/**
+ * @brief Метод проверки требования обязательного заголовка Host у запросов HTTP/1.1
+ *
+ */
+TEST_F(ParserFixture, RequireHostTest){
+	/**
+	 * Выполняем перебор проверяемых наборов заголовков запроса
+	 */
+	for(const auto & item : {std::string(""), std::string("Host: a\r\nHost: b\r\n")}) {
+		// Создаём объект парсера запросов клиента
+		auto parser = this->make(direct_t::REQUEST);
+		// Получаем текущие лимиты безопасности
+		parser_http_t::limits_t limits = parser->limits();
+		// Включаем требование обязательного заголовка Host
+		limits.requireHost = true;
+		// Применяем изменённые лимиты безопасности
+		parser->limits(limits);
+		// Формируем данные HTTP-запроса с проверяемым набором заголовков
+		const std::string message = ("GET / HTTP/1.1\r\n" + item + "\r\n");
+		// Выполняем разбор данных HTTP-запроса
+		parser->parse(message.data(), message.size());
+		// Проверяем что зафиксирована ошибка разбора
+		ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
+		// Проверяем что ошибка соответствует отсутствию либо дублированию заголовка Host
+		ASSERT_EQ(parser->error(), parser_http_t::error_t::MISSING_HOST);
+	}
+	// Создаём объект парсера запросов клиента для корректного запроса
+	auto parser = this->make(direct_t::REQUEST);
+	// Получаем текущие лимиты безопасности
+	parser_http_t::limits_t limits = parser->limits();
+	// Включаем требование обязательного заголовка Host
+	limits.requireHost = true;
+	// Применяем изменённые лимиты безопасности
+	parser->limits(limits);
+	// Формируем данные корректного HTTP-запроса с единственным заголовком Host
+	const std::string message = "GET / HTTP/1.1\r\nHost: anyks.com\r\n\r\n";
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что корректный запрос полностью разобран
+	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+}
+
+/**
+ * @brief Метод проверки распознавания chunked с параметрами транспортного кодирования
+ *
+ */
+TEST_F(ParserFixture, TransferEncodingParametersTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* parser, events);
+	// Формируем данные HTTP-запроса с параметрами транспортного кодирования
+	const std::string message = "POST / HTTP/1.1\r\nTransfer-Encoding: chunked;ext=1\r\n\r\n3\r\nabc\r\n0\r\n\r\n";
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что сообщение полностью разобрано
+	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело кадрировалось chunked
+	ASSERT_TRUE(parser->message().flags.chunked);
+	// Проверяем что тело сообщения собрано корректно
+	ASSERT_EQ(events.body, "abc");
+}
+
+/**
+ * @brief Метод проверки отбрасывания запрещённых трейлеров (RFC 9112 §6.5)
+ *
+ */
+TEST_F(ParserFixture, ForbiddenTrailersTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* parser, events);
+	// Формируем данные HTTP-запроса с запрещённым и разрешённым трейлерами
+	const std::string message =
+		"POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"
+		"3\r\nabc\r\n0\r\nContent-Length: 100\r\nX-Check: done\r\n\r\n";
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что сообщение полностью разобрано
+	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что до потребителя дошёл единственный разрешённый трейлер
+	ASSERT_EQ(events.trailers.size(), 1u);
+	// Проверяем что разрешённый трейлер передан без искажений
+	ASSERT_EQ(events.trailers.front().first, "X-Check");
+	// Проверяем что кадрирование тела не переопределено трейлером
+	ASSERT_EQ(parser->message().bodySize, -1);
+}
+
+/**
+ * @brief Метод проверки разбора заголовка Expect переданного списком
+ *
+ */
+TEST_F(ParserFixture, ExpectContinueListTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Формируем данные HTTP-запроса со списком ожиданий клиента
+	const std::string message = "POST / HTTP/1.1\r\nContent-Length: 0\r\nExpect: other, 100-Continue;v=1\r\n\r\n";
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что сообщение полностью разобрано
+	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что ожидание промежуточного ответа распознано
+	ASSERT_TRUE(parser->message().flags.expectContinue);
+}
+
+/**
+ * @brief Метод проверки отклонения Content-Length превышающего диапазон размера тела
+ *
+ */
+TEST_F(ParserFixture, ContentLengthRangeTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Получаем текущие лимиты безопасности
+	parser_http_t::limits_t limits = parser->limits();
+	// Снимаем лимит размера тела, чтобы проверить именно контроль диапазона
+	limits.maxBodySize = UINT64_MAX;
+	// Применяем изменённые лимиты безопасности
+	parser->limits(limits);
+	// Формируем данные HTTP-запроса с Content-Length выше диапазона знакового типа
+	const std::string message = "POST / HTTP/1.1\r\nContent-Length: 18446744073709551000\r\n\r\n";
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что зафиксирована ошибка разбора
+	ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
+	// Проверяем что ошибка соответствует некорректному Content-Length
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::INVALID_CONTENT_LENGTH);
+	// Проверяем что размер тела наружу отрицательным не отдан
+	ASSERT_EQ(parser->message().bodySize, -1);
+}
+
+/**
+ * @brief Метод проверки порядка фиксации превышения размера тела (до уведомления потребителя)
+ *
+ */
+TEST_F(ParserFixture, BodyOverflowOrderTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* parser, events);
+	// Получаем текущие лимиты безопасности
+	parser_http_t::limits_t limits = parser->limits();
+	// Устанавливаем максимальный размер тела
+	limits.maxBodySize = 10;
+	// Применяем изменённые лимиты безопасности
+	parser->limits(limits);
+	// Формируем данные HTTP-запроса с телом превышающим лимит
+	const std::string message = "POST / HTTP/1.1\r\nContent-Length: 100\r\n\r\n";
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что ошибка соответствует превышению размера тела
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::BODY_OVERFLOW);
+	// Проверяем что потребитель не был уведомлён о готовности провайдера заголовков
+	ASSERT_FALSE(events.providerFired);
+}
+
+/**
+ * @brief Метод проверки неприменимости лимита размера тела к ответам без тела
+ *
+ */
+TEST_F(ParserFixture, NoBodyResponseLimitTest){
+	// Создаём объект парсера ответов сервера
+	auto parser = this->make(direct_t::RESPONSE);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	parser->method(method_t::HEAD);
+	// Получаем текущие лимиты безопасности
+	parser_http_t::limits_t limits = parser->limits();
+	// Устанавливаем максимальный размер тела
+	limits.maxBodySize = 10;
+	// Применяем изменённые лимиты безопасности
+	parser->limits(limits);
+	/**
+	 * Формируем данные ответа на HEAD с заголовком Content-Length выше лимита:
+	 * заголовок описывает гипотетическое тело, которого в сообщении нет
+	 */
+	const std::string message = "HTTP/1.1 200 OK\r\nContent-Length: 1000000\r\n\r\n";
+	// Выполняем разбор данных HTTP-ответа
+	const size_t bytes = parser->parse(message.data(), message.size());
+	// Проверяем что все данные обработаны
+	ASSERT_EQ(bytes, message.size());
+	// Проверяем что сообщение полностью разобрано без ошибки лимита
+	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что кадрирование chunked у ответа без тела не выставлено
+	ASSERT_FALSE(parser->message().flags.chunked);
+}
+
+/**
+ * @brief Метод проверки порядка фиксации некадрируемого Transfer-Encoding у запроса
+ *
+ */
+TEST_F(ParserFixture, TransferEncodingOrderTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* parser, events);
+	// Формируем данные HTTP-запроса с транспортным кодированием без завершающего chunked
+	const std::string message = "POST / HTTP/1.1\r\nHost: anyks.com\r\nTransfer-Encoding: gzip\r\n\r\n";
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что зафиксирована ошибка разбора
+	ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
+	// Проверяем что ошибка соответствует некорректному Transfer-Encoding
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::INVALID_TRANSFER_ENCODING);
+	/**
+	 * Проверяем что потребитель не был уведомлён о готовности провайдера заголовков:
+	 * иначе он завёл бы приём тела, которого у некадрируемого запроса не будет
+	 */
+	ASSERT_FALSE(events.providerFired);
+}
+
+/**
+ * @brief Метод проверки признака полноты сообщения при прерывании разбора
+ *
+ */
+TEST_F(ParserFixture, AbortOnCompletePhaseTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Подписываемся на фазовые события с прерыванием на завершении сообщения
+	parser->on(parser_http_t::phase_callback_t([](const uint32_t, const parser_t::phase_t phase, const parser_t::part_t part) noexcept -> bool {
+		// Прерываем разбор на событии завершения всего сообщения
+		return !((phase == parser_t::phase_t::END) && (part == parser_t::part_t::NONE));
+	}));
+	// Формируем данные корректного HTTP-запроса
+	const std::string message = "GET / HTTP/1.1\r\nHost: anyks.com\r\n\r\n";
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что зафиксирована ошибка прерывания разбора
+	ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
+	// Проверяем что ошибка соответствует прерыванию разбора
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::ABORTED);
+	/**
+	 * Проверяем что сообщение не помечено полностью разобранным: признак полноты
+	 * вместе с состоянием ошибки давал бы потребителю противоречивую картину
+	 */
+	ASSERT_FALSE(parser->message().flags.complete);
+}
+
+/**
+ * @brief Метод проверки строгого набора ограничений безопасности
+ *
+ */
+TEST_F(ParserFixture, StrictLimitsPresetTest){
+	// Получаем строгий набор ограничений безопасности
+	const parser_http_t::limits_t limits = parser_http_t::limits_t::strict();
+	// Проверяем что требование строгого окончания строк включено
+	ASSERT_TRUE(limits.strictEOL);
+	// Проверяем что запрет лишних пробелов включён
+	ASSERT_TRUE(limits.strictSpaces);
+	// Проверяем что требование заголовка Host включено
+	ASSERT_TRUE(limits.requireHost);
+	// Проверяем что числовые лимиты остались значениями по умолчанию
+	ASSERT_EQ(limits.maxRequestLine, parser_http_t::MAX_REQUEST_LINE);
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Применяем строгий набор ограничений безопасности
+	parser->limits(limits);
+	// Формируем данные HTTP-запроса с одиночным LF в качестве окончания строк
+	const std::string message = "GET / HTTP/1.1\nHost: anyks.com\n\n";
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что зафиксирована ошибка разбора
+	ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
+}

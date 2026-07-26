@@ -533,6 +533,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/procre.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/binbox.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/bignum.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/version.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"

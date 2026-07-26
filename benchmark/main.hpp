@@ -109,6 +109,27 @@ namespace awh {
 		bool add(const std::string & name, const std::string & units, const double threshold, const bound_t bound, std::function <result_t ()> run) noexcept;
 
 		/**
+		 * @brief Функция управления учётом выделений памяти
+		 *
+		 * @note Учёт ведётся перегруженными операторами выделения памяти точки
+		 *       входа набора бенчмарков и охватывает весь процесс целиком,
+		 *       поэтому включать его следует непосредственно вокруг замера
+		 *
+		 * @param mode режим учёта выделений памяти
+		 *
+		 */
+		void counting(const bool mode) noexcept;
+
+		/**
+		 * @brief Функция получения статистики выделений памяти
+		 *
+		 * @param count количество выполненных выделений
+		 * @param bytes суммарный объём выделенной памяти в октетах
+		 *
+		 */
+		void allocations(size_t & count, size_t & bytes) noexcept;
+
+		/**
 		 * @brief Функция получения списка зарегистрированных сценариев
 		 *
 		 * @return список зарегистрированных сценариев

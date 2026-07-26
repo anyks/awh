@@ -3,8 +3,8 @@
 # Получаем корневую дирректорию
 readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 
-# Каталог статических библиотек
-readonly THIRD_PARTY="$ROOT/third_party/lib"
+# Каталог статических библиотек (корень репозитория на уровень выше каталога скриптов)
+readonly THIRD_PARTY="$ROOT/../third_party/lib"
 
 # Получаем версию OS
 OS=$(uname -a | awk '{print $1}')

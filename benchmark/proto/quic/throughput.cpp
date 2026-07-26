@@ -181,7 +181,7 @@ namespace {
 		// Количество принятых октетов
 		size_t total = 0;
 		// Включаем учёт выделений памяти
-		awh::benchmark::quic::counting(true);
+		awh::benchmark::counting(true);
 		// Запоминаем момент начала измерения
 		const auto start = std::chrono::steady_clock::now();
 		/**
@@ -271,9 +271,9 @@ namespace {
 		// Запоминаем момент окончания измерения
 		const auto finish = std::chrono::steady_clock::now();
 		// Отключаем учёт выделений памяти
-		awh::benchmark::quic::counting(false);
+		awh::benchmark::counting(false);
 		// Получаем статистику выделений памяти
-		awh::benchmark::quic::allocations(output.allocations, output.bytes);
+		awh::benchmark::allocations(output.allocations, output.bytes);
 		// Устанавливаем количество принятых октетов
 		output.received = total;
 		// Устанавливаем затраченное время

@@ -41,7 +41,7 @@ using namespace std;
  *
  */
 awh::Buffer::Range::Range() noexcept :
- end(0), begin(0),
+ end(0), begin(0), reserved(0),
  maxMemory(AWH_MAX_MEMORY_BUFFER) {}
 
 /**
@@ -200,14 +200,33 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 				// Сообщаем что выделение не требуется
 				return true;
 		}
-		// Определяем требуемый итоговый размер буфера данных
-		const size_t required = (payload + size);
-		// Если требуемый размер выходит за пределы максимального лимита
-		if(required > this->_range.maxMemory)
+		/**
+		 * Если запрошенный объём не помещается в лимит вместе с полезными данными -
+		 * проверка выполняется вычитанием, чтобы сложение не переполнило разрядность
+		 */
+		if(size > (this->_range.maxMemory - payload))
 			// Сообщаем что выделить память невозможно
 			return false;
-		// Увеличиваем буфер данных до требуемого размера
-		this->_buffer.resize(required);
+		// Определяем требуемый итоговый размер буфера данных
+		const size_t required = (payload + size);
+		/**
+		 * Растим хранилище с запасом, удваивая текущий размер: рост ровно до требуемого
+		 * объёма означал бы переаллокацию с переинициализацией хвоста на каждой дозаписи,
+		 * а потоковая запись состоит из множества мелких дозаписей подряд
+		 */
+		size_t target = required;
+		// Вычисляем удвоенный размер текущего хранилища (с защитой от переполнения)
+		const size_t doubled = ((this->_buffer.size() < (SIZE_MAX / 2)) ? (this->_buffer.size() * 2) : SIZE_MAX);
+		// Если удвоенный размер больше требуемого - растим с запасом
+		if(doubled > target)
+			// Увеличиваем целевой размер хранилища
+			target = doubled;
+		// Ограничиваем целевой размер максимальным лимитом потребления памяти
+		if(target > this->_range.maxMemory)
+			// Урезаем целевой размер до лимита
+			target = this->_range.maxMemory;
+		// Увеличиваем буфер данных до целевого размера
+		this->_buffer.resize(target);
 		// Сообщаем об успешном выделении памяти
 		return true;
 	/**
@@ -987,6 +1006,8 @@ void * awh::Buffer::prepare(const size_t size) noexcept {
 		// Возвращаем пустое значение
 		return nullptr;
 	}
+	// Запоминаем зарезервированный объём для контроля последующей фиксации
+	this->_range.reserved = size;
 	// Возвращаем указатель на начало свободной области в хвосте буфера
 	return (&this->_buffer[0] + this->_range.end);
 }
@@ -1000,10 +1021,18 @@ void * awh::Buffer::prepare(const size_t size) noexcept {
 size_t awh::Buffer::commit(const size_t size) noexcept {
 	// Определяем количество свободного места в хвосте буфера
 	const size_t tail = ((this->_buffer.size() > this->_range.end) ? (this->_buffer.size() - this->_range.end) : 0);
-	// Ограничиваем количество фиксируемых данных доступным местом
-	const size_t count = ((size < tail) ? size : tail);
+	/**
+	 * Ограничиваем количество фиксируемых данных зарезервированным объёмом: хранилище
+	 * растёт с запасом, и свободного места в хвосте больше, чем было запрошено, а
+	 * фиксация сверх резервирования протащила бы в буфер неинициализированные байты
+	 */
+	size_t count = ((size < this->_range.reserved) ? size : this->_range.reserved);
+	// Дополнительно ограничиваем количество фиксируемых данных доступным местом
+	count = ((count < tail) ? count : tail);
 	// Увеличиваем смещение конца данных буфера
 	this->_range.end += count;
+	// Сбрасываем зарезервированный объём (резервирование израсходовано)
+	this->_range.reserved = 0;
 	// Возвращаем количество зафиксированных данных
 	return count;
 }

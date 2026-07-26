@@ -517,3 +517,497 @@ TEST_F(ParserFixture, SendKeepAliveSequenceTest){
 	// Проверяем что тело второго запроса передано корректно
 	ASSERT_EQ(events.body, "abc");
 }
+
+/**
+ * @brief Метод проверки сигнала writable в push-модели (установлена функция обратного вызова записи)
+ *
+ */
+TEST_F(ParserFixture, SendPushModeWritableSignalTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Собранный сетевым слоем поток исходящих байтов
+	std::string wire;
+	// Счётчик срабатываний сигнала writable
+	size_t writables = 0;
+	// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+	sender->on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+		// Накапливаем исходящие байты сетевого слоя
+		wire.append(static_cast <const char *> (buffer), size);
+	}));
+	// Устанавливаем функцию обратного вызова о готовности принимать данные тела
+	sender->on(parser_http_t::writable_callback_t([&writables](const uint32_t sid) noexcept {
+		// Проверяем что идентификатор потока соответствует константе HTTP/1.x
+		EXPECT_EQ(sid, parser_http_t::STREAM_ID);
+		// Учитываем срабатывание сигнала writable
+		++writables;
+	}));
+	// Уменьшаем пороги выходного буфера, чтобы приём тела оказался частичным
+	sender->sendWaterMarks(1024, 512);
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Отправляем заголовки ответа (тело последует)
+	sender->sendHeaders(response, false);
+	// Формируем тело заведомо большего размера, чем ёмкость выходного буфера
+	const std::string body(4096, 'x');
+	// Передаём тело для отправки (приём заведомо частичный)
+	const size_t accepted = sender->sendData(body.data(), body.size(), true);
+	// Проверяем что приём оказался частичным
+	ASSERT_LT(accepted, body.size());
+	/**
+	 * Проверяем что сигнал готовности принимать данные подан: в push-модели выборка
+	 * consumePending не выполняется, и без сигнала отправка встала бы навсегда
+	 */
+	ASSERT_GT(writables, 0u);
+	// Объём тела, принятый отправителем
+	size_t sent = accepted;
+	/**
+	 * Досылаем остаток тела порциями: приём за один вызов ограничен ёмкостью
+	 * выходного буфера, а продолжение выдачи разрешает именно сигнал writable
+	 */
+	while(sent < body.size()){
+		// Передаём очередную порцию остатка тела
+		const size_t portion = sender->sendData((body.data() + sent), (body.size() - sent), true);
+		// Проверяем что выдача продвигается
+		ASSERT_GT(portion, 0u);
+		// Наращиваем объём принятого тела
+		sent += portion;
+	}
+	// Проверяем что сигнал готовности подавался на каждый провал выходного буфера
+	ASSERT_GT(writables, 1u);
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Разбираем собранный сетевым слоем поток исходящих байтов
+	receiver->parse(wire.data(), wire.size());
+	// Проверяем что сообщение полностью разобрано
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело целиком ушло в сетевой слой без искажений
+	ASSERT_EQ(events.body, body);
+}
+
+/**
+ * @brief Метод проверки запрета досрочного завершения тела фиксированного размера
+ *
+ */
+TEST_F(ParserFixture, SendIdentityShortBodyTest){
+	// Создаём объект парсера-отправителя запроса
+	auto sender = this->make(direct_t::REQUEST);
+	// Формируем контейнер заголовков запроса с провайдером
+	headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::POST, std::string("/api")));
+	// Дописываем заголовок Host
+	request.emplace("Host", "anyks.com");
+	// Дописываем заголовок фиксированного размера тела
+	request.emplace("Content-Length", "10");
+	// Отправляем заголовки запроса (тело последует)
+	sender->sendHeaders(request, false);
+	// Отправляем часть тела с преждевременным признаком завершения сообщения
+	ASSERT_EQ(sender->sendData("abcde", 5, true), 5u);
+	/**
+	 * Проверяем что отправитель не считает сообщение завершённым: анонсировано
+	 * десять байт, а выдано пять - досрочное завершение отправило бы усечённое тело
+	 */
+	ASSERT_EQ(sender->sendData("fghij", 5, true), 5u);
+	// Получаем сформированный отправителем поток исходящих байтов
+	const std::string wire(sender->pending());
+	// Проверяем что тело ушло целиком
+	ASSERT_NE(wire.find("abcdefghij"), std::string::npos);
+	// Проверяем что дальнейшая выдача тела уже не принимается
+	ASSERT_EQ(sender->sendData("xyz", 3, true), 0u);
+}
+
+/**
+ * @brief Метод проверки исключения одновременной отправки Content-Length и Transfer-Encoding
+ *
+ */
+TEST_F(ParserFixture, SendFramingConflictTest){
+	// Создаём объект парсера-отправителя запроса
+	auto sender = this->make(direct_t::REQUEST);
+	// Создаём объект парсера-приёмника запроса
+	auto receiver = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Формируем контейнер заголовков запроса с провайдером
+	headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::POST, std::string("/api")));
+	// Дописываем заголовок Host
+	request.emplace("Host", "anyks.com");
+	// Дописываем заголовок фиксированного размера тела
+	request.emplace("Content-Length", "5");
+	// Дописываем конфликтующий заголовок транспортного кодирования
+	request.emplace("Transfer-Encoding", "chunked");
+	// Отправляем заголовки запроса (тело последует)
+	sender->sendHeaders(request, false);
+	// Отправляем тело запроса с завершением сообщения
+	ASSERT_EQ(sender->sendData("hello", 5, true), 5u);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	/**
+	 * Проверяем что принимающая сторона не отвергла сообщение: конфликтующий
+	 * заголовок вычищен, а кадрирование соответствует объявленному
+	 */
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело передано корректно
+	ASSERT_EQ(events.body, "hello");
+	// Проверяем что тело кадрировано фиксированным размером
+	ASSERT_EQ(receiver->message().bodySize, 5);
+}
+
+/**
+ * @brief Метод проверки дополнения Transfer-Encoding токеном chunked
+ *
+ */
+TEST_F(ParserFixture, SendEncodingWithoutChunkedTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Дописываем транспортное кодирование без завершающего токена chunked
+	response.emplace("Transfer-Encoding", "gzip");
+	// Отправляем заголовки ответа (тело последует)
+	sender->sendHeaders(response, false);
+	// Отправляем тело ответа с завершением сообщения
+	ASSERT_EQ(sender->sendData("hello", 5, true), 5u);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	/**
+	 * Проверяем что принимающая сторона разобрала сообщение: тело кадрировано
+	 * chunked, и объявление транспортного кодирования этому соответствует
+	 */
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело кадрировалось chunked
+	ASSERT_TRUE(receiver->message().flags.chunked);
+	// Проверяем что тело передано корректно
+	ASSERT_EQ(events.body, "hello");
+}
+
+/**
+ * @brief Метод проверки назначения pull-источника данных до отправки заголовков
+ *
+ */
+TEST_F(ParserFixture, SendDataSourceBeforeHeadersTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Формируем эталонное тело сообщения
+	const std::string expected = "AWH is awesome!";
+	// Позиция чтения эталонного тела источником данных
+	size_t position = 0;
+	// Назначаем pull-источник данных тела ДО отправки заголовков
+	sender->dataSource(parser_http_t::data_source_callback_t([&expected, &position](const uint32_t sid, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+		// Вычисляем размер выдаваемой порции данных
+		const size_t size = std::min(cap, (expected.size() - position));
+		// Копируем порцию эталонного тела в буфер парсера
+		std::memcpy(buffer, (expected.data() + position), size);
+		// Сдвигаем позицию чтения эталонного тела
+		position += size;
+		// Выставляем флаг достижения конца тела
+		eof = (position == expected.size());
+		// Возвращаем число записанных байт
+		return static_cast <int64_t> (size);
+	}));
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Отправляем заголовки ответа (тело последует из ранее назначенного источника)
+	sender->sendHeaders(response, false);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	// Проверяем что источник данных не был потерян при отправке заголовков
+	ASSERT_EQ(position, expected.size());
+	// Проверяем что сообщение полностью разобрано
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело сообщения передано без искажений
+	ASSERT_EQ(events.body, expected);
+}
+
+/**
+ * @brief Метод проверки устойчивости отправителя к некорректному Content-Length
+ *
+ */
+TEST_F(ParserFixture, SendInvalidContentLengthTest){
+	// Создаём объект парсера-отправителя запроса
+	auto sender = this->make(direct_t::REQUEST);
+	// Создаём объект парсера-приёмника запроса
+	auto receiver = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Формируем контейнер заголовков запроса с провайдером
+	headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::POST, std::string("/api")));
+	// Дописываем заголовок Host
+	request.emplace("Host", "anyks.com");
+	// Дописываем некорректный заголовок фиксированного размера тела
+	request.emplace("Content-Length", "abc");
+	// Отправляем заголовки запроса (тело последует)
+	sender->sendHeaders(request, false);
+	// Отправляем тело запроса с завершением сообщения
+	ASSERT_EQ(sender->sendData("hello", 5, true), 5u);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	/**
+	 * Проверяем что принимающая сторона разобрала сообщение: некорректный заголовок
+	 * вычищен, а тело кадрировано способом, не требующим заранее известной длины
+	 */
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело кадрировалось chunked
+	ASSERT_TRUE(receiver->message().flags.chunked);
+	// Проверяем что тело передано корректно
+	ASSERT_EQ(events.body, "hello");
+	/**
+	 * Выполняем перебор всех разобранных заголовков сообщения
+	 */
+	for(const auto & header : events.headers)
+		// Проверяем что некорректный заголовок на провод не ушёл
+		ASSERT_STRNE(header.first.c_str(), "Content-Length");
+}
+
+/**
+ * @brief Метод проверки определения кадрирования по последнему заголовку Transfer-Encoding
+ *
+ */
+TEST_F(ParserFixture, SendMultipleEncodingHeadersTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Дописываем первое транспортное кодирование
+	response.emplace("Transfer-Encoding", "gzip");
+	// Дописываем завершающее транспортное кодирование
+	response.emplace("Transfer-Encoding", "chunked");
+	// Отправляем заголовки ответа (тело последует)
+	sender->sendHeaders(response, false);
+	// Отправляем тело ответа с завершением сообщения
+	ASSERT_EQ(sender->sendData("hello", 5, true), 5u);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	/**
+	 * Проверяем что дублирующий токен chunked не дописан: он сделал бы кадрирование
+	 * некорректным, и принимающая сторона отвергла бы сообщение
+	 */
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело передано корректно
+	ASSERT_EQ(events.body, "hello");
+}
+
+/**
+ * @brief Метод проверки возобновляемой прокачки pull-источника данных в push-модели
+ *
+ */
+TEST_F(ParserFixture, SendDataSourceResumeTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Собранный сетевым слоем поток исходящих байтов
+	std::string wire;
+	// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+	sender->on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+		// Накапливаем исходящие байты сетевого слоя
+		wire.append(static_cast <const char *> (buffer), size);
+	}));
+	// Уменьшаем пороги выходного буфера отправки
+	sender->sendWaterMarks(8 * 1024, 4 * 1024);
+	// Уменьшаем объём одной прокачки pull-источника данных
+	sender->pumpLimit(4 * 1024);
+	// Формируем эталонное тело заведомо большего размера, чем объём одной прокачки
+	std::string expected(100000, '\0');
+	/**
+	 * Заполняем эталонное тело псевдослучайными данными
+	 */
+	for(size_t i = 0; i < expected.size(); ++i)
+		// Формируем байт эталонного тела
+		expected[i] = static_cast <char> ('A' + (i % 26));
+	// Позиция чтения эталонного тела источником данных
+	size_t position = 0;
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Отправляем заголовки ответа (тело последует из pull-источника данных)
+	sender->sendHeaders(response, false);
+	// Назначаем pull-источник данных тела сообщения
+	sender->dataSource(parser_http_t::data_source_callback_t([&expected, &position](const uint32_t sid, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+		// Вычисляем размер выдаваемой порции данных
+		const size_t size = std::min(cap, (expected.size() - position));
+		// Копируем порцию эталонного тела в буфер парсера
+		std::memcpy(buffer, (expected.data() + position), size);
+		// Сдвигаем позицию чтения эталонного тела
+		position += size;
+		// Выставляем флаг достижения конца тела
+		eof = (position == expected.size());
+		// Возвращаем число записанных байт
+		return static_cast <int64_t> (size);
+	}));
+	/**
+	 * Проверяем что первая прокачка ограничена лимитом: тело целиком не выкачано
+	 * и управление возвращено сетевому слою
+	 */
+	ASSERT_LT(position, expected.size());
+	// Проверяем что отправка тела помечена незавершённой
+	ASSERT_TRUE(sender->sourcePending());
+	// Счётчик прокачек тела из источника данных
+	size_t rounds = 0;
+	/**
+	 * Продолжаем отправку тела по готовности сокета к записи
+	 */
+	while(sender->resumeSource()){
+		// Учитываем очередную прокачку тела
+		++rounds;
+		// Проверяем что прокачка не зациклилась
+		ASSERT_LT(rounds, 1000u);
+	}
+	// Проверяем что потребовалось несколько прокачек
+	ASSERT_GT(rounds, 1u);
+	// Проверяем что отправка тела завершена
+	ASSERT_FALSE(sender->sourcePending());
+	// Проверяем что источник данных выдал всё эталонное тело
+	ASSERT_EQ(position, expected.size());
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Разбираем собранный сетевым слоем поток исходящих байтов
+	receiver->parse(wire.data(), wire.size());
+	// Проверяем что сообщение полностью разобрано
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело сообщения передано без искажений
+	ASSERT_EQ(events.body, expected);
+}
+
+/**
+ * @brief Метод проверки вычистки Content-Length у запроса без тела
+ *
+ */
+TEST_F(ParserFixture, SendBodylessContentLengthTest){
+	// Создаём объект парсера-отправителя запроса
+	auto sender = this->make(direct_t::REQUEST);
+	// Создаём объект парсера-приёмника запроса
+	auto receiver = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Формируем контейнер заголовков запроса с провайдером
+	headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::POST, std::string("/api")));
+	// Дописываем заголовок Host
+	request.emplace("Host", "anyks.com");
+	// Дописываем заголовок размера тела, которого не будет
+	request.emplace("Content-Length", "5");
+	// Отправляем заголовки запроса с завершением сообщения (тела не будет)
+	sender->sendHeaders(request, true);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	/**
+	 * Проверяем что принимающая сторона считает сообщение завершённым: объявленный
+	 * размер тела остался бы на проводе и получатель ждал бы недостающие байты
+	 */
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что размер тела не объявлен
+	ASSERT_EQ(receiver->message().bodySize, -1);
+	/**
+	 * Выполняем перебор всех разобранных заголовков сообщения
+	 */
+	for(const auto & header : events.headers)
+		// Проверяем что заголовок размера тела на провод не ушёл
+		ASSERT_STRNE(header.first.c_str(), "Content-Length");
+}
+
+/**
+ * @brief Метод проверки вычистки запрещённых полей из исходящих трейлеров
+ *
+ */
+TEST_F(ParserFixture, SendForbiddenTrailersTest){
+	// Создаём объект парсера-отправителя запроса
+	auto sender = this->make(direct_t::REQUEST);
+	// Создаём объект парсера-приёмника запроса
+	auto receiver = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Формируем контейнер заголовков запроса с провайдером
+	headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::POST, std::string("/upload")));
+	// Дописываем заголовок Host
+	request.emplace("Host", "anyks.com");
+	// Отправляем заголовки запроса (тело последует в кодировке chunked)
+	sender->sendHeaders(request, false);
+	// Отправляем тело запроса без завершения сообщения
+	ASSERT_EQ(sender->sendData("hello", 5, false), 5u);
+	// Формируем контейнер трейлеров без провайдера
+	headers_t trailers;
+	// Дописываем запрещённое в трейлерах поле кадрирования
+	trailers.emplace("Content-Length", "100");
+	// Дописываем запрещённое в трейлерах поле управления соединением
+	trailers.emplace("Keep-Alive", "timeout=5");
+	// Дописываем разрешённое поле трейлера
+	trailers.emplace("X-Check", "done");
+	// Отправляем блок трейлеров (завершает тело последним чанком)
+	sender->sendHeaders(trailers, false);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	// Проверяем что сообщение полностью разобрано
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело передано корректно
+	ASSERT_EQ(events.body, "hello");
+	// Проверяем что до потребителя дошёл единственный разрешённый трейлер
+	ASSERT_EQ(events.trailers.size(), 1u);
+	// Проверяем что разрешённый трейлер передан без искажений
+	ASSERT_EQ(events.trailers.front().first, "X-Check");
+}
+
+/**
+ * @brief Метод проверки согласованности лимита памяти буферов при клонировании
+ *
+ */
+TEST_F(ParserFixture, CloneWaterMarksTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Устанавливаем пороги выходного буфера заведомо выше лимита памяти по умолчанию
+	sender->sendWaterMarks(32 * 1024 * 1024, 16 * 1024 * 1024);
+	// Выполняем клонирование объекта парсера
+	auto clone = sender->clone();
+	// Проверяем что клон создан
+	ASSERT_NE(clone, nullptr);
+	// Получаем объект клонированного парсера-отправителя
+	auto * parser = static_cast <parser_http_t *> (clone.get());
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Отправляем заголовки ответа (тело последует)
+	parser->sendHeaders(response, false);
+	// Формируем тело заведомо большего размера, чем лимит памяти буфера по умолчанию
+	const std::string body(12 * 1024 * 1024, 'x');
+	/**
+	 * Проверяем что клон принимает тело целиком: без согласования лимита памяти
+	 * с порогами буфер клона упёрся бы в значение по умолчанию
+	 */
+	ASSERT_EQ(parser->sendData(body.data(), body.size(), true), body.size());
+}

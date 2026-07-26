@@ -469,16 +469,16 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::CRITICAL, this->_socks5.statusMessage(this->_ctx.status));
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::CRITICAL, this->_socks5.statusMessage(this->_ctx.status).c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socks5.statusMessage(this->_ctx.status));
+									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socks5.statusMessage(this->_ctx.status).c_str());
 								#endif
 							// Выполняем функцию обратного вызова
-							} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(this->_ctx.status));
+							} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(this->_ctx.status).c_str());
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const bool)> ("connect", false);
 						} break;

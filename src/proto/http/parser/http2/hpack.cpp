@@ -865,6 +865,25 @@ void awh::http::h2::hpack::DynamicTable::evict() noexcept {
 		const field_t & back = this->_entries.back();
 		// Уменьшаем суммарный размер таблицы на размер записи (RFC 7541 §4.1)
 		this->_size -= static_cast <uint32_t> (back.name.size() + back.value.size() + 32);
+		// Если индекс записей сопровождается
+		if(this->_indexing){
+			// Вычисляем сквозной номер вытесняемой записи (она самая старая из живых)
+			const uint64_t seq = (this->_inserts - (this->_entries.size() - 1));
+			// Получаем диапазон записей индекса с тем же хешем названия заголовка
+			const auto range = this->_index.equal_range(std::hash <string_view> {}(string_view(back.name)));
+			/**
+			 * Выполняем перебор записей индекса с этим хешем названия заголовка
+			 */
+			for(auto i = range.first; i != range.second; ++i){
+				// Если найдена вытесняемая запись
+				if(i->second == seq){
+					// Удаляем запись из индекса
+					this->_index.erase(i);
+					// Прекращаем перебор записей индекса
+					break;
+				}
+			}
+		}
 		// Удаляем самую старую запись таблицы
 		this->_entries.pop_back();
 	}
@@ -940,6 +959,8 @@ void awh::http::h2::hpack::DynamicTable::add(string_view name, string_view value
 	if(entrySize > this->_maxSize){
 		// Сбрасываем суммарный размер таблицы
 		this->_size = 0;
+		// Очищаем индекс записей
+		this->_index.clear();
 		// Очищаем все записи таблицы
 		this->_entries.clear();
 		// Выходим из метода
@@ -947,19 +968,77 @@ void awh::http::h2::hpack::DynamicTable::add(string_view name, string_view value
 	}
 	// Добавляем запись в начало таблицы
 	this->_entries.emplace_front(string(name), string(value));
+	// Наращиваем сквозной номер добавления
+	this->_inserts++;
+	// Если индекс записей сопровождается - дописываем запись по хешу названия заголовка
+	if(this->_indexing)
+		// Дописываем запись в индекс по хешу названия заголовка
+		this->_index.emplace(std::hash <string_view> {}(string_view(this->_entries.front().name)), this->_inserts);
 	// Наращиваем суммарный размер таблицы
 	this->_size += entrySize;
 	// Вытесняем старые записи при нехватке места
 	this->evict();
 }
 /**
- * @brief Конструктор
+ * @brief Метод поиска записи по названию и значению заголовка
  *
- * @param maxSize максимальный размер таблицы
+ * @param name      название искомого заголовка
+ * @param value     значение искомого заголовка
+ * @param nameIndex индекс совпадения только по названию заголовка
+ * @return          индекс полного совпадения либо 0
  *
  */
-awh::http::h2::hpack::DynamicTable::DynamicTable(const uint32_t maxSize) noexcept :
- _size(0), _maxSize(maxSize) {}
+uint64_t awh::http::h2::hpack::DynamicTable::find(string_view name, string_view value, uint64_t & nameIndex) const noexcept {
+	// Результат работы функции - индекс полного совпадения
+	uint64_t result = 0;
+	// Сквозной номер найденного совпадения по названию заголовка
+	uint64_t byName = 0;
+	// Получаем диапазон записей индекса с искомым хешем названия заголовка
+	const auto range = this->_index.equal_range(std::hash <string_view> {}(name));
+	/**
+	 * Выполняем перебор всех записей с искомым хешем названия. Записей с одним
+	 * названием в таблице обычно единицы, поэтому перебор диапазона остаётся дешёвым
+	 */
+	for(auto i = range.first; i != range.second; ++i){
+		// Получаем сквозной номер записи
+		const uint64_t seq = i->second;
+		// Вычисляем позицию записи по сквозному номеру
+		const size_t position = static_cast <size_t> (this->_inserts - seq);
+		// Если позиция вышла за пределы таблицы - запись уже вытеснена
+		if(position >= this->_entries.size())
+			// Переходим к следующей записи индекса
+			continue;
+		// Получаем запись таблицы
+		const field_t & entry = this->_entries[position];
+		// Совпадение хешей ещё не означает совпадения названий - сверяем названия
+		if(entry.name != name)
+			// Переходим к следующей записи индекса
+			continue;
+		// Запоминаем наиболее свежее совпадение по названию заголовка
+		if(seq > byName)
+			// Запоминаем сквозной номер совпадения по названию
+			byName = seq;
+		// Если значение заголовка совпало и совпадение свежее найденного
+		if((seq > result) && (entry.value == value))
+			// Запоминаем сквозной номер полного совпадения
+			result = seq;
+	}
+	// Если найдено совпадение по названию заголовка
+	if(byName > 0)
+		// Вычисляем индекс совпадения по названию заголовка
+		nameIndex = ((this->_inserts - byName) + 1);
+	// Выводим индекс полного совпадения
+	return ((result > 0) ? ((this->_inserts - result) + 1) : 0);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param maxSize  максимальный размер таблицы
+ * @param indexing сопровождать индекс записей для поиска по названию
+ *
+ */
+awh::http::h2::hpack::DynamicTable::DynamicTable(const uint32_t maxSize, const bool indexing) noexcept :
+ _size(0), _maxSize(maxSize), _inserts(0), _indexing(indexing) {}
 
 /**
  * @brief Метод получения динамической таблицы пира
@@ -1383,27 +1462,18 @@ uint64_t awh::http::h2::hpack::Encoder::lookup(string_view name, string_view val
 				return j;
 		}
 	}
-	/**
-	 * Выполняем поиск в динамической таблице (индексы 62..): [0] - самая свежая запись
-	 */
-	for(size_t j = 1; j <= this->_table.count(); ++j){
-		// Получаем очередную запись динамической таблицы
-		const field_t * e = this->_table.at(j);
-		// Если запись отсутствует или название заголовка не совпадает
-		if((e == nullptr) || (e->name != name))
-			// Переходим к следующей записи
-			continue;
-		// Вычисляем объединённый индекс записи
-		const uint64_t idx = (STATIC_TABLE_SIZE + j);
-		// Если совпадение по имени ещё не найдено
-		if(nameIndex == 0)
-			// Запоминаем индекс совпадения по имени
-			nameIndex = idx;
-		// Если значение заголовка тоже совпадает
-		if(e->value == value)
-			// Выводим индекс полного совпадения
-			return idx;
-	}
+	// Индекс совпадения по названию заголовка в динамической таблице
+	uint64_t dynamicName = 0;
+	// Выполняем поиск в динамической таблице по индексу (индексы 62..)
+	const uint64_t dynamicFull = this->_table.find(name, value, dynamicName);
+	// Если совпадение по имени в статической таблице не найдено
+	if((nameIndex == 0) && (dynamicName > 0))
+		// Запоминаем объединённый индекс совпадения по имени
+		nameIndex = (STATIC_TABLE_SIZE + dynamicName);
+	// Если найдено полное совпадение в динамической таблице
+	if(dynamicFull > 0)
+		// Выводим объединённый индекс полного совпадения
+		return (STATIC_TABLE_SIZE + dynamicFull);
 	// Полное совпадение не найдено
 	return 0;
 }
@@ -1595,5 +1665,5 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
  *
  */
 awh::http::h2::hpack::Encoder::Encoder(const uint32_t maxTableSize) noexcept :
- _table(maxTableSize), _pendingSize(0), _pendingMinSize(0), _listSize(0),
+ _table(maxTableSize, true), _pendingSize(0), _pendingMinSize(0), _listSize(0),
  _sizeUpdatePending(false), _sensitiveHeuristic(true) {}

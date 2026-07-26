@@ -1152,10 +1152,21 @@ void awh::Operating_System::printStatsMemory() const noexcept {
 	 * Если используется аллокатор TcMalloc
 	 */
 	#if __AWH_USE_TCMALLOC__
+		// Буфер собираемой статистики аллокатора
+		char buffer[16384];
+		// Обнуляем первый символ буфера на случай, если аллокатор ничего не запишет
+		buffer[0] = '\0';
+		/**
+		 * Собираем статистику аллокатора в буфер: печатать её самостоятельно
+		 * реализация не умеет, вывод выполняется вызывающей стороной
+		 */
+		MallocExtension::instance()->GetStats(buffer, static_cast <int32_t> (sizeof(buffer) - 1));
+		// Принудительно завершаем собранную статистику
+		buffer[sizeof(buffer) - 1] = '\0';
 		// Печатаем разделители
 		cout << "*************** START ***************" << endl << endl << flush;
-		// Возвращаем статус занятой памяти
-		MallocExtension::instance()->PrintStats();
+		// Выводим собранную статистику занятой памяти
+		cout << buffer << flush;
 		// Печатаем разделители
 		cout << endl << "---------------- END ----------------" << endl << endl << flush;
 	/**
@@ -1259,9 +1270,9 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
 	// Если размер резервированной памяти передан
 	if(size > 0){
 		// Выделяем память
-		void * p = ::malloc(size);
+		void * mem = ::malloc(size);
 		// Если память не выделена
-		if(p == nullptr)
+		if(mem == nullptr)
 			// Возвращаем отрицательный результат
 			return false;
 		/**
@@ -1271,10 +1282,10 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
 			/**
 			 * Закрепляем память в RAM (предотвращает swap)
 			 */
-			::madvise(p, size, MADV_WILLNEED);
+			::madvise(mem, size, MADV_WILLNEED);
 		#endif
 		// Освобождаем — tcmalloc/jemalloc сохранят регион в пуле
-		::free(p);
+		::free(mem);
 		// Возвращаем положительный результат
 		return true;
 	}
@@ -1295,63 +1306,22 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * Если используется аллокатор TcMalloc
 	 */
 	#if __AWH_USE_TCMALLOC__
-		// Если необходимо блокировать возвращение оперативной памяти системе
-		if(mode){
-			// Запрещаем возвращение памяти
-			MallocExtension::instance()->SetNumericProperty("tcmalloc.release_rate", 0.);
-			// Отключаем фоновую очистку
-			MallocExtension::instance()->SetNumericProperty("tcmalloc.background_release_rate", 0.);
-			// Отключить автоматическое возвращение памяти
-			MallocExtension::instance()->SetNumericProperty("tcmalloc.decommit_time_ms", 1000000000);
-			{
-				// Значение установленное времени
-				size_t value = 0;
-				// Извлекаем установленный параметр
-				MallocExtension::instance()->GetNumericProperty("tcmalloc.decommit_time_ms", &value);
-				// Если параметр установлен корректно
-				if((result = (value == 1000000000))){
-					// Значение установленного множителя
-					double rate = 0.;
-					// Выполняем извлечение установленного параметра
-					MallocExtension::instance()->GetNumericProperty("tcmalloc.release_rate", &rate);
-					// Если множитель установлен верно
-					if((result = (rate == 0.))){
-						// Выполняем извлечение установленного параметра
-						MallocExtension::instance()->GetNumericProperty("tcmalloc.background_release_rate", &rate);
-						// Выполняем формирование результата
-						result = (rate == 0.);
-					}
-				}
-			}
-		// Если необходимо разблокировать возвращение памяти системе
-		} else {
-			// Разрешаем возвращение памяти
-			MallocExtension::instance()->SetNumericProperty("tcmalloc.release_rate", 1.);
-			// Включаем фоновую очистку
-			MallocExtension::instance()->SetNumericProperty("tcmalloc.background_release_rate", 1.);
-			// Включаем автоматическое возвращение памяти
-			MallocExtension::instance()->SetNumericProperty("tcmalloc.decommit_time_ms", 10000);
-			{
-				// Значение установленное времени
-				size_t value = 0;
-				// Извлекаем установленный параметр
-				MallocExtension::instance()->GetNumericProperty("tcmalloc.decommit_time_ms", &value);
-				// Если параметр установлен корректно
-				if((result = (value == 10000))){
-					// Значение установленного множителя
-					double rate = 0.;
-					// Выполняем извлечение установленного параметра
-					MallocExtension::instance()->GetNumericProperty("tcmalloc.release_rate", &rate);
-					// Если множитель установлен верно
-					if((result = (rate == 1.))){
-						// Выполняем извлечение установленного параметра
-						MallocExtension::instance()->GetNumericProperty("tcmalloc.background_release_rate", &rate);
-						// Выполняем формирование результата
-						result = (rate == 1.);
-					}
-				}
-			}
-		}
+		/**
+		 * Скорость возврата памяти системе задаётся отдельным интерфейсом, а не
+		 * числовым свойством: нулевая скорость означает, что память системе не
+		 * возвращается вовсе, что и требуется для блокировки возврата
+		 */
+		// Требуемая скорость возврата памяти системе
+		const double required = (mode ? 0. : 1.);
+		// Устанавливаем требуемую скорость возврата памяти системе
+		MallocExtension::instance()->SetMemoryReleaseRate(required);
+		// Получаем установленную скорость возврата памяти системе
+		const double rate = MallocExtension::instance()->GetMemoryReleaseRate();
+		/**
+		 * Формируем результат: отрицательное значение означает, что реализация
+		 * аллокатора управление скоростью возврата памяти не поддерживает
+		 */
+		result = ((rate >= 0.) && (rate == required));
 	/**
 	 * Если аллокатор TcMalloc не используется
 	 */

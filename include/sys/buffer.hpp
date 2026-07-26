@@ -70,6 +70,8 @@ namespace awh {
 				size_t end;
 				// Начало записи
 				size_t begin;
+				// Объём места, зарезервированного последним вызовом prepare и ещё не зафиксированного
+				size_t reserved;
 				// Максимальный размер выделения памяти (по умолчанию AWH_MAX_MEMORY_BUFFER)
 				size_t maxMemory;
 				/**

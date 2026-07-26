@@ -211,6 +211,67 @@ namespace {
 	constexpr auto targetTable = makeTargetTable();
 
 	/**
+	 * @brief Класс крупноблочной обработки состояния конечного автомата
+	 *
+	 * @details Часть состояний обрабатывается не побайтово, а целыми участками:
+	 *          тело сообщения копируется блоками, а токены сканируются по
+	 *          lookup-таблице до первого недопустимого символа. Классификация
+	 *          вынесена в таблицу, чтобы на горячем пути посимвольного разбора
+	 *          выполнялось одно чтение вместо цепочки сравнений с каждым
+	 *          крупноблочным состоянием
+	 *
+	 */
+	enum scan_t : uint8_t {
+		SCAN_NONE         = 0x00, // Состояние обрабатывается посимвольно
+		SCAN_TARGET       = 0x01, // Сканирование участка request-target
+		SCAN_TOKEN        = 0x02, // Сканирование участка имени заголовка/трейлера
+		SCAN_VALUE        = 0x03, // Сканирование участка значения заголовка/трейлера
+		SCAN_BODY_CHUNK   = 0x04, // Крупноблочное чтение данных чанка
+		SCAN_BODY_IDENTITY= 0x05, // Крупноблочное чтение тела фиксированного размера
+		SCAN_BODY_CLOSE   = 0x06, // Крупноблочное чтение тела до закрытия соединения
+		SCAN_HEADER_LINE  = 0x07  // Разбор целой строки заголовка или трейлера
+	};
+
+	/**
+	 * @brief Функция генерации таблицы классов крупноблочной обработки состояний
+	 *
+	 * @return таблица классов крупноблочной обработки состояний
+	 *
+	 */
+	constexpr array <uint8_t, 256> makeScanTable() noexcept {
+		// Результат работы функции
+		array <uint8_t, 256> result{};
+		// Помечаем состояние разбора request-target
+		result[static_cast <uint8_t> (state_t::S_REQ_TARGET)] = SCAN_TARGET;
+		// Помечаем состояние разбора имени заголовка
+		result[static_cast <uint8_t> (state_t::S_HEADER_NAME)] = SCAN_TOKEN;
+		// Помечаем состояние разбора имени трейлера
+		result[static_cast <uint8_t> (state_t::S_TRAILER_NAME)] = SCAN_TOKEN;
+		// Помечаем состояние разбора значения заголовка
+		result[static_cast <uint8_t> (state_t::S_HEADER_VALUE)] = SCAN_VALUE;
+		// Помечаем состояние разбора значения трейлера
+		result[static_cast <uint8_t> (state_t::S_TRAILER_VALUE)] = SCAN_VALUE;
+		// Помечаем состояние чтения данных чанка
+		result[static_cast <uint8_t> (state_t::S_CHUNK_DATA)] = SCAN_BODY_CHUNK;
+		// Помечаем состояние чтения тела фиксированного размера
+		result[static_cast <uint8_t> (state_t::S_BODY_IDENTITY)] = SCAN_BODY_IDENTITY;
+		// Помечаем состояние чтения тела до закрытия соединения
+		result[static_cast <uint8_t> (state_t::S_BODY_UNTIL_CLOSE)] = SCAN_BODY_CLOSE;
+		// Помечаем состояние начала строки заголовка
+		result[static_cast <uint8_t> (state_t::S_HEADER_START)] = SCAN_HEADER_LINE;
+		// Помечаем состояние начала строки трейлера
+		result[static_cast <uint8_t> (state_t::S_TRAILER_START)] = SCAN_HEADER_LINE;
+		// Выводим результат
+		return result;
+	}
+
+	/**
+	 * @brief Таблица классов крупноблочной обработки состояний (считается на этапе компиляции)
+	 *
+	 */
+	constexpr auto scanTable = makeScanTable();
+
+	/**
 	 * @brief Функция проверки принадлежности символа к токенам
 	 *
 	 * @param c проверяемый символ
@@ -278,6 +339,51 @@ namespace {
 		return -1;
 	}
 	/**
+	 * @brief Функция записи размера чанка в шестнадцатеричном виде с завершающим CRLF
+	 *
+	 * @details Заменяет snprintf на горячем пути кадрирования: разбор форматной строки
+	 *          стоит дороже самой записи, а формат здесь фиксирован
+	 *
+	 * @param output буфер записи (не менее 18 байт)
+	 * @param value  записываемый размер чанка
+	 * @return       число записанных байт
+	 *
+	 */
+	inline size_t writeChunkSize(char * output, const uint64_t value) noexcept {
+		// Таблица шестнадцатеричных цифр в верхнем регистре
+		static constexpr char DIGITS[] = "0123456789ABCDEF";
+		// Временный буфер цифр в обратном порядке (максимум 16 цифр у uint64_t)
+		char digits[16];
+		// Количество записанных цифр
+		size_t count = 0;
+		// Остаток записываемого значения
+		uint64_t rest = value;
+		/**
+		 * Выполняем выделение шестнадцатеричных цифр начиная с младшей
+		 */
+		do {
+			// Записываем очередную младшую цифру во временный буфер
+			digits[count++] = DIGITS[rest & 0x0F];
+			// Сдвигаем остаток значения на одну шестнадцатеричную цифру
+			rest >>= 4;
+		// Продолжаем пока остаток значения не исчерпан
+		} while(rest != 0);
+		// Позиция записи в результирующем буфере
+		size_t result = 0;
+		/**
+		 * Выполняем перенос цифр в результирующий буфер в прямом порядке
+		 */
+		while(count > 0)
+			// Переносим очередную цифру в результирующий буфер
+			output[result++] = digits[--count];
+		// Дописываем возврат каретки
+		output[result++] = '\r';
+		// Дописываем перевод строки
+		output[result++] = '\n';
+		// Выводим результат
+		return result;
+	}
+	/**
 	 * @brief Функция приведения символа к нижнему регистру
 	 *
 	 * @param letter приводимый символ
@@ -325,6 +431,23 @@ namespace {
 	bool iequalsLit(const string & str, const char * litLower) noexcept {
 		// Выполняем сравнение строки с литералом
 		return iequalsLit(str.c_str(), str.length(), litLower);
+	}
+	/**
+	 * @brief Функция точного сравнения имени метода запроса с литералом
+	 *
+	 * @details Метод запроса регистрозависим (RFC 9110 §9.1): трактовка "get" как GET
+	 *          позволяет обойти ограничения по методу на промежуточном узле, поэтому
+	 *          сравнение выполняется побайтово. Длина имени уже совпала при
+	 *          диспетчеризации по размеру, поэтому достаточно memcmp
+	 *
+	 * @param method  имя метода запроса
+	 * @param literal литерал канонического написания метода
+	 * @return        результат сравнения
+	 *
+	 */
+	inline bool equalsMethod(const string & method, const char * literal) noexcept {
+		// Выполняем побайтовое сравнение имени метода с литералом
+		return (::memcmp(method.data(), literal, method.size()) == 0);
 	}
 	/**
 	 * @brief Функция разбора десятичного числа с контролем переполнения
@@ -386,182 +509,380 @@ namespace {
 			--end;
 	}
 	/**
+	 * @brief Функция отсечения параметров транспортного кодирования от его имени
+	 *
+	 * @details По RFC 9112 §7 элемент Transfer-Encoding имеет вид
+	 *          token *( OWS ";" OWS transfer-parameter ), поэтому запись
+	 *          "chunked;foo=bar" является корректным указанием кодировки chunked
+	 *          и обязана распознаваться наравне с голым "chunked"
+	 *
+	 * @param begin начало элемента списка
+	 * @param end   конец элемента списка
+	 *
+	 */
+	void trimParameters(const char * begin, const char *& end) noexcept {
+		// Выполняем поиск начала параметров транспортного кодирования
+		const char * separator = static_cast <const char *> (::memchr(begin, ';', static_cast <size_t> (end - begin)));
+		// Если параметры транспортного кодирования обнаружены
+		if(separator != nullptr){
+			// Отсекаем параметры транспортного кодирования от имени
+			end = separator;
+			// Указатель на начало имени транспортного кодирования
+			const char * name = begin;
+			// Выполняем триминг хвостовых OWS оставшегося имени
+			trimOWS(name, end);
+		}
+	}
+	/**
+	 * @brief Функция проверки завершения списка транспортных кодирований токеном chunked
+	 *
+	 * @details Кадрирование chunked действует, только если это последнее кодирование
+	 *          в списке (RFC 9112 §6.1) - именно так значение трактует принимающая сторона
+	 *
+	 * @param value значение заголовка Transfer-Encoding
+	 * @return      результат проверки
+	 *
+	 */
+	bool endsWithChunked(const string & value) noexcept {
+		// Получаем указатель на начало последнего элемента списка
+		const char * begin = value.data();
+		// Получаем указатель на конец последнего элемента списка
+		const char * end = (begin + value.size());
+		// Выполняем поиск последнего разделителя списка (memrchr - расширение, недоступное переносимо)
+		const size_t comma = value.find_last_of(',');
+		// Если разделитель обнаружен - последним является элемент после него
+		if(comma != string::npos)
+			// Смещаем начало последнего элемента списка
+			begin = (value.data() + comma + 1);
+		// Выполняем триминг OWS по краям последнего элемента списка
+		trimOWS(begin, end);
+		// Отсекаем параметры транспортного кодирования от его имени
+		trimParameters(begin, end);
+		// Выводим результат сравнения последнего кодирования с chunked
+		return iequalsLit(begin, static_cast <size_t> (end - begin), "chunked");
+	}
+	/**
+	 * @brief Функция проверки запрета поля в блоке трейлеров
+	 *
+	 * @details По RFC 9110 §6.5.1 в трейлерах запрещены поля, управляющие кадрированием
+	 *          сообщения, маршрутизацией и состоянием соединения: принятые задним числом,
+	 *          они переопределили бы уже разобранное тело. Список общий для приёма и
+	 *          отправки - принимающая сторона такие поля отбрасывает, а отправляющая
+	 *          не формирует
+	 *
+	 * @param name название поля трейлера
+	 * @return     результат проверки
+	 *
+	 */
+	bool forbiddenTrailer(const string_view name) noexcept {
+		/**
+		 * Выполняем проверку названия по списку запрещённых (диспетчер по первой букве)
+		 */
+		switch(name.empty() ? '\0' : lower(name.front())){
+			// Поля начинающиеся на "C"
+			case 'c':
+				// Проверяем принадлежность к полям кадрирования и управления соединением
+				return (iequalsLit(name.data(), name.size(), "content-length") || iequalsLit(name.data(), name.size(), "connection"));
+			// Поля начинающиеся на "T"
+			case 't':
+				// Проверяем принадлежность к полям транспортного кодирования
+				return (
+					iequalsLit(name.data(), name.size(), "transfer-encoding") ||
+					iequalsLit(name.data(), name.size(), "trailer") ||
+					iequalsLit(name.data(), name.size(), "te")
+				);
+			// Поля начинающиеся на "H"
+			case 'h':
+				// Проверяем принадлежность к полю целевого узла
+				return iequalsLit(name.data(), name.size(), "host");
+			// Поля начинающиеся на "E"
+			case 'e':
+				// Проверяем принадлежность к полю ожидания промежуточного ответа
+				return iequalsLit(name.data(), name.size(), "expect");
+			// Поля начинающиеся на "U"
+			case 'u':
+				// Проверяем принадлежность к полю переключения протокола
+				return iequalsLit(name.data(), name.size(), "upgrade");
+			// Поля начинающиеся на "K"
+			case 'k':
+				// Проверяем принадлежность к полю управления удержанием соединения
+				return iequalsLit(name.data(), name.size(), "keep-alive");
+			// Поля начинающиеся на "P"
+			case 'p':
+				// Проверяем принадлежность к полю управления соединением с прокси
+				return iequalsLit(name.data(), name.size(), "proxy-connection");
+		}
+		// Поле в блоке трейлеров разрешено
+		return false;
+	}
+	/**
+	 * @brief Функция удаления строк заголовка с указанным названием из сериализованного блока
+	 *
+	 * @details Работает по уже напечатанному блоку, чтобы не копировать контейнер
+	 *          заголовков ради аварийного пути. Строки заголовка ищутся с начала
+	 *          строки, поэтому совпадение с телом чужого значения исключено
+	 *
+	 * @param block    сериализованный блок заголовков
+	 * @param nameLower название удаляемого заголовка в нижнем регистре
+	 *
+	 */
+	void dropHeaderLine(string & block, const char * nameLower) noexcept {
+		// Позиция начала очередной строки блока
+		size_t position = 0;
+		/**
+		 * Выполняем перебор всех строк сериализованного блока
+		 */
+		while(position < block.size()){
+			// Выполняем поиск конца текущей строки блока
+			const size_t eol = block.find("\r\n", position);
+			// Если конец строки не обнаружен - блок повреждён
+			if(eol == string::npos)
+				// Выходим из цикла
+				break;
+			// Если достигнута завершающая пустая строка блока
+			if(eol == position)
+				// Выходим из цикла
+				break;
+			// Выполняем поиск разделителя имени и значения заголовка
+			const size_t colon = block.find(':', position);
+			// Если название текущей строки совпадает с удаляемым заголовком
+			if((colon != string::npos) && (colon < eol) && iequalsLit(block.data() + position, (colon - position), nameLower)){
+				// Удаляем строку заголовка вместе с её окончанием
+				block.erase(position, ((eol + 2) - position));
+				// Продолжаем перебор с той же позиции
+				continue;
+			}
+			// Переходим к следующей строке блока
+			position = (eol + 2);
+		}
+	}
+	/**
+	 * @brief Функция удаления запрещённых полей из сериализованного блока трейлеров
+	 *
+	 * @details Отправлять поля, которые принимающая сторона обязана отбросить,
+	 *          бессмысленно и опасно: промежуточный узел с иной трактовкой способен
+	 *          принять их к сведению и переопределить кадрирование уже переданного тела
+	 *
+	 * @param block сериализованный блок трейлеров
+	 * @return      количество удалённых полей
+	 *
+	 */
+	size_t dropForbiddenTrailers(string & block) noexcept {
+		// Количество удалённых полей
+		size_t result = 0;
+		// Позиция начала очередной строки блока
+		size_t position = 0;
+		/**
+		 * Выполняем перебор всех строк сериализованного блока
+		 */
+		while(position < block.size()){
+			// Выполняем поиск конца текущей строки блока
+			const size_t eol = block.find("\r\n", position);
+			// Если конец строки не обнаружен - блок повреждён
+			if(eol == string::npos)
+				// Выходим из цикла
+				break;
+			// Если достигнута завершающая пустая строка блока
+			if(eol == position)
+				// Выходим из цикла
+				break;
+			// Выполняем поиск разделителя имени и значения поля
+			const size_t colon = block.find(':', position);
+			// Если поле запрещено в блоке трейлеров
+			if((colon != string::npos) && (colon < eol) && forbiddenTrailer(string_view(block.data() + position, (colon - position)))){
+				// Удаляем строку поля вместе с её окончанием
+				block.erase(position, ((eol + 2) - position));
+				// Учитываем удалённое поле
+				++result;
+				// Продолжаем перебор с той же позиции
+				continue;
+			}
+			// Переходим к следующей строке блока
+			position = (eol + 2);
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
 	 * @brief Функция классификации метода запроса по его имени
 	 *
+	 * @details Сравнение выполняется с учётом регистра - метод запроса регистрозависим
+	 *          по RFC 9110 §9.1, а нераспознанное написание уходит в method_t::UNKNOWN
+	 *          с сохранением оригинала
+	 *
 	 * @param method имя метода запроса
-	 * @param fmk    объект фреймворка
 	 * @return       распознанный метод запроса либо method_t::NONE
 	 *
 	 */
-	http::method_t classifyMethod(const string & method, const fmk_t * fmk) noexcept {
+	http::method_t classifyMethod(const string & method) noexcept {
 		/**
-		 * Диспетчеризация по длине имени метода (operator== сравнивает размер первым)
+		 * Диспетчеризация по длине имени метода (несовпадение размера отсекается без сравнения)
 		 */
 		switch(method.size()){
 			// Методы с длиной имени 3 символа
 			case 3: {
 				// Если метод совпадает с известным методом запроса GET
-				if(fmk->compare("GET", method))
+				if(::equalsMethod(method, "GET"))
 					// Выводим распознанный метод запроса
 					return http::method_t::GET;
 				// Если метод совпадает с известным методом запроса PUT
-				if(fmk->compare("PUT", method))
+				if(::equalsMethod(method, "PUT"))
 					// Выводим распознанный метод запроса
 					return http::method_t::PUT;
 				// Если метод совпадает с известным методом запроса ACL
-				if(fmk->compare("ACL", method))
+				if(::equalsMethod(method, "ACL"))
 					// Выводим распознанный метод запроса
 					return http::method_t::ACL;
 				// Если метод совпадает с известным методом запроса PRI
-				if(fmk->compare("PRI", method))
+				if(::equalsMethod(method, "PRI"))
 					// Выводим распознанный метод запроса
 					return http::method_t::PRI;
 			} break;
 			// Методы с длиной имени 4 символа
 			case 4: {
 				// Если метод совпадает с известным методом запроса HEAD
-				if(fmk->compare("HEAD", method))
+				if(::equalsMethod(method, "HEAD"))
 					// Выводим распознанный метод запроса
 					return http::method_t::HEAD;
 				// Если метод совпадает с известным методом запроса POST
-				if(fmk->compare("POST", method))
+				if(::equalsMethod(method, "POST"))
 					// Выводим распознанный метод запроса
 					return http::method_t::POST;
 				// Если метод совпадает с известным методом запроса COPY
-				if(fmk->compare("COPY", method))
+				if(::equalsMethod(method, "COPY"))
 					// Выводим распознанный метод запроса
 					return http::method_t::COPY;
 				// Если метод совпадает с известным методом запроса LOCK
-				if(fmk->compare("LOCK", method))
+				if(::equalsMethod(method, "LOCK"))
 					// Выводим распознанный метод запроса
 					return http::method_t::LOCK;
 				// Если метод совпадает с известным методом запроса MOVE
-				if(fmk->compare("MOVE", method))
+				if(::equalsMethod(method, "MOVE"))
 					// Выводим распознанный метод запроса
 					return http::method_t::MOVE;
 				// Если метод совпадает с известным методом запроса BIND
-				if(fmk->compare("BIND", method))
+				if(::equalsMethod(method, "BIND"))
 					// Выводим распознанный метод запроса
 					return http::method_t::BIND;
 				// Если метод совпадает с известным методом запроса LINK
-				if(fmk->compare("LINK", method))
+				if(::equalsMethod(method, "LINK"))
 					// Выводим распознанный метод запроса
 					return http::method_t::LINK;
 			} break;
 			// Методы с длиной имени 5 символов
 			case 5: {
 				// Если метод совпадает с известным методом запроса TRACE
-				if(fmk->compare("TRACE", method))
+				if(::equalsMethod(method, "TRACE"))
 					// Выводим распознанный метод запроса
 					return http::method_t::TRACE;
 				// Если метод совпадает с известным методом запроса PATCH
-				if(fmk->compare("PATCH", method))
+				if(::equalsMethod(method, "PATCH"))
 					// Выводим распознанный метод запроса
 					return http::method_t::PATCH;
 				// Если метод совпадает с известным методом запроса MKCOL
-				if(fmk->compare("MKCOL", method))
+				if(::equalsMethod(method, "MKCOL"))
 					// Выводим распознанный метод запроса
 					return http::method_t::MKCOL;
 				// Если метод совпадает с известным методом запроса MERGE
-				if(fmk->compare("MERGE", method))
+				if(::equalsMethod(method, "MERGE"))
 					// Выводим распознанный метод запроса
 					return http::method_t::MERGE;
 				// Если метод совпадает с известным методом запроса PURGE
-				if(fmk->compare("PURGE", method))
+				if(::equalsMethod(method, "PURGE"))
 					// Выводим распознанный метод запроса
 					return http::method_t::PURGE;
 			} break;
 			// Методы с длиной имени 6 символов
 			case 6: {
 				// Если метод совпадает с известным методом запроса DELETE
-				if(fmk->compare("DELETE", method))
+				if(::equalsMethod(method, "DELETE"))
 					// Выводим распознанный метод запроса
 					return http::method_t::DEL;
 				// Если метод совпадает с известным методом запроса SEARCH
-				if(fmk->compare("SEARCH", method))
+				if(::equalsMethod(method, "SEARCH"))
 					// Выводим распознанный метод запроса
 					return http::method_t::SEARCH;
 				// Если метод совпадает с известным методом запроса UNLOCK
-				if(fmk->compare("UNLOCK", method))
+				if(::equalsMethod(method, "UNLOCK"))
 					// Выводим распознанный метод запроса
 					return http::method_t::UNLOCK;
 				// Если метод совпадает с известным методом запроса REBIND
-				if(fmk->compare("REBIND", method))
+				if(::equalsMethod(method, "REBIND"))
 					// Выводим распознанный метод запроса
 					return http::method_t::REBIND;
 				// Если метод совпадает с известным методом запроса UNBIND
-				if(fmk->compare("UNBIND", method))
+				if(::equalsMethod(method, "UNBIND"))
 					// Выводим распознанный метод запроса
 					return http::method_t::UNBIND;
 				// Если метод совпадает с известным методом запроса REPORT
-				if(fmk->compare("REPORT", method))
+				if(::equalsMethod(method, "REPORT"))
 					// Выводим распознанный метод запроса
 					return http::method_t::REPORT;
 				// Если метод совпадает с известным методом запроса NOTIFY
-				if(fmk->compare("NOTIFY", method))
+				if(::equalsMethod(method, "NOTIFY"))
 					// Выводим распознанный метод запроса
 					return http::method_t::NOTIFY;
 				// Если метод совпадает с известным методом запроса SOURCE
-				if(fmk->compare("SOURCE", method))
+				if(::equalsMethod(method, "SOURCE"))
 					// Выводим распознанный метод запроса
 					return http::method_t::SOURCE;
 				// Если метод совпадает с известным методом запроса UNLINK
-				if(fmk->compare("UNLINK", method))
+				if(::equalsMethod(method, "UNLINK"))
 					// Выводим распознанный метод запроса
 					return http::method_t::UNLINK;
 			} break;
 			// Методы с длиной имени 7 символов
 			case 7: {
 				// Если метод совпадает с известным методом запроса CONNECT
-				if(fmk->compare("CONNECT", method))
+				if(::equalsMethod(method, "CONNECT"))
 					// Выводим распознанный метод запроса
 					return http::method_t::CONNECT;
 				// Если метод совпадает с известным методом запроса OPTIONS
-				if(fmk->compare("OPTIONS", method))
+				if(::equalsMethod(method, "OPTIONS"))
 					// Выводим распознанный метод запроса
 					return http::method_t::OPTIONS;
 			} break;
 			// Методы с длиной имени 8 символов
 			case 8: {
 				// Если метод совпадает с известным методом запроса PROPFIND
-				if(fmk->compare("PROPFIND", method))
+				if(::equalsMethod(method, "PROPFIND"))
 					// Выводим распознанный метод запроса
 					return http::method_t::PROPFIND;
 				// Если метод совпадает с известным методом запроса CHECKOUT
-				if(fmk->compare("CHECKOUT", method))
+				if(::equalsMethod(method, "CHECKOUT"))
 					// Выводим распознанный метод запроса
 					return http::method_t::CHECKOUT;
 				// Если метод совпадает с известным методом запроса M-SEARCH
-				if(fmk->compare("M-SEARCH", method))
+				if(::equalsMethod(method, "M-SEARCH"))
 					// Выводим распознанный метод запроса
 					return http::method_t::MSEARCH;
 			} break;
 			// Методы с длиной имени 9 символов
 			case 9: {
 				// Если метод совпадает с известным методом запроса PROPPATCH
-				if(fmk->compare("PROPPATCH", method))
+				if(::equalsMethod(method, "PROPPATCH"))
 					// Выводим распознанный метод запроса
 					return http::method_t::PROPPATCH;
 				// Если метод совпадает с известным методом запроса SUBSCRIBE
-				if(fmk->compare("SUBSCRIBE", method))
+				if(::equalsMethod(method, "SUBSCRIBE"))
 					// Выводим распознанный метод запроса
 					return http::method_t::SUBSCRIBE;
 			} break;
 			// Методы с длиной имени 10 символов
 			case 10: {
 				// Если метод совпадает с известным методом запроса MKACTIVITY
-				if(fmk->compare("MKACTIVITY", method))
+				if(::equalsMethod(method, "MKACTIVITY"))
 					// Выводим распознанный метод запроса
 					return http::method_t::MKACTIVITY;
 				// Если метод совпадает с известным методом запроса MKCALENDAR
-				if(fmk->compare("MKCALENDAR", method))
+				if(::equalsMethod(method, "MKCALENDAR"))
 					// Выводим распознанный метод запроса
 					return http::method_t::MKCALENDAR;
 			} break;
 			// Методы с длиной имени 11 символов
 			case 11: {
 				// Если метод совпадает с известным методом запроса UNSUBSCRIBE
-				if(fmk->compare("UNSUBSCRIBE", method))
+				if(::equalsMethod(method, "UNSUBSCRIBE"))
 					// Выводим распознанный метод запроса
 					return http::method_t::UNSUBSCRIBE;
 			} break;
@@ -575,8 +896,28 @@ namespace {
  * @brief Конструктор
  *
  */
+awh::http::Parser_HTTP::Limits awh::http::Parser_HTTP::Limits::strict() noexcept {
+	// Результат работы функции - строгий набор ограничений
+	Limits result;
+	// Требуем строгого окончания строк CRLF
+	result.strictEOL = true;
+	// Запрещаем лишние пробелы внутри стартовой строки
+	result.strictSpaces = true;
+	// Требуем обязательного заголовка Host у запросов HTTP/1.1
+	result.requireHost = true;
+	// Выводим результат
+	return result;
+}
+
+/**
+ * @brief Конструктор
+ *
+ */
 awh::http::Parser_HTTP::Limits::Limits() noexcept :
  parser_t::limits_t(),
+ strictEOL(STRICT_EOL),
+ strictSpaces(STRICT_SPACES),
+ requireHost(REQUIRE_HOST),
  maxChunkLine(MAX_CHUNK_LINE),
  maxRequestLine(MAX_REQUEST_LINE),
  maxChunkSize(MAX_CHUNK_SIZE) {}
@@ -766,7 +1107,7 @@ awh::http::Parser_HTTP::Statistics_Headers::Statistics_Headers() noexcept :
  *
  */
 awh::http::Parser_HTTP::Flags::Flags() noexcept :
- inTrailers(false), upgradeSeen(false),
+ inTrailers(false), upgradeSeen(false), hostCount(0),
  connectionClose(false), connectionUpgrade(false),
  contentLengthSeen(false), connectionKeepAlive(false),
  transferEncodingSeen(false), transferEncodingInvalid(false),
@@ -784,8 +1125,9 @@ awh::http::Parser_HTTP::Sender::Sender() noexcept :
  framing(framing_t::NONE),
  lowWater(SEND_LOW_WATER),
  highWater(SEND_HIGH_WATER),
- outputPos(0), remaining(0),
- output{""}, source(nullptr) {}
+ remaining(0),
+ pumpLimit(SOURCE_PUMP_LIMIT),
+ source(nullptr) {}
 
 /**
  * @brief Конструктор
@@ -816,12 +1158,70 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 		// Выходим из метода
 		return;
 	}
-	// Устанавливаем флаг передачи тела chunked
-	this->_message.flags.chunked = (this->_flags.transferEncodingSeen && this->_flags.transferEncodingChunkedFinal);
-	// Устанавливаем ожидаемый размер тела сообщения (-1 если Content-Length не получен)
-	this->_message.bodySize = (this->_flags.contentLengthSeen ? static_cast <int64_t> (this->_statsBody.contentLength) : -1);
 	// Получаем версию протокола из провайдера заголовков сообщения
 	const version_t version = this->_message.provider->version;
+	/**
+	 * Валидация заголовка Host выполняется до любых уведомлений: запрос HTTP/1.1
+	 * обязан нести ровно один заголовок Host (RFC 9112 §3.2), а расхождение в его
+	 * трактовке между звеньями цепочки - вектор подмены целевого узла
+	 */
+	if(this->_limits.requireHost && (this->_direct == direct_t::REQUEST) && (version == version_t::HTTP1_1) && (this->_flags.hostCount != 1)){
+		// Фиксируем ошибку отсутствия либо дублирования заголовка Host
+		this->_error = error_t::MISSING_HOST;
+		// Выходим из метода
+		return;
+	}
+	/**
+	 * Запрос с Transfer-Encoding, не заканчивающимся токеном chunked, кадрировать
+	 * невозможно: длина тела не объявлена, а закрытием соединения тело запроса не
+	 * ограничивается. Проверка выполняется до любых уведомлений - иначе потребитель
+	 * успевает получить блок заголовков и завести приём тела, которого не будет
+	 */
+	if((this->_direct == direct_t::REQUEST) && this->_flags.transferEncodingSeen && !this->_flags.transferEncodingChunkedFinal){
+		// Фиксируем ошибку некорректного Transfer-Encoding
+		this->_error = error_t::INVALID_TRANSFER_ENCODING;
+		// Выходим из метода
+		return;
+	}
+	// Признак отсутствия тела у ответа сервера по правилам RFC
+	const bool noBody = ((this->_direct == direct_t::RESPONSE) && this->responseHasNoBody());
+	/**
+	 * Лимиты кадрирования проверяются до уведомления потребителя: иначе потребитель
+	 * успевает получить готовый блок заголовков и завести приём тела, а следом
+	 * получить ошибку по уже начатому сообщению
+	 */
+	if(this->_flags.contentLengthSeen){
+		/**
+		 * Размер тела отдаётся наружу знаковым типом, поэтому значение выше INT64_MAX
+		 * недопустимо: молчаливое приведение превратило бы его в отрицательное
+		 */
+		if(this->_statsBody.contentLength > static_cast <uint64_t> (INT64_MAX)){
+			// Фиксируем ошибку некорректного Content-Length
+			this->_error = error_t::INVALID_CONTENT_LENGTH;
+			// Выходим из метода
+			return;
+		}
+		/**
+		 * Лимит размера тела применяется только к сообщениям, тело которых
+		 * действительно передаётся: у ответа на HEAD и у ответов [204] и [304]
+		 * заголовок Content-Length описывает гипотетическое тело, которого
+		 * в сообщении нет, и отвергать такой ответ по лимиту недопустимо
+		 */
+		if(!noBody && (this->_statsBody.contentLength > this->_limits.maxBodySize)){
+			// Фиксируем ошибку превышения размера тела
+			this->_error = error_t::BODY_OVERFLOW;
+			// Выходим из метода
+			return;
+		}
+	}
+	/**
+	 * Устанавливаем флаг передачи тела chunked: у ответа без тела кадрирование
+	 * игнорируется целиком, поэтому флаг обязан остаться сброшенным - иначе
+	 * потребитель будет ждать тело, которого в сообщении нет
+	 */
+	this->_message.flags.chunked = (!noBody && this->_flags.transferEncodingSeen && this->_flags.transferEncodingChunkedFinal);
+	// Устанавливаем ожидаемый размер тела сообщения (-1 если Content-Length не получен)
+	this->_message.bodySize = (this->_flags.contentLengthSeen ? static_cast <int64_t> (this->_statsBody.contentLength) : -1);
 	// Если версия протокола HTTP/1.1 - соединение переиспользуемое, если не указан Connection: close
 	if(version == version_t::HTTP1_1)
 		// Устанавливаем флаг переиспользования соединения
@@ -846,7 +1246,7 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 	// Флаг завершения сообщения (тела не будет)
 	bool endStream = false;
 	// Если ответ сервера не имеет тела по правилам RFC - тела не будет
-	if((this->_direct == direct_t::RESPONSE) && this->responseHasNoBody())
+	if(noBody)
 		// Устанавливаем флаг завершения сообщения
 		endStream = true;
 	// Если тело не кадрируется chunked
@@ -867,7 +1267,7 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 		// Выходим из метода (разбор прерван)
 		return;
 	// Если ответ сервера не имеет тела по правилам RFC
-	if((this->_direct == direct_t::RESPONSE) && this->responseHasNoBody()){
+	if(noBody){
 		// Завершаем разбор всего сообщения
 		this->completeMessage();
 		// Выходим из метода
@@ -885,8 +1285,10 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 		this->_message.part = part_t::BODY;
 		// Переходим к разбору размера первого чанка
 		this->_state = static_cast <uint8_t> (state_t::S_CHUNK_SIZE);
-		// Уведомляем о начале приёма тела сообщения
-		this->firePhase(phase_t::BEGIN, part_t::BODY);
+		// Уведомляем о начале приёма тела сообщения (разбор может быть прерван потребителем)
+		if(!this->firePhase(phase_t::BEGIN, part_t::BODY))
+			// Выходим из метода (код ошибки уже установлен)
+			return;
 		// Выходим из метода
 		return;
 	}
@@ -899,41 +1301,35 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 			// Выходим из метода
 			return;
 		}
-		// Если анонсированный размер тела превышает лимит
-		if(this->_statsBody.contentLength > this->_limits.maxBodySize){
-			// Фиксируем ошибку превышения размера тела
-			this->_error = error_t::BODY_OVERFLOW;
-			// Выходим из метода
-			return;
-		}
 		// Устанавливаем партицию тела сообщения
 		this->_message.part = part_t::BODY;
 		// Переходим к чтению тела фиксированного размера
 		this->_state = static_cast <uint8_t> (state_t::S_BODY_IDENTITY);
 		// Устанавливаем остаток непрочитанных данных тела
 		this->_statsBody.bytesRemaining = this->_statsBody.contentLength;
-		// Уведомляем о начале приёма тела сообщения
-		this->firePhase(phase_t::BEGIN, part_t::BODY);
+		// Уведомляем о начале приёма тела сообщения (разбор может быть прерван потребителем)
+		if(!this->firePhase(phase_t::BEGIN, part_t::BODY))
+			// Выходим из метода (код ошибки уже установлен)
+			return;
 		// Выходим из метода
 		return;
 	}
-	// Если Transfer-Encoding получен, но chunked не является последним кодированием
+	/**
+	 * Если Transfer-Encoding получен, но chunked не является последним кодированием:
+	 * у запроса такое кадрирование отвергнуто выше, у ответа тело ограничивается
+	 * закрытием соединения
+	 */
 	if(this->_flags.transferEncodingSeen){
-		// Если выполняется разбор запроса клиента - такой запрос кадрировать невозможно
-		if(this->_direct == direct_t::REQUEST){
-			// Фиксируем ошибку некорректного Transfer-Encoding
-			this->_error = error_t::INVALID_TRANSFER_ENCODING;
-			// Выходим из метода
-			return;
-		}
 		// Устанавливаем партицию тела сообщения
 		this->_message.part = part_t::BODY;
 		// Тело кадрируется закрытием соединения - оно не переиспользуемо
 		this->_message.flags.keepAlive = false;
 		// Переходим к чтению тела до закрытия соединения
 		this->_state = static_cast <uint8_t> (state_t::S_BODY_UNTIL_CLOSE);
-		// Уведомляем о начале приёма тела сообщения
-		this->firePhase(phase_t::BEGIN, part_t::BODY);
+		// Уведомляем о начале приёма тела сообщения (разбор может быть прерван потребителем)
+		if(!this->firePhase(phase_t::BEGIN, part_t::BODY))
+			// Выходим из метода (код ошибки уже установлен)
+			return;
 		// Выходим из метода
 		return;
 	}
@@ -950,8 +1346,10 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 	this->_message.flags.keepAlive = false;
 	// Переходим к чтению тела до закрытия соединения
 	this->_state = static_cast <uint8_t> (state_t::S_BODY_UNTIL_CLOSE);
-	// Уведомляем о начале приёма тела сообщения
-	this->firePhase(phase_t::BEGIN, part_t::BODY);
+	// Уведомляем о начале приёма тела сообщения (разбор может быть прерван потребителем)
+	if(!this->firePhase(phase_t::BEGIN, part_t::BODY))
+		// Выходим из метода (код ошибки уже установлен)
+		return;
 }
 /**
  * @brief Метод завершения разбора текущего заголовка/трейлера
@@ -959,13 +1357,13 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
  * @return результат обработки (false - разбор прерван)
  *
  */
-bool awh::http::Parser_HTTP::commitHeader() noexcept {
+bool awh::http::Parser_HTTP::commitHeader(const string_view name, string_view value) noexcept {
 	/**
-	 * Выполняем триминг хвостовых OWS у значения (ведущие уже пропущены состоянием OWS)
+	 * Выполняем триминг хвостовых OWS у значения (ведущие уже пропущены вызывающей стороной)
 	 */
-	while(!this->_header.value.empty() && ((this->_header.value.back() == ' ') || (this->_header.value.back() == '\t')))
-		// Удаляем хвостовой пробел или табуляцию
-		this->_header.value.pop_back();
+	while(!value.empty() && ((value.back() == ' ') || (value.back() == '\t')))
+		// Отсекаем хвостовой пробел или табуляцию
+		value.remove_suffix(1);
 	// Если превышено максимальное число заголовков
 	if(++this->_statsHeaders.count > this->_limits.maxHeaderCount){
 		// Фиксируем ошибку превышения числа заголовков
@@ -973,8 +1371,12 @@ bool awh::http::Parser_HTTP::commitHeader() noexcept {
 		// Разбор прерван
 		return false;
 	}
-	// Наращиваем суммарный размер разобранных заголовков
-	this->_statsHeaders.bytes += (this->_header.name.size() + this->_header.value.size());
+	/**
+	 * Наращиваем суммарный размер разобранных заголовков: помимо имени и значения
+	 * учитываются служебные байты строки (": " и CRLF) - иначе поток заголовков
+	 * с пустыми значениями расходует бюджет лимита медленнее, чем занимает канал
+	 */
+	this->_statsHeaders.bytes += (name.size() + value.size() + 4);
 	// Если превышен суммарный размер всех заголовков
 	if(this->_statsHeaders.bytes > this->_limits.maxHeadersTotal){
 		// Фиксируем ошибку превышения размера заголовков
@@ -982,49 +1384,73 @@ bool awh::http::Parser_HTTP::commitHeader() noexcept {
 		// Разбор прерван
 		return false;
 	}
+	/**
+	 * Заголовки, управляющие кадрированием и маршрутизацией, в блоке трейлеров
+	 * запрещены (RFC 9112 §6.5): принимающая сторона обязана их игнорировать,
+	 * иначе трейлер способен задним числом переопределить кадрирование уже
+	 * принятого тела. Такой трейлер отбрасывается и не доходит до потребителя
+	 */
+	if(this->_flags.inTrailers){
+		// Проверяем запрет полученного поля в блоке трейлеров
+		const bool forbidden = ::forbiddenTrailer(name);
+		// Если трейлер запрещён в блоке трейлеров
+		if(forbidden){
+			// Записываем сообщение об отброшенном трейлере в лог
+			this->_log->print("HTTP/1.x trailer field is not allowed and has been dropped: %s", log_t::flag_t::WARNING, string(name).c_str());
+			// Продолжаем разбор
+			return true;
+		}
+	}
 	// Если выполняется разбор основных заголовков (трейлеры не влияют на кадрирование)
 	if(!this->_flags.inTrailers){
 		// Получаем указатель на начало значения заголовка
-		const char * begin = this->_header.value.data();
+		const char * begin = value.data();
 		// Получаем указатель на конец значения заголовка
-		const char * end = (begin + this->_header.value.size());
+		const char * end = (begin + value.size());
 		/**
 		 * Интерпретация специальных заголовков (диспетчер по первой букве - дёшево)
 		 */
-		switch(this->_header.name.empty() ? '\0' : ::lower(this->_header.name.front())){
+		switch(name.empty() ? '\0' : ::lower(name.front())){
 			// Заголовки начинающиеся на "C"
 			case 'c': {
 				// Если получен заголовок Content-Length
-				if(::iequalsLit(this->_header.name, "content-length")){
+				if(::iequalsLit(name.data(), name.size(), "content-length")){
 					// Если интерпретация заголовка Content-Length не удалась
 					if(!this->applyContentLength(begin, end))
 						// Разбор прерван (код ошибки уже установлен)
 						return false;
 				// Если получен заголовок Connection
-				} else if(::iequalsLit(this->_header.name, "connection"))
+				} else if(::iequalsLit(name.data(), name.size(), "connection"))
 					// Выполняем интерпретацию заголовка Connection
 					this->applyConnection(begin, end);
 			} break;
 			// Заголовки начинающиеся на "T"
 			case 't': {
 				// Если получен заголовок Transfer-Encoding
-				if(::iequalsLit(this->_header.name, "transfer-encoding"))
+				if(::iequalsLit(name.data(), name.size(), "transfer-encoding"))
 					// Выполняем интерпретацию заголовка Transfer-Encoding
 					this->applyTransferEncoding(begin, end);
 			} break;
 			// Заголовки начинающиеся на "U"
 			case 'u': {
 				// Если получен заголовок Upgrade
-				if(::iequalsLit(this->_header.name, "upgrade"))
+				if(::iequalsLit(name.data(), name.size(), "upgrade"))
 					// Помечаем что заголовок Upgrade получен
 					this->_flags.upgradeSeen = true;
 			} break;
+			// Заголовки начинающиеся на "H"
+			case 'h': {
+				// Если получен заголовок Host - учитываем его в счётчике (запрос HTTP/1.1 обязан нести ровно один)
+				if((this->_direct == direct_t::REQUEST) && ::iequalsLit(name.data(), name.size(), "host") && (this->_flags.hostCount < 255))
+					// Наращиваем счётчик полученных заголовков Host
+					++this->_flags.hostCount;
+			} break;
 			// Заголовки начинающиеся на "E"
 			case 'e': {
-				// Если получен заголовок Expect со значением 100-continue (только для запросов)
-				if((this->_direct == direct_t::REQUEST) && ::iequalsLit(this->_header.name, "expect") && ::iequalsLit(this->_header.value, "100-continue"))
-					// Помечаем что клиент ожидает промежуточный ответ [100 Continue]
-					this->_message.flags.expectContinue = true;
+				// Если получен заголовок Expect (только для запросов)
+				if((this->_direct == direct_t::REQUEST) && ::iequalsLit(name.data(), name.size(), "expect"))
+					// Выполняем интерпретацию заголовка Expect
+					this->applyExpect(begin, end);
 			} break;
 		}
 	}
@@ -1037,8 +1463,8 @@ bool awh::http::Parser_HTTP::commitHeader() noexcept {
 			// Если функция обратного вызова потребовала прервать разбор
 			if(!this->_callbacks.header(
 				STREAM_ID,
-				this->_header.name,
-				this->_header.value,
+				name,
+				value,
 				(this->_flags.inTrailers ? part_t::TRAILER : part_t::HEADERS)
 			)){
 				// Фиксируем ошибку прерывания разбора
@@ -1069,12 +1495,102 @@ bool awh::http::Parser_HTTP::commitHeader() noexcept {
 			return false;
 		}
 	}
-	// Очищаем накопитель имени текущего заголовка
-	this->_header.name.clear();
-	// Очищаем накопитель значения текущего заголовка
-	this->_header.value.clear();
 	// Продолжаем разбор
 	return true;
+}
+/**
+ * @brief Метод разбора целой строки заголовка из входного буфера
+ *
+ * @details Быстрый путь разбора блока заголовков: когда строка заголовка
+ *          целиком присутствует во входном буфере, её имя и значение
+ *          отдаются представлениями прямо во входные данные - без
+ *          накопления в промежуточные строки. Путь берёт на себя только
+ *          безусловно корректную строку: любое отклонение (неполная
+ *          строка, недопустимый символ, превышение лимита, obs-fold)
+ *          возвращает управление посимвольному разбору, который и
+ *          зафиксирует ошибку в положенном месте
+ *
+ * @param data указатель на входные данные
+ * @param size размер входных данных
+ * @return     число потреблённых байт либо 0, если быстрый путь неприменим
+ *
+ */
+size_t awh::http::Parser_HTTP::parseHeaderLine(const char * data, const size_t size) noexcept {
+	// Выполняем поиск окончания строки заголовка
+	const void * found = ::memchr(data, '\n', size);
+	// Если строка заголовка присутствует во входном буфере не целиком
+	if(found == nullptr)
+		// Передаём управление посимвольному разбору
+		return 0;
+	// Определяем длину строки заголовка вместе с её окончанием
+	const size_t consumed = (static_cast <size_t> (static_cast <const char *> (found) - data) + 1);
+	// Определяем длину содержимого строки заголовка без её окончания
+	size_t length = (consumed - 1);
+	// Если содержимое строки заголовка завершается возвратом каретки
+	if((length > 0) && (data[length - 1] == '\r'))
+		// Отсекаем возврат каретки от содержимого строки заголовка
+		--length;
+	/**
+	 * Одиночный LF в роли окончания строки разбирается посимвольным путём: он
+	 * либо принимается толерантным режимом, либо становится ошибкой в строгом,
+	 * и оба решения уже приняты там
+	 */
+	else if(length == (consumed - 1))
+		// Передаём управление посимвольному разбору
+		return 0;
+	/**
+	 * Пустая строка завершает блок заголовков и переводит разбор к телу
+	 * сообщения - решение принимает посимвольный путь
+	 */
+	if(length == 0)
+		// Передаём управление посимвольному разбору
+		return 0;
+	// Позиция конца имени заголовка
+	size_t position = 0;
+	/**
+	 * Сканируем имя заголовка по таблице символов токена
+	 */
+	while((position < length) && ::isToken(static_cast <uint8_t> (data[position])))
+		// Смещаем позицию конца имени заголовка
+		++position;
+	/**
+	 * Имя обязано быть непустым и завершаться двоеточием: пустое имя, obs-fold
+	 * и пробел перед двоеточием - ошибки, которые фиксирует посимвольный путь
+	 */
+	if((position == 0) || (position >= length) || (data[position] != ':'))
+		// Передаём управление посимвольному разбору
+		return 0;
+	// Запоминаем длину имени заголовка
+	const size_t nameLength = position;
+	// Пропускаем двоеточие после имени заголовка
+	++position;
+	/**
+	 * Пропускаем ведущие OWS значения заголовка
+	 */
+	while((position < length) && ((data[position] == ' ') || (data[position] == '\t')))
+		// Смещаем позицию начала значения заголовка
+		++position;
+	/**
+	 * Выполняем проверку допустимости всех символов значения заголовка
+	 */
+	for(size_t i = position; i < length; ++i){
+		// Если символ недопустим в значении заголовка
+		if(!::isValueCh(static_cast <uint8_t> (data[i])))
+			// Передаём управление посимвольному разбору
+			return 0;
+	}
+	// Если длина имени заголовка превышает лимит
+	if(nameLength > this->_limits.maxHeaderName)
+		// Передаём управление посимвольному разбору
+		return 0;
+	// Если длина значения заголовка превышает лимит
+	if((length - position) > this->_limits.maxHeaderValue)
+		// Передаём управление посимвольному разбору
+		return 0;
+	// Завершаем разбор заголовка представлениями во входной буфер
+	this->commitHeader(string_view(data, nameLength), string_view(data + position, (length - position)));
+	// Выводим число потреблённых байт
+	return consumed;
 }
 /**
  * @brief Метод завершения разбора стартовой строки (request-line/status-line)
@@ -1093,16 +1609,20 @@ bool awh::http::Parser_HTTP::commitStartLine() noexcept {
  *
  */
 void awh::http::Parser_HTTP::completeMessage() noexcept {
-	// Помечаем что сообщение полностью разобрано
-	this->_message.flags.complete = true;
 	// Сбрасываем партицию текущего состояния парсера
 	this->_message.part = part_t::NONE;
 	// Устанавливаем фазу окончания разбора сообщения
 	this->_message.phase = phase_t::END;
 	// Устанавливаем финальное состояние конечного автомата
 	this->_state = static_cast <uint8_t> (state_t::S_MESSAGE_DONE);
-	// Уведомляем о завершении разбора всего сообщения
-	this->firePhase(phase_t::END, part_t::NONE);
+	/**
+	 * Признак полноты сообщения выставляется только после успешного уведомления:
+	 * прерывание разбора потребителем переводит парсер в состояние ошибки, и
+	 * полностью разобранным такое сообщение считаться не может
+	 */
+	if(this->firePhase(phase_t::END, part_t::NONE))
+		// Помечаем что сообщение полностью разобрано
+		this->_message.flags.complete = true;
 }
 /**
  * @brief Метод завершения разбора строки размера чанка
@@ -1224,21 +1744,23 @@ void awh::http::Parser_HTTP::flush() noexcept {
 	 * Отдаём исходящие байты, пока они есть: функция обратного вызова могла
 	 * реентрантно породить новые исходящие данные (например, через sendData)
 	 */
-	while(this->outputPending() > 0){
-		// Локальный буфер исходящих байтов
-		string buffer = "";
-		// Забираем буфер исходящих байтов себе (O(1), без копирования)
-		buffer.swap(this->_sender.output);
-		// Запоминаем уже отданный префикс буфера
-		const size_t offset = this->_sender.outputPos;
-		// Сбрасываем отданный префикс нового (пустого) буфера
-		this->_sender.outputPos = 0;
+	while(!this->_sender.output.empty()){
+		/**
+		 * Переносим отдаваемые байты в отдельный буфер обменом (O(1)): функция
+		 * обратного вызова вправе реентрантно дописать новые исходящие данные,
+		 * а дозапись способна переместить содержимое буфера в памяти и оставить
+		 * отдаваемую область висящей. Выделенная память при обмене сохраняется
+		 * в обоих буферах и между передачами не переаллоцируется
+		 */
+		this->_sender.flushing.swap(this->_sender.output);
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Отдаём исходящие байты сетевому слою
-			this->_callbacks.write(buffer.data() + offset, buffer.size() - offset);
+			this->_callbacks.write(this->_sender.flushing.data(), this->_sender.flushing.size());
+			// Освобождаем отданные байты
+			this->_sender.flushing.clear();
 		/**
 		 * Если возникает ошибка
 		 */
@@ -1256,9 +1778,27 @@ void awh::http::Parser_HTTP::flush() noexcept {
 				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
+			/**
+			 * Возвращаем неотданные байты обратно в выходной буфер: они ещё не попали
+			 * в сеть, а их потеря разорвала бы кадрирование у принимающей стороны
+			 */
+			if(!this->_sender.output.empty())
+				// Дописываем реентрантно порождённые байты после неотданного остатка
+				this->_sender.flushing.push(this->_sender.output);
+			// Возвращаем неотданный остаток в выходной буфер
+			this->_sender.output.swap(this->_sender.flushing);
+			// Освобождаем буфер передачи
+			this->_sender.flushing.clear();
 			// Прерываем передачу исходящих байтов
 			return;
 		}
+		/**
+		 * Если реентрантной дозаписи не было - возвращаем выделенную память
+		 * выходному буферу, чтобы следующая запись не начинала рост заново
+		 */
+		if(this->_sender.output.empty())
+			// Возвращаем выделенную память в выходной буфер
+			this->_sender.output.swap(this->_sender.flushing);
 	}
 }
 /**
@@ -1268,8 +1808,8 @@ void awh::http::Parser_HTTP::flush() noexcept {
  *
  */
 size_t awh::http::Parser_HTTP::outputPending() const noexcept {
-	// Выводим объём буфера исходящих байтов без уже отданного префикса
-	return (this->_sender.output.size() - this->_sender.outputPos);
+	// Выводим объём ещё не отданных исходящих байтов
+	return this->_sender.output.size();
 }
 /**
  * @brief Метод дозагрузки выходного буфера из pull-источника данных (если он задан)
@@ -1287,8 +1827,14 @@ size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
 	if((this->_sender.source == nullptr) || this->_sender.sourceEof)
 		// Выводим результат
 		return result;
-	// Ширина фиксированного hex-заголовка чанка ("%04X" покрывает SOURCE_CHUNK_SIZE)
+	// Ширина фиксированного hex-заголовка чанка (четыре hex-цифры размера порции и CRLF)
 	static constexpr size_t CHUNK_HEADER = (4 + 2);
+	/**
+	 * Заголовок чанка резервируется фиксированной ширины, поэтому гранулярность порции
+	 * обязана укладываться в четыре шестнадцатеричные цифры: при её увеличении заголовок
+	 * молча не поместился бы в зарезервированное место и разорвал бы кадрирование
+	 */
+	static_assert((SOURCE_CHUNK_SIZE <= 0xFFFF), "Chunk header width does not fit the source chunk size");
 	/**
 	 * Держим буфер наполненным до high-water, запрашивая источник данных порциями
 	 */
@@ -1310,12 +1856,18 @@ size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
 			// Выходим из цикла дозагрузки
 			break;
 		}
-		// Запоминаем текущий размер выходного буфера
-		const size_t offset = this->_sender.output.size();
-		// Смещение области данных порции (после hex-заголовка чанка для chunked)
-		const size_t data = (offset + (chunked ? CHUNK_HEADER : 0));
-		// Резервируем место под порцию данных прямо в выходном буфере (без промежуточной копии)
-		this->_sender.output.resize(data + cap);
+		/**
+		 * Резервируем место под порцию прямо в хвосте выходного буфера: смартбуфер
+		 * отдаёт указатель на свободную область без её инициализации и без копии,
+		 * а незафиксированный хвост просто не попадает в буфер - откат бесплатен
+		 */
+		void * area = this->_sender.output.prepare((chunked ? (CHUNK_HEADER + cap + 2) : cap));
+		// Если зарезервировать место не удалось - дозагружать некуда
+		if(area == nullptr)
+			// Выходим из цикла дозагрузки
+			break;
+		// Получаем байтовый указатель на зарезервированную область
+		uint8_t * region = reinterpret_cast <uint8_t *> (area);
 		// Флаг достижения конца тела
 		bool eof = false;
 		// Результат запроса данных у источника
@@ -1325,7 +1877,7 @@ size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
 		 */
 		try {
 			// Запрашиваем порцию данных у источника (источник пишет напрямую в выходной буфер)
-			bytes = this->_sender.source(STREAM_ID, reinterpret_cast <uint8_t *> (&this->_sender.output[data]), cap, eof);
+			bytes = this->_sender.source(STREAM_ID, (region + (chunked ? CHUNK_HEADER : 0)), cap, eof);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -1346,39 +1898,44 @@ size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
 		}
 		// Если источник сообщил об ошибке данных либо нарушил контракт (записал больше ёмкости)
 		if((bytes < 0) || (bytes > static_cast <int64_t> (cap))){
-			// Откатываем зарезервированное место
-			this->_sender.output.resize(offset);
 			// Помечаем что конец тела источника достигнут (отправка прервана)
 			this->_sender.sourceEof = true;
 			// Удаляем источник данных (сообщение осталось незавершённым - соединение следует закрыть)
 			this->_sender.source = nullptr;
-			// Выходим из цикла дозагрузки
+			// Выходим из цикла дозагрузки (зарезервированное место не фиксируется)
 			break;
 		}
 		// Если источник выдал данные
 		if(bytes > 0){
 			// Если тело кадрируется chunked
 			if(chunked){
-				// Текстовый буфер hex-представления размера чанка
-				char line[CHUNK_HEADER + 1];
-				// Формируем hex-заголовок чанка фиксированной ширины (ведущие нули допустимы по RFC 7230)
-				::snprintf(line, sizeof(line), "%04zX\r\n", static_cast <size_t> (bytes));
-				// Вписываем hex-заголовок чанка перед данными порции
-				::memcpy(&this->_sender.output[offset], line, CHUNK_HEADER);
-				// Обрезаем выходной буфер до фактического размера порции
-				this->_sender.output.resize(data + static_cast <size_t> (bytes));
-				// Дописываем завершающий CRLF чанка
-				this->_sender.output.append("\r\n", 2);
-			// Для остальных способов кадрирования данные уже на месте
-			} else this->_sender.output.resize(data + static_cast <size_t> (bytes));
+				// Формируем hex-заголовок чанка фиксированной ширины (ведущие нули допустимы по RFC 9112)
+				region[0] = static_cast <uint8_t> ("0123456789ABCDEF"[(bytes >> 12) & 0x0F]);
+				// Формируем вторую цифру hex-заголовка чанка
+				region[1] = static_cast <uint8_t> ("0123456789ABCDEF"[(bytes >> 8) & 0x0F]);
+				// Формируем третью цифру hex-заголовка чанка
+				region[2] = static_cast <uint8_t> ("0123456789ABCDEF"[(bytes >> 4) & 0x0F]);
+				// Формируем четвёртую цифру hex-заголовка чанка
+				region[3] = static_cast <uint8_t> ("0123456789ABCDEF"[bytes & 0x0F]);
+				// Дописываем возврат каретки заголовка чанка
+				region[4] = static_cast <uint8_t> ('\r');
+				// Дописываем перевод строки заголовка чанка
+				region[5] = static_cast <uint8_t> ('\n');
+				// Дописываем возврат каретки завершающего CRLF чанка
+				region[CHUNK_HEADER + static_cast <size_t> (bytes)] = static_cast <uint8_t> ('\r');
+				// Дописываем перевод строки завершающего CRLF чанка
+				region[CHUNK_HEADER + static_cast <size_t> (bytes) + 1] = static_cast <uint8_t> ('\n');
+				// Фиксируем в буфере заголовок чанка, его данные и завершающий CRLF
+				this->_sender.output.commit(CHUNK_HEADER + static_cast <size_t> (bytes) + 2);
+			// Для остальных способов кадрирования фиксируем только сами данные
+			} else this->_sender.output.commit(static_cast <size_t> (bytes));
 			// Для тела фиксированного размера списываем порцию из остатка Content-Length
 			if(this->_sender.framing == sender_t::framing_t::IDENTITY)
 				// Списываем порцию из остатка тела
 				this->_sender.remaining -= static_cast <uint64_t> (bytes);
 			// Учитываем полученные байты тела в результате
 			result += static_cast <size_t> (bytes);
-		// Если источник данных не выдал - откатываем зарезервированное место
-		} else this->_sender.output.resize(offset);
+		}
 		// Если достигнут конец тела источника
 		if(eof){
 			// Помечаем что конец тела источника достигнут
@@ -1408,13 +1965,17 @@ void awh::http::Parser_HTTP::pumpSource() noexcept {
 	if(!this->_sender.headersSent || this->_sender.endSent)
 		// Выходим из метода
 		return;
-	// Если установлена функция обратного вызова записи - качаем источник до упора
+	// Если установлена функция обратного вызова записи - качаем источник порциями
 	if(this->_callbacks.write != nullptr){
+		// Объём тела, выкачанный из источника за текущую прокачку
+		uint64_t pumped = 0;
 		/**
-		 * Качаем источник, пока он выдаёт данные: flush() опустошает буфер,
-		 * поэтому дозагрузка продолжается до конца тела либо до паузы источника
+		 * Качаем источник, пока он выдаёт данные: flush() опустошает буфер, поэтому
+		 * дозагрузка продолжается до конца тела, до паузы источника либо до исчерпания
+		 * лимита одной прокачки. Лимит не даёт телу произвольного размера удержать
+		 * управление внутри одного вызова - остаток дозагружается через resumeSource()
 		 */
-		while(!this->_sender.sourceEof && (this->_sender.source != nullptr)){
+		while(!this->_sender.sourceEof && (this->_sender.source != nullptr) && (pumped < this->_sender.pumpLimit)){
 			// Дозагружаем выходной буфер из источника данных
 			const size_t bytes = this->refillFromSource();
 			// Передаём исходящие байты сетевому слою
@@ -1423,11 +1984,61 @@ void awh::http::Parser_HTTP::pumpSource() noexcept {
 			if(bytes == 0)
 				// Прерываем прокачку до следующего вызова
 				break;
+			// Наращиваем объём тела, выкачанный за текущую прокачку
+			pumped += static_cast <uint64_t> (bytes);
 		}
 		// Отдаём сформированный финал тела (последний чанк) сетевому слою
 		this->flush();
 	// В pull-модели наполняем выходной буфер до high-water однократно
 	} else this->refillFromSource();
+}
+/**
+ * @brief Метод получения признака незавершённой отправки тела из pull-источника
+ *
+ * @details Истинно, пока источник данных назначен и его тело не исчерпано.
+ *          Ровно этот признак управляет циклом дозагрузки: пока он истинен,
+ *          сетевому слою следует вызывать resumeSource() по готовности сокета
+ *          к записи
+ *
+ * @return признак незавершённой отправки тела
+ *
+ */
+bool awh::http::Parser_HTTP::sourcePending() const noexcept {
+	// Выводим признак незавершённой отправки тела из pull-источника данных
+	return ((this->_sender.source != nullptr) && !this->_sender.sourceEof);
+}
+/**
+ * @brief Метод продолжения отправки тела из pull-источника данных
+ *
+ * @details За одну прокачку из источника выкачивается не более лимита,
+ *          заданного методом pumpLimit - тело произвольного размера не
+ *          удерживает управление внутри одного вызова. Сетевой слой обязан
+ *          вызывать метод по готовности сокета к записи, пока он возвращает
+ *          истину. В pull-модели дозагрузка выполняется автоматически при
+ *          выборке consumePending, и вызывать метод не требуется.
+ *
+ * @return признак того, что тело источника ещё не исчерпано
+ *
+ */
+bool awh::http::Parser_HTTP::resumeSource() noexcept {
+	// Если отправка тела из источника уже завершена - продолжать нечего
+	if(!this->sourcePending())
+		// Выводим признак завершения отправки тела
+		return false;
+	// Прокачиваем очередную порцию тела из источника данных
+	this->pumpSource();
+	// Выводим признак незавершённой отправки тела
+	return this->sourcePending();
+}
+/**
+ * @brief Метод настройки объёма одной прокачки pull-источника данных
+ *
+ * @param size максимальный объём тела, выкачиваемый за одну прокачку
+ *
+ */
+void awh::http::Parser_HTTP::pumpLimit(const uint64_t size) noexcept {
+	// Устанавливаем объём одной прокачки (нулевое значение сняло бы ограничение целиком)
+	this->_sender.pumpLimit = ((size > 0) ? size : SOURCE_PUMP_LIMIT);
 }
 /**
  * @brief Метод сигнализации о готовности принимать данные (один раз на провал буфера)
@@ -1458,7 +2069,7 @@ void awh::http::Parser_HTTP::finishBody() noexcept {
 	// Если тело кадрируется chunked - завершаем его последним (нулевым) чанком
 	if(this->_sender.framing == sender_t::framing_t::CHUNKED)
 		// Дописываем последний чанк и пустой блок трейлеров
-		this->_sender.output.append("0\r\n\r\n", 5);
+		this->_sender.output.push("0\r\n\r\n", 5);
 	// Помечаем что исходящее сообщение завершено
 	this->_sender.endSent = true;
 }
@@ -1480,22 +2091,22 @@ void awh::http::Parser_HTTP::frameBody(const void * buffer, const size_t size) n
 	switch(static_cast <uint8_t> (this->_sender.framing)){
 		// Кодировка chunked - каждая порция оборачивается в отдельный чанк
 		case static_cast <uint8_t> (sender_t::framing_t::CHUNKED): {
-			// Текстовый буфер hex-представления размера чанка
-			char line[32];
+			// Текстовый буфер hex-представления размера чанка (16 цифр uint64_t и CRLF)
+			char line[18];
 			// Формируем строку размера чанка (hex + CRLF)
-			const int length = ::snprintf(line, sizeof(line), "%zX\r\n", size);
+			const size_t length = ::writeChunkSize(line, static_cast <uint64_t> (size));
 			// Дописываем строку размера чанка в выходной буфер
-			this->_sender.output.append(line, static_cast <size_t> (length));
+			this->_sender.output.push(line, length);
 			// Дописываем данные чанка в выходной буфер
-			this->_sender.output.append(static_cast <const char *> (buffer), size);
+			this->_sender.output.push(buffer, size);
 			// Дописываем завершающий CRLF чанка
-			this->_sender.output.append("\r\n", 2);
+			this->_sender.output.push("\r\n", 2);
 		} break;
 		// Фиксированный размер (Content-Length) и сырое тело - данные пишутся как есть
 		case static_cast <uint8_t> (sender_t::framing_t::RAW):
 		case static_cast <uint8_t> (sender_t::framing_t::IDENTITY):
 			// Дописываем данные тела в выходной буфер
-			this->_sender.output.append(static_cast <const char *> (buffer), size);
+			this->_sender.output.push(buffer, size);
 		break;
 	}
 }
@@ -1693,6 +2304,48 @@ void awh::http::Parser_HTTP::applyConnection(const char * begin, const char * en
 	}
 }
 /**
+ * @brief Метод интерпретации заголовка Expect
+ *
+ * @details Значение разбирается как список: клиент вправе прислать
+ *          "100-continue" в любом регистре и в сопровождении других
+ *          ожиданий, а также с параметрами после ";"
+ *
+ * @param begin начало значения заголовка
+ * @param end   конец значения заголовка
+ *
+ */
+void awh::http::Parser_HTTP::applyExpect(const char * begin, const char * end) noexcept {
+	// Указатель на текущую позицию разбора
+	const char * current = begin;
+	/**
+	 * Выполняем разбор списка ожиданий клиента
+	 */
+	while(current <= end){
+		// Выполняем поиск разделителя списка
+		const char * comma = static_cast <const char *> (::memchr(current, ',', static_cast <size_t> (end - current)));
+		// Определяем конец текущего элемента списка
+		const char * tokEnd = (comma != nullptr ? comma : end);
+		// Указатель на начало элемента списка
+		const char * tb = current;
+		// Указатель на конец элемента списка
+		const char * te = tokEnd;
+		// Выполняем триминг OWS по краям элемента списка
+		::trimOWS(tb, te);
+		// Отсекаем параметры ожидания от его имени
+		::trimParameters(tb, te);
+		// Если получено ожидание промежуточного ответа [100 Continue]
+		if(::iequalsLit(tb, static_cast <size_t> (te - tb), "100-continue"))
+			// Помечаем что клиент ожидает промежуточный ответ [100 Continue]
+			this->_message.flags.expectContinue = true;
+		// Если разделителей больше нет - разбор списка завершён
+		if(comma == nullptr)
+			// Выходим из цикла
+			break;
+		// Переходим к следующему элементу списка
+		current = (comma + 1);
+	}
+}
+/**
  * @brief Метод интерпретации заголовка Content-Length
  *
  * @param begin начало значения заголовка
@@ -1806,6 +2459,8 @@ void awh::http::Parser_HTTP::applyTransferEncoding(const char * begin, const cha
 		const char * te = tokEnd;
 		// Выполняем триминг OWS по краям элемента списка
 		::trimOWS(tb, te);
+		// Отсекаем параметры транспортного кодирования от его имени
+		::trimParameters(tb, te);
 		// Если элемент списка не пустой
 		if(te > tb){
 			// Проверяем является ли кодирование chunked
@@ -1843,6 +2498,12 @@ void awh::http::Parser_HTTP::clear() noexcept {
 	this->_callbacks = callbacks_t();
 	// Полностью сбрасываем состояние отправки (включая выходной буфер и пороги)
 	this->_sender = sender_t();
+	// Восстанавливаем объект логирования буфера исходящих байтов
+	this->_sender.output.setLogger(this->_log);
+	// Восстанавливаем объект логирования буфера передачи в сетевой слой
+	this->_sender.flushing.setLogger(this->_log);
+	// Восстанавливаем согласованность лимита памяти смартбуферов с порогами по умолчанию
+	this->sendWaterMarks(SEND_HIGH_WATER, SEND_LOW_WATER);
 }
 /**
  * @brief Метод сброса парсера для разбора следующего сообщения в том же соединении
@@ -1929,6 +2590,8 @@ void awh::http::Parser_HTTP::reset() noexcept {
 	this->_flags.inTrailers = false;
 	// Сбрасываем флаг получения заголовка Upgrade
 	this->_flags.upgradeSeen = false;
+	// Сбрасываем счётчик полученных заголовков Host
+	this->_flags.hostCount = 0;
 	// Сбрасываем флаг наличия close в заголовке Connection
 	this->_flags.connectionClose = false;
 	// Сбрасываем флаг наличия upgrade в заголовке Connection
@@ -1985,10 +2648,14 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP::clone() const noexcept 
 		parser->_method = this->_method;
 		// Копируем установленные функции обратного вызова
 		parser->_callbacks = this->_callbacks;
-		// Копируем порог сигнала writable
-		parser->_sender.lowWater = this->_sender.lowWater;
-		// Копируем ёмкость выходного буфера отправки
-		parser->_sender.highWater = this->_sender.highWater;
+		/**
+		 * Копируем пороги выходного буфера через штатный метод: он же согласует
+		 * лимит памяти смартбуферов с ними, а прямое присваивание полей оставило
+		 * бы клону лимит по умолчанию
+		 */
+		parser->sendWaterMarks(this->_sender.highWater, this->_sender.lowWater);
+		// Копируем объём одной прокачки pull-источника данных
+		parser->_sender.pumpLimit = this->_sender.pumpLimit;
 		// Перемещаем созданный объект парсера в результат
 		result = ::move(parser);
 	/**
@@ -2111,214 +2778,237 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 		 * Выполняем перебор всех байт входного буфера
 		 */
 		while(i < size){
+			/**
+			 * Крупноблочная обработка: тело копируется блоками, а токены сканируются
+			 * по lookup-таблице до первого недопустимого символа (переносимый "SIMD").
+			 * Класс состояния определяется одним чтением таблицы - на посимвольном
+			 * пути это одна проверка вместо цепочки сравнений с каждым из состояний
+			 */
+			switch(::scanTable[this->_state]){
+				// Крупноблочное чтение тела фиксированного размера (Content-Length)
+				case static_cast <uint8_t> (scan_t::SCAN_BODY_IDENTITY): {
+					// Определяем количество доступных байт данных
+					const uint64_t avail = static_cast <uint64_t> (size - i);
+					// Определяем сколько байт данных можно забрать
+					const uint64_t take = (avail < this->_statsBody.bytesRemaining ? avail : this->_statsBody.bytesRemaining);
+					// Если данные для передачи есть
+					if(take > 0){
+						// Если функция обратного вызова установлена и потребовала прервать разбор
+						if((this->_callbacks.data != nullptr) &&
+						   !this->_callbacks.data(STREAM_ID, data + i, static_cast <size_t> (take), (take == this->_statsBody.bytesRemaining))){
+							// Фиксируем ошибку прерывания разбора с записью в лог
+							this->fail(error_t::ABORTED);
+							// Выводим количество обработанных байт данных
+							return i;
+						}
+						// Наращиваем общий размер принятого тела сообщения
+						this->_statsBody.bytes += take;
+				}
+					// Смещаем позицию разбора
+					i += static_cast <size_t> (take);
+					// Уменьшаем остаток непрочитанных данных тела
+					this->_statsBody.bytesRemaining -= take;
+					// Если тело полностью принято
+					if(this->_statsBody.bytesRemaining == 0){
+						// Уведомляем о завершении приёма тела сообщения
+						if(this->firePhase(phase_t::END, part_t::BODY))
+							// Завершаем разбор всего сообщения
+							this->completeMessage();
+						// Если ошибок разбора нет - сообщение полностью разобрано
+						if(this->_error == error_t::NONE)
+							// Устанавливаем итоговый статус разбора
+							this->_status = status_t::COMPLETE;
+						// Если зафиксирована ошибка разбора - фиксируем её с записью в лог
+						else this->fail(this->_error);
+						// Выводим количество обработанных байт данных
+						return i;
+				}
+					// Продолжаем разбор
+					continue;
+				}
+				// Крупноблочное чтение тела до закрытия соединения
+				case static_cast <uint8_t> (scan_t::SCAN_BODY_CLOSE): {
+					// Определяем количество доступных байт данных
+					const size_t avail = (size - i);
+					// Если общий размер тела превышает лимит
+					if((this->_statsBody.bytes + avail) > this->_limits.maxBodySize){
+						// Фиксируем ошибку превышения размера тела с записью в лог
+						this->fail(error_t::BODY_OVERFLOW);
+						// Выводим количество обработанных байт данных
+						return i;
+				}
+					// Если данные для передачи есть
+					if(avail > 0){
+						/**
+						 * Если функция обратного вызова установлена и потребовала прервать разбор
+						 * (конец тела "до закрытия соединения" неизвестен - endStream всегда false)
+						 */
+						if((this->_callbacks.data != nullptr) && !this->_callbacks.data(STREAM_ID, data + i, avail, false)){
+							// Фиксируем ошибку прерывания разбора с записью в лог
+							this->fail(error_t::ABORTED);
+							// Выводим количество обработанных байт данных
+							return i;
+						}
+						// Наращиваем общий размер принятого тела сообщения
+						this->_statsBody.bytes += avail;
+				}
+					// Смещаем позицию разбора
+					i += avail;
+					// Продолжаем разбор (завершение - только по вызову eof)
+					continue;
+				}
+				// Крупноблочное чтение данных чанка
+				case static_cast <uint8_t> (scan_t::SCAN_BODY_CHUNK): {
+					// Определяем количество доступных байт данных
+					const uint64_t avail = static_cast <uint64_t> (size - i);
+					// Определяем сколько байт данных можно забрать
+					const uint64_t take = (avail < this->_statsBody.bytesRemaining ? avail : this->_statsBody.bytesRemaining);
+					// Если общий размер тела превышает лимит
+					if((this->_statsBody.bytes + take) > this->_limits.maxBodySize){
+						// Фиксируем ошибку превышения размера тела с записью в лог
+						this->fail(error_t::BODY_OVERFLOW);
+						// Выводим количество обработанных байт данных
+						return i;
+				}
+					// Если данные для передачи есть
+					if(take > 0){
+						/**
+						 * Если функция обратного вызова установлена и потребовала прервать разбор
+						 * (конец тела chunked в момент фрагмента неизвестен - endStream всегда false)
+						 */
+						if((this->_callbacks.data != nullptr) && !this->_callbacks.data(STREAM_ID, data + i, static_cast <size_t> (take), false)){
+							// Фиксируем ошибку прерывания разбора с записью в лог
+							this->fail(error_t::ABORTED);
+							// Выводим количество обработанных байт данных
+							return i;
+						}
+						// Наращиваем общий размер принятого тела сообщения
+						this->_statsBody.bytes += take;
+				}
+					// Смещаем позицию разбора
+					i += static_cast <size_t> (take);
+					// Уменьшаем остаток непрочитанных данных чанка
+					this->_statsBody.bytesRemaining -= take;
+					// Если данные чанка полностью приняты
+					if(this->_statsBody.bytesRemaining == 0)
+						// Переходим к ожиданию CRLF после данных чанка
+						this->_state = static_cast <uint8_t> (state_t::S_CHUNK_DATA_ALMOST_DONE);
+					// Продолжаем разбор
+					continue;
+				}
+				// Разбор целой строки заголовка или трейлера
+				case static_cast <uint8_t> (scan_t::SCAN_HEADER_LINE): {
+					// Выполняем разбор целой строки заголовка из входного буфера
+					const size_t consumed = this->parseHeaderLine(data + i, (size - i));
+					// Если быстрый путь неприменим - строку разбирает посимвольный путь
+					if(consumed == 0)
+						// Выходим из ветки крупноблочной обработки
+						break;
+					// Если разбор прерван потребителем либо превышен лимит
+					if(this->_error != error_t::NONE){
+						// Фиксируем ошибку разбора с записью в лог
+						this->fail(this->_error);
+						// Выводим количество обработанных байт данных
+						return i;
+					}
+					// Смещаем позицию разбора за разобранную строку заголовка
+					i += consumed;
+					// Продолжаем разбор
+					continue;
+				}
+				// Сканирование непрерывного участка request-target
+				case static_cast <uint8_t> (scan_t::SCAN_TARGET): {
+					// Позиция конца непрерывного участка допустимых символов
+					size_t j = i;
+					/**
+					 * Сканируем непрерывный участок допустимых символов request-target
+					 * (URI-запроса) по lookup-таблице
+					 */
+					while((j < size) && ::isTargetCh(static_cast <uint8_t> (data[j])))
+						// Смещаем позицию конца участка
+						++j;
+					// Если непрерывный участок найден
+					if(j > i){
+						// Определяем размер непрерывного участка
+						const size_t run = (j - i);
+						// Если длина стартовой строки превышает лимит
+						if((this->_statsHeaders.lineBytes + run) > this->_limits.maxRequestLine){
+							// Фиксируем ошибку превышения длины request-line с записью в лог
+							this->fail(error_t::URL_OVERFLOW);
+							// Выводим количество обработанных байт данных
+							return i;
+						}
+						// Наращиваем длину текущей стартовой строки
+						this->_statsHeaders.lineBytes += run;
+						// Добавляем непрерывный участок к параметрам URI-запроса
+						req->uri.append(data + i, run);
+						// Смещаем позицию разбора
+						i = j;
+						// Продолжаем разбор
+						continue;
+				}
+				} break;
+				// Сканирование непрерывного участка имени заголовка или трейлера
+				case static_cast <uint8_t> (scan_t::SCAN_TOKEN): {
+					// Позиция конца непрерывного участка допустимых символов
+					size_t j = i;
+					/**
+					 * Сканируем непрерывный участок символов токена
+					 */
+					while((j < size) && ::isToken(static_cast <uint8_t> (data[j])))
+						// Смещаем позицию конца участка
+						++j;
+					// Если непрерывный участок найден
+					if(j > i){
+						// Определяем размер непрерывного участка
+						const size_t run = (j - i);
+						// Если длина имени заголовка превышает лимит
+						if((this->_header.name.size() + run) > this->_limits.maxHeaderName){
+							// Фиксируем ошибку превышения размера заголовков с записью в лог
+							this->fail(error_t::HEADER_OVERFLOW);
+							// Выводим количество обработанных байт данных
+							return i;
+						}
+						// Добавляем непрерывный участок к имени заголовка
+						this->_header.name.append(data + i, run);
+						// Смещаем позицию разбора
+						i = j;
+						// Продолжаем разбор
+						continue;
+				}
+				} break;
+				// Сканирование непрерывного участка значения заголовка или трейлера
+				case static_cast <uint8_t> (scan_t::SCAN_VALUE): {
+					// Позиция конца непрерывного участка допустимых символов
+					size_t j = i;
+					/**
+					 * Сканируем непрерывный участок допустимых символов значения заголовка
+					 */
+					while((j < size) && ::isValueCh(static_cast <uint8_t> (data[j])))
+						// Смещаем позицию конца участка
+						++j;
+					// Если непрерывный участок найден
+					if(j > i){
+						// Определяем размер непрерывного участка
+						const size_t run = (j - i);
+						// Если длина значения заголовка превышает лимит
+						if((this->_header.value.size() + run) > this->_limits.maxHeaderValue){
+							// Фиксируем ошибку превышения размера заголовков с записью в лог
+							this->fail(error_t::HEADER_OVERFLOW);
+							// Выводим количество обработанных байт данных
+							return i;
+						}
+						// Добавляем непрерывный участок к значению заголовка
+						this->_header.value.append(data + i, run);
+						// Смещаем позицию разбора
+						i = j;
+						// Продолжаем разбор
+						continue;
+				}
+				} break;
+			}
 			// Получаем текущий байт данных
 			const uint8_t ch = static_cast <uint8_t> (data[i]);
-			/**
-			 * Bulk-состояния (тело/чанк): обрабатываем большими блоками без посимвольного разбора
-			 */
-			// Если читается тело фиксированного размера (Content-Length)
-			if(this->_state == static_cast <uint8_t> (state_t::S_BODY_IDENTITY)){
-				// Определяем количество доступных байт данных
-				const uint64_t avail = static_cast <uint64_t> (size - i);
-				// Определяем сколько байт данных можно забрать
-				const uint64_t take = (avail < this->_statsBody.bytesRemaining ? avail : this->_statsBody.bytesRemaining);
-				// Если данные для передачи есть
-				if(take > 0){
-					// Если функция обратного вызова установлена и потребовала прервать разбор
-					if((this->_callbacks.data != nullptr) &&
-					   !this->_callbacks.data(STREAM_ID, data + i, static_cast <size_t> (take), (take == this->_statsBody.bytesRemaining))){
-						// Фиксируем ошибку прерывания разбора с записью в лог
-						this->fail(error_t::ABORTED);
-						// Выводим количество обработанных байт данных
-						return i;
-					}
-					// Наращиваем общий размер принятого тела сообщения
-					this->_statsBody.bytes += take;
-				}
-				// Смещаем позицию разбора
-				i += static_cast <size_t> (take);
-				// Уменьшаем остаток непрочитанных данных тела
-				this->_statsBody.bytesRemaining -= take;
-				// Если тело полностью принято
-				if(this->_statsBody.bytesRemaining == 0){
-					// Уведомляем о завершении приёма тела сообщения
-					if(this->firePhase(phase_t::END, part_t::BODY))
-						// Завершаем разбор всего сообщения
-						this->completeMessage();
-					// Если ошибок разбора нет - сообщение полностью разобрано
-					if(this->_error == error_t::NONE)
-						// Устанавливаем итоговый статус разбора
-						this->_status = status_t::COMPLETE;
-					// Если зафиксирована ошибка разбора - фиксируем её с записью в лог
-					else this->fail(this->_error);
-					// Выводим количество обработанных байт данных
-					return i;
-				}
-				// Продолжаем разбор
-				continue;
-			}
-			// Если читается тело до закрытия соединения
-			if(this->_state == static_cast <uint8_t> (state_t::S_BODY_UNTIL_CLOSE)){
-				// Определяем количество доступных байт данных
-				const size_t avail = (size - i);
-				// Если общий размер тела превышает лимит
-				if((this->_statsBody.bytes + avail) > this->_limits.maxBodySize){
-					// Фиксируем ошибку превышения размера тела с записью в лог
-					this->fail(error_t::BODY_OVERFLOW);
-					// Выводим количество обработанных байт данных
-					return i;
-				}
-				// Если данные для передачи есть
-				if(avail > 0){
-					/**
-					 * Если функция обратного вызова установлена и потребовала прервать разбор
-					 * (конец тела "до закрытия соединения" неизвестен - endStream всегда false)
-					 */
-					if((this->_callbacks.data != nullptr) && !this->_callbacks.data(STREAM_ID, data + i, avail, false)){
-						// Фиксируем ошибку прерывания разбора с записью в лог
-						this->fail(error_t::ABORTED);
-						// Выводим количество обработанных байт данных
-						return i;
-					}
-					// Наращиваем общий размер принятого тела сообщения
-					this->_statsBody.bytes += avail;
-				}
-				// Смещаем позицию разбора
-				i += avail;
-				// Продолжаем разбор (завершение - только по вызову eof)
-				continue;
-			}
-			// Если читаются данные чанка
-			if(this->_state == static_cast <uint8_t> (state_t::S_CHUNK_DATA)){
-				// Определяем количество доступных байт данных
-				const uint64_t avail = static_cast <uint64_t> (size - i);
-				// Определяем сколько байт данных можно забрать
-				const uint64_t take = (avail < this->_statsBody.bytesRemaining ? avail : this->_statsBody.bytesRemaining);
-				// Если общий размер тела превышает лимит
-				if((this->_statsBody.bytes + take) > this->_limits.maxBodySize){
-					// Фиксируем ошибку превышения размера тела с записью в лог
-					this->fail(error_t::BODY_OVERFLOW);
-					// Выводим количество обработанных байт данных
-					return i;
-				}
-				// Если данные для передачи есть
-				if(take > 0){
-					/**
-					 * Если функция обратного вызова установлена и потребовала прервать разбор
-					 * (конец тела chunked в момент фрагмента неизвестен - endStream всегда false)
-					 */
-					if((this->_callbacks.data != nullptr) && !this->_callbacks.data(STREAM_ID, data + i, static_cast <size_t> (take), false)){
-						// Фиксируем ошибку прерывания разбора с записью в лог
-						this->fail(error_t::ABORTED);
-						// Выводим количество обработанных байт данных
-						return i;
-					}
-					// Наращиваем общий размер принятого тела сообщения
-					this->_statsBody.bytes += take;
-				}
-				// Смещаем позицию разбора
-				i += static_cast <size_t> (take);
-				// Уменьшаем остаток непрочитанных данных чанка
-				this->_statsBody.bytesRemaining -= take;
-				// Если данные чанка полностью приняты
-				if(this->_statsBody.bytesRemaining == 0)
-					// Переходим к ожиданию CRLF после данных чанка
-					this->_state = static_cast <uint8_t> (state_t::S_CHUNK_DATA_ALMOST_DONE);
-				// Продолжаем разбор
-				continue;
-			}
-			/**
-			 * Крупноблочное сканирование токенов (переносимый "SIMD"): непрерывный участок
-			 * допустимых символов сканируется по lookup-таблице и копируется одним append
-			 */
-			// Если разбирается request-target
-			if(this->_state == static_cast <uint8_t> (state_t::S_REQ_TARGET)){
-				// Позиция конца непрерывного участка допустимых символов
-				size_t j = i;
-				/**
-				 * Сканируем непрерывный участок допустимых символов request-target
-				 * (URI-запроса) по lookup-таблице
-				 */
-				while((j < size) && ::isTargetCh(static_cast <uint8_t> (data[j])))
-					// Смещаем позицию конца участка
-					++j;
-				// Если непрерывный участок найден
-				if(j > i){
-					// Определяем размер непрерывного участка
-					const size_t run = (j - i);
-					// Если длина стартовой строки превышает лимит
-					if((this->_statsHeaders.lineBytes + run) > this->_limits.maxRequestLine){
-						// Фиксируем ошибку превышения длины request-line с записью в лог
-						this->fail(error_t::URL_OVERFLOW);
-						// Выводим количество обработанных байт данных
-						return i;
-					}
-					// Наращиваем длину текущей стартовой строки
-					this->_statsHeaders.lineBytes += run;
-					// Добавляем непрерывный участок к параметрам URI-запроса
-					req->uri.append(data + i, run);
-					// Смещаем позицию разбора
-					i = j;
-					// Продолжаем разбор
-					continue;
-				}
-			// Если разбирается имя заголовка или трейлера
-			} else if((this->_state == static_cast <uint8_t> (state_t::S_HEADER_NAME)) || (this->_state == static_cast <uint8_t> (state_t::S_TRAILER_NAME))) {
-				// Позиция конца непрерывного участка допустимых символов
-				size_t j = i;
-				/**
-				 * Сканируем непрерывный участок символов токена
-				 */
-				while((j < size) && ::isToken(static_cast <uint8_t> (data[j])))
-					// Смещаем позицию конца участка
-					++j;
-				// Если непрерывный участок найден
-				if(j > i){
-					// Определяем размер непрерывного участка
-					const size_t run = (j - i);
-					// Если длина имени заголовка превышает лимит
-					if((this->_header.name.size() + run) > this->_limits.maxHeaderName){
-						// Фиксируем ошибку превышения размера заголовков с записью в лог
-						this->fail(error_t::HEADER_OVERFLOW);
-						// Выводим количество обработанных байт данных
-						return i;
-					}
-					// Добавляем непрерывный участок к имени заголовка
-					this->_header.name.append(data + i, run);
-					// Смещаем позицию разбора
-					i = j;
-					// Продолжаем разбор
-					continue;
-				}
-			// Если разбирается значение заголовка или трейлера
-			} else if((this->_state == static_cast <uint8_t> (state_t::S_HEADER_VALUE)) || (this->_state == static_cast <uint8_t> (state_t::S_TRAILER_VALUE))) {
-				// Позиция конца непрерывного участка допустимых символов
-				size_t j = i;
-				/**
-				 * Сканируем непрерывный участок допустимых символов значения заголовка
-				 */
-				while((j < size) && ::isValueCh(static_cast <uint8_t> (data[j])))
-					// Смещаем позицию конца участка
-					++j;
-				// Если непрерывный участок найден
-				if(j > i){
-					// Определяем размер непрерывного участка
-					const size_t run = (j - i);
-					// Если длина значения заголовка превышает лимит
-					if((this->_header.value.size() + run) > this->_limits.maxHeaderValue){
-						// Фиксируем ошибку превышения размера заголовков с записью в лог
-						this->fail(error_t::HEADER_OVERFLOW);
-						// Выводим количество обработанных байт данных
-						return i;
-					}
-					// Добавляем непрерывный участок к значению заголовка
-					this->_header.value.append(data + i, run);
-					// Смещаем позицию разбора
-					i = j;
-					// Продолжаем разбор
-					continue;
-				}
-			}
 			/**
 			 * Посимвольные состояния конечного автомата
 			 */
@@ -2370,8 +3060,15 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				case static_cast <uint8_t> (state_t::S_REQ_METHOD): {
 					// Если получен пробел - метод разобран полностью
 					if(ch == ' '){
+						// Если длина стартовой строки превышает лимит (разделитель тоже учитывается)
+						if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine){
+							// Фиксируем ошибку превышения длины request-line
+							this->_error = error_t::URL_OVERFLOW;
+							// Выходим из состояния
+							break;
+						}
 						// Выполняем классификацию метода запроса по его имени
-						req->method = ::classifyMethod(this->_header.name, this->_fmk);
+						req->method = ::classifyMethod(this->_header.name);
 						// Если метод запроса синтаксически корректен, но не распознан
 						if(req->method == method_t::NONE){
 							// Помечаем метод запроса как нераспознанный
@@ -2401,6 +3098,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				case static_cast <uint8_t> (state_t::S_REQ_TARGET_START): {
 					// Толерантно пропускаем лишние пробелы
 					if(ch == ' '){
+						/**
+						 * Лишние пробелы внутри стартовой строки принимаются только в толерантном
+						 * режиме: расхождение в их трактовке с соседним звеном цепочки позволяет
+						 * протащить через фильтрующий узел не тот запрос, который увидит бэкенд
+						 */
+						if(this->_limits.strictSpaces){
+							// Фиксируем ошибку лишнего пробела в стартовой строке
+							this->_error = error_t::INVALID_TARGET;
+							// Выходим из состояния
+							break;
+						}
 						// Если длина стартовой строки превышает лимит (пробелы тоже учитываются)
 						if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine)
 							// Фиксируем ошибку превышения длины request-line
@@ -2431,6 +3139,13 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				case static_cast <uint8_t> (state_t::S_REQ_TARGET): {
 					// Если получен пробел - request-target разобран полностью
 					if(ch == ' '){
+						// Если длина стартовой строки превышает лимит (разделитель тоже учитывается)
+						if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine){
+							// Фиксируем ошибку превышения длины request-line
+							this->_error = error_t::URL_OVERFLOW;
+							// Выходим из состояния
+							break;
+						}
 						// Переходим к пропуску пробелов перед "HTTP/"
 						this->_state = static_cast <uint8_t> (state_t::S_REQ_HTTP_START);
 						// Выходим из состояния
@@ -2457,6 +3172,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				case static_cast <uint8_t> (state_t::S_REQ_HTTP_START): {
 					// Толерантно пропускаем лишние пробелы
 					if(ch == ' '){
+						/**
+						 * Лишние пробелы внутри стартовой строки принимаются только в толерантном
+						 * режиме: расхождение в их трактовке с соседним звеном цепочки позволяет
+						 * протащить через фильтрующий узел не тот запрос, который увидит бэкенд
+						 */
+						if(this->_limits.strictSpaces){
+							// Фиксируем ошибку лишнего пробела в стартовой строке
+							this->_error = error_t::INVALID_VERSION;
+							// Выходим из состояния
+							break;
+						}
 						// Если длина стартовой строки превышает лимит (пробелы тоже учитываются)
 						if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine)
 							// Фиксируем ошибку превышения длины request-line
@@ -2563,6 +3289,19 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 						// Выходим из состояния
 						break;
 					}
+					/**
+					 * Учитываем в длине стартовой строки литерал версии протокола целиком:
+					 * восемь его байт разбираются отдельными состояниями и иначе выпали бы
+					 * из-под лимита
+					 */
+					this->_statsHeaders.lineBytes += 8;
+					// Если длина стартовой строки превышает лимит
+					if(this->_statsHeaders.lineBytes > this->_limits.maxRequestLine){
+						// Фиксируем ошибку превышения длины request-line
+						this->_error = error_t::URL_OVERFLOW;
+						// Выходим из состояния
+						break;
+					}
 					// Переходим к ожиданию CR/LF после версии
 					this->_state = static_cast <uint8_t> (state_t::S_REQ_LINE_ALMOST_DONE);
 				} break;
@@ -2577,6 +3316,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - стартовая строка разобрана полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Завершаем разбор стартовой строки
 						this->commitStartLine();
 						// Выходим из состояния
@@ -2689,6 +3439,19 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 						// Выходим из состояния
 						break;
 					}
+					/**
+					 * Учитываем в длине стартовой строки литерал версии протокола:
+					 * первый его байт уже учтён стартовым состоянием, остальные семь
+					 * разбираются отдельными состояниями и иначе выпали бы из-под лимита
+					 */
+					this->_statsHeaders.lineBytes += 7;
+					// Если длина стартовой строки превышает лимит
+					if(this->_statsHeaders.lineBytes > this->_limits.maxRequestLine){
+						// Фиксируем ошибку превышения длины стартовой строки
+						this->_error = error_t::URL_OVERFLOW;
+						// Выходим из состояния
+						break;
+					}
 					// Переходим к обязательному пробелу после версии
 					this->_state = static_cast <uint8_t> (state_t::S_RES_FIRST_SPACE);
 				} break;
@@ -2708,6 +3471,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				case static_cast <uint8_t> (state_t::S_RES_STATUS_START): {
 					// Толерантно пропускаем дополнительные пробелы перед кодом
 					if(ch == ' '){
+						/**
+						 * Лишние пробелы внутри стартовой строки принимаются только в толерантном
+						 * режиме: расхождение в их трактовке с соседним звеном цепочки позволяет
+						 * протащить через фильтрующий узел не тот запрос, который увидит бэкенд
+						 */
+						if(this->_limits.strictSpaces){
+							// Фиксируем ошибку лишнего пробела в стартовой строке
+							this->_error = error_t::INVALID_STATUS;
+							// Выходим из состояния
+							break;
+						}
 						// Если длина стартовой строки превышает лимит (пробелы тоже учитываются)
 						if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine)
 							// Фиксируем ошибку превышения длины стартовой строки
@@ -2770,6 +3544,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - стартовая строка разобрана полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Завершаем разбор стартовой строки
 						this->commitStartLine();
 						// Выходим из состояния
@@ -2789,6 +3574,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - стартовая строка разобрана полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Завершаем разбор стартовой строки
 						this->commitStartLine();
 						// Выходим из состояния
@@ -2817,6 +3613,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - стартовая строка разобрана полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Завершаем разбор стартовой строки
 						this->commitStartLine();
 						// Выходим из состояния
@@ -2865,6 +3672,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - заголовки разобраны полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Выбираем способ кадрирования тела сообщения
 						this->beginBody();
 						// Выходим из состояния
@@ -2934,10 +3752,25 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - заголовок разобран полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Если завершение разбора заголовка не удалось
-						if(!this->commitHeader())
+						if(!this->commitHeader(this->_header.name, this->_header.value))
 							// Выходим из состояния (ошибка уже установлена)
 							break;
+						// Очищаем накопитель имени (выделенная память строки сохраняется)
+						this->_header.name.clear();
+						// Очищаем накопитель значения (выделенная память строки сохраняется)
+						this->_header.value.clear();
 						// Переходим к разбору следующего заголовка
 						this->_state = static_cast <uint8_t> (state_t::S_HEADER_START);
 						// Выходим из состояния
@@ -2966,10 +3799,25 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - заголовок разобран полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Если завершение разбора заголовка не удалось
-						if(!this->commitHeader())
+						if(!this->commitHeader(this->_header.name, this->_header.value))
 							// Выходим из состояния (ошибка уже установлена)
 							break;
+						// Очищаем накопитель имени (выделенная память строки сохраняется)
+						this->_header.name.clear();
+						// Очищаем накопитель значения (выделенная память строки сохраняется)
+						this->_header.value.clear();
 						// Переходим к разбору следующего заголовка
 						this->_state = static_cast <uint8_t> (state_t::S_HEADER_START);
 						// Выходим из состояния
@@ -3002,9 +3850,13 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 						break;
 					}
 					// Если завершение разбора заголовка не удалось
-					if(!this->commitHeader())
+					if(!this->commitHeader(this->_header.name, this->_header.value))
 						// Выходим из состояния (ошибка уже установлена)
 						break;
+					// Очищаем накопитель имени (выделенная память строки сохраняется)
+					this->_header.name.clear();
+					// Очищаем накопитель значения (выделенная память строки сохраняется)
+					this->_header.value.clear();
 					// Переходим к разбору следующего заголовка
 					this->_state = static_cast <uint8_t> (state_t::S_HEADER_START);
 				} break;
@@ -3066,6 +3918,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - строка размера чанка разобрана полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Завершаем разбор строки размера чанка
 						this->chunkSizeComplete();
 						// Выходим из состояния
@@ -3092,6 +3955,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - строка размера чанка разобрана полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Завершаем разбор строки размера чанка
 						this->chunkSizeComplete();
 						// Выходим из состояния
@@ -3132,6 +4006,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - чанк дочитан полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Уведомляем о завершении приёма данных чанка
 						if(!this->fireChunk(phase_t::END, this->_statsBody.chunkSize))
 							// Выходим из состояния (разбор прерван)
@@ -3186,6 +4071,17 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - трейлеры разобраны полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Уведомляем о завершении блока трейлеров (провайдер для трейлеров - nullptr)
 						if(this->fireProvider(nullptr, true) && this->firePhase(phase_t::END, part_t::TRAILER))
 							// Завершаем разбор всего сообщения
@@ -3257,10 +4153,25 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - трейлер разобран полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Если завершение разбора трейлера не удалось
-						if(!this->commitHeader())
+						if(!this->commitHeader(this->_header.name, this->_header.value))
 							// Выходим из состояния (ошибка уже установлена)
 							break;
+						// Очищаем накопитель имени (выделенная память строки сохраняется)
+						this->_header.name.clear();
+						// Очищаем накопитель значения (выделенная память строки сохраняется)
+						this->_header.value.clear();
 						// Переходим к разбору следующего трейлера
 						this->_state = static_cast <uint8_t> (state_t::S_TRAILER_START);
 						// Выходим из состояния
@@ -3289,10 +4200,25 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - трейлер разобран полностью (толерантность к голому LF)
 					if(ch == '\n'){
+						/**
+						 * Одиночный LF в роли окончания строки принимается только в толерантном
+						 * режиме: расхождение в его трактовке с соседним звеном цепочки -
+						 * классический вектор рассинхронизации кадрирования (request smuggling)
+						 */
+						if(this->_limits.strictEOL){
+							// Фиксируем ошибку окончания строки
+							this->_error = error_t::INVALID_EOL;
+							// Выходим из состояния
+							break;
+						}
 						// Если завершение разбора трейлера не удалось
-						if(!this->commitHeader())
+						if(!this->commitHeader(this->_header.name, this->_header.value))
 							// Выходим из состояния (ошибка уже установлена)
 							break;
+						// Очищаем накопитель имени (выделенная память строки сохраняется)
+						this->_header.name.clear();
+						// Очищаем накопитель значения (выделенная память строки сохраняется)
+						this->_header.value.clear();
 						// Переходим к разбору следующего трейлера
 						this->_state = static_cast <uint8_t> (state_t::S_TRAILER_START);
 						// Выходим из состояния
@@ -3325,9 +4251,13 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 						break;
 					}
 					// Если завершение разбора трейлера не удалось
-					if(!this->commitHeader())
+					if(!this->commitHeader(this->_header.name, this->_header.value))
 						// Выходим из состояния (ошибка уже установлена)
 						break;
+					// Очищаем накопитель имени (выделенная память строки сохраняется)
+					this->_header.name.clear();
+					// Очищаем накопитель значения (выделенная память строки сохраняется)
+					this->_header.value.clear();
 					// Переходим к разбору следующего трейлера
 					this->_state = static_cast <uint8_t> (state_t::S_TRAILER_START);
 				} break;
@@ -3495,6 +4425,10 @@ string_view awh::http::Parser_HTTP::errorName(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::PREMATURE_EOF):
 			// Выводим название кода ошибки
 			return "PREMATURE_EOF";
+		// У запроса HTTP/1.1 отсутствует либо продублирован заголовок Host
+		case static_cast <uint8_t> (error_t::MISSING_HOST):
+			// Выводим название кода ошибки
+			return "MISSING_HOST";
 		// Превышен лимит размера чанка
 		case static_cast <uint8_t> (error_t::CHUNK_OVERFLOW):
 			// Выводим название кода ошибки
@@ -3577,6 +4511,14 @@ void awh::http::Parser_HTTP::resetSender() noexcept {
  *
  */
 void awh::http::Parser_HTTP::dataSource(data_source_callback_t source) noexcept {
+	/**
+	 * Если предыдущее сообщение уже завершено - готовим отправитель к следующему:
+	 * иначе назначенный до sendHeaders источник был бы затёрт сбросом состояния
+	 * отправителя внутри самого sendHeaders
+	 */
+	if(this->_sender.headersSent && this->_sender.endSent)
+		// Готовим отправитель к следующему сообщению
+		this->resetSender();
 	// Сбрасываем признак достижения конца тела источника
 	this->_sender.sourceEof = false;
 	// Устанавливаем pull-источник данных тела
@@ -3596,6 +4538,17 @@ void awh::http::Parser_HTTP::sendWaterMarks(const size_t high, const size_t low)
 	this->_sender.lowWater = low;
 	// Устанавливаем ёмкость выходного буфера отправки (не меньше порога сигнала writable)
 	this->_sender.highWater = ::max(high, low);
+	/**
+	 * Согласуем лимит памяти смартбуферов с настроенными порогами: помимо полезных
+	 * данных буфер держит блок заголовков и порцию pull-источника с кадрированием,
+	 * а исчерпание лимита остановило бы отправку. Значение по умолчанию сохраняется,
+	 * пока пороги его не перерастают
+	 */
+	const size_t memory = ::max(static_cast <size_t> (AWH_MAX_MEMORY_BUFFER), (this->_sender.highWater * 4));
+	// Устанавливаем лимит памяти буфера исходящих байтов
+	this->_sender.output.setMaxMemory(memory);
+	// Устанавливаем лимит памяти буфера передачи в сетевой слой
+	this->_sender.flushing.setMaxMemory(memory);
 }
 /**
  * @brief Метод отправки блока заголовков (запрос/ответ/трейлеры) исходящего сообщения
@@ -3623,10 +4576,21 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 		if(this->_sender.headersSent){
 			// Если тело кадрируется chunked и контейнер без провайдера - это трейлеры
 			if(!this->_sender.endSent && (this->_sender.framing == sender_t::framing_t::CHUNKED) && (headers.provider() == nullptr)){
+				// Сериализуем блок трейлеров сообщения
+				string block = headers.print(http::proto_t::HTTP1);
+				// Вычищаем из блока поля, запрещённые в трейлерах
+				const size_t dropped = ::dropForbiddenTrailers(block);
+				// Если запрещённые поля обнаружены
+				if(dropped > 0)
+					// Записываем сообщение об отброшенных полях трейлеров в лог
+					this->_log->print(
+						"HTTP/1.x outgoing trailer fields are not allowed and have been dropped: %zu field(s)",
+						log_t::flag_t::WARNING, dropped
+					);
 				// Завершаем тело последним (нулевым) чанком без пустой строки
-				this->_sender.output.append("0\r\n", 3);
+				this->_sender.output.push("0\r\n", 3);
 				// Дописываем блок трейлеров с завершающей пустой строкой
-				this->_sender.output.append(headers.print(http::proto_t::HTTP1));
+				this->_sender.output.push(block);
 				// Помечаем что исходящее сообщение завершено
 				this->_sender.endSent = true;
 				// Передаём исходящие байты сетевому слою
@@ -3649,35 +4613,128 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			version = headers.provider()->version;
 		// Признак необходимости дописать заголовок Transfer-Encoding: chunked
 		bool injectChunked = false;
+		// Признак необходимости вычистить конфликтующий заголовок Transfer-Encoding
+		bool dropEncoding = false;
+		// Признак необходимости вычистить некорректный заголовок Content-Length
+		bool dropLength = false;
+		// Признак пригодного к кадрированию заголовка Content-Length
+		bool usableLength = false;
+		// Признак наличия заголовка Content-Length в контейнере
+		const bool hasLength = headers.has("Content-Length");
+		// Признак наличия заголовка Transfer-Encoding в контейнере
+		const bool hasEncoding = headers.has("Transfer-Encoding");
+		/**
+		 * Если сообщение завершается заголовками, а объявлен ненулевой Content-Length:
+		 * у запроса это всегда ошибка вызывающей стороны - тела не будет, а получатель
+		 * останется ждать объявленный объём. У ответа такое сочетание законно: ответ на
+		 * HEAD и ответ [304 Not Modified] несут размер гипотетического тела
+		 */
+		if(hasLength && endStream && (this->_direct == direct_t::REQUEST)){
+			// Значение объявленного размера тела
+			uint64_t announced = 0;
+			// Получаем значение заголовка Content-Length
+			const string & length = headers.at("Content-Length");
+			// Если объявлен ненулевой размер тела
+			if(!::parseDecimal(length.data(), length.size(), announced) || (announced > 0)){
+				// Помечаем заголовок к вычистке из блока
+				dropLength = true;
+				// Записываем сообщение о несовместимом заголовке Content-Length в лог
+				this->_log->print(
+					"HTTP/1.x outgoing request declares Content-Length without a body and it has been dropped: %s",
+					log_t::flag_t::CRITICAL, length.c_str()
+				);
+			}
+		}
+		// Если заголовок Content-Length установлен и сообщение предполагает тело
+		if(hasLength && !endStream){
+			// Получаем значение заголовка Content-Length
+			const string & length = headers.at("Content-Length");
+			// Проверяем пригодность значения заголовка Content-Length к кадрированию
+			usableLength = ::parseDecimal(length.data(), length.size(), this->_sender.remaining);
+			// Если значение заголовка Content-Length не является корректным числом
+			if(!usableLength){
+				// Сбрасываем остаток тела до полного Content-Length
+				this->_sender.remaining = 0;
+				/**
+				 * Некорректный Content-Length вычищается из блока, а тело кадрируется
+				 * способом, не требующим заранее известной длины: отправка заголовка,
+				 * который принимающая сторона обязана отвергнуть, оставила бы соединение
+				 * в состоянии, из которого нет корректного продолжения
+				 */
+				dropLength = true;
+				// Записываем сообщение о некорректном заголовке Content-Length в лог
+				this->_log->print(
+					"HTTP/1.x outgoing Content-Length is not a valid number and has been dropped: %s",
+					log_t::flag_t::CRITICAL, length.c_str()
+				);
+			}
+		}
 		// Если сообщение завершается заголовками - тела не будет
 		if(endStream)
 			// Тело исходящего сообщения отсутствует
 			this->_sender.framing = sender_t::framing_t::NONE;
-		// Если установлен заголовок Content-Length - тело фиксированного размера
-		else if(headers.has("Content-Length")) {
+		// Если установлен пригодный заголовок Content-Length - тело фиксированного размера
+		else if(usableLength) {
 			// Устанавливаем кадрирование тела фиксированного размера
 			this->_sender.framing = sender_t::framing_t::IDENTITY;
-			// Извлекаем ожидаемый размер тела из заголовка Content-Length
-			this->_sender.remaining = ::strtoull(headers.at("Content-Length").c_str(), nullptr, 10);
+			/**
+			 * Одновременная отправка Content-Length и Transfer-Encoding запрещена
+			 * (RFC 9112 §6.1): такой кадр принимающая сторона обязана отвергнуть как
+			 * попытку request smuggling. Кадрирование уже выбрано по Content-Length,
+			 * поэтому конфликтующий заголовок вычищается из блока
+			 */
+			dropEncoding = hasEncoding;
 		// Если версия протокола HTTP/1.0 - chunked не существует, тело кадрируется закрытием соединения
 		} else if(version == version_t::HTTP1_0)
 			// Устанавливаем кадрирование сырого тела до закрытия соединения
 			this->_sender.framing = sender_t::framing_t::RAW;
-		// Для HTTP/1.1 без Content-Length тело кадрируется кодировкой chunked
+		// Для HTTP/1.1 без пригодного Content-Length тело кадрируется кодировкой chunked
 		else {
 			// Устанавливаем кадрирование тела кодировкой chunked
 			this->_sender.framing = sender_t::framing_t::CHUNKED;
-			// Заголовок Transfer-Encoding дописывается, только если он ещё не установлен
-			injectChunked = !headers.has("Transfer-Encoding");
+			/**
+			 * Заголовок Transfer-Encoding дописывается, если контейнер его не несёт либо
+			 * несёт кодирование, не заканчивающееся токеном chunked: тело кадрируется
+			 * chunked в любом случае, и объявление обязано этому соответствовать.
+			 * Отдельный заголовок корректен - по RFC 9112 §6.1 значения нескольких
+			 * заголовков Transfer-Encoding склеиваются по порядку следования
+			 */
+			injectChunked = !hasEncoding;
+			// Если заголовок транспортного кодирования установлен - проверяем его последнее значение
+			if(hasEncoding){
+				/**
+				 * Значения нескольких заголовков Transfer-Encoding склеиваются по порядку
+				 * следования, поэтому кадрирование определяет последний из них - проверять
+				 * только первое значение недостаточно
+				 */
+				const vector <string> values = headers.range("Transfer-Encoding");
+				// Дописываем заголовок, если последнее кодирование не заканчивается токеном chunked
+				injectChunked = (values.empty() || !::endsWithChunked(values.back()));
+			}
 		}
 		// Сериализуем стартовую строку и заголовки сообщения
 		string block = headers.print(http::proto_t::HTTP1);
-		// Если необходимо дописать заголовок Transfer-Encoding: chunked
-		if(injectChunked)
+		// Если необходимо вычистить некорректный заголовок Content-Length
+		if(dropLength)
+			// Удаляем некорректный заголовок из сериализованного блока
+			::dropHeaderLine(block, "content-length");
+		// Если необходимо вычистить конфликтующий заголовок Transfer-Encoding
+		if(dropEncoding){
+			// Записываем сообщение о конфликте кадрирования исходящего сообщения в лог
+			this->_log->print("HTTP/1.x outgoing message declares both Content-Length and Transfer-Encoding: the latter has been dropped", log_t::flag_t::WARNING);
+			// Удаляем конфликтующий заголовок из сериализованного блока
+			::dropHeaderLine(block, "transfer-encoding");
+		}
+		/**
+		 * Дописываем заголовок перед завершающей пустой строкой блока: сериализация
+		 * всегда оканчивается ей, но при внутреннем сбое печати блок может прийти
+		 * пустым - вставка по несуществующей позиции недопустима
+		 */
+		if(injectChunked && (block.size() >= 2))
 			// Вставляем заголовок перед завершающей пустой строкой блока
 			block.insert(block.size() - 2, "Transfer-Encoding: chunked\r\n");
 		// Дописываем сериализованный блок заголовков в выходной буфер
-		this->_sender.output.append(block);
+		this->_sender.output.push(block);
 		// Помечаем что заголовки сообщения отправлены
 		this->_sender.headersSent = true;
 		// Если сообщение завершается заголовками - помечаем сообщение завершённым
@@ -3751,10 +4808,28 @@ size_t awh::http::Parser_HTTP::sendData(const void * buffer, const size_t size, 
 				// Списываем порцию из остатка тела
 				this->_sender.remaining -= static_cast <uint64_t> (result);
 		}
-		// Признак полного приёма тела фиксированного размера
-		const bool identityDone = ((this->_sender.framing == sender_t::framing_t::IDENTITY) && (this->_sender.remaining == 0));
-		// Завершаем тело, когда принят весь финальный фрагмент либо исчерпан Content-Length
-		if((endStream && (result == size)) || identityDone)
+		// Признак кадрирования тела фиксированного размера
+		const bool identity = (this->_sender.framing == sender_t::framing_t::IDENTITY);
+		/**
+		 * Тело фиксированного размера завершается строго по исчерпании анонсированного
+		 * Content-Length: досрочный endStream отправил бы в сеть усечённое тело, а
+		 * получатель остался бы ждать недостающие байты до таймаута
+		 */
+		if(identity){
+			// Если анонсированный размер тела полностью исчерпан
+			if(this->_sender.remaining == 0)
+				// Завершаем тело исходящего сообщения
+				this->finishBody();
+			// Если потребитель объявил конец тела, не выдав анонсированный объём
+			else if(endStream && (result == size))
+				// Записываем сообщение о преждевременном завершении тела в лог
+				this->_log->print(
+					"HTTP/1.x outgoing body is shorter than the announced Content-Length: %llu byte(s) left, end of stream ignored",
+					log_t::flag_t::WARNING,
+					static_cast <unsigned long long> (this->_sender.remaining)
+				);
+		// Для остальных способов кадрирования тело завершается по принятому финальному фрагменту
+		} else if(endStream && (result == size))
 			// Завершаем тело исходящего сообщения
 			this->finishBody();
 		// Если выходной буфер поднялся выше low-water - взводим сигнал writable снова
@@ -3781,6 +4856,13 @@ size_t awh::http::Parser_HTTP::sendData(const void * buffer, const size_t size, 
 	}
 	// Передаём исходящие байты сетевому слою
 	this->flush();
+	/**
+	 * Сигнализируем о готовности принимать данные: в push-модели выходной буфер
+	 * опустошается функцией обратного вызова записи, а не выборкой consumePending,
+	 * поэтому без этого вызова сигнал writable не поступил бы вовсе и потребитель,
+	 * дождавшийся частичного приёма, остался бы ждать его бесконечно
+	 */
+	this->maybeNotifyWritable();
 	// Выводим число принятых байт
 	return result;
 }
@@ -3796,8 +4878,12 @@ size_t awh::http::Parser_HTTP::sendData(const void * buffer, const size_t size, 
  *
  */
 string_view awh::http::Parser_HTTP::pending() const noexcept {
+	// Если ещё не отправленных исходящих байтов нет
+	if(this->_sender.output.empty())
+		// Выводим пустое представление
+		return string_view();
 	// Выводим ещё не отправленные исходящие байты
-	return string_view(this->_sender.output.data() + this->_sender.outputPos, this->_sender.output.size() - this->_sender.outputPos);
+	return string_view(static_cast <const char *> (this->_sender.output.data()), this->_sender.output.size());
 }
 /**
  * @brief Метод освобождения отправленных байтов из исходящего буфера (амортизированно O(1))
@@ -3806,21 +4892,11 @@ string_view awh::http::Parser_HTTP::pending() const noexcept {
  *
  */
 void awh::http::Parser_HTTP::consumePending(const size_t size) noexcept {
-	// Сдвигаем отданный префикс вместо удаления; физическую память освобождаем амортизированно
-	this->_sender.outputPos += ::min(size, this->outputPending());
-	// Если весь буфер исходящих байтов отдан
-	if(this->_sender.outputPos >= this->_sender.output.size()){
-		// Сбрасываем отданный префикс
-		this->_sender.outputPos = 0;
-		// Очищаем буфер исходящих байтов
-		this->_sender.output.clear();
-	// Если отданный префикс не меньше остатка - компактифицируем буфер
-	} else if(this->_sender.outputPos >= (this->_sender.output.size() - this->_sender.outputPos)) {
-		// Удаляем отданный префикс из буфера
-		this->_sender.output.erase(0, this->_sender.outputPos);
-		// Сбрасываем отданный префикс
-		this->_sender.outputPos = 0;
-	}
+	/**
+	 * Освобождаем отданные байты: смартбуфер сдвигает начало полезных данных, а
+	 * физическую компактизацию выполняет сам при нехватке места в хвосте
+	 */
+	this->_sender.output.erase(::min(size, this->_sender.output.size()));
 	// Выходной буфер просел - дозагружаем его из pull-источника данных
 	if(this->_sender.source != nullptr)
 		// Прокачиваем тело из источника данных
@@ -3911,6 +4987,12 @@ void awh::http::Parser_HTTP::on(writable_callback_t callback) noexcept {
 awh::http::Parser_HTTP::Parser_HTTP(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
  parser_t(direct, fmk, log), _error(error_t::NONE),
  _state(static_cast <uint8_t> (S_START)), _method(method_t::NONE) {
+	// Устанавливаем объект логирования буферу исходящих байтов
+	this->_sender.output.setLogger(log);
+	// Устанавливаем объект логирования буферу передачи в сетевой слой
+	this->_sender.flushing.setLogger(log);
+	// Согласуем лимит памяти смартбуферов с порогами выходного буфера по умолчанию
+	this->sendWaterMarks(SEND_HIGH_WATER, SEND_LOW_WATER);
 	/**
 	 * В зависимости от направления потока данных, формируем объект провайдера заголовков сообщения
 	 */

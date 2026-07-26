@@ -40,6 +40,43 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks QUIC protocol submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_QUIC_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для подмодуля протокола HTTP/1.x
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_HTTP1_BENCHMARK "Build HTTP/1.x benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для подмодуля протокола HTTP/1.x
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_HTTP1_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для подмодуля протокола HTTP/1.x
+        message(STATUS "Build benchmarks HTTP/1.x protocol submodule: Yes\n")
+        # Дополняем список источников бенчмарками для подмодуля протокола HTTP/1.x
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            http1/http1.cpp
+            http1/throughput.cpp
+        )
+    # Если не нужно собрать бенчмарки для подмодуля протокола HTTP/1.x
+    else()
+        # Выводим сообщение о сборке бенчмарков для подмодуля протокола HTTP/1.x
+        message(STATUS "Build benchmarks HTTP/1.x protocol submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_HTTP1_BENCHMARK})
+
+    # Указываем что нужно собрать бенчмарки для подмодуля протокола HTTP/2
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_HTTP2_BENCHMARK "Build HTTP/2 benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для подмодуля протокола HTTP/2
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_HTTP2_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для подмодуля протокола HTTP/2
+        message(STATUS "Build benchmarks HTTP/2 protocol submodule: Yes\n")
+        # Дополняем список источников бенчмарками для подмодуля протокола HTTP/2
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            http2/http2.cpp
+            http2/hpack.cpp
+            http2/throughput.cpp
+        )
+    # Если не нужно собрать бенчмарки для подмодуля протокола HTTP/2
+    else()
+        # Выводим сообщение о сборке бенчмарков для подмодуля протокола HTTP/2
+        message(STATUS "Build benchmarks HTTP/2 protocol submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_HTTP2_BENCHMARK})
+
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 
