@@ -587,6 +587,357 @@ namespace {
 		return result;
 	}
 	/**
+	 * @brief Функция обратного вызова дедлайна, который не должен сработать
+	 *
+	 */
+	static void deadlineFired(evutil_socket_t, short, void *) noexcept {}
+	/**
+	 * @brief Функция вычисления дедлайна таймера
+	 *
+	 * @param index порядковый номер таймера
+	 * @return      дедлайн таймера
+	 *
+	 */
+	static struct timeval deadline(const size_t index) noexcept {
+		// Дедлайн таймера в миллисекундах, отнесённый далеко в будущее
+		const uint32_t milliseconds = (DEADLINE_OFFSET + static_cast <uint32_t> (index % DEADLINE_SPREAD));
+		// Выводим дедлайн таймера
+		return timeval{static_cast <time_t> (milliseconds / 1000), static_cast <suseconds_t> ((milliseconds % 1000) * 1000)};
+	}
+	/**
+	 * @brief Функция прогона сценария постановки таймеров с поиском по идентификатору
+	 *
+	 * @details Стенд поставлен в те же условия, что и движок AWH: описатель
+	 *          наблюдателя берётся не напрямую, а разрешается поиском в реестре по
+	 *          целочисленному идентификатору. Настоящему серверу описатель тоже
+	 *          неоткуда взять иначе, поэтому стоимость поиска он платит в любом
+	 *          случае - вопрос лишь в том, внутри библиотеки или снаружи
+	 *
+	 * @param count количество таймеров
+	 * @return      итоги прогона сценария
+	 *
+	 */
+	static outcome_t armingById(const size_t count) noexcept {
+		// Итоги прогона сценария
+		outcome_t result;
+		// Список наблюдателей таймеров
+		vector <struct event *> timers(count, nullptr);
+		// Создаём цикл событий стенда
+		struct event_base * base = ::event_base_new();
+		// Реестр описателей наблюдателей по идентификатору
+		registry_t <struct event *> registry;
+		// Резервируем память под реестр описателей
+		registry.reserve(count);
+		/**
+		 * Выполняем подготовку наблюдателей и наполнение реестра вне окна замера
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Инициализируем наблюдатель таймера
+			timers[i] = ::evtimer_new(base, &::deadlineFired, nullptr);
+			// Записываем описатель наблюдателя в реестр
+			registry.emplace(static_cast <uint32_t> (i + 1), timers[i]);
+		}
+		// Запоминаем момент начала замера
+		const auto start = now();
+		/**
+		 * Выполняем постановку всех таймеров с разрешением описателя по идентификатору
+		 */
+		for(size_t k = 0; k < count; k++){
+			// Разрешаем описатель наблюдателя по идентификатору
+			auto i = registry.find(static_cast <uint32_t> (k + 1));
+			// Если описатель наблюдателя не найден
+			if(i == registry.end())
+				// Переходим к следующему таймеру
+				continue;
+			// Ставим таймер в структуру дедлайнов
+			struct timeval tv = ::deadline(i->first - 1);
+				::evtimer_add(i->second, &tv);
+		}
+		// Запоминаем момент окончания замера
+		const auto finish = now();
+		// Устанавливаем количество выполненных операций
+		result.operations = count;
+		// Устанавливаем затраченное время
+		result.seconds = elapsed(start, finish);
+		// Освобождаем цикл событий стенда
+		for(size_t i = 0; i < count; i++)
+			::event_free(timers[i]);
+		::event_base_free(base);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария отмены таймеров с поиском по идентификатору
+	 *
+	 * @param count количество таймеров
+	 * @return      итоги прогона сценария
+	 *
+	 */
+	static outcome_t cancellingById(const size_t count) noexcept {
+		// Итоги прогона сценария
+		outcome_t result;
+		// Список наблюдателей таймеров
+		vector <struct event *> timers(count, nullptr);
+		// Создаём цикл событий стенда
+		struct event_base * base = ::event_base_new();
+		// Реестр описателей наблюдателей по идентификатору
+		registry_t <struct event *> registry;
+		// Резервируем память под реестр описателей
+		registry.reserve(count);
+		/**
+		 * Выполняем подготовку, постановку и наполнение реестра вне окна замера
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Инициализируем наблюдатель таймера
+			timers[i] = ::evtimer_new(base, &::deadlineFired, nullptr);
+			// Ставим таймер в структуру дедлайнов
+			struct timeval tv = ::deadline(i);
+			::evtimer_add(timers[i], &tv);
+			// Записываем описатель наблюдателя в реестр
+			registry.emplace(static_cast <uint32_t> (i + 1), timers[i]);
+		}
+		// Запоминаем момент начала замера
+		const auto start = now();
+		/**
+		 * Выполняем отмену всех таймеров с разрешением описателя по идентификатору
+		 */
+		for(size_t k = 0; k < count; k++){
+			// Разрешаем описатель наблюдателя по идентификатору
+			auto i = registry.find(static_cast <uint32_t> (k + 1));
+			// Если описатель наблюдателя не найден
+			if(i == registry.end())
+				// Переходим к следующему таймеру
+				continue;
+			// Снимаем таймер со структуры дедлайнов
+			::evtimer_del(i->second);
+		}
+		// Запоминаем момент окончания замера
+		const auto finish = now();
+		// Устанавливаем количество выполненных операций
+		result.operations = count;
+		// Устанавливаем затраченное время
+		result.seconds = elapsed(start, finish);
+		// Освобождаем цикл событий стенда
+		for(size_t i = 0; i < count; i++)
+			::event_free(timers[i]);
+		::event_base_free(base);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария перевзведения таймеров с поиском по идентификатору
+	 *
+	 * @param count количество таймеров
+	 * @return      итоги прогона сценария
+	 *
+	 */
+	static outcome_t rearmingById(const size_t count) noexcept {
+		// Итоги прогона сценария
+		outcome_t result;
+		// Список наблюдателей таймеров
+		vector <struct event *> timers(count, nullptr);
+		// Создаём цикл событий стенда
+		struct event_base * base = ::event_base_new();
+		// Реестр описателей наблюдателей по идентификатору
+		registry_t <struct event *> registry;
+		// Резервируем память под реестр описателей
+		registry.reserve(count);
+		/**
+		 * Выполняем подготовку, постановку и наполнение реестра вне окна замера
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Инициализируем наблюдатель таймера
+			timers[i] = ::evtimer_new(base, &::deadlineFired, nullptr);
+			// Ставим таймер в структуру дедлайнов
+			struct timeval tv = ::deadline(i);
+			::evtimer_add(timers[i], &tv);
+			// Записываем описатель наблюдателя в реестр
+			registry.emplace(static_cast <uint32_t> (i + 1), timers[i]);
+		}
+		// Запоминаем момент начала замера
+		const auto start = now();
+		/**
+		 * Выполняем перевзведение всех таймеров с разрешением описателя по идентификатору
+		 */
+		for(size_t k = 0; k < count; k++){
+			// Разрешаем описатель наблюдателя по идентификатору
+			auto i = registry.find(static_cast <uint32_t> (k + 1));
+			// Если описатель наблюдателя не найден
+			if(i == registry.end())
+				// Переходим к следующему таймеру
+				continue;
+			// Сдвигаем дедлайн таймера вперёд
+			struct timeval tv = ::deadline((i->first - 1) + DEADLINE_SPREAD);
+				::evtimer_add(i->second, &tv);
+		}
+		// Запоминаем момент окончания замера
+		const auto finish = now();
+		// Устанавливаем количество выполненных операций
+		result.operations = count;
+		// Устанавливаем затраченное время
+		result.seconds = elapsed(start, finish);
+		// Освобождаем цикл событий стенда
+		for(size_t i = 0; i < count; i++)
+			::event_free(timers[i]);
+		::event_base_free(base);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария постановки таймеров в структуру дедлайнов
+	 *
+	 * @param count количество таймеров
+	 * @return      итоги прогона сценария
+	 *
+	 */
+	static outcome_t arming(const size_t count) noexcept {
+		// Итоги прогона сценария
+		outcome_t result;
+		// Список наблюдателей таймеров
+		vector <struct event *> timers(count, nullptr);
+		// Создаём цикл событий стенда
+		struct event_base * base = ::event_base_new();
+		/**
+		 * Выполняем подготовку наблюдателей вне окна замера
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Создаём наблюдатель таймера
+			timers[i] = ::evtimer_new(base, &::deadlineFired, nullptr);
+		// Запоминаем момент начала замера
+		const auto start = now();
+		/**
+		 * Выполняем постановку всех таймеров
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Получаем дедлайн таймера
+			struct timeval tv = ::deadline(i);
+			// Ставим таймер в структуру дедлайнов
+			::evtimer_add(timers[i], &tv);
+		}
+		// Запоминаем момент окончания замера
+		const auto finish = now();
+		// Устанавливаем количество выполненных операций
+		result.operations = count;
+		// Устанавливаем затраченное время
+		result.seconds = elapsed(start, finish);
+		/**
+		 * Освобождаем наблюдатели таймеров
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Освобождаем наблюдатель таймера
+			::event_free(timers[i]);
+		// Освобождаем цикл событий стенда
+		::event_base_free(base);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария отмены таймеров в структуре дедлайнов
+	 *
+	 * @param count количество таймеров
+	 * @return      итоги прогона сценария
+	 *
+	 */
+	static outcome_t cancelling(const size_t count) noexcept {
+		// Итоги прогона сценария
+		outcome_t result;
+		// Список наблюдателей таймеров
+		vector <struct event *> timers(count, nullptr);
+		// Создаём цикл событий стенда
+		struct event_base * base = ::event_base_new();
+		/**
+		 * Выполняем подготовку и постановку наблюдателей вне окна замера
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Создаём наблюдатель таймера
+			timers[i] = ::evtimer_new(base, &::deadlineFired, nullptr);
+			// Получаем дедлайн таймера
+			struct timeval tv = ::deadline(i);
+			// Ставим таймер в структуру дедлайнов
+			::evtimer_add(timers[i], &tv);
+		}
+		// Запоминаем момент начала замера
+		const auto start = now();
+		/**
+		 * Выполняем отмену всех таймеров
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Снимаем таймер со структуры дедлайнов
+			::evtimer_del(timers[i]);
+		// Запоминаем момент окончания замера
+		const auto finish = now();
+		// Устанавливаем количество выполненных операций
+		result.operations = count;
+		// Устанавливаем затраченное время
+		result.seconds = elapsed(start, finish);
+		/**
+		 * Освобождаем наблюдатели таймеров
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Освобождаем наблюдатель таймера
+			::event_free(timers[i]);
+		// Освобождаем цикл событий стенда
+		::event_base_free(base);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария перевзведения таймеров в структуре дедлайнов
+	 *
+	 * @note Отдельной функции перевзведения библиотека не предоставляет: повторная
+	 *       постановка уже поставленного таймера сама снимает прежнюю запись
+	 *
+	 * @param count количество таймеров
+	 * @return      итоги прогона сценария
+	 *
+	 */
+	static outcome_t rearming(const size_t count) noexcept {
+		// Итоги прогона сценария
+		outcome_t result;
+		// Список наблюдателей таймеров
+		vector <struct event *> timers(count, nullptr);
+		// Создаём цикл событий стенда
+		struct event_base * base = ::event_base_new();
+		/**
+		 * Выполняем подготовку и постановку наблюдателей вне окна замера
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Создаём наблюдатель таймера
+			timers[i] = ::evtimer_new(base, &::deadlineFired, nullptr);
+			// Получаем дедлайн таймера
+			struct timeval tv = ::deadline(i);
+			// Ставим таймер в структуру дедлайнов
+			::evtimer_add(timers[i], &tv);
+		}
+		// Запоминаем момент начала замера
+		const auto start = now();
+		/**
+		 * Выполняем перевзведение всех таймеров
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Получаем сдвинутый вперёд дедлайн таймера
+			struct timeval tv = ::deadline(i + DEADLINE_SPREAD);
+			// Сдвигаем дедлайн таймера вперёд
+			::evtimer_add(timers[i], &tv);
+		}
+		// Запоминаем момент окончания замера
+		const auto finish = now();
+		// Устанавливаем количество выполненных операций
+		result.operations = count;
+		// Устанавливаем затраченное время
+		result.seconds = elapsed(start, finish);
+		/**
+		 * Освобождаем наблюдатели таймеров
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Освобождаем наблюдатель таймера
+			::event_free(timers[i]);
+		// Освобождаем цикл событий стенда
+		::event_base_free(base);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
 	 * @brief Функция обратного вызова срабатывания таймера
 	 *
 	 * @param arg счётчик сработавших таймеров
@@ -696,6 +1047,61 @@ int32_t main(int32_t argc, char ** argv){
 		const outcome_t outcome = ::schedule();
 		// Выводим результат прогона сценария
 		report("net/io/timers", "таймеров/с", perSecond(outcome), outcome);
+	}
+	// Если сценарий постановки таймеров выполняется
+	if(selected("net/io/deadlines/arm", name)){
+		// Выполняем прогон сценария постановки таймеров
+		const outcome_t outcome = ::arming(DEADLINE_COUNT);
+		// Выводим результат прогона сценария
+		report("net/io/deadlines/arm", "постановок/с", perSecond(outcome), outcome);
+	}
+	// Если сценарий отмены таймеров выполняется
+	if(selected("net/io/deadlines/cancel", name)){
+		// Выполняем прогон сценария отмены таймеров
+		const outcome_t outcome = ::cancelling(DEADLINE_COUNT);
+		// Выводим результат прогона сценария
+		report("net/io/deadlines/cancel", "отмен/с", perSecond(outcome), outcome);
+	}
+	// Если сценарий перевзведения таймеров выполняется
+	if(selected("net/io/deadlines/rearm", name)){
+		// Выполняем прогон сценария перевзведения таймеров
+		const outcome_t outcome = ::rearming(DEADLINE_COUNT);
+		// Выводим результат прогона сценария
+		report("net/io/deadlines/rearm", "перевзведений/с", perSecond(outcome), outcome);
+	}
+	// Если сценарий оценки сложности структуры дедлайнов выполняется
+	if(selected("net/io/deadlines/scaling", name)){
+		// Выполняем прогон на уменьшенном количестве таймеров
+		const outcome_t small = ::arming(DEADLINE_SMALL_COUNT);
+		// Выполняем прогон на полном количестве таймеров
+		const outcome_t large = ::arming(DEADLINE_COUNT);
+		// Вычисляем стоимость одной операции на уменьшенном прогоне
+		const double base = ((small.seconds * 1e6) / static_cast <double> (small.operations));
+		// Вычисляем стоимость одной операции на полном прогоне
+		const double cost = ((large.seconds * 1e6) / static_cast <double> (large.operations));
+		// Выводим отношение стоимостей одной операции
+		::printf("%-38s %14.2f   (отношение, %.3f -> %.3f мкс)\n", "net/io/deadlines/scaling", (cost / base), base, cost);
+	}
+	// Если сценарий постановки таймеров с поиском по идентификатору выполняется
+	if(selected("net/io/deadlines/arm-by-id", name)){
+		// Выполняем прогон сценария постановки таймеров с поиском по идентификатору
+		const outcome_t outcome = ::armingById(DEADLINE_COUNT);
+		// Выводим результат прогона сценария
+		report("net/io/deadlines/arm-by-id", "постановок/с", perSecond(outcome), outcome);
+	}
+	// Если сценарий отмены таймеров с поиском по идентификатору выполняется
+	if(selected("net/io/deadlines/cancel-by-id", name)){
+		// Выполняем прогон сценария отмены таймеров с поиском по идентификатору
+		const outcome_t outcome = ::cancellingById(DEADLINE_COUNT);
+		// Выводим результат прогона сценария
+		report("net/io/deadlines/cancel-by-id", "отмен/с", perSecond(outcome), outcome);
+	}
+	// Если сценарий перевзведения таймеров с поиском по идентификатору выполняется
+	if(selected("net/io/deadlines/rearm-by-id", name)){
+		// Выполняем прогон сценария перевзведения таймеров с поиском по идентификатору
+		const outcome_t outcome = ::rearmingById(DEADLINE_COUNT);
+		// Выводим результат прогона сценария
+		report("net/io/deadlines/rearm-by-id", "перевзведений/с", perSecond(outcome), outcome);
 	}
 	// Выводим успешный код выхода
 	return EXIT_SUCCESS;

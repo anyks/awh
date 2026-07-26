@@ -688,3 +688,89 @@ TEST_P(FragmentParameterizedFixture, VersionFastPathEquivalenceTest){
 		ASSERT_EQ(request->uri, origin->uri) << sample.message;
 	}
 }
+
+/**
+ * @brief Метод тестирования совпадения состояния стартовой строки после отказа по лимиту
+ *
+ * @details Крупноблочные пути проверяют лимит длины стартовой строки один раз на
+ *          весь участок, а посимвольный - на каждом октете, поэтому недособранное
+ *          состояние после отказа легко расходится: адрес запроса у одного пути
+ *          заполнен до предела, у другого пуст, а разобранная версия протокола у
+ *          одного установлена, у другого осталась значением по умолчанию. Состояние
+ *          отвергнутого сообщения обязано совпадать: иначе то, что видит потребитель
+ *          после отказа, зависело бы от разбиения входа сетевым слоем
+ *
+ */
+TEST_P(FragmentParameterizedFixture, StartLineOverflowStateEquivalenceTest){
+	/**
+	 * @brief Функция разбора сообщения с заданным размером фрагмента подачи
+	 *
+	 * @param parser   объект парсера
+	 * @param message  разбираемое сообщение
+	 * @param fragment размер фрагмента подачи
+	 *
+	 */
+	auto feed = [](parser_http_t & parser, const std::string & message, const size_t fragment) noexcept -> void {
+		/**
+		 * Выполняем подачу данных фрагментами заданного размера
+		 */
+		for(size_t i = 0; i < message.size(); i += fragment)
+			// Выполняем разбор очередного фрагмента данных
+			parser.parse(message.data() + i, std::min(fragment, (message.size() - i)));
+	};
+	/**
+	 * Набор сообщений, на которых лимит выбирается в разных частях стартовой строки:
+	 * внутри метода, внутри адреса запроса и на литерале версии протокола
+	 */
+	const std::vector <std::string> messages = {
+		"GET /aaaaaaaa HTTP/1.1\r\n\r\n",
+		"POST /ab HTTP/1.0\r\n\r\n",
+		"OPTIONS /x HTTP/1.1\r\n\r\n",
+		"PROPPATCH /path/to/resource HTTP/1.1\r\n\r\n"
+	};
+	/**
+	 * Выполняем перебор всех проверяемых сообщений
+	 */
+	for(const auto & message : messages){
+		/**
+		 * Выполняем перебор лимита длины стартовой строки, проходя точку отказа
+		 * в каждой её части
+		 */
+		for(size_t limit = 1; limit <= 40; limit++){
+			// Создаём объект парсера эталонного разбора (подача по одному октету)
+			auto reference = this->make(direct_t::REQUEST);
+			// Создаём объект парсера проверяемого разбора
+			auto parser = this->make(direct_t::REQUEST);
+			// Получаем текущие лимиты безопасности
+			parser_http_t::limits_t limits = reference->limits();
+			// Устанавливаем максимальную длину стартовой строки
+			limits.maxRequestLine = limit;
+			// Применяем лимиты безопасности эталонному разбору
+			reference->limits(limits);
+			// Применяем лимиты безопасности проверяемому разбору
+			parser->limits(limits);
+			// Выполняем эталонный разбор посимвольной подачей
+			feed(* reference, message, 1);
+			// Выполняем проверяемый разбор подачей фрагментами заданного размера
+			feed(* parser, message, this->_fragment);
+			// Формируем сведения о проверяемом случае
+			const std::string details = (message + " (лимит " + std::to_string(limit) + ")");
+			// Проверяем что итоговый статус разбора совпадает
+			ASSERT_EQ(parser->status(), reference->status()) << details;
+			// Проверяем что код ошибки разбора совпадает
+			ASSERT_EQ(parser->error(), reference->error()) << details;
+			// Получаем объект провайдера заголовков проверяемого разбора
+			const request_t * request = static_cast <const request_t *> (parser->message().provider.get());
+			// Получаем объект провайдера заголовков эталонного разбора
+			const request_t * origin = static_cast <const request_t *> (reference->message().provider.get());
+			// Проверяем что состояние адреса запроса после отказа совпадает
+			ASSERT_EQ(request->uri, origin->uri) << details;
+			// Проверяем что состояние версии протокола после отказа совпадает
+			ASSERT_EQ(request->version, origin->version) << details;
+			// Проверяем что состояние метода запроса после отказа совпадает
+			ASSERT_EQ(request->method, origin->method) << details;
+			// Проверяем что оригинальное написание метода после отказа совпадает
+			ASSERT_EQ(request->methodName, origin->methodName) << details;
+		}
+	}
+}

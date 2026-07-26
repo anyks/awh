@@ -92,7 +92,7 @@ namespace {
 	 *          квадратичной по объёму подачи
 	 *
 	 */
-	static constexpr double REQUEST_THRESHOLD = 28000.0;
+	static constexpr double REQUEST_THRESHOLD = 38000.0;
 	/**
 	 * @brief Порог скорости приёма тела в мегабайтах в секунду
 	 *
@@ -106,7 +106,7 @@ namespace {
 	 * @brief Порог скорости полного обмена в обменах в секунду
 	 *
 	 */
-	static constexpr double ROUNDTRIP_THRESHOLD = 7000.0;
+	static constexpr double ROUNDTRIP_THRESHOLD = 12000.0;
 	/**
 	 * @brief Порог скорости полного обмена по множеству потоков
 	 *
@@ -115,7 +115,7 @@ namespace {
 	 *          стоимость одного обмена здесь заведомо выше
 	 *
 	 */
-	static constexpr double MULTIPLEX_THRESHOLD = 7000.0;
+	static constexpr double MULTIPLEX_THRESHOLD = 12000.0;
 	/**
 	 * @brief Порог количества выделений памяти на разобранный запрос
 	 *
@@ -124,7 +124,7 @@ namespace {
 	 *          на каждый заголовок либо на каждый кадр
 	 *
 	 */
-	static constexpr double REQUEST_ALLOCATIONS_THRESHOLD = 4.0;
+	static constexpr double REQUEST_ALLOCATIONS_THRESHOLD = 2.5;
 	/**
 	 * @brief Порог количества выделений памяти на кадр данных
 	 *
@@ -133,7 +133,7 @@ namespace {
 	 *          представлением без копирования
 	 *
 	 */
-	static constexpr double BODY_ALLOCATIONS_THRESHOLD = 1.0;
+	static constexpr double BODY_ALLOCATIONS_THRESHOLD = 0.5;
 
 	/**
 	 * @brief Структура итогов прогона обмена

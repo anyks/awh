@@ -1011,3 +1011,138 @@ TEST_F(ParserFixture, CloneWaterMarksTest){
 	 */
 	ASSERT_EQ(parser->sendData(body.data(), body.size(), true), body.size());
 }
+
+/**
+ * @brief Метод проверки отбрасывания трейлеров после завершения сообщения
+ *
+ * @details Контейнер без провайдера является блоком трейлеров, и стартовую строку
+ *          формировать из него не из чего. Если сообщение уже завершено - флагом
+ *          endStream, исчерпанием Content-Length либо концом тела pull-источника -
+ *          такой блок обязан отбрасываться. Иначе он уходит на провод голыми
+ *          полями, а получатель читает их как начало следующего сообщения и
+ *          рассинхронизирует кадрирование
+ *
+ */
+TEST_F(ParserFixture, SendTrailersAfterMessageEndTest){
+	/**
+	 * @brief Функция сборки сообщения с попыткой дослать трейлеры после его завершения
+	 *
+	 * @param sender объект парсера-отправителя
+	 * @param wire   собранные байты исходящего сообщения
+	 * @param source признак подачи тела pull-источником вместо sendData
+	 * @return       количество октетов, дописанных после завершения сообщения
+	 *
+	 */
+	auto attempt = [](parser_http_t & sender, std::string & wire, const bool source) noexcept -> size_t {
+		// Формируем контейнер заголовков ответа с провайдером
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Дописываем заголовок кодирования тела сообщения
+		response.emplace("Transfer-Encoding", "chunked");
+		// Отправляем заголовки ответа (тело последует)
+		sender.sendHeaders(response, false);
+		// Тело отправляемого сообщения
+		static const std::string body = "hello";
+		// Если тело подаётся pull-источником
+		if(source){
+			// Позиция чтения тела сообщения источником
+			static size_t position = 0;
+			// Сбрасываем позицию чтения тела сообщения
+			position = 0;
+			// Устанавливаем pull-источник данных тела сообщения
+			sender.dataSource(parser_http_t::data_source_callback_t([](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+				// Определяем размер выдаваемой источником порции тела
+				const size_t size = std::min(cap, (body.size() - position));
+				// Копируем очередную порцию тела сообщения
+				std::memcpy(buffer, (body.data() + position), size);
+				// Смещаем позицию чтения тела сообщения
+				position += size;
+				// Устанавливаем признак достижения конца тела сообщения
+				eof = (position >= body.size());
+				// Выводим размер выданной порции тела
+				return static_cast <int64_t> (size);
+			}));
+			/**
+			 * Прокачиваем pull-источник до исчерпания тела сообщения
+			 */
+			while(sender.sourcePending()){
+				// Если прокачка источника не возобновилась
+				if(!sender.resumeSource())
+					// Прекращаем прокачку источника
+					break;
+			}
+		// Если тело подаётся напрямую с завершением сообщения
+		} else sender.sendData(body.data(), body.size(), true);
+		// Запоминаем объём провода до попытки дослать трейлеры
+		const size_t before = wire.size();
+		// Формируем контейнер трейлеров сообщения
+		headers_t trailers;
+		// Дописываем трейлер контрольной суммы
+		trailers.emplace("X-Checksum", "abc123");
+		// Пытаемся отправить трейлеры уже завершённому сообщению
+		sender.sendHeaders(trailers, true);
+		// Выводим количество октетов, дописанных после завершения сообщения
+		return (wire.size() - before);
+	};
+	/**
+	 * Проверяем оба способа завершения тела сообщения
+	 */
+	for(const bool source : {false, true}){
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Собранные байты исходящего сообщения
+		std::string wire;
+		// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+		sender->on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+			// Собираем отданные сетевому слою байты
+			wire.append(static_cast <const char *> (buffer), size);
+		}));
+		// Выполняем сборку сообщения с попыткой дослать трейлеры
+		const size_t appended = attempt(* sender, wire, source);
+		// Проверяем что после завершения сообщения на провод не ушло ни одного октета
+		ASSERT_EQ(appended, 0u) << (source ? "pull-источник" : "sendData");
+		// Создаём объект парсера-приёмника собранного сообщения
+		auto receiver = this->make(direct_t::RESPONSE);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		receiver->method(method_t::GET);
+		// Выполняем разбор собранного сообщения
+		receiver->parse(wire.data(), wire.size());
+		// Проверяем что собранное сообщение разбирается целиком и без остатка
+		ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE) << (source ? "pull-источник" : "sendData");
+	}
+}
+
+/**
+ * @brief Метод проверки завершения объявленного кадрирования chunked при пустом теле
+ *
+ * @details Если вызывающая сторона объявила Transfer-Encoding: chunked и сразу
+ *          завершила сообщение флагом endStream, тело обязано быть завершено нулевым
+ *          чанком. Блок заголовков сам по себе конца сообщения не обозначает, и без
+ *          нулевого чанка получатель ждал бы тело до закрытия соединения
+ *
+ */
+TEST_F(ParserFixture, SendChunkedWithoutBodyTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Дописываем заголовок кодирования тела сообщения
+	response.emplace("Transfer-Encoding", "chunked");
+	// Отправляем заголовки ответа с завершением сообщения (тела не будет)
+	sender->sendHeaders(response, true);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	// Проверяем что сообщение полностью разобрано, а не осталось в ожидании тела
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело сообщения пустое
+	ASSERT_TRUE(events.body.empty());
+	// Проверяем что кадрирование тела определено получателем как chunked
+	ASSERT_TRUE(receiver->message().flags.chunked);
+}

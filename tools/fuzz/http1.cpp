@@ -111,15 +111,13 @@ namespace {
 	 * @details Сравнивается всё, что парсер отдаёт наружу: итог разбора, разобранная
 	 *          стартовая строка, поток событий и собранные данные
 	 *
-	 * @note Два расхождения в сравнение намеренно не входят, и оба относятся только
-	 *       к отвергнутым сообщениям. Первое - количество обработанных октетов:
-	 *       крупноблочные пути возвращают начало участка, а посимвольный - позицию
-	 *       недопустимого октета. Второе - содержимое недособранной стартовой
-	 *       строки: посимвольный путь дописывает адрес запроса вплоть до самого
-	 *       превышения лимита, а крупноблочный проверяет лимит до записи участка и
-	 *       не дописывает ничего. Оба относятся к состоянию, которое по контракту
-	 *       модуля после ошибки недействительно, поэтому стартовая строка сверяется
-	 *       только у полностью разобранных сообщений
+	 * @note Стартовая строка сверяется в том числе у отвергнутых сообщений: её
+	 *       недособранное содержимое обязано совпадать у обоих путей, иначе
+	 *       разбиение входа влияло бы на то, что видит потребитель после отказа.
+	 *       В сравнение не входит только количество обработанных октетов - на
+	 *       участках имени и значения заголовка крупноблочный путь возвращает
+	 *       начало участка, а посимвольный позицию недопустимого октета, и после
+	 *       ошибки разбора это число смысла не имеет
 	 *
 	 */
 	typedef struct Outcome {
@@ -157,8 +155,7 @@ namespace {
 			return (
 				(this->status != other.status) || (this->error != other.error) ||
 				(this->complete != other.complete) || (this->chunked != other.chunked) ||
-				(this->bodySize != other.bodySize) ||
-				((this->status == parser_t::status_t::COMPLETE) && (this->startLine != other.startLine)) ||
+				(this->bodySize != other.bodySize) || (this->startLine != other.startLine) ||
 				(this->body != other.body) || (this->headers != other.headers) ||
 				(this->trailers != other.trailers) || (this->phases != other.phases) ||
 				(this->chunks != other.chunks)
@@ -655,6 +652,523 @@ namespace {
 };
 
 /**
+ * @brief Окружение проверки отправляющей стороны
+ *
+ * @details Приёмная сторона проверяется дифференциально - разбиением одного и того
+ *          же входа. У отправляющей стороны входа нет, поэтому свойства другие:
+ *          собранное сообщение обязано разбираться обратно в то же самое, а способ
+ *          выдачи байтов наружу и способ подачи тела не должны влиять на провод
+ *
+ */
+namespace {
+	/**
+	 * @brief Структура описания собираемого исходящего сообщения
+	 *
+	 * @details Описание формируется один раз и собирается по нему несколько раз
+	 *          разными способами: расхождение провода между способами и есть
+	 *          проверяемый дефект
+	 *
+	 */
+	typedef struct Outgoing {
+		// Направление собираемого трафика
+		direct_t direct;
+		// Метод собираемого запроса
+		method_t method;
+		// Адрес запрашиваемого ресурса
+		std::string target;
+		// Код состояния собираемого ответа
+		uint16_t code;
+		// Заголовки собираемого сообщения
+		std::vector <std::pair <std::string, std::string>> headers;
+		// Тело собираемого сообщения
+		std::string body;
+		// Трейлеры собираемого сообщения
+		std::vector <std::pair <std::string, std::string>> trailers;
+		// Признак кадрирования тела методом chunked
+		bool chunked;
+		// Размер одной порции выдачи тела
+		size_t portion;
+		// Верхний порог выходного буфера
+		size_t high;
+		// Нижний порог выходного буфера
+		size_t low;
+	} outgoing_t;
+	/**
+	 * @brief Функция формирования описания собираемого исходящего сообщения
+	 *
+	 * @return описание собираемого исходящего сообщения
+	 *
+	 */
+	static outgoing_t compose() noexcept {
+		// Набор методов собираемого запроса
+		static const method_t methods[] = {method_t::GET, method_t::POST, method_t::PUT, method_t::DEL, method_t::PATCH};
+		// Результат работы функции
+		outgoing_t result;
+		// Выбираем направление собираемого трафика
+		result.direct = (::chance(50) ? direct_t::REQUEST : direct_t::RESPONSE);
+		// Выбираем метод собираемого запроса
+		result.method = methods[::pick(sizeof(methods) / sizeof(methods[0]))];
+		// Формируем адрес запрашиваемого ресурса
+		result.target = ("/" + ::token(::pick(20)));
+		// Выбираем код состояния собираемого ответа
+		result.code = static_cast <uint16_t> (::chance(70) ? 200 : (::chance(50) ? 404 : 500));
+		// Выбираем кадрирование тела сообщения
+		result.chunked = ::chance(50);
+		// Формируем тело собираемого сообщения
+		result.body = ::token(::pick(4000));
+		// Определяем размер одной порции выдачи тела
+		result.portion = (::pick(700) + 1);
+		// Определяем верхний порог выходного буфера
+		result.high = (::pick(3000) + 64);
+		// Определяем нижний порог выходного буфера
+		result.low = (::pick(result.high / 2) + 1);
+		/**
+		 * Формируем заголовки собираемого сообщения
+		 *
+		 * Названия делаются заведомо различными: контейнер заголовков по умолчанию
+		 * работает в режиме замены одноимённых полей, и повторяющееся название
+		 * проверяло бы политику контейнера, а не кадрирование отправителя
+		 */
+		for(size_t i = 0, count = ::pick(6); i < count; i++)
+			// Дописываем очередной заголовок собираемого сообщения
+			result.headers.emplace_back(("X-" + ::token(::pick(10) + 1) + "-" + std::to_string(i)), ::token(::pick(30)));
+		// Если тело сообщения кадрируется методом chunked
+		if(result.chunked && !result.body.empty()){
+			/**
+			 * Формируем трейлеры собираемого сообщения: запрещённые в блоке трейлеров
+			 * поля отправитель отбрасывает сам, и здесь они не формируются - проверка
+			 * их отбрасывания лежит на модульных тестах
+			 */
+			for(size_t i = 0, count = ::pick(3); i < count; i++)
+				// Дописываем очередной трейлер собираемого сообщения
+				result.trailers.emplace_back(("X-Trailer-" + ::token(::pick(6) + 1) + "-" + std::to_string(i)), ::token(::pick(12) + 1));
+		}
+		// Выводим описание собираемого исходящего сообщения
+		return result;
+	}
+	/**
+	 * @brief Функция сборки исходящего сообщения
+	 *
+	 * @param fmk      объект фреймворка
+	 * @param log      объект логирования
+	 * @param outgoing описание собираемого исходящего сообщения
+	 * @param pull     признак выдачи байтов pull-моделью вместо функции обратного вызова записи
+	 * @param source   признак подачи тела pull-источником вместо sendData
+	 * @return         собранные байты исходящего сообщения
+	 *
+	 */
+	static std::string emit(const awh::fmk_t * fmk, const awh::log_t * log, const outgoing_t & outgoing, const bool pull, const bool source) noexcept {
+		// Собранные байты исходящего сообщения
+		std::string wire;
+		// Создаём объект парсера-отправителя
+		parser_http_t sender(outgoing.direct, fmk, log);
+		// Устанавливаем пороги выходного буфера
+		sender.sendWaterMarks(outgoing.high, outgoing.low);
+		// Если байты выдаются функцией обратного вызова записи
+		if(!pull){
+			// Устанавливаем функцию обратного вызова записи исходящих байтов
+			sender.on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+				// Собираем отданные сетевому слою байты
+				wire.append(static_cast <const char *> (buffer), size);
+			}));
+		}
+		/**
+		 * @brief Функция выборки накопленных исходящих байтов pull-моделью
+		 *
+		 */
+		auto drain = [&sender, &wire, pull]() noexcept -> void {
+			// Если байты выдаются функцией обратного вызова записи
+			if(!pull)
+				// Выборка не требуется - буфер опустошается сам
+				return;
+			/**
+			 * Выбираем накопленные исходящие байты до опустошения буфера
+			 */
+			while(true){
+				// Получаем ещё не отправленные исходящие байты
+				const std::string_view chunk = sender.pending();
+				// Если исходящих байтов не осталось
+				if(chunk.empty())
+					// Прекращаем выборку
+					break;
+				// Собираем выбранные исходящие байты
+				wire.append(chunk.data(), chunk.size());
+				// Освобождаем выбранные байты из исходящего буфера
+				sender.consumePending(chunk.size());
+			}
+		};
+		// Формируем контейнер заголовков собираемого сообщения
+		headers_t block((outgoing.direct == direct_t::REQUEST)
+		 ? headers_t(std::make_unique <request_t> (version_t::HTTP1_1, outgoing.method, outgoing.target))
+		 : headers_t(std::make_unique <response_t> (version_t::HTTP1_1, outgoing.code)));
+		/**
+		 * Дописываем заголовки собираемого сообщения
+		 */
+		for(const auto & header : outgoing.headers)
+			// Дописываем очередной заголовок собираемого сообщения
+			block.emplace(header.first, header.second);
+		// Если тело сообщения кадрируется методом chunked
+		if(outgoing.chunked)
+			// Дописываем заголовок кодирования тела сообщения
+			block.emplace("Transfer-Encoding", "chunked");
+		// Если тело сообщения кадрируется фиксированным размером
+		else block.emplace("Content-Length", std::to_string(outgoing.body.size()));
+		// Отправляем заголовки собираемого сообщения
+		sender.sendHeaders(block, (outgoing.body.empty() && outgoing.trailers.empty()));
+		// Выбираем накопленные исходящие байты
+		drain();
+		// Если тело сообщения подаётся pull-источником
+		if(source && !outgoing.body.empty()){
+			// Позиция чтения тела сообщения источником
+			size_t position = 0;
+			// Устанавливаем pull-источник данных тела сообщения
+			sender.dataSource(parser_http_t::data_source_callback_t([&outgoing, &position](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+				// Определяем размер выдаваемой источником порции тела
+				const size_t size = std::min(std::min(cap, outgoing.portion), (outgoing.body.size() - position));
+				// Копируем очередную порцию тела сообщения
+				::memcpy(buffer, (outgoing.body.data() + position), size);
+				// Смещаем позицию чтения тела сообщения
+				position += size;
+				// Устанавливаем признак достижения конца тела сообщения
+				eof = (position >= outgoing.body.size());
+				// Выводим размер выданной порции тела
+				return static_cast <int64_t> (size);
+			}));
+			/**
+			 * Прокачиваем pull-источник до исчерпания тела: при заполнении выходного
+			 * буфера прокачка останавливается и возобновляется выборкой
+			 */
+			while(sender.sourcePending()){
+				// Выбираем накопленные исходящие байты
+				drain();
+				// Если прокачка источника не возобновилась
+				if(!sender.resumeSource())
+					// Прекращаем прокачку источника
+					break;
+			}
+			// Выбираем накопленные исходящие байты
+			drain();
+		// Если тело сообщения подаётся напрямую
+		} else if(!outgoing.body.empty()) {
+			// Позиция выдачи тела сообщения
+			size_t position = 0;
+			/**
+			 * Выдаём тело сообщения порциями до полной передачи
+			 */
+			while(position < outgoing.body.size()){
+				// Определяем размер выдаваемой порции тела
+				const size_t size = std::min(outgoing.portion, (outgoing.body.size() - position));
+				// Определяем признак завершения сообщения текущей порцией
+				const bool last = (((position + size) >= outgoing.body.size()) && outgoing.trailers.empty());
+				// Выполняем выдачу очередной порции тела сообщения
+				const size_t accepted = sender.sendData((outgoing.body.data() + position), size, last);
+				// Смещаем позицию выдачи тела сообщения
+				position += accepted;
+				// Выбираем накопленные исходящие байты
+				drain();
+				// Если выходной буфер отверг порцию целиком
+				if((accepted == 0) && (sender.pending().empty()))
+					// Прекращаем выдачу тела - продвижение невозможно
+					break;
+			}
+		}
+		// Если сообщение завершается блоком трейлеров
+		if(!outgoing.trailers.empty()){
+			// Формируем контейнер трейлеров сообщения
+			headers_t trailers;
+			/**
+			 * Дописываем трейлеры собираемого сообщения
+			 */
+			for(const auto & trailer : outgoing.trailers)
+				// Дописываем очередной трейлер собираемого сообщения
+				trailers.emplace(trailer.first, trailer.second);
+			// Отправляем трейлеры с завершением сообщения
+			sender.sendHeaders(trailers, true);
+		}
+		// Выбираем накопленные исходящие байты
+		drain();
+		// Выводим собранные байты исходящего сообщения
+		return wire;
+	}
+	/**
+	 * @brief Функция проверки обратной разбираемости собранного сообщения
+	 *
+	 * @param fmk      объект фреймворка
+	 * @param log      объект логирования
+	 * @param outgoing описание собранного исходящего сообщения
+	 * @param wire     собранные байты исходящего сообщения
+	 * @param reason   выводимая причина расхождения
+	 * @return         результат проверки
+	 *
+	 */
+	static bool roundtrip(const awh::fmk_t * fmk, const awh::log_t * log, const outgoing_t & outgoing, const std::string & wire, std::string & reason) noexcept {
+		// Создаём объект парсера-приёмника собранного сообщения
+		parser_http_t receiver(outgoing.direct, fmk, log);
+		// Если разбирается ответ сервера
+		if(outgoing.direct == direct_t::RESPONSE)
+			// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+			receiver.method(method_t::GET);
+		// Принятое тело сообщения
+		std::string body;
+		// Принятые заголовки сообщения
+		std::vector <std::pair <std::string, std::string>> headers;
+		// Принятые трейлеры сообщения
+		std::vector <std::pair <std::string, std::string>> trailers;
+		// Устанавливаем функцию обратного вызова обработки фрагмента тела сообщения
+		receiver.on(parser_http_t::data_callback_t([&body](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
+			// Собираем фрагмент принятого тела сообщения
+			body.append(static_cast <const char *> (buffer), size);
+			// Продолжаем разбор
+			return true;
+		}));
+		// Устанавливаем функцию обратного вызова обработки заголовков сообщения
+		receiver.on(parser_http_t::header_callback_t([&headers, &trailers](const uint32_t, const std::string_view name, const std::string_view value, const parser_t::part_t part) noexcept -> bool {
+			// Если принят трейлер сообщения
+			if(part == parser_t::part_t::TRAILER)
+				// Собираем принятый трейлер сообщения
+				trailers.emplace_back(std::string(name), std::string(value));
+			// Если принят заголовок сообщения
+			else headers.emplace_back(std::string(name), std::string(value));
+			// Продолжаем разбор
+			return true;
+		}));
+		// Выполняем разбор собранного сообщения
+		receiver.parse(wire.data(), wire.size());
+		// Если сообщение разобрано не полностью
+		if(receiver.status() != parser_t::status_t::COMPLETE){
+			// Формируем причину расхождения
+			reason = ("сообщение не разобралось обратно: " + std::string(receiver.errorName()));
+			// Выводим отрицательный результат
+			return false;
+		}
+		// Если принятое тело сообщения не совпало с отправленным
+		if(body != outgoing.body){
+			// Формируем причину расхождения
+			reason = ("тело разошлось: отправлено " + std::to_string(outgoing.body.size()) +
+			 ", принято " + std::to_string(body.size()));
+			// Выводим отрицательный результат
+			return false;
+		}
+		// Если количество принятых трейлеров не совпало с отправленным
+		if(trailers.size() != outgoing.trailers.size()){
+			// Формируем причину расхождения
+			reason = ("трейлеры разошлись: отправлено " + std::to_string(outgoing.trailers.size()) +
+			 ", принято " + std::to_string(trailers.size()));
+			// Выводим отрицательный результат
+			return false;
+		}
+		/**
+		 * @brief Функция регистронезависимого сравнения названий заголовков
+		 *
+		 * @note Названия заголовков регистронезависимы по RFC 9110 §5.1, и отправитель
+		 *       приводит их к каноническому написанию. Сверять названия побайтово
+		 *       означало бы проверять не сохранность заголовка, а способ его записи
+		 *
+		 * @param first  первое сравниваемое название
+		 * @param second второе сравниваемое название
+		 * @return       результат сравнения
+		 *
+		 */
+		auto equals = [](const std::string & first, const std::string & second) noexcept -> bool {
+			// Если размеры названий не совпадают
+			if(first.size() != second.size())
+				// Выводим отрицательный результат сравнения
+				return false;
+			/**
+			 * Перебираем октеты сравниваемых названий
+			 */
+			for(size_t i = 0; i < first.size(); i++){
+				// Приводим октет первого названия к нижнему регистру
+				const char a = ((first[i] >= 'A') && (first[i] <= 'Z') ? static_cast <char> (first[i] | 0x20) : first[i]);
+				// Приводим октет второго названия к нижнему регистру
+				const char b = ((second[i] >= 'A') && (second[i] <= 'Z') ? static_cast <char> (second[i] | 0x20) : second[i]);
+				// Если октеты названий не совпали
+				if(a != b)
+					// Выводим отрицательный результат сравнения
+					return false;
+			}
+			// Выводим положительный результат сравнения
+			return true;
+		};
+		/**
+		 * Перебираем отправленные заголовки сообщения
+		 *
+		 * Сверка выполняется на вхождение, а не на равенство: отправитель добавляет
+		 * к блоку заголовки кадрирования тела, и их наличие сверяется не здесь
+		 */
+		for(const auto & sent : outgoing.headers){
+			// Признак присутствия отправленного заголовка среди принятых
+			bool found = false;
+			/**
+			 * Перебираем принятые заголовки сообщения
+			 */
+			for(const auto & received : headers){
+				// Если отправленный заголовок найден среди принятых
+				if(equals(received.first, sent.first) && (received.second == sent.second)){
+					// Отмечаем присутствие отправленного заголовка
+					found = true;
+					// Прекращаем перебор принятых заголовков
+					break;
+				}
+			}
+			// Если отправленный заголовок среди принятых отсутствует
+			if(!found){
+				// Формируем причину расхождения
+				reason = ("заголовок потерян: отправлено \"" + sent.first + ": " + sent.second + "\", принято:");
+				/**
+				 * Перебираем принятые заголовки сообщения для вывода в причину
+				 */
+				for(const auto & received : headers)
+					// Дописываем принятый заголовок в причину расхождения
+					reason.append(" \"").append(received.first).append(": ").append(received.second).append("\"");
+				// Выводим отрицательный результат
+				return false;
+			}
+		}
+		// Получаем провайдер заголовков принятого сообщения
+		const provider_t * provider = receiver.message().provider.get();
+		// Если разбирается запрос клиента
+		if((outgoing.direct == direct_t::REQUEST) && (provider != nullptr)){
+			// Получаем объект провайдера заголовков запроса клиента
+			const request_t * request = static_cast <const request_t *> (provider);
+			// Если стартовая строка запроса разошлась с отправленной
+			if((request->method != outgoing.method) || (request->uri != outgoing.target)){
+				// Формируем причину расхождения
+				reason = ("стартовая строка запроса разошлась: uri=" + request->uri);
+				// Выводим отрицательный результат
+				return false;
+			}
+		// Если разбирается ответ сервера
+		} else if(provider != nullptr) {
+			// Получаем объект провайдера заголовков ответа сервера
+			const response_t * response = static_cast <const response_t *> (provider);
+			// Если код состояния ответа разошёлся с отправленным
+			if(response->code != outgoing.code){
+				// Формируем причину расхождения
+				reason = ("код состояния ответа разошёлся: " + std::to_string(response->code));
+				// Выводим отрицательный результат
+				return false;
+			}
+		}
+		// Выводим положительный результат
+		return true;
+	}
+	/**
+	 * @brief Функция проверки реентрантности функций обратного вызова
+	 *
+	 * @details Моделируется враждебное поведение приложения: обработчики изредка
+	 *          сбрасывают парсер прямо из своего вызова. Метод `clear` при этом
+	 *          удаляет установленные функции обратного вызова, то есть уничтожает
+	 *          ту самую функцию, тело которой выполняется. Этот класс реентрантности
+	 *          давал дефекты работы с памятью не раз, поэтому проверяется постоянно
+	 *
+	 * @param fmk объект фреймворка
+	 * @param log объект логирования
+	 * @return    результат проверки пригодности парсера после сброса
+	 *
+	 */
+	static bool reentrancy(const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
+		// Выбираем направление разбираемого трафика
+		const direct_t direct = (::chance(50) ? direct_t::REQUEST : direct_t::RESPONSE);
+		// Создаём объект парсера
+		parser_http_t parser(direct, fmk, log);
+		// Формируем разбираемое сообщение
+		const std::string message = ::generate(direct);
+		// Признак удаления функций обратного вызова из обработчика
+		bool cleared = false;
+		/**
+		 * @brief Функция подписки обработчиков, сбрасывающих парсер из своего вызова
+		 *
+		 */
+		auto attach = [&parser, &cleared]() noexcept -> void {
+			// Устанавливаем функцию обратного вызова обработки фрагмента тела сообщения
+			parser.on(parser_http_t::data_callback_t([&parser](const uint32_t, const void *, const size_t, const bool) noexcept -> bool {
+				// Если обработчик требует сбросить парсер
+				if(::chance(3))
+					// Выполняем сброс парсера прямо из обработчика
+					parser.reset();
+				// Продолжаем разбор
+				return true;
+			}));
+			// Устанавливаем функцию обратного вызова обработки заголовков сообщения
+			parser.on(parser_http_t::header_callback_t([&parser, &cleared](const uint32_t, const std::string_view, const std::string_view, const parser_t::part_t) noexcept -> bool {
+				// Если обработчик требует полностью очистить парсер
+				if(::chance(1)){
+					// Отмечаем удаление функций обратного вызова
+					cleared = true;
+					// Выполняем полную очистку парсера прямо из обработчика
+					parser.clear();
+				// Если обработчик требует сбросить парсер
+				} else if(::chance(3))
+					// Выполняем сброс парсера прямо из обработчика
+					parser.reset();
+				// Продолжаем разбор
+				return true;
+			}));
+			// Устанавливаем функцию обратного вызова обработки фазы разбора сообщения
+			parser.on(parser_http_t::phase_callback_t([](const uint32_t, const parser_t::phase_t, const parser_t::part_t) noexcept -> bool {
+				// Если обработчик требует прервать разбор
+				if(::chance(2))
+					// Прерываем разбор сообщения
+					return false;
+				// Продолжаем разбор
+				return true;
+			}));
+			// Устанавливаем функцию обратного вызова обработки границ чанков
+			parser.on(parser_http_t::chunk_callback_t([&parser](const parser_t::phase_t, const uint64_t, const std::string_view) noexcept -> bool {
+				// Если обработчик требует сбросить парсер
+				if(::chance(2))
+					// Выполняем сброс парсера прямо из обработчика
+					parser.reset();
+				// Продолжаем разбор
+				return true;
+			}));
+		};
+		// Подписываем обработчики, сбрасывающие парсер из своего вызова
+		attach();
+		// Определяем размер фрагмента подачи сообщения
+		const size_t fragment = (::pick(64) + 1);
+		/**
+		 * Выполняем подачу сообщения фрагментами
+		 */
+		for(size_t i = 0; i < message.size(); i += fragment){
+			// Определяем размер очередного фрагмента подачи
+			const size_t size = ((message.size() - i) < fragment ? (message.size() - i) : fragment);
+			// Выполняем разбор очередного фрагмента сообщения
+			parser.parse(message.data() + i, size);
+		}
+		// Подавляем предупреждение о неиспользуемом признаке очистки
+		(void) cleared;
+		/**
+		 * Проверяем пригодность парсера после реентрантных сбросов: он обязан
+		 * разобрать следующее корректное сообщение как ни в чём не бывало
+		 *
+		 * Враждебные обработчики на время проверки заменяются безобидными: иначе
+		 * они сбрасывали бы парсер и посреди проверочного сообщения, и проверка
+		 * измеряла бы поведение обработчиков, а не пригодность парсера
+		 */
+		parser.on(parser_http_t::data_callback_t([](const uint32_t, const void *, const size_t, const bool) noexcept -> bool { return true; }));
+		parser.on(parser_http_t::header_callback_t([](const uint32_t, const std::string_view, const std::string_view, const parser_t::part_t) noexcept -> bool { return true; }));
+		parser.on(parser_http_t::phase_callback_t([](const uint32_t, const parser_t::phase_t, const parser_t::part_t) noexcept -> bool { return true; }));
+		parser.on(parser_http_t::chunk_callback_t([](const parser_t::phase_t, const uint64_t, const std::string_view) noexcept -> bool { return true; }));
+		// Выполняем сброс парсера перед проверочным сообщением
+		parser.reset();
+		// Если разбирается ответ сервера
+		if(direct == direct_t::RESPONSE)
+			// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+			parser.method(method_t::GET);
+		// Формируем заведомо корректное проверочное сообщение
+		const std::string probe = ((direct == direct_t::REQUEST)
+		 ? std::string("GET / HTTP/1.1\r\nHost: anyks.com\r\n\r\n")
+		 : std::string("HTTP/1.1 204 No Content\r\n\r\n"));
+		// Выполняем разбор проверочного сообщения
+		parser.parse(probe.data(), probe.size());
+		// Пригодным считается только полный разбор проверочного сообщения
+		return (parser.status() == parser_t::status_t::COMPLETE);
+	}
+};
+
+/**
  * @brief Функция входа в генератор
  *
  * @param argc длина массива параметров
@@ -681,6 +1195,10 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	size_t rejected = 0;
 	// Количество выполненных сверок
 	size_t checks = 0;
+	// Количество собранных исходящих сообщений
+	size_t emitted = 0;
+	// Количество выполненных сеансов проверки реентрантности
+	size_t reentrant = 0;
 	// Исходные лимиты безопасности разбора
 	const parser_http_t::limits_t initial;
 	/**
@@ -756,11 +1274,84 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 				return 1;
 			}
 		}
+		/**
+		 * Проверяем отправляющую сторону: собранное сообщение обязано разбираться
+		 * обратно в то же самое, а способ выдачи байтов наружу и способ подачи тела
+		 * не должны влиять на то, что оказывается на проводе
+		 */
+		{
+			// Формируем описание собираемого исходящего сообщения
+			const outgoing_t outgoing = ::compose();
+			// Собираем сообщение с выдачей байтов функцией обратного вызова записи
+			const std::string pushed = ::emit(&fmk, &log, outgoing, false, false);
+			// Собираем то же сообщение с выдачей байтов pull-моделью
+			const std::string pulled = ::emit(&fmk, &log, outgoing, true, false);
+			/**
+			 * Собираем то же сообщение с подачей тела pull-источником. Сообщения с
+			 * трейлерами так не собираются: источник завершает тело сам по достижении
+			 * его конца, и блок трейлеров дописывать уже некуда - это ограничение
+			 * интерфейса, зафиксированное в документации метода dataSource
+			 */
+			const std::string sourced = (outgoing.trailers.empty()
+			 ? ::emit(&fmk, &log, outgoing, false, true) : pushed);
+			// Считаем собранное исходящее сообщение
+			emitted++;
+			// Если способ выдачи байтов повлиял на провод
+			if(pushed != pulled){
+				// Выводим сообщение о расхождении способов выдачи байтов
+				::printf(
+					"РАСХОЖДЕНИЕ ОТПРАВКИ: итерация %zu, push %zu октетов, pull %zu октетов\n",
+					round, pushed.size(), pulled.size()
+				);
+				// Выводим код выхода с ошибкой
+				return 1;
+			}
+			// Причина расхождения обратной разбираемости
+			std::string reason;
+			/**
+			 * Сообщение, собранное каждым из способов, обязано разбираться обратно в
+			 * то же самое. Побайтового совпадения провода со способом подачи тела не
+			 * требуется: pull-источник выдаёт тело своими порциями, и разбивка на
+			 * чанки у него другая, а границы чанков семантики сообщения не несут
+			 */
+			for(const auto & wire : {pushed, sourced}){
+				// Если собранное сообщение не разбирается обратно в то же самое
+				if(!::roundtrip(&fmk, &log, outgoing, wire, reason)){
+					// Выводим сообщение о расхождении обратной разбираемости
+					::printf(
+						"РАСХОЖДЕНИЕ КРУГА: итерация %zu, способ %s, %s\n", round,
+						((wire.size() == pushed.size()) ? "sendData" : "источник"), reason.c_str()
+					);
+					// Выводим собранное сообщение
+					::printf("  провод: ");
+					// Выводим собранное сообщение в экранированном виде
+					::dump(wire.substr(0, 512));
+					// Выводим код выхода с ошибкой
+					return 1;
+				}
+			}
+		}
+		/**
+		 * Проверяем реентрантность: обработчики сбрасывают и очищают парсер прямо
+		 * из своего вызова, после чего парсер обязан оставаться пригодным
+		 */
+		if(::chance(50)){
+			// Считаем выполненный сеанс проверки реентрантности
+			reentrant++;
+			// Если парсер после реентрантных сбросов оказался непригоден
+			if(!::reentrancy(&fmk, &log)){
+				// Выводим сообщение о непригодности парсера
+				::printf("РЕЕНТРАНТНОСТЬ: итерация %zu, парсер не разобрал проверочное сообщение\n", round);
+				// Выводим код выхода с ошибкой
+				return 1;
+			}
+		}
 	}
 	// Выводим статистику выполненного прогона
 	::printf(
-		"http1 fuzz: %zu сообщений (%zu разобрано полностью, %zu отвергнуто), %zu сверок путей - расхождений нет\n",
-		total, completed, rejected, checks
+		"http1 fuzz: %zu сообщений (%zu разобрано полностью, %zu отвергнуто), %zu сверок путей,\n"
+		"            %zu собранных исходящих сообщений, %zu сеансов реентрантности - расхождений нет\n",
+		total, completed, rejected, checks, emitted, reentrant
 	);
 	// Выводим успешный код выхода
 	return 0;

@@ -579,7 +579,7 @@ awh::quic::Connection::Stream::Stream() noexcept :
  rxOffset(0), rxHigh(0), rxReady{""}, rxMax(0), rxMaxQueued(false),
  rxFin(false), rxFinal(0), rxFinDelivered(false), rxCounted(0),
  rxReset(false), rxResetCode(0), stopQueued(false), stopSent(false),
- stopCode(0), credited(false), queued(false) {}
+ stopCode(0), credited(false), queued(false), controlPending(false) {}
 
 /**
  * @brief Конструктор состояния пространства номеров пакетов
@@ -1094,6 +1094,8 @@ void awh::quic::Connection::requeue(const space_t space, const sent_t & packet) 
 						i->second.txBlocked = true;
 					// Если потерян фрейм запроса прекращения передачи STOP_SENDING
 					else i->second.stopQueued = true;
+					// Ставим поток в список ожидающих управляющих фреймов
+					this->schedule(control.second);
 				}
 			} break;
 			// Остальные управляющие фреймы не ретранслируются
@@ -1146,6 +1148,27 @@ void awh::quic::Connection::settle(const chunk_t & chunk) noexcept {
 		stream.txPending.erase(next);
 		// Ищем следующий примыкающий диапазон
 		next = stream.txPending.find(stream.txAcked);
+	}
+}
+/**
+ * @brief Метод постановки потока в список ожидающих управляющих фреймов
+ *
+ * @param sid идентификатор потока
+ *
+ */
+void awh::quic::Connection::schedule(const uint64_t sid) noexcept {
+	// Ищем поток по идентификатору
+	auto i = this->_stream.list.find(sid);
+	// Если поток не найден - ставить в очередь нечего
+	if(i == this->_stream.list.end())
+		// Выходим из метода
+		return;
+	// Если поток ещё не в списке ожидающих управляющих фреймов
+	if(!i->second.controlPending){
+		// Отмечаем присутствие потока в списке
+		i->second.controlPending = true;
+		// Добавляем идентификатор потока в список ожидающих управляющих фреймов
+		this->_stream.control.push_back(sid);
 	}
 }
 /**
@@ -3370,6 +3393,8 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 					if(!stream->txReset && !stream->txResetSent){
 						// Ставим отправку фрейма RESET_STREAM в очередь (RFC 9000 §3.5)
 						stream->txReset = true;
+						// Ставим поток в список ожидающих управляющих фреймов
+						this->schedule(frame.streamId);
 						// Устанавливаем код ошибки приложения фрейма RESET_STREAM
 						stream->txResetCode = frame.code;
 						// Отбрасываем неотправленные данные потока
@@ -4155,71 +4180,90 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 		/**
 		 * Перебираем список потоков приложения (управляющие фреймы потоков)
 		 */
-		for(auto & entry : this->_stream.list){
-			// Если в датаграмме не осталось места на управляющий фрейм
-			if(budget <= (output.size() + STREAM_OVERHEAD))
-				// Прекращаем сборку управляющих фреймов
-				break;
-			// Получаем состояние потока
-			auto & stream = entry.second;
-			// Если требуется отправка обновлённого лимита данных потока MAX_STREAM_DATA
-			if(stream.rxMaxQueued){
-				// Выполняем сборку фрейма MAX_STREAM_DATA (RFC 9000 §19.10)
-				frame::serialize::pair(output, frame_t::MAX_STREAM_DATA, entry.first, stream.rxMax);
-				// Запоминаем управляющий фрейм в учётной записи пакета
-				meta.control.emplace_back(frame_t::MAX_STREAM_DATA, entry.first);
-				// Устанавливаем флаг наличия ack-eliciting фреймов
-				elicit = true;
-				// Сбрасываем флаг необходимости отправки обновлённого лимита
-				stream.rxMaxQueued = false;
-			}
-			// Если требуется отправка фрейма RESET_STREAM
-			if(stream.txReset && (budget > (output.size() + CONTROL_OVERHEAD))){
-				// Выполняем сборку фрейма RESET_STREAM с финальным размером отправленных данных (RFC 9000 §19.4)
-				frame::serialize::resetStream(output, entry.first, stream.txResetCode, stream.txOffset);
-				// Запоминаем управляющий фрейм в учётной записи пакета
-				meta.control.emplace_back(frame_t::RESET_STREAM, entry.first);
-				// Устанавливаем флаг наличия ack-eliciting фреймов
-				elicit = true;
-				// Сбрасываем флаг необходимости отправки фрейма RESET_STREAM
-				stream.txReset = false;
-				// Устанавливаем флаг выполненной отправки фрейма RESET_STREAM
-				stream.txResetSent = true;
-			}
-			// Если требуется отправка фрейма STOP_SENDING
-			if(stream.stopQueued && (budget > (output.size() + CONTROL_OVERHEAD))){
-				// Выполняем сборку фрейма STOP_SENDING (RFC 9000 §19.5)
-				frame::serialize::stopSending(output, entry.first, stream.stopCode);
-				// Запоминаем управляющий фрейм в учётной записи пакета
-				meta.control.emplace_back(frame_t::STOP_SENDING, entry.first);
-				// Устанавливаем флаг наличия ack-eliciting фреймов
-				elicit = true;
-				// Сбрасываем флаг необходимости отправки фрейма STOP_SENDING
-				stream.stopQueued = false;
-				// Устанавливаем флаг выполненной отправки фрейма STOP_SENDING
-				stream.stopSent = true;
-			}
-			// Если отправка данных потока заблокирована лимитом удалённого эндпоинта
-			if(stream.txBlocked && (budget > (output.size() + CONTROL_OVERHEAD))){
-				// Если лимит данных потока с момента блокировки поднят - блокировки больше нет
-				if(stream.txOffset < stream.txMax)
-					// Снимаем флаг без отправки: позднее исчерпание нового лимита переармируется
-					stream.txBlocked = false;
-				// Если отправка всё ещё упирается в текущий лимит данных потока
-				else {
-					// Выполняем сборку фрейма STREAM_DATA_BLOCKED (RFC 9000 §19.13)
-					frame::serialize::pair(output, frame_t::STREAM_DATA_BLOCKED, entry.first, stream.txMax);
-					// Запоминаем управляющий фрейм в учётной записи пакета
-					meta.control.emplace_back(frame_t::STREAM_DATA_BLOCKED, entry.first);
-					// Устанавливаем флаг наличия ack-eliciting фреймов
-					elicit = true;
-					// Сбрасываем флаг заблокированной отправки данных потока
-					stream.txBlocked = false;
-					// Запоминаем лимит, о блокировке которым уведомлён удалённый эндпоинт
-					stream.txBlockedAt = stream.txMax;
+			size_t position = 0;
+			/**
+			 * Перебираем список потоков с ожидающими управляющими фреймами вместо всего
+			 * списка потоков: у отправителя данных он пуст, а обход всего списка на каждый
+			 * пакет давал бы стоимость, растущую с числом потоков. Устаревшие и обслуженные
+			 * записи отсеиваются по месту, как и в списке готовых к выдаче потоков
+			 */
+			for(size_t index = 0; index < this->_stream.control.size(); index++){
+				// Идентификатор потока с ожидающими управляющими фреймами
+				const uint64_t sid = this->_stream.control[index];
+				// Ищем поток по идентификатору
+				auto entry = this->_stream.list.find(sid);
+				// Если поток удалён - устаревшая запись не сохраняется
+				if(entry == this->_stream.list.end())
+					continue;
+				// Получаем состояние потока
+				auto & stream = entry->second;
+				// Пока в датаграмме есть место на управляющий фрейм потока
+				if(budget > (output.size() + STREAM_OVERHEAD)){
+					if(stream.rxMaxQueued){
+						// Выполняем сборку фрейма MAX_STREAM_DATA (RFC 9000 §19.10)
+						frame::serialize::pair(output, frame_t::MAX_STREAM_DATA, sid, stream.rxMax);
+						// Запоминаем управляющий фрейм в учётной записи пакета
+						meta.control.emplace_back(frame_t::MAX_STREAM_DATA, sid);
+						// Устанавливаем флаг наличия ack-eliciting фреймов
+						elicit = true;
+						// Сбрасываем флаг необходимости отправки обновлённого лимита
+						stream.rxMaxQueued = false;
+					}
+					// Если требуется отправка фрейма RESET_STREAM
+					if(stream.txReset && (budget > (output.size() + CONTROL_OVERHEAD))){
+						// Выполняем сборку фрейма RESET_STREAM с финальным размером отправленных данных (RFC 9000 §19.4)
+						frame::serialize::resetStream(output, sid, stream.txResetCode, stream.txOffset);
+						// Запоминаем управляющий фрейм в учётной записи пакета
+						meta.control.emplace_back(frame_t::RESET_STREAM, sid);
+						// Устанавливаем флаг наличия ack-eliciting фреймов
+						elicit = true;
+						// Сбрасываем флаг необходимости отправки фрейма RESET_STREAM
+						stream.txReset = false;
+						// Устанавливаем флаг выполненной отправки фрейма RESET_STREAM
+						stream.txResetSent = true;
+					}
+					// Если требуется отправка фрейма STOP_SENDING
+					if(stream.stopQueued && (budget > (output.size() + CONTROL_OVERHEAD))){
+						// Выполняем сборку фрейма STOP_SENDING (RFC 9000 §19.5)
+						frame::serialize::stopSending(output, sid, stream.stopCode);
+						// Запоминаем управляющий фрейм в учётной записи пакета
+						meta.control.emplace_back(frame_t::STOP_SENDING, sid);
+						// Устанавливаем флаг наличия ack-eliciting фреймов
+						elicit = true;
+						// Сбрасываем флаг необходимости отправки фрейма STOP_SENDING
+						stream.stopQueued = false;
+						// Устанавливаем флаг выполненной отправки фрейма STOP_SENDING
+						stream.stopSent = true;
+					}
+					// Если отправка данных потока заблокирована лимитом удалённого эндпоинта
+					if(stream.txBlocked && (budget > (output.size() + CONTROL_OVERHEAD))){
+						// Если лимит данных потока с момента блокировки поднят - блокировки больше нет
+						if(stream.txOffset < stream.txMax)
+							// Снимаем флаг без отправки: позднее исчерпание нового лимита переармируется
+							stream.txBlocked = false;
+						// Если отправка всё ещё упирается в текущий лимит данных потока
+						else {
+							// Выполняем сборку фрейма STREAM_DATA_BLOCKED (RFC 9000 §19.13)
+							frame::serialize::pair(output, frame_t::STREAM_DATA_BLOCKED, sid, stream.txMax);
+							// Запоминаем управляющий фрейм в учётной записи пакета
+							meta.control.emplace_back(frame_t::STREAM_DATA_BLOCKED, sid);
+							// Устанавливаем флаг наличия ack-eliciting фреймов
+							elicit = true;
+							// Сбрасываем флаг заблокированной отправки данных потока
+							stream.txBlocked = false;
+							// Запоминаем лимит, о блокировке которым уведомлён удалённый эндпоинт
+							stream.txBlockedAt = stream.txMax;
+						}
+					}
 				}
+				// Сохраняем поток в списке, пока за ним есть неотправленные управляющие фреймы
+				if(stream.rxMaxQueued || stream.txReset || stream.stopQueued || stream.txBlocked)
+					this->_stream.control[position++] = sid;
+				// Иначе снимаем отметку присутствия потока в списке
+				else stream.controlPending = false;
 			}
-		}
+			// Удаляем устаревшие и обслуженные записи из списка ожидающих
+			this->_stream.control.resize(position);
 		/**
 		 * Пока есть исходящие датаграммы приложения и в датаграмме осталось место.
 		 * Датаграммы отправляются вперёд данных потоков: доставка их ненадёжна,
@@ -4348,9 +4392,12 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 					 * значение лимита: пока удалённый эндпоинт не поднял лимит,
 					 * повторять сигнал бессмысленно (RFC 9000 §4.1)
 					 */
-					if(stream.txBlockedAt != stream.txMax)
+					if(stream.txBlockedAt != stream.txMax){
 						// Устанавливаем флаг заблокированной отправки данных потока
 						stream.txBlocked = true;
+						// Ставим поток в список ожидающих управляющих фреймов
+						this->schedule(entry.first);
+					}
 					// Переходим к следующему потоку
 					continue;
 				}
@@ -7611,6 +7658,8 @@ awh::quic::status_t awh::quic::Connection::receive(const uint64_t sid, string & 
 			stream.rxMax = (stream.rxOffset + window);
 			// Устанавливаем флаг необходимости отправки обновлённого лимита MAX_STREAM_DATA
 			stream.rxMaxQueued = true;
+			// Ставим поток в список ожидающих управляющих фреймов
+			this->schedule(sid);
 		}
 	}
 	// Если потреблено больше половины окна приёма соединения
@@ -7657,6 +7706,8 @@ void awh::quic::Connection::reset(const uint64_t sid, const uint64_t code) noexc
 		return;
 	// Ставим отправку фрейма RESET_STREAM в очередь
 	i->second.txReset = true;
+	// Ставим поток в список ожидающих управляющих фреймов
+	this->schedule(sid);
 	// Устанавливаем код ошибки приложения фрейма RESET_STREAM
 	i->second.txResetCode = code;
 	// Отбрасываем неотправленные данные потока
@@ -7688,6 +7739,8 @@ void awh::quic::Connection::stop(const uint64_t sid, const uint64_t code) noexce
 	auto & stream = i->second;
 	// Ставим отправку фрейма STOP_SENDING в очередь
 	stream.stopQueued = true;
+	// Ставим поток в список ожидающих управляющих фреймов
+	this->schedule(sid);
 	// Устанавливаем код ошибки приложения фрейма STOP_SENDING
 	stream.stopCode = code;
 	// Учитываем отброшенные данные как потреблённые в flow control соединения

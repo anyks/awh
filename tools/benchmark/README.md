@@ -79,3 +79,4 @@ cmake --build build-release --target awh_BENCHMARK_net -j 8
   показатели ниже сняты как медиана трёх прогонов.
 
 Полный отчёт со сведёнными результатами: [benchmark/net/io/README.md](../../benchmark/net/io/README.md).
+Отдельный разбор структур дедлайнов: [benchmark/net/io/TIMERS.md](../../benchmark/net/io/TIMERS.md).
