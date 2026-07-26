@@ -443,3 +443,248 @@ TEST_P(FragmentParameterizedFixture, HeaderFastPathEquivalenceTest){
 		ASSERT_EQ(parser->message().bodySize, reference->message().bodySize) << message;
 	}
 }
+
+/**
+ * @brief Метод тестирования эквивалентности быстрого и посимвольного путей разбора метода запроса
+ *
+ * @details Метод запроса разбирается быстрым путём только когда присутствует во
+ *          входном буфере целиком вместе с завершающим разделителем, поэтому
+ *          размер фрагмента подачи сам по себе переключает пути: подача по одному
+ *          октету не даёт быстрому пути сработать ни разу. Проверяются как
+ *          распознаваемые методы всех длин, так и то, что быстрый путь обязан
+ *          передавать посимвольному: нераспознанные написания, недопустимые
+ *          символы, отсутствие разделителя и превышение лимита длины стартовой строки
+ *
+ */
+TEST_P(FragmentParameterizedFixture, MethodFastPathEquivalenceTest){
+	/**
+	 * @brief Структура проверяемого случая разбора метода запроса
+	 *
+	 */
+	typedef struct Sample {
+		// Разбираемое сообщение
+		std::string message;
+		// Максимальная длина стартовой строки (0 - лимит по умолчанию)
+		size_t limit;
+	} sample_t;
+	/**
+	 * @brief Функция разбора сообщения с заданным размером фрагмента подачи
+	 *
+	 * @param parser   объект парсера
+	 * @param message  разбираемое сообщение
+	 * @param fragment размер фрагмента подачи
+	 *
+	 */
+	auto feed = [](parser_http_t & parser, const std::string & message, const size_t fragment) noexcept -> void {
+		/**
+		 * Выполняем подачу данных фрагментами заданного размера
+		 */
+		for(size_t i = 0; i < message.size(); i += fragment)
+			// Выполняем разбор очередного фрагмента данных
+			parser.parse(message.data() + i, std::min(fragment, (message.size() - i)));
+	};
+	/**
+	 * Набор проверяемых случаев разбора метода запроса
+	 */
+	const std::vector <sample_t> samples = {
+		// Распознаваемые методы всех встречающихся длин
+		sample_t({"GET / HTTP/1.1\r\n\r\n", 0}),
+		sample_t({"PUT / HTTP/1.1\r\nContent-Length: 0\r\n\r\n", 0}),
+		sample_t({"POST /x HTTP/1.1\r\nContent-Length: 0\r\n\r\n", 0}),
+		sample_t({"TRACE / HTTP/1.1\r\n\r\n", 0}),
+		sample_t({"DELETE / HTTP/1.1\r\n\r\n", 0}),
+		sample_t({"OPTIONS * HTTP/1.1\r\n\r\n", 0}),
+		sample_t({"PROPPATCH / HTTP/1.1\r\n\r\n", 0}),
+		// Регистрозависимость: строчное написание известным методом не является
+		sample_t({"get / HTTP/1.1\r\n\r\n", 0}),
+		// Нераспознанные, но синтаксически корректные методы
+		sample_t({"PURGE / HTTP/1.1\r\n\r\n", 0}),
+		sample_t({"X / HTTP/1.1\r\n\r\n", 0}),
+		// Лишние пробелы между методом и request-target
+		sample_t({"GET  / HTTP/1.1\r\n\r\n", 0}),
+		// Недопустимые написания метода запроса
+		sample_t({std::string("GE\x01T / HTTP/1.1\r\n\r\n"), 0}),
+		sample_t({"GET/ HTTP/1.1\r\n\r\n", 0}),
+		sample_t({" GET / HTTP/1.1\r\n\r\n", 0}),
+		// Превышение лимита длины стартовой строки внутри метода запроса
+		sample_t({"PROPPATCH / HTTP/1.1\r\n\r\n", 4}),
+		// Превышение лимита длины стартовой строки на разделителе после метода
+		sample_t({"POST / HTTP/1.1\r\n\r\n", 4})
+	};
+	/**
+	 * Выполняем перебор всех проверяемых случаев
+	 */
+	for(const auto & sample : samples){
+		// Создаём объект парсера эталонного разбора (подача по одному октету)
+		auto reference = this->make(direct_t::REQUEST);
+		// Создаём объект парсера проверяемого разбора
+		auto parser = this->make(direct_t::REQUEST);
+		// Если лимит длины стартовой строки задан явно
+		if(sample.limit > 0){
+			// Получаем текущие лимиты безопасности
+			parser_http_t::limits_t limits = reference->limits();
+			// Устанавливаем максимальную длину стартовой строки
+			limits.maxRequestLine = sample.limit;
+			// Применяем изменённые лимиты безопасности эталонному разбору
+			reference->limits(limits);
+			// Применяем изменённые лимиты безопасности проверяемому разбору
+			parser->limits(limits);
+		}
+		// Создаём объект сборщика событий эталонного разбора
+		events_t expected;
+		// Подписываем сборщик событий эталонного разбора
+		this->attach(* reference, expected);
+		// Выполняем эталонный разбор посимвольной подачей
+		feed(* reference, sample.message, 1);
+		// Создаём объект сборщика событий проверяемого разбора
+		events_t actual;
+		// Подписываем сборщик событий проверяемого разбора
+		this->attach(* parser, actual);
+		// Выполняем проверяемый разбор подачей фрагментами заданного размера
+		feed(* parser, sample.message, this->_fragment);
+		// Проверяем что итоговый статус разбора совпадает
+		ASSERT_EQ(parser->status(), reference->status()) << sample.message;
+		// Проверяем что код ошибки разбора совпадает
+		ASSERT_EQ(parser->error(), reference->error()) << sample.message;
+		// Проверяем что последовательность фазовых событий совпадает
+		ASSERT_EQ(actual.phases, expected.phases) << sample.message;
+		// Получаем объект провайдера заголовков проверяемого разбора
+		const request_t * request = static_cast <const request_t *> (parser->message().provider.get());
+		// Получаем объект провайдера заголовков эталонного разбора
+		const request_t * origin = static_cast <const request_t *> (reference->message().provider.get());
+		// Проверяем что метод запроса классифицирован одинаково
+		ASSERT_EQ(request->method, origin->method) << sample.message;
+		// Проверяем что оригинальное написание метода сохранено одинаково
+		ASSERT_EQ(request->methodName, origin->methodName) << sample.message;
+		// Проверяем что URI-адрес запроса разобран одинаково
+		ASSERT_EQ(request->uri, origin->uri) << sample.message;
+		// Проверяем что версия протокола разобрана одинаково
+		ASSERT_EQ(request->version, origin->version) << sample.message;
+	}
+}
+
+/**
+ * @brief Метод тестирования эквивалентности быстрого и посимвольного путей разбора версии протокола
+ *
+ * @details Литерал версии разбирается быстрым путём только когда присутствует во
+ *          входном буфере целиком вместе с окончанием строки CRLF, поэтому размер
+ *          фрагмента подачи сам по себе переключает пути. Проверяются оба
+ *          допустимых написания версии и всё, что быстрый путь обязан передавать
+ *          посимвольному: голое окончание строки, лишние пробелы, неподдерживаемые
+ *          версии, обрыв литерала и превышение лимита длины стартовой строки
+ *
+ */
+TEST_P(FragmentParameterizedFixture, VersionFastPathEquivalenceTest){
+	/**
+	 * @brief Структура проверяемого случая разбора версии протокола
+	 *
+	 */
+	typedef struct Sample {
+		// Разбираемое сообщение
+		std::string message;
+		// Максимальная длина стартовой строки (0 - лимит по умолчанию)
+		size_t limit;
+		// Режим строгой трактовки окончаний строк
+		bool strictEOL;
+		// Режим строгой трактовки лишних пробелов
+		bool strictSpaces;
+	} sample_t;
+	/**
+	 * @brief Функция разбора сообщения с заданным размером фрагмента подачи
+	 *
+	 * @param parser   объект парсера
+	 * @param message  разбираемое сообщение
+	 * @param fragment размер фрагмента подачи
+	 *
+	 */
+	auto feed = [](parser_http_t & parser, const std::string & message, const size_t fragment) noexcept -> void {
+		/**
+		 * Выполняем подачу данных фрагментами заданного размера
+		 */
+		for(size_t i = 0; i < message.size(); i += fragment)
+			// Выполняем разбор очередного фрагмента данных
+			parser.parse(message.data() + i, std::min(fragment, (message.size() - i)));
+	};
+	/**
+	 * Набор проверяемых случаев разбора версии протокола
+	 */
+	const std::vector <sample_t> samples = {
+		// Оба допустимых написания версии протокола
+		sample_t({"GET / HTTP/1.1\r\n\r\n", 0, false, false}),
+		sample_t({"GET / HTTP/1.0\r\n\r\n", 0, false, false}),
+		// Голое окончание строки после версии в толерантном и строгом режимах
+		sample_t({"GET / HTTP/1.1\n\r\n", 0, false, false}),
+		sample_t({"GET / HTTP/1.1\n\r\n", 0, true, false}),
+		// Строгий режим окончаний строк не должен влиять на корректное CRLF
+		sample_t({"GET / HTTP/1.1\r\n\r\n", 0, true, false}),
+		// Лишние пробелы перед литералом версии в толерантном и строгом режимах
+		sample_t({"GET /  HTTP/1.1\r\n\r\n", 0, false, false}),
+		sample_t({"GET /  HTTP/1.1\r\n\r\n", 0, false, true}),
+		// Пробел между литералом версии и окончанием строки
+		sample_t({"GET / HTTP/1.1 \r\n\r\n", 0, false, false}),
+		// Неподдерживаемые версии протокола
+		sample_t({"GET / HTTP/2.0\r\n\r\n", 0, false, false}),
+		sample_t({"GET / HTTP/1.2\r\n\r\n", 0, false, false}),
+		sample_t({"GET / HTTP/0.9\r\n\r\n", 0, false, false}),
+		// Искажённые написания литерала версии
+		sample_t({"GET / HTTP1.1\r\n\r\n", 0, false, false}),
+		sample_t({"GET / HTTP/1.\r\n\r\n", 0, false, false}),
+		sample_t({"GET / HTTP/1.1\r\r\n\r\n", 0, false, false}),
+		sample_t({"GET / http/1.1\r\n\r\n", 0, false, false}),
+		// Превышение лимита длины стартовой строки на литерале версии
+		sample_t({"GET / HTTP/1.1\r\n\r\n", 12, false, false})
+	};
+	/**
+	 * Выполняем перебор всех проверяемых случаев
+	 */
+	for(const auto & sample : samples){
+		// Создаём объект парсера эталонного разбора (подача по одному октету)
+		auto reference = this->make(direct_t::REQUEST);
+		// Создаём объект парсера проверяемого разбора
+		auto parser = this->make(direct_t::REQUEST);
+		// Получаем текущие лимиты безопасности
+		parser_http_t::limits_t limits = reference->limits();
+		// Устанавливаем режим строгой трактовки окончаний строк
+		limits.strictEOL = sample.strictEOL;
+		// Устанавливаем режим строгой трактовки лишних пробелов
+		limits.strictSpaces = sample.strictSpaces;
+		// Если лимит длины стартовой строки задан явно
+		if(sample.limit > 0)
+			// Устанавливаем максимальную длину стартовой строки
+			limits.maxRequestLine = sample.limit;
+		// Применяем лимиты безопасности эталонному разбору
+		reference->limits(limits);
+		// Применяем лимиты безопасности проверяемому разбору
+		parser->limits(limits);
+		// Создаём объект сборщика событий эталонного разбора
+		events_t expected;
+		// Подписываем сборщик событий эталонного разбора
+		this->attach(* reference, expected);
+		// Выполняем эталонный разбор посимвольной подачей
+		feed(* reference, sample.message, 1);
+		// Создаём объект сборщика событий проверяемого разбора
+		events_t actual;
+		// Подписываем сборщик событий проверяемого разбора
+		this->attach(* parser, actual);
+		// Выполняем проверяемый разбор подачей фрагментами заданного размера
+		feed(* parser, sample.message, this->_fragment);
+		// Проверяем что итоговый статус разбора совпадает
+		ASSERT_EQ(parser->status(), reference->status()) << sample.message;
+		// Проверяем что код ошибки разбора совпадает
+		ASSERT_EQ(parser->error(), reference->error()) << sample.message;
+		// Проверяем что последовательность фазовых событий совпадает
+		ASSERT_EQ(actual.phases, expected.phases) << sample.message;
+		// Проверяем что набор разобранных заголовков совпадает
+		ASSERT_EQ(actual.headers, expected.headers) << sample.message;
+		// Получаем объект провайдера заголовков проверяемого разбора
+		const request_t * request = static_cast <const request_t *> (parser->message().provider.get());
+		// Получаем объект провайдера заголовков эталонного разбора
+		const request_t * origin = static_cast <const request_t *> (reference->message().provider.get());
+		// Проверяем что версия протокола разобрана одинаково
+		ASSERT_EQ(request->version, origin->version) << sample.message;
+		// Проверяем что метод запроса классифицирован одинаково
+		ASSERT_EQ(request->method, origin->method) << sample.message;
+		// Проверяем что URI-адрес запроса разобран одинаково
+		ASSERT_EQ(request->uri, origin->uri) << sample.message;
+	}
+}

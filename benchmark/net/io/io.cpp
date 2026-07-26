@@ -37,6 +37,14 @@
 #include <netinet/in.h>
 
 /**
+ * Если сборка производится под операционную систему macOS
+ */
+#if __APPLE__
+	#include <mach/mach.h>
+	#include <mach/task_info.h>
+#endif
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -50,17 +58,33 @@ using namespace std;
  */
 string awh::benchmark::io::details(const outcome_t & output) noexcept {
 	// Буфер формирования сведений о прогоне
-	char buffer[256];
+	char buffer[512];
 	// Вычисляем среднее время выполнения одной операции в микросекундах
 	const double microseconds = ((output.operations > 0)
 	 ? ((output.seconds * 1e6) / static_cast <double> (output.operations)) : 0.0);
 	// Выполняем формирование сведений о прогоне
-	::snprintf(
+	int32_t offset = ::snprintf(
 		buffer, sizeof(buffer),
-		"операций: %zu, время: %.3f с, на операцию: %.2f мкс, выделений: %zu (%.1f на операцию), память процесса: %.1f МБ",
+		"операций: %zu, время: %.3f с, на операцию: %.2f мкс, выделений: %zu (%.1f на операцию), память процесса: %.1f МБ (своей %.1f МБ)",
 		output.operations, output.seconds, microseconds, output.allocations,
-		perOperation(output), (static_cast <double> (output.footprint) / 1048576.0)
+		perOperation(output), (static_cast <double> (output.footprint) / 1048576.0),
+		(static_cast <double> (output.occupancy) / 1048576.0)
 	);
+	// Если сводка по системным вызовам снята
+	if(!output.calls.empty() && (offset < static_cast <int32_t> (sizeof(buffer))))
+		// Дополняем сведения о прогоне сводкой по системным вызовам
+		offset += ::snprintf(
+			buffer + offset, (sizeof(buffer) - static_cast <size_t> (offset)),
+			", %s", output.calls.c_str()
+		);
+	// Если ядру передавались изменения подписки
+	if((output.changes > 0) && (offset < static_cast <int32_t> (sizeof(buffer))))
+		// Дополняем сведения о прогоне сведениями об изменениях подписки
+		::snprintf(
+			buffer + offset, (sizeof(buffer) - static_cast <size_t> (offset)),
+			", изменений подписки: %.2f на операцию, наибольший пакет: %zu",
+			perChange(output), output.batch
+		);
 	// Выводим сведения о прогоне
 	return string(buffer);
 }
@@ -110,6 +134,61 @@ double awh::benchmark::io::perOperation(const outcome_t & output) noexcept {
 	return (static_cast <double> (output.allocations) / static_cast <double> (output.operations));
 }
 /**
+ * @brief Функция извлечения количества системных вызовов на одну операцию
+ *
+ * @param output итоги прогона сценария
+ * @return       количество системных вызовов на одну операцию
+ *
+ */
+double awh::benchmark::io::perSyscall(const outcome_t & output) noexcept {
+	// Если операции не выполнялись
+	if(output.operations == 0)
+		// Выводим нулевое количество системных вызовов
+		return 0.0;
+	// Выводим количество системных вызовов на одну операцию
+	return (static_cast <double> (output.syscalls) / static_cast <double> (output.operations));
+}
+/**
+ * @brief Функция извлечения количества изменений подписки на одну операцию
+ *
+ * @param output итоги прогона сценария
+ * @return       количество изменений подписки на одну операцию
+ *
+ */
+double awh::benchmark::io::perChange(const outcome_t & output) noexcept {
+	// Если операции не выполнялись
+	if(output.operations == 0)
+		// Выводим нулевое количество изменений подписки
+		return 0.0;
+	// Выводим количество изменений подписки на одну операцию
+	return (static_cast <double> (output.changes) / static_cast <double> (output.operations));
+}
+/**
+ * @brief Функция снятия показателей окружения по итогам замера
+ *
+ * @param output итоги прогона сценария
+ *
+ */
+void awh::benchmark::io::collect(outcome_t & output) noexcept {
+	// Получаем статистику выделений памяти
+	awh::benchmark::allocations(output.allocations, output.allocated);
+	// Если учёт системных вызовов доступен
+	if(awh::benchmark::syscall::available()){
+		// Получаем суммарное количество выполненных системных вызовов
+		output.syscalls = awh::benchmark::syscall::total();
+		// Получаем количество изменений подписки, переданных ядру
+		output.changes = awh::benchmark::syscall::changes();
+		// Получаем наибольшее количество изменений подписки за один вызов
+		output.batch = awh::benchmark::syscall::peak();
+		// Формируем сводку по системным вызовам
+		output.calls = awh::benchmark::syscall::summary(output.operations);
+	}
+	// Получаем пиковый объём занятой процессом памяти
+	output.footprint = footprint();
+	// Получаем пиковый собственный объём памяти процесса
+	output.occupancy = occupancy();
+}
+/**
  * @brief Функция получения пикового объёма занятой процессом памяти
  *
  * @return пиковый объём занятой процессом памяти в октетах
@@ -134,6 +213,70 @@ size_t awh::benchmark::io::footprint() noexcept {
 	#else
 		// Выводим пиковый объём занятой памяти: остальные системы сообщают его в кибибайтах
 		return (static_cast <size_t> (usage.ru_maxrss) * 1024);
+	#endif
+}
+/**
+ * @brief Функция получения пикового собственного объёма памяти процесса
+ *
+ * @return пиковый собственный объём памяти процесса в октетах
+ *
+ */
+size_t awh::benchmark::io::occupancy() noexcept {
+	/**
+	 * Если сборка производится под операционную систему macOS
+	 */
+	#if __APPLE__
+		// Объект сведений о виртуальной памяти задачи
+		task_vm_info_data_t info{};
+		// Размер объекта сведений в машинных словах
+		mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+		// Если сведения о виртуальной памяти задачи не получены
+		if(::task_info(::mach_task_self(), TASK_VM_INFO, reinterpret_cast <task_info_t> (&info), &count) != KERN_SUCCESS)
+			// Выводим нулевой объём занятой памяти
+			return 0;
+		/**
+		 * Если ядро сообщило пиковое значение собственного объёма
+		 */
+		#ifdef TASK_VM_INFO_REV1_COUNT
+			// Если сведения содержат пиковое значение собственного объёма
+			if(count >= TASK_VM_INFO_REV1_COUNT)
+				// Выводим пиковый собственный объём памяти процесса
+				return static_cast <size_t> (info.ledger_phys_footprint_peak);
+		#endif
+		// Выводим текущий собственный объём памяти процесса
+		return static_cast <size_t> (info.phys_footprint);
+	/**
+	 * Если сборка производится под все остальные операционные системы
+	 */
+	#else
+		// Объект чтения сведений о состоянии процесса
+		FILE * file = ::fopen("/proc/self/status", "r");
+		// Если сведения о состоянии процесса недоступны
+		if(file == nullptr)
+			// Выводим нулевой объём занятой памяти
+			return 0;
+		// Буфер чтения строки сведений
+		char buffer[256];
+		// Пиковый собственный объём памяти процесса
+		size_t result = 0;
+		/**
+		 * Читаем сведения о состоянии процесса построчно
+		 */
+		while(::fgets(buffer, sizeof(buffer), file) != nullptr){
+			// Значение пикового объёма занятой памяти в кибибайтах
+			size_t value = 0;
+			// Если строка содержит пиковый объём занятой памяти
+			if(::sscanf(buffer, "VmHWM: %zu kB", &value) == 1){
+				// Запоминаем пиковый собственный объём памяти процесса
+				result = (value * 1024);
+				// Прекращаем чтение сведений
+				break;
+			}
+		}
+		// Выполняем закрытие сведений о состоянии процесса
+		::fclose(file);
+		// Выводим пиковый собственный объём памяти процесса
+		return result;
 	#endif
 }
 /**

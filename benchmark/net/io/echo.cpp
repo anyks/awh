@@ -72,6 +72,18 @@ namespace {
 	 *
 	 */
 	static constexpr double ALLOCATIONS_THRESHOLD = 0.5;
+	/**
+	 * @brief Порог количества системных вызовов на один обмен
+	 *
+	 * @details Обмен требует четырёх обращений к ядру - по приёму и передаче на
+	 *          каждой стороне - плюс возврат за готовностью. Измеренная величина
+	 *          вдвое больше: движок узнаёт об отсутствии данных повторным приёмом,
+	 *          возвращающим ошибку, вместо того чтобы читать объём доступных данных
+	 *          из готового события. Целевое значение после его устранения - не
+	 *          более шести вызовов на обмен
+	 *
+	 */
+	static constexpr double SYSCALLS_THRESHOLD = 9.0;
 
 	/**
 	 * @brief Структура состояния одного подключения сценария
@@ -144,6 +156,8 @@ namespace {
 			state.measuring = true;
 			// Включаем учёт выделений памяти
 			awh::benchmark::counting(true);
+			// Включаем учёт системных вызовов
+			awh::benchmark::syscall::counting(true);
 			// Запоминаем момент начала замера
 			state.start = std::chrono::steady_clock::now();
 			// Продолжаем обмен
@@ -157,8 +171,9 @@ namespace {
 			return true;
 		// Запоминаем момент окончания замера
 		state.finish = std::chrono::steady_clock::now();
-		// Отключаем учёт выделений памяти
+		// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
 		awh::benchmark::counting(false);
+		awh::benchmark::syscall::counting(false);
 		// Останавливаем цикл событий
 		state.stop = true;
 		// Прекращаем обмен
@@ -303,10 +318,8 @@ namespace {
 		result.bytes = (state.done * ECHO_PAYLOAD * 2);
 		// Устанавливаем затраченное время
 		result.seconds = std::chrono::duration <double> (state.finish - state.start).count();
-		// Получаем статистику выделений памяти
-		awh::benchmark::allocations(result.allocations, result.allocated);
-		// Получаем пиковый объём занятой процессом памяти
-		result.footprint = footprint();
+		// Снимаем показатели окружения по итогам замера
+		collect(result);
 		// Выполняем деинициализацию движка
 		io.deinitialize();
 		// Выводим итоги прогона сценария
@@ -393,9 +406,42 @@ namespace {
 		"net/io/echo/multi", "обменов/с", MULTI_THRESHOLD,
 		awh::benchmark::bound_t::MINIMUM, &::multi
 	);
+	/**
+	 * @brief Функция прогона сценария учёта системных вызовов на один обмен
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t syscalls() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Если учёт системных вызовов недоступен
+		if(!awh::benchmark::syscall::available()){
+			// Отмечаем измерение как не выполнявшееся
+			result.skipped = true;
+			// Устанавливаем причину, по которой измерение не выполнялось
+			result.reason = awh::benchmark::syscall::reason();
+			// Выводим результат измерения
+			return result;
+		}
+		// Получаем итоги прогона сценария
+		const outcome_t & outcome = ::measured();
+		// Устанавливаем измеренное значение
+		result.value = perSyscall(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+
 	// Регистрируем сценарий учёта выделений памяти на один обмен
 	static const bool gAllocations = awh::benchmark::add(
 		"net/io/echo/allocations-per-round", "выделений", ALLOCATIONS_THRESHOLD,
 		awh::benchmark::bound_t::MAXIMUM, &::allocations
+	);
+	// Регистрируем сценарий учёта системных вызовов на один обмен
+	static const bool gSyscalls = awh::benchmark::add(
+		"net/io/echo/syscalls-per-round", "вызовов", SYSCALLS_THRESHOLD,
+		awh::benchmark::bound_t::MAXIMUM, &::syscalls
 	);
 };

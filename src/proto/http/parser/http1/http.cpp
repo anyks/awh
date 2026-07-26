@@ -229,8 +229,20 @@ namespace {
 		SCAN_BODY_CHUNK   = 0x04, // Крупноблочное чтение данных чанка
 		SCAN_BODY_IDENTITY= 0x05, // Крупноблочное чтение тела фиксированного размера
 		SCAN_BODY_CLOSE   = 0x06, // Крупноблочное чтение тела до закрытия соединения
-		SCAN_HEADER_LINE  = 0x07  // Разбор целой строки заголовка или трейлера
+		SCAN_HEADER_LINE  = 0x07, // Разбор целой строки заголовка или трейлера
+		SCAN_METHOD       = 0x08, // Сканирование участка метода запроса
+		SCAN_VERSION      = 0x09  // Разбор литерала версии протокола запроса
 	};
+
+	/**
+	 * @brief Размер литерала версии протокола вместе с окончанием строки в октетах
+	 *
+	 * @details Допустимых написаний версии в стартовой строке запроса всего два, и
+	 *          оба имеют одинаковую длину: "HTTP/1.1" либо "HTTP/1.0", а следом
+	 *          обязательное для быстрого пути окончание строки CRLF
+	 *
+	 */
+	static constexpr size_t VERSION_LINE = 10;
 
 	/**
 	 * @brief Функция генерации таблицы классов крупноблочной обработки состояний
@@ -241,8 +253,12 @@ namespace {
 	constexpr array <uint8_t, 256> makeScanTable() noexcept {
 		// Результат работы функции
 		array <uint8_t, 256> result{};
+		// Помечаем состояние разбора метода запроса
+		result[static_cast <uint8_t> (state_t::S_REQ_METHOD)] = SCAN_METHOD;
 		// Помечаем состояние разбора request-target
 		result[static_cast <uint8_t> (state_t::S_REQ_TARGET)] = SCAN_TARGET;
+		// Помечаем состояние разбора литерала версии протокола запроса
+		result[static_cast <uint8_t> (state_t::S_REQ_HTTP_START)] = SCAN_VERSION;
 		// Помечаем состояние разбора имени заголовка
 		result[static_cast <uint8_t> (state_t::S_HEADER_NAME)] = SCAN_TOKEN;
 		// Помечаем состояние разбора имени трейлера
@@ -445,7 +461,7 @@ namespace {
 	 * @return        результат сравнения
 	 *
 	 */
-	inline bool equalsMethod(const string & method, const char * literal) noexcept {
+	inline bool equalsMethod(const string_view method, const char * literal) noexcept {
 		// Выполняем побайтовое сравнение имени метода с литералом
 		return (::memcmp(method.data(), literal, method.size()) == 0);
 	}
@@ -710,11 +726,15 @@ namespace {
 	 *          по RFC 9110 §9.1, а нераспознанное написание уходит в method_t::UNKNOWN
 	 *          с сохранением оригинала
 	 *
+	 * @note Имя метода принимается представлением: на быстром пути разбора
+	 *       стартовой строки оно указывает прямо во входной буфер, и накопитель
+	 *       при распознанном методе не задействуется вовсе
+	 *
 	 * @param method имя метода запроса
 	 * @return       распознанный метод запроса либо method_t::NONE
 	 *
 	 */
-	http::method_t classifyMethod(const string & method) noexcept {
+	http::method_t classifyMethod(const string_view method) noexcept {
 		/**
 		 * Диспетчеризация по длине имени метода (несовпадение размера отсекается без сравнения)
 		 */
@@ -2917,6 +2937,122 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					continue;
 				}
 				// Сканирование непрерывного участка request-target
+				// Сканирование непрерывного участка метода запроса
+				case static_cast <uint8_t> (scan_t::SCAN_METHOD): {
+					// Позиция конца непрерывного участка допустимых символов
+					size_t j = i;
+					/**
+					 * Сканируем непрерывный участок символов токена
+					 */
+					while((j < size) && ::isToken(static_cast <uint8_t> (data[j])))
+						// Смещаем позицию конца участка
+						++j;
+					// Определяем размер непрерывного участка
+					const size_t run = (j - i);
+					/**
+					 * Быстрый путь: метод присутствует во входном буфере целиком и
+					 * завершён разделителем. Классификация выполняется представлением
+					 * прямо во входные данные, и накопитель при распознанном методе
+					 * не задействуется вовсе
+					 */
+					if((run > 0) && this->_header.name.empty() && (j < size) && (data[j] == ' ')){
+						// Если длина стартовой строки превышает лимит (разделитель тоже учитывается)
+						if((this->_statsHeaders.lineBytes + run + 1) > this->_limits.maxRequestLine){
+							// Фиксируем ошибку превышения длины request-line с записью в лог
+							this->fail(error_t::URL_OVERFLOW);
+							// Выводим количество обработанных байт данных
+							return i;
+						}
+						// Наращиваем длину текущей стартовой строки
+						this->_statsHeaders.lineBytes += (run + 1);
+						// Выполняем классификацию метода запроса по его имени
+						req->method = ::classifyMethod(string_view(data + i, run));
+						// Если метод запроса синтаксически корректен, но не распознан
+						if(req->method == method_t::NONE){
+							// Помечаем метод запроса как нераспознанный
+							req->method = method_t::UNKNOWN;
+							// Сохраняем оригинальное написание метода (прозрачное проксирование экзотических методов)
+							req->methodName.assign(data + i, run);
+						}
+						// Переходим к пропуску пробелов перед request-target
+						this->_state = static_cast <uint8_t> (state_t::S_REQ_TARGET_START);
+						// Смещаем позицию разбора за разделитель
+						i = (j + 1);
+						// Продолжаем разбор
+						continue;
+					}
+					/**
+					 * Медленный путь: метод разорван между фрагментами - копим его в
+					 * накопитель, а решение о завершении принимает посимвольный путь
+					 */
+					if(run > 0){
+						// Если длина стартовой строки превышает лимит
+						if((this->_statsHeaders.lineBytes + run) > this->_limits.maxRequestLine){
+							// Фиксируем ошибку превышения длины request-line с записью в лог
+							this->fail(error_t::URL_OVERFLOW);
+							// Выводим количество обработанных байт данных
+							return i;
+						}
+						// Наращиваем длину текущей стартовой строки
+						this->_statsHeaders.lineBytes += run;
+						// Добавляем непрерывный участок к накопителю имени метода
+						this->_header.name.append(data + i, run);
+						// Смещаем позицию разбора
+						i = j;
+						// Продолжаем разбор
+						continue;
+					}
+				} break;
+				// Разбор литерала версии протокола запроса
+				case static_cast <uint8_t> (scan_t::SCAN_VERSION): {
+					/**
+					 * Быстрый путь: литерал версии присутствует во входном буфере целиком
+					 * вместе с окончанием строки. Восемь его октетов разбираются иначе
+					 * восемью отдельными состояниями конечного автомата, тогда как
+					 * допустимых написаний всего два и оба сравниваются одним вызовом
+					 */
+					if((size - i) >= VERSION_LINE){
+						// Версия протокола, распознанная по литералу стартовой строки
+						version_t version = version_t::NONE;
+						// Если литерал соответствует версии протокола HTTP/1.1
+						if(::memcmp(data + i, "HTTP/1.1\r\n", VERSION_LINE) == 0)
+							// Устанавливаем версию протокола HTTP/1.1
+							version = version_t::HTTP1_1;
+						// Если литерал соответствует версии протокола HTTP/1.0
+						else if(::memcmp(data + i, "HTTP/1.0\r\n", VERSION_LINE) == 0)
+							// Устанавливаем версию протокола HTTP/1.0
+							version = version_t::HTTP1_0;
+						/**
+						 * Любое отклонение от двух допустимых написаний передаётся
+						 * посимвольному пути: и толерантность к голому LF, и лишние
+						 * пробелы перед литералом, и все ошибки разбираются там
+						 */
+						if(version != version_t::NONE){
+							/**
+							 * Учитываем в длине стартовой строки литерал версии протокола
+							 * целиком, как это делает посимвольный путь: окончание строки
+							 * в длине стартовой строки не учитывается
+							 */
+							if((this->_statsHeaders.lineBytes + (VERSION_LINE - 2)) > this->_limits.maxRequestLine){
+								// Фиксируем ошибку превышения длины request-line с записью в лог
+								this->fail(error_t::URL_OVERFLOW);
+								// Выводим количество обработанных байт данных
+								return i;
+							}
+							// Наращиваем длину текущей стартовой строки
+							this->_statsHeaders.lineBytes += (VERSION_LINE - 2);
+							// Устанавливаем разобранную версию протокола
+							req->version = version;
+							// Завершаем разбор стартовой строки
+							this->commitStartLine();
+							// Смещаем позицию разбора за литерал версии и окончание строки
+							i += VERSION_LINE;
+							// Продолжаем разбор
+							continue;
+						}
+					}
+				} break;
+				// Сканирование непрерывного участка request-target
 				case static_cast <uint8_t> (scan_t::SCAN_TARGET): {
 					// Позиция конца непрерывного участка допустимых символов
 					size_t j = i;
@@ -3032,12 +3168,16 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 							// Выходим из состояния
 							break;
 						}
-						// Добавляем символ к накопителю имени метода
-						this->_header.name.push_back(static_cast <char> (ch));
 						// Начинаем отсчёт длины стартовой строки
-						this->_statsHeaders.lineBytes = 1;
+						this->_statsHeaders.lineBytes = 0;
 						// Переходим к разбору метода запроса
 						this->_state = static_cast <uint8_t> (state_t::S_REQ_METHOD);
+						/**
+						 * Текущий байт намеренно не потребляется: метод разбирается
+						 * крупноблочно и должен получить свой первый символ сам, иначе
+						 * накопитель оказался бы непустым и быстрый путь не сработал
+						 */
+						continue;
 					// Если выполняется разбор ответа сервера
 					} else {
 						// Если первый символ не является началом литерала "HTTP/"

@@ -77,6 +77,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
     # Если нужно собрать и динамическую библиотеку
     if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC
+            ${CMAKE_DL_LIBS}
             ${PROJECT_NAME}
             ${TCMALLOC_LIBRARIES}
             ${AWH_FLAGS}
@@ -84,6 +85,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
     # Если нужно собрать и статическую библиотеку
     else (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC
+            ${CMAKE_DL_LIBS}
             ${PROJECT_NAME}
             ${DEPEND_LIBRARY}
             ${PCRE_LIBRARY}
@@ -98,6 +100,11 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         target_compile_options(${PROJECT_NAME}${POSTFIX} PRIVATE -x objective-c++ -fobjc-arc)
     endif()
 
+    # Оснастка счёта системных вызовов собирается вместе с набором: показатели по
+    # количеству обращений к ядру снимаются ею, и расхождение версий между набором
+    # и подставной библиотекой обесценило бы их
+    add_dependencies(${PROJECT_NAME}${POSTFIX} awh_BENCHMARK_syscount)
+
     # Регистрируем цель запуска бенчмарков с проверкой порогов
     add_custom_target(
         benchmark-${NAME}
@@ -106,6 +113,24 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Running ${NAME} benchmarks with performance thresholds"
     )
+
+    # Если сборка производится под операционную систему macOS
+    if (APPLE AND NOT IOS)
+        # Регистрируем цель запуска бенчмарков со счётом системных вызовов.
+        # Показатели по количеству обращений к ядру без внедрённой подставной
+        # библиотеки выводятся как пропущенные, поэтому для них нужен отдельный
+        # прогон: внедрение замедляет каждый перехваченный вызов, и показатели по
+        # времени с ним сравнивать с обычным прогоном нельзя
+        add_custom_target(
+            benchmark-${NAME}-syscalls
+            COMMAND ${CMAKE_COMMAND} -E env
+                DYLD_INSERT_LIBRARIES=${CMAKE_BINARY_DIR}/benchmarks/libsyscount${CMAKE_SHARED_LIBRARY_SUFFIX}
+                ${CMAKE_BINARY_DIR}/benchmarks/${NAME}
+            DEPENDS ${PROJECT_NAME}${POSTFIX} awh_BENCHMARK_syscount
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Running ${NAME} benchmarks with system call accounting"
+        )
+    endif()
 # Если не нужно собрать бенчмарки
 else()
     # Выводим сообщение о сборке бенчмарков

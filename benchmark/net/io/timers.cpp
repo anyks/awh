@@ -65,6 +65,34 @@ namespace {
 	 *
 	 */
 	static constexpr double ALLOCATIONS_THRESHOLD = 4.0;
+	/**
+	 * @brief Порог количества изменений подписки на один таймер
+	 *
+	 * @details Пользовательский таймер регистрируется отдельным фильтром таймера в
+	 *          ядре, и постановка выдаёт по две записи в список изменений - одну на
+	 *          фиксацию настроек, другую на запуск, - а срабатывание и освобождение
+	 *          добавляют остальные. Показатель важен не сам по себе, а как мера
+	 *          размера списка изменений: список в сто тысяч записей означает и
+	 *          линейный поиск по нему на каждой постановке, и мебибайты памяти под
+	 *          него. Целевое значение после перевода таймеров на внутреннюю
+	 *          структуру дедлайнов - величина, не зависящая от их количества
+	 *
+	 */
+	static constexpr double CHANGES_THRESHOLD = 6.0;
+	/**
+	 * @brief Порог размера наибольшего пакета изменений подписки на один таймер
+	 *
+	 * @details Показатель нормирован на количество таймеров нарочно: смысл его не в
+	 *          величине, а в том, что пакет изменений не должен расти вместе с
+	 *          количеством событий. Список изменений сбрасывается ядру только при
+	 *          опросе, поиск по нему линеен, и пакет в сто тысяч записей означает
+	 *          квадратичное поведение постановки. Суммарное количество изменений
+	 *          этого не поймает: сброс списка частями оставит его тем же, а
+	 *          квадратичность уберёт. Целевое значение - величина, не зависящая от
+	 *          количества таймеров, то есть ноль после нормировки
+	 *
+	 */
+	static constexpr double BATCH_THRESHOLD = 2.2;
 
 	/**
 	 * @brief Функция прогона сценария обслуживания таймеров
@@ -95,6 +123,8 @@ namespace {
 			return result;
 		// Включаем учёт выделений памяти
 		awh::benchmark::counting(true);
+		// Включаем учёт системных вызовов
+		awh::benchmark::syscall::counting(true);
 		// Запоминаем момент начала замера
 		const auto start = std::chrono::steady_clock::now();
 		/**
@@ -123,16 +153,15 @@ namespace {
 		while((fired < TIMER_COUNT) && io.poll());
 		// Запоминаем момент окончания замера
 		const auto finish = std::chrono::steady_clock::now();
-		// Отключаем учёт выделений памяти
+		// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
 		awh::benchmark::counting(false);
+		awh::benchmark::syscall::counting(false);
 		// Устанавливаем количество выполненных операций
 		result.operations = fired;
 		// Устанавливаем затраченное время
 		result.seconds = std::chrono::duration <double> (finish - start).count();
-		// Получаем статистику выделений памяти
-		awh::benchmark::allocations(result.allocations, result.allocated);
-		// Получаем пиковый объём занятой процессом памяти
-		result.footprint = footprint();
+		// Снимаем показатели окружения по итогам замера
+		collect(result);
 		// Выполняем деинициализацию движка
 		io.deinitialize();
 		// Выводим итоги прогона сценария
@@ -223,9 +252,76 @@ namespace {
 		"net/io/timers/difficult", "таймеров/с", DIFFICULT_THRESHOLD,
 		awh::benchmark::bound_t::MINIMUM, &::difficult
 	);
+	/**
+	 * @brief Функция прогона сценария учёта изменений подписки на один таймер
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t changes() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Если учёт системных вызовов недоступен
+		if(!awh::benchmark::syscall::available()){
+			// Отмечаем измерение как не выполнявшееся
+			result.skipped = true;
+			// Устанавливаем причину, по которой измерение не выполнялось
+			result.reason = awh::benchmark::syscall::reason();
+			// Выводим результат измерения
+			return result;
+		}
+		// Получаем итоги прогона сценария
+		const outcome_t & outcome = ::measured();
+		// Устанавливаем измеренное значение
+		result.value = perChange(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+
 	// Регистрируем сценарий учёта выделений памяти на один таймер
 	static const bool gAllocations = awh::benchmark::add(
 		"net/io/timers/allocations-per-timer", "выделений", ALLOCATIONS_THRESHOLD,
 		awh::benchmark::bound_t::MAXIMUM, &::allocations
+	);
+	/**
+	 * @brief Функция прогона сценария размера пакета изменений подписки
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t batch() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Если учёт системных вызовов недоступен
+		if(!awh::benchmark::syscall::available()){
+			// Отмечаем измерение как не выполнявшееся
+			result.skipped = true;
+			// Устанавливаем причину, по которой измерение не выполнялось
+			result.reason = awh::benchmark::syscall::reason();
+			// Выводим результат измерения
+			return result;
+		}
+		// Получаем итоги прогона сценария
+		const outcome_t & outcome = ::measured();
+		// Устанавливаем измеренное значение
+		result.value = ((outcome.operations > 0)
+		 ? (static_cast <double> (outcome.batch) / static_cast <double> (outcome.operations)) : 0.0);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+
+	// Регистрируем сценарий учёта изменений подписки на один таймер
+	static const bool gChanges = awh::benchmark::add(
+		"net/io/timers/changes-per-timer", "изменений", CHANGES_THRESHOLD,
+		awh::benchmark::bound_t::MAXIMUM, &::changes
+	);
+	// Регистрируем сценарий размера пакета изменений подписки
+	static const bool gBatch = awh::benchmark::add(
+		"net/io/timers/peak-batch-per-timer", "записей", BATCH_THRESHOLD,
+		awh::benchmark::bound_t::MAXIMUM, &::batch
 	);
 };

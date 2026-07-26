@@ -23,6 +23,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <algorithm>
+
+/**
+ * Системные заголовочные файлы
+ */
+#include <dlfcn.h>
 
 /**
  * Подключаем заголовочный файл главного модуля бенчмарков
@@ -220,10 +226,286 @@ void awh::benchmark::allocations(size_t & count, size_t & bytes) noexcept {
 	bytes = gBytes;
 }
 /**
+ * @brief Внутреннее состояние учёта системных вызовов
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция получения состояния счётчика системных вызовов
+	 *
+	 * @note Подставная библиотека внедряется загрузчиком в уже собранный процесс,
+	 *       поэтому связывание с ней на этапе сборки невозможно, а слабая ссылка
+	 *       на её символ компоновку не проходит: определяющей библиотеки в момент
+	 *       сборки нет вовсе. Точка входа отыскивается во всём адресном
+	 *       пространстве процесса при первом обращении, и её отсутствие означает,
+	 *       что библиотека не внедрена
+	 *
+	 * @return указатель на состояние счётчика либо нулевой указатель
+	 *
+	 */
+	static awh_syscount_t * counter() noexcept {
+		// Признак выполненного обращения к точке входа
+		static bool resolved = false;
+		// Состояние счётчика системных вызовов
+		static awh_syscount_t * result = nullptr;
+		// Если обращение к точке входа уже выполнялось
+		if(resolved)
+			// Выводим полученное состояние счётчика
+			return result;
+		// Запоминаем факт обращения к точке входа
+		resolved = true;
+		// Выполняем поиск точки входа счётчика системных вызовов
+		const awh_syscount_state_t entry = reinterpret_cast <awh_syscount_state_t> (::dlsym(RTLD_DEFAULT, AWH_SYSCOUNT_ENTRY_POINT));
+		// Если подставная библиотека счётчика не внедрена
+		if(entry == nullptr)
+			// Выводим отсутствие состояния счётчика
+			return result;
+		// Получаем состояние счётчика системных вызовов
+		awh_syscount_t * state = entry();
+		/**
+		 * Сверяем версию двоичного контракта: подставная библиотека собирается
+		 * отдельно от набора и может оказаться собранной из другой редакции
+		 */
+		if((state == nullptr) || (state->version != AWH_SYSCOUNT_ABI_VERSION) || (state->size != sizeof(awh_syscount_t)))
+			// Выводим отсутствие состояния счётчика
+			return result;
+		// Запоминаем состояние счётчика системных вызовов
+		result = state;
+		// Выводим состояние счётчика системных вызовов
+		return result;
+	}
+};
+
+/**
+ * @brief Функция проверки доступности учёта системных вызовов
+ *
+ * @return признак внедрения подставной библиотеки счётчика
+ *
+ */
+bool awh::benchmark::syscall::available() noexcept {
+	// Выводим признак доступности состояния счётчика
+	return (::counter() != nullptr);
+}
+/**
+ * @brief Функция управления учётом системных вызовов
+ *
+ * @param mode режим учёта системных вызовов
+ *
+ */
+void awh::benchmark::syscall::counting(const bool mode) noexcept {
+	// Получаем состояние счётчика системных вызовов
+	awh_syscount_t * state = ::counter();
+	// Если счётчик системных вызовов недоступен
+	if(state == nullptr)
+		// Выходим из функции
+		return;
+	// Отмечаем, что учётом управляет сам набор бенчмарков
+	state->managed = 1;
+	// Если учёт системных вызовов включается
+	if(mode){
+		/**
+		 * Перебираем разновидности учитываемых вызовов
+		 */
+		for(int32_t i = 0; i < AWH_SYSCOUNT_MAX; i++){
+			// Обнуляем количество выполненных вызовов
+			state->entries[i].calls = 0;
+			// Обнуляем время, проведённое в вызовах
+			state->entries[i].nanoseconds = 0;
+		}
+		// Обнуляем количество переданных изменений подписки
+		state->changes = 0;
+		// Обнуляем наибольший пакет изменений подписки
+		state->peak = 0;
+	}
+	// Устанавливаем режим учёта системных вызовов
+	state->enabled = (mode ? 1 : 0);
+}
+/**
+ * @brief Функция получения суммарного количества системных вызовов
+ *
+ * @return суммарное количество выполненных системных вызовов
+ *
+ */
+size_t awh::benchmark::syscall::total() noexcept {
+	// Получаем состояние счётчика системных вызовов
+	const awh_syscount_t * state = ::counter();
+	// Если счётчик системных вызовов недоступен
+	if(state == nullptr)
+		// Выводим нулевое количество вызовов
+		return 0;
+	// Суммарное количество системных вызовов
+	size_t result = 0;
+	/**
+	 * Перебираем разновидности системных вызовов, не считая обращений ко времени
+	 */
+	for(int32_t i = 0; i < AWH_SYSCOUNT_SYSCALLS; i++)
+		// Суммируем количество выполненных вызовов
+		result += static_cast <size_t> (state->entries[i].calls);
+	// Выводим суммарное количество системных вызовов
+	return result;
+}
+/**
+ * @brief Функция получения количества вызовов одной разновидности
+ *
+ * @param kind разновидность вызовов
+ * @return     количество выполненных вызовов
+ *
+ */
+size_t awh::benchmark::syscall::calls(const awh_syscount_kind_t kind) noexcept {
+	// Получаем состояние счётчика системных вызовов
+	const awh_syscount_t * state = ::counter();
+	// Если счётчик системных вызовов недоступен или разновидность недопустима
+	if((state == nullptr) || (kind < 0) || (kind >= AWH_SYSCOUNT_MAX))
+		// Выводим нулевое количество вызовов
+		return 0;
+	// Выводим количество выполненных вызовов
+	return static_cast <size_t> (state->entries[kind].calls);
+}
+/**
+ * @brief Функция получения времени, проведённого в вызовах одной разновидности
+ *
+ * @param kind разновидность вызовов
+ * @return     затраченное время в секундах
+ *
+ */
+double awh::benchmark::syscall::seconds(const awh_syscount_kind_t kind) noexcept {
+	// Получаем состояние счётчика системных вызовов
+	const awh_syscount_t * state = ::counter();
+	// Если счётчик системных вызовов недоступен или разновидность недопустима
+	if((state == nullptr) || (kind < 0) || (kind >= AWH_SYSCOUNT_MAX))
+		// Выводим нулевое время
+		return 0.0;
+	// Выводим затраченное время в секундах
+	return (static_cast <double> (state->entries[kind].nanoseconds) / 1e9);
+}
+/**
+ * @brief Функция получения количества изменений подписки, переданных ядру
+ *
+ * @return суммарное количество переданных изменений подписки
+ *
+ */
+size_t awh::benchmark::syscall::changes() noexcept {
+	// Получаем состояние счётчика системных вызовов
+	const awh_syscount_t * state = ::counter();
+	// Выводим суммарное количество переданных изменений подписки
+	return ((state != nullptr) ? static_cast <size_t> (state->changes) : 0);
+}
+/**
+ * @brief Функция получения наибольшего пакета изменений подписки
+ *
+ * @return наибольшее количество изменений подписки за один вызов
+ *
+ */
+size_t awh::benchmark::syscall::peak() noexcept {
+	// Получаем состояние счётчика системных вызовов
+	const awh_syscount_t * state = ::counter();
+	// Выводим наибольшее количество изменений подписки за один вызов
+	return ((state != nullptr) ? static_cast <size_t> (state->peak) : 0);
+}
+/**
+ * @brief Функция получения причины недоступности учёта системных вызовов
+ *
+ * @return описание причины для вывода в качестве пропущенного измерения
+ *
+ */
+std::string awh::benchmark::syscall::reason() noexcept {
+	// Получаем состояние счётчика системных вызовов
+	const awh_syscount_t * state = ::counter();
+	// Если счётчик системных вызовов доступен
+	if(state != nullptr)
+		// Выводим пустую причину
+		return std::string{""};
+	// Если подставная библиотека внедрена, но её двоичный контракт не совпал
+	if(::dlsym(RTLD_DEFAULT, AWH_SYSCOUNT_ENTRY_POINT) != nullptr)
+		// Выводим причину несовпадения двоичного контракта
+		return std::string("счётчик системных вызовов собран из другой редакции - пересоберите цель awh_BENCHMARK_syscount");
+	// Выводим причину отсутствия подставной библиотеки
+	return std::string("нет счётчика системных вызовов - см. tools/benchmark/syscount/README.md");
+}
+/**
+ * @brief Функция формирования сводки по системным вызовам
+ *
+ * @param operations количество выполненных операций
+ * @return           сводка для вывода либо пустая строка при недоступности учёта
+ *
+ */
+std::string awh::benchmark::syscall::summary(const size_t operations) noexcept {
+	// Если учёт системных вызовов недоступен или операции не выполнялись
+	if(!available() || (operations == 0))
+		// Выводим пустую сводку
+		return std::string{""};
+	// Структура вклада одной разновидности вызовов
+	struct entry_t {
+		// Разновидность вызовов
+		awh_syscount_kind_t kind;
+		// Количество выполненных вызовов
+		size_t calls;
+	};
+	// Список вклада разновидностей вызовов
+	std::vector <entry_t> entries;
+	// Резервируем память под список вклада разновидностей
+	entries.reserve(AWH_SYSCOUNT_SYSCALLS);
+	/**
+	 * Перебираем разновидности системных вызовов
+	 */
+	for(int32_t i = 0; i < AWH_SYSCOUNT_SYSCALLS; i++){
+		// Получаем количество выполненных вызовов разновидности
+		const size_t count = calls(static_cast <awh_syscount_kind_t> (i));
+		// Если вызовы этой разновидности выполнялись
+		if(count > 0)
+			// Добавляем разновидность в список вклада
+			entries.push_back(entry_t{static_cast <awh_syscount_kind_t> (i), count});
+	}
+	/**
+	 * Упорядочиваем список вклада по убыванию количества вызовов
+	 */
+	std::sort(entries.begin(), entries.end(), [](const entry_t & first, const entry_t & second) noexcept -> bool {
+		// Сравниваем количество выполненных вызовов
+		return (first.calls > second.calls);
+	});
+	// Буфер формирования сводки
+	char buffer[256];
+	// Выполняем формирование начала сводки
+	int32_t offset = ::snprintf(
+		buffer, sizeof(buffer), "вызовов: %.2f на операцию",
+		(static_cast <double> (total()) / static_cast <double> (operations))
+	);
+	// Количество выведенных разновидностей вызовов
+	size_t printed = 0;
+	/**
+	 * Перебираем список вклада разновидностей вызовов
+	 */
+	for(auto & item : entries){
+		// Если выведено достаточно разновидностей либо буфер исчерпан
+		if((printed >= 4) || (offset >= static_cast <int32_t> (sizeof(buffer))))
+			// Прекращаем перебор разновидностей
+			break;
+		// Выполняем формирование вклада разновидности вызовов
+		offset += ::snprintf(
+			buffer + offset, (sizeof(buffer) - static_cast <size_t> (offset)),
+			"%s%s %.2f", ((printed == 0) ? " (" : ", "),
+			awh_syscount_name(item.kind),
+			(static_cast <double> (item.calls) / static_cast <double> (operations))
+		);
+		// Считаем выведенную разновидность вызовов
+		printed++;
+	}
+	// Если разновидности вызовов выводились и буфер не исчерпан
+	if((printed > 0) && (offset < static_cast <int32_t> (sizeof(buffer) - 1))){
+		// Закрываем перечень разновидностей вызовов
+		buffer[offset++] = ')';
+		// Завершаем строку сводки
+		buffer[offset] = '\0';
+	}
+	// Выводим сводку по системным вызовам
+	return std::string(buffer);
+}
+/**
  * @brief Конструктор
  *
  */
-awh::benchmark::Result::Result() noexcept : value(0.0), details{""} {}
+awh::benchmark::Result::Result() noexcept :
+ skipped(false), value(0.0), reason{""}, details{""} {}
 
 /**
  * @brief Конструктор
@@ -303,8 +585,11 @@ int32_t main(int32_t argc, char ** argv){
 				"Использование: %s [параметры]\n\n"
 				"  --filter=ПОДСТРОКА  выполнить только сценарии с подстрокой в названии\n"
 				"  --relaxed           выполнить измерения без проверки порогов\n"
-				"  --help              вывести эту справку\n",
-				argv[0]
+				"  --help              вывести эту справку\n\n"
+				"Показатели по количеству обращений к ядру требуют внедрённого счётчика\n"
+				"системных вызовов и без него выводятся как пропущенные. Счётчик: %s\n"
+				"Устройство и приёмы работы: tools/benchmark/syscount/README.md\n",
+				argv[0], (awh::benchmark::syscall::available() ? "внедрён" : "не внедрён")
 			);
 			// Выводим успешный код выхода
 			return 0;
@@ -314,6 +599,8 @@ int32_t main(int32_t argc, char ** argv){
 	size_t executed = 0;
 	// Количество сценариев, не уложившихся в порог
 	size_t failed = 0;
+	// Количество пропущенных сценариев
+	size_t skipped = 0;
 	/**
 	 * Выводим заголовок таблицы результатов: ширина поля форматирования считается
 	 * в октетах, а кириллица в UTF-8 занимает по два октета на символ, поэтому
@@ -330,6 +617,27 @@ int32_t main(int32_t argc, char ** argv){
 			continue;
 		// Выполняем сценарий бенчмарка
 		const awh::benchmark::result_t result = scenario.run();
+		/**
+		 * Если измерение не выполнялось из-за отсутствия внешней оснастки, оно не
+		 * является ни успешным, ни провалившимся: порог к нему не применяется, а
+		 * код выхода набора от него не зависит
+		 */
+		if(result.skipped){
+			// Считаем пропущенный сценарий
+			skipped++;
+			// Выводим сведения о пропущенном сценарии
+			::printf(
+				"%-32s %14s %14.2f   %s  (%s)\n",
+				scenario.name.c_str(), "-", scenario.threshold,
+				"ПРОПУСК", scenario.units.c_str()
+			);
+			// Если сценарий сообщил причину пропуска
+			if(!result.reason.empty())
+				// Выводим причину пропуска сценария
+				::printf("%34s%s\n", "", result.reason.c_str());
+			// Переходим к следующему сценарию
+			continue;
+		}
 		// Считаем выполненный сценарий
 		executed++;
 		/**
@@ -353,7 +661,7 @@ int32_t main(int32_t argc, char ** argv){
 			::printf("%34s%s\n", "", result.details.c_str());
 	}
 	// Если ни один сценарий не выполнялся
-	if(executed == 0){
+	if((executed == 0) && (skipped == 0)){
 		// Выводим сообщение об отсутствии подходящих сценариев
 		::printf("\nСценарии не найдены\n");
 		// Выводим код выхода с ошибкой
@@ -365,6 +673,10 @@ int32_t main(int32_t argc, char ** argv){
 		::printf("\nВыполнено сценариев: %zu, все уложились в пороги\n", executed);
 	// Если часть сценариев не уложилась в пороги
 	else ::printf("\nВыполнено сценариев: %zu, не уложились в пороги: %zu\n", executed, failed);
+	// Если часть сценариев пропущена
+	if(skipped > 0)
+		// Выводим сведения о пропущенных сценариях
+		::printf("Пропущено сценариев: %zu\n", skipped);
 	// Выводим код выхода по результатам проверки порогов
 	return ((failed == 0) ? 0 : 1);
 }

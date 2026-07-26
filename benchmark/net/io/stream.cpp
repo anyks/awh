@@ -60,6 +60,17 @@ namespace {
 	 *
 	 */
 	static constexpr double ALLOCATIONS_THRESHOLD = 1.0;
+	/**
+	 * @brief Порог количества системных вызовов на один блок
+	 *
+	 * @details Здесь движок работает так, как надо: на блок приходится одна
+	 *          передача, один приём и малая доля возврата за готовностью, потому
+	 *          что очередь отправки опустошается в пределах одного пробуждения
+	 *          ядра. Порог стоит сторожем: его превышение означает, что возврат за
+	 *          готовностью снова выполняется на каждый блок
+	 *
+	 */
+	static constexpr double SYSCALLS_THRESHOLD = 2.5;
 
 	/**
 	 * @brief Структура состояния прогона сценария
@@ -137,8 +148,9 @@ namespace {
 				if(state.received >= STREAM_VOLUME){
 					// Запоминаем момент окончания замера
 					state.finish = std::chrono::steady_clock::now();
-					// Отключаем учёт выделений памяти
+					// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
 					awh::benchmark::counting(false);
+					awh::benchmark::syscall::counting(false);
 					// Останавливаем цикл событий
 					state.stop = true;
 				}
@@ -166,6 +178,8 @@ namespace {
 			if(ok){
 				// Включаем учёт выделений памяти
 				awh::benchmark::counting(true);
+				// Включаем учёт системных вызовов
+				awh::benchmark::syscall::counting(true);
 				// Запоминаем момент начала замера
 				state.start = std::chrono::steady_clock::now();
 				// Устанавливаем количество октетов блока, ожидающих записи
@@ -219,10 +233,8 @@ namespace {
 		result.bytes = state.received;
 		// Устанавливаем затраченное время
 		result.seconds = std::chrono::duration <double> (state.finish - state.start).count();
-		// Получаем статистику выделений памяти
-		awh::benchmark::allocations(result.allocations, result.allocated);
-		// Получаем пиковый объём занятой процессом памяти
-		result.footprint = footprint();
+		// Снимаем показатели окружения по итогам замера
+		collect(result);
 		// Выполняем деинициализацию движка
 		io.deinitialize();
 		// Выводим итоги прогона сценария
@@ -285,9 +297,42 @@ namespace {
 		"net/io/stream/throughput", "МБ/с", STREAM_THRESHOLD,
 		awh::benchmark::bound_t::MINIMUM, &::throughput
 	);
+	/**
+	 * @brief Функция прогона сценария учёта системных вызовов на один блок
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t syscalls() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Если учёт системных вызовов недоступен
+		if(!awh::benchmark::syscall::available()){
+			// Отмечаем измерение как не выполнявшееся
+			result.skipped = true;
+			// Устанавливаем причину, по которой измерение не выполнялось
+			result.reason = awh::benchmark::syscall::reason();
+			// Выводим результат измерения
+			return result;
+		}
+		// Получаем итоги прогона сценария
+		const outcome_t & outcome = ::measured();
+		// Устанавливаем измеренное значение
+		result.value = perSyscall(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+
 	// Регистрируем сценарий учёта выделений памяти на один блок
 	static const bool gAllocations = awh::benchmark::add(
 		"net/io/stream/allocations-per-chunk", "выделений", ALLOCATIONS_THRESHOLD,
 		awh::benchmark::bound_t::MAXIMUM, &::allocations
+	);
+	// Регистрируем сценарий учёта системных вызовов на один блок
+	static const bool gSyscalls = awh::benchmark::add(
+		"net/io/stream/syscalls-per-chunk", "вызовов", SYSCALLS_THRESHOLD,
+		awh::benchmark::bound_t::MAXIMUM, &::syscalls
 	);
 };

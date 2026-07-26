@@ -66,6 +66,21 @@ namespace {
 	 *
 	 */
 	static constexpr double ALLOCATIONS_THRESHOLD = 40.0;
+	/**
+	 * @brief Порог количества системных вызовов на одно подключение
+	 *
+	 * @details Порог задан вплотную к измеренному значению, потому что счётчик
+	 *          вызовов детерминирован: на той же нагрузке он совпадает от прогона
+	 *          к прогону вплоть до единиц, и запас ему нужен только на разницу
+	 *          между прогревом и замером. Измеренная величина втрое превышает
+	 *          необходимое: полный цикл короткоживущего соединения требует одного
+	 *          создания сокета, одного подключения, одного принятия и двух
+	 *          закрытий, всё остальное - опрос конфигурации сети на каждое
+	 *          создание события. Целевое значение после его устранения - не более
+	 *          десяти вызовов на подключение
+	 *
+	 */
+	static constexpr double SYSCALLS_THRESHOLD = 34.0;
 
 	/**
 	 * @brief Структура состояния прогона сценария
@@ -209,6 +224,8 @@ namespace {
 					state.measuring = true;
 					// Включаем учёт выделений памяти
 					awh::benchmark::counting(true);
+					// Включаем учёт системных вызовов
+					awh::benchmark::syscall::counting(true);
 					// Запоминаем момент начала замера
 					state.start = std::chrono::steady_clock::now();
 				}
@@ -220,8 +237,9 @@ namespace {
 				if(state.done >= ACCEPT_ROUNDS){
 					// Запоминаем момент окончания замера
 					state.finish = std::chrono::steady_clock::now();
-					// Отключаем учёт выделений памяти
+					// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
 					awh::benchmark::counting(false);
+					awh::benchmark::syscall::counting(false);
 					// Останавливаем цикл событий
 					state.stop = true;
 					// Прекращаем прогон сценария
@@ -235,10 +253,8 @@ namespace {
 		result.operations = state.done;
 		// Устанавливаем затраченное время
 		result.seconds = std::chrono::duration <double> (state.finish - state.start).count();
-		// Получаем статистику выделений памяти
-		awh::benchmark::allocations(result.allocations, result.allocated);
-		// Получаем пиковый объём занятой процессом памяти
-		result.footprint = footprint();
+		// Снимаем показатели окружения по итогам замера
+		collect(result);
 		// Выполняем деинициализацию движка
 		io.deinitialize();
 		// Выводим итоги прогона сценария
@@ -297,10 +313,43 @@ namespace {
 		return result;
 	}
 
+	/**
+	 * @brief Функция прогона сценария учёта системных вызовов на одно подключение
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t syscalls() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Если учёт системных вызовов недоступен
+		if(!awh::benchmark::syscall::available()){
+			// Отмечаем измерение как не выполнявшееся
+			result.skipped = true;
+			// Устанавливаем причину, по которой измерение не выполнялось
+			result.reason = awh::benchmark::syscall::reason();
+			// Выводим результат измерения
+			return result;
+		}
+		// Получаем итоги прогона сценария установления соединений
+		const outcome_t & outcome = ::measured();
+		// Устанавливаем измеренное значение
+		result.value = perSyscall(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+
 	// Регистрируем сценарий скорости установления соединений
 	static const bool gAccept = awh::benchmark::add(
 		"net/io/accept/connections", "подключений/с", ACCEPT_THRESHOLD,
 		awh::benchmark::bound_t::MINIMUM, &::connections
+	);
+	// Регистрируем сценарий учёта системных вызовов на одно подключение
+	static const bool gSyscalls = awh::benchmark::add(
+		"net/io/accept/syscalls-per-connection", "вызовов", SYSCALLS_THRESHOLD,
+		awh::benchmark::bound_t::MAXIMUM, &::syscalls
 	);
 	// Регистрируем сценарий учёта выделений памяти на одно подключение
 	static const bool gAllocations = awh::benchmark::add(

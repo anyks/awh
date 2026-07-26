@@ -76,6 +76,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
     # Если нужно собрать и динамическую библиотеку
     if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC
+            ${CMAKE_DL_LIBS}
             ${PROJECT_NAME}
             ${TCMALLOC_LIBRARIES}
             ${AWH_FLAGS}
@@ -83,6 +84,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
     # Если нужно собрать и статическую библиотеку
     else (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC
+            ${CMAKE_DL_LIBS}
             ${PROJECT_NAME}
             ${DEPEND_LIBRARY}
             ${PCRE_LIBRARY}
