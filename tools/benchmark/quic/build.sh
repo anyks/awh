@@ -15,6 +15,17 @@ readonly RELEASE="${2:-$ROOT/build-release}"
 # Каталог сборки библиотеки ngtcp2
 readonly NGTCP2_BUILD="$ROOT/build-ngtcp2"
 
+# Каталог исходных текстов подмодуля ngtcp2
+#
+# Путь берётся из .gitmodules: подмодуль зарегистрирован вложенным
+# (submodules/submodules/ngtcp2), а на запасной случай подставляется он же
+NGTCP2_SRC=$(git -C "$ROOT" config --file "$ROOT/.gitmodules" --get-regexp 'submodule\..*ngtcp2\.path' 2>/dev/null | awk '{print $2}' | head -1)
+if [ -z "$NGTCP2_SRC" ] || [ ! -d "$ROOT/$NGTCP2_SRC" ]; then
+	# Подставляем канонический вложенный путь подмодуля
+	NGTCP2_SRC="submodules/submodules/ngtcp2"
+fi
+readonly NGTCP2_SRC="$ROOT/$NGTCP2_SRC"
+
 # Флаги сборки стендов
 #
 # Уровень оптимизации совпадает с уровнем сборки библиотеки в режиме Release:
@@ -50,8 +61,8 @@ mkdir -p "$OUTPUT" || exit 1
 #
 if [ ! -f "$NGTCP2_BUILD/lib/libngtcp2.a" ]; then
 	echo "Build \"ngtcp2\" library"
-	cmake -S "$ROOT/submodules/ngtcp2" -B "$NGTCP2_BUILD" -DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_CXX_FLAGS=-std=c++17 -DENABLE_LIB_ONLY=ON \
+	cmake -S "$NGTCP2_SRC" -B "$NGTCP2_BUILD" -DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_CXX_FLAGS=-std=c++17 -DENABLE_LIB_ONLY=ON -DBUILD_TESTING=OFF \
 		-DENABLE_BORINGSSL=ON -DENABLE_STATIC_LIB=ON -DENABLE_SHARED_LIB=OFF \
 		-DBORINGSSL_INCLUDE_DIR="$BSSL_INC" \
 		-DBORINGSSL_LIBRARIES="$BSSL_SSL;$BSSL_CRYPTO;c++" || exit 1
@@ -70,8 +81,8 @@ echo "Build \"ngtcp2\""
 c++ -std=c++17 $FLAGS \
 	-DQUIC_CERT_FILE="\"$CERT\"" -DQUIC_KEY_FILE="\"$KEY\"" \
 	-o "$OUTPUT/ngtcp2" "$STANDS/ngtcp2.cpp" \
-	-I"$ROOT/submodules/ngtcp2/lib/includes" -I"$NGTCP2_BUILD/lib/includes" \
-	-I"$ROOT/submodules/ngtcp2/crypto/includes" -I"$BSSL_INC" \
+	-I"$NGTCP2_SRC/lib/includes" -I"$NGTCP2_BUILD/lib/includes" \
+	-I"$NGTCP2_SRC/crypto/includes" -I"$BSSL_INC" \
 	"$NGTCP2_BUILD/crypto/boringssl/libngtcp2_crypto_boringssl.a" "$NGTCP2_BUILD/lib/libngtcp2.a" \
 	"$BSSL_SSL" "$BSSL_CRYPTO" -lc++ 2> /dev/null || exit 1
 

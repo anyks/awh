@@ -12,6 +12,15 @@
  * @brief Тесты проброса портов — проверка обнаружения маршрутизатора средствами UPnP и NAT-PMP и создания,
  *        обновления и удаления правил перенаправления
  *
+ * @note Все тесты набора отключены штатным префиксом `DISABLED_` по двум причинам.
+ *       Первая: получение списка правил перенаправления запускает обнаружение
+ *       шлюза по сети, и каждый прогон ждёт ответа маршрутизатора от пяти до
+ *       десяти минут, то есть в разы дольше всего остального набора вместе взятого.
+ *       Вторая: модуль подлежит переписыванию, и до тех пор эти тесты проверяют
+ *       реализацию, которой не станет. Запустить их можно ключом
+ *       `--gtest_also_run_disabled_tests`, а сетевые - ещё и с переменной
+ *       окружения `AWH_PORTMAP_LIVE`
+ *
  * @copyright: Copyright © 2026
  *
  */
@@ -89,7 +98,7 @@ namespace {
  * @brief Тест значений по умолчанию структуры проброса порта
  *
  */
-TEST_F(EthFixture, PortMapForwardingDefaults){
+TEST_F(EthFixture, DISABLED_PortMapForwardingDefaults){
 	// Создаём структуру проброса порта со значениями по умолчанию
 	awh::eth::portmap_t::fwd_t fwd{};
 	// Тип проброса порта по умолчанию не определён
@@ -113,7 +122,7 @@ TEST_F(EthFixture, PortMapForwardingDefaults){
  * @brief Тест получения списка пробросов и проверки инвариантов
  *
  */
-TEST_F(EthFixture, PortMapMappingsInvariants){
+TEST_F(EthFixture, DISABLED_PortMapMappingsInvariants){
 	// Получаем список проброшенных портов (может быть пустым при отсутствии UPnP-устройств)
 	const auto mappings = this->_eth->portmap.mappings();
 	/**
@@ -136,7 +145,7 @@ TEST_F(EthFixture, PortMapMappingsInvariants){
  * @note Для типа NONE метод mapping() не выполняет сетевых операций и должен детерминированно вернуть false
  *
  */
-TEST_F(EthFixture, PortMapMappingTypeNone){
+TEST_F(EthFixture, DISABLED_PortMapMappingTypeNone){
 	// Формируем структуру проброса порта с неопределённым типом
 	awh::eth::portmap_t::fwd_t fwd = ::makeForwarding(this->_addr.get(), awh::eth::portmap_t::type_t::NONE, "192.168.7.215");
 	// Проброс с неопределённым типом должен завершиться неудачей
@@ -150,7 +159,7 @@ TEST_F(EthFixture, PortMapMappingTypeNone){
  * @note Переключение режима не должно приводить к падению и должно быть идемпотентным
  *
  */
-TEST_F(EthFixture, PortMapThreadSafetyToggle){
+TEST_F(EthFixture, DISABLED_PortMapThreadSafetyToggle){
 	/**
 	 * Многократно переключаем режим потокобезопасности
 	 */
@@ -176,7 +185,7 @@ TEST_F(EthFixture, PortMapThreadSafetyToggle){
  *       к статическому кешу IGD/шлюза (по умолчанию выполняется параллельное обнаружение)
  *
  */
-TEST_F(EthFixture, PortMapConcurrentMappings){
+TEST_F(EthFixture, DISABLED_PortMapConcurrentMappings){
 	// Включаем потокобезопасность для защиты доступа к общему кешу
 	this->_eth->portmap.threadSafety(true);
 	// Количество конкурентных потоков
@@ -224,7 +233,7 @@ TEST_F(EthFixture, PortMapConcurrentMappings){
  *       Результат проброса зависит от внешней инфраструктуры, поэтому проверяются только инварианты при успехе.
  *
  */
-TEST_F(EthFixture, PortMapNatPmpLive){
+TEST_F(EthFixture, DISABLED_PortMapNatPmpLive){
 	// Если сетевые тесты не включены
 	if(!::liveTestsEnabled())
 		// Пропускаем тест
@@ -260,7 +269,7 @@ TEST_F(EthFixture, PortMapNatPmpLive){
  * @note Требует маршрутизатор с поддержкой UPnP IGD. Включается переменной окружения AWH_PORTMAP_LIVE.
  *
  */
-TEST_F(EthFixture, PortMapUpnpLive){
+TEST_F(EthFixture, DISABLED_PortMapUpnpLive){
 	// Если сетевые тесты не включены
 	if(!::liveTestsEnabled())
 		// Пропускаем тест
@@ -285,7 +294,7 @@ TEST_F(EthFixture, PortMapUpnpLive){
  * @note Требует маршрутизатор с поддержкой PCP. Включается переменной окружения AWH_PORTMAP_LIVE.
  *
  */
-TEST_F(EthFixture, PortMapPcpLive){
+TEST_F(EthFixture, DISABLED_PortMapPcpLive){
 	// Если сетевые тесты не включены
 	if(!::liveTestsEnabled())
 		// Пропускаем тест

@@ -385,7 +385,7 @@ namespace {
  * @brief Конструктор отправленного блока данных потока приложения
  *
  */
-awh::quic::Connection::Chunk::Chunk() noexcept : sid(0), offset(0), fin(false), data{""} {}
+awh::quic::Connection::Chunk::Chunk() noexcept : sid(0), offset(0), size(0), fin(false), data{""} {}
 
 /**
  * @brief Конструктор учётной записи отправленного пакета
@@ -573,7 +573,7 @@ awh::quic::Connection::RemoteCid::RemoteCid() noexcept : seq(0), used(false), ha
  *
  */
 awh::quic::Connection::Stream::Stream() noexcept :
- txOffset(0), txBuffer{""}, txCursor(0), txMax(0), txFin(false), txFinSent(false),
+ txOffset(0), txBuffer{""}, txCursor(0), txAcked(0), txMax(0), txFin(false), txFinSent(false),
  txReset(false), txResetSent(false), txResetCode(0), txBlocked(false),
  txBlockedAt(numeric_limits <uint64_t>::max()),
  rxOffset(0), rxHigh(0), rxReady{""}, rxMax(0), rxMaxQueued(false),
@@ -950,9 +950,51 @@ void awh::quic::Connection::requeue(const space_t space, const sent_t & packet) 
 	/**
 	 * Перебираем отправленные блоки данных потоков приложения
 	 */
-	for(auto & chunk : packet.stream)
+	for(auto & chunk : packet.stream){
+		/**
+		 * Блок пустого фрейма с FIN либо блок ретрансмиссии, уже несущий свои данные,
+		 * ставится в очередь как есть. Блок свежей отправки данных при этом не несёт -
+		 * он ссылается на буфер отправки потока, откуда данные и перечитываются
+		 */
+		if((chunk.size == 0) || !chunk.data.empty()){
+			// Ставим блок данных потока в очередь ретрансмиссии
+			this->_stream.retransmit.push_back(chunk);
+			// Переходим к следующему блоку
+			continue;
+		}
+		// Ищем поток по идентификатору
+		auto i = this->_stream.list.find(chunk.sid);
+		// Если поток уже удалён (сброшен либо собран) - ретранслировать нечего
+		if(i == this->_stream.list.end())
+			// Переходим к следующему блоку
+			continue;
+		// Получаем состояние потока
+		auto & stream = i->second;
+		// Смещение начала буфера отправки в потоке
+		const uint64_t base = (stream.txOffset - stream.txCursor);
+		/**
+		 * Если данные блока уже подтверждены и освобождены уплотнением - ретрансмиссия
+		 * не нужна: подтверждённый пакет, ошибочно признанный потерянным, повторной
+		 * отправки не требует (RFC 9002 §6.3)
+		 */
+		if((chunk.offset < base) || ((chunk.offset + chunk.size) > (base + stream.txBuffer.size())))
+			// Переходим к следующему блоку
+			continue;
+		// Формируем блок данных для очереди ретрансмиссии
+		chunk_t rtx;
+		// Устанавливаем идентификатор потока
+		rtx.sid = chunk.sid;
+		// Устанавливаем смещение данных в потоке
+		rtx.offset = chunk.offset;
+		// Устанавливаем длину блока данных
+		rtx.size = chunk.size;
+		// Устанавливаем флаг завершения потока
+		rtx.fin = chunk.fin;
+		// Перечитываем данные блока из удержанного буфера отправки потока
+		rtx.data.assign(stream.txBuffer, static_cast <size_t> (chunk.offset - base), static_cast <size_t> (chunk.size));
 		// Ставим блок данных потока в очередь ретрансмиссии
-		this->_stream.retransmit.push_back(chunk);
+		this->_stream.retransmit.push_back(::move(rtx));
+	}
 	/**
 	 * Перебираем отправленные управляющие фреймы пакета
 	 */
@@ -1057,6 +1099,53 @@ void awh::quic::Connection::requeue(const space_t space, const sent_t & packet) 
 			// Остальные управляющие фреймы не ретранслируются
 			default: break;
 		}
+	}
+}
+/**
+ * @brief Метод учёта подтверждения отправленного блока данных потока (RFC 9000 §13.3)
+ *
+ * @param chunk отправленный блок данных потока из учётной записи пакета
+ *
+ */
+void awh::quic::Connection::settle(const chunk_t & chunk) noexcept {
+	// Блок без данных (пустой фрейм с FIN) в буфере отправки освобождать нечего
+	if(chunk.size == 0)
+		// Выходим из метода
+		return;
+	// Ищем поток по идентификатору
+	auto i = this->_stream.list.find(chunk.sid);
+	// Если поток уже удалён - подтверждать нечего
+	if(i == this->_stream.list.end())
+		// Выходим из метода
+		return;
+	// Получаем состояние потока
+	auto & stream = i->second;
+	// Вычисляем смещение конца подтверждённого блока
+	const uint64_t end = (chunk.offset + chunk.size);
+	// Если блок целиком лежит в уже подтверждённом префиксе - повторное подтверждение
+	if(end <= stream.txAcked)
+		// Выходим из метода
+		return;
+	// Если блок примыкает к подтверждённому префиксу - продвигаем префикс
+	if(chunk.offset <= stream.txAcked)
+		// Продвигаем непрерывно подтверждённый префикс до конца блока
+		stream.txAcked = end;
+	// Если блок подтверждён не по порядку - запоминаем его как примыкающий диапазон
+	else stream.txPending.emplace(chunk.offset, end);
+	/**
+	 * Поглощаем примыкающие к префиксу подтверждённые диапазоны: отправленные
+	 * блоки примыкают вплотную, поэтому конец одного - начало следующего, и
+	 * префикс продвигается по цепочке найденных по началу диапазонов
+	 */
+	auto next = stream.txPending.find(stream.txAcked);
+	// Пока в очереди есть диапазон, начинающийся на границе префикса
+	while(next != stream.txPending.end()){
+		// Продвигаем префикс до конца поглощённого диапазона
+		stream.txAcked = next->second;
+		// Удаляем поглощённый диапазон из очереди
+		stream.txPending.erase(next);
+		// Ищем следующий примыкающий диапазон
+		next = stream.txPending.find(stream.txAcked);
 	}
 }
 /**
@@ -3018,6 +3107,14 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 						}
 						// Учитываем подтверждённый пакет в congestion control (RFC 9002 §7.3.1)
 						this->acked(* i);
+						/**
+						 * Продвигаем подтверждённый префикс буферов отправки потоков:
+						 * подтверждённые данные удерживались для ретрансмиссии по ссылке
+						 * и теперь могут быть освобождены уплотнением (RFC 9000 §13.3)
+						 */
+						for(auto & chunk : i->stream)
+							// Учитываем подтверждение отправленного блока данных потока
+							this->settle(chunk);
 					}
 					// Удаляем подтверждённые пакеты из списка отправленных
 					item.sent.erase(position, item.sent.end());
@@ -4183,9 +4280,12 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 			sent.sid = front.sid;
 			// Устанавливаем смещение данных в потоке
 			sent.offset = front.offset;
+			// Устанавливаем длину отправленного блока
+			sent.size = chunk;
 			// Устанавливаем флаг завершения потока
 			sent.fin = fin;
-			// Устанавливаем данные блока
+			// Данные блока ретрансмиссии сохраняются: их источник в очереди ретрансмиссии
+			// вырезается по мере упаковки, поэтому перечитать их из буфера потока нельзя
 			sent.data = front.data.substr(0, chunk);
 			// Запоминаем отправленный блок данных в учётной записи пакета
 			meta.stream.push_back(::move(sent));
@@ -4277,10 +4377,15 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 				sent.sid = entry.first;
 				// Устанавливаем смещение данных в потоке
 				sent.offset = stream.txOffset;
+				// Устанавливаем длину отправленного блока
+				sent.size = chunk;
 				// Устанавливаем флаг завершения потока
 				sent.fin = fin;
-				// Устанавливаем данные блока
-				sent.data.assign(stream.txBuffer, stream.txCursor, chunk);
+				/**
+				 * Данные блока в учётную запись не копируются: она ссылается на буфер
+				 * отправки потока (sid+offset+size), а буфер удерживается до подтверждения.
+				 * Копия делается лишь при потере - перечитыванием из буфера в requeue()
+				 */
 				// Запоминаем отправленный блок данных в учётной записи пакета
 				meta.stream.push_back(::move(sent));
 				// Устанавливаем флаг наличия ack-eliciting фреймов
@@ -4296,11 +4401,22 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 				 * и превышает порог: вырезание на каждый пакет давало бы сдвиг всего
 				 * остатка буфера и квадратичную стоимость на длинных передачах
 				 */
-				if((stream.txCursor >= COMPACT_THRESHOLD) && ((stream.txCursor * 2) >= stream.txBuffer.size())){
-					// Вырезаем потреблённую часть буфера
-					stream.txBuffer.erase(0, stream.txCursor);
-					// Сбрасываем курсор упакованных данных
-					stream.txCursor = 0;
+				// Смещение начала буфера отправки в потоке: отправленное смещение за вычетом курсора
+				const uint64_t base = (stream.txOffset - stream.txCursor);
+				// Размер подтверждённого префикса, доступного к освобождению уплотнением
+				const size_t freeable = ((stream.txAcked > base) ? ::min(static_cast <size_t> (stream.txAcked - base), stream.txCursor) : 0);
+				/**
+				 * Освобождаем только подтверждённую часть буфера: отправленные, но ещё не
+				 * подтверждённые данные удерживаются для ретрансмиссии по ссылке из учётной
+				 * записи пакета. Уплотняем, когда освобождаемая часть занимает не менее
+				 * половины буфера и превышает порог: вырезание на каждый пакет давало бы
+				 * сдвиг всего остатка и квадратичную стоимость на длинных передачах
+				 */
+				if((freeable >= COMPACT_THRESHOLD) && ((freeable * 2) >= stream.txBuffer.size())){
+					// Вырезаем подтверждённую часть буфера
+					stream.txBuffer.erase(0, freeable);
+					// Продвигаем курсор упакованных данных на освобождённый объём
+					stream.txCursor -= freeable;
 				}
 				// Если отправлено завершение потока
 				if(fin)

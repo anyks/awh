@@ -150,8 +150,15 @@ class IoPingParameterizedFixture : public IoFixture, public ::testing::WithParam
 /**
  * @brief Тест параметризованного выполнения работы пингования
  *
+ * @note Тест отключён штатным префиксом `DISABLED_`: он открывает сырой сокет, то
+ *       есть требует прав суперпользователя, и обращается к узлам в интернете, то
+ *       есть зависит от наличия сети и её задержек. Ни то, ни другое не годится
+ *       для набора, который должен выполняться на любой машине без подготовки.
+ *       Запустить его можно ключом `--gtest_also_run_disabled_tests` из-под
+ *       суперпользователя
+ *
  */
-TEST_P(IoPingParameterizedFixture, IoPingTest){
+TEST_P(IoPingParameterizedFixture, DISABLED_IoPingTest){
 	// Идентификатор события
 	awh::event::id_t eid = 0;
 	/**

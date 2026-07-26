@@ -683,14 +683,26 @@ void awh::http::h2::hpack::huffman::encode(string_view input, string & output) n
  *
  */
 bool awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t size, string & output) noexcept {
-	// Очищаем выходной буфер (декодирование замещает его содержимое, а не дописывает)
-	output.clear();
 	// Получаем табличный декодер Huffman
 	const ::huff_table_t & table = ::huffTable();
 	// Текущий узел дерева
 	int32_t current = 0;
-	// Резервируем память под декодированную строку (оценка сверху: 8 бит на символ)
-	output.reserve(size + (size / 2));
+	/**
+	 * Расширяем буфер под оценку сверху: короче пяти бит кодов в таблице
+	 * RFC 7541 Appendix B нет, значит символов не больше, чем бит делённых на пять.
+	 * Запись ведётся указателем, а не методом push_back: тот в стандартной
+	 * библиотеке не встраивается, и на каждый декодированный символ приходился бы
+	 * вызов через границу динамической библиотеки
+	 */
+	const size_t bound = (((size * 8) / 5) + 1);
+	// Если разрядности буфера не хватает - расширяем его
+	if(output.size() < bound)
+		// Расширяем буфер до оценки сверху
+		output.resize(bound);
+	// Указатель на начало выходного буфера
+	char * const begin = &output[0];
+	// Указатель на текущую позицию записи
+	char * cursor = begin;
 	/**
 	 * Выполняем перебор всех байтов входного буфера
 	 */
@@ -700,25 +712,31 @@ bool awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t si
 		// Получаем шаг декодирования старшего полубайта
 		const ::huff_step_t & high = table.steps[(static_cast <size_t> (current) * 16) + (byte >> 4)];
 		// Если получена недопустимая кодовая последовательность
-		if(high.fail)
+		if(high.fail){
+			// Очищаем выходной буфер: содержимое недостоверно
+			output.clear();
 			// Фиксируем ошибку декодирования
 			return false;
+		}
 		// Если на шаге декодирован символ
 		if(high.sym >= 0)
 			// Дописываем декодированный символ
-			output.push_back(static_cast <char> (high.sym));
+			(* cursor++) = static_cast <char> (high.sym);
 		// Переходим в достигнутый узел дерева
 		current = high.next;
 		// Получаем шаг декодирования младшего полубайта
 		const ::huff_step_t & low = table.steps[(static_cast <size_t> (current) * 16) + (byte & 0x0F)];
 		// Если получена недопустимая кодовая последовательность
-		if(low.fail)
+		if(low.fail){
+			// Очищаем выходной буфер: содержимое недостоверно
+			output.clear();
 			// Фиксируем ошибку декодирования
 			return false;
+		}
 		// Если на шаге декодирован символ
 		if(low.sym >= 0)
 			// Дописываем декодированный символ
-			output.push_back(static_cast <char> (low.sym));
+			(* cursor++) = static_cast <char> (low.sym);
 		// Переходим в достигнутый узел дерева
 		current = low.next;
 	}
@@ -728,10 +746,15 @@ bool awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t si
 	 */
 	if(current != 0){
 		// Если хвост длиннее 7 бит или содержит нулевые биты
-		if((table.depth[current] > 7) || !table.ones[current])
+		if((table.depth[current] > 7) || !table.ones[current]){
+			// Очищаем выходной буфер: содержимое недостоверно
+			output.clear();
 			// Фиксируем ошибку декодирования
 			return false;
+		}
 	}
+	// Усекаем буфер до фактически декодированной длины
+	output.resize(static_cast <size_t> (cursor - begin));
 	// Строка декодирована
 	return true;
 }
@@ -1560,6 +1583,36 @@ void awh::http::h2::hpack::Encoder::sensitiveHeuristic(const bool mode) noexcept
 	this->_sensitiveHeuristic = mode;
 }
 /**
+ * @brief Метод управления адаптивной индексацией заголовков
+ *
+ * @param mode режим адаптивной индексации
+ *
+ */
+void awh::http::h2::hpack::Encoder::adaptiveIndexing(const bool mode) noexcept {
+	// Сбрасываем позицию записи кольца хешей
+	this->_historyIndex = 0;
+	// Сбрасываем признак заполненности кольца хешей
+	this->_historyWrapped = false;
+	// Если адаптивная индексация выключается
+	if(!mode){
+		// Освобождаем кольцо хешей: пустое кольцо и означает выключенный режим
+		this->_history.clear();
+		// Освобождаем занятую кольцом память
+		this->_history.shrink_to_fit();
+		// Выходим из метода
+		return;
+	}
+	/**
+	 * Ёмкость кольца берётся от размера таблицы: столько записей она вместила бы
+	 * при среднем размере заголовка втрое больше служебной надбавки. Кольцо
+	 * заведомо короче рабочего набора уникальных значений, и именно поэтому
+	 * разовые значения повтора внутри него не набирают
+	 */
+	const size_t capacity = ::max(static_cast <size_t> (1), static_cast <size_t> (this->_table.maxSize() / (32 * 3)));
+	// Выделяем кольцо хешей с дополнительной ячейкой под ограничитель перебора
+	this->_history.assign((capacity + 1), 0);
+}
+/**
  * @brief Метод кодирования списка заголовков
  *
  * @param fields     заголовки (псевдо-заголовки :method/:path/... должны идти первыми)
@@ -1641,22 +1694,89 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
 		// Кодирование заголовка завершено
 		return;
 	}
+	// Определяем, стоит ли заносить заголовок в динамическую таблицу
+	const bool indexing = this->indexable(name, value);
 	/**
-	 * Literal с инкрементальной индексацией (RFC 7541 §6.2.1, префикс 6 бит, старший бит 0x40).
+	 * Если заголовок индексируется - Literal с инкрементальной индексацией
+	 * (RFC 7541 §6.2.1, префикс 6 бит, старший бит 0x40), иначе Literal without
+	 * Indexing (RFC 7541 §6.2.2, префикс 4 бита, паттерн 0000xxxx).
+	 *
+	 * Выбор представления обязан совпасть с решением об индексации: декодер пира
+	 * добавляет запись в таблицу именно по представлению, и расхождение
+	 * рассинхронизировало бы таблицы, а с ними и все последующие индексы.
+	 *
 	 * nameIndex == 0 - имя кодируется строкой; иначе ссылаемся на существующее имя
 	 */
-	prefixed::encode(output, nameIndex, 6, 0x40);
+	if(indexing)
+		// Дописываем представление с инкрементальной индексацией
+		prefixed::encode(output, nameIndex, 6, 0x40);
+	// Если заголовок не индексируется
+	else prefixed::encode(output, nameIndex, 4, 0x00);
 	// Если совпадение по имени не найдено
 	if(nameIndex == 0)
 		// Дописываем название заголовка строкой
 		::encodeStringLiteral(output, name, useHuffman);
 	// Дописываем значение заголовка строкой
 	::encodeStringLiteral(output, value, useHuffman);
+	// Если заголовок индексируется
+	if(indexing)
+		/**
+		 * Добавляем в свою динамическую таблицу - декодер пира сделает то же,
+		 * поэтому индексы остаются синхронными
+		 */
+		this->_table.add(name, value);
+}
+/**
+ * @brief Метод принятия решения об индексации заголовка
+ *
+ * @param name  название заголовка
+ * @param value значение заголовка
+ * @return      признак необходимости занести заголовок в динамическую таблицу
+ *
+ */
+bool awh::http::h2::hpack::Encoder::indexable(const string_view name, const string_view value) noexcept {
+	// Если адаптивная индексация выключена - индексируем всё подряд
+	if(this->_history.empty())
+		// Заголовок подлежит индексации
+		return true;
+	// Вычисляем хеш пары название-значение
+	const uint32_t hash = static_cast <uint32_t> (
+		(std::hash <string_view> {}(name) * 31) ^ std::hash <string_view> {}(value)
+	);
 	/**
-	 * Добавляем в свою динамическую таблицу - декодер пира сделает то же,
-	 * поэтому индексы остаются синхронными
+	 * Ёмкость кольца на единицу меньше выделенного места: последняя ячейка
+	 * отведена под ограничитель перебора и в историю не входит
 	 */
-	this->_table.add(name, value);
+	const size_t capacity = (this->_history.size() - 1);
+	// Позиция, до которой кольцо заполнено
+	const size_t last = (this->_historyWrapped ? capacity : this->_historyIndex);
+	/**
+	 * Ставим искомый хеш ограничителем за концом заполненной части: перебор
+	 * тогда обходится без проверки границы на каждом шаге и останавливается
+	 * либо на совпадении, либо на ограничителе
+	 */
+	this->_history[last] = hash;
+	// Позиция найденного совпадения
+	size_t position = 0;
+	/**
+	 * Выполняем поиск хеша среди ранее встреченных
+	 */
+	while(this->_history[position] != hash)
+		// Переходим к следующей позиции кольца
+		position++;
+	// Запоминаем хеш заголовка в кольце
+	this->_history[this->_historyIndex] = hash;
+	// Продвигаем позицию записи кольца
+	this->_historyIndex = ((this->_historyIndex + 1) % capacity);
+	// Если кольцо заполнено целиком - запоминаем это
+	this->_historyWrapped = (this->_historyWrapped || (this->_historyIndex == 0));
+	/**
+	 * Индексируем заголовок, если он уже встречался в пределах кольца. Пока кольцо
+	 * не заполнено, индексируем всё: на старте соединения истории ещё нет, и отказ
+	 * от индексации лишил бы таблицу как раз тех заголовков, которые повторяются
+	 * в каждом запросе
+	 */
+	return ((position < last) || !this->_historyWrapped);
 }
 /**
  * @brief Конструктор
@@ -1666,4 +1786,8 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
  */
 awh::http::h2::hpack::Encoder::Encoder(const uint32_t maxTableSize) noexcept :
  _table(maxTableSize, true), _pendingSize(0), _pendingMinSize(0), _listSize(0),
- _sizeUpdatePending(false), _sensitiveHeuristic(true) {}
+ _historyIndex(0), _historyWrapped(false),
+ _sizeUpdatePending(false), _sensitiveHeuristic(true) {
+	// Включаем адаптивную индексацию заголовков
+	this->adaptiveIndexing(true);
+}

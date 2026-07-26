@@ -31,6 +31,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <unordered_map>
 
 /**
  * Подключаем общее окружение стендов сравнения транспорта QUIC
@@ -107,6 +108,14 @@ static bool transfer(const size_t streams, rival::transfer_t & output) noexcept 
 	const size_t target = (rival::PAYLOAD_SIZE / streams);
 	// Буферы принятых данных по потокам
 	std::vector <std::string> received(streams);
+	// Отображение идентификатора потока в индекс буфера приёма: без него поиск
+	// буфера по идентификатору идёт линейным перебором, и на множестве потоков
+	// его квадратичная стоимость приписывалась бы движку, а не обвязке замера
+	std::unordered_map <uint64_t, size_t> index;
+	// Заполняем отображение идентификаторов потоков в индексы буферов
+	for(size_t i = 0; i < streams; i++)
+		// Сохраняем соответствие идентификатора потока индексу буфера
+		index.emplace(identifiers[i], i);
 	// Объёмы поставленных в очередь данных по потокам
 	std::vector <size_t> queued(streams, 0);
 	/**
@@ -168,23 +177,18 @@ static bool transfer(const size_t streams, rival::transfer_t & output) noexcept 
 		 * Перебираем список потоков с собранными данными
 		 */
 		for(auto & sid : ready){
-			/**
-			 * Перебираем список идентификаторов открытых потоков
-			 */
-			for(size_t i = 0; i < streams; i++){
-				// Если идентификатор потока найден
-				if(identifiers[i] == sid){
-					// Запоминаем объём принятых данных потока до выдачи
-					const size_t before = received[i].size();
-					// Флаг завершения потока
-					bool fin = false;
-					// Выдаём принятые данные приложению
-					server.receive(sid, received[i], fin);
-					// Учитываем принятый объём данных
-					total += (received[i].size() - before);
-					// Прекращаем поиск идентификатора потока
-					break;
-				}
+			// Ищем индекс буфера приёма по идентификатору потока
+			auto i = index.find(sid);
+			// Если идентификатор потока найден
+			if(i != index.end()){
+				// Запоминаем объём принятых данных потока до выдачи
+				const size_t before = received[i->second].size();
+				// Флаг завершения потока
+				bool fin = false;
+				// Выдаём принятые данные приложению
+				server.receive(sid, received[i->second], fin);
+				// Учитываем принятый объём данных
+				total += (received[i->second].size() - before);
 			}
 		}
 		/**

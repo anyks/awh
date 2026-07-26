@@ -32,7 +32,7 @@ $ROOT/submodule.sh add nghttp2 https://github.com/nghttp2/nghttp2.git
 
 # Выполняем пересборку сабмодуля nghttp3
 $ROOT/submodule.sh remove nghttp3
-$ROOT/submodule.sh add nghttp3 https://github.com/ngtcp2/nghttp3.git
+$ROOT/submodule.sh add nghttp3 https://github.com/nghttp3/nghttp3.git
 
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

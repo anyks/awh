@@ -2936,7 +2936,6 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					// Продолжаем разбор
 					continue;
 				}
-				// Сканирование непрерывного участка request-target
 				// Сканирование непрерывного участка метода запроса
 				case static_cast <uint8_t> (scan_t::SCAN_METHOD): {
 					// Позиция конца непрерывного участка допустимых символов

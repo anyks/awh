@@ -200,6 +200,12 @@ if (CMAKE_BATCH_SIZE_INTERNAL_TIMER)
     message(STATUS "Build with batch size for internal timers: ${CMAKE_BATCH_SIZE_INTERNAL_TIMER}\n")
 endif (CMAKE_BATCH_SIZE_INTERNAL_TIMER)
 
+# Если активирован флаг установки количества идентификаторов для внутренних таймеров (по умолчанию: 8)
+if (CMAKE_COUNT_IDS_INTERNAL_TIMER)
+    add_compile_definitions(AWH_COUNT_IDS_INTERNAL_TIMER=${CMAKE_COUNT_IDS_INTERNAL_TIMER})
+    message(STATUS "Build with count ids for internal timers: ${CMAKE_COUNT_IDS_INTERNAL_TIMER}\n")
+endif (CMAKE_COUNT_IDS_INTERNAL_TIMER)
+
 # Если активирован флаг установки количества обрабатываемых таймеров за одну итерацию для внутренних таймеров (по умолчанию: 256)
 if (CMAKE_COUNT_PROCESSED_INTERNAL_TIMER)
     add_compile_definitions(AWH_COUNT_PROCESSED_INTERNAL_TIMER=${CMAKE_COUNT_PROCESSED_INTERNAL_TIMER})

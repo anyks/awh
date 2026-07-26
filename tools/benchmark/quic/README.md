@@ -93,7 +93,7 @@ ngtcp2 берётся из подмодуля проекта — отдельн�
 ещё не получены:
 
 ```sh
-git submodule update --init submodules/ngtcp2 submodules/boringssl
+git submodule update --init submodules/boringssl submodules/submodules/ngtcp2
 ```
 
 Бэкенд BoringSSL должен быть собран (`submodules/boringssl/build/{libssl,libcrypto}.a`);

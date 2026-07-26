@@ -28,6 +28,26 @@
 #endif
 
 /**
+ * Если количество идентификаторов таймаутов на одно событие не определено
+ */
+#ifndef AWH_COUNT_IDS_INTERNAL_TIMER
+	/**
+	 * Устанавливаем количество идентификаторов таймаутов на одно событие в 8
+	 *
+	 * @note Этим значением задаётся вторая размерность таблицы слотов сложной
+	 *       структуры дедлайнов, и оно должно покрывать все идентификаторы
+	 *       таймаутов: чтение, запись, подключение, переподключение, ограничение
+	 *       полосы на чтение и запись и пользовательский таймер - семь штук.
+	 *       Раньше размерность задавалась размером пакета в 256, то есть таблица
+	 *       на каждую тысячу событий занимала мебибайт при полезных двадцати восьми
+	 *       октетах на событие. Пользовательские таймеры проходят через ту же
+	 *       таблицу, поэтому расход стал заметен: тридцать два кибибайта на чанк
+	 *       вместо мебибайта
+	 */
+	#define AWH_COUNT_IDS_INTERNAL_TIMER 0x08
+#endif
+
+/**
  * Если количество обработанных таймеров не определено
  */
 #ifndef AWH_COUNT_PROCESSED_INTERNAL_TIMER
@@ -1149,19 +1169,38 @@ namespace io {
 	} node_t;
 
 	/**
+	 * @brief Идентификатор таймаута пользовательского таймера
+	 *
+	 * @details Идентификатор входит в ключ поиска внутренней структуры дедлайнов
+	 *          вместе с идентификатором события, поэтому обязан не совпадать с
+	 *          идентификаторами внутренних таймаутов: чтение - 1, запись - 2,
+	 *          подключение - 3, переподключение - 4, ограничение полосы на чтение
+	 *          и запись - 5 и 6. У пользовательского таймера на событие приходится
+	 *          ровно один таймаут, поэтому одного значения достаточно
+	 *
+	 */
+	static constexpr uint8_t USER_TIMEOUT_ID = 7;
+
+	/**
 	 * @brief Структура таймера
+	 *
+	 * @details Пользовательский таймер обслуживается той же внутренней структурой
+	 *          дедлайнов, что и таймауты чтения, записи и подключения, поэтому
+	 *          несёт обычный объект таймаута, а не собственную задержку. Отдельный
+	 *          фильтр таймера ядра на каждый таймер он больше не занимает: на весь
+	 *          цикл событий приходится один, поставленный на ближайший дедлайн
 	 *
 	 */
 	typedef struct Timer : public node_t {
-		// Задержка времени таймера в миллисекундах
-		uint32_t delay;
+		// Таймаут срабатывания таймера
+		timeout_t timeout;
 		// Обратные вызовы события
 		callbacks_t callbacks;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		explicit Timer() noexcept : delay(0) {}
+		explicit Timer() noexcept : timeout(USER_TIMEOUT_ID) {}
 		/**
 		 * @brief Деструктор
 		 *
@@ -2758,6 +2797,30 @@ namespace events {
 	using namespace awh;
 
 	/**
+	 * @brief Функция оповещения о смене статуса таймера
+	 *
+	 * @details Вынесена из функции добавления события в список изменений: узлы
+	 *          таймеров через этот список больше не проходят - они обслуживаются
+	 *          внутренней структурой дедлайнов, - но оповещать о смене статуса
+	 *          по-прежнему обязаны, и логика оповещения должна остаться одна на
+	 *          оба пути
+	 *
+	 * @param timer объект таймера
+	 *
+	 */
+	static void announce(::io::timer_t * timer) noexcept {
+		// Если статусы события изменились
+		if((timer->state.status != timer->state.stash) &&
+		   (timer->state.status != event::status_t::DESTROYED)){
+			// Если установлена функция обратного вызова
+			if(timer->callbacks.status != nullptr)
+				// Вызываем функцию обратного вызова статуса события
+				timer->callbacks.status(timer->id, timer->state.status);
+			// Запоминаем текущее значение статуса события для последующего сравнения
+			timer->state.stash = timer->state.status;
+		}
+	}
+	/**
 	 * @brief Функция добавления события в список изменений
 	 *
 	 * @param ev событие для добавления
@@ -2796,20 +2859,10 @@ namespace events {
 				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
-				case static_cast <uint8_t> (event::node_t::INTERVAL): {
-					// Получаем текущее значение объекта таймера
-					::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
-					// Если статусы события изменились
-					if((timer->state.status != timer->state.stash) &&
-					   (timer->state.status != event::status_t::DESTROYED)){
-						// Если установлена функция обратного вызова
-						if(timer->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова статуса события
-							timer->callbacks.status(timer->id, timer->state.status);
-						// Запоминаем текущее значение статуса события для последующего сравнения
-						timer->state.stash = timer->state.status;
-					}
-				} break;
+				case static_cast <uint8_t> (event::node_t::INTERVAL):
+					// Оповещаем о смене статуса таймера
+					announce(awh_cast <::io::timer_t *> (node));
+				break;
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
@@ -4175,6 +4228,49 @@ namespace timer1 {
 					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (j->second->state.node)){
+						/**
+						 * Если узел является пользовательским таймаутом либо интервалом
+						 *
+						 * @details Срабатывание пользовательского таймера обслуживается там же,
+						 *          где и срабатывание внутренних таймаутов чтения, записи и
+						 *          подключения: структура дедлайнов у них общая, и своего
+						 *          фильтра таймера ядра пользовательский таймер больше не
+						 *          занимает. Поведение при этом остаётся прежним: одноразовый
+						 *          таймаут после срабатывания освобождается, интервал
+						 *          перезаряжается на следующий период
+						 */
+						case static_cast <uint8_t> (event::node_t::TIMEOUT):
+						// Если узел является интервалом
+						case static_cast <uint8_t> (event::node_t::INTERVAL): {
+							// Получаем текущее значение объекта пользовательского таймера
+							::io::timer_t * node = awh_cast <::io::timer_t *> (j->second.get());
+							// Если идентификатор совпадает с идентификатором таймаута таймера
+							if(timer.id == node->timeout.id){
+								// Если статус таймаута таймера активный
+								if(node->timeout.status == event::status_t::PENDING){
+									// Снимаем статус таймаута с состояния ожидания срабатывания
+									node->timeout.status = event::status_t::NONE;
+									// Если установлена функция обратного вызова
+									if(node->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова статуса события
+										node->callbacks.status(node->id, event::status_t::SUCCESS);
+									// Если узел является одноразовым таймаутом
+									if(node->state.node == event::node_t::TIMEOUT)
+										// Выполняем удаление узла
+										::io::destroy(node, eth, log);
+									/**
+									 * Если узел является интервалом и не был освобождён из функции
+									 * обратного вызова, перезаряжаем его на следующий период.
+									 * Перезарядка выполняется без обновления таймера ядра: цикл
+									 * обработки истёкших таймеров обновит его по своему завершению,
+									 * когда ближайший дедлайн уже известен окончательно
+									 */
+									else if(node->state.status == event::status_t::PENDING)
+										// Ставим таймер на следующий период
+										set(node->timeout, node->id, ::timer::flag_t::FORCED, rate, log);
+								}
+							}
+						} break;
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем текущее значение объекта однорангового узла
@@ -4506,7 +4602,7 @@ namespace timer2 {
 		// Сколько активных таймеров в чанке
 		uint32_t count = 0;
 		// Слоты, значение -1 = нет таймера
-		int32_t slots[AWH_CHUNK_EIDS_INTERNAL_TIMER][AWH_BATCH_SIZE_INTERNAL_TIMER];
+		int32_t slots[AWH_CHUNK_EIDS_INTERNAL_TIMER][AWH_COUNT_IDS_INTERNAL_TIMER];
 	};
 
 	/**
@@ -5510,6 +5606,49 @@ namespace timer2 {
 					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
+						/**
+						 * Если узел является пользовательским таймаутом либо интервалом
+						 *
+						 * @details Срабатывание пользовательского таймера обслуживается там же,
+						 *          где и срабатывание внутренних таймаутов чтения, записи и
+						 *          подключения: структура дедлайнов у них общая, и своего
+						 *          фильтра таймера ядра пользовательский таймер больше не
+						 *          занимает. Поведение при этом остаётся прежним: одноразовый
+						 *          таймаут после срабатывания освобождается, интервал
+						 *          перезаряжается на следующий период
+						 */
+						case static_cast <uint8_t> (event::node_t::TIMEOUT):
+						// Если узел является интервалом
+						case static_cast <uint8_t> (event::node_t::INTERVAL): {
+							// Получаем текущее значение объекта пользовательского таймера
+							::io::timer_t * node = awh_cast <::io::timer_t *> (i->second.get());
+							// Если идентификатор совпадает с идентификатором таймаута таймера
+							if(timer.id == node->timeout.id){
+								// Если статус таймаута таймера активный
+								if(node->timeout.status == event::status_t::PENDING){
+									// Снимаем статус таймаута с состояния ожидания срабатывания
+									node->timeout.status = event::status_t::NONE;
+									// Если установлена функция обратного вызова
+									if(node->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова статуса события
+										node->callbacks.status(node->id, event::status_t::SUCCESS);
+									// Если узел является одноразовым таймаутом
+									if(node->state.node == event::node_t::TIMEOUT)
+										// Выполняем удаление узла
+										::io::destroy(node, eth, log);
+									/**
+									 * Если узел является интервалом и не был освобождён из функции
+									 * обратного вызова, перезаряжаем его на следующий период.
+									 * Перезарядка выполняется без обновления таймера ядра: цикл
+									 * обработки истёкших таймеров обновит его по своему завершению,
+									 * когда ближайший дедлайн уже известен окончательно
+									 */
+									else if(node->state.status == event::status_t::PENDING)
+										// Ставим таймер на следующий период
+										set(node->timeout, node->id, ::timer::flag_t::FORCED, rate, log);
+								}
+							}
+						} break;
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем текущее значение объекта однорангового узла
@@ -23247,16 +23386,22 @@ namespace io {
 					case static_cast <uint8_t> (event::node_t::TIMEOUT):
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
-						// Если Kqueue инициализирован
-						if(::__awh_kq__ != net::invalid_socket_t){
-							// Выполняем извлечение текущего значения объекта таймера
-							::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
-							// Объект события для удаления из списка ожидания
-							struct kevent event{};
-							// Снимаем событие из списка ожидания
-							EV_SET(&event, timer->id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							// Добавляем новое событие в список изменений
-							::events::add(::move(event));
+						// Выполняем извлечение текущего значения объекта таймера
+						::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
+						/**
+						 * Определяем тип таймера для событий сетевого движка
+						 */
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+							// Если тип таймера для событий сетевого движка является простым
+							case static_cast <uint8_t> (event::timer_t::SIMPLE):
+								// Снимаем таймер с простой структуры дедлайнов
+								::timer1::cancel(timer->timeout, timer->id);
+							break;
+							// Если тип таймера для событий сетевого движка является сложным
+							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+								// Снимаем таймер со сложной структуры дедлайнов
+								::timer2::cancel(timer->timeout, timer->id);
+							break;
 						}
 					} break;
 					// Если узел является директорией
@@ -26743,53 +26888,24 @@ namespace io {
 					} break;
 				}
 			} break;
-			// Если мы получили событие таймера
+			/**
+			 * Если мы получили событие таймера ядра операционной системы
+			 *
+			 * @note Здесь обрабатывается только ошибка активации. Само срабатывание сюда
+			 *       не доходит: единственный таймер ядра ставится на нулевой идентификатор
+			 *       и разбирается функцией опроса до вызова диспетчера, а пользовательские
+			 *       таймеры своего фильтра таймера ядра не занимают - они обслуживаются
+			 *       внутренней структурой дедлайнов
+			 */
 			case EVFILT_TIMER: {
-				/**
-				 * Определяем чем является текущий узел
-				 */
-				switch(static_cast <uint8_t> (node->state.node)){
-					// Если узел является таймаутом
-					case static_cast <uint8_t> (event::node_t::TIMEOUT):
-					// Если узел является интервалом
-					case static_cast <uint8_t> (event::node_t::INTERVAL): {
-						// Если мы детектировали наличие ошибки
-						if(ev.flags & EV_ERROR){
-							// Выполняем обработку ошибки
-							if(::io::error(node, ev.data, log))
-								// Выполняем удаление узла
-								::io::destroy(node, eth, log);
-							// Пропускаем дальнейшую обработку события
-							return false;
-						// Обрабатываем событие таймера
-						} else {
-							/**
-							 * Определяем чем является текущий узел
-							 */
-							switch(static_cast <uint8_t> (node->state.node)){
-								// Если узел является таймаутом
-								case static_cast <uint8_t> (event::node_t::TIMEOUT): {
-									// Выполняем извлечение текущего значения объекта таймера
-									::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
-									// Если установлена функция обратного вызова
-									if(timer->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова статуса события
-										timer->callbacks.status(timer->id, event::status_t::SUCCESS);
-									// Выполняем удаление узла
-									return !::io::destroy(node, eth, log);
-								}
-								// Если узел является интервалом
-								case static_cast <uint8_t> (event::node_t::INTERVAL): {
-									// Выполняем извлечение текущего значения объекта таймера
-									::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
-									// Если установлена функция обратного вызова
-									if(timer->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова статуса события
-										timer->callbacks.status(timer->id, event::status_t::SUCCESS);
-								} break;
-							}
-						}
-					} break;
+				// Если мы детектировали наличие ошибки
+				if(ev.flags & EV_ERROR){
+					// Выполняем обработку ошибки
+					if(::io::error(node, ev.data, log))
+						// Выполняем удаление узла
+						::io::destroy(node, eth, log);
+					// Пропускаем дальнейшую обработку события
+					return false;
 				}
 			} break;
 			// Если мы получили событие пользовательского события
@@ -31818,55 +31934,25 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Формируем положительный результат
 						result = true;
 					} break;
-					// Если узел является таймаутом
-					case static_cast <uint8_t> (event::node_t::TIMEOUT): {
-						// Выполняем извлечение текущего значения объекта таймера
-						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
-						// Устанавливаем статус события в состояние инициализировано
-						timer->state.status = event::status_t::INITIAL;
-						// Создаём объект события для Kqueue
-						struct kevent event{};
-						/**
-						 * Если мы работаем в macOS
-						 */
-						#if __APPLE__
-							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET(&event, i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE, 0, 0, timer);
-						/**
-						 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
-						 */
-						#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
-							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET(&event, i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT | EV_DISABLE, 0, static_cast <intptr_t> (timer->delay), timer);
-						#endif
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event));
-						// Формируем положительный результат
-						result = true;
-					} break;
+					/**
+					 * Если узел является таймаутом либо интервалом
+					 *
+					 * @note Фиксация настроек таймера ядра не касается вовсе: узел
+					 *       ставится во внутреннюю структуру дедлайнов при запуске,
+					 *       а до запуска о нём знать никому не нужно. Прежняя
+					 *       реализация занимала здесь отдельный фильтр таймера ядра
+					 *       на каждый таймер и выдавала запись в список изменений,
+					 *       которая всё равно ждала запуска в выключенном состоянии
+					 */
+					case static_cast <uint8_t> (event::node_t::TIMEOUT):
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
 						// Выполняем извлечение текущего значения объекта таймера
 						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
 						timer->state.status = event::status_t::INITIAL;
-						// Создаём объект события для Kqueue
-						struct kevent event{};
-						/**
-						 * Если мы работаем в macOS
-						 */
-						#if __APPLE__
-							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-							EV_SET(&event, i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, 0, timer);
-						/**
-						 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
-						 */
-						#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
-							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-							EV_SET(&event, i->first, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, static_cast <intptr_t> (timer->delay), timer);
-						#endif
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event));
+						// Оповещаем о смене статуса таймера
+						::events::announce(timer);
 						// Формируем положительный результат
 						result = true;
 					} break;
@@ -51997,40 +52083,49 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						return true;
 					}
 				} break;
-				// Если узел является таймаутом
+				/**
+				 * Если узел является таймаутом либо интервалом
+				 *
+				 * @note Таймер ставится во внутреннюю структуру дедлайнов, а не отдельным
+				 *       фильтром таймера ядра. Ядру достаётся один таймер на весь цикл
+				 *       событий, поставленный на ближайший дедлайн, и обновляется он
+				 *       только тогда, когда ближайшим стал именно этот таймер. Поэтому
+				 *       постановка десятков тысяч таймеров обходится единицами обращений
+				 *       к ядру вместо десятков тысяч записей в списке изменений
+				 */
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL): {
 					// Если событие уже инициализировано
 					if(i->second->state.status == event::status_t::INITIAL){
-						// Устанавливаем статус события в состояние ожидания
-						i->second->state.status = event::status_t::PENDING;
 						// Выполняем извлечение текущего значения объекта таймера
 						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
-						// Если событие успешно добавлено
-						if(timer->delay > 0){
-							// Создаём объект события для Kqueue
-							struct kevent event{};
+						// Если задержка срабатывания таймера установлена
+						if(timer->timeout.delay > 0){
+							// Устанавливаем статус события в состояние ожидания
+							timer->state.status = event::status_t::PENDING;
+							// Снимаем состояние таймаута, чтобы постановка выполнилась заново
+							timer->timeout.status = event::status_t::NONE;
 							/**
-							 * Если мы работаем в macOS
+							 * Определяем тип таймера для событий сетевого движка
 							 */
-							#if __APPLE__
-								// Устанавливаем событие таймаута на указанное количество миллисекунд
-								EV_SET(&event, i->first, EVFILT_TIMER, EV_ENABLE, 0, static_cast <intptr_t> (timer->delay), timer);
-							/**
-							 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
-							 */
-							#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
-								// Устанавливаем событие таймаута на указанное количество миллисекунд
-								EV_SET(&event, i->first, EVFILT_TIMER, EV_ENABLE, 0, 0, timer);
-							#endif
-							// Добавляем новое событие в список изменений
-							::events::add(::move(event));
+							switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+								// Если тип таймера для событий сетевого движка является простым
+								case static_cast <uint8_t> (event::timer_t::SIMPLE):
+									// Ставим таймер в простую структуру дедлайнов
+									::timer1::set({::timer::flag_t::FORCED, timer->timeout}, timer->id, event::rate_t::DEFERRED, this->_log);
+								break;
+								// Если тип таймера для событий сетевого движка является сложным
+								case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+									// Ставим таймер в сложную структуру дедлайнов
+									::timer2::set({::timer::flag_t::FORCED, timer->timeout}, timer->id, event::rate_t::DEFERRED, this->_log);
+								break;
+							}
+							// Оповещаем о смене статуса таймера
+							::events::announce(timer);
 							// Возвращаем положительный результат
 							return true;
 						}
-						// Снимаем флаг ожидания выполнения события
-						timer->state.status = event::status_t::INITIAL;
 					}
 				} break;
 				// Если узел является директорией
@@ -56827,7 +56922,7 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL):
 					// Возвращаем значение задержки времени таймаута
-					return awh_cast <::io::timer_t *> (i->second.get())->delay;
+					return awh_cast <::io::timer_t *> (i->second.get())->timeout.delay;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Получаем объект события однорангового узла
@@ -56979,58 +57074,51 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является таймаутом
-				case static_cast <uint8_t> (event::node_t::TIMEOUT): {
-					// Получаем объект события таймаута
-					::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
-					// Устанавливаем значение задержки времени таймаута
-					timer->delay = timeout;
-					// Если таймаут находится в состоянии ожидания
-					if(timer->state.status == event::status_t::PENDING){
-						// Создаём объект события для Kqueue
-						struct kevent event{};
-						// Останавливаем активный таймаут
-						EV_SET(&event, timer->id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event));
-						// Если таймаут необходимо запустить
-						if(timer->delay > 0){
-							// Создаём объект события для Kqueue
-							struct kevent event{};
-							// Устанавливаем событие таймаута на указанное количество миллисекунд
-							EV_SET(&event, i->first, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (timer->delay), nullptr);
-							// Добавляем новое событие в список изменений
-							::events::add(::move(event));
-						}
-						// Выполняем "пинок" для применения изменений
-						this->kick();
-					}
-				} break;
+				/**
+				 * Если узел является таймаутом либо интервалом
+				 *
+				 * @note Изменение задержки у поставленного таймера выполняется
+				 *       перестановкой его во внутренней структуре дедлайнов. Прежняя
+				 *       реализация снимала фильтр таймера ядра и ставила его заново без
+				 *       указателя на узел события, из-за чего сработавший таймер молча
+				 *       отбрасывался при опросе как принадлежащий уже удалённому узлу
+				 */
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL): {
-					// Получаем объект события интервала
+					// Получаем объект события таймера
 					::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
 					// Устанавливаем значение задержки времени таймаута
-					timer->delay = timeout;
+					timer->timeout.delay = timeout;
 					// Если таймаут находится в состоянии ожидания
 					if(timer->state.status == event::status_t::PENDING){
-						// Создаём объект события для Kqueue
-						struct kevent event{};
-						// Останавливаем активный таймаут
-						EV_SET(&event, timer->id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event));
-						// Если таймаут необходимо запустить
-						if(timer->delay > 0){
-							// Создаём объект события для Kqueue
-							struct kevent event{};
-							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
-							EV_SET(&event, i->first, EVFILT_TIMER, EV_ADD, 0, static_cast <intptr_t> (timer->delay), nullptr);
-							// Добавляем новое событие в список изменений
-							::events::add(::move(event));
+						/**
+						 * Определяем тип таймера для событий сетевого движка
+						 */
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+							// Если тип таймера для событий сетевого движка является простым
+							case static_cast <uint8_t> (event::timer_t::SIMPLE): {
+								// Снимаем таймер с прежним дедлайном
+								::timer1::cancel(timer->timeout, timer->id);
+								// Если таймаут необходимо запустить заново
+								if(timer->timeout.delay > 0)
+									// Ставим таймер с новым дедлайном
+									::timer1::set({::timer::flag_t::FORCED, timer->timeout}, timer->id, event::rate_t::INSTANT, this->_log);
+							} break;
+							// Если тип таймера для событий сетевого движка является сложным
+							case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
+								// Снимаем таймер с прежним дедлайном
+								::timer2::cancel(timer->timeout, timer->id);
+								// Если таймаут необходимо запустить заново
+								if(timer->timeout.delay > 0)
+									// Ставим таймер с новым дедлайном
+									::timer2::set({::timer::flag_t::FORCED, timer->timeout}, timer->id, event::rate_t::INSTANT, this->_log);
+							} break;
 						}
-						// Выполняем "пинок" для применения изменений
-						this->kick();
+						// Если задержка снята, таймер больше не сработает
+						if(timer->timeout.delay == 0)
+							// Возвращаем событие в состояние инициализировано
+							timer->state.status = event::status_t::INITIAL;
 					}
 				} break;
 				// Если узел является одноранговым узлом
@@ -60263,14 +60351,23 @@ void awh::engine::IO::clear() noexcept {
 					case static_cast <uint8_t> (event::node_t::TIMEOUT):
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
-						// Получаем объект события интервала
+						// Получаем объект события таймера
 						::io::timer_t * timer = awh_cast <::io::timer_t *> (i->second.get());
-						// Объект события для удаления из списка ожидания
-						struct kevent event{0};
-						// Снимаем событие из списка ожидания
-						EV_SET(&event, i->first, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-						// Выполняем удаление события из списка ожидания
-						::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+						/**
+						 * Определяем тип таймера для событий сетевого движка
+						 */
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+							// Если тип таймера для событий сетевого движка является простым
+							case static_cast <uint8_t> (event::timer_t::SIMPLE):
+								// Снимаем таймер с простой структуры дедлайнов
+								::timer1::cancel(timer->timeout, i->first);
+							break;
+							// Если тип таймера для событий сетевого движка является сложным
+							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+								// Снимаем таймер со сложной структуры дедлайнов
+								::timer2::cancel(timer->timeout, i->first);
+							break;
+						}
 						// Если установлена функция обратного вызова
 						if(timer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
@@ -61772,6 +61869,53 @@ void awh::engine::IO::setInternalTimer(const event::timer_t timer) noexcept {
 		}
 		// Устанавливаем тип таймера для событий сетевого движка
 		::__awh_internal_timer__ = timer;
+		/**
+		 * Переносим уже поставленные пользовательские таймеры в новую структуру
+		 * дедлайнов. Очистка прежней структуры их записи уничтожила, а внутренние
+		 * таймауты чтения, записи и подключения восстанавливаются сами при
+		 * следующей активности события - пользовательский таймер восстановить
+		 * нечему, и без переноса он не сработал бы никогда
+		 *
+		 * @note Дедлайн при переносе отсчитывается заново от текущего момента:
+		 *       структура дедлайнов принимает задержку, а не остаток. Поэтому
+		 *       переключать тип таймера при поставленных таймерах следует лишь
+		 *       понимая, что их период начнётся сначала
+		 */
+		for(auto & item : ::__awh_nodes__){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (item.second->state.node)){
+				// Если узел является таймаутом
+				case static_cast <uint8_t> (event::node_t::TIMEOUT):
+				// Если узел является интервалом
+				case static_cast <uint8_t> (event::node_t::INTERVAL): {
+					// Получаем текущее значение объекта пользовательского таймера
+					::io::timer_t * node = awh_cast <::io::timer_t *> (item.second.get());
+					// Если таймер не поставлен либо задержка срабатывания снята
+					if((node->state.status != event::status_t::PENDING) || (node->timeout.delay == 0))
+						// Переходим к следующему узлу
+						continue;
+					// Снимаем состояние таймаута, чтобы постановка выполнилась заново
+					node->timeout.status = event::status_t::NONE;
+					/**
+					 * Определяем тип таймера для событий сетевого движка
+					 */
+					switch(static_cast <uint8_t> (timer)){
+						// Если тип таймера для событий сетевого движка является простым
+						case static_cast <uint8_t> (event::timer_t::SIMPLE):
+							// Ставим таймер в простую структуру дедлайнов
+							::timer1::set({::timer::flag_t::FORCED, node->timeout}, node->id, event::rate_t::DEFERRED, this->_log);
+						break;
+						// Если тип таймера для событий сетевого движка является сложным
+						case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+							// Ставим таймер в сложную структуру дедлайнов
+							::timer2::set({::timer::flag_t::FORCED, node->timeout}, node->id, event::rate_t::DEFERRED, this->_log);
+						break;
+					}
+				} break;
+			}
+		}
 	}
 }
 /**

@@ -42,6 +42,66 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Пространство имён названий заголовков, участвующих в сравнениях
+	 *
+	 * @details Названия вынесены константами намеренно. Сравнение вида
+	 *          `name.compare("upgrade")` строит представление из указателя,
+	 *          а значит вычисляет длину литерала вызовом strlen во время
+	 *          выполнения - на каждый заголовок каждого блока. У константы
+	 *          длина известна на этапе компиляции, и сравнение сводится
+	 *          к проверке длины и сравнению памяти
+	 *
+	 */
+	namespace header {
+		// Псевдо-заголовки запроса и ответа (RFC 9113 §8.3)
+		static constexpr string_view METHOD = ":method";
+		static constexpr string_view SCHEME = ":scheme";
+		static constexpr string_view PATH = ":path";
+		static constexpr string_view AUTHORITY = ":authority";
+		static constexpr string_view PROTOCOL = ":protocol";
+		static constexpr string_view STATUS = ":status";
+		// Заголовки, запрещённые в HTTP/2 (RFC 9113 §8.2.2)
+		static constexpr string_view UPGRADE = "upgrade";
+		static constexpr string_view KEEP_ALIVE = "keep-alive";
+		static constexpr string_view CONNECTION = "connection";
+		static constexpr string_view PROXY_CONNECTION = "proxy-connection";
+		static constexpr string_view TRANSFER_ENCODING = "transfer-encoding";
+		// Заголовки, запрещённые в трейлерах
+		static constexpr string_view TE = "te";
+		static constexpr string_view HOST = "host";
+		static constexpr string_view RANGE = "range";
+		static constexpr string_view EXPECT = "expect";
+		static constexpr string_view TRAILER = "trailer";
+		static constexpr string_view CONTENT_TYPE = "content-type";
+		static constexpr string_view CACHE_CONTROL = "cache-control";
+		static constexpr string_view CONTENT_RANGE = "content-range";
+		static constexpr string_view MAX_FORWARDS = "max-forwards";
+		static constexpr string_view AUTHORIZATION = "authorization";
+		static constexpr string_view CONTENT_LENGTH = "content-length";
+		static constexpr string_view CONTENT_ENCODING = "content-encoding";
+		static constexpr string_view PROXY_AUTHORIZATION = "proxy-authorization";
+		// Заголовок приоритета запроса (RFC 9218 §5)
+		static constexpr string_view PRIORITY = "priority";
+	};
+	/**
+	 * @brief Пространство имён значений заголовков, участвующих в сравнениях
+	 *
+	 */
+	namespace value {
+		// Методы запроса, меняющие обработку тела
+		static constexpr string_view CONNECT = "CONNECT";
+		static constexpr string_view HEAD = "HEAD";
+		// Коды состояния, при которых тело ответа отсутствует
+		static constexpr string_view SWITCHING = "101";
+		static constexpr string_view NO_CONTENT = "204";
+		static constexpr string_view NOT_MODIFIED = "304";
+		// Элементы структурированного поля приоритета (RFC 9218 §4)
+		static constexpr string_view INCREMENTAL = "i";
+		static constexpr string_view INCREMENTAL_ON = "i=?1";
+		static constexpr string_view INCREMENTAL_OFF = "i=?0";
+	};
+
+	/**
 	 * @brief Функция получения имени метода запроса для псевдо-заголовка [:method]
 	 *
 	 * @param request провайдер запроса клиента
@@ -430,11 +490,11 @@ namespace {
 	bool isConnectionSpecific(string_view name) noexcept {
 		// Выполняем сравнение со списком запрещённых заголовков
 		return (
-			(name.compare("upgrade") == 0) ||
-			(name.compare("keep-alive") == 0) ||
-			(name.compare("connection") == 0) ||
-			(name.compare("proxy-connection") == 0) ||
-			(name.compare("transfer-encoding") == 0)
+			(name == header::UPGRADE) ||
+			(name == header::KEEP_ALIVE) ||
+			(name == header::CONNECTION) ||
+			(name == header::PROXY_CONNECTION) ||
+			(name == header::TRANSFER_ENCODING)
 		);
 	}
 	/**
@@ -451,19 +511,19 @@ namespace {
 	bool isForbiddenTrailer(string_view name) noexcept {
 		// Выполняем сравнение со списком запрещённых в трейлерах заголовков
 		return (
-			(name.compare("te") == 0) ||
-			(name.compare("host") == 0) ||
-			(name.compare("range") == 0) ||
-			(name.compare("expect") == 0) ||
-			(name.compare("trailer") == 0) ||
-			(name.compare("content-type") == 0) ||
-			(name.compare("cache-control") == 0) ||
-			(name.compare("content-range") == 0) ||
-			(name.compare("max-forwards") == 0) ||
-			(name.compare("authorization") == 0) ||
-			(name.compare("content-length") == 0) ||
-			(name.compare("content-encoding") == 0) ||
-			(name.compare("proxy-authorization") == 0)
+			(name == header::TE) ||
+			(name == header::HOST) ||
+			(name == header::RANGE) ||
+			(name == header::EXPECT) ||
+			(name == header::TRAILER) ||
+			(name == header::CONTENT_TYPE) ||
+			(name == header::CACHE_CONTROL) ||
+			(name == header::CONTENT_RANGE) ||
+			(name == header::MAX_FORWARDS) ||
+			(name == header::AUTHORIZATION) ||
+			(name == header::CONTENT_LENGTH) ||
+			(name == header::CONTENT_ENCODING) ||
+			(name == header::PROXY_AUTHORIZATION)
 		);
 	}
 	/**
@@ -526,7 +586,7 @@ namespace {
 				// Если блок принадлежит запросу клиента
 				if(isRequest){
 					// Если получен псевдо-заголовок [:method]
-					if(name.compare(":method") == 0){
+					if(name == header::METHOD){
 						// Повторный псевдо-заголовок недопустим
 						if(hasMethod)
 							// Блок заголовков некорректен
@@ -540,7 +600,7 @@ namespace {
 						// Запоминаем значение метода запроса
 						method = field.value;
 					// Если получен псевдо-заголовок [:scheme]
-					} else if(name.compare(":scheme") == 0) {
+					} else if(name == header::SCHEME) {
 						// Повторный псевдо-заголовок недопустим
 						if(hasScheme)
 							// Блок заголовков некорректен
@@ -552,7 +612,7 @@ namespace {
 							// Блок заголовков некорректен
 							return http::h2::error_t::PROTOCOL_ERROR;
 					// Если получен псевдо-заголовок [:path]
-					} else if(name.compare(":path") == 0) {
+					} else if(name == header::PATH) {
 						// Повторный псевдо-заголовок недопустим
 						if(hasPath)
 							// Блок заголовков некорректен
@@ -564,7 +624,7 @@ namespace {
 							// Блок заголовков некорректен
 							return http::h2::error_t::PROTOCOL_ERROR;
 					// Если получен псевдо-заголовок [:authority]
-					} else if(name.compare(":authority") == 0) {
+					} else if(name == header::AUTHORITY) {
 						// Повторный псевдо-заголовок недопустим
 						if(hasAuthority)
 							// Блок заголовков некорректен
@@ -574,7 +634,7 @@ namespace {
 						// Запоминаем значение авторитета запроса
 						authority = field.value;
 					// Если получен псевдо-заголовок [:protocol] расширенного CONNECT (RFC 8441 §4)
-					} else if(name.compare(":protocol") == 0) {
+					} else if(name == header::PROTOCOL) {
 						/**
 						 * Расширенный CONNECT допустим только если мы сами его разрешили
 						 * параметром SETTINGS_ENABLE_CONNECT_PROTOCOL (RFC 8441 §3)
@@ -597,7 +657,7 @@ namespace {
 				// Если блок принадлежит ответу сервера
 				} else {
 					// Если получен псевдо-заголовок [:status]
-					if(name.compare(":status") == 0){
+					if(name == header::STATUS){
 						// Повторный псевдо-заголовок недопустим
 						if(hasStatus)
 							// Блок заголовков некорректен
@@ -609,7 +669,7 @@ namespace {
 							// Блок заголовков некорректен
 							return http::h2::error_t::PROTOCOL_ERROR;
 						// Статус 101 в HTTP/2 не определён - апгрейд протокола выполняется иначе (RFC 9113 §8.1)
-						if(field.value.compare("101") == 0)
+						if(field.value == value::SWITCHING)
 							// Блок заголовков некорректен
 							return http::h2::error_t::PROTOCOL_ERROR;
 						/**
@@ -637,17 +697,17 @@ namespace {
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 				// Заголовок [te] допускает только значение [trailers] (RFC 9113 §8.2.2)
-				if((name.compare("te") == 0) && !fmk->compare("trailers", field.value))
+				if((name == header::TE) && !fmk->compare("trailers", field.value))
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 				// Если получен заголовок [host] - запоминаем его для сверки с [:authority]
-				if(name.compare("host") == 0){
+				if(name == header::HOST){
 					// Помечаем что заголовок получен
 					hasHost = true;
 					// Запоминаем значение авторитета запроса
 					host = field.value;
 				// Если получен заголовок [content-length]
-				} else if(name.compare("content-length") == 0) {
+				} else if(name == header::CONTENT_LENGTH) {
 					// Пустое значение длины тела недопустимо (RFC 9110 §8.6)
 					if(field.value.empty())
 						// Блок заголовков некорректен
@@ -690,7 +750,7 @@ namespace {
 			 * Метод запроса - регистрозависимый токен (RFC 9110 §9.1), поэтому
 			 * сравнение выполняется строгое: [connect] методом CONNECT не является
 			 */
-			if(method.compare("CONNECT") == 0){
+			if(method == value::CONNECT){
 				/**
 				 * Метод CONNECT требует наличия [:authority] (RFC 9113 §8.5), причём
 				 * непустого: значение задаёт хост и порт назначения туннеля, поэтому
@@ -1244,14 +1304,14 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 		 */
 		for(const h2::hpack::field_view_t & field : fields){
 			// Если псевдо-заголовок статуса найден
-			if(field.name.compare(":status") == 0){
+			if(field.name == header::STATUS){
 				// Информационным считается ответ с кодом 1xx
 				informational = (field.value.front() == '1');
 				/**
 				 * Ответы 204 и 304 тела не несут, но content-length в них допустим
 				 * и описывает тело, которого не будет (RFC 9110 §8.6, §15.4.5)
 				 */
-				if((field.value.compare("204") == 0) || (field.value.compare("304") == 0))
+				if((field.value == value::NO_CONTENT) || (field.value == value::NOT_MODIFIED))
 					// Помечаем что сообщение не может нести тело
 					stream->bodyless = true;
 				// Прекращаем поиск
@@ -1287,7 +1347,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 				// Прекращаем поиск
 				break;
 			// Если получен заголовок объявленной длины тела
-			if(field.name.compare("content-length") == 0){
+			if(field.name == header::CONTENT_LENGTH){
 				// Объявленная длина тела
 				uint64_t declared = 0;
 				/**
@@ -1316,7 +1376,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 		 */
 		for(const h2::hpack::field_view_t & field : fields){
 			// Если получен заголовок расширенного приоритета
-			if(field.name.compare("priority") == 0){
+			if(field.name == header::PRIORITY){
 				// Применяем расширенный приоритет к потоку
 				this->applyPriority(* stream, field.value);
 				// Прекращаем поиск
@@ -3543,15 +3603,15 @@ void awh::http::Parser_HTTP2::applyPriority(stream_t & stream, string_view value
 				// Применяем срочность потока
 				stream.urgency = static_cast <uint8_t> (letter - '0');
 		// Если получен ключ инкрементальной доставки без значения (эквивалент ?1)
-		} else if(item.compare("i") == 0)
+		} else if(item == value::INCREMENTAL)
 			// Помечаем поток инкрементальным
 			stream.incremental = true;
 		// Если получен ключ инкрементальной доставки со значением
-		else if(item.compare("i=?1") == 0)
+		else if(item == value::INCREMENTAL_ON)
 			// Помечаем поток инкрементальным
 			stream.incremental = true;
 		// Если инкрементальная доставка явно отключена
-		else if(item.compare("i=?0") == 0)
+		else if(item == value::INCREMENTAL_OFF)
 			// Снимаем признак инкрементальной доставки
 			stream.incremental = false;
 	}
@@ -3903,7 +3963,7 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 			 */
 			for(const h2::hpack::field_view_t & field : fields){
 				// Если получен псевдо-заголовок [:method] (имена уже провалидированы, сравнение строгое)
-				if(field.name.compare(":method") == 0){
+				if(field.name == header::METHOD){
 					// Выполняем классификацию метода запроса по его имени
 					provider->method = ::classifyMethod(field.value);
 					// Если метод запроса синтаксически корректен, но не распознан
@@ -3914,11 +3974,11 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 						provider->methodName = field.value;
 					}
 				// Если получен псевдо-заголовок [:path]
-				} else if(field.name.compare(":path") == 0)
+				} else if(field.name == header::PATH)
 					// Устанавливаем параметры URI-запроса
 					provider->uri = field.value;
 				// Если получен псевдо-заголовок [:protocol] расширенного CONNECT (RFC 8441)
-				else if(field.name.compare(":protocol") == 0)
+				else if(field.name == header::PROTOCOL)
 					// Устанавливаем протокол туннеля
 					provider->protocol = field.value;
 			}
@@ -3933,7 +3993,7 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 			 */
 			for(const h2::hpack::field_view_t & field : fields){
 				// Если получен псевдо-заголовок [:status] (имена уже провалидированы, сравнение строгое)
-				if(field.name.compare(":status") == 0){
+				if(field.name == header::STATUS){
 					// Статус-код ответа сервера
 					uint16_t code = 0;
 					/**
@@ -4864,7 +4924,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 			 * Connection-specific заголовки в HTTP/2 запрещены (RFC 9113 §8.2.2) и делают
 			 * сообщение малформированным на приёмной стороне - пропускаем их
 			 */
-			if(::isConnectionSpecific(field.name) || ((field.name.compare("te") == 0) && !this->_fmk->compare("trailers", field.value))){
+			if(::isConnectionSpecific(field.name) || ((field.name == header::TE) && !this->_fmk->compare("trailers", field.value))){
 				// Записываем сообщение об ошибке в лог
 				this->_log->print("HTTP/2 connection-specific header [%s] is not allowed and skipped", log_t::flag_t::WARNING, field.name.c_str());
 				// Переходим к следующему заголовку
@@ -4890,9 +4950,9 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 		 */
 		for(const h2::hpack::field_t & field : fields){
 			// Если получен псевдо-заголовок метода запроса
-			if(field.name.compare(":method") == 0){
+			if(field.name == header::METHOD){
 				// Если запрос выполняется методом HEAD
-				if(field.value.compare("HEAD") == 0){
+				if(field.value == value::HEAD){
 					// Выполняем поиск потока
 					stream_t * stream = this->findStream(sid);
 					// Если поток найден
@@ -4976,11 +5036,11 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 				// Приводим название заголовка к нижнему регистру (RFC 9113 §8.2.1)
 				const string_view name = ::lowerName(header.name, buffer);
 				// Пропускаем запрещённые в HTTP/2 connection-specific заголовки (RFC 9113 §8.2.2)
-				if(::isConnectionSpecific(name) || (name.compare("host") == 0))
+				if(::isConnectionSpecific(name) || (name == header::HOST))
 					// Переходим к следующему заголовку
 					continue;
 				// Заголовок TE допустим только со значением "trailers" (RFC 9113 §8.2.2)
-				if((name.compare("te") == 0) && !this->_fmk->compare("trailers", header.value))
+				if((name == header::TE) && !this->_fmk->compare("trailers", header.value))
 					// Переходим к следующему заголовку
 					continue;
 				// Дописываем заголовок в список секции трейлеров

@@ -37,18 +37,3 @@
 [submodule "submodules/gperftools"]
 	path = submodules/gperftools
 	url = https://gitflic.ru/project/third_party/gperftools.git
-[submodule "submodules/submodules/libuv"]
-	path = submodules/submodules/libuv
-	url = https://github.com/libuv/libuv.git
-[submodule "submodules/submodules/libevent"]
-	path = submodules/submodules/libevent
-	url = https://github.com/libevent/libevent.git
-[submodule "submodules/submodules/ngtcp2"]
-	path = submodules/submodules/ngtcp2
-	url = https://github.com/ngtcp2/ngtcp2.git
-[submodule "submodules/submodules/nghttp2"]
-	path = submodules/submodules/nghttp2
-	url = https://github.com/nghttp2/nghttp2.git
-[submodule "submodules/submodules/nghttp3"]
-	path = submodules/submodules/nghttp3
-	url = https://github.com/ngtcp2/nghttp3.git
