@@ -30,18 +30,49 @@ else
 	readonly PREFIX="/usr/local"
 fi
 
-# Каталог заголовочных файлов эталонной реализации
-if [ -d "$PREFIX/opt/libnghttp2/include" ]; then
-	readonly NGHTTP2_INCLUDE="$PREFIX/opt/libnghttp2/include"
+# Каталог сборки эталонной реализации из подмодуля
+readonly NGHTTP2_BUILD="$ROOT/build-nghttp2"
+
+##
+# Эталонная реализация берётся из подмодуля, а не системной
+#
+# Системная версия у каждой ОС своя, и расхождение в поведении сверок между
+# машинами пришлось бы разбирать как дефект. Подмодуль зафиксирован в репозитории,
+# поэтому сверки сравнивают с одним и тем же кодом везде
+#
+if [ ! -f "$NGHTTP2_BUILD/lib/libnghttp2.a" ]; then
+	# Если исходные тексты подмодуля получены
+	if [ -f "$ROOT/submodules/nghttp2/CMakeLists.txt" ]; then
+		# Выводим сообщение о сборке эталонной реализации
+		printf "\n\033[1m==> Сборка эталонной реализации из подмодуля\033[0m\n"
+		# Выполняем конфигурацию сборки только библиотеки
+		cmake -S "$ROOT/submodules/nghttp2" -B "$NGHTTP2_BUILD" -DCMAKE_BUILD_TYPE=Release \
+			-DENABLE_LIB_ONLY=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF \
+			-DBUILD_TESTING=OFF > "${TMPDIR:-/tmp}/awh-nghttp2-cmake.log" 2>&1 \
+			|| { printf "не сконфигурирована сборка nghttp2\n"; exit 1; }
+		# Выполняем сборку библиотеки
+		cmake --build "$NGHTTP2_BUILD" -j 8 > "${TMPDIR:-/tmp}/awh-nghttp2-build.log" 2>&1 \
+			|| { printf "не собрана библиотека nghttp2\n"; exit 1; }
+	fi
+fi
+
+# Каталоги заголовочных файлов эталонной реализации
+if [ -f "$NGHTTP2_BUILD/lib/libnghttp2.a" ]; then
+	# Заголовочные файлы лежат в двух местах: исходные тексты и сгенерированный nghttp2ver.h
+	readonly NGHTTP2_INCLUDE="-I$ROOT/submodules/nghttp2/lib/includes -I$NGHTTP2_BUILD/lib/includes"
+	readonly NGHTTP2_LIBRARY="$NGHTTP2_BUILD/lib/libnghttp2.a"
+# Если подмодуль недоступен - откатываемся на системную реализацию
+elif [ -d "$PREFIX/opt/libnghttp2/include" ]; then
+	readonly NGHTTP2_INCLUDE="-I$PREFIX/opt/libnghttp2/include"
 	readonly NGHTTP2_LIBRARY="$PREFIX/opt/libnghttp2/lib/libnghttp2.a"
 else
-	readonly NGHTTP2_INCLUDE="$PREFIX/include"
+	readonly NGHTTP2_INCLUDE="-I$PREFIX/include"
 	readonly NGHTTP2_LIBRARY="$PREFIX/lib/libnghttp2.a"
 fi
 
 # Флаги сборки стендов с санитайзерами
 readonly FLAGS="-DAWH_IDN -DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
-	-I$ROOT/third_party/include/pcre2 -I$ROOT/include -I$NGHTTP2_INCLUDE \
+	-I$ROOT/third_party/include/pcre2 -I$ROOT/include $NGHTTP2_INCLUDE \
 	-pthread -std=gnu++17 -O1 -g -fsanitize=address,undefined -Wno-reserved-user-defined-literal"
 
 # Системные библиотеки платформы
@@ -134,12 +165,12 @@ accept "четыре единицы трансляции модуля"
 ##
 # Шаг 4. Сверки с эталонной реализацией nghttp2
 #
-announce "Сверки с эталонной реализацией"
+announce "Сверки с эталонной реализацией $(grep -hoE '"[0-9.]+"' "$NGHTTP2_BUILD/lib/includes/nghttp2/nghttp2ver.h" 2>/dev/null | head -1 | tr -d '"')"
 if [ ! -f "$NGHTTP2_LIBRARY" ]; then
 	# Выводим сообщение о пропуске шага
-	printf "\033[33m  нет\033[0m  nghttp2 не установлена, сверки пропущены (brew install libnghttp2)\n"
+	printf "\033[33m  нет\033[0m  эталонная реализация недоступна: подтяните подмодуль \"git submodule update --init submodules/nghttp2\"\n"
 else
-	for NAME in hpack server client negative extensions; do
+	for NAME in hpack random server client negative extensions; do
 		c++ $FLAGS -c -o "$WORK/interop-$NAME.o" "$ROOT/tools/interop/nghttp2-$NAME.cpp" 2> "$WORK/build-interop-$NAME.log" \
 			|| abort "не собрана сверка $NAME, подробности в $WORK/build-interop-$NAME.log"
 		c++ -fsanitize=address,undefined -o "$WORK/interop-$NAME" "$WORK/interop-$NAME.o" \
