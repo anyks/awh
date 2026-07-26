@@ -109,6 +109,46 @@ static std::string block(const std::vector <std::pair <std::string, std::string>
 	return result;
 }
 
+// Признак подробного вывода кадров
+static bool verbose = false;
+
+/**
+ * @brief Функция печати кадров исходящего потока
+ *
+ * @param prefix описание источника потока
+ * @param output исходящий поток байт
+ */
+static void dump(const char * prefix, const std::string & output) noexcept {
+	// Таблица названий типов кадров
+	static const char * names[] = {
+		"DATA", "HEADERS", "PRIORITY", "RST_STREAM", "SETTINGS",
+		"PUSH_PROMISE", "PING", "GOAWAY", "WINDOW_UPDATE", "CONTINUATION"
+	};
+	// Текущая позиция разбора потока
+	size_t pos = 0;
+	/**
+	 * Выполняем перебор всех кадров исходящего потока
+	 */
+	while((pos + 9) <= output.size()){
+		// Извлекаем длину полезной нагрузки кадра
+		const size_t length = (
+			(static_cast <size_t> (static_cast <uint8_t> (output[pos])) << 16) |
+			(static_cast <size_t> (static_cast <uint8_t> (output[pos + 1])) << 8) |
+			static_cast <size_t> (static_cast <uint8_t> (output[pos + 2]))
+		);
+		// Извлекаем тип кадра
+		const uint8_t type = static_cast <uint8_t> (output[pos + 3]);
+		// Печатаем параметры кадра
+		::printf("    %s %s len=%zu\n", prefix, ((type < 10) ? names[type] : "UNKNOWN"), length);
+		// Если кадр целиком не поместился - прекращаем разбор
+		if((pos + 9 + length) > output.size())
+			// Прекращаем разбор потока
+			break;
+		// Сдвигаем позицию за разобранный кадр
+		pos += (9 + length);
+	}
+}
+
 /**
  * @brief Функция классификации реакции эндпоинта
  *
@@ -198,6 +238,10 @@ static std::string ours(const fmk_t * fmk, const log_t * log, const std::string 
 	output.clear();
 	// Подаём поток байт на разбор
 	server.parse(input.data(), input.size());
+	// Если включён подробный вывод
+	if(::verbose)
+		// Печатаем кадры нашего парсера
+		::dump("наш:", output);
 	// Выводим описание класса реакции
 	return ::reaction(output);
 }
@@ -249,6 +293,13 @@ static std::string reference(const std::string & input) noexcept {
 	}
 	// Удаляем объект сессии сервера nghttp2
 	::nghttp2_session_del(session);
+	// Если включён подробный вывод
+	if(::verbose){
+		// Печатаем объём разобранных эталоном байт
+		::printf("    nghttp2 разобрал %zd из %zu байт\n", used, input.size());
+		// Печатаем кадры эталонной реализации
+		::dump("nghttp2:", output);
+	}
 	// Если разбор оборван внутренней ошибкой сессии - это тоже ошибка соединения
 	if((used < 0) && (::reaction(output).compare("-") == 0))
 		// Выводим описание ошибки соединения
@@ -257,7 +308,9 @@ static std::string reference(const std::string & input) noexcept {
 	return ::reaction(output);
 }
 
-int32_t main(){
+int32_t main(int32_t argc, char * argv[]){
+	// Включаем подробный вывод кадров по требованию
+	::verbose = ((argc > 1) && (::strcmp(argv[1], "-v") == 0));
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
