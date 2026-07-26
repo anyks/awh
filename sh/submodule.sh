@@ -25,8 +25,10 @@ if [ -n "$1" ]; then
 		if [ -n "$2" ]; then
 			# Если URL-адрес сабмодуля передан
 			if [ -n "$3" ]; then
+				# Переводим в корневую директорию
+				cd $ROOT/../
 				# Добавляем новый сабмодуль
-				git submodule add $3 submodules/$2
+				git submodule add --force $3 submodules/$2
 				# Выводим сообщение что добавление выполнено
 				echo "Submodule \"$2\" added successfully"
 			else
