@@ -1,7 +1,7 @@
 /**
  * @file: server.cpp
  * @date: 2026-03-22
- * @license: GPL-3.0
+ * @license: LicenseRef-AWH-1.0
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev

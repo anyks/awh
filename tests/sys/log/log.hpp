@@ -1,7 +1,7 @@
 /**
  * @file: log.hpp
  * @date: 2025-12-12
- * @license: GPL-3.0
+ * @license: LicenseRef-AWH-1.0
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev

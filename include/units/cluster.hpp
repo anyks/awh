@@ -1,7 +1,7 @@
 /**
  * @file: cluster.hpp
  * @date: 2026-02-21
- * @license: GPL-3.0
+ * @license: LicenseRef-AWH-1.0
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev

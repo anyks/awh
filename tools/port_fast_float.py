@@ -279,7 +279,7 @@ FORMAT_ENUM_VALUES = [
 HEADER_PREFIX = """/**
  * @file: {filename}
  * @date: 2026-07-22
- * @license: GPL-3.0
+ * @license: LicenseRef-AWH-1.0
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev

@@ -1,7 +1,7 @@
 /**
  * @file: h2spec-server.cpp
  * @date: 2026-07-27
- * @license: GPL-3.0
+ * @license: LicenseRef-AWH-1.0
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev

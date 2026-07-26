@@ -1,7 +1,7 @@
 /**
  * @file: ntp.hpp
  * @date: 2026-03-05
- * @license: GPL-3.0
+ * @license: LicenseRef-AWH-1.0
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev

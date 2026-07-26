@@ -1,7 +1,7 @@
 /**
  * @file: ip.cpp
  * @date: 2025-10-31
- * @license: GPL-3.0
+ * @license: LicenseRef-AWH-1.0
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev

@@ -2,6 +2,8 @@
 
 # ANYKS - WEB HUB (AWH) C++
 
+[![License: AWH 1.0](https://img.shields.io/badge/license-AWH%201.0-blue.svg)](LICENSE)
+
 ## Project goals and features
 
 - **HTTP / HTTPS**: WEB - CLIENT / SERVER.
@@ -465,3 +467,38 @@ $ cmake --build .
 ```c++
 
 ```
+
+---
+
+## License
+
+AWH is distributed under the **AWH License 1.0** — see [LICENSE](LICENSE) for the full text.
+
+### In short
+
+- **Free for any use**, including commercial, proprietary and closed-source products, on any operating system and any number of machines. No fee, no registration, no separate permission.
+- **Link it any way you like** — statically (`libawh.a`, `awh.lib`) or dynamically (`libawh.so`, `libawh.dylib`, `libawh.dll`, `awh.dll`).
+- **Your code stays yours.** Linking AWH does not oblige you to publish, disclose or open source anything of your own.
+- **You must credit the author** — see below. This is the one thing asked in return.
+- **You may not take AWH apart.** Copying its individual files, classes or algorithms into another project, or publishing any part of it as a separate library, is not permitted. AWH is used as a whole.
+
+Note that this is a source-available license, not an OSI-approved open source one: the requirement to use the library as a whole is incompatible with the Open Source Definition. Everything else about it is permissive.
+
+### Required attribution
+
+A product that uses AWH must reproduce the following notice somewhere its users can reasonably find it — the documentation, an "About" or "Credits" screen, a third-party notices page, a `--version` output, or a README:
+
+```
+This product uses AWH (ANYKS Web Hub) by Yuriy Lobarev (ANYKS).
+https://github.com/anyks/awh
+```
+
+The repository address must be reproduced verbatim, and presented as a working link wherever links are supported.
+
+### Third-party components
+
+AWH builds on a number of external libraries which are **not** covered by the AWH License and keep their own terms — you are free to use any of them separately. They are listed, with their licenses, in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
+
+### Commercial and extended terms
+
+Need rights beyond this license — for example the right to use individual components separately, or a waiver of the attribution requirement? Write to <forman@anyks.com>.
