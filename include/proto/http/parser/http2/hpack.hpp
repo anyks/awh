@@ -193,22 +193,6 @@ namespace awh {
 					 */
 					__AWH_SHARED_EXPORT__ void encode(string_view input, string & output) noexcept;
 					/**
-					 * @brief Функция кодирования строки Huffman'ом с известной длиной результата
-					 *
-					 * @details Длину вызывающая сторона обычно уже вычислила: она нужна и для
-					 *          выбора между литералом и Huffman, и для записи префикса длины.
-					 *          Пересчитывать её внутри - это лишний проход по строке на каждый
-					 *          кодируемый заголовок
-					 *
-					 * @note Результат дописывается к содержимому выходного буфера, а не замещает его
-					 *
-					 * @param input  кодируемая строка
-					 * @param output выходной буфер закодированной строки
-					 * @param length длина строки после кодирования, полученная из length()
-					 *
-					 */
-					__AWH_SHARED_EXPORT__ void encode(string_view input, string & output, const size_t length) noexcept;
-					/**
 					 * @brief Функция декодирования Huffman-строки (RFC 7541 Appendix B)
 					 *
 					 * @note Содержимое выходного буфера замещается, а не дополняется

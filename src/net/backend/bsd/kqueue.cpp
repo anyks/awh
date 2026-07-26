@@ -2295,7 +2295,7 @@ namespace local {
 	}
 
 	/**
-	 * @brief Класс сторожа времени цикла обработки события
+	 * @brief Класс сторожа цикла обработки события
 	 *
 	 * @details Циклы чтения и записи ограничены по времени, чтобы событие с
 	 *          непрерывно поступающими данными не удерживало цикл событий
@@ -2309,23 +2309,50 @@ namespace local {
 	 *          каждую шестнадцатую итерацию. Цикл может перебрать предельное время
 	 *          на пятнадцать итераций, но каждая из них выполняет обращение к ядру,
 	 *          то есть перебор ограничен единицами микросекунд при бюджете в
-	 *          пятьсот - тремя процентами, которыми можно пренебречь
+	 *          пятьсот - тремя процентами, которыми можно пренебречь.
+	 *
+	 *          Второй ограничитель - объём. Сообщая о готовности сокета к чтению,
+	 *          ядро вместе с признаком готовности отдаёт и количество октетов,
+	 *          доступных к получению. Цикл, знающий это количество, выбирает ровно
+	 *          его и на этом останавливается, тогда как цикл, его не знающий,
+	 *          вынужден узнавать об исчерпании буфера отдельным вызовом приёма,
+	 *          возвращающим отказ. На коротком обмене такой вызов - половина всех
+	 *          обращений к ядру за чтение.
+	 *
+	 * @note Учёт по объёму безопасен только потому, что подписка на чтение
+	 *       уровневая: если к моменту остановки в буфер успело поступить ещё,
+	 *       ядро сообщит о готовности повторно. С краевой подпиской остановка
+	 *       раньше отказа потеряла бы пробуждение
+	 *
+	 * @note Объявленный объём есть суммарное количество октетов, доступных к
+	 *       получению, безотносительно к тому, как они разложены по сообщениям.
+	 *       Проверено на потоковых сокетах, на дейтаграммах и на SEQPACKET: во
+	 *       всех случаях выборка объявленного объёма исчерпывает буфер ровно.
+	 *       Для SCTP с подпиской на уведомления объявленный объём включает и
+	 *       октеты уведомлений, поэтому учитывать надо весь прочитанный объём, а
+	 *       не одну лишь полезную нагрузку
 	 *
 	 */
 	typedef class Watchdog {
 		private:
 			// Счётчик выполненных итераций цикла
 			uint32_t _count;
+			// Оставшийся к получению объём в октетах, отрицательное значение - объём неизвестен
+			int64_t _volume;
 			// Предельное время работы цикла в наносекундах
 			uint64_t _deadline;
 		public:
 			/**
-			 * @brief Оператор проверки того, что бюджет времени не исчерпан
+			 * @brief Оператор проверки того, что цикл может продолжаться
 			 *
 			 * @return результат проверки
 			 *
 			 */
 			explicit operator bool () noexcept {
+				// Если объявленный ядром объём известен и уже выбран
+				if(this->_volume == 0)
+					// Сообщаем, что продолжать незачем
+					return false;
 				// Если итерация не шестнадцатая, часы не читаем вовсе
 				if((this->_count++ & 0x0F) != 0x0F)
 					// Сообщаем, что бюджет времени не исчерпан
@@ -2335,11 +2362,32 @@ namespace local {
 			}
 		public:
 			/**
-			 * @brief Конструктор
+			 * @brief Метод учёта полученного объёма
+			 *
+			 * @note Вызывается на весь прочитанный объём, включая тот, что цикл
+			 *       затем отбросит: из буфера сокета он извлечён и обратно не
+			 *       вернётся
+			 *
+			 * @param bytes количество полученных октетов
 			 *
 			 */
-			explicit Watchdog() noexcept :
-			 _count(0), _deadline(nanostamp() + AWH_EVENT_MAX_LOOP_WAIT) {}
+			void consume(const ssize_t bytes) noexcept {
+				// Если объявленный объём известен и получение состоялось
+				if((this->_volume > 0) && (bytes > 0))
+					// Уменьшаем оставшийся к получению объём, не уходя ниже нуля
+					this->_volume = ((static_cast <int64_t> (bytes) < this->_volume) ?
+						(this->_volume - static_cast <int64_t> (bytes)) : 0);
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param volume объявленный ядром объём к получению в октетах, ноль - объём неизвестен
+			 *
+			 */
+			explicit Watchdog(const int64_t volume = 0) noexcept :
+			 _count(0), _volume((volume > 0) ? volume : -1),
+			 _deadline(nanostamp() + AWH_EVENT_MAX_LOOP_WAIT) {}
 	} watchdog_t;
 	/**
 	 * @brief Прототип функции получения минимального значения из трёх аргументов
@@ -3487,7 +3535,7 @@ namespace io {
 	 * @return результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::node_t *, const engine::io_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *) noexcept;
+	static bool read(::io::node_t *, const engine::io_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *, const int64_t = 0) noexcept;
 	/**
 	 * @brief Прототип функции опроса событий
 	 *
@@ -6331,7 +6379,7 @@ namespace io {
 	 * @return    результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::file_t * fs, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
+	static bool read(::io::file_t * fs, const engine::io_t * io, const eth_t * eth, const log_t * log, const int64_t volume) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -6490,7 +6538,7 @@ namespace io {
 	 * @return    результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::ipc_t * ipc, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
+	static bool read(::io::ipc_t * ipc, const engine::io_t * io, const eth_t * eth, const log_t * log, const int64_t volume) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -6514,7 +6562,7 @@ namespace io {
 								// Количество прочитанных байт
 								ssize_t bytes = 0;
 								// Создаём сторож времени цикла обработки события
-								::local::watchdog_t watchdog;
+								::local::watchdog_t watchdog(volume);
 								/**
 								 * Считываем все данные из файла пока не прочитаем всё
 								 */
@@ -6525,6 +6573,8 @@ namespace io {
 									errno = 0;
 									// Выполняем чтение данных из PIPE-сокета
 									bytes = ::read(ipc->transfer.fd, ::__awh_buffer__, 0x1000);
+									// Учитываем полученное в объявленном ядром объёме
+									watchdog.consume(bytes);
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Если нам нужно повторить попытку позже
@@ -6677,7 +6727,7 @@ namespace io {
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						// Создаём сторож времени цикла обработки события
-						::local::watchdog_t watchdog;
+						::local::watchdog_t watchdog(volume);
 						/**
 						 * Считываем все данные из файла пока не прочитаем всё
 						 */
@@ -6688,6 +6738,8 @@ namespace io {
 							errno = 0;
 							// Выполняем чтение данных из IPC-сокета
 							bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							// Учитываем полученное в объявленном ядром объёме
+							watchdog.consume(bytes);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если нам нужно повторить попытку позже
@@ -6811,7 +6863,7 @@ namespace io {
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						// Создаём сторож времени цикла обработки события
-						::local::watchdog_t watchdog;
+						::local::watchdog_t watchdog(volume);
 						/**
 						 * Считываем все данные из файла пока не прочитаем всё
 						 */
@@ -6822,6 +6874,8 @@ namespace io {
 							errno = 0;
 							// Выполняем чтение данных из IPC-сокета
 							bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							// Учитываем полученное в объявленном ядром объёме
+							watchdog.consume(bytes);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если нам нужно повторить попытку позже
@@ -6968,7 +7022,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::peer_t * peer, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
+	static bool read(::io::peer_t * peer, const engine::io_t * io, const eth_t * eth, const log_t * log, const int64_t volume) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -7014,7 +7068,7 @@ namespace io {
 						// Если есть лимит для чтения данных из сокета
 						if(size > 0){
 							// Создаём сторож времени цикла обработки события
-							::local::watchdog_t watchdog;
+							::local::watchdog_t watchdog(volume);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
@@ -7048,6 +7102,8 @@ namespace io {
 									// Выполняем чтение данных из TCP/IP сокета
 									bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
 								#endif
+								// Учитываем полученное в объявленном ядром объёме
+								watchdog.consume(bytes);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -7357,7 +7413,7 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Создаём сторож времени цикла обработки события
-							::local::watchdog_t watchdog;
+							::local::watchdog_t watchdog(volume);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
@@ -7379,6 +7435,8 @@ namespace io {
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+								// Учитываем полученное в объявленном ядром объёме
+								watchdog.consume(bytes);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -7684,7 +7742,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::tun_t * tunnel, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool read(::io::tun_t * tunnel, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log, const int64_t volume) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -7708,7 +7766,7 @@ namespace io {
 				// Количество прочитанных байт
 				ssize_t bytes = 0;
 				// Создаём сторож времени цикла обработки события
-				::local::watchdog_t watchdog;
+				::local::watchdog_t watchdog(volume);
 				/**
 				 * Считываем все данные из файла пока не прочитаем всё
 				 */
@@ -7719,6 +7777,8 @@ namespace io {
 					errno = 0;
 					// Читаем данные из туннеля
 					bytes = ::readv(tunnel->fd, iov, 2);
+					// Учитываем полученное в объявленном ядром объёме
+					watchdog.consume(bytes);
 					// Если мы получили ошибку
 					if(bytes < 0){
 						// Если нам нужно повторить попытку позже
@@ -8812,7 +8872,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
+	static bool read(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log, const int64_t volume) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -8858,7 +8918,7 @@ namespace io {
 						// Если есть лимит для чтения данных из сокета
 						if(size > 0){
 							// Создаём сторож времени цикла обработки события
-							::local::watchdog_t watchdog;
+							::local::watchdog_t watchdog(volume);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
@@ -8892,6 +8952,8 @@ namespace io {
 									// Выполняем чтение данных из TCP/IP сокета
 									bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
 								#endif
+								// Учитываем полученное в объявленном ядром объёме
+								watchdog.consume(bytes);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -9201,7 +9263,7 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Создаём сторож времени цикла обработки события
-							::local::watchdog_t watchdog;
+							::local::watchdog_t watchdog(volume);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
@@ -9346,6 +9408,8 @@ namespace io {
 										client->callbacks.traffic(client->id, client->raw.info);
 								// Выполняем чтение данных из сокета в обычном режиме, если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 								} else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+								// Учитываем полученное в объявленном ядром объёме
+								watchdog.consume(bytes);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -9663,7 +9727,7 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Создаём сторож времени цикла обработки события
-							::local::watchdog_t watchdog;
+							::local::watchdog_t watchdog(volume);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
@@ -9821,6 +9885,8 @@ namespace io {
 										&client->endpoint.size
 									);
 								}
+								// Учитываем полученное в объявленном ядром объёме
+								watchdog.consume(bytes);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -10155,7 +10221,7 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Создаём сторож времени цикла обработки события
-							::local::watchdog_t watchdog;
+							::local::watchdog_t watchdog(volume);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
@@ -10188,6 +10254,8 @@ namespace io {
 									// Выполняем чтение данных из TCP/IP сокета
 									bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 								#endif
+								// Учитываем полученное в объявленном ядром объёме
+								watchdog.consume(bytes);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -10439,7 +10507,7 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Создаём сторож времени цикла обработки события
-							::local::watchdog_t watchdog;
+							::local::watchdog_t watchdog(volume);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
@@ -10485,6 +10553,8 @@ namespace io {
 										&client->endpoint.size
 									);
 								#endif
+								// Учитываем полученное в объявленном ядром объёме
+								watchdog.consume(bytes);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -10828,7 +10898,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::server_t * server, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool read(::io::server_t * server, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log, const int64_t volume) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -10857,7 +10927,7 @@ namespace io {
 						// Если событие является неблокирующим
 						if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK)){
 							// Создаём сторож времени цикла обработки события
-							::local::watchdog_t watchdog;
+							::local::watchdog_t watchdog(volume);
 							/**
 							 * Считываем все данные из файла пока не прочитаем всё
 							 */
@@ -11016,6 +11086,8 @@ namespace io {
 										&server->endpoint.size
 									);
 								}
+								// Учитываем полученное в объявленном ядром объёме
+								watchdog.consume(bytes);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -26747,7 +26819,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool read(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log, const int64_t volume) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -26767,7 +26839,7 @@ namespace io {
 						// Если событие находится не в состоянии паузы
 						if(fs->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из узла файловой системы
-							return ::io::read(fs, io, eth, log);
+							return ::io::read(fs, io, eth, log, volume);
 					}
 				} break;
 				// Если узел является межпроцессным взаимодействием
@@ -26779,7 +26851,7 @@ namespace io {
 						// Если событие находится не в состоянии паузы
 						if(ipc->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из узла межпроцессного взаимодействия
-							return ::io::read(ipc, io, eth, log);
+							return ::io::read(ipc, io, eth, log, volume);
 					}
 				} break;
 				// Если узел является одноранговым узлом
@@ -26791,7 +26863,7 @@ namespace io {
 						// Если событие находится не в состоянии паузы
 						if(peer->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из однорангового узла
-							return ::io::read(peer, io, eth, log);
+							return ::io::read(peer, io, eth, log, volume);
 					}
 				} break;
 				// Если узел является туннелем
@@ -26801,7 +26873,7 @@ namespace io {
 					// Если событие чтения разрешено
 					if(tunnel->actions & ::action::READ)
 						// Выполняем чтение данных из узла туннеля
-						return ::io::read(tunnel, io, eth, addr, fmk, log);
+						return ::io::read(tunnel, io, eth, addr, fmk, log, volume);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -26812,7 +26884,7 @@ namespace io {
 						// Если событие находится не в состоянии паузы
 						if(client->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из узла клиента
-							return ::io::read(client, io, eth, log);
+							return ::io::read(client, io, eth, log, volume);
 					}
 				} break;
 				// Если узел является сервером
@@ -26885,7 +26957,7 @@ namespace io {
 						// Если событие чтения разрешено
 						if(server->actions & ::action::READ)
 							// Выполняем чтение данных из узла сервера
-							return ::io::read(server, io, eth, addr, fmk, log);
+							return ::io::read(server, io, eth, addr, fmk, log, volume);
 					}
 				} break;
 			}
@@ -27399,8 +27471,8 @@ namespace io {
 						}
 					} break;
 				}
-				// Обрабатываем событие доступности сокета на чтение
-				return ::io::read(node, io, eth, addr, fmk, log);
+				// Обрабатываем событие доступности сокета на чтение, сообщая объявленный ядром объём
+				return ::io::read(node, io, eth, addr, fmk, log, ev.data);
 			}
 			// Если мы детектировали событие готовности сокета на запись данных
 			case EVFILT_WRITE: {
