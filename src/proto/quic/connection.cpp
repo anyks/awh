@@ -656,8 +656,13 @@ void awh::quic::Connection::record(const space_t space, const uint64_t pn) noexc
 		item.largestRx = pn;
 		// Запоминаем время приёма нового наибольшего подтверждаемого пакета (RFC 9000 §13.2.5)
 		item.ackTime = this->_times.now;
-	// Если принят номер пакета в пределах окна защиты от повторов
-	} else if((item.largestRx - pn) <= 64)
+	/**
+	 * Если принят номер пакета строго ниже наибольшего в пределах окна защиты от
+	 * повторов. Условие pn < largestRx делает сдвиг самозащищённым: при pn == largestRx
+	 * показатель (largestRx - pn) - 1 обернулся бы в неопределённое поведение, а
+	 * повторный приём наибольшего номера отсекается вызывающим ещё до record()
+	 */
+	} else if((pn < item.largestRx) && ((item.largestRx - pn) <= 64))
 		// Отмечаем номер пакета принятым в окне
 		item.dedup |= (static_cast <uint64_t> (1) << ((item.largestRx - pn) - 1));
 	/**
@@ -1378,7 +1383,7 @@ void awh::quic::Connection::detect(const space_t space, const vector <uint64_t> 
 				 * судить лишь по итоговым границам после цикла нельзя - квалифицирующий
 				 * период мог завершиться раньше разрыва (RFC 9002 §7.6.1)
 				 */
-				if((periodCount >= PERSISTENT_PACKETS) && ((periodEnd - periodStart) > this->persistence(space)))
+				if((periodCount >= PERSISTENT_PACKETS) && ((periodEnd - periodStart) > this->persistence()))
 					// Отмечаем обнаруженный период устойчивой перегрузки
 					persistent = true;
 			}
@@ -1499,17 +1504,15 @@ uint64_t awh::quic::Connection::deadline(const space_t space) const noexcept {
  *
  * @return длительность периода устойчивой перегрузки в миллисекундах
  */
-uint64_t awh::quic::Connection::persistence(const space_t space) const noexcept {
+uint64_t awh::quic::Connection::persistence() const noexcept {
 	// Базовый интервал таймера PTO без экспоненциальной выдержки
 	const uint64_t base = (this->_rtt.sampled ? (this->_rtt.smoothed + ::max(4 * this->_rtt.variation, GRANULARITY)) : (3 * INITIAL_RTT));
 	/**
-	 * Максимальная задержка подтверждения относится только к пространству приложения:
-	 * подтверждения пакетов Initial и Handshake удалённый эндпоинт не задерживает,
-	 * поэтому для них слагаемое равно нулю (RFC 9002 §6.2.1)
+	 * Длительность включает максимальную задержку подтверждения для ВСЕХ пространств
+	 * номеров пакетов - в отличие от таймера PTO (§6.2), где для Initial/Handshake она
+	 * равна нулю, период устойчивой перегрузки учитывает её всегда (RFC 9002 §7.6.1)
 	 */
-	const uint64_t ackDelay = ((space == space_t::APPLICATION) ? this->_transport.remote.maxAckDelay : 0);
-	// Выводим длительность периода с учётом максимальной задержки подтверждения пира
-	return ((base + ackDelay) * PERSISTENT_THRESHOLD);
+	return ((base + this->_transport.remote.maxAckDelay) * PERSISTENT_THRESHOLD);
 }
 /**
  * @brief Метод вычисления дедлайна таймаута простоя соединения (RFC 9000 §10.1)
