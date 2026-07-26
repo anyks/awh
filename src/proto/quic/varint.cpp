@@ -17,8 +17,9 @@
  */
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <proto/quic/quic.hpp>
 #include <proto/quic/varint.hpp>
 
 /**

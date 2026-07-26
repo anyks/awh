@@ -23,9 +23,10 @@
 #include <cstring>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include <proto/quic/packet.hpp>
+#include <proto/quic/varint.hpp>
 
 /**
  * Используем стандартное пространство имён

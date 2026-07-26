@@ -34,9 +34,10 @@
 #include <openssl/digest.h>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include <proto/quic/crypto.hpp>
+#include <proto/quic/packet.hpp>
 
 /**
  * Используем стандартное пространство имён

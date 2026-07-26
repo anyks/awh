@@ -31,8 +31,10 @@
 #include <openssl/digest.h>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <proto/quic/varint.hpp>
+#include <proto/quic/packet.hpp>
 #include <proto/quic/connection.hpp>
 
 /**

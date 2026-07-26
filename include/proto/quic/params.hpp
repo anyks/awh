@@ -30,7 +30,6 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "quic.hpp"
-#include "varint.hpp"
 #include "../../sys/global.hpp"
 
 /**

@@ -29,7 +29,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "quic.hpp"
 #include "../../sys/global.hpp"
 
 /**

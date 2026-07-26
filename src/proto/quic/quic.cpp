@@ -23,16 +23,16 @@
 #include <cstring>
 
 /**
- * Подключаем заголовочный файл проекта
- */
-#include <proto/quic/quic.hpp>
-
-/**
  * Подключаем заголовочные файлы криптографической библиотеки
  */
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/digest.h>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include <proto/quic/quic.hpp>
 
 /**
  * Используем стандартное пространство имён
