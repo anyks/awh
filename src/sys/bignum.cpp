@@ -1644,45 +1644,64 @@ void awh::bignum::sqrt(uint8_t * value, const size_t size) noexcept {
 	if(zero(value, size))
 		// Выходим из функции
 		return;
-	// Выполняем создание временного буфера результата
-	Scratch result(size);
-	// Выполняем создание временного буфера пробного разряда
-	Scratch probe(size);
-	// Выполняем создание временного буфера проверяемого значения
-	Scratch check(size);
-	// Если временные буферы не созданы
-	if((result.get() == nullptr) || (probe.get() == nullptr) || (check.get() == nullptr))
-		// Выходим из функции
-		return;
 	// Получаем количество значащих бит числа
 	const size_t count = bits(value, size);
-	// Устанавливаем старший пробный разряд числа
-	bit(probe.get(), size, (((count - 1) / 2) * 2), true);
+	// Если число не превышает единицы - корень равен самому числу
+	if(count <= 1)
+		// Выходим из функции
+		return;
+	// Выполняем создание временного буфера текущего приближения
+	Scratch guess(size);
+	// Выполняем создание временного буфера следующего приближения
+	Scratch next(size);
+	// Выполняем создание временного буфера частного от деления
+	Scratch quotient(size);
+	// Выполняем создание временного буфера исходного числа
+	Scratch source(size);
+	// Если временные буферы не созданы
+	if((guess.get() == nullptr) || (next.get() == nullptr) ||
+	   (quotient.get() == nullptr) || (source.get() == nullptr))
+		// Выходим из функции
+		return;
+	// Выполняем копирование исходного числа
+	::memcpy(source.get(), value, size);
 	/**
-	 * Выполняем поиск целочисленного квадратного корня числа
+	 * Формируем начальное приближение корня
+	 *
+	 * @details Начальное приближение обязано быть не меньше искомого корня, иначе
+	 *          метод Ньютона сойдётся к значению меньше корня. Для числа из count
+	 *          значащих бит верной оценкой сверху является 2^ceil(count / 2).
+	 *
 	 */
-	while(!zero(probe.get(), size)){
-		// Выполняем копирование результата в проверяемое значение
-		::memcpy(check.get(), result.get(), size);
-		// Выполняем сложение результата с пробным разрядом
-		add(check.get(), probe.get(), size);
-		/**
-		 * Если проверяемое значение не превышает остаток числа
-		 */
-		if(ucompare(value, check.get(), size) >= 0){
-			// Выполняем вычитание проверяемого значения из остатка
-			sub(value, check.get(), size);
-			// Выполняем сдвиг результата вправо
-			shr(result.get(), size, 1, false);
-			// Выполняем сложение результата с пробным разрядом
-			add(result.get(), probe.get(), size);
-		// Выполняем сдвиг результата вправо
-		} else shr(result.get(), size, 1, false);
-		// Выполняем сдвиг пробного разряда вправо
-		shr(probe.get(), size, 2, false);
+	bit(guess.get(), size, ((count + 1) / 2), true);
+	/**
+	 * Выполняем уточнение корня методом Ньютона
+	 *
+	 * @details Каждая итерация приближения удваивает количество верных разрядов,
+	 *          поэтому итераций требуется порядка логарифма разрядности числа,
+	 *          а не по одной на каждый разряд как при побитовом поиске.
+	 *
+	 */
+	while(true){
+		// Выполняем копирование исходного числа в делимое
+		::memcpy(quotient.get(), source.get(), size);
+		// Выполняем деление исходного числа на текущее приближение
+		divmod(quotient.get(), guess.get(), nullptr, size);
+		// Выполняем копирование текущего приближения
+		::memcpy(next.get(), guess.get(), size);
+		// Выполняем сложение текущего приближения с частным от деления
+		add(next.get(), quotient.get(), size);
+		// Выполняем деление суммы приближений на два
+		shr(next.get(), size, 1, false);
+		// Если уточнение приближения завершено
+		if(ucompare(next.get(), guess.get(), size) >= 0)
+			// Выходим из цикла уточнения корня
+			break;
+		// Выполняем переход к следующему приближению
+		::memcpy(guess.get(), next.get(), size);
 	}
 	// Выполняем копирование результата извлечения корня
-	::memcpy(value, result.get(), size);
+	::memcpy(value, guess.get(), size);
 }
 /**
  * @brief Метод возведения целого числа в степень
@@ -2212,6 +2231,110 @@ bool awh::bignum::parse(uint8_t * value, const size_t size, string_view text, co
 	return true;
 }
 /**
+ * @brief Метод округления целого числа до указанного десятичного разряда
+ *
+ * @param value  буфер числа для округления
+ * @param size   размер буфера числа в байтах
+ * @param sign   флаг знакового представления числа
+ * @param digits количество знаков после запятой
+ * @param mode   правило округления числа
+ *
+ */
+void awh::bignum::round(uint8_t * value, const size_t size, const bool sign, const int32_t digits, const round_t mode) noexcept {
+	// Если округление целого числа не требуется
+	if(digits >= 0)
+		// Выходим из функции
+		return;
+	// Определяем количество отбрасываемых десятичных разрядов
+	const uint64_t count = static_cast <uint64_t> (-static_cast <int64_t> (digits));
+	// Определяем является ли число отрицательным
+	const bool minus = (sign && negative(value, size));
+	// Выполняем создание временного буфера делителя числа
+	Scratch divisor(size);
+	// Выполняем создание временного буфера частного от деления
+	Scratch quotient(size);
+	// Выполняем создание временного буфера остатка от деления
+	Scratch remainder(size);
+	// Выполняем создание временного буфера удвоенного остатка от деления
+	Scratch doubled(size);
+	// Если временные буферы не созданы
+	if((divisor.get() == nullptr) || (quotient.get() == nullptr) ||
+	   (remainder.get() == nullptr) || (doubled.get() == nullptr))
+		// Выходим из функции
+		return;
+	// Формируем основание степени делителя числа
+	set(divisor.get(), size, 10, false);
+	// Формируем делитель числа в виде степени десяти
+	pow(divisor.get(), size, count);
+	/**
+	 * Если делитель числа вышел за пределы разрядной сетки
+	 */
+	if(zero(divisor.get(), size)){
+		// Выполняем обнуление буфера числа
+		reset(value, size);
+		// Выходим из функции
+		return;
+	}
+	// Выполняем копирование числа в делимое
+	::memcpy(quotient.get(), value, size);
+	// Если число является отрицательным
+	if(minus)
+		// Выполняем смену знака делимого числа
+		neg(quotient.get(), size);
+	// Выполняем деление модуля числа на делитель
+	divmod(quotient.get(), divisor.get(), remainder.get(), size);
+	// Выполняем копирование остатка от деления
+	::memcpy(doubled.get(), remainder.get(), size);
+	// Выполняем удвоение остатка от деления
+	const bool carry = add(doubled.get(), remainder.get(), size);
+	// Выполняем сравнение удвоенного остатка от деления с делителем
+	const int8_t compare = (carry ? static_cast <int8_t> (1) : ucompare(doubled.get(), divisor.get(), size));
+	// Флаг округления в большую сторону
+	bool up = false;
+	/**
+	 * Определяем необходимость округления в большую сторону
+	 */
+	switch(static_cast <uint8_t> (mode)){
+		// Если требуется округление к ближайшему значению с половиной от нуля
+		case static_cast <uint8_t> (round_t::NEAREST):
+			up = (compare >= 0);
+		break;
+		// Если требуется округление к ближайшему значению с половиной к чётному
+		case static_cast <uint8_t> (round_t::EVEN):
+			up = ((compare > 0) || ((compare == 0) && ((quotient.get()[0] & 0x01) != 0)));
+		break;
+		// Если требуется округление в сторону минус бесконечности
+		case static_cast <uint8_t> (round_t::DOWN):
+			up = (minus && !zero(remainder.get(), size));
+		break;
+		// Если требуется округление в сторону плюс бесконечности
+		case static_cast <uint8_t> (round_t::UP):
+			up = (!minus && !zero(remainder.get(), size));
+		break;
+		// Если требуется округление в сторону нуля
+		default: up = false;
+	}
+	/**
+	 * Если требуется округление в большую сторону
+	 */
+	if(up){
+		// Выполняем обнуление буфера удвоенного остатка для повторного использования
+		reset(doubled.get(), size);
+		// Устанавливаем единичное значение приращения
+		doubled.get()[0] = 1;
+		// Выполняем увеличение частного от деления на единицу
+		add(quotient.get(), doubled.get(), size);
+	}
+	// Выполняем восстановление разрядности числа умножением на делитель
+	mul(quotient.get(), divisor.get(), size);
+	// Выполняем копирование результата округления
+	::memcpy(value, quotient.get(), size);
+	// Если число является отрицательным
+	if(minus)
+		// Выполняем смену знака результата округления
+		neg(value, size);
+}
+/**
  * @brief Основное пространство имён
  *
  */
@@ -2568,6 +2691,199 @@ namespace awh {
 					// Выполняем умножение числа на остаток степени десяти
 					mulAddSmall(value, size, multiplier, 0);
 				}
+			}
+			/**
+			 * @brief Метод формирования точного десятичного представления вещественного числа
+			 *
+			 * @details Мантисса переводится в десятичную запись, после чего к ней применяется
+			 *          показатель степени двойки: умножением на два для положительного показателя
+			 *          и умножением на пять со сдвигом десятичной точки для отрицательного.
+			 *          Оба преобразования точны, поэтому запись описывает значение числа
+			 *          без потерь.
+			 *
+			 * @param num    распакованное вещественное число
+			 * @param digits строка десятичных цифр от старшей к младшей
+			 * @param point  показатель степени десяти применяемый к строке цифр
+			 * @return       результат формирования представления
+			 *
+			 */
+			bool realDecimal(const realValue_t & num, string & digits, int64_t & point) noexcept {
+				// Если преобразование числа выходит за пределы допустимого объёма вычислений
+				if((num.exp > static_cast <int64_t> (MAX_DECIMAL_STEPS * 5)) || (num.exp < -static_cast <int64_t> (MAX_DECIMAL_STEPS * 5)))
+					// Выводим результат формирования представления
+					return false;
+				// Выполняем формирование десятичного представления мантиссы числа
+				digits = print(num.mantissa.data(), num.mantissa.size(), false, format_t::DEC);
+				// Обнуляем показатель степени десяти числа
+				point = 0;
+				// Получаем показатель степени двойки числа
+				int64_t exponent = num.exp;
+				/**
+				 * Выполняем умножение числа на степень двойки крупными шагами
+				 */
+				while(exponent >= 30){
+					// Выполняем умножение десятичного представления числа
+					decimalMul(digits, (static_cast <uint32_t> (1) << 30));
+					// Уменьшаем показатель степени двойки числа
+					exponent -= 30;
+				}
+				/**
+				 * Если требуется выполнить умножение числа на остаток степени двойки
+				 */
+				if(exponent > 0){
+					// Выполняем умножение десятичного представления числа
+					decimalMul(digits, (static_cast <uint32_t> (1) << exponent));
+					// Обнуляем показатель степени двойки числа
+					exponent = 0;
+				}
+				// Определяем количество требуемых делений числа на два
+				int64_t divisions = -exponent;
+				/**
+				 * Выполняем деление числа на степень двойки крупными шагами
+				 */
+				while(divisions >= 13){
+					// Выполняем умножение десятичного представления числа на степень пятёрки
+					decimalMul(digits, 1220703125u);
+					// Уменьшаем показатель степени десяти числа
+					point -= 13;
+					// Уменьшаем количество требуемых делений числа
+					divisions -= 13;
+				}
+				/**
+				 * Выполняем деление числа на остаток степени двойки
+				 */
+				while(divisions > 0){
+					// Выполняем умножение десятичного представления числа на пять
+					decimalMul(digits, 5u);
+					// Уменьшаем показатель степени десяти числа
+					point -= 1;
+					// Уменьшаем количество требуемых делений числа
+					divisions -= 1;
+				}
+				// Выводим результат формирования представления
+				return true;
+			}
+			/**
+			 * @brief Метод отбрасывания младших цифр десятичного представления по правилу округления
+			 *
+			 * @details В отличие от округления до количества значащих цифр, метод сохраняет
+			 *          значение записи: перенос при округлении удлиняет строку цифр, а не
+			 *          сдвигает десятичную точку.
+			 *
+			 * @param digits строка десятичных цифр от старшей к младшей
+			 * @param point  показатель степени десяти применяемый к строке цифр
+			 * @param drop   количество отбрасываемых младших цифр
+			 * @param sign   знак округляемого числа
+			 * @param mode   правило округления числа
+			 *
+			 */
+			void decimalDrop(string & digits, int64_t & point, const size_t drop, const bool sign, const round_t mode) noexcept {
+				// Если отбрасывание цифр не требуется
+				if(drop == 0)
+					// Выходим из функции
+					return;
+				// Определяем количество сохраняемых цифр
+				const size_t keep = ((drop < digits.size()) ? (digits.size() - drop) : 0);
+				// Значение старшей отбрасываемой цифры
+				char guard = '0';
+				// Флаг наличия значащих цифр среди отброшенных
+				bool sticky = false;
+				/**
+				 * Если позиция округления находится внутри записи числа
+				 */
+				if(drop <= digits.size()){
+					// Получаем значение старшей отбрасываемой цифры
+					guard = digits[keep];
+					/**
+					 * Выполняем перебор оставшихся отбрасываемых цифр
+					 */
+					for(size_t i = (keep + 1); i < digits.size(); ++i){
+						/**
+						 * Если отбрасываемая цифра является значащей
+						 */
+						if(digits[i] != '0'){
+							// Устанавливаем флаг наличия значащих отброшенных цифр
+							sticky = true;
+							// Выходим из цикла перебора цифр
+							break;
+						}
+					}
+				/**
+				 * Если запись числа целиком находится ниже позиции округления
+				 */
+				} else {
+					/**
+					 * Выполняем перебор всех цифр записи числа
+					 */
+					for(size_t i = 0; i < digits.size(); ++i){
+						/**
+						 * Если цифра записи является значащей
+						 */
+						if(digits[i] != '0'){
+							// Устанавливаем флаг наличия значащих отброшенных цифр
+							sticky = true;
+							// Выходим из цикла перебора цифр
+							break;
+						}
+					}
+				}
+				// Выполняем отбрасывание младших цифр записи числа
+				digits.erase(keep);
+				// Увеличиваем показатель степени десяти числа
+				point += static_cast <int64_t> (drop);
+				// Если сохраняемые цифры отсутствуют
+				if(digits.empty())
+					// Устанавливаем нулевое значение записи числа
+					digits.assign(1, '0');
+				// Флаг округления в большую сторону
+				bool up = false;
+				/**
+				 * Определяем необходимость округления в большую сторону
+				 */
+				switch(static_cast <uint8_t> (mode)){
+					// Если требуется округление к ближайшему значению с половиной от нуля
+					case static_cast <uint8_t> (round_t::NEAREST):
+						up = (guard >= '5');
+					break;
+					// Если требуется округление к ближайшему значению с половиной к чётному
+					case static_cast <uint8_t> (round_t::EVEN):
+						up = ((guard > '5') || ((guard == '5') && (sticky || (((digits.back() - '0') % 2) != 0))));
+					break;
+					// Если требуется округление в сторону минус бесконечности
+					case static_cast <uint8_t> (round_t::DOWN):
+						up = (sign && ((guard != '0') || sticky));
+					break;
+					// Если требуется округление в сторону плюс бесконечности
+					case static_cast <uint8_t> (round_t::UP):
+						up = (!sign && ((guard != '0') || sticky));
+					break;
+					// Если требуется округление в сторону нуля
+					default: up = false;
+				}
+				// Если округление в большую сторону не требуется
+				if(!up)
+					// Выходим из функции
+					return;
+				// Индекс увеличиваемой цифры записи числа
+				size_t index = digits.size();
+				/**
+				 * Выполняем увеличение записи числа на единицу младшего разряда
+				 */
+				while(index-- > 0){
+					/**
+					 * Если цифра не является последней в разряде
+					 */
+					if(digits[index] < '9'){
+						// Увеличиваем значение цифры записи числа
+						digits[index] = static_cast <char> (digits[index] + 1);
+						// Выходим из функции
+						return;
+					}
+					// Обнуляем значение цифры записи числа
+					digits[index] = '0';
+				}
+				// Добавляем цифру переноса в начало записи числа
+				digits.insert(digits.begin(), '1');
 			}
 			/**
 			 * @brief Метод формирования вещественного числа из десятичного представления
@@ -3795,11 +4111,11 @@ namespace awh {
  * @param value     буфер числа для формирования
  * @param size      размер буфера числа в байтах
  * @param format    формат представления числа
- * @param precision количество знаков после запятой (0 - автоматически)
+ * @param precision количество знаков после запятой (отрицательное значение - автоматически)
  * @return          сформированная строка числа
  *
  */
-string awh::bignum::realPrint(const uint8_t * value, const size_t size, const format_t format, const uint8_t precision) noexcept {
+string awh::bignum::realPrint(const uint8_t * value, const size_t size, const format_t format, const int16_t precision) noexcept {
 	/**
 	 * Если требуется сформировать представление битового образа числа
 	 */
@@ -3829,7 +4145,7 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 			// Добавляем разделитель дробной части числа
 			result.append(1, '.');
 			// Добавляем дробную часть числа
-			result.append(precision, '0');
+			result.append(static_cast <size_t> (precision), '0');
 		}
 		// Если требуется сформировать научную нотацию числа
 		if(format == format_t::SCI)
@@ -3851,14 +4167,17 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 	string digits = "";
 	// Показатель степени десяти применяемый к строке цифр
 	int64_t point = 0;
-	// Флаг выполнения точного преобразования числа
-	bool exact = true;
+	// Выполняем формирование точного десятичного представления числа
+	const bool exact = realDecimal(num, digits, point);
 	/**
 	 * Если точное преобразование числа выходит за пределы допустимого объёма вычислений
+	 *
+	 * @details Приближённое преобразование через вещественное число расширенной точности
+	 *          даёт около восемнадцати верных значащих цифр, чего достаточно для чисел,
+	 *          точная десятичная запись которых заняла бы десятки тысяч цифр
+	 *
 	 */
-	if((num.exp > static_cast <int64_t> (MAX_DECIMAL_STEPS * 5)) || (num.exp < -static_cast <int64_t> (MAX_DECIMAL_STEPS * 5))){
-		// Сбрасываем флаг выполнения точного преобразования числа
-		exact = false;
+	if(!exact){
 		// Получаем количество значащих бит мантиссы
 		const size_t count = bits(num.mantissa.data(), num.mantissa.size());
 		// Определяем требуемый сдвиг мантиссы
@@ -3898,56 +4217,6 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 		}
 		// Корректируем показатель степени десяти под сформированные цифры
 		point -= static_cast <int64_t> (digits.size() - 1);
-	/**
-	 * Если точное преобразование числа возможно
-	 */
-	} else {
-		// Выполняем формирование десятичного представления мантиссы числа
-		digits = print(num.mantissa.data(), num.mantissa.size(), false, format_t::DEC);
-		// Получаем показатель степени двойки числа
-		int64_t exponent = num.exp;
-		/**
-		 * Выполняем умножение числа на степень двойки крупными шагами
-		 */
-		while(exponent >= 30){
-			// Выполняем умножение десятичного представления числа
-			decimalMul(digits, (static_cast <uint32_t> (1) << 30));
-			// Уменьшаем показатель степени двойки числа
-			exponent -= 30;
-		}
-		/**
-		 * Если требуется выполнить умножение числа на остаток степени двойки
-		 */
-		if(exponent > 0){
-			// Выполняем умножение десятичного представления числа
-			decimalMul(digits, (static_cast <uint32_t> (1) << exponent));
-			// Обнуляем показатель степени двойки числа
-			exponent = 0;
-		}
-		// Определяем количество требуемых делений числа на два
-		int64_t divisions = -exponent;
-		/**
-		 * Выполняем деление числа на степень двойки крупными шагами
-		 */
-		while(divisions >= 13){
-			// Выполняем умножение десятичного представления числа на степень пятёрки
-			decimalMul(digits, 1220703125u);
-			// Уменьшаем показатель степени десяти числа
-			point -= 13;
-			// Уменьшаем количество требуемых делений числа
-			divisions -= 13;
-		}
-		/**
-		 * Выполняем деление числа на остаток степени двойки
-		 */
-		while(divisions > 0){
-			// Выполняем умножение десятичного представления числа на пять
-			decimalMul(digits, 5u);
-			// Уменьшаем показатель степени десяти числа
-			point -= 1;
-			// Уменьшаем количество требуемых делений числа
-			divisions -= 1;
-		}
 	}
 	// Выполняем удаление ведущих нулей десятичного представления числа
 	decimalTrim(digits);
@@ -3962,7 +4231,7 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 	 *          выполняется методом деления отрезка пополам.
 	 *
 	 */
-	if(exact && (precision == 0)){
+	if(exact && (precision < 0)){
 		// Выполняем создание буфера проверки обратного разбора числа
 		Scratch probe(size);
 		/**
@@ -3974,13 +4243,22 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 			// Верхняя граница количества значащих цифр
 			size_t high = natural;
 			/**
+			 * Проверяемое десятичное представление числа
+			 *
+			 * @details Строка объявлена вне цикла поиска намеренно: её ёмкость
+			 *          переиспользуется между итерациями, поэтому память выделяется
+			 *          однократно, а не на каждом шаге деления отрезка пополам
+			 *
+			 */
+			string candidate = "";
+			/**
 			 * Выполняем поиск минимального количества значащих цифр
 			 */
 			while(low < high){
 				// Определяем середину отрезка поиска
 				const size_t middle = (low + ((high - low) / 2));
 				// Формируем проверяемое десятичное представление числа
-				string candidate = digits;
+				candidate.assign(digits);
 				// Формируем показатель степени десяти проверяемого представления
 				int64_t position = point;
 				// Выполняем округление проверяемого представления числа
@@ -4003,7 +4281,7 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 	 */
 	if(format == format_t::SCI){
 		// Определяем количество формируемых значащих цифр числа
-		const size_t count = ((precision > 0) ? (static_cast <size_t> (precision) + 1) : significant);
+		const size_t count = ((precision >= 0) ? (static_cast <size_t> (precision) + 1) : significant);
 		// Выполняем округление десятичного представления числа
 		decimalRound(digits, point, count);
 		// Определяем показатель степени десяти числа
@@ -4021,15 +4299,15 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 		/**
 		 * Если количество знаков после запятой определяется автоматически
 		 */
-		if(precision == 0){
+		if(precision < 0){
 			// Выполняем удаление незначащих нулей дробной части числа
 			while(!rest.empty() && (rest.back() == '0'))
 				// Выполняем удаление незначащей цифры дробной части числа
 				rest.erase(rest.size() - 1);
 		// Выполняем дополнение дробной части числа незначащими нулями
-		} else if(rest.size() < precision)
+		} else if(rest.size() < static_cast <size_t> (precision))
 			// Добавляем незначащие нули в дробную часть числа
-			rest.append((precision - rest.size()), '0');
+			rest.append((static_cast <size_t> (precision) - rest.size()), '0');
 		/**
 		 * Если дробная часть числа сформирована
 		 */
@@ -4064,26 +4342,20 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 	/**
 	 * Если количество знаков после запятой указано явно
 	 */
-	if(precision > 0){
+	if(precision >= 0){
 		// Определяем текущее количество знаков после запятой
 		const int64_t fraction = ((point < 0) ? -point : 0);
 		/**
 		 * Если требуется выполнить округление дробной части числа
+		 *
+		 * @details Отбрасывание выполняется позиционно, а не до количества значащих
+		 *          цифр: значение может целиком находиться ниже позиции округления,
+		 *          и тогда результат определяется правилом округления, а не обнуляется
+		 *
 		 */
-		if(fraction > static_cast <int64_t> (precision)){
-			// Определяем количество сохраняемых значащих цифр числа
-			const int64_t count = (static_cast <int64_t> (digits.size()) - (fraction - static_cast <int64_t> (precision)));
-			/**
-			 * Если сохраняемые значащие цифры числа отсутствуют
-			 */
-			if(count <= 0){
-				// Устанавливаем нулевое значение числа
-				digits = "0";
-				// Обнуляем показатель степени десяти числа
-				point = 0;
-			// Выполняем округление десятичного представления числа
-			} else decimalRound(digits, point, static_cast <size_t> (count));
-		}
+		if(fraction > static_cast <int64_t> (precision))
+			// Выполняем отбрасывание младших цифр десятичного представления числа
+			decimalDrop(digits, point, static_cast <size_t> (fraction - static_cast <int64_t> (precision)), num.sign, round_t::NEAREST);
 	// Выполняем округление десятичного представления числа
 	} else decimalRound(digits, point, significant);
 	// Выполняем удаление ведущих нулей десятичного представления числа
@@ -4109,7 +4381,7 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 			// Добавляем разделитель дробной части числа
 			result.append(1, '.');
 			// Добавляем дробную часть числа
-			result.append(precision, '0');
+			result.append(static_cast <size_t> (precision), '0');
 		}
 		// Выводим результат работы функции
 		return result;
@@ -4146,9 +4418,9 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 		// Определяем текущее количество знаков после запятой
 		const size_t count = ((result.size() - offset) - 1);
 		// Если количество знаков после запятой недостаточно
-		if(count < precision)
+		if(count < static_cast <size_t> (precision))
 			// Добавляем незначащие нули дробной части числа
-			result.append((precision - count), '0');
+			result.append((static_cast <size_t> (precision) - count), '0');
 	/**
 	 * Если количество знаков после запятой определяется автоматически
 	 */
@@ -4407,6 +4679,63 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
 	realCompose(value, size, sign, digits, power);
 	// Выводим результат выполнения разбора
 	return true;
+}
+/**
+ * @brief Метод округления вещественного числа до указанного количества знаков после запятой
+ *
+ * @param value  буфер числа для округления
+ * @param size   размер буфера числа в байтах
+ * @param digits количество знаков после запятой
+ * @param mode   правило округления числа
+ *
+ */
+void awh::bignum::realRound(uint8_t * value, const size_t size, const int32_t digits, const round_t mode) noexcept {
+	// Выполняем распаковку вещественного числа
+	const realValue_t num = realUnpack(value, size);
+	// Если число не является конечным ненулевым значением
+	if((num.type == class_t::UNDEFINED) || (num.type == class_t::UNLIMITED) || (num.type == class_t::ZERO))
+		// Выходим из функции оставляя число без изменений
+		return;
+	// Строка десятичных цифр числа
+	string text = "";
+	// Показатель степени десяти применяемый к строке цифр
+	int64_t point = 0;
+	/**
+	 * Если точное десятичное представление числа недоступно
+	 *
+	 * @details Точное представление недоступно только для чисел, порядок которых
+	 *          выходит за пределы допустимого объёма вычислений. Такое число либо
+	 *          настолько велико, что дробной части не имеет вовсе, либо настолько
+	 *          мало, что округление до любого разумного количества знаков даёт нуль
+	 *
+	 */
+	if(!realDecimal(num, text, point)){
+		// Если число является пренебрежимо малым
+		if(num.exp < 0){
+			// Выполняем обнуление буфера числа
+			reset(value, size);
+			// Если число является отрицательным
+			if(num.sign)
+				// Устанавливаем знак вещественного числа
+				bit(value, size, (size * 8) - 1, true);
+		}
+		// Выходим из функции
+		return;
+	}
+	// Выполняем удаление ведущих нулей десятичного представления числа
+	decimalTrim(text);
+	// Определяем текущее количество знаков после запятой
+	const int64_t fraction = ((point < 0) ? -point : 0);
+	// Если округление числа не требуется
+	if(fraction <= static_cast <int64_t> (digits))
+		// Выходим из функции оставляя число без изменений
+		return;
+	// Определяем количество отбрасываемых цифр записи числа
+	const int64_t drop = (fraction - static_cast <int64_t> (digits));
+	// Выполняем отбрасывание младших цифр записи числа
+	decimalDrop(text, point, static_cast <size_t> (drop), num.sign, mode);
+	// Выполняем формирование округлённого числа из десятичного представления
+	realCompose(value, size, num.sign, text, point);
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -5023,14 +5352,25 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::sqrt() const noexcept {
-	// Результат работы функции
-	BigNum result(this->abs());
-	// Если число является вещественным
-	if(TYPE == bignum::type_t::REAL)
+	/**
+	 * Если число является вещественным
+	 */
+	if(TYPE == bignum::type_t::REAL){
+		// Результат работы функции
+		BigNum result(* this);
+		/**
+		 * Знак числа сохраняется намеренно, поскольку стандарт IEEE-754 требует получения
+		 * значения не являющегося числом для отрицательных значений и сохранения знака нуля
+		 */
 		// Выполняем извлечение квадратного корня вещественного числа
 		bignum::realSqrt(result._data.data(), BYTES);
+		// Выводим результат работы функции
+		return result;
+	}
+	// Результат работы функции
+	BigNum result(this->abs());
 	// Выполняем извлечение целочисленного квадратного корня
-	else bignum::sqrt(result._data.data(), BYTES);
+	bignum::sqrt(result._data.data(), BYTES);
 	// Выводим результат работы функции
 	return result;
 }
@@ -5070,14 +5410,99 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::pow(const uint64_t exponent
  */
 template <uint16_t BYTES, awh::bignum::type_t TYPE>
 /**
+ * @brief Метод округления числа до указанного количества знаков после запятой
+ *
+ * @param digits количество знаков после запятой
+ * @param mode   правило округления числа
+ * @return       округлённое значение числа
+ *
+ */
+awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::round(const int32_t digits, const round_t mode) const noexcept {
+	// Результат работы функции
+	BigNum result(* this);
+	// Если число является вещественным
+	if(TYPE == bignum::type_t::REAL)
+		// Выполняем округление вещественного числа
+		bignum::realRound(result._data.data(), BYTES, digits, mode);
+	// Выполняем округление целого числа
+	else bignum::round(result._data.data(), BYTES, (TYPE == bignum::type_t::SIGNED), digits, mode);
+	// Выводим результат работы функции
+	return result;
+}
+/**
+ * @brief Шаблон разрядности и типа длинного числа
+ *
+ * @tparam BYTES размер числа в байтах
+ * @tparam TYPE  тип хранимого числа
+ *
+ */
+template <uint16_t BYTES, awh::bignum::type_t TYPE>
+/**
+ * @brief Метод отбрасывания знаков числа после указанной позиции
+ *
+ * @param digits количество сохраняемых знаков после запятой
+ * @return        значение числа с отброшенными младшими знаками
+ *
+ */
+awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::trunc(const int32_t digits) const noexcept {
+	// Выполняем округление числа в сторону нуля
+	return this->round(digits, bignum::round_t::ZERO);
+}
+/**
+ * @brief Шаблон разрядности и типа длинного числа
+ *
+ * @tparam BYTES размер числа в байтах
+ * @tparam TYPE  тип хранимого числа
+ *
+ */
+template <uint16_t BYTES, awh::bignum::type_t TYPE>
+/**
+ * @brief Метод округления числа в сторону минус бесконечности
+ *
+ * @param digits количество сохраняемых знаков после запятой
+ * @return        округлённое значение числа
+ *
+ */
+awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::floor(const int32_t digits) const noexcept {
+	// Выполняем округление числа в сторону минус бесконечности
+	return this->round(digits, bignum::round_t::DOWN);
+}
+/**
+ * @brief Шаблон разрядности и типа длинного числа
+ *
+ * @tparam BYTES размер числа в байтах
+ * @tparam TYPE  тип хранимого числа
+ *
+ */
+template <uint16_t BYTES, awh::bignum::type_t TYPE>
+/**
+ * @brief Метод округления числа в сторону плюс бесконечности
+ *
+ * @param digits количество сохраняемых знаков после запятой
+ * @return        округлённое значение числа
+ *
+ */
+awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::ceil(const int32_t digits) const noexcept {
+	// Выполняем округление числа в сторону плюс бесконечности
+	return this->round(digits, bignum::round_t::UP);
+}
+/**
+ * @brief Шаблон разрядности и типа длинного числа
+ *
+ * @tparam BYTES размер числа в байтах
+ * @tparam TYPE  тип хранимого числа
+ *
+ */
+template <uint16_t BYTES, awh::bignum::type_t TYPE>
+/**
  * @brief Метод формирования строкового представления числа
  *
  * @param format    формат представления числа
- * @param precision количество знаков после запятой (0 - автоматически)
+ * @param precision количество знаков после запятой (отрицательное значение - автоматически)
  * @return          сформированная строка числа
  *
  */
-string awh::BigNum <BYTES, TYPE>::print(const format_t format, const uint8_t precision) const noexcept {
+string awh::BigNum <BYTES, TYPE>::print(const format_t format, const int16_t precision) const noexcept {
 	// Если число является вещественным
 	if(TYPE == bignum::type_t::REAL)
 		// Выводим строковое представление вещественного числа

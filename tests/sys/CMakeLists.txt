@@ -96,6 +96,8 @@ if(${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_PROCRE_TEST "Build unit PROCRE test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с сигналами
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_SIGNALS_TEST "Build unit SIGNALS test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с длинными числами
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_BIGNUM_TEST "Build unit BIGNUM test for ${UNIT_TEST_NAME}" ON)
 
         # Если нужно собрать тесты для работы с ОС
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST})
@@ -348,6 +350,26 @@ if(${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с сигналами
             message(STATUS "Build tests SIGNALS module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_SIGNALS_TEST})
+
+        # Если нужно собрать тесты для работы с длинными числами
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_BIGNUM_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с длинными числами
+            message(STATUS "Build tests BIGNUM module: Yes\n")
+            # Дополняем список источников тестами для модуля работы с длинными числами
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                bignum/bignum.cpp
+                bignum/static.cpp
+                bignum/real.cpp
+                bignum/strings.cpp
+                bignum/rounding.cpp
+                bignum/stress.cpp
+                bignum/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для работы с длинными числами
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с длинными числами
+            message(STATUS "Build tests BIGNUM module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_BIGNUM_TEST})
 
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS

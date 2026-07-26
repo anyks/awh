@@ -1,0 +1,321 @@
+/**
+ * @file: strings.cpp
+ * @date: 2026-07-26
+ * @license: LicenseRef-AWH-1.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @brief Тесты строкового представления длинных чисел — проверка вывода и разбора во всех поддерживаемых
+ *        форматах, потоковых режимов работы, кругового обхода и устойчивости к некорректным записям
+ *
+ * @copyright: Copyright © 2026
+ *
+ */
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <string>
+#include <vector>
+#include <sstream>
+#include <cstring>
+#include <cstdint>
+
+/**
+ * Подключаем заголовочный файлы проекта
+ */
+#include "bignum.hpp"
+
+/**
+ * @brief Тест вывода целого длинного числа во всех форматах
+ *
+ */
+TEST_F(BigNumFixture, PrintIntegerBigNumTest){
+	// Создаём число с известным шестнадцатеричным образом
+	awh::uint128_t number = 0xDEADBEEFull;
+
+	// Проверяем вывод в шестнадцатеричном формате в нижнем регистре
+	ASSERT_EQ(number.print(awh::bignum::format_t::HEX), "deadbeef");
+	// Проверяем вывод в шестнадцатеричном формате в верхнем регистре
+	ASSERT_EQ(number.print(awh::bignum::format_t::HEXUP), "DEADBEEF");
+	// Проверяем вывод в десятичном формате
+	ASSERT_EQ(number.print(awh::bignum::format_t::DEC), "3735928559");
+	// Проверяем вывод в формате по умолчанию
+	ASSERT_EQ(number.print(), "3735928559");
+
+	// Проверяем вывод в двоичном формате
+	ASSERT_EQ(awh::uint128_t(10).print(awh::bignum::format_t::BIN), "1010");
+	// Проверяем вывод в восьмеричном формате
+	ASSERT_EQ(awh::uint128_t(10).print(awh::bignum::format_t::OCT), "12");
+	// Проверяем что научная нотация целого числа выводится в десятичном формате
+	ASSERT_EQ(awh::uint128_t(1000000).print(awh::bignum::format_t::SCI), "1000000");
+	// Проверяем вывод нулевого числа
+	ASSERT_EQ(awh::uint128_t(0).print(awh::bignum::format_t::HEX), "0");
+	// Проверяем вывод отрицательного числа в десятичном формате
+	ASSERT_EQ(awh::int128_t(-42).print(), "-42");
+}
+
+/**
+ * @brief Тест разбора целого длинного числа во всех форматах
+ *
+ */
+TEST_F(BigNumFixture, ParseIntegerBigNumTest){
+	// Проверяем разбор с автоопределением шестнадцатеричного формата
+	ASSERT_EQ(awh::uint128_t("0xFF").print(), "255");
+	// Проверяем разбор с автоопределением двоичного формата
+	ASSERT_EQ(awh::uint128_t("0b1011").print(), "11");
+	// Проверяем разбор с автоопределением восьмеричного формата
+	ASSERT_EQ(awh::uint128_t("0o17").print(), "15");
+	// Проверяем разбор отрицательного числа
+	ASSERT_EQ(awh::int128_t("-42").print(), "-42");
+	// Проверяем разбор числа предельной разрядности
+	ASSERT_EQ(awh::uint128_t("340282366920938463463374607431768211455").print(), "340282366920938463463374607431768211455");
+
+	// Создаём число для разбора с явным указанием формата
+	awh::uint128_t number;
+
+	// Разбираем строку без префикса в явно указанном формате
+	ASSERT_TRUE(number.parse("ff", awh::bignum::format_t::HEX));
+	// Проверяем результат разбора без префикса
+	ASSERT_EQ(number.print(), "255");
+	// Разбираем строку с префиксом в явно указанном формате
+	ASSERT_TRUE(number.parse("0xff", awh::bignum::format_t::HEX));
+	// Проверяем результат разбора с префиксом
+	ASSERT_EQ(number.print(), "255");
+	// Разбираем строку в двоичном формате
+	ASSERT_TRUE(number.parse("11111111", awh::bignum::format_t::BIN));
+	// Проверяем результат разбора в двоичном формате
+	ASSERT_EQ(number.print(), "255");
+	// Разбираем строку в восьмеричном формате
+	ASSERT_TRUE(number.parse("377", awh::bignum::format_t::OCT));
+	// Проверяем результат разбора в восьмеричном формате
+	ASSERT_EQ(number.print(), "255");
+}
+
+/**
+ * @brief Тест разбора некорректных строковых записей целого длинного числа
+ *
+ */
+TEST_F(BigNumFixture, ParseInvalidBigNumTest){
+	// Проверяем что переполнение разрядной сетки усекается по модулю
+	ASSERT_EQ(awh::uint128_t("340282366920938463463374607431768211456").print(), "0");
+	// Проверяем разбор пустой строки
+	ASSERT_EQ(awh::uint128_t("").print(), "0");
+	// Проверяем разбор строки без цифр
+	ASSERT_EQ(awh::uint128_t("abc").print(), "0");
+	// Проверяем разбор префикса без цифр
+	ASSERT_EQ(awh::uint128_t("0x").print(), "0");
+	// Проверяем что окружающие пробелы игнорируются
+	ASSERT_EQ(awh::uint128_t("  +42  ").print(), "42");
+	// Проверяем разбор отрицательного нуля
+	ASSERT_EQ(awh::int128_t("-0").print(), "0");
+	// Проверяем разбор ведущих нулей
+	ASSERT_EQ(awh::uint128_t("00000000001").print(), "1");
+	// Проверяем что завершающий мусор отбрасывается
+	ASSERT_EQ(awh::int128_t("12abc").print(), "12");
+}
+
+/**
+ * @brief Тест вывода вещественного длинного числа
+ *
+ */
+TEST_F(BigNumFixture, PrintRealBigNumTest){
+	// Проверяем вывод отрицательного вещественного числа
+	ASSERT_EQ(awh::real64_t("-2.5").print(), "-2.5");
+	// Проверяем вывод вещественного числа с дробной частью
+	ASSERT_EQ(awh::real64_t(1.5).print(), "1.5");
+	// Проверяем что целое вещественное число выводится без дробной части
+	ASSERT_EQ(awh::real64_t(100.0).print(), "100");
+	// Проверяем вывод вещественного числа в научной нотации
+	ASSERT_EQ(awh::real64_t(0.5).print(awh::bignum::format_t::SCI), "5e-1");
+	// Проверяем вывод вещественного числа в научной нотации с точностью
+	ASSERT_EQ(awh::real64_t(1500.0).print(awh::bignum::format_t::SCI, 3), "1.500e+3");
+	// Проверяем что шестнадцатеричный формат выводит битовый образ числа
+	ASSERT_EQ(awh::real64_t(1.0).print(awh::bignum::format_t::HEX), "3ff0000000000000");
+	// Проверяем вывод значения не являющегося числом
+	ASSERT_EQ(awh::real64_t::undefined().print(), "nan");
+	// Проверяем вывод бесконечного значения
+	ASSERT_EQ(awh::real64_t::unlimited().print(), "inf");
+	// Проверяем вывод отрицательного бесконечного значения
+	ASSERT_EQ((-awh::real64_t::unlimited()).print(), "-inf");
+}
+
+/**
+ * @brief Тест разбора вещественного длинного числа
+ *
+ */
+TEST_F(BigNumFixture, ParseRealBigNumTest){
+	// Проверяем разбор вещественного числа с дробной частью
+	ASSERT_EQ(static_cast <double> (awh::real64_t("0.1")), 0.1);
+	// Проверяем разбор вещественного числа в научной нотации
+	ASSERT_EQ(static_cast <double> (awh::real64_t("1e-300")), 1e-300);
+	// Проверяем разбор вещественного числа с положительным показателем
+	ASSERT_EQ(static_cast <double> (awh::real64_t("+1e+5")), 1e5);
+	// Проверяем разбор вещественного числа с показателем в верхнем регистре
+	ASSERT_EQ(static_cast <double> (awh::real64_t("1E5")), 1e5);
+	// Проверяем разбор отрицательного вещественного числа с показателем
+	ASSERT_EQ(static_cast <double> (awh::real64_t("-1.5E-3")), -1.5e-3);
+	// Проверяем разбор вещественного числа без целой части
+	ASSERT_EQ(static_cast <double> (awh::real64_t(".5")), 0.5);
+	// Проверяем разбор вещественного числа без дробной части
+	ASSERT_EQ(static_cast <double> (awh::real64_t("5.")), 5.0);
+	// Проверяем разбор вещественного числа с ведущими и завершающими нулями
+	ASSERT_EQ(static_cast <double> (awh::real64_t("000123.4500")), 123.45);
+	// Проверяем что окружающие пробелы игнорируются
+	ASSERT_EQ(static_cast <double> (awh::real64_t("  42")), 42.0);
+	// Проверяем что завершающий мусор отбрасывается
+	ASSERT_EQ(static_cast <double> (awh::real64_t("7abc")), 7.0);
+	// Проверяем что незавершённый показатель отбрасывается
+	ASSERT_EQ(static_cast <double> (awh::real64_t("1e")), 1.0);
+	// Проверяем что вторая десятичная точка отбрасывается
+	ASSERT_EQ(static_cast <double> (awh::real64_t("1.5.5")), 1.5);
+
+	// Проверяем разбор значения не являющегося числом
+	ASSERT_TRUE(awh::real64_t("nan").category() == awh::bignum::class_t::UNDEFINED);
+	// Проверяем разбор значения не являющегося числом без учёта регистра
+	ASSERT_TRUE(awh::real64_t("NaN").category() == awh::bignum::class_t::UNDEFINED);
+	// Проверяем разбор бесконечного значения
+	ASSERT_TRUE(awh::real64_t("INF").category() == awh::bignum::class_t::UNLIMITED);
+	// Проверяем разбор отрицательного бесконечного значения
+	ASSERT_EQ(awh::real64_t("-inf").print(), "-inf");
+}
+
+/**
+ * @brief Тест кругового обхода длинного числа через строку
+ *
+ */
+TEST_F(BigNumFixture, RoundtripBigNumTest){
+	/**
+	 * В цикле проверяем круговой обход целого числа через все форматы
+	 */
+	for(const std::string & text : std::vector <std::string> ({
+		"0", "1", "255", "12345678901234567890", "340282366920938463463374607431768211455"
+	})){
+		// Создаём исходное число из строки
+		awh::uint128_t number(text);
+
+		// Проверяем круговой обход через десятичный формат
+		ASSERT_EQ(awh::uint128_t(number.print(awh::bignum::format_t::DEC)).print(), text);
+		// Проверяем круговой обход через шестнадцатеричный формат
+		ASSERT_EQ(awh::uint128_t("0x" + number.print(awh::bignum::format_t::HEX)).print(), text);
+		// Проверяем круговой обход через двоичный формат
+		ASSERT_EQ(awh::uint128_t("0b" + number.print(awh::bignum::format_t::BIN)).print(), text);
+		// Проверяем круговой обход через восьмеричный формат
+		ASSERT_EQ(awh::uint128_t("0o" + number.print(awh::bignum::format_t::OCT)).print(), text);
+	}
+	/**
+	 * В цикле проверяем круговой обход вещественного числа через все формы записи
+	 */
+	for(const double sample : std::vector <double> ({
+		0.1, 1e-300, 1e300, 3.141592653589793, 123456789.123456789, -2.5e-17, (1.0 / 3.0)
+	})){
+		// Создаём исходное число из аппаратного значения
+		awh::real64_t number = sample;
+
+		// Проверяем круговой обход через десятичный формат
+		ASSERT_TRUE(this->identical(awh::real64_t(number.print(awh::bignum::format_t::DEC)), sample)) << "dec " << sample;
+		// Проверяем круговой обход через научную нотацию
+		ASSERT_TRUE(this->identical(awh::real64_t(number.print(awh::bignum::format_t::SCI)), sample)) << "sci " << sample;
+
+		// Создаём число для разбора битового образа
+		awh::real64_t restored;
+
+		// Разбираем битовый образ числа
+		ASSERT_TRUE(restored.parse(number.print(awh::bignum::format_t::HEX), awh::bignum::format_t::HEX));
+		// Проверяем круговой обход через битовый образ
+		ASSERT_TRUE(this->identical(restored, sample)) << "hex " << sample;
+	}
+}
+
+/**
+ * @brief Тест потоковых режимов работы длинного числа
+ *
+ */
+TEST_F(BigNumFixture, StreamBigNumTest){
+	// Создаём поток для вывода знакового числа
+	std::ostringstream output1;
+
+	// Выводим знаковое число в поток
+	output1 << awh::int256_t("-98765432109876543210987654321");
+
+	// Проверяем результат вывода знакового числа в поток
+	ASSERT_EQ(output1.str(), "-98765432109876543210987654321");
+
+	// Создаём поток для вывода вещественного числа
+	std::ostringstream output2;
+
+	// Выводим вещественное число в поток
+	output2 << awh::real64_t(2.5);
+
+	// Проверяем результат вывода вещественного числа в поток
+	ASSERT_EQ(output2.str(), "2.5");
+
+	// Создаём поток для чтения беззнакового числа
+	std::istringstream input1("123456789012345678901234567");
+	// Создаём число для чтения из потока
+	awh::uint256_t number1;
+
+	// Читаем число из потока
+	input1 >> number1;
+
+	// Проверяем результат чтения числа из потока
+	ASSERT_EQ(number1.print(), "123456789012345678901234567");
+
+	// Создаём поток для чтения вещественного числа
+	std::istringstream input2("-2.5");
+	// Создаём вещественное число для чтения из потока
+	awh::real64_t number2;
+
+	// Читаем вещественное число из потока
+	input2 >> number2;
+
+	// Проверяем результат чтения вещественного числа из потока
+	ASSERT_EQ(number2.print(), "-2.5");
+
+	// Создаём поток для последовательного чтения нескольких чисел
+	std::istringstream input3("10 20 30");
+	// Создаём числа для последовательного чтения
+	awh::uint128_t number3, number4, number5;
+
+	// Читаем числа из потока последовательно
+	input3 >> number3 >> number4 >> number5;
+
+	// Проверяем первое прочитанное число
+	ASSERT_EQ(number3.print(), "10");
+	// Проверяем второе прочитанное число
+	ASSERT_EQ(number4.print(), "20");
+	// Проверяем третье прочитанное число
+	ASSERT_EQ(number5.print(), "30");
+}
+
+/**
+ * @brief Тест присваивания строковых представлений длинному числу
+ *
+ */
+TEST_F(BigNumFixture, AssignStringBigNumTest){
+	// Присваиваем числу строку в виде указателя на символы
+	(* this->_natural) = "12345678901234567890";
+	// Проверяем результат присваивания указателя на символы
+	ASSERT_EQ(this->_natural->print(), "12345678901234567890");
+
+	// Присваиваем числу строку в виде объекта строки
+	(* this->_natural) = std::string("98765432109876543210");
+	// Проверяем результат присваивания объекта строки
+	ASSERT_EQ(this->_natural->print(), "98765432109876543210");
+
+	// Присваиваем числу строку в виде представления строки
+	(* this->_natural) = std::string_view("42");
+	// Проверяем результат присваивания представления строки
+	ASSERT_EQ(this->_natural->print(), "42");
+
+	// Проверяем создание числа из указателя на символы
+	ASSERT_EQ(awh::uint128_t("42").print(), "42");
+	// Проверяем создание числа из объекта строки
+	ASSERT_EQ(awh::uint128_t(std::string("42")).print(), "42");
+	// Проверяем создание числа из представления строки
+	ASSERT_EQ(awh::uint128_t(std::string_view("42")).print(), "42");
+}

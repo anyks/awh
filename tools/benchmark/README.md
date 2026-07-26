@@ -1,0 +1,72 @@
+# Эталонные стенды сравнения сетевого движка
+
+Три программы, повторяющие сценарии бенчмарков `benchmark/net/io` средствами
+чужих циклов событий. Нужны ровно для одного: показатель движка сам по себе
+ничего не значит, пока рядом нет числа, снятого на той же машине, тем же
+компилятором и на той же нагрузке.
+
+| Стенд | Библиотека | Модель |
+|---|---|---|
+| `libevent.cpp` | [libevent2](https://libevent.org) | готовность (`event`), низкий уровень, без `bufferevent` |
+| `libev.cpp` | [libev](http://software.schmorp.de/pkg/libev.html) | готовность (`ev_io`), буферизации нет вовсе |
+| `libuv.cpp` | [libuv](https://libuv.org) | завершение операций (`uv_read_start`/`uv_write`), собственная очередь отправки |
+
+Параметры нагрузки вынесены в `common.hpp` и обязаны совпадать с
+`benchmark/net/io/io.hpp`. Расхождение хотя бы в одной константе обесценивает
+сравнение целиком, поэтому менять их следует одновременно в обоих местах.
+
+## Сборка
+
+Библиотеки берутся системные — собирать их из исходников для замера
+бессмысленно: пакетные сборки оптимизированы, а нам важно сравнивать с тем, что
+получает пользователь. Ниже пути Homebrew на macOS; на Linux достаточно
+`-levent_core -lev -luv` без указания каталогов.
+
+```sh
+brew install libevent libev libuv
+
+c++ -std=c++17 -O2 -Wall -o /tmp/bench-libevent tools/benchmark/libevent.cpp \
+	-I/opt/homebrew/opt/libevent/include -L/opt/homebrew/opt/libevent/lib -levent_core
+
+c++ -std=c++17 -O2 -Wall -o /tmp/bench-libev tools/benchmark/libev.cpp \
+	-I/opt/homebrew/opt/libev/include -L/opt/homebrew/opt/libev/lib -lev
+
+c++ -std=c++17 -O2 -Wall -o /tmp/bench-libuv tools/benchmark/libuv.cpp \
+	-I/opt/homebrew/opt/libuv/include -L/opt/homebrew/opt/libuv/lib -luv
+```
+
+Сторона AWH собирается штатно, но обязательно с оптимизацией: сборка репозитория
+по умолчанию идёт без `-O` и с инструментированием покрытия, и сравнивать её с
+пакетными сборками конкурентов нельзя.
+
+```sh
+cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_BUILD_BENCHMARKS=YES
+cmake --build build-release --target awh_BENCHMARK_net -j 8
+```
+
+## Прогон
+
+Каждый стенд принимает `--filter=` с подстрокой названия сценария — тот же
+параметр, что и набор бенчмарков AWH:
+
+```sh
+/tmp/bench-libevent --filter=net/io/echo/single
+/tmp/bench-libev                                  # все сценарии
+./build-release/benchmarks/net --filter=net/io --relaxed
+```
+
+Формат вывода у стендов и у набора бенчмарков одинаковый, поэтому результаты
+сводятся в таблицу без пересчёта.
+
+## Что учитывать при прогоне
+
+* **Динамические порты.** Сценарий `accept` выполняет 4200 циклов подключения,
+  и каждый закрытый порт остаётся в состоянии `TIME_WAIT` порядка 30 секунд.
+  Диапазон динамических портов macOS — 16 384 штуки, поэтому четыре стенда
+  подряд его исчерпывают: показатель падает на порядок и измеряет уже перебор
+  занятых портов ядром. Прогоны `accept` следует разносить на 35 секунд.
+* **Прочие сценарии** ограничений не имеют и выполняются подряд.
+* **Разброс** между прогонами на незанятой машине — единицы процентов;
+  показатели ниже сняты как медиана трёх прогонов.
+
+Полный отчёт со сведёнными результатами: [benchmark/net/io/README.md](../../benchmark/net/io/README.md).
