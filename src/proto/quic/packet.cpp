@@ -175,6 +175,14 @@ size_t awh::quic::packet::packetNumberSize(const uint64_t pn, const uint64_t lar
  * @return          восстановленный полный номер пакета
  */
 uint64_t awh::quic::packet::decodePacketNumber(const uint64_t largestPn, const uint64_t truncated, const size_t pnSize) noexcept {
+	/**
+	 * Отсекаем недопустимую длину номера пакета: сдвиг на pnSize*8 при pnSize вне 1..4
+	 * даёт неопределённое поведение (сдвиг на >= 64). Штатные вызывающие длину уже
+	 * ограничивают, проверка защищает экспортируемую функцию от прочих (RFC 9000 §17.1)
+	 */
+	if((pnSize < 1) || (pnSize > proto::MAX_PKT_NUM_SIZE))
+		// Восстановить номер невозможно - возвращаем усечённое значение как есть
+		return truncated;
 	// Ожидаемый номер следующего пакета
 	const uint64_t expected = (largestPn + 1);
 	// Окно значений усечённого номера пакета

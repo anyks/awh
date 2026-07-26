@@ -1166,9 +1166,12 @@ namespace awh {
 				 * @note Потерянные CRYPTO-данные и фрейм HANDSHAKE_DONE ставятся
 				 *       в очередь ретрансмиссии
 				 *
-				 * @param space пространство номеров пакетов
+				 * @param space      пространство номеров пакетов
+				 * @param ackedTimes времена отправки пакетов, подтверждённых текущим фреймом
+				 *                    ACK (по возрастанию), для разрыва периода устойчивой
+				 *                    перегрузки на подтверждении внутри серии потерь
 				 */
-				void detect(const space_t space) noexcept;
+				void detect(const space_t space, const vector <uint64_t> & ackedTimes = {}) noexcept;
 				/**
 				 * @brief Метод постановки зондирующих данных пространства в очередь (RFC 9002 §6.2.4)
 				 *
@@ -1192,9 +1195,10 @@ namespace awh {
 				/**
 				 * @brief Метод вычисления длительности периода устойчивой перегрузки (RFC 9002 §7.6.1)
 				 *
-				 * @return длительность периода устойчивой перегрузки в миллисекундах
+				 * @param space пространство номеров пакетов
+				 * @return      длительность периода устойчивой перегрузки в миллисекундах
 				 */
-				uint64_t persistence() const noexcept;
+				uint64_t persistence(const space_t space) const noexcept;
 				/**
 				 * @brief Метод вычисления дедлайна таймаута простоя соединения (RFC 9000 §10.1)
 				 *

@@ -462,8 +462,21 @@ awh::quic::status_t awh::quic::Handshake::process() noexcept {
 		// Получаем код ошибки повторного шага хендшейка
 		code = ::SSL_get_error(this->_ssl, repeat);
 	}
-	// Если хендшейк ожидает данных от удалённого узла
-	if(code == SSL_ERROR_WANT_READ)
+	/**
+	 * Если хендшейк ожидает данных удалённого узла либо завершения асинхронной
+	 * операции (подпись закрытым ключом, проверка сертификата, поиск X509): это не
+	 * отказ, а приостановка - шаг повторяется по готовности. Асинхронные коды
+	 * BoringSSL берём под условной компиляцией для совместимости со сборками, где
+	 * они не объявлены (RFC 9001 §4.1.1)
+	 */
+	if((code == SSL_ERROR_WANT_READ) || (code == SSL_ERROR_WANT_X509_LOOKUP)
+#ifdef SSL_ERROR_WANT_PRIVATE_KEY_OPERATION
+	   || (code == SSL_ERROR_WANT_PRIVATE_KEY_OPERATION)
+#endif
+#ifdef SSL_ERROR_WANT_CERTIFICATE_VERIFY
+	   || (code == SSL_ERROR_WANT_CERTIFICATE_VERIFY)
+#endif
+	)
 		// Выводим положительный результат - хендшейк продолжается
 		return status_t::OK;
 	// Устанавливаем состояние ошибки хендшейка
@@ -758,8 +771,10 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 		SSL_SESSION * session = ::SSL_SESSION_from_bytes(reinterpret_cast <const uint8_t *> (this->_session.data()), this->_session.size(), this->_ctx);
 		// Если сессия возобновления восстановлена
 		if(session != nullptr){
-			// Устанавливаем сессию возобновления соединению
-			::SSL_set_session(this->_ssl, session);
+			// Устанавливаем сессию возобновления соединению и проверяем результат установки
+			if(::SSL_set_session(this->_ssl, session) != 1)
+				// Записываем предупреждение в лог - сессия отклонена при установке, возобновление не состоится
+				this->_log->print("QUIC session is not applied", log_t::flag_t::WARNING);
 			// Освобождаем восстановленную сессию возобновления
 			::SSL_SESSION_free(session);
 		// Записываем предупреждение в лог - возобновление не состоится

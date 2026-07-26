@@ -894,6 +894,7 @@ awh::http::Parser_HTTP2::Flags::Flags() noexcept :
  */
 awh::http::Parser_HTTP2::Transfer::Transfer() noexcept :
  lastStreamId(0),
+ resetStreamId(0),
  localOpened(0),
  nextStreamId(1),
  peerStreamCount(0),
@@ -1602,6 +1603,14 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 						if(item.value > 1)
 							// Фиксируем ошибку уровня соединения
 							return this->fail(error_t::PROTOCOL_ERROR, "invalid ENABLE_PUSH");
+						/**
+						 * Параметром распоряжается только клиент: сервер push не принимает,
+						 * поэтому анонсировать своё согласие ему нечем и значение, отличное
+						 * от нуля, обязано рвать соединение (RFC 9113 §6.5.2)
+						 */
+						if((this->_direct == direct_t::RESPONSE) && (item.value != 0))
+							// Фиксируем ошибку уровня соединения
+							return this->fail(error_t::PROTOCOL_ERROR, "server sent ENABLE_PUSH");
 						// Применяем полученное значение параметра
 						this->_remote.enablePush = item.value;
 					} break;
@@ -1762,10 +1771,19 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 					return this->fail(error_t::PROTOCOL_ERROR, "WINDOW_UPDATE on idle stream");
 				// Если поток найден
 				if(stream != nullptr){
-					// Если новое окно превышает максимально допустимое
-					if((static_cast <int64_t> (stream->remoteWindow) + increment) > h2::proto::MAX_WINDOW_SIZE)
-						// Фиксируем ошибку уровня соединения
-						return this->fail(error_t::FLOW_CONTROL_ERROR, "stream window overflow");
+					/**
+					 * Переполнение окна отправки потока обрывает только этот поток: само
+					 * соединение исправно, и RFC 9113 §6.9.1 требует здесь именно
+					 * RST_STREAM, оставляя GOAWAY для переполнения окна соединения
+					 */
+					if((static_cast <int64_t> (stream->remoteWindow) + increment) > h2::proto::MAX_WINDOW_SIZE){
+						// Сбрасываем поток с кодом переполнения окна
+						h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::FLOW_CONTROL_ERROR);
+						// Закрываем поток с вызовом функции обратного вызова закрытия
+						this->closeStream(header.streamId, error_t::FLOW_CONTROL_ERROR);
+						// Обработка фрейма завершена (соединение живёт)
+						return h2::status_t::OK;
+					}
 					// Применяем инкремент окна потока
 					stream->remoteWindow += static_cast <int32_t> (increment);
 				}
@@ -1839,6 +1857,8 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			if(!this->_ratelims.rst.drain(1))
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::ENHANCE_YOUR_CALM, "RST_STREAM flood (Rapid Reset)");
+			// Запоминаем поток, оборванный сбросом: кадры на нём ещё могут быть в полёте
+			this->_transfer.resetStreamId = header.streamId;
 			// Закрываем поток с полученным кодом ошибки
 			this->closeStream(header.streamId, code);
 			// Обработка фрейма завершена
@@ -1852,6 +1872,19 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			if(h2::frame::parser::headers(header, payload, headers, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad HEADERS");
+			/**
+			 * Поток не может зависеть от самого себя (RFC 9113 §5.3.1). Поля приоритета
+			 * из HEADERS в остальном игнорируются как устаревшие, но замкнутая на себя
+			 * зависимость обязана быть отвергнута потоковой ошибкой
+			 */
+			if(headers.hasPriority && (headers.streamDep == header.streamId)){
+				// Сбрасываем поток с кодом нарушения протокола
+				h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::PROTOCOL_ERROR);
+				// Закрываем поток, если он существует
+				this->closeStream(header.streamId, error_t::PROTOCOL_ERROR);
+				// Обработка фрейма завершена (соединение живёт)
+				return h2::status_t::OK;
+			}
 			// Флаг отклонённого потока (блок декодируем только для синхронизации HPACK)
 			bool refused = false;
 			// Запоминаем поколение состояния соединения перед пользовательскими вызовами
@@ -1860,47 +1893,72 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			stream_t * stream = this->findStream(header.streamId);
 			// Если поток ещё не существует - пир открывает новый поток
 			if(stream == nullptr){
+				/**
+				 * Блок заголовков на потоке, который пир только что закрыл сам (RST_STREAM
+				 * либо завершение обмена), - потоковая ошибка STREAM_CLOSED (RFC 9113 §5.1),
+				 * а не ошибка соединения: соединение живёт, но блок обязан быть декодирован,
+				 * иначе динамическая таблица HPACK разъедется с кодером пира.
+				 * Речь только о последнем использованном идентификаторе: меньшие пир
+				 * не вправе использовать вовсе - это переиспользование (§5.1.1)
+				 */
+				if(this->peerInitiated(header.streamId) && (header.streamId == this->_transfer.lastStreamId)){
+					/**
+					 * Различаем, как поток закрылся. Поток, оборванный RST_STREAM, ещё мог
+					 * получить кадр в полёте - это потоковая ошибка. Но поток, завершённый
+					 * END_STREAM с обеих сторон, пир закрыл сам и знает об этом, поэтому
+					 * блок заголовков на нём - ошибка соединения (RFC 9113 §5.1)
+					 */
+					if(header.streamId != this->_transfer.resetStreamId)
+						// Фиксируем ошибку уровня соединения
+						return this->fail(error_t::STREAM_CLOSED, "HEADERS on closed stream");
+					// Отклоняем поток с кодом закрытого потока
+					h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::STREAM_CLOSED);
+					// Помечаем что поток отклонён (блок декодируется только ради синхронизации HPACK)
+					refused = true;
 				// Проверяем чётность и монотонность идентификатора нового потока
-				if(this->validateNewStream(header.streamId, err) != h2::status_t::OK)
+				} else if(this->validateNewStream(header.streamId, err) != h2::status_t::OK)
 					// Фиксируем ошибку уровня соединения
 					return this->fail(err, "invalid new stream id");
-				// Запоминаем наибольший принятый идентификатор потока
-				this->_transfer.lastStreamId = header.streamId;
-				/**
-				 * Отклоняем новый поток, если: исчерпан лимит одновременных потоков
-				 * (RFC 9113 §5.1.2) либо мы уже отправили GOAWAY (§6.8) - новые потоки
-				 * пира после этого не обслуживаются. Это потоковая ошибка REFUSED_STREAM,
-				 * соединение остаётся живым; блок заголовков всё равно декодируем
-				 */
-				if(this->_flags.goawaySent || (this->_transfer.peerStreamCount >= this->_local.maxConcurrentStreams)){
-					// Отклоняем поток с кодом REFUSED_STREAM
-					h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::REFUSED_STREAM);
-					// Помечаем что поток отклонён
-					refused = true;
-				// Если поток может быть открыт
-				} else {
-					// Учитываем поток в лимите одновременных потоков пира
-					++this->_transfer.peerStreamCount;
-					// Получаем объект нового потока
-					stream_t & stream = this->stream(header.streamId);
-					// Переводим поток в состояние OPEN
-					stream.state = h2::stream_state_t::OPEN;
-					// Если функция обратного вызова потребовала отклонить поток
-					if(!this->fireBegin(header.streamId)){
-						/**
-						 * Функция обратного вызова могла реентрантно сбросить парсер: сброс потока
-						 * относится к прежнему соединению, а в очереди нового этот кадр занял бы
-						 * место перед connection preface
-						 */
-						if(epoch != this->_epoch)
-							// Обработка фрейма завершена
-							return h2::status_t::OK;
-						// Сбрасываем поток с кодом CANCEL
-						h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::CANCEL);
-						// Закрываем поток с вызовом функции обратного вызова закрытия
-						this->closeStream(header.streamId, error_t::CANCEL);
+				// Если пир открывает новый поток
+				else {
+					// Запоминаем наибольший принятый идентификатор потока
+					this->_transfer.lastStreamId = header.streamId;
+					/**
+					 * Отклоняем новый поток, если: исчерпан лимит одновременных потоков
+					 * (RFC 9113 §5.1.2) либо мы уже отправили GOAWAY (§6.8) - новые потоки
+					 * пира после этого не обслуживаются. Это потоковая ошибка REFUSED_STREAM,
+					 * соединение остаётся живым; блок заголовков всё равно декодируем
+					 */
+					if(this->_flags.goawaySent || (this->_transfer.peerStreamCount >= this->_local.maxConcurrentStreams)){
+						// Отклоняем поток с кодом REFUSED_STREAM
+						h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::REFUSED_STREAM);
 						// Помечаем что поток отклонён
 						refused = true;
+					// Если поток может быть открыт
+					} else {
+						// Учитываем поток в лимите одновременных потоков пира
+						++this->_transfer.peerStreamCount;
+						// Получаем объект нового потока
+						stream_t & stream = this->stream(header.streamId);
+						// Переводим поток в состояние OPEN
+						stream.state = h2::stream_state_t::OPEN;
+						// Если функция обратного вызова потребовала отклонить поток
+						if(!this->fireBegin(header.streamId)){
+							/**
+							 * Функция обратного вызова могла реентрантно сбросить парсер: сброс потока
+							 * относится к прежнему соединению, а в очереди нового этот кадр занял бы
+							 * место перед connection preface
+							 */
+							if(epoch != this->_epoch)
+								// Обработка фрейма завершена
+								return h2::status_t::OK;
+							// Сбрасываем поток с кодом CANCEL
+							h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::CANCEL);
+							// Закрываем поток с вызовом функции обратного вызова закрытия
+							this->closeStream(header.streamId, error_t::CANCEL);
+							// Помечаем что поток отклонён
+							refused = true;
+						}
 					}
 				}
 			// Если поток уже существует - HEADERS на существующем потоке
@@ -2048,6 +2106,14 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				// Обработка фрейма завершена (соединение живёт)
 				return h2::status_t::OK;
 			}
+			/**
+			 * Зарезервированный под push поток тела не несёт: до блока заголовков он
+			 * принимает только RST_STREAM, PRIORITY и WINDOW_UPDATE, поэтому DATA на нём
+			 * означает рассинхронизацию и является ошибкой соединения (RFC 9113 §5.1)
+			 */
+			if((stream->state == h2::stream_state_t::RESERVED_LOCAL) || (stream->state == h2::stream_state_t::RESERVED_REMOTE))
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::PROTOCOL_ERROR, "DATA on reserved stream");
 			// Данные принимаем только в состояниях OPEN и HALF_CLOSED_LOCAL (RFC 9113 §5.1)
 			if((stream->state != h2::stream_state_t::OPEN) && (stream->state != h2::stream_state_t::HALF_CLOSED_LOCAL)){
 				// Пополняем окно приёма соединения (поток закрывается)
@@ -2212,18 +2278,32 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				 * Нулевой идентификатор потока остаётся ошибкой соединения
 				 */
 				if(err == error_t::FRAME_SIZE_ERROR){
-					// Если поток существует
-					if(this->findStream(header.streamId) != nullptr){
-						// Сбрасываем поток с кодом некорректного размера фрейма
-						h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, err);
-						// Закрываем поток с вызовом функции обратного вызова закрытия
-						this->closeStream(header.streamId, err);
-					}
+					/**
+					 * Сброс отправляется независимо от того, существует ли поток: кадр
+					 * приоритета допустим в любом состоянии, включая закрытое, поэтому
+					 * молчание в ответ на некорректную длину нарушает RFC 9113 §6.3
+					 */
+					h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, err);
+					// Закрываем поток, если он существует
+					this->closeStream(header.streamId, err);
 					// Обработка фрейма завершена (соединение живёт)
 					return h2::status_t::OK;
 				}
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad PRIORITY");
+			}
+			/**
+			 * Поток не может зависеть от самого себя (RFC 9113 §5.3.1): это потоковая
+			 * ошибка. Сами приоритеты RFC 7540 объявлены устаревшими и игнорируются,
+			 * но проверка обязательна - иначе граница зависимостей у пира замкнётся
+			 */
+			if(priority.streamDep == header.streamId){
+				// Сбрасываем поток с кодом нарушения протокола
+				h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::PROTOCOL_ERROR);
+				// Закрываем поток, если он существует
+				this->closeStream(header.streamId, error_t::PROTOCOL_ERROR);
+				// Обработка фрейма завершена (соединение живёт)
+				return h2::status_t::OK;
 			}
 			// Приоритеты RFC 7540 deprecated - игнорируем
 			return h2::status_t::OK;
@@ -3912,6 +3992,8 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 	this->_fields.clear();
 	// Сбрасываем наибольший принятый идентификатор потока
 	this->_transfer.lastStreamId = 0;
+	// Сбрасываем идентификатор потока, оборванного сбросом
+	this->_transfer.resetStreamId = 0;
 	// Сбрасываем наибольший наш открытый идентификатор потока
 	this->_transfer.localOpened = 0;
 	// Сбрасываем счётчик активных потоков, открытых пиром
@@ -4319,10 +4401,18 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
 	items[count].id = h2::setting_t::HEADER_TABLE_SIZE;
 	// Устанавливаем значение параметра
 	items[count++].value = this->_local.headerTableSize;
-	// Добавляем параметр разрешения server push
-	items[count].id = h2::setting_t::ENABLE_PUSH;
-	// Устанавливаем значение параметра
-	items[count++].value = this->_local.enablePush;
+	/**
+	 * Параметр разрешения server push анонсирует только клиент: им он сообщает,
+	 * готов ли принимать push. Для сервера параметр смысла не имеет, а значение 1
+	 * сервер отправлять прямо запрещено (RFC 9113 §6.5.2) - клиент обязан
+	 * оборвать такое соединение с PROTOCOL_ERROR
+	 */
+	if(this->_direct == direct_t::RESPONSE){
+		// Добавляем параметр разрешения server push
+		items[count].id = h2::setting_t::ENABLE_PUSH;
+		// Устанавливаем значение параметра
+		items[count++].value = this->_local.enablePush;
+	}
 	// Добавляем параметр начального окна потока
 	items[count].id = h2::setting_t::INITIAL_WINDOW_SIZE;
 	// Устанавливаем значение параметра
@@ -4371,6 +4461,8 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
  * @param code код ошибки, с которым сбрасывается поток
  */
 void awh::http::Parser_HTTP2::sendRstStream(const uint32_t sid, const error_t code) noexcept {
+	// Запоминаем поток, оборванный сбросом: кадры на нём ещё могут быть в полёте
+	this->_transfer.resetStreamId = sid;
 	// Отправляем фрейм RST_STREAM
 	h2::frame::serialize::rstStream(this->_buffer.output, sid, code);
 	// Закрываем поток с вызовом функции обратного вызова закрытия (как и при входящем сбросе)

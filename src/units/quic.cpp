@@ -174,14 +174,20 @@ void awh::unit::QuicServer::read(const event::id_t oid, const uint8_t * data, co
 	if(i == this->_sessions.end())
 		// Выходим из метода
 		return;
-	// Получаем сессию соединения
-	session_t & session = i->second;
+	/**
+	 * Сессию ведём указателем, а не удерживаемой ссылкой: ниже вызываются функции
+	 * обратного вызова приложения ("open", а также "read"/"datagram" внутри process),
+	 * и приложение вправе реентрантно завершить соединение прямо в них. Тогда узел
+	 * сессии освобождается, и удерживаемая ссылка становится висячей. Поэтому после
+	 * каждого колбэка сессию перечитываем из карты и прекращаем обработку, если она снята
+	 */
+	session_t * session = &i->second;
 	/**
 	 * Обновляем адрес удалённого эндпоинта перед разбором датаграммы: смена
 	 * адреса при установленном соединении означает миграцию на новый путь,
 	 * которую соединение отслеживает самостоятельно (RFC 9000 §9)
 	 */
-	this->endpoint(oid, session.connection.get());
+	this->endpoint(oid, session->connection.get());
 	// Если уведомление о перегрузке пути включено
 	if(this->_ecn){
 		/**
@@ -190,29 +196,48 @@ void awh::unit::QuicServer::read(const event::id_t oid, const uint8_t * data, co
 		 */
 		const net::dgram_info_t info = this->_io->getTrafficInfo(this->_eid);
 		// Выполняем обработку входящей датаграммы с маркировкой перегрузки
-		session.connection->read(data, size, this->date(), info.congestion);
+		session->connection->read(data, size, this->date(), info.congestion);
 	// Выполняем обработку входящей датаграммы
-	} else session.connection->read(data, size, this->date());
+	} else session->connection->read(data, size, this->date());
 	// Синхронизируем маршрутизацию по идентификаторам соединения
-	this->reroute(oid, session);
+	this->reroute(oid, * session);
 	// Если соединение установлено и приложение об этом ещё не оповещено
-	if(!session.connected && (session.connection->state() == quic::connection_t::state_t::CONNECTED)){
+	if(!session->connected && (session->connection->state() == quic::connection_t::state_t::CONNECTED)){
 		// Устанавливаем флаг оповещения приложения об установленном соединении
-		session.connected = true;
+		session->connected = true;
 		// Выполняем функцию обратного вызова об установленном соединении
 		this->_callback.call <void (const event::id_t)> ("open", oid);
+		// Перечитываем сессию: колбэк "open" мог реентрантно снять её
+		i = this->_sessions.find(oid);
+		// Если сессия соединения снята приложением из функции обратного вызова
+		if(i == this->_sessions.end())
+			// Выходим из метода
+			return;
+		// Обновляем указатель на сессию соединения
+		session = &i->second;
 	}
 	// Выполняем выдачу собранных данных потоков приложения
-	this->process(oid, session);
+	this->process(oid);
+	/**
+	 * Перечитываем сессию после выдачи данных: process() вызывает колбэки
+	 * "read"/"datagram", в которых приложение могло реентрантно снять сессию
+	 */
+	i = this->_sessions.find(oid);
+	// Если сессия соединения снята приложением из функции обратного вызова
+	if(i == this->_sessions.end())
+		// Выходим из метода
+		return;
+	// Обновляем указатель на сессию соединения
+	session = &i->second;
 	// Отправляем все готовые исходящие датаграммы
-	const bool sent = this->flush(oid, session);
+	const bool sent = this->flush(oid, * session);
 	/**
 	 * Если соединение не начато и отправлять в ответ нечего: датаграмма адресована
 	 * соединению, о котором сервер ничего не помнит. Отвечаем сбросом без сохранения
 	 * состояния и снимаем сессию - иначе удалённый узел будет слать датаграммы
 	 * до самого таймаута простоя (RFC 9000 §10.3)
 	 */
-	if(!sent && (session.connection->state() == quic::connection_t::state_t::NONE)){
+	if(!sent && (session->connection->state() == quic::connection_t::state_t::NONE)){
 		// Отправляем сброс без сохранения состояния
 		this->drop(oid, data, size);
 		// Выполняем завершение сессии соединения
@@ -221,7 +246,7 @@ void awh::unit::QuicServer::read(const event::id_t oid, const uint8_t * data, co
 		return;
 	}
 	// Если удалённый эндпоинт завершил соединение
-	if(session.connection->state() == quic::connection_t::state_t::DRAINING)
+	if(session->connection->state() == quic::connection_t::state_t::DRAINING)
 		// Выполняем завершение сессии соединения
 		this->erase(oid);
 }
@@ -299,29 +324,48 @@ void awh::unit::QuicServer::reroute(const event::id_t oid, session_t & session) 
  * @param oid     идентификатор события сессии
  * @param session сессия соединения
  */
-void awh::unit::QuicServer::process(const event::id_t oid, session_t & session) noexcept {
+void awh::unit::QuicServer::process(const event::id_t oid) noexcept {
+	/**
+	 * Сессию берём по идентификатору, а не по удерживаемой ссылке: выдача данных
+	 * вызывает функции обратного вызова приложения ("read"/"datagram"), а приложение
+	 * вправе реентрантно завершить соединение прямо в них (destroy/erase). Тогда узел
+	 * сессии освобождается, и любая ранее взятая ссылка session_t& становится висячей.
+	 * Поэтому сессию перечитываем из карты после каждого колбэка и прекращаем выдачу,
+	 * если она была снята
+	 */
+	auto i = this->_sessions.find(oid);
+	// Если сессия соединения не найдена
+	if(i == this->_sessions.end())
+		// Выходим из метода
+		return;
 	/**
 	 * Если для сессии установлено объединение данных (splice), собранные данные
 	 * потоков и датаграмм перенаправляются в событие-приёмник вместо выдачи
 	 * приложению - строится прозрачный канал между сессией и другим событием
 	 */
-	const bool spliced = (session.dest != 0);
+	const bool spliced = (i->second.dest != 0);
 	// Если объединение установлено либо функция обратного вызова на собранные данные потока установлена
 	if(spliced || this->_callback.is("read")){
 		// Список потоков с собранными данными
 		vector <uint64_t> streams;
 		// Получаем список потоков с собранными данными
-		session.connection->readable(streams);
+		i->second.connection->readable(streams);
 		/**
 		 * Перебираем потоки с собранными данными
 		 */
 		for(auto & sid : streams){
+			// Перечитываем сессию: предыдущий колбэк мог реентрантно снять её
+			i = this->_sessions.find(oid);
+			// Если сессия соединения снята приложением из функции обратного вызова
+			if(i == this->_sessions.end())
+				// Выходим из метода
+				return;
 			// Флаг завершения потока удалённым эндпоинтом
 			bool fin = false;
 			// Собранные данные потока приложения
 			string data = "";
 			// Если выдача собранных данных потока не выполнена
-			if(session.connection->receive(sid, data, fin) != quic::status_t::OK)
+			if(i->second.connection->receive(sid, data, fin) != quic::status_t::OK)
 				// Пропускаем поток с ошибкой выдачи
 				continue;
 			// Если данные получены либо поток завершён
@@ -329,12 +373,18 @@ void awh::unit::QuicServer::process(const event::id_t oid, session_t & session) 
 				// Если для сессии установлено объединение данных - перенаправляем их в событие-приёмник
 				if(spliced)
 					// Перенаправляем собранные данные потока в событие-приёмник объединения
-					this->forward(session.dest, data);
+					this->forward(i->second.dest, data);
 				// Иначе выдаём собранные данные потока приложению
 				else this->_callback.call <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", oid, sid, data, fin);
 			}
 		}
 	}
+	// Перечитываем сессию перед выдачей датаграмм: цикл потоков мог реентрантно снять её
+	i = this->_sessions.find(oid);
+	// Если сессия соединения снята приложением из функции обратного вызова
+	if(i == this->_sessions.end())
+		// Выходим из метода
+		return;
 	// Если объединение установлено либо функция обратного вызова на принятую датаграмму приложения установлена
 	if(spliced || this->_callback.is("datagram")){
 		// Буфер принятой датаграммы приложения
@@ -343,13 +393,19 @@ void awh::unit::QuicServer::process(const event::id_t oid, session_t & session) 
 		 * Выдаём принятые датаграммы приложения: они доставляются вне потоков
 		 * и порядка доставки не имеют (RFC 9221)
 		 */
-		while(session.connection->datagram(datagram)){
+		while(i->second.connection->datagram(datagram)){
 			// Если для сессии установлено объединение данных - перенаправляем датаграмму в событие-приёмник
 			if(spliced)
 				// Перенаправляем принятую датаграмму в событие-приёмник объединения
-				this->forward(session.dest, datagram);
+				this->forward(i->second.dest, datagram);
 			// Иначе выдаём принятую датаграмму приложению
 			else this->_callback.call <void (const event::id_t, const string &)> ("datagram", oid, datagram);
+			// Перечитываем сессию: колбэк датаграммы мог реентрантно снять её
+			i = this->_sessions.find(oid);
+			// Если сессия соединения снята приложением из функции обратного вызова
+			if(i == this->_sessions.end())
+				// Выходим из метода
+				return;
 		}
 	}
 }
@@ -509,12 +565,20 @@ void awh::unit::QuicServer::erase(const event::id_t oid) noexcept {
 	if(i == this->_sessions.end())
 		// Выходим из метода
 		return;
-	// Если приложение было оповещено об установленном соединении
-	if(i->second.connected)
-		// Выполняем функцию обратного вызова о завершённом соединении
-		this->_callback.call <void (const event::id_t, const quic::error_t)> ("close", oid, i->second.connection->error());
-	// Удаляем сессию из списка сессий соединений
+	// Признак оповещения приложения об установленном соединении
+	const bool connected = i->second.connected;
+	// Код ошибки завершения соединения для оповещения приложения
+	const quic::error_t error = (connected ? i->second.connection->error() : quic::error_t::NO_ERROR);
+	/**
+	 * Удаляем сессию из карты ДО функции обратного вызова "close": приложение вправе
+	 * реентрантно из неё вызвать destroy(oid) на этой же сессии, а раннее удаление
+	 * делает вложенный erase(oid) no-op'ом и снимает риск двойного удаления итератора
+	 */
 	this->_sessions.erase(i);
+	// Если приложение было оповещено об установленном соединении
+	if(connected)
+		// Выполняем функцию обратного вызова о завершённом соединении
+		this->_callback.call <void (const event::id_t, const quic::error_t)> ("close", oid, error);
 	// Уничтожаем событие сессии вместе с его ключами маршрутизации
 	this->_io->destroy(oid);
 }
@@ -910,7 +974,7 @@ bool awh::unit::QuicServer::splice(const event::id_t eid, const event::id_t dest
 		 * приёмника: без нового входящего события метод process() иначе не будет
 		 * вызван и буферизованные данные не пойдут в событие-приёмник
 		 */
-		this->process(eid, i->second);
+		this->process(eid);
 		// Возвращаем положительный результат
 		return true;
 	}
@@ -947,6 +1011,18 @@ void awh::unit::QuicServer::destroy(const event::id_t eid) noexcept {
 	if(!this->isActual(eid))
 		// Выходим из метода
 		return;
+	/**
+	 * Если идентификатор адресует отдельную сессию, а не событие сервера: завершаем
+	 * только её. Иначе уничтожение одной сессии (в т.ч. реентрантно из функции
+	 * обратного вызова) сносило бы весь сервер со всеми прочими сессиями, событием
+	 * приёма и таймером - для отдельной сессии это неверно (RFC 9000 §10)
+	 */
+	if(this->_sessions.find(eid) != this->_sessions.end()){
+		// Завершаем сессию соединения
+		this->erase(eid);
+		// Выходим из метода
+		return;
+	}
 	// Завершаем все сессии соединений сервера
 	if(!this->_sessions.empty()){
 		// Копируем список идентификаторов сессий для безопасного удаления во время итерации

@@ -2675,6 +2675,9 @@ TEST_F(QuicFixture, RetryTest){
 	::setup(client);
 	// Выполняем подготовку соединения сервера
 	::setup(server);
+	// Разбираем адрес клиента и заверяем им токен проверки адреса (без адреса токен не выдаётся)
+	this->_addr->parse("198.51.100.9");
+	server.address(this->_addr->source().get(), 44301);
 	// Включаем проверку адреса клиента через пакет Retry
 	server.retry(true);
 	// Выполняем начало соединения клиентом
@@ -4212,6 +4215,9 @@ TEST_F(QuicFixture, DatagramSizeBudgetTest){
 	::setup(client);
 	// Выполняем подготовку соединения сервера
 	::setup(server);
+	// Разбираем адрес клиента и заверяем им токен проверки адреса (без адреса токен не выдаётся)
+	this->_addr->parse("198.51.100.9");
+	server.address(this->_addr->source().get(), 44301);
 	// Включаем проверку адреса клиента через пакет Retry
 	server.retry(true);
 	// Выполняем начало соединения клиентом
@@ -4802,6 +4808,115 @@ TEST_F(QuicFixture, CongestionPersistentTest){
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
 	ASSERT_EQ(client.error(), error_t::NO_ERROR);
 	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест защиты от ложной устойчивой перегрузки при переупорядочивании (RFC 9002 §7.6.1)
+ *
+ * @details Удалённый эндпоинт полностью управляет тем, какие номера пакетов
+ *          подтверждать. Подтвердив одним фреймом ACK несмежными диапазонами
+ *          пакет, отправленный между двумя потерянными, он не должен приводить
+ *          к схлопыванию окна перегрузки: подтверждение внутри серии разрывает
+ *          период устойчивой перегрузки. Прогоняем два прохода одинаковой
+ *          топологии потерь - без внутреннего подтверждения (контроль: окно
+ *          обязано схлопнуться) и с ним (окно обязано устоять)
+ */
+TEST_F(QuicFixture, CongestionPersistentReorderTest){
+	/**
+	 * Прогоняем сценарий дважды: в контрольном проходе внутренний пакет серверу
+	 * не доставляется (период целен - окно схлопывается), в основном - доставляется
+	 * и подтверждается внутри серии (период разорван - окно устоит)
+	 */
+	for(size_t pass = 0; pass < 2; pass++){
+		// Признак доставки внутреннего пакета (подтверждения внутри серии потерь)
+		const bool interior = (pass == 1);
+		// Создаём соединение клиента
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		// Создаём соединение сервера
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		// Выполняем подготовку соединения клиента
+		::setup(client);
+		// Выполняем подготовку соединения сервера
+		::setup(server);
+		// Выполняем начало соединения клиентом
+		ASSERT_EQ(client.connect(), status_t::OK);
+		// Тестовые часы в миллисекундах
+		uint64_t now = 1000;
+		// Выполняем полное установление соединения
+		ASSERT_TRUE(::establish(client, server, now));
+		// Открываем двунаправленный поток на клиенте
+		const uint64_t sid = client.open(false);
+		// Проверяем что поток открыт
+		ASSERT_NE(sid, connection_t::INVALID_STREAM);
+		// Запоминаем окно перегрузки до потерь
+		const uint64_t before = client.cwnd();
+		// Проверяем что окно перегрузки выше минимального
+		ASSERT_GT(before, 2400u);
+		// Буфер передаваемой датаграммы
+		std::string datagram = "";
+		// Опорное время серии: разнос пакетов выбран заведомо за порогом периода
+		const uint64_t base = now + 100;
+		/**
+		 * Пакет P1 (потерян): отправляем и отбрасываем
+		 */
+		ASSERT_EQ(client.send(sid, "payload-1", false), status_t::OK);
+		// Извлекаем датаграмму пакета P1 и отбрасываем её
+		ASSERT_TRUE(client.write(datagram, base));
+		/**
+		 * Пакет P_mid (внутренний): в основном проходе доставляем серверу - он даст
+		 * подтверждение внутри серии потерь; в контрольном отбрасываем вместе с прочими
+		 */
+		ASSERT_EQ(client.send(sid, "payload-2", false), status_t::OK);
+		// Время отправки внутреннего пакета - строго между потерянными
+		const uint64_t middle = base + 2000;
+		// Извлекаем датаграмму внутреннего пакета
+		ASSERT_TRUE(client.write(datagram, middle));
+		// Если выполняется основной проход - доставляем внутренний пакет серверу
+		if(interior)
+			// Передаём внутренний пакет серверу
+			ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), middle), status_t::OK);
+		/**
+		 * Пакет P2 (потерян): отправляем и отбрасываем
+		 */
+		ASSERT_EQ(client.send(sid, "payload-3", false), status_t::OK);
+		// Время отправки второго потерянного пакета - далеко за порогом периода от P1
+		const uint64_t second = base + 4000;
+		// Извлекаем датаграмму пакета P2 и отбрасываем её
+		ASSERT_TRUE(client.write(datagram, second));
+		/**
+		 * Пакет P_last: доставляем серверу - он продвигает наибольший подтверждённый
+		 * номер (чтобы P1/P2 были признаны потерянными) и служит хвостовым подтверждением
+		 * уже после всей серии, период не разрывающим
+		 */
+		ASSERT_EQ(client.send(sid, "payload-4", false), status_t::OK);
+		// Время отправки хвостового пакета
+		const uint64_t tail = base + 4100;
+		// Извлекаем датаграмму хвостового пакета
+		ASSERT_TRUE(client.write(datagram, tail));
+		// Передаём хвостовой пакет серверу
+		ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), tail), status_t::OK);
+		// Текущее время приёма подтверждений клиентом
+		uint64_t stamp = tail + 50;
+		/**
+		 * Передаём подтверждения сервера клиенту: сервер подтверждает принятые пакеты
+		 * (в основном проходе - внутренний и хвостовой несмежными диапазонами)
+		 */
+		while(server.write(datagram, stamp)){
+			// Передаём датаграмму подтверждения клиенту
+			ASSERT_EQ(client.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), stamp), status_t::OK);
+			// Продвигаем тестовые часы
+			stamp += 5;
+		}
+		// Если выполняется основной проход - подтверждение внутри серии разорвало период
+		if(interior)
+			// Проверяем что окно перегрузки устояло (ложная устойчивая перегрузка предотвращена)
+			ASSERT_GT(client.cwnd(), 2400u);
+		// Иначе целый период двух потерь за порогом схлопнул окно до минимального
+		else ASSERT_EQ(client.cwnd(), 2400u);
+		// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+		ASSERT_EQ(client.error(), error_t::NO_ERROR);
+		ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	}
 }
 
 /**
@@ -6693,6 +6808,9 @@ TEST_F(QuicFixture, ConnectionNewTokenTest){
 		::setup(client);
 		// Выполняем подготовку соединения сервера
 		::setup(server);
+		// Разбираем адрес клиента и заверяем им токен проверки адреса (без адреса токен не выдаётся)
+		this->_addr->parse("198.51.100.9");
+		server.address(this->_addr->source().get(), 44301);
 		// Включаем проверку адреса клиента через пакет Retry
 		server.retry(true);
 		// Выполняем начало соединения клиентом
@@ -6753,6 +6871,9 @@ TEST_F(QuicFixture, ConnectionNewTokenTest){
 		::setup(client);
 		// Выполняем подготовку соединения сервера
 		::setup(server);
+		// Разбираем адрес клиента и заверяем им токен проверки адреса (без адреса токен не выдаётся)
+		this->_addr->parse("198.51.100.9");
+		server.address(this->_addr->source().get(), 44301);
 		// Включаем проверку адреса клиента через пакет Retry
 		server.retry(true);
 		// Устанавливаем выданный сервером токен проверки адреса
@@ -6814,6 +6935,9 @@ TEST_F(QuicFixture, ConnectionNewTokenRejectTest){
 	::setup(client);
 	// Выполняем подготовку соединения сервера
 	::setup(server);
+	// Разбираем адрес клиента и заверяем им токен проверки адреса (без адреса токен не выдаётся)
+	this->_addr->parse("198.51.100.9");
+	server.address(this->_addr->source().get(), 44301);
 	// Включаем проверку адреса клиента через пакет Retry
 	server.retry(true);
 	/**

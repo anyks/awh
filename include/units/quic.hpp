@@ -284,10 +284,9 @@ namespace awh {
 				/**
 				 * @brief Метод выдачи собранных данных потоков приложения
 				 *
-				 * @param oid     идентификатор события сессии
-				 * @param session сессия соединения
+				 * @param oid идентификатор события сессии
 				 */
-				void process(const event::id_t oid, session_t & session) noexcept;
+				void process(const event::id_t oid) noexcept;
 				/**
 				 * @brief Метод применения маркировки соединения к сокету события сервера
 				 *

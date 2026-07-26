@@ -2976,6 +2976,578 @@ TEST_F(ParserHttp2Fixture, PriorityBurstAllowedTest){
 }
 
 /**
+ * @brief Метод проверки блока заголовков на закрытом потоке (RFC 9113 §5.1)
+ *
+ * @details Это потоковая ошибка, а не ошибка соединения, но блок обязан быть
+ *          декодирован - иначе динамическая таблица HPACK разъедется с кодером пира
+ *
+ */
+TEST_F(ParserHttp2Fixture, HeadersOnClosedStreamTest){
+	// Создаём объект парсера сервера (pull-модель: функция записи не установлена)
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t serverEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* server, serverEvents);
+	// Отправляем preface сервера
+	server->sendPreface();
+	// Создаём объект кодера заголовков клиента
+	h2::hpack::encoder_t encoder;
+	// Буфер входящего потока клиента
+	std::string input;
+	// Дописываем magic-строку preface клиента
+	input.append(h2::proto::PREFACE.data(), h2::proto::PREFACE.size());
+	// Дописываем SETTINGS клиента
+	input += ::frame(0x04, 0x00, 0, "");
+	// Формируем заголовки первого запроса
+	std::vector <h2::hpack::field_t> first;
+	// Дописываем псевдо-заголовки первого запроса
+	first.emplace_back(":method", "GET");
+	first.emplace_back(":scheme", "https");
+	first.emplace_back(":path", "/first");
+	// Буфер закодированного блока первого запроса
+	std::string block;
+	// Кодируем блок первого запроса
+	encoder.encode(first, block, false);
+	// Дописываем кадр заголовков первого запроса
+	input += ::frame(0x01, 0x04, 1, block);
+	// Дописываем кадр сброса первого потока клиентом
+	input += ::frame(0x03, 0x00, 1, std::string("\x00\x00\x00\x08", 4));
+	// Подаём входящий поток клиента на разбор
+	server->parse(input.data(), input.size());
+	// Проверяем что первый поток закрыт
+	ASSERT_EQ(serverEvents.closes.size(), 1u);
+	// Освобождаем всю очередь исходящих данных
+	server->consumePending(server->pending().size());
+	// Формируем заголовки запроса на уже закрытом потоке
+	std::vector <h2::hpack::field_t> closed;
+	// Дописываем псевдо-заголовки запроса
+	closed.emplace_back(":method", "GET");
+	closed.emplace_back(":scheme", "https");
+	closed.emplace_back(":path", "/closed");
+	// Дописываем заголовок, попадающий в динамическую таблицу
+	closed.emplace_back("x-marker", "value");
+	// Очищаем буфер закодированного блока
+	block.clear();
+	// Кодируем блок запроса на закрытом потоке
+	encoder.encode(closed, block, false);
+	// Формируем кадр заголовков на закрытом потоке
+	const std::string late = ::frame(0x01, 0x04, 1, block);
+	// Подаём кадр на разбор
+	server->parse(late.data(), late.size());
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что ошибка уровня соединения не фиксировалась
+	ASSERT_FALSE(serverEvents.errorFired);
+	// Проверяем что сервер ответил сбросом потока
+	ASSERT_FALSE(server->pending().empty());
+	// Проверяем что отправлен именно кадр RST_STREAM
+	ASSERT_EQ(static_cast <uint8_t> (server->pending()[3]), 0x03);
+	// Проверяем код сброса потока (закрытый поток)
+	ASSERT_EQ(static_cast <uint8_t> (server->pending()[12]), static_cast <uint8_t> (parser_http2_t::error_t::STREAM_CLOSED));
+	// Освобождаем всю очередь исходящих данных
+	server->consumePending(server->pending().size());
+	// Формируем заголовки следующего запроса со ссылкой на запись динамической таблицы
+	std::vector <h2::hpack::field_t> next;
+	// Дописываем псевдо-заголовки следующего запроса
+	next.emplace_back(":method", "GET");
+	next.emplace_back(":scheme", "https");
+	next.emplace_back(":path", "/next");
+	// Дописываем заголовок, который кодер передаст индексом
+	next.emplace_back("x-marker", "value");
+	// Очищаем буфер закодированного блока
+	block.clear();
+	// Кодируем блок следующего запроса
+	encoder.encode(next, block, false);
+	// Формируем кадр заголовков следующего запроса
+	const std::string following = ::frame(0x01, 0x05, 3, block);
+	// Подаём кадр на разбор
+	server->parse(following.data(), following.size());
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что следующий запрос доставлен
+	ASSERT_FALSE(serverEvents.providers.empty());
+	// Проверяем путь доставленного запроса
+	ASSERT_EQ(serverEvents.uri, "/next");
+	// Флаг наличия заголовка, переданного индексом
+	bool hasMarker = false;
+	/**
+	 * Выполняем перебор всех доставленных заголовков
+	 */
+	for(const auto & item : serverEvents.headers){
+		// Если получен заголовок, переданный индексом
+		if((std::get <1> (item) == "x-marker") && (std::get <2> (item) == "value"))
+			// Помечаем что заголовок разрешён по индексу
+			hasMarker = true;
+	}
+	// Проверяем что заголовок разрешён по индексу - таблица HPACK осталась синхронной
+	ASSERT_TRUE(hasMarker);
+}
+
+/**
+ * @brief Метод проверки данных тела на зарезервированном потоке (RFC 9113 §5.1)
+ *
+ * @details Зарезервированный под push поток до блока заголовков тела не принимает,
+ *          и это ошибка соединения: пир рассинхронизирован
+ *
+ */
+TEST_F(ParserHttp2Fixture, DataOnReservedStreamRecvTest){
+	// Создаём объект парсера сервера (pull-модель: функция записи не установлена)
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t serverEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* server, serverEvents);
+	// Отправляем preface сервера
+	server->sendPreface();
+	// Создаём объект кодера заголовков клиента
+	h2::hpack::encoder_t encoder;
+	// Буфер входящего потока клиента
+	std::string input;
+	// Дописываем magic-строку preface клиента
+	input.append(h2::proto::PREFACE.data(), h2::proto::PREFACE.size());
+	// Дописываем SETTINGS клиента
+	input += ::frame(0x04, 0x00, 0, "");
+	// Формируем заголовки запроса клиента
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовки запроса
+	fields.emplace_back(":method", "GET");
+	fields.emplace_back(":scheme", "https");
+	fields.emplace_back(":path", "/");
+	// Буфер закодированного блока заголовков
+	std::string block;
+	// Кодируем блок заголовков запроса
+	encoder.encode(fields, block, false);
+	// Дописываем кадр заголовков запроса
+	input += ::frame(0x01, 0x04, 1, block);
+	// Подаём входящий поток клиента на разбор
+	server->parse(input.data(), input.size());
+	// Формируем заголовки обещанного запроса
+	std::vector <h2::hpack::field_t> promise;
+	// Дописываем псевдо-заголовки обещанного запроса
+	promise.emplace_back(":method", "GET");
+	promise.emplace_back(":scheme", "https");
+	promise.emplace_back(":path", "/push");
+	promise.emplace_back(":authority", "example.com");
+	// Отправляем анонс server push
+	const uint32_t pushed = server->sendPushPromise(1, promise);
+	// Проверяем что push-поток зарезервирован
+	ASSERT_NE(pushed, 0u);
+	// Формируем кадр тела на зарезервированном потоке
+	const std::string data = ::frame(0x00, 0x00, pushed, "body");
+	// Подаём кадр тела на разбор
+	server->parse(data.data(), data.size());
+	// Проверяем что зафиксирована ошибка уровня соединения
+	ASSERT_EQ(server->status(), parser_t::status_t::ERROR);
+	// Проверяем код ошибки уровня соединения
+	ASSERT_EQ(server->error(), parser_http2_t::error_t::PROTOCOL_ERROR);
+}
+
+/**
+ * @brief Метод проверки анонса параметра разрешения server push (RFC 9113 §6.5.2)
+ *
+ * @details Параметром распоряжается только клиент. Сервер отправлять его не вправе:
+ *          значение 1 от сервера обязывает клиента оборвать соединение
+ *
+ */
+TEST_F(ParserHttp2Fixture, EnablePushAnnouncementTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Отправляем preface сервера
+	server->sendPreface();
+	// Отправляем preface клиента
+	client->sendPreface();
+	/**
+	 * @brief Функция поиска параметра в кадре SETTINGS
+	 *
+	 * @param output очередь исходящих данных парсера
+	 * @param id     искомый идентификатор параметра
+	 * @return       признак наличия параметра
+	 */
+	auto has = [](const std::string_view output, const uint16_t id) noexcept -> bool {
+		// Текущая позиция разбора очереди
+		size_t pos = 0;
+		// Очередь клиента начинается с magic-строки preface, а не с кадра
+		if((output.size() >= h2::proto::PREFACE.size()) && (output.compare(0, h2::proto::PREFACE.size(), h2::proto::PREFACE) == 0))
+			// Пропускаем magic-строку preface
+			pos = h2::proto::PREFACE.size();
+		/**
+		 * Выполняем перебор всех кадров очереди
+		 */
+		while((pos + 9) <= output.size()){
+			// Извлекаем длину полезной нагрузки кадра
+			const size_t length = (
+				(static_cast <size_t> (static_cast <uint8_t> (output[pos])) << 16) |
+				(static_cast <size_t> (static_cast <uint8_t> (output[pos + 1])) << 8) |
+				static_cast <size_t> (static_cast <uint8_t> (output[pos + 2]))
+			);
+			// Если кадр целиком не поместился - прекращаем разбор
+			if((pos + 9 + length) > output.size())
+				// Прекращаем разбор очереди
+				break;
+			// Если получен кадр параметров соединения
+			if(static_cast <uint8_t> (output[pos + 3]) == 0x04){
+				/**
+				 * Выполняем перебор всех параметров кадра
+				 */
+				for(size_t i = 0; (i + 6) <= length; i += 6){
+					// Извлекаем идентификатор параметра
+					const uint16_t current = static_cast <uint16_t> (
+						(static_cast <uint16_t> (static_cast <uint8_t> (output[pos + 9 + i])) << 8) |
+						static_cast <uint16_t> (static_cast <uint8_t> (output[pos + 10 + i]))
+					);
+					// Если параметр найден
+					if(current == id)
+						// Параметр присутствует
+						return true;
+				}
+			}
+			// Сдвигаем позицию за разобранный кадр
+			pos += (9 + length);
+		}
+		// Параметр отсутствует
+		return false;
+	};
+	// Проверяем что сервер параметр разрешения push не анонсирует
+	ASSERT_FALSE(has(server->pending(), 0x02));
+	// Проверяем что клиент параметр разрешения push анонсирует
+	ASSERT_TRUE(has(client->pending(), 0x02));
+}
+
+/**
+ * @brief Метод проверки отклонения параметра разрешения push от сервера
+ *
+ * @details Клиент обязан оборвать соединение, если сервер прислал
+ *          SETTINGS_ENABLE_PUSH со значением, отличным от нуля (RFC 9113 §6.5.2)
+ *
+ */
+TEST_F(ParserHttp2Fixture, ServerEnablePushRejectedTest){
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера
+	events_t clientEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* client, clientEvents);
+	// Отправляем preface клиента
+	client->sendPreface();
+	// Формируем полезную нагрузку SETTINGS сервера с разрешением push
+	std::string payload;
+	// Дописываем идентификатор параметра разрешения push
+	payload.push_back(0x00);
+	payload.push_back(0x02);
+	// Дописываем значение параметра
+	payload.push_back(0x00);
+	payload.push_back(0x00);
+	payload.push_back(0x00);
+	payload.push_back(0x01);
+	// Формируем кадр SETTINGS сервера
+	const std::string settings = ::frame(0x04, 0x00, 0, payload);
+	// Подаём кадр SETTINGS сервера на разбор
+	client->parse(settings.data(), settings.size());
+	// Проверяем что зафиксирована ошибка уровня соединения
+	ASSERT_EQ(client->status(), parser_t::status_t::ERROR);
+	// Проверяем код ошибки уровня соединения
+	ASSERT_EQ(client->error(), parser_http2_t::error_t::PROTOCOL_ERROR);
+	// Проверяем что функция обратного вызова ошибки вызвана
+	ASSERT_TRUE(clientEvents.errorFired);
+}
+
+/**
+ * @brief Метод проверки приёма параметра разрешения push сервером
+ *
+ * @details Клиент вправе анонсировать параметр в любом допустимом значении -
+ *          сервер обязан его принять
+ *
+ */
+TEST_F(ParserHttp2Fixture, ClientEnablePushAcceptedTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t serverEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* server, serverEvents);
+	// Отправляем preface сервера
+	server->sendPreface();
+	// Буфер входящего потока клиента
+	std::string input;
+	// Дописываем magic-строку preface клиента
+	input.append(h2::proto::PREFACE.data(), h2::proto::PREFACE.size());
+	// Формируем полезную нагрузку SETTINGS клиента с разрешением push
+	std::string payload;
+	// Дописываем идентификатор параметра разрешения push
+	payload.push_back(0x00);
+	payload.push_back(0x02);
+	// Дописываем значение параметра
+	payload.push_back(0x00);
+	payload.push_back(0x00);
+	payload.push_back(0x00);
+	payload.push_back(0x01);
+	// Дописываем кадр SETTINGS клиента
+	input += ::frame(0x04, 0x00, 0, payload);
+	// Подаём входящий поток клиента на разбор
+	server->parse(input.data(), input.size());
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что ошибка уровня соединения не фиксировалась
+	ASSERT_FALSE(serverEvents.errorFired);
+	// Проверяем что разрешение push от клиента принято
+	ASSERT_EQ(server->remoteSettings().enablePush, 1u);
+}
+
+/**
+ * @brief Метод проверки блока заголовков на потоке, завершённом END_STREAM
+ *
+ * @details В отличие от потока, оборванного RST_STREAM, здесь пир закрыл поток сам
+ *          и знает об этом, поэтому блок заголовков на нём - ошибка соединения
+ *          (RFC 9113 §5.1)
+ *
+ */
+TEST_F(ParserHttp2Fixture, HeadersOnFinishedStreamTest){
+	// Создаём объект парсера сервера (pull-модель: функция записи не установлена)
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t serverEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* server, serverEvents);
+	// Устанавливаем функцию обратного вызова фазы приёма сообщения
+	server->on(parser_http2_t::phase_callback_t([&](const uint32_t sid, const parser_t::phase_t phase, const parser_t::part_t part) noexcept -> bool {
+		// Если приём запроса завершён полностью
+		if((phase == parser_t::phase_t::END) && (part == parser_t::part_t::NONE)){
+			// Формируем заголовки ответа сервера
+			std::vector <h2::hpack::field_t> response;
+			// Дописываем псевдо-заголовок статуса ответа
+			response.emplace_back(":status", "200");
+			// Отправляем ответ с завершением потока
+			server->sendHeaders(sid, response, true);
+		}
+		// Продолжаем разбор
+		return true;
+	}));
+	// Отправляем preface сервера
+	server->sendPreface();
+	// Создаём объект кодера заголовков клиента
+	h2::hpack::encoder_t encoder;
+	// Буфер входящего потока клиента
+	std::string input;
+	// Дописываем magic-строку preface клиента
+	input.append(h2::proto::PREFACE.data(), h2::proto::PREFACE.size());
+	// Дописываем SETTINGS клиента
+	input += ::frame(0x04, 0x00, 0, "");
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовки запроса
+	fields.emplace_back(":method", "GET");
+	fields.emplace_back(":scheme", "https");
+	fields.emplace_back(":path", "/");
+	// Буфер закодированного блока заголовков
+	std::string block;
+	// Кодируем блок заголовков запроса
+	encoder.encode(fields, block, false);
+	// Дописываем кадр заголовков запроса с завершением потока
+	input += ::frame(0x01, 0x05, 1, block);
+	// Подаём входящий поток клиента на разбор
+	server->parse(input.data(), input.size());
+	// Проверяем что обмен по потоку завершён
+	ASSERT_EQ(serverEvents.closes.size(), 1u);
+	// Очищаем буфер закодированного блока
+	block.clear();
+	// Кодируем повторный блок заголовков
+	encoder.encode(fields, block, false);
+	// Формируем кадр заголовков на завершённом потоке
+	const std::string late = ::frame(0x01, 0x04, 1, block);
+	// Подаём кадр на разбор
+	server->parse(late.data(), late.size());
+	// Проверяем что зафиксирована ошибка уровня соединения
+	ASSERT_EQ(server->status(), parser_t::status_t::ERROR);
+	// Проверяем код ошибки уровня соединения
+	ASSERT_EQ(server->error(), parser_http2_t::error_t::STREAM_CLOSED);
+}
+
+/**
+ * @brief Метод проверки замкнутой на себя зависимости потока (RFC 9113 §5.3.1)
+ *
+ * @details Приоритеты RFC 7540 признаны устаревшими и игнорируются, но поток,
+ *          объявленный зависимым от самого себя, обязан быть отвергнут
+ *
+ */
+TEST_F(ParserHttp2Fixture, SelfDependentStreamTest){
+	// Создаём объект парсера сервера (pull-модель: функция записи не установлена)
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t serverEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* server, serverEvents);
+	// Отправляем preface сервера
+	server->sendPreface();
+	// Создаём объект кодера заголовков клиента
+	h2::hpack::encoder_t encoder;
+	// Буфер входящего потока клиента
+	std::string input;
+	// Дописываем magic-строку preface клиента
+	input.append(h2::proto::PREFACE.data(), h2::proto::PREFACE.size());
+	// Дописываем SETTINGS клиента
+	input += ::frame(0x04, 0x00, 0, "");
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовки запроса
+	fields.emplace_back(":method", "GET");
+	fields.emplace_back(":scheme", "https");
+	fields.emplace_back(":path", "/");
+	// Буфер закодированного блока заголовков
+	std::string block;
+	// Кодируем блок заголовков запроса
+	encoder.encode(fields, block, false);
+	// Формируем полезную нагрузку с полями приоритета
+	std::string payload;
+	// Дописываем идентификатор потока зависимости (тот же поток)
+	payload.push_back(0x00);
+	payload.push_back(0x00);
+	payload.push_back(0x00);
+	payload.push_back(0x01);
+	// Дописываем вес потока
+	payload.push_back(0x10);
+	// Дописываем блок заголовков
+	payload += block;
+	// Дописываем кадр заголовков с полями приоритета
+	input += ::frame(0x01, 0x24, 1, payload);
+	// Подаём входящий поток клиента на разбор
+	server->parse(input.data(), input.size());
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что заголовки приложению не доставлены
+	ASSERT_TRUE(serverEvents.providers.empty());
+	// Освобождаем очередь до кадра приоритета
+	server->consumePending(server->pending().size());
+	// Формируем полезную нагрузку кадра приоритета с зависимостью от себя
+	std::string priority;
+	// Дописываем идентификатор потока зависимости (тот же поток)
+	priority.push_back(0x00);
+	priority.push_back(0x00);
+	priority.push_back(0x00);
+	priority.push_back(0x03);
+	// Дописываем вес потока
+	priority.push_back(0x10);
+	// Формируем кадр приоритета
+	const std::string frame = ::frame(0x02, 0x00, 3, priority);
+	// Подаём кадр приоритета на разбор
+	server->parse(frame.data(), frame.size());
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что отправлен кадр сброса потока
+	ASSERT_FALSE(server->pending().empty());
+	// Проверяем тип отправленного кадра
+	ASSERT_EQ(static_cast <uint8_t> (server->pending()[3]), 0x03);
+	// Проверяем код сброса потока
+	ASSERT_EQ(static_cast <uint8_t> (server->pending()[12]), static_cast <uint8_t> (parser_http2_t::error_t::PROTOCOL_ERROR));
+}
+
+/**
+ * @brief Метод проверки кадра приоритета некорректной длины на закрытом потоке
+ *
+ * @details Кадр приоритета допустим в любом состоянии потока, поэтому ответ
+ *          на некорректную длину не зависит от того, существует ли поток
+ *          (RFC 9113 §6.3)
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityBadLengthUnknownStreamTest){
+	// Создаём объект парсера сервера (pull-модель: функция записи не установлена)
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t serverEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* server, serverEvents);
+	// Отправляем preface сервера
+	server->sendPreface();
+	// Буфер входящего потока клиента
+	std::string input;
+	// Дописываем magic-строку preface клиента
+	input.append(h2::proto::PREFACE.data(), h2::proto::PREFACE.size());
+	// Дописываем SETTINGS клиента
+	input += ::frame(0x04, 0x00, 0, "");
+	// Подаём входящий поток клиента на разбор
+	server->parse(input.data(), input.size());
+	// Освобождаем всю очередь исходящих данных
+	server->consumePending(server->pending().size());
+	// Формируем кадр приоритета недопустимой длины на неизвестном потоке
+	const std::string frame = ::frame(0x02, 0x00, 5, std::string(4, '\0'));
+	// Подаём кадр приоритета на разбор
+	server->parse(frame.data(), frame.size());
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что отправлен кадр сброса потока
+	ASSERT_FALSE(server->pending().empty());
+	// Проверяем тип отправленного кадра
+	ASSERT_EQ(static_cast <uint8_t> (server->pending()[3]), 0x03);
+	// Проверяем код сброса потока
+	ASSERT_EQ(static_cast <uint8_t> (server->pending()[12]), static_cast <uint8_t> (parser_http2_t::error_t::FRAME_SIZE_ERROR));
+}
+
+/**
+ * @brief Метод проверки переполнения окна отправки потока (RFC 9113 §6.9.1)
+ *
+ * @details Переполнение окна потока обрывает только этот поток, тогда как
+ *          переполнение окна соединения завершает соединение
+ *
+ */
+TEST_F(ParserHttp2Fixture, StreamWindowOverflowTest){
+	// Создаём объект парсера сервера (pull-модель: функция записи не установлена)
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t serverEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* server, serverEvents);
+	// Отправляем preface сервера
+	server->sendPreface();
+	// Создаём объект кодера заголовков клиента
+	h2::hpack::encoder_t encoder;
+	// Буфер входящего потока клиента
+	std::string input;
+	// Дописываем magic-строку preface клиента
+	input.append(h2::proto::PREFACE.data(), h2::proto::PREFACE.size());
+	// Дописываем SETTINGS клиента
+	input += ::frame(0x04, 0x00, 0, "");
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовки запроса
+	fields.emplace_back(":method", "GET");
+	fields.emplace_back(":scheme", "https");
+	fields.emplace_back(":path", "/");
+	// Буфер закодированного блока заголовков
+	std::string block;
+	// Кодируем блок заголовков запроса
+	encoder.encode(fields, block, false);
+	// Дописываем кадр заголовков запроса (поток остаётся открытым)
+	input += ::frame(0x01, 0x04, 1, block);
+	// Подаём входящий поток клиента на разбор
+	server->parse(input.data(), input.size());
+	// Освобождаем всю очередь исходящих данных
+	server->consumePending(server->pending().size());
+	// Формируем инкремент, переполняющий окно потока
+	std::string payload;
+	// Дописываем максимально возможный инкремент окна
+	payload.push_back(0x7F);
+	payload.push_back(0xFF);
+	payload.push_back(0xFF);
+	payload.push_back(0xFF);
+	// Формируем кадр обновления окна потока
+	const std::string window = ::frame(0x08, 0x00, 1, payload);
+	// Подаём кадр обновления окна на разбор
+	server->parse(window.data(), window.size());
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что поток сброшен
+	ASSERT_EQ(serverEvents.closes.size(), 1u);
+	// Проверяем код сброса потока
+	ASSERT_EQ(serverEvents.closes.front().second, parser_http2_t::error_t::FLOW_CONTROL_ERROR);
+	// Проверяем что отправлен кадр сброса потока
+	ASSERT_FALSE(server->pending().empty());
+	// Проверяем тип отправленного кадра
+	ASSERT_EQ(static_cast <uint8_t> (server->pending()[3]), 0x03);
+}
+
+/**
  * @brief Метод проверки расширенного метода CONNECT (RFC 8441)
  *
  */

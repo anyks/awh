@@ -328,10 +328,10 @@ awh::quic::status_t awh::quic::params::parser::decode(const uint8_t * data, cons
 				if(!rdValue(value, static_cast <size_t> (length), output.initialMaxStreamsBidi))
 					// Разбор невозможен
 					return status_t::ERROR;
-				// Если значение превышает лимит числа потоков (RFC 9000 §4.6)
+				// Если значение превышает предел числа потоков в транспортном параметре (RFC 9000 §4.6)
 				if(output.initialMaxStreamsBidi > MAX_STREAMS_LIMIT){
-					// Устанавливаем код ошибки транспорта
-					error = error_t::STREAM_LIMIT_ERROR;
+					// Устанавливаем код ошибки транспортного параметра (для фрейма был бы FRAME_ENCODING_ERROR)
+					error = error_t::TRANSPORT_PARAMETER_ERROR;
 					// Разбор невозможен
 					return status_t::ERROR;
 				}
@@ -342,10 +342,10 @@ awh::quic::status_t awh::quic::params::parser::decode(const uint8_t * data, cons
 				if(!rdValue(value, static_cast <size_t> (length), output.initialMaxStreamsUni))
 					// Разбор невозможен
 					return status_t::ERROR;
-				// Если значение превышает лимит числа потоков (RFC 9000 §4.6)
+				// Если значение превышает предел числа потоков в транспортном параметре (RFC 9000 §4.6)
 				if(output.initialMaxStreamsUni > MAX_STREAMS_LIMIT){
-					// Устанавливаем код ошибки транспорта
-					error = error_t::STREAM_LIMIT_ERROR;
+					// Устанавливаем код ошибки транспортного параметра (для фрейма был бы FRAME_ENCODING_ERROR)
+					error = error_t::TRANSPORT_PARAMETER_ERROR;
 					// Разбор невозможен
 					return status_t::ERROR;
 				}
@@ -632,7 +632,13 @@ bool awh::quic::params::serialize::early(string & output, const params_t & param
 		params.initialMaxStreamDataUni,
 		params.initialMaxStreamsBidi,
 		params.initialMaxStreamsUni,
-		params.activeConnectionIdLimit
+		params.activeConnectionIdLimit,
+		/**
+		 * Лимит размера фрейма датаграммы также запоминается: при 0-RTT клиент вправе
+		 * отправлять DATAGRAM под запомненный лимит, и его снижение сервером при
+		 * возобновлении обязано отклонить ранние данные несовпадением контекста (RFC 9221 §3)
+		 */
+		params.maxDatagramFrameSize
 	};
 	/**
 	 * Перебираем список запоминаемых лимитов

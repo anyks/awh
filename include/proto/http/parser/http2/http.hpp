@@ -614,6 +614,8 @@ namespace awh {
 				typedef struct __AWH_SHARED_EXPORT__ Transfer {
 					// Наибольший принятый идентификатор потока (для GOAWAY)
 					uint32_t lastStreamId;
+					// Идентификатор потока, оборванного RST_STREAM (кадры на нём могут быть в полёте)
+					uint32_t resetStreamId;
 					// Наибольший наш идентификатор потока, по которому уже отправлен блок заголовков
 					uint32_t localOpened;
 					// Следующий инициируемый нами идентификатор потока
