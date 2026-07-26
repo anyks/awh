@@ -71,6 +71,21 @@ namespace {
 	 */
 	static constexpr double ENCODE_THRESHOLD = 44000.0;
 	/**
+	 * @brief Порог скорости кодирования блоков заголовков без Huffman
+	 *
+	 * @details Путь без сжатия строк отдельный: строка копируется как есть, а выбор
+	 *          представления не требует прохода по ней. До появления сценария этот
+	 *          путь не был покрыт вовсе, хотя доступен приложению параметром encode
+	 *          и используется тестами.
+	 *          Сценарий сторожит протекание работы с Huffman-пути на путь без него.
+	 *          Такое уже случалось: длина строки после сжатия вычислялась до проверки
+	 *          флага, то есть полным проходом по каждой строке впустую. Заметим, что
+	 *          та регрессия стоила около 1.5% и порогом бы не поймалась - порог ловит
+	 *          обвал, а мелкое протекание видно только сравнением прогонов
+	 *
+	 */
+	static constexpr double ENCODE_PLAIN_THRESHOLD = 57000.0;
+	/**
 	 * @brief Порог скорости декодирования блоков заголовков в блоках в секунду
 	 *
 	 */
@@ -106,7 +121,7 @@ namespace {
 	 * @return результат измерения
 	 *
 	 */
-	static awh::benchmark::result_t encode() noexcept {
+	static awh::benchmark::result_t encode(const bool useHuffman) noexcept {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Создаём объект кодера заголовков
@@ -141,7 +156,7 @@ namespace {
 			// Очищаем буфер закодированного блока
 			block.clear();
 			// Кодируем блок заголовков запроса
-			encoder.encode(sets[i], block, true);
+			encoder.encode(sets[i], block, useHuffman);
 		}
 		// Запоминаем момент начала измерения
 		const auto start = std::chrono::steady_clock::now();
@@ -152,7 +167,7 @@ namespace {
 			// Очищаем буфер закодированного блока
 			block.clear();
 			// Кодируем блок заголовков запроса
-			encoder.encode(sets[i % sets.size()], block, true);
+			encoder.encode(sets[i % sets.size()], block, useHuffman);
 			// Суммируем объём закодированного блока
 			compressed += block.size();
 		}
@@ -343,7 +358,12 @@ namespace {
 	// Регистрируем сценарий кодирования блоков заголовков
 	static const bool gEncode = awh::benchmark::add(
 		"http2/hpack/encode", "блоков/с", ENCODE_THRESHOLD,
-		awh::benchmark::bound_t::MINIMUM, &::encode
+		awh::benchmark::bound_t::MINIMUM, [](){ return ::encode(true); }
+	);
+	// Регистрируем сценарий кодирования блоков заголовков без Huffman
+	static const bool gEncodePlain = awh::benchmark::add(
+		"http2/hpack/encode-plain", "блоков/с", ENCODE_PLAIN_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, [](){ return ::encode(false); }
 	);
 	// Регистрируем сценарий декодирования блоков заголовков
 	static const bool gDecode = awh::benchmark::add(

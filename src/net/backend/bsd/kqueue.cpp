@@ -3524,19 +3524,6 @@ namespace io {
 	 */
 	static bool write(::io::node_t *, const engine::io_t *, const eth_t *, const fmk_t *, const log_t *) noexcept;
 	/**
-	 * @brief Прототип функции обработки события чтения
-	 *
-	 * @param  узел в котором произошло событие
-	 * @param  объект работы с асинхронными событиями
-	 * @param  объект работы с сетевыми интерфейсами
-	 * @param  объект работы с сетевыми адресами
-	 * @param  объект фреймворка
-	 * @param  объект работы с логами
-	 * @return результат выполнения обработки
-	 *
-	 */
-	static bool read(::io::node_t *, const engine::io_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *, const int64_t = 0) noexcept;
-	/**
 	 * @brief Прототип функции опроса событий
 	 *
 	 * @param  объект события kqueue
@@ -3549,6 +3536,20 @@ namespace io {
 	 *
 	 */
 	static bool polling(struct kevent &, const engine::io_t *, const eth_t *, const net_addr_t * addr, const fmk_t *, const log_t *) noexcept;
+	/**
+	 * @brief Прототип функции обработки события чтения
+	 *
+	 * @param  узел в котором произошло событие
+	 * @param  объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
+	 * @param  объект работы с асинхронными событиями
+	 * @param  объект работы с сетевыми интерфейсами
+	 * @param  объект работы с сетевыми адресами
+	 * @param  объект фреймворка
+	 * @param  объект работы с логами
+	 * @return результат выполнения обработки
+	 *
+	 */
+	static bool read(::io::node_t *, const int64_t, const engine::io_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события принятия подключения от однорангового узла-источника
 	 *
@@ -4594,7 +4595,7 @@ namespace timer1 {
 										::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(peer, io, eth, addr, fmk, log);
+									::io::read(peer, 0, io, eth, addr, fmk, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(timer.id == peer->bandwidth.write.timeout.id) {
@@ -4677,7 +4678,7 @@ namespace timer1 {
 										::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(client, io, eth, addr, fmk, log);
+									::io::read(client, 0, io, eth, addr, fmk, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(timer.id == client->bandwidth.write.timeout.id) {
@@ -4809,7 +4810,7 @@ namespace timer1 {
 										::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(server, io, eth, addr, fmk, log);
+									::io::read(server, 0, io, eth, addr, fmk, log);
 								}
 							}
 						} break;
@@ -6059,7 +6060,7 @@ namespace timer2 {
 										::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(peer, io, eth, addr, fmk, log);
+									::io::read(peer, 0, io, eth, addr, fmk, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(timer.id == peer->bandwidth.write.timeout.id) {
@@ -6142,7 +6143,7 @@ namespace timer2 {
 										::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(client, io, eth, addr, fmk, log);
+									::io::read(client, 0, io, eth, addr, fmk, log);
 								}
 							// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 							} else if(timer.id == client->bandwidth.write.timeout.id) {
@@ -6274,7 +6275,7 @@ namespace timer2 {
 										::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
 									}
 									// Обрабатываем событие готовности сокета на чтение
-									::io::read(server, io, eth, addr, fmk, log);
+									::io::read(server, 0, io, eth, addr, fmk, log);
 								}
 							}
 						} break;
@@ -6372,14 +6373,15 @@ namespace io {
 	/**
 	 * @brief Функция обработки события чтения для узла файловой системы
 	 *
-	 * @param fs  узел в котором произошло событие
-	 * @param io  объект работы с асинхронными событиями
-	 * @param eth объект работы с сетевыми интерфейсами
-	 * @param log объект работы с логами
-	 * @return    результат выполнения обработки
+	 * @param fs     узел в котором произошло событие
+	 * @param volume объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
+	 * @param io     объект работы с асинхронными событиями
+	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param log    объект работы с логами
+	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::file_t * fs, const engine::io_t * io, const eth_t * eth, const log_t * log, const int64_t volume) noexcept {
+	static bool read(::io::file_t * fs, [[maybe_unused]] const int64_t volume, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -6531,14 +6533,15 @@ namespace io {
 	/**
 	 * @brief Функция обработки события чтения для узла межпроцессного взаимодействия
 	 *
-	 * @param ipc узел в котором произошло событие
-	 * @param io  объект работы с асинхронными событиями
-	 * @param eth объект работы с сетевыми интерфейсами
-	 * @param log объект работы с логами
-	 * @return    результат выполнения обработки
+	 * @param ipc    узел в котором произошло событие
+	 * @param volume объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
+	 * @param io     объект работы с асинхронными событиями
+	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param log    объект работы с логами
+	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::ipc_t * ipc, const engine::io_t * io, const eth_t * eth, const log_t * log, const int64_t volume) noexcept {
+	static bool read(::io::ipc_t * ipc, const int64_t volume, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -7015,14 +7018,15 @@ namespace io {
 	/**
 	 * @brief Функция обработки события чтения для однорангового узла
 	 *
-	 * @param peer узел в котором произошло событие
-	 * @param io   объект работы с асинхронными событиями
-	 * @param eth  объект работы с сетевыми интерфейсами
-	 * @param log  объект работы с логами
-	 * @return     результат выполнения обработки
+	 * @param peer   узел в котором произошло событие
+	 * @param volume объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
+	 * @param io     объект работы с асинхронными событиями
+	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param log    объект работы с логами
+	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::peer_t * peer, const engine::io_t * io, const eth_t * eth, const log_t * log, const int64_t volume) noexcept {
+	static bool read(::io::peer_t * peer, const int64_t volume, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -7734,6 +7738,7 @@ namespace io {
 	 * @brief Функция обработки события чтения для узла туннеля
 	 *
 	 * @param tunnel узел в котором произошло событие
+	 * @param volume объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
 	 * @param io     объект работы с асинхронными событиями
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param addr   объект для работы с сетевыми адресами
@@ -7742,7 +7747,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::tun_t * tunnel, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log, const int64_t volume) noexcept {
+	static bool read(::io::tun_t * tunnel, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -8866,13 +8871,14 @@ namespace io {
 	 * @brief Функция обработки события чтения для узла клиента
 	 *
 	 * @param client узел в котором произошло событие
+	 * @param volume объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
 	 * @param io     объект работы с асинхронными событиями
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param log    объект работы с логами
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log, const int64_t volume) noexcept {
+	static bool read(::io::client_t * client, const int64_t volume, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -10890,6 +10896,7 @@ namespace io {
 	 * @brief Функция обработки события чтения для узла сервера
 	 *
 	 * @param server узел в котором произошло событие
+	 * @param volume объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
 	 * @param io     объект работы с асинхронными событиями
 	 * @param eth    объект работы с сетевыми интерфейсами
 	 * @param addr   объект работы с сетевыми адресами
@@ -10898,7 +10905,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::server_t * server, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log, const int64_t volume) noexcept {
+	static bool read(::io::server_t * server, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -26810,16 +26817,17 @@ namespace io {
 	/**
 	 * @brief Функция обработки события чтения
 	 *
-	 * @param node узел в котором произошло событие
-	 * @param io   объект работы с асинхронными событиями
-	 * @param eth  объект работы с сетевыми интерфейсами
-	 * @param addr объект работы с сетевыми адресами
-	 * @param fmk  объект фреймворка
-	 * @param log  объект работы с логами
-	 * @return     результат выполнения обработки
+	 * @param node   узел в котором произошло событие
+	 * @param volume объявленный ядром объём данных к получению в октетах, ноль - объём неизвестен
+	 * @param io     объект работы с асинхронными событиями
+	 * @param eth    объект работы с сетевыми интерфейсами
+	 * @param addr   объект работы с сетевыми адресами
+	 * @param fmk    объект фреймворка
+	 * @param log    объект работы с логами
+	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log, const int64_t volume) noexcept {
+	static bool read(::io::node_t * node, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -26839,7 +26847,7 @@ namespace io {
 						// Если событие находится не в состоянии паузы
 						if(fs->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из узла файловой системы
-							return ::io::read(fs, io, eth, log, volume);
+							return ::io::read(fs, volume, io, eth, log);
 					}
 				} break;
 				// Если узел является межпроцессным взаимодействием
@@ -26851,7 +26859,7 @@ namespace io {
 						// Если событие находится не в состоянии паузы
 						if(ipc->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из узла межпроцессного взаимодействия
-							return ::io::read(ipc, io, eth, log, volume);
+							return ::io::read(ipc, volume, io, eth, log);
 					}
 				} break;
 				// Если узел является одноранговым узлом
@@ -26863,7 +26871,7 @@ namespace io {
 						// Если событие находится не в состоянии паузы
 						if(peer->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из однорангового узла
-							return ::io::read(peer, io, eth, log, volume);
+							return ::io::read(peer, volume, io, eth, log);
 					}
 				} break;
 				// Если узел является туннелем
@@ -26873,7 +26881,7 @@ namespace io {
 					// Если событие чтения разрешено
 					if(tunnel->actions & ::action::READ)
 						// Выполняем чтение данных из узла туннеля
-						return ::io::read(tunnel, io, eth, addr, fmk, log, volume);
+						return ::io::read(tunnel, volume, io, eth, addr, fmk, log);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -26884,7 +26892,7 @@ namespace io {
 						// Если событие находится не в состоянии паузы
 						if(client->state.status != event::status_t::PAUSED)
 							// Выполняем чтение данных из узла клиента
-							return ::io::read(client, io, eth, log, volume);
+							return ::io::read(client, volume, io, eth, log);
 					}
 				} break;
 				// Если узел является сервером
@@ -26957,7 +26965,7 @@ namespace io {
 						// Если событие чтения разрешено
 						if(server->actions & ::action::READ)
 							// Выполняем чтение данных из узла сервера
-							return ::io::read(server, io, eth, addr, fmk, log, volume);
+							return ::io::read(server, volume, io, eth, addr, fmk, log);
 					}
 				} break;
 			}
@@ -27229,7 +27237,7 @@ namespace io {
 								// Если событие чтения разрешено
 								if(fs->actions & ::action::READ)
 									// Выполняем чтение данных из файла
-									return ::io::read(node, io, eth, addr, fmk, log);
+									return ::io::read(node, 0, io, eth, addr, fmk, log);
 							}
 						// Если мы детектировали событие переименования файла
 						} else if(ev.fflags & NOTE_RENAME) {
@@ -27472,7 +27480,7 @@ namespace io {
 					} break;
 				}
 				// Обрабатываем событие доступности сокета на чтение, сообщая объявленный ядром объём
-				return ::io::read(node, io, eth, addr, fmk, log, ev.data);
+				return ::io::read(node, ev.data, io, eth, addr, fmk, log);
 			}
 			// Если мы детектировали событие готовности сокета на запись данных
 			case EVFILT_WRITE: {
@@ -32583,7 +32591,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										// Если размер файла не пустой
 										if(fs->info.st_size > 0)
 											// Выполняем чтение данных из файла
-											::io::read(fs, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+											::io::read(fs, 0, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 									}
 								// Если файловый дескриптор файла не существует
 								} else {
@@ -54941,7 +54949,7 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED))
 			// Выполняем чтение данных события
-			return ::io::read(i->second.get(), this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+			return ::io::read(i->second.get(), 0, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 	/**
 	 * Если возникает ошибка
 	 */
