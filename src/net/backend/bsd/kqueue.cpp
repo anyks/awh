@@ -48489,9 +48489,9 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
  * @return         пара идентификаторов созданных событий
  *
  */
-std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
+array <event::id_t, 2> awh::engine::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	// Результат работы функции
-	std::array <awh::event::id_t, 2> result = {0, 0};
+	array <event::id_t, 2> result = {0, 0};
 	/**
 	 * Выполняем перехват ошибок
 	 */
