@@ -20,6 +20,43 @@ endif (NOT CMAKE_BUILD_TYPE)
 # Выводим сообщение о типе сборки
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}\n")
 
+# Если сборка производится под платформы Apple
+if (APPLE)
+    ##
+     # Определяем, является ли целевая платформа настольной macOS.
+     #
+     # Переменную IOS CMake выставляет только для iOS, поэтому условие вида
+     # "APPLE AND NOT IOS" считает настольной системой ещё и tvOS, watchOS и
+     # visionOS, и они получают правила macOS - вплоть до линковки Foundation,
+     # который им не нужен. Отличать их приходится по имени системы.
+     ##
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+        SET(AWH_TARGET_MACOS YES)
+    else()
+        SET(AWH_TARGET_MACOS NO)
+    endif()
+
+    ##
+     # Отказ от разбора alias-файлов macOS.
+     #
+     # Разбор включён по умолчанию: alias есть в настольной файловой системе, и
+     # приложение вправе ожидать, что фреймворк его понимает. Отключать имеет
+     # смысл там, где процесс не обращается к Foundation больше ни для чего -
+     # службы и утилиты, - потому что только этот разбор и тянет в процесс связку
+     # libobjc, CoreFoundation и Foundation.
+     #
+     # cmake -DCMAKE_NO_MACOS_ALIAS=YES ..
+     ##
+    if (AWH_TARGET_MACOS)
+        if (CMAKE_NO_MACOS_ALIAS)
+            add_compile_definitions(AWH_NO_MACOS_ALIAS)
+            message(STATUS "Build with macOS alias resolution: NO\n")
+        else()
+            message(STATUS "Build with macOS alias resolution: YES\n")
+        endif()
+    endif()
+endif()
+
 # Сборка модуля AWH_IDN
 if (CMAKE_BUILD_IDN)
     add_compile_definitions(AWH_IDN)
@@ -588,6 +625,10 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http2/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http2/hpack.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http2/http.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http3/h3.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http3/frame.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http3/qpack.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http3/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/quic/quic.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/quic/varint.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/quic/params.cpp"
@@ -641,34 +682,28 @@ endif (CMAKE_SHARED_BUILD_LIB)
 if (CMAKE_BUILD_TESTS)
     # Собираем библиотеку с флагами gcov для сбора статистики покрытия тестами
     add_library(${AWH_LIB_GCOV_NAME} STATIC ${SOURCE_FILES})
-    # Если сборка производится под операционную систему macOS
-    if (APPLE AND NOT IOS)
-        # Устанавливаем свойства компиляции для файловой системы
-        target_compile_options(
-            ${AWH_LIB_NAME} PRIVATE
-            -x objective-c++ -fobjc-arc
-        )
-        # Устанавливаем свойства компиляции для файловой системы
-        target_compile_options(
-            ${AWH_LIB_GCOV_NAME} PRIVATE
-            ${GCC_COVERAGE_COMPILE_FLAGS} -x objective-c++ -fobjc-arc
-        )
-    # Если сборка производится под операционную систему Windows
-    else()
-        # Включаем флаги компиляции для сбора статистики покрытия кода
-        target_compile_options(${AWH_LIB_GCOV_NAME} PRIVATE ${GCC_COVERAGE_COMPILE_FLAGS})
-    endif()
-# Если сборка производится не для сбора тестов
-else()
-    # Если сборка производится под операционную систему macOS
-    if (APPLE AND NOT IOS)
-        # Устанавливаем свойства компиляции для файловой системы
-        target_compile_options(
-            ${AWH_LIB_NAME} PRIVATE
-            -x objective-c++ -fobjc-arc
-        )
-    endif()
+    # Включаем флаги компиляции для сбора статистики покрытия кода
+    target_compile_options(${AWH_LIB_GCOV_NAME} PRIVATE ${GCC_COVERAGE_COMPILE_FLAGS})
 endif (CMAKE_BUILD_TESTS)
+
+##
+ # Меняем язык компиляции для единственного файла, которому это нужно.
+ #
+ # Objective-C в проекте требует один фрагмент - разбор alias-файлов macOS в
+ # src/sys/fs.cpp. Прежде флаг применялся ко всей библиотеке, и следствий у этого
+ # было три: один и тот же код собирался под macOS как Objective-C++, а под iOS и
+ # Android как C++ (то есть расхождение в языке между платформами, на которых
+ # фреймворк обязан вести себя одинаково); автоматическое управление памятью
+ # Objective-C распространялось на семь десятков файлов, которые под него никто не
+ # писал; и полтора десятка единиц трансляции получали ссылки на среду
+ # Objective-C без всякой надобности.
+ ##
+if (APPLE AND AWH_TARGET_MACOS AND NOT CMAKE_NO_MACOS_ALIAS)
+    set_source_files_properties(
+        "${CMAKE_SOURCE_DIR}/src/sys/fs.cpp"
+        PROPERTIES COMPILE_OPTIONS "-x;objective-c++;-fobjc-arc"
+    )
+endif()
 
 # Указываем что нужно собрать семплы
 option(CMAKE_BUILD_SAMPLES "Build unit samples" OFF)
@@ -1058,10 +1093,17 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     endif (${CMAKE_BUILD_SAMPLES})
 # Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, macOS или Solaris
 else()
-    # Если сборка производится под операционную систему macOS
-    if (APPLE AND NOT IOS)
-        # Устанавливаем необходимые зависимости для macOS
-        SET(AWH_FLAGS "-framework Security -framework CoreFoundation -framework Foundation")
+    ##
+     # Устанавливаем необходимые зависимости для настольной macOS.
+     #
+     # Foundation нужен единственному потребителю - разбору alias-файлов, - и
+     # линкуется только вместе с ним. Прежде здесь перечислялись ещё Security и
+     # CoreFoundation: на них не ссылается ни одна единица трансляции проекта и ни
+     # одна из сторонних библиотек, а CoreFoundation вдобавок загружается сам как
+     # зависимость Foundation.
+     ##
+    if (APPLE AND AWH_TARGET_MACOS AND NOT CMAKE_NO_MACOS_ALIAS)
+        SET(AWH_FLAGS "-framework Foundation")
     endif()
 
     # Если необходимо собрать семплы

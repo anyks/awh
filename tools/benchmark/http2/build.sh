@@ -33,24 +33,46 @@ if [ "$OS" = "Darwin" ]; then
 	PREFIX="/opt/homebrew"
 fi
 
-# Каталог заголовочных файлов эталонной реализации
-NGHTTP2_INCLUDE="$PREFIX/opt/libnghttp2/include"
+# Каталог сборки эталонной реализации из подмодуля
+readonly NGHTTP2_BUILD="$ROOT/build-nghttp2"
 
-# Библиотека эталонной реализации
-NGHTTP2_LIBRARY="$PREFIX/opt/libnghttp2/lib/libnghttp2.a"
+##
+# Эталонная реализация берётся из подмодуля, а не системной
+#
+# Системная версия у каждой ОС своя, а сравнение обязано вестись с одним и тем же
+# кодом везде: иначе разница в показателях между машинами окажется неотделима
+# от разницы в версиях эталона
+#
+if [ ! -f "$NGHTTP2_BUILD/lib/libnghttp2.a" ] && [ -f "$ROOT/submodules/nghttp2/CMakeLists.txt" ]; then
+	# Выводим сообщение о сборке эталонной реализации
+	echo "Build \"nghttp2\" from submodule"
+	# Выполняем конфигурацию сборки только библиотеки
+	cmake -S "$ROOT/submodules/nghttp2" -B "$NGHTTP2_BUILD" -DCMAKE_BUILD_TYPE=Release \
+		-DENABLE_LIB_ONLY=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF \
+		-DBUILD_TESTING=OFF > /dev/null 2>&1 || exit 1
+	# Выполняем сборку библиотеки
+	cmake --build "$NGHTTP2_BUILD" -j 8 > /dev/null 2>&1 || exit 1
+fi
 
-# Если пакетная сборка эталонной реализации лежит в общем каталоге
-if [ ! -f "$NGHTTP2_LIBRARY" ]; then
-	# Устанавливаем каталог заголовочных файлов эталонной реализации
-	NGHTTP2_INCLUDE="$PREFIX/include"
+# Если эталонная реализация собрана из подмодуля
+if [ -f "$NGHTTP2_BUILD/lib/libnghttp2.a" ]; then
+	# Заголовочные файлы лежат в двух местах: исходные тексты и сгенерированный nghttp2ver.h
+	NGHTTP2_INCLUDE="-I$ROOT/submodules/nghttp2/lib/includes -I$NGHTTP2_BUILD/lib/includes"
 	# Устанавливаем библиотеку эталонной реализации
+	NGHTTP2_LIBRARY="$NGHTTP2_BUILD/lib/libnghttp2.a"
+# Если подмодуль недоступен - откатываемся на системную реализацию
+elif [ -f "$PREFIX/opt/libnghttp2/lib/libnghttp2.a" ]; then
+	NGHTTP2_INCLUDE="-I$PREFIX/opt/libnghttp2/include"
+	NGHTTP2_LIBRARY="$PREFIX/opt/libnghttp2/lib/libnghttp2.a"
+else
+	NGHTTP2_INCLUDE="-I$PREFIX/include"
 	NGHTTP2_LIBRARY="$PREFIX/lib/libnghttp2.a"
 fi
 
 # Если эталонная реализация не найдена
 if [ ! -f "$NGHTTP2_LIBRARY" ]; then
-	# Выводим сообщение о необходимости установки эталонной реализации
-	echo "Install nghttp2 first: brew install libnghttp2"
+	# Выводим сообщение о необходимости получения эталонной реализации
+	echo "Fetch the submodule first: git submodule update --init submodules/nghttp2"
 	exit 1
 fi
 
@@ -67,12 +89,12 @@ mkdir -p "$OUTPUT" || exit 1
 ##
 # Стенд эталонной реализации nghttp2
 #
-# Библиотека берётся системной: пакетная сборка оптимизирована, а сравнивать
-# следует с тем, что получает пользователь
+# Библиотека берётся из подмодуля и собирается тем же компилятором с той же
+# оптимизацией, что и остальные стенды
 #
 echo "Build \"nghttp2\""
 c++ -std=c++17 $FLAGS -o "$OUTPUT/nghttp2" "$STANDS/nghttp2.cpp" \
-	-I"$NGHTTP2_INCLUDE" "$NGHTTP2_LIBRARY" || exit 1
+	$NGHTTP2_INCLUDE "$NGHTTP2_LIBRARY" || exit 1
 
 ##
 # Стенд кодека заголовков ls-hpack
@@ -94,7 +116,7 @@ cc -std=c11 $FLAGS -DLSHPACK_DEC_HTTP1X_OUTPUT=0 '-DXXH_HEADER_NAME="xxhash.h"' 
 	-c -o "$OUTPUT/lshpack.o" "$VENDOR/lshpack.c" -I"$VENDOR" -I"$VENDOR/deps/xxhash" || exit 1
 cc -std=c11 $FLAGS -c -o "$OUTPUT/xxhash.o" "$VENDOR/deps/xxhash/xxhash.c" -I"$VENDOR/deps/xxhash" || exit 1
 c++ -std=c++17 $FLAGS -DLSHPACK_DEC_HTTP1X_OUTPUT=0 -o "$OUTPUT/lshpack" "$STANDS/lshpack.cpp" \
-	"$OUTPUT/lshpack.o" "$OUTPUT/xxhash.o" -I"$VENDOR" -I"$NGHTTP2_INCLUDE" "$NGHTTP2_LIBRARY" || exit 1
+	"$OUTPUT/lshpack.o" "$OUTPUT/xxhash.o" -I"$VENDOR" $NGHTTP2_INCLUDE "$NGHTTP2_LIBRARY" || exit 1
 
 ##
 # Стенд реализации библиотеки AWH
@@ -108,7 +130,7 @@ if [ -f "$RELEASE/libawh.a" ]; then
 		-o "$OUTPUT/awh" "$STANDS/awh.cpp" \
 		-I"$ROOT/contrib/include" -I"$ROOT/third_party/include/tcmalloc" \
 		-I"$ROOT/third_party/include/pcre2" -I"$ROOT/third_party/include" \
-		-isystem "$ROOT/include" -I"$NGHTTP2_INCLUDE" \
+		-isystem "$ROOT/include" $NGHTTP2_INCLUDE \
 		"$RELEASE/libawh.a" "$ROOT/third_party/lib/libdependence.a" \
 		"$ROOT/third_party/lib/libtcmalloc_minimal.a" "$ROOT/third_party/lib/libcommon.a" \
 		"$NGHTTP2_LIBRARY" \

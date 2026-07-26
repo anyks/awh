@@ -135,6 +135,78 @@ namespace awh {
 		 * @brief Класс провайдера
 		 *
 		 */
+		/**
+		 * @brief Функция классификации метода запроса по значению псевдо-заголовка [:method]
+		 *
+		 * @note В отличие от HTTP/1.x сравнение выполняется с учётом регистра:
+		 *       методы HTTP - регистрозависимые токены (RFC 9110 §9.1).
+		 *
+		 * @param method значение псевдо-заголовка [:method]
+		 * @return       распознанный метод запроса либо method_t::NONE
+		 *
+		 */
+		inline http::method_t classifyMethod(string_view method) noexcept {
+			/**
+			 * @brief Структура записи таблицы соответствия имён методов запроса
+			 *
+			 */
+			struct Entry {
+				// Имя метода запроса
+				const char * name;
+				// Распознанный метод запроса
+				http::method_t method;
+			};
+			// Таблица соответствия имён методов запроса (указатели на строковые литералы в .rodata)
+			static constexpr Entry methods[] = {
+				{"GET", http::method_t::GET},
+				{"PUT", http::method_t::PUT},
+				{"ACL", http::method_t::ACL},
+				{"PRI", http::method_t::PRI},
+				{"HEAD", http::method_t::HEAD},
+				{"POST", http::method_t::POST},
+				{"COPY", http::method_t::COPY},
+				{"LOCK", http::method_t::LOCK},
+				{"MOVE", http::method_t::MOVE},
+				{"BIND", http::method_t::BIND},
+				{"LINK", http::method_t::LINK},
+				{"TRACE", http::method_t::TRACE},
+				{"PATCH", http::method_t::PATCH},
+				{"MKCOL", http::method_t::MKCOL},
+				{"MERGE", http::method_t::MERGE},
+				{"PURGE", http::method_t::PURGE},
+				{"DELETE", http::method_t::DEL},
+				{"SEARCH", http::method_t::SEARCH},
+				{"UNLOCK", http::method_t::UNLOCK},
+				{"REBIND", http::method_t::REBIND},
+				{"UNBIND", http::method_t::UNBIND},
+				{"REPORT", http::method_t::REPORT},
+				{"NOTIFY", http::method_t::NOTIFY},
+				{"SOURCE", http::method_t::SOURCE},
+				{"UNLINK", http::method_t::UNLINK},
+				{"CONNECT", http::method_t::CONNECT},
+				{"OPTIONS", http::method_t::OPTIONS},
+				{"PROPFIND", http::method_t::PROPFIND},
+				{"CHECKOUT", http::method_t::CHECKOUT},
+				{"M-SEARCH", http::method_t::MSEARCH},
+				{"PROPPATCH", http::method_t::PROPPATCH},
+				{"SUBSCRIBE", http::method_t::SUBSCRIBE},
+				{"MKACTIVITY", http::method_t::MKACTIVITY},
+				{"MKCALENDAR", http::method_t::MKCALENDAR},
+				{"UNSUBSCRIBE", http::method_t::UNSUBSCRIBE}
+			};
+			/**
+			 * Выполняем перебор таблицы соответствия имён методов запроса
+			 */
+			for(const auto & item : methods){
+				// Если имя метода запроса совпадает - выводим распознанный метод запроса
+				if(method.compare(item.name) == 0)
+					// Выводим распознанный метод запроса
+					return item.method;
+			}
+			// Метод запроса не распознан
+			return http::method_t::NONE;
+		}
+
 		typedef class __AWH_SHARED_EXPORT__ Provider {
 			public:
 				// Версия протокола
@@ -453,6 +525,176 @@ namespace awh {
 				 */
 				~Response() noexcept = default;
 		} response_t;
+
+		/**
+		 * @brief Функция получения имени метода запроса для псевдо-заголовка [:method]
+		 *
+		 * @param request провайдер запроса клиента
+		 * @return        имя метода запроса (для UNKNOWN - оригинальное написание метода)
+		 *
+		 */
+		inline string_view methodName(const http::request_t * request) noexcept {
+			/**
+			 * Определяем метод запроса клиента
+			 */
+			switch(static_cast <uint8_t> (request->method)){
+				/**
+				 * Основные методы (RFC 7231) + PATCH (RFC 5789)
+				 */
+				// Если метод запроса установлен как GET
+				case static_cast <uint8_t> (http::method_t::GET):
+					// Выводим название метода запроса
+					return "GET";
+				// Если метод запроса установлен как PUT
+				case static_cast <uint8_t> (http::method_t::PUT):
+					// Выводим название метода запроса
+					return "PUT";
+				// Если метод запроса установлен как DELETE
+				case static_cast <uint8_t> (http::method_t::DEL):
+					// Выводим название метода запроса
+					return "DELETE";
+				// Если метод запроса установлен как POST
+				case static_cast <uint8_t> (http::method_t::POST):
+					// Выводим название метода запроса
+					return "POST";
+				// Если метод запроса установлен как HEAD
+				case static_cast <uint8_t> (http::method_t::HEAD):
+					// Выводим название метода запроса
+					return "HEAD";
+				// Если метод запроса установлен как PATCH
+				case static_cast <uint8_t> (http::method_t::PATCH):
+					// Выводим название метода запроса
+					return "PATCH";
+				// Если метод запроса установлен как TRACE
+				case static_cast <uint8_t> (http::method_t::TRACE):
+					// Выводим название метода запроса
+					return "TRACE";
+				// Если метод запроса установлен как OPTIONS
+				case static_cast <uint8_t> (http::method_t::OPTIONS):
+					// Выводим название метода запроса
+					return "OPTIONS";
+				// Если метод запроса установлен как CONNECT
+				case static_cast <uint8_t> (http::method_t::CONNECT):
+					// Выводим название метода запроса
+					return "CONNECT";
+				/**
+				 * WebDAV (RFC 4918) и расширения версионирования (RFC 3253)
+				 */
+				// Если метод запроса установлен как ACL
+				case static_cast <uint8_t> (http::method_t::ACL):
+					// Выводим название метода запроса
+					return "ACL";
+				// Если метод запроса установлен как COPY
+				case static_cast <uint8_t> (http::method_t::COPY):
+					// Выводим название метода запроса
+					return "COPY";
+				// Если метод запроса установлен как LOCK
+				case static_cast <uint8_t> (http::method_t::LOCK):
+					// Выводим название метода запроса
+					return "LOCK";
+				// Если метод запроса установлен как MOVE
+				case static_cast <uint8_t> (http::method_t::MOVE):
+					// Выводим название метода запроса
+					return "MOVE";
+				// Если метод запроса установлен как BIND
+				case static_cast <uint8_t> (http::method_t::BIND):
+					// Выводим название метода запроса
+					return "BIND";
+				// Если метод запроса установлен как MKCOL
+				case static_cast <uint8_t> (http::method_t::MKCOL):
+					// Выводим название метода запроса
+					return "MKCOL";
+				// Если метод запроса установлен как MERGE
+				case static_cast <uint8_t> (http::method_t::MERGE):
+					// Выводим название метода запроса
+					return "MERGE";
+				// Если метод запроса установлен как REPORT
+				case static_cast <uint8_t> (http::method_t::REPORT):
+					// Выводим название метода запроса
+					return "REPORT";
+				// Если метод запроса установлен как SEARCH
+				case static_cast <uint8_t> (http::method_t::SEARCH):
+					// Выводим название метода запроса
+					return "SEARCH";
+				// Если метод запроса установлен как UNLOCK
+				case static_cast <uint8_t> (http::method_t::UNLOCK):
+					// Выводим название метода запроса
+					return "UNLOCK";
+				// Если метод запроса установлен как REBIND
+				case static_cast <uint8_t> (http::method_t::REBIND):
+					// Выводим название метода запроса
+					return "REBIND";
+				// Если метод запроса установлен как UNBIND
+				case static_cast <uint8_t> (http::method_t::UNBIND):
+					// Выводим название метода запроса
+					return "UNBIND";
+				// Если метод запроса установлен как CHECKOUT
+				case static_cast <uint8_t> (http::method_t::CHECKOUT):
+					// Выводим название метода запроса
+					return "CHECKOUT";
+				// Если метод запроса установлен как PROPFIND
+				case static_cast <uint8_t> (http::method_t::PROPFIND):
+					// Выводим название метода запроса
+					return "PROPFIND";
+				// Если метод запроса установлен как PROPPATCH
+				case static_cast <uint8_t> (http::method_t::PROPPATCH):
+					// Выводим название метода запроса
+					return "PROPPATCH";
+				// Если метод запроса установлен как MKACTIVITY
+				case static_cast <uint8_t> (http::method_t::MKACTIVITY):
+					// Выводим название метода запроса
+					return "MKACTIVITY";
+				/**
+				 * Прочие распространённые расширения
+				 */
+				// Если метод запроса установлен как PRI
+				case static_cast <uint8_t> (http::method_t::PRI):
+					// Выводим название метода запроса
+					return "PRI";
+				// Если метод запроса установлен как LINK
+				case static_cast <uint8_t> (http::method_t::LINK):
+					// Выводим название метода запроса
+					return "LINK";
+				// Если метод запроса установлен как PURGE
+				case static_cast <uint8_t> (http::method_t::PURGE):
+					// Выводим название метода запроса
+					return "PURGE";
+				// Если метод запроса установлен как NOTIFY
+				case static_cast <uint8_t> (http::method_t::NOTIFY):
+					// Выводим название метода запроса
+					return "NOTIFY";
+				// Если метод запроса установлен как UNLINK
+				case static_cast <uint8_t> (http::method_t::UNLINK):
+					// Выводим название метода запроса
+					return "UNLINK";
+				// Если метод запроса установлен как SOURCE
+				case static_cast <uint8_t> (http::method_t::SOURCE):
+					// Выводим название метода запроса
+					return "SOURCE";
+				// Если метод запроса установлен как M-SEARCH
+				case static_cast <uint8_t> (http::method_t::MSEARCH):
+					// Выводим название метода запроса
+					return "M-SEARCH";
+				// Если метод запроса установлен как SUBSCRIBE
+				case static_cast <uint8_t> (http::method_t::SUBSCRIBE):
+					// Выводим название метода запроса
+					return "SUBSCRIBE";
+				// Если метод запроса установлен как MKCALENDAR
+				case static_cast <uint8_t> (http::method_t::MKCALENDAR):
+					// Выводим название метода запроса
+					return "MKCALENDAR";
+				// Если метод запроса установлен как UNSUBSCRIBE
+				case static_cast <uint8_t> (http::method_t::UNSUBSCRIBE):
+					// Выводим название метода запроса
+					return "UNSUBSCRIBE";
+				// Нераспознанный метод - используем оригинальное написание
+				case static_cast <uint8_t> (http::method_t::UNKNOWN):
+					// Выводим оригинальное написание метода запроса
+					return request->methodName;
+			}
+			// Метод запроса не установлен
+			return "";
+		}
     };
 };
 

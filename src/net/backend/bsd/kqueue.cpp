@@ -1406,15 +1406,13 @@ namespace io {
 		timeouts_t timeouts;
 		// Обратные вызовы события
 		peer_callbacks_t callbacks;
-		// MAC-адрес сетевого интерфейса
-		unique_ptr <net::addr_t> mac;
 		// Хост подключения события
 		unique_ptr <net::attr_t> remote;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		explicit Remote() noexcept : mac(nullptr), remote(nullptr) {}
+		explicit Remote() noexcept : remote(nullptr) {}
 		/**
 		 * @brief Деструктор
 		 *
@@ -1623,8 +1621,19 @@ namespace {
 	/**
 	 * @brief Тип внутреннего таймера для управления таймаутами событий
 	 *
+	 * @details По умолчанию выбрана сложная структура: двоичная куча со
+	 *          страничной таблицей слотов. Она обходит простую структуру
+	 *          на упорядоченном множестве по всем измеренным показателям -
+	 *          постановка втрое быстрее и не требует выделений памяти,
+	 *          перевзведение вдвое быстрее и тоже без выделений, а рост
+	 *          стоимости при увеличении количества таймеров с пяти тысяч
+	 *          до пятидесяти заметно меньше.
+	 *
+	 * @note Простая структура сохранена и включается методом `setInternalTimer`:
+	 *       она проще для разбора при отладке и не держит таблицу слотов.
+	 *
 	 */
-	event::timer_t __awh_internal_timer__ = event::timer_t::SIMPLE;
+	event::timer_t __awh_internal_timer__ = event::timer_t::DIFFICULT;
 
 	/**
 	 * @brief Глобальная переменная списка узлов событий
@@ -26144,8 +26153,6 @@ namespace io {
 						peer->state.address = server->state.address;
 						// Устанавливаем протокол сокета
 						peer->state.protocol = server->state.protocol;
-						// Выполняем инициализацию объекта MAC-адреса
-						peer->mac = make_unique <net::addr_mac_t> ();
 						/**
 						 * Определяем семейство адресов
 						 */
@@ -26216,14 +26223,22 @@ namespace io {
 								remote->port = ntohs(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port);
 								// Устанавливаем IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
-								// Временный объект для извлечения сетевого интерфейса
-								net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
-								// Устанавливаем полученный IP-адрес во временный объект
-								awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
-								// Выполняем извлечение сетевых параметров
-								eth->addr.fillSource(event::node_t::PEER, src);
 								// Если чёрный или белый список адресов не пустой
 								if(!server->blacklist.empty() || !server->whitelist.empty()){
+									// Временный объект для извлечения сетевого интерфейса
+									net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+									// Устанавливаем полученный IP-адрес во временный объект
+									awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
+									/**
+									 * @note Извлечение MAC-адреса выполняется только при заданных списках
+									 *       доступа. Оно обходит ARP-таблицу ядра целиком: два вызова
+									 *       sysctl, выделение буфера размером со всю таблицу и линейный
+									 *       поиск по ней. Вне проверки доступа полученный MAC-адрес
+									 *       нигде не читается, поэтому на общем пути приёма подключений
+									 *       этой работы быть не должно.
+									 */
+									// Выполняем извлечение сетевых параметров
+									eth->addr.fillSource(event::node_t::PEER, src);
 									// Если MAC-адрес успешно получен
 									if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 										// Устанавливаем полученный MAC-адрес в объект события
@@ -26376,8 +26391,6 @@ namespace io {
 										return false;
 									}
 								}
-								// Копируем MAC-адрес из временного объекта
-								peer->mac = ::move(src.mac);
 								/**
 								 * Если операционной системой является FreeBSD
 								 */
@@ -26402,14 +26415,22 @@ namespace io {
 								remote->port = ntohs(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port);
 								// Устанавливаем IP-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
-								// Временный объект для извлечения сетевого интерфейса
-								net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
-								// Устанавливаем полученный IP-адрес во временный объект
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
-								// Выполняем извлечение сетевых параметров
-								eth->addr.fillSource(event::node_t::PEER, src);
 								// Если чёрный или белый список адресов не пустой
 								if(!server->blacklist.empty() || !server->whitelist.empty()){
+									// Временный объект для извлечения сетевого интерфейса
+									net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+									// Устанавливаем полученный IP-адрес во временный объект
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
+									/**
+									 * @note Извлечение MAC-адреса выполняется только при заданных списках
+									 *       доступа. Оно обходит NDP-таблицу ядра целиком: два вызова
+									 *       sysctl, выделение буфера размером со всю таблицу и линейный
+									 *       поиск по ней. Вне проверки доступа полученный MAC-адрес
+									 *       нигде не читается, поэтому на общем пути приёма подключений
+									 *       этой работы быть не должно.
+									 */
+									// Выполняем извлечение сетевых параметров
+									eth->addr.fillSource(event::node_t::PEER, src);
 									// Если MAC-адрес успешно получен
 									if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 										// Устанавливаем полученный MAC-адрес в объект события
@@ -26562,8 +26583,6 @@ namespace io {
 										return false;
 									}
 								}
-								// Копируем MAC-адрес из временного объекта
-								peer->mac = ::move(src.mac);
 								/**
 								 * Если операционной системой является FreeBSD
 								 */
@@ -27843,8 +27862,6 @@ namespace io {
 				::memcpy(&origin->endpoint.client, &server->endpoint.client, origin->endpoint.size);
 				// Заполняем структуру клиента нулями после того как извлекли данные
 				::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
-				// Выполняем инициализацию объекта MAC-адреса
-				origin->mac = make_unique <net::addr_mac_t> ();
 				/**
 				 * Определяем семейство адресов
 				 */
@@ -27911,14 +27928,22 @@ namespace io {
 						remote->port = ntohs(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_port);
 						// Устанавливаем IP-адрес
 						awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
-						// Временный объект для извлечения сетевого интерфейса
-						net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
-						// Устанавливаем полученный IP-адрес во временный объект
-						awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
-						// Выполняем извлечение сетевых параметров
-						eth->addr.fillSource(event::node_t::PEER, src);
 						// Если чёрный или белый список адресов не пустой
 						if(!server->blacklist.empty() || !server->whitelist.empty()){
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+							// Устанавливаем полученный IP-адрес во временный объект
+							awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
+							/**
+							 * @note Извлечение MAC-адреса выполняется только при заданных списках
+							 *       доступа. Оно обходит ARP-таблицу ядра целиком: два вызова
+							 *       sysctl, выделение буфера размером со всю таблицу и линейный
+							 *       поиск по ней. Вне проверки доступа полученный MAC-адрес
+							 *       нигде не читается, поэтому на общем пути приёма дейтаграмм
+							 *       этой работы быть не должно.
+							 */
+							// Выполняем извлечение сетевых параметров
+							eth->addr.fillSource(event::node_t::PEER, src);
 							// Если MAC-адрес успешно получен
 							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 								// Устанавливаем полученный MAC-адрес в объект события
@@ -28055,8 +28080,6 @@ namespace io {
 								return true;
 							}
 						}
-						// Копируем MAC-адрес из временного объекта
-						origin->mac = ::move(src.mac);
 					} break;
 					// Для семейства IPv6
 					case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -28072,14 +28095,22 @@ namespace io {
 						remote->port = ntohs(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port);
 						// Устанавливаем IP-адрес
 						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
-						// Временный объект для извлечения сетевого интерфейса
-						net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
-						// Устанавливаем полученный IP-адрес во временный объект
-						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
-						// Выполняем извлечение сетевых параметров
-						eth->addr.fillSource(event::node_t::PEER, src);
 						// Если чёрный или белый список адресов не пустой
 						if(!server->blacklist.empty() || !server->whitelist.empty()){
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+							// Устанавливаем полученный IP-адрес во временный объект
+							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
+							/**
+							 * @note Извлечение MAC-адреса выполняется только при заданных списках
+							 *       доступа. Оно обходит NDP-таблицу ядра целиком: два вызова
+							 *       sysctl, выделение буфера размером со всю таблицу и линейный
+							 *       поиск по ней. Вне проверки доступа полученный MAC-адрес
+							 *       нигде не читается, поэтому на общем пути приёма дейтаграмм
+							 *       этой работы быть не должно.
+							 */
+							// Выполняем извлечение сетевых параметров
+							eth->addr.fillSource(event::node_t::PEER, src);
 							// Если MAC-адрес успешно получен
 							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 								// Устанавливаем полученный MAC-адрес в объект события
@@ -28216,8 +28247,6 @@ namespace io {
 								return true;
 							}
 						}
-						// Копируем MAC-адрес из временного объекта
-						origin->mac = ::move(src.mac);
 					} break;
 				}
 				// Извлекаем параметры таймаутов для нового подключения

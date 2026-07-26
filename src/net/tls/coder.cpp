@@ -6179,10 +6179,14 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Выполняем повторную передачу данных для DTLS/QUIC
-					if(::BIO_ctrl_pending(member->bio.write) > 0)
-						// Отправляем данные из BIO буфера записи
-						result = ::ssl::emitWriteBio(member, id);
+					/**
+					 * Дослать данные, задержавшиеся в BIO буфере записи: доставка по UDP
+					 * ненадёжна (DTLS/QUIC), и повторная передача снимает застрявшие записи.
+					 * Пустой буфер - не ошибка, а успешный холостой вызов: слать нечего,
+					 * всё уже отправлено. Ошибкой считается лишь сбой чтения из BIO, который
+					 * emitWriteBio() и отражает, возвращая false
+					 */
+					result = ::ssl::emitWriteBio(member, id);
 				} break;
 			}
 		}

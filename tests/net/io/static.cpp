@@ -12986,8 +12986,15 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Устанавливаем опции событий
 			ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+			/**
+			 * @note Контекст запрашивается как UDP: слой безопасности выбирается
+			 *       по типу сокета, а не по протоколу транспорта. Сокет SCTP
+			 *       типа SEQPACKET передаёт сообщения целиком, поэтому поверх
+			 *       него работает DTLS - так же, как SCTP типа STREAM запрашивает
+			 *       контекст как TCP и работает поверх обычного TLS.
+			 */
 			// Регистрируем объект транспортного уровня безопасности
-			awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::SERVER, awh::event::protocol_t::SCTP);
+			awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::SERVER, awh::event::protocol_t::UDP);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
 			ASSERT_GT(cts, 0);
 			// Устанавливаем ALPN протоколы TLS
@@ -13530,8 +13537,15 @@ TEST_F(IoFixture, IoDTLSTest){
 				awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
 				awh::net::sctp::event_type_t::REMOTE_ERROR
 			});
+			/**
+			 * @note Контекст запрашивается как UDP: слой безопасности выбирается
+			 *       по типу сокета, а не по протоколу транспорта. Сокет SCTP
+			 *       типа SEQPACKET передаёт сообщения целиком, поэтому поверх
+			 *       него работает DTLS - так же, как SCTP типа STREAM запрашивает
+			 *       контекст как TCP и работает поверх обычного TLS.
+			 */
 			// Регистрируем объект транспортного уровня безопасности
-			awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::CLIENT, awh::event::protocol_t::SCTP);
+			awh::tls::coder_t::id_t cts = this->_coder->context(awh::event::node_t::CLIENT, awh::event::protocol_t::UDP);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
 			ASSERT_GT(cts, 0);
 			// Устанавливаем ALPN протоколы TLS
