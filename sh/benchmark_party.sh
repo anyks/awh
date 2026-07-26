@@ -9,6 +9,10 @@ curl https://dist.schmorp.de/libev/libev-4.33.tar.gz -o $ROOT/../submodules/libe
 cd $ROOT/../submodules
 # Распаковываем архив с исходниками libev
 tar -xzf libev-4.33.tar.gz
+# Переименовываем директорию с исходниками libev
+mv $ROOT/../submodules/libev-4.33 $ROOT/../submodules/libev
+# Удаляем архив с исходниками libev
+rm $ROOT/../submodules/libev-4.33.tar.gz
 
 # Выполняем пересборку сабмодуля libuv
 $ROOT/submodule.sh remove libuv
