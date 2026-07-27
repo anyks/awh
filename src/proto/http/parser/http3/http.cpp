@@ -86,6 +86,8 @@ namespace {
 		// Методы запроса, меняющие обработку тела
 		static constexpr string_view CONNECT = "CONNECT";
 		static constexpr string_view HEAD = "HEAD";
+		// Метод, которому допустима звёздочка вместо пути (RFC 9110 §7.1)
+		static constexpr string_view OPTIONS = "OPTIONS";
 		// Единственное допустимое значение поля [te] (RFC 9114 §4.2)
 		static constexpr string_view TRAILERS = "trailers";
 		// Коды состояния, при которых тело ответа отсутствует
@@ -149,6 +151,33 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
+	/**
+	 * @brief Функция проверки принадлежности схемы запроса протоколу HTTP
+	 *
+	 * @details Форму цели запроса задают только схемы [http] и [https]: для прочих
+	 *          её задаёт не HTTP, и проверять путь по правилам HTTP нельзя.
+	 *          Схема в URI регистронезависима (RFC 3986 §3.1)
+	 *
+	 * @param scheme значение псевдо-заголовка схемы
+	 * @return       результат проверки
+	 *
+	 */
+	bool httpScheme(string_view scheme) noexcept {
+		// Если длина схемы не совпадает ни с одной из проверяемых
+		if((scheme.size() != 4) && (scheme.size() != 5))
+			// Схема протоколу HTTP не принадлежит
+			return false;
+		// Собираемая схема в нижнем регистре
+		char letters[5] = {0};
+		/**
+		 * Выполняем приведение схемы к нижнему регистру
+		 */
+		for(size_t i = 0; i < scheme.size(); i++)
+			// Приводим очередной символ схемы к нижнему регистру
+			letters[i] = static_cast <char> (((scheme[i] >= 'A') && (scheme[i] <= 'Z')) ? (scheme[i] + 32) : scheme[i]);
+		// Выводим результат сравнения схемы с проверяемыми
+		return ((string_view(letters, scheme.size()) == "http") || (string_view(letters, scheme.size()) == "https"));
+	}
 	bool validName(string_view name) noexcept {
 		// Если название поля пустое
 		if(name.empty())
@@ -3326,7 +3355,7 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 	// Признаки наличия остальных псевдо-заголовков
 	bool hasAuthority = false, hasProtocol = false, hasStatus = false;
 	// Значения псевдо-заголовков, участвующих в перекрёстных проверках
-	string_view method, authority, status, path, host;
+	string_view method, authority, status, path, host, scheme;
 	// Объявленная длина тела сообщения
 	uint64_t declared = UINT64_MAX;
 	/**
@@ -3364,6 +3393,10 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 						return false;
 					// Запоминаем наличие псевдо-заголовка метода
 					hasMethod = true;
+					// Пустой метод запроса недопустим - это токен (RFC 9110 §9.1)
+					if(field.value.empty())
+						// Выводим отрицательный результат
+						return false;
 					// Запоминаем значение метода запроса
 					method = field.value;
 				// Если получен псевдо-заголовок схемы
@@ -3374,6 +3407,12 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 						return false;
 					// Запоминаем наличие псевдо-заголовка схемы
 					hasScheme = true;
+					// Пустая схема запроса недопустима (RFC 9114 §4.3.1)
+					if(field.value.empty())
+						// Выводим отрицательный результат
+						return false;
+					// Запоминаем значение схемы запроса
+					scheme = field.value;
 				// Если получен псевдо-заголовок пути
 				} else if(field.name == header::PATH) {
 					// Повторный псевдо-заголовок недопустим
@@ -3402,6 +3441,10 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 						return false;
 					// Запоминаем наличие псевдо-заголовка протокола туннеля
 					hasProtocol = true;
+					// Пустой протокол туннеля недопустим (RFC 9220 §4)
+					if(field.value.empty())
+						// Выводим отрицательный результат
+						return false;
 				/**
 				 * Неизвестный псевдо-заголовок недопустим: перечень закрыт,
 				 * а расширения обязаны его пополнять явно (RFC 9114 §4.3)
@@ -3511,6 +3554,29 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 					return false;
 			}
 		}
+		/**
+		 * Схемы [http] и [https] задают форму цели запроса (RFC 9114 §4.3.1):
+		 * путь либо начинается с косой черты, либо равен звёздочке, и звёздочка
+		 * допустима только методу OPTIONS - она адресует сервер целиком, а не
+		 * ресурс. Прочие схемы проверке не подлежат: их форму задаёт не HTTP
+		 */
+		if(::httpScheme(scheme) && hasPath){
+			// Если путь не начинается с косой черты
+			if(path.empty() || (path.front() != '/')){
+				// Звёздочка допустима только методу OPTIONS
+				if((path != "*") || (method != value::OPTIONS))
+					// Выводим отрицательный результат
+					return false;
+			}
+		}
+		/**
+		 * Устаревший подкомпонент userinfo в адресате запрещён для схем [http]
+		 * и [https] (RFC 9114 §4.3.1): он переносил бы в запрос учётные данные,
+		 * которым место в заголовке авторизации. Отделяет его символ [@]
+		 */
+		if(::httpScheme(scheme) && (authority.find('@') != string_view::npos))
+			// Выводим отрицательный результат
+			return false;
 		/**
 		 * Поле адресата HTTP/1.1 обязано совпадать с псевдо-заголовком адресата:
 		 * расхождение позволило бы протащить через шлюз два разных адресата

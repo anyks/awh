@@ -1356,13 +1356,28 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 		return;
 	}
 	/**
-	 * Валидация заголовка Host выполняется до любых уведомлений: запрос HTTP/1.1
-	 * обязан нести ровно один заголовок Host (RFC 9112 §3.2), а расхождение в его
+	 * Валидация заголовка Host выполняется до любых уведомлений: расхождение в его
 	 * трактовке между звеньями цепочки - вектор подмены целевого узла
+	 *
+	 * RFC 9112 §3.2 требует отвергать три случая, но податливость к ним разная.
+	 * Отсутствие заголовка адресовано только запросу HTTP/1.1 и встречается у
+	 * простого инструментария, поэтому оставлено под переключателем строгости.
+	 * Дублирование и недопустимое значение адресованы любому запросу и податливости
+	 * не заслуживают: законного отправителя, выдающего два противоречащих Host, не
+	 * существует, а выбор звеньями цепочки разных из них - ровно тот же механизм
+	 * рассинхронизации, что и у конфликта Content-Length с Transfer-Encoding, и
+	 * закрывается он так же безусловно
 	 */
+	if((this->_direct == direct_t::REQUEST) && (this->_flags.hostCount > 1)){
+		// Фиксируем ошибку дублирования заголовка Host
+		this->_error = error_t::INVALID_HOST;
+		// Выходим из метода
+		return;
+	}
+	// Если у запроса HTTP/1.1 отсутствует обязательный заголовок Host
 	if(this->_limits.requireHost && (this->_direct == direct_t::REQUEST) && (version == version_t::HTTP1_1) && (this->_flags.hostCount != 1)){
-		// Фиксируем ошибку отсутствия либо дублирования заголовка Host
-		this->_error = error_t::MISSING_HOST;
+		// Фиксируем ошибку отсутствия заголовка Host
+		this->_error = error_t::INVALID_HOST;
 		// Выходим из метода
 		return;
 	}
@@ -1650,10 +1665,17 @@ bool awh::http::Parser_HTTP::commitHeader(const string_view name, string_view va
 			} break;
 			// Заголовки начинающиеся на "H"
 			case 'h': {
-				// Если получен заголовок Host - учитываем его в счётчике (запрос HTTP/1.1 обязан нести ровно один)
-				if((this->_direct == direct_t::REQUEST) && ::iequalsLit(name.data(), name.size(), "host") && (this->_flags.hostCount < 255))
-					// Наращиваем счётчик полученных заголовков Host
-					++this->_flags.hostCount;
+				// Если получен заголовок Host
+				if((this->_direct == direct_t::REQUEST) && ::iequalsLit(name.data(), name.size(), "host")){
+					// Если счётчик полученных заголовков Host не переполнен
+					if(this->_flags.hostCount < 255)
+						// Наращиваем счётчик полученных заголовков Host
+						++this->_flags.hostCount;
+					/**
+					 * Выполняем интерпретацию значения заголовка Host
+					 */
+					this->applyHost(begin, end);
+				}
 			} break;
 			// Заголовки начинающиеся на "E"
 			case 'e': {
@@ -2778,6 +2800,40 @@ void awh::http::Parser_HTTP::applyConnection(const char * begin, const char * en
 	}
 }
 /**
+ * @brief Метод интерпретации заголовка Host
+ *
+ * @details Проверяется отсутствие пробельных символов внутри значения. Полная
+ *          грамматика uri-host не разбирается намеренно: она допускает и IP-литералы,
+ *          и интернационализированные имена, и отвергать по ней означало бы ломать
+ *          законный трафик. Пробел же внутри значения законным не бывает ни в одном
+ *          написании и является формой подмены целевого узла: звенья цепочки, режущие
+ *          значение по пробелу и не режущие, направят запрос на разные узлы
+ *
+ * @param begin начало значения заголовка
+ * @param end   конец значения заголовка
+ *
+ */
+void awh::http::Parser_HTTP::applyHost(const char * begin, const char * end) noexcept {
+	// Указатели на границы значения заголовка
+	const char * hb = begin;
+	// Указатель на конец значения заголовка
+	const char * he = end;
+	// Выполняем триминг OWS по краям значения заголовка
+	::trimOWS(hb, he);
+	/**
+	 * Выполняем поиск пробельных символов внутри значения заголовка
+	 */
+	for(const char * current = hb; current < he; ++current){
+		// Если внутри значения обнаружен пробельный символ
+		if((* current == ' ') || (* current == '\t')){
+			// Фиксируем ошибку недопустимого значения заголовка Host
+			this->_error = error_t::INVALID_HOST;
+			// Выходим из метода
+			return;
+		}
+	}
+}
+/**
  * @brief Метод интерпретации заголовка Expect
  *
  * @details Значение разбирается как список: клиент вправе прислать
@@ -2933,12 +2989,24 @@ void awh::http::Parser_HTTP::applyTransferEncoding(const char * begin, const cha
 		const char * te = tokEnd;
 		// Выполняем триминг OWS по краям элемента списка
 		::trimOWS(tb, te);
+		// Запоминаем конец элемента списка до отсечения параметров кодирования
+		const char * tp = te;
 		// Отсекаем параметры транспортного кодирования от его имени
 		::trimParameters(tb, te);
 		// Если элемент списка не пустой
 		if(te > tb){
 			// Проверяем является ли кодирование chunked
 			const bool isChunked = ::iequalsLit(tb, static_cast <size_t> (te - tb), "chunked");
+			/**
+			 * Кодирование chunked параметров не определяет, и их присутствие RFC 9112
+			 * §7.1 предписывает считать ошибкой. Послабление здесь недопустимо именно
+			 * потому, что кодирование кадрирующее: звено цепочки, не признавшее
+			 * "chunked;foo" за chunked, будет кадрировать то же тело иначе - это
+			 * тот же механизм рассинхронизации, что и chunked не последним
+			 */
+			if(isChunked && (tp > te))
+				// Помечаем Transfer-Encoding некорректным
+				this->_flags.transferEncodingInvalid = true;
 			// Если chunked оказался не последним внутри строки - ошибка кадрирования
 			if(lastChunked)
 				// Помечаем Transfer-Encoding некорректным
@@ -5324,9 +5392,9 @@ string_view awh::http::Parser_HTTP::errorName(const error_t error) noexcept {
 			// Выводим название кода ошибки
 			return "PREMATURE_EOF";
 		// У запроса HTTP/1.1 отсутствует либо продублирован заголовок Host
-		case static_cast <uint8_t> (error_t::MISSING_HOST):
+		case static_cast <uint8_t> (error_t::INVALID_HOST):
 			// Выводим название кода ошибки
-			return "MISSING_HOST";
+			return "INVALID_HOST";
 		// Превышен лимит размера чанка
 		case static_cast <uint8_t> (error_t::CHUNK_OVERFLOW):
 			// Выводим название кода ошибки

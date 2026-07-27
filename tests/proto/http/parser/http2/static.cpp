@@ -2430,6 +2430,87 @@ TEST_F(ParserHttp2Fixture, PseudoHeaderCaseTest){
 }
 
 /**
+ * @brief Метод проверки формы цели запроса (RFC 9113 §8.3.1)
+ *
+ * @details Схемы [http] и [https] задают форму цели: путь начинается с косой
+ *          черты либо равен звёздочке, и звёздочка допустима только методу
+ *          OPTIONS. Адресат при этом не несёт устаревший подкомпонент userinfo.
+ *          Прочие схемы форму цели не задают - её задаёт не HTTP
+ *
+ */
+TEST_F(ParserHttp2Fixture, RequestTargetFormTest){
+	/**
+	 * Перебираемые случаи: набор псевдо-заголовков и признак его допустимости
+	 */
+	struct probe_t {
+		// Название проверяемого случая
+		const char * label;
+		// Признак допустимости запроса
+		bool valid;
+		// Значение псевдо-заголовка метода
+		const char * method;
+		// Значение псевдо-заголовка схемы
+		const char * scheme;
+		// Значение псевдо-заголовка адресата
+		const char * authority;
+		// Значение псевдо-заголовка пути
+		const char * path;
+	};
+	// Перечень проверяемых случаев
+	const std::vector <probe_t> probes = {
+		{"путь без косой черты", false, "GET", "https", "example.com", "index.html"},
+		{"звёздочка не методу OPTIONS", false, "GET", "https", "example.com", "*"},
+		{"звёздочка методу OPTIONS", true, "OPTIONS", "https", "example.com", "*"},
+		{"схема в верхнем регистре", false, "GET", "HTTPS", "example.com", "index.html"},
+		{"userinfo в адресате", false, "GET", "https", "user@example.com", "/"},
+		{"путь чужой схемы", true, "GET", "ftp", "example.com", "index.html"},
+		{"userinfo чужой схемы", true, "GET", "ftp", "user@example.com", "/"},
+		{"корректный запрос", true, "GET", "https", "example.com", "/index.html"}
+	};
+	/**
+	 * Выполняем проверку всех случаев
+	 */
+	for(size_t i = 0; i < probes.size(); i++){
+		// Создаём объект парсера сервера
+		auto server = this->make(direct_t::REQUEST);
+		// Создаём объект парсера клиента
+		auto client = this->make(direct_t::RESPONSE);
+		// Создаём объекты сборщиков событий парсеров
+		events_t serverEvents, clientEvents;
+		// Подписываем сборщик событий сервера
+		this->attach(* server, serverEvents);
+		// Подписываем сборщик событий клиента
+		this->attach(* client, clientEvents);
+		// Соединяем парсеры каналами записи
+		this->connect(* client, * server);
+		// Выполняем рукопожатие соединения
+		this->handshake(* client, * server);
+		// Выделяем идентификатор нового потока клиента
+		const uint32_t sid = client->nextStreamId();
+		// Формируем заголовки запроса
+		std::vector <h2::hpack::field_t> fields;
+		// Дописываем псевдо-заголовок метода запроса
+		fields.emplace_back(":method", probes[i].method);
+		// Дописываем псевдо-заголовок схемы запроса
+		fields.emplace_back(":scheme", probes[i].scheme);
+		// Дописываем псевдо-заголовок адресата запроса
+		fields.emplace_back(":authority", probes[i].authority);
+		// Дописываем псевдо-заголовок пути запроса
+		fields.emplace_back(":path", probes[i].path);
+		// Отправляем заголовки запроса с завершением потока
+		client->sendHeaders(sid, fields, true);
+		// Соединение обязано остаться живым в любом случае
+		ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL) << probes[i].label;
+		// Если запрос допустим - он обязан быть доставлен
+		if(probes[i].valid)
+			// Провайдер запроса обязан быть отдан потребителю
+			ASSERT_FALSE(serverEvents.providers.empty()) << probes[i].label;
+		// Иначе запрос отдан быть не должен
+		else ASSERT_TRUE(serverEvents.providers.empty()) << probes[i].label;
+	}
+}
+
+/**
  * @brief Метод проверки сверки заголовка [host] с псевдо-заголовком [:authority] (RFC 9113 §8.3.1)
  *
  */

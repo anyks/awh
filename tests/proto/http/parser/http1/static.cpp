@@ -847,7 +847,7 @@ TEST_F(ParserFixture, RequireHostTest){
 		// Проверяем что зафиксирована ошибка разбора
 		ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
 		// Проверяем что ошибка соответствует отсутствию либо дублированию заголовка Host
-		ASSERT_EQ(parser->error(), parser_http_t::error_t::MISSING_HOST);
+		ASSERT_EQ(parser->error(), parser_http_t::error_t::INVALID_HOST);
 	}
 	// Создаём объект парсера запросов клиента для корректного запроса
 	auto parser = this->make(direct_t::REQUEST);
@@ -866,26 +866,51 @@ TEST_F(ParserFixture, RequireHostTest){
 }
 
 /**
- * @brief Метод проверки распознавания chunked с параметрами транспортного кодирования
+ * @brief Метод проверки отказа от chunked с параметрами транспортного кодирования
+ *
+ * @details Кодирование chunked параметров не определяет, и их присутствие RFC 9112 §7.1
+ *          предписывает считать ошибкой. Послабление здесь недопустимо именно потому,
+ *          что кодирование кадрирующее: звено цепочки, не признавшее "chunked;ext=1"
+ *          за chunked, будет кадрировать то же тело иначе - это тот же механизм
+ *          рассинхронизации, что и chunked не последним в списке. У прочих кодирований
+ *          параметры на кадрирование не влияют и отсекаются от имени как прежде
  *
  */
 TEST_F(ParserFixture, TransferEncodingParametersTest){
-	// Создаём объект парсера запросов клиента
-	auto parser = this->make(direct_t::REQUEST);
-	// Создаём объект сборщика событий парсера
-	events_t events;
-	// Подписываем сборщик событий на все функции обратного вызова парсера
-	this->attach(* parser, events);
-	// Формируем данные HTTP-запроса с параметрами транспортного кодирования
-	const std::string message = "POST / HTTP/1.1\r\nTransfer-Encoding: chunked;ext=1\r\n\r\n3\r\nabc\r\n0\r\n\r\n";
-	// Выполняем разбор данных HTTP-запроса
-	parser->parse(message.data(), message.size());
-	// Проверяем что сообщение полностью разобрано
-	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
-	// Проверяем что тело кадрировалось chunked
-	ASSERT_TRUE(parser->message().flags.chunked);
-	// Проверяем что тело сообщения собрано корректно
-	ASSERT_EQ(events.body, "abc");
+	/**
+	 * Параметры у кодирования chunked делают объявление некорректным
+	 */
+	{
+		// Создаём объект парсера запросов клиента
+		auto parser = this->make(direct_t::REQUEST);
+		// Формируем данные HTTP-запроса с параметрами транспортного кодирования
+		const std::string message = "POST / HTTP/1.1\r\nHost: anyks.com\r\nTransfer-Encoding: chunked;ext=1\r\n\r\n3\r\nabc\r\n0\r\n\r\n";
+		// Выполняем разбор данных HTTP-запроса
+		parser->parse(message.data(), message.size());
+		// Проверяем что объявление кодирования отвергнуто
+		ASSERT_EQ(parser->error(), parser_http_t::error_t::INVALID_TRANSFER_ENCODING);
+	}
+	/**
+	 * Параметры у прочих кодирований отсекаются от имени и кадрирование не ломают
+	 */
+	{
+		// Создаём объект парсера запросов клиента
+		auto parser = this->make(direct_t::REQUEST);
+		// Создаём объект сборщика событий парсера
+		events_t events;
+		// Подписываем сборщик событий на все функции обратного вызова парсера
+		this->attach(* parser, events);
+		// Формируем данные HTTP-запроса с параметрами у некадрирующего кодирования
+		const std::string message = "POST / HTTP/1.1\r\nHost: anyks.com\r\nTransfer-Encoding: gzip;q=1, chunked\r\n\r\n3\r\nabc\r\n0\r\n\r\n";
+		// Выполняем разбор данных HTTP-запроса
+		parser->parse(message.data(), message.size());
+		// Проверяем что сообщение полностью разобрано
+		ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+		// Проверяем что тело кадрировалось chunked
+		ASSERT_TRUE(parser->message().flags.chunked);
+		// Проверяем что тело сообщения собрано корректно
+		ASSERT_EQ(events.body, "abc");
+	}
 }
 
 /**

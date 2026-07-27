@@ -1697,6 +1697,64 @@ TEST_F(ParserFixture, ChunkSizeWhitespaceTest){
 }
 
 /**
+ * @brief Метод тестирования требований к заголовку Host
+ *
+ * @details RFC 9112 §3.2 требует отвергать три случая, но податливость к ним разная.
+ *          Отсутствие заголовка адресовано только запросу HTTP/1.1 и встречается у
+ *          простого инструментария, поэтому оставлено под переключателем строгости.
+ *          Дублирование и недопустимое значение адресованы любому запросу и
+ *          податливости не заслуживают: законного отправителя, выдающего два
+ *          противоречащих Host, не существует, а выбор звеньями цепочки разных из
+ *          них - тот же механизм рассинхронизации, что и конфликт кадрирования
+ *
+ */
+TEST_F(ParserFixture, HostRequirementsTest){
+	/**
+	 * @brief Функция разбора запроса с заданным набором строк заголовка Host
+	 *
+	 * @param lines  строки заголовков запроса
+	 * @param strict признак включения строгого требования заголовка Host
+	 * @return       код ошибки разбора
+	 *
+	 */
+	auto probe = [this](const std::string & lines, const bool strict) noexcept -> parser_http_t::error_t {
+		// Создаём объект парсера-приёмника запроса
+		auto parser = this->make(direct_t::REQUEST);
+		// Если включается строгое требование заголовка Host
+		if(strict){
+			// Формируем лимиты безопасности
+			parser_http_t::limits_t limits;
+			// Включаем строгое требование заголовка Host
+			limits.requireHost = true;
+			// Устанавливаем лимиты безопасности
+			parser->limits(limits);
+		}
+		// Формируем разбираемое сообщение
+		const std::string message = ("GET / HTTP/1.1\r\n" + lines + "\r\n");
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Выводим код ошибки разбора
+		return parser->error();
+	};
+	// Проверяем что единственный корректный заголовок Host принимается
+	ASSERT_EQ(probe("Host: anyks.com\r\n", false), parser_http_t::error_t::NONE);
+	// Проверяем что заголовок Host с портом принимается
+	ASSERT_EQ(probe("Host: anyks.com:8080\r\n", false), parser_http_t::error_t::NONE);
+	// Проверяем что пустое значение заголовка Host принимается (absolute-form у OPTIONS)
+	ASSERT_EQ(probe("Host:\r\n", false), parser_http_t::error_t::NONE);
+	// Проверяем что два заголовка Host отвергаются независимо от строгости
+	ASSERT_EQ(probe("Host: anyks.com\r\nHost: evil.com\r\n", false), parser_http_t::error_t::INVALID_HOST);
+	// Проверяем что пробел внутри значения заголовка Host отвергается
+	ASSERT_EQ(probe("Host: anyks.com evil.com\r\n", false), parser_http_t::error_t::INVALID_HOST);
+	// Проверяем что табуляция внутри значения заголовка Host отвергается
+	ASSERT_EQ(probe("Host: anyks.com\tevil.com\r\n", false), parser_http_t::error_t::INVALID_HOST);
+	// Проверяем что отсутствие заголовка Host в толерантном режиме принимается
+	ASSERT_EQ(probe("", false), parser_http_t::error_t::NONE);
+	// Проверяем что отсутствие заголовка Host в строгом режиме отвергается
+	ASSERT_EQ(probe("", true), parser_http_t::error_t::INVALID_HOST);
+}
+
+/**
  * @brief Метод тестирования отсечения параметров у токенов заголовка Connection
  *
  * @details Элементом списка Connection обязан быть голый токен (RFC 9110 §7.6.1),

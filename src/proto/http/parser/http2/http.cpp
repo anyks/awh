@@ -91,6 +91,8 @@ namespace {
 		// Методы запроса, меняющие обработку тела
 		static constexpr string_view CONNECT = "CONNECT";
 		static constexpr string_view HEAD = "HEAD";
+		// Метод, которому допустима звёздочка вместо пути (RFC 9110 §7.1)
+		static constexpr string_view OPTIONS = "OPTIONS";
 		// Коды состояния, при которых тело ответа отсутствует
 		static constexpr string_view SWITCHING = "101";
 		static constexpr string_view NO_CONTENT = "204";
@@ -177,6 +179,33 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
+	/**
+	 * @brief Функция проверки принадлежности схемы запроса протоколу HTTP
+	 *
+	 * @details Форму цели запроса задают только схемы [http] и [https]: для прочих
+	 *          её задаёт не HTTP, и проверять путь по правилам HTTP нельзя.
+	 *          Схема в URI регистронезависима (RFC 3986 §3.1)
+	 *
+	 * @param scheme значение псевдо-заголовка схемы
+	 * @return       результат проверки
+	 *
+	 */
+	bool isHttpScheme(string_view scheme) noexcept {
+		// Если длина схемы не совпадает ни с одной из проверяемых
+		if((scheme.size() != 4) && (scheme.size() != 5))
+			// Схема протоколу HTTP не принадлежит
+			return false;
+		// Собираемая схема в нижнем регистре
+		char letters[5] = {0};
+		/**
+		 * Выполняем приведение схемы к нижнему регистру
+		 */
+		for(size_t i = 0; i < scheme.size(); i++)
+			// Приводим очередной символ схемы к нижнему регистру
+			letters[i] = static_cast <char> (((scheme[i] >= 'A') && (scheme[i] <= 'Z')) ? (scheme[i] + 32) : scheme[i]);
+		// Выводим результат сравнения схемы с проверяемыми
+		return ((string_view(letters, scheme.size()) == "http") || (string_view(letters, scheme.size()) == "https"));
+	}
 	bool isValidHeaderName(string_view name) noexcept {
 		// Пустое имя заголовка недопустимо
 		if(name.empty())
@@ -302,6 +331,10 @@ namespace {
 		string_view method{""};
 		// Значение псевдо-заголовка [:authority]
 		string_view authority{""};
+		// Значение псевдо-заголовка [:scheme]
+		string_view scheme{""};
+		// Значение псевдо-заголовка [:path]
+		string_view path{""};
 		// Значение заголовка [host]
 		string_view host{""};
 		// Флаг наличия обычного (не псевдо) заголовка
@@ -367,6 +400,8 @@ namespace {
 							return http::h2::error_t::PROTOCOL_ERROR;
 						// Помечаем что псевдо-заголовок получен
 						hasScheme = true;
+						// Запоминаем значение схемы запроса
+						scheme = field.value;
 						// Пустая схема запроса недопустима (RFC 9113 §8.3.1)
 						if(field.value.empty())
 							// Блок заголовков некорректен
@@ -379,6 +414,8 @@ namespace {
 							return http::h2::error_t::PROTOCOL_ERROR;
 						// Помечаем что псевдо-заголовок получен
 						hasPath = true;
+						// Запоминаем значение пути запроса
+						path = field.value;
 						// Пустое значение [:path] недопустимо (RFC 9113 §8.3.1)
 						if(field.value.empty())
 							// Блок заголовков некорректен
@@ -538,6 +575,29 @@ namespace {
 				return http::h2::error_t::PROTOCOL_ERROR;
 			// Для остальных методов обязательны [:method]/[:scheme]/[:path]
 			else if(!hasMethod || !hasScheme || !hasPath)
+				// Блок заголовков некорректен
+				return http::h2::error_t::PROTOCOL_ERROR;
+			/**
+			 * Схемы [http] и [https] задают форму цели запроса (RFC 9113 §8.3.1):
+			 * путь либо начинается с косой черты, либо равен звёздочке, и звёздочка
+			 * допустима только методу OPTIONS - она адресует сервер целиком, а не
+			 * ресурс. Прочие схемы проверке не подлежат: их форму задаёт не HTTP
+			 */
+			if(::isHttpScheme(scheme) && hasPath){
+				// Если путь не начинается с косой черты
+				if(path.empty() || (path.front() != '/')){
+					// Звёздочка допустима только методу OPTIONS
+					if((path != "*") || (method != value::OPTIONS))
+						// Блок заголовков некорректен
+						return http::h2::error_t::PROTOCOL_ERROR;
+				}
+			}
+			/**
+			 * Устаревший подкомпонент userinfo в адресате запрещён для схем [http]
+			 * и [https] (RFC 9113 §8.3.1): он переносил бы в запрос учётные данные,
+			 * которым место в заголовке авторизации. Отделяет его символ [@]
+			 */
+			if(::isHttpScheme(scheme) && (authority.find('@') != string_view::npos))
 				// Блок заголовков некорректен
 				return http::h2::error_t::PROTOCOL_ERROR;
 		// Ответ сервера обязан содержать [:status]

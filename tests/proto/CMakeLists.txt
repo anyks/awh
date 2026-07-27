@@ -207,6 +207,14 @@ if (${GTest_FOUND})
                 quic/handshake.cpp
                 quic/connection.cpp
                 quic/parameterized.cpp
+                quic2/quic.cpp
+                quic2/fuzz.cpp
+                quic2/static.cpp
+                quic2/params.cpp
+                quic2/crypto.cpp
+                quic2/handshake.cpp
+                quic2/connection.cpp
+                quic2/parameterized.cpp
             )
         # Если не нужно собрать тесты для подмодуля протокола QUIC
         else()

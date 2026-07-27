@@ -456,6 +456,34 @@ TEST_F(ParserHttp3Fixture, FrameSettingsDuplicate){
 	// Код ошибки обязан указывать на недопустимое содержимое кадра параметров
 	ASSERT_EQ(error, error_t::H3_SETTINGS_ERROR);
 	/**
+	 * Повтор обязан ловиться и за порогом перебора: выше него поиск идёт
+	 * по множеству, и переключение не должно терять уже разобранные
+	 * идентификаторы (RFC 9114 §7.2.4.1)
+	 */
+	// Буфер нагрузки набора, заведомо переросшего порог перебора
+	std::string wide;
+	/**
+	 * Набиваем набор различными идентификаторами, не занятыми протоколом
+	 */
+	for(uint64_t id = 64; id < (64 + 4 * frame::SETTINGS_LOOKUP_THRESHOLD); id++){
+		// Записываем идентификатор очередного параметра
+		quic::varint::write(wide, id);
+		// Записываем значение очередного параметра
+		quic::varint::write(wide, 1);
+	}
+	// Набор различных параметров обязан разбираться
+	ASSERT_EQ(frame::parser::settings(reinterpret_cast <const uint8_t *> (wide.data()), wide.size(), items, error), status_t::OK);
+	// Количество разобранных параметров обязано совпасть
+	ASSERT_EQ(items.size(), (4 * frame::SETTINGS_LOOKUP_THRESHOLD));
+	// Повторяем самый первый идентификатор набора - тот, что лёг ещё до порога
+	quic::varint::write(wide, 64);
+	// Записываем значение повторного параметра
+	quic::varint::write(wide, 2);
+	// Набор с повторным параметром разбираться не должен
+	ASSERT_EQ(frame::parser::settings(reinterpret_cast <const uint8_t *> (wide.data()), wide.size(), items, error), status_t::ERROR);
+	// Код ошибки обязан указывать на недопустимое содержимое кадра параметров
+	ASSERT_EQ(error, error_t::H3_SETTINGS_ERROR);
+	/**
 	 * Обрыв нагрузки посреди пары - нарушение требований к нагрузке любого кадра,
 	 * а не к содержимому именно SETTINGS, поэтому код ошибки другой (RFC 9114 §7.1)
 	 */
@@ -639,6 +667,90 @@ TEST_F(ParserHttp3Fixture, ContentLengthMismatch){
 	// Код обрыва потока обязан указывать на ошибку сообщения
 	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR);
 }
+/**
+ * @brief Проверка отбраковки формы цели запроса
+ *
+ * @details RFC 9114 §4.3.1 задаёт форму цели для схем [http] и [https]: путь
+ *          начинается с косой черты либо равен звёздочке, и звёздочка допустима
+ *          только методу OPTIONS. Псевдо-заголовки метода, схемы и протокола
+ *          туннеля пустыми быть не могут, а адресат не несёт устаревший
+ *          подкомпонент userinfo. Прочие схемы форму цели не задают
+ *
+ */
+TEST_F(ParserHttp3Fixture, RequestTargetFormValidated){
+	/**
+	 * Перебираемые случаи: искажение секции и признак его допустимости
+	 */
+	struct probe_t {
+		// Название проверяемого случая
+		const char * label;
+		// Признак допустимости секции
+		bool valid;
+		// Набор полей секции
+		std::vector <qpack::field_t> fields;
+	};
+	// Перечень проверяемых случаев
+	const std::vector <probe_t> probes = {
+		{"пустой метод", false, {qpack::field_t{":method", ""}, qpack::field_t{":scheme", "https"}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "/"}}},
+		{"пустая схема", false, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", ""}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "/"}}},
+		{"путь без косой черты", false, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "index.html"}}},
+		{"звёздочка не методу OPTIONS", false, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "*"}}},
+		{"звёздочка методу OPTIONS", true, {qpack::field_t{":method", "OPTIONS"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "*"}}},
+		{"схема в верхнем регистре", false, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "HTTPS"}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "index.html"}}},
+		{"userinfo в адресате", false, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":authority", "user@example.com"}, qpack::field_t{":path", "/"}}},
+		{"путь чужой схемы", true, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "ftp"}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "index.html"}}},
+		{"userinfo чужой схемы", true, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "ftp"}, qpack::field_t{":authority", "user@example.com"}, qpack::field_t{":path", "/"}}},
+		{"корректный запрос", true, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "/index.html"}}}
+	};
+	/**
+	 * Выполняем проверку всех случаев
+	 */
+	for(size_t i = 0; i < probes.size(); i++){
+		// Сторона сервера
+		endpoint_t server;
+		// Подготавливаем сторону сервера
+		this->setup(server, direct_t::REQUEST);
+		// Отправляем параметры соединения со стороны сервера
+		server.parser->sendSettings();
+		// Собираем управляющий поток клиента с кадром параметров
+		std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+		// Дописываем кадр параметров соединения
+		control.append(::settings());
+		// Подаём управляющий поток клиента
+		ASSERT_EQ(this->feed(server, 2, control), status_t::OK) << probes[i].label;
+		/**
+		 * Секция кодируется в обход парсера клиента: он такие запросы не соберёт,
+		 * а проверяется здесь приёмная сторона
+		 */
+		qpack::encoder_t encoder;
+		// Буфер секции полей запроса
+		std::string section;
+		// Кодируем секцию полей запроса
+		encoder.encode(0, probes[i].fields, section);
+		// Буфер потока запроса
+		std::string stream;
+		// Дописываем кадр секции полей
+		frame::serialize::header(stream, static_cast <uint64_t> (frame_t::HEADERS), section.size());
+		// Дописываем секцию полей запроса
+		stream.append(section);
+		// Подаём поток запроса на разбор
+		ASSERT_EQ(this->feed(server, 0, stream, true), status_t::OK) << probes[i].label;
+		// Соединение обязано остаться живым в любом случае
+		ASSERT_TRUE(server.events.errors.empty()) << probes[i].label;
+		// Если секция допустима
+		if(probes[i].valid)
+			// Поток обрываться не должен
+			ASSERT_TRUE(server.events.aborts.empty()) << probes[i].label;
+		// Иначе поток обязан быть оборван
+		else {
+			// Поток обязан быть оборван
+			ASSERT_FALSE(server.events.aborts.empty()) << probes[i].label;
+			// Код обрыва потока обязан указывать на ошибку сообщения
+			ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << probes[i].label;
+		}
+	}
+}
+
 /**
  * @brief Проверка отбраковки полей управления соединением
  *

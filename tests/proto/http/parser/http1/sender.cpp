@@ -892,6 +892,99 @@ TEST_F(ParserFixture, ResetSenderOnUnfinishedMessageTest){
 }
 
 /**
+ * @brief Метод проверки запрета уничтожения pull-источника из его собственного вызова
+ *
+ * @details Пока источник исполняется, объект функции принадлежит своему же вызову:
+ *          назначение нового источника, подготовка отправителя и полная очистка объекта
+ *          уничтожили бы его прямо под ногами исполняющегося кода. Все три пути обязаны
+ *          быть закрыты, а выдача тела - продолжиться прежним источником
+ *
+ */
+TEST_F(ParserFixture, DataSourceSelfDestructionTest){
+	/**
+	 * @brief Функция разбора сообщения с источником, уничтожающим сам себя
+	 *
+	 * @param variant способ уничтожения источника из его собственного вызова
+	 * @param events  сборщик событий парсера-приёмника
+	 *
+	 */
+	auto probe = [this](const int32_t variant, events_t & events) noexcept -> void {
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Создаём объект парсера-приёмника ответа
+		auto receiver = this->make(direct_t::RESPONSE);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		receiver->method(method_t::GET);
+		// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+		this->attach(* receiver, events);
+		// Понижаем пороги выходного буфера, чтобы источник вызывался многократно
+		sender->sendWaterMarks(64, 32);
+		// Формируем эталонное тело сообщения
+		const std::string expected(200, 'S');
+		// Формируем контейнер заголовков ответа с провайдером
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Отправляем заголовки ответа (тело последует из pull-источника данных)
+		sender->sendHeaders(response, false);
+		// Позиция чтения эталонного тела источником данных
+		size_t position = 0;
+		// Признак того, что попытка уничтожения уже выполнена
+		bool once = false;
+		// Назначаем pull-источник данных, уничтожающий сам себя из собственного вызова
+		sender->dataSource(parser_http_t::data_source_callback_t([&sender, &expected, &position, &once, variant](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+			// Если попытка уничтожения ещё не выполнялась
+			if(!once && (position > 0)){
+				// Помечаем что попытка уничтожения выполнена
+				once = true;
+				/**
+				 * Выполняем попытку уничтожить исполняющийся источник
+				 */
+				switch(variant){
+					// Назначение нового источника поверх исполняющегося
+					case 0: sender->dataSource(parser_http_t::data_source_callback_t(
+						[](const uint32_t, uint8_t *, const size_t, bool & end) noexcept -> int64_t {
+							// Объявляем конец тела, ничего не выдавая
+							end = true;
+							// Возвращаем отсутствие данных
+							return 0;
+						})); break;
+					// Подготовка отправителя к следующему сообщению
+					case 1: sender->resetSender(); break;
+					// Полная очистка объекта парсера
+					case 2: sender->clear(); break;
+				}
+			}
+			// Вычисляем размер выдаваемой порции данных
+			const size_t size = std::min(std::min(cap, static_cast <size_t> (4)), (expected.size() - position));
+			// Копируем порцию эталонного тела в буфер парсера
+			std::memcpy(buffer, expected.data() + position, size);
+			// Сдвигаем позицию чтения эталонного тела
+			position += size;
+			// Выставляем флаг достижения конца тела
+			eof = (position == expected.size());
+			// Возвращаем число записанных байт
+			return static_cast <int64_t> (size);
+		}));
+		// Перекачиваем исходящие байты отправителя в принимающий парсер
+		::drain(* sender, * receiver);
+		// Проверяем что источник выдал всё эталонное тело
+		ASSERT_EQ(position, expected.size()) << variant;
+		// Проверяем что сообщение полностью разобрано получателем
+		ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE) << variant;
+		// Проверяем что тело дошло целиком
+		ASSERT_EQ(events.body, expected) << variant;
+	};
+	/**
+	 * Выполняем перебор способов уничтожения источника из его собственного вызова
+	 */
+	for(int32_t variant = 0; variant < 3; ++variant){
+		// Создаём объект сборщика событий парсера-приёмника
+		events_t events;
+		// Выполняем проверку очередного способа уничтожения источника
+		probe(variant, events);
+	}
+}
+
+/**
  * @brief Метод проверки исключения одновременной отправки Content-Length и Transfer-Encoding
  *
  */
