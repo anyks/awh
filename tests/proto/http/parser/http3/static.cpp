@@ -671,10 +671,11 @@ TEST_F(ParserHttp3Fixture, ContentLengthMismatch){
  * @brief Проверка отбраковки формы цели запроса
  *
  * @details RFC 9114 §4.3.1 задаёт форму цели для схем [http] и [https]: путь
- *          начинается с косой черты либо равен звёздочке, и звёздочка допустима
- *          только методу OPTIONS. Псевдо-заголовки метода, схемы и протокола
- *          туннеля пустыми быть не могут, а адресат не несёт устаревший
- *          подкомпонент userinfo. Прочие схемы форму цели не задают
+ *          начинается с косой черты либо равен звёздочке, звёздочка допустима
+ *          только методу OPTIONS, запрос обязан нести :authority либо Host и
+ *          присутствующее поле непусто. Псевдо-заголовки метода, схемы и
+ *          протокола туннеля пустыми быть не могут, а адресат не несёт
+ *          устаревший подкомпонент userinfo. Прочие схемы форму цели не задают
  *
  */
 TEST_F(ParserHttp3Fixture, RequestTargetFormValidated){
@@ -698,8 +699,13 @@ TEST_F(ParserHttp3Fixture, RequestTargetFormValidated){
 		{"звёздочка методу OPTIONS", true, {qpack::field_t{":method", "OPTIONS"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "*"}}},
 		{"схема в верхнем регистре", false, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "HTTPS"}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "index.html"}}},
 		{"userinfo в адресате", false, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":authority", "user@example.com"}, qpack::field_t{":path", "/"}}},
+		{"пустой адресат", false, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":authority", ""}, qpack::field_t{":path", "/"}}},
+		{"без адресата и Host", false, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":path", "/"}}},
+		{"только Host", true, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":path", "/"}, qpack::field_t{"host", "example.com"}}},
+		{"пустой Host без адресата", false, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":path", "/"}, qpack::field_t{"host", ""}}},
 		{"путь чужой схемы", true, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "ftp"}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "index.html"}}},
 		{"userinfo чужой схемы", true, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "ftp"}, qpack::field_t{":authority", "user@example.com"}, qpack::field_t{":path", "/"}}},
+		{"чужая схема без адресата", true, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "ftp"}, qpack::field_t{":path", "index.html"}}},
 		{"корректный запрос", true, {qpack::field_t{":method", "GET"}, qpack::field_t{":scheme", "https"}, qpack::field_t{":authority", "example.com"}, qpack::field_t{":path", "/index.html"}}}
 	};
 	/**

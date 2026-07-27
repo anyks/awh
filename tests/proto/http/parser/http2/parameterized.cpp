@@ -77,6 +77,8 @@ TEST_P(Http2FragmentParameterizedFixture, FragmentedParsingTest){
 	fields.emplace_back(":method", "POST");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/fragmented");
 	// Дописываем обычный заголовок
@@ -101,7 +103,7 @@ TEST_P(Http2FragmentParameterizedFixture, FragmentedParsingTest){
 	// Проверяем что ошибок уровня соединения нет
 	ASSERT_EQ(server->error(), parser_http2_t::error_t::NO_ERROR);
 	// Проверяем что все заголовки запроса получены
-	ASSERT_EQ(events.headers.size(), 4u);
+	ASSERT_EQ(events.headers.size(), 5u);
 	// Проверяем метод запроса из провайдера
 	ASSERT_EQ(events.method, method_t::POST);
 	// Проверяем параметры URI-запроса из провайдера
@@ -182,6 +184,8 @@ TEST_P(Http2MethodParameterizedFixture, MethodClassificationTest){
 	else {
 		// Дописываем псевдо-заголовок схемы запроса
 		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок адресата запроса
+		fields.emplace_back(":authority", "anyks.com");
 		// Дописываем псевдо-заголовок пути запроса
 		fields.emplace_back(":path", "/");
 	}
@@ -262,6 +266,8 @@ TEST_P(Http2BodySizeParameterizedFixture, BodyRoundtripTest){
 	fields.emplace_back(":method", "POST");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/body");
 	// Если тело пустое - завершаем поток сразу заголовками
@@ -346,6 +352,8 @@ TEST_P(Http2StatusCodeParameterizedFixture, StatusCodeTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/status");
 	// Отправляем заголовки запроса с завершением потока

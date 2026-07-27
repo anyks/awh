@@ -3579,9 +3579,14 @@ awh::quic2::status_t awh::quic2::Connection::frames(const level_t level, const u
 						return status_t::ERROR;
 					}
 					// Если разобран фрейм лимита данных потока MAX_STREAM_DATA
-					if(type == frame_t::MAX_STREAM_DATA)
+					if(type == frame_t::MAX_STREAM_DATA){
 						// Обновляем лимит отправки потока (лимиты только растут)
 						stream->txMax = ::max(stream->txMax, value);
+						// Если поднятый лимит разблокировал поток с данными - возвращаем его в набор к отправке
+						if((stream->txBuffer.size() > stream->txCursor) || (stream->txFin && !stream->txFinSent))
+							// Возвращаем поток в набор потоков с данными к отправке
+							this->_stream.writable.insert(streamId);
+					}
 				}
 				// Устанавливаем флаг приёма ack-eliciting фрейма
 				elicit = true;
@@ -4362,27 +4367,39 @@ bool awh::quic2::Connection::payload(const level_t level, const size_t budget, s
 		 * с начала списка отдавал бы датаграмму потокам с наименьшими идентификаторами,
 		 * а остальные простаивали бы неограниченно долго
 		 */
-		for(size_t index = 0; index < this->_stream.list.size(); index++){
+		for(size_t rounds = this->_stream.writable.size(); (rounds > 0) && !this->_stream.writable.empty(); rounds--){
 			// Если в датаграмме не осталось места на фрейм STREAM
 			if(budget <= (output.size() + STREAM_OVERHEAD))
 				// Прекращаем упаковку данных потоков
 				break;
-			// Ищем первый поток начиная с позиции курсора
-			auto position = this->_stream.list.lower_bound(this->_stream.cursor);
+			// Ищем первый поток с данными начиная с позиции курсора
+			auto wit = this->_stream.writable.lower_bound(this->_stream.cursor);
 			// Если потоки от позиции курсора закончились
-			if(position == this->_stream.list.end())
-				// Продолжаем обход с начала списка
-				position = this->_stream.list.begin();
+			if(wit == this->_stream.writable.end())
+				// Продолжаем обход с начала набора
+				wit = this->_stream.writable.begin();
+			// Идентификатор обслуживаемого потока
+			const uint64_t sid = (* wit);
 			// Продвигаем курсор на следующий поток обхода
-			this->_stream.cursor = (position->first + 1);
-			// Получаем ссылку на запись потока
-			auto & entry = (* position);
-			// Получаем состояние потока
-			auto & stream = entry.second;
-			// Если отправка потока аварийно завершена - данные не отправляются
-			if(stream.txReset || stream.txResetSent)
+			this->_stream.cursor = (sid + 1);
+			// Ищем состояние потока
+			auto position = this->_stream.list.find(sid);
+			// Если поток удалён - устаревшая запись из набора отсеивается
+			if(position == this->_stream.list.end()){
+				// Удаляем устаревший идентификатор из набора потоков с данными
+				this->_stream.writable.erase(wit);
 				// Переходим к следующему потоку
 				continue;
+			}
+			// Получаем состояние потока
+			auto & stream = position->second;
+			// Если отправка потока аварийно завершена - поток из набора отсеивается
+			if(stream.txReset || stream.txResetSent){
+				// Удаляем поток из набора потоков с данными
+				this->_stream.writable.erase(wit);
+				// Переходим к следующему потоку
+				continue;
+			}
 			// Вычисляем объём неупакованных данных потока
 			const size_t pending = (stream.txBuffer.size() - stream.txCursor);
 			// Если есть данные для отправки
@@ -4404,8 +4421,10 @@ bool awh::quic2::Connection::payload(const level_t level, const size_t budget, s
 						// Устанавливаем флаг заблокированной отправки данных потока
 						stream.txBlocked = true;
 						// Ставим поток в список ожидающих управляющих фреймов
-						this->schedule(entry.first);
+						this->schedule(sid);
 					}
+					// Поток упёрся в лимит своих данных - отсеиваем из набора до подъёма лимита MAX_STREAM_DATA
+					this->_stream.writable.erase(wit);
 					// Переходим к следующему потоку
 					continue;
 				}
@@ -4425,11 +4444,11 @@ bool awh::quic2::Connection::payload(const level_t level, const size_t budget, s
 				// Определяем флаг завершения потока для фрагмента
 				const bool fin = (stream.txFin && (chunk == pending));
 				// Выполняем сборку фрейма STREAM (RFC 9000 §19.8)
-				frame::serialize::stream(output, entry.first, stream.txOffset, string_view(stream.txBuffer.data() + stream.txCursor, chunk), fin);
+				frame::serialize::stream(output, sid, stream.txOffset, string_view(stream.txBuffer.data() + stream.txCursor, chunk), fin);
 				// Формируем блок данных для учётной записи пакета
 				chunk_t sent;
 				// Устанавливаем идентификатор потока
-				sent.sid = entry.first;
+				sent.sid = sid;
 				// Устанавливаем смещение данных в потоке
 				sent.offset = stream.txOffset;
 				// Устанавливаем длину отправленного блока
@@ -4480,11 +4499,11 @@ bool awh::quic2::Connection::payload(const level_t level, const size_t budget, s
 			// Если данных нет, но требуется отправка завершения потока (пустой фрейм с FIN)
 			} else if(stream.txFin && !stream.txFinSent){
 				// Выполняем сборку пустого фрейма STREAM с флагом FIN
-				frame::serialize::stream(output, entry.first, stream.txOffset, string_view(), true);
+				frame::serialize::stream(output, sid, stream.txOffset, string_view(), true);
 				// Формируем блок данных для учётной записи пакета
 				chunk_t sent;
 				// Устанавливаем идентификатор потока
-				sent.sid = entry.first;
+				sent.sid = sid;
 				// Устанавливаем смещение данных в потоке
 				sent.offset = stream.txOffset;
 				// Устанавливаем флаг завершения потока
@@ -4496,6 +4515,10 @@ bool awh::quic2::Connection::payload(const level_t level, const size_t budget, s
 				// Устанавливаем флаг выполненной отправки завершения потока
 				stream.txFinSent = true;
 			}
+			// Если у потока не осталось данных к отправке - отсеиваем его из набора
+			if((stream.txBuffer.size() == stream.txCursor) && !(stream.txFin && !stream.txFinSent))
+				// Удаляем слитый поток из набора потоков с данными
+				this->_stream.writable.erase(sid);
 		}
 	}
 	// Если требуется отправка зондирующего фрейма PING (RFC 9002 §6.2.4)
@@ -7501,6 +7524,8 @@ awh::quic2::status_t awh::quic2::Connection::send(const uint64_t sid, string_vie
 	if(fin)
 		// Устанавливаем флаг постановки завершения потока
 		i->second.txFin = true;
+	// Ставим поток в набор потоков с данными к отправке
+	this->_stream.writable.insert(sid);
 	// Выводим положительный результат
 	return status_t::OK;
 }

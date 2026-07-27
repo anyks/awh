@@ -3354,6 +3354,8 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 	bool hasMethod = false, hasScheme = false, hasPath = false;
 	// Признаки наличия остальных псевдо-заголовков
 	bool hasAuthority = false, hasProtocol = false, hasStatus = false;
+	// Признак наличия поля адресата HTTP/1.1
+	bool hasHost = false;
 	// Значения псевдо-заголовков, участвующих в перекрёстных проверках
 	string_view method, authority, status, path, host, scheme;
 	// Объявленная длина тела сообщения
@@ -3489,9 +3491,12 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 			// Выводим отрицательный результат
 			return false;
 		// Если получено поле адресата HTTP/1.1
-		if(field.name == header::HOST)
+		if(field.name == header::HOST){
+			// Запоминаем наличие поля адресата
+			hasHost = true;
 			// Запоминаем значение поля адресата
 			host = field.value;
+		}
 		// Если получено поле объявленной длины тела
 		if(field.name == header::CONTENT_LENGTH){
 			// Разобранная длина тела сообщения
@@ -3525,8 +3530,11 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 		 * отсутствуют, а адресат обязателен (RFC 9114 §4.4)
 		 */
 		if(connect && !hasProtocol){
-			// Если схема либо путь присутствуют, а адресат отсутствует
-			if(hasScheme || hasPath || !hasAuthority)
+			/**
+			 * Схема либо путь присутствовать не должны, а адресат обязан быть
+			 * и непустым: пустая строка не описывает узел назначения туннеля
+			 */
+			if(hasScheme || hasPath || !hasAuthority || authority.empty())
 				// Выводим отрицательный результат
 				return false;
 		// Если запрос адресует ресурс
@@ -3570,6 +3578,25 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 			}
 		}
 		/**
+		 * У схем с обязательным адресатом (http/https) запрос обязан нести
+		 * :authority либо Host, и присутствующее поле не может быть пустым
+		 * (RFC 9114 §4.3.1)
+		 */
+		if(::httpScheme(scheme)){
+			// Если адресат не задан ни псевдо-заголовком, ни полем Host
+			if(!hasAuthority && !hasHost)
+				// Выводим отрицательный результат
+				return false;
+			// Если псевдо-заголовок адресата присутствует пустым
+			if(hasAuthority && authority.empty())
+				// Выводим отрицательный результат
+				return false;
+			// Если поле Host присутствует пустым
+			if(hasHost && host.empty())
+				// Выводим отрицательный результат
+				return false;
+		}
+		/**
 		 * Устаревший подкомпонент userinfo в адресате запрещён для схем [http]
 		 * и [https] (RFC 9114 §4.3.1): он переносил бы в запрос учётные данные,
 		 * которым место в заголовке авторизации. Отделяет его символ [@]
@@ -3582,7 +3609,7 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 		 * расхождение позволило бы протащить через шлюз два разных адресата
 		 * в одном запросе (RFC 9114 §4.3.1)
 		 */
-		if(!host.empty() && hasAuthority && (host != authority))
+		if(hasHost && hasAuthority && (host != authority))
 			// Выводим отрицательный результат
 			return false;
 	// Если разбирается ответ сервера

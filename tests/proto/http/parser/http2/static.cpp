@@ -1313,6 +1313,8 @@ TEST_F(ParserHttp2Fixture, LargeBodyFlowControlTest){
 	fields.emplace_back(":method", "POST");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/big");
 	// Отправляем заголовки запроса
@@ -1373,6 +1375,8 @@ TEST_F(ParserHttp2Fixture, DataSourceTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/download");
 	// Отправляем заголовки запроса с завершением потока
@@ -1449,6 +1453,8 @@ TEST_F(ParserHttp2Fixture, DataSourceClosesStreamTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/download");
 	// Отправляем заголовки запроса с завершением потока
@@ -1516,6 +1522,8 @@ TEST_F(ParserHttp2Fixture, PushPromiseTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/index.html");
 	// Отправляем заголовки запроса с завершением потока
@@ -1526,6 +1534,8 @@ TEST_F(ParserHttp2Fixture, PushPromiseTest){
 	promise.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы обещанного запроса
 	promise.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	promise.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути обещанного запроса
 	promise.emplace_back(":path", "/style.css");
 	// Анонсируем server push на потоке запроса клиента
@@ -1605,6 +1615,8 @@ TEST_F(ParserHttp2Fixture, PushRejectTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/index.html");
 	// Отправляем заголовки запроса с завершением потока
@@ -1615,6 +1627,8 @@ TEST_F(ParserHttp2Fixture, PushRejectTest){
 	promise.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы обещанного запроса
 	promise.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	promise.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути обещанного запроса
 	promise.emplace_back(":path", "/style.css");
 	// Анонсируем server push (клиент отклонит его RST_STREAM с кодом CANCEL)
@@ -1674,6 +1688,8 @@ TEST_F(ParserHttp2Fixture, HeaderCallbackResetTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Отправляем заголовки запроса с завершением потока
@@ -1717,6 +1733,8 @@ TEST_F(ParserHttp2Fixture, RstStreamTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/slow");
 	// Отправляем заголовки запроса (поток остаётся открытым)
@@ -1830,6 +1848,8 @@ TEST_F(ParserHttp2Fixture, UnexpectedEofTest){
 	fields.emplace_back(":method", "POST");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/upload");
 	// Отправляем заголовки запроса (поток остаётся открытым - тело не дослано)
@@ -1865,6 +1885,8 @@ TEST_F(ParserHttp2Fixture, MalformedHeadersTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Дописываем заголовок с названием в верхнем регистре
@@ -1924,6 +1946,8 @@ TEST_F(ParserHttp2Fixture, SecurityLimitsTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Дописываем первый обычный заголовок
@@ -1946,6 +1970,8 @@ TEST_F(ParserHttp2Fixture, SecurityLimitsTest){
 	valid.emplace_back(":method", "POST");
 	// Дописываем псевдо-заголовок схемы запроса
 	valid.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	valid.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	valid.emplace_back(":path", "/upload");
 	// Отправляем заголовки запроса (тело последует отдельно)
@@ -2001,6 +2027,8 @@ TEST_F(ParserHttp2Fixture, RapidResetProtectionTest){
 		fields.emplace_back(":method", "GET");
 		// Дописываем псевдо-заголовок схемы запроса
 		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок адресата запроса
+		fields.emplace_back(":authority", "example.com");
 		// Дописываем псевдо-заголовок пути запроса
 		fields.emplace_back(":path", "/");
 		// Отправляем заголовки запроса (поток остаётся открытым)
@@ -2077,6 +2105,8 @@ TEST_F(ParserHttp2Fixture, PullOutputModelTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/pull");
 	// Отправляем заголовки запроса с завершением потока
@@ -2161,6 +2191,8 @@ TEST_F(ParserHttp2Fixture, ResetTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/first");
 	// Отправляем заголовки запроса с завершением потока
@@ -2195,6 +2227,8 @@ TEST_F(ParserHttp2Fixture, ResetTest){
 	second.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	second.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	second.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	second.emplace_back(":path", "/second");
 	// Отправляем заголовки нового запроса с завершением потока
@@ -2234,6 +2268,8 @@ TEST_F(ParserHttp2Fixture, InformationalResponseTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/hints");
 	// Отправляем заголовки запроса с завершением потока
@@ -2299,6 +2335,8 @@ TEST_F(ParserHttp2Fixture, InformationalEndStreamTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/hints");
 	// Отправляем заголовки запроса с завершением потока
@@ -2373,6 +2411,8 @@ TEST_F(ParserHttp2Fixture, HeaderFieldValidationTest){
 		fields.emplace_back(":method", "GET");
 		// Дописываем псевдо-заголовок схемы запроса
 		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок адресата запроса
+		fields.emplace_back(":authority", "example.com");
 		// Дописываем псевдо-заголовок пути запроса
 		fields.emplace_back(":path", "/");
 		// Дописываем проверяемый некорректный заголовок
@@ -2417,6 +2457,8 @@ TEST_F(ParserHttp2Fixture, PseudoHeaderCaseTest){
 	fields.emplace_back(":METHOD", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Отправляем заголовки запроса с завершением потока
@@ -2433,14 +2475,16 @@ TEST_F(ParserHttp2Fixture, PseudoHeaderCaseTest){
  * @brief Метод проверки формы цели запроса (RFC 9113 §8.3.1)
  *
  * @details Схемы [http] и [https] задают форму цели: путь начинается с косой
- *          черты либо равен звёздочке, и звёздочка допустима только методу
- *          OPTIONS. Адресат при этом не несёт устаревший подкомпонент userinfo.
+ *          черты либо равен звёздочке, звёздочка допустима только методу OPTIONS,
+ *          запрос обязан нести :authority либо Host и присутствующее поле
+ *          непусто. Адресат при этом не несёт устаревший подкомпонент userinfo.
  *          Прочие схемы форму цели не задают - её задаёт не HTTP
  *
  */
 TEST_F(ParserHttp2Fixture, RequestTargetFormTest){
 	/**
-	 * Перебираемые случаи: набор псевдо-заголовков и признак его допустимости
+	 * Перебираемые случаи: набор псевдо-заголовков и признак его допустимости.
+	 * Нулевой указатель у адресата либо Host означает, что поле в секцию не входит
 	 */
 	struct probe_t {
 		// Название проверяемого случая
@@ -2451,21 +2495,28 @@ TEST_F(ParserHttp2Fixture, RequestTargetFormTest){
 		const char * method;
 		// Значение псевдо-заголовка схемы
 		const char * scheme;
-		// Значение псевдо-заголовка адресата
+		// Значение псевдо-заголовка адресата либо nullptr
 		const char * authority;
 		// Значение псевдо-заголовка пути
 		const char * path;
+		// Значение поля Host либо nullptr
+		const char * host;
 	};
 	// Перечень проверяемых случаев
 	const std::vector <probe_t> probes = {
-		{"путь без косой черты", false, "GET", "https", "example.com", "index.html"},
-		{"звёздочка не методу OPTIONS", false, "GET", "https", "example.com", "*"},
-		{"звёздочка методу OPTIONS", true, "OPTIONS", "https", "example.com", "*"},
-		{"схема в верхнем регистре", false, "GET", "HTTPS", "example.com", "index.html"},
-		{"userinfo в адресате", false, "GET", "https", "user@example.com", "/"},
-		{"путь чужой схемы", true, "GET", "ftp", "example.com", "index.html"},
-		{"userinfo чужой схемы", true, "GET", "ftp", "user@example.com", "/"},
-		{"корректный запрос", true, "GET", "https", "example.com", "/index.html"}
+		{"путь без косой черты", false, "GET", "https", "example.com", "index.html", nullptr},
+		{"звёздочка не методу OPTIONS", false, "GET", "https", "example.com", "*", nullptr},
+		{"звёздочка методу OPTIONS", true, "OPTIONS", "https", "example.com", "*", nullptr},
+		{"схема в верхнем регистре", false, "GET", "HTTPS", "example.com", "index.html", nullptr},
+		{"userinfo в адресате", false, "GET", "https", "user@example.com", "/", nullptr},
+		{"пустой адресат", false, "GET", "https", "", "/", nullptr},
+		{"без адресата и Host", false, "GET", "https", nullptr, "/", nullptr},
+		{"только Host", true, "GET", "https", nullptr, "/", "example.com"},
+		{"пустой Host без адресата", false, "GET", "https", nullptr, "/", ""},
+		{"путь чужой схемы", true, "GET", "ftp", "example.com", "index.html", nullptr},
+		{"userinfo чужой схемы", true, "GET", "ftp", "user@example.com", "/", nullptr},
+		{"чужая схема без адресата", true, "GET", "ftp", nullptr, "index.html", nullptr},
+		{"корректный запрос", true, "GET", "https", "example.com", "/index.html", nullptr}
 	};
 	/**
 	 * Выполняем проверку всех случаев
@@ -2493,10 +2544,16 @@ TEST_F(ParserHttp2Fixture, RequestTargetFormTest){
 		fields.emplace_back(":method", probes[i].method);
 		// Дописываем псевдо-заголовок схемы запроса
 		fields.emplace_back(":scheme", probes[i].scheme);
-		// Дописываем псевдо-заголовок адресата запроса
-		fields.emplace_back(":authority", probes[i].authority);
+		// Если псевдо-заголовок адресата задан случаем
+		if(probes[i].authority != nullptr)
+			// Дописываем псевдо-заголовок адресата запроса
+			fields.emplace_back(":authority", probes[i].authority);
 		// Дописываем псевдо-заголовок пути запроса
 		fields.emplace_back(":path", probes[i].path);
+		// Если поле Host задано случаем
+		if(probes[i].host != nullptr)
+			// Дописываем поле адресата HTTP/1.1
+			fields.emplace_back("host", probes[i].host);
 		// Отправляем заголовки запроса с завершением потока
 		client->sendHeaders(sid, fields, true);
 		// Соединение обязано остаться живым в любом случае
@@ -2580,6 +2637,8 @@ TEST_F(ParserHttp2Fixture, LateFramesOnClosedStreamTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Отправляем заголовки запроса с завершением потока
@@ -2634,6 +2693,8 @@ TEST_F(ParserHttp2Fixture, CallbackExceptionTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Отправляем заголовки запроса с завершением потока
@@ -2759,6 +2820,8 @@ TEST_F(ParserHttp2Fixture, ContentLengthMismatchTest){
 	fields.emplace_back(":method", "POST");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/upload");
 	// Дописываем объявленную длину тела запроса
@@ -2812,6 +2875,8 @@ TEST_F(ParserHttp2Fixture, GoawayRefusesUnprocessedStreamsTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Выделяем идентификатор первого потока клиента
@@ -2878,6 +2943,8 @@ TEST_F(ParserHttp2Fixture, GoawaySendFromCloseCallbackTest){
 	fields.emplace_back(":method", "POST");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Идентификаторы открытых потоков клиента
@@ -2966,6 +3033,8 @@ TEST_F(ParserHttp2Fixture, CloseFromCloseCallbackTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Выделяем идентификатор первого потока клиента
@@ -3141,6 +3210,8 @@ TEST_F(ParserHttp2Fixture, ResetFromDataCallbackTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Выделяем идентификатор нового потока клиента
@@ -3308,6 +3379,8 @@ TEST_F(ParserHttp2Fixture, HeadersOnClosedStreamTest){
 	// Дописываем псевдо-заголовки первого запроса
 	first.emplace_back(":method", "GET");
 	first.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	first.emplace_back(":authority", "example.com");
 	first.emplace_back(":path", "/first");
 	// Буфер закодированного блока первого запроса
 	std::string block;
@@ -3328,6 +3401,8 @@ TEST_F(ParserHttp2Fixture, HeadersOnClosedStreamTest){
 	// Дописываем псевдо-заголовки запроса
 	closed.emplace_back(":method", "GET");
 	closed.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	closed.emplace_back(":authority", "example.com");
 	closed.emplace_back(":path", "/closed");
 	// Дописываем заголовок, попадающий в динамическую таблицу
 	closed.emplace_back("x-marker", "value");
@@ -3356,6 +3431,8 @@ TEST_F(ParserHttp2Fixture, HeadersOnClosedStreamTest){
 	// Дописываем псевдо-заголовки следующего запроса
 	next.emplace_back(":method", "GET");
 	next.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	next.emplace_back(":authority", "example.com");
 	next.emplace_back(":path", "/next");
 	// Дописываем заголовок, который кодер передаст индексом
 	next.emplace_back("x-marker", "value");
@@ -3417,6 +3494,8 @@ TEST_F(ParserHttp2Fixture, DataOnReservedStreamRecvTest){
 	// Дописываем псевдо-заголовки запроса
 	fields.emplace_back(":method", "GET");
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	fields.emplace_back(":path", "/");
 	// Буфер закодированного блока заголовков
 	std::string block;
@@ -3645,6 +3724,8 @@ TEST_F(ParserHttp2Fixture, HeadersOnFinishedStreamTest){
 	// Дописываем псевдо-заголовки запроса
 	fields.emplace_back(":method", "GET");
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	fields.emplace_back(":path", "/");
 	// Буфер закодированного блока заголовков
 	std::string block;
@@ -3699,6 +3780,8 @@ TEST_F(ParserHttp2Fixture, SelfDependentStreamTest){
 	// Дописываем псевдо-заголовки запроса
 	fields.emplace_back(":method", "GET");
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	fields.emplace_back(":path", "/");
 	// Буфер закодированного блока заголовков
 	std::string block;
@@ -3780,6 +3863,8 @@ TEST_F(ParserHttp2Fixture, SelfDependentStreamKeepsHpackSyncTest){
 	// Дописываем псевдо-заголовки запроса
 	fields.emplace_back(":method", "GET");
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	fields.emplace_back(":path", "/");
 	// Дописываем заголовок, попадающий в динамическую таблицу кодера
 	fields.emplace_back("x-audit", "self-dependent-stream-keeps-hpack-sync");
@@ -3869,6 +3954,8 @@ TEST_F(ParserHttp2Fixture, HeadersOnRefusedStreamTest){
 	// Дописываем псевдо-заголовки запроса
 	fields.emplace_back(":method", "GET");
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	fields.emplace_back(":path", "/");
 	// Буфер закодированного блока заголовков
 	std::string block;
@@ -3946,6 +4033,8 @@ TEST_F(ParserHttp2Fixture, DataOnLocallyResetStreamTest){
 	// Дописываем псевдо-заголовки запроса
 	fields.emplace_back(":method", "POST");
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	fields.emplace_back(":path", "/upload");
 	// Буфер закодированного блока заголовков
 	std::string block;
@@ -4008,6 +4097,8 @@ TEST_F(ParserHttp2Fixture, HeadersOnLocallyResetStreamTest){
 	// Дописываем псевдо-заголовки запроса
 	fields.emplace_back(":method", "GET");
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	fields.emplace_back(":path", "/");
 	// Отправляем блок заголовков запроса
 	client->sendHeaders(sid, fields, true);
@@ -4067,6 +4158,8 @@ TEST_F(ParserHttp2Fixture, MultipleResetStreamsRememberedTest){
 	// Дописываем псевдо-заголовки запроса
 	fields.emplace_back(":method", "GET");
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	fields.emplace_back(":path", "/");
 	// Выделяем идентификатор первого потока клиента
 	const uint32_t first = client->nextStreamId();
@@ -4332,6 +4425,8 @@ TEST_F(ParserHttp2Fixture, HeadersAfterLocalEndStreamTest){
 	// Дописываем псевдо-заголовки запроса
 	fields.emplace_back(":method", "GET");
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	fields.emplace_back(":path", "/");
 	// Отправляем блок заголовков с завершением потока
 	client->sendHeaders(sid, fields, true);
@@ -4415,6 +4510,8 @@ TEST_F(ParserHttp2Fixture, StreamWindowOverflowTest){
 	// Дописываем псевдо-заголовки запроса
 	fields.emplace_back(":method", "GET");
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	fields.emplace_back(":path", "/");
 	// Буфер закодированного блока заголовков
 	std::string block;
@@ -4597,6 +4694,8 @@ TEST_F(ParserHttp2Fixture, PeerHeaderListLimitTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Дописываем заголовок, выводящий список за анонсированный лимит
@@ -4626,6 +4725,8 @@ TEST_F(ParserHttp2Fixture, PeerHeaderListLimitTest){
 	next.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	next.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	next.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	next.emplace_back(":path", "/next");
 	// Выделяем идентификатор следующего потока клиента
@@ -4747,6 +4848,8 @@ TEST_F(ParserHttp2Fixture, ForbiddenTrailerTest){
 	fields.emplace_back(":method", "POST");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/upload");
 	// Отправляем заголовки запроса (тело последует)
@@ -4794,6 +4897,8 @@ TEST_F(ParserHttp2Fixture, GracefulShutdownTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/early");
 	// Выделяем идентификатор потока, открытого до предупреждения
@@ -4882,6 +4987,8 @@ TEST_F(ParserHttp2Fixture, ExtensiblePriorityTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/data");
 	// Выделяем идентификатор первого потока клиента (срочность по умолчанию)
@@ -4960,6 +5067,8 @@ TEST_F(ParserHttp2Fixture, BodylessContentLengthTest){
 		fields.emplace_back(":method", ((variant == 0) ? "HEAD" : "GET"));
 		// Дописываем псевдо-заголовок схемы запроса
 		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок адресата запроса
+		fields.emplace_back(":authority", "example.com");
 		// Дописываем псевдо-заголовок пути запроса
 		fields.emplace_back(":path", "/resource");
 		// Отправляем запрос с завершением потока
@@ -5042,6 +5151,8 @@ TEST_F(ParserHttp2Fixture, DataBeforeFinalHeadersTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/hints");
 	// Отправляем запрос (поток остаётся открытым)
@@ -5159,6 +5270,8 @@ TEST_F(ParserHttp2Fixture, ResetFromCallbackTest){
 		fields.emplace_back(":method", "POST");
 		// Дописываем псевдо-заголовок схемы запроса
 		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок адресата запроса
+		fields.emplace_back(":authority", "example.com");
 		// Дописываем псевдо-заголовок пути запроса
 		fields.emplace_back(":path", "/reset");
 		// Буфер закодированного блока заголовков
@@ -5277,6 +5390,8 @@ TEST_F(ParserHttp2Fixture, PushPromiseInvalidAssocTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Отправляем запрос с завершением потока
@@ -5382,6 +5497,8 @@ TEST_F(ParserHttp2Fixture, BodyInBodylessMessageTest){
 	fields.emplace_back(":method", "HEAD");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/resource");
 	// Отправляем запрос с завершением потока
@@ -5438,6 +5555,8 @@ TEST_F(ParserHttp2Fixture, ZeroWindowUpdateTest){
 		fields.emplace_back(":method", "POST");
 		// Дописываем псевдо-заголовок схемы запроса
 		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок адресата запроса
+		fields.emplace_back(":authority", "example.com");
 		// Дописываем псевдо-заголовок пути запроса
 		fields.emplace_back(":path", "/");
 		// Открываем поток (тело последует)
@@ -5849,6 +5968,8 @@ TEST_F(ParserHttp2Fixture, TrailersAfterPendingBodyTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/stream");
 	// Отправляем запрос с завершением потока
@@ -5922,6 +6043,8 @@ TEST_F(ParserHttp2Fixture, DataOnReservedStreamTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/index.html");
 	// Отправляем запрос без завершения потока
@@ -5994,6 +6117,8 @@ TEST_F(ParserHttp2Fixture, ManualWindowUpdateAccountedTest){
 	fields.emplace_back(":method", "POST");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/upload");
 	// Открываем поток (тело последует)
@@ -6076,6 +6201,8 @@ TEST_F(ParserHttp2Fixture, ManualWindowUpdateOversizedTest){
 	fields.emplace_back(":method", "POST");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/upload");
 	// Открываем поток (тело последует)
@@ -6162,6 +6289,8 @@ TEST_F(ParserHttp2Fixture, NestedParseKeepsBodyViewTest){
 	fields.emplace_back(":method", "POST");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/upload");
 	// Открываем поток (тело последует)
@@ -6285,6 +6414,8 @@ TEST_F(ParserHttp2Fixture, PriorityUpdateReplacesDefaultsTest){
 		fields.emplace_back(":method", "GET");
 		// Дописываем псевдо-заголовок схемы запроса
 		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок адресата запроса
+		fields.emplace_back(":authority", "example.com");
 		// Дописываем псевдо-заголовок пути запроса
 		fields.emplace_back(":path", "/data");
 		// Дописываем заголовок расширенного приоритета с инкрементальной доставкой
@@ -6363,6 +6494,8 @@ TEST_F(ParserHttp2Fixture, HeadersOnOwnFinishedStreamTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/");
 	// Открываем поток запроса с завершением потока
@@ -6476,6 +6609,8 @@ TEST_F(ParserHttp2Fixture, HeadlessMessageSkipsBodyPhaseTest){
 		fields.emplace_back(":method", ((variant == 0) ? "GET" : "HEAD"));
 		// Дописываем псевдо-заголовок схемы запроса
 		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок адресата запроса
+		fields.emplace_back(":authority", "example.com");
 		// Дописываем псевдо-заголовок пути запроса
 		fields.emplace_back(":path", "/index.html");
 		// Отправляем запрос с завершением потока
@@ -6569,6 +6704,8 @@ TEST_F(ParserHttp2Fixture, PriorityParametersIgnoredTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/data");
 	// Выделяем идентификатор первого потока клиента (срочность по умолчанию)
@@ -6661,6 +6798,8 @@ TEST_F(ParserHttp2Fixture, PriorityUpdateBeforeStreamTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/data");
 	// Выделяем идентификатор первого потока клиента (срочность по умолчанию)
@@ -6753,6 +6892,8 @@ TEST_F(ParserHttp2Fixture, PriorityUpdateOnPushStreamTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/index.html");
 	// Выделяем идентификатор потока запроса клиента
@@ -6875,6 +7016,8 @@ TEST_F(ParserHttp2Fixture, DeferredPriorityOverridesHeaderTest){
 	fields.emplace_back(":method", "GET");
 	// Дописываем псевдо-заголовок схемы запроса
 	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
 	// Дописываем псевдо-заголовок пути запроса
 	fields.emplace_back(":path", "/data");
 	// Выделяем идентификатор первого потока клиента (срочность по умолчанию)

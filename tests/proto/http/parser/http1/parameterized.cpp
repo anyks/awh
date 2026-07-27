@@ -1755,6 +1755,48 @@ TEST_F(ParserFixture, HostRequirementsTest){
 }
 
 /**
+ * @brief Метод тестирования игнорирования полей HTTP/1.1 в запросе HTTP/1.0
+ *
+ * @details Заголовок Upgrade в запросе HTTP/1.0 предписано игнорировать (RFC 9110 §7.8),
+ *          как и ожидание 100-continue (RFC 9110 §10.1.1). Обе поблажки нужны по одной
+ *          причине: отправитель HTTP/1.0 не умеет обрабатывать то, к чему эти поля ведут.
+ *          Промежуточный ответ [100 Continue] он прочитает как окончательный и уйдёт в
+ *          рассинхронизацию, а смену протокола на соединении, где о ней не договаривались,
+ *          не поймёт вовсе
+ *
+ */
+TEST_F(ParserFixture, LegacyRequestFieldsTest){
+	/**
+	 * @brief Функция разбора запроса заданной версии протокола
+	 *
+	 * @param version версия протокола запроса
+	 * @param lines   строки заголовков запроса
+	 * @return        флаги состояния разобранного сообщения
+	 *
+	 */
+	auto probe = [this](const std::string & version, const std::string & lines) noexcept -> parser_http_t::message_t::flags_t {
+		// Создаём объект парсера-приёмника запроса
+		auto parser = this->make(direct_t::REQUEST);
+		// Формируем разбираемое сообщение
+		const std::string message = ("POST / " + version + "\r\nHost: anyks.com\r\n" + lines + "Content-Length: 0\r\n\r\n");
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Проверяем что сообщение полностью разобрано
+		EXPECT_EQ(parser->status(), parser_t::status_t::COMPLETE) << version;
+		// Выводим флаги состояния разобранного сообщения
+		return parser->message().flags;
+	};
+	// Проверяем что ожидание промежуточного ответа в запросе HTTP/1.1 распознаётся
+	ASSERT_TRUE(probe("HTTP/1.1", "Expect: 100-continue\r\n").expectContinue);
+	// Проверяем что ожидание промежуточного ответа в запросе HTTP/1.0 игнорируется
+	ASSERT_FALSE(probe("HTTP/1.0", "Expect: 100-continue\r\n").expectContinue);
+	// Проверяем что запрос переключения протокола в запросе HTTP/1.1 распознаётся
+	ASSERT_TRUE(probe("HTTP/1.1", "Upgrade: websocket\r\nConnection: upgrade\r\n").upgrade);
+	// Проверяем что запрос переключения протокола в запросе HTTP/1.0 игнорируется
+	ASSERT_FALSE(probe("HTTP/1.0", "Upgrade: websocket\r\nConnection: upgrade\r\n").upgrade);
+}
+
+/**
  * @brief Метод тестирования отсечения параметров у токенов заголовка Connection
  *
  * @details Элементом списка Connection обязан быть голый токен (RFC 9110 §7.6.1),

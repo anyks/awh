@@ -1640,6 +1640,17 @@ namespace {
 	 */
 	net::socket_t __awh_kq__ = net::invalid_socket_t;
 
+	static size_t __awh_clock_calls__ = 0;
+	static size_t __awh_timer_set__ = 0;
+	static size_t __awh_timer_cancel__ = 0;
+	struct __awh_clock_dump__ {
+		~__awh_clock_dump__(){
+			::fprintf(stderr, "[ЧАСЫ] обращений: %zu, постановок дедлайна: %zu, отмен: %zu\n",
+				__awh_clock_calls__, __awh_timer_set__, __awh_timer_cancel__);
+		}
+	};
+	static __awh_clock_dump__ __awh_clock_dump_instance__;
+
 	/**
 	 * @brief Глобальный буфер метаданных control message
 	 *
@@ -4447,6 +4458,7 @@ namespace timer {
 	 *
 	 */
 	static uint64_t timestamp() noexcept {
+		::__awh_clock_calls__++;
 		/**
 		 * Если операционной системой является macOS
 		 *
@@ -6387,6 +6399,7 @@ namespace timer2 {
 		// Запоминаем прежний дедлайн перевзводимого таймера
 		const uint64_t previous = __awh_heap__[idx].deadline;
 		// Вычисляем сдвинутый дедлайн таймера
+		::__awh_timer_set__++;
 		const uint64_t deadline = (::timer::timestamp() + static_cast <uint64_t> (tm.delay));
 		// Устанавливаем сдвинутый дедлайн прямо на месте
 		__awh_heap__[idx].deadline = deadline;

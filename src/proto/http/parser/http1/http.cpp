@@ -1443,11 +1443,27 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 	// Для всех остальных версий соединение не переиспользуемое
 	else this->_message.flags.keepAlive = false;
 	// Если выполняется разбор запроса клиента
-	if(this->_direct == direct_t::REQUEST)
+	if(this->_direct == direct_t::REQUEST){
+		/**
+		 * Поля, определённые в HTTP/1.1, у запроса HTTP/1.0 игнорируются
+		 *
+		 * Заголовок Upgrade в запросе HTTP/1.0 предписано игнорировать (RFC 9110 §7.8),
+		 * как и ожидание 100-continue (RFC 9110 §10.1.1). Обе поблажки нужны по одной
+		 * причине: отправитель HTTP/1.0 не умеет обрабатывать то, к чему эти поля ведут.
+		 * Промежуточный ответ [100 Continue] он прочитает как окончательный и уйдёт в
+		 * рассинхронизацию, а смену протокола на соединении, где о ней не договаривались,
+		 * не поймёт вовсе. Признаки снимаются здесь, до любых уведомлений: иначе
+		 * потребитель успел бы принять решение по полю, которого для него нет
+		 */
+		if(version == version_t::HTTP1_0){
+			// Снимаем признак запроса переключения протокола
+			this->_message.flags.upgrade = false;
+			// Снимаем признак ожидания промежуточного ответа
+			this->_message.flags.expectContinue = false;
 		// Переключение протокола запрошено при наличии заголовка Upgrade и токена upgrade в Connection
-		this->_message.flags.upgrade = (this->_flags.upgradeSeen && this->_flags.connectionUpgrade);
+		} else this->_message.flags.upgrade = (this->_flags.upgradeSeen && this->_flags.connectionUpgrade);
 	// Если выполняется разбор ответа сервера
-	else {
+	} else {
 		// Получаем статус-код ответа сервера
 		const uint16_t code = static_cast <const response_t *> (this->_message.provider.get())->code;
 		// Переключение протокола выполнено при ответе [101 Switching Protocols] или успешном ответе на CONNECT
