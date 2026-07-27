@@ -580,7 +580,7 @@ void awh::http::Parser_HTTP3::Framing::clear() noexcept {
  */
 awh::http::Parser_HTTP3::Stream::Stream() noexcept :
  state(h3::stream_state_t::IDLE), headers(false), trailers(false), body(false),
- completed(false), headless(false), tunnel(false), localFin(false), length(0), declared(UINT64_MAX),
+ generation(0), completed(false), headless(false), localFin(false), length(0), declared(UINT64_MAX),
  urgency(h3::proto::DEFAULT_URGENCY), incremental(false),
  blockedActive(false), blockedType(0), blockedPushId(UINT64_MAX), blockedFin(false) {}
 /**
@@ -839,8 +839,14 @@ bool awh::http::Parser_HTTP3::peerInitiated(const uint64_t sid) const noexcept {
  *
  */
 awh::http::Parser_HTTP3::stream_t & awh::http::Parser_HTTP3::stream(const uint64_t sid) noexcept {
-	// Выводим состояние потока запроса, создавая его при необходимости
-	return this->_streams[sid];
+	// Выполняем поиск состояния потока запроса, создавая его при необходимости
+	stream_t & result = this->_streams[sid];
+	// Если состояние потока только что создано - выдаём ему новое поколение
+	if(result.generation == 0)
+		// Выдаём состоянию потока очередное поколение
+		result.generation = (++this->_generation);
+	// Выводим состояние потока запроса
+	return result;
 }
 /**
  * @brief Метод поиска состояния потока запроса
@@ -854,6 +860,25 @@ awh::http::Parser_HTTP3::stream_t * awh::http::Parser_HTTP3::findStream(const ui
 	auto i = this->_streams.find(sid);
 	// Выводим найденное состояние потока запроса
 	return ((i != this->_streams.end()) ? &i->second : nullptr);
+}
+/**
+ * @brief Метод проверки того, что поток пережил выход в пользовательскую функцию
+ *
+ * @details Сверки адреса состояния мало: обработчик вправе закрыть поток и тут же
+ *          открыть поток с тем же идентификатором, а узловая карта способна вернуть
+ *          под него тот же адрес. Байты прежнего сообщения ушли бы тогда в состояние
+ *          нового потока, поэтому сверяется выданное при создании поколение
+ *
+ * @param sid        идентификатор потока
+ * @param generation поколение состояния потока до выхода наружу
+ * @return           признак того, что поток жив и не пересоздан
+ *
+ */
+bool awh::http::Parser_HTTP3::aliveStream(const uint64_t sid, const uint64_t generation) noexcept {
+	// Выполняем поиск состояния потока запроса
+	const stream_t * stream = this->findStream(sid);
+	// Поток жив, только если он существует и остался тем же самым
+	return ((stream != nullptr) && (stream->generation == generation));
 }
 /**
  * @brief Метод закрытия потока запроса
@@ -953,6 +978,15 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 	// Если поток встречен впервые
 	if(found == nullptr){
 		/**
+		 * Двунаправленные потоки в HTTP/3 открывает только клиент (RFC 9114 §6.1):
+		 * серверный идентификатор у такого потока незаконен независимо от нашей роли.
+		 * Проверка стоит внутри ветки нового потока: разбор потока push приходит сюда
+		 * с серверным однонаправленным идентификатором, но его состояние уже создано
+		 */
+		if(bidirectional(sid) && ((sid & 0x01) != 0))
+			// Фиксируем ошибку уровня соединения
+			return this->fail(error_t::H3_STREAM_CREATION_ERROR, "двунаправленный поток открыт сервером");
+		/**
 		 * Поток, инициированный пиром сверх объявленного нами в GOAWAY предела,
 		 * отвергается: пир вправе повторить его на новом соединении (RFC 9114 §5.2)
 		 */
@@ -1011,32 +1045,55 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 		framing_t & framing = current->framing;
 		// Запоминаем поколение состояния соединения перед выходами в обработчики
 		const uint64_t epoch = this->_epoch;
+		// Запоминаем поколение состояния потока перед выходами в обработчики
+		const uint64_t generation = current->generation;
 		/**
 		 * Накопление заголовка кадра: тип и длина кодируются целыми переменной
 		 * длины, поэтому размер заголовка заранее неизвестен и определяется
 		 * по мере накопления
 		 */
 		if(!framing.active){
-			// Дописываем очередной октет заголовка кадра
-			framing.buffer.push_back(static_cast <char> (data[offset++]));
 			// Разбираемый заголовок кадра
 			h3::frame::header_t head;
-			// Выполняем разбор заголовка кадра
-			const size_t used = h3::frame::parser::header(reinterpret_cast <const uint8_t *> (framing.buffer.data()), framing.buffer.size(), head);
-			// Если заголовок кадра ещё не разобран
-			if(used == 0){
-				/**
-				 * Заголовок кадра не может занимать больше шестнадцати октетов:
-				 * два целых переменной длины по восемь октетов каждое
-				 */
-				if(framing.buffer.size() > 16)
-					// Фиксируем ошибку уровня соединения
-					return this->fail(error_t::H3_FRAME_ERROR, "заголовок кадра превысил допустимый размер");
-				// Переходим к следующему октету
-				continue;
+			// Количество разобранных октетов заголовка кадра
+			size_t used = 0;
+			/**
+			 * Заголовок пробуем разобрать прямо из входного буфера: в типичном случае
+			 * он лежит там целиком, и накопление по октету стоило бы дописывания
+			 * в строку и полного переразбора на каждом принятом октете
+			 */
+			if(framing.buffer.empty()){
+				// Выполняем разбор заголовка кадра из входного буфера
+				used = h3::frame::parser::header((data + offset), (size - offset), head);
+				// Если заголовок кадра разобран целиком
+				if(used > 0)
+					// Пропускаем разобранный заголовок кадра
+					offset += used;
 			}
-			// Выполняем очистку буфера накопления заголовка кадра
-			framing.buffer.clear();
+			/**
+			 * Заголовок кадра разорван границей принятой порции: накапливаем его
+			 * по октету, пока целое переменной длины не соберётся полностью
+			 */
+			if(used == 0){
+				// Дописываем очередной октет заголовка кадра
+				framing.buffer.push_back(static_cast <char> (data[offset++]));
+				// Выполняем разбор заголовка кадра
+				used = h3::frame::parser::header(reinterpret_cast <const uint8_t *> (framing.buffer.data()), framing.buffer.size(), head);
+				// Если заголовок кадра ещё не разобран
+				if(used == 0){
+					/**
+					 * Заголовок кадра не может занимать больше шестнадцати октетов:
+					 * два целых переменной длины по восемь октетов каждое
+					 */
+					if(framing.buffer.size() > 16)
+						// Фиксируем ошибку уровня соединения
+						return this->fail(error_t::H3_FRAME_ERROR, "заголовок кадра превысил допустимый размер");
+					// Переходим к следующему октету
+					continue;
+				}
+				// Выполняем очистку буфера накопления заголовка кадра
+				framing.buffer.clear();
+			}
 			// Устанавливаем тип разбираемого кадра
 			framing.type = head.type;
 			// Устанавливаем длину нагрузки разбираемого кадра
@@ -1137,7 +1194,7 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 					// Выводим результат разбора
 					return status;
 				// Если состояние потока не пережило обработчик
-				if((epoch != this->_epoch) || (this->findStream(sid) != current))
+				if((epoch != this->_epoch) || !this->aliveStream(sid, generation))
 					// Выводим результат разбора
 					return h3::status_t::OK;
 				// Сбрасываем состояние разбора кадра
@@ -1182,9 +1239,9 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 			/**
 			 * Состояние разбора кадра живёт внутри состояния потока, а обработчик вправе
 			 * закрыть поток либо сбросить весь парсер прямо изнутри. Поэтому после каждого
-			 * выхода наружу проверяются оба признака: смена поколения означает сброс
-			 * парсера, а несовпадение адреса - закрытие именно этого потока. И то и другое
-			 * делает framing недействительным, и разбор буфера обязан свернуться
+			 * выхода наружу проверяются оба поколения: смена поколения соединения означает
+			 * сброс парсера, смена поколения потока - закрытие именно этого потока. И то
+			 * и другое делает framing недействительным, и разбор буфера обязан свернуться
 			 */
 			// Если фаза приёма тела ещё не начата
 			if(!current->body){
@@ -1193,14 +1250,14 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 				// Извещаем обработчик о начале фазы приёма тела
 				if(!this->firePhase(sid, phase_t::BEGIN, part_t::BODY)){
 					// Если состояние потока пережило обработчик
-					if((epoch == this->_epoch) && (this->findStream(sid) == current))
+					if((epoch == this->_epoch) && this->aliveStream(sid, generation))
 						// Обрываем поток с кодом отмены запроса
 						this->sendReset(sid, error_t::H3_REQUEST_CANCELLED);
 					// Выводим результат разбора
 					return h3::status_t::OK;
 				}
 				// Если состояние потока не пережило обработчик
-				if((epoch != this->_epoch) || (this->findStream(sid) != current))
+				if((epoch != this->_epoch) || !this->aliveStream(sid, generation))
 					// Выводим результат разбора
 					return h3::status_t::OK;
 			}
@@ -1209,7 +1266,7 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 				// Отдаём данные тела потребителю
 				const bool proceed = this->fireData(sid, (data + offset), chunk, last);
 				// Если состояние потока не пережило обработчик
-				if((epoch != this->_epoch) || (this->findStream(sid) != current))
+				if((epoch != this->_epoch) || !this->aliveStream(sid, generation))
 					// Выводим результат разбора
 					return h3::status_t::OK;
 				// Если обработчик отказался принимать данные тела
@@ -1251,8 +1308,12 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 			if(status != h3::status_t::OK)
 				// Выводим результат разбора
 				return status;
-			// Выполняем поиск состояния потока: обработчик мог его закрыть
-			const stream_t * blocked = this->findStream(sid);
+			/**
+			 * Выполняем поиск состояния потока: обработчик мог его закрыть, а следом
+			 * открыть поток с тем же идентификатором - тогда указатель жив, но ведёт
+			 * уже в другое состояние, и откладывать в него хвост прежнего нельзя
+			 */
+			const stream_t * blocked = (this->aliveStream(sid, generation) ? this->findStream(sid) : nullptr);
 			// Если секция полей осталась ждать вставок QPACK
 			if((blocked != nullptr) && blocked->blockedActive)
 				// Откладываем неразобранный хвост потока до разблокировки
@@ -1431,35 +1492,37 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::applyFin(const uint64_t sid) no
 	/**
 	 * Обработчик вправе закрыть поток либо сбросить весь парсер прямо изнутри,
 	 * поэтому после каждого выхода наружу состояние потока перепроверяется:
-	 * смена поколения означает сброс парсера, несовпадение адреса - закрытие
-	 * именно этого потока, и в обоих случаях stream уже недействителен
+	 * смена поколения соединения означает сброс парсера, смена поколения потока -
+	 * закрытие именно этого потока, и в обоих случаях stream уже недействителен
 	 */
 	// Запоминаем поколение состояния соединения перед выходами в обработчики
 	const uint64_t epoch = this->_epoch;
+	// Запоминаем поколение состояния потока перед выходами в обработчики
+	const uint64_t generation = stream->generation;
 	// Если фаза приёма тела была начата
 	if(stream->body && !this->firePhase(sid, phase_t::END, part_t::BODY)){
 		// Если состояние потока пережило обработчик
-		if((epoch == this->_epoch) && (this->findStream(sid) == stream))
+		if((epoch == this->_epoch) && this->aliveStream(sid, generation))
 			// Обрываем поток с кодом отмены запроса
 			this->sendReset(sid, error_t::H3_REQUEST_CANCELLED);
 		// Выводим результат применения
 		return h3::status_t::OK;
 	}
 	// Если состояние потока не пережило обработчик
-	if((epoch != this->_epoch) || (this->findStream(sid) != stream))
+	if((epoch != this->_epoch) || !this->aliveStream(sid, generation))
 		// Выводим результат применения
 		return h3::status_t::OK;
 	// Извещаем обработчик о полном приёме сообщения потока
 	if(!this->firePhase(sid, phase_t::END, part_t::NONE)){
 		// Если состояние потока пережило обработчик
-		if((epoch == this->_epoch) && (this->findStream(sid) == stream))
+		if((epoch == this->_epoch) && this->aliveStream(sid, generation))
 			// Обрываем поток с кодом отмены запроса
 			this->sendReset(sid, error_t::H3_REQUEST_CANCELLED);
 		// Выводим результат применения
 		return h3::status_t::OK;
 	}
 	// Если состояние потока не пережило обработчик
-	if((epoch != this->_epoch) || (this->findStream(sid) != stream))
+	if((epoch != this->_epoch) || !this->aliveStream(sid, generation))
 		// Выводим результат применения
 		return h3::status_t::OK;
 	// Закрываем поток, если оба направления завершены
@@ -2291,6 +2354,8 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 		if((stream == nullptr) || !stream->blockedActive)
 			// Переходим к следующему потоку
 			continue;
+		// Запоминаем поколение состояния потока перед выходами в обработчики
+		const uint64_t generation = stream->generation;
 		/**
 		 * Отложенная секция и хвост забираются из состояния потока, а не копируются:
 		 * хвост доходит до сотен килобайт, и копия его была бы самой дорогой операцией
@@ -2388,12 +2453,12 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 		 * их отправил пир
 		 */
 		if(!tail.empty()){
-			// Обновляем состояние потока
-			stream = this->findStream(sid);
-			// Если поток закрыт из обработчиков доставки
-			if(stream == nullptr)
+			// Если поток не пережил обработчики доставки
+			if(!this->aliveStream(sid, generation))
 				// Переходим к следующему потоку
 				continue;
+			// Обновляем состояние потока
+			stream = this->findStream(sid);
 			// Запоминаем завершение потока пиром
 			const bool finished = stream->blockedFin;
 			// Снимаем признак завершения потока: его применит разбор хвоста
@@ -2421,6 +2486,14 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
  *
  */
 void awh::http::Parser_HTTP3::applyPriority(stream_t & stream, string_view value) noexcept {
+	/**
+	 * Сигнал приоритета задаёт его целиком: параметр, в сигнале отсутствующий,
+	 * принимает значение по умолчанию, а не сохраняет прежнее (RFC 9218 §4).
+	 * Без сброса [u=1] после прежнего [i] оставлял бы поток инкрементальным
+	 */
+	stream.urgency = h3::proto::DEFAULT_URGENCY;
+	// Снимаем признак инкрементальной доставки потока
+	stream.incremental = false;
 	// Позиция разбора значения
 	size_t offset = 0;
 	/**
@@ -2596,11 +2669,15 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::deliverSection(const uint64_t s
 	/**
 	 * Поля секции ссылаются в арену декодера, а состояние потока живёт в карте
 	 * потоков: обработчик вправе снести и то и другое, вызвав clear() либо reset()
-	 * прямо изнутри. Поэтому после каждого выхода наружу проверяется поколение
-	 * состояния, а состояние потока перечитывается заново
+	 * прямо изнутри. Поэтому после каждого выхода наружу проверяются оба поколения,
+	 * а состояние потока перечитывается заново. Поколение потока, а не его наличие:
+	 * закрытие потока с последующим открытием потока с тем же идентификатором
+	 * вернуло бы живой указатель на уже другое состояние
 	 */
 	// Запоминаем поколение состояния соединения перед выходами в обработчики
 	const uint64_t epoch = this->_epoch;
+	// Запоминаем поколение состояния потока перед выходами в обработчики
+	const uint64_t generation = stream->generation;
 	// Секция считается трейлерами, если финальная секция полей уже принята
 	const bool trailer = stream->headers;
 	// Код ошибки семантики сообщения
@@ -2656,12 +2733,12 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::deliverSection(const uint64_t s
 	}
 	// Если принята секция трейлеров
 	if(trailer){
-		// Обновляем состояние потока
-		stream = this->findStream(sid);
-		// Если поток закрыт из обработчика
-		if(stream == nullptr)
+		// Если поток не пережил обработчик
+		if(!this->aliveStream(sid, generation))
 			// Выводим результат доставки
 			return h3::status_t::OK;
+		// Обновляем состояние потока
+		stream = this->findStream(sid);
 		/**
 		 * Секция трейлеров завершает тело сообщения, поэтому фаза приёма тела
 		 * закрывается до неё: иначе события пришли бы в обратном порядке
@@ -2721,8 +2798,8 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::deliverSection(const uint64_t s
 		if(!trailer && (field.name == header::PRIORITY)){
 			// Обновляем состояние потока
 			stream = this->findStream(sid);
-			// Если поток жив - применяем приоритет
-			if(stream != nullptr)
+			// Если поток пережил обработчики - применяем приоритет
+			if(this->aliveStream(sid, generation))
 				// Применяем значение заголовка приоритета
 				this->applyPriority(* stream, field.value);
 		}
@@ -2742,12 +2819,12 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::deliverSection(const uint64_t s
 	if(epoch != this->_epoch)
 		// Выводим результат доставки
 		return h3::status_t::OK;
-	// Обновляем состояние потока
-	stream = this->findStream(sid);
-	// Если поток закрыт из обработчика
-	if(stream == nullptr)
+	// Если поток не пережил обработчик
+	if(!this->aliveStream(sid, generation))
 		// Выводим результат доставки
 		return h3::status_t::OK;
+	// Обновляем состояние потока
+	stream = this->findStream(sid);
 	// Если доставлена секция трейлеров
 	if(trailer){
 		// Запоминаем приём секции трейлеров
@@ -2765,6 +2842,12 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::deliverSection(const uint64_t s
 	} else if(!informational) {
 		// Запоминаем приём финальной секции полей
 		stream->headers = true;
+		/**
+		 * Признак безтелесности снимается до выхода наружу: обработчик фазы вправе
+		 * закрыть поток, и объект потока к проверке ниже уже не существует. Значение
+		 * при этом не устареет - оно выведено из секции полей, которая уже разобрана
+		 */
+		const bool headless = stream->headless;
 		// Извещаем обработчик о завершении приёма секции полей
 		if(!this->firePhase(sid, phase_t::END, part_t::HEADERS)){
 			// Если состояние соединения пережило обработчик
@@ -2773,6 +2856,39 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::deliverSection(const uint64_t s
 				this->sendReset(sid, error_t::H3_REQUEST_CANCELLED);
 			// Выводим результат доставки
 			return h3::status_t::OK;
+		}
+		// Если состояние соединения не пережило обработчик
+		if(epoch != this->_epoch)
+			// Выводим результат доставки
+			return h3::status_t::OK;
+		/**
+		 * Фаза приёма тела открывается, когда тело ещё возможно: пир оставил поток
+		 * открытым и кадрирование тела не исключает. По факту прихода данных её
+		 * открывать нельзя - последовательность событий зависела бы от того, прислал
+		 * ли пир пустой кадр DATA, а это его выбор нарезки, а не свойство сообщения.
+		 * Безтелесные сообщения (204, 304, ответ на HEAD) исключение: там тела не
+		 * будет независимо от кадрирования, и фаза приёма тела попросту солгала бы.
+		 * Ровно так же поступает HTTP/1: на chunked без единого чанка фазу открывает,
+		 * а на 204 с тем же chunked - нет
+		 */
+		if(!fin && !headless){
+			// Если поток не пережил обработчик
+			if(!this->aliveStream(sid, generation))
+				// Выводим результат доставки
+				return h3::status_t::OK;
+			// Обновляем состояние потока
+			stream = this->findStream(sid);
+			// Запоминаем начало фазы приёма тела
+			stream->body = true;
+			// Извещаем обработчик о начале фазы приёма тела
+			if(!this->firePhase(sid, phase_t::BEGIN, part_t::BODY)){
+				// Если состояние соединения пережило обработчик
+				if(epoch == this->_epoch)
+					// Обрываем поток с кодом отмены запроса
+					this->sendReset(sid, error_t::H3_REQUEST_CANCELLED);
+				// Выводим результат доставки
+				return h3::status_t::OK;
+			}
 		}
 	}
 	// Выводим результат доставки
@@ -3122,8 +3238,6 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 		if(!host.empty() && hasAuthority && (host != authority))
 			// Выводим отрицательный результат
 			return false;
-		// Запоминаем признак туннеля метода CONNECT
-		stream->tunnel = connect;
 	// Если разбирается ответ сервера
 	} else {
 		// Если обязательный псевдо-заголовок статуса отсутствует
@@ -4202,6 +4316,34 @@ bool awh::http::Parser_HTTP3::pushCancelled(const uint64_t pushId) const noexcep
 	return this->_cancelledPush.has(pushId);
 }
 /**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP3::Priority::Priority() noexcept :
+ urgency(h3::proto::DEFAULT_URGENCY), incremental(false) {}
+/**
+ * @brief Метод получения расширенного приоритета потока (RFC 9218 §4)
+ *
+ * @param sid идентификатор потока
+ * @return    расширенный приоритет потока
+ *
+ */
+awh::http::Parser_HTTP3::priority_t awh::http::Parser_HTTP3::priority(const uint64_t sid) const noexcept {
+	// Результат работы функции - расширенный приоритет потока
+	priority_t result;
+	// Выполняем поиск состояния потока
+	auto i = this->_streams.find(sid);
+	// Если состояние потока найдено
+	if(i != this->_streams.end()){
+		// Устанавливаем срочность потока
+		result.urgency = i->second.urgency;
+		// Устанавливаем признак инкрементальной доставки потока
+		result.incremental = i->second.incremental;
+	}
+	// Выводим расширенный приоритет потока
+	return result;
+}
+/**
  * @brief Метод разрешения пиру выдавать push (только клиент)
  *
  * @param pushId наибольший разрешённый идентификатор push
@@ -4582,7 +4724,7 @@ awh::http::Parser_HTTP3::Parser_HTTP3(const direct_t direct, const fmk_t * fmk, 
  _settingsReceived(false), _settingsSent(false), _closed(false),
  _maxPushId(UINT64_MAX), _localMaxPushId(UINT64_MAX), _nextPushId(0),
  _promisedPush(PUSH_HISTORY_CACHE), _promisedCursor(0),
- _goawayLocal(h3::proto::MAX_VARINT), _goawayRemote(h3::proto::MAX_VARINT),
+ _generation(0), _goawayLocal(h3::proto::MAX_VARINT), _goawayRemote(h3::proto::MAX_VARINT),
  _error(error_t::H3_NO_ERROR), _epoch(0) {
 	/**
 	 * Разрешение расширенного CONNECT выдаёт только сервер: анонс клиента

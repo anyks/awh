@@ -1236,14 +1236,25 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 		// Обработка блока завершена (соединение живёт)
 		return h2::status_t::OK;
 	}
+	/**
+	 * Признак безтелесности снимается до выхода наружу: обработчик фазы вправе
+	 * закрыть поток либо сбросить весь парсер, и объект потока к следующей строке
+	 * уже не существует. Значение при этом не устареет - оно выведено из блока
+	 * заголовков, который уже разобран
+	 */
+	const bool bodyless = stream->bodyless;
 	// Если это первый финальный блок заголовков потока
 	if(!isTrailers && !informational){
 		// Уведомляем о завершении приёма блока заголовков потока
 		if(!this->firePhase(streamId, phase_t::END, part_t::HEADERS))
 			// Обработка блока завершена (поток сброшен, соединение живёт)
 			return h2::status_t::OK;
-		// Если END_STREAM не получен - за заголовками последует тело
-		if(!endStream){
+		/**
+		 * Если END_STREAM не получен - за заголовками последует тело. Исключение -
+		 * безтелесные сообщения (ответ на HEAD, статусы 204 и 304): там тела не будет
+		 * независимо от кадрирования, и фаза приёма тела попросту солгала бы
+		 */
+		if(!endStream && !bodyless){
 			// Уведомляем о начале приёма тела потока
 			if(!this->firePhase(streamId, phase_t::BEGIN, part_t::BODY))
 				// Обработка блока завершена (поток сброшен, соединение живёт)
@@ -1803,10 +1814,18 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				/**
 				 * Поток, завершённый END_STREAM с обеих сторон, пир закрыл сам и знает
 				 * об этом, поэтому блок заголовков на нём - ошибка соединения (§5.1).
-				 * Речь только о последнем использованном идентификаторе: меньшие пир
-				 * не вправе использовать вовсе - это переиспользование (§5.1.1)
+				 * Для потока пира речь только о последнем использованном идентификаторе:
+				 * меньшие пир не вправе использовать вовсе - это переиспользование (§5.1.1).
+				 * Для нашего собственного потока признак другой: идентификатор не выше
+				 * наибольшего нами открытого означает поток, который мы уже использовали
+				 * и закрыли, а больший - поток в состоянии idle, и его отвергает проверка
+				 * чётности ниже. Без этого различения запоздалый ответ на наш завершённый
+				 * поток уходил бы в проверку чётности и рвал соединение с PROTOCOL_ERROR
+				 * вместо STREAM_CLOSED, которого требует тот же параграф
 				 */
-				else if(this->peerInitiated(header.streamId) && (header.streamId == this->_transfer.lastStreamId))
+				else if(this->peerInitiated(header.streamId) ?
+				        (header.streamId == this->_transfer.lastStreamId) :
+				        (header.streamId <= this->_transfer.localOpened))
 					// Фиксируем ошибку уровня соединения
 					return this->fail(error_t::STREAM_CLOSED, "HEADERS on closed stream");
 				// Проверяем чётность и монотонность идентификатора нового потока
@@ -3143,33 +3162,34 @@ void awh::http::Parser_HTTP2::pump() noexcept {
 		/**
 		 * Собираем снимок идентификаторов: прокачка может удалить поток из карты
 		 */
-		for(const auto & item : this->_transfer.streams)
-			// Добавляем идентификатор потока в снимок
-			this->_transfer.pumpIds.push_back(item.first);
+		for(const auto & item : this->_transfer.streams){
+			// Формируем ячейку снимка планировщика
+			transfer_t::slot_t slot;
+			// Запоминаем идентификатор потока
+			slot.id = item.first;
+			// Запоминаем срочность потока
+			slot.urgency = item.second.urgency;
+			// Запоминаем признак инкрементальной доставки потока
+			slot.incremental = item.second.incremental;
+			// Добавляем ячейку в снимок
+			this->_transfer.pumpIds.push_back(slot);
+		}
 		/**
 		 * Упорядочиваем снимок по расширенному приоритету (RFC 9218 §10): сначала
 		 * более срочные потоки, внутри одной срочности неинкрементальные обслуживаются
 		 * последовательно в порядке идентификаторов, инкрементальные - поочерёдно
 		 */
-		::sort(this->_transfer.pumpIds.begin(), this->_transfer.pumpIds.end(), [this](const uint32_t first, const uint32_t second) noexcept -> bool {
-			// Выполняем поиск первого сравниваемого потока
-			const stream_t * left = this->findStream(first);
-			// Выполняем поиск второго сравниваемого потока
-			const stream_t * right = this->findStream(second);
-			// Если какой-либо из потоков отсутствует - сохраняем порядок идентификаторов
-			if((left == nullptr) || (right == nullptr))
-				// Выводим результат сравнения идентификаторов
-				return (first < second);
+		::sort(this->_transfer.pumpIds.begin(), this->_transfer.pumpIds.end(), [](const transfer_t::slot_t & left, const transfer_t::slot_t & right) noexcept -> bool {
 			// Если срочность потоков различается - вперёд идёт более срочный
-			if(left->urgency != right->urgency)
+			if(left.urgency != right.urgency)
 				// Выводим результат сравнения срочности
-				return (left->urgency < right->urgency);
+				return (left.urgency < right.urgency);
 			// Внутри одной срочности неинкрементальные потоки обслуживаются первыми
-			if(left->incremental != right->incremental)
+			if(left.incremental != right.incremental)
 				// Выводим результат сравнения признака инкрементальности
-				return !left->incremental;
+				return !left.incremental;
 			// При прочих равных порядок задаёт идентификатор потока
-			return (first < second);
+			return (left.id < right.id);
 		});
 		// Запоминаем поколение состояния соединения перед прокачкой потоков
 		const uint64_t epoch = this->_epoch;
@@ -3178,7 +3198,9 @@ void awh::http::Parser_HTTP2::pump() noexcept {
 		/**
 		 * Выполняем прокачку отправки по всем потокам снимка
 		 */
-		for(const uint32_t id : this->_transfer.pumpIds){
+		for(const transfer_t::slot_t & slot : this->_transfer.pumpIds){
+			// Получаем идентификатор очередного потока снимка
+			const uint32_t id = slot.id;
 			// Выполняем поиск потока (поток мог быть удалён на предыдущей итерации)
 			stream_t * stream = this->findStream(id);
 			// Если поток удалён - переходим к следующему
@@ -3495,6 +3517,14 @@ void awh::http::Parser_HTTP2::replenishReceiveWindow(stream_t * stream, const ui
  *
  */
 void awh::http::Parser_HTTP2::applyPriority(stream_t & stream, string_view value) noexcept {
+	/**
+	 * Сигнал приоритета задаёт его целиком: параметр, в сигнале отсутствующий,
+	 * принимает значение по умолчанию, а не сохраняет прежнее (RFC 9218 §4).
+	 * Без сброса [u=1] после прежнего [i] оставлял бы поток инкрементальным
+	 */
+	stream.urgency = h2::proto::DEFAULT_URGENCY;
+	// Снимаем признак инкрементальной доставки потока
+	stream.incremental = false;
 	// Текущая позиция разбора значения поля приоритета
 	size_t pos = 0;
 	/**

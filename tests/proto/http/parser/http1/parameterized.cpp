@@ -1301,6 +1301,124 @@ TEST_F(ParserFixture, LeadingBlankLinesTest){
 }
 
 /**
+ * @brief Метод тестирования допустимости октетов в расширениях чанка
+ *
+ * @details Структурно расширения чанка не разбираются, но по RFC 9112 §7.1.1 они
+ *          состоят из token и token либо quoted-string. DEL не входит ни в token,
+ *          ни в qdtext и обязан отвергаться - как и в значении заголовка, - а
+ *          obs-text законен внутри quoted-string и обязан приниматься
+ *
+ */
+TEST_F(ParserFixture, ChunkExtensionOctetsTest){
+	/**
+	 * @brief Функция разбора ответа с заданным октетом внутри расширения чанка
+	 *
+	 * @param letter октет, помещаемый в расширение чанка
+	 * @return       код ошибки разбора
+	 *
+	 */
+	auto probe = [this](const char letter) noexcept -> parser_http_t::error_t {
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		parser->method(method_t::GET);
+		// Формируем ответ с телом в кодировке chunked и расширением у первого чанка
+		const std::string message = (
+			"HTTP/1.1 200 OK\r\n"
+			"Transfer-Encoding: chunked\r\n"
+			"\r\n"
+			"3;a=" + std::string(1, letter) + "\r\nAWH\r\n"
+			"0\r\n\r\n"
+		);
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Выводим код ошибки разбора
+		return parser->error();
+	};
+	// Проверяем что обычный символ token в расширении чанка принимается
+	ASSERT_EQ(probe('b'), parser_http_t::error_t::NONE);
+	// Проверяем что пробел в расширении чанка принимается (BWS)
+	ASSERT_EQ(probe(' '), parser_http_t::error_t::NONE);
+	// Проверяем что obs-text в расширении чанка принимается (законен внутри quoted-string)
+	ASSERT_EQ(probe(static_cast <char> (0x80)), parser_http_t::error_t::NONE);
+	// Проверяем что DEL в расширении чанка отвергается
+	ASSERT_EQ(probe(static_cast <char> (0x7F)), parser_http_t::error_t::INVALID_CHUNK_SIZE);
+	// Проверяем что управляющий символ в расширении чанка отвергается
+	ASSERT_EQ(probe(static_cast <char> (0x01)), parser_http_t::error_t::INVALID_CHUNK_SIZE);
+}
+
+/**
+ * @brief Метод тестирования пустых элементов в списке транспортного кодирования
+ *
+ * @details RFC 9110 §5.6.1.2 обязывает получателя разбирать и игнорировать пустые
+ *          элементы списка, поэтому завершающая запятая не отменяет того, что
+ *          последним кодированием объявлен chunked. Отвергать такое значение
+ *          означало бы нарушить прямое требование стандарта
+ *
+ */
+TEST_F(ParserFixture, TransferEncodingEmptyListElementTest){
+	/**
+	 * @brief Функция разбора ответа с заданным значением заголовка Transfer-Encoding
+	 *
+	 * @param value  значение заголовка транспортного кодирования
+	 * @param events сборщик событий разбора
+	 * @return       код ошибки разбора
+	 *
+	 */
+	auto probe = [this](const std::string & value, events_t & events) noexcept -> parser_http_t::error_t {
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		parser->method(method_t::GET);
+		// Подписываем сборщик событий на все функции обратного вызова парсера
+		this->attach(* parser, events);
+		// Формируем ответ с телом в кодировке chunked
+		const std::string message = (
+			"HTTP/1.1 200 OK\r\n"
+			"Transfer-Encoding: " + value + "\r\n"
+			"\r\n"
+			"3\r\nAWH\r\n"
+			"0\r\n\r\n"
+		);
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Выводим код ошибки разбора
+		return parser->error();
+	};
+	/**
+	 * Завершающая запятая: пустой элемент игнорируется, кадрирование остаётся chunked
+	 */
+	{
+		// Создаём объект сборщика событий парсера
+		events_t events;
+		// Проверяем что значение с завершающей запятой принимается
+		ASSERT_EQ(probe("chunked,", events), parser_http_t::error_t::NONE);
+		// Проверяем что тело разобрано кодировкой chunked
+		ASSERT_EQ(events.body, "AWH");
+	}
+	/**
+	 * Пустые элементы вокруг кодирования игнорируются точно так же
+	 */
+	{
+		// Создаём объект сборщика событий парсера
+		events_t events;
+		// Проверяем что значение с пустыми элементами по краям принимается
+		ASSERT_EQ(probe(" , chunked , ", events), parser_http_t::error_t::NONE);
+		// Проверяем что тело разобрано кодировкой chunked
+		ASSERT_EQ(events.body, "AWH");
+	}
+	/**
+	 * Пустые элементы не превращают непоследний chunked в последний
+	 */
+	{
+		// Создаём объект сборщика событий парсера
+		events_t events;
+		// Проверяем что chunked перед другим кодированием остаётся ошибкой кадрирования
+		ASSERT_EQ(probe("chunked, , gzip", events), parser_http_t::error_t::INVALID_TRANSFER_ENCODING);
+	}
+}
+
+/**
  * @brief Метод тестирования отсечения параметров у токенов заголовка Connection
  *
  * @details Элементом списка Connection обязан быть голый токен (RFC 9110 §7.6.1),
@@ -1340,4 +1458,145 @@ TEST_F(ParserFixture, ConnectionTokenParametersTest){
 	ASSERT_TRUE(probe("closely;foo"));
 	// Проверяем что соединение без токена закрытия остаётся переиспользуемым
 	ASSERT_TRUE(probe("keep-alive"));
+}
+
+/**
+ * @brief Метод тестирования эквивалентности быстрого и посимвольного путей разбора стартовой строки ответа
+ *
+ * @details Стартовая строка ответа разбирается быстрым путём только когда присутствует
+ *          во входном буфере целиком вместе с окончанием строки CRLF, поэтому размер
+ *          фрагмента подачи сам по себе переключает пути. Проверяются оба допустимых
+ *          написания версии, пустое и непустое пояснение к коду состояния и всё, что
+ *          быстрый путь обязан передавать посимвольному: голое окончание строки, лишние
+ *          пробелы, неподдерживаемые версии, некорректный код состояния, недопустимый
+ *          символ пояснения и превышение лимита длины стартовой строки
+ *
+ */
+TEST_P(FragmentParameterizedFixture, StatusLineFastPathEquivalenceTest){
+	/**
+	 * @brief Структура проверяемого случая разбора стартовой строки ответа
+	 *
+	 */
+	typedef struct Sample {
+		// Разбираемое сообщение
+		std::string message;
+		// Максимальная длина стартовой строки (0 - лимит по умолчанию)
+		size_t limit;
+		// Режим строгой трактовки окончаний строк
+		bool strictEOL;
+		// Режим строгой трактовки лишних пробелов
+		bool strictSpaces;
+	} sample_t;
+	/**
+	 * @brief Функция разбора сообщения с заданным размером фрагмента подачи
+	 *
+	 * @param parser   объект парсера
+	 * @param message  разбираемое сообщение
+	 * @param fragment размер фрагмента подачи
+	 *
+	 */
+	auto feed = [](parser_http_t & parser, const std::string & message, const size_t fragment) noexcept -> void {
+		/**
+		 * Выполняем подачу данных фрагментами заданного размера
+		 */
+		for(size_t i = 0; i < message.size(); i += fragment)
+			// Выполняем разбор очередного фрагмента данных
+			parser.parse(message.data() + i, std::min(fragment, (message.size() - i)));
+	};
+	/**
+	 * Набор проверяемых случаев разбора стартовой строки ответа
+	 */
+	const std::vector <sample_t> samples = {
+		// Оба допустимых написания версии протокола
+		sample_t({"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", 0, false, false}),
+		sample_t({"HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n", 0, false, false}),
+		// Пустое пояснение к коду состояния с разделителем и без него
+		sample_t({"HTTP/1.1 204\r\n\r\n", 0, false, false}),
+		sample_t({"HTTP/1.1 204 \r\n\r\n", 0, false, false}),
+		// Пояснение из нескольких слов и с пробелами
+		sample_t({"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n", 0, false, false}),
+		// Голое окончание стартовой строки в толерантном и строгом режимах
+		sample_t({"HTTP/1.1 200 OK\nContent-Length: 0\r\n\r\n", 0, false, false}),
+		sample_t({"HTTP/1.1 200 OK\nContent-Length: 0\r\n\r\n", 0, true, false}),
+		// Строгий режим окончаний строк не должен влиять на корректное CRLF
+		sample_t({"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", 0, true, false}),
+		// Лишние пробелы перед кодом состояния в толерантном и строгом режимах
+		sample_t({"HTTP/1.1  200 OK\r\nContent-Length: 0\r\n\r\n", 0, false, false}),
+		sample_t({"HTTP/1.1  200 OK\r\nContent-Length: 0\r\n\r\n", 0, false, true}),
+		// Неподдерживаемые и искажённые написания версии протокола
+		sample_t({"HTTP/2.0 200 OK\r\n\r\n", 0, false, false}),
+		sample_t({"HTTP/1.2 200 OK\r\n\r\n", 0, false, false}),
+		sample_t({"HTTP1.1 200 OK\r\n\r\n", 0, false, false}),
+		sample_t({"http/1.1 200 OK\r\n\r\n", 0, false, false}),
+		// Некорректный код состояния: не число, лишняя цифра, недостаток цифр
+		sample_t({"HTTP/1.1 2A0 OK\r\n\r\n", 0, false, false}),
+		sample_t({"HTTP/1.1 2000 OK\r\n\r\n", 0, false, false}),
+		sample_t({"HTTP/1.1 20 OK\r\n\r\n", 0, false, false}),
+		// Отсутствие кода состояния вовсе
+		sample_t({"HTTP/1.1 \r\n\r\n", 0, false, false}),
+		sample_t({"HTTP/1.1\r\n\r\n", 0, false, false}),
+		// Недопустимый символ в пояснении к коду состояния
+		sample_t({"HTTP/1.1 200 O\x01K\r\n\r\n", 0, false, false}),
+		// Превышение лимита длины стартовой строки на пояснении
+		sample_t({"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", 13, false, false}),
+		// Стартовая строка ровно по лимиту длины
+		sample_t({"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", 15, false, false})
+	};
+	/**
+	 * Выполняем перебор всех проверяемых случаев
+	 */
+	for(const auto & sample : samples){
+		// Создаём объект парсера эталонного разбора (подача по одному октету)
+		auto reference = this->make(direct_t::RESPONSE);
+		// Создаём объект парсера проверяемого разбора
+		auto parser = this->make(direct_t::RESPONSE);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		reference->method(method_t::GET);
+		// Устанавливаем метод запроса проверяемому разбору
+		parser->method(method_t::GET);
+		// Получаем текущие лимиты безопасности
+		parser_http_t::limits_t limits = reference->limits();
+		// Устанавливаем режим строгой трактовки окончаний строк
+		limits.strictEOL = sample.strictEOL;
+		// Устанавливаем режим строгой трактовки лишних пробелов
+		limits.strictSpaces = sample.strictSpaces;
+		// Если лимит длины стартовой строки задан явно
+		if(sample.limit > 0)
+			// Устанавливаем максимальную длину стартовой строки
+			limits.maxRequestLine = sample.limit;
+		// Применяем лимиты безопасности эталонному разбору
+		reference->limits(limits);
+		// Применяем лимиты безопасности проверяемому разбору
+		parser->limits(limits);
+		// Создаём объект сборщика событий эталонного разбора
+		events_t expected;
+		// Подписываем сборщик событий эталонного разбора
+		this->attach(* reference, expected);
+		// Выполняем эталонный разбор подачей по одному октету
+		feed(* reference, sample.message, 1);
+		// Создаём объект сборщика событий проверяемого разбора
+		events_t actual;
+		// Подписываем сборщик событий проверяемого разбора
+		this->attach(* parser, actual);
+		// Выполняем проверяемый разбор подачей фрагментами заданного размера
+		feed(* parser, sample.message, this->_fragment);
+		// Проверяем что итоговый статус разбора совпадает
+		ASSERT_EQ(parser->status(), reference->status()) << sample.message;
+		// Проверяем что код ошибки разбора совпадает
+		ASSERT_EQ(parser->error(), reference->error()) << sample.message;
+		// Проверяем что последовательность фазовых событий совпадает
+		ASSERT_EQ(actual.phases, expected.phases) << sample.message;
+		// Проверяем что собранные заголовки совпадают
+		ASSERT_EQ(actual.headers, expected.headers) << sample.message;
+		// Получаем объект провайдера заголовков проверяемого разбора
+		const response_t * response = static_cast <const response_t *> (parser->message().provider.get());
+		// Получаем объект провайдера заголовков эталонного разбора
+		const response_t * origin = static_cast <const response_t *> (reference->message().provider.get());
+		// Проверяем что код состояния разобран одинаково
+		ASSERT_EQ(response->code, origin->code) << sample.message;
+		// Проверяем что пояснение к коду состояния разобрано одинаково
+		ASSERT_EQ(response->message, origin->message) << sample.message;
+		// Проверяем что версия протокола разобрана одинаково
+		ASSERT_EQ(response->version, origin->version) << sample.message;
+	}
 }

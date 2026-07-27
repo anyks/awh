@@ -168,14 +168,34 @@ namespace {
 	 *
 	 */
 	inline void wrHeader(string & output, const uint32_t length, const frame_t type, const uint8_t flags, const uint32_t streamId) noexcept {
-		// Дописываем 24-битную длину полезной нагрузки
-		wr24(output, length);
-		// Дописываем тип фрейма
-		output.push_back(static_cast <char> (type));
-		// Дописываем флаги фрейма
-		output.push_back(static_cast <char> (flags));
-		// Дописываем 31-битный идентификатор потока (сбрасывая reserved-бит)
-		wr32(output, streamId & proto::STREAM_ID_MASK);
+		/**
+		 * Заголовок собирается на стеке и дописывается одной операцией: поочерёдная
+		 * запись девяти октетов стоит девяти проверок ёмкости строки, а размер
+		 * заголовка фиксирован протоколом и известен заранее (RFC 9113 §4.1)
+		 */
+		char buffer[proto::FRAME_HEADER_SIZE];
+		// Записываем старший байт 24-битной длины полезной нагрузки
+		buffer[0] = static_cast <char> ((length >> 16) & 0xFF);
+		// Записываем средний байт длины полезной нагрузки
+		buffer[1] = static_cast <char> ((length >> 8) & 0xFF);
+		// Записываем младший байт длины полезной нагрузки
+		buffer[2] = static_cast <char> (length & 0xFF);
+		// Записываем тип фрейма
+		buffer[3] = static_cast <char> (type);
+		// Записываем флаги фрейма
+		buffer[4] = static_cast <char> (flags);
+		// Сбрасываем reserved-бит идентификатора потока
+		const uint32_t id = (streamId & proto::STREAM_ID_MASK);
+		// Записываем старший байт идентификатора потока
+		buffer[5] = static_cast <char> ((id >> 24) & 0xFF);
+		// Записываем второй байт идентификатора потока
+		buffer[6] = static_cast <char> ((id >> 16) & 0xFF);
+		// Записываем третий байт идентификатора потока
+		buffer[7] = static_cast <char> ((id >> 8) & 0xFF);
+		// Записываем младший байт идентификатора потока
+		buffer[8] = static_cast <char> (id & 0xFF);
+		// Дописываем собранный заголовок фрейма
+		output.append(buffer, proto::FRAME_HEADER_SIZE);
 	}
 };
 

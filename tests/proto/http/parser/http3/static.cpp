@@ -2129,3 +2129,218 @@ TEST_F(ParserHttp3Fixture, NestedParseKeepsStreamList){
 	// Событие закрытия обязано прийти по каждому из трёх открытых потоков
 	ASSERT_EQ(closed.size(), 3u);
 }
+
+/**
+ * @brief Проверка отбраковки двунаправленного потока, открытого сервером
+ *
+ * @details Двунаправленные потоки в HTTP/3 открывает только клиент
+ *          (RFC 9114 §6.1)
+ *
+ */
+TEST_F(ParserHttp3Fixture, ServerInitiatedBidiRejected){
+	/**
+	 * Серверный идентификатор двунаправленного потока незаконен для обеих сторон:
+	 * проверяем и клиента, и сервер
+	 */
+	for(uint32_t variant = 0; variant < 2; variant++){
+		// Сторона соединения
+		endpoint_t endpoint;
+		// Подготавливаем сторону соединения
+		this->setup(endpoint, ((variant == 0) ? direct_t::RESPONSE : direct_t::REQUEST));
+		// Отправляем параметры соединения
+		endpoint.parser->sendSettings();
+		// Собираем управляющий поток пира с кадром параметров
+		std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+		// Дописываем кадр параметров соединения
+		control.append(::settings());
+		// Подаём управляющий поток пира
+		ASSERT_EQ(this->feed(endpoint, ((variant == 0) ? 3 : 2), control), status_t::OK);
+		// Подаём начало кадра секции полей в двунаправленный поток серверной чётности
+		ASSERT_EQ(this->feed(endpoint, 1, std::string(1, '\x01')), status_t::ERROR);
+		// Ошибка уровня соединения обязана быть зафиксирована
+		ASSERT_FALSE(endpoint.events.errors.empty());
+		// Код ошибки обязан указывать на недопустимое создание потока
+		ASSERT_EQ(endpoint.events.errors.front().first, error_t::H3_STREAM_CREATION_ERROR);
+	}
+}
+
+/**
+ * @brief Проверка замещающей семантики сигнала приоритета (RFC 9218 §4)
+ *
+ * @details Сигнал задаёт приоритет целиком: параметр, в нём отсутствующий,
+ *          принимает значение по умолчанию, а не сохраняет прежнее
+ *
+ */
+TEST_F(ParserHttp3Fixture, PriorityUpdateReplacesDefaults){
+	// Сторона сервера
+	endpoint_t server;
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Отправляем параметры соединения со стороны сервера
+	server.parser->sendSettings();
+	// Собираем управляющий поток клиента с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток клиента
+	ASSERT_EQ(this->feed(server, 2, control), status_t::OK);
+	// Открываем поток запроса подачей начала кадра секции полей
+	ASSERT_EQ(this->feed(server, 0, std::string(1, '\x01')), status_t::OK);
+	// Приоритет по умолчанию обязан быть неинкрементальным
+	ASSERT_EQ(server.parser->priority(0).urgency, 3);
+	// Признак инкрементальной доставки по умолчанию снят
+	ASSERT_FALSE(server.parser->priority(0).incremental);
+	// Собираем кадр приоритета с инкрементальной доставкой
+	std::string update;
+	// Дописываем кадр приоритета потока
+	frame::serialize::priorityUpdate(update, false, 0, "u=1, i");
+	// Подаём кадр приоритета
+	ASSERT_EQ(this->feed(server, 2, update), status_t::OK);
+	// Срочность потока обязана примениться
+	ASSERT_EQ(server.parser->priority(0).urgency, 1);
+	// Признак инкрементальной доставки обязан примениться
+	ASSERT_TRUE(server.parser->priority(0).incremental);
+	// Выполняем очистку буфера кадра
+	update.clear();
+	// Собираем кадр приоритета без признака инкрементальной доставки
+	frame::serialize::priorityUpdate(update, false, 0, "u=5");
+	// Подаём кадр приоритета
+	ASSERT_EQ(this->feed(server, 2, update), status_t::OK);
+	// Новая срочность потока обязана примениться
+	ASSERT_EQ(server.parser->priority(0).urgency, 5);
+	// Признак инкрементальной доставки обязан вернуться к значению по умолчанию
+	ASSERT_FALSE(server.parser->priority(0).incremental);
+}
+
+/**
+ * @brief Проверка открытия фазы приёма тела по кадрированию, а не по данным
+ *
+ * @details Пир, оставивший поток открытым после секции полей, тело допускает:
+ *          последовательность фазовых событий не должна зависеть от того,
+ *          прислал ли он пустой кадр DATA
+ *
+ */
+TEST_F(ParserHttp3Fixture, EmptyBodyOpensBodyPhase){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Формируем поля запроса с объявленной нулевой длиной тела
+	std::vector <qpack::field_t> fields = this->request("POST", "/upload");
+	// Дописываем объявление нулевой длины тела
+	fields.emplace_back("content-length", "0");
+	// Отправляем секцию полей, оставляя поток открытым
+	client.parser->sendHeaders(0, fields, false);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Фаза приёма тела обязана открыться сразу за секцией полей
+	ASSERT_EQ(this->phases(server.events, 0), "BEGIN:NONE END:HEADERS BEGIN:BODY");
+	// Завершаем поток без единого октета тела
+	client.parser->sendData(0, nullptr, 0, true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Последовательность фазовых событий обязана совпасть с HTTP/1 и HTTP/2
+	ASSERT_EQ(this->phases(server.events, 0), "BEGIN:NONE END:HEADERS BEGIN:BODY END:BODY END:NONE");
+	// Ошибок уровня соединения быть не должно
+	ASSERT_TRUE(server.events.errors.empty());
+}
+
+/**
+ * @brief Проверка отсутствия фазы приёма тела у завершённого сообщения
+ *
+ * @details Секция полей с завершением потока тело исключает: фазы приёма тела
+ *          в таком сообщении быть не должно
+ *
+ */
+TEST_F(ParserHttp3Fixture, FinishedHeadersSkipBodyPhase){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Отправляем секцию полей запроса вместе с завершением потока
+	client.parser->sendHeaders(0, this->request("GET", "/index.html"), true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Фаз приёма тела в завершённом сообщении быть не должно
+	ASSERT_EQ(this->phases(server.events, 0), "BEGIN:NONE END:HEADERS END:NONE");
+	// Ошибок уровня соединения быть не должно
+	ASSERT_TRUE(server.events.errors.empty());
+}
+
+/**
+ * @brief Проверка отсутствия фазы приёма тела у безтелесного ответа
+ *
+ * @details Ответы 204 и 304 тела не несут по определению: оставленный открытым
+ *          поток этого не меняет, и фаза приёма тела открываться не должна
+ *
+ */
+TEST_F(ParserHttp3Fixture, HeadlessResponseSkipsBodyPhase){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Отправляем секцию полей запроса
+	client.parser->sendHeaders(0, this->request("GET", "/index.html"), true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Отправляем безтелесный ответ, оставляя поток открытым
+	server.parser->sendHeaders(0, this->response("204"), false);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Фаза приёма тела у безтелесного ответа открываться не должна
+	ASSERT_EQ(this->phases(client.events, 0), "BEGIN:NONE END:HEADERS");
+	// Завершаем поток без тела
+	server.parser->sendData(0, nullptr, 0, true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Последовательность фазовых событий обязана обойтись без фаз тела
+	ASSERT_EQ(this->phases(client.events, 0), "BEGIN:NONE END:HEADERS END:NONE");
+	// Ошибок уровня соединения быть не должно
+	ASSERT_TRUE(client.events.errors.empty());
+}
+
+/**
+ * @brief Проверка отсутствия фазы приёма тела у ответа на запрос HEAD
+ *
+ * @details Ответ на HEAD содержимого не несёт (RFC 9110 §9.3.2) даже при
+ *          объявленной длине тела: фаза приёма тела открываться не должна
+ *
+ */
+TEST_F(ParserHttp3Fixture, HeadResponseSkipsBodyPhase){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Отправляем секцию полей запроса методом HEAD
+	client.parser->sendHeaders(0, this->request("HEAD", "/index.html"), true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Формируем ответ с объявленной длиной тела, которого не будет
+	std::vector <qpack::field_t> fields = this->response("200");
+	// Дописываем объявленную длину тела
+	fields.emplace_back("content-length", "100");
+	// Отправляем ответ, оставляя поток открытым
+	server.parser->sendHeaders(0, fields, false);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Фаза приёма тела у ответа на HEAD открываться не должна
+	ASSERT_EQ(this->phases(client.events, 0), "BEGIN:NONE END:HEADERS");
+	// Ошибок уровня соединения быть не должно
+	ASSERT_TRUE(client.events.errors.empty());
+}

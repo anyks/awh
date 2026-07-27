@@ -1582,10 +1582,10 @@ namespace {
 	const pid_t __awh_pid__ = ::getpid();
 
 	/**
-	 * @brief Сокет связи с ядром операционной системы
+	 * @brief Признак того, что поток опроса очереди событий известен
 	 *
 	 */
-	net::socket_t __awh_kq__ = net::invalid_socket_t;
+	bool __awh_poll_thread_known__ = false;
 
 	/**
 	 * @brief Поток, ведущий опрос очереди событий
@@ -1601,10 +1601,10 @@ namespace {
 	pthread_t __awh_poll_thread__ = pthread_t();
 
 	/**
-	 * @brief Признак того, что поток опроса очереди событий известен
+	 * @brief Сокет связи с ядром операционной системы
 	 *
 	 */
-	bool __awh_poll_thread_known__ = false;
+	net::socket_t __awh_kq__ = net::invalid_socket_t;
 
 	/**
 	 * @brief Глобальный буфер метаданных control message
@@ -1719,14 +1719,14 @@ namespace {
 				Chunk() noexcept : count(0) {}
 			} chunk_t;
 		private:
-			// Количество узлов в хранилище
-			size_t _count;
 			// Номер первого чанка, обслуживаемого картой
 			size_t _base;
-			// Карта чанков
-			vector <unique_ptr <chunk_t>> _chunks;
+			// Количество узлов в хранилище
+			size_t _count;
 			// Пул освобождённых чанков
 			vector <unique_ptr <chunk_t>> _pool;
+			// Карта чанков
+			vector <unique_ptr <chunk_t>> _chunks;
 		public:
 			/**
 			 * @brief Класс итератора хранилища
@@ -1734,97 +1734,55 @@ namespace {
 			 */
 			class Iterator {
 				private:
-					// Объект хранилища
-					Storage_Transport_Layer_Nodes * _owner;
 					// Номер чанка и смещение слота внутри него
 					size_t _chunk, _slot;
+				private:
+					// Объект хранилища
+					Storage_Transport_Layer_Nodes * _owner;
 				public:
 					/**
 					 * @brief Метод перехода к ближайшему занятому слоту
 					 *
 					 */
-					void seek() noexcept {
-						/**
-						 * Перебираем чанки, начиная с текущего
-						 */
-						while(this->_chunk < this->_owner->_chunks.size()){
-							// Получаем текущий чанк
-							const auto & chunk = this->_owner->_chunks[this->_chunk];
-							// Если чанк существует
-							if(chunk != nullptr){
-								/**
-								 * Перебираем слоты чанка, начиная с текущего
-								 */
-								while(this->_slot < CHUNK_SIZE){
-									// Если слот занят, поиск завершён
-									if(chunk->slots[this->_slot].second != nullptr)
-										// Выходим из метода
-										return;
-									// Переходим к следующему слоту
-									this->_slot++;
-								}
-							}
-							// Переходим к следующему чанку
-							this->_chunk++;
-							// Сбрасываем смещение слота
-							this->_slot = 0;
-						}
-					}
-					/**
-					 * @brief Метод получения номера чанка
-					 *
-					 * @return номер чанка
-					 *
-					 */
-					size_t chunk() const noexcept {
-						// Выводим номер чанка
-						return this->_chunk;
-					}
+					void seek() noexcept;
 					/**
 					 * @brief Метод получения смещения слота
 					 *
 					 * @return смещение слота
 					 *
 					 */
-					size_t slot() const noexcept {
-						// Выводим смещение слота
-						return this->_slot;
-					}
+					size_t slot() const noexcept;
+					/**
+					 * @brief Метод получения номера чанка
+					 *
+					 * @return номер чанка
+					 *
+					 */
+					size_t chunk() const noexcept;
 				public:
-					/**
-					 * @brief Оператор доступа к записи хранилища
-					 *
-					 * @return посредник доступа к записи
-					 *
-					 */
-					entry_t * operator -> () const noexcept {
-						// Выводим указатель на запись хранилища
-						return &this->_owner->_chunks[this->_chunk]->slots[this->_slot];
-					}
-					/**
-					 * @brief Оператор разыменования итератора
-					 *
-					 * @return объект записи хранилища
-					 *
-					 */
-					entry_t & operator * () const noexcept {
-						// Выводим ссылку на запись хранилища
-						return this->_owner->_chunks[this->_chunk]->slots[this->_slot];
-					}
 					/**
 					 * @brief Оператор перехода к следующей записи
 					 *
 					 * @return текущий итератор
 					 *
 					 */
-					Iterator & operator ++ () noexcept {
-						// Переходим к следующему слоту
-						this->_slot++;
-						// Выполняем поиск ближайшего занятого слота
-						this->seek();
-						// Выводим текущий итератор
-						return (* this);
-					}
+					Iterator & operator ++ () noexcept;
+				public:
+					/**
+					 * @brief Оператор разыменования итератора
+					 *
+					 * @return объект записи хранилища
+					 *
+					 */
+					entry_t & operator * () const noexcept;
+					/**
+					 * @brief Оператор доступа к записи хранилища
+					 *
+					 * @return посредник доступа к записи
+					 *
+					 */
+					entry_t * operator -> () const noexcept;
+				public:
 					/**
 					 * @brief Оператор сравнения итераторов на равенство
 					 *
@@ -1832,10 +1790,7 @@ namespace {
 					 * @return     результат сравнения
 					 *
 					 */
-					bool operator == (const Iterator & item) const noexcept {
-						// Выполняем сравнение положения итераторов
-						return ((this->_chunk == item._chunk) && (this->_slot == item._slot));
-					}
+					bool operator == (const Iterator & item) const noexcept;
 					/**
 					 * @brief Оператор сравнения итераторов на неравенство
 					 *
@@ -1843,10 +1798,7 @@ namespace {
 					 * @return     результат сравнения
 					 *
 					 */
-					bool operator != (const Iterator & item) const noexcept {
-						// Выполняем сравнение положения итераторов
-						return !((* this) == item);
-					}
+					bool operator != (const Iterator & item) const noexcept;
 				public:
 					/**
 					 * @brief Конструктор
@@ -1856,210 +1808,8 @@ namespace {
 					 * @param slot  смещение слота
 					 *
 					 */
-					Iterator(Storage_Transport_Layer_Nodes * owner = nullptr, const size_t chunk = 0, const size_t slot = 0) noexcept :
-					 _owner(owner), _chunk(chunk), _slot(slot) {}
+					Iterator(Storage_Transport_Layer_Nodes * owner = nullptr, const size_t chunk = 0, const size_t slot = 0) noexcept;
 			};
-		public:
-			/**
-			 * @brief Метод получения итератора на конец хранилища
-			 *
-			 * @return итератор на конец хранилища
-			 *
-			 */
-			Iterator end() noexcept {
-				// Выводим итератор на конец хранилища
-				return Iterator(this, this->_chunks.size(), 0);
-			}
-			/**
-			 * @brief Метод получения итератора на начало хранилища
-			 *
-			 * @return итератор на начало хранилища
-			 *
-			 */
-			Iterator begin() noexcept {
-				// Создаём итератор на начало хранилища
-				Iterator result(this, 0, 0);
-				// Выполняем поиск первого занятого слота
-				result.seek();
-				// Выводим итератор на начало хранилища
-				return result;
-			}
-			/**
-			 * @brief Метод проверки хранилища на пустоту
-			 *
-			 * @return результат проверки
-			 *
-			 */
-			bool empty() const noexcept {
-				// Выводим результат проверки
-				return (this->_count == 0);
-			}
-			/**
-			 * @brief Метод получения количества узлов в хранилище
-			 *
-			 * @return количество узлов
-			 *
-			 */
-			size_t size() const noexcept {
-				// Выводим количество узлов
-				return this->_count;
-			}
-		public:
-			/**
-			 * @brief Метод поиска узла события по идентификатору
-			 *
-			 * @param id идентификатор события
-			 * @return   итератор найденного узла либо конец хранилища
-			 *
-			 */
-			Iterator find(const event::id_t id) noexcept {
-				// Вычисляем номер чанка для данного идентификатора
-				const size_t number = (static_cast <size_t> (id) / CHUNK_SIZE);
-				// Если номер чанка вне обслуживаемого картой диапазона
-				if((number < this->_base) || ((number - this->_base) >= this->_chunks.size()))
-					// Выводим итератор на конец хранилища
-					return this->end();
-				// Получаем чанк для данного идентификатора
-				const auto & chunk = this->_chunks[number - this->_base];
-				// Если чанк не существует
-				if(chunk == nullptr)
-					// Выводим итератор на конец хранилища
-					return this->end();
-				// Вычисляем смещение слота внутри чанка
-				const size_t offset = (static_cast <size_t> (id) % CHUNK_SIZE);
-				// Если слот свободен
-				if(chunk->slots[offset].second == nullptr)
-					// Выводим итератор на конец хранилища
-					return this->end();
-				// Выводим итератор найденного узла
-				return Iterator(this, (number - this->_base), offset);
-			}
-			/**
-			 * @brief Метод добавления узла события в хранилище
-			 *
-			 * @param id   идентификатор события
-			 * @param node объект узла события
-			 * @return     итератор добавленного узла и признак добавления
-			 *
-			 */
-			pair <Iterator, bool> emplace(const event::id_t id, unique_ptr <::io::node_t> && node) noexcept {
-				// Вычисляем номер чанка для данного идентификатора
-				const size_t number = (static_cast <size_t> (id) / CHUNK_SIZE);
-				// Если номер чанка младше обслуживаемого картой диапазона, добавить узел нельзя
-				if(number < this->_base)
-					// Выводим отрицательный результат
-					return make_pair(this->end(), false);
-				// Вычисляем индекс чанка внутри карты
-				const size_t index = (number - this->_base);
-				// Если индекс чанка превышает размер карты, расширяем её
-				if(index >= this->_chunks.size())
-					// Расширяем карту чанков до нужного размера
-					this->_chunks.resize(index + 1);
-				// Получаем чанк для данного идентификатора
-				auto & chunk = this->_chunks[index];
-				// Если чанк ещё не создан
-				if(chunk == nullptr){
-					// Если пул чанков пуст, создаём новый чанк
-					if(this->_pool.empty())
-						// Создаём новый чанк
-						chunk = unique_ptr <chunk_t> (new chunk_t);
-					// Если пул чанков не пуст, переиспользуем чанк из пула
-					else {
-						// Забираем чанк из пула
-						chunk = ::move(this->_pool.back());
-						// Удаляем забранный чанк из пула
-						this->_pool.pop_back();
-					}
-				}
-				// Вычисляем смещение слота внутри чанка
-				const size_t offset = (static_cast <size_t> (id) % CHUNK_SIZE);
-				// Если слот уже занят, добавлять узел нельзя
-				if(chunk->slots[offset].second != nullptr)
-					// Выводим отрицательный результат
-					return make_pair(Iterator(this, index, offset), false);
-				// Запоминаем идентификатор события в слоте
-				chunk->slots[offset].first = id;
-				// Укладываем узел события в слот
-				chunk->slots[offset].second = ::move(node);
-				// Увеличиваем количество занятых слотов чанка
-				chunk->count++;
-				// Увеличиваем количество узлов в хранилище
-				this->_count++;
-				// Выводим положительный результат
-				return make_pair(Iterator(this, index, offset), true);
-			}
-			/**
-			 * @brief Метод удаления узла события из хранилища
-			 *
-			 * @param item итератор удаляемого узла
-			 * @return     итератор следующего узла
-			 *
-			 */
-			Iterator erase(const Iterator & item) noexcept {
-				// Если итератор указывает за пределы карты, удалять нечего
-				if(item.chunk() >= this->_chunks.size())
-					// Выводим итератор на конец хранилища
-					return this->end();
-				// Запоминаем номер первого обслуживаемого чанка до отбрасывания головы карты
-				const size_t base = this->_base;
-				// Получаем чанк удаляемого узла
-				auto & chunk = this->_chunks[item.chunk()];
-				// Если чанк существует и слот занят
-				if((chunk != nullptr) && (chunk->slots[item.slot()].second != nullptr)){
-					// Освобождаем слот, уничтожая узел события
-					chunk->slots[item.slot()].second.reset(nullptr);
-					// Уменьшаем количество занятых слотов чанка
-					chunk->count--;
-					// Уменьшаем количество узлов в хранилище
-					this->_count--;
-					// Если чанк опустел, возвращаем его в пул
-					if(chunk->count == 0){
-						// Возвращаем опустевший чанк в пул
-						this->_pool.push_back(::move(chunk));
-						/**
-						 * Отбрасываем опустевшую голову карты. Проверка стоит именно здесь,
-						 * а не на каждом удалении: голова могла удлиниться только что, от
-						 * освобождения чанка, а её просмотр обходит карту целиком
-						 */
-						this->trim();
-					}
-				}
-				/**
-				 * Отброшенная голова карты сдвигает нумерацию чанков, поэтому итератор
-				 * результата строится по её итоговому состоянию: положение, снятое до
-				 * удаления, указывало бы после сдвига на чужой чанк
-				 */
-				const size_t shift = (this->_base - base);
-				// Если чанк удалённого узла пережил отбрасывание головы карты
-				if(item.chunk() >= shift){
-					// Создаём итератор результата на месте удалённого узла
-					Iterator result(this, (item.chunk() - shift), item.slot());
-					// Переходим к следующему узлу
-					++result;
-					// Выводим итератор следующего узла
-					return result;
-				}
-				// Чанк удалённого узла отброшен вместе с головой карты - следующий узел ищется с её начала
-				Iterator result(this, 0, 0);
-				// Выполняем поиск ближайшего занятого слота
-				result.seek();
-				// Выводим итератор следующего узла
-				return result;
-			}
-			/**
-			 * @brief Метод очистки хранилища
-			 *
-			 */
-			void clear() noexcept {
-				// Очищаем карту чанков
-				this->_chunks.clear();
-				// Очищаем пул чанков
-				this->_pool.clear();
-				// Сбрасываем количество узлов
-				this->_count = 0;
-				// Сбрасываем номер первого обслуживаемого чанка
-				this->_base = 0;
-			}
 		private:
 			/**
 			 * @brief Метод отбрасывания опустевшей головы карты чанков
@@ -2070,29 +1820,77 @@ namespace {
 			 *          сдвиг карты пришлось бы делать на каждом удалении
 			 *
 			 */
-			void trim() noexcept {
-				// Количество опустевших чанков в голове карты
-				size_t empty = 0;
-				/**
-				 * Перебираем чанки от головы карты
-				 */
-				while((empty < this->_chunks.size()) && (this->_chunks[empty] == nullptr))
-					// Увеличиваем количество опустевших чанков
-					empty++;
-				// Если опустевшая голова достаточно длинная
-				if(empty >= TRIM_THRESHOLD){
-					// Отбрасываем опустевшую голову карты
-					this->_chunks.erase(this->_chunks.begin(), (this->_chunks.begin() + empty));
-					// Сдвигаем номер первого обслуживаемого чанка
-					this->_base += empty;
-				}
-			}
+			void trim() noexcept;
+		public:
+			/**
+			 * @brief Метод очистки хранилища
+			 *
+			 */
+			void clear() noexcept;
+		public:
+			/**
+			 * @brief Метод получения итератора на конец хранилища
+			 *
+			 * @return итератор на конец хранилища
+			 *
+			 */
+			Iterator end() noexcept;
+			/**
+			 * @brief Метод получения итератора на начало хранилища
+			 *
+			 * @return итератор на начало хранилища
+			 *
+			 */
+			Iterator begin() noexcept;
+		public:
+			/**
+			 * @brief Метод проверки хранилища на пустоту
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool empty() const noexcept;
+			/**
+			 * @brief Метод получения количества узлов в хранилище
+			 *
+			 * @return количество узлов
+			 *
+			 */
+			size_t size() const noexcept;
+		public:
+			/**
+			 * @brief Метод поиска узла события по идентификатору
+			 *
+			 * @param id идентификатор события
+			 * @return   итератор найденного узла либо конец хранилища
+			 *
+			 */
+			Iterator find(const event::id_t id) noexcept;
+		public:
+			/**
+			 * @brief Метод удаления узла события из хранилища
+			 *
+			 * @param item итератор удаляемого узла
+			 * @return     итератор следующего узла
+			 *
+			 */
+			Iterator erase(const Iterator & item) noexcept;
+		public:
+			/**
+			 * @brief Метод добавления узла события в хранилище
+			 *
+			 * @param id   идентификатор события
+			 * @param node объект узла события
+			 * @return     итератор добавленного узла и признак добавления
+			 *
+			 */
+			pair <Iterator, bool> emplace(const event::id_t id, unique_ptr <::io::node_t> && node) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			Storage_Transport_Layer_Nodes() noexcept : _count(0), _base(0) {}
+			explicit Storage_Transport_Layer_Nodes() noexcept;
 	};
 
 	/**
@@ -2106,6 +1904,361 @@ namespace {
 	 *
 	 */
 	unordered_map <origin_id_t, ::io::node_t *, origin_id_hash_t> __awh_origin_sessions__;
+};
+
+/**
+ * @brief Инкапсулируем методы хранилища транспортного уровня в пространство имён
+ *
+ */
+namespace {
+	/**
+	 * @brief Метод перехода к ближайшему занятому слоту
+	 *
+	 */
+	void Storage_Transport_Layer_Nodes::Iterator::seek() noexcept {
+		/**
+		 * Перебираем чанки, начиная с текущего
+		 */
+		while(this->_chunk < this->_owner->_chunks.size()){
+			// Получаем текущий чанк
+			const auto & chunk = this->_owner->_chunks[this->_chunk];
+			// Если чанк существует
+			if(chunk != nullptr){
+				/**
+				 * Перебираем слоты чанка, начиная с текущего
+				 */
+				while(this->_slot < CHUNK_SIZE){
+					// Если слот занят, поиск завершён
+					if(chunk->slots[this->_slot].second != nullptr)
+						// Выходим из метода
+						return;
+					// Переходим к следующему слоту
+					this->_slot++;
+				}
+			}
+			// Переходим к следующему чанку
+			this->_chunk++;
+			// Сбрасываем смещение слота
+			this->_slot = 0;
+		}
+	}
+	/**
+	 * @brief Метод получения смещения слота
+	 *
+	 * @return смещение слота
+	 *
+	 */
+	size_t Storage_Transport_Layer_Nodes::Iterator::slot() const noexcept {
+		// Выводим смещение слота
+		return this->_slot;
+	}
+	/**
+	 * @brief Метод получения номера чанка
+	 *
+	 * @return номер чанка
+	 *
+	 */
+	size_t Storage_Transport_Layer_Nodes::Iterator::chunk() const noexcept {
+		// Выводим номер чанка
+		return this->_chunk;
+	}
+	/**
+	 * @brief Оператор перехода к следующей записи
+	 *
+	 * @return текущий итератор
+	 *
+	 */
+	Storage_Transport_Layer_Nodes::Iterator & Storage_Transport_Layer_Nodes::Iterator::operator ++ () noexcept {
+		// Переходим к следующему слоту
+		this->_slot++;
+		// Выполняем поиск ближайшего занятого слота
+		this->seek();
+		// Выводим текущий итератор
+		return (* this);
+	}
+	/**
+	 * @brief Оператор разыменования итератора
+	 *
+	 * @return объект записи хранилища
+	 *
+	 */
+	Storage_Transport_Layer_Nodes::entry_t & Storage_Transport_Layer_Nodes::Iterator::operator * () const noexcept {
+		// Выводим ссылку на запись хранилища
+		return this->_owner->_chunks[this->_chunk]->slots[this->_slot];
+	}
+	/**
+	 * @brief Оператор доступа к записи хранилища
+	 *
+	 * @return посредник доступа к записи
+	 *
+	 */
+	Storage_Transport_Layer_Nodes::entry_t * Storage_Transport_Layer_Nodes::Iterator::operator -> () const noexcept {
+		// Выводим указатель на запись хранилища
+		return &this->_owner->_chunks[this->_chunk]->slots[this->_slot];
+	}
+	/**
+	 * @brief Оператор сравнения итераторов на равенство
+	 *
+	 * @param item итератор для сравнения
+	 * @return     результат сравнения
+	 *
+	 */
+	bool Storage_Transport_Layer_Nodes::Iterator::operator == (const Iterator & item) const noexcept {
+		// Выполняем сравнение положения итераторов
+		return ((this->_chunk == item._chunk) && (this->_slot == item._slot));
+	}
+	/**
+	 * @brief Оператор сравнения итераторов на неравенство
+	 *
+	 * @param item итератор для сравнения
+	 * @return     результат сравнения
+	 *
+	 */
+	bool Storage_Transport_Layer_Nodes::Iterator::operator != (const Iterator & item) const noexcept {
+		// Выполняем сравнение положения итераторов
+		return !((* this) == item);
+	}
+	/**
+	 * @brief Конструктор
+	 *
+	 * @param owner объект хранилища
+	 * @param chunk номер чанка
+	 * @param slot  смещение слота
+	 *
+	 */
+	Storage_Transport_Layer_Nodes::Iterator::Iterator(Storage_Transport_Layer_Nodes * owner, const size_t chunk, const size_t slot) noexcept :
+	 _owner(owner), _chunk(chunk), _slot(slot) {}
+	
+	/**
+	 * @brief Метод отбрасывания опустевшей головы карты чанков
+	 *
+	 * @details Счётчик идентификаторов только растёт, поэтому голова карты со
+	 *          временем пустеет навсегда. Отбрасывается она не по одному чанку,
+	 *          а сплошной чередой и лишь когда та достаточно длинная - иначе
+	 *          сдвиг карты пришлось бы делать на каждом удалении
+	 *
+	 */
+	void Storage_Transport_Layer_Nodes::trim() noexcept {
+		// Количество опустевших чанков в голове карты
+		size_t empty = 0;
+		/**
+			* Перебираем чанки от головы карты
+			*/
+		while((empty < this->_chunks.size()) && (this->_chunks[empty] == nullptr))
+			// Увеличиваем количество опустевших чанков
+			empty++;
+		// Если опустевшая голова достаточно длинная
+		if(empty >= TRIM_THRESHOLD){
+			// Отбрасываем опустевшую голову карты
+			this->_chunks.erase(this->_chunks.begin(), (this->_chunks.begin() + empty));
+			// Сдвигаем номер первого обслуживаемого чанка
+			this->_base += empty;
+		}
+	}
+	/**
+	 * @brief Метод очистки хранилища
+	 *
+	 */
+	void Storage_Transport_Layer_Nodes::clear() noexcept {
+		// Сбрасываем номер первого обслуживаемого чанка
+		this->_base = 0;
+		// Сбрасываем количество узлов
+		this->_count = 0;
+		// Очищаем пул чанков
+		this->_pool.clear();
+		// Очищаем карту чанков
+		this->_chunks.clear();
+	}
+	/**
+	 * @brief Метод получения итератора на конец хранилища
+	 *
+	 * @return итератор на конец хранилища
+	 *
+	 */
+	Storage_Transport_Layer_Nodes::Iterator Storage_Transport_Layer_Nodes::end() noexcept {
+		// Выводим итератор на конец хранилища
+		return Iterator(this, this->_chunks.size(), 0);
+	}
+	/**
+	 * @brief Метод получения итератора на начало хранилища
+	 *
+	 * @return итератор на начало хранилища
+	 *
+	 */
+	Storage_Transport_Layer_Nodes::Iterator Storage_Transport_Layer_Nodes::begin() noexcept {
+		// Создаём итератор на начало хранилища
+		Iterator result(this, 0, 0);
+		// Выполняем поиск первого занятого слота
+		result.seek();
+		// Выводим итератор на начало хранилища
+		return result;
+	}
+	/**
+	 * @brief Метод проверки хранилища на пустоту
+	 *
+	 * @return результат проверки
+	 *
+	 */
+	bool Storage_Transport_Layer_Nodes::empty() const noexcept {
+		// Выводим результат проверки
+		return (this->_count == 0);
+	}
+	/**
+	 * @brief Метод получения количества узлов в хранилище
+	 *
+	 * @return количество узлов
+	 *
+	 */
+	size_t Storage_Transport_Layer_Nodes::size() const noexcept {
+		// Выводим количество узлов
+		return this->_count;
+	}
+	/**
+	 * @brief Метод поиска узла события по идентификатору
+	 *
+	 * @param id идентификатор события
+	 * @return   итератор найденного узла либо конец хранилища
+	 *
+	 */
+	Storage_Transport_Layer_Nodes::Iterator Storage_Transport_Layer_Nodes::find(const event::id_t id) noexcept {
+		// Вычисляем номер чанка для данного идентификатора
+		const size_t number = (static_cast <size_t> (id) / CHUNK_SIZE);
+		// Если номер чанка вне обслуживаемого картой диапазона
+		if((number < this->_base) || ((number - this->_base) >= this->_chunks.size()))
+			// Выводим итератор на конец хранилища
+			return this->end();
+		// Получаем чанк для данного идентификатора
+		const auto & chunk = this->_chunks[number - this->_base];
+		// Если чанк не существует
+		if(chunk == nullptr)
+			// Выводим итератор на конец хранилища
+			return this->end();
+		// Вычисляем смещение слота внутри чанка
+		const size_t offset = (static_cast <size_t> (id) % CHUNK_SIZE);
+		// Если слот свободен
+		if(chunk->slots[offset].second == nullptr)
+			// Выводим итератор на конец хранилища
+			return this->end();
+		// Выводим итератор найденного узла
+		return Iterator(this, (number - this->_base), offset);
+	}
+	/**
+	 * @brief Метод удаления узла события из хранилища
+	 *
+	 * @param item итератор удаляемого узла
+	 * @return     итератор следующего узла
+	 *
+	 */
+	Storage_Transport_Layer_Nodes::Iterator Storage_Transport_Layer_Nodes::erase(const Iterator & item) noexcept {
+		// Если итератор указывает за пределы карты, удалять нечего
+		if(item.chunk() >= this->_chunks.size())
+			// Выводим итератор на конец хранилища
+			return this->end();
+		// Запоминаем номер первого обслуживаемого чанка до отбрасывания головы карты
+		const size_t base = this->_base;
+		// Получаем чанк удаляемого узла
+		auto & chunk = this->_chunks[item.chunk()];
+		// Если чанк существует и слот занят
+		if((chunk != nullptr) && (chunk->slots[item.slot()].second != nullptr)){
+			// Освобождаем слот, уничтожая узел события
+			chunk->slots[item.slot()].second.reset(nullptr);
+			// Уменьшаем количество занятых слотов чанка
+			chunk->count--;
+			// Уменьшаем количество узлов в хранилище
+			this->_count--;
+			// Если чанк опустел, возвращаем его в пул
+			if(chunk->count == 0){
+				// Возвращаем опустевший чанк в пул
+				this->_pool.push_back(::move(chunk));
+				/**
+				 * Отбрасываем опустевшую голову карты. Проверка стоит именно здесь,
+				 * а не на каждом удалении: голова могла удлиниться только что, от
+				 * освобождения чанка, а её просмотр обходит карту целиком
+				 */
+				this->trim();
+			}
+		}
+		/**
+		 * Отброшенная голова карты сдвигает нумерацию чанков, поэтому итератор
+		 * результата строится по её итоговому состоянию: положение, снятое до
+		 * удаления, указывало бы после сдвига на чужой чанк
+		 */
+		const size_t shift = (this->_base - base);
+		// Если чанк удалённого узла пережил отбрасывание головы карты
+		if(item.chunk() >= shift){
+			// Создаём итератор результата на месте удалённого узла
+			Iterator result(this, (item.chunk() - shift), item.slot());
+			// Переходим к следующему узлу
+			++result;
+			// Выводим итератор следующего узла
+			return result;
+		}
+		// Чанк удалённого узла отброшен вместе с головой карты - следующий узел ищется с её начала
+		Iterator result(this, 0, 0);
+		// Выполняем поиск ближайшего занятого слота
+		result.seek();
+		// Выводим итератор следующего узла
+		return result;
+	}
+	/**
+	 * @brief Метод добавления узла события в хранилище
+	 *
+	 * @param id   идентификатор события
+	 * @param node объект узла события
+	 * @return     итератор добавленного узла и признак добавления
+	 *
+	 */
+	pair <Storage_Transport_Layer_Nodes::Iterator, bool> Storage_Transport_Layer_Nodes::emplace(const event::id_t id, unique_ptr <::io::node_t> && node) noexcept {
+		// Вычисляем номер чанка для данного идентификатора
+		const size_t number = (static_cast <size_t> (id) / CHUNK_SIZE);
+		// Если номер чанка младше обслуживаемого картой диапазона, добавить узел нельзя
+		if(number < this->_base)
+			// Выводим отрицательный результат
+			return make_pair(this->end(), false);
+		// Вычисляем индекс чанка внутри карты
+		const size_t index = (number - this->_base);
+		// Если индекс чанка превышает размер карты, расширяем её
+		if(index >= this->_chunks.size())
+			// Расширяем карту чанков до нужного размера
+			this->_chunks.resize(index + 1);
+		// Получаем чанк для данного идентификатора
+		auto & chunk = this->_chunks[index];
+		// Если чанк ещё не создан
+		if(chunk == nullptr){
+			// Если пул чанков пуст, создаём новый чанк
+			if(this->_pool.empty())
+				// Создаём новый чанк
+				chunk = make_unique <chunk_t> ();
+			// Если пул чанков не пуст, переиспользуем чанк из пула
+			else {
+				// Забираем чанк из пула
+				chunk = ::move(this->_pool.back());
+				// Удаляем забранный чанк из пула
+				this->_pool.pop_back();
+			}
+		}
+		// Вычисляем смещение слота внутри чанка
+		const size_t offset = (static_cast <size_t> (id) % CHUNK_SIZE);
+		// Если слот уже занят, добавлять узел нельзя
+		if(chunk->slots[offset].second != nullptr)
+			// Выводим отрицательный результат
+			return make_pair(Iterator(this, index, offset), false);
+		// Запоминаем идентификатор события в слоте
+		chunk->slots[offset].first = id;
+		// Укладываем узел события в слот
+		chunk->slots[offset].second = ::move(node);
+		// Увеличиваем количество занятых слотов чанка
+		chunk->count++;
+		// Увеличиваем количество узлов в хранилище
+		this->_count++;
+		// Выводим положительный результат
+		return make_pair(Iterator(this, index, offset), true);
+	}
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	Storage_Transport_Layer_Nodes::Storage_Transport_Layer_Nodes() noexcept : _base(0), _count(0) {}
 };
 
 /**
@@ -2711,6 +2864,23 @@ namespace local {
 	 *
 	 */
 	static vector <event::id_t> graveyard;
+	/**
+	 * @brief Список узлов, отложенных на уничтожение текущим оборотом цикла
+	 *
+	 * @details Отсрочка составляет два оборота, а не один, и держится на порядке
+	 *          работы опроса. Пакет изменений уходит в ядро одним вызовом вместе
+	 *          с ожиданием событий, то есть уже после разбора этого списка.
+	 *          Освобождать узел на том же обороте, на котором его записи только
+	 *          собираются уйти в ядро, нельзя: освобождение закрывает дескриптор,
+	 *          а его номер операционная система успевает выдать другому объекту,
+	 *          и записи легли бы на чужой дескриптор
+	 *
+	 * @note Новых записей по дескриптору у помеченного узла появиться не может -
+	 *       их отсекает охрана списка изменений, - поэтому за два оборота список
+	 *       его записей исчерпывается полностью
+	 *
+	 */
+	static vector <event::id_t> graveyardNext;
 	/**
 	 * @brief Создаём новый тип данных принадлежащий локальному защитнику
 	 *
@@ -25012,7 +25182,7 @@ namespace io {
 				 * пакет изменений ушёл в ядро, - то есть к моменту освобождения узла
 				 * все его подписки ядру уже сообщены
 				 */
-				::local::graveyard.push_back(node->id);
+				::local::graveyardNext.push_back(node->id);
 				// Возвращаем результат выполнения функции
 				return true;
 			}
@@ -62269,6 +62439,8 @@ bool awh::engine::IO::initialize() noexcept {
 		::local::change.clear();
 		// Очищаем список узлов, ожидающих окончательного уничтожения
 		::local::graveyard.clear();
+		// Очищаем список узлов, отложенных текущим оборотом
+		::local::graveyardNext.clear();
 		/**
 		 * Снимаем отметку о взведённом таймере ядра. Очередь создаётся пустой, взведено
 		 * в ней ничего быть не может, а дедлайны в структуре к этому моменту уже есть:
@@ -63257,6 +63429,8 @@ bool awh::engine::IO::deinitialize() noexcept {
 		::local::change.clear();
 		// Очищаем список узлов, ожидающих окончательного уничтожения
 		::local::graveyard.clear();
+		// Очищаем список узлов, отложенных текущим оборотом
+		::local::graveyardNext.clear();
 		// Устанавливаем результат деинициализации в успешный
 		result = ::local::change.empty();
 	}
@@ -63782,24 +63956,22 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Запоминаем поток, ведущий опрос очереди событий
-			::__awh_poll_thread__ = ::pthread_self();
 			// Отмечаем, что поток опроса очереди событий известен
 			::__awh_poll_thread_known__ = true;
-			// Выполняем фиксацию изменений к ядру
-			::local::commit(this->_log);
+			// Запоминаем поток, ведущий опрос очереди событий
+			::__awh_poll_thread__ = ::pthread_self();
 			/**
-			 * Добиваем узлы, отложенные на уничтожение прошлым оборотом цикла
+			 * Добиваем узлы, отложенные на уничтожение позапрошлым оборотом цикла
 			 *
-			 * @note Место выбрано не случайно. Пакет изменений только что ушёл в ядро
-			 *       и очищен, значит все подписки уничтожаемого узла ядру сообщены и
-			 *       новых записей на него больше не появится. Опрос ядра ещё не
-			 *       выполнялся, значит нет и разбираемой пачки событий, в которой
-			 *       поле пользовательских данных могло бы указывать на освобождаемый
-			 *       узел, - прежний порядок освобождал узел прямо посреди разбора
-			 *       такой пачки. Разбираются только записи, накопленные к началу
-			 *       оборота: узлы, уничтоженные функциями обратного вызова по ходу
-			 *       разбора, получают положенную им отсрочку в целый оборот
+			 * @note Место выбрано не случайно. Записи этих узлов ушли в ядро прошлым
+			 *       оборотом - пакет изменений отправляется тем же вызовом, что и
+			 *       ожидание событий, то есть уже после этого разбора. Отсюда и
+			 *       отсрочка в два оборота: освобождение закрывает дескриптор, а его
+			 *       номер операционная система успевает выдать другому объекту, и
+			 *       записи, не ушедшие в ядро, легли бы на чужой дескриптор. Опрос
+			 *       ядра на этом обороте ещё не выполнялся, значит нет и разбираемой
+			 *       пачки событий, в которой поле пользовательских данных могло бы
+			 *       указывать на освобождаемый узел
 			 */
 			if(!::local::graveyard.empty()){
 				// Получаем количество узлов, накопленных к началу оборота
@@ -63828,6 +64000,16 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				}
 				// Снимаем с учёта разобранные узлы, сохраняя накопленные по ходу разбора
 				::local::graveyard.erase(::local::graveyard.begin(), (::local::graveyard.begin() + count));
+			}
+			/**
+			 * Переводим узлы, отложенные прошлым оборотом, в разбор следующего: их
+			 * записи уходят в ядро ожиданием событий этого оборота
+			 */
+			if(!::local::graveyardNext.empty()){
+				// Переносим отложенные узлы в список разбора
+				::local::graveyard.insert(::local::graveyard.end(), ::local::graveyardNext.begin(), ::local::graveyardNext.end());
+				// Очищаем список узлов, отложенных прошлым оборотом
+				::local::graveyardNext.clear();
 			}
 			/**
 			 * Подготавливаем параметры таймаута для опроса событий
@@ -63912,12 +64094,104 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					pts = &ts;
 				}
 			}
-			// Флаг того, что истёкшие дедлайны в этом опросе уже разобраны по событию таймера от ядра
-			bool examined = false;
 			/**
 			 * Выполняем опрос ядра на наличие событий сокетов
+			 *
+			 * @note Пакет изменений уходит в ядро этим же вызовом: ядро применяет
+			 *       переданные записи и лишь затем принимается ожидать события.
+			 *       Отдельная отправка стоила бы второго обращения к ядру на каждый
+			 *       оборот, на котором подписки менялись, - а меняются они на каждом
+			 *       установлении соединения
+			 *
+			 * @note Пакет отправляется без списка результатов по той же причине, что
+			 *       и прежде: с флагом EV_RECEIPT ядро копирует по структуре на каждую
+			 *       запись, а пакет нагруженного сервера собирается из тысяч записей.
+			 *       Отказ вызова разбирается прежним путём - повторной отправкой пакета
+			 *       с EV_RECEIPT, называющей сбойные записи поимённо
+			 *
 			 */
-			const ssize_t events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+			ssize_t events = 0;
+			/**
+			 * Если режим отладки включён, пакет отправляется прежним путём: его разбор
+			 * печатает исход каждой записи и слиянию с ожиданием не поддаётся
+			 */
+			#if DEBUG_MODE
+				// Выполняем фиксацию изменений к ядру
+				::local::commit(this->_log);
+				// Выполняем ожидание событий в ядре
+				events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Если пакет изменений пуст, отправлять нечего
+				if(::local::change.empty())
+					// Выполняем ожидание событий в ядре
+					events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+				// Если пакет изменений собран, отправляем его вместе с ожиданием
+				else {
+					// Выполняем отправку пакета изменений и ожидание событий одним вызовом
+					events = static_cast <ssize_t> (::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+					// Если ядро остановилось на сбойной записи пакета
+					if((events < 0) && (errno != EINTR)){
+						// Разбираем пакет прежним путём, называя сбойные записи
+						::local::commit(this->_log);
+						// Выполняем ожидание событий в ядре отдельным вызовом
+						events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+					// Если пакет применён ядром, снимаем его с учёта
+					} else ::local::change.clear();
+				}
+			#endif
+			/**
+			 * Отделяем исходы отвергнутых записей пакета от событий
+			 *
+			 * @note Пакет изменений уходит в ядро тем же вызовом, что и ожидание, а
+			 *       ядро сообщает о сбойной записи, укладывая её в ту же пачку с
+			 *       флагом EV_ERROR. Событием такая запись не является: поле
+			 *       пользовательских данных у неё скопировано из самой записи, и
+			 *       разбор принял бы её за ошибку узла со всеми последствиями вплоть
+			 *       до уничтожения узла. Прежде пакет отправлялся отдельно и списка
+			 *       событий не касался, поэтому до разбора такие записи не доходили -
+			 *       порядок сохраняется
+			 */
+			if(events > 0){
+				// Количество событий, оставленных к разбору
+				ssize_t kept = 0;
+				/**
+				 * Перебираем всю полученную пачку
+				 */
+				for(ssize_t index = 0; index < events; index++){
+					// Получаем текущую запись пачки
+					struct kevent & item = ::__awh_events__[index];
+					// Если запись пакета отвергнута ядром
+					if(item.flags & EV_ERROR){
+						// Если отказ содержательный, сообщаем о нём
+						if(item.data != 0){
+							// Получаем узел, которому принадлежит отвергнутая запись
+							::io::node_t * owner = (((item.udata != nullptr) && (item.udata != ::local::internal)) ? reinterpret_cast <::io::node_t *> (item.udata) : nullptr);
+							// Записываем ошибку в лог
+							this->_log->print("Event change rejected: ident=%llu, filter=%d, flags=0x%x, %s (node: id=%u, type=%u, status=%u)", log_t::flag_t::WARNING,
+							 static_cast <uint64_t> (item.ident), static_cast <int32_t> (item.filter), static_cast <uint32_t> (item.flags),
+							 ::strerror(static_cast <int32_t> (item.data)),
+							 (owner != nullptr ? owner->id : 0u),
+							 (owner != nullptr ? static_cast <uint32_t> (owner->state.node) : 0xFFu),
+							 (owner != nullptr ? static_cast <uint32_t> (owner->state.status) : 0xFFu));
+						}
+						// Переходим к следующей записи пачки
+						continue;
+					}
+					// Если впереди пачки образовался разрыв, сдвигаем событие к его началу
+					if(kept != index)
+						// Переносим событие на освободившееся место
+						::__awh_events__[kept] = item;
+					// Считаем оставленное к разбору событие
+					kept++;
+				}
+				// Оставляем к разбору только настоящие события
+				events = kept;
+			}
+			// Флаг того, что истёкшие дедлайны в этом опросе уже разобраны по событию таймера от ядра
+			bool examined = false;
 			// Если мы получили ошибку при опросе событий
 			if(events < 0){
 				// Если ошибка не была вызвана прерыванием системного вызова
@@ -65337,6 +65611,8 @@ awh::engine::IO::~IO() noexcept {
 		::local::change.clear();
 		// Очищаем список узлов, ожидающих окончательного уничтожения
 		::local::graveyard.clear();
+		// Очищаем список узлов, отложенных текущим оборотом
+		::local::graveyardNext.clear();
 	}
 	// Если список активных сессий одноранговых узлов-источников не пуст
 	if(!::__awh_origin_sessions__.empty())

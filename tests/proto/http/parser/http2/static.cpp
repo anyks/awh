@@ -6149,3 +6149,291 @@ TEST_F(ParserHttp2Fixture, RatelimClockJumpTest){
 	// Проверяем что соединение осталось живо
 	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
 }
+
+/**
+ * @brief Метод проверки замещающей семантики сигнала приоритета (RFC 9218 §4)
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityUpdateReplacesDefaultsTest){
+	/**
+	 * Сигнал задаёт приоритет целиком: [u=3] без признака [i] обязан снять
+	 * инкрементальность, выставленную прежним сигналом. Проверяем обе ветки -
+	 * без обновления потоки обслуживаются вперемежку, с обновлением последовательно
+	 */
+	for(uint32_t variant = 0; variant < 2; variant++){
+		// Создаём объект парсера сервера
+		auto server = this->make(direct_t::REQUEST);
+		// Создаём объект парсера клиента
+		auto client = this->make(direct_t::RESPONSE);
+		// Получаем параметры SETTINGS клиента
+		auto settings = client->settings();
+		/**
+		 * Закрываем начальное окно приёма клиента: сервер поставит тела обоих потоков
+		 * в очередь, но не отправит их, пока окно закрыто. Проверяется именно порядок
+		 * планирования, а не порядок постановки в очередь
+		 */
+		settings.windowSize = 0;
+		// Применяем параметры SETTINGS клиента
+		client->settings(settings);
+		// Создаём объекты сборщиков событий парсеров
+		events_t serverEvents, clientEvents;
+		// Подписываем сборщик событий сервера
+		this->attach(* server, serverEvents);
+		// Подписываем сборщик событий клиента
+		this->attach(* client, clientEvents);
+		// Соединяем парсеры каналами записи
+		this->connect(* client, * server);
+		// Выполняем рукопожатие соединения
+		this->handshake(* client, * server);
+		// Порядок, в котором сервер отдаёт тела потоков
+		std::vector <uint32_t> order;
+		// Устанавливаем функцию обратного вызова тела на клиенте для сбора порядка отдачи
+		client->on(parser_http2_t::data_callback_t([&order, &clientEvents](const uint32_t sid, const void * buffer, const size_t size, const bool) noexcept -> bool {
+			// Если поток ещё не отмечен последним в порядке отдачи
+			if(order.empty() || (order.back() != sid))
+				// Запоминаем поток, отдающий данные
+				order.push_back(sid);
+			// Собираем фрагмент тела потока (функция обратного вызова фикстуры замещена)
+			clientEvents.bodies[sid].append(static_cast <const char *> (buffer), size);
+			// Продолжаем разбор
+			return true;
+		}));
+		// Формируем заголовки запроса с инкрементальной доставкой (RFC 9218 §5)
+		std::vector <h2::hpack::field_t> fields;
+		// Дописываем псевдо-заголовок метода запроса
+		fields.emplace_back(":method", "GET");
+		// Дописываем псевдо-заголовок схемы запроса
+		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок пути запроса
+		fields.emplace_back(":path", "/data");
+		// Дописываем заголовок расширенного приоритета с инкрементальной доставкой
+		fields.emplace_back("priority", "u=3, i");
+		// Выделяем идентификатор первого потока клиента
+		const uint32_t first = client->nextStreamId();
+		// Открываем первый поток
+		client->sendHeaders(first, fields, true);
+		// Выделяем идентификатор второго потока клиента
+		const uint32_t second = client->nextStreamId();
+		// Открываем второй поток
+		client->sendHeaders(second, fields, true);
+		// Формируем заголовки ответа первого потока
+		headers_t firstResponse(std::make_unique <response_t> (version_t::HTTP2, 200));
+		// Отправляем заголовки ответа первого потока
+		server->sendHeaders(first, firstResponse, false);
+		// Формируем заголовки ответа второго потока
+		headers_t secondResponse(std::make_unique <response_t> (version_t::HTTP2, 200));
+		// Отправляем заголовки ответа второго потока
+		server->sendHeaders(second, secondResponse, false);
+		// Формируем тело ответа, не помещающееся в один кадр
+		const std::string body(24 * 1024, 'z');
+		// Ставим тело в очередь отправки первого потока
+		server->sendData(first, body.data(), body.size(), true);
+		// Ставим тело в очередь отправки второго потока
+		server->sendData(second, body.data(), body.size(), true);
+		// Если проверяется ветка с обновлением приоритета
+		if(variant == 1){
+			// Отправляем сигнал приоритета первого потока без признака инкрементальности
+			client->sendPriority(first, 3, false);
+			// Отправляем сигнал приоритета второго потока без признака инкрементальности
+			client->sendPriority(second, 3, false);
+		}
+		// Открываем начальное окно приёма клиента
+		settings.windowSize = 65535;
+		// Применяем параметры SETTINGS клиента
+		client->settings(settings);
+		// Отправляем обновлённые параметры: сервер сдвинет окна потоков и прокачает отправку
+		client->sendSettings();
+		// Проверяем что тела обоих потоков доставлены полностью
+		ASSERT_EQ(clientEvents.bodies[first].size(), body.size());
+		// Проверяем размер тела второго потока
+		ASSERT_EQ(clientEvents.bodies[second].size(), body.size());
+		// Если проверяется ветка без обновления приоритета
+		if(variant == 0)
+			// Инкрементальные потоки обязаны обслуживаться вперемежку
+			ASSERT_GT(order.size(), 2u);
+		// Иначе потоки обязаны обслуживаться последовательно
+		else ASSERT_EQ(order.size(), 2u);
+	}
+}
+
+/**
+ * @brief Метод проверки блока заголовков на нашем завершённом потоке (роль клиента)
+ *
+ * @details Зеркало HeadersOnFinishedStreamTest: поток завершён END_STREAM,
+ *          но инициировали его мы сами. Пир закрыл поток и знает об этом,
+ *          поэтому блок заголовков на нём - ошибка соединения STREAM_CLOSED
+ *          (RFC 9113 §5.1), а не PROTOCOL_ERROR по чётности идентификатора
+ *
+ */
+TEST_F(ParserHttp2Fixture, HeadersOnOwnFinishedStreamTest){
+	// Создаём объект парсера клиента (pull-модель: функция записи не установлена)
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера
+	events_t clientEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* client, clientEvents);
+	// Отправляем preface клиента
+	client->sendPreface();
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/");
+	// Открываем поток запроса с завершением потока
+	client->sendHeaders(sid, fields, true);
+	// Создаём объект кодера заголовков сервера
+	h2::hpack::encoder_t encoder;
+	// Буфер входящего потока сервера
+	std::string input;
+	// Дописываем SETTINGS сервера
+	input += ::frame(0x04, 0x00, 0, "");
+	// Формируем заголовки ответа
+	std::vector <h2::hpack::field_t> response;
+	// Дописываем псевдо-заголовок статуса ответа
+	response.emplace_back(":status", "200");
+	// Буфер закодированного блока заголовков
+	std::string block;
+	// Кодируем блок заголовков ответа
+	encoder.encode(response, block, false);
+	// Дописываем кадр заголовков ответа с завершением потока
+	input += ::frame(0x01, 0x05, sid, block);
+	// Подаём входящий поток сервера на разбор
+	client->parse(input.data(), input.size());
+	// Проверяем что обмен по потоку завершён
+	ASSERT_EQ(clientEvents.closes.size(), 1u);
+	// Очищаем буфер закодированного блока
+	block.clear();
+	// Кодируем повторный блок заголовков
+	encoder.encode(response, block, false);
+	// Формируем кадр заголовков на завершённом потоке
+	const std::string late = ::frame(0x01, 0x04, sid, block);
+	// Подаём кадр на разбор
+	client->parse(late.data(), late.size());
+	// Проверяем что зафиксирована ошибка уровня соединения
+	ASSERT_EQ(client->status(), parser_t::status_t::ERROR);
+	// Проверяем код ошибки уровня соединения
+	ASSERT_EQ(client->error(), parser_http2_t::error_t::STREAM_CLOSED);
+}
+
+/**
+ * @brief Метод проверки блока заголовков на потоке, нами не открывавшемся
+ *
+ * @details Идентификатор нашего класса, которого мы не использовали, - это
+ *          поток в состоянии idle: сервер запросов не шлёт, и такой блок
+ *          заголовков остаётся ошибкой PROTOCOL_ERROR (RFC 9113 §5.1.1)
+ *
+ */
+TEST_F(ParserHttp2Fixture, HeadersOnIdleOwnStreamTest){
+	// Создаём объект парсера клиента (pull-модель: функция записи не установлена)
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера
+	events_t clientEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* client, clientEvents);
+	// Отправляем preface клиента
+	client->sendPreface();
+	// Создаём объект кодера заголовков сервера
+	h2::hpack::encoder_t encoder;
+	// Буфер входящего потока сервера
+	std::string input;
+	// Дописываем SETTINGS сервера
+	input += ::frame(0x04, 0x00, 0, "");
+	// Формируем заголовки ответа
+	std::vector <h2::hpack::field_t> response;
+	// Дописываем псевдо-заголовок статуса ответа
+	response.emplace_back(":status", "200");
+	// Буфер закодированного блока заголовков
+	std::string block;
+	// Кодируем блок заголовков ответа
+	encoder.encode(response, block, false);
+	// Дописываем кадр заголовков на нечётном потоке, который мы не открывали
+	input += ::frame(0x01, 0x04, 7, block);
+	// Подаём входящий поток сервера на разбор
+	client->parse(input.data(), input.size());
+	// Проверяем что зафиксирована ошибка уровня соединения
+	ASSERT_EQ(client->status(), parser_t::status_t::ERROR);
+	// Проверяем код ошибки уровня соединения
+	ASSERT_EQ(client->error(), parser_http2_t::error_t::PROTOCOL_ERROR);
+}
+
+/**
+ * @brief Метод проверки отсутствия фазы приёма тела у безтелесного сообщения
+ *
+ * @details Ответы 204 и 304, а равно ответ на HEAD, тела не несут по определению:
+ *          отсутствие END_STREAM на блоке заголовков этого не меняет
+ *
+ */
+TEST_F(ParserHttp2Fixture, HeadlessMessageSkipsBodyPhaseTest){
+	/**
+	 * Проверяем обе ветки безтелесности: статус 204 и ответ на запрос HEAD
+	 */
+	for(uint32_t variant = 0; variant < 2; variant++){
+		// Создаём объект парсера сервера
+		auto server = this->make(direct_t::REQUEST);
+		// Создаём объект парсера клиента
+		auto client = this->make(direct_t::RESPONSE);
+		// Создаём объекты сборщиков событий парсеров
+		events_t serverEvents, clientEvents;
+		// Подписываем сборщик событий сервера
+		this->attach(* server, serverEvents);
+		// Подписываем сборщик событий клиента
+		this->attach(* client, clientEvents);
+		// Соединяем парсеры каналами записи
+		this->connect(* client, * server);
+		// Выполняем рукопожатие соединения
+		this->handshake(* client, * server);
+		// Выделяем идентификатор нового потока клиента
+		const uint32_t sid = client->nextStreamId();
+		// Формируем заголовки запроса
+		std::vector <h2::hpack::field_t> fields;
+		// Дописываем псевдо-заголовок метода запроса
+		fields.emplace_back(":method", ((variant == 0) ? "GET" : "HEAD"));
+		// Дописываем псевдо-заголовок схемы запроса
+		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок пути запроса
+		fields.emplace_back(":path", "/index.html");
+		// Отправляем запрос с завершением потока
+		client->sendHeaders(sid, fields, true);
+		// Формируем заголовки ответа
+		std::vector <h2::hpack::field_t> response;
+		// Дописываем псевдо-заголовок статуса ответа
+		response.emplace_back(":status", ((variant == 0) ? "204" : "200"));
+		// Если проверяется ответ на запрос HEAD
+		if(variant == 1)
+			// Дописываем объявленную длину тела, которого не будет
+			response.emplace_back("content-length", "100");
+		// Отправляем ответ без завершения потока
+		server->sendHeaders(sid, response, false);
+		// Собранная последовательность фазовых событий клиента
+		std::string phases;
+		/**
+		 * Выполняем сборку последовательности фазовых событий потока
+		 */
+		for(const auto & item : clientEvents.phases){
+			// Если событие относится к другому потоку - пропускаем
+			if(std::get <0> (item) != sid)
+				// Переходим к следующему событию
+				continue;
+			// Дописываем фазу события
+			phases += ((std::get <1> (item) == parser_t::phase_t::BEGIN) ? "BEGIN:" : "END:");
+			/**
+			 * Дописываем часть сообщения
+			 */
+			switch(std::get <2> (item)){
+				case parser_t::part_t::BODY: phases += "BODY "; break;
+				case parser_t::part_t::HEADERS: phases += "HEADERS "; break;
+				case parser_t::part_t::TRAILER: phases += "TRAILER "; break;
+				default: phases += "NONE "; break;
+			}
+		}
+		// Фаза приёма тела у безтелесного сообщения открываться не должна
+		ASSERT_EQ(phases, "BEGIN:NONE END:HEADERS ");
+		// Ошибка уровня соединения зафиксирована быть не должна
+		ASSERT_FALSE(clientEvents.errorFired);
+	}
+}

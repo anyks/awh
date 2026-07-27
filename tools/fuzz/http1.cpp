@@ -475,14 +475,26 @@ namespace {
 		}
 		// Если сообщение содержит заголовок кодирования тела
 		if(::chance(30)){
-			// Набор написаний кодирования тела сообщения
-			static const char * encodings[] = {"chunked", "chunked", "gzip, chunked", "chunked, gzip", "gzip", "identity"};
+			/**
+			 * Набор написаний кодирования тела сообщения
+			 *
+			 * Написания с пустыми элементами списка присутствуют намеренно: RFC 9110
+			 * §5.6.1.2 обязывает получателя их игнорировать, и завершающая запятая
+			 * не отменяет того, что последним кодированием объявлен chunked
+			 */
+			static const char * encodings[] = {
+				"chunked", "chunked", "gzip, chunked", "chunked, gzip", "gzip", "identity",
+				"chunked,", " , chunked , ", "chunked, , gzip", ",,"
+			};
 			// Выбираем написание кодирования тела сообщения
 			const char * encoding = encodings[::pick(sizeof(encodings) / sizeof(encodings[0]))];
 			// Дописываем заголовок кодирования тела сообщения
 			result.append("Transfer-Encoding: ").append(encoding).append(::eol());
 			// Устанавливаем признак кодирования тела методом chunked
-			chunked = (::strcmp(encoding, "chunked") == 0) || (::strcmp(encoding, "gzip, chunked") == 0);
+			chunked = (
+				(::strcmp(encoding, "chunked") == 0) || (::strcmp(encoding, "gzip, chunked") == 0) ||
+				(::strcmp(encoding, "chunked,") == 0) || (::strcmp(encoding, " , chunked , ") == 0)
+			);
 		}
 		// Если сообщение содержит заголовок размера тела
 		if(::chance(35)){
@@ -546,9 +558,20 @@ namespace {
 			// Дописываем строку размера чанка
 			result.append(line);
 			// Если чанк дополняется расширениями
-			if(::chance(25))
+			if(::chance(25)){
 				// Дописываем расширения чанка
 				result.append(";").append(::token(::pick(6) + 1)).append("=").append(::token(::pick(6) + 1));
+				/**
+				 * Изредка вносим в расширения октет с края правила допустимости: DEL и
+				 * управляющий символ обязаны отвергаться, пробел и obs-text - приниматься
+				 */
+				if(::chance(20)){
+					// Набор октетов с края правила допустимости расширений чанка
+					static const char octets[] = {'\x7F', '\x01', ' ', '\x80', '\xFF'};
+					// Вносим октет с края правила допустимости в расширения чанка
+					result.push_back(octets[::pick(sizeof(octets) / sizeof(octets[0]))]);
+				}
+			}
 			// Дописываем окончание строки размера чанка
 			result.append(::eol());
 			// Дописываем данные чанка
