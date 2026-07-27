@@ -450,6 +450,11 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 	ASSERT_TRUE(this->_io->commit(eid));
 	// Запоминаем текущее значение времени
 	this->ts = std::chrono::system_clock::now();
+	/**
+	 * Запоминаем время начала теста отдельно: обработчик интервала сдвигает метку
+	 * времени на каждом срабатывании, а проверить нужно суммарную длительность
+	 */
+	const auto start = this->ts;
 	// Если таймер является интервалом
 	if(this->_parameter.node == awh::event::node_t::INTERVAL){
 		// Устанавливаем функцию обратного вызова на событие интервала
@@ -470,16 +475,26 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 		});
 	// Если таймер является таймаутом
 	} else {
-		// Устанавливаем функцию обратного вызова на событие таймера
-		this->_io->on(eid, [&stop, this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		/**
+		 * Устанавливаем функцию обратного вызова на событие таймера
+		 *
+		 * @note Тест останавливается только по успешному статусу. Останавливаться на
+		 *       любом статусе нельзя: обработчик получает и служебные уведомления, и
+		 *       тест завершался на первом же из них за одну миллисекунду, ни разу не
+		 *       дождавшись срабатывания самого таймаута
+		 */
+		this->_io->on(eid, [&count, &stop, this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			// Замеряем время начала работы для интервала времени
 			auto shift = std::chrono::system_clock::now();
 			// Если статус события успешен
-			if(status == awh::event::status_t::SUCCESS)
+			if(status == awh::event::status_t::SUCCESS){
 				// Записываем в лог сообщение о срабатывании таймера
 				this->_log->print("Таймер сработал: ID=%u, %u seconds", awh::log_t::flag_t::INFO, eid, std::chrono::duration_cast <std::chrono::seconds> (shift - this->ts).count());
-			// Останавливаем тест
-			stop = true;
+				// Увеличиваем количество срабатываний таймаута
+				count++;
+				// Останавливаем тест
+				stop = true;
+			}
 		});
 	}
 	// Выполняем запуск события
@@ -488,6 +503,13 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 	 * Запускаем опрос событий
 	 */
 	while(!stop && this->_io->poll());
+	// Проверяем, что таймер действительно срабатывал, а не просто завершился опрос
+	ASSERT_GT(count, 0);
+	/**
+	 * Проверяем, что таймер отработал заданную задержку, а не сработал немедленно.
+	 * Допускаем погрешность планировщика в четверть заданной задержки
+	 */
+	ASSERT_GE(std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::system_clock::now() - start).count(), (this->_parameter.timeout - (this->_parameter.timeout / 4)));
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(this->_io->deinitialize());
 }

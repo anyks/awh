@@ -97,7 +97,7 @@ namespace {
 	 *          квадратичной по объёму подачи
 	 *
 	 */
-	static constexpr double REQUEST_THRESHOLD = 36000.0;
+	static constexpr double REQUEST_THRESHOLD = 39000.0;
 	/**
 	 * @brief Порог скорости приёма тела в мегабайтах в секунду
 	 *

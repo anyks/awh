@@ -298,26 +298,42 @@ namespace {
 	};
 
 	/**
-	 * @brief Структура шага табличного декодирования по полубайту
+	 * @brief Размер индекса таблицы шагов декодирования в битах
 	 *
-	 * @details Минимальная длина кода Huffman - 5 бит, поэтому за один шаг в 4 бита
-	 *          может быть завершён не более одного символа.
+	 */
+	static constexpr uint8_t HUFF_INDEX = 16;
+	/**
+	 * @brief Количество записей таблицы шагов декодирования
+	 *
+	 */
+	static constexpr size_t HUFF_STEPS = (static_cast <size_t> (1) << HUFF_INDEX);
+	/**
+	 * @brief Наибольшее количество символов, декодируемых за один шаг
+	 *
+	 * @details Кодов короче пяти бит в таблице RFC 7541 Appendix B нет
+	 *
+	 */
+	static constexpr uint8_t HUFF_SYMBOLS = (HUFF_INDEX / 5);
+	/**
+	 * @brief Структура шага табличного декодирования
 	 *
 	 */
 	struct huff_step_t {
-		// Индекс узла дерева после шага
-		int16_t next;
-		// Декодированный символ (или -1, если символ не завершён)
-		int16_t sym;
-		// Признак недопустимой кодовой последовательности
-		bool fail;
+		// Декодированные за шаг символы, выровненные к началу
+		uint8_t out[HUFF_SYMBOLS];
+		/**
+		 * Потреблённые шагом биты и количество декодированных символов в одном октете:
+		 * старшие разряды - сколько бит потреблено (0 - ни один код в индекс таблицы
+		 * не уложился), младшие два - сколько символов декодировано
+		 */
+		uint8_t lens;
 	};
 	/**
 	 * @brief Структура табличного декодера Huffman
 	 *
 	 */
 	struct huff_table_t {
-		// Таблица переходов: 16 шагов (по одному на значение полубайта) для каждого узла
+		// Таблица шагов: по записи на каждое значение очередных 16 бит входа
 		vector <huff_step_t> steps;
 		// Длина пути от корня до узла в битах (для проверки хвостового заполнения)
 		vector <uint8_t> depth;
@@ -375,8 +391,18 @@ namespace {
 	/**
 	 * @brief Функция построения (один раз) табличного декодера Huffman
 	 *
-	 * @details Обрабатывает вход полубайтами вместо побитового спуска по дереву:
-	 *          два обращения к таблице на байт вместо восьми разыменований узлов.
+	 * @details Индексом шага служат очередные 16 бит входа, а результатом - сразу все
+	 *          символы, коды которых в эти 16 бит уложились. Коды часто встречающихся
+	 *          символов занимают 5-7 бит, поэтому один шаг отдаёт в среднем около трёх
+	 *          символов и потребляет около двух октетов: обращений к таблице выходит
+	 *          вчетверо меньше, чем при разборе полубайтами, и ни одного ветвления
+	 *          на символ - символы пишутся всегда все три, а курсор двигается на
+	 *          фактически декодированное количество.
+	 *
+	 *          Таблица занимает 256 КБ и строится при первом обращении: держать её
+	 *          в исходных текстах значило бы добавить в репозиторий несколько
+	 *          мегабайт машинно порождённых чисел, тогда как построение обходом
+	 *          дерева занимает единицы миллисекунд и происходит один раз за процесс.
 	 *
 	 * @return табличный декодер Huffman
 	 *
@@ -390,8 +416,8 @@ namespace {
 			const vector <huff_node_t> & tree = huffTree();
 			// Получаем количество узлов дерева
 			const size_t count = tree.size();
-			// Резервируем память под таблицу переходов
-			result.steps.resize(count * 16);
+			// Резервируем память под таблицу шагов
+			result.steps.resize(HUFF_STEPS);
 			// Резервируем память под длины путей до узлов
 			result.depth.assign(count, 0);
 			// Резервируем память под признаки единичных путей
@@ -428,47 +454,58 @@ namespace {
 				}
 			}
 			/**
-			 * Выполняем перебор всех узлов дерева
+			 * Выполняем перебор всех значений очередных шестнадцати бит входа
 			 */
-			for(size_t node = 0; node < count; ++node){
+			for(size_t value = 0; value < HUFF_STEPS; ++value){
+				// Получаем ссылку на заполняемый шаг таблицы
+				huff_step_t & step = result.steps[value];
 				/**
-				 * Выполняем перебор всех значений полубайта
+				 * Выполняем обнуление всех символов шага
 				 */
-				for(size_t value = 0; value < 16; ++value){
-					// Получаем ссылку на заполняемый шаг таблицы
-					huff_step_t & step = result.steps[(node * 16) + value];
-					// Символ за шаг ещё не декодирован
-					step.sym = -1;
-					// Последовательность пока корректна
-					step.fail = false;
-					// Начинаем шаг с текущего узла
-					int32_t current = static_cast <int32_t> (node);
-					/**
-					 * Выполняем перебор всех бит полубайта (от старшего к младшему)
-					 */
-					for(int32_t i = 3; i >= 0; --i){
-						// Извлекаем очередной бит полубайта
-						const int32_t bit = static_cast <int32_t> ((value >> i) & 1u);
-						// Спускаемся в дочерний узел по значению бита
-						current = tree[current].child[bit];
-						// Если дочерний узел отсутствует - последовательность недопустима
-						if(current < 0){
-							// Фиксируем недопустимую последовательность
-							step.fail = true;
+				for(uint8_t i = 0; i < HUFF_SYMBOLS; ++i)
+					// Обнуляем очередной символ шага
+					step.out[i] = 0;
+				// Начинаем шаг от корня дерева
+				int32_t current = 0;
+				// Количество декодированных за шаг символов
+				uint8_t symbols = 0;
+				// Количество потреблённых шагом бит
+				uint8_t bits = 0;
+				/**
+				 * Выполняем перебор всех бит значения (от старшего к младшему)
+				 */
+				for(uint8_t i = 0; i < HUFF_INDEX; ++i){
+					// Извлекаем очередной бит значения
+					const int32_t bit = static_cast <int32_t> ((value >> (HUFF_INDEX - 1 - i)) & 1u);
+					// Спускаемся в дочерний узел по значению бита
+					current = tree[current].child[bit];
+					// Если дочерний узел отсутствует - дальше шаг не идёт
+					if(current < 0)
+						// Прекращаем обработку шага
+						break;
+					// Если достигнут лист - символ декодирован
+					if(tree[current].sym >= 0){
+						// Запоминаем декодированный символ
+						step.out[symbols++] = static_cast <uint8_t> (tree[current].sym);
+						/**
+						 * Потреблёнными считаются только биты завершившихся символов:
+						 * начатый, но не закончившийся код остаётся в буфере целиком
+						 */
+						bits = static_cast <uint8_t> (i + 1);
+						// Возвращаемся к корню дерева
+						current = 0;
+						// Если больше символов в индекс таблицы не уложится
+						if(symbols == HUFF_SYMBOLS)
 							// Прекращаем обработку шага
 							break;
-						}
-						// Если достигнут лист - символ декодирован
-						if(tree[current].sym >= 0){
-							// Запоминаем декодированный символ
-							step.sym = tree[current].sym;
-							// Возвращаемся к корню дерева
-							current = 0;
-						}
 					}
-					// Запоминаем узел, достигнутый по завершению шага
-					step.next = (step.fail ? 0 : static_cast <int16_t> (current));
 				}
+				/**
+				 * Складываем потреблённые биты и количество символов в один октет:
+				 * нулевое значение означает, что в индекс таблицы не уложился ни один
+				 * код, и шаг обязан выполняться побитовым спуском по дереву
+				 */
+				step.lens = static_cast <uint8_t> ((bits << 2) | symbols);
 			}
 			// Выводим построенную таблицу
 			return result;
@@ -477,17 +514,59 @@ namespace {
 		return table;
 	}
 	/**
-	 * @brief Функция декодирования HPACK-строки (литерал или Huffman) начиная с позиции pos
+	 * @brief Функция выделения места в арене декодированных строк
+	 *
+	 * @details Размер арены равен её ёмкости, а занятая часть отслеживается отдельным
+	 *          счётчиком: дописывание методами строки обходится вызовом через границу
+	 *          динамической библиотеки на каждый заголовок, тогда как заголовки
+	 *          короткие и вызов стоит дороже самого копирования
+	 *
+	 * @param arena  арена декодированных строк
+	 * @param filled занятая часть арены
+	 * @param size   требуемое количество октетов
+	 * @return       указатель на выделенное место
+	 *
+	 */
+	inline char * reserveArena(string & arena, size_t & filled, const size_t size) noexcept {
+		// Требуемый размер арены
+		const size_t required = (filled + size);
+		// Если места в арене не хватает
+		if(required > arena.size())
+			/**
+			 * Наращиваем арену удвоением: блок состоит из десятка коротких заголовков,
+			 * и наращивание под каждый из них означало бы перевыделение на каждый
+			 */
+			arena.resize(std::max(required, (arena.size() * 2)));
+		// Получаем указатель на выделенное место
+		char * const result = (&arena[0] + filled);
+		// Наращиваем занятую часть арены
+		filled = required;
+		// Выводим указатель на выделенное место
+		return result;
+	}
+	/**
+	 * @brief Функция декодирования HPACK-строки (литерал или Huffman) прямо в арену
+	 *
+	 * @details Строка декодируется по концу арены, а не в промежуточный буфер: заголовок
+	 *          всё равно ложится в арену, и разбор в отдельный буфер означал бы лишнее
+	 *          копирование каждой строки блока
 	 *
 	 * @param data   входной буфер
 	 * @param size   доступно байт
 	 * @param pos    текущая позиция разбора (сдвигается)
-	 * @param output выходной буфер декодированной строки
+	 * @param arena  арена декодированных строк (строка дописывается в конец)
+	 * @param filled занятая часть арены
+	 * @param offset смещение декодированной строки в арене
+	 * @param length длина декодированной строки
 	 * @param error  код ошибки протокола
 	 * @return       результат декодирования (OK/INCOMPLETE/ERROR)
 	 *
 	 */
-	status_t decodeStringRaw(const uint8_t * data, const size_t size, size_t & pos, string & output, error_t & error) noexcept {
+	status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & arena, size_t & filled, size_t & offset, size_t & length, error_t & error) noexcept {
+		// Запоминаем смещение начала строки в арене
+		offset = filled;
+		// Сбрасываем длину декодированной строки
+		length = 0;
 		// Если данных для разбора не осталось
 		if(pos >= size)
 			// Данных недостаточно
@@ -496,10 +575,10 @@ namespace {
 		const bool huffman = ((data[pos] & 0x80) != 0);
 		// Количество прочитанных байт
 		size_t used = 0;
-		// Длина строки
-		uint64_t length = 0;
+		// Длина закодированной строки
+		uint64_t encoded = 0;
 		// Выполняем декодирование длины строки (префикс 7 бит)
-		const status_t status = hpack::prefixed::decode(data + pos, size - pos, 7, length, used);
+		const status_t status = hpack::prefixed::decode(data + pos, size - pos, 7, encoded, used);
 		// Если декодирование длины не удалось
 		if(status != status_t::OK){
 			// Если зафиксирована ошибка декодирования
@@ -512,59 +591,46 @@ namespace {
 		// Сдвигаем позицию за длину строки
 		pos += used;
 		/**
-		 * Без сложения pos + length: оно переполняет size_t при враждебно большом length
+		 * Без сложения pos + encoded: оно переполняет size_t при враждебно большой длине
 		 * (длина строки приходит из недоверенных данных) и обходит проверку границ
 		 */
-		if(length > static_cast <uint64_t> (size - pos))
+		if(encoded > static_cast <uint64_t> (size - pos))
 			// Данных недостаточно
 			return status_t::INCOMPLETE;
 		// Указатель на данные строки
 		const uint8_t * str = (data + pos);
 		// Если строка закодирована Huffman'ом
 		if(huffman){
+			/**
+			 * Место в арене берётся по оценке сверху: фактическая длина известна только
+			 * после декодирования, а проверять границу на каждый символ дороже самого
+			 * декодирования. Излишек возвращается арене сразу по его окончании
+			 */
+			char * target = reserveArena(arena, filled, hpack::huffman::space(static_cast <size_t> (encoded)));
+			// Выполняем декодирование строки прямо в арену
+			const size_t decoded = hpack::huffman::decode(str, static_cast <size_t> (encoded), target);
 			// Если декодирование Huffman-строки не удалось
-			if(!hpack::huffman::decode(str, static_cast <size_t> (length), output)){
+			if(decoded == SIZE_MAX){
+				// Возвращаем арене занятое под строку место
+				filled = offset;
 				// Фиксируем ошибку состояния HPACK
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
-		// Строка передана литералом - копируем как есть
-		} else output.assign(reinterpret_cast <const char *> (str), static_cast <size_t> (length));
+			// Возвращаем арене излишек, взятый по оценке сверху
+			filled = (offset + decoded);
+			// Устанавливаем длину декодированной строки
+			length = decoded;
+		// Строка передана литералом - переносим её в арену как есть
+		} else {
+			// Дописываем строку в арену
+			::memcpy(reserveArena(arena, filled, static_cast <size_t> (encoded)), str, static_cast <size_t> (encoded));
+			// Устанавливаем длину декодированной строки
+			length = static_cast <size_t> (encoded);
+		}
 		// Сдвигаем позицию за данные строки
-		pos += static_cast <size_t> (length);
-		// Строка декодирована
-		return status_t::OK;
-	}
-	/**
-	 * @brief Функция декодирования HPACK-строки (литерал или Huffman) с дописыванием в арену
-	 *
-	 * @param data    входной буфер
-	 * @param size    доступно байт
-	 * @param pos     текущая позиция разбора (сдвигается)
-	 * @param arena   арена декодированных строк (строка дописывается в конец)
-	 * @param scratch переиспользуемый буфер Huffman-декодирования
-	 * @param offset  смещение декодированной строки в арене
-	 * @param length  длина декодированной строки
-	 * @param error   код ошибки протокола
-	 * @return        результат декодирования (OK/INCOMPLETE/ERROR)
-	 *
-	 */
-	status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & arena, string & scratch, size_t & offset, size_t & length, error_t & error) noexcept {
-		// Запоминаем смещение начала строки в арене
-		offset = arena.size();
-		// Сбрасываем длину декодированной строки
-		length = 0;
-		// Выполняем декодирование строки во временный буфер
-		const status_t status = decodeStringRaw(data, size, pos, scratch, error);
-		// Если декодирование строки не удалось
-		if(status != status_t::OK)
-			// Выводим статус декодирования
-			return status;
-		// Дописываем декодированную строку в арену
-		arena.append(scratch);
-		// Устанавливаем длину декодированной строки
-		length = scratch.size();
+		pos += static_cast <size_t> (encoded);
 		// Строка декодирована
 		return status_t::OK;
 	}
@@ -761,6 +827,155 @@ void awh::http::h2::hpack::huffman::encode(string_view input, string & output) n
 	::huffmanEncode(input, output, length(input));
 }
 /**
+ * @brief Функция вычисления места, требуемого под декодированную строку
+ *
+ * @param size длина закодированной строки в байтах
+ * @return     требуемое количество октетов выходного буфера
+ *
+ */
+size_t awh::http::h2::hpack::huffman::space(const size_t size) noexcept {
+	/**
+	 * Оценка сверху: кодов короче пяти бит в таблице RFC 7541 Appendix B нет, значит
+	 * символов не больше, чем бит делённых на пять. Сверх оценки берётся запас под шаг
+	 * табличного декодирования: тот пишет свои символы всегда все, даже когда декодировал
+	 * один, - так на символ не приходится ни одного ветвления
+	 */
+	return (((size * 8) / 5) + ::HUFF_SYMBOLS);
+}
+/**
+ * @brief Функция декодирования Huffman-строки в готовый буфер (RFC 7541 Appendix B)
+ *
+ * @param data   входной буфер
+ * @param size   доступно байт
+ * @param output выходной буфер декодированной строки
+ * @return       длина декодированной строки, либо SIZE_MAX при некорректной последовательности
+ *
+ */
+size_t awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t size, char * output) noexcept {
+	// Получаем табличный декодер Huffman
+	const ::huff_table_t & table = ::huffTable();
+	// Получаем дерево декодирования Huffman
+	const vector <::huff_node_t> & tree = ::huffTree();
+	// Текущий узел дерева
+	int32_t current = 0;
+	/**
+	 * Запись ведётся указателем, а не методом push_back: тот в стандартной
+	 * библиотеке не встраивается, и на каждый декодированный символ приходился бы
+	 * вызов через границу динамической библиотеки
+	 */
+	char * const begin = output;
+	// Указатель на текущую позицию записи
+	char * cursor = begin;
+	// Указатель на очередной октет входа
+	const uint8_t * input = data;
+	// Указатель на конец входа
+	const uint8_t * const end = (data + size);
+	// Буфер бит: разбираемые биты лежат в старших разрядах значимой части
+	uint64_t buffer = 0;
+	// Количество значимых бит буфера
+	uint32_t available = 0;
+	/**
+	 * Выполняем разбор входа, пока в буфере остаются биты
+	 */
+	for(;;){
+		/**
+		 * Пополняем буфер бит, когда в нём осталось меньше половины: шаг быстрого пути
+		 * потребляет не больше шестнадцати бит, поэтому одного пополнения хватает
+		 * на несколько шагов подряд
+		 */
+		if(available <= 32){
+			// Если во входе осталось не меньше четырёх октетов
+			if((end - input) >= 4){
+				/**
+				 * Забираем сразу четыре октета: порядок от старшего к младшему задан
+				 * явно, иначе разбор зависел бы от порядка октетов машины
+				 */
+				buffer = ((buffer << 32) | (
+					(static_cast <uint64_t> (input[0]) << 24) | (static_cast <uint64_t> (input[1]) << 16) |
+					(static_cast <uint64_t> (input[2]) << 8) | static_cast <uint64_t> (input[3])
+				));
+				// Сдвигаем разбор на забранные октеты
+				input += 4;
+				// Наращиваем количество значимых бит буфера
+				available += 32;
+			/**
+			 * Хвост короче четырёх октетов добирается по одному
+			 */
+			} else while((available <= 56) && (input < end)){
+				// Дописываем очередной октет входа в младшие разряды буфера
+				buffer = ((buffer << 8) | static_cast <uint64_t> (* input++));
+				// Наращиваем количество значимых бит буфера
+				available += 8;
+			}
+		}
+		/**
+		 * Быстрый путь: пока разбор стоит на границе символа и бит хватает на шаг
+		 */
+		while((current == 0) && (available >= ::HUFF_INDEX)){
+			// Получаем шаг декодирования по очередным битам входа
+			const ::huff_step_t & step = table.steps[(buffer >> (available - ::HUFF_INDEX)) & (::HUFF_STEPS - 1)];
+			// Если в индекс таблицы не уложился ни один код - шаг выполняется побитово
+			if(step.lens == 0)
+				// Прекращаем быстрый разбор
+				break;
+			/**
+			 * Символы шага пишутся всегда все, а курсор двигается на фактически
+			 * декодированное количество: так на символ не приходится ни одного ветвления
+			 */
+			for(uint8_t i = 0; i < ::HUFF_SYMBOLS; ++i)
+				// Дописываем очередной символ шага
+				cursor[i] = static_cast <char> (step.out[i]);
+			// Сдвигаем курсор на количество декодированных шагом символов
+			cursor += (step.lens & 0x03);
+			// Снимаем с буфера потреблённые шагом биты
+			available -= (step.lens >> 2);
+		}
+		/**
+		 * Если буфер бит опустел. Это ещё не конец разбора: буфер опустошается ровно
+		 * тогда, когда потреблённые шагами биты сошлись на границе октета, а во входе
+		 * при этом остаются непрочитанные октеты
+		 */
+		if(available == 0){
+			// Если вход прочитан целиком - разбор окончен
+			if(input == end)
+				// Прекращаем разбор
+				break;
+			// Иначе возвращаемся к пополнению буфера
+			continue;
+		}
+		/**
+		 * Побитовый спуск по дереву: доводит до конца код длиннее шестнадцати бит
+		 * и разбирает хвост входа, на котором шага быстрого пути уже не набирается
+		 */
+		current = tree[current].child[static_cast <int32_t> ((buffer >> (available - 1)) & 1u)];
+		// Снимаем с буфера разобранный бит
+		available--;
+		// Если получена недопустимая кодовая последовательность
+		if(current < 0)
+			// Фиксируем ошибку декодирования
+			return SIZE_MAX;
+		// Если достигнут лист - символ декодирован
+		if(tree[current].sym >= 0){
+			// Дописываем декодированный символ
+			(* cursor++) = static_cast <char> (tree[current].sym);
+			// Возвращаемся к корню дерева
+			current = 0;
+		}
+	}
+	/**
+	 * Корректный конец: либо точно на границе символа, либо хвост из <= 7
+	 * единичных бит (префикс EOS). Иначе - COMPRESSION_ERROR
+	 */
+	if(current != 0){
+		// Если хвост длиннее 7 бит или содержит нулевые биты
+		if((table.depth[current] > 7) || !table.ones[current])
+			// Фиксируем ошибку декодирования
+			return SIZE_MAX;
+	}
+	// Выводим фактическую длину декодированной строки
+	return static_cast <size_t> (cursor - begin);
+}
+/**
  * @brief Функция декодирования Huffman-строки (RFC 7541 Appendix B)
  *
  * @param data   входной буфер
@@ -770,78 +985,23 @@ void awh::http::h2::hpack::huffman::encode(string_view input, string & output) n
  *
  */
 bool awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t size, string & output) noexcept {
-	// Получаем табличный декодер Huffman
-	const ::huff_table_t & table = ::huffTable();
-	// Текущий узел дерева
-	int32_t current = 0;
-	/**
-	 * Расширяем буфер под оценку сверху: короче пяти бит кодов в таблице
-	 * RFC 7541 Appendix B нет, значит символов не больше, чем бит делённых на пять.
-	 * Запись ведётся указателем, а не методом push_back: тот в стандартной
-	 * библиотеке не встраивается, и на каждый декодированный символ приходился бы
-	 * вызов через границу динамической библиотеки
-	 */
-	const size_t bound = (((size * 8) / 5) + 1);
+	// Вычисляем место, требуемое под декодированную строку
+	const size_t bound = space(size);
 	// Если разрядности буфера не хватает - расширяем его
 	if(output.size() < bound)
 		// Расширяем буфер до оценки сверху
 		output.resize(bound);
-	// Указатель на начало выходного буфера
-	char * const begin = &output[0];
-	// Указатель на текущую позицию записи
-	char * cursor = begin;
-	/**
-	 * Выполняем перебор всех байтов входного буфера
-	 */
-	for(size_t i = 0; i < size; ++i){
-		// Извлекаем очередной байт
-		const uint8_t byte = data[i];
-		// Получаем шаг декодирования старшего полубайта
-		const ::huff_step_t & high = table.steps[(static_cast <size_t> (current) * 16) + (byte >> 4)];
-		// Если получена недопустимая кодовая последовательность
-		if(high.fail){
-			// Очищаем выходной буфер: содержимое недостоверно
-			output.clear();
-			// Фиксируем ошибку декодирования
-			return false;
-		}
-		// Если на шаге декодирован символ
-		if(high.sym >= 0)
-			// Дописываем декодированный символ
-			(* cursor++) = static_cast <char> (high.sym);
-		// Переходим в достигнутый узел дерева
-		current = high.next;
-		// Получаем шаг декодирования младшего полубайта
-		const ::huff_step_t & low = table.steps[(static_cast <size_t> (current) * 16) + (byte & 0x0F)];
-		// Если получена недопустимая кодовая последовательность
-		if(low.fail){
-			// Очищаем выходной буфер: содержимое недостоверно
-			output.clear();
-			// Фиксируем ошибку декодирования
-			return false;
-		}
-		// Если на шаге декодирован символ
-		if(low.sym >= 0)
-			// Дописываем декодированный символ
-			(* cursor++) = static_cast <char> (low.sym);
-		// Переходим в достигнутый узел дерева
-		current = low.next;
-	}
-	/**
-	 * Корректный конец: либо точно на границе символа, либо хвост из <= 7
-	 * единичных бит (префикс EOS). Иначе - COMPRESSION_ERROR
-	 */
-	if(current != 0){
-		// Если хвост длиннее 7 бит или содержит нулевые биты
-		if((table.depth[current] > 7) || !table.ones[current]){
-			// Очищаем выходной буфер: содержимое недостоверно
-			output.clear();
-			// Фиксируем ошибку декодирования
-			return false;
-		}
+	// Выполняем декодирование строки в подготовленный буфер
+	const size_t length = decode(data, size, &output[0]);
+	// Если строка декодирована с ошибкой
+	if(length == SIZE_MAX){
+		// Очищаем выходной буфер: содержимое недостоверно
+		output.clear();
+		// Фиксируем ошибку декодирования
+		return false;
 	}
 	// Усекаем буфер до фактически декодированной длины
-	output.resize(static_cast <size_t> (cursor - begin));
+	output.resize(length);
 	// Строка декодирована
 	return true;
 }
@@ -1274,7 +1434,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	// Сбрасываем признак превышения лимита списка заголовков
 	this->_overflow = false;
 	// Очищаем арену декодированных строк (выделенная ёмкость переиспользуется)
-	this->_arena.clear();
+	this->_arenaLength = 0;
 	// Очищаем срезы декодированных заголовков
 	this->_slices.clear();
 	// Очищаем список декодированных заголовков
@@ -1289,11 +1449,11 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	 */
 	auto store = [this](string_view str, size_t & offset, size_t & length) noexcept -> void {
 		// Запоминаем смещение строки в арене
-		offset = this->_arena.size();
+		offset = this->_arenaLength;
 		// Запоминаем длину строки
 		length = str.size();
 		// Дописываем строку в арену
-		this->_arena.append(str);
+		::memcpy(::reserveArena(this->_arena, this->_arenaLength, str.size()), str.data(), str.size());
 	};
 	/**
 	 * @brief Функция получения записи по объединённому индексу (статическая + динамическая таблицы)
@@ -1373,7 +1533,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 		// Если лимит списка заголовков превышен
 		if(this->_overflow)
 			// Откатываем арену к состоянию до декодирования заголовка
-			this->_arena.resize(mark);
+			this->_arenaLength = mark;
 		// Иначе дописываем срез декодированного заголовка
 		else this->_slices.push_back(slice);
 	};
@@ -1391,7 +1551,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 		// Создаём срез декодированного заголовка
 		slice_t slice{};
 		// Запоминаем размер арены до декодирования заголовка
-		const size_t mark = this->_arena.size();
+		const size_t mark = this->_arenaLength;
 		// Если это Indexed Header Field (RFC 7541 §6.1, префикс 7 бит)
 		if(byte & 0x80){
 			// Дальше Dynamic Table Size Update в этом блоке недопустим
@@ -1453,14 +1613,14 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 					return status_t::ERROR;
 				}
 			// Если декодирование названия заголовка не удалось
-			} else if(::decodeString(data, size, pos, this->_arena, this->_scratch, slice.nameOffset, slice.nameLength, error) != status_t::OK){
+			} else if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.nameOffset, slice.nameLength, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Если декодирование значения заголовка не удалось
-			if(::decodeString(data, size, pos, this->_arena, this->_scratch, slice.valueOffset, slice.valueLength, error) != status_t::OK){
+			if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.valueOffset, slice.valueLength, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
@@ -1510,14 +1670,14 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 					return status_t::ERROR;
 				}
 			// Если декодирование названия заголовка не удалось
-			} else if(::decodeString(data, size, pos, this->_arena, this->_scratch, slice.nameOffset, slice.nameLength, error) != status_t::OK){
+			} else if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.nameOffset, slice.nameLength, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Если декодирование значения заголовка не удалось
-			if(::decodeString(data, size, pos, this->_arena, this->_scratch, slice.valueOffset, slice.valueLength, error) != status_t::OK){
+			if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.valueOffset, slice.valueLength, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
@@ -1616,7 +1776,7 @@ bool awh::http::h2::hpack::Decoder::overflowed() const noexcept {
  *
  */
 awh::http::h2::hpack::Decoder::Decoder(const uint32_t maxTableSize) noexcept :
- _table(maxTableSize), _protocolMaxSize(maxTableSize), _overflow(false) {}
+ _table(maxTableSize), _arenaLength(0), _protocolMaxSize(maxTableSize), _overflow(false) {}
 
 /**
  * @brief Метод поиска заголовка в статической + динамической таблицах

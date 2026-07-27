@@ -737,6 +737,76 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decodeString(const uint8_
 	return status_t::OK;
 }
 /**
+ * @brief Метод декодирования строки представления прямо в арену
+ *
+ * @details Отличается от разбора в отдельный буфер только назначением, но именно оно
+ *          и стоит дорого: декодированное поле всё равно ложится в арену, и разбор
+ *          в промежуточный буфер означал бы лишнее копирование каждой строки секции
+ *
+ * @param data       входной буфер
+ * @param size       доступно байт
+ * @param prefixBits размер префикса длины в битах
+ * @param consumed   количество прочитанных байт
+ * @return           результат декодирования
+ *
+ */
+awh::http::h3::status_t awh::http::h3::qpack::Decoder::decodeString(const uint8_t * data, const size_t size, const uint8_t prefixBits, size_t & consumed) noexcept {
+	// Если данных для разбора нет
+	if((data == nullptr) || (size < 1))
+		// Выводим признак нехватки данных
+		return status_t::INCOMPLETE;
+	/**
+	 * Признак Huffman-кодирования занимает бит, следующий сразу за префиксом длины:
+	 * его положение зависит от представления, поэтому вычисляется по размеру префикса
+	 */
+	const bool huffman = ((data[0] & static_cast <uint8_t> (1u << prefixBits)) != 0);
+	// Длина закодированной строки
+	uint64_t length = 0;
+	// Количество прочитанных байт длины
+	size_t used = 0;
+	// Выполняем чтение длины закодированной строки
+	const h2::status_t status = h2::hpack::prefixed::decode(data, size, prefixBits, length, used);
+	// Если длину строки прочитать не удалось
+	if(status == h2::status_t::INCOMPLETE)
+		// Выводим признак нехватки данных
+		return status_t::INCOMPLETE;
+	// Если при чтении длины строки произошло переполнение
+	else if(status != h2::status_t::OK)
+		// Выводим признак ошибки
+		return status_t::ERROR;
+	// Если тело строки во входном буфере ещё не целиком
+	if(static_cast <uint64_t> (size - used) < length)
+		// Выводим признак нехватки данных
+		return status_t::INCOMPLETE;
+	// Если строка закодирована Huffman
+	if(huffman){
+		// Запоминаем смещение декодируемой строки в арене
+		const size_t offset = this->_arenaLength;
+		/**
+		 * Место в арене берётся по оценке сверху: фактическая длина известна только
+		 * после декодирования, а проверять границу на каждый символ дороже самого
+		 * декодирования. Излишек возвращается арене сразу по его окончании
+		 */
+		char * target = this->reserve(h2::hpack::huffman::space(static_cast <size_t> (length)));
+		// Выполняем декодирование строки прямо в арену
+		const size_t decoded = h2::hpack::huffman::decode((data + used), static_cast <size_t> (length), target);
+		// Если строка декодирована с ошибкой
+		if(decoded == SIZE_MAX){
+			// Возвращаем арене занятое под строку место
+			this->_arenaLength = offset;
+			// Выводим признак ошибки
+			return status_t::ERROR;
+		}
+		// Возвращаем арене излишек, взятый по оценке сверху
+		this->_arenaLength = (offset + decoded);
+	// Если строка передана литералом - переносим её в арену как есть
+	} else ::memcpy(this->reserve(static_cast <size_t> (length)), (data + used), static_cast <size_t> (length));
+	// Устанавливаем количество прочитанных байт
+	consumed = (used + static_cast <size_t> (length));
+	// Выводим признак успешного декодирования
+	return status_t::OK;
+}
+/**
  * @brief Метод разрешения абсолютного номера записи в пару полей
  *
  * @param absolute абсолютный номер записи динамической таблицы
@@ -760,42 +830,77 @@ bool awh::http::h3::qpack::Decoder::resolve(const uint64_t absolute, const field
  * @param maxListSize лимит размера списка полей
  *
  */
-void awh::http::h3::qpack::Decoder::emit(string_view name, string_view value, const bool sensitive, uint64_t & listSize, const uint64_t maxListSize) noexcept {
+void awh::http::h3::qpack::Decoder::emit(const size_t nameOffset, const size_t nameLength, const size_t valueOffset, const size_t valueLength, const bool sensitive, uint64_t & listSize, const uint64_t maxListSize) noexcept {
 	// Наращиваем размер списка полей по правилу RFC 9114 §4.2.2
-	listSize += (static_cast <uint64_t> (name.size()) + static_cast <uint64_t> (value.size()) + ENTRY_OVERHEAD);
-	/**
-	 * Если лимит списка полей превышен - поле наружу не отдаётся, но разбор секции
-	 * продолжается: динамическая таблица обязана остаться синхронной с кодером пира,
-	 * иначе пришлось бы рвать всё соединение вместо одного потока
-	 */
-	if((maxListSize > 0) && (listSize > maxListSize)){
+	listSize += (static_cast <uint64_t> (nameLength) + static_cast <uint64_t> (valueLength) + ENTRY_OVERHEAD);
+	// Если лимит списка полей превышен
+	if((maxListSize > 0) && (listSize > maxListSize))
 		// Запоминаем превышение лимита списка полей
 		this->_overflow = true;
+	/**
+	 * Поле, не прошедшее лимит, наружу не отдаётся, но разбор секции продолжается:
+	 * динамическая таблица обязана остаться синхронной с кодером пира, иначе пришлось
+	 * бы рвать всё соединение вместо одного потока
+	 */
+	if(this->_overflow){
+		// Возвращаем арене место, занятое полем: наружу оно уже не пойдёт
+		this->_arenaLength = nameOffset;
 		// Выходим из метода
 		return;
 	}
-	// Если превышение лимита уже зафиксировано - арену больше не наращиваем
-	if(this->_overflow)
-		// Выходим из метода
-		return;
 	// Собираемый срез декодированного поля
 	slice_t slice;
 	// Устанавливаем смещение названия поля в арене
-	slice.nameOffset = this->_arena.size();
+	slice.nameOffset = nameOffset;
 	// Устанавливаем длину названия поля
-	slice.nameLength = name.size();
-	// Дописываем название поля в арену
-	this->_arena.append(name);
+	slice.nameLength = nameLength;
 	// Устанавливаем смещение значения поля в арене
-	slice.valueOffset = this->_arena.size();
+	slice.valueOffset = valueOffset;
 	// Устанавливаем длину значения поля
-	slice.valueLength = value.size();
-	// Дописываем значение поля в арену
-	this->_arena.append(value);
+	slice.valueLength = valueLength;
 	// Устанавливаем признак чувствительного значения
 	slice.sensitive = sensitive;
 	// Дописываем срез декодированного поля
 	this->_slices.push_back(slice);
+}
+/**
+ * @brief Метод дописывания строки в арену декодированных строк
+ *
+ * @param value дописываемая строка
+ * @return      смещение дописанной строки в арене
+ *
+ */
+size_t awh::http::h3::qpack::Decoder::append(string_view value) noexcept {
+	// Запоминаем смещение дописываемой строки в арене
+	const size_t result = this->_arenaLength;
+	// Дописываем строку в арену
+	::memcpy(this->reserve(value.size()), value.data(), value.size());
+	// Выводим смещение дописанной строки в арене
+	return result;
+}
+/**
+ * @brief Метод выделения места в арене декодированных строк
+ *
+ * @param size требуемое количество октетов
+ * @return     указатель на выделенное место
+ *
+ */
+char * awh::http::h3::qpack::Decoder::reserve(const size_t size) noexcept {
+	// Требуемый размер арены
+	const size_t required = (this->_arenaLength + size);
+	// Если места в арене не хватает
+	if(required > this->_arena.size())
+		/**
+		 * Наращиваем арену удвоением: секция состоит из десятков коротких полей,
+		 * и наращивание под каждое из них означало бы перевыделение на каждое поле
+		 */
+		this->_arena.resize(std::max(required, (this->_arena.size() * 2)));
+	// Получаем указатель на выделенное место
+	char * result = (&this->_arena[0] + this->_arenaLength);
+	// Наращиваем занятую часть арены
+	this->_arenaLength = required;
+	// Выводим указатель на выделенное место
+	return result;
 }
 /**
  * @brief Метод получения динамической таблицы кодера пира
@@ -1240,8 +1345,8 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 	}
 	// Снимаем блокировку потока
 	this->_blocked.erase(sid);
-	// Выполняем очистку арены декодированных строк
-	this->_arena.clear();
+	// Выполняем очистку арены декодированных строк с сохранением её ёмкости
+	this->_arenaLength = 0;
 	// Выполняем очистку срезов декодированных полей
 	this->_slices.clear();
 	// Накопленный размер списка полей
@@ -1260,8 +1365,14 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 		uint64_t absolute = 0;
 		// Признак ссылки на динамическую таблицу
 		bool dynamic = false;
-		// Название и значение поля, взятые из таблицы
-		string_view name, value;
+		/**
+		 * Название и значение поля собираются прямо в арене: наружу они отдаются
+		 * представлениями в неё, и складывать их сначала в отдельный буфер значило бы
+		 * копировать каждую строку секции дважды
+		 */
+		size_t nameOffset = this->_arenaLength, nameLength = 0;
+		// Смещение и длина значения поля в арене
+		size_t valueOffset = this->_arenaLength, valueLength = 0;
 		// Признак того, что поле собрано целиком из таблицы
 		bool complete = false;
 		/**
@@ -1290,10 +1401,14 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 					// Выводим результат декодирования
 					return status_t::ERROR;
 				}
-				// Запоминаем название поля
-				name = entry->name;
-				// Запоминаем значение поля
-				value = entry->value;
+				// Переносим название поля в арену
+				nameOffset = this->append(entry->name);
+				// Запоминаем длину названия поля
+				nameLength = entry->name.size();
+				// Переносим значение поля в арену
+				valueOffset = this->append(entry->value);
+				// Запоминаем длину значения поля
+				valueLength = entry->value.size();
 			// Если ссылка ведёт в динамическую таблицу
 			} else {
 				// Если номер записи вышел за границы базы
@@ -1338,8 +1453,10 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 					// Выводим результат декодирования
 					return status_t::ERROR;
 				}
-				// Запоминаем название поля
-				name = entry->name;
+				// Переносим название поля в арену
+				nameOffset = this->append(entry->name);
+				// Запоминаем длину названия поля
+				nameLength = entry->name.size();
 			// Если ссылка ведёт в динамическую таблицу
 			} else {
 				// Если номер записи вышел за границы базы
@@ -1360,8 +1477,10 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 		} else if((byte & 0x20) != 0) {
 			// Извлекаем признак чувствительного значения
 			sensitive = ((byte & 0x10) != 0);
-			// Выполняем чтение названия поля
-			if(this->decodeString((buffer + offset), (size - offset), 3, this->_name, used) != status_t::OK){
+			// Запоминаем смещение названия поля в арене
+			nameOffset = this->_arenaLength;
+			// Выполняем чтение названия поля прямо в арену
+			if(this->decodeString((buffer + offset), (size - offset), 3, used) != status_t::OK){
 				// Устанавливаем код ошибки протокола
 				error = error_t::QPACK_DECOMPRESSION_FAILED;
 				// Выводим результат декодирования
@@ -1369,8 +1488,8 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 			}
 			// Выполняем смещение разбора
 			offset += used;
-			// Запоминаем название поля
-			name = this->_name;
+			// Запоминаем длину названия поля
+			nameLength = (this->_arenaLength - nameOffset);
 		/**
 		 * Представление со ссылкой на запись за базой (RFC 9204 §4.5.3)
 		 */
@@ -1445,17 +1564,24 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 				// Выводим результат декодирования
 				return status_t::ERROR;
 			}
-			// Запоминаем название поля
-			name = entry->name;
+			// Переносим название поля в арену
+			nameOffset = this->append(entry->name);
+			// Запоминаем длину названия поля
+			nameLength = entry->name.size();
 			// Если поле собрано целиком
-			if(complete)
-				// Запоминаем значение поля
-				value = entry->value;
+			if(complete){
+				// Переносим значение поля в арену
+				valueOffset = this->append(entry->value);
+				// Запоминаем длину значения поля
+				valueLength = entry->value.size();
+			}
 		}
 		// Если значение поля передано отдельно
 		if(!complete){
-			// Выполняем чтение значения поля
-			if(this->decodeString((buffer + offset), (size - offset), 7, this->_scratch, used) != status_t::OK){
+			// Запоминаем смещение значения поля в арене
+			valueOffset = this->_arenaLength;
+			// Выполняем чтение значения поля прямо в арену
+			if(this->decodeString((buffer + offset), (size - offset), 7, used) != status_t::OK){
 				// Устанавливаем код ошибки протокола
 				error = error_t::QPACK_DECOMPRESSION_FAILED;
 				// Выводим результат декодирования
@@ -1463,11 +1589,11 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 			}
 			// Выполняем смещение разбора
 			offset += used;
-			// Запоминаем значение поля
-			value = this->_scratch;
+			// Запоминаем длину значения поля
+			valueLength = (this->_arenaLength - valueOffset);
 		}
-		// Дописываем декодированное поле в арену
-		this->emit(name, value, sensitive, listSize, maxListSize);
+		// Выполняем учёт декодированного поля
+		this->emit(nameOffset, nameLength, valueOffset, valueLength, sensitive, listSize, maxListSize);
 	}
 	/**
 	 * Выполняем сборку представлений декодированных полей: арена во время разбора
@@ -1566,6 +1692,8 @@ void awh::http::h3::qpack::Decoder::clear() noexcept {
 	this->_table.clear();
 	// Выполняем очистку арены декодированных строк
 	this->_arena.clear();
+	// Выполняем сброс занятой части арены декодированных строк
+	this->_arenaLength = 0;
 	// Выполняем очистку буфера декодирования значения
 	this->_scratch.clear();
 	// Выполняем очистку буфера декодирования названия
@@ -1591,7 +1719,7 @@ void awh::http::h3::qpack::Decoder::clear() noexcept {
  *
  */
 awh::http::h3::qpack::Decoder::Decoder(const uint64_t maxCapacity, const uint64_t maxBlocked) noexcept :
- _consumed(0), _maxCapacity(maxCapacity), _maxBlocked(maxBlocked), _acked(0), _overflow(false) {}
+ _arenaLength(0), _consumed(0), _maxCapacity(maxCapacity), _maxBlocked(maxBlocked), _acked(0), _overflow(false) {}
 
 /**
  * @brief Метод получения наименьшего абсолютного номера удерживаемой записи

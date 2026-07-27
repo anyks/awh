@@ -99,7 +99,7 @@ namespace {
 	 *          не разберётся вовсе
 	 *
 	 */
-	static constexpr double DECODE_THRESHOLD = 95000.0;
+	static constexpr double DECODE_THRESHOLD = 110000.0;
 	/**
 	 * @brief Порог степени сжатия полей в процентах от исходного объёма
 	 *

@@ -402,8 +402,19 @@ namespace awh {
 						// Динамическая таблица кодера пира
 						dynamic_table_t _table;
 					private:
-						// Арена декодированных строк текущей секции (ёмкость переиспользуется)
+						/**
+						 * Арена декодированных строк текущей секции
+						 *
+						 * @details Размер буфера равен его ёмкости, а занятая часть отслеживается
+						 *          отдельным счётчиком: дописывание методами строки обходится
+						 *          вызовом через границу динамической библиотеки на каждое поле,
+						 *          тогда как поля секции короткие и вызов стоит дороже самого
+						 *          копирования. Ёмкость переиспользуется между секциями
+						 *
+						 */
 						string _arena;
+						// Занятая часть арены декодированных строк
+						size_t _arenaLength;
 						// Буфер декодирования значения поля (ёмкость переиспользуется)
 						string _scratch;
 						/**
@@ -461,6 +472,22 @@ namespace awh {
 						 */
 						status_t decodeString(const uint8_t * data, const size_t size, const uint8_t prefixBits, string & output, size_t & consumed) noexcept;
 						/**
+						 * @brief Метод декодирования строки представления прямо в арену
+						 *
+						 * @details Отличается от разбора в отдельный буфер только назначением, но
+						 *          именно оно и стоит дорого: декодированное поле всё равно ложится
+						 *          в арену, и разбор в промежуточный буфер означал бы лишнее
+						 *          копирование каждой строки секции
+						 *
+						 * @param data       входной буфер
+						 * @param size       доступно байт
+						 * @param prefixBits размер префикса длины в битах
+						 * @param consumed   количество прочитанных байт
+						 * @return           результат декодирования
+						 *
+						 */
+						status_t decodeString(const uint8_t * data, const size_t size, const uint8_t prefixBits, size_t & consumed) noexcept;
+						/**
 						 * @brief Метод разрешения абсолютного номера записи в пару полей
 						 *
 						 * @param absolute абсолютный номер записи динамической таблицы
@@ -470,16 +497,34 @@ namespace awh {
 						 */
 						bool resolve(const uint64_t absolute, const field_t *& entry) const noexcept;
 						/**
-						 * @brief Метод дописывания декодированного поля в арену
+						 * @brief Метод выделения места в арене декодированных строк
 						 *
-						 * @param name        название поля
-						 * @param value       значение поля
+						 * @param size требуемое количество октетов
+						 * @return     указатель на выделенное место
+						 *
+						 */
+						char * reserve(const size_t size) noexcept;
+						/**
+						 * @brief Метод дописывания строки в арену декодированных строк
+						 *
+						 * @param value дописываемая строка
+						 * @return      смещение дописанной строки в арене
+						 *
+						 */
+						size_t append(string_view value) noexcept;
+						/**
+						 * @brief Метод учёта декодированного поля, уже лежащего в арене
+						 *
+						 * @param nameOffset  смещение названия поля в арене
+						 * @param nameLength  длина названия поля
+						 * @param valueOffset смещение значения поля в арене
+						 * @param valueLength длина значения поля
 						 * @param sensitive   признак чувствительного значения
 						 * @param listSize    накопленный размер списка полей
 						 * @param maxListSize лимит размера списка полей
 						 *
 						 */
-						void emit(string_view name, string_view value, const bool sensitive, uint64_t & listSize, const uint64_t maxListSize) noexcept;
+						void emit(const size_t nameOffset, const size_t nameLength, const size_t valueOffset, const size_t valueLength, const bool sensitive, uint64_t & listSize, const uint64_t maxListSize) noexcept;
 					public:
 						/**
 						 * @brief Метод получения динамической таблицы кодера пира

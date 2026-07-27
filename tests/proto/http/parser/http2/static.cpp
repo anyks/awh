@@ -163,6 +163,49 @@ TEST(Http2Hpack, HuffmanCodecTest){
 	ASSERT_TRUE(h2::hpack::huffman::decode(reinterpret_cast <const uint8_t *> (encoded.data()), encoded.size(), decoded));
 	// Проверяем что бинарная строка пережила кодирование без искажений
 	ASSERT_EQ(decoded, binary);
+	/**
+	 * Декодирование идёт табличными шагами по шестнадцать бит, а хвост, на котором
+	 * шага уже не набирается, и коды длиннее шестнадцати бит - побитовым спуском
+	 * по дереву. Переход между путями обязан быть незаметен на любом выравнивании
+	 * хвоста и на любом символе, поэтому перебираются все значения октета
+	 * во всех длинах, дающих различные остатки по модулю восьми бит
+	 */
+	for(uint16_t letter = 0; letter < 256; ++letter){
+		/**
+		 * Выполняем перебор всех длин строки, покрывающих все выравнивания хвоста
+		 */
+		for(size_t length = 1; length <= 24; ++length){
+			// Формируем строку из повторяющегося октета
+			const std::string sample(length, static_cast <char> (letter));
+			// Очищаем буфер закодированной строки
+			encoded.clear();
+			// Очищаем буфер декодированной строки
+			decoded.clear();
+			// Кодируем строку из повторяющегося октета
+			h2::hpack::huffman::encode(sample, encoded);
+			// Проверяем что предвычисленная длина совпадает с фактической
+			ASSERT_EQ(h2::hpack::huffman::length(sample), encoded.size());
+			// Декодируем строку обратно
+			ASSERT_TRUE(h2::hpack::huffman::decode(reinterpret_cast <const uint8_t *> (encoded.data()), encoded.size(), decoded));
+			// Проверяем что строка пережила кодирование без искажений
+			ASSERT_EQ(decoded, sample);
+		}
+	}
+	/**
+	 * Заполнение хвоста задано единичными битами и не длиннее семи (RFC 7541 §5.2):
+	 * нулевой бит в заполнении и заполнение в целый октет - ошибка сжатия
+	 */
+	const std::string zero = "\xF1\xE3\xC2\xE5\xF2\x3A\x6B\xA0\xAB\x90\xF4\xFE";
+	// Декодируем строку с нулевым битом в заполнении - ожидаем ошибку
+	ASSERT_FALSE(h2::hpack::huffman::decode(reinterpret_cast <const uint8_t *> (zero.data()), zero.size(), decoded));
+	// Формируем строку с заполнением длиною в целый октет
+	const std::string padded = "\xF1\xE3\xC2\xE5\xF2\x3A\x6B\xA0\xAB\x90\xF4\xFF\xFF";
+	// Декодируем строку с избыточным заполнением - ожидаем ошибку
+	ASSERT_FALSE(h2::hpack::huffman::decode(reinterpret_cast <const uint8_t *> (padded.data()), padded.size(), decoded));
+	// Формируем строку с кодом символа EOS, который внутри потока недопустим
+	const std::string eos = "\xFF\xFF\xFF\xFF\xFF";
+	// Декодируем строку с кодом EOS - ожидаем ошибку
+	ASSERT_FALSE(h2::hpack::huffman::decode(reinterpret_cast <const uint8_t *> (eos.data()), eos.size(), decoded));
 }
 
 /**
