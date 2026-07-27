@@ -57735,8 +57735,14 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 							peer->timeouts.read.delay = timeout;
 							// Если событие является неблокирующим
 							if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-								// Если таймаут для действия чтения был отключён но при этом находится в состоянии ожидания
-								if((peer->timeouts.read.delay == 0) && (peer->timeouts.read.status == event::status_t::PENDING)){
+								/**
+								 * @note Уже взведённый таймаут переводится на новую задержку сразу:
+								 *       дедлайн сдвигается на месте, без снятия и повторной вставки.
+								 *       Иначе новая задержка сохранялась бы в узле, но вступала бы
+								 *       в силу лишь при следующем взведении таймаута.
+								 */
+								// Если таймаут для действия чтения находится в состоянии ожидания
+								if(peer->timeouts.read.status == event::status_t::PENDING){
 									// Если событие не находится в состоянии паузы
 									if(peer->state.status != event::status_t::PAUSED){
 										/**
@@ -57744,15 +57750,23 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										 */
 										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
-											case static_cast <uint8_t> (event::timer_t::SIMPLE):
-												// Деактивируем таймаут на ожидание получения данных
-												::timer1::cancel(peer->timeouts.read, peer->id);
-											break;
+											case static_cast <uint8_t> (event::timer_t::SIMPLE): {
+												// Если задержка снята, деактивируем таймаут на ожидание получения данных
+												if(peer->timeouts.read.delay == 0)
+													// Деактивируем таймаут на ожидание получения данных
+													::timer1::cancel(peer->timeouts.read, peer->id);
+												// Иначе сдвигаем дедлайн таймаута на новую задержку
+												else ::timer1::reschedule(peer->timeouts.read, peer->id, event::rate_t::INSTANT, this->_log);
+											} break;
 											// Если тип таймера для событий сетевого движка является сложным
-											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-												// Деактивируем таймаут на ожидание получения данных
-												::timer2::cancel(peer->timeouts.read, peer->id);
-											break;
+											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
+												// Если задержка снята, деактивируем таймаут на ожидание получения данных
+												if(peer->timeouts.read.delay == 0)
+													// Деактивируем таймаут на ожидание получения данных
+													::timer2::cancel(peer->timeouts.read, peer->id);
+												// Иначе сдвигаем дедлайн таймаута на новую задержку
+												else ::timer2::reschedule(peer->timeouts.read, peer->id, event::rate_t::INSTANT, this->_log);
+											} break;
 										}
 									}
 								}
@@ -57767,8 +57781,14 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 							peer->timeouts.write.delay = timeout;
 							// Если событие является неблокирующим
 							if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-								// Если таймаут для действия записи был отключён но при этом находится в состоянии ожидания
-								if((peer->timeouts.write.delay == 0) && (peer->timeouts.write.status == event::status_t::PENDING)){
+								/**
+								 * @note Уже взведённый таймаут переводится на новую задержку сразу:
+								 *       дедлайн сдвигается на месте, без снятия и повторной вставки.
+								 *       Иначе новая задержка сохранялась бы в узле, но вступала бы
+								 *       в силу лишь при следующем взведении таймаута.
+								 */
+								// Если таймаут для действия записи находится в состоянии ожидания
+								if(peer->timeouts.write.status == event::status_t::PENDING){
 									// Если событие не находится в состоянии паузы
 									if(peer->state.status != event::status_t::PAUSED){
 										/**
@@ -57776,15 +57796,23 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										 */
 										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
-											case static_cast <uint8_t> (event::timer_t::SIMPLE):
-												// Деактивируем таймаут на ожидание записи данных
-												::timer1::cancel(peer->timeouts.write, peer->id);
-											break;
+											case static_cast <uint8_t> (event::timer_t::SIMPLE): {
+												// Если задержка снята, деактивируем таймаут на ожидание записи данных
+												if(peer->timeouts.write.delay == 0)
+													// Деактивируем таймаут на ожидание записи данных
+													::timer1::cancel(peer->timeouts.write, peer->id);
+												// Иначе сдвигаем дедлайн таймаута на новую задержку
+												else ::timer1::reschedule(peer->timeouts.write, peer->id, event::rate_t::INSTANT, this->_log);
+											} break;
 											// Если тип таймера для событий сетевого движка является сложным
-											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-												// Деактивируем таймаут на ожидание записи данных
-												::timer2::cancel(peer->timeouts.write, peer->id);
-											break;
+											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
+												// Если задержка снята, деактивируем таймаут на ожидание записи данных
+												if(peer->timeouts.write.delay == 0)
+													// Деактивируем таймаут на ожидание записи данных
+													::timer2::cancel(peer->timeouts.write, peer->id);
+												// Иначе сдвигаем дедлайн таймаута на новую задержку
+												else ::timer2::reschedule(peer->timeouts.write, peer->id, event::rate_t::INSTANT, this->_log);
+											} break;
 										}
 									}
 								}
@@ -57898,8 +57926,14 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 							client->timeouts.read.delay = timeout;
 							// Если событие является неблокирующим
 							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-								// Если таймаут для действия чтения был отключён но при этом находится в состоянии ожидания
-								if((client->timeouts.read.delay == 0) && (client->timeouts.read.status == event::status_t::PENDING)){
+								/**
+								 * @note Уже взведённый таймаут переводится на новую задержку сразу:
+								 *       дедлайн сдвигается на месте, без снятия и повторной вставки.
+								 *       Иначе новая задержка сохранялась бы в узле, но вступала бы
+								 *       в силу лишь при следующем взведении таймаута.
+								 */
+								// Если таймаут для действия чтения находится в состоянии ожидания
+								if(client->timeouts.read.status == event::status_t::PENDING){
 									// Если событие не находится в состоянии паузы
 									if(client->state.status != event::status_t::PAUSED){
 										/**
@@ -57907,15 +57941,23 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										 */
 										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
-											case static_cast <uint8_t> (event::timer_t::SIMPLE):
-												// Деактивируем таймаут на ожидание получения данных
-												::timer1::cancel(client->timeouts.read, client->id);
-											break;
+											case static_cast <uint8_t> (event::timer_t::SIMPLE): {
+												// Если задержка снята, деактивируем таймаут на ожидание получения данных
+												if(client->timeouts.read.delay == 0)
+													// Деактивируем таймаут на ожидание получения данных
+													::timer1::cancel(client->timeouts.read, client->id);
+												// Иначе сдвигаем дедлайн таймаута на новую задержку
+												else ::timer1::reschedule(client->timeouts.read, client->id, event::rate_t::INSTANT, this->_log);
+											} break;
 											// Если тип таймера для событий сетевого движка является сложным
-											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-												// Деактивируем таймаут на ожидание получения данных
-												::timer2::cancel(client->timeouts.read, client->id);
-											break;
+											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
+												// Если задержка снята, деактивируем таймаут на ожидание получения данных
+												if(client->timeouts.read.delay == 0)
+													// Деактивируем таймаут на ожидание получения данных
+													::timer2::cancel(client->timeouts.read, client->id);
+												// Иначе сдвигаем дедлайн таймаута на новую задержку
+												else ::timer2::reschedule(client->timeouts.read, client->id, event::rate_t::INSTANT, this->_log);
+											} break;
 										}
 									}
 								}
@@ -57930,8 +57972,14 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 							client->timeouts.write.delay = timeout;
 							// Если событие является неблокирующим
 							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-								// Если таймаут для действия записи был отключён но при этом находится в состоянии ожидания
-								if((client->timeouts.write.delay == 0) && (client->timeouts.write.status == event::status_t::PENDING)){
+								/**
+								 * @note Уже взведённый таймаут переводится на новую задержку сразу:
+								 *       дедлайн сдвигается на месте, без снятия и повторной вставки.
+								 *       Иначе новая задержка сохранялась бы в узле, но вступала бы
+								 *       в силу лишь при следующем взведении таймаута.
+								 */
+								// Если таймаут для действия записи находится в состоянии ожидания
+								if(client->timeouts.write.status == event::status_t::PENDING){
 									// Если событие не находится в состоянии паузы
 									if(client->state.status != event::status_t::PAUSED){
 										/**
@@ -57939,15 +57987,23 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 										 */
 										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
 											// Если тип таймера для событий сетевого движка является простым
-											case static_cast <uint8_t> (event::timer_t::SIMPLE):
-												// Деактивируем таймаут на ожидание записи данных
-												::timer1::cancel(client->timeouts.write, client->id);
-											break;
+											case static_cast <uint8_t> (event::timer_t::SIMPLE): {
+												// Если задержка снята, деактивируем таймаут на ожидание записи данных
+												if(client->timeouts.write.delay == 0)
+													// Деактивируем таймаут на ожидание записи данных
+													::timer1::cancel(client->timeouts.write, client->id);
+												// Иначе сдвигаем дедлайн таймаута на новую задержку
+												else ::timer1::reschedule(client->timeouts.write, client->id, event::rate_t::INSTANT, this->_log);
+											} break;
 											// Если тип таймера для событий сетевого движка является сложным
-											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-												// Деактивируем таймаут на ожидание записи данных
-												::timer2::cancel(client->timeouts.write, client->id);
-											break;
+											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
+												// Если задержка снята, деактивируем таймаут на ожидание записи данных
+												if(client->timeouts.write.delay == 0)
+													// Деактивируем таймаут на ожидание записи данных
+													::timer2::cancel(client->timeouts.write, client->id);
+												// Иначе сдвигаем дедлайн таймаута на новую задержку
+												else ::timer2::reschedule(client->timeouts.write, client->id, event::rate_t::INSTANT, this->_log);
+											} break;
 										}
 									}
 								}

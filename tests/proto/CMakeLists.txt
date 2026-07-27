@@ -74,6 +74,8 @@ if (${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER_TEST "Build unit HTTP parser test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля парсера HTTP/2
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER2_TEST "Build unit HTTP/2 parser test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для подмодуля парсера HTTP/3
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER3_TEST "Build unit HTTP/3 parser test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля протокола SOCKS5
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_SOCKS5_TEST "Build unit SOCKS5 protocol test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля протокола QUIC
@@ -159,6 +161,21 @@ if (${GTest_FOUND})
             # Выводим сообщение о сборке тестов для подмодуля парсера HTTP/2
             message(STATUS "Build tests HTTP/2 parser submodule: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER2_TEST})
+
+        # Если нужно собрать тесты для подмодуля парсера HTTP/3
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER3_TEST})
+            # Выводим сообщение о сборке тестов для подмодуля парсера HTTP/3
+            message(STATUS "Build tests HTTP/3 parser submodule: Yes\n")
+            # Дополняем список источников тестами для подмодуля парсера HTTP/3
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                http/parser/http3/http3.cpp
+                http/parser/http3/static.cpp
+            )
+        # Если не нужно собрать тесты для подмодуля парсера HTTP/3
+        else()
+            # Выводим сообщение о сборке тестов для подмодуля парсера HTTP/3
+            message(STATUS "Build tests HTTP/3 parser submodule: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER3_TEST})
 
         # Если нужно собрать тесты для подмодуля протокола SOCKS5
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_SOCKS5_TEST})

@@ -36,6 +36,7 @@
 #include <nghttp3/nghttp3.h>
 
 #include <proto/http/parser/http3/qpack.hpp>
+#include <proto/http/parser/http2/hpack.hpp>
 
 using namespace std;
 using namespace awh;
@@ -132,6 +133,110 @@ static const vector <sample_t> & samples() noexcept {
 	return result;
 }
 
+/**
+ * @brief Функция сверки статической таблицы с эталонной реализацией
+ *
+ * @details Каждая запись таблицы кодируется ссылкой на её индекс и отдаётся
+ *          эталонному декодеру: расхождение хотя бы в одном октете значения
+ *          означает, что таблицы разошлись. Такое расхождение не всплывает
+ *          на обычной нагрузке - оно проявляется только тогда, когда пир
+ *          сошлётся именно на разошедшуюся запись, - поэтому сверяется
+ *          вся таблица целиком, а не те записи, что попали в набор
+ *
+ * @param failures количество обнаруженных расхождений
+ * @param entries  количество сверенных записей
+ *
+ */
+static void staticTableAgainstReference(size_t & failures, size_t & entries) noexcept {
+	// Получаем аллокатор эталонной реализации
+	const nghttp3_mem * mem = ::nghttp3_mem_default();
+	// Объект декодера эталонной реализации
+	nghttp3_qpack_decoder * decoder = nullptr;
+	// Создаём декодер эталонной реализации
+	if(::nghttp3_qpack_decoder_new(&decoder, 0, 0, mem) != 0){
+		// Выводим сообщение о неудачном создании декодера
+		::printf("декодер эталонной реализации не создан\n");
+		// Считаем обнаруженное расхождение
+		failures++;
+		// Выходим из функции
+		return;
+	}
+	/**
+	 * Выполняем сверку всех записей статической таблицы
+	 */
+	for(size_t index = 0; index < qpack::STATIC_TABLE_SIZE; index++){
+		// Получаем сверяемую запись нашей статической таблицы
+		const qpack::static_entry_t * entry = qpack::staticTable(index);
+		// Собираемая секция полей из единственной ссылки на запись
+		string section;
+		/**
+		 * Префикс секции: требуемое число вставок и разница базы нулевые -
+		 * ссылка на статическую таблицу динамической не касается
+		 */
+		section.push_back('\0');
+		// Дописываем нулевую разницу базы
+		section.push_back('\0');
+		// Дописываем ссылку на запись статической таблицы
+		h2::hpack::prefixed::encode(section, index, 6, 0xC0);
+		// Объект контекста потока эталонной реализации
+		nghttp3_qpack_stream_context * context = nullptr;
+		// Создаём контекст потока эталонной реализации
+		if(::nghttp3_qpack_stream_context_new(&context, static_cast <int64_t> (index * 4), mem) != 0){
+			// Выводим описание расхождения
+			::printf("запись %zu: контекст потока эталона не создан\n", index);
+			// Считаем обнаруженное расхождение
+			failures++;
+			// Переходим к следующей записи
+			continue;
+		}
+		// Декодированное поле
+		nghttp3_qpack_nv nv;
+		// Флаги результата декодирования
+		uint8_t flags = 0;
+		// Выполняем декодирование секции эталонной реализацией
+		const nghttp3_ssize read = ::nghttp3_qpack_decoder_read_request(
+			decoder, context, &nv, &flags, reinterpret_cast <const uint8_t *> (section.data()), section.size(), 1
+		);
+		// Если декодирование не удалось
+		if((read < 0) || ((flags & NGHTTP3_QPACK_DECODE_FLAG_EMIT) == 0)){
+			// Выводим описание расхождения
+			::printf("запись %zu: эталон не смог разобрать ссылку на статическую таблицу\n", index);
+			// Считаем обнаруженное расхождение
+			failures++;
+			// Удаляем контекст потока эталонной реализации
+			::nghttp3_qpack_stream_context_del(context);
+			// Переходим к следующей записи
+			continue;
+		}
+		// Получаем название записи эталонной таблицы
+		const string_view name(reinterpret_cast <const char *> (::nghttp3_rcbuf_get_buf(nv.name).base), ::nghttp3_rcbuf_get_buf(nv.name).len);
+		// Получаем значение записи эталонной таблицы
+		const string_view value(reinterpret_cast <const char *> (::nghttp3_rcbuf_get_buf(nv.value).base), ::nghttp3_rcbuf_get_buf(nv.value).len);
+		// Если название либо значение записи разошлись
+		if((name != entry->name) || (value != entry->value)){
+			// Выводим описание расхождения
+			::printf(
+				"запись %zu: у нас [%.*s] = [%.*s], у эталона [%.*s] = [%.*s]\n", index,
+				static_cast <int> (entry->name.size()), entry->name.data(),
+				static_cast <int> (entry->value.size()), entry->value.data(),
+				static_cast <int> (name.size()), name.data(),
+				static_cast <int> (value.size()), value.data()
+			);
+			// Считаем обнаруженное расхождение
+			failures++;
+		}
+		// Считаем сверенную запись
+		entries++;
+		// Освобождаем название декодированного поля
+		::nghttp3_rcbuf_decref(nv.name);
+		// Освобождаем значение декодированного поля
+		::nghttp3_rcbuf_decref(nv.value);
+		// Удаляем контекст потока эталонной реализации
+		::nghttp3_qpack_stream_context_del(context);
+	}
+	// Удаляем декодер эталонной реализации
+	::nghttp3_qpack_decoder_del(decoder);
+}
 /**
  * @brief Функция сверки нашего кодера с эталонным декодером
  *
@@ -547,12 +652,16 @@ int32_t main() noexcept {
 	size_t sections = 0;
 	// Количество сверенных полей
 	size_t fields = 0;
+	// Количество сверенных записей статической таблицы
+	size_t entries = 0;
+	// Выполняем сверку статической таблицы с эталонной реализацией
+	::staticTableAgainstReference(failures, entries);
 	// Выполняем сверку нашего кодера с эталонным декодером
 	::encoderAgainstReference(failures, sections, fields);
 	// Выполняем сверку эталонного кодера с нашим декодером
 	::decoderAgainstReference(failures, sections, fields);
 	// Выводим итог сверки
-	::printf("сверено секций: %zu, полей: %zu, расхождений: %zu\n", sections, fields, failures);
+	::printf("сверено записей таблицы: %zu, секций: %zu, полей: %zu, расхождений: %zu\n", entries, sections, fields, failures);
 	// Выводим код выхода по итогу сверки
 	return (failures > 0 ? 1 : 0);
 }
