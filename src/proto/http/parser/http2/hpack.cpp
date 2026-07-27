@@ -562,11 +562,11 @@ namespace {
 	 * @return       результат декодирования (OK/INCOMPLETE/ERROR)
 	 *
 	 */
-	status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & arena, size_t & filled, size_t & offset, size_t & length, error_t & error) noexcept {
+	status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & arena, size_t & filled, string_view & output, error_t & error) noexcept {
 		// Запоминаем смещение начала строки в арене
-		offset = filled;
-		// Сбрасываем длину декодированной строки
-		length = 0;
+		const size_t offset = filled;
+		// Сбрасываем представление декодированной строки
+		output = string_view();
 		// Если данных для разбора не осталось
 		if(pos >= size)
 			// Данных недостаточно
@@ -620,14 +620,14 @@ namespace {
 			}
 			// Возвращаем арене излишек, взятый по оценке сверху
 			filled = (offset + decoded);
-			// Устанавливаем длину декодированной строки
-			length = decoded;
+			// Устанавливаем представление декодированной строки
+			output = string_view((arena.data() + offset), decoded);
 		// Строка передана литералом - переносим её в арену как есть
 		} else {
 			// Дописываем строку в арену
 			::memcpy(reserveArena(arena, filled, static_cast <size_t> (encoded)), str, static_cast <size_t> (encoded));
-			// Устанавливаем длину декодированной строки
-			length = static_cast <size_t> (encoded);
+			// Устанавливаем представление декодированной строки
+			output = string_view((arena.data() + offset), static_cast <size_t> (encoded));
 		}
 		// Сдвигаем позицию за данные строки
 		pos += static_cast <size_t> (encoded);
@@ -1144,15 +1144,15 @@ void awh::http::h2::hpack::DynamicTable::evict() noexcept {
 	/**
 	 * Выполняем вытеснение записей, пока размер таблицы превышает лимит
 	 */
-	while((this->_size > this->_maxSize) && !this->_entries.empty()){
-		// Получаем самую старую запись таблицы
-		const field_t & back = this->_entries.back();
+	while((this->_size > this->_maxSize) && (this->_live > 0)){
+		// Получаем самую старую живую запись таблицы
+		const field_t & back = this->_entries[this->_live - 1];
 		// Уменьшаем суммарный размер таблицы на размер записи (RFC 7541 §4.1)
 		this->_size -= static_cast <uint32_t> (back.name.size() + back.value.size() + 32);
 		// Если индекс записей сопровождается
 		if(this->_indexing){
 			// Вычисляем сквозной номер вытесняемой записи (она самая старая из живых)
-			const uint64_t seq = (this->_inserts - (this->_entries.size() - 1));
+			const uint64_t seq = (this->_inserts - (this->_live - 1));
 			// Вычисляем хеш названия вытесняемой записи
 			const size_t hashName = std::hash <string_view> {}(string_view(back.name));
 			// Получаем диапазон записей индекса с тем же хешем пары название-значение
@@ -1181,9 +1181,23 @@ void awh::http::h2::hpack::DynamicTable::evict() noexcept {
 				// Удаляем запись из индекса названий
 				this->_names.erase(i);
 		}
-		// Удаляем самую старую запись таблицы
-		this->_entries.pop_back();
+		/**
+		 * Запись выводится из живых, но с места не снимается: представление в её строки
+		 * могло быть выдано наружу соседним заголовком того же блока и обязано дожить
+		 * до конца разбора. Место освобождает release() в начале следующей операции
+		 */
+		this->_live--;
 	}
+}
+/**
+ * @brief Метод освобождения вытесненных записей
+ *
+ */
+void awh::http::h2::hpack::DynamicTable::release() noexcept {
+	// Если вытесненные записи есть
+	if(this->_entries.size() > this->_live)
+		// Снимаем вытесненные записи с хвоста списка
+		this->_entries.resize(this->_live);
 }
 /**
  * @brief Метод получения количества записей таблицы
@@ -1192,8 +1206,8 @@ void awh::http::h2::hpack::DynamicTable::evict() noexcept {
  *
  */
 size_t awh::http::h2::hpack::DynamicTable::count() const noexcept {
-	// Выводим количество записей таблицы
-	return this->_entries.size();
+	// Выводим количество живых записей таблицы
+	return this->_live;
 }
 /**
  * @brief Метод получения текущего суммарного размера таблицы
@@ -1236,7 +1250,7 @@ void awh::http::h2::hpack::DynamicTable::setMaxSize(const uint32_t maxSize) noex
  */
 const awh::http::h2::hpack::field_t * awh::http::h2::hpack::DynamicTable::at(const size_t index) const noexcept {
 	// Если индекс за пределами таблицы
-	if((index < 1) || (index > this->_entries.size()))
+	if((index < 1) || (index > this->_live))
 		// Запись не найдена
 		return nullptr;
 	// Выводим запись таблицы
@@ -1264,7 +1278,7 @@ uint64_t awh::http::h2::hpack::DynamicTable::findName(const size_t hashName, str
 	 * столкновении хешей ссылка на название просто не выдаётся, и название
 	 * кодируется строкой - на корректности это не сказывается
 	 */
-	if((position >= this->_entries.size()) || (this->_entries[position].name != name))
+	if((position >= this->_live) || (this->_entries[position].name != name))
 		// Выводим отсутствие совпадения по названию заголовка
 		return 0;
 	// Выводим индекс совпадения по названию заголовка
@@ -1288,13 +1302,18 @@ void awh::http::h2::hpack::DynamicTable::add(string_view name, string_view value
 		this->_index.clear();
 		// Очищаем индекс названий
 		this->_names.clear();
-		// Очищаем все записи таблицы
-		this->_entries.clear();
+		/**
+		 * Записи выводятся из живых, но с мест не снимаются: представления в их строки
+		 * могли быть выданы наружу предыдущими заголовками того же блока
+		 */
+		this->_live = 0;
 		// Выходим из метода
 		return;
 	}
 	// Добавляем запись в начало таблицы
 	this->_entries.emplace_front(string(name), string(value));
+	// Наращиваем количество живых записей таблицы
+	this->_live++;
 	// Наращиваем сквозной номер добавления
 	this->_inserts++;
 	// Если индекс записей сопровождается
@@ -1354,7 +1373,7 @@ uint64_t awh::http::h2::hpack::DynamicTable::find(const size_t hashName, string_
 		// Вычисляем позицию записи по сквозному номеру
 		const size_t position = static_cast <size_t> (this->_inserts - seq);
 		// Если позиция вышла за пределы таблицы - запись уже вытеснена
-		if(position >= this->_entries.size())
+		if(position >= this->_live)
 			// Переходим к следующей записи индекса
 			continue;
 		// Получаем запись таблицы
@@ -1387,7 +1406,7 @@ uint64_t awh::http::h2::hpack::DynamicTable::find(const size_t hashName, string_
  *
  */
 awh::http::h2::hpack::DynamicTable::DynamicTable(const uint32_t maxSize, const bool indexing) noexcept :
- _size(0), _maxSize(maxSize), _inserts(0), _indexing(indexing) {}
+ _live(0), _size(0), _maxSize(maxSize), _inserts(0), _indexing(indexing) {}
 
 /**
  * @brief Метод получения динамической таблицы пира
@@ -1440,23 +1459,30 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	// Очищаем список декодированных заголовков
 	output.clear();
 	/**
-	 * @brief Функция дописывания строки в арену декодера
-	 *
-	 * @param str    дописываемая строка
-	 * @param offset смещение строки в арене
-	 * @param length длина строки
-	 *
+	 * Снимаем записи, вытесненные прошлым блоком: представления в них, выданные
+	 * прошлым вызовом, с этого момента недействительны - ровно как обещано контрактом
 	 */
-	auto store = [this](string_view str, size_t & offset, size_t & length) noexcept -> void {
-		// Запоминаем смещение строки в арене
-		offset = this->_arenaLength;
-		// Запоминаем длину строки
-		length = str.size();
-		// Дописываем строку в арену
-		::memcpy(::reserveArena(this->_arena, this->_arenaLength, str.size()), str.data(), str.size());
-	};
+	this->_table.release();
+	/**
+	 * Отводим арену на весь блок сразу, по оценке сверху. Оценка верна потому, что
+	 * закодированные строки блока не перекрываются, а декодирование удлиняет строку
+	 * не более чем в 8/5 раза: в любой момент разбора занято не больше, чем
+	 * space(размер блока). Отведение целиком нужно не ради скорости, а ради
+	 * корректности: срезы держат представления прямо в арену, и перевыделение
+	 * её буфера посреди разбора сделало бы недействительными уже собранные
+	 */
+	const size_t bound = huffman::space(size);
+	// Если разрядности арены не хватает - расширяем её
+	if(this->_arena.size() < bound)
+		// Расширяем арену до оценки сверху
+		this->_arena.resize(bound);
 	/**
 	 * @brief Функция получения записи по объединённому индексу (статическая + динамическая таблицы)
+	 *
+	 * @details Строки записи не копируются: представление ведёт прямо в таблицу. Записи
+	 *          статической таблицы живут всё время работы программы, а вытеснение записей
+	 *          динамической отложено до начала следующего разбора, поэтому представление
+	 *          переживает и вытеснение соседним заголовком того же блока
 	 *
 	 * @param index     объединённый индекс записи
 	 * @param slice     срез заголовка, заполняемый из записи
@@ -1464,7 +1490,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	 * @return          результат получения записи
 	 *
 	 */
-	auto resolve = [this, &store](const uint64_t index, slice_t & slice, const bool needValue) noexcept -> bool {
+	auto resolve = [this](const uint64_t index, slice_t & slice, const bool needValue) noexcept -> bool {
 		// Если индекс невалиден
 		if(index == 0)
 			// Запись не найдена
@@ -1477,12 +1503,12 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 			if(entry == nullptr)
 				// Запись не найдена
 				return false;
-			// Дописываем название заголовка в арену
-			store(entry->name, slice.nameOffset, slice.nameLength);
+			// Запоминаем название заголовка
+			slice.name = entry->name;
 			// Если требуется значение заголовка
 			if(needValue)
-				// Дописываем значение заголовка в арену
-				store(entry->value, slice.valueOffset, slice.valueLength);
+				// Запоминаем значение заголовка
+				slice.value = entry->value;
 			// Запись получена
 			return true;
 		}
@@ -1492,15 +1518,12 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 		if(field == nullptr)
 			// Запись не найдена
 			return false;
-		/**
-		 * Строки таблицы копируются в арену: запись может быть вытеснена уже на следующем
-		 * заголовке этого же блока, а представление обязано жить до конца разбора
-		 */
-		store(field->name, slice.nameOffset, slice.nameLength);
+		// Запоминаем название заголовка
+		slice.name = field->name;
 		// Если требуется значение заголовка
 		if(needValue)
-			// Дописываем значение заголовка в арену
-			store(field->value, slice.valueOffset, slice.valueLength);
+			// Запоминаем значение заголовка
+			slice.value = field->value;
 		// Запись получена
 		return true;
 	};
@@ -1513,7 +1536,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	 */
 	auto account = [&listSize, maxListSize](const slice_t & slice) noexcept -> bool {
 		// Наращиваем суммарный размер списка заголовков (RFC 7541 §4.1)
-		listSize += (slice.nameLength + slice.valueLength + 32);
+		listSize += (slice.name.size() + slice.value.size() + 32);
 		// Проверяем что лимит размера списка не превышен
 		return ((maxListSize == 0) || (listSize <= maxListSize));
 	};
@@ -1613,24 +1636,25 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 					return status_t::ERROR;
 				}
 			// Если декодирование названия заголовка не удалось
-			} else if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.nameOffset, slice.nameLength, error) != status_t::OK){
+			} else if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.name, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Если декодирование значения заголовка не удалось
-			if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.valueOffset, slice.valueLength, error) != status_t::OK){
+			if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.value, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
-			// Добавляем заголовок в динамическую таблицу (строки копируются в саму таблицу)
-			this->_table.add(
-				string_view(this->_arena.data() + slice.nameOffset, slice.nameLength),
-				string_view(this->_arena.data() + slice.valueOffset, slice.valueLength)
-			);
+			/**
+			 * Добавляем заголовок в динамическую таблицу: строки копируются в саму
+			 * таблицу, а представления среза продолжают вести туда, откуда пришли, -
+			 * в арену либо в запись, вытеснение которой отложено до конца разбора
+			 */
+			this->_table.add(slice.name, slice.value);
 			// Если лимит размера списка превышен - заголовки блока наружу не отдаются
 			if(!account(slice))
 				// Помечаем что лимит списка заголовков превышен
@@ -1670,14 +1694,14 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 					return status_t::ERROR;
 				}
 			// Если декодирование названия заголовка не удалось
-			} else if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.nameOffset, slice.nameLength, error) != status_t::OK){
+			} else if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.name, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Если декодирование значения заголовка не удалось
-			if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.valueOffset, slice.valueLength, error) != status_t::OK){
+			if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.value, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
@@ -1741,16 +1765,15 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	// Резервируем память под представления декодированных заголовков
 	output.reserve(this->_slices.size());
 	/**
-	 * Собираем представления: арена больше не дописывается, её буфер уже
-	 * не будет перевыделен, поэтому указатели остаются действительными
+	 * Выполняем перебор всех срезов декодированных заголовков
 	 */
 	for(const slice_t & slice : this->_slices){
 		// Создаём объект декодированного заголовка
 		field_view_t field;
 		// Устанавливаем название заголовка
-		field.name = string_view(this->_arena.data() + slice.nameOffset, slice.nameLength);
+		field.name = slice.name;
 		// Устанавливаем значение заголовка
-		field.value = string_view(this->_arena.data() + slice.valueOffset, slice.valueLength);
+		field.value = slice.value;
 		// Устанавливаем признак чувствительного значения
 		field.sensitive = slice.sensitive;
 		// Дописываем декодированный заголовок
@@ -1919,6 +1942,8 @@ void awh::http::h2::hpack::Encoder::setMaxTableSize(const uint32_t size) noexcep
 		return;
 	// Применяем новый размер сразу (с вытеснением)
 	this->_table.setMaxSize(size);
+	// Снимаем вытесненные записи: наружу кодер представлений в них не выдаёт
+	this->_table.release();
 	// Если серия изменений между блоками уже началась - запоминаем её наименьший размер
 	if(this->_sizeUpdatePending)
 		// Обновляем наименьший размер серии изменений
@@ -2077,12 +2102,18 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
 	// Дописываем значение заголовка строкой
 	::encodeStringLiteral(output, value, useHuffman);
 	// Если заголовок индексируется
-	if(indexing)
+	if(indexing){
 		/**
 		 * Добавляем в свою динамическую таблицу - декодер пира сделает то же,
 		 * поэтому индексы остаются синхронными
 		 */
 		this->_table.add(name, value);
+		/**
+		 * Кодеру отложенное вытеснение не нужно: наружу он представлений в записи
+		 * таблицы не выдаёт, - поэтому вытесненные записи снимаются сразу
+		 */
+		this->_table.release();
+	}
 }
 /**
  * @brief Метод принятия решения об индексации заголовка

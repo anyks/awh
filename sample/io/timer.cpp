@@ -53,6 +53,10 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io(&fmk, &log);
+	// Устанавливаем тип таймера как простой
+	// io.setInternalTimer(event::timer_t::SIMPLE);
+	// Устанавливаем тип таймера как сложный
+	io.setInternalTimer(event::timer_t::DIFFICULT);
 	// Добавляем новое событие таймера
 	event::id_t eid1 = io.event(event::node_t::TIMEOUT, event::family_t::TIMER);
 	// Добавляем новое событие интервала

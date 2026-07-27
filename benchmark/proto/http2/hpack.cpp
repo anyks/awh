@@ -89,7 +89,7 @@ namespace {
 	 * @brief Порог скорости декодирования блоков заголовков в блоках в секунду
 	 *
 	 */
-	static constexpr double DECODE_THRESHOLD = 110000.0;
+	static constexpr double DECODE_THRESHOLD = 135000.0;
 	/**
 	 * @brief Порог степени сжатия заголовков в процентах от исходного объёма
 	 *
