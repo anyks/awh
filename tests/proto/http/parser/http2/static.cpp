@@ -6624,15 +6624,15 @@ TEST_F(ParserHttp2Fixture, PriorityUpdateBeforeStreamTest){
 }
 
 /**
- * @brief Метод проверки старшинства заголовка приоритета над опередившим кадром
+ * @brief Метод проверки старшинства опередившего кадра над заголовком приоритета
  *
- * @details Заголовок [priority] приходит позже кадра PRIORITY_UPDATE, объявленного
- *          до открытия потока, и обязан его перекрыть - так же поступает эталонная
- *          реализация. Сторожит порядок применения: отложенный сигнал не вправе
- *          лечь поверх объявленного заголовками
+ * @details Кадр PRIORITY_UPDATE перекрывает любой другой сигнал приоритета
+ *          (RFC 9218 §7) независимо от порядка прихода: именно так RFC предписывает
+ *          решать гонку, в которой кадр опередил секцию заголовков. Сторожит
+ *          порядок применения: заголовок [priority] не вправе лечь поверх кадра
  *
  */
-TEST_F(ParserHttp2Fixture, PriorityHeaderOverridesDeferredTest){
+TEST_F(ParserHttp2Fixture, DeferredPriorityOverridesHeaderTest){
 	// Создаём объект парсера сервера
 	auto server = this->make(direct_t::REQUEST);
 	// Создаём объект парсера клиента
@@ -6708,6 +6708,6 @@ TEST_F(ParserHttp2Fixture, PriorityHeaderOverridesDeferredTest){
 	client->sendSettings();
 	// Проверяем что оба потока получили данные
 	ASSERT_EQ(order.size(), 2u);
-	// Проверяем что срочность из заголовков перекрыла опередивший её кадр
-	ASSERT_EQ(order.front(), first);
+	// Проверяем что опередивший кадр перекрыл срочность из заголовков
+	ASSERT_EQ(order.front(), second);
 }

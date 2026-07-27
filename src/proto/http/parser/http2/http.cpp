@@ -692,7 +692,7 @@ awh::http::Parser_HTTP2::Stream::Stream() noexcept :
  id(0), sourceEof(false), headersDone(false),
  endStreamSent(false), endStreamPending(false),
  writableNotified(false), recvBody(0), contentLength(-1), bodyless(false),
- urgency(h2::proto::DEFAULT_URGENCY), incremental(false),
+ urgency(h2::proto::DEFAULT_URGENCY), incremental(false), prioritized(false),
  localWindow(h2::proto::DEFAULT_WINDOW_SIZE),
  remoteWindow(h2::proto::DEFAULT_WINDOW_SIZE),
  sendOffset(0), sendBuffer{""},
@@ -1148,16 +1148,23 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 			}
 		}
 		/**
-		 * Применяем расширенный приоритет, объявленный заголовком (RFC 9218 §5):
-		 * кадр PRIORITY_UPDATE, пришедший позже, его переопределит
+		 * Применяем расширенный приоритет, объявленный заголовком (RFC 9218 §5).
+		 * Кадр PRIORITY_UPDATE перекрывает любой другой сигнал приоритета (§7),
+		 * причём независимо от порядка прихода: кадр вправе опередить секцию
+		 * заголовков, и решать эту гонку RFC предписывает в его пользу
 		 */
-		for(const h2::hpack::field_view_t & field : fields){
-			// Если получен заголовок расширенного приоритета
-			if(field.name == header::PRIORITY){
-				// Применяем расширенный приоритет к потоку
-				this->applyPriority(* stream, field.value);
-				// Прекращаем поиск
-				break;
+		if(!stream->prioritized){
+			/**
+			 * Выполняем поиск заголовка расширенного приоритета
+			 */
+			for(const h2::hpack::field_view_t & field : fields){
+				// Если получен заголовок расширенного приоритета
+				if(field.name == header::PRIORITY){
+					// Применяем расширенный приоритет к потоку
+					this->applyPriority(* stream, field.value);
+					// Прекращаем поиск
+					break;
+				}
 			}
 		}
 		// Выполняем построение провайдера заголовков потока
@@ -2288,9 +2295,12 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Выполняем поиск потока
 			stream_t * stream = this->findStream(sid);
 			// Если поток уже открыт
-			if(stream != nullptr)
+			if(stream != nullptr){
 				// Применяем расширенный приоритет к потоку
 				this->applyPriority(* stream, value);
+				// Помечаем что приоритет потока задан кадром
+				stream->prioritized = true;
+			}
 			/**
 			 * Кадр допустим и для потока в состоянии idle: сигнал вправе опередить
 			 * HEADERS и обязан примениться при открытии потока (RFC 9218 §7.1).
@@ -3701,6 +3711,8 @@ void awh::http::Parser_HTTP2::applyPendingPriority(stream_t & stream) noexcept {
 			stream.urgency = item.urgency;
 			// Применяем признак инкрементальной доставки потока
 			stream.incremental = item.incremental;
+			// Помечаем что приоритет потока задан кадром
+			stream.prioritized = true;
 		// Если запись относится к потоку, который ещё может быть открыт
 		} else if(item.id > stream.id)
 			// Сохраняем запись в кольце

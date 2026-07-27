@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <csignal>
 #include <sys/socket.h>
 #include <sys/resource.h>
 #include <netinet/in.h>
@@ -357,6 +358,45 @@ namespace rival {
 		return nullptr;
 	}
 	/**
+	 * @brief Функция установки набора опций сокета
+	 *
+	 * @details Набор дословно повторяет опции, запрашиваемые стендом сетевого
+	 *          движка AWH: NO_SIGILL, NO_SIGPIPE, REUSE_ADDR, NO_IO_BLOCK,
+	 *          CLOSE_ON_EXEC и TCP_NO_DELAY. Прежде стенды просили две опции из
+	 *          шести, и разница в семь обращений к ядру на подключение
+	 *          записывалась движку в отставание, хотя ставилась постановкой
+	 *          замера, а не движком
+	 *
+	 * @param fd дескриптор настраиваемого сокета
+	 *
+	 */
+	static inline void options(const int32_t fd) noexcept {
+		// Значение активации опции сокета
+		const int32_t enable = 1;
+		// Структура установки обработчика сигнала
+		struct sigaction act{};
+		// Обнуляем маску блокируемых сигналов
+		sigemptyset(&act.sa_mask);
+		// Устанавливаем флаги обработчика
+		act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
+		// Устанавливаем игнорирование сигнала
+		act.sa_handler = SIG_IGN;
+		// Отключаем сигнал недопустимой инструкции
+		::sigaction(SIGILL, &act, nullptr);
+		// Отключаем сигнал записи в закрытый сокет
+		::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable));
+		// Разрешаем повторное использование адреса
+		::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
+		// Разрешаем повторное использование порта
+		::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable));
+		// Отключаем алгоритм Нейгла
+		::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
+		// Переводим сокет в неблокирующий режим
+		::fcntl(fd, F_SETFL, (::fcntl(fd, F_GETFL, 0) | O_NONBLOCK));
+		// Устанавливаем закрытие дескриптора при запуске программы
+		::fcntl(fd, F_SETFD, (::fcntl(fd, F_GETFD, 0) | FD_CLOEXEC));
+	}
+	/**
 	 * @brief Функция создания слушающего сокета петлевого интерфейса
 	 *
 	 * @note Порт выделяется системой: фиксированный порт ломал бы повторный
@@ -420,12 +460,8 @@ namespace rival {
 		if(result < 0)
 			// Выводим признак ошибки создания сокета
 			return -1;
-		// Значение активации опции сокета
-		const int32_t enable = 1;
-		// Отключаем алгоритм Нейгла
-		::setsockopt(result, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
-		// Переводим сокет в неблокирующий режим
-		::fcntl(result, F_SETFL, (::fcntl(result, F_GETFL, 0) | O_NONBLOCK));
+		// Выполняем установку набора опций сокета
+		options(result);
 		// Выполняем подключение к слушающему сокету
 		::connect(result, reinterpret_cast <const struct sockaddr *> (&address), sizeof(address));
 		// Выводим дескриптор клиентского сокета
@@ -438,12 +474,8 @@ namespace rival {
 	 *
 	 */
 	static inline void adjust(const int32_t fd) noexcept {
-		// Значение активации опции сокета
-		const int32_t enable = 1;
-		// Отключаем алгоритм Нейгла
-		::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
-		// Переводим сокет в неблокирующий режим
-		::fcntl(fd, F_SETFL, (::fcntl(fd, F_GETFL, 0) | O_NONBLOCK));
+		// Выполняем установку набора опций сокета
+		options(fd);
 	}
 	/**
 	 * @brief Функция получения текущего момента времени

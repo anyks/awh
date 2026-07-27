@@ -1806,6 +1806,99 @@ TEST_F(ParserHttp3Fixture, RepeatedPushPromiseSectionMismatch){
 }
 
 /**
+ * @brief Проверка семантики секции обещанного push
+ *
+ * @details Обещание несёт запрос, каким бы ни было направление разбора: его
+ *          отправляет сервер от имени клиента (RFC 9114 §4.6). Секция, запросом
+ *          не являющаяся, наружу не отдаётся, а обещание отменяется. Вместе
+ *          с семантикой на этом пути проверяются и поля секции: до вызова
+ *          проверки из защит оставался только лимит распакованного списка
+ *
+ */
+TEST_F(ParserHttp3Fixture, PushPromiseSectionValidatedAsRequest){
+	/**
+	 * Проверяем три случая искажения секции обещания: ответ вместо запроса,
+	 * запрос без обязательного псевдо-заголовка метода и поле управления
+	 * соединением, принадлежащее HTTP/1.1
+	 */
+	for(uint32_t variant = 0; variant < 3; variant++){
+		// Сторона клиента
+		endpoint_t client;
+		// Подготавливаем сторону клиента
+		this->setup(client, direct_t::RESPONSE);
+		// Отправляем параметры соединения со стороны клиента
+		client.parser->sendSettings();
+		// Разрешаем серверу выдавать обещания push
+		client.parser->sendMaxPushId(8);
+		// Собираем управляющий поток сервера с кадром параметров
+		std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+		// Дописываем кадр параметров соединения
+		control.append(::settings());
+		// Подаём управляющий поток сервера
+		ASSERT_EQ(this->feed(client, 3, control), status_t::OK);
+		// Набор полей искажённой секции обещания
+		std::vector <qpack::field_t> fields;
+		// Если проверяется секция ответа вместо запроса
+		if(variant == 0)
+			// Формируем секцию ответа сервера
+			fields = this->response("200");
+		// Если проверяется запрос без псевдо-заголовка метода
+		else if(variant == 1) {
+			// Формируем корректный запрос
+			fields = this->request("GET", "/promised");
+			// Снимаем псевдо-заголовок метода запроса
+			fields.erase(fields.begin());
+		// Если проверяется поле управления соединением
+		} else {
+			// Формируем корректный запрос
+			fields = this->request("GET", "/promised");
+			// Дописываем поле управления соединением HTTP/1.1
+			fields.emplace_back("connection", "keep-alive");
+		}
+		// Объект кодера полей сервера, работающий в обход потоков соединения
+		qpack::encoder_t encoder;
+		// Буфер секции полей обещания
+		std::string section;
+		// Кодируем искажённую секцию полей обещания
+		encoder.encode(0, fields, section);
+		// Буфер нагрузки кадра обещания
+		std::string payload;
+		// Дописываем идентификатор обещанного push
+		quic::varint::write(payload, 0);
+		// Дописываем секцию полей обещания
+		payload.append(section);
+		// Буфер потока запроса клиента
+		std::string stream;
+		// Дописываем кадр обещания push
+		frame::serialize::header(stream, static_cast <uint64_t> (frame_t::PUSH_PROMISE), payload.size());
+		// Дописываем нагрузку кадра обещания
+		stream.append(payload);
+		// Очищаем очередь исходящих данных перед подачей обещания
+		client.queue.clear();
+		// Подаём кадр обещания на разбор
+		ASSERT_EQ(this->feed(client, 0, stream), status_t::OK);
+		// Искажённое обещание наружу отдано быть не должно
+		ASSERT_TRUE(client.events.pushes.empty());
+		// Соединение обязано остаться живым: это ошибка сообщения, а не соединения
+		ASSERT_TRUE(client.events.errors.empty());
+		// Собранные исходящие байты стороны клиента
+		std::string outgoing;
+		/**
+		 * Выполняем сборку всех исходящих байтов очереди
+		 */
+		for(const auto & item : client.queue)
+			// Дописываем очередную порцию исходящих байтов
+			outgoing.append(std::get <1> (item));
+		// Буфер ожидаемого кадра отмены обещания
+		std::string cancel;
+		// Собираем кадр отмены обещанного push
+		frame::serialize::cancelPush(cancel, 0);
+		// Отмена обещания обязана быть отправлена
+		ASSERT_NE(outgoing.find(cancel), std::string::npos);
+	}
+}
+
+/**
  * @brief Проверка того, что Content-Length информационного ответа не переносится на финальный
  *
  * @details Информационный ответ промежуточный: объявленная в нём длина тела
@@ -2210,6 +2303,116 @@ TEST_F(ParserHttp3Fixture, PriorityUpdateReplacesDefaults){
 	ASSERT_EQ(server.parser->priority(0).urgency, 5);
 	// Признак инкрементальной доставки обязан вернуться к значению по умолчанию
 	ASSERT_FALSE(server.parser->priority(0).incremental);
+}
+
+/**
+ * @brief Проверка приоритета, объявленного до открытия потока
+ *
+ * @details Кадр PRIORITY_UPDATE идёт по управляющему потоку, а порядок между
+ *          потоками QUIC не гарантирует вовсе: сигнал вправе прийти раньше
+ *          секции полей и обязан примениться при открытии потока (RFC 9218 §7.2).
+ *          Он же перекрывает заголовок [priority] независимо от порядка прихода:
+ *          именно так RFC предписывает решать эту гонку (§7)
+ *
+ */
+TEST_F(ParserHttp3Fixture, PriorityUpdateBeforeStream){
+	/**
+	 * Проверяем обе ветки: секция полей без объявления приоритета и секция,
+	 * объявляющая приоритет заголовком поверх опередившего её кадра
+	 */
+	for(uint32_t variant = 0; variant < 2; variant++){
+		// Сторона сервера
+		endpoint_t server;
+		// Подготавливаем сторону сервера
+		this->setup(server, direct_t::REQUEST);
+		// Отправляем параметры соединения со стороны сервера
+		server.parser->sendSettings();
+		// Собираем управляющий поток клиента с кадром параметров
+		std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+		// Дописываем кадр параметров соединения
+		control.append(::settings());
+		// Дописываем кадр приоритета ещё не открытого потока запроса
+		frame::serialize::priorityUpdate(control, false, 0, "u=1, i");
+		// Подаём управляющий поток клиента
+		ASSERT_EQ(this->feed(server, 2, control), status_t::OK);
+		// Формируем поля запроса
+		std::vector <qpack::field_t> fields = this->request("GET", "/data");
+		// Если проверяется секция с объявленным заголовком приоритетом
+		if(variant == 1)
+			// Дописываем заголовок приоритета с наименьшей срочностью
+			fields.emplace_back("priority", "u=7");
+		// Объект кодера полей клиента, работающий в обход потоков соединения
+		qpack::encoder_t encoder;
+		// Буфер секции полей запроса
+		std::string section;
+		// Кодируем секцию полей запроса
+		encoder.encode(0, fields, section);
+		// Буфер потока запроса
+		std::string stream;
+		// Дописываем кадр секции полей
+		frame::serialize::header(stream, static_cast <uint64_t> (frame_t::HEADERS), section.size());
+		// Дописываем секцию полей запроса
+		stream.append(section);
+		// Подаём поток запроса на разбор
+		ASSERT_EQ(this->feed(server, 0, stream, true), status_t::OK);
+		// Соединение обязано остаться живым
+		ASSERT_TRUE(server.events.errors.empty());
+		// Срочность из опередившего кадра обязана примениться
+		ASSERT_EQ(server.parser->priority(0).urgency, 1);
+		// Признак инкрементальной доставки из опередившего кадра обязан примениться
+		ASSERT_TRUE(server.parser->priority(0).incremental);
+	}
+}
+
+/**
+ * @brief Проверка приоритета обещания push
+ *
+ * @details Приоритет push адресуется идентификатором обещания, а не потока:
+ *          поток push откроется позже и может не открыться вовсе (RFC 9218 §7.2).
+ *          Кадр разбирался и прежде, но состояния не менял вовсе
+ *
+ */
+TEST_F(ParserHttp3Fixture, PushPriorityApplied){
+	// Сторона сервера
+	endpoint_t server;
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Отправляем параметры соединения со стороны сервера
+	server.parser->sendSettings();
+	// Собираем управляющий поток клиента с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток клиента
+	ASSERT_EQ(this->feed(server, 2, control), status_t::OK);
+	// Приоритет неизвестного обещания обязан быть значением по умолчанию
+	ASSERT_EQ(server.parser->pushPriority(5).urgency, 3);
+	// Признак инкрементальной доставки неизвестного обещания снят
+	ASSERT_FALSE(server.parser->pushPriority(5).incremental);
+	// Буфер кадра приоритета обещания push
+	std::string update;
+	// Собираем кадр приоритета обещания push
+	frame::serialize::priorityUpdate(update, true, 5, "u=2, i");
+	// Подаём кадр приоритета обещания
+	ASSERT_EQ(this->feed(server, 2, update), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(server.events.errors.empty());
+	// Срочность обещания обязана примениться
+	ASSERT_EQ(server.parser->pushPriority(5).urgency, 2);
+	// Признак инкрементальной доставки обещания обязан примениться
+	ASSERT_TRUE(server.parser->pushPriority(5).incremental);
+	// Выполняем очистку буфера кадра
+	update.clear();
+	// Собираем кадр приоритета того же обещания без признака инкрементальности
+	frame::serialize::priorityUpdate(update, true, 5, "u=6");
+	// Подаём кадр приоритета обещания
+	ASSERT_EQ(this->feed(server, 2, update), status_t::OK);
+	// Новая срочность обещания обязана примениться
+	ASSERT_EQ(server.parser->pushPriority(5).urgency, 6);
+	// Признак инкрементальной доставки обязан вернуться к значению по умолчанию
+	ASSERT_FALSE(server.parser->pushPriority(5).incremental);
+	// Приоритет другого обещания остаётся значением по умолчанию
+	ASSERT_EQ(server.parser->pushPriority(9).urgency, 3);
 }
 
 /**

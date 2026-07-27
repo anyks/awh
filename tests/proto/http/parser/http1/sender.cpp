@@ -622,6 +622,189 @@ TEST_F(ParserFixture, SendIdentityShortBodyTest){
 }
 
 /**
+ * @brief Метод проверки преждевременного конца тела у pull-источника с кадрированием Content-Length
+ *
+ * @details Тело фиксированного размера завершается строго по исчерпании анонсированного
+ *          Content-Length. Источник, объявивший конец тела раньше, выдал бы в сеть
+ *          усечённое тело: получатель дочитывал бы недостающие байты до таймаута, а в
+ *          конвейере принял бы за них начало следующего сообщения. Политика обязана
+ *          совпадать с путём sendData, где досрочный endStream уже игнорируется
+ *
+ */
+TEST_F(ParserFixture, SendDataSourceShortIdentityBodyTest){
+	// Создаём объект парсера-отправителя запроса
+	auto sender = this->make(direct_t::REQUEST);
+	// Создаём объект парсера-приёмника запроса
+	auto receiver = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Формируем контейнер заголовков запроса с провайдером
+	headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::POST, std::string("/api")));
+	// Дописываем заголовок Host
+	request.emplace("Host", "anyks.com");
+	// Дописываем заголовок фиксированного размера тела
+	request.emplace("Content-Length", "10");
+	// Отправляем заголовки запроса (тело последует из pull-источника данных)
+	sender->sendHeaders(request, false);
+	// Признак того, что источник уже выдал свою единственную порцию
+	bool given = false;
+	// Назначаем pull-источник данных, объявляющий конец тела раньше анонсированного размера
+	sender->dataSource(parser_http_t::data_source_callback_t([&given](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+		// Объявляем конец тела вместе с единственной порцией
+		eof = true;
+		// Если порция уже выдана - данных больше нет
+		if(given)
+			// Возвращаем отсутствие данных
+			return 0;
+		// Помечаем что порция выдана
+		given = true;
+		// Вычисляем размер выдаваемой порции данных
+		const size_t size = std::min(cap, static_cast <size_t> (5));
+		// Копируем порцию тела в буфер парсера
+		std::memcpy(buffer, "abcde", size);
+		// Возвращаем число записанных байт
+		return static_cast <int64_t> (size);
+	}));
+	/**
+	 * Проверяем что усечённое тело не завершило сообщение: остаток анонсированного
+	 * объёма обязан приниматься методом выдачи тела
+	 */
+	ASSERT_EQ(sender->sendData("fghij", 5, true), 5u);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	// Проверяем что сообщение полностью разобрано получателем
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело собралось целиком из обеих частей
+	ASSERT_EQ(events.body, "abcdefghij");
+	// Проверяем что дальнейшая выдача тела уже не принимается
+	ASSERT_EQ(sender->sendData("xyz", 3, true), 0u);
+}
+
+/**
+ * @brief Метод проверки отказа выдачи тела поверх активного pull-источника
+ *
+ * @details Источник и прямая выдача - взаимоисключающие способы подачи одного и того же
+ *          тела. Вклинившаяся выдача встала бы чужим чанком посреди порций источника,
+ *          а вызванная из самого источника - внутрь зарезервированного под порцию
+ *          участка выходного буфера, разорвав кадрирование
+ *
+ */
+TEST_F(ParserFixture, SendDataOverActiveSourceTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Понижаем пороги выходного буфера, чтобы прокачка останавливалась посреди тела
+	sender->sendWaterMarks(64, 32);
+	// Формируем эталонное тело сообщения
+	const std::string expected(200, 'S');
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Отправляем заголовки ответа (тело последует из pull-источника данных)
+	sender->sendHeaders(response, false);
+	// Позиция чтения эталонного тела источником данных
+	size_t position = 0;
+	// Назначаем pull-источник данных тела сообщения, вклинивающийся в собственную выдачу
+	sender->dataSource(parser_http_t::data_source_callback_t([&sender, &expected, &position](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+		/**
+		 * Вклиниваемся выдачей тела прямо из источника: выходной буфер находится
+		 * между резервированием участка под порцию и его фиксацией
+		 */
+		EXPECT_EQ(sender->sendData("DDDD", 4, false), 0u);
+		// Вычисляем размер выдаваемой порции данных
+		const size_t size = std::min(std::min(cap, static_cast <size_t> (4)), (expected.size() - position));
+		// Копируем порцию эталонного тела в буфер парсера
+		std::memcpy(buffer, expected.data() + position, size);
+		// Сдвигаем позицию чтения эталонного тела
+		position += size;
+		// Выставляем флаг достижения конца тела
+		eof = (position == expected.size());
+		// Возвращаем число записанных байт
+		return static_cast <int64_t> (size);
+	}));
+	// Проверяем что источник ещё не исчерпан
+	ASSERT_TRUE(sender->sourcePending());
+	// Проверяем что выдача тела поверх активного источника не принимается
+	ASSERT_EQ(sender->sendData("DDDD", 4, false), 0u);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	// Проверяем что сообщение полностью разобрано получателем
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело дошло ровно тем, что выдал источник
+	ASSERT_EQ(events.body, expected);
+}
+
+/**
+ * @brief Метод проверки отказа блока трейлеров поверх активного pull-источника
+ *
+ * @details Блок трейлеров завершает тело нулевым чанком, а источник свою выдачу ещё не
+ *          закончил: недочитанный остаток тела оказался бы отрезан, и получатель принял
+ *          бы усечённое сообщение за полное
+ *
+ */
+TEST_F(ParserFixture, SendTrailersOverActiveSourceTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Понижаем пороги выходного буфера, чтобы прокачка останавливалась посреди тела
+	sender->sendWaterMarks(64, 32);
+	// Формируем эталонное тело сообщения
+	const std::string expected(200, 'S');
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Отправляем заголовки ответа (тело последует из pull-источника данных)
+	sender->sendHeaders(response, false);
+	// Позиция чтения эталонного тела источником данных
+	size_t position = 0;
+	// Назначаем pull-источник данных тела сообщения
+	sender->dataSource(parser_http_t::data_source_callback_t([&expected, &position](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+		// Вычисляем размер выдаваемой порции данных
+		const size_t size = std::min(std::min(cap, static_cast <size_t> (4)), (expected.size() - position));
+		// Копируем порцию эталонного тела в буфер парсера
+		std::memcpy(buffer, expected.data() + position, size);
+		// Сдвигаем позицию чтения эталонного тела
+		position += size;
+		// Выставляем флаг достижения конца тела
+		eof = (position == expected.size());
+		// Возвращаем число записанных байт
+		return static_cast <int64_t> (size);
+	}));
+	// Проверяем что источник ещё не исчерпан
+	ASSERT_TRUE(sender->sourcePending());
+	// Формируем блок трейлеров сообщения
+	headers_t trailers;
+	// Дописываем трейлер сообщения
+	trailers.emplace("X-Check", "done");
+	// Отправляем блок трейлеров поверх активного источника
+	sender->sendHeaders(trailers, false);
+	// Проверяем что блок трейлеров сообщение не завершил
+	ASSERT_TRUE(sender->sourcePending());
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	// Проверяем что сообщение полностью разобрано получателем
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело дошло целиком, а не оборвалось на нулевом чанке трейлеров
+	ASSERT_EQ(events.body, expected);
+	// Проверяем что отброшенный блок трейлеров на провод не ушёл
+	ASSERT_TRUE(events.trailers.empty());
+}
+
+/**
  * @brief Метод проверки исключения одновременной отправки Content-Length и Transfer-Encoding
  *
  */

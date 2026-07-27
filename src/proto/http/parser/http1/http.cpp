@@ -2295,8 +2295,26 @@ size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
 		if(eof){
 			// Помечаем что конец тела источника достигнут
 			this->_sender.sourceEof = true;
-			// Завершаем тело исходящего сообщения
-			this->finishBody();
+			/**
+			 * Тело фиксированного размера завершается строго по исчерпании анонсированного
+			 * Content-Length - той же политикой, что и на пути sendData. Источник, объявивший
+			 * конец тела раньше, выдал бы в сеть усечённое тело: получатель дочитывал бы
+			 * недостающие байты до таймаута, а в конвейере принял бы за них начало следующего
+			 * сообщения. Сообщение остаётся незавершённым - вызывающая сторона либо дошлёт
+			 * остаток методом sendData, либо закроет соединение, - а источник удаляется:
+			 * конец тела он уже объявил, и держать захваченные им ресурсы незачем
+			 */
+			if((this->_sender.framing == sender_t::framing_t::IDENTITY) && (this->_sender.remaining > 0)){
+				// Удаляем источник данных тела (сообщение осталось незавершённым)
+				this->_sender.source = nullptr;
+				// Записываем сообщение о преждевременном завершении тела источником в лог
+				this->_log->print(
+					"HTTP/1.x pull data source ended the body shorter than the announced Content-Length: %llu byte(s) left, the message is left unfinished",
+					log_t::flag_t::CRITICAL,
+					static_cast <unsigned long long> (this->_sender.remaining)
+				);
+			// Для остальных способов кадрирования конец тела источника завершает тело
+			} else this->finishBody();
 		}
 		// Если источник временно без данных - прерываем дозагрузку
 		if((bytes == 0) && !eof)
@@ -5356,6 +5374,25 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 		if(this->_sender.headersSent){
 			// Если тело кадрируется chunked и контейнер без провайдера - это трейлеры
 			if(!this->_sender.endSent && (this->_sender.framing == sender_t::framing_t::CHUNKED) && (headers.provider() == nullptr)){
+				/**
+				 * Если тело сообщения ещё формирует pull-источник - трейлеры несовместимы
+				 *
+				 * Блок трейлеров завершает тело нулевым чанком, а источник свою выдачу
+				 * ещё не закончил: недочитанный остаток тела оказался бы отрезан, и
+				 * получатель принял бы усечённое сообщение за полное. Источник завершает
+				 * тело сам по достижении конца данных - дописывать трейлеры можно только
+				 * к телу, выданному методом sendData, что и зафиксировано в описании
+				 * dataSource
+				 */
+				if((this->_sender.source != nullptr) && !this->_sender.sourceEof){
+					// Записываем сообщение об отброшенном блоке трейлеров в лог
+					this->_log->print(
+						"HTTP/1.x trailers are incompatible with an unfinished pull data source: block dropped",
+						log_t::flag_t::CRITICAL
+					);
+					// Выходим из метода
+					return;
+				}
 				// Сериализуем блок трейлеров сообщения
 				string block = headers.print(http::proto_t::HTTP1);
 				// Вычищаем из блока поля, запрещённые в трейлерах
@@ -5742,6 +5779,28 @@ size_t awh::http::Parser_HTTP::sendData(const void * buffer, const size_t size, 
 	if(this->_sender.framing == sender_t::framing_t::NONE)
 		// Выводим число принятых байт
 		return result;
+	/**
+	 * Пока pull-источник не исчерпан, тело сообщения формирует он один
+	 *
+	 * Источник и прямая выдача - взаимоисключающие способы подачи одного и того же
+	 * тела, и это зафиксировано в описании dataSource. Вторая выдача вклинила бы
+	 * между порциями источника чужие байты: у кадрирования фиксированного размера
+	 * они вытеснили бы хвост тела из анонсированного Content-Length, у chunked
+	 * встали бы отдельным чанком посреди чужих данных. Вызванная же из самого
+	 * источника, она пишет внутрь участка выходного буфера, зарезервированного
+	 * под текущую порцию, и разрывает кадрирование - на проводе оказывается
+	 * оборванный заголовок чанка. Отказ фиксируется в логе: молчаливая потеря
+	 * тела не оставила бы вызывающей стороне ни следа причины
+	 */
+	if((this->_sender.source != nullptr) && !this->_sender.sourceEof){
+		// Записываем сообщение об отброшенной порции тела в лог
+		this->_log->print(
+			"HTTP/1.x outgoing body is produced by the pull data source: the data passed to sendData has been dropped",
+			log_t::flag_t::CRITICAL
+		);
+		// Выводим число принятых байт
+		return result;
+	}
 	/**
 	 * Выполняем отлов ошибок
 	 */

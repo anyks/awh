@@ -337,6 +337,50 @@ namespace {
 	 *          обход получает пустой накопитель и заводит собственный список
 	 *
 	 */
+	/**
+	 * @brief Класс временного изъятия буфера нагрузки принятого кадра
+	 *
+	 * @details Нагрузка, собранная по кускам, обрабатывается вне буфера накопления:
+	 *          обработчик вправе реентрантно продолжить разбор того же потока
+	 *          и переиспользовать буфер. Ёмкость при этом теряться не должна,
+	 *          поэтому буфер изымается из накопителя, а не создаётся заново.
+	 *          Вложенный вызов застаёт накопитель пустым и работает
+	 *          на собственной ёмкости
+	 *
+	 */
+	class Scratch {
+		private:
+			// Накопитель, из которого изъят буфер
+			string & _pool;
+		public:
+			// Изъятый буфер нагрузки кадра
+			string buffer;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param pool накопитель ёмкости буфера нагрузки
+			 *
+			 */
+			explicit Scratch(string & pool) noexcept : _pool(pool) {
+				// Забираем накопитель вместе с его ёмкостью
+				this->buffer.swap(pool);
+				// Выполняем очистку изъятого буфера
+				this->buffer.clear();
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Scratch() noexcept {
+				// Выполняем очистку изъятого буфера
+				this->buffer.clear();
+				// Возвращаем в накопитель ту ёмкость, которая больше
+				if(this->_pool.capacity() < this->buffer.capacity())
+					// Возвращаем изъятый буфер в накопитель
+					this->buffer.swap(this->_pool);
+			}
+	};
 	class Borrowed {
 		private:
 			// Накопитель, из которого изъят список
@@ -581,7 +625,7 @@ void awh::http::Parser_HTTP3::Framing::clear() noexcept {
 awh::http::Parser_HTTP3::Stream::Stream() noexcept :
  state(h3::stream_state_t::IDLE), headers(false), trailers(false), body(false),
  generation(0), completed(false), headless(false), localFin(false), length(0), declared(UINT64_MAX),
- urgency(h3::proto::DEFAULT_URGENCY), incremental(false),
+ urgency(h3::proto::DEFAULT_URGENCY), incremental(false), prioritized(false),
  blockedActive(false), blockedType(0), blockedPushId(UINT64_MAX), blockedFin(false) {}
 /**
  * @brief Конструктор
@@ -1007,6 +1051,8 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 		found = &this->stream(sid);
 		// Переводим поток в открытое состояние
 		found->state = h3::stream_state_t::OPEN;
+		// Применяем приоритет, объявленный кадром до открытия потока (RFC 9218 §7.2)
+		this->applyPendingPriority(sid, * found);
 		// Если поток инициирован пиром и обработчик его отверг
 		if(this->peerInitiated(sid) && !this->fireBegin(sid)){
 			// Обрываем поток с кодом отклонения
@@ -1282,9 +1328,19 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 		 * её по частям нельзя, а размер уже ограничен лимитом
 		 */
 		} else if((framing.type == static_cast <uint64_t> (h3::frame_t::HEADERS)) ||
-		          (framing.type == static_cast <uint64_t> (h3::frame_t::PUSH_PROMISE)))
+		          (framing.type == static_cast <uint64_t> (h3::frame_t::PUSH_PROMISE))){
+			/**
+			 * Накопление начинается с ёмкости, оставшейся от прежних кадров: буфер
+			 * состояния потока живёт ровно один кадр, а состояние потока - ровно один
+			 * запрос, и без переиспользования ёмкости каждая секция полей растила бы
+			 * буфер с нуля
+			 */
+			if(framing.buffer.empty())
+				// Забираем ёмкость накопителя нагрузки
+				framing.buffer.swap(this->_payload);
 			// Дописываем очередную часть нагрузки кадра
 			framing.buffer.append(reinterpret_cast <const char *> (data + offset), chunk);
+		}
 		/**
 		 * Нагрузка кадра неизвестного типа отбрасывается, не накапливаясь
 		 */
@@ -1296,13 +1352,21 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 		if(framing.remain == 0){
 			// Запоминаем тип обработанного кадра
 			const uint64_t type = framing.type;
-			// Запоминаем накопленную нагрузку кадра
-			const string payload = ::std::move(framing.buffer);
+			/**
+			 * Изымаем накопленную нагрузку кадра вместе с ёмкостью буфера: обработчик
+			 * вправе реентрантно продолжить разбор этого же потока, поэтому обрабатывать
+			 * нагрузку прямо в буфере накопления нельзя. Изъятие вместо перемещения
+			 * возвращает ёмкость назад, иначе каждый собранный по кускам кадр
+			 * начинал бы накопление с пустого буфера
+			 */
+			::Scratch payload(this->_payload);
+			// Забираем накопленную нагрузку вместе с ёмкостью буфера
+			payload.buffer.swap(framing.buffer);
 			// Сбрасываем состояние разбора кадра
 			framing.clear();
 			// Выполняем обработку кадра
 			const h3::status_t status = this->dispatchMessage(
-				sid, type, reinterpret_cast <const uint8_t *> (payload.data()), payload.size(), last
+				sid, type, reinterpret_cast <const uint8_t *> (payload.buffer.data()), payload.buffer.size(), last
 			);
 			// Если обработка кадра не удалась
 			if(status != h3::status_t::OK)
@@ -2013,6 +2077,10 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseControl(const uint64_t sid
 		}
 		// Вычисляем размер доступной части нагрузки кадра
 		const size_t chunk = static_cast <size_t> (::std::min <uint64_t> (static_cast <uint64_t> (size - offset), framing.remain));
+		// Если накопление нагрузки только начинается
+		if(framing.buffer.empty())
+			// Забираем ёмкость накопителя нагрузки
+			framing.buffer.swap(this->_payload);
 		// Дописываем очередную часть нагрузки кадра
 		framing.buffer.append(reinterpret_cast <const char *> (data + offset), chunk);
 		// Выполняем смещение разбора
@@ -2023,12 +2091,20 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseControl(const uint64_t sid
 		if(framing.remain == 0){
 			// Запоминаем тип обработанного кадра
 			const uint64_t type = framing.type;
-			// Запоминаем накопленную нагрузку кадра
-			const string payload = ::std::move(framing.buffer);
+			/**
+			 * Изымаем накопленную нагрузку кадра вместе с ёмкостью буфера: обработчик
+			 * вправе реентрантно продолжить разбор этого же потока, поэтому обрабатывать
+			 * нагрузку прямо в буфере накопления нельзя. Изъятие вместо перемещения
+			 * возвращает ёмкость назад, иначе каждый собранный по кускам кадр
+			 * начинал бы накопление с пустого буфера
+			 */
+			::Scratch payload(this->_payload);
+			// Забираем накопленную нагрузку вместе с ёмкостью буфера
+			payload.buffer.swap(framing.buffer);
 			// Сбрасываем состояние разбора кадра
 			framing.clear();
 			// Выполняем обработку кадра
-			const h3::status_t status = this->dispatchControl(type, reinterpret_cast <const uint8_t *> (payload.data()), payload.size());
+			const h3::status_t status = this->dispatchControl(type, reinterpret_cast <const uint8_t *> (payload.buffer.data()), payload.buffer.size());
 			// Если обработка кадра не удалась
 			if(status != h3::status_t::OK)
 				// Выводим результат разбора
@@ -2209,10 +2285,24 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::dispatchControl(const uint64_t 
 				// Выполняем поиск состояния потока
 				stream_t * stream = this->findStream(priority.id);
 				// Если поток найден - применяем к нему приоритет
-				if(stream != nullptr)
+				if(stream != nullptr){
 					// Применяем значение поля приоритета
 					this->applyPriority(* stream, priority.value);
-			}
+					// Помечаем что приоритет потока задан кадром
+					stream->prioritized = true;
+				/**
+				 * Кадр вправе опередить секцию полей: он идёт по управляющему потоку,
+				 * а порядок между потоками QUIC не гарантирует вовсе (RFC 9218 §7).
+				 * Состояния потока под сигнал не создаём - до прихода секции это
+				 * позволило бы пиру наполнить карту потоков даром; запись ложится
+				 * в кольцо и применяется при открытии потока
+				 */
+				} else this->deferPriority(priority.id, priority.value);
+			/**
+			 * Приоритет обещания push адресуется идентификатором обещания, а не потока:
+			 * поток push откроется позже и может не открыться вовсе (RFC 9218 §7.2)
+			 */
+			} else this->applyPushPriority(priority.id, priority.value);
 		} break;
 		// Остальные типы кадров
 		default: {
@@ -2486,14 +2576,26 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
  *
  */
 void awh::http::Parser_HTTP3::applyPriority(stream_t & stream, string_view value) noexcept {
+	// Разбираем сигнал приоритета прямо в признаки потока
+	this->parsePriority(value, stream.urgency, stream.incremental);
+}
+/**
+ * @brief Метод разбора значения поля расширенного приоритета (RFC 9218 §4)
+ *
+ * @param value       значение поля приоритета
+ * @param urgency     срочность (выходной параметр)
+ * @param incremental признак инкрементальной доставки (выходной параметр)
+ *
+ */
+void awh::http::Parser_HTTP3::parsePriority(const string_view value, uint8_t & urgency, bool & incremental) const noexcept {
 	/**
 	 * Сигнал приоритета задаёт его целиком: параметр, в сигнале отсутствующий,
 	 * принимает значение по умолчанию, а не сохраняет прежнее (RFC 9218 §4).
 	 * Без сброса [u=1] после прежнего [i] оставлял бы поток инкрементальным
 	 */
-	stream.urgency = h3::proto::DEFAULT_URGENCY;
+	urgency = h3::proto::DEFAULT_URGENCY;
 	// Снимаем признак инкрементальной доставки потока
-	stream.incremental = false;
+	incremental = false;
 	// Позиция разбора значения
 	size_t offset = 0;
 	/**
@@ -2547,19 +2649,122 @@ void awh::http::Parser_HTTP3::applyPriority(stream_t & stream, string_view value
 			// Если значение срочности является цифрой допустимого диапазона
 			if((item[2] >= '0') && (item[2] <= ('0' + static_cast <char> (h3::proto::MAX_URGENCY))))
 				// Устанавливаем срочность потока
-				stream.urgency = static_cast <uint8_t> (item[2] - '0');
+				urgency = static_cast <uint8_t> (item[2] - '0');
 		/**
 		 * Логический элемент словаря записывается либо одним именем, либо именем
 		 * с явным значением (RFC 8941 §3.2)
 		 */
 		} else if((item == "i") || (item == value::INCREMENTAL_ON))
 			// Помечаем поток инкрементальным
-			stream.incremental = true;
+			incremental = true;
 		// Если инкрементальность потока явно снята
 		else if(item == value::INCREMENTAL_OFF)
 			// Снимаем признак инкрементального потока
-			stream.incremental = false;
+			incremental = false;
 	}
+}
+/**
+ * @brief Метод запоминания приоритета ещё не открытого потока (RFC 9218 §7.2)
+ *
+ * @param sid   идентификатор приоритизируемого потока
+ * @param value значение поля приоритета
+ *
+ */
+void awh::http::Parser_HTTP3::deferPriority(const uint64_t sid, const string_view value) noexcept {
+	// Формируем запись отложенного приоритета
+	signal_t signal;
+	// Запоминаем идентификатор приоритизируемого потока
+	signal.id = sid;
+	// Разбираем сигнал приоритета в поля записи
+	this->parsePriority(value, signal.urgency, signal.incremental);
+	/**
+	 * Выполняем поиск прежней записи по этому же потоку
+	 */
+	for(signal_t & item : this->_pendingPriorities){
+		// Если запись по этому потоку уже есть
+		if(item.id == sid){
+			// Новый сигнал заменяет прежний целиком (RFC 9218 §4)
+			item = signal;
+			// Выходим из метода
+			return;
+		}
+	}
+	// Если кольцо заполнено - вытесняем самую старую запись
+	if(this->_pendingPriorities.size() >= PENDING_PRIORITIES_CACHE)
+		// Снимаем самую старую запись кольца
+		this->_pendingPriorities.erase(this->_pendingPriorities.begin());
+	// Запоминаем приоритет до открытия потока
+	this->_pendingPriorities.push_back(signal);
+}
+/**
+ * @brief Метод применения приоритета, отложенного до открытия потока
+ *
+ * @param sid    идентификатор открываемого потока
+ * @param stream состояние открываемого потока
+ *
+ */
+void awh::http::Parser_HTTP3::applyPendingPriority(const uint64_t sid, stream_t & stream) noexcept {
+	// Если отложенных приоритетов нет - применять нечего
+	if(this->_pendingPriorities.empty())
+		// Выходим из метода
+		return;
+	// Число записей, сохраняемых в кольце
+	size_t count = 0;
+	/**
+	 * Уплотняем кольцо на месте: записи потоков с идентификатором не выше
+	 * открываемого сохранению не подлежат. Идентификаторы потоков запросов
+	 * строго возрастают, поэтому такие потоки открыты уже не будут, и без
+	 * снятия их сигналы вытесняли бы из кольца актуальные
+	 */
+	for(const signal_t & item : this->_pendingPriorities){
+		// Если запись относится к открываемому потоку
+		if(item.id == sid){
+			// Применяем срочность потока
+			stream.urgency = item.urgency;
+			// Применяем признак инкрементальной доставки потока
+			stream.incremental = item.incremental;
+			// Помечаем что приоритет потока задан кадром
+			stream.prioritized = true;
+		// Если запись относится к потоку, который ещё может быть открыт
+		} else if(item.id > sid)
+			// Сохраняем запись в кольце
+			this->_pendingPriorities[count++] = item;
+	}
+	// Усекаем кольцо до числа сохранённых записей
+	this->_pendingPriorities.resize(count);
+}
+/**
+ * @brief Метод применения приоритета обещания push (RFC 9218 §7.2)
+ *
+ * @param pushId идентификатор обещания push
+ * @param value  значение поля приоритета
+ *
+ */
+void awh::http::Parser_HTTP3::applyPushPriority(const uint64_t pushId, const string_view value) noexcept {
+	// Формируем запись приоритета обещания push
+	signal_t signal;
+	// Запоминаем идентификатор обещания push
+	signal.id = pushId;
+	// Разбираем сигнал приоритета в поля записи
+	this->parsePriority(value, signal.urgency, signal.incremental);
+	/**
+	 * Выполняем поиск прежней записи по этому же обещанию
+	 */
+	for(signal_t & item : this->_pushPriorities){
+		// Если запись по этому обещанию уже есть
+		if(item.id == pushId){
+			// Новый сигнал заменяет прежний целиком (RFC 9218 §4)
+			item = signal;
+			// Выходим из метода
+			return;
+		}
+	}
+	// Если кольцо заполнено - вытесняем самую старую запись
+	if(this->_pushPriorities.size() >= PUSH_HISTORY_CACHE)
+		// Снимаем самую старую запись кольца
+		this->_pushPriorities.erase(this->_pushPriorities.begin());
+	// Запоминаем приоритет обещания push
+	this->_pushPriorities.push_back(signal);
 }
 
 /**
@@ -2816,8 +3021,13 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::deliverSection(const uint64_t s
 		if(!trailer && (field.name == header::PRIORITY)){
 			// Обновляем состояние потока
 			stream = this->findStream(sid);
-			// Если поток пережил обработчики - применяем приоритет
-			if(this->aliveStream(sid, generation))
+			/**
+			 * Если поток пережил обработчики - применяем приоритет. Кадр
+			 * PRIORITY_UPDATE перекрывает любой другой сигнал приоритета (§7),
+			 * причём независимо от порядка прихода: он вправе опередить секцию
+			 * полей, и решать эту гонку RFC предписывает в его пользу
+			 */
+			if(this->aliveStream(sid, generation) && !stream->prioritized)
 				// Применяем значение заголовка приоритета
 				this->applyPriority(* stream, field.value);
 		}
@@ -2932,11 +3142,17 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::checkPromise(const uint64_t pus
 	size_t digest = this->_fields.size();
 	/**
 	 * Собираем отпечаток секции по её декодированным полям: одинаковые обещания
-	 * дают одинаковую последовательность полей, а значит и одинаковый отпечаток
+	 * дают одинаковую последовательность полей, а значит и одинаковый отпечаток.
+	 * Длины подмешиваются вместе с содержимым: без них перенос символов через
+	 * границу названия и значения отпечатка не меняет
 	 */
 	for(const auto & field : this->_fields){
+		// Подмешиваем длину названия поля в отпечаток
+		digest = (digest * 31 + field.name.size());
 		// Подмешиваем название поля в отпечаток
 		digest = (digest * 31 + ::std::hash <string_view> {}(field.name));
+		// Подмешиваем длину значения поля в отпечаток
+		digest = (digest * 31 + field.value.size());
 		// Подмешиваем значение поля в отпечаток
 		digest = (digest * 31 + ::std::hash <string_view> {}(field.value));
 	}
@@ -2981,6 +3197,22 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::deliverPromise(const uint64_t s
 	 * вызвав clear() либо reset() прямо изнутри. Поэтому после каждого выхода
 	 * наружу проверяется поколение состояния соединения
 	 */
+	// Код ошибки семантики секции обещания
+	error_t error = error_t::H3_MESSAGE_ERROR;
+	/**
+	 * Обещание несёт запрос, и секция его обязана быть корректным запросом
+	 * (RFC 9114 §4.6): искажённое обещание - ошибка сообщения, а не повод
+	 * отдать наружу мусор. Проверяется оно как запрос при любом направлении
+	 * разбора: на клиенте, который обещания и принимает, направление разбора -
+	 * ответ. Вместе с семантикой на этом пути включаются и лимиты секции:
+	 * без вызова из защит оставался только лимит распакованного списка
+	 */
+	if(!this->validateSection(sid, false, error, true)){
+		// Отменяем обещанный push
+		this->sendCancelPush(pushId);
+		// Выводим результат доставки
+		return h3::status_t::OK;
+	}
 	/**
 	 * Секции повторных обещаний одного push обязаны совпадать: расхождение -
 	 * ошибка соединения, и проверяется оно до выхода наружу (RFC 9114 §7.2.5)
@@ -3042,16 +3274,26 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::deliverPromise(const uint64_t s
  * @param sid     идентификатор потока
  * @param trailer признак секции трейлеров
  * @param error   код ошибки протокола
+ * @param promise признак секции обещанного запроса
  * @return        результат проверки
  *
  */
-bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool trailer, error_t & error) noexcept {
+bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool trailer, error_t & error, const bool promise) noexcept {
 	// Устанавливаем код ошибки семантики сообщения
 	error = error_t::H3_MESSAGE_ERROR;
-	// Выполняем поиск состояния потока
-	stream_t * stream = this->findStream(sid);
+	/**
+	 * Обещание push всегда несёт запрос, каким бы ни было направление разбора:
+	 * его отправляет сервер от имени клиента (RFC 9114 §4.6)
+	 */
+	const bool request = (promise || (this->_direct == direct_t::REQUEST));
+	/**
+	 * Состояние потока обещанию не принадлежит: кадр приходит на поток запроса,
+	 * ответом на который он является, а собственный поток push откроется позже.
+	 * Писать в чужое состояние объявленную длину тела и безтелесность нельзя
+	 */
+	stream_t * stream = (promise ? nullptr : this->findStream(sid));
 	// Если поток уже закрыт
-	if(stream == nullptr)
+	if(!promise && (stream == nullptr))
 		// Выводим отрицательный результат
 		return false;
 	// Признак того, что обычные поля уже начались
@@ -3091,8 +3333,8 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 			if(ordinary || trailer)
 				// Выводим отрицательный результат
 				return false;
-			// Если разбирается запрос клиента
-			if(this->_direct == direct_t::REQUEST){
+			// Если разбирается запрос клиента либо обещанный сервером запрос
+			if(request){
 				// Если получен псевдо-заголовок метода
 				if(field.name == header::METHOD){
 					// Повторный псевдо-заголовок недопустим
@@ -3206,8 +3448,8 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 	if(trailer)
 		// Выводим положительный результат
 		return true;
-	// Если разбирается запрос клиента
-	if(this->_direct == direct_t::REQUEST){
+	// Если разбирается запрос клиента либо обещанный сервером запрос
+	if(request){
 		// Если обязательный псевдо-заголовок метода отсутствует
 		if(!hasMethod)
 			// Выводим отрицательный результат
@@ -3283,8 +3525,10 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 			// Запоминаем безтелесность сообщения
 			stream->headless = true;
 	}
-	// Запоминаем объявленную длину тела сообщения
-	stream->declared = declared;
+	// Если проверялась секция потока, а не обещания
+	if(!promise)
+		// Запоминаем объявленную длину тела сообщения
+		stream->declared = declared;
 	// Выводим положительный результат
 	return true;
 }
@@ -3652,6 +3896,10 @@ void awh::http::Parser_HTTP3::reset() noexcept {
 	this->_cancelledPush.clear();
 	// Очищаем кольцо пришедших обещаний push
 	this->_openedPush.clear();
+	// Очищаем кольцо приоритетов ещё не открытых потоков
+	this->_pendingPriorities.clear();
+	// Очищаем кольцо приоритетов обещаний push
+	this->_pushPriorities.clear();
 	// Очищаем кольцо отпечатков секций обещаний push
 	::std::fill(this->_promisedPush.begin(), this->_promisedPush.end(), promise_t());
 	// Сбрасываем позицию записи в кольце обещаний push
@@ -4362,6 +4610,33 @@ awh::http::Parser_HTTP3::priority_t awh::http::Parser_HTTP3::priority(const uint
 	return result;
 }
 /**
+ * @brief Метод получения расширенного приоритета обещания push (RFC 9218 §4)
+ *
+ * @param pushId идентификатор обещания push
+ * @return       расширенный приоритет обещания push
+ *
+ */
+awh::http::Parser_HTTP3::priority_t awh::http::Parser_HTTP3::pushPriority(const uint64_t pushId) const noexcept {
+	// Результат работы функции - расширенный приоритет обещания push
+	priority_t result;
+	/**
+	 * Выполняем поиск записи приоритета обещания
+	 */
+	for(const signal_t & item : this->_pushPriorities){
+		// Если запись относится к искомому обещанию
+		if(item.id == pushId){
+			// Устанавливаем срочность обещания
+			result.urgency = item.urgency;
+			// Устанавливаем признак инкрементальной доставки обещания
+			result.incremental = item.incremental;
+			// Прекращаем поиск
+			break;
+		}
+	}
+	// Выводим расширенный приоритет обещания push
+	return result;
+}
+/**
  * @brief Метод разрешения пиру выдавать push (только клиент)
  *
  * @param pushId наибольший разрешённый идентификатор push
@@ -4431,6 +4706,44 @@ void awh::http::Parser_HTTP3::sendPriority(const uint64_t sid, const uint8_t urg
 	this->_frame.clear();
 	// Собираем кадр обновления приоритета потока
 	h3::frame::serialize::priorityUpdate(this->_frame, false, sid, value);
+	// Отправляем кадр приоритета в управляющий поток
+	this->emit(this->_controlLocal, this->_frame.data(), this->_frame.size(), false);
+}
+/**
+ * @brief Метод отправки приоритета обещания push (RFC 9218 §7.2)
+ *
+ * @param pushId      идентификатор обещания push
+ * @param urgency     срочность (0 - наивысшая, 7 - наименьшая)
+ * @param incremental признак инкрементальной доставки
+ *
+ */
+void awh::http::Parser_HTTP3::sendPushPriority(const uint64_t pushId, const uint8_t urgency, const bool incremental) noexcept {
+	// Если соединение завершено
+	if(this->_closed)
+		// Выходим из метода
+		return;
+	// Если служебные потоки открыть не удалось
+	if(!this->prepare())
+		// Выходим из метода
+		return;
+	// Если параметры соединения ещё не отправлены
+	if(!this->_settingsSent)
+		// Отправляем параметры соединения
+		this->sendSettings();
+	// Собираемое значение поля приоритета
+	string value;
+	// Формируем срочность обещания в синтаксисе структурированных полей
+	value.append("u=");
+	// Дописываем значение срочности обещания
+	value.push_back(static_cast <char> ('0' + ::std::min <uint8_t> (urgency, h3::proto::MAX_URGENCY)));
+	// Если обещание объявляется инкрементальным
+	if(incremental)
+		// Дописываем признак инкрементальной доставки
+		value.append(", i");
+	// Выполняем очистку буфера сборки кадра
+	this->_frame.clear();
+	// Собираем кадр обновления приоритета обещания push
+	h3::frame::serialize::priorityUpdate(this->_frame, true, pushId, value);
 	// Отправляем кадр приоритета в управляющий поток
 	this->emit(this->_controlLocal, this->_frame.data(), this->_frame.size(), false);
 }

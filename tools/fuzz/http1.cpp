@@ -930,16 +930,50 @@ namespace {
 		if(source && !outgoing.body.empty()){
 			// Позиция чтения тела сообщения источником
 			size_t position = 0;
+			/**
+			 * Изредка источник объявляет конец тела, не выдав анонсированного объёма
+			 *
+			 * Тело фиксированного размера завершается строго по исчерпании Content-Length,
+			 * поэтому досрочный конец тела у источника обязан оставить сообщение
+			 * незавершённым, а остаток - дойти до провода методом выдачи тела. Случай
+			 * применим только к кадрированию фиксированного размера: у chunked конец
+			 * тела источника законно завершает сообщение нулевым чанком
+			 */
+			const size_t announced = ((!outgoing.chunked && !outgoing.legacy && ::chance(12))
+			 ? (outgoing.body.size() - 1) : outgoing.body.size());
 			// Устанавливаем pull-источник данных тела сообщения
-			sender.dataSource(parser_http_t::data_source_callback_t([&outgoing, &position](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+			sender.dataSource(parser_http_t::data_source_callback_t([&sender, &outgoing, &position, announced](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+				/**
+				 * Пробуем вклиниться в тело из самого источника
+				 *
+				 * Источник и прямая выдача - взаимоисключающие способы подачи одного и
+				 * того же тела, а блок трейлеров завершил бы его нулевым чанком поверх
+				 * недочитанного остатка. Момент выбран наихудший: выходной буфер сейчас
+				 * между резервированием участка под текущую порцию и его фиксацией, и
+				 * принятая запись разорвала бы кадрирование прямо внутри заголовка чанка.
+				 * Обе попытки обязаны быть отвергнуты без следа на проводе - иначе
+				 * сообщение не разберётся обратно в отправленное
+				 */
+				if(::chance(15))
+					// Пробуем выдать порцию тела поверх активного источника
+					sender.sendData("INTRUDER", 8, false);
+				// Если выполняется попытка завершить тело блоком трейлеров
+				if(::chance(15)){
+					// Формируем блок трейлеров сообщения
+					headers_t intruder;
+					// Дописываем трейлер сообщения
+					intruder.emplace("X-Intruder", "yes");
+					// Пробуем завершить тело блоком трейлеров поверх активного источника
+					sender.sendHeaders(intruder, false);
+				}
 				// Определяем размер выдаваемой источником порции тела
-				const size_t size = std::min(std::min(cap, outgoing.portion), (outgoing.body.size() - position));
+				const size_t size = std::min(std::min(cap, outgoing.portion), (announced - position));
 				// Копируем очередную порцию тела сообщения
 				::memcpy(buffer, (outgoing.body.data() + position), size);
 				// Смещаем позицию чтения тела сообщения
 				position += size;
 				// Устанавливаем признак достижения конца тела сообщения
-				eof = (position >= outgoing.body.size());
+				eof = (position >= announced);
 				// Выводим размер выданной порции тела
 				return static_cast <int64_t> (size);
 			}));
@@ -954,6 +988,25 @@ namespace {
 				if(!sender.resumeSource())
 					// Прекращаем прокачку источника
 					break;
+			}
+			/**
+			 * Дошлём остаток тела, не выданный источником: сообщение обязано остаться
+			 * незавершённым, иначе на проводе окажется усечённое тело, а получатель
+			 * дочитывал бы недостающие байты до таймаута
+			 */
+			while(position < outgoing.body.size()){
+				// Определяем размер выдаваемой порции остатка тела
+				const size_t size = std::min(outgoing.portion, (outgoing.body.size() - position));
+				// Выполняем выдачу очередной порции остатка тела
+				const size_t accepted = sender.sendData((outgoing.body.data() + position), size, true);
+				// Если отправитель порцию не принял - выдача остатка невозможна
+				if(accepted == 0)
+					// Прекращаем выдачу остатка тела
+					break;
+				// Смещаем позицию выдачи тела сообщения
+				position += accepted;
+				// Выбираем накопленные исходящие байты
+				drain();
 			}
 			// Выбираем накопленные исходящие байты
 			drain();

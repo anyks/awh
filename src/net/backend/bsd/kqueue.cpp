@@ -105,10 +105,25 @@
  */
 #ifndef AWH_MAX_POLL_EVENTS_COUNT
 	/**
-	 * @brief Устанавливаем максимальное количество опрашиваемых событий за одну итерацию (64)
+	 * @brief Устанавливаем максимальное количество опрашиваемых событий за одну итерацию (256)
 	 *
 	 */
-	#define AWH_MAX_POLL_EVENTS_COUNT 0x40
+	#define AWH_MAX_POLL_EVENTS_COUNT 0x100
+#endif
+
+/**
+ * Если верхний предел роста массива опрашиваемых событий не установлен
+ */
+#ifndef AWH_MAX_POLL_EVENTS_LIMIT
+	/**
+	 * @brief Устанавливаем верхний предел роста массива опрашиваемых событий (16384)
+	 *
+	 * @note Массив растёт по нагрузке, но не безгранично: за один опрос имеет смысл
+	 *       забирать столько событий, сколько цикл успеет разобрать, не откладывая
+	 *       надолго ни взвод дедлайнов, ни отправку накопленных изменений
+	 *
+	 */
+	#define AWH_MAX_POLL_EVENTS_LIMIT 0x4000
 #endif
 
 /**
@@ -1633,8 +1648,19 @@ namespace {
 	/**
 	 * @brief Глобальный массив активных событий kqueue
 	 *
+	 * @details Размер массива не задан наперёд, а подбирается по нагрузке. Ядро
+	 *          отдаёт за один опрос не больше, чем помещается в массив, поэтому
+	 *          на тесном массиве готовые дескрипторы приходится вычерпывать
+	 *          несколькими опросами подряд, платя обращением к ядру за каждый.
+	 *          Заданный же наперёд просторный массив занимает память и на узле,
+	 *          обслуживающем десяток соединений
+	 *
+	 * @note Приём взят у libevent и libev: обе библиотеки начинают с малого
+	 *       массива и удваивают его, когда опрос вернул массив заполненным
+	 *       целиком - верный признак того, что готовых событий было больше
+	 *
 	 */
-	struct kevent __awh_events__[AWH_MAX_POLL_EVENTS_COUNT];
+	vector <struct kevent> __awh_events__(AWH_MAX_POLL_EVENTS_COUNT);
 
 	/**
 	 * @brief Тип внутреннего таймера для управления таймаутами событий
@@ -64111,6 +64137,8 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *
 			 */
 			ssize_t events = 0;
+			// Количество событий, полученных от ядра до отсева исходов записей пакета
+			ssize_t received = 0;
 			/**
 			 * Если режим отладки включён, пакет отправляется прежним путём: его разбор
 			 * печатает исход каждой записи и слиянию с ожиданием не поддаётся
@@ -64119,7 +64147,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				// Выполняем фиксацию изменений к ядру
 				::local::commit(this->_log);
 				// Выполняем ожидание событий в ядре
-				events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+				events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, &::__awh_events__[0], static_cast <int32_t> (::__awh_events__.size()), pts));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -64127,17 +64155,17 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				// Если пакет изменений пуст, отправлять нечего
 				if(::local::change.empty())
 					// Выполняем ожидание событий в ядре
-					events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+					events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, &::__awh_events__[0], static_cast <int32_t> (::__awh_events__.size()), pts));
 				// Если пакет изменений собран, отправляем его вместе с ожиданием
 				else {
 					// Выполняем отправку пакета изменений и ожидание событий одним вызовом
-					events = static_cast <ssize_t> (::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+					events = static_cast <ssize_t> (::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), &::__awh_events__[0], static_cast <int32_t> (::__awh_events__.size()), pts));
 					// Если ядро остановилось на сбойной записи пакета
 					if((events < 0) && (errno != EINTR)){
 						// Разбираем пакет прежним путём, называя сбойные записи
 						::local::commit(this->_log);
 						// Выполняем ожидание событий в ядре отдельным вызовом
-						events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+						events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, &::__awh_events__[0], static_cast <int32_t> (::__awh_events__.size()), pts));
 					// Если пакет применён ядром, снимаем его с учёта
 					} else ::local::change.clear();
 				}
@@ -64154,6 +64182,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *       событий не касался, поэтому до разбора такие записи не доходили -
 			 *       порядок сохраняется
 			 */
+			received = events;
 			if(events > 0){
 				// Количество событий, оставленных к разбору
 				ssize_t kept = 0;
@@ -64252,6 +64281,22 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					if(::io::polling(ev, this, &this->_eth, &this->_addr, this->_fmk, this->_log))
 						// Пропускаем событие
 						continue;
+				}
+				/**
+				 * Расширяем массив событий, если опрос заполнил его целиком
+				 *
+				 * @note Заполненный до конца массив означает, что готовых дескрипторов
+				 *       было по меньшей мере столько же, а сколько именно - ядро не
+				 *       сообщает. Остаток вычерпывается следующими опросами, и каждый
+				 *       из них стоит обращения к ядру. Массив удваивается, пока опросы
+				 *       не перестанут упираться в его край, и дальше не растёт: расти
+				 *       ему не с чего, признак заполнения больше не появляется
+				 */
+				if((static_cast <size_t> (received) >= ::__awh_events__.size()) && (::__awh_events__.size() < static_cast <size_t> (AWH_MAX_POLL_EVENTS_LIMIT))){
+					// Удвоенный размер массива событий
+					const size_t size = (::__awh_events__.size() * 2);
+					// Расширяем массив событий, не выходя за верхний предел
+					::__awh_events__.resize((size < static_cast <size_t> (AWH_MAX_POLL_EVENTS_LIMIT)) ? size : static_cast <size_t> (AWH_MAX_POLL_EVENTS_LIMIT));
 				}
 			}
 			/**
