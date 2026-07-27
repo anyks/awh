@@ -115,6 +115,8 @@ TEST_F(IoFixture, ReCreateIoTest){
 TEST_F(IoFixture, RebuildServerBeforeCommitTest){
 	// Генерируем случайный порт привязки
 	const uint16_t listenPort = port();
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
 	// Создаём серверное событие TCP
 	awh::event::id_t eid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	// Проверяем, что идентификатор события создан
@@ -144,6 +146,8 @@ TEST_F(IoFixture, RebuildServerBeforeCommitTest){
 TEST_F(IoFixture, RebuildServerListeningTest){
 	// Генерируем случайный порт привязки
 	const uint16_t listenPort = port();
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
 	// Создаём серверное событие TCP
 	awh::event::id_t eid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	// Проверяем, что идентификатор события создан

@@ -77,6 +77,25 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks HTTP/2 protocol submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_HTTP2_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для подмодуля протокола HTTP/3
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_HTTP3_BENCHMARK "Build HTTP/3 benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для подмодуля протокола HTTP/3
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_HTTP3_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для подмодуля протокола HTTP/3
+        message(STATUS "Build benchmarks HTTP/3 protocol submodule: Yes\n")
+        # Дополняем список источников бенчмарками для подмодуля протокола HTTP/3
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            http3/http3.cpp
+            http3/qpack.cpp
+            http3/throughput.cpp
+        )
+    # Если не нужно собрать бенчмарки для подмодуля протокола HTTP/3
+    else()
+        # Выводим сообщение о сборке бенчмарков для подмодуля протокола HTTP/3
+        message(STATUS "Build benchmarks HTTP/3 protocol submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_HTTP3_BENCHMARK})
+
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 

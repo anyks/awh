@@ -131,10 +131,16 @@ awh::http::h3::status_t awh::http::h3::frame::parser::identifier(const uint8_t *
 awh::http::h3::status_t awh::http::h3::frame::parser::settings(const uint8_t * payload, const size_t size, vector <setting_entry_t> & output, error_t & error) noexcept {
 	// Выполняем очистку набора параметров
 	output.clear();
+	/**
+	 * Обрыв нагрузки и повтор параметра - разные ошибки: обрыв нарушает требования
+	 * к нагрузке любого кадра и даёт H3_FRAME_ERROR (RFC 9114 §7.1), а повтор
+	 * идентификатора нарушает требования именно к SETTINGS и даёт H3_SETTINGS_ERROR
+	 * (RFC 9114 §7.2.4.1). Эталонная реализация nghttp3 различает их так же
+	 */
 	// Если полезная нагрузка не передана
 	if((payload == nullptr) && (size > 0)){
 		// Устанавливаем код ошибки протокола
-		error = error_t::H3_SETTINGS_ERROR;
+		error = error_t::H3_FRAME_ERROR;
 		// Выводим результат разбора
 		return status_t::ERROR;
 	}
@@ -151,7 +157,7 @@ awh::http::h3::status_t awh::http::h3::frame::parser::settings(const uint8_t * p
 		// Если идентификатор параметра прочитать не удалось
 		if(consumed == 0){
 			// Устанавливаем код ошибки протокола
-			error = error_t::H3_SETTINGS_ERROR;
+			error = error_t::H3_FRAME_ERROR;
 			// Выводим результат разбора
 			return status_t::ERROR;
 		}
@@ -161,11 +167,11 @@ awh::http::h3::status_t awh::http::h3::frame::parser::settings(const uint8_t * p
 		consumed = quic::varint::read((payload + offset), (size - offset), item.value);
 		/**
 		 * Значение параметра обязано присутствовать: параметр без значения означает
-		 * обрыв нагрузки посреди пары (RFC 9114 §7.2.4)
+		 * обрыв нагрузки посреди пары (RFC 9114 §7.1)
 		 */
 		if(consumed == 0){
 			// Устанавливаем код ошибки протокола
-			error = error_t::H3_SETTINGS_ERROR;
+			error = error_t::H3_FRAME_ERROR;
 			// Выводим результат разбора
 			return status_t::ERROR;
 		}

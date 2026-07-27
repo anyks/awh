@@ -447,6 +447,18 @@ TEST_F(ParserHttp3Fixture, FrameSettingsDuplicate){
 	ASSERT_EQ(frame::parser::settings(reinterpret_cast <const uint8_t *> (payload.data()), payload.size(), items, error), status_t::ERROR);
 	// Код ошибки обязан указывать на недопустимое содержимое кадра параметров
 	ASSERT_EQ(error, error_t::H3_SETTINGS_ERROR);
+	/**
+	 * Обрыв нагрузки посреди пары - нарушение требований к нагрузке любого кадра,
+	 * а не к содержимому именно SETTINGS, поэтому код ошибки другой (RFC 9114 §7.1)
+	 */
+	// Собираем нагрузку из одного идентификатора без значения
+	std::string truncated;
+	// Записываем идентификатор параметра без его значения
+	quic::varint::write(truncated, static_cast <uint64_t> (setting_t::QPACK_MAX_TABLE_CAPACITY));
+	// Оборванный набор параметров разбираться не должен
+	ASSERT_EQ(frame::parser::settings(reinterpret_cast <const uint8_t *> (truncated.data()), truncated.size(), items, error), status_t::ERROR);
+	// Код ошибки обязан указывать на нарушение требований к нагрузке кадра
+	ASSERT_EQ(error, error_t::H3_FRAME_ERROR);
 }
 /**
  * @brief Проверка обмена параметрами соединения
