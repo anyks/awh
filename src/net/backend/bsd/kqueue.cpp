@@ -1977,12 +1977,12 @@ namespace {
 			 *
 			 */
 			Iterator erase(const Iterator & item) noexcept {
-				// Создаём итератор результата
-				Iterator result = item;
 				// Если итератор указывает за пределы карты, удалять нечего
 				if(item.chunk() >= this->_chunks.size())
 					// Выводим итератор на конец хранилища
 					return this->end();
+				// Запоминаем номер первого обслуживаемого чанка до отбрасывания головы карты
+				const size_t base = this->_base;
 				// Получаем чанк удаляемого узла
 				auto & chunk = this->_chunks[item.chunk()];
 				// Если чанк существует и слот занят
@@ -2005,8 +2005,25 @@ namespace {
 						this->trim();
 					}
 				}
-				// Переходим к следующему узлу
-				++result;
+				/**
+				 * Отброшенная голова карты сдвигает нумерацию чанков, поэтому итератор
+				 * результата строится по её итоговому состоянию: положение, снятое до
+				 * удаления, указывало бы после сдвига на чужой чанк
+				 */
+				const size_t shift = (this->_base - base);
+				// Если чанк удалённого узла пережил отбрасывание головы карты
+				if(item.chunk() >= shift){
+					// Создаём итератор результата на месте удалённого узла
+					Iterator result(this, (item.chunk() - shift), item.slot());
+					// Переходим к следующему узлу
+					++result;
+					// Выводим итератор следующего узла
+					return result;
+				}
+				// Чанк удалённого узла отброшен вместе с головой карты - следующий узел ищется с её начала
+				Iterator result(this, 0, 0);
+				// Выполняем поиск ближайшего занятого слота
+				result.seek();
 				// Выводим итератор следующего узла
 				return result;
 			}
@@ -50623,13 +50640,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::IPV6_ONLY)))
 										// Устанавливаем опцию события
 										i->second->state.options |= event::options::IPV6_ONLY;
-								// Если опция не передана как IPV6_V6ONLY
-								} else {
+								// Если опция не передана как IPV6_V6ONLY, но установлена в состоянии узла
+								} else if(i->second->state.options & event::options::IPV6_ONLY) {
 									// Снимаем режим отображения IPv4 => IPv6
 									if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::IPV6_ONLY)))
 										// Снимаем опцию события
 										i->second->state.options &= ~event::options::IPV6_ONLY;
-								}
+								/**
+								 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+								 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+								 *       действующего, а обращение к ядру стоит на каждом узле
+								 */
+								} else isSetup = true;
 								// Если опция не установлена
 								if(result && !isSetup)
 									// Устанавливаем результат работы функции как ложь
@@ -50644,13 +50666,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGILL)))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::NO_SIGILL;
-				// Если опция не передана как NO_SIGILL
-				} else {
+				// Если опция не передана как NO_SIGILL, но установлена в состоянии узла
+				} else if(i->second->state.options & event::options::NO_SIGILL) {
 					// Снимаем игнорирование сигнала SIGILL
 					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGILL)))
 						// Снимаем игнорирование сигнала SIGILL
 						i->second->state.options &= ~event::options::NO_SIGILL;
-				}
+				/**
+				 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+				 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+				 *       действующего, а обращение к ядру стоит на каждом узле
+				 */
+				} else isSetup = true;
 				// Если опция не установлена
 				if(result && !isSetup)
 					// Устанавливаем результат работы функции как ложь
@@ -50664,13 +50691,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGPIPE)))
 							// Устанавливаем опцию события
 							i->second->state.options |= event::options::NO_SIGPIPE;
-					// Если опция не передана как NO_SIGPIPE
-					} else {
+					// Если опция не передана как NO_SIGPIPE, но установлена в состоянии узла
+					} else if(i->second->state.options & event::options::NO_SIGPIPE) {
 						// Снимаем игнорирование сигнала SIGPIPE
 						if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::NO_SIGPIPE)))
 							// Снимаем опцию события
 							i->second->state.options &= ~event::options::NO_SIGPIPE;
-					}
+					/**
+					 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+					 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+					 *       действующего, а обращение к ядру стоит на каждом узле
+					 */
+					} else isSetup = true;
 					// Если опция не установлена
 					if(result && !isSetup)
 						// Устанавливаем результат работы функции как ложь
@@ -51010,13 +51042,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_ADDR)))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::REUSE_ADDR;
-						// Если опция не передана как REUSE_ADDR
-						} else {
+						// Если опция не передана как REUSE_ADDR, но установлена в состоянии узла
+						} else if(i->second->state.options & event::options::REUSE_ADDR) {
 							// Снимаем режим повторного использования адреса
 							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_ADDR)))
 								// Снимаем опцию события
 								i->second->state.options &= ~event::options::REUSE_ADDR;
-						}
+						/**
+						 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+						 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+						 *       действующего, а обращение к ядру стоит на каждом узле
+						 */
+						} else isSetup = true;
 						// Если опция не установлена
 						if(result && !isSetup)
 							// Устанавливаем результат работы функции как ложь
@@ -51027,13 +51064,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_PORT)))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::REUSE_PORT;
-						// Если опция не передана как REUSE_PORT
-						} else {
+						// Если опция не передана как REUSE_PORT, но установлена в состоянии узла
+						} else if(i->second->state.options & event::options::REUSE_PORT) {
 							// Снимаем режим повторного использования порта
 							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::REUSE_PORT)))
 								// Снимаем опцию события
 								i->second->state.options &= ~event::options::REUSE_PORT;
-						}
+						/**
+						 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+						 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+						 *       действующего, а обращение к ядру стоит на каждом узле
+						 */
+						} else isSetup = true;
 						// Если опция не установлена
 						if(result && !isSetup)
 							// Устанавливаем результат работы функции как ложь
@@ -51046,13 +51088,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 								if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::MULTICAST_LOOPBACK)))
 									// Устанавливаем опцию события
 									i->second->state.options |= event::options::MULTICAST_LOOPBACK;
-							// Если опция не передана как MULTICAST_LOOPBACK
-							} else {
+							// Если опция не передана как MULTICAST_LOOPBACK, но установлена в состоянии узла
+							} else if(i->second->state.options & event::options::MULTICAST_LOOPBACK) {
 								// Снимаем режим обратной связи многоадресной передачи
 								if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::MULTICAST_LOOPBACK)))
 									// Снимаем опцию события
 									i->second->state.options &= ~event::options::MULTICAST_LOOPBACK;
-							}
+							/**
+							 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+							 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+							 *       действующего, а обращение к ядру стоит на каждом узле
+							 */
+							} else isSetup = true;
 							// Если опция не установлена
 							if(result && !isSetup)
 								// Устанавливаем результат работы функции как ложь
@@ -51086,13 +51133,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 													if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::ENABLED)))
 														// Устанавливаем опцию события
 														i->second->state.options |= event::options::DGRAM_INFO;
-												// Если опция не передана как DGRAM_INFO
-												} else {
+												// Если опция не передана как DGRAM_INFO, но установлена в состоянии узла
+												} else if(i->second->state.options & event::options::DGRAM_INFO) {
 													// Снимаем режим генерации информации о трафике
 													if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::DISABLED)))
 														// Снимаем опцию события
 														i->second->state.options &= ~event::options::DGRAM_INFO;
-												}
+												/**
+												 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+												 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+												 *       действующего, а обращение к ядру стоит на каждом узле
+												 */
+												} else isSetup = true;
 												// Если опция не установлена
 												if(result && !isSetup)
 													// Устанавливаем результат работы функции как ложь
@@ -51105,13 +51157,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HDRINCL)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::HDRINCL;
-										// Если опция не передана как HDRINCL
-										} else {
+										// Если опция не передана как HDRINCL, но установлена в состоянии узла
+										} else if(i->second->state.options & event::options::HDRINCL) {
 											// Снимаем режим широковещательной передачи
 											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::HDRINCL)))
 												// Снимаем опцию события
 												i->second->state.options &= ~event::options::HDRINCL;
-										}
+										/**
+										 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+										 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+										 *       действующего, а обращение к ядру стоит на каждом узле
+										 */
+										} else isSetup = true;
 										// Если опция не установлена
 										if(result && !isSetup)
 											// Устанавливаем результат работы функции как ложь
@@ -51159,13 +51216,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
 													// Устанавливаем опцию события
 													i->second->state.options |= event::options::TCP_NO_DELAY;
-											// Если опция не передана как TCP_NODELAY
-											} else {
+											// Если опция не передана как TCP_NODELAY, но установлена в состоянии узла
+											} else if(i->second->state.options & event::options::TCP_NO_DELAY) {
 												// Снимаем режим отключения алгоритма Нейгла
 												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
 													// Снимаем опцию события
 													i->second->state.options &= ~event::options::TCP_NO_DELAY;
-											}
+											/**
+											 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+											 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+											 *       действующего, а обращение к ядру стоит на каждом узле
+											 */
+											} else isSetup = true;
 											// Если опция не установлена
 											if(result && !isSetup)
 												// Устанавливаем результат работы функции как ложь
@@ -51207,13 +51269,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 														if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::ENABLED)))
 															// Устанавливаем опцию события
 															i->second->state.options |= event::options::DGRAM_INFO;
-													// Если опция не передана как DGRAM_INFO
-													} else {
+													// Если опция не передана как DGRAM_INFO, но установлена в состоянии узла
+													} else if(i->second->state.options & event::options::DGRAM_INFO) {
 														// Снимаем режим генерации информации о трафике
 														if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::DISABLED)))
 															// Снимаем опцию события
 															i->second->state.options &= ~event::options::DGRAM_INFO;
-													}
+													/**
+													 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+													 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+													 *       действующего, а обращение к ядру стоит на каждом узле
+													 */
+													} else isSetup = true;
 													// Если опция не установлена
 													if(result && !isSetup)
 														// Устанавливаем результат работы функции как ложь
@@ -51231,13 +51298,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::BROADCAST)))
 											// Устанавливаем опцию события
 											i->second->state.options |= event::options::BROADCAST;
-									// Если опция не передана как BROADCAST
-									} else {
+									// Если опция не передана как BROADCAST, но установлена в состоянии узла
+									} else if(i->second->state.options & event::options::BROADCAST) {
 										// Снимаем режим широковещательной передачи
 										if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::BROADCAST)))
 											// Снимаем опцию события
 											i->second->state.options &= ~event::options::BROADCAST;
-									}
+									/**
+									 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+									 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+									 *       действующего, а обращение к ядру стоит на каждом узле
+									 */
+									} else isSetup = true;
 									// Если опция не установлена
 									if(result && !isSetup)
 										// Устанавливаем результат работы функции как ложь
@@ -51285,13 +51357,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::TCP_NO_DELAY;
-										// Если опция не передана как TCP_NODELAY
-										} else {
+										// Если опция не передана как TCP_NODELAY, но установлена в состоянии узла
+										} else if(i->second->state.options & event::options::TCP_NO_DELAY) {
 											// Снимаем режим отключения алгоритма Нейгла
 											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_NO_DELAY)))
 												// Снимаем опцию события
 												i->second->state.options &= ~event::options::TCP_NO_DELAY;
-										}
+										/**
+										 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+										 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+										 *       действующего, а обращение к ядру стоит на каждом узле
+										 */
+										} else isSetup = true;
 										// Если опция не установлена
 										if(result && !isSetup)
 											// Устанавливаем результат работы функции как ложь
@@ -51316,13 +51393,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::CLOSE_ON_EXEC)))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::CLOSE_ON_EXEC;
-				// Если опция не передана как CLOSE_ON_EXEC
-				} else {
+				// Если опция не передана как CLOSE_ON_EXEC, но установлена в состоянии узла
+				} else if(i->second->state.options & event::options::CLOSE_ON_EXEC) {
 					// Снимаем режим закрытия дескриптора при выполнении exec
 					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::CLOSE_ON_EXEC)))
 						// Снимаем опцию события
 						i->second->state.options &= ~event::options::CLOSE_ON_EXEC;
-				}
+				/**
+				 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+				 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+				 *       действующего, а обращение к ядру стоит на каждом узле
+				 */
+				} else isSetup = true;
 				// Если опция не установлена
 				if(result && !isSetup)
 					// Устанавливаем результат работы функции как ложь

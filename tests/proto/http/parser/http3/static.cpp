@@ -1804,3 +1804,296 @@ TEST_F(ParserHttp3Fixture, RepeatedPushPromiseSectionMismatch){
 	// Код ошибки обязан указывать на нарушение протокола
 	ASSERT_EQ(client.events.errors.front().first, error_t::H3_GENERAL_PROTOCOL_ERROR);
 }
+
+/**
+ * @brief Проверка того, что Content-Length информационного ответа не переносится на финальный
+ *
+ * @details Информационный ответ промежуточный: объявленная в нём длина тела
+ *          к финальному сообщению отношения не имеет
+ *
+ */
+TEST_F(ParserHttp3Fixture, InformationalContentLengthIgnored){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Отправляем секцию полей запроса
+	client.parser->sendHeaders(0, this->request("GET", "/slow"), true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Формируем информационный ответ сервера с объявленной длиной тела
+	std::vector <awh::http::h3::qpack::field_t> informational = this->response("103");
+	// Дописываем заведомо неподходящую финальному ответу длину тела
+	informational.emplace_back("content-length", "100");
+	// Отправляем информационный ответ сервера
+	server.parser->sendHeaders(0, informational, false);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Информационный ответ обязан быть доставлен
+	ASSERT_EQ(this->field(client.events, 0, ":status"), "103");
+	// Отправляем финальный ответ сервера без объявленной длины тела
+	server.parser->sendHeaders(0, this->response("200"), false);
+	// Формируем тело финального ответа
+	const std::string body(5, 'z');
+	// Отправляем тело финального ответа
+	server.parser->sendData(0, body.data(), body.size(), true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Тело обязано быть доставлено целиком
+	ASSERT_EQ(client.events.bodies[0], body);
+	// Поток не должен быть оборван ошибкой семантики сообщения
+	ASSERT_EQ(this->phases(client.events, 0), "BEGIN:NONE END:HEADERS BEGIN:BODY END:BODY END:NONE");
+	// Ошибок уровня соединения быть не должно
+	ASSERT_TRUE(client.events.errors.empty());
+}
+
+/**
+ * @brief Проверка запрета новых запросов после GOAWAY сервера
+ *
+ * @details Сервер объявил, что не станет обрабатывать потоки от указанного
+ *          идентификатора: открывать их клиенту незачем (RFC 9114 §5.2)
+ *
+ */
+TEST_F(ParserHttp3Fixture, RequestAfterPeerGoaway){
+	// Сторона клиента
+	endpoint_t client;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Отправляем параметры соединения со стороны клиента
+	client.parser->sendSettings();
+	// Открываем поток запроса до объявления сервера
+	client.parser->sendHeaders(0, this->request("GET", "/first"), false);
+	// Собираем управляющий поток сервера с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Дописываем кадр завершения соединения с идентификатором потока запроса
+	frame::serialize::goaway(control, 4);
+	// Подаём управляющий поток сервера
+	ASSERT_EQ(this->feed(client, 3, control), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(client.events.errors.empty());
+	// Объявленный сервером идентификатор обязан быть доставлен
+	ASSERT_EQ(client.events.goaways.size(), 1u);
+	// Запоминаем объём очереди исходящих данных до отправки
+	const size_t pending = client.queue.size();
+	// Открывать поток от объявленного идентификатора клиент больше не вправе
+	client.parser->sendHeaders(4, this->request("GET", "/second"), true);
+	// Проверяем что ничего в сеть не ушло
+	ASSERT_EQ(client.queue.size(), pending);
+	// Формируем секцию трейлеров уже открытого потока
+	std::vector <qpack::field_t> trailers;
+	// Дописываем поле секции трейлеров
+	trailers.emplace_back("x-checksum", "0f9c");
+	// Секции уже открытого потока отправляются штатно
+	client.parser->sendHeaders(0, trailers, true);
+	// Проверяем что секция трейлеров ушла в сеть
+	ASSERT_GT(client.queue.size(), pending);
+}
+
+/**
+ * @brief Проверка запрета новых обещаний push после GOAWAY клиента
+ *
+ * @details От клиента GOAWAY несёт идентификатор обещания push: обещания
+ *          от него и выше сервер выдавать не вправе (RFC 9114 §5.2)
+ *
+ */
+TEST_F(ParserHttp3Fixture, PushPromiseAfterPeerGoaway){
+	// Сторона сервера
+	endpoint_t server;
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Отправляем параметры соединения со стороны сервера
+	server.parser->sendSettings();
+	// Собираем управляющий поток клиента с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Дописываем кадр разрешения обещаний push
+	frame::serialize::maxPushId(control, 8);
+	// Подаём управляющий поток клиента
+	ASSERT_EQ(this->feed(server, 2, control), status_t::OK);
+	// Открываем поток запроса подачей начала кадра секции полей
+	ASSERT_EQ(this->feed(server, 0, std::string(1, '\x01')), status_t::OK);
+	// Формируем поля обещанного запроса
+	std::vector <qpack::field_t> promise = this->request("GET", "/style.css");
+	// Обещание в границах разрешения клиента выдаётся штатно
+	ASSERT_EQ(server.parser->sendPushPromise(0, promise), 0u);
+	// Собираем управляющий поток клиента с кадром завершения соединения
+	std::string goaway;
+	// Дописываем кадр завершения соединения с идентификатором обещания push
+	frame::serialize::goaway(goaway, 1);
+	// Подаём кадр завершения соединения
+	ASSERT_EQ(this->feed(server, 2, goaway), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(server.events.errors.empty());
+	// Обещание от объявленного идентификатора выдаваться больше не вправе
+	ASSERT_EQ(server.parser->sendPushPromise(0, promise), UINT64_MAX);
+}
+
+/**
+ * @brief Проверка отбраковки потока push сверх собственного GOAWAY
+ *
+ * @details Клиент объявил, что не станет принимать обещания от указанного
+ *          идентификатора: пришедший следом поток отвергается так же,
+ *          как поток запроса сверх объявленного предела (RFC 9114 §5.2)
+ *
+ */
+TEST_F(ParserHttp3Fixture, PushStreamAfterLocalGoaway){
+	// Сторона клиента
+	endpoint_t client;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Отправляем параметры соединения со стороны клиента
+	client.parser->sendSettings();
+	// Разрешаем серверу выдавать обещания push
+	client.parser->sendMaxPushId(8);
+	// Собираем управляющий поток сервера с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток сервера
+	ASSERT_EQ(this->feed(client, 3, control), status_t::OK);
+	// Объявляем серверу, что обещания от нулевого идентификатора не принимаются
+	client.parser->sendGoaway(0);
+	// Собираем поток push с отвергаемым идентификатором обещания
+	std::string stream = ::unistream(static_cast <uint64_t> (unistream_t::PUSH));
+	// Дописываем идентификатор обещанного push
+	quic::varint::write(stream, 0);
+	// Дописываем кадр секции полей ответа
+	frame::serialize::headers(stream, std::string(1, '\x00') + std::string(1, '\x00') + std::string(1, '\xD9'));
+	// Подаём поток отвергаемого push
+	ASSERT_EQ(this->feed(client, 7, stream), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(client.events.errors.empty());
+	// Поток обязан быть оборван
+	ASSERT_EQ(client.events.aborts.size(), 1u);
+	// Код обрыва потока обязан указывать на отклонение запроса
+	ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_REQUEST_REJECTED);
+	// Приём потока обязан быть остановлен
+	ASSERT_TRUE(std::get <2> (client.events.aborts.front()));
+	// Ничего доставлено быть не должно
+	ASSERT_TRUE(client.events.headers.empty());
+}
+
+/**
+ * @brief Проверка согласованности анонса и соблюдения предела секции полей
+ *
+ * @details Анонсировать больше, чем соблюдаем, нельзя: пир получил бы сброс
+ *          за размер, который мы сами ему и разрешили (RFC 9114 §4.2.2)
+ *
+ */
+TEST_F(ParserHttp3Fixture, AnnouncedFieldSectionSizeCapped){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Получаем лимиты безопасности сервера
+	parser_http3_t::limits_t limits;
+	// Устанавливаем соблюдаемый предел распакованного списка полей
+	limits.maxHeadersTotal = 4096;
+	// Применяем лимиты безопасности сервера
+	server.parser->limits(limits);
+	// Получаем параметры соединения сервера
+	parser_http3_t::settings_t settings = server.parser->settings();
+	// Анонсируем предел секции полей заведомо больше соблюдаемого
+	settings.maxFieldSectionSize = (1024 * 1024);
+	// Применяем параметры соединения сервера
+	server.parser->settings(settings);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Анонсированный предел обязан быть урезан до соблюдаемого
+	ASSERT_EQ(client.parser->remoteSettings().maxFieldSectionSize, 4096u);
+}
+
+/**
+ * @brief Проверка сохранности списка обходимых потоков при вложенном разборе
+ *
+ * @details Обход карты потоков выходит в пользовательские функции обратного
+ *          вызова, а те вправе вызвать разбор повторно: вложенный обход не
+ *          должен собирать свой список поверх нашего
+ *
+ */
+TEST_F(ParserHttp3Fixture, NestedParseKeepsStreamList){
+	// Сторона сервера
+	endpoint_t server;
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Отправляем параметры соединения со стороны сервера
+	server.parser->sendSettings();
+	// Собираем управляющий поток клиента с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток клиента
+	ASSERT_EQ(this->feed(server, 2, control), status_t::OK);
+	// Открываем поток инструкций кодера QPACK клиента
+	ASSERT_EQ(this->feed(server, 6, ::unistream(static_cast <uint64_t> (unistream_t::QPACK_ENCODER))), status_t::OK);
+	/**
+	 * Открываем два потока подачей начала кадра секции полей: поток создаётся
+	 * с первого октета, а разбирать в нём пока нечего
+	 */
+	ASSERT_EQ(this->feed(server, 0, std::string(1, '\x01')), status_t::OK);
+	// Открываем второй поток запроса
+	ASSERT_EQ(this->feed(server, 4, std::string(1, '\x01')), status_t::OK);
+	// Объект кодера, работающего в обход потоков соединения
+	qpack::encoder_t encoder;
+	// Устанавливаем ёмкость таблицы, анонсированную сервером
+	encoder.maxCapacity(4096);
+	// Устанавливаем число потоков, которым сервер разрешил ожидание
+	encoder.maxBlocked(16);
+	// Отключаем адаптивную индексацию, чтобы вставка произошла с первого поля
+	encoder.adaptiveIndexing(false);
+	// Собираем набор полей запроса клиента
+	std::vector <qpack::field_t> fields = this->request("POST", "/upload");
+	// Дописываем поле, попадающее в динамическую таблицу
+	fields.emplace_back("x-session", "0f9c1a2b3d4e5f60");
+	// Буфер секции полей
+	std::string section;
+	// Выполняем кодирование секции полей
+	encoder.encode(8, fields, section);
+	// Запоминаем накопленные инструкции потока кодера
+	const std::string instructions(encoder.pending());
+	// Инструкции обязаны быть накоплены: поле занесено в таблицу
+	ASSERT_FALSE(instructions.empty());
+	// Собираем поток запроса с секцией, ждущей вставок
+	std::string blocked;
+	// Дописываем кадр секции полей
+	frame::serialize::headers(blocked, section);
+	// Подаём поток запроса, не подавая инструкций кодера
+	ASSERT_EQ(this->feed(server, 8, blocked), status_t::OK);
+	// Ничего доставлено быть не должно: секция ждёт вставок
+	ASSERT_TRUE(server.events.headers.empty());
+	// Собранные идентификаторы закрытых потоков
+	std::vector <uint64_t> closed;
+	// Признак того, что вложенный разбор ещё не выполнялся
+	bool nested = true;
+	/**
+	 * Обработчик закрытия потока подаёт инструкции кодера: те разблокируют
+	 * отложенную секцию и запустят обход заблокированных потоков прямо изнутри
+	 * обхода закрываемых
+	 */
+	server.parser->on(parser_http3_t::close_callback_t([&](const uint64_t sid, const parser_http3_t::error_t code) noexcept {
+		// Собираем идентификатор закрытого потока
+		closed.push_back(sid);
+		// Не используемый параметр
+		(void) code;
+		// Если вложенный разбор ещё не выполнялся
+		if(nested){
+			// Помечаем что вложенный разбор выполнен
+			nested = false;
+			// Подаём инструкции потока кодера изнутри обработчика
+			this->feed(server, 6, instructions);
+		}
+	}));
+	// Выполняем завершение ввода
+	server.parser->eof();
+	// Событие закрытия обязано прийти по каждому из трёх открытых потоков
+	ASSERT_EQ(closed.size(), 3u);
+}

@@ -325,6 +325,51 @@ namespace {
 		// Выводим положительный результат
 		return true;
 	}
+	/**
+	 * @brief Класс временного изъятия списка идентификаторов потоков из накопителя
+	 *
+	 * @details Обходы карты потоков сначала собирают список идентификаторов, а затем
+	 *          выходят в пользовательские функции обратного вызова. Те вправе вызвать
+	 *          разбор повторно, и вложенный обход собрал бы свой список поверх нашего:
+	 *          внешний цикл продолжился бы по чужим потокам, а свои недообработал.
+	 *          Список поэтому изымается из накопителя на время обхода, а по выходу
+	 *          возвращается туда - переиспользование ёмкости сохраняется, вложенный
+	 *          обход получает пустой накопитель и заводит собственный список
+	 *
+	 */
+	class Borrowed {
+		private:
+			// Накопитель, из которого изъят список
+			vector <uint64_t> & _pool;
+		public:
+			// Изъятый список идентификаторов потоков
+			vector <uint64_t> list;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param pool накопитель списка идентификаторов потоков
+			 *
+			 */
+			explicit Borrowed(vector <uint64_t> & pool) noexcept : _pool(pool) {
+				// Забираем накопитель вместе с его ёмкостью
+				this->list.swap(pool);
+				// Выполняем очистку изъятого списка
+				this->list.clear();
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Borrowed() noexcept {
+				// Выполняем очистку изъятого списка
+				this->list.clear();
+				// Возвращаем в накопитель ту ёмкость, которая больше
+				if(this->_pool.capacity() < this->list.capacity())
+					// Возвращаем изъятый список в накопитель
+					this->list.swap(this->_pool);
+			}
+	};
 }
 
 
@@ -1661,6 +1706,33 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseUnistream(const uint64_t s
 				// Запоминаем пришедший идентификатор обещания push
 				this->_openedPush.put(stream.pushId);
 				/**
+				 * Поток обещания сверх объявленного нами в GOAWAY предела отвергается
+				 * так же, как поток запроса сверх него (RFC 9114 §5.2). Проверка стоит
+				 * после учёта идентификатора: повторный поток остаётся ошибкой соединения
+				 * независимо от того, завершаем мы соединение или нет
+				 */
+				if(stream.pushId >= this->_goawayLocal){
+					// Удаляем состояние однонаправленного потока: читать его мы не будем
+					this->_unistreams.erase(sid);
+					// Если функция обратного вызова обрыва потока установлена
+					if(this->_callbacks.abort){
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Просим отправителя прекратить передачу
+							this->_callbacks.abort(sid, error_t::H3_REQUEST_REJECTED, true);
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const exception &) {
+							// Исключение из пользовательской функции обратного вызова гасим на месте
+						}
+					}
+					// Выводим результат разбора
+					return h3::status_t::OK;
+				}
+				/**
 				 * Отмена обещания обгоняет его поток: CANCEL_PUSH идёт управляющим
 				 * потоком, а сам push - своим. Пришедший следом за отменой поток
 				 * читать незачем - его содержимое уже никому не нужно (RFC 9114 §7.2.3)
@@ -2189,8 +2261,8 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::applySettings(const vector <h3:
  *
  */
 awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
-	// Выполняем очистку списка разбираемых потоков
-	this->_outgoing.clear();
+	// Изымаем список разбираемых потоков из накопителя на время обхода
+	::Borrowed outgoing(this->_outgoing);
 	/**
 	 * Собираем список заблокированных потоков заранее: разбор секции способен
 	 * закрыть поток из обработчика, а это разрушило бы перебор карты
@@ -2199,7 +2271,7 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 		// Если поток ждёт пополнения таблицы
 		if(item.second.blockedActive)
 			// Дописываем поток в список разбираемых
-			this->_outgoing.push_back(item.first);
+			outgoing.list.push_back(item.first);
 	}
 	// Запоминаем поколение состояния соединения перед выходами в обработчики
 	const uint64_t epoch = this->_epoch;
@@ -2207,12 +2279,12 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 	 * Выполняем повторный разбор всех заблокированных потоков
 	 *
 	 * Перебор идёт по индексу, а не по итератору: доставка секции выходит
-	 * в пользовательские функции обратного вызова, а те вправе вызвать разбор
-	 * повторно и переписать список разбираемых потоков прямо под итератором
+	 * в пользовательские функции обратного вызова, а те вправе закрыть поток
+	 * и тем разрушить итератор списка
 	 */
-	for(size_t i = 0; i < this->_outgoing.size(); i++){
+	for(size_t i = 0; i < outgoing.list.size(); i++){
 		// Получаем идентификатор очередного разбираемого потока
-		const uint64_t sid = this->_outgoing[i];
+		const uint64_t sid = outgoing.list[i];
 		// Выполняем поиск состояния потока
 		stream_t * stream = this->findStream(sid);
 		// Если поток закрыт либо уже разобран
@@ -3365,24 +3437,24 @@ void awh::http::Parser_HTTP3::eof() noexcept {
 	 * Завершение ввода означает обрыв соединения транспортом: потоки, не успевшие
 	 * принять сообщение целиком, закрываются с признаком неполноты
 	 */
-	this->_outgoing.clear();
+	::Borrowed outgoing(this->_outgoing);
 	/**
 	 * Собираем список потоков заранее: закрытие потока из обработчика разрушило бы
 	 * перебор карты
 	 */
 	for(const auto & item : this->_streams)
 		// Дописываем поток в список закрываемых
-		this->_outgoing.push_back(item.first);
+		outgoing.list.push_back(item.first);
 	/**
 	 * Выполняем закрытие всех незавершённых потоков
 	 *
 	 * Перебор идёт по индексу, а не по итератору: закрытие потока выходит
-	 * в пользовательскую функцию обратного вызова, а та вправе переписать
-	 * список закрываемых потоков прямо под итератором
+	 * в пользовательскую функцию обратного вызова, а та вправе закрыть
+	 * ещё один поток и тем разрушить итератор списка
 	 */
-	for(size_t i = 0; i < this->_outgoing.size(); i++){
+	for(size_t i = 0; i < outgoing.list.size(); i++){
 		// Получаем идентификатор очередного закрываемого потока
-		const uint64_t sid = this->_outgoing[i];
+		const uint64_t sid = outgoing.list[i];
 		// Выполняем поиск состояния потока
 		stream_t * stream = this->findStream(sid);
 		// Если поток уже закрыт
@@ -3711,8 +3783,22 @@ void awh::http::Parser_HTTP3::sendSettings() noexcept {
 	if(this->_settings.maxFieldSectionSize > 0){
 		// Устанавливаем идентификатор параметра размера секции полей
 		item.id = static_cast <uint64_t> (h3::setting_t::MAX_FIELD_SECTION_SIZE);
-		// Устанавливаем значение параметра размера секции полей
-		item.value = this->_settings.maxFieldSectionSize;
+		/**
+		 * Анонсировать больше, чем соблюдаем, нельзя: секцию сверх лимита
+		 * распакованного списка мы всё равно оборвём кодом H3_EXCESSIVE_LOAD,
+		 * и пир получил бы сброс за размер, который сами же ему и разрешили.
+		 * Отсечка стоит на отправке, а не в settings(): лимиты безопасности
+		 * задаются отдельным методом, и порядок вызовов произволен. Обратное
+		 * соотношение допустимо - анонс строже соблюдаемого лишь бережёт пира
+		 */
+		item.value = ::std::min(this->_settings.maxFieldSectionSize, static_cast <uint64_t> (this->_limits.maxHeadersTotal));
+		// Если анонс пришлось урезать до соблюдаемого лимита
+		if(item.value != this->_settings.maxFieldSectionSize)
+			// Записываем сообщение об урезании анонса в лог
+			this->_log->print(
+				"HTTP/3 announced SETTINGS_MAX_FIELD_SECTION_SIZE is capped to enforced header list limit of %llu octets",
+				log_t::flag_t::WARNING, static_cast <unsigned long long> (item.value)
+			);
 		// Дописываем параметр в набор
 		items.push_back(item);
 	}
@@ -3757,6 +3843,22 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const vector <h3::
 	if(this->_closed)
 		// Выходим из метода
 		return;
+	/**
+	 * После GOAWAY сервера клиент не открывает новых потоков запроса (RFC 9114 §5.2):
+	 * сервер объявил, что не станет их обрабатывать. Проверяется именно открытие -
+	 * секции уже открытого потока, включая трейлеры, отправляются штатно. Сравнение
+	 * с идентификатором из GOAWAY имеет смысл только на клиенте: от клиента тот же
+	 * кадр несёт идентификатор обещания push, а не потока
+	 */
+	if((this->_endpoint == h3::endpoint_t::CLIENT) && (sid >= this->_goawayRemote) && (this->findStream(sid) == nullptr)){
+		// Записываем сообщение об отказе в лог
+		this->_log->print(
+			"HTTP/3 peer sent GOAWAY, request for stream %llu is not sent",
+			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+		);
+		// Выходим из метода
+		return;
+	}
 	// Если служебные потоки открыть не удалось
 	if(!this->prepare())
 		// Выходим из метода
@@ -4005,6 +4107,14 @@ uint64_t awh::http::Parser_HTTP3::sendPushPromise(const uint64_t sid, const vect
 	 * MAX_PUSH_ID (RFC 9114 §7.2.7)
 	 */
 	if((this->_maxPushId == UINT64_MAX) || (this->_nextPushId > this->_maxPushId))
+		// Выводим признак отказа
+		return UINT64_MAX;
+	/**
+	 * После GOAWAY клиента сервер не обещает push с идентификатором не меньше
+	 * объявленного (RFC 9114 §5.2). От клиента GOAWAY несёт именно идентификатор
+	 * обещания push, поэтому сравнивается он, а не идентификатор потока
+	 */
+	if(this->_nextPushId >= this->_goawayRemote)
 		// Выводим признак отказа
 		return UINT64_MAX;
 	// Если служебные потоки открыть не удалось
