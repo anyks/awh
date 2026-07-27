@@ -6624,6 +6624,130 @@ TEST_F(ParserHttp2Fixture, PriorityUpdateBeforeStreamTest){
 }
 
 /**
+ * @brief Метод проверки приоритета обещанного push-потока
+ *
+ * @details Кадр приоритизирует и поток запроса, и поток push (RFC 9218 §7.1):
+ *          обещанный поток клиент вправе приоритизировать, и ошибкой соединения
+ *          это не является. Проверяются обе половины: отправитель клиента обязан
+ *          кадр выпустить, а сервер - применить его к своему push-потоку
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityUpdateOnPushStreamTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Получаем параметры SETTINGS клиента
+	auto settings = client->settings();
+	// Разрешаем серверу выдавать push
+	settings.enablePush = 1;
+	// Закрываем начальное окно приёма клиента (проверяется порядок планирования)
+	settings.windowSize = 0;
+	// Применяем параметры SETTINGS клиента
+	client->settings(settings);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Порядок, в котором сервер отдаёт тела потоков
+	std::vector <uint32_t> order;
+	// Устанавливаем функцию обратного вызова тела на клиенте для сбора порядка отдачи
+	client->on(parser_http2_t::data_callback_t([&order](const uint32_t sid, const void *, const size_t, const bool) noexcept -> bool {
+		// Если поток ещё не отмечен последним в порядке отдачи
+		if(order.empty() || (order.back() != sid))
+			// Запоминаем поток, отдающий данные
+			order.push_back(sid);
+		// Продолжаем разбор
+		return true;
+	}));
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/index.html");
+	// Выделяем идентификатор потока запроса клиента
+	const uint32_t sid = client->nextStreamId();
+	// Открываем поток запроса
+	client->sendHeaders(sid, fields, true);
+	// Формируем заголовки обещанного запроса
+	std::vector <h2::hpack::field_t> promised = fields;
+	// Заменяем путь обещанного запроса
+	promised.back().value = "/style.css";
+	// Выдаём обещание push на потоке запроса
+	const uint32_t pushed = server->sendPushPromise(sid, promised);
+	// Обещание обязано быть выдано
+	ASSERT_NE(pushed, 0u);
+	// Формируем заголовки ответа на запрос
+	headers_t response(std::make_unique <response_t> (version_t::HTTP2, 200));
+	// Отправляем заголовки ответа на запрос
+	server->sendHeaders(sid, response, false);
+	// Формируем заголовки ответа обещанного потока
+	headers_t pushedResponse(std::make_unique <response_t> (version_t::HTTP2, 200));
+	// Отправляем заголовки ответа обещанного потока
+	server->sendHeaders(pushed, pushedResponse, false);
+	// Формируем тело ответа
+	const std::string body(8 * 1024, 'z');
+	// Ставим тело в очередь отправки потока запроса (срочность по умолчанию)
+	server->sendData(sid, body.data(), body.size(), true);
+	// Ставим тело в очередь отправки обещанного потока
+	server->sendData(pushed, body.data(), body.size(), true);
+	// Повышаем срочность обещанного потока со стороны клиента
+	client->sendPriority(pushed, 0, false);
+	// Ошибка уровня соединения зафиксирована быть не должна
+	ASSERT_FALSE(serverEvents.errorFired);
+	// Открываем начальное окно приёма клиента
+	settings.windowSize = 65535;
+	// Применяем параметры SETTINGS клиента
+	client->settings(settings);
+	// Отправляем обновлённые параметры: сервер сдвинет окна потоков и прокачает отправку
+	client->sendSettings();
+	// Проверяем что оба потока получили данные
+	ASSERT_EQ(order.size(), 2u);
+	// Проверяем что приоритет применился к обещанному потоку
+	ASSERT_EQ(order.front(), pushed);
+}
+
+/**
+ * @brief Метод проверки приоритета push-потока в состоянии idle
+ *
+ * @details Единственный случай, которому §7.1 предписывает ошибку соединения:
+ *          поток, идентификатор которого мы ещё не выдавали. Сторожит границу
+ *          послабления, сделанного для обещанных потоков
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityUpdateOnIdlePushStreamTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера
+	events_t serverEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* server, serverEvents);
+	// Буфер входящих байтов клиента
+	std::string input;
+	// Дописываем preface клиента
+	input.append(h2::proto::PREFACE.data(), h2::proto::PREFACE.size());
+	// Собираем пустой кадр параметров соединения
+	h2::frame::serialize::settings(input, nullptr, 0, false);
+	// Собираем кадр приоритета потока, идентификатор которого мы не выдавали
+	h2::frame::serialize::priorityUpdate(input, 100, "u=0");
+	// Подаём входящие байты на разбор
+	server->parse(input.data(), input.size());
+	// Ошибка уровня соединения обязана быть зафиксирована
+	ASSERT_TRUE(serverEvents.errorFired);
+	// Код ошибки обязан указывать на нарушение протокола
+	ASSERT_EQ(serverEvents.errorCode, parser_http2_t::error_t::PROTOCOL_ERROR);
+}
+
+/**
  * @brief Метод проверки старшинства опередившего кадра над заголовком приоритета
  *
  * @details Кадр PRIORITY_UPDATE перекрывает любой другой сигнал приоритета

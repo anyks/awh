@@ -2267,6 +2267,14 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::dispatchControl(const uint64_t 
 			if(!this->_priorityLimit.drain(1))
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::H3_EXCESSIVE_LOAD, "превышен лимит частоты кадров приоритета");
+			/**
+			 * Кадр обоих видов отправляют только клиенты: сервер приоритетами
+			 * не распоряжается вовсе, и принявший такой кадр клиент обязан
+			 * считать это ошибкой соединения (RFC 9218 §7.2)
+			 */
+			if(this->_endpoint == h3::endpoint_t::CLIENT)
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::H3_FRAME_UNEXPECTED, "кадр PRIORITY_UPDATE принят клиентом");
 			// Разобранная нагрузка кадра приоритета
 			h3::frame::priority_update_t priority;
 			// Выполняем разбор нагрузки кадра
@@ -2302,7 +2310,20 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::dispatchControl(const uint64_t 
 			 * Приоритет обещания push адресуется идентификатором обещания, а не потока:
 			 * поток push откроется позже и может не открыться вовсе (RFC 9218 §7.2)
 			 */
-			} else this->applyPushPriority(priority.id, priority.value);
+			} else {
+				/**
+				 * Приоритизировать можно только уже обещанный push: идентификатор сверх
+				 * выданных нами означает, что клиент распоряжается тем, чего мы ему
+				 * не обещали, и это ошибка соединения (RFC 9218 §7.2). Предел,
+				 * разрешённый клиентом, отдельной проверки не требует: сверх него
+				 * мы обещаний и не выдаём
+				 */
+				if(priority.id >= this->_nextPushId)
+					// Фиксируем ошибку уровня соединения
+					return this->fail(error_t::H3_ID_ERROR, "приоритет назначен необещанному push");
+				// Применяем приоритет обещания push
+				this->applyPushPriority(priority.id, priority.value);
+			}
 		} break;
 		// Остальные типы кадров
 		default: {

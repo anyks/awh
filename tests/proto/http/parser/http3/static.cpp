@@ -2373,6 +2373,61 @@ TEST_F(ParserHttp3Fixture, PriorityUpdateBeforeStream){
  *
  */
 TEST_F(ParserHttp3Fixture, PushPriorityApplied){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Разрешаем серверу выдавать обещания push
+	client.parser->sendMaxPushId(8);
+	// Отправляем секцию полей запроса
+	client.parser->sendHeaders(0, this->request("GET", "/index.html"), true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Выдаём обещание push на потоке запроса
+	const uint64_t pushId = server.parser->sendPushPromise(0, this->request("GET", "/style.css"));
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Обещание обязано быть выдано
+	ASSERT_EQ(pushId, 0u);
+	// Приоритет обещания без сигнала обязан быть значением по умолчанию
+	ASSERT_EQ(server.parser->pushPriority(pushId).urgency, 3);
+	// Признак инкрементальной доставки без сигнала снят
+	ASSERT_FALSE(server.parser->pushPriority(pushId).incremental);
+	// Отправляем приоритет обещания со стороны клиента
+	client.parser->sendPushPriority(pushId, 2, true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(server.events.errors.empty());
+	// Срочность обещания обязана примениться
+	ASSERT_EQ(server.parser->pushPriority(pushId).urgency, 2);
+	// Признак инкрементальной доставки обещания обязан примениться
+	ASSERT_TRUE(server.parser->pushPriority(pushId).incremental);
+	// Отправляем приоритет того же обещания без признака инкрементальности
+	client.parser->sendPushPriority(pushId, 6, false);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Новая срочность обещания обязана примениться
+	ASSERT_EQ(server.parser->pushPriority(pushId).urgency, 6);
+	// Признак инкрементальной доставки обязан вернуться к значению по умолчанию
+	ASSERT_FALSE(server.parser->pushPriority(pushId).incremental);
+	// Приоритет другого обещания остаётся значением по умолчанию
+	ASSERT_EQ(server.parser->pushPriority(9).urgency, 3);
+}
+
+/**
+ * @brief Проверка приоритета, назначенного необещанному push
+ *
+ * @details Приоритизировать можно только уже обещанный push: идентификатор сверх
+ *          выданных означает, что клиент распоряжается тем, чего ему не обещали,
+ *          и это ошибка соединения H3_ID_ERROR (RFC 9218 §7.2)
+ *
+ */
+TEST_F(ParserHttp3Fixture, PushPriorityNotPromised){
 	// Сторона сервера
 	endpoint_t server;
 	// Подготавливаем сторону сервера
@@ -2385,34 +2440,45 @@ TEST_F(ParserHttp3Fixture, PushPriorityApplied){
 	control.append(::settings());
 	// Подаём управляющий поток клиента
 	ASSERT_EQ(this->feed(server, 2, control), status_t::OK);
-	// Приоритет неизвестного обещания обязан быть значением по умолчанию
-	ASSERT_EQ(server.parser->pushPriority(5).urgency, 3);
-	// Признак инкрементальной доставки неизвестного обещания снят
-	ASSERT_FALSE(server.parser->pushPriority(5).incremental);
-	// Буфер кадра приоритета обещания push
+	// Буфер кадра приоритета необещанного push
 	std::string update;
-	// Собираем кадр приоритета обещания push
-	frame::serialize::priorityUpdate(update, true, 5, "u=2, i");
+	// Собираем кадр приоритета обещания, которого мы не выдавали
+	frame::serialize::priorityUpdate(update, true, 5, "u=2");
 	// Подаём кадр приоритета обещания
-	ASSERT_EQ(this->feed(server, 2, update), status_t::OK);
-	// Соединение обязано остаться живым
-	ASSERT_TRUE(server.events.errors.empty());
-	// Срочность обещания обязана примениться
-	ASSERT_EQ(server.parser->pushPriority(5).urgency, 2);
-	// Признак инкрементальной доставки обещания обязан примениться
-	ASSERT_TRUE(server.parser->pushPriority(5).incremental);
-	// Выполняем очистку буфера кадра
-	update.clear();
-	// Собираем кадр приоритета того же обещания без признака инкрементальности
-	frame::serialize::priorityUpdate(update, true, 5, "u=6");
-	// Подаём кадр приоритета обещания
-	ASSERT_EQ(this->feed(server, 2, update), status_t::OK);
-	// Новая срочность обещания обязана примениться
-	ASSERT_EQ(server.parser->pushPriority(5).urgency, 6);
-	// Признак инкрементальной доставки обязан вернуться к значению по умолчанию
-	ASSERT_FALSE(server.parser->pushPriority(5).incremental);
-	// Приоритет другого обещания остаётся значением по умолчанию
-	ASSERT_EQ(server.parser->pushPriority(9).urgency, 3);
+	ASSERT_EQ(this->feed(server, 2, update), status_t::ERROR);
+	// Ошибка уровня соединения обязана быть зафиксирована
+	ASSERT_FALSE(server.events.errors.empty());
+	// Код ошибки обязан указывать на нарушение учёта идентификаторов
+	ASSERT_EQ(server.events.errors.front().first, error_t::H3_ID_ERROR);
+}
+
+/**
+ * @brief Проверка запрета кадра приоритета на стороне клиента
+ *
+ * @details Кадр отправляют только клиенты: сервер приоритетами не распоряжается,
+ *          и принявший такой кадр клиент обязан считать это ошибкой соединения
+ *          H3_FRAME_UNEXPECTED (RFC 9218 §7.2)
+ *
+ */
+TEST_F(ParserHttp3Fixture, PriorityUpdateRejectedByClient){
+	// Сторона клиента
+	endpoint_t client;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Отправляем параметры соединения со стороны клиента
+	client.parser->sendSettings();
+	// Собираем управляющий поток сервера с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Дописываем кадр приоритета потока запроса
+	frame::serialize::priorityUpdate(control, false, 0, "u=1");
+	// Подаём управляющий поток сервера
+	ASSERT_EQ(this->feed(client, 3, control), status_t::ERROR);
+	// Ошибка уровня соединения обязана быть зафиксирована
+	ASSERT_FALSE(client.events.errors.empty());
+	// Код ошибки обязан указывать на неуместный кадр
+	ASSERT_EQ(client.events.errors.front().first, error_t::H3_FRAME_UNEXPECTED);
 }
 
 /**

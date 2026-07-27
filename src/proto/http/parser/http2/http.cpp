@@ -2288,10 +2288,6 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			if(sid == 0)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::PROTOCOL_ERROR, "PRIORITY_UPDATE for stream 0");
-			// Приоритет назначается только потокам, инициированным пиром (RFC 9218 §7.1)
-			if(!this->peerInitiated(sid))
-				// Фиксируем ошибку уровня соединения
-				return this->fail(error_t::PROTOCOL_ERROR, "PRIORITY_UPDATE for wrong stream");
 			// Выполняем поиск потока
 			stream_t * stream = this->findStream(sid);
 			// Если поток уже открыт
@@ -2300,6 +2296,19 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				this->applyPriority(* stream, value);
 				// Помечаем что приоритет потока задан кадром
 				stream->prioritized = true;
+			/**
+			 * Кадр приоритизирует и поток запроса, и поток push (RFC 9218 §7.1),
+			 * поэтому инициатор потока сам по себе решает мало - решает состояние.
+			 * Наш собственный поток, идентификатор которого ещё не выдан, для сервера
+			 * означает push в состоянии idle, а его §7.1 запрещает прямо. Выданный
+			 * и уже закрытый поток сигнал просто отбрасывает: приоритизировать нечего,
+			 * и тот же параграф это разрешает
+			 */
+			} else if(!this->peerInitiated(sid)){
+				// Если поток нами ещё не выдан
+				if(this->idleStream(sid))
+					// Фиксируем ошибку уровня соединения
+					return this->fail(error_t::PROTOCOL_ERROR, "PRIORITY_UPDATE for idle push stream");
 			}
 			/**
 			 * Кадр допустим и для потока в состоянии idle: сигнал вправе опередить
@@ -4824,8 +4833,13 @@ void awh::http::Parser_HTTP2::sendShutdown(string_view debug) noexcept {
  *
  */
 void awh::http::Parser_HTTP2::sendPriority(const uint32_t sid, const uint8_t urgency, const bool incremental) noexcept {
-	// Приоритет назначается только потокам, инициированным нами (RFC 9218 §7.1)
-	if(this->peerInitiated(sid))
+	/**
+	 * Клиент вправе приоритизировать не только собственный поток запроса, но и
+	 * обещанный ему push-поток (RFC 9218 §7.1). Поток пира, о котором мы ничего
+	 * не знаем, приоритизировать нельзя: для push это состояние idle, а его
+	 * получатель обязан считать ошибкой соединения
+	 */
+	if(this->peerInitiated(sid) && (this->findStream(sid) == nullptr))
 		// Выходим из метода
 		return;
 	// Формируем значение поля приоритета структурированным словарём (RFC 8941)
