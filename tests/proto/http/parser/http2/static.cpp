@@ -5879,3 +5879,273 @@ TEST_F(ParserHttp2Fixture, DataOnReservedStreamTest){
 	// Проверяем что тело доставлено клиенту
 	ASSERT_EQ(clientEvents.bodies[pushed].size(), body.size());
 }
+
+/**
+ * @brief Метод проверки учёта выданного вручную кредита окна приёма (RFC 9113 §6.9)
+ *
+ */
+TEST_F(ParserHttp2Fixture, ManualWindowUpdateAccountedTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Получаем параметры соединения сервера
+	parser_http2_t::settings_t settings = server->settings();
+	// Поднимаем предельный размер кадра, чтобы тело пришло одним кадром DATA
+	settings.maxFrameSize = (1024 * 1024);
+	// Применяем параметры соединения сервера
+	server->settings(settings);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "POST");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/upload");
+	// Открываем поток (тело последует)
+	client->sendHeaders(sid, fields, false);
+	/**
+	 * Вручную выдаём пиру кредит окна приёма соединения и потока: сервер обязан
+	 * помнить собственное разрешение, иначе тело в объявленных границах порвёт
+	 * соединение по исчерпанию окна
+	 */
+	server->sendWindowUpdate(0, 200000);
+	// Выдаём кредит окна приёма потока
+	server->sendWindowUpdate(sid, 200000);
+	/**
+	 * Тело приходит одним кадром, заведомо превышающим окно приёма по умолчанию
+	 * (65535 октет): автоматическое пополнение окна между кадрами тут не работает,
+	 * поэтому проверяется именно учёт выданного вручную кредита
+	 */
+	const std::string body(100000, 'x');
+	// Формируем кадр DATA с телом потока
+	const std::string data = ::frame(0x00, 0x01, sid, body);
+	// Выполняем разбор кадра DATA на сервере
+	server->parse(data.data(), data.size());
+	// Проверяем что ошибка уровня соединения не зафиксирована
+	ASSERT_FALSE(serverEvents.errorFired);
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что тело доставлено целиком
+	ASSERT_EQ(serverEvents.bodies[sid], body);
+}
+
+/**
+ * @brief Метод проверки отказа от заведомо ошибочного WINDOW_UPDATE
+ *
+ */
+TEST_F(ParserHttp2Fixture, ManualWindowUpdateRejectedTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Отправляем preface сервера
+	server->sendPreface();
+	// Запоминаем объём исходящих байтов до попыток отправки WINDOW_UPDATE
+	const size_t pending = server->pending().size();
+	// Нулевой инкремент пир обязан считать ошибкой - кадр отправляться не должен
+	server->sendWindowUpdate(0, 0);
+	// Проверяем что кадр не отправлен
+	ASSERT_EQ(server->pending().size(), pending);
+	// Кредит несуществующему потоку пир вправе считать ошибкой - кадр не отправляем
+	server->sendWindowUpdate(1, 100);
+	// Проверяем что кадр не отправлен
+	ASSERT_EQ(server->pending().size(), pending);
+	// Кредит окну соединения отправляется штатно
+	server->sendWindowUpdate(0, 100);
+	// Проверяем что кадр WINDOW_UPDATE добавлен в исходящие байты
+	ASSERT_EQ(server->pending().size(), (pending + 13));
+}
+
+/**
+ * @brief Метод проверки отказа от WINDOW_UPDATE с инкрементом вне диапазона (RFC 9113 §6.9)
+ *
+ */
+TEST_F(ParserHttp2Fixture, ManualWindowUpdateOversizedTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "POST");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/upload");
+	// Открываем поток (тело последует)
+	client->sendHeaders(sid, fields, false);
+	/**
+	 * Расходуем часть окна приёма потока, но меньше половины - автоматическое
+	 * пополнение при такой просадке ещё не срабатывает
+	 */
+	const std::string data = ::frame(0x00, 0x00, sid, std::string(16384, 'x'));
+	// Выполняем разбор кадра DATA на сервере
+	server->parse(data.data(), data.size());
+	// Получаем параметры соединения сервера
+	parser_http2_t::settings_t settings = server->settings();
+	// Обнуляем анонсируемое начальное окно приёма потока
+	settings.windowSize = 0;
+	// Применяем параметры соединения сервера
+	server->settings(settings);
+	/**
+	 * Снижение анонсируемого начального окна сдвигает окна приёма всех открытых
+	 * потоков на дельту (§6.9.2), уводя окно этого потока в минус
+	 */
+	server->sendSettings();
+	// Проверяем что соединение осталось живо после смены параметров
+	ASSERT_TRUE(clientEvents.closes.empty());
+	/**
+	 * Инкремент вне диапазона на отрицательном окне укладывается в проверку суммы,
+	 * а сборка кадра снимет reserved-бит и отправит пиру нулевой инкремент, который
+	 * тот обязан считать ошибкой
+	 */
+	server->sendWindowUpdate(sid, 0x80000000);
+	// Проверяем что кадр не отправлен и поток у клиента не сброшен
+	ASSERT_TRUE(clientEvents.closes.empty());
+	// Проверяем что ошибка уровня соединения у клиента не зафиксирована
+	ASSERT_FALSE(clientEvents.errorFired);
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(client->status(), parser_t::status_t::PARTIAL);
+}
+
+/**
+ * @brief Метод проверки сохранности буфера тела при реентрантном разборе
+ *
+ */
+TEST_F(ParserHttp2Fixture, NestedParseKeepsBodyViewTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Собранное обработчиком тело потока
+	std::string collected;
+	// Формируем кадр PING, который обработчик подаст на разбор реентрантно
+	const std::string nested = ::frame(0x06, 0x00, 0, std::string(8, '\x00'));
+	/**
+	 * Обработчик тела реентрантно скармливает парсеру новые байты, а затем
+	 * дочитывает выданный ему буфер: вложенное дописывание не должно
+	 * перевыделять входной буфер под уже отданным наружу указателем
+	 */
+	server->on(parser_http2_t::data_callback_t([&](const uint32_t sid, const void * buffer, const size_t size, const bool endStream) noexcept -> bool {
+		// Подаём дополнительные байты на разбор изнутри обработчика
+		server->parse(nested.data(), nested.size());
+		// Дочитываем выданный буфер тела уже после вложенного разбора
+		collected.append(static_cast <const char *> (buffer), size);
+		// Не используемые параметры
+		(void) sid;
+		// Не используемый параметр завершения потока
+		(void) endStream;
+		// Продолжаем разбор
+		return true;
+	}));
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "POST");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/upload");
+	// Открываем поток (тело последует)
+	client->sendHeaders(sid, fields, false);
+	// Формируем тело потока
+	const std::string body(4096, 'q');
+	// Формируем кадр DATA с телом потока
+	const std::string data = ::frame(0x00, 0x01, sid, body);
+	// Выполняем разбор кадра DATA на сервере
+	server->parse(data.data(), data.size());
+	// Проверяем что тело прочитано после вложенного разбора без искажений
+	ASSERT_EQ(collected, body);
+	// Проверяем что ошибка уровня соединения не зафиксирована
+	ASSERT_FALSE(serverEvents.errorFired);
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+}
+
+/**
+ * @brief Метод проверки пополнения rate-лимита при скачке часов вперёд
+ *
+ */
+TEST_F(ParserHttp2Fixture, RatelimClockJumpTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий сервера
+	events_t serverEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Формируем лимиты безопасности с малым запасом управляющих кадров
+	parser_http2_t::limits_t limits;
+	// Устанавливаем стартовый запас лимита частоты управляющих фреймов
+	limits.ctrlLimitBurst = 4;
+	// Устанавливаем пополнение лимита частоты управляющих фреймов
+	limits.ctrlLimitRate = 4;
+	// Применяем лимиты безопасности
+	server->limits(limits);
+	// Отправляем preface сервера
+	server->sendPreface();
+	// Формируем клиентский preface
+	std::string input(h2::proto::PREFACE);
+	// Дописываем пустой кадр SETTINGS клиента
+	input += ::frame(0x04, 0x00, 0, "");
+	// Выполняем разбор клиентского preface
+	server->parse(input.data(), input.size());
+	// Формируем кадр PING
+	const std::string ping = ::frame(0x06, 0x00, 0, std::string(8, '\x00'));
+	// Расходуем остаток стартового запаса токенов (один уже списан на SETTINGS клиента)
+	for(uint32_t i = 0; i < 3; i++)
+		// Выполняем разбор кадра PING на сервере
+		server->parse(ping.data(), ping.size());
+	// Проверяем что стартовый запас израсходован без ошибки
+	ASSERT_FALSE(serverEvents.errorFired);
+	/**
+	 * Сообщаем скачок часов далеко вперёд: произведение скорости пополнения на
+	 * число прошедших секунд переполняет счётчик и обнуляет пополнение, из-за
+	 * чего парсер рвёт соединение на первом же следующем управляющем кадре
+	 */
+	server->updateTime(static_cast <uint64_t> (1) << 63);
+	// Расходуем восстановленный запас токенов целиком
+	for(uint32_t i = 0; i < 4; i++)
+		// Выполняем разбор кадра PING на сервере
+		server->parse(ping.data(), ping.size());
+	// Проверяем что запас токенов восстановлен и соединение осталось живо
+	ASSERT_FALSE(serverEvents.errorFired);
+	// Проверяем что соединение осталось живо
+	ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL);
+}

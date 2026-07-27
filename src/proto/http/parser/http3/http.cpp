@@ -332,6 +332,93 @@ namespace {
  * @brief Конструктор
  *
  */
+awh::http::Parser_HTTP3::Ring::Ring() noexcept : items(PUSH_HISTORY_CACHE, UINT64_MAX), cursor(0) {}
+/**
+ * @brief Метод проверки наличия идентификатора в кольце
+ *
+ * @param value искомый идентификатор
+ * @return      результат проверки
+ *
+ */
+bool awh::http::Parser_HTTP3::Ring::has(const uint64_t value) const noexcept {
+	// Пустая ячейка идентификатором не является
+	if(value == UINT64_MAX)
+		// Выводим отрицательный результат
+		return false;
+	/**
+	 * Перебор, а не поиск по множеству: кольцо короткое и лежит одним куском памяти,
+	 * а обращаются к нему только события push - на порядки реже кадров сообщений
+	 */
+	for(const uint64_t item : this->items){
+		// Если идентификатор найден в кольце
+		if(item == value)
+			// Выводим положительный результат
+			return true;
+	}
+	// Выводим отрицательный результат
+	return false;
+}
+/**
+ * @brief Метод записи идентификатора в кольцо
+ *
+ * @param value записываемый идентификатор
+ *
+ */
+void awh::http::Parser_HTTP3::Ring::put(const uint64_t value) noexcept {
+	// Пустая ячейка идентификатором не является
+	if(value == UINT64_MAX)
+		// Выходим из метода
+		return;
+	/**
+	 * Повторная запись того же идентификатора вытеснила бы из кольца чужой,
+	 * события которого ещё могут прийти
+	 */
+	if(this->has(value))
+		// Выходим из метода
+		return;
+	// Записываем идентификатор в текущую ячейку кольца
+	this->items[this->cursor] = value;
+	// Продвигаем позицию записи по кольцу
+	this->cursor = ((this->cursor + 1) % this->items.size());
+}
+/**
+ * @brief Метод удаления идентификатора из кольца
+ *
+ * @param value удаляемый идентификатор
+ *
+ */
+void awh::http::Parser_HTTP3::Ring::drop(const uint64_t value) noexcept {
+	// Пустая ячейка идентификатором не является
+	if(value == UINT64_MAX)
+		// Выходим из метода
+		return;
+	/**
+	 * Выполняем перебор всех ячеек кольца
+	 */
+	for(uint64_t & item : this->items){
+		// Если идентификатор найден в кольце
+		if(item == value){
+			// Освобождаем ячейку кольца
+			item = UINT64_MAX;
+			// Выходим из метода
+			return;
+		}
+	}
+}
+/**
+ * @brief Метод очистки кольца
+ *
+ */
+void awh::http::Parser_HTTP3::Ring::clear() noexcept {
+	// Освобождаем все ячейки кольца
+	::std::fill(this->items.begin(), this->items.end(), UINT64_MAX);
+	// Сбрасываем позицию записи в кольце
+	this->cursor = 0;
+}
+/**
+ * @brief Конструктор
+ *
+ */
 awh::http::Parser_HTTP3::Limits::Limits() noexcept :
  parser_t::limits_t(), maxHeaderSection(64 * 1024), maxControlFrame(16 * 1024),
  maxBlockedTail(256 * 1024), maxStreams(128),
@@ -1565,11 +1652,22 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseUnistream(const uint64_t s
 					// Фиксируем ошибку уровня соединения
 					return this->fail(error_t::H3_ID_ERROR, "поток push вне объявленных границ");
 				/**
+				 * Идентификатор обещания используется ровно одним потоком: второй поток
+				 * с тем же идентификатором - ошибка соединения (RFC 9114 §4.6)
+				 */
+				if(this->_openedPush.has(stream.pushId))
+					// Фиксируем ошибку уровня соединения
+					return this->fail(error_t::H3_ID_ERROR, "повторный поток обещания push");
+				// Запоминаем пришедший идентификатор обещания push
+				this->_openedPush.put(stream.pushId);
+				/**
 				 * Отмена обещания обгоняет его поток: CANCEL_PUSH идёт управляющим
 				 * потоком, а сам push - своим. Пришедший следом за отменой поток
 				 * читать незачем - его содержимое уже никому не нужно (RFC 9114 §7.2.3)
 				 */
-				if(this->_cancelledPush.erase(stream.pushId) > 0){
+				if(this->_cancelledPush.has(stream.pushId)){
+					// Снимаем отмену: она отработала приходом потока
+					this->_cancelledPush.drop(stream.pushId);
 					// Удаляем состояние однонаправленного потока: читать его мы не будем
 					this->_unistreams.erase(sid);
 					// Если функция обратного вызова обрыва потока установлена
@@ -1580,6 +1678,31 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseUnistream(const uint64_t s
 						try {
 							// Просим отправителя прекратить передачу
 							this->_callbacks.abort(sid, error_t::H3_REQUEST_CANCELLED, true);
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const exception &) {
+							// Исключение из пользовательской функции обратного вызова гасим на месте
+						}
+					}
+					// Выводим результат разбора
+					return h3::status_t::OK;
+				}
+				/**
+				 * Поток push несёт сообщение и живёт в той же карте, что и потоки запросов,
+				 * поэтому считается тем же лимитом: иначе сервер обходил бы его потоками push
+				 */
+				if(this->_streams.size() >= this->_limits.maxStreams){
+					// Удаляем состояние однонаправленного потока: читать его мы не будем
+					this->_unistreams.erase(sid);
+					// Если функция обратного вызова обрыва потока установлена
+					if(this->_callbacks.abort){
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Просим отправителя прекратить передачу
+							this->_callbacks.abort(sid, error_t::H3_REQUEST_REJECTED, true);
 						/**
 						 * Если возникает ошибка
 						 */
@@ -1915,16 +2038,13 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::dispatchControl(const uint64_t 
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::H3_ID_ERROR, "отменён push вне объявленных границ");
 			/**
-			 * Число отменённых, но ещё не пришедших обещаний ограничено: запись
-			 * снимается приходом потока push, а пир, отменяющий обещания и не шлющий
-			 * потоков вовсе, иначе наращивал бы память соединения без предела
+			 * Отмена обещания, поток которого уже пришёл, эффекта не имеет вовсе
+			 * (RFC 9114 §7.2.3): запоминать нечего, а запись, которую никто уже
+			 * не снимет, только вытеснила бы из кольца полезную
 			 */
-			if((this->_cancelledPush.size() >= this->_limits.maxStreams) &&
-			   (this->_cancelledPush.find(identifier) == this->_cancelledPush.end()))
-				// Фиксируем ошибку уровня соединения
-				return this->fail(error_t::H3_EXCESSIVE_LOAD, "слишком много отменённых обещаний push");
-			// Запоминаем отменённый идентификатор push
-			this->_cancelledPush.emplace(identifier);
+			if(!this->_openedPush.has(identifier))
+				// Запоминаем отменённый идентификатор push
+				this->_cancelledPush.put(identifier);
 		} break;
 		// Обновление расширенного приоритета потока запроса либо потока push
 		case static_cast <uint64_t> (h3::frame_t::PRIORITY_UPDATE_REQUEST):
@@ -2100,12 +2220,15 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 			// Переходим к следующему потоку
 			continue;
 		/**
-		 * Отложенная секция копируется: её разбор способен закрыть поток,
-		 * и представление указывало бы в освобождённую память
+		 * Отложенная секция и хвост забираются из состояния потока, а не копируются:
+		 * хвост доходит до сотен килобайт, и копия его была бы самой дорогой операцией
+		 * разблокировки. Держать их снаружи обязательно - разбор способен закрыть поток,
+		 * и представление указывало бы в освобождённую память. Если секция окажется
+		 * заблокированной снова, оба возвращаются на место
 		 */
-		const string section = stream->blocked;
-		// Запоминаем неразобранный хвост потока, накопленный за время блокировки
-		const string tail = stream->blockedTail;
+		string section = ::std::move(stream->blocked);
+		// Забираем неразобранный хвост потока, накопленный за время блокировки
+		string tail = ::std::move(stream->blockedTail);
 		// Запоминаем тип кадра отложенной секции
 		const uint64_t type = stream->blockedType;
 		// Запоминаем идентификатор отложенного обещания
@@ -2120,9 +2243,19 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 		// Выполняем декодирование отложенной секции полей
 		const h3::status_t status = this->_decoder.decode(sid, section, this->_fields, this->_limits.maxHeadersTotal, error);
 		// Если поток всё ещё заблокирован
-		if(status == h3::status_t::BLOCKED)
+		if(status == h3::status_t::BLOCKED){
+			// Обновляем состояние потока
+			stream = this->findStream(sid);
+			// Если поток не закрыт
+			if(stream != nullptr){
+				// Возвращаем отложенную секцию: поток по-прежнему ждёт вставок
+				stream->blocked = ::std::move(section);
+				// Возвращаем неразобранный хвост потока
+				stream->blockedTail = ::std::move(tail);
+			}
 			// Переходим к следующему потоку
 			continue;
+		}
 		// Если декодирование секции полей не удалось
 		if(status != h3::status_t::OK)
 			// Фиксируем ошибку уровня соединения
@@ -2581,12 +2714,74 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::deliverSection(const uint64_t s
  * @return       результат доставки
  *
  */
+/**
+ * @brief Метод сверки секции полей повторно обещанного push
+ *
+ * @param pushId идентификатор обещанного push
+ * @return       результат сверки
+ *
+ */
+awh::http::h3::status_t awh::http::Parser_HTTP3::checkPromise(const uint64_t pushId) noexcept {
+	// Отпечаток секции полей обещания
+	size_t digest = this->_fields.size();
+	/**
+	 * Собираем отпечаток секции по её декодированным полям: одинаковые обещания
+	 * дают одинаковую последовательность полей, а значит и одинаковый отпечаток
+	 */
+	for(const auto & field : this->_fields){
+		// Подмешиваем название поля в отпечаток
+		digest = (digest * 31 + ::std::hash <string_view> {}(field.name));
+		// Подмешиваем значение поля в отпечаток
+		digest = (digest * 31 + ::std::hash <string_view> {}(field.value));
+	}
+	/**
+	 * Выполняем поиск обещания в кольце
+	 */
+	for(auto & item : this->_promisedPush){
+		// Если обещание с таким идентификатором не встречалось - идём дальше
+		if(item.id != pushId)
+			// Переходим к следующей ячейке кольца
+			continue;
+		/**
+		 * Повтор идентификатора допустим: один push сервер вправе пообещать
+		 * на нескольких потоках запросов. Недопустимо расхождение секций
+		 */
+		if(item.digest != digest)
+			// Фиксируем ошибку уровня соединения
+			return this->fail(error_t::H3_GENERAL_PROTOCOL_ERROR, "секции повторного обещания push расходятся");
+		// Выводим результат сверки
+		return h3::status_t::OK;
+	}
+	// Записываем идентификатор обещания в текущую ячейку кольца
+	this->_promisedPush[this->_promisedCursor].id = pushId;
+	// Записываем отпечаток секции обещания в текущую ячейку кольца
+	this->_promisedPush[this->_promisedCursor].digest = digest;
+	// Продвигаем позицию записи по кольцу
+	this->_promisedCursor = ((this->_promisedCursor + 1) % this->_promisedPush.size());
+	// Выводим результат сверки
+	return h3::status_t::OK;
+}
+/**
+ * @brief Метод доставки декодированной секции полей обещанного запроса
+ *
+ * @param sid    идентификатор потока
+ * @param pushId идентификатор обещанного push
+ * @return       результат доставки
+ *
+ */
 awh::http::h3::status_t awh::http::Parser_HTTP3::deliverPromise(const uint64_t sid, const uint64_t pushId) noexcept {
 	/**
 	 * Поля обещания ссылаются в арену декодера, а обработчик вправе снести её,
 	 * вызвав clear() либо reset() прямо изнутри. Поэтому после каждого выхода
 	 * наружу проверяется поколение состояния соединения
 	 */
+	/**
+	 * Секции повторных обещаний одного push обязаны совпадать: расхождение -
+	 * ошибка соединения, и проверяется оно до выхода наружу (RFC 9114 §7.2.5)
+	 */
+	if(this->checkPromise(pushId) != h3::status_t::OK)
+		// Выводим результат доставки
+		return h3::status_t::ERROR;
 	// Запоминаем поколение состояния соединения перед выходами в обработчики
 	const uint64_t epoch = this->_epoch;
 	// Если обработчик отклонил обещанный push
@@ -3251,6 +3446,12 @@ void awh::http::Parser_HTTP3::reset() noexcept {
 	this->_nextPushId = 0;
 	// Выполняем очистку списка отменённых push
 	this->_cancelledPush.clear();
+	// Очищаем кольцо пришедших обещаний push
+	this->_openedPush.clear();
+	// Очищаем кольцо отпечатков секций обещаний push
+	::std::fill(this->_promisedPush.begin(), this->_promisedPush.end(), promise_t());
+	// Сбрасываем позицию записи в кольце обещаний push
+	this->_promisedCursor = 0;
 	// Сбрасываем идентификатор, объявленный нами в GOAWAY
 	this->_goawayLocal = h3::proto::MAX_VARINT;
 	// Сбрасываем идентификатор, объявленный пиром в GOAWAY
@@ -3575,8 +3776,8 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const vector <h3::
 	if((this->_remote.maxFieldSectionSize > 0) && (this->_encoder.listSize() > this->_remote.maxFieldSectionSize)){
 		// Выгружаем накопленные инструкции кодека
 		this->flushQpack();
-		// Снимаем ссылки неотправленной секции
-		this->_encoder.cancel(sid);
+		// Откатываем ровно ту секцию, которая не ушла в сеть
+		this->_encoder.rollback(sid);
 		// Записываем сообщение об отказе в лог
 		this->_log->print(
 			"HTTP/3 field section for stream %llu exceeds peer SETTINGS_MAX_FIELD_SECTION_SIZE, not sent",
@@ -3810,12 +4011,31 @@ uint64_t awh::http::Parser_HTTP3::sendPushPromise(const uint64_t sid, const vect
 	if(!this->prepare())
 		// Выводим признак отказа
 		return UINT64_MAX;
-	// Выделяем идентификатор обещанного push
-	const uint64_t pushId = this->_nextPushId++;
 	// Выполняем очистку буфера сборки секции полей
 	this->_section.clear();
 	// Выполняем кодирование секции полей обещанного запроса
 	this->_encoder.encode(sid, fields, this->_section);
+	/**
+	 * Секция сверх анонсированного клиентом лимита не отправляется: он отверг бы
+	 * её целиком, а идентификатор обещания оказался бы истрачен впустую
+	 * (RFC 9114 §7.2.4.1). Откатывается ровно эта секция - прежние секции потока
+	 * уже отправлены, и подтверждения на них придут
+	 */
+	if((this->_remote.maxFieldSectionSize > 0) && (this->_encoder.listSize() > this->_remote.maxFieldSectionSize)){
+		// Выгружаем накопленные инструкции кодека
+		this->flushQpack();
+		// Откатываем ровно ту секцию, которая не ушла в сеть
+		this->_encoder.rollback(sid);
+		// Записываем сообщение об отказе в лог
+		this->_log->print(
+			"HTTP/3 push promise field section for stream %llu exceeds peer SETTINGS_MAX_FIELD_SECTION_SIZE, not sent",
+			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+		);
+		// Выводим признак отказа
+		return UINT64_MAX;
+	}
+	// Выделяем идентификатор обещанного push
+	const uint64_t pushId = this->_nextPushId++;
 	// Выгружаем накопленные инструкции кодека
 	this->flushQpack();
 	// Выполняем очистку буфера сборки кадра
@@ -3848,9 +4068,9 @@ void awh::http::Parser_HTTP3::sendCancelPush(const uint64_t pushId) noexcept {
 	 * Отменённое нами обещание запоминается: сервер мог отправить его поток раньше,
 	 * чем получил отмену, и тот придёт следом - читать его уже незачем
 	 */
-	if(this->_endpoint == h3::endpoint_t::CLIENT)
+	if((this->_endpoint == h3::endpoint_t::CLIENT) && !this->_openedPush.has(pushId))
 		// Запоминаем отменённый идентификатор push
-		this->_cancelledPush.emplace(pushId);
+		this->_cancelledPush.put(pushId);
 }
 /**
  * @brief Метод проверки отменённости обещанного push
@@ -3861,7 +4081,7 @@ void awh::http::Parser_HTTP3::sendCancelPush(const uint64_t pushId) noexcept {
  */
 bool awh::http::Parser_HTTP3::pushCancelled(const uint64_t pushId) const noexcept {
 	// Выводим признак отменённости обещания
-	return (this->_cancelledPush.find(pushId) != this->_cancelledPush.end());
+	return this->_cancelledPush.has(pushId);
 }
 /**
  * @brief Метод разрешения пиру выдавать push (только клиент)
@@ -4243,6 +4463,7 @@ awh::http::Parser_HTTP3::Parser_HTTP3(const direct_t direct, const fmk_t * fmk, 
  _decoderLocal(UINT64_MAX), _encoderRemote(UINT64_MAX), _decoderRemote(UINT64_MAX),
  _settingsReceived(false), _settingsSent(false), _closed(false),
  _maxPushId(UINT64_MAX), _localMaxPushId(UINT64_MAX), _nextPushId(0),
+ _promisedPush(PUSH_HISTORY_CACHE), _promisedCursor(0),
  _goawayLocal(h3::proto::MAX_VARINT), _goawayRemote(h3::proto::MAX_VARINT),
  _error(error_t::H3_NO_ERROR), _epoch(0) {
 	/**

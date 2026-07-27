@@ -24610,48 +24610,21 @@ namespace io {
 								);
 							break;
 						}
-						// Если дескриптор сокета действительный
-						if(peer->transfer.fd != net::invalid_socket_t){
-							// Если в сокете нет ошибок
-							if(eth->socket.getError(peer->transfer.fd) == 0){
-								// Если активность на чтения данных установлена
-								if(peer->activity & ::activity::READ){
-									// Если Kqueue инициализирован
-									if(::__awh_kq__ != net::invalid_socket_t){
-										// Создаём объект события для Kqueue
-										struct kevent event{};
-										// Деактивируем событие на чтение данных из сокета
-										EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-										// Добавляем новое событие в список изменений
-										::events::add(::move(event));
-									// Если Kqueue не инициализирован
-									} else {
-										// Закрываем дескриптор сокета
-										::close(peer->transfer.fd);
-										// Сбрасываем значение дескриптора сокета
-										peer->transfer.fd = net::invalid_socket_t;
-									}
-								}
-								// Если активность на запись данных установлена
-								if(peer->activity & ::activity::WRITE){
-									// Если Kqueue инициализирован
-									if(::__awh_kq__ != net::invalid_socket_t){
-										// Создаём объект события для Kqueue
-										struct kevent event{};
-										// Деактивируем событие на запись данных в сокет
-										EV_SET(&event, peer->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-										// Добавляем новое событие в список изменений
-										::events::add(::move(event));
-									// Если Kqueue не инициализирован
-									} else if(peer->transfer.fd != net::invalid_socket_t) {
-										// Закрываем дескриптор сокета
-										::close(peer->transfer.fd);
-										// Сбрасываем значение дескриптора сокета
-										peer->transfer.fd = net::invalid_socket_t;
-									}
-								}
-							}
-						}
+						/**
+						 * Подписки по дескриптору снимать не требуется
+						 *
+						 * @details Ядро снимает наблюдение за дескриптором само, как только
+						 *          дескриптор закрывается, а закрывается он охранником узла
+						 *          при окончательном уничтожении - то есть уже после того, как
+						 *          накопленный пакет изменений ушёл в ядро. Явное снятие
+						 *          обходилось в две записи пакета и ещё в один системный вызов
+						 *          на опрос ошибки сокета, которым оно предварялось: на приём
+						 *          подключений это давало три обращения к ядру за SO_ERROR и
+						 *          два лишних изменения подписки на каждое соединение. Хуже
+						 *          того, запись на снятие переживала закрытие дескриптора, а
+						 *          освободившийся номер операционная система успевает выдать
+						 *          заново - и снятие приходилось уже по новому владельцу
+						 */
 						// Уменьшаем общее количество подключений сервера
 						if(peer->peers > 0)
 							// Уменьшаем общее количество подключений сервера
@@ -24837,25 +24810,13 @@ namespace io {
 													);
 												break;
 											}
-											// Если дескриптор сокета действительный
+											/**
+											 * Закрываем дескриптор сокета. Подписки по дескриптору
+											 * ядро снимает само при его закрытии, поэтому ни опрос
+											 * ошибки сокета, ни отдельное обращение к ядру за
+											 * снятием наблюдения здесь не нужны
+											 */
 											if(client->transfer.fd != net::invalid_socket_t){
-												// Если в сокете нет ошибок
-												if(eth->socket.getError(client->transfer.fd) == 0){
-													// Количество событий подлежащих удалению
-													uint8_t count = 0;
-													// Список объектов события для удаления
-													struct kevent events[2] = {0};
-													// Если активность на чтения данных установлена
-													if(client->activity & ::activity::READ)
-														// Деактивируем событие на чтение данных из сокета
-														EV_SET(&events[count++], client->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-													// Если активность на запись данных установлена
-													if(client->activity & ::activity::WRITE)
-														// Деактивируем событие на запись данных в сокет
-														EV_SET(&events[count++], client->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-													// Выполняем удаление событий из списка ожидания
-													::kevent(::__awh_kq__, events, count, nullptr, 0, nullptr);
-												}
 												// Закрываем дескриптор сокета
 												::close(client->transfer.fd);
 												// Сбрасываем значение дескриптора сокета
@@ -24918,48 +24879,12 @@ namespace io {
 										);
 									break;
 								}
-								// Если дескриптор сокета действительный
-								if(client->transfer.fd != net::invalid_socket_t){
-									// Если в сокете нет ошибок
-									if(eth->socket.getError(client->transfer.fd) == 0){
-										// Если активность на чтения данных установлена
-										if(client->activity & ::activity::READ){
-											// Если Kqueue инициализирован
-											if(::__awh_kq__ != net::invalid_socket_t){
-												// Создаём объект события для Kqueue
-												struct kevent event{};
-												// Деактивируем событие на чтение данных из сокета
-												EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-												// Добавляем новое событие в список изменений
-												::events::add(::move(event));
-											// Если Kqueue не инициализирован
-											} else {
-												// Закрываем дескриптор сокета
-												::close(client->transfer.fd);
-												// Сбрасываем значение дескриптора сокета
-												client->transfer.fd = net::invalid_socket_t;
-											}
-										}
-										// Если активность на запись данных установлена
-										if(client->activity & ::activity::WRITE){
-											// Если Kqueue инициализирован
-											if(::__awh_kq__ != net::invalid_socket_t){
-												// Создаём объект события для Kqueue
-												struct kevent event{};
-												// Деактивируем событие на запись данных в сокет
-												EV_SET(&event, client->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-												// Добавляем новое событие в список изменений
-												::events::add(::move(event));
-											// Если Kqueue не инициализирован
-											} else if(client->transfer.fd != net::invalid_socket_t) {
-												// Закрываем дескриптор сокета
-												::close(client->transfer.fd);
-												// Сбрасываем значение дескриптора сокета
-												client->transfer.fd = net::invalid_socket_t;
-											}
-										}
-									}
-								}
+								/**
+								 * Подписки по дескриптору снимать не требуется: ядро снимает
+								 * наблюдение само при закрытии дескриптора, а закрывает его
+								 * охранник узла при окончательном уничтожении - уже после того,
+								 * как накопленный пакет изменений ушёл в ядро
+								 */
 							} break;
 						}
 						// Если событие закрытия разрешено
@@ -51212,13 +51137,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
 													// Устанавливаем опцию события
 													i->second->state.options |= event::options::TCP_CORK;
-											// Если опция не передана как TCP_CORK
-											} else {
+											// Если опция не передана как TCP_CORK, но установлена в состоянии узла
+											} else if(i->second->state.options & event::options::TCP_CORK) {
 												// Деактивируем алгоритм TCP/CORK
 												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
 													// Снимаем опцию события
 													i->second->state.options &= ~event::options::TCP_CORK;
-											}
+											/**
+											 * @note Опция уже снята в состоянии узла, обращаться к ядру не за чем:
+											 *       снятие того, что не установлено, ничего не меняет ни на новом
+											 *       дескрипторе, ни на действующем
+											 */
+											} else isSetup = true;
 											// Если опция не установлена
 											if(!isSetup)
 												// Устанавливаем результат работы функции как ложь
@@ -51332,13 +51262,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
 													// Устанавливаем опцию события
 													i->second->state.options |= event::options::TCP_CORK;
-											// Если опция не передана как TCP_CORK
-											} else {
+											// Если опция не передана как TCP_CORK, но установлена в состоянии узла
+											} else if(i->second->state.options & event::options::TCP_CORK) {
 												// Деактивируем алгоритм TCP/CORK
 												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
 													// Снимаем опцию события
 													i->second->state.options &= ~event::options::TCP_CORK;
-											}
+											/**
+											 * @note Опция уже снята в состоянии узла, обращаться к ядру не за чем:
+											 *       снятие того, что не установлено, ничего не меняет ни на новом
+											 *       дескрипторе, ни на действующем
+											 */
+											} else isSetup = true;
 											// Если опция не установлена
 											if(!isSetup)
 												// Устанавливаем результат работы функции как ложь

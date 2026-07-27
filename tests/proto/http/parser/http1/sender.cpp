@@ -1528,3 +1528,118 @@ TEST_F(ParserFixture, SendLegacyRequestWithoutLengthTest){
 		ASSERT_EQ(wire.substr(block + 4), "hello") << wire;
 	}
 }
+
+/**
+ * @brief Метод проверки границы превышения верхнего порога выходного буфера
+ *
+ * @details Верхний порог управляет обратным давлением, а не является жёсткой ёмкостью:
+ *          до порога отмеряются байты тела, а разметка кадрирования chunked дописывается
+ *          поверх отмеренного. Превышение обязано оставаться размером этой разметки -
+ *          заголовок чанка и два CRLF - и не зависеть от размера тела, а также не
+ *          накапливаться от вызова к вызову
+ *
+ */
+TEST_F(ParserFixture, SendWaterMarkChunkedOvershootTest){
+	// Устанавливаем верхний порог выходного буфера
+	const size_t high = 4096;
+	// Устанавливаем предел превышения порога: заголовок чанка и два CRLF
+	const size_t tolerance = 16;
+	/**
+	 * Проверяем push-модель: тело подаётся методом отправки
+	 */
+	{
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Устанавливаем пороги выходного буфера
+		sender->sendWaterMarks(high, (high / 4));
+		// Формируем контейнер заголовков ответа с кадрированием chunked
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Дописываем заголовок кодирования тела сообщения
+		response.emplace("Transfer-Encoding", "chunked");
+		// Отправляем заголовки ответа (тело последует)
+		sender->sendHeaders(response, false);
+		// Формируем тело заведомо большего размера, чем верхний порог
+		const std::string body((16 * high), 'x');
+		// Позиция выдачи тела сообщения
+		size_t offset = 0;
+		/**
+		 * Подаём тело до отказа выходного буфера
+		 */
+		while(offset < body.size()){
+			// Передаём очередную часть тела сообщения
+			const size_t taken = sender->sendData((body.data() + offset), (body.size() - offset), false);
+			// Если буфер заполнен - прекращаем подачу
+			if(taken == 0)
+				// Прекращаем подачу тела
+				break;
+			// Смещаем позицию выдачи тела
+			offset += taken;
+			// Проверяем что заполнение буфера не ушло за порог дальше размера разметки
+			ASSERT_LE(sender->pending().size(), (high + tolerance)) << "принято байт тела: " << offset;
+		}
+		// Проверяем что буфер действительно наполнился до порога
+		ASSERT_GT(sender->pending().size(), (high / 2));
+	}
+	/**
+	 * Проверяем pull-модель: тело подаётся источником данных
+	 */
+	{
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Устанавливаем пороги выходного буфера
+		sender->sendWaterMarks(high, (high / 4));
+		// Формируем контейнер заголовков ответа с кадрированием chunked
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Дописываем заголовок кодирования тела сообщения
+		response.emplace("Transfer-Encoding", "chunked");
+		// Отправляем заголовки ответа (тело последует)
+		sender->sendHeaders(response, false);
+		// Формируем тело заведомо большего размера, чем верхний порог
+		const std::string body((16 * high), 'y');
+		// Позиция чтения тела сообщения источником
+		size_t position = 0;
+		// Устанавливаем pull-источник данных тела сообщения
+		sender->dataSource(parser_http_t::data_source_callback_t([&body, &position](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+			// Определяем размер отдаваемой порции тела
+			const size_t size = std::min(cap, (body.size() - position));
+			// Копируем порцию тела в буфер источника
+			std::memcpy(buffer, (body.data() + position), size);
+			// Смещаем позицию чтения тела
+			position += size;
+			// Определяем достижение конца тела
+			eof = (position >= body.size());
+			// Выводим размер отданной порции тела
+			return static_cast <int64_t> (size);
+		}));
+		// Проверяем что заполнение буфера не ушло за порог дальше размера разметки
+		ASSERT_LE(sender->pending().size(), (high + tolerance));
+		// Проверяем что буфер действительно наполнился до порога
+		ASSERT_GT(sender->pending().size(), (high / 2));
+		/**
+		 * Гоняем цикл выборки и дозагрузки: в pull-модели буфер досыпается по мере
+		 * выборки, и превышение обязано оставаться в тех же пределах на каждом круге.
+		 * Однократного наполнения для этого мало - именно повторные круги показывают,
+		 * накапливается превышение от порции к порции или нет
+		 */
+		size_t rounds = 0;
+		/**
+		 * Выбираем накопленные байты, пока источник их досыпает
+		 */
+		while(!sender->pending().empty()){
+			// Выбираем часть накопленных байт, освобождая место под дозагрузку
+			sender->consumePending(std::min(sender->pending().size(), (high / 4)));
+			// Проверяем что заполнение буфера не ушло за порог дальше размера разметки
+			ASSERT_LE(sender->pending().size(), (high + tolerance)) << "круг выборки: " << rounds;
+			// Учитываем выполненный круг выборки
+			++rounds;
+			// Если тело источника исчерпано и буфер опустошён - прекращаем выборку
+			if((position >= body.size()) && (sender->pending().size() <= (high / 4)))
+				// Прекращаем выборку накопленных байт
+				break;
+		}
+		// Проверяем что кругов выборки было достаточно для проверки накопления
+		ASSERT_GT(rounds, 4u);
+		// Проверяем что тело источника действительно было выдано целиком
+		ASSERT_EQ(position, body.size());
+	}
+}

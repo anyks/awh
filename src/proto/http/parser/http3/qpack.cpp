@@ -2446,6 +2446,41 @@ void awh::http::h3::qpack::Encoder::cancel(const uint64_t sid) noexcept {
 	this->_sections.erase(stream);
 }
 /**
+ * @brief Метод отката последней закодированной секции потока
+ *
+ * @param sid идентификатор потока
+ *
+ */
+void awh::http::h3::qpack::Encoder::rollback(const uint64_t sid) noexcept {
+	// Выполняем поиск неподтверждённых секций потока
+	auto stream = this->_sections.find(sid);
+	// Если неподтверждённых секций у потока нет
+	if((stream == this->_sections.end()) || stream->second.empty())
+		// Выходим из метода
+		return;
+	/**
+	 * Выполняем снятие ссылок последней секции. Прежние секции потока остаются
+	 * на учёте: они уже отправлены, и подтверждения на них придут
+	 */
+	for(const auto absolute : stream->second.back().refs){
+		// Выполняем поиск счётчика ссылок на запись
+		auto i = this->_refs.find(absolute);
+		// Если счётчик ссылок на запись найден
+		if(i != this->_refs.end()){
+			// Уменьшаем счётчик ссылок на запись
+			if((--i->second) == 0)
+				// Удаляем исчерпанный счётчик ссылок
+				this->_refs.erase(i);
+		}
+	}
+	// Снимаем последнюю секцию с учёта
+	stream->second.pop_back();
+	// Если неподтверждённых секций у потока не осталось
+	if(stream->second.empty())
+		// Удаляем поток из списка неподтверждённых секций
+		this->_sections.erase(stream);
+}
+/**
  * @brief Метод получения накопленных инструкций потока кодера
  *
  * @return представление накопленных инструкций

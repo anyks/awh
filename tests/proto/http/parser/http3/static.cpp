@@ -1457,3 +1457,350 @@ TEST_F(ParserHttp3Fixture, BodyExceedsContentLength){
 	// Код обрыва потока обязан указывать на искажённое сообщение
 	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR);
 }
+/**
+ * @brief Проверка отката ровно последней закодированной секции
+ *
+ * @details Секция, не ушедшая в сеть, снимается с учёта одна: снятие всего потока
+ *          лишило бы записи уже отправленные секции, и подтверждение на них
+ *          пришло бы в пустоту - а это ошибка соединения (RFC 9204 §4.4.1)
+ *
+ */
+TEST_F(ParserHttp3Fixture, QpackRollbackKeepsSentSections){
+	// Объект кодера полей
+	qpack::encoder_t encoder;
+	// Объект декодера полей
+	qpack::decoder_t decoder(4096, 16);
+	// Устанавливаем ёмкость таблицы, анонсированную пиром
+	encoder.maxCapacity(4096);
+	// Устанавливаем число потоков, которым пир разрешил ожидание
+	encoder.maxBlocked(16);
+	// Отключаем адаптивную индексацию, чтобы вставка произошла с первого поля
+	encoder.adaptiveIndexing(false);
+	// Набор полей первой секции
+	const std::vector <qpack::field_t> first = {qpack::field_t{"x-session", "0f9c1a2b3d4e5f60"}};
+	// Буфер первой секции полей
+	std::string sent;
+	// Кодируем первую секцию полей: она уходит в сеть
+	encoder.encode(0, first, sent);
+	// Набор полей второй секции
+	const std::vector <qpack::field_t> second = {qpack::field_t{"x-checksum", "1a2b3c4d5e6f7a8b"}};
+	// Буфер второй секции полей
+	std::string dropped;
+	// Кодируем вторую секцию полей: в сеть она не уйдёт
+	encoder.encode(0, second, dropped);
+	// Откатываем ровно вторую секцию
+	encoder.rollback(0);
+	// Количество разобранных октетов
+	size_t consumed = 0;
+	// Код ошибки протокола
+	error_t error = error_t::H3_NO_ERROR;
+	// Подаём декодеру инструкции потока кодера
+	ASSERT_EQ(decoder.decodeEncoderStream(encoder.pending(), consumed, error), status_t::OK);
+	// Отмечаем инструкции отправленными
+	encoder.consumePending(consumed);
+	// Декодированные поля секции
+	std::vector <qpack::field_view_t> output;
+	// Первая секция обязана разбираться
+	ASSERT_EQ(decoder.decode(0, sent, output, 0, error), status_t::OK);
+	// Получаем накопленные инструкции потока декодера
+	const std::string feedback(decoder.pending());
+	// Подтверждение секции обязано быть накоплено
+	ASSERT_FALSE(feedback.empty());
+	/**
+	 * Подтверждение первой секции обязано разбираться кодером: откат второй
+	 * секции её учёта не касается
+	 */
+	ASSERT_EQ(encoder.decodeDecoderStream(feedback, consumed, error), status_t::OK);
+	// Отмечаем инструкции отправленными
+	decoder.consumePending(consumed);
+	/**
+	 * Второго подтверждения быть не может: откаченная секция в сеть не уходила,
+	 * и лишнее подтверждение обязано отвергаться ошибкой потока декодера
+	 */
+	ASSERT_EQ(encoder.decodeDecoderStream(feedback, consumed, error), status_t::ERROR);
+	// Код ошибки обязан указывать на ошибку потока декодера
+	ASSERT_EQ(error, error_t::QPACK_DECODER_STREAM_ERROR);
+}
+/**
+ * @brief Проверка того, что отмена обещания push не копится без предела
+ *
+ * @details Отмена обещания, поток которого уже пришёл, эффекта не имеет
+ *          (RFC 9114 §7.2.3), а отмены обещаний, потоки которых не придут
+ *          никогда, вытесняются из кольца - но соединение не рвут
+ *
+ */
+TEST_F(ParserHttp3Fixture, CancelPushDoesNotAccumulate){
+	// Сторона клиента
+	endpoint_t client;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Отправляем параметры соединения со стороны клиента
+	client.parser->sendSettings();
+	// Разрешаем серверу выдавать обещания push с запасом
+	client.parser->sendMaxPushId(4096);
+	// Собираем управляющий поток сервера с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	/**
+	 * Дописываем отмены заведомо большего числа обещаний, чем помнит кольцо
+	 * и чем разрешено одновременных потоков
+	 */
+	for(uint64_t identifier = 0; identifier < 512; identifier++)
+		// Дописываем кадр отмены очередного обещания push
+		frame::serialize::cancelPush(control, identifier);
+	// Подаём управляющий поток сервера
+	ASSERT_EQ(this->feed(client, 3, control), status_t::OK);
+	// Соединение обязано остаться живым: отмены копиться не должны
+	ASSERT_TRUE(client.events.errors.empty());
+	// Последние отмены обязаны помниться
+	ASSERT_TRUE(client.parser->pushCancelled(511));
+	// Самые старые отмены обязаны быть вытеснены, а не оборвать соединение
+	ASSERT_FALSE(client.parser->pushCancelled(0));
+}
+/**
+ * @brief Проверка отбраковки повторного потока одного обещания push
+ *
+ * @details Идентификатор обещания используется ровно одним потоком: второй
+ *          поток с тем же идентификатором - ошибка соединения (RFC 9114 §4.6)
+ *
+ */
+TEST_F(ParserHttp3Fixture, DuplicatePushStreamRejected){
+	// Сторона клиента
+	endpoint_t client;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Отправляем параметры соединения со стороны клиента
+	client.parser->sendSettings();
+	// Разрешаем серверу выдавать обещания push
+	client.parser->sendMaxPushId(8);
+	// Собираем управляющий поток сервера с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток сервера
+	ASSERT_EQ(this->feed(client, 3, control), status_t::OK);
+	// Собираем заголовок потока push с идентификатором обещания
+	std::string stream = ::unistream(static_cast <uint64_t> (unistream_t::PUSH));
+	// Дописываем идентификатор обещанного push
+	quic::varint::write(stream, 0);
+	// Первый поток обещания обязан приниматься
+	ASSERT_EQ(this->feed(client, 7, stream), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(client.events.errors.empty());
+	// Второй поток того же обещания обязан обрывать соединение
+	ASSERT_EQ(this->feed(client, 11, stream), status_t::ERROR);
+	// Ошибка уровня соединения обязана быть зафиксирована
+	ASSERT_FALSE(client.events.errors.empty());
+	// Код ошибки обязан указывать на расхождение в учёте идентификаторов
+	ASSERT_EQ(client.events.errors.front().first, error_t::H3_ID_ERROR);
+}
+/**
+ * @brief Проверка учёта потоков push в лимите одновременных потоков
+ *
+ * @details Поток push несёт сообщение и живёт в той же карте, что и потоки
+ *          запросов: без общего лимита сервер обходил бы его потоками push
+ *
+ */
+TEST_F(ParserHttp3Fixture, PushStreamsCountedInStreamLimit){
+	// Сторона клиента
+	endpoint_t client;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Получаем лимиты безопасности парсера клиента
+	awh::http::parser_http3_t::limits_t limits = client.parser->limits();
+	// Опускаем лимит одновременно живых потоков до одного
+	limits.maxStreams = 1;
+	// Устанавливаем лимиты безопасности парсера клиента
+	client.parser->limits(limits);
+	// Отправляем параметры соединения со стороны клиента
+	client.parser->sendSettings();
+	// Разрешаем серверу выдавать обещания push
+	client.parser->sendMaxPushId(8);
+	// Собираем управляющий поток сервера с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток сервера
+	ASSERT_EQ(this->feed(client, 3, control), status_t::OK);
+	// Собираем заголовок первого потока push
+	std::string first = ::unistream(static_cast <uint64_t> (unistream_t::PUSH));
+	// Дописываем идентификатор первого обещанного push
+	quic::varint::write(first, 0);
+	// Первый поток обещания обязан приниматься
+	ASSERT_EQ(this->feed(client, 7, first), status_t::OK);
+	// Собираем заголовок второго потока push
+	std::string second = ::unistream(static_cast <uint64_t> (unistream_t::PUSH));
+	// Дописываем идентификатор второго обещанного push
+	quic::varint::write(second, 1);
+	// Подаём второй поток обещания
+	ASSERT_EQ(this->feed(client, 11, second), status_t::OK);
+	// Соединение обязано остаться живым: это причина отвергнуть один поток
+	ASSERT_TRUE(client.events.errors.empty());
+	// Второй поток обязан быть отвергнут
+	ASSERT_FALSE(client.events.aborts.empty());
+	// Код обрыва потока обязан указывать на отказ в потоке
+	ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_REQUEST_REJECTED);
+}
+/**
+ * @brief Проверка сохранности отложенного состояния при повторной блокировке
+ *
+ * @details Секция и накопленный за ней хвост забираются из состояния потока
+ *          на время разбора. Если вставок пришло недостаточно и секция
+ *          заблокирована снова, оба обязаны вернуться на место - иначе запрос
+ *          пропадает молча на второй порции инструкций кодера
+ *
+ */
+TEST_F(ParserHttp3Fixture, QpackBlockedSectionSurvivesSecondBlock){
+	// Сторона сервера
+	endpoint_t server;
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Отправляем параметры соединения со стороны сервера
+	server.parser->sendSettings();
+	// Собираем управляющий поток клиента с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток клиента
+	ASSERT_EQ(this->feed(server, 2, control), status_t::OK);
+	// Открываем поток инструкций кодера QPACK клиента
+	ASSERT_EQ(this->feed(server, 6, ::unistream(static_cast <uint64_t> (unistream_t::QPACK_ENCODER))), status_t::OK);
+	// Объект кодера полей, работающий в обход потоков соединения
+	qpack::encoder_t encoder;
+	// Устанавливаем ёмкость таблицы, анонсированную сервером
+	encoder.maxCapacity(4096);
+	// Устанавливаем число потоков, которым сервер разрешил ожидание
+	encoder.maxBlocked(16);
+	// Отключаем адаптивную индексацию, чтобы вставка произошла с первого поля
+	encoder.adaptiveIndexing(false);
+	// Буфер вспомогательной секции: она нужна только ради первой вставки
+	std::string warmup;
+	// Кодируем вспомогательную секцию с первым полем
+	encoder.encode(0, std::vector <qpack::field_t> {qpack::field_t{"x-first", "0f9c1a2b3d4e5f60"}}, warmup);
+	// Запоминаем инструкцию первой вставки
+	const std::string insertFirst(encoder.pending());
+	// Первая вставка обязана быть накоплена
+	ASSERT_FALSE(insertFirst.empty());
+	// Отмечаем инструкцию первой вставки отправленной
+	encoder.consumePending(insertFirst.size());
+	// Собираем набор полей запроса клиента
+	std::vector <qpack::field_t> fields = this->request("POST", "/upload");
+	// Дописываем поле первой вставки
+	fields.emplace_back("x-first", "0f9c1a2b3d4e5f60");
+	// Дописываем поле второй вставки
+	fields.emplace_back("x-second", "1a2b3c4d5e6f7a8b");
+	// Буфер секции полей запроса
+	std::string section;
+	// Кодируем секцию полей запроса: она потребует обеих вставок
+	encoder.encode(0, fields, section);
+	// Запоминаем инструкцию второй вставки
+	const std::string insertSecond(encoder.pending());
+	// Вторая вставка обязана быть накоплена
+	ASSERT_FALSE(insertSecond.empty());
+	// Собираем поток запроса: секция полей и следом тело
+	std::string stream;
+	// Дописываем кадр секции полей
+	frame::serialize::headers(stream, section);
+	// Дописываем кадр тела сообщения
+	frame::serialize::data(stream, "hello");
+	// Подаём поток запроса, не подавая ни одной вставки
+	ASSERT_EQ(this->feed(server, 0, stream, true), status_t::OK);
+	// Ничего доставлено быть не должно: секция ждёт обеих вставок
+	ASSERT_TRUE(server.events.headers.empty());
+	// Подаём только первую вставку: секции этого ещё недостаточно
+	ASSERT_EQ(this->feed(server, 6, insertFirst), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(server.events.errors.empty());
+	// Секция по-прежнему заблокирована, доставлять нечего
+	ASSERT_TRUE(server.events.headers.empty());
+	// Подаём вторую вставку: теперь секция разбирается
+	ASSERT_EQ(this->feed(server, 6, insertSecond), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(server.events.errors.empty());
+	// Поля секции обязаны быть доставлены
+	ASSERT_EQ(this->field(server.events, 0, "x-second"), "1a2b3c4d5e6f7a8b");
+	// Метод запроса обязан совпасть
+	ASSERT_EQ(server.events.method, "POST");
+	// Тело, пережившее две блокировки, обязано быть доставлено
+	ASSERT_EQ(server.events.bodies[0], "hello");
+}
+/**
+ * @brief Проверка сверки секций повторно обещанного push
+ *
+ * @details Один push сервер вправе пообещать на нескольких потоках запросов,
+ *          и повтор идентификатора обещания сам по себе допустим. Недопустимо
+ *          расхождение секций полей при таком повторе (RFC 9114 §7.2.2)
+ *
+ */
+TEST_F(ParserHttp3Fixture, RepeatedPushPromiseSectionMismatch){
+	// Сторона клиента
+	endpoint_t client;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Отправляем параметры соединения со стороны клиента
+	client.parser->sendSettings();
+	// Разрешаем серверу выдавать обещания push
+	client.parser->sendMaxPushId(8);
+	// Собираем управляющий поток сервера с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток сервера
+	ASSERT_EQ(this->feed(client, 3, control), status_t::OK);
+	// Объект кодера полей сервера, работающий в обход потоков соединения
+	qpack::encoder_t encoder;
+	// Буфер секции полей обещания
+	std::string section;
+	// Кодируем секцию полей обещанного запроса
+	encoder.encode(0, this->request("GET", "/promised"), section);
+	// Буфер нагрузки кадра обещания
+	std::string payload;
+	// Дописываем идентификатор обещанного push
+	quic::varint::write(payload, 0);
+	// Дописываем секцию полей обещанного запроса
+	payload.append(section);
+	// Буфер потока запроса клиента
+	std::string stream;
+	// Дописываем кадр обещания push
+	frame::serialize::header(stream, static_cast <uint64_t> (frame_t::PUSH_PROMISE), payload.size());
+	// Дописываем нагрузку кадра обещания
+	stream.append(payload);
+	// Подаём кадр обещания на разбор
+	ASSERT_EQ(this->feed(client, 0, stream), status_t::OK);
+	// Обещание обязано быть доставлено
+	ASSERT_FALSE(client.events.pushes.empty());
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(client.events.errors.empty());
+	/**
+	 * Повторяем то же обещание с той же секцией на другом потоке запроса:
+	 * это штатный случай, ошибкой он не является
+	 */
+	ASSERT_EQ(this->feed(client, 4, stream), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(client.events.errors.empty());
+	// Обещание обязано быть доставлено повторно
+	ASSERT_EQ(client.events.pushes.size(), 2u);
+	// Буфер секции полей расходящегося обещания
+	std::string other;
+	// Кодируем другую секцию полей под тем же идентификатором обещания
+	encoder.encode(0, this->request("GET", "/another"), other);
+	// Буфер нагрузки расходящегося обещания
+	std::string mismatch;
+	// Дописываем тот же идентификатор обещанного push
+	quic::varint::write(mismatch, 0);
+	// Дописываем расходящуюся секцию полей
+	mismatch.append(other);
+	// Буфер потока запроса с расходящимся обещанием
+	std::string conflict;
+	// Дописываем кадр обещания push
+	frame::serialize::header(conflict, static_cast <uint64_t> (frame_t::PUSH_PROMISE), mismatch.size());
+	// Дописываем нагрузку кадра обещания
+	conflict.append(mismatch);
+	// Подаём расходящееся обещание на разбор
+	ASSERT_EQ(this->feed(client, 8, conflict), status_t::ERROR);
+	// Ошибка уровня соединения обязана быть зафиксирована
+	ASSERT_FALSE(client.events.errors.empty());
+	// Код ошибки обязан указывать на нарушение протокола
+	ASSERT_EQ(client.events.errors.front().first, error_t::H3_GENERAL_PROTOCOL_ERROR);
+}
