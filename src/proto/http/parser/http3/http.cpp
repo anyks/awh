@@ -552,16 +552,29 @@ void awh::http::Parser_HTTP3::emit(const uint64_t sid, const void * buffer, cons
  *
  */
 void awh::http::Parser_HTTP3::flushQpack() noexcept {
+	/**
+	 * Инструкции снимаются с кодека ДО отправки, а не после, и отправляются
+	 * из собственной копии.
+	 *
+	 * Отправка выходит в пользовательскую функцию обратного вызова, а та вправе
+	 * подать разбор повторно - именно так поступает синхронная обвязка, замыкающая
+	 * два парсера друг на друга. Разбор дойдёт до этого же места, увидит те же
+	 * неснятые инструкции и отправит их второй раз, потом третий, и переписка
+	 * не закончится никогда. Копия невелика: инструкции QPACK коротки и в типичном
+	 * случае умещаются в саму строку без выделения памяти
+	 */
 	// Если наш поток инструкций кодера открыт
 	if(this->_encoderLocal != UINT64_MAX){
 		// Получаем накопленные инструкции потока кодера
 		const string_view instructions = this->_encoder.pending();
 		// Если инструкции потока кодера накоплены
 		if(!instructions.empty()){
-			// Записываем инструкции в поток кодера
-			this->emit(this->_encoderLocal, instructions.data(), instructions.size(), false);
+			// Забираем инструкции потока кодера в собственную копию
+			const string outgoing(instructions);
 			// Отмечаем инструкции потока кодера отправленными
-			this->_encoder.consumePending(instructions.size());
+			this->_encoder.consumePending(outgoing.size());
+			// Записываем инструкции в поток кодера
+			this->emit(this->_encoderLocal, outgoing.data(), outgoing.size(), false);
 		}
 	}
 	// Если наш поток инструкций декодера открыт
@@ -570,10 +583,12 @@ void awh::http::Parser_HTTP3::flushQpack() noexcept {
 		const string_view instructions = this->_decoder.pending();
 		// Если инструкции потока декодера накоплены
 		if(!instructions.empty()){
-			// Записываем инструкции в поток декодера
-			this->emit(this->_decoderLocal, instructions.data(), instructions.size(), false);
+			// Забираем инструкции потока декодера в собственную копию
+			const string outgoing(instructions);
 			// Отмечаем инструкции потока декодера отправленными
-			this->_decoder.consumePending(instructions.size());
+			this->_decoder.consumePending(outgoing.size());
+			// Записываем инструкции в поток декодера
+			this->emit(this->_decoderLocal, outgoing.data(), outgoing.size(), false);
 		}
 	}
 }
