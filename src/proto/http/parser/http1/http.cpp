@@ -580,11 +580,21 @@ namespace {
 	/**
 	 * @brief Функция проверки запрета поля в блоке трейлеров
 	 *
-	 * @details По RFC 9110 §6.5.1 в трейлерах запрещены поля, управляющие кадрированием
-	 *          сообщения, маршрутизацией и состоянием соединения: принятые задним числом,
-	 *          они переопределили бы уже разобранное тело. Список общий для приёма и
-	 *          отправки - принимающая сторона такие поля отбрасывает, а отправляющая
-	 *          не формирует
+	 * @details По RFC 9110 §6.5.1 отправитель не вправе формировать трейлер, если
+	 *          определение соответствующего заголовка не разрешает его передачу
+	 *          в трейлерах: заголовок, вычисляемый до получения тела, принятый
+	 *          задним числом переопределил бы уже разобранное сообщение. Проверить
+	 *          такое разрешение по определению поля библиотека не может, поэтому
+	 *          применяется отбраковка по категориям, которые стандарт называет
+	 *          непригодными для трейлеров: кадрирование сообщения, маршрутизация
+	 *          и управление соединением, модификаторы запроса (управляющие поля
+	 *          и условные), аутентификация, управляющие данные ответа и поля,
+	 *          определяющие способ обработки содержимого. Поимённый состав
+	 *          категорий взят из RFC 7230 §4.1.2, где он был перечислен явно
+	 *
+	 * @note Список общий для приёма и отправки: принимающая сторона такие поля
+	 *       отбрасывает (RFC 9112 §7.1.2 разрешает получателю выборочно отбрасывать
+	 *       трейлеры), а отправляющая их не формирует
 	 *
 	 * @param name название поля трейлера
 	 * @return     результат проверки
@@ -597,8 +607,16 @@ namespace {
 		switch(name.empty() ? '\0' : lower(name.front())){
 			// Поля начинающиеся на "C"
 			case 'c':
-				// Проверяем принадлежность к полям кадрирования и управления соединением
-				return (iequalsLit(name.data(), name.size(), "content-length") || iequalsLit(name.data(), name.size(), "connection"));
+				// Проверяем принадлежность к полям кадрирования, обработки содержимого, управления соединением, кэшированием и аутентификацией
+				return (
+					iequalsLit(name.data(), name.size(), "content-length") ||
+					iequalsLit(name.data(), name.size(), "content-type") ||
+					iequalsLit(name.data(), name.size(), "content-encoding") ||
+					iequalsLit(name.data(), name.size(), "content-range") ||
+					iequalsLit(name.data(), name.size(), "connection") ||
+					iequalsLit(name.data(), name.size(), "cache-control") ||
+					iequalsLit(name.data(), name.size(), "cookie")
+				);
 			// Поля начинающиеся на "T"
 			case 't':
 				// Проверяем принадлежность к полям транспортного кодирования
@@ -613,8 +631,8 @@ namespace {
 				return iequalsLit(name.data(), name.size(), "host");
 			// Поля начинающиеся на "E"
 			case 'e':
-				// Проверяем принадлежность к полю ожидания промежуточного ответа
-				return iequalsLit(name.data(), name.size(), "expect");
+				// Проверяем принадлежность к полям ожидания промежуточного ответа и срока годности ответа
+				return (iequalsLit(name.data(), name.size(), "expect") || iequalsLit(name.data(), name.size(), "expires"));
 			// Поля начинающиеся на "U"
 			case 'u':
 				// Проверяем принадлежность к полю переключения протокола
@@ -625,8 +643,60 @@ namespace {
 				return iequalsLit(name.data(), name.size(), "keep-alive");
 			// Поля начинающиеся на "P"
 			case 'p':
-				// Проверяем принадлежность к полю управления соединением с прокси
-				return iequalsLit(name.data(), name.size(), "proxy-connection");
+				// Проверяем принадлежность к полям управления соединением с прокси, аутентификации на прокси и совместимости с HTTP/1.0
+				return (
+					iequalsLit(name.data(), name.size(), "proxy-connection") ||
+					iequalsLit(name.data(), name.size(), "proxy-authorization") ||
+					iequalsLit(name.data(), name.size(), "proxy-authenticate") ||
+					iequalsLit(name.data(), name.size(), "proxy-authentication-info") ||
+					iequalsLit(name.data(), name.size(), "pragma")
+				);
+			// Поля начинающиеся на "A"
+			case 'a':
+				// Проверяем принадлежность к полям аутентификации и возраста ответа
+				return (
+					iequalsLit(name.data(), name.size(), "authorization") ||
+					iequalsLit(name.data(), name.size(), "authentication-info") ||
+					iequalsLit(name.data(), name.size(), "age")
+				);
+			// Поля начинающиеся на "W"
+			case 'w':
+				// Проверяем принадлежность к полям запроса аутентификации и предупреждения о содержимом
+				return (iequalsLit(name.data(), name.size(), "www-authenticate") || iequalsLit(name.data(), name.size(), "warning"));
+			// Поля начинающиеся на "S"
+			case 's':
+				// Проверяем принадлежность к полю установки сессионных данных
+				return iequalsLit(name.data(), name.size(), "set-cookie");
+			// Поля начинающиеся на "I"
+			case 'i':
+				// Проверяем принадлежность к условным полям запроса
+				return (
+					iequalsLit(name.data(), name.size(), "if-match") ||
+					iequalsLit(name.data(), name.size(), "if-none-match") ||
+					iequalsLit(name.data(), name.size(), "if-modified-since") ||
+					iequalsLit(name.data(), name.size(), "if-unmodified-since") ||
+					iequalsLit(name.data(), name.size(), "if-range")
+				);
+			// Поля начинающиеся на "R"
+			case 'r':
+				// Проверяем принадлежность к полям запроса диапазона и указания времени повтора
+				return (iequalsLit(name.data(), name.size(), "range") || iequalsLit(name.data(), name.size(), "retry-after"));
+			// Поля начинающиеся на "M"
+			case 'm':
+				// Проверяем принадлежность к полю ограничения числа промежуточных узлов
+				return iequalsLit(name.data(), name.size(), "max-forwards");
+			// Поля начинающиеся на "L"
+			case 'l':
+				// Проверяем принадлежность к полю перенаправления
+				return iequalsLit(name.data(), name.size(), "location");
+			// Поля начинающиеся на "D"
+			case 'd':
+				// Проверяем принадлежность к полю отметки времени сообщения
+				return iequalsLit(name.data(), name.size(), "date");
+			// Поля начинающиеся на "V"
+			case 'v':
+				// Проверяем принадлежность к полю ключа вариативности кэша
+				return iequalsLit(name.data(), name.size(), "vary");
 		}
 		// Поле в блоке трейлеров разрешено
 		return false;
@@ -675,9 +745,10 @@ namespace {
 	/**
 	 * @brief Функция удаления запрещённых полей из сериализованного блока трейлеров
 	 *
-	 * @details Отправлять поля, которые принимающая сторона обязана отбросить,
-	 *          бессмысленно и опасно: промежуточный узел с иной трактовкой способен
-	 *          принять их к сведению и переопределить кадрирование уже переданного тела
+	 * @details Отправлять поля, непригодные для трейлеров, запрещено RFC 9110 §6.5.1
+	 *          и вдобавок опасно: промежуточный узел с иной трактовкой способен принять
+	 *          их к сведению и переопределить кадрирование либо трактовку уже переданного
+	 *          тела. Такое поле вычищается из блока до его выдачи на провод
 	 *
 	 * @param block сериализованный блок трейлеров
 	 * @return      количество удалённых полей
@@ -1164,6 +1235,24 @@ awh::http::Parser_HTTP::Callbacks::Callbacks() noexcept :
  *
  */
 void awh::http::Parser_HTTP::beginBody() noexcept {
+	// Получаем версию протокола из провайдера заголовков сообщения
+	const version_t version = this->_message.provider->version;
+	/**
+	 * Заголовок Transfer-Encoding появился в HTTP/1.1, и сообщение HTTP/1.0 с этим
+	 * заголовком получатель обязан считать сообщением с неисправным кадрированием -
+	 * даже при наличии Content-Length - и закрыть соединение после его обработки
+	 * (RFC 9112 §6.1). Причина в том, что такое сообщение почти наверняка прошло
+	 * через звено, не обработавшее кодирование chunked, и часть тела осталась в его
+	 * буфере: продолжение работы по соединению интерпретировало бы этот остаток как
+	 * следующее сообщение. Проверка выполняется прежде остальных - стандарт отдаёт
+	 * ей приоритет над конфликтом Content-Length и Transfer-Encoding
+	 */
+	if(this->_flags.transferEncodingSeen && (version == version_t::HTTP1_0)){
+		// Фиксируем ошибку некорректного Transfer-Encoding
+		this->_error = error_t::INVALID_TRANSFER_ENCODING;
+		// Выходим из метода
+		return;
+	}
 	// Если одновременно получены Content-Length и Transfer-Encoding
 	if(this->_flags.transferEncodingSeen && this->_flags.contentLengthSeen){
 		// Фиксируем ошибку конфликта кадрирования (защита от request smuggling)
@@ -1178,8 +1267,6 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 		// Выходим из метода
 		return;
 	}
-	// Получаем версию протокола из провайдера заголовков сообщения
-	const version_t version = this->_message.provider->version;
 	/**
 	 * Валидация заголовка Host выполняется до любых уведомлений: запрос HTTP/1.1
 	 * обязан нести ровно один заголовок Host (RFC 9112 §3.2), а расхождение в его
@@ -1405,10 +1492,11 @@ bool awh::http::Parser_HTTP::commitHeader(const string_view name, string_view va
 		return false;
 	}
 	/**
-	 * Заголовки, управляющие кадрированием и маршрутизацией, в блоке трейлеров
-	 * запрещены (RFC 9112 §6.5): принимающая сторона обязана их игнорировать,
-	 * иначе трейлер способен задним числом переопределить кадрирование уже
-	 * принятого тела. Такой трейлер отбрасывается и не доходит до потребителя
+	 * Заголовки, непригодные для передачи в трейлерах (RFC 9110 §6.5.1), до
+	 * потребителя не доходят: RFC 9112 §7.1.2 разрешает получателю выборочно
+	 * отбрасывать полученные трейлеры, и такое поле отбрасывается - иначе
+	 * трейлер способен задним числом переопределить кадрирование, маршрутизацию
+	 * либо трактовку уже принятого тела в обход внешних фильтров безопасности
 	 */
 	if(this->_flags.inTrailers){
 		// Проверяем запрет полученного поля в блоке трейлеров
@@ -1416,7 +1504,15 @@ bool awh::http::Parser_HTTP::commitHeader(const string_view name, string_view va
 		// Если трейлер запрещён в блоке трейлеров
 		if(forbidden){
 			// Записываем сообщение об отброшенном трейлере в лог
-			this->_log->print("HTTP/1.x trailer field is not allowed and has been dropped: %s", log_t::flag_t::WARNING, string(name).c_str());
+			/**
+			 * Название поля печатается представлением с явной длиной: копия в string
+			 * ради одного сообщения означала бы аллокацию на каждый отброшенный трейлер,
+			 * то есть на пути, который атакующая сторона наполняет по своему желанию
+			 */
+			this->_log->print(
+				"HTTP/1.x trailer field is not allowed and has been dropped: %.*s",
+				log_t::flag_t::WARNING, static_cast <int32_t> (name.size()), name.data()
+			);
 			// Продолжаем разбор
 			return true;
 		}
@@ -1678,7 +1774,14 @@ void awh::http::Parser_HTTP::chunkSizeComplete() noexcept {
 		this->_message.part = part_t::TRAILER;
 		// Переходим к разбору трейлеров
 		this->_state = static_cast <uint8_t> (state_t::S_TRAILER_START);
-		// Уведомляем о начале разбора трейлеров
+		/**
+		 * Уведомляем о начале разбора трейлеров
+		 *
+		 * Результат намеренно не проверяется: метод завершается следующей же
+		 * строкой, и проверка породила бы мёртвую ветку. Прерывание разбора
+		 * потребителем фиксируется в коде ошибки внутри самого уведомления и
+		 * поднимается внешним контролем на следующем шаге цикла разбора
+		 */
 		this->firePhase(phase_t::BEGIN, part_t::TRAILER);
 		// Выходим из метода
 		return;
@@ -1847,6 +1950,32 @@ size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
 	if((this->_sender.source == nullptr) || this->_sender.sourceEof)
 		// Выводим результат
 		return result;
+	/**
+	 * Страховка инварианта: сообщение без выбранного кадрирования тела не принимает,
+	 * и некадрированные байты на провод уйти не должны - получатель прочитал бы их
+	 * как начало следующего сообщения. Сейчас сюда попасть нельзя: единственный
+	 * способ получить кадрирование NONE - завершить сообщение заголовками либо
+	 * отказаться кадрировать тело, а оба случая помечают сообщение завершённым,
+	 * и прокачка отсекается ещё в pumpSource. Проверка оставлена намеренно - она
+	 * удерживает инвариант, если появится новый путь к кадрированию NONE при
+	 * незавершённом сообщении. Источник при срабатывании удаляется, чтобы не
+	 * удерживать захваченные им ресурсы до сброса отправителя: холостой прокачки
+	 * это уже не касается - её отсекает сам признак sourcePending, требующий
+	 * выбранного кадрирования
+	 */
+	if(this->_sender.framing == sender_t::framing_t::NONE){
+		// Помечаем что дозагружать из источника нечего
+		this->_sender.sourceEof = true;
+		// Удаляем источник данных (сообщение осталось незавершённым - соединение следует закрыть)
+		this->_sender.source = nullptr;
+		// Записываем сообщение об отброшенном источнике тела в лог
+		this->_log->print(
+			"HTTP/1.x outgoing message accepts no body: the pull data source has been dropped",
+			log_t::flag_t::CRITICAL
+		);
+		// Выводим результат
+		return result;
+	}
 	// Ширина фиксированного hex-заголовка чанка (четыре hex-цифры размера порции и CRLF)
 	static constexpr size_t CHUNK_HEADER = (4 + 2);
 	/**
@@ -2015,17 +2144,32 @@ void awh::http::Parser_HTTP::pumpSource() noexcept {
 /**
  * @brief Метод получения признака незавершённой отправки тела из pull-источника
  *
- * @details Истинно, пока источник данных назначен и его тело не исчерпано.
- *          Ровно этот признак управляет циклом дозагрузки: пока он истинен,
- *          сетевому слою следует вызывать resumeSource() по готовности сокета
- *          к записи
+ * @details Истинно, пока источник данных назначен, его тело не исчерпано и очередная
+ *          прокачка способна продвинуться: заголовки отправлены, сообщение не завершено
+ *          и его тело есть чем кадрировать. Ровно этот признак управляет циклом
+ *          дозагрузки: пока он истинен, сетевому слою следует вызывать resumeSource()
+ *          по готовности сокета к записи. Учёт способности продвинуться обязателен -
+ *          иначе источник, назначенный до отправки заголовков, либо источник сообщения,
+ *          тело которого кадрировать нечем, удерживали бы признак истинным навсегда
+ *          и цикл дозагрузки крутился бы вхолостую
  *
  * @return признак незавершённой отправки тела
  *
  */
 bool awh::http::Parser_HTTP::sourcePending() const noexcept {
-	// Выводим признак незавершённой отправки тела из pull-источника данных
-	return ((this->_sender.source != nullptr) && !this->_sender.sourceEof);
+	// Если источник данных не назначен либо его тело исчерпано - отправка завершена
+	if((this->_sender.source == nullptr) || this->_sender.sourceEof)
+		// Выводим признак завершённой отправки тела
+		return false;
+	/**
+	 * Назначенного источника недостаточно: признак управляет циклом дозагрузки, и
+	 * истинным он обязан быть только тогда, когда очередная прокачка способна
+	 * продвинуться. Прокачка отсекается в pumpSource теми же условиями, поэтому
+	 * без их учёта признак остался бы истинным навсегда, а сетевой слой крутил бы
+	 * resumeSource вхолостую. Так происходит с источником, назначенным до отправки
+	 * заголовков, и с источником сообщения, тело которого кадрировать нечем
+	 */
+	return (this->_sender.headersSent && !this->_sender.endSent && (this->_sender.framing != sender_t::framing_t::NONE));
 }
 /**
  * @brief Метод продолжения отправки тела из pull-источника данных
@@ -3624,6 +3768,13 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 						// Выходим из состояния
 						break;
 					}
+					// Если длина стартовой строки превышает лимит (обязательный пробел тоже занимает канал)
+					if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine){
+						// Фиксируем ошибку превышения длины стартовой строки
+						this->_error = error_t::URL_OVERFLOW;
+						// Выходим из состояния
+						break;
+					}
 					// Переходим к пропуску пробелов перед статус-кодом
 					this->_state = static_cast <uint8_t> (state_t::S_RES_STATUS_START);
 				} break;
@@ -3656,6 +3807,13 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 						// Выходим из состояния
 						break;
 					}
+					// Если длина стартовой строки превышает лимит (цифры кода тоже занимают канал)
+					if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine){
+						// Фиксируем ошибку превышения длины стартовой строки
+						this->_error = error_t::URL_OVERFLOW;
+						// Выходим из состояния
+						break;
+					}
 					// Устанавливаем первую цифру статус-кода
 					res->code = static_cast <uint16_t> (ch - '0');
 					// Начинаем отсчёт цифр статус-кода
@@ -3671,6 +3829,13 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 						if(this->_statsBody.digits >= 3){
 							// Фиксируем ошибку некорректного статус-кода
 							this->_error = error_t::INVALID_STATUS;
+							// Выходим из состояния
+							break;
+						}
+						// Если длина стартовой строки превышает лимит (цифры кода тоже занимают канал)
+						if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine){
+							// Фиксируем ошибку превышения длины стартовой строки
+							this->_error = error_t::URL_OVERFLOW;
 							// Выходим из состояния
 							break;
 						}
@@ -3690,6 +3855,13 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен пробел - переходим к reason-phrase
 					if(ch == ' '){
+						// Если длина стартовой строки превышает лимит (разделитель тоже занимает канал)
+						if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine){
+							// Фиксируем ошибку превышения длины стартовой строки
+							this->_error = error_t::URL_OVERFLOW;
+							// Выходим из состояния
+							break;
+						}
 						// Переходим к разбору reason-phrase
 						this->_state = static_cast <uint8_t> (state_t::S_RES_REASON_START);
 						// Выходим из состояния
@@ -3757,6 +3929,13 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 						// Выходим из состояния
 						break;
 					}
+					// Если длина стартовой строки превышает лимит (reason-phrase тоже занимает канал)
+					if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine){
+						// Фиксируем ошибку превышения длины стартовой строки
+						this->_error = error_t::URL_OVERFLOW;
+						// Выходим из состояния
+						break;
+					}
 					// Добавляем символ к сообщению сервера
 					res->message.push_back(static_cast <char> (ch));
 					// Переходим к разбору reason-phrase
@@ -3796,8 +3975,13 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 						// Выходим из состояния
 						break;
 					}
-					// Если длина reason-phrase превышает лимит стартовой строки
-					if(res->message.size() >= this->_limits.maxRequestLine){
+					/**
+					 * Длина reason-phrase учитывается в общем бюджете стартовой строки,
+					 * а не отдельным лимитом: отдельный лимит позволял бы стартовой строке
+					 * ответа занять вдвое больше канала, чем разрешено стартовой строке
+					 * запроса при том же значении настройки
+					 */
+					if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine){
 						// Фиксируем ошибку превышения длины стартовой строки
 						this->_error = error_t::URL_OVERFLOW;
 						// Выходим из состояния
@@ -4716,8 +4900,13 @@ void awh::http::Parser_HTTP::sendWaterMarks(const size_t high, const size_t low)
  * @details Способ кадрирования тела выбирается по заголовкам контейнера:
  *          - установлен Content-Length - тело фиксированного размера (IDENTITY);
  *          - Content-Length отсутствует и endStream == false - добавляется
- *            Transfer-Encoding: chunked (для HTTP/1.0 - сырое тело до закрытия
- *            соединения, chunked в HTTP/1.0 не существует);
+ *            Transfer-Encoding: chunked. В HTTP/1.0 кодирования chunked не
+ *            существует: объявление снимается с провода, тело ответа кадрируется
+ *            закрытием соединения, а тело запроса кадрировать нечем - оно не
+ *            принимается вовсе (ни sendData, ни pull-источником), и сообщение
+ *            помечается завершённым, поскольку на проводе блок заголовков без
+ *            Content-Length и без Transfer-Encoding уже является законченным
+ *            запросом без тела (RFC 9112 §6.3);
  *          - endStream == true - тела нет, заголовки отправляются как есть;
  *            если контейнер при этом объявляет Transfer-Encoding, оканчивающийся
  *            токеном chunked, пустое тело завершается нулевым чанком - блок
@@ -4802,6 +4991,10 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 		bool terminateChunked = false;
 		// Признак необходимости вычистить конфликтующий заголовок Transfer-Encoding
 		bool dropEncoding = false;
+		// Признак необходимости вычистить заголовок Transfer-Encoding, недопустимый в HTTP/1.0
+		bool dropLegacyEncoding = false;
+		// Признак отказа кадрировать тело исходящего сообщения (сообщение завершается заголовками)
+		bool bodyRefused = false;
 		// Признак необходимости вычистить некорректный заголовок Content-Length
 		bool dropLength = false;
 		// Признак пригодного к кадрированию заголовка Content-Length
@@ -4861,18 +5054,34 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			// Тело исходящего сообщения отсутствует
 			this->_sender.framing = sender_t::framing_t::NONE;
 			/**
-			 * Объявленное вызывающей стороной кадрирование chunked обязано быть
-			 * завершено нулевым чанком даже при пустом теле: блок заголовков сам по
-			 * себе конца сообщения не обозначает, и получатель ждал бы тело до
-			 * закрытия соединения. Проверяется последнее значение заголовка -
-			 * значения нескольких заголовков Transfer-Encoding склеиваются по
-			 * порядку следования, и кадрирование определяет именно оно
+			 * Если заголовок транспортного кодирования установлен
 			 */
 			if(hasEncoding){
-				// Получаем все значения заголовка транспортного кодирования
-				const vector <string> values = headers.range("Transfer-Encoding");
-				// Определяем необходимость завершить тело нулевым чанком
-				terminateChunked = (!values.empty() && ::endsWithChunked(values.back()));
+				/**
+				 * Одновременная отправка Content-Length и Transfer-Encoding запрещена
+				 * (RFC 9112 §6.1) независимо от наличия тела: получатель обязан
+				 * отвергнуть такой кадр как попытку request smuggling. Конфликт
+				 * разрешается в пользу Content-Length - той же политикой, что и на
+				 * пути с телом. Если же Content-Length вычищен выше как несовместимый
+				 * с завершением сообщения, конфликта на проводе не остаётся
+				 */
+				dropEncoding = (hasLength && !dropLength);
+				/**
+				 * Объявленное вызывающей стороной кадрирование chunked обязано быть
+				 * завершено нулевым чанком даже при пустом теле: блок заголовков сам по
+				 * себе конца сообщения не обозначает, и получатель ждал бы тело до
+				 * закрытия соединения. Проверяется последнее значение заголовка -
+				 * значения нескольких заголовков Transfer-Encoding склеиваются по
+				 * порядку следования, и кадрирование определяет именно оно.
+				 * В HTTP/1.0 кодирования chunked не существует, и нулевой чанк там
+				 * оказался бы для получателя частью тела
+				 */
+				if(!dropEncoding && (version != version_t::HTTP1_0)){
+					// Получаем все значения заголовка транспортного кодирования
+					const vector <string> values = headers.range("Transfer-Encoding");
+					// Определяем необходимость завершить тело нулевым чанком
+					terminateChunked = (!values.empty() && ::endsWithChunked(values.back()));
+				}
 			}
 		}
 		// Если установлен пригодный заголовок Content-Length - тело фиксированного размера
@@ -4886,10 +5095,44 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			 * поэтому конфликтующий заголовок вычищается из блока
 			 */
 			dropEncoding = hasEncoding;
-		// Если версия протокола HTTP/1.0 - chunked не существует, тело кадрируется закрытием соединения
-		} else if(version == version_t::HTTP1_0)
-			// Устанавливаем кадрирование сырого тела до закрытия соединения
-			this->_sender.framing = sender_t::framing_t::RAW;
+		// Если версия протокола HTTP/1.0 - кодирования chunked не существует
+		} else if(version == version_t::HTTP1_0){
+			/**
+			 * Без Content-Length тело в HTTP/1.0 ограничивается только закрытием
+			 * соединения. Ответу сервера это подходит, а телу запроса - нет:
+			 * запрос без Content-Length и без Transfer-Encoding получатель обязан
+			 * считать запросом без тела (RFC 9112 §6.3), и отданные следом байты
+			 * прочитает как начало следующего запроса. Кадрировать такое тело
+			 * нечем, поэтому оно не принимается вовсе - sendData вернёт ноль,
+			 * и вызывающая сторона узнает об отказе вместо того, чтобы выдать
+			 * на провод кадр, разбираемый получателем как request smuggling
+			 */
+			if(this->_direct == direct_t::REQUEST){
+				// Тело исходящего сообщения кадрировать нечем
+				this->_sender.framing = sender_t::framing_t::NONE;
+				/**
+				 * Сообщение помечается завершённым: на проводе блок заголовков без
+				 * Content-Length и без Transfer-Encoding уже является законченным
+				 * запросом без тела (RFC 9112 §6.3), и состояние отправителя обязано
+				 * этому соответствовать. Иначе отправитель считал бы сообщение
+				 * незавершённым, а следующий sendHeaders молча выходил бы по проверке
+				 * незавершённого предыдущего - соединение залипло бы без диагностики
+				 */
+				bodyRefused = true;
+				/**
+				 * Удаляем источник данных тела, назначенный до отправки заголовков:
+				 * выдать его тело в этом сообщении невозможно, и держать захваченные
+				 * им ресурсы до сброса отправителя незачем
+				 */
+				this->_sender.source = nullptr;
+				// Записываем сообщение о невозможности кадрировать тело запроса в лог
+				this->_log->print(
+					"HTTP/1.x outgoing HTTP/1.0 request declares no valid Content-Length: the body cannot be framed and is not accepted",
+					log_t::flag_t::CRITICAL
+				);
+			// Тело ответа сервера кадрируется закрытием соединения
+			} else this->_sender.framing = sender_t::framing_t::RAW;
+		}
 		// Для HTTP/1.1 без пригодного Content-Length тело кадрируется кодировкой chunked
 		else {
 			// Устанавливаем кадрирование тела кодировкой chunked
@@ -4914,6 +5157,18 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 				injectChunked = (values.empty() || !::endsWithChunked(values.back()));
 			}
 		}
+		/**
+		 * Заголовок Transfer-Encoding появился в HTTP/1.1, и сообщение HTTP/1.0 с этим
+		 * заголовком получатель обязан считать сообщением с неисправным кадрированием -
+		 * даже при наличии Content-Length - и закрыть соединение после его обработки
+		 * (RFC 9112 §6.1). Кадрирование для HTTP/1.0 уже выбрано выше: фиксированным
+		 * размером по Content-Length либо сырым телом до закрытия соединения. Поэтому
+		 * заголовок снимается с провода - иначе объявление противоречило бы тому, чем
+		 * тело кадрируется на самом деле
+		 */
+		if(hasEncoding && !dropEncoding && (version == version_t::HTTP1_0))
+			// Помечаем заголовок к вычистке из блока
+			dropLegacyEncoding = true;
 		// Сериализуем стартовую строку и заголовки сообщения
 		string block = headers.print(http::proto_t::HTTP1);
 		// Если необходимо вычистить некорректный заголовок Content-Length
@@ -4925,6 +5180,12 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			// Записываем сообщение о конфликте кадрирования исходящего сообщения в лог
 			this->_log->print("HTTP/1.x outgoing message declares both Content-Length and Transfer-Encoding: the latter has been dropped", log_t::flag_t::WARNING);
 			// Удаляем конфликтующий заголовок из сериализованного блока
+			::dropHeaderLine(block, "transfer-encoding");
+		// Если необходимо вычистить заголовок Transfer-Encoding, недопустимый в HTTP/1.0
+		} else if(dropLegacyEncoding) {
+			// Записываем сообщение о недопустимом в HTTP/1.0 кадрировании исходящего сообщения в лог
+			this->_log->print("HTTP/1.x outgoing HTTP/1.0 message declares Transfer-Encoding and it has been dropped", log_t::flag_t::WARNING);
+			// Удаляем недопустимый в HTTP/1.0 заголовок из сериализованного блока
 			::dropHeaderLine(block, "transfer-encoding");
 		}
 		/**
@@ -4943,8 +5204,14 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			this->_sender.output.push("0\r\n\r\n", 5);
 		// Помечаем что заголовки сообщения отправлены
 		this->_sender.headersSent = true;
-		// Если сообщение завершается заголовками - помечаем сообщение завершённым
-		this->_sender.endSent = endStream;
+		/**
+		 * Помечаем сообщение завершённым, если тела не будет: либо по воле вызывающей
+		 * стороны, либо потому что кадрировать его нечем и оно отвергнуто. В обоих
+		 * случаях на проводе уже лежит законченное сообщение, и состояние отправителя
+		 * обязано этому соответствовать - иначе следующий sendHeaders молча вышел бы
+		 * по проверке незавершённого предыдущего сообщения
+		 */
+		this->_sender.endSent = (endStream || bodyRefused);
 	/**
 	 * Если возникает ошибка
 	 */

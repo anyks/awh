@@ -25,6 +25,7 @@
 #include <utility>
 #include <cstdint>
 #include <cstring>
+#include <algorithm>
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -726,6 +727,14 @@ TEST_F(ParserFixture, SendDataSourceBeforeHeadersTest){
 		// Возвращаем число записанных байт
 		return static_cast <int64_t> (size);
 	}));
+	/**
+	 * До отправки заголовков прокачка продвинуться не может, и признак незавершённой
+	 * отправки обязан быть ложным: иначе документированный цикл дозагрузки, запущенный
+	 * сетевым слоем до отправки заголовков, крутился бы вхолостую
+	 */
+	ASSERT_FALSE(sender->sourcePending());
+	// Проверяем что возобновление прокачки тоже сообщает о невозможности продвинуться
+	ASSERT_FALSE(sender->resumeSource());
 	// Формируем контейнер заголовков ответа с провайдером
 	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
 	// Отправляем заголовки ответа (тело последует из ранее назначенного источника)
@@ -985,6 +994,77 @@ TEST_F(ParserFixture, SendForbiddenTrailersTest){
 }
 
 /**
+ * @brief Метод проверки вычистки всех категорий непригодных полей из исходящих трейлеров
+ *
+ * @details RFC 9110 §6.5.1 запрещает отправителю формировать трейлер, если определение
+ *          соответствующего заголовка не разрешает его передачу в трейлерах. Проверить
+ *          такое разрешение по определению поля библиотека не может, поэтому применяется
+ *          отбраковка по категориям, названным стандартом непригодными. Проверяется, что
+ *          на провод не уходит ни одно поле из этих категорий и что пригодные поля
+ *          доходят до получателя без искажений
+ *
+ */
+TEST_F(ParserFixture, SendForbiddenTrailerCategoriesTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Отправляем заголовки ответа (тело последует в кодировке chunked)
+	sender->sendHeaders(response, false);
+	// Отправляем тело ответа без завершения сообщения
+	ASSERT_EQ(sender->sendData("hello", 5, false), 5u);
+	// Формируем перечень непригодных для трейлеров полей по одному представителю каждой категории RFC
+	const std::vector <std::string> forbidden = {
+		// Поля кадрирования сообщения
+		"Content-Length", "Transfer-Encoding",
+		// Поля маршрутизации и управления соединением
+		"Host", "Connection", "Keep-Alive", "Proxy-Connection", "Upgrade", "TE", "Trailer",
+		// Модификаторы запроса: управляющие поля и условные
+		"Cache-Control", "Expect", "Max-Forwards", "Pragma", "Range",
+		"If-Match", "If-None-Match", "If-Modified-Since", "If-Unmodified-Since", "If-Range",
+		// Поля аутентификации
+		"Authorization", "Proxy-Authorization", "WWW-Authenticate", "Proxy-Authenticate",
+		"Authentication-Info", "Proxy-Authentication-Info", "Cookie", "Set-Cookie",
+		// Управляющие данные ответа
+		"Age", "Date", "Expires", "Location", "Retry-After", "Vary", "Warning",
+		// Поля, определяющие способ обработки содержимого
+		"Content-Type", "Content-Encoding", "Content-Range"
+	};
+	// Формируем контейнер трейлеров без провайдера
+	headers_t trailers;
+	/**
+	 * Выполняем перебор всех непригодных для трейлеров полей
+	 */
+	for(auto & name : forbidden)
+		// Дописываем непригодное для трейлеров поле в контейнер
+		trailers.emplace(name, "value");
+	// Дописываем пригодное для трейлеров поле контрольной суммы
+	trailers.emplace("X-Checksum", "abc");
+	// Дописываем пригодное для трейлеров поле статуса постобработки
+	trailers.emplace("X-Status", "ok");
+	// Отправляем блок трейлеров (завершает тело последним чанком)
+	sender->sendHeaders(trailers, false);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	// Проверяем что сообщение полностью разобрано
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело передано корректно
+	ASSERT_EQ(events.body, "hello");
+	// Проверяем что до получателя дошли оба пригодных трейлера и только они
+	ASSERT_EQ(events.trailers.size(), 2u);
+	// Проверяем что первый пригодный трейлер передан без искажений
+	ASSERT_EQ(events.trailers[0].first, "X-Checksum");
+	// Проверяем что второй пригодный трейлер передан без искажений
+	ASSERT_EQ(events.trailers[1].first, "X-Status");
+}
+
+/**
  * @brief Метод проверки согласованности лимита памяти буферов при клонировании
  *
  */
@@ -1145,4 +1225,306 @@ TEST_F(ParserFixture, SendChunkedWithoutBodyTest){
 	ASSERT_TRUE(events.body.empty());
 	// Проверяем что кадрирование тела определено получателем как chunked
 	ASSERT_TRUE(receiver->message().flags.chunked);
+}
+
+/**
+ * @brief Метод проверки разрешения конфликта кадрирования при завершении заголовками
+ *
+ * @details Одновременная отправка Content-Length и Transfer-Encoding запрещена
+ *          (RFC 9112 §6.1) независимо от наличия тела: получатель обязан отвергнуть
+ *          такой кадр как попытку request smuggling. Путь с телом конфликт разрешал,
+ *          путь с завершением заголовками - нет, и на провод уходили оба заголовка
+ *
+ */
+TEST_F(ParserFixture, SendConflictingFramingWithoutBodyTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Собранные байты исходящего сообщения
+	std::string wire;
+	// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+	sender->on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+		// Собираем отданные сетевому слою байты
+		wire.append(static_cast <const char *> (buffer), size);
+	}));
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Дописываем заголовок размера тела сообщения
+	response.emplace("Content-Length", "10");
+	// Дописываем конфликтующий заголовок кодирования тела сообщения
+	response.emplace("Transfer-Encoding", "chunked");
+	// Отправляем заголовки ответа с завершением сообщения
+	sender->sendHeaders(response, true);
+	// Проверяем что конфликтующий заголовок кадрирования вычищен из блока
+	ASSERT_EQ(wire.find("Transfer-Encoding"), std::string::npos);
+	// Проверяем что заголовок размера тела на проводе сохранён
+	ASSERT_NE(wire.find("Content-Length: 10"), std::string::npos);
+	// Определяем позицию конца блока заголовков
+	const size_t block = wire.find("\r\n\r\n");
+	// Проверяем что блок заголовков на проводе завершён
+	ASSERT_NE(block, std::string::npos);
+	/**
+	 * Проверяем что за блоком заголовков на проводе нет ничего: искать подстроку
+	 * нулевого чанка бессмысленно - она совпадает с хвостом "Content-Length: 10"
+	 * вместе с завершающей блок пустой строкой
+	 */
+	ASSERT_EQ((block + 4), wire.size());
+	// Создаём объект парсера-приёмника собранного сообщения
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Выполняем разбор собранного сообщения
+	receiver->parse(wire.data(), wire.size());
+	// Проверяем что собранный кадр не отвергается как конфликт кадрирования
+	ASSERT_NE(receiver->error(), parser_http_t::error_t::CONTENT_LENGTH_CONFLICT);
+}
+
+/**
+ * @brief Метод проверки отсутствия нулевого чанка в HTTP/1.0
+ *
+ * @details Кодирования chunked в HTTP/1.0 не существует, и нулевой чанк оказался бы
+ *          для получателя частью тела, а не признаком его конца
+ *
+ */
+TEST_F(ParserFixture, SendChunkedWithoutBodyLegacyTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Собранные байты исходящего сообщения
+	std::string wire;
+	// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+	sender->on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+		// Собираем отданные сетевому слою байты
+		wire.append(static_cast <const char *> (buffer), size);
+	}));
+	// Формируем контейнер заголовков ответа версии HTTP/1.0
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_0, static_cast <uint16_t> (200)));
+	// Дописываем заголовок кодирования тела сообщения
+	response.emplace("Transfer-Encoding", "chunked");
+	// Отправляем заголовки ответа с завершением сообщения
+	sender->sendHeaders(response, true);
+	// Определяем позицию конца блока заголовков
+	const size_t block = wire.find("\r\n\r\n");
+	// Проверяем что блок заголовков на проводе завершён
+	ASSERT_NE(block, std::string::npos);
+	// Проверяем что за блоком заголовков на проводе нет нулевого чанка
+	ASSERT_EQ((block + 4), wire.size());
+}
+
+/**
+ * @brief Метод проверки вычистки заголовка Transfer-Encoding из исходящего HTTP/1.0
+ *
+ * @details Заголовок Transfer-Encoding появился в HTTP/1.1, и сообщение HTTP/1.0 с этим
+ *          заголовком получатель обязан считать сообщением с неисправным кадрированием
+ *          даже при наличии Content-Length (RFC 9112 §6.1). Тело такого сообщения
+ *          кадрируется закрытием соединения, поэтому объявление кодирования обязано
+ *          сниматься с провода - иначе оно противоречит тому, чем тело кадрировано,
+ *          и собственный приёмник уходит разбирать сырые байты как размеры чанков
+ *
+ */
+TEST_F(ParserFixture, SendTransferEncodingLegacyTest){
+	/**
+	 * @brief Функция сборки исходящего сообщения HTTP/1.0 с объявленным кодированием
+	 *
+	 * @param sender    объект парсера-отправителя
+	 * @param wire      собранные байты исходящего сообщения
+	 * @param endStream флаг завершения сообщения блоком заголовков
+	 *
+	 */
+	auto build = [](parser_http_t & sender, std::string & wire, const bool endStream) noexcept -> void {
+		// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+		sender.on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+			// Собираем отданные сетевому слою байты
+			wire.append(static_cast <const char *> (buffer), size);
+		}));
+		// Формируем контейнер заголовков ответа версии HTTP/1.0
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_0, static_cast <uint16_t> (200)));
+		// Дописываем заголовок кодирования тела сообщения
+		response.emplace("Transfer-Encoding", "chunked");
+		// Отправляем заголовки ответа
+		sender.sendHeaders(response, endStream);
+		// Если сообщение телом не завершается
+		if(!endStream)
+			// Отправляем тело ответа с завершением сообщения
+			sender.sendData("hello", 5, true);
+	};
+	/**
+	 * Проверяем сообщение, завершаемое блоком заголовков
+	 */
+	{
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Собранные байты исходящего сообщения
+		std::string wire;
+		// Собираем исходящее сообщение без тела
+		build(* sender, wire, true);
+		// Проверяем что объявление кодирования на провод не ушло
+		ASSERT_EQ(wire.find("Transfer-Encoding"), std::string::npos) << wire;
+		// Определяем позицию конца блока заголовков
+		const size_t block = wire.find("\r\n\r\n");
+		// Проверяем что блок заголовков на проводе завершён
+		ASSERT_NE(block, std::string::npos) << wire;
+		// Проверяем что за блоком заголовков на проводе нет нулевого чанка
+		ASSERT_EQ((block + 4), wire.size()) << wire;
+	}
+	/**
+	 * Проверяем сообщение с телом: тело HTTP/1.0 кадрируется закрытием соединения
+	 */
+	{
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Собранные байты исходящего сообщения
+		std::string wire;
+		// Собираем исходящее сообщение с телом
+		build(* sender, wire, false);
+		// Проверяем что объявление кодирования на провод не ушло
+		ASSERT_EQ(wire.find("Transfer-Encoding"), std::string::npos) << wire;
+		// Определяем позицию конца блока заголовков
+		const size_t block = wire.find("\r\n\r\n");
+		// Проверяем что блок заголовков на проводе завершён
+		ASSERT_NE(block, std::string::npos) << wire;
+		// Проверяем что тело ушло сырыми байтами, без разметки чанков
+		ASSERT_EQ(wire.substr(block + 4), "hello") << wire;
+	}
+}
+
+/**
+ * @brief Метод проверки отказа кадрировать тело запроса HTTP/1.0 без Content-Length
+ *
+ * @details Кодирования chunked в HTTP/1.0 не существует, а тело запроса, в отличие от
+ *          тела ответа, закрытием соединения не ограничивается: запрос без Content-Length
+ *          и без Transfer-Encoding получатель обязан считать запросом без тела
+ *          (RFC 9112 §6.3). Отданные следом байты он прочитает как начало следующего
+ *          запроса - классическая рассинхронизация кадрирования. Кадрировать такое тело
+ *          нечем, поэтому оно не принимается вовсе, а вызывающая сторона узнаёт об отказе
+ *          по нулю, возвращённому методом отправки тела. Тело ответа сервера при тех же
+ *          условиях кадрируется закрытием соединения и отправляется штатно
+ *
+ */
+TEST_F(ParserFixture, SendLegacyRequestWithoutLengthTest){
+	/**
+	 * Проверяем запрос: кадрировать тело нечем
+	 */
+	{
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Собранные байты исходящего сообщения
+		std::string wire;
+		// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+		sender->on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+			// Собираем отданные сетевому слою байты
+			wire.append(static_cast <const char *> (buffer), size);
+		}));
+		// Формируем контейнер заголовков запроса версии HTTP/1.0 без объявления размера тела
+		headers_t request(std::make_unique <request_t> (version_t::HTTP1_0, method_t::POST, std::string("/upload")));
+		// Дописываем заголовок Host
+		request.emplace("Host", "anyks.com");
+		// Отправляем заголовки запроса (тело последует)
+		sender->sendHeaders(request, false);
+		// Проверяем что тело запроса к отправке не принято
+		ASSERT_EQ(sender->sendData("hello", 5, true), 0u);
+		// Определяем позицию конца блока заголовков
+		const size_t block = wire.find("\r\n\r\n");
+		// Проверяем что блок заголовков на проводе завершён
+		ASSERT_NE(block, std::string::npos) << wire;
+		// Проверяем что за блоком заголовков на проводе нет некадрированных байт тела
+		ASSERT_EQ((block + 4), wire.size()) << wire;
+		/**
+		 * Проверяем что отправитель не залип: на проводе уже лежит законченный запрос
+		 * без тела, поэтому сообщение считается завершённым и следующее обязано уходить.
+		 * Иначе отправитель ждал бы тела, которое принять не может, а вызывающая сторона
+		 * не получала бы об этом никакого признака
+		 */
+		headers_t next(std::make_unique <request_t> (version_t::HTTP1_0, method_t::POST, std::string("/second")));
+		// Дописываем заголовок Host следующего запроса
+		next.emplace("Host", "anyks.com");
+		// Объявляем размер тела следующего запроса
+		next.emplace("Content-Length", "5");
+		// Отправляем заголовки следующего запроса
+		sender->sendHeaders(next, false);
+		// Проверяем что тело следующего запроса принято к отправке целиком
+		ASSERT_EQ(sender->sendData("hello", 5, true), 5u);
+		// Проверяем что следующий запрос ушёл на провод вместе с телом
+		ASSERT_NE(wire.find("POST /second HTTP/1.0\r\n"), std::string::npos) << wire;
+		// Проверяем что тело следующего запроса ушло на провод
+		ASSERT_EQ(wire.compare((wire.size() - 5), 5, "hello"), 0) << wire;
+	}
+	/**
+	 * Проверяем запрос с pull-источником: источник обязан отвергаться так же,
+	 * как отвергается тело, поданное методом отправки - иначе он остаётся
+	 * обходом запрета, выдающим на провод некадрированные байты
+	 */
+	{
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Собранные байты исходящего сообщения
+		std::string wire;
+		// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+		sender->on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+			// Собираем отданные сетевому слою байты
+			wire.append(static_cast <const char *> (buffer), size);
+		}));
+		// Формируем контейнер заголовков запроса версии HTTP/1.0 без объявления размера тела
+		headers_t request(std::make_unique <request_t> (version_t::HTTP1_0, method_t::POST, std::string("/upload")));
+		// Дописываем заголовок Host
+		request.emplace("Host", "anyks.com");
+		// Отправляем заголовки запроса (тело последует)
+		sender->sendHeaders(request, false);
+		// Отдаваемое источником тело сообщения
+		const std::string expected = "hello";
+		// Позиция чтения тела сообщения источником
+		size_t position = 0;
+		// Устанавливаем pull-источник данных тела сообщения
+		sender->dataSource(parser_http_t::data_source_callback_t([&expected, &position](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+			// Определяем размер отдаваемой порции тела
+			const size_t size = std::min(cap, (expected.size() - position));
+			// Копируем порцию тела в буфер источника
+			std::memcpy(buffer, expected.data() + position, size);
+			// Смещаем позицию чтения тела
+			position += size;
+			// Определяем достижение конца тела
+			eof = (position >= expected.size());
+			// Выводим размер отданной порции тела
+			return static_cast <int64_t> (size);
+		}));
+		/**
+		 * Источник на провод ничего не выдаёт: сообщение завершено отказом, и прокачка
+		 * продвинуться не может. Признак незавершённой отправки обязан быть ложным -
+		 * иначе документированный цикл дозагрузки крутился бы вхолостую, а это хуже
+		 * тихого отказа: сетевой слой занимал бы процессор без всякого продвижения
+		 */
+		ASSERT_FALSE(sender->sourcePending());
+		// Проверяем что возобновление прокачки тоже сообщает о невозможности продвинуться
+		ASSERT_FALSE(sender->resumeSource());
+		// Определяем позицию конца блока заголовков
+		const size_t block = wire.find("\r\n\r\n");
+		// Проверяем что блок заголовков на проводе завершён
+		ASSERT_NE(block, std::string::npos) << wire;
+		// Проверяем что за блоком заголовков на проводе нет некадрированных байт тела
+		ASSERT_EQ((block + 4), wire.size()) << wire;
+	}
+	/**
+	 * Проверяем ответ: тело кадрируется закрытием соединения
+	 */
+	{
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Собранные байты исходящего сообщения
+		std::string wire;
+		// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+		sender->on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+			// Собираем отданные сетевому слою байты
+			wire.append(static_cast <const char *> (buffer), size);
+		}));
+		// Формируем контейнер заголовков ответа версии HTTP/1.0 без объявления размера тела
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_0, static_cast <uint16_t> (200)));
+		// Отправляем заголовки ответа (тело последует)
+		sender->sendHeaders(response, false);
+		// Проверяем что тело ответа принято к отправке целиком
+		ASSERT_EQ(sender->sendData("hello", 5, true), 5u);
+		// Определяем позицию конца блока заголовков
+		const size_t block = wire.find("\r\n\r\n");
+		// Проверяем что блок заголовков на проводе завершён
+		ASSERT_NE(block, std::string::npos) << wire;
+		// Проверяем что тело ушло сырыми байтами до закрытия соединения
+		ASSERT_EQ(wire.substr(block + 4), "hello") << wire;
+	}
 }

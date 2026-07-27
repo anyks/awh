@@ -393,10 +393,16 @@ namespace {
 		result.append(::chance(20) ? "HTTP/1.0" : "HTTP/1.1").append(" ");
 		// Дописываем код состояния ответа
 		result.append(codes[::pick(sizeof(codes) / sizeof(codes[0]))]);
-		// Если код состояния дополняется пояснением
+		/**
+		 * Если код состояния дополняется пояснением
+		 *
+		 * Длина пояснения изредка берётся заведомо большой: reason-phrase учитывается
+		 * в общем бюджете стартовой строки, и без длинных пояснений понижённый лимит
+		 * этой длины никогда не достигался бы
+		 */
 		if(::chance(85))
 			// Дописываем пояснение к коду состояния
-			result.append(" ").append(::token(::pick(12)));
+			result.append(" ").append(::token(::chance(20) ? (::pick(90) + 12) : ::pick(12)));
 		// Дописываем окончание стартовой строки
 		result.append(::eol());
 		// Выводим стартовую строку ответа сервера
@@ -540,8 +546,13 @@ namespace {
 		 * Дописываем трейлеры сообщения
 		 */
 		for(size_t i = 0, count = ::pick(3); i < count; i++){
-			// Набор названий трейлеров: обычные и запрещённые в блоке трейлеров
-			static const char * names[] = {"X-Check", "X-Sum", "Content-Length", "Transfer-Encoding", "Host", "Connection"};
+			// Набор названий трейлеров: пригодные и по представителю каждой непригодной категории RFC 9110 §6.5.1
+			static const char * names[] = {
+				"X-Check", "X-Sum", "Digest",
+				"Content-Length", "Transfer-Encoding", "Host", "Connection", "Trailer",
+				"Cache-Control", "If-Match", "Range", "Authorization", "Set-Cookie",
+				"Date", "Location", "Vary", "Content-Type", "Content-Encoding"
+			};
 			// Дописываем трейлер сообщения
 			result.append(names[::pick(sizeof(names) / sizeof(names[0]))]).append(": ").append(::token(::pick(8) + 1)).append(::eol());
 		}
@@ -686,6 +697,8 @@ namespace {
 		std::vector <std::pair <std::string, std::string>> trailers;
 		// Признак кадрирования тела методом chunked
 		bool chunked;
+		// Признак сборки сообщения версии HTTP/1.0
+		bool legacy;
 		// Размер одной порции выдачи тела
 		size_t portion;
 		// Верхний порог выходного буфера
@@ -693,6 +706,21 @@ namespace {
 		// Нижний порог выходного буфера
 		size_t low;
 	} outgoing_t;
+	/**
+	 * @brief Функция проверки отказа отправителя кадрировать тело сообщения
+	 *
+	 * @details Тело запроса HTTP/1.0 без Content-Length кадрировать нечем: получатель
+	 *          обязан считать такой запрос запросом без тела (RFC 9112 §6.3). Отправитель
+	 *          тело не принимает, и на проводе остаётся один блок заголовков
+	 *
+	 * @param outgoing описание собираемого исходящего сообщения
+	 * @return         результат проверки
+	 *
+	 */
+	static bool bodyRefused(const struct Outgoing & outgoing) noexcept {
+		// Выводим признак отказа отправителя кадрировать тело сообщения
+		return (outgoing.legacy && outgoing.chunked && (outgoing.direct == direct_t::REQUEST));
+	}
 	/**
 	 * @brief Функция формирования описания собираемого исходящего сообщения
 	 *
@@ -714,6 +742,14 @@ namespace {
 		result.code = static_cast <uint16_t> (::chance(70) ? 200 : (::chance(50) ? 404 : 500));
 		// Выбираем кадрирование тела сообщения
 		result.chunked = ::chance(50);
+		/**
+		 * Выбираем версию собираемого сообщения. В HTTP/1.0 кодирования chunked
+		 * не существует: объявление отправитель снимает с провода, тело ответа
+		 * кадрируется закрытием соединения, а телу запроса требуется Content-Length -
+		 * без него кадрировать его нечем, и отправитель тело не принимает вовсе,
+		 * ни методом отправки, ни через pull-источник
+		 */
+		result.legacy = ::chance(20);
 		// Формируем тело собираемого сообщения
 		result.body = ::token(::pick(4000));
 		// Определяем размер одной порции выдачи тела
@@ -732,8 +768,8 @@ namespace {
 		for(size_t i = 0, count = ::pick(6); i < count; i++)
 			// Дописываем очередной заголовок собираемого сообщения
 			result.headers.emplace_back(("X-" + ::token(::pick(10) + 1) + "-" + std::to_string(i)), ::token(::pick(30)));
-		// Если тело сообщения кадрируется методом chunked
-		if(result.chunked && !result.body.empty()){
+		// Если тело сообщения кадрируется методом chunked (в HTTP/1.0 его нет, а с ним нет и трейлеров)
+		if(result.chunked && !result.legacy && !result.body.empty()){
 			/**
 			 * Формируем трейлеры собираемого сообщения: запрещённые в блоке трейлеров
 			 * поля отправитель отбрасывает сам, и здесь они не формируются - проверка
@@ -798,9 +834,11 @@ namespace {
 			}
 		};
 		// Формируем контейнер заголовков собираемого сообщения
+		const version_t version = (outgoing.legacy ? version_t::HTTP1_0 : version_t::HTTP1_1);
+		// Формируем контейнер заголовков собираемого сообщения
 		headers_t block((outgoing.direct == direct_t::REQUEST)
-		 ? headers_t(std::make_unique <request_t> (version_t::HTTP1_1, outgoing.method, outgoing.target))
-		 : headers_t(std::make_unique <response_t> (version_t::HTTP1_1, outgoing.code)));
+		 ? headers_t(std::make_unique <request_t> (version, outgoing.method, outgoing.target))
+		 : headers_t(std::make_unique <response_t> (version, outgoing.code)));
 		/**
 		 * Дописываем заголовки собираемого сообщения
 		 */
@@ -933,7 +971,29 @@ namespace {
 			return true;
 		}));
 		// Выполняем разбор собранного сообщения
-		receiver.parse(wire.data(), wire.size());
+		const size_t consumed = receiver.parse(wire.data(), wire.size());
+		/**
+		 * Собранное сообщение обязано потребляться получателем целиком. Непотреблённый
+		 * хвост означает, что отправитель выдал на провод байты, кадрированием сообщения
+		 * не описанные: получатель прочитает их как начало следующего сообщения и
+		 * рассинхронизирует кадрирование соединения. Сверка тела такой хвост не ловит -
+		 * получатель его просто не отдаёт наружу
+		 */
+		if(consumed != wire.size()){
+			// Формируем причину расхождения
+			reason = ("на проводе остался непотреблённый хвост: потреблено " +
+			 std::to_string(consumed) + " из " + std::to_string(wire.size()));
+			// Выводим отрицательный результат
+			return false;
+		}
+		/**
+		 * Ответ HTTP/1.0 без Content-Length кадрируется закрытием соединения: объявление
+		 * кодирования chunked отправитель с провода снял, и конец такого сообщения
+		 * обозначается не разметкой, а концом потока - о нём приёмнику надо сообщить
+		 */
+		if(outgoing.legacy && outgoing.chunked && (outgoing.direct == direct_t::RESPONSE))
+			// Сообщаем приёмнику о закрытии соединения
+			receiver.eof();
 		// Если сообщение разобрано не полностью
 		if(receiver.status() != parser_t::status_t::COMPLETE){
 			// Формируем причину расхождения
@@ -941,10 +1001,16 @@ namespace {
 			// Выводим отрицательный результат
 			return false;
 		}
-		// Если принятое тело сообщения не совпало с отправленным
-		if(body != outgoing.body){
+		/**
+		 * Определяем ожидаемое тело: если отправитель кадрировать тело отказался,
+		 * до получателя оно дойти не может и обязано быть пустым - иначе
+		 * некадрированные байты ушли бы на провод в обход отказа
+		 */
+		const std::string & expected = (::bodyRefused(outgoing) ? std::string() : outgoing.body);
+		// Если принятое тело сообщения не совпало с ожидаемым
+		if(body != expected){
 			// Формируем причину расхождения
-			reason = ("тело разошлось: отправлено " + std::to_string(outgoing.body.size()) +
+			reason = ("тело разошлось: ожидалось " + std::to_string(expected.size()) +
 			 ", принято " + std::to_string(body.size()));
 			// Выводим отрицательный результат
 			return false;

@@ -20,7 +20,9 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <tuple>
 #include <string>
+#include <vector>
 #include <memory>
 #include <utility>
 #include <cstdint>
@@ -772,5 +774,242 @@ TEST_P(FragmentParameterizedFixture, StartLineOverflowStateEquivalenceTest){
 			// Проверяем что оригинальное написание метода после отказа совпадает
 			ASSERT_EQ(request->methodName, origin->methodName) << details;
 		}
+	}
+}
+
+/**
+ * @brief Метод тестирования отбраковки непригодных полей блока трейлеров
+ *
+ * @details RFC 9110 §6.5.1 не допускает передачу в трейлерах полей, вычисление
+ *          которых обязано предшествовать получению тела: кадрирования сообщения,
+ *          маршрутизации, модификаторов запроса, аутентификации, управляющих данных
+ *          ответа и полей, определяющих способ обработки содержимого. RFC 9112 §7.1.2
+ *          разрешает получателю такие трейлеры отбрасывать - иначе поле, принятое
+ *          задним числом, переопределило бы трактовку уже разобранного тела в обход
+ *          внешних фильтров безопасности. Проверяется, что до потребителя доходят
+ *          только пригодные поля, и по одному представителю каждой категории
+ *
+ */
+TEST_F(ParserFixture, ForbiddenTrailerCategoriesTest){
+	// Формируем перечень непригодных для трейлеров полей по одному представителю каждой категории RFC
+	const std::vector <std::string> forbidden = {
+		// Поля кадрирования сообщения
+		"Content-Length", "Transfer-Encoding",
+		// Поля маршрутизации и управления соединением
+		"Host", "Connection", "Keep-Alive", "Proxy-Connection", "Upgrade", "TE", "Trailer",
+		// Модификаторы запроса: управляющие поля и условные
+		"Cache-Control", "Expect", "Max-Forwards", "Pragma", "Range",
+		"If-Match", "If-None-Match", "If-Modified-Since", "If-Unmodified-Since", "If-Range",
+		// Поля аутентификации
+		"Authorization", "Proxy-Authorization", "WWW-Authenticate", "Proxy-Authenticate",
+		"Authentication-Info", "Proxy-Authentication-Info", "Cookie", "Set-Cookie",
+		// Управляющие данные ответа
+		"Age", "Date", "Expires", "Location", "Retry-After", "Vary", "Warning",
+		// Поля, определяющие способ обработки содержимого
+		"Content-Type", "Content-Encoding", "Content-Range"
+	};
+	/**
+	 * Формируем перечень пригодных для трейлеров полей: Content-Digest определён
+	 * RFC 9530 именно для передачи в трейлерах и заодно страхует ветку полей на
+	 * "C" от чрезмерно широкого совпадения по префиксу
+	 */
+	const std::vector <std::string> allowed = {"X-Checksum", "Content-Digest", "Server-Timing"};
+	/**
+	 * Выполняем перебор всех непригодных для трейлеров полей
+	 */
+	for(auto & name : forbidden){
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Создаём объект сборщика событий парсера
+		events_t events;
+		// Подписываем сборщик событий на все функции обратного вызова парсера
+		this->attach(* parser, events);
+		// Формируем сообщение с блоком трейлеров из проверяемого поля и одного пригодного
+		const std::string message = (
+			"HTTP/1.1 200 OK\r\n"
+			"Transfer-Encoding: chunked\r\n"
+			"\r\n"
+			"5\r\nhello\r\n"
+			"0\r\n" + name + ": value\r\n"
+			"X-Checksum: abc\r\n"
+			"\r\n"
+		);
+		// Формируем описание проверяемого поля для диагностики
+		const std::string details = ("trailer field: " + name);
+		// Выполняем разбор сформированного сообщения
+		ASSERT_EQ(parser->parse(message.data(), message.size()), message.size()) << details;
+		// Проверяем что сообщение полностью разобрано
+		ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE) << details;
+		// Проверяем что тело сообщения собрано без искажений
+		ASSERT_EQ(events.body, "hello") << details;
+		// Проверяем что до потребителя дошёл единственный пригодный трейлер
+		ASSERT_EQ(events.trailers.size(), 1u) << details;
+		// Проверяем что дошедший трейлер является пригодным
+		ASSERT_EQ(events.trailers.front().first, "X-Checksum") << details;
+	}
+	/**
+	 * Выполняем перебор всех пригодных для трейлеров полей
+	 */
+	for(auto & name : allowed){
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Создаём объект сборщика событий парсера
+		events_t events;
+		// Подписываем сборщик событий на все функции обратного вызова парсера
+		this->attach(* parser, events);
+		// Формируем сообщение с блоком трейлеров из проверяемого поля
+		const std::string message = (
+			"HTTP/1.1 200 OK\r\n"
+			"Transfer-Encoding: chunked\r\n"
+			"\r\n"
+			"5\r\nhello\r\n"
+			"0\r\n" + name + ": value\r\n"
+			"\r\n"
+		);
+		// Формируем описание проверяемого поля для диагностики
+		const std::string details = ("trailer field: " + name);
+		// Выполняем разбор сформированного сообщения
+		ASSERT_EQ(parser->parse(message.data(), message.size()), message.size()) << details;
+		// Проверяем что сообщение полностью разобрано
+		ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE) << details;
+		// Проверяем что пригодный трейлер дошёл до потребителя
+		ASSERT_EQ(events.trailers.size(), 1u) << details;
+		// Проверяем что имя пригодного трейлера передано без искажений
+		ASSERT_EQ(events.trailers.front().first, name) << details;
+	}
+}
+
+/**
+ * @brief Метод тестирования отказа при получении сообщения HTTP/1.0 с Transfer-Encoding
+ *
+ * @details RFC 9112 §6.1 требует считать сообщение HTTP/1.0, несущее заголовок
+ *          Transfer-Encoding, сообщением с неисправным кадрированием - даже при
+ *          наличии Content-Length - и закрывать соединение после его обработки.
+ *          Такое сообщение почти наверняка прошло через звено, не обработавшее
+ *          кодирование chunked, и часть тела осталась в его буфере: продолжение
+ *          работы по соединению прочитало бы этот остаток как следующее сообщение.
+ *          Проверяется, что отказ наступает в обоих направлениях трафика и что
+ *          то же сообщение версии HTTP/1.1 разбирается штатно
+ *
+ */
+TEST_F(ParserFixture, LegacyTransferEncodingTest){
+	// Формируем перечень проверяемых сообщений: направление, версия, признак отказа и само сообщение
+	const std::vector <std::tuple <direct_t, std::string, bool, std::string>> samples = {
+		// Ответ сервера версии HTTP/1.0 с объявленным кодированием - кадрирование неисправно
+		{direct_t::RESPONSE, "HTTP/1.0 response", true,
+			"HTTP/1.0 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n"},
+		// Ответ сервера версии HTTP/1.0 с объявленным кодированием и размером тела - отказ обязан наступить и здесь
+		{direct_t::RESPONSE, "HTTP/1.0 response with Content-Length", true,
+			"HTTP/1.0 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Length: 5\r\n\r\nhello"},
+		// Запрос клиента версии HTTP/1.0 с объявленным кодированием - кадрирование неисправно
+		{direct_t::REQUEST, "HTTP/1.0 request", true,
+			"POST /upload HTTP/1.0\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n"},
+		// То же сообщение версии HTTP/1.1 - кодирование законно и сообщение обязано разобраться
+		{direct_t::RESPONSE, "HTTP/1.1 response", false,
+			"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n"}
+	};
+	/**
+	 * Выполняем перебор всех проверяемых сообщений
+	 */
+	for(auto & sample : samples){
+		// Создаём объект парсера-приёмника заданного направления
+		auto parser = this->make(std::get <0> (sample));
+		// Создаём объект сборщика событий парсера
+		events_t events;
+		// Подписываем сборщик событий на все функции обратного вызова парсера
+		this->attach(* parser, events);
+		// Получаем описание проверяемого сообщения для диагностики
+		const std::string & details = std::get <1> (sample);
+		// Получаем разбираемое сообщение
+		const std::string & message = std::get <3> (sample);
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Если сообщение обязано быть отвергнуто
+		if(std::get <2> (sample)){
+			// Проверяем что разбор завершился ошибкой
+			ASSERT_EQ(parser->status(), parser_t::status_t::ERROR) << details;
+			// Проверяем что зафиксирована ошибка некорректного транспортного кодирования
+			ASSERT_EQ(parser->error(), parser_http_t::error_t::INVALID_TRANSFER_ENCODING) << details;
+			// Проверяем что тело сообщения до потребителя не дошло
+			ASSERT_TRUE(events.body.empty()) << details;
+		// Если сообщение обязано быть разобрано
+		} else {
+			// Проверяем что сообщение полностью разобрано
+			ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE) << details;
+			// Проверяем что тело сообщения собрано без искажений
+			ASSERT_EQ(events.body, "hello") << details;
+		}
+	}
+}
+
+/**
+ * @brief Метод тестирования симметрии лимита стартовой строки запроса и ответа
+ *
+ * @details Настройка ограничивает длину стартовой строки одним значением, и стартовая
+ *          строка ответа обязана укладываться в тот же бюджет, что и стартовая строка
+ *          запроса. Раньше у ответа не учитывались обязательный пробел после версии
+ *          и цифры кода состояния, а reason-phrase ограничивался отдельным лимитом
+ *          той же величины - в сумме стартовая строка ответа занимала вдвое больше
+ *          канала, чем разрешено запросу при том же значении настройки
+ *
+ */
+TEST_F(ParserFixture, StartLineLimitSymmetryTest){
+	/**
+	 * @brief Функция разбора сообщения с заданным лимитом длины стартовой строки
+	 *
+	 * @param direct  направление разбираемого трафика
+	 * @param limit   лимит длины стартовой строки
+	 * @param message разбираемое сообщение
+	 * @return        код ошибки разбора
+	 *
+	 */
+	auto probe = [this](const direct_t direct, const size_t limit, const std::string & message) noexcept -> parser_http_t::error_t {
+		// Создаём объект парсера-приёмника заданного направления
+		auto parser = this->make(direct);
+		// Получаем текущие лимиты безопасности разбора
+		parser_http_t::limits_t limits = parser->limits();
+		// Устанавливаем проверяемый лимит длины стартовой строки
+		limits.maxRequestLine = limit;
+		// Применяем изменённые лимиты безопасности разбора
+		parser->limits(limits);
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Выводим код ошибки разбора
+		return parser->error();
+	};
+	// Устанавливаем лимит длины стартовой строки для проверки
+	const size_t limit = 32;
+	/**
+	 * Проверяем стартовую строку ответа, укладывающуюся в лимит целиком
+	 */
+	{
+		// Формируем стартовую строку длиной ровно в лимит: "HTTP/1.1 200 " (13) и reason-phrase
+		const std::string message = ("HTTP/1.1 200 " + std::string(limit - 13, 'A') + "\r\nContent-Length: 0\r\n\r\n");
+		// Проверяем что сообщение разобрано без ошибок
+		ASSERT_EQ(probe(direct_t::RESPONSE, limit, message), parser_http_t::error_t::NONE);
+	}
+	/**
+	 * Проверяем стартовую строку ответа, превышающую лимит на один октет
+	 */
+	{
+		// Формируем стартовую строку длиной на октет больше лимита
+		const std::string message = ("HTTP/1.1 200 " + std::string((limit - 13) + 1, 'A') + "\r\nContent-Length: 0\r\n\r\n");
+		// Проверяем что зафиксировано превышение длины стартовой строки
+		ASSERT_EQ(probe(direct_t::RESPONSE, limit, message), parser_http_t::error_t::URL_OVERFLOW);
+	}
+	/**
+	 * Проверяем что бюджет стартовой строки запроса остался прежним
+	 */
+	{
+		// Формируем стартовую строку запроса длиной ровно в лимит: "GET " (4) и " HTTP/1.1" (9)
+		const std::string message = ("GET /" + std::string((limit - 13) - 1, 'a') + " HTTP/1.1\r\n\r\n");
+		// Проверяем что сообщение разобрано без ошибок
+		ASSERT_EQ(probe(direct_t::REQUEST, limit, message), parser_http_t::error_t::NONE);
+	}
+	{
+		// Формируем стартовую строку запроса длиной на октет больше лимита
+		const std::string message = ("GET /" + std::string(limit - 13, 'a') + " HTTP/1.1\r\n\r\n");
+		// Проверяем что зафиксировано превышение длины стартовой строки
+		ASSERT_EQ(probe(direct_t::REQUEST, limit, message), parser_http_t::error_t::URL_OVERFLOW);
 	}
 }

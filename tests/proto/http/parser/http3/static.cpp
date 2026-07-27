@@ -316,14 +316,22 @@ TEST_F(ParserHttp3Fixture, QpackDynamicTableEviction){
 	// Номер за границей вставок записи не даёт
 	ASSERT_EQ(table.at(3), nullptr);
 	/**
-	 * Запись, не помещающаяся в ёмкость целиком, опустошает таблицу и сама
-	 * не вставляется (RFC 9204 §3.2.2)
+	 * Запись, не помещающаяся в ёмкость целиком, не вставляется. Здесь QPACK
+	 * расходится с HPACK: в HPACK такая вставка опустошает таблицу и ошибкой
+	 * не является (RFC 7541 §4.4), а в QPACK кодер обязан следить за размером сам,
+	 * и попытка - ошибка соединения QPACK_ENCODER_STREAM_ERROR (RFC 9204 §3.2.2).
+	 * Поэтому таблица остаётся как была: поднимать ошибку - дело вызывающего,
+	 * а трогать состояние на пути, ведущем к обрыву соединения, незачем
 	 */
 	ASSERT_FALSE(table.add(std::string(100, 'x'), "value"));
-	// Таблица обязана опустеть
-	ASSERT_EQ(table.count(), 0u);
+	// Таблица обязана остаться нетронутой
+	ASSERT_EQ(table.count(), 2u);
 	// Общее количество вставок изменяться не должно
 	ASSERT_EQ(table.inserts(), 3u);
+	// Записи таблицы обязаны остаться на месте
+	ASSERT_NE(table.at(2), nullptr);
+	// Название последней записи обязано совпасть
+	ASSERT_EQ(table.at(2)->name, "cccc");
 }
 /**
  * @brief Проверка распознавания зарезервированных и изъятых идентификаторов
@@ -1107,4 +1115,345 @@ TEST_F(ParserHttp3Fixture, TransportRefusesToOpenStreams){
 	ASSERT_TRUE(server.parser->isSettingsReceived());
 	// Ошибок уровня соединения быть не должно
 	ASSERT_TRUE(server.events.errors.empty());
+}
+/**
+ * @brief Проверка порядка частей сообщения после блокировки секции полей
+ *
+ * @details Секция, потребовавшая ещё не пришедших вставок QPACK, откладывается,
+ *          но кадры за ней разобрать нельзя: тело до разобранной секции
+ *          недопустимо. Хвост потока обязан накопиться и разобраться сразу
+ *          после того, как секция разошлась по обработчикам
+ *
+ */
+TEST_F(ParserHttp3Fixture, QpackBlockedSectionKeepsBodyOrder){
+	// Сторона сервера
+	endpoint_t server;
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Отправляем параметры соединения со стороны сервера
+	server.parser->sendSettings();
+	// Собираем управляющий поток клиента с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток клиента
+	ASSERT_EQ(this->feed(server, 2, control), status_t::OK);
+	// Открываем поток инструкций кодера QPACK клиента
+	ASSERT_EQ(this->feed(server, 6, ::unistream(static_cast <uint64_t> (unistream_t::QPACK_ENCODER))), status_t::OK);
+	/**
+	 * Кодер работает в обход потоков соединения: его инструкции подаются вручную
+	 * и позже секции - ровно так, как их обгоняет секция на живом соединении
+	 */
+	qpack::encoder_t encoder;
+	// Устанавливаем ёмкость таблицы, анонсированную сервером
+	encoder.maxCapacity(4096);
+	// Устанавливаем число потоков, которым сервер разрешил ожидание
+	encoder.maxBlocked(16);
+	// Отключаем адаптивную индексацию, чтобы вставка произошла с первого поля
+	encoder.adaptiveIndexing(false);
+	// Собираем набор полей запроса клиента
+	std::vector <qpack::field_t> fields = this->request("POST", "/upload");
+	// Дописываем поле, попадающее в динамическую таблицу
+	fields.emplace_back("x-session", "0f9c1a2b3d4e5f60");
+	// Буфер секции полей
+	std::string section;
+	// Выполняем кодирование секции полей
+	encoder.encode(0, fields, section);
+	// Запоминаем накопленные инструкции потока кодера
+	const std::string instructions(encoder.pending());
+	// Инструкции обязаны быть накоплены: поле занесено в таблицу
+	ASSERT_FALSE(instructions.empty());
+	// Собираем поток запроса: секция полей и следом тело
+	std::string stream;
+	// Дописываем кадр секции полей
+	frame::serialize::headers(stream, section);
+	// Дописываем кадр тела сообщения
+	frame::serialize::data(stream, "hello");
+	// Подаём поток запроса, не подавая инструкций кодера
+	ASSERT_EQ(this->feed(server, 0, stream, true), status_t::OK);
+	// Соединение обязано остаться живым: кадр тела не разбирался вовсе
+	ASSERT_TRUE(server.events.errors.empty());
+	// Поток обрываться не должен
+	ASSERT_TRUE(server.events.aborts.empty());
+	// Ничего доставлено быть не должно: секция ждёт вставок
+	ASSERT_TRUE(server.events.headers.empty());
+	// Тело доставлено быть не должно
+	ASSERT_TRUE(server.events.bodies.empty());
+	// Подаём инструкции потока кодера
+	ASSERT_EQ(this->feed(server, 6, instructions), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(server.events.errors.empty());
+	// Поля секции обязаны быть доставлены
+	ASSERT_EQ(this->field(server.events, 0, "x-session"), "0f9c1a2b3d4e5f60");
+	// Метод запроса обязан совпасть
+	ASSERT_EQ(server.events.method, "POST");
+	// Тело, накопленное за время блокировки, обязано быть доставлено
+	ASSERT_EQ(server.events.bodies[0], "hello");
+}
+/**
+ * @brief Проверка сохранности отложенной секции при второй секции следом
+ *
+ * @details Слот отложенной секции у потока один, поэтому вторая секция, пришедшая
+ *          следом за заблокированной, затирала бы первую - и запрос пропадал бы
+ *          молча, без ошибки и обрыва
+ *
+ */
+TEST_F(ParserHttp3Fixture, QpackBlockedSectionNotOverwritten){
+	// Сторона сервера
+	endpoint_t server;
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Отправляем параметры соединения со стороны сервера
+	server.parser->sendSettings();
+	// Собираем управляющий поток клиента с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток клиента
+	ASSERT_EQ(this->feed(server, 2, control), status_t::OK);
+	// Открываем поток инструкций кодера QPACK клиента
+	ASSERT_EQ(this->feed(server, 6, ::unistream(static_cast <uint64_t> (unistream_t::QPACK_ENCODER))), status_t::OK);
+	// Объект кодера полей, работающий в обход потоков соединения
+	qpack::encoder_t encoder;
+	// Устанавливаем ёмкость таблицы, анонсированную сервером
+	encoder.maxCapacity(4096);
+	// Устанавливаем число потоков, которым сервер разрешил ожидание
+	encoder.maxBlocked(16);
+	// Отключаем адаптивную индексацию, чтобы вставка произошла с первого поля
+	encoder.adaptiveIndexing(false);
+	// Собираем набор полей запроса клиента
+	std::vector <qpack::field_t> fields = this->request("GET", "/");
+	// Дописываем поле, попадающее в динамическую таблицу
+	fields.emplace_back("x-session", "0f9c1a2b3d4e5f60");
+	// Буфер секции полей запроса
+	std::string section;
+	// Выполняем кодирование секции полей запроса
+	encoder.encode(0, fields, section);
+	// Запоминаем инструкции, пополняющие таблицу под секцию запроса
+	const std::string instructions(encoder.pending());
+	// Набор полей секции трейлеров
+	std::vector <qpack::field_t> trailers;
+	// Дописываем поле секции трейлеров
+	trailers.emplace_back("x-checksum", "1a2b3c4d5e6f7a8b");
+	// Буфер секции трейлеров
+	std::string trailer;
+	// Выполняем кодирование секции трейлеров
+	encoder.encode(0, trailers, trailer);
+	// Собираем поток запроса: секция полей и следом секция трейлеров
+	std::string stream;
+	// Дописываем кадр секции полей
+	frame::serialize::headers(stream, section);
+	// Дописываем кадр секции трейлеров
+	frame::serialize::headers(stream, trailer);
+	// Подаём поток запроса, не подавая инструкций кодера
+	ASSERT_EQ(this->feed(server, 0, stream, true), status_t::OK);
+	// Подаём инструкции, пополняющие таблицу под секцию запроса
+	ASSERT_EQ(this->feed(server, 6, instructions), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(server.events.errors.empty());
+	// Секция запроса обязана быть доставлена, а не затёрта секцией трейлеров
+	ASSERT_EQ(this->field(server.events, 0, "x-session"), "0f9c1a2b3d4e5f60");
+	// Метод запроса обязан совпасть
+	ASSERT_EQ(server.events.method, "GET");
+}
+/**
+ * @brief Проверка ограничения хвоста заблокированного потока
+ *
+ * @details Пир, не присылающий инструкций кодера вовсе, задавал бы потребление
+ *          памяти получателем: кадры за заблокированной секцией копятся в буфере
+ *
+ */
+TEST_F(ParserHttp3Fixture, QpackBlockedTailLimit){
+	// Сторона сервера
+	endpoint_t server;
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Получаем лимиты безопасности парсера сервера
+	awh::http::parser_http3_t::limits_t limits = server.parser->limits();
+	// Опускаем лимит хвоста заблокированного потока до заведомо малого
+	limits.maxBlockedTail = 64;
+	// Устанавливаем лимиты безопасности парсера сервера
+	server.parser->limits(limits);
+	// Отправляем параметры соединения со стороны сервера
+	server.parser->sendSettings();
+	// Собираем управляющий поток клиента с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток клиента
+	ASSERT_EQ(this->feed(server, 2, control), status_t::OK);
+	// Объект кодера полей, работающий в обход потоков соединения
+	qpack::encoder_t encoder;
+	// Устанавливаем ёмкость таблицы, анонсированную сервером
+	encoder.maxCapacity(4096);
+	// Устанавливаем число потоков, которым сервер разрешил ожидание
+	encoder.maxBlocked(16);
+	// Отключаем адаптивную индексацию, чтобы вставка произошла с первого поля
+	encoder.adaptiveIndexing(false);
+	// Собираем набор полей запроса клиента
+	std::vector <qpack::field_t> fields = this->request("POST", "/upload");
+	// Дописываем поле, попадающее в динамическую таблицу
+	fields.emplace_back("x-session", "0f9c1a2b3d4e5f60");
+	// Буфер секции полей
+	std::string section;
+	// Выполняем кодирование секции полей
+	encoder.encode(0, fields, section);
+	// Собираем поток запроса: секция полей и следом тело заведомо больше лимита
+	std::string stream;
+	// Дописываем кадр секции полей
+	frame::serialize::headers(stream, section);
+	// Дописываем кадр тела сообщения
+	frame::serialize::data(stream, std::string(256, 'x'));
+	// Подаём поток запроса, не подавая инструкций кодера
+	ASSERT_EQ(this->feed(server, 0, stream, false), status_t::OK);
+	// Соединение обязано остаться живым: это причина отвергнуть один поток
+	ASSERT_TRUE(server.events.errors.empty());
+	// Поток обязан быть оборван
+	ASSERT_FALSE(server.events.aborts.empty());
+	// Код обрыва потока обязан указывать на чрезмерную нагрузку
+	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_EXCESSIVE_LOAD);
+}
+/**
+ * @brief Проверка отбраковки потока отменённого обещания push
+ *
+ * @details Отмена обгоняет поток: кадр CANCEL_PUSH идёт управляющим потоком,
+ *          а сам push - своим, и порядок между ними не задан
+ *
+ */
+TEST_F(ParserHttp3Fixture, CancelledPushStreamAborted){
+	// Сторона клиента
+	endpoint_t client;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Отправляем параметры соединения со стороны клиента
+	client.parser->sendSettings();
+	// Разрешаем серверу выдавать обещания push
+	client.parser->sendMaxPushId(8);
+	// Собираем управляющий поток сервера с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток сервера
+	ASSERT_EQ(this->feed(client, 3, control), status_t::OK);
+	// Отменяем обещание push
+	client.parser->sendCancelPush(0);
+	// Отменённое обещание обязано числиться отменённым
+	ASSERT_TRUE(client.parser->pushCancelled(0));
+	// Собираем поток push с идентификатором отменённого обещания
+	std::string stream = ::unistream(static_cast <uint64_t> (unistream_t::PUSH));
+	// Дописываем идентификатор обещанного push
+	quic::varint::write(stream, 0);
+	// Дописываем кадр секции полей ответа
+	frame::serialize::headers(stream, std::string(1, '\x00') + std::string(1, '\x00') + std::string(1, '\xD9'));
+	// Подаём поток отменённого push
+	ASSERT_EQ(this->feed(client, 7, stream), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(client.events.errors.empty());
+	// Поток обязан быть оборван
+	ASSERT_FALSE(client.events.aborts.empty());
+	// Код обрыва потока обязан указывать на отмену запроса
+	ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_REQUEST_CANCELLED);
+	// Приём потока обязан быть остановлен
+	ASSERT_TRUE(std::get <2> (client.events.aborts.front()));
+	// Ничего доставлено быть не должно
+	ASSERT_TRUE(client.events.headers.empty());
+	// Запись отмены обязана сняться приходом потока
+	ASSERT_FALSE(client.parser->pushCancelled(0));
+}
+/**
+ * @brief Проверка класса идентификатора в кадре GOAWAY
+ *
+ * @details Сервер объявляет в GOAWAY идентификатор потока запроса, а потоки
+ *          запросов бывают только двунаправленными и только клиентскими
+ *          (RFC 9114 §5.2)
+ *
+ */
+TEST_F(ParserHttp3Fixture, GoawayStreamIdClass){
+	// Сторона клиента
+	endpoint_t client;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Отправляем параметры соединения со стороны клиента
+	client.parser->sendSettings();
+	// Собираем управляющий поток сервера с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Дописываем кадр завершения соединения с идентификатором однонаправленного потока
+	frame::serialize::goaway(control, 3);
+	// Подаём управляющий поток сервера
+	ASSERT_EQ(this->feed(client, 3, control), status_t::ERROR);
+	// Ошибка уровня соединения обязана быть зафиксирована
+	ASSERT_FALSE(client.events.errors.empty());
+	// Код ошибки обязан указывать на расхождение в учёте идентификаторов
+	ASSERT_EQ(client.events.errors.front().first, error_t::H3_ID_ERROR);
+}
+/**
+ * @brief Проверка отбраковки тела у безтелесного ответа
+ *
+ * @details Ответы 204 и 304 содержимого не несут по определению
+ *          (RFC 9110 §8.6): тело в них делает сообщение искажённым
+ *
+ */
+TEST_F(ParserHttp3Fixture, DataOnHeadlessResponse){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Отправляем секцию полей запроса
+	client.parser->sendHeaders(0, this->request("GET", "/"), true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Отправляем безтелесный ответ сервера
+	server.parser->sendHeaders(0, this->response("204"), false);
+	// Отправляем тело, которого у ответа 204 быть не может
+	server.parser->sendData(0, "hello", 5, true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(client.events.errors.empty());
+	// Поток обязан быть оборван
+	ASSERT_FALSE(client.events.aborts.empty());
+	// Код обрыва потока обязан указывать на искажённое сообщение
+	ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_MESSAGE_ERROR);
+	// Тело доставлено быть не должно
+	ASSERT_TRUE(client.events.bodies.empty());
+}
+/**
+ * @brief Проверка отбраковки тела сверх объявленной длины
+ *
+ * @details Расхождение с объявленной длиной видно на первом же лишнем октете,
+ *          и ждать завершения потока незачем: иначе лишние октеты прошли бы
+ *          через обработчик тела как часть сообщения (RFC 9110 §8.6)
+ *
+ */
+TEST_F(ParserHttp3Fixture, BodyExceedsContentLength){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Собираем набор полей запроса клиента
+	std::vector <qpack::field_t> fields = this->request("POST", "/upload");
+	// Объявляем длину тела заведомо меньше отправляемой
+	fields.emplace_back("content-length", "4");
+	// Отправляем секцию полей запроса
+	client.parser->sendHeaders(0, fields, false);
+	// Отправляем тело больше объявленной длины, не завершая поток
+	client.parser->sendData(0, "hello world", 11, false);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(server.events.errors.empty());
+	// Поток обязан быть оборван до завершения потока пиром
+	ASSERT_FALSE(server.events.aborts.empty());
+	// Код обрыва потока обязан указывать на искажённое сообщение
+	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR);
 }

@@ -333,7 +333,8 @@ namespace {
  *
  */
 awh::http::Parser_HTTP3::Limits::Limits() noexcept :
- parser_t::limits_t(), maxHeaderSection(64 * 1024), maxControlFrame(16 * 1024), maxStreams(128),
+ parser_t::limits_t(), maxHeaderSection(64 * 1024), maxControlFrame(16 * 1024),
+ maxBlockedTail(256 * 1024), maxStreams(128),
  ctrlLimitRate(CTRL_LIMIT_RATE), ctrlLimitBurst(CTRL_LIMIT_BURST),
  prioLimitRate(PRIORITY_LIMIT_RATE), prioLimitBurst(PRIORITY_LIMIT_BURST) {}
 /**
@@ -854,6 +855,14 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 			// Выводим результат разбора
 			return h3::status_t::OK;
 	}
+	/**
+	 * Поток, чья секция полей ждёт вставок QPACK, разбирать нельзя: тело до
+	 * разобранной секции недопустимо, а вторая секция затёрла бы отложенную.
+	 * Всё пришедшее откладывается до разблокировки потока
+	 */
+	if(found->blockedActive)
+		// Откладываем принятые байты до разблокировки потока
+		return this->deferTail(sid, data, size, fin);
 	// Позиция разбора во входном буфере
 	size_t offset = 0;
 	/**
@@ -917,6 +926,18 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 					if(!current->headers || current->trailers)
 						// Фиксируем ошибку уровня соединения
 						return this->fail(error_t::H3_FRAME_UNEXPECTED, "кадр DATA вне тела сообщения");
+					/**
+					 * Ответы 204 и 304, а равно ответ на запрос HEAD, содержимого
+					 * не несут по определению (RFC 9110 §8.6, §9.3.2). Тело в них
+					 * делает сообщение искажённым, а это причина отвергнуть поток,
+					 * а не соединение: остальные потоки к нему отношения не имеют
+					 */
+					if(current->headless){
+						// Обрываем поток с кодом ошибки сообщения
+						this->sendReset(sid, error_t::H3_MESSAGE_ERROR);
+						// Выводим результат разбора
+						return h3::status_t::OK;
+					}
 				} break;
 				// Секция полей заголовков либо трейлеров
 				case static_cast <uint64_t> (h3::frame_t::HEADERS): {
@@ -989,6 +1010,10 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 					return h3::status_t::OK;
 				// Сбрасываем состояние разбора кадра
 				framing.clear();
+				// Если секция полей осталась ждать вставок QPACK
+				if(current->blockedActive)
+					// Откладываем неразобранный хвост потока до разблокировки
+					return this->deferTail(sid, (data + offset), (size - offset), fin);
 			}
 			// Переходим к разбору следующего кадра
 			continue;
@@ -1008,6 +1033,17 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 			if((this->_limits.maxBodySize > 0) && (current->length > this->_limits.maxBodySize)){
 				// Обрываем поток с кодом чрезмерной нагрузки
 				this->sendReset(sid, error_t::H3_EXCESSIVE_LOAD);
+				// Выводим результат разбора
+				return h3::status_t::OK;
+			}
+			/**
+			 * Тело сверх объявленной длины делает сообщение искажённым (RFC 9110 §8.6).
+			 * Расхождение видно уже здесь, и ждать завершения потока незачем: лишние
+			 * октеты иначе прошли бы через обработчик тела как часть сообщения
+			 */
+			if((current->declared != UINT64_MAX) && !current->headless && (current->length > current->declared)){
+				// Обрываем поток с кодом ошибки сообщения
+				this->sendReset(sid, error_t::H3_MESSAGE_ERROR);
 				// Выводим результат разбора
 				return h3::status_t::OK;
 			}
@@ -1083,6 +1119,12 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 			if(status != h3::status_t::OK)
 				// Выводим результат разбора
 				return status;
+			// Выполняем поиск состояния потока: обработчик мог его закрыть
+			const stream_t * blocked = this->findStream(sid);
+			// Если секция полей осталась ждать вставок QPACK
+			if((blocked != nullptr) && blocked->blockedActive)
+				// Откладываем неразобранный хвост потока до разблокировки
+				return this->deferTail(sid, (data + offset), (size - offset), fin);
 		}
 	}
 	// Если пир завершил поток
@@ -1522,6 +1564,32 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseUnistream(const uint64_t s
 				if((this->_localMaxPushId == UINT64_MAX) || (stream.pushId > this->_localMaxPushId))
 					// Фиксируем ошибку уровня соединения
 					return this->fail(error_t::H3_ID_ERROR, "поток push вне объявленных границ");
+				/**
+				 * Отмена обещания обгоняет его поток: CANCEL_PUSH идёт управляющим
+				 * потоком, а сам push - своим. Пришедший следом за отменой поток
+				 * читать незачем - его содержимое уже никому не нужно (RFC 9114 §7.2.3)
+				 */
+				if(this->_cancelledPush.erase(stream.pushId) > 0){
+					// Удаляем состояние однонаправленного потока: читать его мы не будем
+					this->_unistreams.erase(sid);
+					// Если функция обратного вызова обрыва потока установлена
+					if(this->_callbacks.abort){
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Просим отправителя прекратить передачу
+							this->_callbacks.abort(sid, error_t::H3_REQUEST_CANCELLED, true);
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const exception &) {
+							// Исключение из пользовательской функции обратного вызова гасим на месте
+						}
+					}
+					// Выводим результат разбора
+					return h3::status_t::OK;
+				}
 				// Создаём состояние потока сообщения для потока push
 				stream_t & message = this->stream(sid);
 				// Переводим поток в открытое состояние
@@ -1760,6 +1828,15 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::dispatchControl(const uint64_t 
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error, "нагрузка кадра GOAWAY не разобрана");
 			/**
+			 * Сервер объявляет в GOAWAY идентификатор потока запроса, и потоки запросов
+			 * бывают только двунаправленными и только клиентскими. Идентификатор любого
+			 * другого класса означает расхождение в учёте потоков (RFC 9114 §5.2).
+			 * Клиент объявляет идентификатор push, и класса у того нет вовсе
+			 */
+			if((this->_endpoint == h3::endpoint_t::CLIENT) && ((identifier & 0x03) != 0))
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::H3_ID_ERROR, "идентификатор в кадре GOAWAY не принадлежит потоку запроса");
+			/**
 			 * Объявленный идентификатор обязан не возрастать: возрастание означало бы
 			 * отзыв уже данного обещания не обрабатывать потоки (RFC 9114 §5.2)
 			 */
@@ -1837,8 +1914,17 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::dispatchControl(const uint64_t 
 			} else if((this->_localMaxPushId == UINT64_MAX) || (identifier > this->_localMaxPushId))
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::H3_ID_ERROR, "отменён push вне объявленных границ");
+			/**
+			 * Число отменённых, но ещё не пришедших обещаний ограничено: запись
+			 * снимается приходом потока push, а пир, отменяющий обещания и не шлющий
+			 * потоков вовсе, иначе наращивал бы память соединения без предела
+			 */
+			if((this->_cancelledPush.size() >= this->_limits.maxStreams) &&
+			   (this->_cancelledPush.find(identifier) == this->_cancelledPush.end()))
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::H3_EXCESSIVE_LOAD, "слишком много отменённых обещаний push");
 			// Запоминаем отменённый идентификатор push
-			this->_cancelledPush.push_back(identifier);
+			this->_cancelledPush.emplace(identifier);
 		} break;
 		// Обновление расширенного приоритета потока запроса либо потока push
 		case static_cast <uint64_t> (h3::frame_t::PRIORITY_UPDATE_REQUEST):
@@ -2018,12 +2104,17 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 		 * и представление указывало бы в освобождённую память
 		 */
 		const string section = stream->blocked;
+		// Запоминаем неразобранный хвост потока, накопленный за время блокировки
+		const string tail = stream->blockedTail;
 		// Запоминаем тип кадра отложенной секции
 		const uint64_t type = stream->blockedType;
 		// Запоминаем идентификатор отложенного обещания
 		const uint64_t pushId = stream->blockedPushId;
-		// Запоминаем завершение потока вместе с отложенной секцией
-		const bool last = stream->blockedFin;
+		/**
+		 * Завершение потока применяется к хвосту, а не к секции: пока за секцией
+		 * стоят неразобранные кадры, приём сообщения ими не закончен
+		 */
+		const bool last = (stream->blockedFin && tail.empty());
 		// Код ошибки протокола
 		error_t error = error_t::H3_NO_ERROR;
 		// Выполняем декодирование отложенной секции полей
@@ -2046,6 +2137,8 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 		stream->blockedActive = false;
 		// Выполняем очистку отложенной секции
 		stream->blocked.clear();
+		// Выполняем очистку неразобранного хвоста потока
+		stream->blockedTail.clear();
 		// Выгружаем накопленные инструкции кодека
 		this->flushQpack();
 		// Если секция полей превысила лимит распакованного списка
@@ -2084,6 +2177,33 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 		if(epoch != this->_epoch)
 			// Выводим результат разбора
 			return h3::status_t::OK;
+		/**
+		 * Кадры, накопленные за время блокировки, разбираются сразу за секцией,
+		 * которая их держала: порядок частей сообщения обязан быть тем же, в каком
+		 * их отправил пир
+		 */
+		if(!tail.empty()){
+			// Обновляем состояние потока
+			stream = this->findStream(sid);
+			// Если поток закрыт из обработчиков доставки
+			if(stream == nullptr)
+				// Переходим к следующему потоку
+				continue;
+			// Запоминаем завершение потока пиром
+			const bool finished = stream->blockedFin;
+			// Снимаем признак завершения потока: его применит разбор хвоста
+			stream->blockedFin = false;
+			// Выполняем разбор накопленного хвоста потока
+			result = this->parseRequest(sid, reinterpret_cast <const uint8_t *> (tail.data()), tail.size(), finished);
+			// Если разбор хвоста не удался
+			if(result != h3::status_t::OK)
+				// Выводим результат разбора
+				return result;
+			// Если состояние соединения не пережило разбор хвоста
+			if(epoch != this->_epoch)
+				// Выводим результат разбора
+				return h3::status_t::OK;
+		}
 	}
 	// Выводим результат разбора
 	return h3::status_t::OK;
@@ -2146,6 +2266,57 @@ void awh::http::Parser_HTTP3::applyPriority(stream_t & stream, string_view value
 	}
 }
 
+/**
+ * @brief Метод накопления неразобранного хвоста заблокированного потока
+ *
+ * @param sid  идентификатор потока
+ * @param data неразобранный хвост
+ * @param size размер неразобранного хвоста
+ * @param fin  признак завершения потока пиром
+ * @return     результат накопления
+ *
+ */
+awh::http::h3::status_t awh::http::Parser_HTTP3::deferTail(const uint64_t sid, const uint8_t * data, const size_t size, const bool fin) noexcept {
+	// Выполняем поиск состояния потока
+	stream_t * stream = this->findStream(sid);
+	// Если поток уже закрыт
+	if(stream == nullptr)
+		// Выводим результат накопления
+		return h3::status_t::OK;
+	/**
+	 * Завершение потока применяется не к секции, а к хвосту: кадры, пришедшие
+	 * следом за ней, ещё не разобраны, и приём сообщения ими не закончен
+	 */
+	if(fin)
+		// Запоминаем завершение потока пиром
+		stream->blockedFin = true;
+	// Если накапливать нечего
+	if(size == 0)
+		// Выводим результат накопления
+		return h3::status_t::OK;
+	/**
+	 * Хвост копится, пока пир не пришлёт инструкции потока кодера. Пир, который
+	 * их не присылает вовсе, иначе задавал бы потребление памяти получателем,
+	 * поэтому размер хвоста ограничен - и это причина отвергнуть один поток,
+	 * а не соединение
+	 */
+	if((stream->blockedTail.size() + size) > this->_limits.maxBlockedTail){
+		// Снимаем блокировку потока
+		stream->blockedActive = false;
+		// Выполняем очистку отложенной секции
+		stream->blocked.clear();
+		// Выполняем очистку неразобранного хвоста
+		stream->blockedTail.clear();
+		// Обрываем поток с кодом чрезмерной нагрузки
+		this->sendReset(sid, error_t::H3_EXCESSIVE_LOAD);
+		// Выводим результат накопления
+		return h3::status_t::OK;
+	}
+	// Дописываем неразобранный хвост потока
+	stream->blockedTail.append(reinterpret_cast <const char *> (data), size);
+	// Выводим результат накопления
+	return h3::status_t::OK;
+}
 /**
  * @brief Метод обработки принятой секции полей
  *
@@ -3673,6 +3844,24 @@ void awh::http::Parser_HTTP3::sendCancelPush(const uint64_t pushId) noexcept {
 	h3::frame::serialize::cancelPush(this->_frame, pushId);
 	// Отправляем кадр отмены в управляющий поток
 	this->emit(this->_controlLocal, this->_frame.data(), this->_frame.size(), false);
+	/**
+	 * Отменённое нами обещание запоминается: сервер мог отправить его поток раньше,
+	 * чем получил отмену, и тот придёт следом - читать его уже незачем
+	 */
+	if(this->_endpoint == h3::endpoint_t::CLIENT)
+		// Запоминаем отменённый идентификатор push
+		this->_cancelledPush.emplace(pushId);
+}
+/**
+ * @brief Метод проверки отменённости обещанного push
+ *
+ * @param pushId идентификатор обещанного push
+ * @return       признак отменённости обещания
+ *
+ */
+bool awh::http::Parser_HTTP3::pushCancelled(const uint64_t pushId) const noexcept {
+	// Выводим признак отменённости обещания
+	return (this->_cancelledPush.find(pushId) != this->_cancelledPush.end());
 }
 /**
  * @brief Метод разрешения пиру выдавать push (только клиент)
