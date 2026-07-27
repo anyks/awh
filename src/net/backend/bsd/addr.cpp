@@ -49,22 +49,49 @@
 #endif
 
 /**
+ * Единица выравнивания адресов в сообщениях маршрутизации
+ *
+ * @note Ядра выравнивают адреса внутри сообщения маршрутизации по-разному:
+ *       Apple округляет длину структуры адреса до четырёх октетов, остальные
+ *       системы BSD - до размера длинного целого. Неверная единица сдвигает
+ *       чтение всех адресов, кроме первого: они читаются с середины соседней
+ *       структуры и выглядят пустыми.
+ *
+ */
+#if __APPLE__
+	/**
+	 * Макрос выравнивания структуры (для Apple)
+	 */
+	#define AWH_SA_ALIGN sizeof(int32_t)
+/**
+ * Если не Apple, то считаем, что это любая BSD-система
+ */
+#else
+	/**
+	 * Макрос выравнивания структуры (для BSD)
+	 */
+	#define AWH_SA_ALIGN sizeof(long)
+#endif
+
+/**
  * Макрос выравнивания структуры
  */
 #define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
+	((a) > 0 ? (1 + (((a) - 1) | (AWH_SA_ALIGN - 1))) : AWH_SA_ALIGN)
 
 /**
  * Стандартные заголовочные файлы
  */
 #include <array>
 #include <cerrno>
+#include <chrono>
 #include <memory>
 #include <vector>
 #include <random>
 #include <cstddef>
 #include <cstring>
 #include <cstdlib>
+#include <shared_mutex>
 
 /**
  * Системные заголовочные файлы
@@ -86,8 +113,9 @@
 #include <netinet/if_ether.h>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/locker.hpp>
 #include <net/eth/addr.hpp>
 
 /**
@@ -122,6 +150,155 @@ namespace {
 	 *
 	 */
 	constexpr uint8_t __awh_zero_ipv6__[16] = {0};
+
+	/**
+	 * @brief Время жизни записи об адресе с выходом во внешнюю сеть
+	 *
+	 * @details Адрес, с которого машина выходит наружу, меняется редко:
+	 *          при смене сети, поднятии или падении туннеля. Пяти секунд
+	 *          хватает, чтобы запись не разошлась с состоянием системы
+	 *          заметным образом, и достаточно, чтобы массовое создание
+	 *          событий обошлось одним определением вместо тысяч.
+	 *
+	 * @note Точным способом было бы слежение за сокетом маршрутизации,
+	 *       но оно требует отдельного долгоживущего дескриптора и его
+	 *       обслуживания, поэтому выбрано устаревание по времени.
+	 *
+	 */
+	constexpr uint64_t __awh_outward_lifetime__ = 5000000000ULL;
+
+	/**
+	 * @brief Структура записи об адресе, с которого доступна внешнюю сеть
+	 *
+	 */
+	typedef struct Outward {
+		// Признак заполненности записи
+		bool filled;
+		// Время устаревания записи в наносекундах
+		uint64_t deadline;
+		// Название сетевого интерфейса
+		string iface;
+		// MAC-адрес сетевого интерфейса
+		array <uint8_t, 6> mac;
+		// Адрес сетевого интерфейса
+		array <uint8_t, 16> address;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Outward() noexcept :
+		 filled(false), deadline(0),
+		 mac{0}, address{0} {}
+	} outward_t;
+
+	/**
+	 * @brief Записи об адресах с выходом во внешнюю сеть: [0] - IPv4, [1] - IPv6
+	 *
+	 * @note Записи общие для всего процесса: метод определения адреса доступен
+	 *       и в отрыве от сетевого движка, поэтому обращаться к нему могут из
+	 *       разных потоков одновременно.
+	 *
+	 */
+	outward_t __awh_outward__[2];
+
+	/**
+	 * @brief Флаг одноразовой инициализации мьютекса записей об адресах
+	 *
+	 */
+	once_flag __awh_init_once__;
+
+	/**
+	 * @brief Режим безопасности работы потоков
+	 *
+	 */
+	event::mode_t __awh_thread_safety__ = event::mode_t::DISABLED;
+
+	/**
+	 * @brief Блокировка доступа к записям об адресах с выходом во внешнюю сеть
+	 *
+	 * @note Чтение записи выполняется под разделённой блокировкой, а запись -
+	 *       под уникальной: обращений на чтение кратно больше, они приходятся
+	 *       на каждое создание события, тогда как обновление происходит раз
+	 *       за время жизни записи.
+	 *
+	 */
+	static lock_state_t <std::shared_mutex> __awh_outward_mutex__;
+
+	/**
+	 * @brief Функция получения текущего значения монотонных часов
+	 *
+	 * @return текущее время в наносекундах
+	 *
+	 */
+	uint64_t nanostamp() noexcept {
+		// Выводим текущее значение монотонных часов
+		return static_cast <uint64_t> (chrono::duration_cast <chrono::nanoseconds> (chrono::steady_clock::now().time_since_epoch()).count());
+	}
+
+	/**
+	 * @brief Функция восстановления адреса из запомненной записи
+	 *
+	 * @param source объект сетевых адресов текущей машины
+	 * @return       признак того, что запись найдена и ещё не устарела
+	 *
+	 */
+	bool restore(net::src_t & source) noexcept {
+		// Если размер адреса не соответствует ни одному из семейств
+		if((source.ip->size != 4) && (source.ip->size != 16))
+			// Сообщаем, что адрес нужно определять заново
+			return false;
+		// Блокируем доступ к записям об адресах с выходом во внешнюю сеть на чтение
+		const locker_t <std::shared_mutex> lock(::__awh_outward_mutex__, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Получаем запись, соответствующую семейству адресов
+		const outward_t & outward = __awh_outward__[source.ip->size == 16];
+		// Если запись не заполнена или уже устарела
+		if(!outward.filled || (::nanostamp() >= outward.deadline))
+			// Сообщаем, что адрес нужно определять заново
+			return false;
+		// Устанавливаем название сетевого интерфейса
+		source.iface = outward.iface;
+		// Если адрес является IPv4
+		if(source.ip->size == 4)
+			// Устанавливаем адрес сетевого интерфейса
+			::memcpy(&awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address, &outward.address[0], 4);
+		// Если адрес является IPv6
+		else ::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &outward.address[0], 16);
+		// Устанавливаем MAC-адрес сетевого интерфейса
+		::memcpy(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], &outward.mac[0], 6);
+		// Сообщаем, что адрес восстановлен
+		return true;
+	}
+
+	/**
+	 * @brief Функция запоминания определённого адреса
+	 *
+	 * @param source объект сетевых адресов текущей машины
+	 *
+	 */
+	void remember(const net::src_t & source) noexcept {
+		// Если размер адреса не соответствует ни одному из семейств
+		if((source.ip->size != 4) && (source.ip->size != 16))
+			// Выходим из функции
+			return;
+		// Блокируем доступ к записям об адресах с выходом во внешнюю сеть на запись
+		const locker_t <std::shared_mutex> lock(::__awh_outward_mutex__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Получаем запись, соответствующую семейству адресов
+		outward_t & outward = __awh_outward__[source.ip->size == 16];
+		// Запоминаем название сетевого интерфейса
+		outward.iface = source.iface;
+		// Если адрес является IPv4
+		if(source.ip->size == 4)
+			// Запоминаем адрес сетевого интерфейса
+			::memcpy(&outward.address[0], &awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address, 4);
+		// Если адрес является IPv6
+		else ::memcpy(&outward.address[0], &awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], 16);
+		// Запоминаем MAC-адрес сетевого интерфейса
+		::memcpy(&outward.mac[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6);
+		// Устанавливаем время устаревания записи
+		outward.deadline = (::nanostamp() + __awh_outward_lifetime__);
+		// Отмечаем запись заполненной
+		outward.filled = true;
+	}
 
 	/**
 	 * @brief Функция вычисления контрольной суммы
@@ -160,6 +337,18 @@ namespace {
 	}
 };
 
+/**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ *
+ */
+void awh::eth::Network_Address::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности потоков
+	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
+	// Активируем работу мьютекса блокировки потока при работе с записями об адресах
+	::__awh_outward_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+}
 /**
  * @brief Метод заполнения источника сетевых адресов по имени сетевого интерфейса
  *
@@ -563,6 +752,19 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 			// Если тип узла не установлен
 			case static_cast <uint8_t> (event::node_t::NONE): {
 				/**
+				 * @note Определение адреса, с которого доступна внешняя сеть,
+				 *       стоит создания сокета, подключения к нему, запроса
+				 *       имени сокета и его закрытия, а следом ещё и обхода
+				 *       списка сетевых интерфейсов. При массовом создании
+				 *       событий эта работа повторялась бы на каждое событие,
+				 *       поэтому результат запоминается на время жизни записи.
+				 *
+				 */
+				// Если адрес удалось восстановить из запомненной записи
+				if(::restore(source))
+					// Выходим из функции
+					return;
+				/**
 				 * Определяем тип адреса
 				 */
 				switch(source.ip->size){
@@ -601,9 +803,12 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 								// Устанавливаем название сетевого интерфейса
 								source.iface = this->_iface.name(source.ip.get());
 								// Если название сетевого интерфейса получено
-								if(!source.iface.empty())
+								if(!source.iface.empty()){
 									// Получаем MAC-адрес сетевого интерфейса
 									this->fillSource(source);
+									// Запоминаем определённый адрес до устаревания записи
+									::remember(source);
+								}
 							}
 						}
 						// Закрываем сокет
@@ -644,9 +849,12 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 								// Устанавливаем название сетевого интерфейса
 								source.iface = this->_iface.name(source.ip.get());
 								// Если название сетевого интерфейса получено
-								if(!source.iface.empty())
+								if(!source.iface.empty()){
 									// Получаем MAC-адрес сетевого интерфейса
 									this->fillSource(source);
+									// Запоминаем определённый адрес до устаревания записи
+									::remember(source);
+								}
 							}
 						}
 						// Закрываем сокет
@@ -1455,7 +1663,15 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
  *
  */
 awh::eth::Network_Address::Network_Address(const fmk_t * fmk, const log_t * log) noexcept :
- _iface(fmk, log), _fmk(fmk), _log(log) {}
+ _iface(fmk, log), _fmk(fmk), _log(log) {
+	/**
+	 * Выполняем одноразовую настройку блокировки для всех экземпляров класса
+	 */
+	std::call_once(::__awh_init_once__, []() noexcept {
+		// Активируем работу мьютекса блокировки потока при работе с записями об адресах
+		::__awh_outward_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	});
+}
 /**
  * @brief Деструктор
  *

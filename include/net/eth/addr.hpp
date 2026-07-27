@@ -60,6 +60,14 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 *
+				 */
+				void threadSafety(const bool mode) noexcept;
+			public:
+				/**
 				 * @brief Метод заполнения источника сетевых адресов по имени сетевого интерфейса
 				 *
 				 * @param source объект источника сетевых адресов
