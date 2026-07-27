@@ -2344,3 +2344,49 @@ TEST_F(ParserHttp3Fixture, HeadResponseSkipsBodyPhase){
 	// Ошибок уровня соединения быть не должно
 	ASSERT_TRUE(client.events.errors.empty());
 }
+
+/**
+ * @brief Проверка разбора приоритета с параметрами structured fields
+ *
+ * @details Член словаря вправе нести параметры (RFC 8941 §3.1.2): неизвестные
+ *          игнорируются, но само значение члена от этого не отменяется
+ *
+ */
+TEST_F(ParserHttp3Fixture, PriorityParametersIgnored){
+	// Сторона сервера
+	endpoint_t server;
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Отправляем параметры соединения со стороны сервера
+	server.parser->sendSettings();
+	// Собираем управляющий поток клиента с кадром параметров
+	std::string control = ::unistream(static_cast <uint64_t> (unistream_t::CONTROL));
+	// Дописываем кадр параметров соединения
+	control.append(::settings());
+	// Подаём управляющий поток клиента
+	ASSERT_EQ(this->feed(server, 2, control), status_t::OK);
+	// Открываем поток запроса подачей начала кадра секции полей
+	ASSERT_EQ(this->feed(server, 0, std::string(1, '\x01')), status_t::OK);
+	// Собираем кадр приоритета с параметрами у обоих членов словаря
+	std::string update;
+	// Дописываем кадр приоритета потока
+	frame::serialize::priorityUpdate(update, false, 0, "u=1;q=0.5, i;x=1");
+	// Подаём кадр приоритета
+	ASSERT_EQ(this->feed(server, 2, update), status_t::OK);
+	// Срочность обязана примениться, несмотря на параметр члена
+	ASSERT_EQ(server.parser->priority(0).urgency, 1);
+	// Признак инкрементальной доставки обязан примениться вместе со своим параметром
+	ASSERT_TRUE(server.parser->priority(0).incremental);
+	// Собираем кадр приоритета с пробелом перед разделителем параметров
+	update.clear();
+	// Дописываем кадр приоритета потока
+	frame::serialize::priorityUpdate(update, false, 0, "u=6 ;q=0.1");
+	// Подаём кадр приоритета
+	ASSERT_EQ(this->feed(server, 2, update), status_t::OK);
+	// Новая срочность обязана примениться
+	ASSERT_EQ(server.parser->priority(0).urgency, 6);
+	// Признак инкрементальной доставки обязан вернуться к значению по умолчанию
+	ASSERT_FALSE(server.parser->priority(0).incremental);
+	// Ошибок уровня соединения быть не должно
+	ASSERT_TRUE(server.events.errors.empty());
+}

@@ -1419,6 +1419,157 @@ TEST_F(ParserFixture, TransferEncodingEmptyListElementTest){
 }
 
 /**
+ * @brief Метод тестирования кадрирования тела при транспортном кодировании без финального chunked
+ *
+ * @details RFC 9112 §6.3 п.4 разводит два направления: у ответа сервера с заголовком
+ *          Transfer-Encoding, где chunked не является последним кодированием, длина
+ *          тела определяется чтением до закрытия соединения, а у запроса клиента такое
+ *          сообщение надёжно кадрировать нечем и получатель обязан отвергнуть его.
+ *          Пустое значение заголовка - частный случай того же правила: кодирований в
+ *          нём нет, а значит chunked последним не является. Ужесточать поведение ответа
+ *          до ошибки нельзя - это прямое расхождение с нормативным текстом
+ *
+ */
+TEST_F(ParserFixture, TransferEncodingWithoutFinalChunkedTest){
+	/**
+	 * @brief Функция разбора сообщения с заданным значением заголовка Transfer-Encoding
+	 *
+	 * @param direct направление трафика
+	 * @param value  значение заголовка транспортного кодирования
+	 * @param body   собранное тело сообщения
+	 * @return       код ошибки разбора
+	 *
+	 */
+	auto probe = [this](const direct_t direct, const std::string & value, std::string & body) noexcept -> parser_http_t::error_t {
+		// Создаём объект парсера заданного направления
+		auto parser = this->make(direct);
+		// Если выполняется разбор ответа сервера
+		if(direct == direct_t::RESPONSE)
+			// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+			parser->method(method_t::GET);
+		// Подписываем сборщик тела сообщения
+		parser->on(parser_http_t::data_callback_t([&body](const int32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
+			// Накапливаем полученную порцию тела сообщения
+			body.append(static_cast <const char *> (buffer), size);
+			// Продолжаем разбор
+			return true;
+		}));
+		// Формируем разбираемое сообщение
+		const std::string message = ((direct == direct_t::RESPONSE)
+		 ? ("HTTP/1.1 200 OK\r\nTransfer-Encoding:" + value + "\r\n\r\nAWH")
+		 : ("POST / HTTP/1.1\r\nHost: anyks.com\r\nTransfer-Encoding:" + value + "\r\n\r\nAWH"));
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Если выполняется разбор ответа сервера - сообщаем о закрытии соединения
+		if(direct == direct_t::RESPONSE)
+			// Уведомляем парсер о закрытии соединения
+			parser->eof();
+		// Выводим код ошибки разбора
+		return parser->error();
+	};
+	/**
+	 * Ответ сервера с кодированием без финального chunked кадрируется закрытием соединения
+	 */
+	{
+		// Собранное тело сообщения
+		std::string body;
+		// Проверяем что ответ принимается
+		ASSERT_EQ(probe(direct_t::RESPONSE, " gzip", body), parser_http_t::error_t::NONE);
+		// Проверяем что тело прочитано до закрытия соединения
+		ASSERT_EQ(body, "AWH");
+	}
+	/**
+	 * Пустое значение заголовка у ответа - тот же случай отсутствия финального chunked
+	 */
+	{
+		// Собранное тело сообщения
+		std::string body;
+		// Проверяем что ответ принимается
+		ASSERT_EQ(probe(direct_t::RESPONSE, "", body), parser_http_t::error_t::NONE);
+		// Проверяем что тело прочитано до закрытия соединения
+		ASSERT_EQ(body, "AWH");
+	}
+	/**
+	 * Запрос клиента с тем же кодированием надёжно кадрировать нечем
+	 */
+	{
+		// Собранное тело сообщения
+		std::string body;
+		// Проверяем что запрос отвергается
+		ASSERT_EQ(probe(direct_t::REQUEST, " gzip", body), parser_http_t::error_t::INVALID_TRANSFER_ENCODING);
+		// Проверяем что тело отвергнутого запроса не собиралось
+		ASSERT_TRUE(body.empty());
+	}
+	/**
+	 * Пустое значение заголовка у запроса отвергается точно так же
+	 */
+	{
+		// Собранное тело сообщения
+		std::string body;
+		// Проверяем что запрос отвергается
+		ASSERT_EQ(probe(direct_t::REQUEST, "", body), parser_http_t::error_t::INVALID_TRANSFER_ENCODING);
+		// Проверяем что тело отвергнутого запроса не собиралось
+		ASSERT_TRUE(body.empty());
+	}
+}
+
+/**
+ * @brief Метод тестирования кодов состояния вне диапазона 100..599
+ *
+ * @details Стартовая строка ответа определяет код состояния как три десятичные цифры
+ *          (RFC 9112 §4), а RFC 9110 §15 объявляет коды вне диапазона 100..599
+ *          недопустимыми и предписывает обрабатывать такой ответ так, как если бы код
+ *          принадлежал классу 5xx. Отвергать сообщение парсер не вправе: предписание
+ *          адресовано получателю уже принятого ответа, и тело у класса 5xx кадрируется
+ *          по обычным правилам
+ *
+ */
+TEST_F(ParserFixture, StatusCodeOutOfRangeTest){
+	/**
+	 * @brief Функция разбора ответа с заданным кодом состояния
+	 *
+	 * @param code код состояния ответа сервера
+	 * @param body собранное тело сообщения
+	 * @return     разобранный код состояния
+	 *
+	 */
+	auto probe = [this](const std::string & code, std::string & body) noexcept -> uint16_t {
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		parser->method(method_t::GET);
+		// Подписываем сборщик тела сообщения
+		parser->on(parser_http_t::data_callback_t([&body](const int32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
+			// Накапливаем полученную порцию тела сообщения
+			body.append(static_cast <const char *> (buffer), size);
+			// Продолжаем разбор
+			return true;
+		}));
+		// Формируем разбираемое сообщение
+		const std::string message = ("HTTP/1.1 " + code + " Weird\r\nContent-Length: 3\r\n\r\nAWH");
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Проверяем что сообщение полностью разобрано
+		EXPECT_EQ(parser->status(), parser_t::status_t::COMPLETE) << code;
+		// Проверяем что ошибок разбора нет
+		EXPECT_EQ(parser->error(), parser_http_t::error_t::NONE) << code;
+		// Выводим разобранный код состояния
+		return static_cast <const response_t *> (parser->message().provider.get())->code;
+	};
+	/**
+	 * Выполняем перебор кодов состояния вне допустимого диапазона
+	 */
+	for(const std::string & code : {std::string("000"), std::string("099"), std::string("600"), std::string("999")}){
+		// Собранное тело сообщения
+		std::string body;
+		// Проверяем что код состояния разобран как есть
+		ASSERT_EQ(probe(code, body), static_cast <uint16_t> (std::stoi(code))) << code;
+		// Проверяем что тело кадрировано по обычным правилам
+		ASSERT_EQ(body, "AWH") << code;
+	}
+}
+
+/**
  * @brief Метод тестирования отсечения параметров у токенов заголовка Connection
  *
  * @details Элементом списка Connection обязан быть голый токен (RFC 9110 §7.6.1),

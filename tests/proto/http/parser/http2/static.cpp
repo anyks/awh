@@ -6437,3 +6437,277 @@ TEST_F(ParserHttp2Fixture, HeadlessMessageSkipsBodyPhaseTest){
 		ASSERT_FALSE(clientEvents.errorFired);
 	}
 }
+
+/**
+ * @brief Метод проверки разбора приоритета с параметрами structured fields
+ *
+ * @details Член словаря вправе нести параметры (RFC 8941 §3.1.2): неизвестные
+ *          игнорируются, но само значение члена от этого не отменяется.
+ *          Проверяется через планировщик отправки: повышенная срочность
+ *          с параметром обязана обслуживаться первой
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityParametersIgnoredTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Получаем параметры SETTINGS клиента
+	auto settings = client->settings();
+	/**
+	 * Закрываем начальное окно приёма клиента: сервер поставит тела обоих потоков
+	 * в очередь, но не отправит их, пока окно закрыто
+	 */
+	settings.windowSize = 0;
+	// Применяем параметры SETTINGS клиента
+	client->settings(settings);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Порядок, в котором сервер отдаёт тела потоков
+	std::vector <uint32_t> order;
+	// Устанавливаем функцию обратного вызова тела на клиенте для сбора порядка отдачи
+	client->on(parser_http2_t::data_callback_t([&order](const uint32_t sid, const void *, const size_t, const bool) noexcept -> bool {
+		// Если поток ещё не отмечен последним в порядке отдачи
+		if(order.empty() || (order.back() != sid))
+			// Запоминаем поток, отдающий данные
+			order.push_back(sid);
+		// Продолжаем разбор
+		return true;
+	}));
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/data");
+	// Выделяем идентификатор первого потока клиента (срочность по умолчанию)
+	const uint32_t first = client->nextStreamId();
+	// Открываем первый поток
+	client->sendHeaders(first, fields, true);
+	// Формируем заголовки запроса повышенной срочности с параметром члена словаря
+	std::vector <h2::hpack::field_t> urgent = fields;
+	// Дописываем заголовок расширенного приоритета с параметром
+	urgent.emplace_back("priority", "u=0;q=0.5");
+	// Выделяем идентификатор второго потока клиента
+	const uint32_t second = client->nextStreamId();
+	// Открываем второй поток с повышенной срочностью
+	client->sendHeaders(second, urgent, true);
+	// Формируем заголовки ответа первого потока
+	headers_t firstResponse(std::make_unique <response_t> (version_t::HTTP2, 200));
+	// Отправляем заголовки ответа первого потока
+	server->sendHeaders(first, firstResponse, false);
+	// Формируем заголовки ответа второго потока
+	headers_t secondResponse(std::make_unique <response_t> (version_t::HTTP2, 200));
+	// Отправляем заголовки ответа второго потока
+	server->sendHeaders(second, secondResponse, false);
+	// Формируем тело ответа
+	const std::string body(8 * 1024, 'z');
+	// Ставим тело в очередь отправки первого потока (срочность по умолчанию)
+	server->sendData(first, body.data(), body.size(), true);
+	// Ставим тело в очередь отправки второго потока (повышенная срочность)
+	server->sendData(second, body.data(), body.size(), true);
+	// Проверяем что при закрытом окне приёма ни один поток данных не отдал
+	ASSERT_TRUE(order.empty());
+	// Открываем начальное окно приёма клиента
+	settings.windowSize = 65535;
+	// Применяем параметры SETTINGS клиента
+	client->settings(settings);
+	// Отправляем обновлённые параметры: сервер сдвинет окна потоков и прокачает отправку
+	client->sendSettings();
+	// Проверяем что оба потока получили данные
+	ASSERT_EQ(order.size(), 2u);
+	// Проверяем что более срочный поток обслужен первым, несмотря на параметр члена
+	ASSERT_EQ(order.front(), second);
+}
+
+/**
+ * @brief Метод проверки приоритета, объявленного до открытия потока
+ *
+ * @details Кадр PRIORITY_UPDATE допустим для потока в состоянии idle и вправе
+ *          опередить HEADERS (RFC 9218 §7.1): сигнал обязан примениться, когда
+ *          поток откроется. Без этого приоритет терялся молча, и планировщик
+ *          обслуживал потоки в порядке идентификаторов
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityUpdateBeforeStreamTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Получаем параметры SETTINGS клиента
+	auto settings = client->settings();
+	/**
+	 * Закрываем начальное окно приёма клиента: сервер поставит тела обоих потоков
+	 * в очередь, но не отправит их, пока окно закрыто
+	 */
+	settings.windowSize = 0;
+	// Применяем параметры SETTINGS клиента
+	client->settings(settings);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Порядок, в котором сервер отдаёт тела потоков
+	std::vector <uint32_t> order;
+	// Устанавливаем функцию обратного вызова тела на клиенте для сбора порядка отдачи
+	client->on(parser_http2_t::data_callback_t([&order](const uint32_t sid, const void *, const size_t, const bool) noexcept -> bool {
+		// Если поток ещё не отмечен последним в порядке отдачи
+		if(order.empty() || (order.back() != sid))
+			// Запоминаем поток, отдающий данные
+			order.push_back(sid);
+		// Продолжаем разбор
+		return true;
+	}));
+	// Формируем заголовки запроса без объявления приоритета
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/data");
+	// Выделяем идентификатор первого потока клиента (срочность по умолчанию)
+	const uint32_t first = client->nextStreamId();
+	// Открываем первый поток
+	client->sendHeaders(first, fields, true);
+	// Выделяем идентификатор второго потока клиента
+	const uint32_t second = client->nextStreamId();
+	/**
+	 * Объявляем повышенную срочность второго потока до его открытия: на стороне
+	 * сервера это поток в состоянии idle, объекта под него ещё нет
+	 */
+	client->sendPriority(second, 0, false);
+	// Открываем второй поток без объявления приоритета в заголовках
+	client->sendHeaders(second, fields, true);
+	// Формируем заголовки ответа первого потока
+	headers_t firstResponse(std::make_unique <response_t> (version_t::HTTP2, 200));
+	// Отправляем заголовки ответа первого потока
+	server->sendHeaders(first, firstResponse, false);
+	// Формируем заголовки ответа второго потока
+	headers_t secondResponse(std::make_unique <response_t> (version_t::HTTP2, 200));
+	// Отправляем заголовки ответа второго потока
+	server->sendHeaders(second, secondResponse, false);
+	// Формируем тело ответа
+	const std::string body(8 * 1024, 'z');
+	// Ставим тело в очередь отправки первого потока (срочность по умолчанию)
+	server->sendData(first, body.data(), body.size(), true);
+	// Ставим тело в очередь отправки второго потока (срочность объявлена заранее)
+	server->sendData(second, body.data(), body.size(), true);
+	// Проверяем что при закрытом окне приёма ни один поток данных не отдал
+	ASSERT_TRUE(order.empty());
+	// Открываем начальное окно приёма клиента
+	settings.windowSize = 65535;
+	// Применяем параметры SETTINGS клиента
+	client->settings(settings);
+	// Отправляем обновлённые параметры: сервер сдвинет окна потоков и прокачает отправку
+	client->sendSettings();
+	// Проверяем что оба потока получили данные
+	ASSERT_EQ(order.size(), 2u);
+	// Проверяем что поток с заранее объявленной срочностью обслужен первым
+	ASSERT_EQ(order.front(), second);
+}
+
+/**
+ * @brief Метод проверки старшинства заголовка приоритета над опередившим кадром
+ *
+ * @details Заголовок [priority] приходит позже кадра PRIORITY_UPDATE, объявленного
+ *          до открытия потока, и обязан его перекрыть - так же поступает эталонная
+ *          реализация. Сторожит порядок применения: отложенный сигнал не вправе
+ *          лечь поверх объявленного заголовками
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityHeaderOverridesDeferredTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Получаем параметры SETTINGS клиента
+	auto settings = client->settings();
+	// Закрываем начальное окно приёма клиента (проверяется порядок планирования)
+	settings.windowSize = 0;
+	// Применяем параметры SETTINGS клиента
+	client->settings(settings);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Порядок, в котором сервер отдаёт тела потоков
+	std::vector <uint32_t> order;
+	// Устанавливаем функцию обратного вызова тела на клиенте для сбора порядка отдачи
+	client->on(parser_http2_t::data_callback_t([&order](const uint32_t sid, const void *, const size_t, const bool) noexcept -> bool {
+		// Если поток ещё не отмечен последним в порядке отдачи
+		if(order.empty() || (order.back() != sid))
+			// Запоминаем поток, отдающий данные
+			order.push_back(sid);
+		// Продолжаем разбор
+		return true;
+	}));
+	// Формируем заголовки запроса без объявления приоритета
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/data");
+	// Выделяем идентификатор первого потока клиента (срочность по умолчанию)
+	const uint32_t first = client->nextStreamId();
+	// Открываем первый поток
+	client->sendHeaders(first, fields, true);
+	// Выделяем идентификатор второго потока клиента
+	const uint32_t second = client->nextStreamId();
+	// Объявляем наивысшую срочность второго потока до его открытия
+	client->sendPriority(second, 0, false);
+	// Формируем заголовки запроса с пониженной срочностью
+	std::vector <h2::hpack::field_t> lazy = fields;
+	// Дописываем заголовок расширенного приоритета с наименьшей срочностью
+	lazy.emplace_back("priority", "u=7");
+	// Открываем второй поток с объявленной заголовками срочностью
+	client->sendHeaders(second, lazy, true);
+	// Формируем заголовки ответа первого потока
+	headers_t firstResponse(std::make_unique <response_t> (version_t::HTTP2, 200));
+	// Отправляем заголовки ответа первого потока
+	server->sendHeaders(first, firstResponse, false);
+	// Формируем заголовки ответа второго потока
+	headers_t secondResponse(std::make_unique <response_t> (version_t::HTTP2, 200));
+	// Отправляем заголовки ответа второго потока
+	server->sendHeaders(second, secondResponse, false);
+	// Формируем тело ответа
+	const std::string body(8 * 1024, 'z');
+	// Ставим тело в очередь отправки первого потока (срочность по умолчанию)
+	server->sendData(first, body.data(), body.size(), true);
+	// Ставим тело в очередь отправки второго потока (срочность понижена заголовком)
+	server->sendData(second, body.data(), body.size(), true);
+	// Открываем начальное окно приёма клиента
+	settings.windowSize = 65535;
+	// Применяем параметры SETTINGS клиента
+	client->settings(settings);
+	// Отправляем обновлённые параметры: сервер сдвинет окна потоков и прокачает отправку
+	client->sendSettings();
+	// Проверяем что оба потока получили данные
+	ASSERT_EQ(order.size(), 2u);
+	// Проверяем что срочность из заголовков перекрыла опередивший её кадр
+	ASSERT_EQ(order.front(), first);
+}

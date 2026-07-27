@@ -1856,6 +1856,13 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 						stream_t & stream = this->stream(header.streamId);
 						// Переводим поток в состояние OPEN
 						stream.state = h2::stream_state_t::OPEN;
+						/**
+						 * Применяем приоритет, объявленный кадром PRIORITY_UPDATE до открытия
+						 * потока (RFC 9218 §7.1). Делается это до разбора блока заголовков:
+						 * заголовок [priority] пришёл позже кадра и обязан его перекрыть -
+						 * так же поступает эталонная реализация
+						 */
+						this->applyPendingPriority(stream);
 						// Если функция обратного вызова потребовала отклонить поток
 						if(!this->fireBegin(header.streamId)){
 							/**
@@ -1904,9 +1911,8 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 							refused = true;
 						}
 					} break;
-					// Половина пира закрыта либо поток закрыт
-					case h2::stream_state_t::HALF_CLOSED_REMOTE:
-					case h2::stream_state_t::CLOSED: {
+					// Половина пира закрыта
+					case h2::stream_state_t::HALF_CLOSED_REMOTE: {
 						/**
 						 * HEADERS на закрытой половине потока - потоковая ошибка (RFC 9113 §5.1),
 						 * соединение живёт. Блок заголовков всё равно принимаем и декодируем,
@@ -1918,6 +1924,16 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 						// Помечаем что поток отклонён (события по нему не порождаем)
 						refused = true;
 					} break;
+					// Поток закрыт с обеих сторон
+					case h2::stream_state_t::CLOSED:
+						/**
+						 * Кадр после принятого END_STREAM - ошибка соединения (RFC 9113 §5.1),
+						 * в отличие от закрытой половины потока выше. Ветка защитная и через
+						 * карту потоков недостижима: состояние CLOSED присваивается только
+						 * рядом с closeStream(), а тот стирает поток из карты до возврата.
+						 * Рабочий путь для завершённого потока - ветка stream == nullptr выше
+						 */
+						return this->fail(error_t::STREAM_CLOSED, "HEADERS on closed stream");
 					// Остальные состояния для HEADERS недопустимы
 					default:
 						// Фиксируем ошибку уровня соединения
@@ -2271,14 +2287,22 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				return this->fail(error_t::PROTOCOL_ERROR, "PRIORITY_UPDATE for wrong stream");
 			// Выполняем поиск потока
 			stream_t * stream = this->findStream(sid);
-			/**
-			 * Кадр допустим и для ещё не открытого потока - приоритет запоминается
-			 * заранее (RFC 9218 §7.1). Такой поток мы не создаём: до прихода HEADERS
-			 * это позволило бы пиру заполнить карту потоков даром
-			 */
+			// Если поток уже открыт
 			if(stream != nullptr)
 				// Применяем расширенный приоритет к потоку
 				this->applyPriority(* stream, value);
+			/**
+			 * Кадр допустим и для потока в состоянии idle: сигнал вправе опередить
+			 * HEADERS и обязан примениться при открытии потока (RFC 9218 §7.1).
+			 * Объект потока под него не создаём - до прихода HEADERS это позволило бы
+			 * пиру заполнить карту потоков даром; запись кладётся в кольцо, ёмкость
+			 * которого и ограничивает цену такого сигнала. Идентификатор не выше
+			 * наибольшего принятого относится к потоку, который уже открывался:
+			 * приоритет закрытого потока смысла не имеет и не запоминается
+			 */
+			else if(sid > this->_transfer.lastStreamId)
+				// Запоминаем приоритет до открытия потока
+				this->deferPriority(sid, value);
 			// Обработка фрейма завершена
 			return h2::status_t::OK;
 		}
@@ -3163,6 +3187,23 @@ void awh::http::Parser_HTTP2::pump() noexcept {
 		 * Собираем снимок идентификаторов: прокачка может удалить поток из карты
 		 */
 		for(const auto & item : this->_transfer.streams){
+			/**
+			 * Данные тела отправляются только из состояний open и half-closed(remote)
+			 * (RFC 9113 §5.1) - в остальных прокачивать нечего
+			 */
+			if((item.second.state != h2::stream_state_t::OPEN) && (item.second.state != h2::stream_state_t::HALF_CLOSED_REMOTE))
+				// Переходим к следующему потоку карты
+				continue;
+			/**
+			 * Поток без данных в буфере, без источника, без отложенного завершения и
+			 * без отложенных трейлеров прогресса дать не может: он ждёт пира, а не окна
+			 * отправки. В снимок такие потоки не берём - иначе упорядочивание стоило бы
+			 * тем дороже, чем больше потоков соединения простаивает, а простаивают
+			 * на сервере почти все: тело отдаётся единицами из сотен открытых
+			 */
+			if((item.second.pending() == 0) && (item.second.source == nullptr) && !item.second.endStreamPending && !item.second.trailersPending)
+				// Переходим к следующему потоку карты
+				continue;
 			// Формируем ячейку снимка планировщика
 			transfer_t::slot_t slot;
 			// Запоминаем идентификатор потока
@@ -3517,14 +3558,26 @@ void awh::http::Parser_HTTP2::replenishReceiveWindow(stream_t * stream, const ui
  *
  */
 void awh::http::Parser_HTTP2::applyPriority(stream_t & stream, string_view value) noexcept {
+	// Разбираем сигнал приоритета прямо в признаки потока
+	this->parsePriority(value, stream.urgency, stream.incremental);
+}
+/**
+ * @brief Метод разбора значения поля расширенного приоритета (RFC 9218 §4)
+ *
+ * @param value       значение поля приоритета
+ * @param urgency     срочность потока (выходной параметр)
+ * @param incremental признак инкрементальной доставки (выходной параметр)
+ *
+ */
+void awh::http::Parser_HTTP2::parsePriority(const string_view value, uint8_t & urgency, bool & incremental) const noexcept {
 	/**
 	 * Сигнал приоритета задаёт его целиком: параметр, в сигнале отсутствующий,
 	 * принимает значение по умолчанию, а не сохраняет прежнее (RFC 9218 §4).
 	 * Без сброса [u=1] после прежнего [i] оставлял бы поток инкрементальным
 	 */
-	stream.urgency = h2::proto::DEFAULT_URGENCY;
+	urgency = h2::proto::DEFAULT_URGENCY;
 	// Снимаем признак инкрементальной доставки потока
-	stream.incremental = false;
+	incremental = false;
 	// Текущая позиция разбора значения поля приоритета
 	size_t pos = 0;
 	/**
@@ -3547,6 +3600,22 @@ void awh::http::Parser_HTTP2::applyPriority(stream_t & stream, string_view value
 		while(!item.empty() && ((item.back() == ' ') || (item.back() == '\t')))
 			// Сдвигаем конец элемента
 			item.remove_suffix(1);
+		/**
+		 * Отсекаем параметры члена словаря (RFC 8941 §3.1.2): они уточняют значение,
+		 * но самого значения не отменяют, а неизвестные обязаны игнорироваться.
+		 * Без этого [u=1;q=0.5] отбрасывался целиком, и срочность оставалась
+		 * значением по умолчанию. Обрезка по первой точке с запятой безопасна:
+		 * значения ключей [u] и [i] - целое и логическое, точки с запятой в них нет
+		 */
+		const size_t params = item.find(';');
+		// Если параметры члена словаря заданы
+		if(params != string_view::npos)
+			// Отсекаем параметры члена словаря
+			item = item.substr(0, params);
+		// Снимаем пробельные символы, оставшиеся перед разделителем параметров
+		while(!item.empty() && ((item.back() == ' ') || (item.back() == '\t')))
+			// Сдвигаем конец элемента
+			item.remove_suffix(1);
 		// Пустой элемент игнорируем
 		if(item.empty())
 			// Переходим к следующему элементу словаря
@@ -3558,20 +3627,87 @@ void awh::http::Parser_HTTP2::applyPriority(stream_t & stream, string_view value
 			// Значение срочности обязано быть цифрой в допустимом диапазоне
 			if((letter >= '0') && (letter <= ('0' + static_cast <char> (h2::proto::MAX_URGENCY))))
 				// Применяем срочность потока
-				stream.urgency = static_cast <uint8_t> (letter - '0');
+				urgency = static_cast <uint8_t> (letter - '0');
 		// Если получен ключ инкрементальной доставки без значения (эквивалент ?1)
 		} else if(item == value::INCREMENTAL)
 			// Помечаем поток инкрементальным
-			stream.incremental = true;
+			incremental = true;
 		// Если получен ключ инкрементальной доставки со значением
 		else if(item == value::INCREMENTAL_ON)
 			// Помечаем поток инкрементальным
-			stream.incremental = true;
+			incremental = true;
 		// Если инкрементальная доставка явно отключена
 		else if(item == value::INCREMENTAL_OFF)
 			// Снимаем признак инкрементальной доставки
-			stream.incremental = false;
+			incremental = false;
 	}
+}
+/**
+ * @brief Метод запоминания приоритета ещё не открытого потока (RFC 9218 §7.1)
+ *
+ * @param id    идентификатор приоритизируемого потока
+ * @param value значение поля приоритета
+ *
+ */
+void awh::http::Parser_HTTP2::deferPriority(const uint32_t id, const string_view value) noexcept {
+	// Формируем запись отложенного приоритета
+	transfer_t::pending_t pending;
+	// Запоминаем идентификатор приоритизируемого потока
+	pending.id = id;
+	// Разбираем сигнал приоритета в поля записи
+	this->parsePriority(value, pending.urgency, pending.incremental);
+	/**
+	 * Выполняем поиск прежней записи по этому же потоку
+	 */
+	for(transfer_t::pending_t & item : this->_transfer.pendingPriorities){
+		// Если запись по этому потоку уже есть
+		if(item.id == id){
+			// Новый сигнал заменяет прежний целиком (RFC 9218 §4)
+			item = pending;
+			// Выходим из метода
+			return;
+		}
+	}
+	// Если кольцо заполнено - вытесняем самую старую запись
+	if(this->_transfer.pendingPriorities.size() >= PENDING_PRIORITIES_CACHE)
+		// Снимаем самую старую запись кольца
+		this->_transfer.pendingPriorities.erase(this->_transfer.pendingPriorities.begin());
+	// Запоминаем приоритет до открытия потока
+	this->_transfer.pendingPriorities.push_back(pending);
+}
+/**
+ * @brief Метод применения приоритета, отложенного до открытия потока
+ *
+ * @param stream объект открываемого потока
+ *
+ */
+void awh::http::Parser_HTTP2::applyPendingPriority(stream_t & stream) noexcept {
+	// Если отложенных приоритетов нет - применять нечего
+	if(this->_transfer.pendingPriorities.empty())
+		// Выходим из метода
+		return;
+	// Число записей, сохраняемых в кольце
+	size_t count = 0;
+	/**
+	 * Уплотняем кольцо на месте: записи потоков с идентификатором не выше
+	 * открываемого сохранению не подлежат. Идентификаторы пира строго возрастают
+	 * (RFC 9113 §5.1.1), поэтому такие потоки открыты уже не будут, и без снятия
+	 * их сигналы вытесняли бы из кольца актуальные
+	 */
+	for(const transfer_t::pending_t & item : this->_transfer.pendingPriorities){
+		// Если запись относится к открываемому потоку
+		if(item.id == stream.id){
+			// Применяем срочность потока
+			stream.urgency = item.urgency;
+			// Применяем признак инкрементальной доставки потока
+			stream.incremental = item.incremental;
+		// Если запись относится к потоку, который ещё может быть открыт
+		} else if(item.id > stream.id)
+			// Сохраняем запись в кольце
+			this->_transfer.pendingPriorities[count++] = item;
+	}
+	// Усекаем кольцо до числа сохранённых записей
+	this->_transfer.pendingPriorities.resize(count);
 }
 /**
  * @brief Метод предупреждения о полностью снятом лимите списка заголовков
@@ -4089,6 +4225,8 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 	this->_transfer.pumpIds.clear();
 	// Очищаем снимок идентификаторов закрываемых потоков
 	this->_transfer.closeIds.clear();
+	// Очищаем кольцо приоритетов ещё не открытых потоков
+	this->_transfer.pendingPriorities.clear();
 	/**
 	 * Очищаем список декодированных заголовков: его представления ссылаются
 	 * в арену пересоздаваемого декодера и после сброса недействительны
