@@ -204,7 +204,6 @@
  */
 #include <set>
 #include <ctime>
-#include <queue>
 #include <cerrno>
 #include <atomic>
 #include <memory>
@@ -1450,6 +1449,8 @@ namespace io {
 	 *
 	 */
 	typedef struct Origin : public remote_t {
+		// Идентификатор события сервера, породившего сессию
+		event::id_t sid;
 		// Объект пропускной способности записи
 		wrate_t wrate;
 		// Объект передачи данных
@@ -1458,8 +1459,6 @@ namespace io {
 		endpoint_t endpoint;
 		// Общее количество подключений сервера
 		uint32_t & origins;
-		// Идентификатор события сервера, породившего сессию
-		event::id_t server;
 		/**
 		 * Ключи, по которым маршрутизируется сессия. Протоколы со сменой
 		 * идентификатора на лету адресуют одну сессию произвольным их числом,
@@ -1476,7 +1475,7 @@ namespace io {
 		 *
 		 */
 		explicit Origin(uint32_t & num, const fmk_t * fmk, const log_t * log) noexcept :
-		 wrate(5), transfer(fmk, log), origins(num), server(0) {}
+		 sid(0), wrate(5), transfer(fmk, log), origins(num) {}
 	} origin_t;
 
 	/**
@@ -28393,10 +28392,10 @@ namespace io {
 				{
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (ret.first->second.get());
+					// Устанавливаем идентификатор события сервера, породившего сессию
+					origin->sid = server->id;
 					// Устанавливаем идентификатор объекта однорангового узла-источника
 					origin->id = ret.first->first;
-					// Устанавливаем идентификатор события сервера, породившего сессию
-					origin->server = server->id;
 					// Регистрируем сессию источника по идентификатору источника
 					::__awh_origin_sessions__.emplace(sid, origin);
 					// Запоминаем ключ маршрутизации на самой сессии
@@ -48534,7 +48533,7 @@ bool awh::engine::IO::bind(const event::id_t id, const net::origin_key_t & key) 
 			// Идентификатор сессии источника
 			::origin_id_t sid;
 			// Формируем идентификатор источника из ключа сессии
-			sid.from(origin->server, key);
+			sid.from(origin->sid, key);
 			// Выполняем поиск ключа маршрутизации
 			auto j = ::__awh_origin_sessions__.find(sid);
 			// Если ключ маршрутизации уже занят
@@ -48606,7 +48605,7 @@ bool awh::engine::IO::unbind(const event::id_t id, const net::origin_key_t & key
 			// Идентификатор сессии источника
 			::origin_id_t sid;
 			// Формируем идентификатор источника из ключа сессии
-			sid.from(origin->server, key);
+			sid.from(origin->sid, key);
 			// Выполняем поиск ключа маршрутизации
 			auto j = ::__awh_origin_sessions__.find(sid);
 			// Если ключ маршрутизации не найден либо принадлежит другой сессии
@@ -63291,6 +63290,17 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 * Выполняем опрос ядра на наличие событий сокетов
 			 */
 			const ssize_t events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__, AWH_MAX_POLL_EVENTS_COUNT, pts));
+			{
+				static uint64_t calls = 0, total = 0, peak = 0;
+				calls++;
+				if(events > 0){
+					total += (uint64_t) events;
+					if((uint64_t) events > peak){
+						peak = (uint64_t) events;
+						::fprintf(stderr, "[ЗАМЕР] новый пик событий за опрос=%llu опросов=%llu всего событий=%llu предел очереди=%d\n", (unsigned long long) peak, (unsigned long long) calls, (unsigned long long) total, (int32_t) AWH_MAX_POLL_EVENTS_COUNT);
+					}
+				}
+			}
 			// Если мы получили ошибку при опросе событий
 			if(events < 0){
 				// Если ошибка не была вызвана прерыванием системного вызова
