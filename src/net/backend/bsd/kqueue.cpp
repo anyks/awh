@@ -1678,8 +1678,20 @@ namespace {
 	 *       массива и удваивают его, когда опрос вернул массив заполненным
 	 *       целиком - верный признак того, что готовых событий было больше
 	 *
+	 * @note Массив держится умным указателем, а не вектором. Вектор при смене
+	 *       размера переносит прежнее содержимое и обнуляет новые записи, а здесь
+	 *       не нужно ни то, ни другое: содержимое прошлого опроса уже разобрано, а
+	 *       новые записи ядро заполнит само. Смена размера сводится к выделению
+	 *       нового массива и освобождению прежнего
+	 *
 	 */
-	vector <struct kevent> __awh_events__(AWH_MAX_POLL_EVENTS_COUNT);
+	unique_ptr <struct kevent []> __awh_events__(new struct kevent [AWH_MAX_POLL_EVENTS_COUNT]);
+
+	/**
+	 * @brief Текущий размер массива активных событий kqueue
+	 *
+	 */
+	size_t __awh_events_size__ = AWH_MAX_POLL_EVENTS_COUNT;
 
 	/**
 	 * @brief Количество опросов подряд, не заполнивших и четверти массива событий
@@ -64178,7 +64190,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				// Выполняем фиксацию изменений к ядру
 				::local::commit(this->_log);
 				// Выполняем ожидание событий в ядре
-				events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, &::__awh_events__[0], static_cast <int32_t> (::__awh_events__.size()), pts));
+				events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__.get(), static_cast <int32_t> (::__awh_events_size__), pts));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -64186,17 +64198,17 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				// Если пакет изменений пуст, отправлять нечего
 				if(::local::change.empty())
 					// Выполняем ожидание событий в ядре
-					events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, &::__awh_events__[0], static_cast <int32_t> (::__awh_events__.size()), pts));
+					events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__.get(), static_cast <int32_t> (::__awh_events_size__), pts));
 				// Если пакет изменений собран, отправляем его вместе с ожиданием
 				else {
 					// Выполняем отправку пакета изменений и ожидание событий одним вызовом
-					events = static_cast <ssize_t> (::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), &::__awh_events__[0], static_cast <int32_t> (::__awh_events__.size()), pts));
+					events = static_cast <ssize_t> (::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), ::__awh_events__.get(), static_cast <int32_t> (::__awh_events_size__), pts));
 					// Если ядро остановилось на сбойной записи пакета
 					if((events < 0) && (errno != EINTR)){
 						// Разбираем пакет прежним путём, называя сбойные записи
 						::local::commit(this->_log);
 						// Выполняем ожидание событий в ядре отдельным вызовом
-						events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, &::__awh_events__[0], static_cast <int32_t> (::__awh_events__.size()), pts));
+						events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__.get(), static_cast <int32_t> (::__awh_events_size__), pts));
 					// Если пакет применён ядром, снимаем его с учёта
 					} else ::local::change.clear();
 				}
@@ -64333,16 +64345,17 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *       усечение вектора уменьшает длину, но занятую ёмкость оставляет за
 			 *       ним, то есть не возвращает ничего
 			 */
-			if((static_cast <size_t> (received) >= ::__awh_events__.size()) && (::__awh_events__.size() < static_cast <size_t> (AWH_MAX_POLL_EVENTS_LIMIT))){
+			if((static_cast <size_t> (received) >= ::__awh_events_size__) && (::__awh_events_size__ < static_cast <size_t> (AWH_MAX_POLL_EVENTS_LIMIT))){
 				// Сбрасываем отсчёт затишья
 				::__awh_events_idle__ = 0;
 				// Удвоенный размер массива событий
-				const size_t size = (::__awh_events__.size() * 2);
-				// Расширяем массив событий, не выходя за верхний предел
-				::__awh_events__.resize((size < static_cast <size_t> (AWH_MAX_POLL_EVENTS_LIMIT)) ? size : static_cast <size_t> (AWH_MAX_POLL_EVENTS_LIMIT));
-				::fprintf(stderr, "[МАССИВ] рост до %zu\n", ::__awh_events__.size());
+				const size_t size = (::__awh_events_size__ * 2);
+				// Устанавливаем новый размер массива событий, не выходя за верхний предел
+				::__awh_events_size__ = ((size < static_cast <size_t> (AWH_MAX_POLL_EVENTS_LIMIT)) ? size : static_cast <size_t> (AWH_MAX_POLL_EVENTS_LIMIT));
+				// Заводим массив событий нового размера, освобождая прежний
+				::__awh_events__ = unique_ptr <struct kevent []> (new struct kevent [::__awh_events_size__]);
 			// Если массив разросся, а опрос не занял и четверти
-			} else if((::__awh_events__.size() > static_cast <size_t> (AWH_MAX_POLL_EVENTS_COUNT)) && (static_cast <size_t> (received < 0 ? 0 : received) < (::__awh_events__.size() / 4))) {
+			} else if((::__awh_events_size__ > static_cast <size_t> (AWH_MAX_POLL_EVENTS_COUNT)) && (static_cast <size_t> (received < 0 ? 0 : received) < (::__awh_events_size__ / 4))) {
 				// Считаем очередной опрос затишья
 				::__awh_events_idle__++;
 				// Если затишье продержалось достаточно долго
@@ -64350,10 +64363,11 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					// Сбрасываем отсчёт затишья
 					::__awh_events_idle__ = 0;
 					// Уполовиненный размер массива событий
-					const size_t size = (::__awh_events__.size() / 2);
-					// Возвращаем память, оставляя массив не меньше начального размера
-					vector <struct kevent> ((size > static_cast <size_t> (AWH_MAX_POLL_EVENTS_COUNT)) ? size : static_cast <size_t> (AWH_MAX_POLL_EVENTS_COUNT)).swap(::__awh_events__);
-					::fprintf(stderr, "[МАССИВ] сжатие до %zu\n", ::__awh_events__.size());
+					const size_t size = (::__awh_events_size__ / 2);
+					// Устанавливаем новый размер массива событий, не мельче начального
+					::__awh_events_size__ = ((size > static_cast <size_t> (AWH_MAX_POLL_EVENTS_COUNT)) ? size : static_cast <size_t> (AWH_MAX_POLL_EVENTS_COUNT));
+					// Заводим массив событий нового размера, возвращая память прежнего
+					::__awh_events__ = unique_ptr <struct kevent []> (new struct kevent [::__awh_events_size__]);
 				}
 			// Если нагрузка держится в рабочем размахе
 			} else ::__awh_events_idle__ = 0;
