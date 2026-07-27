@@ -72,15 +72,6 @@ if (CMAKE_BOOSTING_NET)
     message(STATUS "Build with NET boosting: YES\n")
 endif (CMAKE_BOOSTING_NET)
 
-# Если операционной системой является Solaris
-if (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
-    # Если активирован флаг оптимизации операционной системы
-    if (CMAKE_USING_SOLARIS_PORTS)
-        add_compile_definitions(AWH_USING_EVENTS_PORTS)
-        message(STATUS "Build with using Event Ports: YES\n")
-    endif (CMAKE_USING_SOLARIS_PORTS)
-endif()
-
 # Сборка с установкой количества доступных файловых дескрипторов (по умолчанию: 131072)
 if (CMAKE_MAX_COUNT_FDS)
     add_compile_definitions(AWH_MAX_COUNT_FDS=${CMAKE_MAX_COUNT_FDS})
@@ -123,11 +114,31 @@ if (CMAKE_EVENT_MAX_BUFFER_SIZE)
     message(STATUS "Build with max event buffer size: ${CMAKE_EVENT_MAX_BUFFER_SIZE}\n")
 endif (CMAKE_EVENT_MAX_BUFFER_SIZE)
 
-# Если активирован флаг установки максимального количества опрашиваемых событий за одну итерацию (по умолчанию: 64)
+##
+ # Настройки массива опрашиваемых событий.
+ #
+ # Размер массива подбирается по нагрузке сам: он удваивается, когда опрос вернул
+ # его заполненным целиком, и ужимается вдвое после долгого затишья. Задавать
+ # приходится только границы этого подбора и длительность затишья.
+ ##
+
+# Если активирован флаг установки начального размера массива опрашиваемых событий (по умолчанию: 64)
 if (CMAKE_MAX_POLL_EVENTS_COUNT)
     add_compile_definitions(AWH_MAX_POLL_EVENTS_COUNT=${CMAKE_MAX_POLL_EVENTS_COUNT})
-    message(STATUS "Build with max poll events count: ${CMAKE_MAX_POLL_EVENTS_COUNT}\n")
+    message(STATUS "Build with initial poll events count: ${CMAKE_MAX_POLL_EVENTS_COUNT}\n")
 endif (CMAKE_MAX_POLL_EVENTS_COUNT)
+
+# Если активирован флаг установки верхнего предела роста массива опрашиваемых событий (по умолчанию: 4096)
+if (CMAKE_MAX_POLL_EVENTS_LIMIT)
+    add_compile_definitions(AWH_MAX_POLL_EVENTS_LIMIT=${CMAKE_MAX_POLL_EVENTS_LIMIT})
+    message(STATUS "Build with max poll events limit: ${CMAKE_MAX_POLL_EVENTS_LIMIT}\n")
+endif (CMAKE_MAX_POLL_EVENTS_LIMIT)
+
+# Если активирован флаг установки длительности затишья для сжатия массива событий (по умолчанию: 1024 опроса)
+if (CMAKE_POLL_EVENTS_IDLE_ROUNDS)
+    add_compile_definitions(AWH_POLL_EVENTS_IDLE_ROUNDS=${CMAKE_POLL_EVENTS_IDLE_ROUNDS})
+    message(STATUS "Build with poll events idle rounds: ${CMAKE_POLL_EVENTS_IDLE_ROUNDS}\n")
+endif (CMAKE_POLL_EVENTS_IDLE_ROUNDS)
 
 # Если активирован флаг установки максимального времени ожидания получения данных в наносекундхах (по умолчанию: 500000 наносекунд = 0.5 мс)
 if (CMAKE_EVENT_MAX_LOOP_WAIT)
@@ -646,6 +657,14 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/proto/quic/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/quic/handshake.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/quic/connection.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic2/quic.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic2/varint.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic2/params.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic2/crypto.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic2/packet.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic2/frame.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic2/handshake.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic2/connection.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 

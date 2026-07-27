@@ -805,6 +805,93 @@ TEST_F(ParserFixture, SendTrailersOverActiveSourceTest){
 }
 
 /**
+ * @brief Метод проверки отказа подготовить отправитель при незавершённом сообщении
+ *
+ * @details Подготовка к следующему сообщению снимает признак завершённости, и следующий
+ *          sendHeaders прошёл бы мимо проверки незавершённого сообщения: его блок
+ *          заголовков лёг бы строкой размера чанка прямо в чужое тело, и получатель
+ *          прочитал бы границу сообщений не там, где её видит отправитель. Полный
+ *          сброс объекта для повторного использования выполняется методом clear
+ *
+ */
+TEST_F(ParserFixture, ResetSenderOnUnfinishedMessageTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Понижаем пороги выходного буфера, чтобы прокачка останавливалась посреди тела
+	sender->sendWaterMarks(64, 32);
+	// Формируем эталонное тело сообщения
+	const std::string expected(200, 'S');
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Отправляем заголовки ответа (тело последует из pull-источника данных)
+	sender->sendHeaders(response, false);
+	// Позиция чтения эталонного тела источником данных
+	size_t position = 0;
+	// Назначаем pull-источник данных тела сообщения
+	sender->dataSource(parser_http_t::data_source_callback_t([&expected, &position](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+		// Вычисляем размер выдаваемой порции данных
+		const size_t size = std::min(std::min(cap, static_cast <size_t> (4)), (expected.size() - position));
+		// Копируем порцию эталонного тела в буфер парсера
+		std::memcpy(buffer, expected.data() + position, size);
+		// Сдвигаем позицию чтения эталонного тела
+		position += size;
+		// Выставляем флаг достижения конца тела
+		eof = (position == expected.size());
+		// Возвращаем число записанных байт
+		return static_cast <int64_t> (size);
+	}));
+	// Проверяем что сообщение ещё не завершено
+	ASSERT_TRUE(sender->sourcePending());
+	// Выполняем подготовку отправителя к следующему сообщению посреди незавершённого
+	sender->resetSender();
+	// Проверяем что подготовка отвергнута и сообщение осталось прежним
+	ASSERT_TRUE(sender->sourcePending());
+	/**
+	 * Проверяем что блок заголовков следующего сообщения на провод не уходит:
+	 * предыдущее сообщение не завершено, и проверка обязана сработать
+	 */
+	{
+		// Формируем контейнер заголовков следующего ответа с провайдером
+		headers_t next(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (404)));
+		// Дописываем заголовок нулевого размера тела
+		next.emplace("Content-Length", "0");
+		// Отправляем заголовки следующего ответа
+		sender->sendHeaders(next, false);
+	}
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	// Проверяем что получатель разобрал ровно одно сообщение без ошибок кадрирования
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что ошибок разбора нет
+	ASSERT_EQ(receiver->error(), parser_http_t::error_t::NONE);
+	// Проверяем что тело дошло целиком
+	ASSERT_EQ(events.body, expected);
+	/**
+	 * Проверяем что после завершения сообщения подготовка к следующему выполняется
+	 */
+	{
+		// Выполняем подготовку отправителя к следующему сообщению
+		sender->resetSender();
+		// Формируем контейнер заголовков следующего ответа с провайдером
+		headers_t next(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (404)));
+		// Дописываем заголовок нулевого размера тела
+		next.emplace("Content-Length", "0");
+		// Отправляем заголовки следующего ответа
+		sender->sendHeaders(next, true);
+		// Проверяем что следующее сообщение ушло на провод
+		ASSERT_NE(std::string(sender->pending()).find("404"), std::string::npos);
+	}
+}
+
+/**
  * @brief Метод проверки исключения одновременной отправки Content-Length и Transfer-Encoding
  *
  */

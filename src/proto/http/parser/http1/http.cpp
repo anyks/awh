@@ -1298,6 +1298,7 @@ awh::http::Parser_HTTP::Flags::Flags() noexcept :
 awh::http::Parser_HTTP::Sender::Sender() noexcept :
  endSent(false),
  sourceEof(false),
+ sourceRunning(false),
  headersSent(false),
  writableNotified(false),
  framing(framing_t::NONE),
@@ -1552,6 +1553,8 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
  *
  */
 bool awh::http::Parser_HTTP::commitHeader(const string_view name, string_view value) noexcept {
+	// Размер значения заголовка до отсечения хвостовых OWS
+	const size_t received = value.size();
 	/**
 	 * Выполняем триминг хвостовых OWS у значения (ведущие уже пропущены вызывающей стороной)
 	 */
@@ -1566,11 +1569,15 @@ bool awh::http::Parser_HTTP::commitHeader(const string_view name, string_view va
 		return false;
 	}
 	/**
-	 * Наращиваем суммарный размер разобранных заголовков: помимо имени и значения
-	 * учитываются служебные байты строки (": " и CRLF) - иначе поток заголовков
-	 * с пустыми значениями расходует бюджет лимита медленнее, чем занимает канал
+	 * Наращиваем суммарный размер разобранных заголовков
+	 *
+	 * Помимо имени и значения учитываются служебные байты строки (": " и CRLF) -
+	 * иначе поток заголовков с пустыми значениями расходует бюджет лимита медленнее,
+	 * чем занимает канал. Отсечённые хвостовые OWS учитываются по той же причине,
+	 * что и пропущенные ведущие: лимит ограничивает принятый поток, а не то, что
+	 * от него осталось после разбора
 	 */
-	this->_statsHeaders.bytes += (name.size() + value.size() + 4);
+	this->_statsHeaders.bytes += (name.size() + received + 4);
 	// Если превышен суммарный размер всех заголовков
 	if(this->_statsHeaders.bytes > this->_limits.maxHeadersTotal){
 		// Фиксируем ошибку превышения размера заголовков
@@ -2247,12 +2254,25 @@ size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			/**
+			 * Помечаем что источник исполняется
+			 *
+			 * Пока источник исполняется, объект функции принадлежит своему же вызову:
+			 * назначение нового источника, подготовка отправителя и полная очистка
+			 * объекта уничтожили бы его прямо под ногами исполняющегося кода. Признак
+			 * закрывает все три пути
+			 */
+			this->_sender.sourceRunning = true;
 			// Запрашиваем порцию данных у источника (источник пишет напрямую в выходной буфер)
 			bytes = this->_sender.source(STREAM_ID, (region + (chunked ? CHUNK_HEADER : 0)), cap, eof);
+			// Снимаем признак исполнения источника
+			this->_sender.sourceRunning = false;
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
+			// Снимаем признак исполнения источника
+			this->_sender.sourceRunning = false;
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2944,6 +2964,22 @@ void awh::http::Parser_HTTP::applyTransferEncoding(const char * begin, const cha
  *
  */
 void awh::http::Parser_HTTP::clear() noexcept {
+	/**
+	 * Если pull-источник исполняется прямо сейчас - полная очистка недопустима
+	 *
+	 * Очистка уничтожает состояние отправки целиком вместе с объектом функции,
+	 * из которого пришёл вызов, то есть освобождает память под ногами
+	 * исполняющегося кода. Выполнять её следует после возврата из источника
+	 */
+	if(this->_sender.sourceRunning){
+		// Записываем сообщение об отказе очистить объект в лог
+		this->_log->print(
+			"HTTP/1.x parser cannot be cleared from within a pull data source call: the request has been dropped",
+			log_t::flag_t::CRITICAL
+		);
+		// Выходим из метода
+		return;
+	}
 	// Выполняем сброс состояния разбора
 	this->reset();
 	// Возвращаем лимиты безопасности к значениям по умолчанию
@@ -5351,6 +5387,37 @@ const awh::http::Parser_HTTP::message_t & awh::http::Parser_HTTP::message() cons
  *
  */
 void awh::http::Parser_HTTP::resetSender() noexcept {
+	/**
+	 * Если предыдущее сообщение не завершено - подготовка к следующему недопустима
+	 *
+	 * Сброс снимает признак завершённости, и следующий sendHeaders прошёл бы мимо
+	 * проверки незавершённого сообщения: его блок заголовков лёг бы прямо в чужое
+	 * тело - строкой размера чанка у кадрирования chunked, содержимым тела у
+	 * кадрирования фиксированного размера. Получатель прочитал бы границу сообщений
+	 * не там, где её видит отправитель, а это и есть механизм рассинхронизации.
+	 * Незавершённое сообщение не оставляет соединение пригодным для следующего:
+	 * границу предыдущего получателю определить нечем, и соединение подлежит
+	 * закрытию. Полный сброс объекта для повторного использования выполняется
+	 * методом clear
+	 */
+	if(this->_sender.sourceRunning){
+		// Записываем сообщение об отказе подготовить отправитель в лог
+		this->_log->print(
+			"HTTP/1.x sender cannot be reset from within a pull data source call: the request has been dropped",
+			log_t::flag_t::CRITICAL
+		);
+		// Выходим из метода
+		return;
+	}
+	if(this->_sender.headersSent && !this->_sender.endSent){
+		// Записываем сообщение об отказе подготовить отправитель в лог
+		this->_log->print(
+			"HTTP/1.x outgoing message is not finished: the sender has not been reset, the connection must be closed",
+			log_t::flag_t::CRITICAL
+		);
+		// Выходим из метода
+		return;
+	}
 	// Сбрасываем остаток тела до полного Content-Length
 	this->_sender.remaining = 0;
 	// Сбрасываем признак завершения исходящего сообщения
@@ -5373,6 +5440,22 @@ void awh::http::Parser_HTTP::resetSender() noexcept {
  *
  */
 void awh::http::Parser_HTTP::dataSource(data_source_callback_t source) noexcept {
+	/**
+	 * Если источник исполняется прямо сейчас - назначать новый недопустимо
+	 *
+	 * Назначение уничтожило бы объект функции, из которого пришёл вызов, то есть
+	 * освободило бы память под ногами исполняющегося кода. Источнику, которому
+	 * больше нечего выдавать, достаточно объявить конец тела
+	 */
+	if(this->_sender.sourceRunning){
+		// Записываем сообщение об отказе назначить источник в лог
+		this->_log->print(
+			"HTTP/1.x pull data source cannot be replaced from within its own call: the new source has been dropped",
+			log_t::flag_t::CRITICAL
+		);
+		// Выходим из метода
+		return;
+	}
 	/**
 	 * Если предыдущее сообщение уже завершено - готовим отправитель к следующему:
 	 * иначе назначенный до sendHeaders источник был бы затёрт сбросом состояния
