@@ -1299,3 +1299,45 @@ TEST_F(ParserFixture, LeadingBlankLinesTest){
 		ASSERT_EQ(parser->error(), parser_http_t::error_t::INVALID_VERSION);
 	}
 }
+
+/**
+ * @brief Метод тестирования отсечения параметров у токенов заголовка Connection
+ *
+ * @details Элементом списка Connection обязан быть голый токен (RFC 9110 §7.6.1),
+ *          и точка с запятой в нём недопустима. Расхождение в трактовке такого значения
+ *          с соседним звеном цепочки решается в пользу закрытия соединения: удержать
+ *          открытым то, что пир считает закрытым, опаснее обратного - следующее
+ *          сообщение ушло бы в соединение, которого уже нет
+ *
+ */
+TEST_F(ParserFixture, ConnectionTokenParametersTest){
+	/**
+	 * @brief Функция разбора ответа с заданным значением заголовка Connection
+	 *
+	 * @param value значение заголовка Connection
+	 * @return      признак переиспользуемости соединения
+	 *
+	 */
+	auto probe = [this](const std::string & value) noexcept -> bool {
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		parser->method(method_t::GET);
+		// Формируем разбираемое сообщение
+		const std::string message = ("HTTP/1.1 200 OK\r\nConnection: " + value + "\r\nContent-Length: 0\r\n\r\n");
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Выводим признак переиспользуемости соединения
+		return parser->message().flags.keepAlive;
+	};
+	// Проверяем что голый токен закрытия соединения распознаётся
+	ASSERT_FALSE(probe("close"));
+	// Проверяем что токен закрытия соединения с параметром распознаётся так же
+	ASSERT_FALSE(probe("close;foo"));
+	// Проверяем что токен закрытия соединения с параметром распознаётся и внутри списка
+	ASSERT_FALSE(probe("keep-alive, close;foo=bar"));
+	// Проверяем что отсечение параметров не превращает посторонний токен в закрытие
+	ASSERT_TRUE(probe("closely;foo"));
+	// Проверяем что соединение без токена закрытия остаётся переиспользуемым
+	ASSERT_TRUE(probe("keep-alive"));
+}

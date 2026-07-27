@@ -1643,3 +1643,174 @@ TEST_F(ParserFixture, SendWaterMarkChunkedOvershootTest){
 		ASSERT_EQ(position, body.size());
 	}
 }
+
+/**
+ * @brief Метод проверки завершения исходящего сообщения объявленным нулевым размером тела
+ *
+ * @details Блок заголовков с Content-Length: 0 на проводе уже является законченным
+ *          сообщением без тела, и состояние отправителя обязано этому соответствовать
+ *          независимо от флага завершения. Иначе отправитель ждёт тела, которого по
+ *          объявленному размеру быть не может, а следующее сообщение отбрасывается
+ *          как поданное поверх незавершённого - соединение залипает
+ *
+ */
+TEST_F(ParserFixture, SendZeroContentLengthFinishesTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Формируем контейнер заголовков ответа с объявленным нулевым размером тела
+	headers_t first(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Объявляем нулевой размер тела ответа
+	first.emplace("Content-Length", "0");
+	// Отправляем заголовки ответа без флага завершения сообщения
+	sender->sendHeaders(first, false);
+	/**
+	 * Отправляем следующее сообщение по тому же соединению: предыдущее завершено
+	 * объявленным нулевым размером тела, и отправитель обязан его принять
+	 */
+	headers_t second(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Объявляем размер тела следующего ответа
+	second.emplace("Content-Length", "5");
+	// Отправляем заголовки следующего ответа
+	sender->sendHeaders(second, false);
+	// Проверяем что тело следующего ответа принято к отправке целиком
+	ASSERT_EQ(sender->sendData("hello", 5, true), 5u);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	// Проверяем что первое сообщение разобрано полностью
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело первого сообщения пустое
+	ASSERT_TRUE(events.body.empty());
+}
+
+/**
+ * @brief Метод проверки отказа собрать сообщение с неисправимым объявлением кодирования
+ *
+ * @details Если объявление транспортного кодирования уже содержит chunked, но не
+ *          последним, дописать его нельзя: к телу оно применялось бы дважды, что
+ *          запрещено RFC 9112 §6.1, а получатель отвергнет такой кадр. Изменить порядок
+ *          кодирований библиотека тоже не вправе - ей неизвестно, какие из них вызывающая
+ *          сторона к телу действительно применила. Сообщение не собирается вовсе
+ *
+ */
+TEST_F(ParserFixture, SendUnfixableTransferEncodingTest){
+	/**
+	 * Проверяем отказ при неисправимом объявлении кодирования
+	 */
+	{
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Собранные байты исходящего сообщения
+		std::string wire;
+		// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+		sender->on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+			// Собираем отданные сетевому слою байты
+			wire.append(static_cast <const char *> (buffer), size);
+		}));
+		// Формируем контейнер заголовков ответа с кодированием, где chunked не последний
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Дописываем заголовок кодирования тела сообщения
+		response.emplace("Transfer-Encoding", "chunked, gzip");
+		// Отправляем заголовки ответа (тело последует)
+		sender->sendHeaders(response, false);
+		// Проверяем что на провод не ушло ничего
+		ASSERT_TRUE(wire.empty()) << wire;
+		// Проверяем что тело к отправке не принято - заголовки не отправлялись
+		ASSERT_EQ(sender->sendData("hello", 5, true), 0u);
+	}
+	/**
+	 * Проверяем отказ и при завершении сообщения заголовками
+	 *
+	 * Кадрирование тела в этом случае не выбирается вовсе, но заголовок уходит
+	 * на провод так же - и получатель отвергнет его так же
+	 */
+	{
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Собранные байты исходящего сообщения
+		std::string wire;
+		// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+		sender->on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+			// Собираем отданные сетевому слою байты
+			wire.append(static_cast <const char *> (buffer), size);
+		}));
+		// Формируем контейнер заголовков ответа с кодированием, где chunked не последний
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Дописываем заголовок кодирования тела сообщения
+		response.emplace("Transfer-Encoding", "chunked, gzip");
+		// Отправляем заголовки ответа с завершением сообщения
+		sender->sendHeaders(response, true);
+		// Проверяем что на провод не ушло ничего
+		ASSERT_TRUE(wire.empty()) << wire;
+	}
+	/**
+	 * Проверяем что вычищенный из блока заголовок отказа не вызывает
+	 *
+	 * При конфликте с Content-Length объявление кодирования снимается с провода,
+	 * и его неисправимость получателю уже не видна - отказывать не в чем
+	 */
+	{
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Собранные байты исходящего сообщения
+		std::string wire;
+		// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+		sender->on(parser_http_t::write_callback_t([&wire](const void * buffer, const size_t size) noexcept {
+			// Собираем отданные сетевому слою байты
+			wire.append(static_cast <const char *> (buffer), size);
+		}));
+		// Формируем контейнер заголовков ответа с конфликтующим кадрированием
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Объявляем размер тела ответа
+		response.emplace("Content-Length", "5");
+		// Дописываем конфликтующий заголовок кодирования тела сообщения
+		response.emplace("Transfer-Encoding", "chunked, gzip");
+		// Отправляем заголовки ответа (тело последует)
+		sender->sendHeaders(response, false);
+		// Проверяем что тело принято к отправке целиком
+		ASSERT_EQ(sender->sendData("hello", 5, true), 5u);
+		// Проверяем что объявление кодирования на провод не ушло
+		ASSERT_EQ(wire.find("Transfer-Encoding"), std::string::npos) << wire;
+		// Проверяем что сообщение собрано с кадрированием по объявленному размеру тела
+		ASSERT_NE(wire.find("Content-Length: 5"), std::string::npos) << wire;
+	}
+	/**
+	 * Проверяем что исправимое объявление по-прежнему дополняется
+	 *
+	 * Кодирование без chunked дополняется отдельным заголовком: значения нескольких
+	 * заголовков склеиваются по порядку следования, и chunked оказывается последним
+	 */
+	{
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Создаём объект парсера-приёмника ответа
+		auto receiver = this->make(direct_t::RESPONSE);
+		// Создаём объект сборщика событий парсера-приёмника
+		events_t events;
+		// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+		this->attach(* receiver, events);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		receiver->method(method_t::GET);
+		// Формируем контейнер заголовков ответа с кодированием без chunked
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Дописываем заголовок кодирования тела сообщения
+		response.emplace("Transfer-Encoding", "gzip");
+		// Отправляем заголовки ответа (тело последует)
+		sender->sendHeaders(response, false);
+		// Отправляем тело ответа с завершением сообщения
+		ASSERT_EQ(sender->sendData("hello", 5, true), 5u);
+		// Перекачиваем исходящие байты отправителя в принимающий парсер
+		::drain(* sender, * receiver);
+		// Проверяем что собранное сообщение разбирается собственным приёмником
+		ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+		// Проверяем что тело передано без искажений
+		ASSERT_EQ(events.body, "hello");
+	}
+}
