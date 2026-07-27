@@ -1166,10 +1166,10 @@ namespace io {
 	 *
 	 */
 	typedef struct Node {
-		// Идентификатор события
-		event::id_t id;
 		// Состояние события
 		state_t state;
+		// Идентификатор события
+		event::id_t id;
 		// Счётчик ссылок на событие
 		atomic_uint16_t refs;
 		/**
