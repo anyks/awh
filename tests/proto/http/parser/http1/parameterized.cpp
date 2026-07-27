@@ -1570,6 +1570,133 @@ TEST_F(ParserFixture, StatusCodeOutOfRangeTest){
 }
 
 /**
+ * @brief Метод тестирования учёта отброшенных OWS в бюджете блока заголовков
+ *
+ * @details Ведущие OWS значения заголовка при разборе отбрасываются, но канал и
+ *          процессорное время занимают наравне с сохранёнными октетами. Без их учёта
+ *          одна строка вида "X:" с потоком пробелов растягивалась бы неограниченно,
+ *          не приближая разбор к завершению и не расходуя ни одного лимита. Оба пути
+ *          разбора обязаны считать их одинаково
+ *
+ */
+TEST_P(FragmentParameterizedFixture, HeaderValueWhitespaceBudgetTest){
+	/**
+	 * @brief Функция разбора сообщения с заданным числом ведущих OWS значения заголовка
+	 *
+	 * @param spaces число октетов ведущих OWS значения заголовка
+	 * @return       код ошибки разбора
+	 *
+	 */
+	auto probe = [this](const size_t spaces) noexcept -> parser_http_t::error_t {
+		// Создаём объект парсера-приёмника запроса
+		auto parser = this->make(direct_t::REQUEST);
+		// Формируем пониженные лимиты безопасности
+		parser_http_t::limits_t limits;
+		// Понижаем суммарный размер блока заголовков
+		limits.maxHeadersTotal = 128;
+		// Устанавливаем пониженные лимиты безопасности
+		parser->limits(limits);
+		// Формируем разбираемое сообщение
+		const std::string message = ("GET / HTTP/1.1\r\nHost: a\r\nX-Pad:" + std::string(spaces, ' ') + "v\r\n\r\n");
+		// Выполняем подачу данных фрагментами заданного размера
+		for(size_t i = 0; i < message.size(); i += this->_fragment){
+			// Выполняем разбор очередного фрагмента данных
+			parser->parse(message.data() + i, ((message.size() - i) < this->_fragment ? (message.size() - i) : this->_fragment));
+			// Если разбор завершён - дальнейшая подача не нужна
+			if(parser->status() != parser_t::status_t::PARTIAL)
+				// Прекращаем подачу данных
+				break;
+		}
+		// Выводим код ошибки разбора
+		return parser->error();
+	};
+	// Проверяем что умеренное число OWS укладывается в бюджет
+	ASSERT_EQ(probe(16), parser_http_t::error_t::NONE);
+	// Проверяем что поток OWS упирается в бюджет блока заголовков
+	ASSERT_EQ(probe(4096), parser_http_t::error_t::HEADER_OVERFLOW);
+}
+
+/**
+ * @brief Метод тестирования BWS между размером чанка и его расширениями
+ *
+ * @details По RFC 9112 §7.1 расширения чанка имеют вид *( BWS ";" BWS ... ), поэтому
+ *          запись "3 ;a=b" грамматически допустима. BWS входит в грамматику только
+ *          вместе с точкой с запятой, поэтому запись "3 " без расширений остаётся
+ *          ошибкой: звено цепочки, читающее размер чанка до пробела, а не до конца
+ *          строки, увидело бы иное кадрирование
+ *
+ */
+TEST_F(ParserFixture, ChunkSizeWhitespaceTest){
+	/**
+	 * @brief Функция разбора ответа с заданной строкой размера чанка
+	 *
+	 * @param line строка размера чанка вместе с её окончанием
+	 * @param body собранное тело сообщения
+	 * @return     код ошибки разбора
+	 *
+	 */
+	auto probe = [this](const std::string & line, std::string & body) noexcept -> parser_http_t::error_t {
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		parser->method(method_t::GET);
+		// Подписываем сборщик тела сообщения
+		parser->on(parser_http_t::data_callback_t([&body](const int32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
+			// Накапливаем полученную порцию тела сообщения
+			body.append(static_cast <const char *> (buffer), size);
+			// Продолжаем разбор
+			return true;
+		}));
+		// Формируем разбираемое сообщение
+		const std::string message = ("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n" + line + "AWH\r\n0\r\n\r\n");
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Выводим код ошибки разбора
+		return parser->error();
+	};
+	/**
+	 * @brief Функция проверки принимаемой строки размера чанка
+	 *
+	 * @param line строка размера чанка вместе с её окончанием
+	 *
+	 */
+	auto accepted = [&probe](const std::string & line) noexcept -> void {
+		// Собранное тело сообщения
+		std::string body;
+		// Проверяем что строка размера чанка принимается
+		ASSERT_EQ(probe(line, body), parser_http_t::error_t::NONE) << line;
+		// Проверяем что тело чанка разобрано
+		ASSERT_EQ(body, "AWH") << line;
+	};
+	/**
+	 * @brief Функция проверки отвергаемой строки размера чанка
+	 *
+	 * @param line строка размера чанка вместе с её окончанием
+	 *
+	 */
+	auto rejected = [&probe](const std::string & line) noexcept -> void {
+		// Собранное тело сообщения
+		std::string body;
+		// Проверяем что строка размера чанка отвергается
+		ASSERT_EQ(probe(line, body), parser_http_t::error_t::INVALID_CHUNK_SIZE) << line;
+	};
+	// Проверяем что расширение без BWS принимается
+	accepted("3;a=b\r\n");
+	// Проверяем что пробел перед точкой с запятой принимается
+	accepted("3 ;a=b\r\n");
+	// Проверяем что табуляция перед точкой с запятой принимается
+	accepted("3\t;a=b\r\n");
+	// Проверяем что несколько октетов BWS принимаются
+	accepted("3   ;a=b\r\n");
+	// Проверяем что строка размера чанка без расширений принимается
+	accepted("3\r\n");
+	// Проверяем что пробел без расширения отвергается
+	rejected("3 \r\n");
+	// Проверяем что посторонний символ после пробела отвергается
+	rejected("3 x\r\n");
+}
+
+/**
  * @brief Метод тестирования отсечения параметров у токенов заголовка Connection
  *
  * @details Элементом списка Connection обязан быть голый токен (RFC 9110 §7.6.1),
