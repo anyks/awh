@@ -2013,6 +2013,38 @@ TEST_F(ParserHttp3Fixture, AnnouncedFieldSectionSizeCapped){
 }
 
 /**
+ * @brief Проверка анонса предела секции полей при отключённом лимите списка
+ *
+ * @details Нулевой лимит распакованного списка означает его отсутствие,
+ *          а не запрет полей: урезать анонс по нему нельзя (RFC 9114 §4.2.2)
+ *
+ */
+TEST_F(ParserHttp3Fixture, AnnouncedFieldSectionSizeUnlimited){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Получаем лимиты безопасности сервера
+	parser_http3_t::limits_t limits;
+	// Снимаем предел распакованного списка полей
+	limits.maxHeadersTotal = 0;
+	// Применяем лимиты безопасности сервера
+	server.parser->limits(limits);
+	// Получаем параметры соединения сервера
+	parser_http3_t::settings_t settings = server.parser->settings();
+	// Анонсируем предел секции полей
+	settings.maxFieldSectionSize = (1024 * 1024);
+	// Применяем параметры соединения сервера
+	server.parser->settings(settings);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Анонсированный предел обязан дойти до пира неурезанным
+	ASSERT_EQ(client.parser->remoteSettings().maxFieldSectionSize, (1024u * 1024u));
+}
+
+/**
  * @brief Проверка сохранности списка обходимых потоков при вложенном разборе
  *
  * @details Обход карты потоков выходит в пользовательские функции обратного

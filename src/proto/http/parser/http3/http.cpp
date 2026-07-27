@@ -3791,7 +3791,15 @@ void awh::http::Parser_HTTP3::sendSettings() noexcept {
 		 * задаются отдельным методом, и порядок вызовов произволен. Обратное
 		 * соотношение допустимо - анонс строже соблюдаемого лишь бережёт пира
 		 */
-		item.value = ::std::min(this->_settings.maxFieldSectionSize, static_cast <uint64_t> (this->_limits.maxHeadersTotal));
+		item.value = this->_settings.maxFieldSectionSize;
+		/**
+		 * Нулевой лимит распакованного списка означает его отсутствие, а не запрет
+		 * полей: sentinel-значения для этого в самом протоколе нет, и урезание анонса
+		 * по нему объявило бы пиру предельный размер секции в ноль октет
+		 */
+		if(this->_limits.maxHeadersTotal > 0)
+			// Урезаем анонс до соблюдаемого лимита распакованного списка
+			item.value = ::std::min(item.value, static_cast <uint64_t> (this->_limits.maxHeadersTotal));
 		// Если анонс пришлось урезать до соблюдаемого лимита
 		if(item.value != this->_settings.maxFieldSectionSize)
 			// Записываем сообщение об урезании анонса в лог
