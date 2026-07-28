@@ -20,6 +20,7 @@
  * Стандартные заголовочные файлы
  */
 #include <chrono>
+#include <cstdio>
 #include <vector>
 
 /**
@@ -81,6 +82,25 @@ namespace {
 	 *
 	 */
 	static constexpr double SYSCALLS_THRESHOLD = 34.0;
+	/**
+	 * @brief Шаг опроса событий сценария в миллисекундах
+	 *
+	 * @details Опрос с бесконечным ожиданием оставлял сценарий без выхода: любое
+	 *          неполученное событие останавливало его насовсем и вместе с ним весь
+	 *          набор бенчмарков. Конечный шаг превращает такую остановку в
+	 *          диагностируемый исход
+	 *
+	 */
+	static constexpr int32_t POLL_TIMEOUT = 250;
+	/**
+	 * @brief Предельный срок завершения одного круга подключения в секундах
+	 *
+	 * @details Круг на петлевом интерфейсе укладывается в доли миллисекунды, так
+	 *          что срок задан с запасом в четыре порядка: он ловит не медленный
+	 *          круг, а незавершающийся
+	 *
+	 */
+	static constexpr double ROUND_DEADLINE = 5.0;
 
 	/**
 	 * @brief Структура состояния прогона сценария
@@ -93,6 +113,8 @@ namespace {
 		bool measuring;
 		// Флаг завершения текущего цикла подключения
 		bool ready;
+		// Флаг несостоявшегося подключения текущего круга
+		bool refused;
 		// Количество выполненных циклов прогрева
 		size_t warmed;
 		// Количество выполненных циклов замера
@@ -110,7 +132,8 @@ namespace {
 		 *
 		 */
 		explicit State() noexcept :
-		 stop(false), measuring(false), ready(false), warmed(0), done(0), client(0) {}
+		 stop(false), measuring(false), ready(false), refused(false),
+		 warmed(0), done(0), client(0) {}
 	} state_t;
 
 	/**
@@ -177,7 +200,9 @@ namespace {
 			// Устанавливаем адрес назначения события клиента
 			io.setTarget(state.client, "127.0.0.1");
 			// Устанавливаем функцию обратного вызова на подключение клиента
-			io.on(state.client, static_cast <awh::engine::callback::connect_t> ([&state](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			io.on(state.client, static_cast <awh::engine::callback::connect_t> ([&state]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+				// Запоминаем исход подключения: несостоявшееся подключение засчитывать за принятое нельзя
+				state.refused = !ok;
 				// Отмечаем завершение текущего цикла подключения
 				state.ready = true;
 			}));
@@ -193,17 +218,29 @@ namespace {
 		/**
 		 * Выполняем опрос событий до выполнения требуемого количества циклов
 		 */
+		// Момент завершения последнего круга подключения
+		auto tick = std::chrono::steady_clock::now();
 		while(!state.stop){
 			// Если опрос событий завершился ошибкой
-			if(!io.poll())
+			if(!io.poll(POLL_TIMEOUT))
 				// Прекращаем прогон сценария
 				break;
 			// Если текущий цикл подключения ещё не завершён
-			if(!state.ready)
+			if(!state.ready){
+				// Если круг подключения не завершился в отведённый срок
+				if(std::chrono::duration <double> (std::chrono::steady_clock::now() - tick).count() > ROUND_DEADLINE){
+					// Сообщаем о незавершившемся круге: молча усечённый прогон читался бы как полный
+					::fprintf(stderr, "accept: круг подключения не завершился за %.0f с, выполнено кругов: прогрева %zu, замера %zu\n", ROUND_DEADLINE, state.warmed, state.done);
+					// Прекращаем прогон сценария
+					break;
+				}
 				// Ожидаем завершения текущего цикла подключения
 				continue;
+			}
 			// Сбрасываем флаг завершения текущего цикла подключения
 			state.ready = false;
+			// Запоминаем момент завершения круга подключения
+			tick = std::chrono::steady_clock::now();
 			// Освобождаем событие клиента
 			io.destroy(state.client);
 			/**
@@ -214,6 +251,21 @@ namespace {
 				io.destroy(id);
 			// Очищаем список принятых подключений
 			state.accepted.clear();
+			/**
+			 * Если подключение круга не состоялось, прогон прекращается
+			 *
+			 * @note Отказ здесь означает исчерпание динамических портов
+			 *       операционной системы: сценарий расходует по порту на круг, и
+			 *       каждый из них остаётся в TIME_WAIT. Продолжать после этого
+			 *       нельзя - несостоявшееся подключение обходится дешевле
+			 *       состоявшегося, и показатель тем выше, чем хуже дела
+			 */
+			if(state.refused){
+				// Сообщаем об усечении прогона: молча усечённый прогон читался бы как полный
+				::fprintf(stderr, "accept: подключение не состоялось, динамические порты исчерпаны, выполнено кругов: прогрева %zu, замера %zu\n", state.warmed, state.done);
+				// Прекращаем прогон сценария
+				break;
+			}
 			// Если замер ещё не начат
 			if(!state.measuring){
 				// Считаем выполненный цикл прогрева
@@ -249,10 +301,25 @@ namespace {
 			// Запускаем очередной цикл подключения
 			launch();
 		}
+		/**
+		 * Если окно замера осталось незакрытым, закрываем его моментом выхода из цикла
+		 *
+		 * @note Выходов из цикла несколько - исчерпание портов, незавершившийся круг,
+		 *       отказ опроса, - и каждый обязан закрыть окно замера. Без этого
+		 *       момент окончания остался бы нулевым, а затраченное время вышло бы
+		 *       разностью с началом эпохи
+		 */
+		if(state.measuring && (state.finish <= state.start)){
+			// Запоминаем момент окончания замера
+			state.finish = std::chrono::steady_clock::now();
+			// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
+			awh::benchmark::counting(false);
+			awh::benchmark::syscall::counting(false);
+		}
 		// Устанавливаем количество выполненных операций
 		result.operations = state.done;
 		// Устанавливаем затраченное время
-		result.seconds = std::chrono::duration <double> (state.finish - state.start).count();
+		result.seconds = (state.measuring ? std::chrono::duration <double> (state.finish - state.start).count() : 0.0);
 		// Снимаем показатели окружения по итогам замера
 		collect(result);
 		// Выполняем деинициализацию движка

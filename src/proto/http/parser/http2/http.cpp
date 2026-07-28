@@ -1026,7 +1026,7 @@ awh::http::Parser_HTTP2::Window::Window() noexcept :
  *
  */
 awh::http::Parser_HTTP2::Buffer::Buffer() noexcept :
- input{""}, output{""}, inputPos(0), outputPos(0) {}
+ input{""}, deferred{""}, output{""}, outputPos(0) {}
 
 /**
  * @brief Конструктор
@@ -1140,130 +1140,207 @@ size_t awh::http::Parser_HTTP2::outputPending() const noexcept {
 	return (this->_buffer.output.size() - this->_buffer.outputPos);
 }
 /**
- * @brief Метод очистки входного буфера вместе с разобранным префиксом
+ * @brief Метод очистки буфера незавершённого фрейма
  *
  */
 void awh::http::Parser_HTTP2::clearInput() noexcept {
-	// Очищаем буфер неразобранного хвоста входящих данных
+	// Очищаем буфер незавершённого фрейма
 	this->_buffer.input.clear();
-	// Сбрасываем разобранный префикс входного буфера
-	this->_buffer.inputPos = 0;
 }
 /**
- * @brief Метод получения объёма ещё не разобранных входящих байтов
+ * @brief Метод получения объёма накопленного незавершённого фрейма
  *
- * @return объём не разобранных входящих байтов
+ * @return объём накопленной части незавершённого фрейма
  *
  */
 size_t awh::http::Parser_HTTP2::inputPending() const noexcept {
-	// Выводим объём входного буфера без уже разобранного префикса
-	return (this->_buffer.input.size() - this->_buffer.inputPos);
+	// Выводим объём накопленной части незавершённого фрейма
+	return this->_buffer.input.size();
 }
 /**
- * @brief Метод разбора накопленного входного буфера (preface + поток фреймов)
+ * @brief Метод обработки одного полностью собранного фрейма
  *
- * @return результат разбора (OK/ERROR)
+ * @param header  заголовок фрейма
+ * @param payload полезная нагрузка фрейма
+ * @return        результат обработки (OK/ERROR)
  *
  */
-awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput() noexcept {
-	// Позиция разбора во входном буфере (с учётом уже разобранного префикса)
-	size_t pos = this->_buffer.inputPos;
-	// Если connection preface ещё не получен (мы - сервер)
+awh::http::h2::status_t awh::http::Parser_HTTP2::parseFrame(const h2::frame::header_t & header, const uint8_t * payload) noexcept {
+	/**
+	 * Пока идёт сборка блока заголовков, допустим только CONTINUATION того же потока
+	 * (RFC 9113 §6.10) - иначе PROTOCOL_ERROR (защита от перемешивания блоков)
+	 */
+	if((this->_hbc.stream != 0) && !((header.type == h2::frame_t::CONTINUATION) && (header.streamId == this->_hbc.stream))){
+		// Очищаем буфер незавершённого фрейма
+		this->clearInput();
+		// Фиксируем ошибку уровня соединения
+		return this->fail(error_t::PROTOCOL_ERROR, "expected CONTINUATION");
+	}
+	// Выполняем обработку полного фрейма
+	const h2::status_t status = this->dispatch(header, payload);
+	// Если обработка фрейма завершилась ошибкой уровня соединения
+	if(status == h2::status_t::ERROR)
+		// Очищаем буфер незавершённого фрейма
+		this->clearInput();
+	// Выводим результат обработки фрейма
+	return status;
+}
+/**
+ * @brief Метод разбора порции входящих байтов (preface + поток фреймов)
+ *
+ * @param buffer буфер входящих байтов
+ * @param size   размер буфера входящих байтов
+ * @return       результат разбора (OK/ERROR)
+ *
+ */
+awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput(const uint8_t * buffer, const size_t size) noexcept {
+	// Позиция разбора в переданной порции
+	size_t pos = 0;
+	// Запоминаем поколение состояния соединения на входе в разбор
+	const uint64_t epoch = this->_epoch;
+	/**
+	 * @brief Функция добора недостающих октетов в буфер незавершённого фрейма
+	 *
+	 * @param required требуемый размер накопленного
+	 * @return         признак того, что требуемое накоплено
+	 *
+	 */
+	auto collect = [&](const size_t required) noexcept -> bool {
+		// Если требуемое уже накоплено
+		if(this->_buffer.input.size() >= required)
+			// Выводим признак накопленного требуемого
+			return true;
+		// Вычисляем объём недостающих октетов
+		const size_t lack = (required - this->_buffer.input.size());
+		// Вычисляем объём, доступный в поданной порции
+		const size_t take = ((size - pos) < lack ? (size - pos) : lack);
+		// Дописываем доступные октеты в буфер незавершённого фрейма
+		this->_buffer.input.append(reinterpret_cast <const char *> (buffer + pos), take);
+		// Сдвигаем позицию разбора в поданной порции
+		pos += take;
+		// Выводим признак накопленного требуемого
+		return (this->_buffer.input.size() >= required);
+	};
+	/**
+	 * Если connection preface ещё не получен (мы - сервер)
+	 */
 	if(!this->_flags.prefaceReceived){
-		// Если preface целиком ещё не пришёл - ждём больше данных
-		if(this->inputPending() < h2::proto::PREFACE.size())
-			// Продолжаем ожидание данных
-			return h2::status_t::OK;
-		// Если полученные байты не совпадают с magic-строкой preface
-		if(string_view(this->_buffer.input.data() + pos, h2::proto::PREFACE.size()) != h2::proto::PREFACE){
-			// Очищаем входной буфер
+		/**
+		 * Preface разбирается прямо по поданной порции, если уместился в неё целиком:
+		 * буфер незавершённого фрейма нужен только на разрыв посреди preface
+		 */
+		if(this->_buffer.input.empty() && ((size - pos) >= h2::proto::PREFACE.size())){
+			// Если полученные байты не совпадают с magic-строкой preface
+			if(string_view(reinterpret_cast <const char *> (buffer + pos), h2::proto::PREFACE.size()) != h2::proto::PREFACE)
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::PROTOCOL_ERROR, "invalid connection preface");
+			// Пропускаем разобранный preface
+			pos += h2::proto::PREFACE.size();
+		// Если preface разорван границей порции
+		} else {
+			// Если preface целиком ещё не пришёл - ждём больше данных
+			if(!collect(h2::proto::PREFACE.size()))
+				// Продолжаем ожидание данных
+				return h2::status_t::OK;
+			// Если накопленные байты не совпадают с magic-строкой preface
+			if(string_view(this->_buffer.input.data(), h2::proto::PREFACE.size()) != h2::proto::PREFACE){
+				// Очищаем буфер незавершённого фрейма
+				this->clearInput();
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::PROTOCOL_ERROR, "invalid connection preface");
+			}
+			// Очищаем буфер незавершённого фрейма
 			this->clearInput();
-			// Фиксируем ошибку уровня соединения
-			return this->fail(error_t::PROTOCOL_ERROR, "invalid connection preface");
 		}
-		// Пропускаем разобранный preface
-		pos += h2::proto::PREFACE.size();
 		// Помечаем что preface получен
 		this->_flags.prefaceReceived = true;
 	}
 	/**
-	 * Разбор потока фреймов. Указатель и размер буфера перечитываем на каждой
-	 * итерации: функция обратного вызова могла реентрантно вызвать parse() и
-	 * дописать данные во входной буфер, спровоцировав перевыделение памяти.
+	 * Досбор фрейма, разорванного границей предыдущей порции: сначала заголовок,
+	 * затем полезная нагрузка. Это единственное место, где входящие октеты
+	 * копируются, и объём копии ограничен размером одного фрейма
+	 */
+	if(!this->_buffer.input.empty()){
+		// Если заголовок фрейма целиком ещё не накоплен - ждём больше данных
+		if(!collect(h2::proto::FRAME_HEADER_SIZE))
+			// Продолжаем ожидание данных
+			return h2::status_t::OK;
+		// Заголовок незавершённого фрейма
+		h2::frame::header_t header{};
+		// Выполняем разбор заголовка фрейма
+		h2::frame::parser::header(reinterpret_cast <const uint8_t *> (this->_buffer.input.data()), this->_buffer.input.size(), header);
+		// Если размер фрейма превышает согласованный лимит (RFC 9113 §4.2)
+		if(header.length > this->_local.maxFrameSize){
+			// Очищаем буфер незавершённого фрейма
+			this->clearInput();
+			// Фиксируем ошибку уровня соединения
+			return this->fail(error_t::FRAME_SIZE_ERROR, "frame exceeds SETTINGS_MAX_FRAME_SIZE");
+		}
+		// Если фрейм целиком ещё не накоплен - ждём больше данных
+		if(!collect(h2::proto::FRAME_HEADER_SIZE + header.length))
+			// Продолжаем ожидание данных
+			return h2::status_t::OK;
+		/**
+		 * Полезную нагрузку берём из буфера до обработки: обработка выходит
+		 * в пользовательские функции, а те вправе сбросить парсер
+		 */
+		const uint8_t * payload = (reinterpret_cast <const uint8_t *> (this->_buffer.input.data()) + h2::proto::FRAME_HEADER_SIZE);
+		// Выполняем обработку собранного фрейма
+		if(this->parseFrame(header, payload) == h2::status_t::ERROR)
+			// Прерываем разбор с ошибкой
+			return h2::status_t::ERROR;
+		/**
+		 * Очищаем буфер незавершённого фрейма, если его не очистил реентрантный
+		 * сброс из пользовательской функции
+		 */
+		if(this->_epoch == epoch)
+			// Очищаем буфер незавершённого фрейма
+			this->clearInput();
+	}
+	/**
+	 * Разбор целых фреймов идёт прямо по буферу вызывающей стороны: копии входа
+	 * у парсера нет, а указатель за время разбора не меняется - реентрантный
+	 * вызов parse() складывает байты в отдельный буфер и этот не трогает
 	 */
 	for(;;){
-		// Получаем указатель на входной буфер
-		const uint8_t * buffer = reinterpret_cast <const uint8_t *> (this->_buffer.input.data());
-		// Получаем общий размер входного буфера
-		const size_t total = this->_buffer.input.size();
 		/**
-		 * Входной буфер мог быть очищен реентрантным вызовом reset() либо clear()
-		 * из пользовательской функции: продолжать разбор по устаревшему смещению
-		 * нельзя - оно указывает за пределы буфера, а разность размеров переполняется
-		 * и обесценивает проверку доступного объёма
+		 * Поколение состояния соединения могло сдвинуться реентрантным вызовом
+		 * reset() либо clear() из пользовательской функции: состояние, по которому
+		 * разбирались фреймы, к этому моменту уже чужое, и продолжать разбор нельзя
 		 */
-		if(pos > total){
-			// Считаем разобранным весь оставшийся буфер
-			pos = total;
+		if(this->_epoch != epoch)
 			// Прерываем разбор
-			break;
-		}
+			return h2::status_t::OK;
 		// Если заголовок фрейма целиком ещё не пришёл - прерываем разбор
-		if((total - pos) < h2::proto::FRAME_HEADER_SIZE)
+		if((size - pos) < h2::proto::FRAME_HEADER_SIZE)
 			// Прерываем разбор до прихода новых данных
 			break;
 		// Заголовок текущего фрейма
 		h2::frame::header_t header{};
 		// Выполняем разбор заголовка фрейма
-		h2::frame::parser::header(buffer + pos, total - pos, header);
+		h2::frame::parser::header(buffer + pos, size - pos, header);
 		// Если размер фрейма превышает согласованный лимит (RFC 9113 §4.2)
-		if(header.length > this->_local.maxFrameSize){
-			// Очищаем входной буфер
-			this->clearInput();
+		if(header.length > this->_local.maxFrameSize)
 			// Фиксируем ошибку уровня соединения
 			return this->fail(error_t::FRAME_SIZE_ERROR, "frame exceeds SETTINGS_MAX_FRAME_SIZE");
-		}
 		// Если фрейм целиком ещё не пришёл - ждём больше данных
-		if((total - pos) < (h2::proto::FRAME_HEADER_SIZE + header.length))
+		if((size - pos) < (h2::proto::FRAME_HEADER_SIZE + header.length))
 			// Прерываем разбор до прихода новых данных
 			break;
-		// Получаем указатель на полезную нагрузку фрейма
-		const uint8_t * payload = (buffer + pos + h2::proto::FRAME_HEADER_SIZE);
-		/**
-		 * Пока идёт сборка блока заголовков, допустим только CONTINUATION того же потока
-		 * (RFC 9113 §6.10) - иначе PROTOCOL_ERROR (защита от перемешивания блоков)
-		 */
-		if((this->_hbc.stream != 0) && !((header.type == h2::frame_t::CONTINUATION) && (header.streamId == this->_hbc.stream))){
-			// Очищаем входной буфер
-			this->clearInput();
-			// Фиксируем ошибку уровня соединения
-			return this->fail(error_t::PROTOCOL_ERROR, "expected CONTINUATION");
-		}
-		// Выполняем обработку полного фрейма
-		const h2::status_t status = this->dispatch(header, payload);
-		// Если обработка фрейма завершилась ошибкой уровня соединения
-		if(status == h2::status_t::ERROR){
-			// Очищаем входной буфер
-			this->clearInput();
+		// Выполняем обработку полного фрейма прямо по буферу вызывающей стороны
+		if(this->parseFrame(header, (buffer + pos + h2::proto::FRAME_HEADER_SIZE)) == h2::status_t::ERROR)
 			// Прерываем разбор с ошибкой
 			return h2::status_t::ERROR;
-		}
 		// Пропускаем разобранный фрейм
 		pos += (h2::proto::FRAME_HEADER_SIZE + header.length);
 	}
-	// Отмечаем разобранный префикс без сдвига всего буфера
-	this->_buffer.inputPos = pos;
-	// Если входной буфер разобран полностью
-	if(this->_buffer.inputPos >= this->_buffer.input.size())
-		// Очищаем входной буфер вместе с разобранным префиксом
-		this->clearInput();
-	// Если разобранный префикс не меньше неразобранного остатка - компактифицируем буфер
-	else if(this->_buffer.inputPos >= this->inputPending()) {
-		// Удаляем разобранный префикс из буфера
-		this->_buffer.input.erase(0, this->_buffer.inputPos);
-		// Сбрасываем разобранный префикс
-		this->_buffer.inputPos = 0;
-	}
+	/**
+	 * Неразобранный хвост порции - это начало фрейма, не уместившегося в неё.
+	 * Копируем только его: целые фреймы в буфер парсера не попадают вовсе
+	 */
+	if(pos < size)
+		// Дописываем неразобранный хвост в буфер незавершённого фрейма
+		this->_buffer.input.append(reinterpret_cast <const char *> (buffer + pos), (size - pos));
 	// Разбор выполнен успешно
 	return h2::status_t::OK;
 }
@@ -4745,7 +4822,7 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 	this->_hbc.promised = 0;
 	// Очищаем накопитель блока заголовков
 	this->_hbc.buffer.clear();
-	// Очищаем буфер неразобранного хвоста входящих данных
+	// Очищаем буфер незавершённого фрейма
 	this->clearInput();
 	/**
 	 * Очищаем отложенный буфер реентрантных вызовов: сброс из пользовательской
@@ -4871,42 +4948,39 @@ size_t awh::http::Parser_HTTP2::parse(const void * buffer, const size_t size) no
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если данные для разбора переданы
-		if((buffer != nullptr) && (size > 0)){
-			/**
-			 * Реентерабельный вызов из функции обратного вызова: дописывание во входной
-			 * буфер способно перевыделить его память, а наружу уже отданы zero-copy
-			 * указатели в этот же буфер (тело DATA, debug-данные GOAWAY) - обработчик
-			 * продолжит читать по ним после возврата из вложенного разбора. Складываем
-			 * байты отдельно, внешний разбор подхватит их вне пользовательских функций
-			 */
-			if(this->_flags.inParse)
+		/**
+		 * Реентерабельный вызов из функции обратного вызова: наружу отданы zero-copy
+		 * указатели в разбираемую порцию (тело DATA, debug-данные GOAWAY), и обработчик
+		 * продолжит читать по ним после возврата из вложенного разбора. Складываем
+		 * байты отдельно, внешний разбор подхватит их вне пользовательских функций
+		 */
+		if(this->_flags.inParse){
+			// Если данные для разбора переданы
+			if((buffer != nullptr) && (size > 0))
 				// Дописываем данные в отложенный буфер
 				this->_buffer.deferred.append(static_cast <const char *> (buffer), size);
-			// Иначе дописываем данные сразу во входной буфер
-			else this->_buffer.input.append(static_cast <const char *> (buffer), size);
-		}
-		// Если разбор уже выполняется - подхватывать отложенное будет внешний вызов
-		if(this->_flags.inParse)
 			// Выводим количество обработанных байт данных
 			return size;
+		}
 		// Помечаем что разбор уже выполняется
 		this->_flags.inParse = true;
-		// Выполняем разбор накопленного входного буфера
-		this->parseInput();
+		// Если данные для разбора переданы
+		if((buffer != nullptr) && (size > 0))
+			// Выполняем разбор переданной порции входящих байтов
+			this->parseInput(static_cast <const uint8_t *> (buffer), size);
 		/**
-		 * Байты, накопленные реентрантными вызовами, дописываем здесь: в этой точке
-		 * ни одна пользовательская функция не удерживает указателей во входной буфер,
-		 * поэтому перевыделение памяти безопасно. Порядок сохраняется - вложенные
-		 * байты пришли из сети после всего, что уже лежало во входном буфере
+		 * Байты, накопленные реентрантными вызовами, разбираем здесь: в этой точке
+		 * ни одна пользовательская функция не удерживает указателей в разобранную
+		 * порцию. Порядок сохраняется - вложенные байты пришли из сети после всего,
+		 * что уже было подано
 		 */
 		while(!this->_buffer.deferred.empty() && (this->_status != status_t::ERROR)){
-			// Дописываем отложенные байты во входной буфер
-			this->_buffer.input.append(this->_buffer.deferred);
+			// Забираем накопленные реентрантными вызовами байты
+			const string deferred(::std::move(this->_buffer.deferred));
 			// Очищаем отложенный буфер
 			this->_buffer.deferred.clear();
-			// Выполняем разбор накопленного входного буфера
-			this->parseInput();
+			// Выполняем разбор отложенных байтов
+			this->parseInput(reinterpret_cast <const uint8_t *> (deferred.data()), deferred.size());
 		}
 		// Отбрасываем отложенные байты, оставшиеся после ошибки уровня соединения
 		this->_buffer.deferred.clear();
