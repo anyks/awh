@@ -337,6 +337,34 @@ namespace awh {
 					 *
 					 */
 					__AWH_SHARED_EXPORT__ status_t priorityUpdate(const header_t & header, const uint8_t * payload, uint32_t & streamId, string_view & value, error_t & error) noexcept;
+					/**
+					 * @brief Функция разбора полезной нагрузки ALTSVC (RFC 7838 §4)
+					 *
+					 * @note Ошибки этого кадра не рвут ни поток, ни соединение: RFC предписывает
+					 *       некорректный ALTSVC игнорировать. Отрицательный результат означает
+					 *       именно «кадр подлежит игнорированию», а не ошибку протокола
+					 *
+					 * @param header  заголовок фрейма
+					 * @param payload полезная нагрузка фрейма
+					 * @param origin  origin анонсируемого сервиса (zero-copy во входной буфер)
+					 * @param value   значение поля Alt-Svc (zero-copy во входной буфер)
+					 * @return        признак пригодности кадра к обработке
+					 *
+					 */
+					__AWH_SHARED_EXPORT__ bool altsvc(const header_t & header, const uint8_t * payload, string_view & origin, string_view & value) noexcept;
+					/**
+					 * @brief Функция разбора полезной нагрузки ORIGIN (RFC 8336 §2)
+					 *
+					 * @note Ошибки этого кадра тоже не рвут соединение: RFC предписывает
+					 *       некорректный ORIGIN игнорировать целиком
+					 *
+					 * @param header  заголовок фрейма
+					 * @param payload полезная нагрузка фрейма
+					 * @param origins набор origin (zero-copy во входной буфер)
+					 * @return        признак пригодности кадра к обработке
+					 *
+					 */
+					__AWH_SHARED_EXPORT__ bool origin(const header_t & header, const uint8_t * payload, vector <string_view> & origins) noexcept;
 				};
 
 				/**
@@ -442,6 +470,31 @@ namespace awh {
 					 *
 					 */
 					__AWH_SHARED_EXPORT__ void priorityUpdate(string & output, const uint32_t streamId, string_view value) noexcept;
+					/**
+					 * @brief Функция сборки фрейма ALTSVC (RFC 7838 §4)
+					 *
+					 * @note Кадр для соединения (streamId == 0) обязан нести непустой origin,
+					 *       кадр для потока - пустой: во втором случае origin берётся
+					 *       из самого потока
+					 *
+					 * @param output   выходной буфер соединения
+					 * @param streamId идентификатор потока, либо 0 для соединения
+					 * @param origin   origin анонсируемого сервиса
+					 * @param value    значение поля Alt-Svc (RFC 7838 §3)
+					 *
+					 */
+					__AWH_SHARED_EXPORT__ void altsvc(string & output, const uint32_t streamId, string_view origin, string_view value) noexcept;
+					/**
+					 * @brief Функция сборки фрейма ORIGIN (RFC 8336 §2)
+					 *
+					 * @note Кадр относится к соединению целиком и отправляется только
+					 *       в потоке 0
+					 *
+					 * @param output  выходной буфер соединения
+					 * @param origins набор origin, обслуживаемых соединением
+					 *
+					 */
+					__AWH_SHARED_EXPORT__ void origin(string & output, const vector <string> & origins) noexcept;
 					/**
 					 * @brief Функция сборки HPACK-блока в HEADERS + CONTINUATION (RFC 9113 §6.2/§6.10)
 					 *

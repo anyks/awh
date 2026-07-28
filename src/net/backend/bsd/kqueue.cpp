@@ -51815,6 +51815,35 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						if(result && !isSetup)
 							// Устанавливаем результат работы функции как ложь
 							result = isSetup;
+						/**
+						 * Если опция передана как HARD_CLOSE
+						 *
+						 * @note Опция ставится здесь, а не в разборе типов сокета ниже, потому
+						 *       что она уровня сокета, а не протокола: смысл она имеет для любого
+						 *       соединения, будь то TCP, SCTP или UNIX-сокет. Дейтаграммному сокету
+						 *       ядро её принимает и оставляет без последствий - обрывать там нечего
+						 */
+						if(event::options::HARD_CLOSE & options){
+							// Устанавливаем режим немедленного обрыва соединения
+							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HARD_CLOSE)))
+								// Устанавливаем опцию события
+								i->second->state.options |= event::options::HARD_CLOSE;
+						// Если опция не передана как HARD_CLOSE, но установлена в состоянии узла
+						} else if(i->second->state.options & event::options::HARD_CLOSE) {
+							// Снимаем режим немедленного обрыва соединения
+							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::HARD_CLOSE)))
+								// Снимаем опцию события
+								i->second->state.options &= ~event::options::HARD_CLOSE;
+						/**
+						 * @note Опция в состоянии узла не установлена: снимать её у ядра не за чем.
+						 *       Снятие того, чего нет, не меняет ни нового дескриптора, ни
+						 *       действующего, а обращение к ядру стоит на каждом узле
+						 */
+						} else isSetup = true;
+						// Если опция не установлена
+						if(result && !isSetup)
+							// Устанавливаем результат работы функции как ложь
+							result = isSetup;
 						// Для типа трансляции пакетов MULTICAST
 						if(i->second->state.delivery == event::delivery_mode_t::MULTICAST){
 							// Если опция передана как MULTICAST_LOOPBACK

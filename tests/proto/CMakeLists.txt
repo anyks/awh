@@ -210,6 +210,7 @@ if (${GTest_FOUND})
                 quic/parameterized.cpp
                 quic/facade.cpp
                 quic/smallvec.cpp
+                quic/fifo.cpp
             )
         # Если не нужно собрать тесты для подмодуля протокола QUIC
         else()

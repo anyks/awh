@@ -193,8 +193,16 @@ namespace {
 			state.client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Устанавливаем порт назначения события клиента
 			io.setTargetPort(state.client, number);
-			// Устанавливаем опции события клиента
-			io.setOptions(state.client, options());
+			/**
+			 * Устанавливаем опции события клиента вместе с немедленным обрывом соединения
+			 *
+			 * @note Сценарий расходует по динамическому порту на круг, и без этой
+			 *       опции каждый из них остаётся в TIME_WAIT на тридцать секунд.
+			 *       Пул таких портов - шестнадцать тысяч, и на измеряемом здесь
+			 *       темпе он выбирается за считанные секунды: подключение начинает
+			 *       отказывать, и сценарий обрывается, не досчитав кругов
+			 */
+			io.setOptions(state.client, options() | awh::event::options::HARD_CLOSE);
 			// Устанавливаем адрес привязки события клиента
 			io.setAddress(state.client, awh::event::address_t::IPV4, "0.0.0.0");
 			// Устанавливаем адрес назначения события клиента

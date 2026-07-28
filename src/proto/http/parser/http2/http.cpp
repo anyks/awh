@@ -2681,6 +2681,84 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			return h2::status_t::OK;
 		}
 		// Фрейм обновления расширенного приоритета потока (RFC 9218 §7.1)
+		case h2::frame_t::ALTSVC: {
+			/**
+			 * Анонс отправляет только сервер: присланный клиентом кадр сервер обязан
+			 * игнорировать, а не считать ошибкой (RFC 7838 §4)
+			 */
+			if(this->_direct == direct_t::REQUEST)
+				// Кадр игнорируется
+				return h2::status_t::OK;
+			// Пополняем лимит частоты управляющих фреймов по текущему времени
+			this->_ratelims.ctrl.update(this->_ratelims.now);
+			// Если лимит частоты управляющих фреймов превышен
+			if(!this->_ratelims.ctrl.drain(1))
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::ENHANCE_YOUR_CALM, "ALTSVC flood");
+			// Если функция обратного вызова не установлена - разбирать кадр незачем
+			if(this->_callbacks.altsvc == nullptr)
+				// Кадр игнорируется
+				return h2::status_t::OK;
+			// Origin анонсируемого сервиса
+			string_view origin{};
+			// Значение поля Alt-Svc
+			string_view value{};
+			// Если кадр непригоден к обработке - он игнорируется целиком (RFC 7838 §4)
+			if(!h2::frame::parser::altsvc(header, payload, origin, value))
+				// Кадр игнорируется
+				return h2::status_t::OK;
+			/**
+			 * Анонс для потока, которого не существует, игнорируется: origin такого
+			 * анонса определялся бы потоком, а его нет
+			 */
+			if((header.streamId != 0) && (this->findStream(header.streamId) == nullptr))
+				// Кадр игнорируется
+				return h2::status_t::OK;
+			// Выполняем доставку анонса альтернативного сервиса
+			this->_callbacks.altsvc(header.streamId, origin, value);
+			// Обработка кадра завершена
+			return h2::status_t::OK;
+		}
+		case h2::frame_t::ORIGIN: {
+			/**
+			 * Набор origin объявляет сервер: присланный клиентом кадр игнорируется,
+			 * а не считается ошибкой (RFC 8336 §2.1)
+			 */
+			if(this->_direct == direct_t::REQUEST)
+				// Кадр игнорируется
+				return h2::status_t::OK;
+			// Пополняем лимит частоты управляющих фреймов по текущему времени
+			this->_ratelims.ctrl.update(this->_ratelims.now);
+			// Если лимит частоты управляющих фреймов превышен
+			if(!this->_ratelims.ctrl.drain(1))
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::ENHANCE_YOUR_CALM, "ORIGIN flood");
+			// Если функция обратного вызова не установлена - разбирать кадр незачем
+			if(this->_callbacks.origin == nullptr)
+				// Кадр игнорируется
+				return h2::status_t::OK;
+			// Набор origin, обслуживаемых соединением
+			vector <string_view> origins;
+			// Если кадр непригоден к обработке - он игнорируется целиком (RFC 8336 §2.1)
+			if(!h2::frame::parser::origin(header, payload, origins))
+				// Кадр игнорируется
+				return h2::status_t::OK;
+			// Запоминаем поколение состояния соединения перед доставкой набора
+			const uint64_t epoch = this->_epoch;
+			/**
+			 * Выполняем доставку всех origin набора
+			 */
+			for(auto & item : origins){
+				// Выполняем доставку очередного origin
+				this->_callbacks.origin(item);
+				// Если состояние соединения сброшено из функции обратного вызова
+				if(this->_epoch != epoch)
+					// Прекращаем доставку набора
+					break;
+			}
+			// Обработка кадра завершена
+			return h2::status_t::OK;
+		}
 		case h2::frame_t::PRIORITY_UPDATE: {
 			/**
 			 * Приоритет объявляет только клиент: сервер отправлять кадр не вправе,
@@ -5459,6 +5537,96 @@ void awh::http::Parser_HTTP2::sendPriority(const uint32_t sid, const uint8_t urg
 	this->flush();
 }
 /**
+ * @brief Метод отправки анонса альтернативного сервиса (RFC 7838 §4)
+ *
+ * @param sid    идентификатор потока, либо 0 для соединения
+ * @param origin origin анонсируемого сервиса
+ * @param value  значение поля Alt-Svc (RFC 7838 §3)
+ *
+ */
+void awh::http::Parser_HTTP2::sendAltSvc(const uint32_t sid, const string & origin, const string & value) noexcept {
+	/**
+	 * Кадр отправляет только сервер: клиенту это запрещено прямо, а сервер
+	 * присланный клиентом кадр обязан игнорировать (RFC 7838 §4)
+	 */
+	if(this->_direct == direct_t::RESPONSE){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 client is not allowed to send ALTSVC", log_t::flag_t::WARNING);
+		// Выходим из метода
+		return;
+	}
+	/**
+	 * Анонс для соединения обязан нести origin, анонс для потока - не нести:
+	 * origin там определяется самим потоком. Обратное получатель игнорирует,
+	 * поэтому такой кадр не отправляется вовсе
+	 */
+	if((sid == 0) == origin.empty()){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 ALTSVC origin is required for the connection and forbidden for a stream", log_t::flag_t::WARNING);
+		// Выходим из метода
+		return;
+	}
+	/**
+	 * Анонс для потока имеет смысл только пока поток жив: получатель обязан
+	 * игнорировать кадр потока, которого не существует (RFC 7838 §4)
+	 */
+	if((sid != 0) && (this->findStream(sid) == nullptr)){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 ALTSVC for unknown stream %u", log_t::flag_t::WARNING, sid);
+		// Выходим из метода
+		return;
+	}
+	// Если размер кадра превышает согласованный пиром лимит
+	if((origin.size() + value.size() + 2) > static_cast <size_t> (this->_remote.maxFrameSize)){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 ALTSVC exceeds peer SETTINGS_MAX_FRAME_SIZE", log_t::flag_t::WARNING);
+		// Выходим из метода
+		return;
+	}
+	// Отправляем фрейм анонса альтернативного сервиса
+	h2::frame::serialize::altsvc(this->_buffer.output, sid, origin, value);
+	// Передаём исходящие байты сетевому слою
+	this->flush();
+}
+/**
+ * @brief Метод отправки набора origin, обслуживаемых соединением (RFC 8336 §2)
+ *
+ * @param origins набор origin
+ *
+ */
+void awh::http::Parser_HTTP2::sendOrigin(const vector <string> & origins) noexcept {
+	/**
+	 * Кадр отправляет только сервер: набор origin объявляет тот, кто соединение
+	 * обслуживает, и присланный клиентом кадр получатель игнорирует (RFC 8336 §2.1)
+	 */
+	if(this->_direct == direct_t::RESPONSE){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 client is not allowed to send ORIGIN", log_t::flag_t::WARNING);
+		// Выходим из метода
+		return;
+	}
+	// Размер полезной нагрузки кадра
+	size_t length = 0;
+	/**
+	 * Выполняем подсчёт размера полезной нагрузки: кадр целиком обязан уложиться
+	 * в согласованный пиром предел, а делить набор между кадрами RFC не позволяет
+	 */
+	for(auto & item : origins)
+		// Наращиваем размер нагрузки на запись набора
+		length += (item.size() + 2);
+	// Если размер кадра превышает согласованный пиром лимит
+	if(length > static_cast <size_t> (this->_remote.maxFrameSize)){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 ORIGIN exceeds peer SETTINGS_MAX_FRAME_SIZE", log_t::flag_t::WARNING);
+		// Выходим из метода
+		return;
+	}
+	// Отправляем фрейм набора origin
+	h2::frame::serialize::origin(this->_buffer.output, origins);
+	// Передаём исходящие байты сетевому слою
+	this->flush();
+}
+/**
  * @brief Метод отправки WINDOW_UPDATE
  *
  * @details Выданный пиру кредит сразу учитывается в окне приёма: иначе парсер
@@ -6321,6 +6489,26 @@ void awh::http::Parser_HTTP2::on(phase_callback_t callback) noexcept {
 void awh::http::Parser_HTTP2::on(goaway_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callbacks.goaway = ::move(callback);
+}
+/**
+ * @brief Метод установки функции обратного вызова для обработки полученного ALTSVC
+ *
+ * @param callback функция обратного вызова
+ *
+ */
+void awh::http::Parser_HTTP2::on(altsvc_callback_t callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callbacks.altsvc = ::move(callback);
+}
+/**
+ * @brief Метод установки функции обратного вызова для обработки полученного ORIGIN
+ *
+ * @param callback функция обратного вызова
+ *
+ */
+void awh::http::Parser_HTTP2::on(origin_callback_t callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callbacks.origin = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова для обработки заголовков или трейлеров потока

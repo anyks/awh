@@ -397,6 +397,30 @@ namespace awh {
 				 */
 				using goaway_callback_t = function <void (const uint32_t, const error_t, const string_view)>;
 				/**
+				 * @brief Тип функции обратного вызова для обработки полученного ALTSVC (RFC 7838 §4)
+				 *
+				 * @details Представления origin и value действительны ТОЛЬКО на время вызова.
+				 *          Нулевой идентификатор потока означает анонс для соединения,
+				 *          и тогда origin непустой; для потока origin приходит пустым,
+				 *          а сам origin определяется этим потоком
+				 *
+				 * @param sid    идентификатор потока, либо 0 для соединения
+				 * @param origin origin анонсируемого сервиса
+				 * @param value  значение поля Alt-Svc (RFC 7838 §3)
+				 *
+				 */
+				using altsvc_callback_t = function <void (const uint32_t, const string_view, const string_view)>;
+				/**
+				 * @brief Тип функции обратного вызова для обработки полученного ORIGIN (RFC 8336 §2)
+				 *
+				 * @details Вызывается по одному разу на каждый origin набора. Представление
+				 *          действительно ТОЛЬКО на время вызова
+				 *
+				 * @param origin очередной origin, обслуживаемый соединением
+				 *
+				 */
+				using origin_callback_t = function <void (const string_view)>;
+				/**
 				 * @brief Тип функции обратного вызова для обработки фрагмента тела потока
 				 *
 				 * @details Указатель buffer действителен ТОЛЬКО на время вызова (zero-copy).
@@ -944,6 +968,16 @@ namespace awh {
 					 *
 					 */
 					goaway_callback_t goaway;
+					/**
+					 * @brief Функция обратного вызова для обработки полученного ALTSVC
+					 *
+					 */
+					altsvc_callback_t altsvc;
+					/**
+					 * @brief Функция обратного вызова для обработки полученного ORIGIN
+					 *
+					 */
+					origin_callback_t origin;
 					/**
 					 * @brief Функция обратного вызова о готовности потока принимать данные тела
 					 *
@@ -1776,6 +1810,31 @@ namespace awh {
 				 */
 				void sendPriority(const uint32_t sid, const uint8_t urgency, const bool incremental) noexcept;
 				/**
+				 * @brief Метод отправки анонса альтернативного сервиса (RFC 7838 §4)
+				 *
+				 * @details Кадр отправляет только сервер. Нулевой идентификатор потока
+				 *          означает анонс для соединения и требует непустого origin;
+				 *          анонс для потока, наоборот, требует пустого - origin там
+				 *          определяется самим потоком
+				 *
+				 * @param sid    идентификатор потока, либо 0 для соединения
+				 * @param origin origin анонсируемого сервиса
+				 * @param value  значение поля Alt-Svc (RFC 7838 §3)
+				 *
+				 */
+				void sendAltSvc(const uint32_t sid, const string & origin, const string & value) noexcept;
+				/**
+				 * @brief Метод отправки набора origin, обслуживаемых соединением (RFC 8336 §2)
+				 *
+				 * @details Кадр отправляет только сервер и только для соединения целиком.
+				 *          Пустой набор законен и означает, что соединение не обслуживает
+				 *          ни одного origin сверх того, для которого установлено
+				 *
+				 * @param origins набор origin
+				 *
+				 */
+				void sendOrigin(const vector <string> & origins) noexcept;
+				/**
 				 * @brief Метод отправки WINDOW_UPDATE
 				 *
 				 * @param sid       идентификатор потока (0 - окно всего соединения)
@@ -1991,6 +2050,20 @@ namespace awh {
 				 *
 				 */
 				void on(goaway_callback_t callback) noexcept;
+				/**
+				 * @brief Метод установки функции обратного вызова для обработки полученного ALTSVC
+				 *
+				 * @param callback функция обратного вызова
+				 *
+				 */
+				void on(altsvc_callback_t callback) noexcept;
+				/**
+				 * @brief Метод установки функции обратного вызова для обработки полученного ORIGIN
+				 *
+				 * @param callback функция обратного вызова
+				 *
+				 */
+				void on(origin_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки заголовков или трейлеров потока
 				 *

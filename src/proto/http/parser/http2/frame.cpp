@@ -1003,3 +1003,138 @@ void awh::http::h2::frame::serialize::priorityUpdate(string & output, const uint
 	// Дописываем значение поля приоритета
 	output.append(value.data(), value.size());
 }
+/**
+ * @brief Функция разбора полезной нагрузки ALTSVC (RFC 7838 §4)
+ *
+ * @param header  заголовок фрейма
+ * @param payload полезная нагрузка фрейма
+ * @param origin  origin анонсируемого сервиса (zero-copy во входной буфер)
+ * @param value   значение поля Alt-Svc (zero-copy во входной буфер)
+ * @return        признак пригодности кадра к обработке
+ *
+ */
+bool awh::http::h2::frame::parser::altsvc(const header_t & header, const uint8_t * payload, string_view & origin, string_view & value) noexcept {
+	// Если нагрузка не содержит обязательные два октета длины origin
+	if(header.length < 2)
+		// Кадр подлежит игнорированию
+		return false;
+	// Извлекаем длину origin
+	const uint16_t length = ::rd16(payload);
+	// Если origin не помещается в нагрузку
+	if((static_cast <uint32_t> (length) + 2) > header.length)
+		// Кадр подлежит игнорированию
+		return false;
+	/**
+	 * Кадр соединения обязан нести origin, кадр потока - не нести: origin
+	 * там определяется самим потоком, и присланный вместе с ним RFC 7838 §4
+	 * предписывает игнорировать
+	 */
+	if((header.streamId == 0) == (length == 0))
+		// Кадр подлежит игнорированию
+		return false;
+	// Извлекаем origin анонсируемого сервиса
+	origin = string_view(reinterpret_cast <const char *> (payload + 2), length);
+	// Извлекаем значение поля Alt-Svc
+	value = string_view(reinterpret_cast <const char *> (payload + 2 + length), (header.length - 2 - length));
+	// Кадр пригоден к обработке
+	return true;
+}
+/**
+ * @brief Функция разбора полезной нагрузки ORIGIN (RFC 8336 §2)
+ *
+ * @param header  заголовок фрейма
+ * @param payload полезная нагрузка фрейма
+ * @param origins набор origin (zero-copy во входной буфер)
+ * @return        признак пригодности кадра к обработке
+ *
+ */
+bool awh::http::h2::frame::parser::origin(const header_t & header, const uint8_t * payload, vector <string_view> & origins) noexcept {
+	// Выполняем очистку набора origin
+	origins.clear();
+	/**
+	 * Кадр относится к соединению целиком, поэтому в потоке он бессмыслен
+	 * и подлежит игнорированию (RFC 8336 §2.1)
+	 */
+	if(header.streamId != 0)
+		// Кадр подлежит игнорированию
+		return false;
+	// Позиция разбора в полезной нагрузке
+	uint32_t pos = 0;
+	/**
+	 * Выполняем разбор всех записей набора origin
+	 */
+	while(pos < header.length){
+		// Если запись не содержит обязательные два октета длины
+		if((header.length - pos) < 2){
+			// Выполняем очистку набора origin
+			origins.clear();
+			// Кадр подлежит игнорированию целиком
+			return false;
+		}
+		// Извлекаем длину очередного origin
+		const uint16_t length = ::rd16(payload + pos);
+		// Сдвигаем позицию разбора за длину
+		pos += 2;
+		// Если origin не помещается в оставшуюся нагрузку
+		if(length > (header.length - pos)){
+			// Выполняем очистку набора origin
+			origins.clear();
+			// Кадр подлежит игнорированию целиком
+			return false;
+		}
+		// Дописываем очередной origin в набор
+		origins.emplace_back(reinterpret_cast <const char *> (payload + pos), length);
+		// Сдвигаем позицию разбора за origin
+		pos += length;
+	}
+	// Кадр пригоден к обработке
+	return true;
+}
+/**
+ * @brief Функция сборки фрейма ALTSVC (RFC 7838 §4)
+ *
+ * @param output   выходной буфер соединения
+ * @param streamId идентификатор потока, либо 0 для соединения
+ * @param origin   origin анонсируемого сервиса
+ * @param value    значение поля Alt-Svc (RFC 7838 §3)
+ *
+ */
+void awh::http::h2::frame::serialize::altsvc(string & output, const uint32_t streamId, string_view origin, string_view value) noexcept {
+	// Дописываем заголовок фрейма ALTSVC (нагрузка включает 2 октета длины origin)
+	::wrHeader(output, static_cast <uint32_t> (origin.size() + value.size() + 2), frame_t::ALTSVC, flag::NONE, streamId);
+	// Дописываем длину origin анонсируемого сервиса
+	::wr16(output, static_cast <uint16_t> (origin.size()));
+	// Дописываем origin анонсируемого сервиса
+	output.append(origin.data(), origin.size());
+	// Дописываем значение поля Alt-Svc
+	output.append(value.data(), value.size());
+}
+/**
+ * @brief Функция сборки фрейма ORIGIN (RFC 8336 §2)
+ *
+ * @param output  выходной буфер соединения
+ * @param origins набор origin, обслуживаемых соединением
+ *
+ */
+void awh::http::h2::frame::serialize::origin(string & output, const vector <string> & origins) noexcept {
+	// Размер полезной нагрузки кадра
+	size_t length = 0;
+	/**
+	 * Выполняем подсчёт размера полезной нагрузки заранее: он входит в заголовок,
+	 * а тот пишется до самой нагрузки
+	 */
+	for(auto & item : origins)
+		// Наращиваем размер нагрузки на запись набора
+		length += (item.size() + 2);
+	// Дописываем заголовок фрейма ORIGIN
+	::wrHeader(output, static_cast <uint32_t> (length), frame_t::ORIGIN, flag::NONE, 0);
+	/**
+	 * Выполняем запись всех записей набора origin
+	 */
+	for(auto & item : origins){
+		// Дописываем длину очередного origin
+		::wr16(output, static_cast <uint16_t> (item.size()));
+		// Дописываем очередной origin
+		output.append(item);
+	}
+}

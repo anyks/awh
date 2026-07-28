@@ -600,7 +600,7 @@ awh::quic::Connection::Stream::Stream() noexcept :
  txOffset(0), txBuffer{""}, txCursor(0), txAcked(0), txMax(0), txFin(false), txFinSent(false),
  txReset(false), txResetSent(false), txResetCode(0), txBlocked(false),
  txBlockedAt(numeric_limits <uint64_t>::max()), writableNotified(true),
- rxOffset(0), rxHigh(0), rxReady{""}, rxMax(0), rxMaxQueued(false),
+ rxOffset(0), rxHigh(0), rxMax(0), rxMaxQueued(false),
  rxFin(false), rxFinal(0), rxFinDelivered(false), rxCounted(0),
  rxReset(false), rxResetCode(0), stopQueued(false), stopSent(false),
  stopCode(0), credited(false), queued(false), controlPending(false) {}
@@ -2643,7 +2643,7 @@ awh::quic::status_t awh::quic::Connection::inputStream(const frame::stream_t & f
 			// Отбрасываем уже собранную часть данных фрейма
 			data.remove_prefix(static_cast <size_t> (stream->rxOffset - frame.offset));
 			// Дописываем данные в буфер выдачи приложению
-			stream->rxReady.append(data);
+			stream->rxReady.append(this->_blockPool, data);
 			// Продвигаем непрерывно собранное смещение
 			stream->rxOffset = end;
 			/**
@@ -2665,7 +2665,7 @@ awh::quic::status_t awh::quic::Connection::inputStream(const frame::stream_t & f
 					// Отбрасываем уже собранную часть фрагмента
 					chunk.remove_prefix(static_cast <size_t> (stream->rxOffset - i->first));
 					// Дописываем данные в буфер выдачи приложению
-					stream->rxReady.append(chunk);
+					stream->rxReady.append(this->_blockPool, chunk);
 					// Продвигаем непрерывно собранное смещение
 					stream->rxOffset = chunkEnd;
 				}
@@ -3448,7 +3448,7 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 					// Отбрасываем несобранные фрагменты данных потока
 					stream->rxBuffer.clear();
 					// Отбрасываем собранные данные потока (RFC 9000 §3.2)
-					stream->rxReady.clear();
+					stream->rxReady.clear(this->_blockPool);
 					// Учитываем завершение потока удалённого эндпоинта в лимите MAX_STREAMS
 					this->credit(frame.streamId, * stream);
 					// Обновляем готовность потока к выдаче данных приложению
@@ -7926,10 +7926,8 @@ awh::quic::status_t awh::quic::Connection::receive(const uint64_t sid, string & 
 		this->_flow.rxConsumed += stream.rxReady.size();
 		// Продвигаем учтённое смещение данных потока
 		stream.rxCounted += stream.rxReady.size();
-		// Дописываем собранные данные в выходной буфер
-		output.append(stream.rxReady);
-		// Очищаем буфер выдачи приложению
-		stream.rxReady.clear();
+		// Сливаем собранные данные в выходной буфер, возвращая блоки в пул
+		stream.rxReady.drain(this->_blockPool, output);
 	}
 	// Если поток ещё не завершён - обновляем окно приёма потока
 	if(!stream.rxFin){
@@ -8031,7 +8029,7 @@ void awh::quic::Connection::stop(const uint64_t sid, const uint64_t code) noexce
 	// Отбрасываем несобранные фрагменты данных потока
 	stream.rxBuffer.clear();
 	// Отбрасываем собранные данные потока
-	stream.rxReady.clear();
+	stream.rxReady.clear(this->_blockPool);
 	/**
 	 * Если финальный размер потока уже принят - приём завершён и данные приложению
 	 * выданы не будут, поэтому лимит потоков возвращается здесь (RFC 9000 §4.6)
