@@ -585,18 +585,6 @@ namespace {
 		return true;
 	}
 	/**
-	 * @brief Функция сравнения строки с литералом без учёта регистра (литерал в нижнем регистре)
-	 *
-	 * @param str      сравниваемая строка
-	 * @param litLower литерал в нижнем регистре
-	 * @return         результат сравнения
-	 *
-	 */
-	bool iequalsLit(const string & str, const char * litLower) noexcept {
-		// Выполняем сравнение строки с литералом
-		return iequalsLit(str.c_str(), str.length(), litLower);
-	}
-	/**
 	 * @brief Функция точного сравнения имени метода запроса с литералом
 	 *
 	 * @details Метод запроса регистрозависим (RFC 9110 §9.1): трактовка "get" как GET

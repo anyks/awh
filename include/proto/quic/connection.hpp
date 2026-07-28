@@ -74,6 +74,13 @@ namespace awh {
 		 */
 		template <class T, size_t N>
 		class small_vector {
+			/**
+			 * Кучевое хранилище выделяется базовым ::operator new, гарантирующим
+			 * выравнивание лишь до __STDCPP_DEFAULT_NEW_ALIGNMENT__. Тип с большим
+			 * требованием выравнивания был бы недовыровнен на кучевом пути, поэтому
+			 * запрещаем его на этапе компиляции (для chunk_t выравнивание равно 8)
+			 */
+			static_assert(alignof(T) <= __STDCPP_DEFAULT_NEW_ALIGNMENT__, "small_vector: over-aligned element type is unsupported on the heap path");
 			private:
 				// Число хранимых элементов
 				size_t _size;

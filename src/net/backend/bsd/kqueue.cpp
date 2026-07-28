@@ -202,6 +202,21 @@
 #endif
 
 /**
+ * Если окно всплеска ограничения пропускной способности не определено
+ */
+#ifndef AWH_BANDWIDTH_BURST_WINDOW
+	/**
+	 * @brief Устанавливаем окно всплеска ограничения пропускной способности в 10 миллисекунд
+	 *
+	 * @note Окно задаёт две величины разом: сколько токенов ведро накапливает
+	 *       за простой и сколько октетов отдаётся за одну операцию. Десять
+	 *       миллисекунд - тот же запас, что ведро приёма держало и прежде
+	 *
+	 */
+	#define AWH_BANDWIDTH_BURST_WINDOW 0.01
+#endif
+
+/**
  * Если размер MTU для TCP сообщений в IPv4 не определён
  */
 #ifndef AWH_MTU_TCP_IPV4_PAYLOAD_SIZE
@@ -3364,6 +3379,30 @@ namespace local {
 			((a < static_cast <A> (b)) ? ((a < static_cast <A> (c)) ? a : static_cast <A> (c)) :
 			((static_cast <A> (b) < static_cast <A> (c)) ? static_cast <A> (b) : static_cast <A> (c)))
 		);
+	}
+	/**
+	 * @brief Функция получения предельного размера одной операции при заданном пределе полосы
+	 *
+	 * @details Учёту токенов нужна дробность: операция не должна перескакивать
+	 *          предел больше, чем на свой размер. Дробность эта задавалась
+	 *          одним кадром, и на высоких пределах обходилась дорого - блок
+	 *          очереди в 64 КиБ уходил в сокет сорока пятью записями вместо
+	 *          одной. Здесь дробность задаётся временем, а не кадром: за одну
+	 *          операцию отдаётся не больше, чем предел выдаёт за окно всплеска.
+	 *          На низких пределах окно короче кадра, и размер операции остаётся
+	 *          прежним; на высоких - операция растёт вместе с пределом, и цена
+	 *          дробности исчезает
+	 *
+	 * @param limit предел пропускной способности в октетах в секунду
+	 * @param mtu   размер полезной нагрузки кадра
+	 * @return      предельный размер одной операции в октетах
+	 *
+	 */
+	static inline double burst(const uint64_t limit, const size_t mtu) noexcept {
+		// Объём, который предел выдаёт за окно всплеска
+		const double slice = (static_cast <double> (limit) * AWH_BANDWIDTH_BURST_WINDOW);
+		// Возвращаем больший из объёма окна и размера кадра
+		return ((slice > static_cast <double> (mtu)) ? slice : static_cast <double> (mtu));
 	}
 	/**
 	 * @brief Прототип функции получения максимального значения из трёх аргументов
@@ -8309,12 +8348,12 @@ namespace io {
 									// Для семейства IPv4
 									case static_cast <uint8_t> (event::family_t::IPV4):
 										// Выполняем рассчёт размера байт для чтения из сокета
-										size = ::local::min(peer->bandwidth().read.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, AWH_EVENT_MAX_BUFFER_SIZE);
+										size = ::local::min(peer->bandwidth().read.tokens, ::local::burst(peer->bandwidth().read.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE);
 									break;
 									// Для семейства IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6):
 										// Выполняем рассчёт размера байт для чтения из сокета
-										size = ::local::min(peer->bandwidth().read.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE, AWH_EVENT_MAX_BUFFER_SIZE);
+										size = ::local::min(peer->bandwidth().read.tokens, ::local::burst(peer->bandwidth().read.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE);
 									break;
 								}
 							}
@@ -10161,12 +10200,12 @@ namespace io {
 									// Для семейства IPv4
 									case static_cast <uint8_t> (event::family_t::IPV4):
 										// Выполняем рассчёт размера байт для чтения из сокета
-										size = ::local::min(client->bandwidth().read.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, AWH_EVENT_MAX_BUFFER_SIZE);
+										size = ::local::min(client->bandwidth().read.tokens, ::local::burst(client->bandwidth().read.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE);
 									break;
 									// Для семейства IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6):
 										// Выполняем рассчёт размера байт для чтения из сокета
-										size = ::local::min(client->bandwidth().read.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE, AWH_EVENT_MAX_BUFFER_SIZE);
+										size = ::local::min(client->bandwidth().read.tokens, ::local::burst(client->bandwidth().read.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE);
 									break;
 								}
 							}
@@ -13532,12 +13571,12 @@ namespace io {
 										// Для семейства IPv4
 										case static_cast <uint8_t> (event::family_t::IPV4):
 											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, peer->bandwidth().write.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+											bytes = send(buffer, ::local::min(size, peer->bandwidth().write.tokens, ::local::burst(peer->bandwidth().write.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE)));
 										break;
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6):
 											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, peer->bandwidth().write.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+											bytes = send(buffer, ::local::min(size, peer->bandwidth().write.tokens, ::local::burst(peer->bandwidth().write.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
 										break;
 									}
 									// Если данные отправлены успешно
@@ -14870,12 +14909,12 @@ namespace io {
 										// Для семейства IPv4
 										case static_cast <uint8_t> (event::family_t::IPV4):
 											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, client->bandwidth().write.tokens, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+											bytes = send(buffer, ::local::min(size, client->bandwidth().write.tokens, ::local::burst(client->bandwidth().write.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE)));
 										break;
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6):
 											// Выполняем отправку данных в сокет
-											bytes = send(buffer, ::local::min(size, client->bandwidth().write.tokens, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+											bytes = send(buffer, ::local::min(size, client->bandwidth().write.tokens, ::local::burst(client->bandwidth().write.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)));
 										break;
 									}
 									// Если данные отправлены успешно
@@ -26268,6 +26307,12 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												peer->bandwidthUse().write.tokens += static_cast <double> (peer->bandwidthUse().write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+												const double burst = ::local::burst(peer->bandwidth().write.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(peer->bandwidth().write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													peer->bandwidthUse().write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 												peer->bandwidthUse().write.time = date;
 											}
@@ -26291,8 +26336,8 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												peer->bandwidthUse().read.tokens += static_cast <double> (peer->bandwidthUse().read.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (peer->bandwidth().read.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+												const double burst = ::local::burst(peer->bandwidth().read.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(peer->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
@@ -26328,6 +26373,12 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												peer->bandwidthUse().write.tokens += static_cast <double> (peer->bandwidthUse().write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+												const double burst = ::local::burst(peer->bandwidth().write.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(peer->bandwidth().write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													peer->bandwidthUse().write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 												peer->bandwidthUse().write.time = date;
 											}
@@ -26351,8 +26402,8 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												peer->bandwidthUse().read.tokens += static_cast <double> (peer->bandwidthUse().read.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (peer->bandwidth().read.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+												const double burst = ::local::burst(peer->bandwidth().read.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(peer->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
@@ -26423,8 +26474,8 @@ namespace io {
 												if(elapsed > 0){
 													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 													peer->bandwidth().read.tokens += static_cast <double> (peer->bandwidth().read.limit * (elapsed / 1e9));
-													// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-													const double burst = ::max(static_cast <double> (peer->bandwidth().read.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+													// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+													const double burst = ::local::burst(peer->bandwidth().read.limit, AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 													// Если количество токенов для ограничения пропускной способности превышает размер ведра
 													if(peer->bandwidth().read.tokens > burst)
 														// Устанавливаем количество токенов равным размеру ведра
@@ -26483,8 +26534,8 @@ namespace io {
 												if(elapsed > 0){
 													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 													peer->bandwidth().read.tokens += static_cast <double> (peer->bandwidth().read.limit * (elapsed / 1e9));
-													// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-													const double burst = ::max(static_cast <double> (peer->bandwidth().read.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+													// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+													const double burst = ::local::burst(peer->bandwidth().read.limit, AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 													// Если количество токенов для ограничения пропускной способности превышает размер ведра
 													if(peer->bandwidth().read.tokens > burst)
 														// Устанавливаем количество токенов равным размеру ведра
@@ -26612,6 +26663,12 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												client->bandwidthUse().write.tokens += static_cast <double> (client->bandwidthUse().write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+												const double burst = ::local::burst(client->bandwidth().write.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(client->bandwidth().write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													client->bandwidthUse().write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 												client->bandwidthUse().write.time = date;
 											}
@@ -26635,8 +26692,8 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												client->bandwidthUse().read.tokens += static_cast <double> (client->bandwidthUse().read.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (client->bandwidth().read.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+												const double burst = ::local::burst(client->bandwidth().read.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(client->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
@@ -26672,6 +26729,12 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												client->bandwidthUse().write.tokens += static_cast <double> (client->bandwidthUse().write.limit * (elapsed / 1e9));
+												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+												const double burst = ::local::burst(client->bandwidth().write.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
+												// Если количество токенов для ограничения пропускной способности превышает размер ведра
+												if(client->bandwidth().write.tokens > burst)
+													// Устанавливаем количество токенов равным размеру ведра
+													client->bandwidthUse().write.tokens = burst;
 												// Устанавливаем время последнего обновления таймера ограничения пропускной способности
 												client->bandwidthUse().write.time = date;
 											}
@@ -26695,8 +26758,8 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												client->bandwidthUse().read.tokens += static_cast <double> (client->bandwidthUse().read.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (client->bandwidth().read.limit) * 0.01, static_cast <double> (AWH_MTU_TCP_IPV6_PAYLOAD_SIZE));
+												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+												const double burst = ::local::burst(client->bandwidth().read.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(client->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
@@ -26767,8 +26830,8 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												client->bandwidthUse().read.tokens += static_cast <double> (client->bandwidthUse().read.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (client->bandwidth().read.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+												const double burst = ::local::burst(client->bandwidth().read.limit, AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(client->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
@@ -26827,8 +26890,8 @@ namespace io {
 											if(elapsed > 0){
 												// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 												client->bandwidthUse().read.tokens += static_cast <double> (client->bandwidthUse().read.limit * (elapsed / 1e9));
-												// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-												const double burst = ::max(static_cast <double> (client->bandwidth().read.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+												// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+												const double burst = ::local::burst(client->bandwidth().read.limit, AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 												// Если количество токенов для ограничения пропускной способности превышает размер ведра
 												if(client->bandwidth().read.tokens > burst)
 													// Устанавливаем количество токенов равным размеру ведра
@@ -26883,8 +26946,8 @@ namespace io {
 									if(elapsed > 0){
 										// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 										server->wrate.tokens += static_cast <double> (server->wrate.limit * (elapsed / 1e9));
-										// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-										const double burst = ::max(static_cast <double> (server->wrate.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+										// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+										const double burst = ::local::burst(server->wrate.limit, AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 										// Если количество токенов для ограничения пропускной способности превышает размер ведра
 										if(server->wrate.tokens > burst)
 											// Устанавливаем количество токенов равным размеру ведра
@@ -26912,8 +26975,8 @@ namespace io {
 									if(elapsed > 0){
 										// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
 										server->wrate.tokens += static_cast <double> (server->wrate.limit * (elapsed / 1e9));
-										// Ограничение ведра: не более 10 мс накопления (защита от переполнения)
-										const double burst = ::max(static_cast <double> (server->wrate.limit) * 0.01, static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+										// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
+										const double burst = ::local::burst(server->wrate.limit, AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 										// Если количество токенов для ограничения пропускной способности превышает размер ведра
 										if(server->wrate.tokens > burst)
 											// Устанавливаем количество токенов равным размеру ведра

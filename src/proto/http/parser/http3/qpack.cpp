@@ -40,6 +40,98 @@ using namespace awh::http;
  */
 namespace {
 	/**
+	 * @brief Функция сравнения строк названий и значений полей
+	 *
+	 * @details Названия и значения полей HTTP короткие: медиана названия - восемь
+	 *          октетов, а вызов memcmp через таблицу связывания стоит дороже самого
+	 *          сравнения. Сравнение ведётся перекрывающимися машинными словами:
+	 *          чтения не выходят за пределы строки, поэтому границы буфера
+	 *          не нарушаются даже на длине в один октет
+	 *
+	 * @param first  первая сравниваемая строка
+	 * @param second вторая сравниваемая строка
+	 * @return       признак совпадения строк
+	 *
+	 */
+	__attribute__((always_inline)) inline bool sameText(string_view first, string_view second) noexcept {
+		// Получаем длину сравниваемых строк
+		const size_t length = first.size();
+		// Если длины строк не совпадают
+		if(length != second.size())
+			// Выводим признак несовпадения строк
+			return false;
+		// Получаем указатель на первую сравниваемую строку
+		const char * left = first.data();
+		// Получаем указатель на вторую сравниваемую строку
+		const char * right = second.data();
+		/**
+		 * Строки длиной в машинное слово и больше сравниваются двумя чтениями
+		 * с перекрытием: первое слово и последнее
+		 */
+		if(length >= sizeof(uint64_t)){
+			// Если строка не помещается в два машинных слова
+			if(length > (sizeof(uint64_t) * 2))
+				// Выводим результат сравнения строк целиком
+				return (::memcmp(left, right, length) == 0);
+			// Первое машинное слово первой строки
+			uint64_t headLeft = 0;
+			// Первое машинное слово второй строки
+			uint64_t headRight = 0;
+			// Последнее машинное слово первой строки
+			uint64_t tailLeft = 0;
+			// Последнее машинное слово второй строки
+			uint64_t tailRight = 0;
+			// Читаем первое машинное слово первой строки
+			::memcpy(&headLeft, left, sizeof(uint64_t));
+			// Читаем первое машинное слово второй строки
+			::memcpy(&headRight, right, sizeof(uint64_t));
+			// Читаем последнее машинное слово первой строки
+			::memcpy(&tailLeft, (left + length - sizeof(uint64_t)), sizeof(uint64_t));
+			// Читаем последнее машинное слово второй строки
+			::memcpy(&tailRight, (right + length - sizeof(uint64_t)), sizeof(uint64_t));
+			// Выводим результат сравнения обоих машинных слов
+			return ((headLeft == headRight) && (tailLeft == tailRight));
+		}
+		/**
+		 * Строки короче машинного слова, но не короче половины, сравниваются
+		 * двумя половинными чтениями с перекрытием
+		 */
+		if(length >= sizeof(uint32_t)){
+			// Первая половина первой строки
+			uint32_t headLeft = 0;
+			// Первая половина второй строки
+			uint32_t headRight = 0;
+			// Вторая половина первой строки
+			uint32_t tailLeft = 0;
+			// Вторая половина второй строки
+			uint32_t tailRight = 0;
+			// Читаем первую половину первой строки
+			::memcpy(&headLeft, left, sizeof(uint32_t));
+			// Читаем первую половину второй строки
+			::memcpy(&headRight, right, sizeof(uint32_t));
+			// Читаем вторую половину первой строки
+			::memcpy(&tailLeft, (left + length - sizeof(uint32_t)), sizeof(uint32_t));
+			// Читаем вторую половину второй строки
+			::memcpy(&tailRight, (right + length - sizeof(uint32_t)), sizeof(uint32_t));
+			// Выводим результат сравнения обеих половин
+			return ((headLeft == headRight) && (tailLeft == tailRight));
+		}
+		// Если строки пусты
+		if(length == 0)
+			// Выводим признак совпадения строк
+			return true;
+		/**
+		 * Строки короче половины машинного слова сравниваются тремя октетами:
+		 * первым, средним и последним. На длине от одного до трёх октетов
+		 * эти три позиции покрывают строку целиком
+		 */
+		return (
+			(left[0] == right[0]) &&
+			(left[length >> 1] == right[length >> 1]) &&
+			(left[length - 1] == right[length - 1])
+		);
+	}
+	/**
 	 * @brief Статическая таблица QPACK (RFC 9204 Appendix A)
 	 *
 	 * @details Нумерация записей начинается с нуля. Порядок записей задан спецификацией
@@ -301,22 +393,23 @@ bool awh::http::h3::qpack::stat::find(string_view name, string_view value, size_
 		// Выводим признак отсутствия совпадения
 		return false;
 	/**
-	 * Выполняем перебор записей группы: совпадение хешей названий проверяется
-	 * сравнением строк, иначе коллизия хеша давала бы чужую запись
+	 * Записи группы собраны по одному названию, поэтому сравнение строк выполняется
+	 * один раз на всю группу, а не на каждую её запись: без него коллизия хеша
+	 * давала бы чужую группу, а внутри группы сверять уже нечего
+	 */
+	if(!::sameText(STATIC_TABLE[names.order[i->second.first]].name, name))
+		// Выводим признак отсутствия совпадения
+		return false;
+	// Запоминаем индекс совпадения только по названию
+	nameOnly = names.order[i->second.first];
+	/**
+	 * Выполняем перебор записей группы в поисках совпадения значения
 	 */
 	for(uint32_t offset = 0; offset < i->second.count; offset++){
 		// Получаем индекс очередной записи группы
 		const uint16_t candidate = names.order[i->second.first + offset];
-		// Если название записи не совпало с искомым
-		if(STATIC_TABLE[candidate].name != name)
-			// Переходим к следующей записи группы
-			continue;
-		// Если совпадение только по названию ещё не найдено
-		if(nameOnly == STATIC_TABLE_SIZE)
-			// Запоминаем индекс совпадения только по названию
-			nameOnly = candidate;
 		// Если совпало и значение записи
-		if(STATIC_TABLE[candidate].value == value){
+		if(::sameText(STATIC_TABLE[candidate].value, value)){
 			// Запоминаем индекс полного совпадения
 			index = candidate;
 			// Выводим признак найденного полного совпадения
@@ -630,7 +723,7 @@ bool awh::http::h3::qpack::DynamicTable::find(string_view name, string_view valu
 		// Получаем запись совпадения только по названию
 		const field_t * entry = this->at(j->second);
 		// Если запись жива и её название совпало с искомым
-		if((entry != nullptr) && (entry->name == name))
+		if((entry != nullptr) && ::sameText(entry->name, name))
 			// Запоминаем абсолютный номер совпадения только по названию
 			nameOnly = j->second;
 	}
@@ -649,7 +742,7 @@ bool awh::http::h3::qpack::DynamicTable::find(string_view name, string_view valu
 			// Переходим к следующему кандидату
 			continue;
 		// Если название либо значение записи не совпали с искомыми
-		if((entry->name != name) || (entry->value != value))
+		if(!::sameText(entry->name, name) || !::sameText(entry->value, value))
 			// Переходим к следующему кандидату
 			continue;
 		/**
@@ -693,7 +786,7 @@ bool awh::http::h3::qpack::DynamicTable::findName(string_view name, uint64_t & a
 	// Получаем найденную запись
 	const field_t * entry = this->at(i->second);
 	// Если запись вытеснена либо её название не совпало с искомым
-	if((entry == nullptr) || (entry->name != name))
+	if((entry == nullptr) || !::sameText(entry->name, name))
 		// Выводим признак отсутствия совпадения
 		return false;
 	// Устанавливаем абсолютный номер совпадения
@@ -1804,17 +1897,55 @@ awh::http::h3::qpack::Decoder::Decoder(const uint64_t maxCapacity, const uint64_
  * @return наименьший абсолютный номер удерживаемой ссылками записи
  *
  */
+uint32_t awh::http::h3::qpack::Encoder::acquire() noexcept {
+	// Если в пуле есть свободная запись
+	if(this->_spare != NO_SECTION){
+		// Получаем позицию свободной записи
+		const uint32_t result = this->_spare;
+		// Продвигаем голову списка свободных записей
+		this->_spare = this->_pool[result].next;
+		// Выводим позицию занятой записи
+		return result;
+	}
+	// Заводим новую запись учёта секции
+	this->_pool.push_back(section_t{0, UINT64_MAX, NO_SECTION});
+	// Выводим позицию заведённой записи
+	return static_cast <uint32_t> (this->_pool.size() - 1);
+}
+/**
+ * @brief Метод возврата записи учёта секции в пул
+ *
+ * @param position позиция возвращаемой записи в пуле
+ *
+ */
+void awh::http::h3::qpack::Encoder::release(const uint32_t position) noexcept {
+	// Связываем освобождаемую запись с прежней головой списка свободных
+	this->_pool[position].next = this->_spare;
+	// Освобождённая запись становится головой списка свободных
+	this->_spare = position;
+}
+/**
+ * @brief Метод получения наименьшего абсолютного номера удерживаемой записи
+ *
+ * @return наименьший абсолютный номер удерживаемой ссылками записи
+ *
+ */
 uint64_t awh::http::h3::qpack::Encoder::hold() const noexcept {
 	// Наименьший абсолютный номер удерживаемой записи
 	uint64_t result = UINT64_MAX;
 	/**
-	 * Выполняем перебор всех записей, удерживаемых неподтверждёнными секциями
+	 * Выполняем перебор всех потоков с неподтверждёнными секциями
 	 */
-	for(const auto & item : this->_refs){
-		// Если запись всё ещё удерживается и оказалась старше найденной
-		if((item.second > 0) && (item.first < result))
-			// Запоминаем наименьший абсолютный номер удерживаемой записи
-			result = item.first;
+	for(const auto & stream : this->_sections){
+		/**
+		 * Выполняем перебор неподтверждённых секций потока
+		 */
+		for(uint32_t position = stream.second.head; position != NO_SECTION; position = this->_pool[position].next){
+			// Если секция удерживает запись старше найденной
+			if(this->_pool[position].minimal < result)
+				// Запоминаем наименьший абсолютный номер удерживаемой записи
+				result = this->_pool[position].minimal;
+		}
 	}
 	// Выводим наименьший абсолютный номер удерживаемой записи
 	return result;
@@ -1835,12 +1966,12 @@ size_t awh::http::h3::qpack::Encoder::blocking() const noexcept {
 		/**
 		 * Выполняем перебор неподтверждённых секций потока
 		 */
-		for(const auto & section : stream.second){
+		for(uint32_t position = stream.second.head; position != NO_SECTION; position = this->_pool[position].next){
 			/**
 			 * Секция блокирует поток, если ссылается на записи, которых декодер
 			 * пира ещё заведомо не получил
 			 */
-			if(section.required > this->_known){
+			if(this->_pool[position].required > this->_known){
 				// Считаем заблокированный поток
 				result++;
 				// Прекращаем перебор секций потока
@@ -1988,15 +2119,13 @@ void awh::http::h3::qpack::Encoder::encodeSection(const uint64_t sid, const vect
 	// Требуемое число вставок для разбора секции
 	uint64_t required = 0;
 	/**
-	 * Записи, на которые ссылается секция
+	 * Наименьший абсолютный номер записи, на которую ссылается сама эта секция
 	 *
-	 * Накопитель переиспользуется между секциями: его ёмкость выживает очистку,
-	 * поэтому в установившемся режиме роста списка ссылок аллокатор не стоит
-	 * ни одного обращения
+	 * @details Именно он остаётся на учёте после отправки: пока секция
+	 *          не подтверждена, вытеснять записи с этого номера и выше нельзя
+	 *
 	 */
-	vector <uint64_t> & refs = this->_references;
-	// Выполняем очистку накопителя ссылок секции
-	refs.clear();
+	uint64_t minimal = UINT64_MAX;
 	// Наименьший абсолютный номер записи, которую нельзя вытеснять
 	uint64_t holding = this->hold();
 	// Признак того, что поток уже заблокирован собственными секциями
@@ -2008,9 +2137,9 @@ void awh::http::h3::qpack::Encoder::encodeSection(const uint64_t sid, const vect
 		/**
 		 * Выполняем перебор неподтверждённых секций потока
 		 */
-		for(const auto & section : stream->second){
+		for(uint32_t position = stream->second.head; position != NO_SECTION; position = this->_pool[position].next){
 			// Если секция ссылается на записи, которых декодер пира ещё не получил
-			if(section.required > this->_known){
+			if(this->_pool[position].required > this->_known){
 				// Запоминаем, что поток уже заблокирован
 				self = true;
 				// Прекращаем перебор секций потока
@@ -2040,8 +2169,10 @@ void awh::http::h3::qpack::Encoder::encodeSection(const uint64_t sid, const vect
 		if((absolute + 1) > required)
 			// Запоминаем требуемое число вставок
 			required = (absolute + 1);
-		// Запоминаем удерживаемую секцией запись
-		refs.push_back(absolute);
+		// Если запись оказалась старше уже удерживаемых самой секцией
+		if(absolute < minimal)
+			// Понижаем наименьший номер записи, удерживаемой секцией
+			minimal = absolute;
 		// Если запись оказалась старше уже удерживаемых
 		if(absolute < holding)
 			// Понижаем границу удержания записей
@@ -2065,8 +2196,10 @@ void awh::http::h3::qpack::Encoder::encodeSection(const uint64_t sid, const vect
 		if((absolute + 1) > required)
 			// Запоминаем требуемое число вставок
 			required = (absolute + 1);
-		// Запоминаем удерживаемую секцией запись
-		refs.push_back(absolute);
+		// Если запись оказалась старше уже удерживаемых самой секцией
+		if(absolute < minimal)
+			// Понижаем наименьший номер записи, удерживаемой секцией
+			minimal = absolute;
 		// Если запись оказалась старше уже удерживаемых
 		if(absolute < holding)
 			// Понижаем границу удержания записей
@@ -2187,23 +2320,24 @@ void awh::http::h3::qpack::Encoder::encodeSection(const uint64_t sid, const vect
 	 * поэтому и в учёт неподтверждённых секций не попадает (RFC 9204 §4.4.1)
 	 */
 	if(required != 0){
-		// Собираемый учёт отправленной секции
-		section_t section;
+		// Занимаем запись учёта секции в пуле
+		const uint32_t position = this->acquire();
 		// Устанавливаем требуемое число вставок
-		section.required = required;
-		/**
-		 * Записи, удерживаемые секцией, копируются в её учёт: накопитель
-		 * переиспользуется следующей секцией и отдать его во владение нельзя
-		 */
-		section.refs = refs;
-		/**
-		 * Выполняем учёт ссылок секции на записи таблицы
-		 */
-		for(const auto absolute : section.refs)
-			// Наращиваем счётчик ссылок на запись
-			this->_refs[absolute]++;
-		// Дописываем секцию в список неподтверждённых секций потока
-		this->_sections[sid].push_back(::std::move(section));
+		this->_pool[position].required = required;
+		// Устанавливаем наименьший номер записи, удерживаемой секцией
+		this->_pool[position].minimal = minimal;
+		// Секция становится самой свежей неподтверждённой секцией потока
+		this->_pool[position].next = NO_SECTION;
+		// Выполняем поиск неподтверждённых секций потока
+		auto stream = this->_sections.find(sid);
+		// Если неподтверждённые секции у потока уже есть
+		if(stream != this->_sections.end()){
+			// Дописываем секцию в хвост списка секций потока
+			this->_pool[stream->second.tail].next = position;
+			// Запоминаем новый хвост списка секций потока
+			stream->second.tail = position;
+		// Заводим список неподтверждённых секций потока
+		} else this->_sections.emplace(sid, stream_t{position, position});
 	}
 }
 /**
@@ -2354,38 +2488,26 @@ awh::http::h3::status_t awh::http::h3::qpack::Encoder::decodeDecoderStream(strin
 			 * Подтверждение секции, которой мы не отправляли, - ошибка: счётчики
 			 * кодера и декодера разошлись (RFC 9204 §4.4.1)
 			 */
-			if((stream == this->_sections.end()) || stream->second.empty()){
+			if(stream == this->_sections.end()){
 				// Устанавливаем код ошибки протокола
 				error = error_t::QPACK_DECODER_STREAM_ERROR;
 				// Выводим результат обработки
 				return status_t::ERROR;
 			}
-			// Получаем самую старую неподтверждённую секцию потока
-			const section_t & section = stream->second.front();
+			// Получаем позицию самой старой неподтверждённой секции потока
+			const uint32_t position = stream->second.head;
 			// Если подтверждение извещает о большем числе полученных вставок
-			if(section.required > this->_known)
+			if(this->_pool[position].required > this->_known)
 				// Запоминаем число вставок, заведомо полученных декодером пира
-				this->_known = section.required;
-			/**
-			 * Выполняем снятие ссылок секции на записи таблицы
-			 */
-			for(const auto absolute : section.refs){
-				// Выполняем поиск счётчика ссылок на запись
-				auto i = this->_refs.find(absolute);
-				// Если счётчик ссылок на запись найден
-				if(i != this->_refs.end()){
-					// Уменьшаем счётчик ссылок на запись
-					if((--i->second) == 0)
-						// Удаляем исчерпанный счётчик ссылок
-						this->_refs.erase(i);
-				}
-			}
-			// Удаляем подтверждённую секцию
-			stream->second.pop_front();
-			// Если неподтверждённых секций у потока не осталось
-			if(stream->second.empty())
+				this->_known = this->_pool[position].required;
+			// Если подтверждённая секция была у потока последней
+			if(position == stream->second.tail)
 				// Удаляем поток из списка
 				this->_sections.erase(stream);
+			// Продвигаем голову списка секций потока
+			else stream->second.head = this->_pool[position].next;
+			// Возвращаем запись учёта подтверждённой секции в пул
+			this->release(position);
 		/**
 		 * Отмена потока (RFC 9204 §4.4.2)
 		 */
@@ -2500,23 +2622,16 @@ void awh::http::h3::qpack::Encoder::cancel(const uint64_t sid) noexcept {
 		// Выходим из метода
 		return;
 	/**
-	 * Выполняем перебор всех неподтверждённых секций потока
+	 * Возвращаем записи учёта всех секций потока в пул: удержание записей таблицы
+	 * снимается вместе с ними
 	 */
-	for(const auto & section : stream->second){
-		/**
-		 * Выполняем снятие ссылок секции на записи таблицы
-		 */
-		for(const auto absolute : section.refs){
-			// Выполняем поиск счётчика ссылок на запись
-			auto i = this->_refs.find(absolute);
-			// Если счётчик ссылок на запись найден
-			if(i != this->_refs.end()){
-				// Уменьшаем счётчик ссылок на запись
-				if((--i->second) == 0)
-					// Удаляем исчерпанный счётчик ссылок
-					this->_refs.erase(i);
-			}
-		}
+	for(uint32_t position = stream->second.head; position != NO_SECTION;){
+		// Запоминаем позицию следующей секции потока до возврата записи в пул
+		const uint32_t next = this->_pool[position].next;
+		// Возвращаем запись учёта секции в пул
+		this->release(position);
+		// Переходим к следующей секции потока
+		position = next;
 	}
 	// Удаляем поток из списка неподтверждённых секций
 	this->_sections.erase(stream);
@@ -2531,30 +2646,36 @@ void awh::http::h3::qpack::Encoder::rollback(const uint64_t sid) noexcept {
 	// Выполняем поиск неподтверждённых секций потока
 	auto stream = this->_sections.find(sid);
 	// Если неподтверждённых секций у потока нет
-	if((stream == this->_sections.end()) || stream->second.empty())
+	if(stream == this->_sections.end())
 		// Выходим из метода
 		return;
 	/**
 	 * Выполняем снятие ссылок последней секции. Прежние секции потока остаются
 	 * на учёте: они уже отправлены, и подтверждения на них придут
 	 */
-	for(const auto absolute : stream->second.back().refs){
-		// Выполняем поиск счётчика ссылок на запись
-		auto i = this->_refs.find(absolute);
-		// Если счётчик ссылок на запись найден
-		if(i != this->_refs.end()){
-			// Уменьшаем счётчик ссылок на запись
-			if((--i->second) == 0)
-				// Удаляем исчерпанный счётчик ссылок
-				this->_refs.erase(i);
-		}
-	}
-	// Снимаем последнюю секцию с учёта
-	stream->second.pop_back();
-	// Если неподтверждённых секций у потока не осталось
-	if(stream->second.empty())
+	if(stream->second.head == stream->second.tail){
+		// Возвращаем запись учёта единственной секции в пул
+		this->release(stream->second.head);
 		// Удаляем поток из списка неподтверждённых секций
 		this->_sections.erase(stream);
+		// Выходим из метода
+		return;
+	}
+	// Позиция секции, предшествующей снимаемой
+	uint32_t position = stream->second.head;
+	/**
+	 * Выполняем поиск предшественника хвоста: обратных ссылок список не хранит,
+	 * а неподтверждённых секций у потока единицы, и перебор их дешевле
+	 */
+	while(this->_pool[position].next != stream->second.tail)
+		// Переходим к следующей секции потока
+		position = this->_pool[position].next;
+	// Возвращаем запись учёта снимаемой секции в пул
+	this->release(stream->second.tail);
+	// Предшественник становится хвостом списка секций потока
+	this->_pool[position].next = NO_SECTION;
+	// Запоминаем новый хвост списка секций потока
+	stream->second.tail = position;
 }
 /**
  * @brief Метод получения накопленных инструкций потока кодера
@@ -2602,8 +2723,10 @@ void awh::http::h3::qpack::Encoder::clear() noexcept {
 	this->_known = 0;
 	// Выполняем очистку списка неподтверждённых секций
 	this->_sections.clear();
-	// Выполняем очистку счётчиков ссылок на записи таблицы
-	this->_refs.clear();
+	// Выполняем очистку пула записей учёта секций
+	this->_pool.clear();
+	// Сбрасываем список свободных записей пула
+	this->_spare = NO_SECTION;
 	// Сбрасываем размер закодированного списка полей
 	this->_listSize = 0;
 	// Сбрасываем позицию записи кольца хешей
@@ -2626,7 +2749,7 @@ void awh::http::h3::qpack::Encoder::clear() noexcept {
  *
  */
 awh::http::h3::qpack::Encoder::Encoder(const uint64_t maxCapacity, const uint64_t maxBlocked) noexcept :
- _table(maxCapacity), _consumed(0), _maxCapacity(maxCapacity), _maxBlocked(maxBlocked),
+ _table(maxCapacity), _consumed(0), _spare(NO_SECTION), _maxCapacity(maxCapacity), _maxBlocked(maxBlocked),
  _known(0), _listSize(0), _historyIndex(0), _historyWrapped(false), _sensitiveHeuristic(true) {
 	// Включаем сопровождение индекса записей, если таблица используется
 	this->_table.indexing(maxCapacity > 0);

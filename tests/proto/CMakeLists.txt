@@ -209,6 +209,7 @@ if (${GTest_FOUND})
                 quic/connection.cpp
                 quic/parameterized.cpp
                 quic/facade.cpp
+                quic/smallvec.cpp
             )
         # Если не нужно собрать тесты для подмодуля протокола QUIC
         else()
