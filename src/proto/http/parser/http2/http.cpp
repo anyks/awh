@@ -124,6 +124,30 @@ namespace {
 	};
 
 	/**
+	 * @brief Функция сборки значения сигнала приоритета (RFC 9218 §4, RFC 8941)
+	 *
+	 * @details Значение одинаково для кадра PRIORITY_UPDATE и заголовка [priority]:
+	 *          это один и тот же структурированный словарь, и различаются только
+	 *          способы его доставки
+	 *
+	 * @param urgency     срочность потока в допустимом диапазоне
+	 * @param incremental признак инкрементальной доставки
+	 * @return            значение сигнала приоритета
+	 *
+	 */
+	string priorityValue(const uint8_t urgency, const bool incremental) noexcept {
+		// Собираемое значение сигнала приоритета
+		string result = "u=";
+		// Дописываем срочность потока
+		result.push_back(static_cast <char> ('0' + urgency));
+		// Если требуется инкрементальная доставка потока
+		if(incremental)
+			// Дописываем признак инкрементальной доставки
+			result.append(", i");
+		// Выводим значение сигнала приоритета
+		return result;
+	}
+	/**
 	 * @brief Функция приведения названия заголовка к нижнему регистру (RFC 9113 §8.2.1)
 	 *
 	 * @details Если название уже в нижнем регистре - возвращается исходная строка без копии
@@ -997,7 +1021,7 @@ awh::http::Parser_HTTP2::Stream::Stream() noexcept :
  id(0), sourceEof(false), headersDone(false),
  endStreamSent(false), endStreamPending(false),
  writableNotified(false), queued(false), recvBody(0), contentLength(-1), bodyless(false), bodylessSend(false), trailerless(false), trailerlessSend(false),
- urgency(h2::proto::DEFAULT_URGENCY), incremental(false), prioritized(false),
+ urgency(h2::proto::DEFAULT_URGENCY), incremental(false), prioritized(false), announce(false),
  localWindow(h2::proto::DEFAULT_WINDOW_SIZE),
  remoteWindow(h2::proto::DEFAULT_WINDOW_SIZE),
  sendOffset(0), sendBuffer{""},
@@ -5515,13 +5539,7 @@ void awh::http::Parser_HTTP2::sendPriority(const uint32_t sid, const uint8_t urg
 		// Выходим из метода
 		return;
 	// Формируем значение поля приоритета структурированным словарём (RFC 8941)
-	string value = "u=";
-	// Дописываем срочность потока, ограниченную допустимым диапазоном
-	value.push_back(static_cast <char> ('0' + ::min(urgency, h2::proto::MAX_URGENCY)));
-	// Если требуется инкрементальная доставка потока
-	if(incremental)
-		// Дописываем признак инкрементальной доставки
-		value.append(", i");
+	const string value = ::priorityValue(::min(urgency, h2::proto::MAX_URGENCY), incremental);
 	// Отправляем фрейм обновления расширенного приоритета
 	h2::frame::serialize::priorityUpdate(this->_buffer.output, sid, value);
 	// Если поток уже существует - применяем приоритет и к своей стороне
@@ -5535,6 +5553,47 @@ void awh::http::Parser_HTTP2::sendPriority(const uint32_t sid, const uint8_t urg
 	}
 	// Передаём исходящие байты сетевому слою
 	this->flush();
+}
+/**
+ * @brief Метод объявления приоритета собственного потока заголовком (RFC 9218 §5)
+ *
+ * @param sid         идентификатор потока
+ * @param urgency     срочность потока (0 - наивысшая, 7 - наименьшая)
+ * @param incremental признак инкрементальной доставки
+ *
+ */
+void awh::http::Parser_HTTP2::priority(const uint32_t sid, const uint8_t urgency, const bool incremental) noexcept {
+	/**
+	 * Объявлять приоритет чужого потока заголовком нельзя: заголовок уходит
+	 * в нашу секцию, а её у потока пира не будет вовсе. Для чужого потока есть
+	 * кадр PRIORITY_UPDATE, и он доступен только клиенту
+	 */
+	if(this->peerInitiated(sid)){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 priority header is only allowed for own stream %u", log_t::flag_t::WARNING, sid);
+		// Выходим из метода
+		return;
+	}
+	// Если идентификатор потока не выделен методом nextStreamId()
+	if(sid >= this->_transfer.nextStreamId){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 stream %u is not allocated by nextStreamId", log_t::flag_t::WARNING, sid);
+		// Выходим из метода
+		return;
+	}
+	/**
+	 * Объект потока заводится здесь, если его ещё нет: приоритет объявляется
+	 * до отправки секции заголовков, а поток создаётся её отправкой. Наполнить
+	 * карту потоков этим нельзя - идентификатор выделяем мы сами, а не пир,
+	 * и поток остаётся в состоянии idle до собственной секции
+	 */
+	stream_t & stream = this->stream(sid);
+	// Применяем срочность потока, ограниченную допустимым диапазоном
+	stream.urgency = ::min(urgency, h2::proto::MAX_URGENCY);
+	// Применяем признак инкрементальной доставки потока
+	stream.incremental = incremental;
+	// Помечаем приоритет подлежащим объявлению в секции заголовков
+	stream.announce = true;
 }
 /**
  * @brief Метод отправки анонса альтернативного сервиса (RFC 7838 §4)
@@ -6200,8 +6259,30 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 			// Кодируем заголовок напрямую из контейнера (без копий)
 			this->_encoder.encode(name, header.value, block);
 		}
+		/**
+		 * Дописываем сигнал приоритета собственного потока (RFC 9218 §5)
+		 *
+		 * Заголовок, заданный приложением вручную, старше: приложение вправе
+		 * выразить приоритет точнее, чем позволяют срочность и инкрементальность,
+		 * а перезаписать его значило бы отбросить это выражение
+		 */
+		if((stream != nullptr) && stream->announce && !headers.has("priority"))
+			// Кодируем заголовок сигнала приоритета
+			this->_encoder.encode("priority", ::priorityValue(stream->urgency, stream->incremental), block);
 		// Отправляем HPACK-блок заголовков потока
 		this->commitHeaders(sid, block, endStream);
+		/**
+		 * Снимаем признак объявления приоритета: секция отправлена, а объявлять
+		 * его повторно в трейлерах бессмысленно
+		 */
+		if(stream != nullptr){
+			// Выполняем поиск потока заново: отправка секции могла его закрыть
+			stream_t * current = this->findStream(sid);
+			// Если поток всё ещё существует
+			if(current != nullptr)
+				// Снимаем признак объявления приоритета
+				current->announce = false;
+		}
 		// Если провайдер контейнера задаёт запрос методом HEAD
 		if((provider != nullptr) && (provider->direct == direct_t::REQUEST) &&
 		   (static_cast <const request_t *> (provider)->method == method_t::HEAD)){

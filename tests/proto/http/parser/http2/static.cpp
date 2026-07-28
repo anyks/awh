@@ -8199,3 +8199,220 @@ TEST_F(ParserHttp2Fixture, DeferredPriorityOverridesHeaderTest){
 	// Проверяем что опередивший кадр перекрыл срочность из заголовков
 	ASSERT_EQ(order.front(), second);
 }
+
+/**
+ * @brief Метод проверки анонса альтернативного сервиса кадром ALTSVC (RFC 7838 §4)
+ *
+ * @details Кадр соединения обязан нести origin, кадр потока - не нести: во втором
+ *          случае origin определяется самим потоком. Оба вида доходят до клиента
+ *          целиком, а всё, что RFC предписывает игнорировать, соединения не рвёт
+ *
+ */
+TEST_F(ParserHttp2Fixture, AltSvcDeliveredToClientTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Полученные клиентом анонсы альтернативных сервисов
+	std::vector <std::tuple <uint32_t, std::string, std::string>> announcements;
+	// Устанавливаем функцию обратного вызова получения анонса
+	client->on(parser_http2_t::altsvc_callback_t([&](const uint32_t sid, const std::string_view origin, const std::string_view value) noexcept {
+		// Запоминаем полученный анонс
+		announcements.emplace_back(sid, std::string(origin), std::string(value));
+	}));
+	// Отправляем анонс для соединения целиком
+	server->sendAltSvc(0, "https://example.com", "h3=\":443\"; ma=3600");
+	// Анонс обязан дойти до клиента
+	ASSERT_EQ(announcements.size(), 1u);
+	// Анонс соединения приходит с нулевым идентификатором потока
+	ASSERT_EQ(std::get <0> (announcements.front()), 0u);
+	// Origin анонса обязан дойти неизменным
+	ASSERT_EQ(std::get <1> (announcements.front()), "https://example.com");
+	// Значение поля Alt-Svc обязано дойти неизменным
+	ASSERT_EQ(std::get <2> (announcements.front()), "h3=\":443\"; ma=3600");
+	// Получаем идентификатор потока запроса клиента
+	const uint32_t sid = client->nextStreamId();
+	// Формируем заголовки запроса клиента
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/");
+	// Отправляем запрос клиента с завершением потока
+	client->sendHeaders(sid, fields, true);
+	// Отправляем анонс для открытого потока: origin в таком кадре пуст
+	server->sendAltSvc(sid, "", "h3=\":8443\"");
+	// Анонс потока обязан дойти до клиента
+	ASSERT_EQ(announcements.size(), 2u);
+	// Анонс потока приходит с его идентификатором
+	ASSERT_EQ(std::get <0> (announcements.back()), sid);
+	// Origin анонса потока обязан прийти пустым
+	ASSERT_TRUE(std::get <1> (announcements.back()).empty());
+	// Значение поля Alt-Svc обязано дойти неизменным
+	ASSERT_EQ(std::get <2> (announcements.back()), "h3=\":8443\"");
+	/**
+	 * Кадр соединения без origin RFC предписывает игнорировать: собираем его
+	 * вручную, потому что отправляющая сторона такой кадр не выпустит
+	 */
+	const std::string broken = ::frame(0x0a, 0x00, 0, std::string("\x00\x00", 2) + "h3=\":443\"");
+	// Подаём некорректный кадр на разбор клиенту
+	client->parse(broken.data(), broken.size());
+	// Кадр обязан быть проигнорирован, а не доставлен
+	ASSERT_EQ(announcements.size(), 2u);
+	// Соединение клиента обязано остаться живым
+	ASSERT_EQ(client->error(), parser_http2_t::error_t::NO_ERROR);
+	// Соединение клиента обязано продолжать разбор
+	ASSERT_EQ(client->status(), parser_t::status_t::PARTIAL);
+}
+
+/**
+ * @brief Метод проверки набора origin кадром ORIGIN (RFC 8336 §2)
+ *
+ * @details Набор доходит до клиента по одному origin на вызов, кадр в потоке
+ *          игнорируется, а усечённая запись обесценивает кадр целиком - но
+ *          не рвёт соединение
+ *
+ */
+TEST_F(ParserHttp2Fixture, OriginDeliveredToClientTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Полученный клиентом набор origin
+	std::vector <std::string> origins;
+	// Устанавливаем функцию обратного вызова получения origin
+	client->on(parser_http2_t::origin_callback_t([&](const std::string_view origin) noexcept {
+		// Запоминаем очередной полученный origin
+		origins.emplace_back(origin);
+	}));
+	// Отправляем набор из двух origin
+	server->sendOrigin({"https://example.com", "https://cdn.example.com"});
+	// Обе записи набора обязаны дойти до клиента
+	ASSERT_EQ(origins.size(), 2u);
+	// Первая запись набора обязана дойти неизменной
+	ASSERT_EQ(origins[0], "https://example.com");
+	// Вторая запись набора обязана дойти неизменной
+	ASSERT_EQ(origins[1], "https://cdn.example.com");
+	/**
+	 * Кадр в потоке относится не к соединению и подлежит игнорированию:
+	 * собираем его вручную, отправляющая сторона такой кадр не выпустит
+	 */
+	const std::string stream = ::frame(0x0c, 0x00, 1, std::string("\x00\x04", 2) + "test");
+	// Подаём кадр потока на разбор клиенту
+	client->parse(stream.data(), stream.size());
+	// Кадр обязан быть проигнорирован
+	ASSERT_EQ(origins.size(), 2u);
+	// Формируем кадр с усечённой записью набора: длина обещает больше, чем есть
+	const std::string truncated = ::frame(0x0c, 0x00, 0, std::string("\x00\x40", 2) + "short");
+	// Подаём кадр с усечённой записью на разбор клиенту
+	client->parse(truncated.data(), truncated.size());
+	// Кадр обязан быть проигнорирован целиком, включая уже разобранные записи
+	ASSERT_EQ(origins.size(), 2u);
+	// Соединение клиента обязано остаться живым
+	ASSERT_EQ(client->error(), parser_http2_t::error_t::NO_ERROR);
+	// Соединение клиента обязано продолжать разбор
+	ASSERT_EQ(client->status(), parser_t::status_t::PARTIAL);
+}
+
+/**
+ * @brief Метод проверки объявления приоритета заголовком priority (RFC 9218 §5)
+ *
+ * @details Заголовок добавляется в секцию автоматически по объявленному
+ *          приоритету, а заданный приложением вручную остаётся старшим:
+ *          приложение вправе выразить приоритет точнее
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityHeaderAnnouncedTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Получаем идентификатор потока запроса клиента
+	const uint32_t sid = client->nextStreamId();
+	// Объявляем приоритет собственного потока до отправки секции заголовков
+	client->priority(sid, 1, true);
+	// Формируем провайдер запроса клиента
+	auto request = std::make_unique <request_t> (version_t::HTTP2, method_t::GET, "/priority");
+	// Формируем контейнер заголовков запроса
+	headers_t headers(std::move(request));
+	// Дописываем заголовок авторитета запроса
+	headers.emplace("Host", "example.com");
+	// Отправляем запрос клиента с завершением потока
+	client->sendHeaders(sid, headers, true);
+	/**
+	 * @brief Функция поиска значения заголовка приоритета среди полученных сервером
+	 *
+	 */
+	auto announced = [&]() noexcept -> std::string {
+		// Найденное значение заголовка приоритета
+		std::string result;
+		/**
+		 * Выполняем перебор всех полученных сервером заголовков
+		 */
+		for(const auto & item : serverEvents.headers){
+			// Если очередной заголовок является заголовком приоритета
+			if(std::get <1> (item) == "priority")
+				// Запоминаем значение заголовка приоритета
+				result = std::get <2> (item);
+		}
+		// Выводим найденное значение заголовка приоритета
+		return result;
+	};
+	// Заголовок приоритета обязан дойти до сервера собранным из объявления
+	ASSERT_EQ(announced(), "u=1, i");
+	// Выделяем идентификатор второго потока клиента
+	const uint32_t second = client->nextStreamId();
+	// Объявляем приоритет второго потока
+	client->priority(second, 5, false);
+	// Формируем провайдер второго запроса клиента
+	auto request2 = std::make_unique <request_t> (version_t::HTTP2, method_t::GET, "/manual");
+	// Формируем контейнер заголовков второго запроса
+	headers_t manual(std::move(request2));
+	// Дописываем заголовок авторитета запроса
+	manual.emplace("Host", "example.com");
+	/**
+	 * Задаём заголовок приоритета вручную: приложение вправе выразить приоритет
+	 * точнее, чем позволяют срочность и инкрементальность
+	 */
+	manual.emplace("priority", "u=7, i");
+	// Выполняем очистку собранных сервером заголовков
+	serverEvents.headers.clear();
+	// Отправляем второй запрос клиента с завершением потока
+	client->sendHeaders(second, manual, true);
+	// Заголовок, заданный приложением, обязан остаться старшим
+	ASSERT_EQ(announced(), "u=7, i");
+}
