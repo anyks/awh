@@ -590,7 +590,7 @@ awh::quic2::Connection::RemoteCid::RemoteCid() noexcept : seq(0), used(false), h
 awh::quic2::Connection::Stream::Stream() noexcept :
  txOffset(0), txBuffer{""}, txCursor(0), txAcked(0), txMax(0), txFin(false), txFinSent(false),
  txReset(false), txResetSent(false), txResetCode(0), txBlocked(false),
- txBlockedAt(numeric_limits <uint64_t>::max()),
+ txBlockedAt(numeric_limits <uint64_t>::max()), writableNotified(true),
  rxOffset(0), rxHigh(0), rxReady{""}, rxMax(0), rxMaxQueued(false),
  rxFin(false), rxFinal(0), rxFinDelivered(false), rxCounted(0),
  rxReset(false), rxResetCode(0), stopQueued(false), stopSent(false),
@@ -4578,6 +4578,18 @@ bool awh::quic2::Connection::payload(const level_t level, const size_t budget, s
 				if(fin)
 					// Устанавливаем флаг выполненной отправки завершения потока
 					stream.txFinSent = true;
+				/**
+				 * Если буфер, заполненный ранее до верхней метки, дренировался ниже нижней -
+				 * подаём одноразовый сигнал возобновления: поток попадает в drained(), и
+				 * приложение, получившее в send() частичный приём, досылает остаток данных.
+				 * Флаг writableNotified удерживает ровно один сигнал на одно заполнение
+				 */
+				if(!stream.writableNotified && (this->_sendHigh > 0) && ((stream.txBuffer.size() - stream.txCursor) <= this->_sendLow)){
+					// Помечаем сигнал возобновления как поданный для текущего заполнения
+					stream.writableNotified = true;
+					// Ставим поток в список сигналов возобновления отправки
+					this->_stream.drained.push_back(sid);
+				}
 			// Если данных нет, но требуется отправка завершения потока (пустой фрейм с FIN)
 			} else if(stream.txFin && !stream.txFinSent){
 				// Выполняем сборку пустого фрейма STREAM с флагом FIN
@@ -7529,14 +7541,17 @@ bool awh::quic2::Connection::writable() const noexcept {
 	return (this->_crypto.handshake.encryption(level_t::EARLY_DATA) != nullptr);
 }
 /**
- * @brief Метод установки предела буфера отправки одного потока (backpressure)
+ * @brief Метод установки водяных меток буфера отправки одного потока (backpressure)
  *
- * @param size предел буфера отправки потока в октетах
+ * @param high верхняя водяная метка (ёмкость буфера отправки потока)
+ * @param low  нижняя водяная метка (порог сигнала возобновления writable)
  *
  */
-void awh::quic2::Connection::sendBuffer(const size_t size) noexcept {
-	// Устанавливаем предел несобранного буфера отправки одного потока
-	this->_sendBuffer = size;
+void awh::quic2::Connection::sendWaterMarks(const size_t high, const size_t low) noexcept {
+	// Устанавливаем верхнюю водяную метку буфера отправки одного потока
+	this->_sendHigh = high;
+	// Нижнюю метку удерживаем не выше верхней: иначе сигнал возобновления не подать
+	this->_sendLow = ::min(low, high);
 }
 /**
  * @brief Метод открытия нового потока приложения (RFC 9000 §2.1)
@@ -7595,53 +7610,74 @@ uint64_t awh::quic2::Connection::open(const bool unidirectional) noexcept {
  * @return     результат постановки (OK/ERROR)
  *
  */
-awh::quic2::status_t awh::quic2::Connection::send(const uint64_t sid, string_view data, const bool fin) noexcept {
+size_t awh::quic2::Connection::send(const uint64_t sid, string_view data, const bool fin) noexcept {
 	// Если соединение к отправке данных приложения не готово
 	if(!this->writable())
-		// Выводим отрицательный результат
-		return status_t::ERROR;
+		// Ничего не принято
+		return 0;
 	// Если отправка данных в поток локальным эндпоинтом недопустима
 	if(!this->sendable(sid))
-		// Выводим отрицательный результат
-		return status_t::ERROR;
+		// Ничего не принято
+		return 0;
 	// Ищем поток по идентификатору
 	auto i = this->_stream.list.find(sid);
 	// Если поток не найден
 	if(i == this->_stream.list.end())
-		// Выводим отрицательный результат
-		return status_t::ERROR;
+		// Ничего не принято
+		return 0;
 	// Если отправка потока завершена либо аварийно прекращена
 	if(i->second.txFin || i->second.txReset || i->second.txResetSent)
-		// Выводим отрицательный результат
-		return status_t::ERROR;
+		// Ничего не принято
+		return 0;
+	// Объём данных, принимаемый в очередь: по умолчанию все переданные данные
+	size_t accepted = data.size();
 	/**
-	 * Если несобранный буфер отправки потока достиг предела: применяем backpressure -
-	 * буферизировать больше движок не станет, приложение дописывает данные позже, по
-	 * мере упаковки уже поставленных. Без предела буфер рос бы неограниченно
+	 * Частичный приём по верхней водяной метке (backpressure): принимаем лишь столько,
+	 * сколько влезает до метки от текущего несобранного объёма буфера. Буферизировать
+	 * больше, чем движок способен держать в полёте, бессмысленно, а неограниченный буфер -
+	 * латентный источник неограниченного роста памяти. Остаток приложение дописывает
+	 * позже, по сигналу drained(). Верхняя метка ноль снимает ограничение
 	 */
-	if((this->_sendBuffer > 0) && ((i->second.txBuffer.size() - i->second.txCursor) >= this->_sendBuffer))
-		// Выводим признак заполненного буфера отправки потока
-		return status_t::BLOCKED;
-	/**
-	 * Резервируем ёмкость буфера отправки один раз под предел backpressure. Иначе
-	 * дописывание данных наращивало бы строку геометрически - чередой перевыделений
-	 * с копированием, дающей многократный кумулятивный расход памяти. При заданном
-	 * пределе объём буфера им же и ограничен, поэтому единичный резерв под предел
-	 * убирает перевыделения роста: выделение происходит один раз на поток
-	 */
-	if((this->_sendBuffer > 0) && (i->second.txBuffer.capacity() < this->_sendBuffer))
-		// Резервируем ёмкость буфера отправки под предел backpressure
-		i->second.txBuffer.reserve(this->_sendBuffer);
-	// Дописываем данные в буфер исходящих данных потока
-	i->second.txBuffer.append(data);
-	// Если приложение завершает поток
-	if(fin)
+	if(this->_sendHigh > 0){
+		// Текущий несобранный объём буфера отправки потока
+		const size_t backlog = (i->second.txBuffer.size() - i->second.txCursor);
+		// Свободное место до верхней водяной метки
+		const size_t room = ((this->_sendHigh > backlog) ? (this->_sendHigh - backlog) : 0);
+		// Ограничиваем приём свободным местом
+		accepted = ::min(accepted, room);
+		/**
+		 * Резервируем ёмкость буфера отправки один раз под верхнюю метку. Иначе дописывание
+		 * наращивало бы строку геометрически - чередой перевыделений с копированием, дающей
+		 * многократный кумулятивный расход памяти. Объём буфера метка и ограничивает, поэтому
+		 * единичный резерв под неё убирает перевыделения роста: выделение один раз на поток
+		 */
+		if((accepted > 0) && (i->second.txBuffer.capacity() < this->_sendHigh))
+			// Резервируем ёмкость буфера отправки под верхнюю водяную метку
+			i->second.txBuffer.reserve(this->_sendHigh);
+	}
+	// Дописываем принятую часть данных в буфер исходящих данных потока
+	if(accepted > 0)
+		// Дописываем принятые данные
+		i->second.txBuffer.append(data.substr(0, accepted));
+	// Признак приёма переданных данных целиком (в т.ч. пустых - для одиночного FIN)
+	const bool complete = (accepted == data.size());
+	// Флаг завершения потока применяется только при приёме данных целиком
+	if(fin && complete)
 		// Устанавливаем флаг постановки завершения потока
 		i->second.txFin = true;
-	// Ставим поток в набор потоков с данными к отправке
-	this->pending(sid);
-	// Выводим положительный результат
-	return status_t::OK;
+	/**
+	 * Приём неполный - буфер достиг верхней метки: взводим сигнал возобновления, чтобы
+	 * при падении буфера ниже нижней метки поток попал в drained() и приложение досылало
+	 */
+	if(!complete)
+		// Взводим сигнал writable для текущего заполнения буфера
+		i->second.writableNotified = false;
+	// Если есть что отправлять (принятые данные либо одиночный FIN) - ставим поток в набор
+	if((accepted > 0) || (fin && complete))
+		// Ставим поток в набор потоков с данными к отправке
+		this->pending(sid);
+	// Выводим число принятых в очередь байт
+	return accepted;
 }
 /**
  * @brief Метод постановки датаграммы приложения в очередь отправки (RFC 9221 §4)
@@ -7759,6 +7795,26 @@ void awh::quic2::Connection::readable(vector <uint64_t> & output) noexcept {
 	}
 	// Удаляем устаревшие записи из списка готовых
 	this->_stream.readable.erase(position, this->_stream.readable.end());
+}
+/**
+ * @brief Метод получения списка потоков с освободившимся буфером отправки (сигнал writable)
+ *
+ * @param output список идентификаторов потоков, готовых принять данные
+ *
+ */
+void awh::quic2::Connection::drained(vector <uint64_t> & output) noexcept {
+	// Очищаем выходной список идентификаторов потоков
+	output.clear();
+	// Если сигналов возобновления нет - список пуст
+	if(this->_stream.drained.empty())
+		// Выходим из метода
+		return;
+	/**
+	 * Переносим накопленные сигналы в выходной список и очищаем внутренний: сигнал
+	 * возобновления одноразовый - на одно заполнение буфера приходится один сигнал,
+	 * повторная подача до следующего заполнения не нужна (флаг writableNotified)
+	 */
+	output.swap(this->_stream.drained);
 }
 /**
  * @brief Метод выдачи собранных данных потока приложению (RFC 9000 §2.2)

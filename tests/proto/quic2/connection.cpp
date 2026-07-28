@@ -649,7 +649,7 @@ TEST_F(Quic2Fixture, ConnectionStopSendingCollectTest){
 		// Проверяем что поток открыт
 		ASSERT_NE(sid, connection_t::INVALID_STREAM);
 		// Ставим данные потока в очередь отправки без завершения потока
-		ASSERT_EQ(client.send(sid, std::string(4096, 'x'), false), status_t::OK);
+		ASSERT_EQ(client.send(sid, std::string(4096, 'x'), false), static_cast <size_t> (4096));
 		// Запоминаем открытый поток
 		streams.push_back(sid);
 	}
@@ -713,7 +713,7 @@ TEST_F(Quic2Fixture, ConnectionClientAmplificationTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим объёмные данные потока в очередь отправки
-	ASSERT_EQ(client.send(sid, std::string(60000, 'x'), false), status_t::OK);
+	ASSERT_EQ(client.send(sid, std::string(60000, 'x'), false), static_cast <size_t> (60000));
 	// Нагрузка пакета сервера с ack-eliciting фреймом
 	std::string payload = "";
 	// Выполняем сборку фрейма PING (RFC 9000 §19.2)
@@ -837,7 +837,7 @@ TEST_F(Quic2Fixture, ConnectionPathRevertTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные потока в очередь отправки
-	ASSERT_EQ(client.send(sid, "connection survived spoofing", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "connection survived spoofing", true), static_cast <size_t> (28));
 	// Возвращаем клиенту исходный адрес удалённого сервера
 	this->_addr->parse(ORIGIN);
 	client.address(this->_addr->source().get(), 443);
@@ -985,7 +985,7 @@ TEST_F(Quic2Fixture, ConnectionAmplificationTimerTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим объёмные данные потока в очередь отправки
-	ASSERT_EQ(client.send(sid, std::string(60000, 'x'), false), status_t::OK);
+	ASSERT_EQ(client.send(sid, std::string(60000, 'x'), false), static_cast <size_t> (60000));
 	/**
 	 * Нагрузка пакета сервера: непробирующий фрейм PING инициирует смену пути
 	 * (RFC 9000 §9.1). Он ack-eliciting, но под лимитом анти-амплификации отправить
@@ -1091,7 +1091,7 @@ TEST_F(Quic2Fixture, ConnectionEcnMigrationTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные в очередь отправки
-	ASSERT_EQ(client.send(sid, "marked path payload", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "marked path payload", true), static_cast <size_t> (19));
 	/**
 	 * Выполняем обмен датаграммами по пути, доставляющему маркировку: счётчики
 	 * маркировок удалённого эндпоинта нарастают
@@ -1161,7 +1161,7 @@ TEST_F(Quic2Fixture, ConnectionMigrateCongestionResetTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим объёмные данные потока в очередь отправки
-	ASSERT_EQ(client.send(sid, std::string(65536, 'x'), false), status_t::OK);
+	ASSERT_EQ(client.send(sid, std::string(65536, 'x'), false), static_cast <size_t> (65536));
 	// Буфер передаваемой датаграммы
 	std::string datagram = "";
 	/**
@@ -1660,7 +1660,7 @@ TEST_F(Quic2Fixture, ConnectionIdleRestartOnSendTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные потока в очередь отправки
-	ASSERT_EQ(client.send(sid, "late activity", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "late activity", true), static_cast <size_t> (13));
 	// Буфер исходящей датаграммы клиента
 	std::string datagram = "";
 	// Извлекаем датаграмму клиента с данными потока
@@ -2098,7 +2098,7 @@ TEST_F(Quic2Fixture, StreamEchoTest){
 	// Проверяем идентификатор первого двунаправленного потока клиента (RFC 9000 §2.1)
 	ASSERT_EQ(sid, 0);
 	// Ставим данные запроса в очередь отправки с завершением потока
-	ASSERT_EQ(client.send(sid, "hello quic streams", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "hello quic streams", true), static_cast <size_t> (18));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Список потоков с данными на сервере
@@ -2118,7 +2118,7 @@ TEST_F(Quic2Fixture, StreamEchoTest){
 	ASSERT_EQ(request, "hello quic streams");
 	ASSERT_TRUE(fin);
 	// Ставим данные ответа в очередь отправки с завершением потока
-	ASSERT_EQ(server.send(sid, "echo: hello quic streams", true), status_t::OK);
+	ASSERT_EQ(server.send(sid, "echo: hello quic streams", true), static_cast <size_t> (24));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Принятые данные ответа
@@ -2163,7 +2163,7 @@ TEST_F(Quic2Fixture, StreamCoalescedHandshakeTest){
 	// Проверяем идентификатор первого двунаправленного потока клиента
 	ASSERT_EQ(sid, 0);
 	// Ставим данные запроса в очередь отправки с завершением потока
-	ASSERT_EQ(client.send(sid, "coalesced stream data", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "coalesced stream data", true), static_cast <size_t> (21));
 	/**
 	 * Передаём датаграммы клиента серверу - завершение хендшейка (Handshake)
 	 * и данные потока (1-RTT) коалесцируются в одну датаграмму
@@ -2219,7 +2219,7 @@ TEST_F(Quic2Fixture, StreamLargeTransferTest){
 		// Дописываем октет шаблона
 		payload.push_back(static_cast <char> ('A' + (i % 26)));
 	// Ставим данные в очередь отправки с завершением потока
-	ASSERT_EQ(client.send(sid, payload, true), status_t::OK);
+	ASSERT_EQ(client.send(sid, payload, true), payload.size());
 	// Принятые данные потока
 	std::string received = "";
 	// Флаг завершения потока
@@ -2266,8 +2266,8 @@ TEST_F(Quic2Fixture, StreamUnidirectionalTest){
 	// Проверяем идентификатор первого однонаправленного потока сервера (RFC 9000 §2.1)
 	ASSERT_EQ(serverSid, 3);
 	// Ставим данные в очереди отправки с завершением потоков
-	ASSERT_EQ(client.send(clientSid, "client to server", true), status_t::OK);
-	ASSERT_EQ(server.send(serverSid, "server to client", true), status_t::OK);
+	ASSERT_EQ(client.send(clientSid, "client to server", true), static_cast <size_t> (16));
+	ASSERT_EQ(server.send(serverSid, "server to client", true), static_cast <size_t> (16));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Принятые данные потоков
@@ -2285,8 +2285,8 @@ TEST_F(Quic2Fixture, StreamUnidirectionalTest){
 	ASSERT_EQ(data, "server to client");
 	ASSERT_TRUE(fin);
 	// Проверяем что отправка в чужой однонаправленный поток недопустима (RFC 9000 §2.1)
-	ASSERT_EQ(server.send(clientSid, "reverse", false), status_t::ERROR);
-	ASSERT_EQ(client.send(serverSid, "reverse", false), status_t::ERROR);
+	ASSERT_EQ(server.send(clientSid, "reverse", false), static_cast <size_t> (0));
+	ASSERT_EQ(client.send(serverSid, "reverse", false), static_cast <size_t> (0));
 }
 
 /**
@@ -2322,7 +2322,7 @@ TEST_F(Quic2Fixture, StreamLimitTest){
 	// Проверяем что лимит потоков удалённого эндпоинта исчерпан
 	ASSERT_EQ(client.open(false), connection_t::INVALID_STREAM);
 	// Завершаем поток без данных
-	ASSERT_EQ(client.send(sid, "", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "", true), static_cast <size_t> (0));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Принятые данные потока
@@ -2371,7 +2371,7 @@ TEST_F(Quic2Fixture, StreamFlowControlTest){
 	// Формируем блок данных больше окна flow control
 	std::string payload(256, 'X');
 	// Ставим данные в очередь отправки с завершением потока
-	ASSERT_EQ(client.send(sid, payload, true), status_t::OK);
+	ASSERT_EQ(client.send(sid, payload, true), payload.size());
 	// Выполняем обмен датаграммами (первая порция ограничена окном)
 	::pump(client, server, now);
 	// Принятые данные потока
@@ -2422,7 +2422,7 @@ TEST_F(Quic2Fixture, StreamResetTest){
 	// Открываем двунаправленный поток на клиенте
 	const uint64_t sid = client.open(false);
 	// Ставим данные в очередь отправки
-	ASSERT_EQ(client.send(sid, "partial data", false), status_t::OK);
+	ASSERT_EQ(client.send(sid, "partial data", false), static_cast <size_t> (12));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Выполняем аварийное завершение потока на клиенте
@@ -2441,7 +2441,7 @@ TEST_F(Quic2Fixture, StreamResetTest){
 	// Проверяем что выдача данных сброшенного потока недоступна
 	ASSERT_EQ(server.receive(sid, data, fin), status_t::ERROR);
 	// Проверяем что отправка в сброшенный поток недопустима
-	ASSERT_EQ(client.send(sid, "more", false), status_t::ERROR);
+	ASSERT_EQ(client.send(sid, "more", false), static_cast <size_t> (0));
 }
 
 /**
@@ -2466,7 +2466,7 @@ TEST_F(Quic2Fixture, StreamStopSendingTest){
 	// Открываем двунаправленный поток на клиенте
 	const uint64_t sid = client.open(false);
 	// Ставим данные в очередь отправки
-	ASSERT_EQ(client.send(sid, "unwanted data", false), status_t::OK);
+	ASSERT_EQ(client.send(sid, "unwanted data", false), static_cast <size_t> (13));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Выполняем запрос прекращения передачи на сервере
@@ -2479,7 +2479,7 @@ TEST_F(Quic2Fixture, StreamStopSendingTest){
 	ASSERT_TRUE(server.aborted(sid, code));
 	ASSERT_EQ(code, 0x0202);
 	// Проверяем что отправка в прекращённый поток недопустима
-	ASSERT_EQ(client.send(sid, "more", false), status_t::ERROR);
+	ASSERT_EQ(client.send(sid, "more", false), static_cast <size_t> (0));
 	// Проверяем отсутствие ошибок транспорта
 	ASSERT_EQ(client.error(), error_t::NO_ERROR);
 	ASSERT_EQ(server.error(), error_t::NO_ERROR);
@@ -2507,7 +2507,7 @@ TEST_F(Quic2Fixture, StreamLossTest){
 	// Открываем двунаправленный поток на клиенте
 	const uint64_t sid = client.open(false);
 	// Ставим данные в очередь отправки с завершением потока
-	ASSERT_EQ(client.send(sid, "lost stream data", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "lost stream data", true), static_cast <size_t> (16));
 	// Буфер исходящей датаграммы
 	std::string datagram = "";
 	// Извлекаем датаграмму с данными потока и теряем её (не передаём серверу)
@@ -2611,7 +2611,7 @@ TEST_F(Quic2Fixture, ConnectionCloseRetransmitTest){
 	// Открываем двунаправленный поток на сервере (сервер не знает о завершении)
 	const uint64_t sid = server.open(false);
 	// Ставим данные сервера в очередь отправки
-	ASSERT_EQ(server.send(sid, "server data", false), status_t::OK);
+	ASSERT_EQ(server.send(sid, "server data", false), static_cast <size_t> (11));
 	// Извлекаем датаграмму сервера с данными потока
 	ASSERT_TRUE(server.write(datagram, now));
 	// Передаём датаграмму сервера завершающемуся клиенту
@@ -3307,7 +3307,7 @@ TEST_F(Quic2Fixture, ConnectionHandshakeReorderTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные потока в очередь отправки
-	ASSERT_EQ(client.send(sid, "handshake survived reordering", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "handshake survived reordering", true), static_cast <size_t> (29));
 	// Выполняем обмен датаграммами до полного затишья
 	::pump(client, server, now);
 	// Буфер принятых сервером данных
@@ -3534,7 +3534,7 @@ TEST_F(Quic2Fixture, ConnectionLossyPathTest){
 		// Записываем очередной октет узора
 		source[i] = static_cast <char> ('A' + (i % 26));
 	// Ставим содержимое потока в очередь отправки с завершением
-	ASSERT_EQ(client.send(sid, source, true), status_t::OK);
+	ASSERT_EQ(client.send(sid, source, true), source.size());
 	// Счётчик доставленных датаграмм для выбора теряемых
 	size_t counter = 0;
 	// Количество отброшенных датаграмм
@@ -3657,7 +3657,7 @@ TEST_F(Quic2Fixture, KeyUpdateReorderTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные прежней фазы ключей в очередь отправки
-	ASSERT_EQ(client.send(sid, "phase zero ", false), status_t::OK);
+	ASSERT_EQ(client.send(sid, "phase zero ", false), static_cast <size_t> (11));
 	// Запоминаем бит фазы ключей клиента до обновления
 	const bool phase = client.phase();
 	// Список задержанных датаграмм прежней фазы ключей
@@ -3681,7 +3681,7 @@ TEST_F(Quic2Fixture, KeyUpdateReorderTest){
 	// Проверяем что бит фазы ключей переключился
 	ASSERT_NE(client.phase(), phase);
 	// Ставим данные новой фазы ключей в очередь отправки
-	ASSERT_EQ(client.send(sid, "phase one", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "phase one", true), static_cast <size_t> (9));
 	// Продвигаем тестовые часы
 	now += 5;
 	/**
@@ -3756,7 +3756,7 @@ TEST_F(Quic2Fixture, KeyUpdatePreviousDiscardTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные прежней фазы ключей в очередь отправки
-	ASSERT_EQ(client.send(sid, "phase zero ", false), status_t::OK);
+	ASSERT_EQ(client.send(sid, "phase zero ", false), static_cast <size_t> (11));
 	// Запоминаем бит фазы ключей клиента до обновления
 	const bool phase = client.phase();
 	// Список задержанных датаграмм прежней фазы ключей
@@ -3777,7 +3777,7 @@ TEST_F(Quic2Fixture, KeyUpdatePreviousDiscardTest){
 	// Проверяем что бит фазы ключей переключился
 	ASSERT_NE(client.phase(), phase);
 	// Ставим данные новой фазы ключей в очередь отправки
-	ASSERT_EQ(client.send(sid, "phase one", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "phase one", true), static_cast <size_t> (9));
 	// Продвигаем тестовые часы
 	now += 5;
 	// Доставляем серверу датаграммы новой фазы - сервер переключается на новые ключи
@@ -3843,7 +3843,7 @@ TEST_F(Quic2Fixture, KeyUpdateTest){
 	// Открываем двунаправленный поток на клиенте
 	const uint64_t sid = client.open(false);
 	// Ставим первые данные в очередь отправки
-	ASSERT_EQ(client.send(sid, "phase zero", false), status_t::OK);
+	ASSERT_EQ(client.send(sid, "phase zero", false), static_cast <size_t> (10));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Запоминаем бит фазы ключей клиента до обновления
@@ -3853,7 +3853,7 @@ TEST_F(Quic2Fixture, KeyUpdateTest){
 	// Проверяем что бит фазы ключей переключился
 	ASSERT_NE(client.phase(), phase);
 	// Ставим вторые данные в очередь отправки в новой фазе ключей
-	ASSERT_EQ(client.send(sid, " phase one", false), status_t::OK);
+	ASSERT_EQ(client.send(sid, " phase one", false), static_cast <size_t> (10));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Проверяем что сервер переключился на новую фазу ключей
@@ -3920,7 +3920,7 @@ TEST_F(Quic2Fixture, AeadConfidentialityUpdateTest){
 		// Блок данных очередной итерации
 		const std::string chunk = "abcdefgh";
 		// Ставим данные в очередь отправки
-		ASSERT_EQ(client.send(sid, chunk, false), status_t::OK);
+		ASSERT_EQ(client.send(sid, chunk, false), chunk.size());
 		// Накапливаем ожидаемое содержимое
 		sent.append(chunk);
 		// Выполняем обмен датаграммами до затишья
@@ -4062,7 +4062,7 @@ TEST_F(Quic2Fixture, ConnectionIdRotationTest){
 	// Открываем двунаправленный поток на клиенте
 	const uint64_t sid = client.open(false);
 	// Ставим данные в очередь отправки с новым идентификатором соединения
-	ASSERT_EQ(client.send(sid, "rotated cid", false), status_t::OK);
+	ASSERT_EQ(client.send(sid, "rotated cid", false), static_cast <size_t> (11));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Принятые данные потока
@@ -4104,7 +4104,7 @@ TEST_F(Quic2Fixture, CongestionControlTest){
 	// Открываем двунаправленный поток на клиенте
 	const uint64_t sid = client.open(false);
 	// Ставим данные в очередь отправки
-	ASSERT_EQ(client.send(sid, "congestion window data", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "congestion window data", true), static_cast <size_t> (22));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Проиграем тестовые часы для подтверждения всех пакетов
@@ -4324,7 +4324,7 @@ TEST_F(Quic2Fixture, DatagramSizeBudgetTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим крупный блок данных в очередь отправки для наполнения датаграмм
-	ASSERT_EQ(client.send(sid, std::string(200000, 'x'), true), status_t::OK);
+	ASSERT_EQ(client.send(sid, std::string(200000, 'x'), true), static_cast <size_t> (200000));
 	// Буфер принятых сервером данных потока
 	std::string received = "";
 	// Флаг принятого завершения потока
@@ -4429,13 +4429,13 @@ TEST_F(Quic2Fixture, StreamStopSendingBeforeFinCreditTest){
 	// Проверяем что лимит потоков исчерпан
 	ASSERT_EQ(client.open(false), connection_t::INVALID_STREAM);
 	// Ставим первую часть данных без завершения потока
-	ASSERT_EQ(client.send(sid, "first part", false), status_t::OK);
+	ASSERT_EQ(client.send(sid, "first part", false), static_cast <size_t> (10));
 	// Передаём данные серверу
 	ASSERT_GT(::transfer(client, server, now), 0u);
 	// Прекращаем приём потока на сервере до прихода завершения потока
 	server.stop(sid, 0x01);
 	// Ставим вторую часть данных с завершением потока
-	ASSERT_EQ(client.send(sid, "second part", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "second part", true), static_cast <size_t> (11));
 	/**
 	 * Передаём завершение потока серверу, не доставляя клиенту встречных датаграмм:
 	 * клиент не узнаёт о прекращении приёма и ответный RESET_STREAM не отправляет
@@ -4495,7 +4495,7 @@ TEST_F(Quic2Fixture, StreamStopSendingAfterFinCreditTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные с завершением потока в очередь отправки
-	ASSERT_EQ(client.send(sid, "payload with fin", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "payload with fin", true), static_cast <size_t> (16));
 	/**
 	 * Передаём данные серверу, не доставляя клиенту встречных датаграмм:
 	 * ответный RESET_STREAM клиента не должен маскировать возврат кредита
@@ -4549,7 +4549,7 @@ TEST_F(Quic2Fixture, StreamRoundRobinTest){
 		// Проверяем что поток открыт
 		ASSERT_NE(sid, connection_t::INVALID_STREAM);
 		// Ставим крупный блок данных в очередь отправки
-		ASSERT_EQ(client.send(sid, std::string(40000, 'a'), false), status_t::OK);
+		ASSERT_EQ(client.send(sid, std::string(40000, 'a'), false), static_cast <size_t> (40000));
 		// Сохраняем идентификатор потока
 		streams.push_back(sid);
 	}
@@ -4625,7 +4625,7 @@ TEST_F(Quic2Fixture, StreamCollectTest){
 		// Проверяем что поток открыт
 		ASSERT_NE(sid, connection_t::INVALID_STREAM);
 		// Ставим данные с завершением потока в очередь отправки
-		ASSERT_EQ(client.send(sid, "stream payload", true), status_t::OK);
+		ASSERT_EQ(client.send(sid, "stream payload", true), static_cast <size_t> (14));
 		// Выполняем обмен датаграммами
 		::pump(client, server, now);
 		// Буфер принятых сервером данных
@@ -4639,7 +4639,7 @@ TEST_F(Quic2Fixture, StreamCollectTest){
 		// Проверяем принятое завершение потока
 		ASSERT_TRUE(fin);
 		// Завершаем отправку встречного направления потока на сервере
-		ASSERT_EQ(server.send(sid, "reply payload", true), status_t::OK);
+		ASSERT_EQ(server.send(sid, "reply payload", true), static_cast <size_t> (13));
 		// Выполняем обмен датаграммами
 		::pump(client, server, now);
 		// Буфер принятых клиентом данных
@@ -4660,7 +4660,7 @@ TEST_F(Quic2Fixture, StreamCollectTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные в очередь отправки нового потока
-	ASSERT_EQ(client.send(sid, "after collect", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "after collect", true), static_cast <size_t> (13));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Буфер принятых сервером данных
@@ -4717,7 +4717,7 @@ TEST_F(Quic2Fixture, ConnectionReplayWindowTest){
 		// Формируем очередной блок данных потока
 		const std::string chunk = ("chunk-" + std::to_string(i) + ";");
 		// Ставим блок данных в очередь отправки
-		ASSERT_EQ(client.send(sid, chunk, false), status_t::OK);
+		ASSERT_EQ(client.send(sid, chunk, false), chunk.size());
 		// Дописываем блок в эталонное содержимое
 		expected.append(chunk);
 		/**
@@ -4806,7 +4806,7 @@ TEST_F(Quic2Fixture, CongestionPersistentTest){
 	 */
 	for(size_t i = 0; i < 8; i++){
 		// Ставим очередной блок данных в очередь отправки
-		ASSERT_EQ(client.send(sid, "blackout payload", false), status_t::OK);
+		ASSERT_EQ(client.send(sid, "blackout payload", false), static_cast <size_t> (16));
 		// Извлекаем датаграмму клиента и отбрасываем её
 		client.write(datagram, now);
 		// Продвигаем тестовые часы далеко вперёд
@@ -4828,7 +4828,7 @@ TEST_F(Quic2Fixture, CongestionPersistentTest){
 		 * и признание потерянными отправленных в обрыв возможны только на встречном
 		 * трафике - собственных поводов к отправке у клиента уже нет
 		 */
-		ASSERT_EQ(client.send(sid, "recovery payload", false), status_t::OK);
+		ASSERT_EQ(client.send(sid, "recovery payload", false), static_cast <size_t> (16));
 		// Продвигаем тестовые часы
 		now += 20;
 		// Обрабатываем просроченные таймеры клиента
@@ -4915,14 +4915,14 @@ TEST_F(Quic2Fixture, CongestionPersistentReorderTest){
 		/**
 		 * Пакет P1 (потерян): отправляем и отбрасываем
 		 */
-		ASSERT_EQ(client.send(sid, "payload-1", false), status_t::OK);
+		ASSERT_EQ(client.send(sid, "payload-1", false), static_cast <size_t> (9));
 		// Извлекаем датаграмму пакета P1 и отбрасываем её
 		ASSERT_TRUE(client.write(datagram, base));
 		/**
 		 * Пакет P_mid (внутренний): в основном проходе доставляем серверу - он даст
 		 * подтверждение внутри серии потерь; в контрольном отбрасываем вместе с прочими
 		 */
-		ASSERT_EQ(client.send(sid, "payload-2", false), status_t::OK);
+		ASSERT_EQ(client.send(sid, "payload-2", false), static_cast <size_t> (9));
 		// Время отправки внутреннего пакета - строго между потерянными
 		const uint64_t middle = base + 2000;
 		// Извлекаем датаграмму внутреннего пакета
@@ -4934,7 +4934,7 @@ TEST_F(Quic2Fixture, CongestionPersistentReorderTest){
 		/**
 		 * Пакет P2 (потерян): отправляем и отбрасываем
 		 */
-		ASSERT_EQ(client.send(sid, "payload-3", false), status_t::OK);
+		ASSERT_EQ(client.send(sid, "payload-3", false), static_cast <size_t> (9));
 		// Время отправки второго потерянного пакета - далеко за порогом периода от P1
 		const uint64_t second = base + 4000;
 		// Извлекаем датаграмму пакета P2 и отбрасываем её
@@ -4944,7 +4944,7 @@ TEST_F(Quic2Fixture, CongestionPersistentReorderTest){
 		 * номер (чтобы P1/P2 были признаны потерянными) и служит хвостовым подтверждением
 		 * уже после всей серии, период не разрывающим
 		 */
-		ASSERT_EQ(client.send(sid, "payload-4", false), status_t::OK);
+		ASSERT_EQ(client.send(sid, "payload-4", false), static_cast <size_t> (9));
 		// Время отправки хвостового пакета
 		const uint64_t tail = base + 4100;
 		// Извлекаем датаграмму хвостового пакета
@@ -5038,7 +5038,7 @@ TEST_F(Quic2Fixture, ConnectionAckDelayTest){
 		 */
 		for(size_t i = 0; i < 12; i++){
 			// Ставим очередной блок данных в очередь отправки
-			ASSERT_EQ(client.send(sid, "round trip payload", false), status_t::OK);
+			ASSERT_EQ(client.send(sid, "round trip payload", false), static_cast <size_t> (18));
 			/**
 			 * Передаём датаграммы клиента серверу
 			 */
@@ -5067,7 +5067,7 @@ TEST_F(Quic2Fixture, ConnectionAckDelayTest){
 			server.receive(sid, payload, fin);
 		}
 		// Ставим данные в очередь отправки для взведения таймера
-		ASSERT_EQ(client.send(sid, "pending payload", false), status_t::OK);
+		ASSERT_EQ(client.send(sid, "pending payload", false), static_cast <size_t> (15));
 		// Извлекаем датаграмму клиента без доставки серверу
 		ASSERT_TRUE(client.write(datagram, now));
 		// Получаем дедлайн ближайшего события таймера клиента
@@ -5122,7 +5122,7 @@ TEST_F(Quic2Fixture, ConnectionClosingIgnoresFramesTest){
 	// Извлекаем датаграмму клиента с фреймом CONNECTION_CLOSE
 	ASSERT_TRUE(client.write(datagram, now));
 	// Ставим данные потока в очередь отправки на сервере
-	ASSERT_EQ(server.send(sid, "data after close", true), status_t::OK);
+	ASSERT_EQ(server.send(sid, "data after close", true), static_cast <size_t> (16));
 	/**
 	 * Передаём датаграммы сервера клиенту: клиент находится в состоянии завершения
 	 * и обязан их отбросить, не разбирая нагрузку
@@ -5544,7 +5544,7 @@ TEST_F(Quic2Fixture, ConnectionExternalContextTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные в очередь отправки
-	ASSERT_EQ(client.send(sid, "payload over external context", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "payload over external context", true), static_cast <size_t> (29));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Буфер принятых сервером данных
@@ -5633,7 +5633,7 @@ TEST_F(Quic2Fixture, ConnectionMigrationDetectTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные в очередь отправки для роста окна перегрузки
-	ASSERT_EQ(client.send(sid, std::string(60000, 'x'), false), status_t::OK);
+	ASSERT_EQ(client.send(sid, std::string(60000, 'x'), false), static_cast <size_t> (60000));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Буфер принятых сервером данных
@@ -5654,7 +5654,7 @@ TEST_F(Quic2Fixture, ConnectionMigrationDetectTest){
 	// Буфер передаваемой датаграммы
 	std::string datagram = "";
 	// Ставим данные в очередь отправки клиента
-	ASSERT_EQ(client.send(sid, "payload after migration", false), status_t::OK);
+	ASSERT_EQ(client.send(sid, "payload after migration", false), static_cast <size_t> (23));
 	// Извлекаем датаграмму клиента
 	ASSERT_TRUE(client.write(datagram, now));
 	// Продвигаем тестовые часы
@@ -6089,7 +6089,7 @@ TEST_F(Quic2Fixture, ConnectionMigrateTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(warmup, connection_t::INVALID_STREAM);
 	// Ставим данные в очередь отправки
-	ASSERT_EQ(client.send(warmup, std::string(60000, 'x'), true), status_t::OK);
+	ASSERT_EQ(client.send(warmup, std::string(60000, 'x'), true), static_cast <size_t> (60000));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Буфер принятых сервером данных
@@ -6126,7 +6126,7 @@ TEST_F(Quic2Fixture, ConnectionMigrateTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные в очередь отправки
-	ASSERT_EQ(client.send(sid, "payload over migrated path", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "payload over migrated path", true), static_cast <size_t> (26));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Буфер принятых сервером данных
@@ -6373,7 +6373,7 @@ TEST_F(Quic2Fixture, ConnectionSessionResumeTest){
 		// Проверяем что поток открыт
 		ASSERT_NE(sid, connection_t::INVALID_STREAM);
 		// Ставим данные в очередь отправки
-		ASSERT_EQ(client.send(sid, "resumed session data", true), status_t::OK);
+		ASSERT_EQ(client.send(sid, "resumed session data", true), static_cast <size_t> (20));
 		// Выполняем обмен датаграммами
 		::pump(client, server, now);
 		// Буфер принятых сервером данных
@@ -6539,7 +6539,7 @@ TEST_F(Quic2Fixture, ConnectionEarlyDataTest){
 		// Проверяем что поток открыт до завершения хендшейка
 		ASSERT_NE(sid, connection_t::INVALID_STREAM);
 		// Ставим ранние данные в очередь отправки до завершения хендшейка
-		ASSERT_EQ(client.send(sid, "early application data", true), status_t::OK);
+		ASSERT_EQ(client.send(sid, "early application data", true), static_cast <size_t> (22));
 		// Тестовые часы в миллисекундах
 		uint64_t now = 1000;
 		// Буфер первой исходящей датаграммы клиента
@@ -6661,7 +6661,7 @@ TEST_F(Quic2Fixture, ConnectionEarlyDataRejectTest){
 		// Проверяем что поток открыт до завершения хендшейка
 		ASSERT_NE(sid, connection_t::INVALID_STREAM);
 		// Ставим ранние данные в очередь отправки до завершения хендшейка
-		ASSERT_EQ(client.send(sid, "rejected early data", true), status_t::OK);
+		ASSERT_EQ(client.send(sid, "rejected early data", true), static_cast <size_t> (19));
 		// Тестовые часы в миллисекундах
 		uint64_t now = 1000;
 		// Буфер первой исходящей датаграммы клиента
@@ -6782,7 +6782,7 @@ TEST_F(Quic2Fixture, ConnectionEcnValidationPassTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные в очередь отправки
-	ASSERT_EQ(client.send(sid, "marked path payload", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "marked path payload", true), static_cast <size_t> (19));
 	/**
 	 * Выполняем обмен датаграммами по пути, доставляющему маркировку
 	 */
@@ -6851,7 +6851,7 @@ TEST_F(Quic2Fixture, ConnectionEcnValidationPartialTest){
 	 */
 	for(size_t i = 0; i < 4; i++){
 		// Ставим очередную порцию данных в очередь отправки
-		ASSERT_EQ(client.send(sid, "partially stripped path", false), status_t::OK);
+		ASSERT_EQ(client.send(sid, "partially stripped path", false), static_cast <size_t> (23));
 		// Продвигаем тестовые часы
 		now += 5;
 		// Передаём датаграммы клиента серверу без маркировки
@@ -7199,7 +7199,7 @@ TEST_F(Quic2Fixture, ConnectionPreferredAddressTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные в очередь отправки
-	ASSERT_EQ(client.send(sid, "relocated connection", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "relocated connection", true), static_cast <size_t> (20));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Буфер принятых сервером данных
@@ -7436,9 +7436,9 @@ TEST_F(Quic2Fixture, ConnectionSoakTest){
 		// Полезная нагрузка потоков цикла
 		const std::string chunk(1024 + (cycle * 37), static_cast <char> ('a' + (cycle % 26)));
 		// Ставим данные двунаправленного потока в очередь отправки с завершением
-		ASSERT_EQ(client.send(bidi, chunk, true), status_t::OK);
+		ASSERT_EQ(client.send(bidi, chunk, true), chunk.size());
 		// Ставим данные однонаправленного потока в очередь отправки с завершением
-		ASSERT_EQ(client.send(uni, chunk, true), status_t::OK);
+		ASSERT_EQ(client.send(uni, chunk, true), chunk.size());
 		// Ставим датаграмму приложения в очередь отправки
 		ASSERT_EQ(client.datagram(std::string(64, 'd')), status_t::OK);
 		// Продвигаем тестовые часы
@@ -7567,7 +7567,7 @@ TEST_F(Quic2Fixture, ConnectionCollectReferencedTest){
 		// Проверяем что поток открыт
 		ASSERT_NE(sid, connection_t::INVALID_STREAM);
 		// Ставим данные потока в очередь отправки с завершением
-		ASSERT_EQ(client.send(sid, std::string(256, 'r'), true), status_t::OK);
+		ASSERT_EQ(client.send(sid, std::string(256, 'r'), true), static_cast <size_t> (256));
 	}
 	// Проверяем что потоки клиентом обслуживаются
 	ASSERT_EQ(client.streams(), COUNT);
@@ -7883,7 +7883,7 @@ TEST_F(Quic2Fixture, ConnectionFuzzPayloadTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные потока в очередь отправки
-	ASSERT_EQ(server.send(sid, std::string(4096, 'z'), false), status_t::OK);
+	ASSERT_EQ(server.send(sid, std::string(4096, 'z'), false), static_cast <size_t> (4096));
 	// Буфер исходящей датаграммы сервера
 	std::string datagram = "";
 	/**
@@ -8488,7 +8488,7 @@ TEST_F(Quic2Fixture, ConnectionRelocationProbingTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные потока в очередь отправки
-	ASSERT_EQ(client.send(sid, "data during validation", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "data during validation", true), static_cast <size_t> (22));
 	// Количество датаграмм, адресованных предпочтительному адресу
 	size_t probing = 0;
 	// Количество датаграмм, адресованных текущему пути
@@ -8892,7 +8892,7 @@ TEST_F(Quic2Fixture, ConnectionDisableActiveMigrationTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим данные в очередь отправки
-	ASSERT_EQ(client.send(sid, "no migration allowed", true), status_t::OK);
+	ASSERT_EQ(client.send(sid, "no migration allowed", true), static_cast <size_t> (20));
 	// Выполняем обмен датаграммами
 	::pump(client, server, now);
 	// Буфер принятых сервером данных
@@ -9239,7 +9239,7 @@ TEST_F(Quic2Fixture, ConnectionPmtuBlackHoleTest){
 	// Проверяем что поток открыт
 	ASSERT_NE(sid, connection_t::INVALID_STREAM);
 	// Ставим в очередь объёмные данные для полноразмерной передачи
-	ASSERT_EQ(client.send(sid, std::string(262144, 'z'), false), status_t::OK);
+	ASSERT_EQ(client.send(sid, std::string(262144, 'z'), false), static_cast <size_t> (262144));
 	/**
 	 * Сужаем путь до обязательного минимума: датаграммы клиента сверх минимума
 	 * теперь теряются, имитируя чёрную дыру. Прогоняем обмен, пока детекция не
@@ -9337,7 +9337,7 @@ TEST_F(Quic2Fixture, ConnectionStreamResurrectionGuardTest){
 			// Сохраняем идентификатор первого потока
 			first = sid;
 		// Ставим данные потока в очередь отправки с завершением
-		ASSERT_EQ(client.send(sid, data, true), status_t::OK);
+		ASSERT_EQ(client.send(sid, data, true), data.size());
 		// Продвигаем часы и передаём датаграммы клиента серверу
 		now += 10;
 		::transfer(client, server, now);
@@ -9660,7 +9660,7 @@ TEST_F(Quic2Fixture, ConnectionStreamBlockedOnceTest){
 	 * Ставим в очередь данных заметно больше выданного сервером лимита: часть
 	 * уйдёт, после чего отправка упрётся в лимит приёма потока
 	 */
-	ASSERT_EQ(client.send(sid, std::string(65536, 'x'), false), status_t::OK);
+	ASSERT_EQ(client.send(sid, std::string(65536, 'x'), false), static_cast <size_t> (65536));
 	/**
 	 * Прогоняем обмен до исчерпания выданного лимита: данные сверх лимита сервер
 	 * приложению не выдаёт, поэтому лимит не поднимается и отправка блокируется

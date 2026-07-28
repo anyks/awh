@@ -1861,6 +1861,74 @@ TEST_F(ParserFixture, ProxyFramingStrictnessTest){
 	// Проверяем что обычный ответ с кадрированием chunked в режиме прокси принимается
 	ASSERT_EQ(probe("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n", proto_t::PROXY1), parser_http_t::error_t::NONE);
 	/**
+	 * Проверяем что клон наследует протокол работы
+	 *
+	 * Протокол описывает соединение и настраивается наравне с лимитами: фабрика,
+	 * настроенная режимом прокси, обязана выпускать парсеры в том же режиме. Иначе
+	 * все проверки кадрирования, которые режим включает, у клонов молча выключены -
+	 * а именно клоны и обслуживают соединения
+	 */
+	{
+		// Создаём объект парсера-приёмника ответа, играющий роль фабрики
+		auto factory = this->make(direct_t::RESPONSE);
+		// Устанавливаем протокол работы через прокси-сервер
+		factory->proto(proto_t::PROXY1);
+		// Создаём клон настроенной фабрики
+		const auto clone = factory->clone();
+		// Приводим клон к типу парсера HTTP/1.x
+		auto parser = static_cast <parser_http_t *> (clone.get());
+		// Проверяем что клон унаследовал протокол работы
+		ASSERT_EQ(parser->proto(), proto_t::PROXY1);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		parser->method(method_t::GET);
+		// Формируем ответ, объявленное кадрирование которого в режиме прокси недопустимо
+		const std::string message = "HTTP/1.1 204 No Content\r\nContent-Length: 5\r\n\r\nhello";
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Проверяем что клон применяет ужесточение режима, а не только помнит о нём
+		ASSERT_EQ(parser->error(), parser_http_t::error_t::INVALID_CONTENT_LENGTH);
+	}
+	/**
+	 * Проверяем что клон наследует и режим переключения протокола
+	 */
+	{
+		// Создаём объект парсера-приёмника запроса, играющий роль фабрики
+		auto factory = this->make(direct_t::REQUEST);
+		// Устанавливаем протокол работы с переключением на WebSocket
+		factory->proto(proto_t::WEBSOCKET1);
+		// Создаём клон настроенной фабрики
+		const auto clone = factory->clone();
+		// Приводим клон к типу парсера HTTP/1.x
+		auto parser = static_cast <parser_http_t *> (clone.get());
+		// Проверяем что клон унаследовал протокол работы
+		ASSERT_EQ(parser->proto(), proto_t::WEBSOCKET1);
+		// Формируем рукопожатие с объявленным телом
+		const std::string message =
+			"GET /chat HTTP/1.1\r\nHost: anyks.com\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+			"Content-Length: 5\r\n\r\nhello";
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Проверяем что клон применяет ужесточение режима
+		ASSERT_EQ(parser->error(), parser_http_t::error_t::INVALID_CONTENT_LENGTH);
+	}
+	/**
+	 * Проверяем что полная очистка возвращает протокол к прямому соединению
+	 *
+	 * Очистка готовит объект к повторному использованию и уже возвращает к умолчанию
+	 * лимиты: оставить режим означало бы отдать объект под новое соединение с
+	 * настройками предыдущего
+	 */
+	{
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Устанавливаем протокол работы через прокси-сервер
+		parser->proto(proto_t::PROXY1);
+		// Выполняем полную очистку объекта парсера
+		parser->clear();
+		// Проверяем что протокол работы возвращён к прямому соединению
+		ASSERT_EQ(parser->proto(), proto_t::HTTP1);
+	}
+	/**
 	 * Проверяем что протокол чужого семейства не принимается
 	 *
 	 * Разбирать HTTP/2 этот парсер не умеет, и молчаливое принятие такого указания
