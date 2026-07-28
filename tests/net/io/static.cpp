@@ -15698,3 +15698,585 @@ TEST_F(IoFixture, IoOriginBindTest){
 	// Проверяем содержимое датаграммы со снятым ключом
 	ASSERT_EQ(received[2].second, "BBBBthird");
 }
+
+/**
+ * @brief Продолжительность окна нагрузки тестов ограничения полосы в миллисекундах
+ *
+ * @details Ведро токенов доливается непрерывно, а расходуется порциями по размеру
+ *          полезной нагрузки кадра, поэтому на коротком окне измерялось бы в
+ *          основном начальное наполнение ведра, а не работа ограничителя
+ *
+ */
+static constexpr uint32_t BANDWIDTH_WINDOW = 1000;
+/**
+ * @brief Предельная продолжительность дослива очереди после окна нагрузки в миллисекундах
+ *
+ * @details После окончания нагрузки очередь отправки остаётся непустой, и её
+ *          дослив идёт с той же ограниченной скоростью. Проверка байт-в-байт
+ *          требует дождаться именно дослива, а не оборвать передачу по окну
+ *
+ */
+static constexpr uint32_t BANDWIDTH_DRAIN = 15000;
+/**
+ * @brief Размер блока постановки в очередь тестов ограничения полосы
+ *
+ */
+static constexpr size_t BANDWIDTH_CHUNK = 16384;
+/**
+ * @brief Глубина запаса очереди отправки тестов ограничения полосы
+ *
+ * @details Очередь обязана оставаться непустой всё время окна нагрузки, иначе
+ *          измерялся бы темп подачи данных тестом, а не работа ограничителя.
+ *          Запас при этом ограничен: неограниченная подача выбрала бы всю
+ *          память процесса за секунду, потому что ограничитель отдаёт в сокет
+ *          медленнее, чем тест ставит в очередь
+ *
+ */
+static constexpr size_t BANDWIDTH_BACKLOG = (BANDWIDTH_CHUNK * 8);
+
+/**
+ * @brief Функция получения октета образца передачи по его смещению
+ *
+ * @details Образец детерминирован и не повторяется на длине блока: приёмник
+ *          проверяет по нему не только объём принятого, но и порядок октетов,
+ *          так что перестановка или потеря внутри потока была бы обнаружена
+ *
+ * @param offset смещение октета в потоке передачи
+ * @return       значение октета образца
+ *
+ */
+static uint8_t sample(const size_t offset) noexcept {
+	// Выводим значение октета образца
+	return static_cast <uint8_t> (((offset * 31) + 7) & 0xFF);
+}
+
+/**
+ * @brief Структура описания одного потребителя теста ограничения полосы
+ *
+ */
+typedef struct Bandwidth_Consumer {
+	// Предел на отправку данных, пустая строка - без предела
+	std::string egress;
+	// Предел на приём данных, пустая строка - без предела
+	std::string ingress;
+	// Идентификатор события отправителя
+	awh::event::id_t sender;
+	// Идентификатор события приёмника
+	awh::event::id_t receiver;
+	// Количество принятых событием отправителя в очередь октетов
+	size_t queued;
+	// Количество принятых приёмником октетов
+	size_t received;
+	// Количество вернувшихся отправителю октетов встречного потока
+	size_t returned;
+	// Количество октетов, поставленных в очередь и ещё не записанных
+	size_t backlog;
+	// Флаг готовности отправителя к подаче данных
+	bool ready;
+	// Флаг обнаружения расхождения принятых данных с образцом
+	bool corrupted;
+	// Достигнутая скорость передачи в октетах в секунду
+	double rate;
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	explicit Bandwidth_Consumer() noexcept :
+	 egress{""}, ingress{""}, sender(0), receiver(0),
+	 queued(0), received(0), returned(0), backlog(0), ready(false), corrupted(false), rate(0.0) {}
+	/**
+	 * @brief Конструктор
+	 *
+	 * @param egress  предел на отправку данных
+	 * @param ingress предел на приём данных
+	 *
+	 */
+	explicit Bandwidth_Consumer(const std::string & egress, const std::string & ingress) noexcept :
+	 egress(egress), ingress(ingress), sender(0), receiver(0),
+	 queued(0), received(0), returned(0), backlog(0), ready(false), corrupted(false), rate(0.0) {}
+} bandwidth_consumer_t;
+
+/**
+ * @brief Функция прогона нагрузки с ограничением пропускной способности
+ *
+ * @details Каждый потребитель это отдельная пара подключений: отправитель
+ *          непрерывно держит очередь непустой, приёмник сверяет принятое с
+ *          образцом и считает октеты. Нагрузка идёт заданное окно, после чего
+ *          подача прекращается и опрос продолжается до полного дослива очередей:
+ *          проверка байт-в-байт требует дождаться именно дослива
+ *
+ * @param io        объект асинхронного движка ввода-вывода
+ * @param consumers набор потребителей нагрузки
+ * @param echo      флаг возврата принятого приёмником обратно отправителю
+ * @return          результат выполнения прогона
+ *
+ */
+static bool bandwidth(awh::engine::io_t * io, std::vector <bandwidth_consumer_t> & consumers, const bool echo = false) noexcept {
+	// Флаг окончания окна нагрузки
+	bool ceased = false;
+	// Флаг остановки прогона
+	bool stop = false;
+	// Блок передаваемых данных
+	static std::vector <uint8_t> chunk;
+	// Если блок передаваемых данных ещё не подготовлен
+	if(chunk.empty()){
+		// Выделяем память под блок передаваемых данных
+		chunk.resize(BANDWIDTH_CHUNK, 0);
+		/**
+		 * Заполняем блок образцом передачи
+		 */
+		for(size_t i = 0; i < BANDWIDTH_CHUNK; i++)
+			// Устанавливаем очередной октет образца
+			chunk[i] = ::sample(i);
+	}
+	// Выполняем генерацию порта
+	const uint16_t number = ::port();
+	// Набор опций событий прогона
+	const uint16_t options = (
+		awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE |
+		awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK |
+		awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY
+	);
+	// Добавляем событие сервера
+	const awh::event::id_t server = io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Добавляем событие таймера окончания окна нагрузки
+	const awh::event::id_t timer = io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Устанавливаем порт события сервера
+	io->setSourcePort(server, number);
+	// Инициализируем асинхронный движок ввода-вывода
+	if(!io->initialize())
+		// Выводим отрицательный результат
+		return false;
+	// Устанавливаем опции события сервера
+	io->setOptions(server, options);
+	// Устанавливаем адрес события сервера
+	io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
+	// Количество принятых сервером подключений
+	size_t accepted = 0;
+	// Устанавливаем функцию обратного вызова на принятие входящего подключения
+	io->on(server, static_cast <awh::engine::callback::accept_t> ([io, &consumers, &accepted, options, echo](
+		[[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid
+	) noexcept -> void {
+		// Если принято больше подключений, чем заведено потребителей
+		if(accepted >= consumers.size())
+			// Выходим из функции обработки
+			return;
+		// Получаем потребителя по порядку принятия его подключения
+		bandwidth_consumer_t & consumer = consumers[accepted++];
+		// Запоминаем идентификатор события приёмника
+		consumer.receiver = cid;
+		// Устанавливаем опции принятого подключения
+		io->setOptions(cid, options);
+		// Если приёмнику задан предел пропускной способности
+		if(!consumer.ingress.empty())
+			// Устанавливаем предел пропускной способности на приём данных
+			io->bandwidth(cid, awh::event::limiting_t::INGRESS, consumer.ingress);
+		/**
+		 * Устанавливаем функцию обратного вызова на чтение из принятого
+		 * подключения: приёмник сверяет принятое с образцом передачи
+		 */
+		io->on(cid, [io, &consumer, echo](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			/**
+			 * Сверяем принятые октеты с образцом передачи
+			 */
+			for(size_t i = 0; i < size; i++){
+				// Если принятый октет расходится с образцом
+				if(data[i] != ::sample((consumer.received + i) % BANDWIDTH_CHUNK)){
+					// Отмечаем расхождение принятых данных с образцом
+					consumer.corrupted = true;
+					// Прекращаем сверку
+					break;
+				}
+			}
+			// Накапливаем количество принятых октетов
+			consumer.received += size;
+			// Если включён встречный поток, возвращаем принятое отправителю
+			if(echo)
+				// Отправляем принятое обратно
+				io->send(eid, data, size);
+		});
+	}));
+	// Выполняем фиксацию настроек события сервера
+	io->commit(server);
+	// Переводим событие сервера в режим прослушивания
+	io->listen(server, 512);
+	// Запускаем событие сервера
+	io->launch(server);
+	/**
+	 * Функция подачи данных в очередь отправителя
+	 *
+	 */
+	auto feed = [io, &ceased](bandwidth_consumer_t & consumer) noexcept -> void {
+		// Если окно нагрузки истекло, данных больше не подаём
+		if(ceased)
+			// Выходим из функции подачи
+			return;
+		/**
+		 * Держим очередь непустой, но не выбираем под неё всю память процесса
+		 */
+		while(consumer.backlog < BANDWIDTH_BACKLOG){
+			// Ставим в очередь очередной блок передачи
+			const size_t accepted = io->send(consumer.sender, chunk.data(), BANDWIDTH_CHUNK);
+			// Если блок в очередь не принят
+			if(accepted == 0)
+				// Прекращаем подачу
+				break;
+			// Накапливаем количество поставленных в очередь октетов
+			consumer.queued += accepted;
+			// Накапливаем объём очереди, ожидающий записи
+			consumer.backlog += accepted;
+		}
+	};
+	/**
+	 * Заводим отправителей всех потребителей нагрузки
+	 */
+	for(auto & consumer : consumers){
+		// Добавляем событие клиента
+		const awh::event::id_t client = io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Запоминаем идентификатор события отправителя
+		consumer.sender = client;
+		// Устанавливаем порт назначения события клиента
+		io->setTargetPort(client, number);
+		// Устанавливаем опции события клиента
+		io->setOptions(client, options);
+		// Устанавливаем адрес привязки события клиента
+		io->setAddress(client, awh::event::address_t::IPV4, "0.0.0.0");
+		// Устанавливаем адрес назначения события клиента
+		io->setTarget(client, "127.0.0.1");
+		// Если включён встречный поток, считаем вернувшиеся отправителю октеты
+		if(echo)
+			// Устанавливаем функцию обратного вызова на чтение из события клиента
+			io->on(client, [&consumer]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, const size_t size) noexcept -> void {
+				// Накапливаем количество вернувшихся октетов
+				consumer.returned += size;
+			});
+		// Устанавливаем функцию обратного вызова на подключение клиента
+		io->on(client, static_cast <awh::engine::callback::connect_t> ([io, &consumer](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			// Если подключение не выполнено
+			if(!ok)
+				// Выходим из функции обработки
+				return;
+			// Если отправителю задан предел пропускной способности
+			if(!consumer.egress.empty())
+				// Устанавливаем предел пропускной способности на отправку данных
+				io->bandwidth(eid, awh::event::limiting_t::EGRESS, consumer.egress);
+			// Отмечаем готовность отправителя к подаче данных
+			consumer.ready = true;
+		}));
+		/**
+		 * Устанавливаем функцию обратного вызова на запись в событие клиента:
+		 * записанный объём освобождает место в очереди, и подача возобновляется
+		 */
+		io->on(client, static_cast <awh::engine::callback::write_t> ([&consumer](
+			[[maybe_unused]] const awh::event::id_t eid, const size_t size
+		) noexcept -> void {
+			// Уменьшаем объём очереди, ожидающий записи
+			consumer.backlog -= ::std::min(consumer.backlog, size);
+		}));
+		// Выполняем фиксацию настроек события клиента
+		io->commit(client);
+		// Выполняем подключение события клиента к серверу
+		io->connect(client);
+		// Выполняем запуск события клиента
+		io->launch(client);
+	}
+	// Устанавливаем таймаут окончания окна нагрузки
+	io->setTimeout(timer, awh::event::action_t::NONE, BANDWIDTH_WINDOW);
+	// Устанавливаем функцию обратного вызова на событие таймера
+	io->on(timer, [&ceased]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Прекращаем подачу данных по истечении окна нагрузки
+		ceased = (ceased || (status == awh::event::status_t::SUCCESS));
+	});
+	// Выполняем фиксацию настроек события таймера
+	io->commit(timer);
+	// Запускаем событие таймера
+	io->launch(timer);
+	// Запоминаем момент начала прогона
+	const auto start = std::chrono::steady_clock::now();
+	// Момент окончания окна нагрузки
+	auto ceasing = start;
+	/**
+	 * Запускаем опрос событий до полного дослива очередей отправки
+	 */
+	while(!stop && io->poll()){
+		// Если окно нагрузки ещё не истекло
+		if(!ceased){
+			/**
+			 * Подаём данные в очереди отправителей всех потребителей нагрузки
+			 */
+			for(auto & consumer : consumers){
+				// Если отправитель готов к подаче данных
+				if(consumer.ready)
+					// Подаём данные в очередь отправителя
+					feed(consumer);
+			}
+			// Продолжаем опрос событий
+			continue;
+		}
+		// Если момент окончания окна нагрузки ещё не снят
+		if(ceasing == start)
+			// Запоминаем момент окончания окна нагрузки
+			ceasing = std::chrono::steady_clock::now();
+		// Флаг завершённости дослива очередей всех потребителей
+		bool drained = true;
+		/**
+		 * Проверяем дослив очередей всех потребителей нагрузки
+		 */
+		for(const auto & consumer : consumers)
+			// Очередь дослита, когда принято ровно столько, сколько поставлено
+			drained = (drained && (consumer.received >= consumer.queued));
+		// Останавливаем прогон по завершении дослива очередей
+		stop = (drained || (std::chrono::duration <double> (std::chrono::steady_clock::now() - ceasing).count() > (BANDWIDTH_DRAIN / 1000.0)));
+	}
+	// Вычисляем продолжительность окна нагрузки
+	const double seconds = std::chrono::duration <double> (std::chrono::steady_clock::now() - start).count();
+	/**
+	 * Вычисляем достигнутые скорости передачи потребителей нагрузки
+	 */
+	for(auto & consumer : consumers)
+		// Устанавливаем достигнутую скорость передачи
+		consumer.rate = ((seconds > 0.0) ? (static_cast <double> (consumer.received) / seconds) : 0.0);
+	// Выводим положительный результат
+	return true;
+}
+
+/**
+ * @brief Функция разбора предела пропускной способности в октеты в секунду
+ *
+ * @param fmk   объект фреймворка
+ * @param limit предел пропускной способности
+ * @return      предел пропускной способности в октетах в секунду
+ *
+ */
+static double limitBytes(const awh::fmk_t * fmk, const std::string & limit) noexcept {
+	// Выводим предел пропускной способности в октетах в секунду
+	return static_cast <double> (fmk->bpsSize(limit));
+}
+
+/**
+ * @brief Тест ограничения пропускной способности только на отправке
+ *
+ * @details Ограничение полосы устроено как ведро токенов: они доливаются
+ *          пропорционально прошедшему времени, а отправка расходует их по числу
+ *          переданных октетов. Проверяется, что достигнутая скорость держится
+ *          около заданного предела и что весь поставленный в очередь объём
+ *          дошёл до приёмника без потерь и без перестановок
+ *
+ */
+TEST_F(IoFixture, IoBandwidthEgressOnlyTest){
+	// Заводим единственного потребителя нагрузки с ограничением отправки
+	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("8Mbps", "")};
+	// Выполняем прогон нагрузки
+	ASSERT_TRUE(::bandwidth(this->_io.get(), consumers));
+	// Получаем заданный предел пропускной способности в октетах в секунду
+	const double limit = ::limitBytes(this->_fmk.get(), consumers[0].egress);
+	// Проверяем что передача состоялась
+	ASSERT_GT(consumers[0].received, 0u);
+	// Проверяем что принятое совпадает с образцом передачи
+	ASSERT_FALSE(consumers[0].corrupted);
+	// Проверяем что весь поставленный в очередь объём принят до октета
+	ASSERT_EQ(consumers[0].received, consumers[0].queued);
+	// Проверяем что заданный предел не превышен
+	ASSERT_LT(consumers[0].rate, (limit * 1.35));
+	// Проверяем что передача не задушена существенно ниже предела
+	ASSERT_GT(consumers[0].rate, (limit * 0.65));
+}
+
+/**
+ * @brief Тест ограничения пропускной способности только на приёме
+ *
+ */
+TEST_F(IoFixture, IoBandwidthIngressOnlyTest){
+	// Заводим единственного потребителя нагрузки с ограничением приёма
+	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("", "8Mbps")};
+	// Выполняем прогон нагрузки
+	ASSERT_TRUE(::bandwidth(this->_io.get(), consumers));
+	// Получаем заданный предел пропускной способности в октетах в секунду
+	const double limit = ::limitBytes(this->_fmk.get(), consumers[0].ingress);
+	// Проверяем что передача состоялась
+	ASSERT_GT(consumers[0].received, 0u);
+	// Проверяем что принятое совпадает с образцом передачи
+	ASSERT_FALSE(consumers[0].corrupted);
+	// Проверяем что весь поставленный в очередь объём принят до октета
+	ASSERT_EQ(consumers[0].received, consumers[0].queued);
+	// Проверяем что заданный предел не превышен
+	ASSERT_LT(consumers[0].rate, (limit * 1.35));
+	// Проверяем что передача не задушена существенно ниже предела
+	ASSERT_GT(consumers[0].rate, (limit * 0.65));
+}
+
+/**
+ * @brief Тест ограничения пропускной способности на отправке и на приёме разом
+ *
+ * @details Оба направления одного узла ограничены одновременно, и по обоим идёт
+ *          нагрузка: отправитель шлёт непрерывно, приёмник возвращает принятое
+ *          обратно. Ведро токенов у направлений своё, и одно не должно
+ *          расходовать токены другого
+ *
+ */
+TEST_F(IoFixture, IoBandwidthDuplexTest){
+	// Заводим потребителя нагрузки с ограничением обоих направлений
+	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("8Mbps", "8Mbps")};
+	// Выполняем прогон нагрузки со встречным потоком
+	ASSERT_TRUE(::bandwidth(this->_io.get(), consumers, true));
+	// Получаем заданный предел пропускной способности в октетах в секунду
+	const double limit = ::limitBytes(this->_fmk.get(), consumers[0].egress);
+	// Проверяем что передача состоялась в прямом направлении
+	ASSERT_GT(consumers[0].received, 0u);
+	// Проверяем что передача состоялась во встречном направлении
+	ASSERT_GT(consumers[0].returned, 0u);
+	// Проверяем что принятое совпадает с образцом передачи
+	ASSERT_FALSE(consumers[0].corrupted);
+	// Проверяем что весь поставленный в очередь объём принят до октета
+	ASSERT_EQ(consumers[0].received, consumers[0].queued);
+	// Проверяем что заданный предел не превышен в прямом направлении
+	ASSERT_LT(consumers[0].rate, (limit * 1.35));
+	// Проверяем что передача не задушена существенно ниже предела
+	ASSERT_GT(consumers[0].rate, (limit * 0.65));
+}
+
+/**
+ * @brief Тест независимости пределов пропускной способности разных узлов
+ *
+ * @details Ради этого ограничение и заведено на узел, а не на движок: три
+ *          одновременно нагруженных узла с разными пределами обязаны выдать
+ *          каждый свой, а не поделить между собой общий. Проверяется и то, что
+ *          ни один из них не встал и не потерял ни октета
+ *
+ */
+TEST_F(IoFixture, IoBandwidthPerNodeTest){
+	// Заводим трёх потребителей нагрузки с разными пределами отправки
+	std::vector <bandwidth_consumer_t> consumers = {
+		bandwidth_consumer_t("8Mbps", ""),
+		bandwidth_consumer_t("16Mbps", ""),
+		bandwidth_consumer_t("32Mbps", "")
+	};
+	// Выполняем прогон нагрузки
+	ASSERT_TRUE(::bandwidth(this->_io.get(), consumers));
+	/**
+	 * Проверяем каждого потребителя нагрузки в отдельности
+	 */
+	for(const auto & consumer : consumers){
+		// Получаем заданный предел пропускной способности в октетах в секунду
+		const double limit = ::limitBytes(this->_fmk.get(), consumer.egress);
+		// Проверяем что передача состоялась
+		ASSERT_GT(consumer.received, 0u) << "предел " << consumer.egress;
+		// Проверяем что принятое совпадает с образцом передачи
+		ASSERT_FALSE(consumer.corrupted) << "предел " << consumer.egress;
+		// Проверяем что весь поставленный в очередь объём принят до октета
+		ASSERT_EQ(consumer.received, consumer.queued) << "предел " << consumer.egress;
+		// Проверяем что заданный предел не превышен
+		ASSERT_LT(consumer.rate, (limit * 1.35)) << "предел " << consumer.egress;
+		// Проверяем что передача не задушена существенно ниже предела
+		ASSERT_GT(consumer.rate, (limit * 0.65)) << "предел " << consumer.egress;
+	}
+	// Проверяем что пределы соблюдены в отношении друг к другу, а не совпали
+	ASSERT_GT(consumers[1].rate, (consumers[0].rate * 1.5));
+	ASSERT_GT(consumers[2].rate, (consumers[1].rate * 1.5));
+}
+
+/**
+ * @brief Тест передачи без ограничения пропускной способности
+ *
+ * @details Контрольный прогон: без заданного предела петлевой интерфейс выдаёт
+ *          на порядки больше, и совпадение его показателя с ограниченным
+ *          означало бы, что предел не применяется вовсе
+ *
+ */
+TEST_F(IoFixture, IoBandwidthUnlimitedTest){
+	// Заводим потребителя нагрузки без ограничения
+	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("", "")};
+	// Выполняем прогон нагрузки
+	ASSERT_TRUE(::bandwidth(this->_io.get(), consumers));
+	// Проверяем что передача состоялась
+	ASSERT_GT(consumers[0].received, 0u);
+	// Проверяем что принятое совпадает с образцом передачи
+	ASSERT_FALSE(consumers[0].corrupted);
+	// Проверяем что весь поставленный в очередь объём принят до октета
+	ASSERT_EQ(consumers[0].received, consumers[0].queued);
+	// Проверяем что без предела передача многократно быстрее ограниченной
+	ASSERT_GT(consumers[0].rate, (::limitBytes(this->_fmk.get(), "8Mbps") * 5.0));
+}
+
+/**
+ * @brief Тест глобального ограничения пропускной способности на отправке
+ *
+ * @details Глобальное ограничение устроено иначе поузлового: вместо ведра
+ *          токенов на событие движок засыпает на время, нужное переданному
+ *          объёму при заданной скорости. Ограничение общее на весь движок,
+ *          поэтому суммарная скорость всех событий обязана уложиться в предел
+ *
+ */
+TEST_F(IoFixture, IoBandwidthGlobalEgressTest){
+	// Устанавливаем глобальный предел пропускной способности на отправку
+	this->_io->bandwidth(awh::event::limiting_t::EGRESS, "8Mbps");
+	// Заводим потребителя нагрузки без поузлового ограничения
+	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("", "")};
+	// Выполняем прогон нагрузки
+	ASSERT_TRUE(::bandwidth(this->_io.get(), consumers));
+	// Снимаем глобальный предел пропускной способности
+	this->_io->bandwidth(awh::event::limiting_t::EGRESS, "auto");
+	// Получаем заданный предел пропускной способности в октетах в секунду
+	const double limit = ::limitBytes(this->_fmk.get(), "8Mbps");
+	// Проверяем что передача состоялась
+	ASSERT_GT(consumers[0].received, 0u);
+	// Проверяем что принятое совпадает с образцом передачи
+	ASSERT_FALSE(consumers[0].corrupted);
+	// Проверяем что весь поставленный в очередь объём принят до октета
+	ASSERT_EQ(consumers[0].received, consumers[0].queued);
+	// Проверяем что заданный предел не превышен
+	ASSERT_LT(consumers[0].rate, (limit * 1.35));
+}
+
+/**
+ * @brief Тест глобального ограничения пропускной способности на приёме
+ *
+ */
+TEST_F(IoFixture, IoBandwidthGlobalIngressTest){
+	// Устанавливаем глобальный предел пропускной способности на приём
+	this->_io->bandwidth(awh::event::limiting_t::INGRESS, "8Mbps");
+	// Заводим потребителя нагрузки без поузлового ограничения
+	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("", "")};
+	// Выполняем прогон нагрузки
+	ASSERT_TRUE(::bandwidth(this->_io.get(), consumers));
+	// Снимаем глобальный предел пропускной способности
+	this->_io->bandwidth(awh::event::limiting_t::INGRESS, "auto");
+	// Получаем заданный предел пропускной способности в октетах в секунду
+	const double limit = ::limitBytes(this->_fmk.get(), "8Mbps");
+	// Проверяем что передача состоялась
+	ASSERT_GT(consumers[0].received, 0u);
+	// Проверяем что принятое совпадает с образцом передачи
+	ASSERT_FALSE(consumers[0].corrupted);
+	// Проверяем что весь поставленный в очередь объём принят до октета
+	ASSERT_EQ(consumers[0].received, consumers[0].queued);
+	// Проверяем что заданный предел не превышен
+	ASSERT_LT(consumers[0].rate, (limit * 1.35));
+}
+
+/**
+ * @brief Тест глобального ограничения пропускной способности в обоих направлениях
+ *
+ */
+TEST_F(IoFixture, IoBandwidthGlobalDuplexTest){
+	// Устанавливаем глобальный предел пропускной способности на отправку
+	this->_io->bandwidth(awh::event::limiting_t::EGRESS, "8Mbps");
+	// Устанавливаем глобальный предел пропускной способности на приём
+	this->_io->bandwidth(awh::event::limiting_t::INGRESS, "8Mbps");
+	// Заводим потребителя нагрузки без поузлового ограничения
+	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("", "")};
+	// Выполняем прогон нагрузки
+	ASSERT_TRUE(::bandwidth(this->_io.get(), consumers));
+	// Снимаем глобальные пределы пропускной способности
+	this->_io->bandwidth(awh::event::limiting_t::EGRESS, "auto");
+	this->_io->bandwidth(awh::event::limiting_t::INGRESS, "auto");
+	// Получаем заданный предел пропускной способности в октетах в секунду
+	const double limit = ::limitBytes(this->_fmk.get(), "8Mbps");
+	// Проверяем что передача состоялась
+	ASSERT_GT(consumers[0].received, 0u);
+	// Проверяем что принятое совпадает с образцом передачи
+	ASSERT_FALSE(consumers[0].corrupted);
+	// Проверяем что весь поставленный в очередь объём принят до октета
+	ASSERT_EQ(consumers[0].received, consumers[0].queued);
+	// Проверяем что заданный предел не превышен
+	ASSERT_LT(consumers[0].rate, (limit * 1.35));
+}

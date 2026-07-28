@@ -8496,7 +8496,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
 											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -8639,7 +8639,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на чтение данных
 							if(::bandwidth::read > 0)
 								// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем удаление узла
@@ -8791,7 +8791,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
 											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -8894,7 +8894,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
 									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -10348,7 +10348,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
 											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -10491,7 +10491,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на чтение данных
 							if(::bandwidth::read > 0)
 								// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем удаление узла
@@ -10752,7 +10752,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
 											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -10970,7 +10970,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
 									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -11239,7 +11239,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
 											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -11470,7 +11470,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
 									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -11639,7 +11639,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
 											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -11760,7 +11760,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
 									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -11938,7 +11938,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
 											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -12072,7 +12072,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
 									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -12435,7 +12435,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
 											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 									}
 									/**
 									 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
@@ -12692,7 +12692,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
 									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
 							// Если произошёл дисконнект
 							} else {
 								// Идентификатор полученной ошибки
@@ -13680,7 +13680,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 								}
 							}
 						}
@@ -14028,7 +14028,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
 											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 									}
 								}
 							}
@@ -14419,7 +14419,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 								}
 							}
 						}
@@ -15018,7 +15018,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 								}
 							}
 						}
@@ -15363,7 +15363,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 								}
 							}
 						}
@@ -15763,7 +15763,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 								}
 							}
 						}
@@ -15972,7 +15972,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 								// Если данные не отправлены
 								} else {
 									// Идентификатор полученной ошибки
@@ -17300,7 +17300,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 								}
 							// Если данные не отправлены и нужно подождать
 							} else if(errno == EAGAIN) {
@@ -17713,7 +17713,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 								// Если данные не отправлены и нужно подождать
 								} else if(errno == EAGAIN) {
 									// Сохраняем оставшиеся данные для последующей отправки
@@ -17796,7 +17796,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных
 							if(::bandwidth::write > 0)
 								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 						// Если данные не отправлены
 						} else {
 							// Если функция обратного вызова для вывода записанных данных установлена
@@ -18120,7 +18120,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
 											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 									// Если данные не отправлены и нужно подождать
 									} else if(errno == EAGAIN) {
 										// Сохраняем оставшиеся данные для последующей отправки
@@ -18471,7 +18471,7 @@ namespace io {
 											// Если установлено ограничение пропускной способности на запись данных
 											if(::bandwidth::write > 0)
 												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 										// Если данные не отправлены и нужно подождать
 										} else if(errno == EAGAIN) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -18566,7 +18566,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
 									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -18958,7 +18958,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 								}
 							}
 						// Если очередь передачи данных не пуста
@@ -19263,7 +19263,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
 											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 									}
 								}
 							}
@@ -19309,7 +19309,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных
 							if(::bandwidth::write > 0)
 								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -20855,7 +20855,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 								}
 							// Если данные не отправлены и нужно подождать
 							} else if(errno == EAGAIN) {
@@ -21268,7 +21268,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
 										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 								// Если данные не отправлены и нужно подождать
 								} else if(errno == EAGAIN) {
 									// Сохраняем оставшиеся данные для последующей отправки
@@ -21351,7 +21351,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных
 							if(::bandwidth::write > 0)
 								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 						// Если данные не отправлены
 						} else {
 							// Если функция обратного вызова для вывода записанных данных установлена
@@ -21661,7 +21661,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
 											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 									// Если данные не отправлены и нужно подождать
 									} else if(errno == EAGAIN) {
 										// Сохраняем оставшиеся данные для последующей отправки
@@ -21998,7 +21998,7 @@ namespace io {
 											// Если установлено ограничение пропускной способности на запись данных
 											if(::bandwidth::write > 0)
 												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 										// Если данные не отправлены и нужно подождать
 										} else if(errno == EAGAIN) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -22079,7 +22079,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
 									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -22410,7 +22410,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
 											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 									// Если данные не отправлены и нужно подождать
 									} else if(errno == EAGAIN) {
 										// Сохраняем оставшиеся данные для последующей отправки
@@ -22747,7 +22747,7 @@ namespace io {
 											// Если установлено ограничение пропускной способности на запись данных
 											if(::bandwidth::write > 0)
 												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 										// Если данные не отправлены и нужно подождать
 										} else if(errno == EAGAIN) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -22828,7 +22828,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
 									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -23218,7 +23218,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
 											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 									// Если данные не отправлены и нужно подождать
 									} else if(errno == EAGAIN) {
 										// Сохраняем оставшиеся данные для последующей отправки
@@ -23582,7 +23582,7 @@ namespace io {
 											// Если установлено ограничение пропускной способности на запись данных
 											if(::bandwidth::write > 0)
 												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 										// Если данные не отправлены и нужно подождать
 										} else if(errno == EAGAIN) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -23690,7 +23690,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
 									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -24048,7 +24048,7 @@ namespace io {
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
 											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 									// Если данные не отправлены и нужно подождать
 									} else if(errno == EAGAIN) {
 										// Сохраняем оставшиеся данные для последующей отправки
@@ -24412,7 +24412,7 @@ namespace io {
 											// Если установлено ограничение пропускной способности на запись данных
 											if(::bandwidth::write > 0)
 												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 										// Если данные не отправлены и нужно подождать
 										} else if(errno == EAGAIN) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -24520,7 +24520,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
 									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -24692,7 +24692,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных
 							if(::bandwidth::write > 0)
 								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -24788,7 +24788,7 @@ namespace io {
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
 									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -24883,7 +24883,7 @@ namespace io {
 							// Если установлено ограничение пропускной способности на запись данных
 							if(::bandwidth::write > 0)
 								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000ULL));
+								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -59150,7 +59150,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 												// Если задержка снята, деактивируем таймаут на ожидание получения данных
-												if(!peer->timeouts.read.delay > 0)
+												if(peer->timeouts.read.delay == 0)
 													// Деактивируем таймаут на ожидание получения данных
 													::timer1::cancel(peer->timeouts.read, peer->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
@@ -59159,7 +59159,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
 												// Если задержка снята, деактивируем таймаут на ожидание получения данных
-												if(!peer->timeouts.read.delay > 0)
+												if(peer->timeouts.read.delay == 0)
 													// Деактивируем таймаут на ожидание получения данных
 													::timer2::cancel(peer->timeouts.read, peer->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
@@ -59196,7 +59196,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 												// Если задержка снята, деактивируем таймаут на ожидание записи данных
-												if(!peer->timeouts.write.delay > 0)
+												if(peer->timeouts.write.delay == 0)
 													// Деактивируем таймаут на ожидание записи данных
 													::timer1::cancel(peer->timeouts.write, peer->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
@@ -59205,7 +59205,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
 												// Если задержка снята, деактивируем таймаут на ожидание записи данных
-												if(!peer->timeouts.write.delay > 0)
+												if(peer->timeouts.write.delay == 0)
 													// Деактивируем таймаут на ожидание записи данных
 													::timer2::cancel(peer->timeouts.write, peer->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
@@ -59341,7 +59341,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 												// Если задержка снята, деактивируем таймаут на ожидание получения данных
-												if(!client->timeouts.read.delay > 0)
+												if(client->timeouts.read.delay == 0)
 													// Деактивируем таймаут на ожидание получения данных
 													::timer1::cancel(client->timeouts.read, client->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
@@ -59350,7 +59350,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
 												// Если задержка снята, деактивируем таймаут на ожидание получения данных
-												if(!client->timeouts.read.delay > 0)
+												if(client->timeouts.read.delay == 0)
 													// Деактивируем таймаут на ожидание получения данных
 													::timer2::cancel(client->timeouts.read, client->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
@@ -59387,7 +59387,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 												// Если задержка снята, деактивируем таймаут на ожидание записи данных
-												if(!client->timeouts.write.delay > 0)
+												if(client->timeouts.write.delay == 0)
 													// Деактивируем таймаут на ожидание записи данных
 													::timer1::cancel(client->timeouts.write, client->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
@@ -59396,7 +59396,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
 												// Если задержка снята, деактивируем таймаут на ожидание записи данных
-												if(!client->timeouts.write.delay > 0)
+												if(client->timeouts.write.delay == 0)
 													// Деактивируем таймаут на ожидание записи данных
 													::timer2::cancel(client->timeouts.write, client->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку

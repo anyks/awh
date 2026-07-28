@@ -335,7 +335,31 @@ bool awh::http::h3::qpack::stat::find(string_view name, string_view value, size_
  */
 size_t awh::http::h3::qpack::DynamicTable::count() const noexcept {
 	// Выводим количество живых записей таблицы
-	return this->_entries.size();
+	return (this->_entries.size() - this->_retained);
+}
+/**
+ * @brief Метод снятия удерживаемых вытесненных записей
+ *
+ */
+void awh::http::h3::qpack::DynamicTable::release() noexcept {
+	// Если удерживаемых записей нет
+	if(this->_retained == 0)
+		// Выходим из метода
+		return;
+	// Снимаем удерживаемые записи с начала списка
+	this->_entries.erase(this->_entries.begin(), (this->_entries.begin() + this->_retained));
+	// Сбрасываем количество удерживаемых записей
+	this->_retained = 0;
+}
+/**
+ * @brief Метод получения количества удерживаемых вытесненных записей
+ *
+ * @return количество удерживаемых записей
+ *
+ */
+size_t awh::http::h3::qpack::DynamicTable::retained() const noexcept {
+	// Выводим количество удерживаемых вытесненных записей
+	return this->_retained;
 }
 /**
  * @brief Метод получения текущего суммарного размера таблицы
@@ -429,9 +453,9 @@ void awh::http::h3::qpack::DynamicTable::evict(const uint64_t room) noexcept {
 	 * Выполняем вытеснение записей с самых старых, пока в таблице не освободится
 	 * требуемое место
 	 */
-	while(((this->_size + room) > this->_capacity) && !this->_entries.empty()){
+	while(((this->_size + room) > this->_capacity) && (this->_retained < this->_entries.size())){
 		// Получаем самую старую живую запись таблицы
-		const field_t & entry = this->_entries.front();
+		const field_t & entry = this->_entries[this->_retained];
 		// Если сопровождение индекса записей включено
 		if(this->_indexing){
 			// Вычисляем хеш названия вытесняемой записи
@@ -466,8 +490,11 @@ void awh::http::h3::qpack::DynamicTable::evict(const uint64_t room) noexcept {
 		}
 		// Уменьшаем суммарный размер таблицы
 		this->_size -= entrySize(entry.name, entry.value);
-		// Удаляем самую старую живую запись таблицы
-		this->_entries.pop_front();
+		/**
+		 * Запись не снимается физически, а лишь помечается удерживаемой: наружу могли
+		 * уйти представления в её строки, и снять их вправе только release()
+		 */
+		this->_retained++;
 		// Наращиваем количество вытесненных записей
 		this->_dropped++;
 	}
@@ -493,13 +520,13 @@ bool awh::http::h3::qpack::DynamicTable::insertable(string_view name, string_vie
 	/**
 	 * Выполняем перебор записей с самой старой, освобождая место
 	 */
-	for(size_t i = 0; (available < required) && (i < this->_entries.size()); i++){
+	for(size_t i = 0; (available < required) && ((this->_retained + i) < this->_entries.size()); i++){
 		// Если очередная запись удерживается ссылками
 		if((this->_dropped + i) >= hold)
 			// Выводим признак невозможности вставки
 			return false;
 		// Наращиваем свободное место размером вытесняемой записи
-		available += entrySize(this->_entries[i].name, this->_entries[i].value);
+		available += entrySize(this->_entries[this->_retained + i].name, this->_entries[this->_retained + i].value);
 	}
 	// Выводим признак возможности вставки
 	return (available >= required);
@@ -559,7 +586,7 @@ const awh::http::h3::qpack::field_t * awh::http::h3::qpack::DynamicTable::at(con
 		// Выводим признак отсутствия записи
 		return nullptr;
 	// Выводим запись таблицы по её позиции в очереди
-	return &this->_entries[static_cast <size_t> (absolute - this->_dropped)];
+	return &this->_entries[this->_retained + static_cast <size_t> (absolute - this->_dropped)];
 }
 /**
  * @brief Метод поиска записи по названию и значению
@@ -575,7 +602,7 @@ bool awh::http::h3::qpack::DynamicTable::find(string_view name, string_view valu
 	// Сбрасываем абсолютный номер совпадения только по названию
 	nameOnly = UINT64_MAX;
 	// Если таблица пуста либо индекс не сопровождается
-	if(this->_entries.empty() || !this->_indexing)
+	if((this->count() == 0) || !this->_indexing)
 		// Выводим признак отсутствия совпадения
 		return false;
 	// Вычисляем хеш названия искомого поля
@@ -638,7 +665,7 @@ bool awh::http::h3::qpack::DynamicTable::find(string_view name, string_view valu
  */
 bool awh::http::h3::qpack::DynamicTable::findName(string_view name, uint64_t & absolute) const noexcept {
 	// Если таблица пуста либо индекс не сопровождается
-	if(this->_entries.empty() || !this->_indexing)
+	if((this->count() == 0) || !this->_indexing)
 		// Выводим признак отсутствия совпадения
 		return false;
 	// Выполняем поиск совпадения по хешу названия
@@ -665,6 +692,8 @@ bool awh::http::h3::qpack::DynamicTable::findName(string_view name, uint64_t & a
 void awh::http::h3::qpack::DynamicTable::clear() noexcept {
 	// Выполняем очистку списка записей таблицы
 	this->_entries.clear();
+	// Сбрасываем количество удерживаемых записей
+	this->_retained = 0;
 	// Выполняем очистку индекса записей по паре название-значение
 	this->_index.clear();
 	// Выполняем очистку индекса записей по названию
@@ -683,7 +712,7 @@ void awh::http::h3::qpack::DynamicTable::clear() noexcept {
  *
  */
 awh::http::h3::qpack::DynamicTable::DynamicTable(const uint64_t capacity) noexcept :
- _size(0), _capacity(capacity), _inserts(0), _dropped(0), _indexing(false) {}
+ _retained(0), _size(0), _capacity(capacity), _inserts(0), _dropped(0), _indexing(false) {}
 
 /**
  * @brief Метод декодирования строки, закодированной литералом либо Huffman
@@ -831,9 +860,9 @@ bool awh::http::h3::qpack::Decoder::resolve(const uint64_t absolute, const field
  * @param maxListSize лимит размера списка полей
  *
  */
-void awh::http::h3::qpack::Decoder::emit(const size_t nameOffset, const size_t nameLength, const size_t valueOffset, const size_t valueLength, const bool sensitive, uint64_t & listSize, const uint64_t maxListSize) noexcept {
+void awh::http::h3::qpack::Decoder::emit(string_view name, string_view value, const bool sensitive, const size_t mark, uint64_t & listSize, const uint64_t maxListSize) noexcept {
 	// Наращиваем размер списка полей по правилу RFC 9114 §4.2.2
-	listSize += (static_cast <uint64_t> (nameLength) + static_cast <uint64_t> (valueLength) + ENTRY_OVERHEAD);
+	listSize += (static_cast <uint64_t> (name.size()) + static_cast <uint64_t> (value.size()) + ENTRY_OVERHEAD);
 	// Если лимит списка полей превышен
 	if((maxListSize > 0) && (listSize > maxListSize))
 		// Запоминаем превышение лимита списка полей
@@ -845,20 +874,28 @@ void awh::http::h3::qpack::Decoder::emit(const size_t nameOffset, const size_t n
 	 */
 	if(this->_overflow){
 		// Возвращаем арене место, занятое полем: наружу оно уже не пойдёт
-		this->_arenaLength = nameOffset;
+	this->_arenaLength = mark;
+	/**
+	 * Поля секции, превысившей лимит, наружу не пойдут, поэтому удерживать
+	 * вытесненные записи таблицы больше незачем.
+	 *
+	 * Без этого снятия отложенное вытеснение обходило бы саму защиту от
+	 * decompression bomb: удержание идёт по вставкам потока кодера, а лимит
+	 * списка считается по выданным наружу полям, и секция из одних ссылок
+	 * на длинные записи удерживала бы таблицу целиком
+	 */
+	this->_slices.clear();
+	// Снимаем удерживаемые вытесненные записи таблицы
+	this->_table.release();
 		// Выходим из метода
 		return;
 	}
 	// Собираемый срез декодированного поля
 	slice_t slice;
-	// Устанавливаем смещение названия поля в арене
-	slice.nameOffset = nameOffset;
-	// Устанавливаем длину названия поля
-	slice.nameLength = nameLength;
-	// Устанавливаем смещение значения поля в арене
-	slice.valueOffset = valueOffset;
-	// Устанавливаем длину значения поля
-	slice.valueLength = valueLength;
+	// Устанавливаем название поля
+	slice.name = name;
+	// Устанавливаем значение поля
+	slice.value = value;
 	// Устанавливаем признак чувствительного значения
 	slice.sensitive = sensitive;
 	// Дописываем срез декодированного поля
@@ -953,6 +990,12 @@ size_t awh::http::h3::qpack::Decoder::blocked() const noexcept {
  *
  */
 awh::http::h3::status_t awh::http::h3::qpack::Decoder::decodeEncoderStream(string_view data, size_t & consumed, error_t & error) noexcept {
+	/**
+	 * Снимаем записи, вытесненные прошлым разбором: инструкции этого потока вправе
+	 * вытеснить записи, представления в которые уже выданы наружу, поэтому граница
+	 * действительности представлений проходит по входу в разбор - в любой из двух
+	 */
+	this->_table.release();
 	// Сбрасываем количество разобранных октетов
 	consumed = 0;
 	// Получаем указатель на входной буфер
@@ -1350,6 +1393,25 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 	this->_arenaLength = 0;
 	// Выполняем очистку срезов декодированных полей
 	this->_slices.clear();
+	/**
+	 * Снимаем записи, вытесненные прошлым разбором: представления в них, выданные
+	 * прошлым вызовом, с этого момента недействительны - ровно как обещано контрактом
+	 */
+	this->_table.release();
+	/**
+	 * Отводим арену на всю секцию сразу, по оценке сверху. Оценка верна потому, что
+	 * закодированные строки секции не перекрываются, а декодирование Huffman удлиняет
+	 * строку не более чем в 8/5 раза: в любой момент разбора занято не больше, чем
+	 * space(размер секции). Строки записей таблиц в арену не попадают вовсе - они
+	 * отдаются представлениями. Отведение целиком нужно не ради скорости, а ради
+	 * корректности: срезы держат представления прямо в арену, и перевыделение её
+	 * буфера посреди разбора сделало бы недействительными уже собранные
+	 */
+	const size_t bound = h2::hpack::huffman::space(size);
+	// Если ёмкости арены не хватает - расширяем её до оценки сверху
+	if(this->_arena.size() < bound)
+		// Расширяем арену до оценки сверху
+		this->_arena.resize(bound);
 	// Накопленный размер списка полей
 	uint64_t listSize = 0;
 	/**
@@ -1371,9 +1433,9 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 		 * представлениями в неё, и складывать их сначала в отдельный буфер значило бы
 		 * копировать каждую строку секции дважды
 		 */
-		size_t nameOffset = this->_arenaLength, nameLength = 0;
-		// Смещение и длина значения поля в арене
-		size_t valueOffset = this->_arenaLength, valueLength = 0;
+		string_view name, value;
+		// Отметка занятой части арены до разбора поля (для отката при превышении лимита)
+		const size_t mark = this->_arenaLength;
 		// Признак того, что поле собрано целиком из таблицы
 		bool complete = false;
 		/**
@@ -1402,14 +1464,10 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 					// Выводим результат декодирования
 					return status_t::ERROR;
 				}
-				// Переносим название поля в арену
-				nameOffset = this->append(entry->name);
-				// Запоминаем длину названия поля
-				nameLength = entry->name.size();
-				// Переносим значение поля в арену
-				valueOffset = this->append(entry->value);
-				// Запоминаем длину значения поля
-				valueLength = entry->value.size();
+				// Запоминаем название поля представлением в статическую таблицу
+				name = entry->name;
+				// Запоминаем значение поля представлением в статическую таблицу
+				value = entry->value;
 			// Если ссылка ведёт в динамическую таблицу
 			} else {
 				// Если номер записи вышел за границы базы
@@ -1454,10 +1512,8 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 					// Выводим результат декодирования
 					return status_t::ERROR;
 				}
-				// Переносим название поля в арену
-				nameOffset = this->append(entry->name);
-				// Запоминаем длину названия поля
-				nameLength = entry->name.size();
+				// Запоминаем название поля представлением в статическую таблицу
+				name = entry->name;
 			// Если ссылка ведёт в динамическую таблицу
 			} else {
 				// Если номер записи вышел за границы базы
@@ -1479,7 +1535,7 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 			// Извлекаем признак чувствительного значения
 			sensitive = ((byte & 0x10) != 0);
 			// Запоминаем смещение названия поля в арене
-			nameOffset = this->_arenaLength;
+			const size_t nameOffset = this->_arenaLength;
 			// Выполняем чтение названия поля прямо в арену
 			if(this->decodeString((buffer + offset), (size - offset), 3, used) != status_t::OK){
 				// Устанавливаем код ошибки протокола
@@ -1489,8 +1545,8 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 			}
 			// Выполняем смещение разбора
 			offset += used;
-			// Запоминаем длину названия поля
-			nameLength = (this->_arenaLength - nameOffset);
+			// Запоминаем название поля представлением в арену
+			name = string_view((this->_arena.data() + nameOffset), (this->_arenaLength - nameOffset));
 		/**
 		 * Представление со ссылкой на запись за базой (RFC 9204 §4.5.3)
 		 */
@@ -1565,22 +1621,17 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 				// Выводим результат декодирования
 				return status_t::ERROR;
 			}
-			// Переносим название поля в арену
-			nameOffset = this->append(entry->name);
-			// Запоминаем длину названия поля
-			nameLength = entry->name.size();
+			// Запоминаем название поля представлением в запись динамической таблицы
+			name = entry->name;
 			// Если поле собрано целиком
-			if(complete){
-				// Переносим значение поля в арену
-				valueOffset = this->append(entry->value);
-				// Запоминаем длину значения поля
-				valueLength = entry->value.size();
-			}
+			if(complete)
+				// Запоминаем значение поля представлением в запись динамической таблицы
+				value = entry->value;
 		}
 		// Если значение поля передано отдельно
 		if(!complete){
 			// Запоминаем смещение значения поля в арене
-			valueOffset = this->_arenaLength;
+			const size_t valueOffset = this->_arenaLength;
 			// Выполняем чтение значения поля прямо в арену
 			if(this->decodeString((buffer + offset), (size - offset), 7, used) != status_t::OK){
 				// Устанавливаем код ошибки протокола
@@ -1590,11 +1641,11 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 			}
 			// Выполняем смещение разбора
 			offset += used;
-			// Запоминаем длину значения поля
-			valueLength = (this->_arenaLength - valueOffset);
+			// Запоминаем значение поля представлением в арену
+			value = string_view((this->_arena.data() + valueOffset), (this->_arenaLength - valueOffset));
 		}
 		// Выполняем учёт декодированного поля
-		this->emit(nameOffset, nameLength, valueOffset, valueLength, sensitive, listSize, maxListSize);
+		this->emit(name, value, sensitive, mark, listSize, maxListSize);
 	}
 	/**
 	 * Выполняем сборку представлений декодированных полей: арена во время разбора
@@ -1611,9 +1662,9 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 			// Собираемое декодированное поле
 			field_view_t field;
 			// Устанавливаем название поля
-			field.name = string_view(this->_arena.data() + slice.nameOffset, slice.nameLength);
+			field.name = slice.name;
 			// Устанавливаем значение поля
-			field.value = string_view(this->_arena.data() + slice.valueOffset, slice.valueLength);
+			field.value = slice.value;
 			// Устанавливаем признак чувствительного значения
 			field.sensitive = slice.sensitive;
 			// Дописываем декодированное поле

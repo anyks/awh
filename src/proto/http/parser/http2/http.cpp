@@ -1059,6 +1059,7 @@ awh::http::Parser_HTTP2::Transfer::Transfer() noexcept :
  settingsAckPending(0),
  resetStreams(RESET_STREAMS_CACHE),
  resetCursor(0),
+ resetMaxId(0),
  sendLowWater(SEND_LOW_WATER),
  sendHighWater(SEND_HIGH_WATER),
  outputHighWater(OUTPUT_HIGH_WATER) {}
@@ -3015,6 +3016,10 @@ void awh::http::Parser_HTTP2::markReset(const uint32_t id, const bool local) noe
 		// Выходим из метода
 		return;
 	}
+	// Запоминаем наибольший попадавший в кольцо идентификатор для отсечки перебора
+	if(id > this->_transfer.resetMaxId)
+		// Запоминаем наибольший попадавший в кольцо идентификатор
+		this->_transfer.resetMaxId = id;
 	// Записываем идентификатор потока в текущую ячейку кольца
 	this->_transfer.resetStreams[this->_transfer.resetCursor].id = id;
 	// Записываем источник сброса в текущую ячейку кольца
@@ -3032,6 +3037,15 @@ void awh::http::Parser_HTTP2::markReset(const uint32_t id, const bool local) noe
 bool awh::http::Parser_HTTP2::wasReset(const uint32_t id) const noexcept {
 	// Нулевой идентификатор не принадлежит потоку и служит признаком пустой ячейки
 	if(id == 0)
+		// Выводим отрицательный результат
+		return false;
+	/**
+	 * Идентификатор старше всех попадавших в кольцо - перебирать нечего. Отсечка
+	 * стоит здесь не ради экономии на редком случае, а наоборот: вновь открываемый
+	 * поток в карте тоже отсутствует, и без неё перебор кольца выполнялся бы
+	 * на каждом первом кадре каждого запроса
+	 */
+	if(id > this->_transfer.resetMaxId)
 		// Выводим отрицательный результат
 		return false;
 	/**
