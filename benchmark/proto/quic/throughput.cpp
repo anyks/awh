@@ -87,6 +87,16 @@ namespace {
 	 *
 	 */
 	static constexpr double ALLOCATIONS_THRESHOLD = 4.0;
+	/**
+	 * @brief Верхняя граница множителя удержания памяти для сценария с ограниченным буфером отправки
+	 *
+	 */
+	static constexpr double BOUNDED_MEMORY_THRESHOLD = 1.5;
+	/**
+	 * @brief Предел буфера отправки одного потока в сценарии backpressure (октеты)
+	 *
+	 */
+	static constexpr size_t BOUNDED_SEND_HIGH = (64 * 1024);
 
 	/**
 	 * @brief Структура итогов прогона передачи данных
@@ -119,7 +129,7 @@ namespace {
 	 * @return        результат прогона (false - соединение не установлено)
 	 *
 	 */
-	static bool transfer(const size_t streams, transfer_t & output) noexcept {
+	static bool transfer(const size_t streams, transfer_t & output, const size_t sendHigh = 0) noexcept {
 		// Объект фреймворка
 		static awh::fmk_t fmk;
 		// Объект логирования
@@ -134,6 +144,10 @@ namespace {
 		awh::benchmark::quic::configure(client);
 		// Выполняем подготовку соединения сервера
 		awh::benchmark::quic::configure(server);
+		// Если задан предел буфера отправки - включаем backpressure (нижняя метка - половина верхней)
+		if(sendHigh > 0)
+			// Устанавливаем водяные метки буфера отправки потоков клиента
+			client.sendWaterMarks(sendHigh, sendHigh / 2);
 		// Выполняем начало соединения клиентом
 		if(client.connect() != status_t::OK)
 			// Выводим отрицательный результат
@@ -354,6 +368,48 @@ namespace {
 		return result;
 	}
 
+	/**
+	 * @brief Функция измерения удержания памяти при ограниченном буфере отправки (backpressure)
+	 *
+	 * @details Прогон по множеству потоков с включёнными водяными метиками буфера отправки:
+	 *          сверх верхней метки данные принимаются частично, что удерживает память в
+	 *          отличие от неограниченного буфера. Возвращает множитель удержания памяти
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t bounded() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Итоги прогона передачи данных
+		transfer_t transfer;
+		// Выполняем прогон по множеству потоков с ограниченным буфером отправки
+		if(!::transfer(STREAM_COUNT, transfer, BOUNDED_SEND_HIGH)){
+			// Устанавливаем сведения о неудачном прогоне
+			result.details = "прогон не выполнен: соединение не установлено";
+			// Устанавливаем заведомо превышающее порог значение
+			result.value = 1000.0;
+			// Выводим результат измерения
+			return result;
+		}
+		// Вычисляем множитель удержания памяти относительно переданного объёма
+		result.value = ((transfer.received > 0) ? (static_cast <double> (transfer.bytes) / static_cast <double> (transfer.received)) : 0.0);
+		// Буфер сведений о прогоне
+		char details[256];
+		// Формируем сведения о прогоне
+		::snprintf(
+			details, sizeof(details),
+			"датаграмм: %zu, выделений: %zu (%.2f на датаграмму), выделено: %.1f МБ (%.2f× от переданного)",
+			transfer.datagrams, transfer.allocations,
+			(transfer.datagrams > 0 ? (static_cast <double> (transfer.allocations) / static_cast <double> (transfer.datagrams)) : 0.0),
+			(static_cast <double> (transfer.bytes) / (1024.0 * 1024.0)),
+			result.value
+		);
+		// Устанавливаем сведения о прогоне
+		result.details = details;
+		// Выводим результат измерения
+		return result;
+	}
 	// Регистрируем сценарий передачи по одному потоку
 	static const bool gSingle = awh::benchmark::add(
 		"quic/throughput/single-stream", "МБ/с", SINGLE_STREAM_THRESHOLD,
@@ -368,5 +424,10 @@ namespace {
 	static const bool gAllocations = awh::benchmark::add(
 		"quic/allocations/per-datagram", "выделений", ALLOCATIONS_THRESHOLD,
 		awh::benchmark::bound_t::MAXIMUM, &::allocations
+	);
+	// Регистрируем сценарий удержания памяти при ограниченном буфере отправки (backpressure)
+	static const bool gBounded = awh::benchmark::add(
+		"quic/memory/bounded-multi-stream", "× от переданного", BOUNDED_MEMORY_THRESHOLD,
+		awh::benchmark::bound_t::MAXIMUM, &::bounded
 	);
 };

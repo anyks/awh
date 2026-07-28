@@ -1130,6 +1130,19 @@ void awh::Client::stream(const event::id_t, const uint64_t sid, const string & d
 		this->_callback.call <void (const uint64_t, const string &, const bool)> ("stream", sid, data, fin);
 }
 /**
+ * @brief Метод обработки освобождения буфера отправки потока соединения QUIC (сигнал writable)
+ *
+ * @param     идентификатор события
+ * @param sid идентификатор потока приложения
+ *
+ */
+void awh::Client::writable(const event::id_t, const uint64_t sid) noexcept {
+	// Если клиент находится в рабочем состоянии
+	if(this->active())
+		// Выполняем функцию обратного вызова готовности потока принимать данные
+		this->_callback.call <void (const uint64_t)> ("writable", sid);
+}
+/**
  * @brief Метод обработки принятой датаграммы приложения QUIC (RFC 9221)
  *
  * @param      идентификатор события
@@ -1260,11 +1273,8 @@ size_t awh::Client::send(const uint64_t sid, const void * buffer, const size_t s
 		// Для транспорта QUIC отправляем данные в указанный поток соединения
 		case static_cast <uint8_t> (event::protocol_t::QUIC): {
 			// Если постановка данных потока в очередь отправки выполнена
-			if(this->_unit->quic.send(sid, string_view(reinterpret_cast <const char *> (buffer), size), fin))
-				// Возвращаем размер поставленных в очередь данных
-				return size;
-			// Возвращаем значение по умолчанию
-			return 0;
+			// Возвращаем число поставленных в очередь данных (частичный приём)
+			return this->_unit->quic.send(sid, string_view(reinterpret_cast <const char *> (buffer), size), fin);
 		}
 	}
 	/**
@@ -2834,6 +2844,8 @@ awh::Client::Client(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
 	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
 	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
+	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие принятой датаграммы приложения QUIC
 	this->_unit->quic.on <void (const event::id_t, const string &)> ("datagram", &client_t::message, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC
@@ -2886,6 +2898,8 @@ awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
 	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
 	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
 	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
+	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие принятой датаграммы приложения QUIC
 	this->_unit->quic.on <void (const event::id_t, const string &)> ("datagram", &client_t::message, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC
@@ -3004,6 +3018,8 @@ awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fm
 	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
 	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
 	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
+	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие принятой датаграммы приложения QUIC
 	this->_unit->quic.on <void (const event::id_t, const string &)> ("datagram", &client_t::message, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC
@@ -3091,6 +3107,8 @@ awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dn
 	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
 	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
 	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
+	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие принятой датаграммы приложения QUIC
 	this->_unit->quic.on <void (const event::id_t, const string &)> ("datagram", &client_t::message, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC

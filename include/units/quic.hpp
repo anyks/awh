@@ -1187,7 +1187,7 @@ namespace awh {
 				 * @return     результат постановки данных в очередь отправки
 				 *
 				 */
-				bool send(const event::id_t oid, const uint64_t sid, string_view data, const bool fin = false) noexcept;
+				size_t send(const event::id_t oid, const uint64_t sid, string_view data, const bool fin = false) noexcept;
 				/**
 				 * @brief Метод установки водяных меток буфера отправки потоков соединения (backpressure)
 				 *
@@ -2044,7 +2044,7 @@ namespace awh {
 				 * @return     результат постановки данных в очередь отправки
 				 *
 				 */
-				bool send(const uint64_t sid, string_view data, const bool fin = false) noexcept;
+				size_t send(const uint64_t sid, string_view data, const bool fin = false) noexcept;
 				/**
 				 * @brief Метод установки водяных меток буфера отправки потоков соединения (backpressure)
 				 *

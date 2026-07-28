@@ -222,6 +222,14 @@ namespace awh {
 			 */
 			virtual void stream(const event::id_t cid, const uint64_t sid, const string & data, const bool fin) noexcept;
 			/**
+			 * @brief Метод обработки освобождения буфера отправки потока соединения QUIC (сигнал writable)
+			 *
+			 * @param cid идентификатор сессии соединения
+			 * @param sid идентификатор потока приложения
+			 *
+			 */
+			virtual void writable(const event::id_t cid, const uint64_t sid) noexcept;
+			/**
 			 * @brief Метод обработки принятой датаграммы приложения QUIC (RFC 9221)
 			 *
 			 * @param cid  идентификатор сессии соединения

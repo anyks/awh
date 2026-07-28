@@ -3686,14 +3686,24 @@ TEST_F(ParserHttp3Fixture, DataSourceRejectsDirectBody){
 	server.parser->sendHeaders(0, this->response("200"), false);
 	// Признак уже выполненной выдачи
 	bool done = false;
-	// Назначаем источник данных тела потока
-	server.parser->dataSource(0, [&done](const uint64_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
-		// Выставляем признак достижения конца тела
-		eof = true;
-		// Если выдача уже выполнена - выдавать нечего
-		if(done)
+	// Признак появления у источника остатка данных
+	bool ready = false;
+	/**
+	 * Источник выдаёт тело и объявляет себя временно пустым: поток остаётся живым,
+	 * и попытка досылки в обход источника приходится на живой поток, а не на закрытый
+	 */
+	server.parser->dataSource(0, [&done, &ready](const uint64_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+		// Если выдача уже выполнена
+		if(done){
+			// Пока остаток не появился - источник объявляет себя временно пустым
+			if(!ready)
+				// Выводим нулевой размер порции без признака конца тела
+				return 0;
+			// Выставляем признак достижения конца тела
+			eof = true;
 			// Выводим нулевой размер порции
 			return 0;
+		}
 		// Помечаем что выдача выполнена
 		done = true;
 		// Вычисляем размер выдаваемой порции
@@ -3703,8 +3713,14 @@ TEST_F(ParserHttp3Fixture, DataSourceRejectsDirectBody){
 		// Выводим количество записанных октетов
 		return static_cast <int64_t> (size);
 	});
-	// Выполняем попытку досылки тела напрямую в обход источника
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Выполняем попытку досылки тела напрямую в обход источника на живом потоке
 	ASSERT_EQ(server.parser->sendData(0, "direct", 6, false), 0u);
+	// Помечаем что у источника появился остаток данных
+	ready = true;
+	// Возобновляем выдачу тела потока
+	server.parser->resume(0);
 	// Выполняем прокачку очередей исходящих данных
 	this->pump(client, server);
 	// Тело обязано состоять только из выданного источником
@@ -3800,20 +3816,30 @@ TEST_F(ParserHttp3Fixture, SendDataShortWriteAndWritable){
 	ASSERT_GT(accepted, 0u);
 	// Приём всего фрагмента означал бы, что обратное давление не работает
 	ASSERT_LT(accepted, body.size());
-	// До вычитывания накопленного сигнала готовности быть не должно
-	ASSERT_TRUE(signals.empty());
-	// Получаем накопленные исходящие данные потока
-	const std::string collected(server.parser->pending(0));
-	// Накопленное обязано быть непустым
-	ASSERT_FALSE(collected.empty());
-	// Отмечаем накопленное как отправленное
-	server.parser->consumePending(0, collected.size());
-	// Вычитывание обязано освободить место и дать сигнал готовности
+	/**
+	 * Сигнал готовности сообщает о месте в буфере отправки, а не на проводе:
+	 * принятый фрагмент ушёл в накопитель, буфер опустел, и сигнал подан
+	 */
 	ASSERT_FALSE(signals.empty());
 	// Сигнал обязан относиться к проверяемому потоку
 	ASSERT_EQ(signals.front().first, 0u);
 	// Сигнал обязан сообщать свободное место буфера отправки
 	ASSERT_GT(signals.front().second, 0u);
+	// Получаем накопленные исходящие данные потока
+	const std::string collected(server.parser->pending(0));
+	// Накопленное обязано быть непустым
+	ASSERT_FALSE(collected.empty());
+	/**
+	 * Накопленное вышло за порог, поэтому следующий фрагмент в накопитель не идёт:
+	 * он оседает в буфере отправки и ждёт, пока обвязка заберёт прежний
+	 */
+	ASSERT_GT(server.parser->sendData(0, body.data(), body.size(), false), 0u);
+	// Накопленное обязано остаться прежним: выдача остановлена обратным давлением
+	ASSERT_EQ(std::string(server.parser->pending(0)), collected);
+	// Отмечаем накопленное как отправленное
+	server.parser->consumePending(0, collected.size());
+	// Вычитывание обязано возобновить выдачу
+	ASSERT_FALSE(server.parser->pending(0).empty());
 	// Соединение обязано остаться живым
 	ASSERT_TRUE(server.events.errors.empty());
 }
@@ -3840,32 +3866,54 @@ TEST_F(ParserHttp3Fixture, TrailersDeferredUntilBodySent){
 	this->pump(client, server);
 	// Отправляем секцию полей ответа, не завершая поток
 	server.parser->sendHeaders(0, this->response("200"), false);
-	// Признак уже выполненной выдачи
-	bool done = false;
-	// Назначаем источник данных тела потока
-	server.parser->dataSource(0, [&done](const uint64_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
-		// Если выдача уже выполнена - объявляем конец тела
-		if(done){
-			// Выставляем признак достижения конца тела
-			eof = true;
-			// Выводим нулевой размер порции
-			return 0;
+	// Количество вызовов источника
+	size_t calls = 0;
+	/**
+	 * Источник выдаёт тело, затем объявляет себя временно пустым и лишь на третьем
+	 * вызове сообщает конец тела: пока он не исчерпан, секция трейлеров обязана
+	 * лежать отложенной
+	 */
+	// Признак появления у источника остатка данных
+	bool ready = false;
+	server.parser->dataSource(0, [&calls, &ready](const uint64_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+		// Наращиваем количество вызовов источника
+		calls++;
+		// Первый вызов выдаёт тело сообщения
+		if(calls == 1){
+			// Вычисляем размер выдаваемой порции
+			const size_t size = std::min <size_t> (cap, 4);
+			// Заполняем порцию узнаваемым содержимым
+			std::memcpy(buffer, "body", size);
+			// Выводим количество записанных октетов
+			return static_cast <int64_t> (size);
 		}
-		// Помечаем что выдача выполнена
-		done = true;
-		// Вычисляем размер выдаваемой порции
-		const size_t size = std::min <size_t> (cap, 4);
-		// Заполняем порцию узнаваемым содержимым
-		std::memcpy(buffer, "body", size);
-		// Выводим количество записанных октетов
-		return static_cast <int64_t> (size);
+		// Пока остаток не появился - источник объявляет себя временно пустым
+		if(!ready)
+			// Выводим нулевой размер порции без признака конца тела
+			return 0;
+		// Выставляем признак достижения конца тела
+		eof = true;
+		// Выводим нулевой размер порции
+		return 0;
 	});
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Тело обязано дойти, а поток остаться незавершённым: источник ещё не исчерпан
+	ASSERT_EQ(client.events.bodies[0], "body");
 	// Собираем поля секции трейлеров
 	std::vector <qpack::field_t> trailers;
 	// Дописываем поле секции трейлеров
 	trailers.emplace_back("x-checksum", "deadbeef");
 	// Отправляем секцию трейлеров, завершая ею поток
 	server.parser->sendHeaders(0, trailers, true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Секция обязана быть отложена: источник тела ещё не исчерпан
+	ASSERT_EQ(this->field(client.events, 0, "x-checksum"), "");
+	// Помечаем что у источника появился остаток данных
+	ready = true;
+	// Возобновляем выдачу тела потока: у источника снова появились данные
+	server.parser->resume(0);
 	// Выполняем прокачку очередей исходящих данных
 	this->pump(client, server);
 	// Тело обязано дойти целиком

@@ -5049,6 +5049,20 @@ void awh::http::Parser_HTTP3::dataSource(const uint64_t sid, data_source_callbac
 	this->pumpStream(sid);
 }
 /**
+ * @brief Метод возобновления выдачи тела потока
+ *
+ * @param sid идентификатор потока
+ *
+ */
+void awh::http::Parser_HTTP3::resume(const uint64_t sid) noexcept {
+	// Если соединение завершено - возобновлять нечего
+	if(this->_closed)
+		// Выходим из метода
+		return;
+	// Выполняем выдачу накопленного тела потока
+	this->pumpStream(sid);
+}
+/**
  * @brief Метод настройки порогов буфера отправки потока
  *
  * @param high ёмкость буфера отправки потока (high-water)

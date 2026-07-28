@@ -399,6 +399,27 @@ void awh::unit::QuicServer::process(const event::id_t oid) noexcept {
 	if(i == this->_sessions.end())
 		// Выходим из метода
 		return;
+	// Если функция обратного вызова на освобождение буфера отправки потока установлена
+	if(this->_callback.is("writable")){
+		// Список потоков с освободившимся буфером отправки
+		vector <uint64_t> streams;
+		// Получаем список потоков, готовых принять данные (буфер опустился ниже нижней метки)
+		i->second.connection->drained(streams);
+		/**
+		 * Перебираем потоки с освободившимся буфером отправки: приложение, получившее
+		 * частичный приём в send(), по этому сигналу возобновляет выдачу данных потока
+		 */
+		for(auto & sid : streams){
+			// Выдаём приложению сигнал готовности потока принимать данные
+			this->_callback.call <void (const event::id_t, const uint64_t)> ("writable", oid, sid);
+			// Перечитываем сессию: колбэк writable мог реентрантно снять её
+			i = this->_sessions.find(oid);
+			// Если сессия соединения снята приложением из функции обратного вызова
+			if(i == this->_sessions.end())
+				// Выходим из метода
+				return;
+		}
+	}
 	// Если объединение установлено либо функция обратного вызова на принятую датаграмму приложения установлена
 	if(spliced || this->_callback.is("datagram")){
 		// Буфер принятой датаграммы приложения
@@ -979,11 +1000,8 @@ size_t awh::unit::QuicServer::send(const event::id_t eid, const void * buffer, c
 		// Возвращаем значение по умолчанию
 		return 0;
 	// Если постановка данных в очередь отправки потока выполнена
-	if(this->send(eid, sid, string_view(reinterpret_cast <const char *> (buffer), size), false))
-		// Выводим количество поставленных в очередь отправки байт
-		return size;
-	// Возвращаем значение по умолчанию
-	return 0;
+	// Возвращаем число поставленных в очередь отправки байт (частичный приём)
+	return this->send(eid, sid, string_view(reinterpret_cast <const char *> (buffer), size), false);
 }
 /**
  * @brief Метод объединения потоков данных между двумя событиями
@@ -1786,21 +1804,21 @@ uint64_t awh::unit::QuicServer::open(const event::id_t oid, const bool mode) noe
  * @return     результат постановки данных в очередь отправки
  *
  */
-bool awh::unit::QuicServer::send(const event::id_t oid, const uint64_t sid, string_view data, const bool fin) noexcept {
+size_t awh::unit::QuicServer::send(const event::id_t oid, const uint64_t sid, string_view data, const bool fin) noexcept {
 	// Выполняем поиск сессии соединения
 	auto i = this->_sessions.find(oid);
 	// Если сессия соединения не найдена
 	if(i == this->_sessions.end())
-		// Выводим отрицательный результат
-		return false;
-	// Если постановка данных в очередь отправки не выполнена
-	if(i->second.connection->send(sid, data, fin) < data.size())
-		// Выводим отрицательный результат
-		return false;
-	// Отправляем все готовые исходящие датаграммы
-	this->flush(oid, i->second);
-	// Выводим положительный результат
-	return true;
+		// Ничего не принято в очередь отправки
+		return 0;
+	// Ставим данные в очередь отправки потока (частичный приём: движок возвращает принятый объём)
+	const size_t accepted = i->second.connection->send(sid, data, fin);
+	// Если данные приняты либо требуется отправка завершения потока - отправляем готовые датаграммы
+	if((accepted > 0) || fin)
+		// Отправляем все готовые исходящие датаграммы
+		this->flush(oid, i->second);
+	// Выводим число принятых в очередь отправки байт
+	return accepted;
 }
 /**
  * @brief Метод установки водяных меток буфера отправки потоков соединения (backpressure)
@@ -1944,6 +1962,8 @@ void awh::unit::QuicServer::callback(const callback_t & callback) noexcept {
 	this->_callback.set("open", callback);
 	// Выполняем установку функции обратного вызова на собранные данные потока
 	this->_callback.set("read", callback);
+	// Выполняем установку функции обратного вызова на освобождение буфера отправки потока
+	this->_callback.set("writable", callback);
 	// Выполняем установку функции обратного вызова на принятую датаграмму приложения
 	this->_callback.set("datagram", callback);
 	// Выполняем установку функции обратного вызова на завершённое соединение
@@ -2826,6 +2846,25 @@ void awh::unit::QuicClient::process() noexcept {
 	if(this->_connection == nullptr)
 		// Выходим из метода
 		return;
+	// Если функция обратного вызова на освобождение буфера отправки потока установлена
+	if(this->_callback.is("writable")){
+		// Список потоков с освободившимся буфером отправки
+		vector <uint64_t> streams;
+		// Получаем список потоков, готовых принять данные (буфер опустился ниже нижней метки)
+		this->_connection->drained(streams);
+		/**
+		 * Перебираем потоки с освободившимся буфером отправки: приложение, получившее
+		 * частичный приём в send(), по этому сигналу возобновляет выдачу данных потока
+		 */
+		for(auto & sid : streams){
+			// Если соединение уничтожено приложением реентрантно - прекращаем выдачу
+			if(this->_connection == nullptr)
+				// Выходим из метода
+				return;
+			// Выдаём приложению сигнал готовности потока принимать данные
+			this->_callback.call <void (const event::id_t, const uint64_t)> ("writable", this->_eid, sid);
+		}
+	}
 	// Если объединение установлено либо функция обратного вызова на принятую датаграмму приложения установлена
 	if(spliced || this->_callback.is("datagram")){
 		// Буфер принятой датаграммы приложения
@@ -4124,19 +4163,19 @@ bool awh::unit::QuicClient::early() const noexcept {
  * @return     результат постановки данных в очередь отправки
  *
  */
-bool awh::unit::QuicClient::send(const uint64_t sid, string_view data, const bool fin) noexcept {
+size_t awh::unit::QuicClient::send(const uint64_t sid, string_view data, const bool fin) noexcept {
 	// Если соединение не создано
 	if(this->_connection == nullptr)
-		// Выводим отрицательный результат
-		return false;
-	// Если постановка данных в очередь отправки не выполнена
-	if(this->_connection->send(sid, data, fin) < data.size())
-		// Выводим отрицательный результат
-		return false;
-	// Отправляем все готовые исходящие датаграммы
-	this->flush();
-	// Выводим положительный результат
-	return true;
+		// Ничего не принято в очередь отправки
+		return 0;
+	// Ставим данные в очередь отправки потока (частичный приём: движок возвращает принятый объём)
+	const size_t accepted = this->_connection->send(sid, data, fin);
+	// Если данные приняты либо требуется отправка завершения потока - отправляем готовые датаграммы
+	if((accepted > 0) || fin)
+		// Отправляем все готовые исходящие датаграммы
+		this->flush();
+	// Выводим число принятых в очередь отправки байт
+	return accepted;
 }
 /**
  * @brief Метод установки водяных меток буфера отправки потоков соединения (backpressure)
@@ -4249,6 +4288,8 @@ void awh::unit::QuicClient::callback(const callback_t & callback) noexcept {
 	this->_callback.set("open", callback);
 	// Выполняем установку функции обратного вызова на собранные данные потока
 	this->_callback.set("read", callback);
+	// Выполняем установку функции обратного вызова на освобождение буфера отправки потока
+	this->_callback.set("writable", callback);
 	// Выполняем установку функции обратного вызова на принятую датаграмму приложения
 	this->_callback.set("datagram", callback);
 	// Выполняем установку функции обратного вызова на завершённое соединение
