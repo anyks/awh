@@ -26,7 +26,9 @@
 #include <map>
 #include <deque>
 #include <string>
+#include <new>
 #include <vector>
+#include <utility>
 #include <cstdint>
 #include <functional>
 #include <string_view>
@@ -55,6 +57,277 @@ namespace awh {
 	 *
 	 */
 	namespace quic {
+		/**
+		 * @brief Вектор с малым инлайн-хранилищем (small buffer optimization)
+		 *
+		 * @details Первые N элементов размещаются в самом объекте без обращения к куче;
+		 *          свыше N хранилище переносится в кучу с удвоением ёмкости. Применяется
+		 *          для учётных записей отправленных блоков потоков в пакете: типовой
+		 *          пакет несёт один STREAM-фрейм, поэтому инлайн-хранилища на N элементов
+		 *          хватает и выделение на каждый пакет не выполняется. При переносе в
+		 *          кучу ёмкость удерживается методом clear() (по образцу пула отправки).
+		 *          Реализован минимальный набор операций, требуемый учётной записью пакета
+		 *
+		 * @tparam T тип элемента
+		 * @tparam N число элементов инлайн-хранилища
+		 *
+		 */
+		template <class T, size_t N>
+		class small_vector {
+			private:
+				// Число хранимых элементов
+				size_t _size;
+				// Ёмкость текущего хранилища в элементах
+				size_t _cap;
+				// Указатель на активное хранилище (инлайн либо куча)
+				T * _data;
+				// Инлайн-хранилище первых N элементов
+				alignas(T) unsigned char _inline[N * sizeof(T)];
+			private:
+				/**
+				 * @brief Метод получения указателя на инлайн-хранилище
+				 *
+				 * @return указатель на инлайн-хранилище
+				 *
+				 */
+				T * inlined() noexcept {
+					// Выводим указатель на инлайн-хранилище
+					return reinterpret_cast <T *> (this->_inline);
+				}
+				/**
+				 * @brief Метод проверки размещения хранилища в инлайн-буфере
+				 *
+				 * @return признак размещения в инлайн-буфере
+				 *
+				 */
+				bool isInlined() const noexcept {
+					// Выводим признак размещения хранилища в инлайн-буфере
+					return (this->_data == reinterpret_cast <const T *> (this->_inline));
+				}
+				/**
+				 * @brief Метод расширения хранилища переносом в кучу
+				 *
+				 * @param need требуемое минимальное число элементов
+				 *
+				 */
+				void grow(const size_t need) noexcept {
+					// Вычисляем новую ёмкость удвоением
+					size_t capacity = (this->_cap ? (this->_cap * 2) : N);
+					// Если удвоенной ёмкости не хватает - берём требуемую
+					if(capacity < need)
+						capacity = need;
+					// Выделяем новое хранилище в куче
+					T * data = static_cast <T *> (::operator new(capacity * sizeof(T)));
+					// Переносим элементы в новое хранилище
+					for(size_t i = 0; i < this->_size; i++){
+						// Перемещаем элемент в новое хранилище
+						::new (data + i) T(std::move(this->_data[i]));
+						// Уничтожаем исходный элемент
+						this->_data[i].~T();
+					}
+					// Если прежнее хранилище было в куче - освобождаем его
+					if(!this->isInlined())
+						// Освобождаем прежнее хранилище кучи
+						::operator delete(this->_data);
+					// Переключаемся на новое хранилище
+					this->_data = data;
+					// Запоминаем новую ёмкость
+					this->_cap = capacity;
+				}
+				/**
+				 * @brief Метод переноса содержимого из другого вектора
+				 *
+				 * @param other вектор-источник (опустошается)
+				 *
+				 */
+				void adopt(small_vector && other) noexcept {
+					// Если источник размещён в куче - забираем его хранилище
+					if(!other.isInlined()){
+						// Забираем указатель на хранилище кучи
+						this->_data = other._data;
+						// Забираем ёмкость хранилища
+						this->_cap = other._cap;
+						// Забираем число элементов
+						this->_size = other._size;
+						// Переводим источник на пустое инлайн-хранилище
+						other._data = other.inlined();
+						// Восстанавливаем инлайн-ёмкость источника
+						other._cap = N;
+						// Обнуляем число элементов источника
+						other._size = 0;
+					// Если источник размещён инлайн - перемещаем его элементы поэлементно
+					} else {
+						// Перемещаем элементы источника в собственное инлайн-хранилище
+						for(size_t i = 0; i < other._size; i++){
+							// Перемещаем элемент источника
+							::new (this->_data + i) T(std::move(other._data[i]));
+							// Уничтожаем исходный элемент
+							other._data[i].~T();
+						}
+						// Забираем число элементов источника
+						this->_size = other._size;
+						// Обнуляем число элементов источника
+						other._size = 0;
+					}
+				}
+			public:
+				/**
+				 * @brief Метод проверки пустоты вектора
+				 *
+				 * @return признак отсутствия элементов
+				 *
+				 */
+				bool empty() const noexcept {
+					// Выводим признак отсутствия элементов
+					return (this->_size == 0);
+				}
+				/**
+				 * @brief Метод получения числа элементов
+				 *
+				 * @return число хранимых элементов
+				 *
+				 */
+				size_t size() const noexcept {
+					// Выводим число хранимых элементов
+					return this->_size;
+				}
+				/**
+				 * @brief Метод получения указателя на начало
+				 *
+				 * @return указатель на первый элемент
+				 *
+				 */
+				T * begin() noexcept { return this->_data; }
+				/**
+				 * @brief Метод получения указателя на конец
+				 *
+				 * @return указатель за последним элементом
+				 *
+				 */
+				T * end() noexcept { return (this->_data + this->_size); }
+				/**
+				 * @brief Метод получения константного указателя на начало
+				 *
+				 * @return константный указатель на первый элемент
+				 *
+				 */
+				const T * begin() const noexcept { return this->_data; }
+				/**
+				 * @brief Метод получения константного указателя на конец
+				 *
+				 * @return константный указатель за последним элементом
+				 *
+				 */
+				const T * end() const noexcept { return (this->_data + this->_size); }
+				/**
+				 * @brief Метод добавления элемента переносом в конец
+				 *
+				 * @param value добавляемый элемент
+				 *
+				 */
+				void push_back(T && value) noexcept {
+					// Если хранилище исчерпано - расширяем его
+					if(this->_size == this->_cap)
+						// Расширяем хранилище под ещё один элемент
+						this->grow(this->_size + 1);
+					// Размещаем элемент в конце хранилища
+					::new (this->_data + this->_size) T(std::move(value));
+					// Увеличиваем число элементов
+					this->_size++;
+				}
+				/**
+				 * @brief Метод очистки с сохранением ёмкости хранилища
+				 *
+				 */
+				void clear() noexcept {
+					// Уничтожаем хранимые элементы
+					for(size_t i = 0; i < this->_size; i++)
+						// Уничтожаем элемент
+						this->_data[i].~T();
+					// Обнуляем число элементов, сохраняя выделенную ёмкость
+					this->_size = 0;
+				}
+				/**
+				 * @brief Метод обмена содержимым с другим вектором
+				 *
+				 * @param other вектор для обмена
+				 *
+				 */
+				void swap(small_vector & other) noexcept {
+					// Выполняем обмен через перемещения (инлайн-хранилище исключает обмен указателями)
+					small_vector temp(std::move(other));
+					// Переносим собственное содержимое в источник
+					other = std::move(* this);
+					// Переносим временное содержимое в себя
+					* this = std::move(temp);
+				}
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				small_vector() noexcept : _size(0), _cap(N), _data(reinterpret_cast <T *> (this->_inline)) {}
+				/**
+				 * @brief Конструктор перемещения
+				 *
+				 * @param other вектор-источник
+				 *
+				 */
+				small_vector(small_vector && other) noexcept : _size(0), _cap(N), _data(reinterpret_cast <T *> (this->_inline)) {
+					// Переносим содержимое источника
+					this->adopt(std::move(other));
+				}
+				/**
+				 * @brief Оператор перемещения
+				 *
+				 * @param other вектор-источник
+				 * @return       ссылка на текущий вектор
+				 *
+				 */
+				small_vector & operator = (small_vector && other) noexcept {
+					// Если присваивается не сам себе
+					if(this != & other){
+						// Уничтожаем собственные элементы
+						for(size_t i = 0; i < this->_size; i++)
+							// Уничтожаем элемент
+							this->_data[i].~T();
+						// Если собственное хранилище в куче - освобождаем и возвращаемся в инлайн
+						if(!this->isInlined()){
+							// Освобождаем хранилище кучи
+							::operator delete(this->_data);
+							// Возвращаемся на инлайн-хранилище
+							this->_data = this->inlined();
+							// Восстанавливаем инлайн-ёмкость
+							this->_cap = N;
+						}
+						// Обнуляем число элементов
+						this->_size = 0;
+						// Переносим содержимое источника
+						this->adopt(std::move(other));
+					}
+					// Выводим ссылку на текущий вектор
+					return * this;
+				}
+				/**
+				 * Копирование запрещено - учётная запись пакета перемещается, но не копируется
+				 */
+				small_vector(const small_vector &) = delete;
+				small_vector & operator = (const small_vector &) = delete;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~small_vector() noexcept {
+					// Уничтожаем хранимые элементы
+					for(size_t i = 0; i < this->_size; i++)
+						// Уничтожаем элемент
+						this->_data[i].~T();
+					// Если хранилище в куче - освобождаем его
+					if(!this->isInlined())
+						// Освобождаем хранилище кучи
+						::operator delete(this->_data);
+				}
+		};
 		/**
 		 * @brief Класс соединения QUIC (RFC 9000 §5)
 		 *
@@ -225,8 +498,8 @@ namespace awh {
 					bool stale;
 					// Отправленные CRYPTO-данные пакета со смещениями (для ретрансмиссии)
 					vector <std::pair <uint64_t, string>> crypto;
-					// Отправленные блоки данных потоков приложения (для ретрансмиссии)
-					vector <chunk_t> stream;
+					// Отправленные блоки данных потоков приложения (для ретрансмиссии): инлайн-хранилище на типовой пакет
+					small_vector <chunk_t, 2> stream;
 					// Отправленные управляющие фреймы: тип и идентификатор потока (для повтора при потере)
 					vector <std::pair <frame_t, uint64_t>> control;
 					/**

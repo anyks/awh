@@ -144,7 +144,7 @@ namespace {
 	 *          сотня гигабит в нём заворачивалась, обесценивая сценарий
 	 *
 	 */
-	static constexpr const char * OVERHEAD_LIMIT = "34Gbps";
+	static constexpr const char * OVERHEAD_LIMIT = "1600Mbps";
 	/**
 	 * @brief Глубина запаса очереди отправки сценариев ограничения полосы
 	 *
