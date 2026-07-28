@@ -1288,7 +1288,7 @@ uint64_t awh::http::h2::hpack::DynamicTable::findName(const size_t hashName, str
 	 * столкновении хешей ссылка на название просто не выдаётся, и название
 	 * кодируется строкой - на корректности это не сказывается
 	 */
-	if((position >= this->_live) || (this->_entries[position].name != name))
+	if((position >= this->_live) || !hpack::sameText(this->_entries[position].name, name))
 		// Выводим отсутствие совпадения по названию заголовка
 		return 0;
 	// Выводим индекс совпадения по названию заголовка
@@ -1389,7 +1389,7 @@ uint64_t awh::http::h2::hpack::DynamicTable::find(const size_t hashName, string_
 		// Получаем запись таблицы
 		const field_t & entry = this->_entries[position];
 		// Совпадение хешей ещё не означает совпадения строк - сверяем и название, и значение
-		if((entry.name != name) || (entry.value != value))
+		if(!hpack::sameText(entry.name, name) || !hpack::sameText(entry.value, value))
 			// Переходим к следующей записи индекса
 			continue;
 		// Запоминаем наиболее свежее полное совпадение
@@ -1844,7 +1844,7 @@ uint64_t awh::http::h2::hpack::Encoder::lookupName(string_view name) const noexc
 	// Выполняем поиск названия заголовка в статической таблице (индексы 1..61)
 	const auto i = names.find(hashName);
 	// Если название заголовка найдено в статической таблице
-	if((i != names.end()) && (::STATIC[i->second.first].name == name))
+	if((i != names.end()) && hpack::sameText(::STATIC[i->second.first].name, name))
 		// Выводим индекс совпадения по названию заголовка
 		return i->second.first;
 	// Выполняем поиск названия заголовка в динамической таблице (индексы 62..)
@@ -1875,7 +1875,7 @@ uint64_t awh::http::h2::hpack::Encoder::lookup(string_view name, string_view val
 	// Выполняем поиск названия заголовка в статической таблице (индексы 1..61)
 	const auto i = names.find(hashName);
 	// Если название заголовка найдено в статической таблице
-	if((i != names.end()) && (::STATIC[i->second.first].name == name)){
+	if((i != names.end()) && hpack::sameText(::STATIC[i->second.first].name, name)){
 		// Запоминаем индекс совпадения по имени
 		nameIndex = i->second.first;
 		/**
@@ -1884,7 +1884,7 @@ uint64_t awh::http::h2::hpack::Encoder::lookup(string_view name, string_view val
 		 */
 		for(uint32_t j = 0; j < i->second.count; ++j){
 			// Если значение заголовка тоже совпадает
-			if(::STATIC[i->second.first + j].value == value)
+			if(hpack::sameText(::STATIC[i->second.first + j].value, value))
 				// Выводим индекс полного совпадения
 				return (i->second.first + j);
 		}

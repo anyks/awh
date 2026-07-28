@@ -40,98 +40,6 @@ using namespace awh::http;
  */
 namespace {
 	/**
-	 * @brief Функция сравнения строк названий и значений полей
-	 *
-	 * @details Названия и значения полей HTTP короткие: медиана названия - восемь
-	 *          октетов, а вызов memcmp через таблицу связывания стоит дороже самого
-	 *          сравнения. Сравнение ведётся перекрывающимися машинными словами:
-	 *          чтения не выходят за пределы строки, поэтому границы буфера
-	 *          не нарушаются даже на длине в один октет
-	 *
-	 * @param first  первая сравниваемая строка
-	 * @param second вторая сравниваемая строка
-	 * @return       признак совпадения строк
-	 *
-	 */
-	__attribute__((always_inline)) inline bool sameText(string_view first, string_view second) noexcept {
-		// Получаем длину сравниваемых строк
-		const size_t length = first.size();
-		// Если длины строк не совпадают
-		if(length != second.size())
-			// Выводим признак несовпадения строк
-			return false;
-		// Получаем указатель на первую сравниваемую строку
-		const char * left = first.data();
-		// Получаем указатель на вторую сравниваемую строку
-		const char * right = second.data();
-		/**
-		 * Строки длиной в машинное слово и больше сравниваются двумя чтениями
-		 * с перекрытием: первое слово и последнее
-		 */
-		if(length >= sizeof(uint64_t)){
-			// Если строка не помещается в два машинных слова
-			if(length > (sizeof(uint64_t) * 2))
-				// Выводим результат сравнения строк целиком
-				return (::memcmp(left, right, length) == 0);
-			// Первое машинное слово первой строки
-			uint64_t headLeft = 0;
-			// Первое машинное слово второй строки
-			uint64_t headRight = 0;
-			// Последнее машинное слово первой строки
-			uint64_t tailLeft = 0;
-			// Последнее машинное слово второй строки
-			uint64_t tailRight = 0;
-			// Читаем первое машинное слово первой строки
-			::memcpy(&headLeft, left, sizeof(uint64_t));
-			// Читаем первое машинное слово второй строки
-			::memcpy(&headRight, right, sizeof(uint64_t));
-			// Читаем последнее машинное слово первой строки
-			::memcpy(&tailLeft, (left + length - sizeof(uint64_t)), sizeof(uint64_t));
-			// Читаем последнее машинное слово второй строки
-			::memcpy(&tailRight, (right + length - sizeof(uint64_t)), sizeof(uint64_t));
-			// Выводим результат сравнения обоих машинных слов
-			return ((headLeft == headRight) && (tailLeft == tailRight));
-		}
-		/**
-		 * Строки короче машинного слова, но не короче половины, сравниваются
-		 * двумя половинными чтениями с перекрытием
-		 */
-		if(length >= sizeof(uint32_t)){
-			// Первая половина первой строки
-			uint32_t headLeft = 0;
-			// Первая половина второй строки
-			uint32_t headRight = 0;
-			// Вторая половина первой строки
-			uint32_t tailLeft = 0;
-			// Вторая половина второй строки
-			uint32_t tailRight = 0;
-			// Читаем первую половину первой строки
-			::memcpy(&headLeft, left, sizeof(uint32_t));
-			// Читаем первую половину второй строки
-			::memcpy(&headRight, right, sizeof(uint32_t));
-			// Читаем вторую половину первой строки
-			::memcpy(&tailLeft, (left + length - sizeof(uint32_t)), sizeof(uint32_t));
-			// Читаем вторую половину второй строки
-			::memcpy(&tailRight, (right + length - sizeof(uint32_t)), sizeof(uint32_t));
-			// Выводим результат сравнения обеих половин
-			return ((headLeft == headRight) && (tailLeft == tailRight));
-		}
-		// Если строки пусты
-		if(length == 0)
-			// Выводим признак совпадения строк
-			return true;
-		/**
-		 * Строки короче половины машинного слова сравниваются тремя октетами:
-		 * первым, средним и последним. На длине от одного до трёх октетов
-		 * эти три позиции покрывают строку целиком
-		 */
-		return (
-			(left[0] == right[0]) &&
-			(left[length >> 1] == right[length >> 1]) &&
-			(left[length - 1] == right[length - 1])
-		);
-	}
-	/**
 	 * @brief Статическая таблица QPACK (RFC 9204 Appendix A)
 	 *
 	 * @details Нумерация записей начинается с нуля. Порядок записей задан спецификацией
@@ -397,7 +305,7 @@ bool awh::http::h3::qpack::stat::find(string_view name, string_view value, size_
 	 * один раз на всю группу, а не на каждую её запись: без него коллизия хеша
 	 * давала бы чужую группу, а внутри группы сверять уже нечего
 	 */
-	if(!::sameText(STATIC_TABLE[names.order[i->second.first]].name, name))
+	if(!h2::hpack::sameText(STATIC_TABLE[names.order[i->second.first]].name, name))
 		// Выводим признак отсутствия совпадения
 		return false;
 	// Запоминаем индекс совпадения только по названию
@@ -409,7 +317,7 @@ bool awh::http::h3::qpack::stat::find(string_view name, string_view value, size_
 		// Получаем индекс очередной записи группы
 		const uint16_t candidate = names.order[i->second.first + offset];
 		// Если совпало и значение записи
-		if(::sameText(STATIC_TABLE[candidate].value, value)){
+		if(h2::hpack::sameText(STATIC_TABLE[candidate].value, value)){
 			// Запоминаем индекс полного совпадения
 			index = candidate;
 			// Выводим признак найденного полного совпадения
@@ -723,7 +631,7 @@ bool awh::http::h3::qpack::DynamicTable::find(string_view name, string_view valu
 		// Получаем запись совпадения только по названию
 		const field_t * entry = this->at(j->second);
 		// Если запись жива и её название совпало с искомым
-		if((entry != nullptr) && ::sameText(entry->name, name))
+		if((entry != nullptr) && h2::hpack::sameText(entry->name, name))
 			// Запоминаем абсолютный номер совпадения только по названию
 			nameOnly = j->second;
 	}
@@ -742,7 +650,7 @@ bool awh::http::h3::qpack::DynamicTable::find(string_view name, string_view valu
 			// Переходим к следующему кандидату
 			continue;
 		// Если название либо значение записи не совпали с искомыми
-		if(!::sameText(entry->name, name) || !::sameText(entry->value, value))
+		if(!h2::hpack::sameText(entry->name, name) || !h2::hpack::sameText(entry->value, value))
 			// Переходим к следующему кандидату
 			continue;
 		/**
@@ -786,7 +694,7 @@ bool awh::http::h3::qpack::DynamicTable::findName(string_view name, uint64_t & a
 	// Получаем найденную запись
 	const field_t * entry = this->at(i->second);
 	// Если запись вытеснена либо её название не совпало с искомым
-	if((entry == nullptr) || !::sameText(entry->name, name))
+	if((entry == nullptr) || !h2::hpack::sameText(entry->name, name))
 		// Выводим признак отсутствия совпадения
 		return false;
 	// Устанавливаем абсолютный номер совпадения

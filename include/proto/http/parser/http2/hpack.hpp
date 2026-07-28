@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <cstring>
 #include <string_view>
 #include <unordered_map>
 
@@ -168,6 +169,102 @@ namespace awh {
 						 */
 						explicit Field(string name, string value, const bool sensitive) noexcept;
 				} field_t;
+
+				/**
+				 * @brief Функция сравнения названий и значений заголовков
+				 *
+				 * @details Названия и значения заголовков HTTP короткие: медиана названия -
+				 *          восемь октетов, а вызов memcmp через таблицу связывания стоит дороже
+				 *          самого сравнения. Сравнение ведётся перекрывающимися машинными
+				 *          словами: чтения не выходят за пределы строки, поэтому границы
+				 *          буфера не нарушаются даже на длине в один октет
+				 *
+				 * @note Функция общая для HPACK и QPACK: поиск по таблицам устроен у них
+				 *       одинаково, и сравнение строк там - самая горячая операция кодирования
+				 *
+				 * @param first  первая сравниваемая строка
+				 * @param second вторая сравниваемая строка
+				 * @return       признак совпадения строк
+				 *
+				 */
+				__attribute__((always_inline)) inline bool sameText(string_view first, string_view second) noexcept {
+					// Получаем длину сравниваемых строк
+					const size_t length = first.size();
+					// Если длины строк не совпадают
+					if(length != second.size())
+						// Выводим признак несовпадения строк
+						return false;
+					// Получаем указатель на первую сравниваемую строку
+					const char * left = first.data();
+					// Получаем указатель на вторую сравниваемую строку
+					const char * right = second.data();
+					/**
+					 * Строки длиной в машинное слово и больше сравниваются двумя чтениями
+					 * с перекрытием: первым машинным словом и последним
+					 */
+					if(length >= sizeof(uint64_t)){
+						// Если строка не помещается в два машинных слова
+						if(length > (sizeof(uint64_t) * 2))
+							// Выводим результат сравнения строк целиком
+							return (::memcmp(left, right, length) == 0);
+						// Первое машинное слово первой строки
+						uint64_t headLeft = 0;
+						// Первое машинное слово второй строки
+						uint64_t headRight = 0;
+						// Последнее машинное слово первой строки
+						uint64_t tailLeft = 0;
+						// Последнее машинное слово второй строки
+						uint64_t tailRight = 0;
+						// Читаем первое машинное слово первой строки
+						::memcpy(&headLeft, left, sizeof(uint64_t));
+						// Читаем первое машинное слово второй строки
+						::memcpy(&headRight, right, sizeof(uint64_t));
+						// Читаем последнее машинное слово первой строки
+						::memcpy(&tailLeft, (left + length - sizeof(uint64_t)), sizeof(uint64_t));
+						// Читаем последнее машинное слово второй строки
+						::memcpy(&tailRight, (right + length - sizeof(uint64_t)), sizeof(uint64_t));
+						// Выводим результат сравнения обоих машинных слов
+						return ((headLeft == headRight) && (tailLeft == tailRight));
+					}
+					/**
+					 * Строки короче машинного слова, но не короче половины, сравниваются
+					 * двумя половинными чтениями с перекрытием
+					 */
+					if(length >= sizeof(uint32_t)){
+						// Первая половина первой строки
+						uint32_t headLeft = 0;
+						// Первая половина второй строки
+						uint32_t headRight = 0;
+						// Вторая половина первой строки
+						uint32_t tailLeft = 0;
+						// Вторая половина второй строки
+						uint32_t tailRight = 0;
+						// Читаем первую половину первой строки
+						::memcpy(&headLeft, left, sizeof(uint32_t));
+						// Читаем первую половину второй строки
+						::memcpy(&headRight, right, sizeof(uint32_t));
+						// Читаем вторую половину первой строки
+						::memcpy(&tailLeft, (left + length - sizeof(uint32_t)), sizeof(uint32_t));
+						// Читаем вторую половину второй строки
+						::memcpy(&tailRight, (right + length - sizeof(uint32_t)), sizeof(uint32_t));
+						// Выводим результат сравнения обеих половин
+						return ((headLeft == headRight) && (tailLeft == tailRight));
+					}
+					// Если строки пусты
+					if(length == 0)
+						// Выводим признак совпадения строк
+						return true;
+					/**
+					 * Строки короче половины машинного слова сравниваются тремя октетами:
+					 * первым, средним и последним. На длине от одного до трёх октетов
+					 * эти три позиции покрывают строку целиком
+					 */
+					return (
+						(left[0] == right[0]) &&
+						(left[length >> 1] == right[length >> 1]) &&
+						(left[length - 1] == right[length - 1])
+					);
+				}
 
 				/**
 				 * @brief Пространство имён функций Хаффман-кодирования (RFC 7541 Appendix B)
