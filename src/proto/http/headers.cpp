@@ -213,58 +213,6 @@ namespace {
 		return http::method_t::NONE;
 	}
 	/**
-	 * @brief Функция получения текстового названия метода HTTP-запроса
-	 *
-	 * @param method метод HTTP-запроса
-	 * @return       текстовое название метода HTTP-запроса
-	 *
-	 */
-	string_view method(const http::method_t method) noexcept {
-		/**
-		 * Определяем текстовое название метода HTTP-запроса
-		 */
-		switch(static_cast <uint8_t> (method)){
-			// Если метоод соответствует GET
-			case static_cast <uint8_t> (http::method_t::GET):
-				// Возвращаем текстовое название метода HTTP-запроса
-				return "GET";
-			// Если метоод соответствует PUT
-			case static_cast <uint8_t> (http::method_t::PUT):
-				// Возвращаем текстовое название метода HTTP-запроса
-				return "PUT";
-			// Если метоод соответствует DELETE
-			case static_cast <uint8_t> (http::method_t::DEL):
-				// Возвращаем текстовое название метода HTTP-запроса
-				return "DELETE";
-			// Если метоод соответствует POST
-			case static_cast <uint8_t> (http::method_t::POST):
-				// Возвращаем текстовое название метода HTTP-запроса
-				return "POST";
-			// Если метоод соответствует HEAD
-			case static_cast <uint8_t> (http::method_t::HEAD):
-				// Возвращаем текстовое название метода HTTP-запроса
-				return "HEAD";
-			// Если метоод соответствует PATCH
-			case static_cast <uint8_t> (http::method_t::PATCH):
-				// Возвращаем текстовое название метода HTTP-запроса
-				return "PATCH";
-			// Если метоод соответствует TRACE
-			case static_cast <uint8_t> (http::method_t::TRACE):
-				// Возвращаем текстовое название метода HTTP-запроса
-				return "TRACE";
-			// Если метоод соответствует OPTIONS
-			case static_cast <uint8_t> (http::method_t::OPTIONS):
-				// Возвращаем текстовое название метода HTTP-запроса
-				return "OPTIONS";
-			// Если метоод соответствует CONNECT
-			case static_cast <uint8_t> (http::method_t::CONNECT):
-				// Возвращаем текстовое название метода HTTP-запроса
-				return "CONNECT";
-		}
-		// Возвращаем значение по умолчанию
-		return "";
-	}
-	/**
 	 * @brief Функция форматирования версии протокола HTTP в текстовый вид
 	 *
 	 * @param version версия протокола HTTP
@@ -499,8 +447,14 @@ namespace {
 				case static_cast <uint8_t> (http::direct_t::REQUEST): {
 					// Приводим провайдер к типу запроса клиента (безопасно, так как тип подтверждён флагом direct)
 					const auto * request = static_cast <const http::request_t *> (provider);
-					// Получаем текстовое название метода запроса
-					const string_view methodName = ::method(request->method);
+					/**
+					 * Получаем текстовое название метода запроса у канонической функции
+					 * провайдера: она знает весь набор method_t, включая методы WebDAV и
+					 * версионирования, и возвращает оригинальное написание для
+					 * method_t::UNKNOWN. Локальная таблица знала только основные методы, и
+					 * запрос любым другим оставался без обязательного псевдозаголовка
+					 */
+					const string_view methodName = http::methodName(request);
 					// Формируем псевдозаголовок метода запроса (:method) - обязателен и следует первым согласно RFC 9113
 					if(!methodName.empty()){
 						// Создаём псевдозаголовок метода запроса
@@ -1529,8 +1483,16 @@ string awh::http::Headers::startline() const noexcept {
 				case static_cast <uint8_t> (direct_t::REQUEST): {
 					// Безопасно приводим провайдер к типу запроса клиента (тип подтверждён флагом direct)
 					const request_t * request = static_cast <const request_t *> (this->_provider.get());
-					// Формируем стартовую строку запроса клиента в формате "Метод URI HTTP/Версия"
-					result.append(::method(request->method));
+					/**
+					 * Формируем стартовую строку запроса клиента в формате "Метод URI HTTP/Версия"
+					 *
+					 * Название метода берётся у канонической функции провайдера: она знает весь
+					 * набор method_t, включая методы WebDAV и версионирования, и возвращает
+					 * оригинальное написание для method_t::UNKNOWN. Локальная таблица знала
+					 * только основные методы, и запрос любым другим уходил на провод со
+					 * стартовой строкой без метода вовсе
+					 */
+					result.append(http::methodName(request));
 					// Добавляем разделитель между методом и URI запроса
 					result.append(1, ' ');
 					// Добавляем URI запроса

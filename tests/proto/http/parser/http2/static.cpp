@@ -5511,8 +5511,14 @@ TEST_F(ParserHttp2Fixture, BodyInBodylessMessageTest){
 	ASSERT_EQ(clientEvents.code, 200);
 	// Формируем тело, недопустимое в ответе на HEAD
 	const std::string body(32, 'x');
-	// Сервер ошибочно отправляет тело
-	server->sendData(sid, body.data(), body.size(), true);
+	/**
+	 * Тело подаётся сырыми байтами: собственный сервер его больше не выпустит,
+	 * подавляя тело ответа на HEAD у себя (RFC 9110 §9.3.2), а проверяется здесь
+	 * реакция принимающей стороны на пира, который этого правила не соблюдает
+	 */
+	const std::string data = ::frame(0x00, 0x01, sid, body);
+	// Подаём кадр данных тела на разбор клиенту
+	client->parse(data.data(), data.size());
 	// Проверяем что тело приложению не доставлено
 	ASSERT_TRUE(clientEvents.bodies[sid].empty());
 	// Проверяем что поток сброшен как малформированный
@@ -6967,6 +6973,248 @@ TEST_F(ParserHttp2Fixture, PriorityUpdateOnIdlePushStreamTest){
 	ASSERT_TRUE(serverEvents.errorFired);
 	// Код ошибки обязан указывать на нарушение протокола
 	ASSERT_EQ(serverEvents.errorCode, parser_http2_t::error_t::PROTOCOL_ERROR);
+}
+
+/**
+ * @brief Метод проверки отклонения клиентом входящего кадра приоритета (RFC 9218 §7.1)
+ *
+ * @details Приоритет объявляет только клиент: сервер отправлять кадр не вправе,
+ *          а получивший его клиент ОБЯЗАН оборвать соединение. Отвергается сам
+ *          факт кадра, а не его содержимое, поэтому кадр подаётся по открытому
+ *          потоку самого клиента: придраться в нём больше не к чему, и ошибка
+ *          не вправе объясняться ничем, кроме роли получателя
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityUpdateRejectedByClientTest){
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий клиента
+	events_t clientEvents;
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Отправляем свой preface
+	client->sendPreface();
+	// Формируем пустой кадр SETTINGS сервера
+	std::string settings;
+	// Собираем пустой кадр параметров соединения
+	h2::frame::serialize::settings(settings, nullptr, 0, false);
+	// Подаём параметры соединения на разбор
+	client->parse(settings.data(), settings.size());
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/");
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Открываем поток запроса без завершения (поток переходит в состояние open)
+	client->sendHeaders(sid, fields, false);
+	// Буфер кадра приоритета
+	std::string input;
+	// Собираем кадр приоритета по открытому потоку самого клиента
+	h2::frame::serialize::priorityUpdate(input, sid, "u=0");
+	// Подаём кадр приоритета на разбор
+	client->parse(input.data(), input.size());
+	// Ошибка уровня соединения обязана быть зафиксирована
+	ASSERT_TRUE(clientEvents.errorFired);
+	// Код ошибки обязан указывать на нарушение протокола
+	ASSERT_EQ(clientEvents.errorCode, parser_http2_t::error_t::PROTOCOL_ERROR);
+}
+
+/**
+ * @brief Метод проверки запрета серверу отправлять кадр приоритета (RFC 9218 §7.1)
+ *
+ * @details Серверу отправка кадра запрещена прямо, поэтому запрос приложения
+ *          обязан остаться без байтов на проводе. Поток при этом заведомо открыт
+ *          и в состоянии, в котором кадр по нему был бы вполне осмысленным
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityUpdateNotSentByServerTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "GET");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/");
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Открываем поток запроса без завершения (сервер получает поток в состоянии open)
+	client->sendHeaders(sid, fields, false);
+	// Проверяем что поток на сервере открыт
+	ASSERT_EQ(serverEvents.begins.size(), 1u);
+	// Буфер исходящих байтов сервера
+	std::string output;
+	// Перехватываем исходящие байты сервера вместо передачи их клиенту
+	server->on(parser_http2_t::write_callback_t([&output](const void * buffer, const size_t size) noexcept {
+		// Дописываем исходящие байты сервера в буфер
+		output.append(static_cast <const char *> (buffer), size);
+	}));
+	// Запрашиваем отправку приоритета по открытому потоку клиента
+	server->sendPriority(sid, 0, false);
+	// Проверяем что сервер не отправил ни одного байта
+	ASSERT_TRUE(output.empty());
+}
+
+/**
+ * @brief Метод проверки лимита приоритизированных потоков в состоянии idle (RFC 9218 §7.1)
+ *
+ * @details Сумма приоритизированных потоков в состоянии idle и активных потоков
+ *          пира не вправе превысить объявленный нами SETTINGS_MAX_CONCURRENT_STREAMS:
+ *          иначе пир занимал бы сигналами приоритета слоты сверх выданного ему лимита
+ *
+ */
+TEST_F(ParserHttp2Fixture, PriorityUpdateIdleLimitTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Получаем параметры SETTINGS сервера
+	auto settings = server->settings();
+	// Ограничиваем лимит одновременных потоков четырьмя
+	settings.maxConcurrentStreams = 4;
+	// Применяем параметры SETTINGS сервера
+	server->settings(settings);
+	// Создаём объект сборщика событий парсера
+	events_t serverEvents;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* server, serverEvents);
+	// Буфер входящих байтов клиента
+	std::string input;
+	// Дописываем preface клиента
+	input.append(h2::proto::PREFACE.data(), h2::proto::PREFACE.size());
+	// Собираем пустой кадр параметров соединения
+	h2::frame::serialize::settings(input, nullptr, 0, false);
+	/**
+	 * Приоритизируем ровно столько потоков в состоянии idle, сколько разрешает
+	 * объявленный лимит: активных потоков у пира нет, поэтому все слоты свободны
+	 */
+	for(uint32_t sid = 1; sid < 9; sid += 2)
+		// Собираем кадр приоритета ещё не открытого потока
+		h2::frame::serialize::priorityUpdate(input, sid, "u=0");
+	// Подаём входящие байты на разбор
+	server->parse(input.data(), input.size());
+	// Приоритеты в пределах лимита ошибкой не являются
+	ASSERT_FALSE(serverEvents.errorFired);
+	// Буфер кадра приоритета сверх лимита
+	std::string extra;
+	// Собираем кадр приоритета потока сверх объявленного лимита
+	h2::frame::serialize::priorityUpdate(extra, 9, "u=0");
+	// Подаём кадр сверх лимита на разбор
+	server->parse(extra.data(), extra.size());
+	// Ошибка уровня соединения обязана быть зафиксирована
+	ASSERT_TRUE(serverEvents.errorFired);
+	// Код ошибки обязан указывать на нарушение протокола
+	ASSERT_EQ(serverEvents.errorCode, parser_http2_t::error_t::PROTOCOL_ERROR);
+}
+
+/**
+ * @brief Метод проверки подавления тела ответа на запрос методом HEAD (RFC 9110 §9.3.2)
+ *
+ * @details Ответ на HEAD содержимого не несёт, поэтому тело, отданное приложением,
+ *          обязано быть принято и отброшено: отказ приёмом нуля байт приложение
+ *          прочло бы как заполненный буфер и ждало бы сигнала writable. Проверяется
+ *          провод, а не приём клиента: клиент безтелесность ответа отслеживает сам
+ *
+ */
+TEST_F(ParserHttp2Fixture, HeadResponseBodySuppressedTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Формируем заголовки запроса методом HEAD
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "HEAD");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/data");
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Отправляем запрос с завершением потока
+	client->sendHeaders(sid, fields, true);
+	// Проверяем что поток на сервере открыт
+	ASSERT_EQ(serverEvents.begins.size(), 1u);
+	// Буфер исходящих байтов сервера
+	std::string output;
+	// Перехватываем исходящие байты сервера вместо передачи их клиенту
+	server->on(parser_http2_t::write_callback_t([&output](const void * buffer, const size_t size) noexcept {
+		// Дописываем исходящие байты сервера в буфер
+		output.append(static_cast <const char *> (buffer), size);
+	}));
+	// Формируем заголовки ответа
+	headers_t response(std::make_unique <response_t> (version_t::HTTP2, 200));
+	// Отправляем заголовки ответа без завершения потока
+	server->sendHeaders(sid, response, false);
+	// Формируем тело ответа
+	const std::string body(4 * 1024, 'z');
+	// Отдаём тело ответа с завершением потока
+	const size_t accepted = server->sendData(sid, body.data(), body.size(), true);
+	// Тело обязано быть принято целиком: отказ приложение прочло бы как backpressure
+	ASSERT_EQ(accepted, body.size());
+	// Признак обнаружения кадра данных на проводе
+	bool payload = false;
+	// Признак обнаружения завершения потока на проводе
+	bool completed = false;
+	/**
+	 * Разбираем исходящие байты сервера по заголовкам кадров: тела на проводе
+	 * быть не должно, а завершение потока обязано дойти
+	 */
+	for(size_t offset = 0; (offset + 9) <= output.size();){
+		// Вычисляем длину полезной нагрузки кадра
+		const size_t length = ((static_cast <uint8_t> (output[offset]) << 16) | (static_cast <uint8_t> (output[offset + 1]) << 8) | static_cast <uint8_t> (output[offset + 2]));
+		// Получаем тип кадра
+		const uint8_t type = static_cast <uint8_t> (output[offset + 3]);
+		// Получаем флаги кадра
+		const uint8_t flags = static_cast <uint8_t> (output[offset + 4]);
+		// Если кадр несёт данные тела
+		if((type == 0x00) && (length > 0))
+			// Запоминаем что тело ушло на провод
+			payload = true;
+		// Если кадр завершает поток
+		if((flags & 0x01) != 0)
+			// Запоминаем что завершение потока ушло на провод
+			completed = true;
+		// Переходим к следующему кадру
+		offset += (9 + length);
+	}
+	// Тело ответа на HEAD на провод уйти не вправе
+	ASSERT_FALSE(payload);
+	// Завершение потока обязано дойти до клиента
+	ASSERT_TRUE(completed);
 }
 
 /**

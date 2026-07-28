@@ -653,7 +653,7 @@ void awh::http::Parser_HTTP3::Framing::clear() noexcept {
  */
 awh::http::Parser_HTTP3::Stream::Stream() noexcept :
  state(h3::stream_state_t::IDLE), headers(false), trailers(false), body(false),
- generation(0), completed(false), headless(false), localFin(false), length(0), declared(UINT64_MAX),
+ generation(0), completed(false), headless(false), headlessSend(false), localFin(false), length(0), declared(UINT64_MAX),
  urgency(h3::proto::DEFAULT_URGENCY), incremental(false), prioritized(false),
  blockedActive(false), blockedType(0), blockedPushId(UINT64_MAX), blockedFin(false) {}
 /**
@@ -3640,9 +3640,18 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 			stream->headless = true;
 	}
 	// Если проверялась секция потока, а не обещания
-	if(!promise)
+	if(!promise){
 		// Запоминаем объявленную длину тела сообщения
 		stream->declared = declared;
+		/**
+		 * Ответ на запрос методом HEAD содержимого не несёт (RFC 9110 §9.3.2).
+		 * У обещания push проверять нечего: секцию несёт поток запроса, а ответ
+		 * на само обещание придёт по отдельному потоку push
+		 */
+		if(request && (method == value::HEAD))
+			// Запоминаем безтелесность отправляемого нами ответа
+			stream->headlessSend = true;
+	}
 	// Выводим положительный результат
 	return true;
 }
@@ -4561,8 +4570,16 @@ size_t awh::http::Parser_HTTP3::sendData(const uint64_t sid, const void * buffer
 	if(this->_closed)
 		// Выводим количество принятых к отправке байт
 		return 0;
-	// Если данные тела переданы
-	if((buffer != nullptr) && (size > 0)){
+	// Выполняем поиск состояния потока
+	stream_t * const target = this->findStream(sid);
+	/**
+	 * Ответ на запрос методом HEAD содержимого не несёт (RFC 9110 §9.3.2): тело
+	 * принимается и отбрасывается, а не отвергается. Отказ приёмом нуля байт
+	 * приложение прочло бы как сигнал приостановить выдачу
+	 */
+	const bool headless = ((target != nullptr) && target->headlessSend);
+	// Если данные тела переданы и сообщение вправе их нести
+	if(!headless && (buffer != nullptr) && (size > 0)){
 		// Выполняем очистку буфера сборки кадра
 		this->_frame.clear();
 		// Собираем кадр данных тела
@@ -4798,6 +4815,17 @@ void awh::http::Parser_HTTP3::sendPriority(const uint64_t sid, const uint8_t urg
 	if(this->_closed)
 		// Выходим из метода
 		return;
+	/**
+	 * Кадр отправляет только клиент: серверу запрещены обе его разновидности,
+	 * а получивший его клиент обязан оборвать соединение (RFC 9218 §7.2).
+	 * Приоритет своего ответа сервер объявляет заголовком priority, а не кадром
+	 */
+	if(this->_endpoint == h3::endpoint_t::SERVER){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/3 server is not allowed to send PRIORITY_UPDATE", log_t::flag_t::WARNING);
+		// Выходим из метода
+		return;
+	}
 	// Если служебные потоки открыть не удалось
 	if(!this->prepare())
 		// Выходим из метода
@@ -4836,6 +4864,16 @@ void awh::http::Parser_HTTP3::sendPushPriority(const uint64_t pushId, const uint
 	if(this->_closed)
 		// Выходим из метода
 		return;
+	/**
+	 * Приоритизировать обещание push вправе только клиент, которому оно выдано:
+	 * серверу отправка кадра запрещена прямо (RFC 9218 §7.2)
+	 */
+	if(this->_endpoint == h3::endpoint_t::SERVER){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/3 server is not allowed to send PRIORITY_UPDATE", log_t::flag_t::WARNING);
+		// Выходим из метода
+		return;
+	}
 	// Если служебные потоки открыть не удалось
 	if(!this->prepare())
 		// Выходим из метода

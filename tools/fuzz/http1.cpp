@@ -806,6 +806,20 @@ namespace {
 		bool legacy;
 		// Признак неисправимого объявления кодирования (chunked не последний)
 		bool unfixable;
+		// Значение заголовка Host собираемого запроса (пустое - заголовок не дописывается)
+		std::string host;
+		// Пояснение к коду состояния собираемого ответа
+		std::string reason;
+		// Оригинальное написание метода собираемого запроса (только для method_t::UNKNOWN)
+		std::string spelling;
+		// Признак умышленно непригодного к отправке элемента сообщения
+		bool malformed;
+		// Признак ответа, не способного нести тела (RFC 9112 §6.3 п.1)
+		bool bodiless;
+		// Признак ответа, открывающего туннель (RFC 9112 §6.3 п.2)
+		bool tunnel;
+		// Признак умышленно непригодного к отправке блока трейлеров
+		bool badTrailers;
 		// Размер одной порции выдачи тела
 		size_t portion;
 		// Верхний порог выходного буфера
@@ -824,9 +838,35 @@ namespace {
 	 * @return         результат проверки
 	 *
 	 */
+	static bool encodingDropped(const struct Outgoing & outgoing) noexcept {
+		/**
+		 * Выводим признак снятия объявления транспортного кодирования с провода
+		 *
+		 * Успешный ответ на CONNECT и ответы с кодом 1xx и 204 отправлять его не
+		 * вправе (RFC 9112 §6.1, §6.2), и отправитель снимает заголовок раньше, чем
+		 * проверяет исправимость объявления: на провод оно не уходит вовсе, и
+		 * отказывать в сборке сообщения не в чем. Ответу 304 и ответу на HEAD
+		 * заголовок, напротив, разрешён - там объявление проверяется как обычно
+		 */
+		return (outgoing.tunnel ||
+		 (outgoing.bodiless && ((outgoing.code < 200) || (outgoing.code == 204))));
+	}
+	/**
+	 * @brief Функция проверки отказа отправителя собрать сообщение целиком
+	 *
+	 * @param outgoing описание собираемого исходящего сообщения
+	 * @return         результат проверки
+	 *
+	 */
 	static bool messageDropped(const struct Outgoing & outgoing) noexcept {
-		// Выводим признак отказа отправителя собрать сообщение целиком
-		return outgoing.unfixable;
+		/**
+		 * Выводим признак отказа отправителя собрать сообщение целиком
+		 *
+		 * Кроме неисправимого объявления кодирования сообщение отвергается умышленно
+		 * непригодным элементом: управляющим символом в поле, стартовой строке либо
+		 * пояснении к коду состояния, а также отсутствием обязательного заголовка Host
+		 */
+		return (outgoing.malformed || (outgoing.unfixable && !::encodingDropped(outgoing)));
 	}
 	/**
 	 * @brief Функция проверки отказа отправителя кадрировать тело сообщения
@@ -836,8 +876,15 @@ namespace {
 	 *
 	 */
 	static bool bodyRefused(const struct Outgoing & outgoing) noexcept {
-		// Выводим признак отказа отправителя кадрировать тело сообщения
-		return (outgoing.legacy && outgoing.chunked && (outgoing.direct == direct_t::REQUEST));
+		/**
+		 * Выводим признак отказа отправителя кадрировать тело сообщения
+		 *
+		 * Ответ на HEAD и ответ с кодом 1xx, 204 либо 304 заканчивается первой пустой
+		 * строкой после блока заголовков независимо от присутствующих в нём полей
+		 * (RFC 9112 §6.3 п.1), и тело в нём кадрировать нечем
+		 */
+		return (outgoing.bodiless ||
+		 (outgoing.legacy && outgoing.chunked && (outgoing.direct == direct_t::REQUEST)));
 	}
 	/**
 	 * @brief Функция формирования описания собираемого исходящего сообщения
@@ -848,8 +895,12 @@ namespace {
 	static outgoing_t compose() noexcept {
 		// Набор методов собираемого запроса
 		static const method_t methods[] = {method_t::GET, method_t::POST, method_t::PUT, method_t::DEL, method_t::PATCH};
-		// Результат работы функции
-		outgoing_t result;
+		/**
+		 * Результат работы функции: поля обнуляются явно - описание содержит признаки,
+		 * выставляемые не на каждом пути, и чтение неинициализированного признака
+		 * решало бы судьбу собираемого сообщения мусором
+		 */
+		outgoing_t result{};
 		// Выбираем направление собираемого трафика
 		result.direct = (::chance(50) ? direct_t::REQUEST : direct_t::RESPONSE);
 		// Выбираем метод собираемого запроса
@@ -858,6 +909,44 @@ namespace {
 		result.target = ("/" + ::token(::pick(20)));
 		// Выбираем код состояния собираемого ответа
 		result.code = static_cast <uint16_t> (::chance(70) ? 200 : (::chance(50) ? 404 : 500));
+		/**
+		 * Изредка собирается ответ, не способный нести тела
+		 *
+		 * Ответ на запрос HEAD и любой ответ с кодом 1xx, [204 No Content] либо
+		 * [304 Not Modified] заканчивается первой пустой строкой после блока
+		 * заголовков независимо от присутствующих в нём полей (RFC 9112 §6.3 п.1):
+		 * объявления кадрирования отправитель обязан снять с провода у 1xx и 204
+		 * и сохранить у 304 и ответа на HEAD, а тело - не выдавать ни в одном случае
+		 */
+		if((result.direct == direct_t::RESPONSE) && ::chance(12)){
+			// Помечаем ответ как не способный нести тела
+			result.bodiless = true;
+			// Набор кодов состояния ответов, не несущих тела
+			static const uint16_t codes[] = {100, 101, 204, 304};
+			// Выбираем между ответом на запрос HEAD и ответом с кодом без тела
+			if(::chance(30))
+				// Собираем обычный ответ на запрос HEAD
+				result.method = method_t::HEAD;
+			// Выбираем код состояния ответа, не несущего тела
+			else result.code = codes[::pick(sizeof(codes) / sizeof(codes[0]))];
+		}
+		/**
+		 * Изредка собирается успешный ответ на запрос CONNECT
+		 *
+		 * Он превращает соединение в туннель сразу за пустой строкой, завершающей
+		 * блок заголовков (RFC 9112 §6.3 п.2), а объявления Content-Length и
+		 * Transfer-Encoding отправлять в нём запрещено (§6.2). Содержимое туннеля
+		 * здесь не выдаётся: получателю оно принадлежит уже не как тело сообщения,
+		 * и обратной разбираемости кадром не описывается
+		 */
+		else if((result.direct == direct_t::RESPONSE) && ::chance(8)) {
+			// Помечаем ответ как открывающий туннель
+			result.tunnel = true;
+			// Собираем ответ на запрос CONNECT
+			result.method = method_t::CONNECT;
+			// Выбираем успешный код состояния ответа
+			result.code = static_cast <uint16_t> (::chance(50) ? 200 : 201);
+		}
 		// Выбираем кадрирование тела сообщения
 		result.chunked = ::chance(50);
 		/**
@@ -870,8 +959,19 @@ namespace {
 		result.legacy = ::chance(20);
 		// Выбираем неисправимость объявления кодирования: собирать такое сообщение отправитель откажется
 		result.unfixable = (result.chunked && !result.legacy && ::chance(10));
+		/**
+		 * Формируем значение обязательного для запроса HTTP/1.1 заголовка Host
+		 * (RFC 9110 §7.2): без него отправитель собирать запрос откажется
+		 */
+		result.host = (::token(::pick(12) + 1) + (::chance(30) ? (":" + std::to_string(::pick(60000) + 1)) : std::string()));
+		// Изредка задаём пояснение к коду состояния собираемого ответа
+		result.reason = (::chance(25) ? ::token(::pick(12)) : std::string());
 		// Формируем тело собираемого сообщения
-		result.body = ::token(::pick(4000));
+		result.body = ((result.tunnel || result.bodiless) && ::chance(50) ? std::string() : ::token(::pick(4000)));
+		// Содержимое туннеля кадром сообщения не описывается и на провод здесь не выдаётся
+		if(result.tunnel)
+			// Оставляем сообщение без тела
+			result.body.clear();
 		// Определяем размер одной порции выдачи тела
 		result.portion = (::pick(700) + 1);
 		// Определяем верхний порог выходного буфера
@@ -898,6 +998,90 @@ namespace {
 			for(size_t i = 0, count = ::pick(3); i < count; i++)
 				// Дописываем очередной трейлер собираемого сообщения
 				result.trailers.emplace_back(("X-Trailer-" + ::token(::pick(6) + 1) + "-" + std::to_string(i)), ::token(::pick(12) + 1));
+		}
+		// Трейлеры к телу, которого не будет, не применимы
+		if(::bodyRefused(result) || result.tunnel)
+			// Очищаем трейлеры собираемого сообщения
+			result.trailers.clear();
+		/**
+		 * Изредка в сообщение вносится умышленно непригодный к отправке элемент
+		 *
+		 * Управляющий символ внутри поля, стартовой строки либо пояснения к коду
+		 * состояния расщепляет собираемое сообщение на два, а запрос HTTP/1.1 без
+		 * заголовка Host любой соответствующий стандарту сервер обязан отвергнуть.
+		 * Отправитель обязан отказаться собирать такое сообщение целиком, и на
+		 * проводе обязана остаться пустота
+		 */
+		if(::chance(10)){
+			// Набор октетов, недопустимых в значении поля и в пояснении к коду состояния
+			static const char controls[] = {'\r', '\n', '\0', '\x01', '\x1F', '\x7F'};
+			// Выбираем октет, вносимый в непригодный элемент
+			const char control = controls[::pick(sizeof(controls) / sizeof(controls[0]))];
+			// Помечаем сообщение как умышленно непригодное к отправке
+			result.malformed = true;
+			/**
+			 * Выбираем элемент сообщения, в который вносится непригодность
+			 */
+			switch(::pick(6)){
+				// Вносим непригодность в название поля
+				case 0:
+					// Дописываем поле с недопустимым в названии символом
+					result.headers.emplace_back(("X-Bad" + std::string(1, ::chance(50) ? ' ' : ':') + "Name"), ::token(::pick(10)));
+				break;
+				// Вносим непригодность в значение поля
+				case 1:
+					// Дописываем поле с недопустимым в значении символом
+					result.headers.emplace_back("X-Bad-Value", (::token(::pick(10)) + control + "X-Injected: yes"));
+				break;
+				// Вносим непригодность в стартовую строку
+				case 2: {
+					// Если собирается запрос клиента
+					if(result.direct == direct_t::REQUEST)
+						// Вносим недопустимый символ в цель запроса
+						result.target.append(1, ::chance(50) ? ' ' : control);
+					// Вносим недопустимый символ в пояснение к коду состояния ответа
+					else result.reason = (::token(::pick(6)) + control + "X-Injected: yes");
+				} break;
+				// Вносим непригодность в метод запроса либо в код состояния ответа
+				case 3: {
+					// Если собирается запрос клиента
+					if(result.direct == direct_t::REQUEST){
+						// Устанавливаем нераспознанный метод запроса
+						result.method = method_t::UNKNOWN;
+						// Задаём непригодное написание метода запроса
+						result.spelling = (::token(::pick(4)) + (::chance(50) ? ' ' : control) + "GET");
+					// Задаём код состояния, не укладывающийся в три цифры
+					} else result.code = static_cast <uint16_t> (::chance(50) ? ::pick(100) : (1000 + ::pick(64000)));
+				} break;
+				// Вносим непригодность в заголовок Host
+				case 4: {
+					// Если собирается запрос клиента
+					if(result.direct == direct_t::REQUEST){
+						// Собираем запрос версии, обязывающей нести заголовок Host
+						result.legacy = false;
+						// Убираем заголовок Host либо вносим в его значение пробел
+						result.host = (::chance(50) ? std::string() : (result.host + " " + ::token(::pick(6) + 1)));
+					// Ответ заголовка Host не несёт - вносим непригодность в пояснение
+					} else result.reason = (::token(::pick(6)) + control + "X-Injected: yes");
+				} break;
+				// Вносим непригодность в название трейлера
+				default: {
+					/**
+					 * Блок трейлеров отбрасывается отдельно от сообщения: тело к моменту
+					 * его отправки уже на проводе, и завершить его нулевым чанком
+					 * отправитель обязан в любом случае. Поэтому сообщение непригодным
+					 * не помечается - непригодны только трейлеры
+					 */
+					result.malformed = false;
+					// Если трейлеры собираемого сообщения формируются
+					if(!result.trailers.empty()){
+						// Помечаем блок трейлеров как умышленно непригодный к отправке
+						result.badTrailers = true;
+						// Дописываем трейлер с недопустимым в значении символом
+						result.trailers.emplace_back("X-Bad-Trailer", (::token(::pick(8)) + control + "X-Injected: yes"));
+					}
+				}
+			}
 		}
 		// Выводим описание собираемого исходящего сообщения
 		return result;
@@ -956,9 +1140,36 @@ namespace {
 		// Формируем контейнер заголовков собираемого сообщения
 		const version_t version = (outgoing.legacy ? version_t::HTTP1_0 : version_t::HTTP1_1);
 		// Формируем контейнер заголовков собираемого сообщения
-		headers_t block((outgoing.direct == direct_t::REQUEST)
-		 ? headers_t(std::make_unique <request_t> (version, outgoing.method, outgoing.target))
-		 : headers_t(std::make_unique <response_t> (version, outgoing.code)));
+		// Объект провайдера собираемого сообщения
+		std::unique_ptr <provider_t> provider;
+		// Если собирается запрос клиента
+		if(outgoing.direct == direct_t::REQUEST){
+			// Формируем объект провайдера запроса клиента
+			auto request = std::make_unique <request_t> (version, outgoing.method, outgoing.target);
+			// Устанавливаем оригинальное написание метода запроса
+			request->methodName = outgoing.spelling;
+			// Передаём объект провайдера запроса клиента
+			provider = std::move(request);
+		// Если собирается ответ сервера
+		} else {
+			// Формируем объект провайдера ответа сервера
+			auto response = std::make_unique <response_t> (version, outgoing.code);
+			// Устанавливаем пояснение к коду состояния ответа
+			response->message = outgoing.reason;
+			// Передаём объект провайдера ответа сервера
+			provider = std::move(response);
+			/**
+			 * Устанавливаем метод запроса, которому соответствует собираемый ответ:
+			 * от него зависит, способен ли ответ нести тело и не открывает ли он туннель
+			 */
+			sender.method(outgoing.method);
+		}
+		// Формируем контейнер заголовков собираемого сообщения
+		headers_t block(std::move(provider));
+		// Если собирается запрос клиента и заголовок Host задан
+		if((outgoing.direct == direct_t::REQUEST) && !outgoing.host.empty())
+			// Дописываем обязательный для запроса HTTP/1.1 заголовок Host
+			block.emplace("Host", outgoing.host);
 		/**
 		 * Дописываем заголовки собираемого сообщения
 		 */
@@ -1150,7 +1361,7 @@ namespace {
 		// Если разбирается ответ сервера
 		if(outgoing.direct == direct_t::RESPONSE)
 			// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
-			receiver.method(method_t::GET);
+			receiver.method(outgoing.method);
 		// Принятое тело сообщения
 		std::string body;
 		// Принятые заголовки сообщения
@@ -1220,10 +1431,15 @@ namespace {
 			// Выводим отрицательный результат
 			return false;
 		}
-		// Если количество принятых трейлеров не совпало с отправленным
-		if(trailers.size() != outgoing.trailers.size()){
+		/**
+		 * Определяем ожидаемое количество трейлеров: непригодный к отправке блок
+		 * отправитель отбрасывает целиком, завершая тело нулевым чанком без него
+		 */
+		const size_t expectedTrailers = (outgoing.badTrailers ? 0 : outgoing.trailers.size());
+		// Если количество принятых трейлеров не совпало с ожидаемым
+		if(trailers.size() != expectedTrailers){
 			// Формируем причину расхождения
-			reason = ("трейлеры разошлись: отправлено " + std::to_string(outgoing.trailers.size()) +
+			reason = ("трейлеры разошлись: ожидалось " + std::to_string(expectedTrailers) +
 			 ", принято " + std::to_string(trailers.size()));
 			// Выводим отрицательный результат
 			return false;

@@ -361,6 +361,88 @@ namespace {
 		return targetTable[letter];
 	}
 	/**
+	 * @brief Функция проверки пригодности названия поля к отправке
+	 *
+	 * @details Название поля обязано быть непустым токеном (RFC 9110 §5.1). Проверка
+	 *          выполняется по той же таблице, по которой название разбирается на приёме:
+	 *          собранное сообщение обязано быть разбираемым собственным приёмником
+	 *
+	 * @param name проверяемое название поля
+	 * @return     результат проверки
+	 *
+	 */
+	bool isSendableName(const string_view name) noexcept {
+		// Пустое название поля непригодно к отправке
+		if(name.empty())
+			// Выводим результат проверки
+			return false;
+		/**
+		 * Выполняем перебор всех символов названия поля
+		 */
+		for(const char letter : name){
+			// Если символ не принадлежит токенам - название непригодно к отправке
+			if(!::isToken(static_cast <uint8_t> (letter)))
+				// Выводим результат проверки
+				return false;
+		}
+		// Выводим результат проверки
+		return true;
+	}
+	/**
+	 * @brief Функция проверки пригодности значения поля либо пояснения к коду состояния к отправке
+	 *
+	 * @details Значение поля (RFC 9110 §5.5) и пояснение к коду состояния (RFC 9112 §4)
+	 *          собираются из одного набора символов: HTAB / SP / VCHAR / obs-text.
+	 *          Управляющие символы, и прежде всего CR и LF, обязаны быть отвергнуты -
+	 *          иначе вызывающая сторона расщепляет собираемое сообщение на два
+	 *
+	 * @param value проверяемое значение
+	 * @return      результат проверки
+	 *
+	 */
+	bool isSendableValue(const string_view value) noexcept {
+		/**
+		 * Выполняем перебор всех символов значения
+		 */
+		for(const char letter : value){
+			// Если символ недопустим в значении - значение непригодно к отправке
+			if(!::isValueCh(static_cast <uint8_t> (letter)))
+				// Выводим результат проверки
+				return false;
+		}
+		// Выводим результат проверки
+		return true;
+	}
+	/**
+	 * @brief Функция проверки пригодности цели запроса к отправке
+	 *
+	 * @details Проверяется непустота и отсутствие пробелов и управляющих символов
+	 *          (RFC 9112 §3.2): именно они расщепляют стартовую строку. Полная
+	 *          грамматика URI здесь не разбирается - она принадлежит слою URI,
+	 *          а не сборщику сообщений
+	 *
+	 * @param target проверяемая цель запроса
+	 * @return       результат проверки
+	 *
+	 */
+	bool isSendableTarget(const string_view target) noexcept {
+		// Пустая цель запроса непригодна к отправке
+		if(target.empty())
+			// Выводим результат проверки
+			return false;
+		/**
+		 * Выполняем перебор всех символов цели запроса
+		 */
+		for(const char letter : target){
+			// Если символ недопустим в цели запроса - цель непригодна к отправке
+			if(!::isTargetCh(static_cast <uint8_t> (letter)))
+				// Выводим результат проверки
+				return false;
+		}
+		// Выводим результат проверки
+		return true;
+	}
+	/**
 	 * @brief Функция проверки принадлежности символа к десятичным цифрам
 	 *
 	 * @param letter проверяемый символ
@@ -5462,6 +5544,188 @@ const awh::http::Parser_HTTP::message_t & awh::http::Parser_HTTP::message() cons
 	return this->_message;
 }
 /**
+ * @brief Метод проверки пригодности полей исходящего сообщения к отправке
+ *
+ * @param headers контейнер заголовков исходящего сообщения
+ * @return        результат проверки
+ *
+ */
+bool awh::http::Parser_HTTP::checkOutgoingFields(const headers_t & headers) const noexcept {
+	/**
+	 * Выполняем перебор всех полей контейнера
+	 */
+	for(const auto & header : headers){
+		// Если название поля не является непустым токеном
+		if(!::isSendableName(header.name)){
+			// Записываем сообщение о непригодном названии поля в лог
+			this->_log->print(
+				"HTTP/1.x outgoing field name is not a valid token: message dropped",
+				log_t::flag_t::CRITICAL
+			);
+			// Выводим результат проверки
+			return false;
+		}
+		// Если значение поля содержит недопустимые символы
+		if(!::isSendableValue(header.value)){
+			/**
+			 * Значение поля выводится в лог без содержимого: именно оно и содержит
+			 * управляющие символы, а запись их в журнал переносит расщепление строки
+			 * из соединения в журнал
+			 */
+			this->_log->print(
+				"HTTP/1.x outgoing field value contains control characters: message dropped (field \"%s\")",
+				log_t::flag_t::CRITICAL, header.name.c_str()
+			);
+			// Выводим результат проверки
+			return false;
+		}
+	}
+	// Выводим результат проверки
+	return true;
+}
+/**
+ * @brief Метод проверки пригодности стартовой строки исходящего сообщения к отправке
+ *
+ * @param headers контейнер заголовков исходящего сообщения
+ * @return        результат проверки
+ *
+ */
+bool awh::http::Parser_HTTP::checkOutgoingStartLine(const headers_t & headers) const noexcept {
+	// Получаем объект провайдера контейнера заголовков
+	const provider_t * provider = headers.provider();
+	// Если объект провайдера не установлен - стартовую строку формировать не из чего
+	if(provider == nullptr)
+		// Выводим результат проверки
+		return false;
+	/**
+	 * Определяем направление трафика собираемого сообщения
+	 */
+	switch(static_cast <uint8_t> (this->_direct)){
+		// Если собирается запрос клиента
+		case static_cast <uint8_t> (direct_t::REQUEST): {
+			// Безопасно приводим провайдер к типу запроса клиента
+			const request_t * request = static_cast <const request_t *> (provider);
+			/**
+			 * Метод запроса обязан быть непустым токеном (RFC 9112 §3.1). Для метода
+			 * UNKNOWN провайдер возвращает написание, заданное вызывающей стороной,
+			 * и оно проверяется наравне с полями: пробел внутри него добавил бы
+			 * стартовой строке лишний разделитель
+			 */
+			if(!::isSendableName(awh::http::methodName(request))){
+				// Записываем сообщение о непригодном методе запроса в лог
+				this->_log->print(
+					"HTTP/1.x outgoing request method is empty or is not a valid token: message dropped",
+					log_t::flag_t::CRITICAL
+				);
+				// Выводим результат проверки
+				return false;
+			}
+			// Если цель запроса пустая либо содержит пробелы или управляющие символы
+			if(!::isSendableTarget(request->uri)){
+				/**
+				 * Пробел внутри цели запроса добавляет стартовой строке лишний
+				 * разделитель, а CR или LF расщепляет её на две: получатель прочитал
+				 * бы остаток как отдельный запрос
+				 */
+				this->_log->print(
+					"HTTP/1.x outgoing request target is empty or contains spaces or control characters: message dropped",
+					log_t::flag_t::CRITICAL
+				);
+				// Выводим результат проверки
+				return false;
+			}
+			/**
+			 * Запрос HTTP/1.1 обязан нести заголовок Host (RFC 9110 §7.2), а сервер
+			 * обязан отвергнуть запрос без него кодом [400 Bad Request]. Собрать
+			 * сообщение, которое любой соответствующий стандарту получатель отвергнет,
+			 * означает потратить соединение впустую - поэтому проверка не выключается
+			 * переключателем, в отличие от симметричной проверки на приёме: там
+			 * послабление нужно ради нестандартных отправителей, здесь послаблять
+			 * нечего - отправитель наш собственный
+			 */
+			if((request->version == version_t::HTTP1_1) && !headers.has("Host")){
+				// Записываем сообщение об отсутствующем заголовке Host в лог
+				this->_log->print(
+					"HTTP/1.x outgoing HTTP/1.1 request has no Host field: message dropped",
+					log_t::flag_t::CRITICAL
+				);
+				// Выводим результат проверки
+				return false;
+			}
+			/**
+			 * Если заголовок Host установлен - проверяем отсутствие пробелов внутри значения
+			 *
+			 * Проверка повторяет ту, что выполняется на приёме (applyHost): собранное
+			 * сообщение обязано быть разбираемым собственным приёмником, иначе выданный
+			 * на провод запрос отвергался бы обеими сторонами - и получателем, и самой
+			 * библиотекой при разборе того же байтового потока. Полная грамматика
+			 * uri-host здесь, как и на приёме, не разбирается намеренно
+			 */
+			if(headers.has("Host")){
+				// Получаем значение заголовка Host
+				const string & host = headers.at("Host");
+				// Указатель на начало значения заголовка
+				const char * hb = host.data();
+				// Указатель на конец значения заголовка
+				const char * he = (host.data() + host.size());
+				// Выполняем триминг OWS по краям значения заголовка
+				::trimOWS(hb, he);
+				/**
+				 * Выполняем поиск пробельных символов внутри значения заголовка
+				 */
+				for(const char * current = hb; current < he; ++current){
+					// Если внутри значения обнаружен пробельный символ
+					if((* current == ' ') || (* current == '\t')){
+						// Записываем сообщение о непригодном заголовке Host в лог
+						this->_log->print(
+							"HTTP/1.x outgoing Host field contains whitespace inside its value: message dropped",
+							log_t::flag_t::CRITICAL
+						);
+						// Выводим результат проверки
+						return false;
+					}
+				}
+			}
+		} break;
+		// Если собирается ответ сервера
+		case static_cast <uint8_t> (direct_t::RESPONSE): {
+			// Безопасно приводим провайдер к типу ответа сервера
+			const response_t * response = static_cast <const response_t *> (provider);
+			/**
+			 * Код состояния записывается в стартовую строку тремя цифрами
+			 * (RFC 9112 §4): код меньше сотни занял бы меньше трёх цифр, код больше
+			 * девятисот девяноста девяти - больше трёх, и в обоих случаях получатель
+			 * разбирает стартовую строку не так, как она собиралась
+			 */
+			if((response->code < 100) || (response->code > 999)){
+				// Записываем сообщение о недопустимом коде состояния в лог
+				this->_log->print(
+					"HTTP/1.x outgoing status code is not a three-digit number: message dropped (%u)",
+					log_t::flag_t::CRITICAL, static_cast <uint32_t> (response->code)
+				);
+				// Выводим результат проверки
+				return false;
+			}
+			// Если пояснение к коду состояния содержит недопустимые символы
+			if(!::isSendableValue(response->message)){
+				/**
+				 * Пояснение к коду состояния уходит на провод последним элементом
+				 * стартовой строки, и CR или LF внутри него дописывает получателю
+				 * произвольные поля заголовков
+				 */
+				this->_log->print(
+					"HTTP/1.x outgoing reason phrase contains control characters: message dropped",
+					log_t::flag_t::CRITICAL
+				);
+				// Выводим результат проверки
+				return false;
+			}
+		} break;
+	}
+	// Выводим результат проверки
+	return true;
+}
+/**
  * @brief Метод сброса состояния отправки для следующего сообщения в том же соединении
  *
  * @details Готовит отправитель к следующему сообщению (keep-alive): сбрасывает
@@ -5635,6 +5899,25 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 					// Выходим из метода
 					return;
 				}
+				/**
+				 * Если поля блока трейлеров непригодны к отправке - блок отбрасывается,
+				 * но тело всё равно завершается нулевым чанком
+				 *
+				 * Отвергнуть сообщение целиком здесь нельзя: тело уже ушло на провод,
+				 * и без нулевого чанка получатель ждал бы его продолжения до закрытия
+				 * соединения. Трейлеры же необязательны - получатель вправе не понимать
+				 * их вовсе (RFC 9110 §6.5), и сообщение без них остаётся полноценным
+				 */
+				if(!this->checkOutgoingFields(headers)){
+					// Завершаем тело последним (нулевым) чанком без блока трейлеров
+					this->_sender.output.push("0\r\n\r\n", 5);
+					// Помечаем что исходящее сообщение завершено
+					this->_sender.endSent = true;
+					// Передаём исходящие байты сетевому слою
+					this->flush();
+					// Выходим из метода
+					return;
+				}
 				// Сериализуем блок трейлеров сообщения
 				string block = headers.print(http::proto_t::HTTP1);
 				// Вычищаем из блока поля, запрещённые в трейлерах
@@ -5695,12 +5978,51 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			// Выходим из метода
 			return;
 		}
+		/**
+		 * Если стартовая строка либо поля непригодны к отправке - сообщение не собирается
+		 *
+		 * Проверка стоит перед выбором кадрирования: непригодное сообщение не должно
+		 * оставлять за собой ни изменённого состояния отправителя, ни байтов в выходном
+		 * буфере - вызывающая сторона вправе исправить контейнер и повторить отправку
+		 */
+		if(!this->checkOutgoingStartLine(headers) || !this->checkOutgoingFields(headers))
+			// Выходим из метода
+			return;
 		// Версия протокола исходящего сообщения (по умолчанию HTTP/1.1)
 		version_t version = version_t::HTTP1_1;
 		// Если провайдер контейнера установлен и версия протокола определена
 		if((headers.provider() != nullptr) && (headers.provider()->version != version_t::NONE))
 			// Получаем версию протокола из провайдера контейнера
 			version = headers.provider()->version;
+		// Код состояния собираемого ответа сервера (для запроса клиента не определён)
+		const uint16_t code = ((this->_direct == direct_t::RESPONSE) ?
+			static_cast <const response_t *> (headers.provider())->code : 0
+		);
+		/**
+		 * Признак ответа, который не может нести тела
+		 *
+		 * Ответ на запрос HEAD и любой ответ с кодом 1xx, [204 No Content] либо
+		 * [304 Not Modified] заканчивается первой пустой строкой после блока заголовков
+		 * независимо от присутствующих в нём полей (RFC 9112 §6.3 п.1). Байты, выданные
+		 * следом, получатель прочитает не как тело, а как начало следующего ответа -
+		 * то есть кадрировать тело здесь означает рассинхронизировать соединение
+		 */
+		const bool bodiless = ((this->_direct == direct_t::RESPONSE) && (
+			(this->_method == method_t::HEAD) ||
+			((code >= 100) && (code < 200)) || (code == 204) || (code == 304)
+		));
+		/**
+		 * Признак ответа, открывающего туннель
+		 *
+		 * Успешный ответ на запрос CONNECT превращает соединение в туннель сразу за
+		 * пустой строкой, завершающей блок заголовков (RFC 9112 §6.3 п.2). Заголовки
+		 * Content-Length и Transfer-Encoding в таком ответе отправлять запрещено
+		 * (RFC 9112 §6.2), а получатель обязан их игнорировать: выданные следом байты
+		 * принадлежат туннелю и кадрированию не подлежат
+		 */
+		const bool tunnel = ((this->_direct == direct_t::RESPONSE) &&
+			(this->_method == method_t::CONNECT) && (code >= 200) && (code < 300)
+		);
 		// Признак необходимости дописать заголовок Transfer-Encoding: chunked
 		bool injectChunked = false;
 		// Признак необходимости завершить объявленное кадрирование chunked нулевым чанком
@@ -5709,6 +6031,8 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 		bool dropEncoding = false;
 		// Признак необходимости вычистить заголовок Transfer-Encoding, недопустимый в HTTP/1.0
 		bool dropLegacyEncoding = false;
+		// Признак необходимости вычистить заголовок Transfer-Encoding из ответа, не несущего кадрированного тела
+		bool dropFraming = false;
 		// Признак отказа кадрировать тело исходящего сообщения (сообщение завершается заголовками)
 		bool bodyRefused = false;
 		// Признак объявленного нулевого размера тела (сообщение завершается заголовками)
@@ -5767,8 +6091,76 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 				);
 			}
 		}
+		// Если ответ сервера не может нести тела - оно не кадрируется вовсе
+		if(bodiless){
+			// Тело исходящего сообщения отсутствует
+			this->_sender.framing = sender_t::framing_t::NONE;
+			/**
+			 * Сообщение помечается завершённым: на проводе блок заголовков уже является
+			 * законченным ответом, и состояние отправителя обязано этому соответствовать.
+			 * Иначе отправитель считал бы сообщение незавершённым, а следующий
+			 * sendHeaders молча выходил бы по проверке незавершённого предыдущего
+			 */
+			bodyRefused = true;
+			/**
+			 * Удаляем источник данных тела, назначенный до отправки заголовков:
+			 * выдать его тело в этом ответе невозможно, и держать захваченные им
+			 * ресурсы до сброса отправителя незачем
+			 */
+			this->_sender.source = nullptr;
+			/**
+			 * Ответы с кодом 1xx и [204 No Content] не несут и объявлений кадрирования:
+			 * отправлять в них Content-Length и Transfer-Encoding запрещено
+			 * (RFC 9112 §6.1, §6.2). Ответу на HEAD и ответу [304 Not Modified] оба
+			 * заголовка, напротив, разрешены - они сообщают размер и кодирование тела,
+			 * которое было бы отправлено в ответ на такой же запрос GET
+			 */
+			if((code < 200) || (code == 204)){
+				// Помечаем заголовок Content-Length к вычистке из блока
+				dropLength = hasLength;
+				// Помечаем заголовок Transfer-Encoding к вычистке из блока
+				dropFraming = hasEncoding;
+				// Если хотя бы один заголовок кадрирования подлежит вычистке
+				if(dropLength || dropFraming)
+					// Записываем сообщение о недопустимых в таком ответе заголовках в лог
+					this->_log->print(
+						"HTTP/1.x outgoing %u response must not declare Content-Length or Transfer-Encoding: the field(s) have been dropped",
+						log_t::flag_t::WARNING, static_cast <uint32_t> (code)
+					);
+			}
+			// Если вызывающая сторона всё же собиралась отдать тело
+			if(!endStream)
+				// Записываем сообщение о невозможности отправить тело в лог
+				this->_log->print(
+					"HTTP/1.x outgoing response cannot carry a body and it is not accepted: the body would be read as the next response",
+					log_t::flag_t::CRITICAL
+				);
+		}
+		/**
+		 * Если ответ открывает туннель - байты за блоком заголовков ему и принадлежат
+		 *
+		 * Кадрирование к ним не применяется, а объявления Content-Length и
+		 * Transfer-Encoding снимаются с провода: отправлять их запрещено
+		 * (RFC 9112 §6.2), а получатель обязан их игнорировать (§6.3 п.2) - оставленное
+		 * объявление разошлось бы с тем, чем содержимое туннеля кадрируется на самом деле
+		 */
+		else if(tunnel) {
+			// Содержимое туннеля передаётся без кадрирования
+			this->_sender.framing = sender_t::framing_t::RAW;
+			// Помечаем заголовок Content-Length к вычистке из блока
+			dropLength = hasLength;
+			// Помечаем заголовок Transfer-Encoding к вычистке из блока
+			dropFraming = hasEncoding;
+			// Если хотя бы один заголовок кадрирования подлежит вычистке
+			if(dropLength || dropFraming)
+				// Записываем сообщение о недопустимых в таком ответе заголовках в лог
+				this->_log->print(
+					"HTTP/1.x outgoing successful CONNECT response must not declare Content-Length or Transfer-Encoding: the field(s) have been dropped",
+					log_t::flag_t::WARNING
+				);
+		}
 		// Если сообщение завершается заголовками - тела не будет
-		if(endStream){
+		else if(endStream) {
 			// Тело исходящего сообщения отсутствует
 			this->_sender.framing = sender_t::framing_t::NONE;
 			/**
@@ -5892,7 +6284,7 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 		 * заголовок снимается с провода - иначе объявление противоречило бы тому, чем
 		 * тело кадрируется на самом деле
 		 */
-		if(hasEncoding && !dropEncoding && (version == version_t::HTTP1_0))
+		if(hasEncoding && !dropEncoding && !dropFraming && (version == version_t::HTTP1_0))
 			// Помечаем заголовок к вычистке из блока
 			dropLegacyEncoding = true;
 		/**
@@ -5905,7 +6297,7 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 		 * выбора кадрирования: заголовок уходит на провод и при завершении сообщения
 		 * заголовками, когда кадрирование тела не выбирается вовсе
 		 */
-		if(hasEncoding && !dropEncoding && !dropLegacyEncoding){
+		if(hasEncoding && !dropEncoding && !dropLegacyEncoding && !dropFraming){
 			// Получаем все значения заголовка транспортного кодирования
 			const vector <string> values = headers.range("Transfer-Encoding");
 			// Если последнее кодирование не заканчивается токеном chunked
@@ -5946,6 +6338,10 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			// Записываем сообщение о недопустимом в HTTP/1.0 кадрировании исходящего сообщения в лог
 			this->_log->print("HTTP/1.x outgoing HTTP/1.0 message declares Transfer-Encoding and it has been dropped", log_t::flag_t::WARNING);
 			// Удаляем недопустимый в HTTP/1.0 заголовок из сериализованного блока
+			::dropHeaderLine(block, "transfer-encoding");
+		// Если необходимо вычистить заголовок Transfer-Encoding из ответа, не несущего кадрированного тела
+		} else if(dropFraming) {
+			// Сообщение об этом уже записано при выборе кадрирования тела
 			::dropHeaderLine(block, "transfer-encoding");
 		}
 		/**

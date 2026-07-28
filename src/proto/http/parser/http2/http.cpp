@@ -771,7 +771,7 @@ void awh::http::Parser_HTTP2::Stream::compactSendBuffer() noexcept {
 awh::http::Parser_HTTP2::Stream::Stream() noexcept :
  id(0), sourceEof(false), headersDone(false),
  endStreamSent(false), endStreamPending(false),
- writableNotified(false), recvBody(0), contentLength(-1), bodyless(false),
+ writableNotified(false), queued(false), recvBody(0), contentLength(-1), bodyless(false), bodylessSend(false),
  urgency(h2::proto::DEFAULT_URGENCY), incremental(false), prioritized(false),
  localWindow(h2::proto::DEFAULT_WINDOW_SIZE),
  remoteWindow(h2::proto::DEFAULT_WINDOW_SIZE),
@@ -1154,8 +1154,24 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	 * и фазы приёма сообщения по нему не начинаются (RFC 9113 §8.1)
 	 */
 	bool informational = false;
+	// Если разбирается запрос клиента и это не блок трейлеров
+	if(isRequest && !isTrailers){
+		/**
+		 * Выполняем поиск псевдо-заголовка метода (его формат уже провалидирован)
+		 */
+		for(const h2::hpack::field_view_t & field : fields){
+			// Если псевдо-заголовок метода запроса найден
+			if(field.name == header::METHOD){
+				// Ответ на запрос методом HEAD содержимого не несёт (RFC 9110 §9.3.2)
+				if(field.value == value::HEAD)
+					// Помечаем что отправляемое по потоку сообщение тела нести не может
+					stream->bodylessSend = true;
+				// Прекращаем поиск
+				break;
+			}
+		}
 	// Если разбирается ответ сервера и это не блок трейлеров
-	if(!isRequest && !isTrailers){
+	} else if(!isRequest && !isTrailers) {
 		/**
 		 * Выполняем поиск псевдо-заголовка статуса (его формат уже провалидирован)
 		 */
@@ -2346,6 +2362,15 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 		}
 		// Фрейм обновления расширенного приоритета потока (RFC 9218 §7.1)
 		case h2::frame_t::PRIORITY_UPDATE: {
+			/**
+			 * Приоритет объявляет только клиент: сервер отправлять кадр не вправе,
+			 * и получивший его клиент обязан оборвать соединение (RFC 9218 §7.1).
+			 * Проверка стоит до разбора нагрузки - отвергается сам факт кадра,
+			 * а не его содержимое
+			 */
+			if(this->_direct == direct_t::RESPONSE)
+				// Фиксируем ошибку уровня соединения
+				return this->fail(error_t::PROTOCOL_ERROR, "client received PRIORITY_UPDATE");
 			// Пополняем лимит частоты кадров приоритета по текущему времени
 			this->_ratelims.prio.update(this->_ratelims.now);
 			// Если лимит частоты кадров приоритета превышен
@@ -2399,9 +2424,12 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			 * наибольшего принятого относится к потоку, который уже открывался:
 			 * приоритет закрытого потока смысла не имеет и не запоминается
 			 */
-			else if(sid > this->_transfer.lastStreamId)
-				// Запоминаем приоритет до открытия потока
-				this->deferPriority(sid, value);
+			else if(sid > this->_transfer.lastStreamId){
+				// Если запомнить приоритет не удалось - лимит одновременных потоков исчерпан
+				if(!this->deferPriority(sid, value))
+					// Фиксируем ошибку уровня соединения (RFC 9218 §7.1)
+					return this->fail(error_t::PROTOCOL_ERROR, "PRIORITY_UPDATE max concurrent streams exceeded");
+			}
 			// Обработка фрейма завершена
 			return h2::status_t::OK;
 		}
@@ -3257,6 +3285,22 @@ bool awh::http::Parser_HTTP2::fireHeader(const uint32_t id, const string_view na
 	return false;
 }
 /**
+ * @brief Метод постановки потока в очередь готовых к отправке
+ *
+ * @param stream объект потока
+ *
+ */
+void awh::http::Parser_HTTP2::markReady(stream_t & stream) noexcept {
+	// Если поток уже стоит в очереди готовых - добавлять нечего
+	if(stream.queued)
+		// Выходим из метода
+		return;
+	// Помечаем что поток стоит в очереди готовых
+	stream.queued = true;
+	// Ставим поток в очередь готовых к отправке
+	this->_transfer.readyIds.push_back(stream.id);
+}
+/**
  * @brief Метод прокачки отправки по всем потокам с учётом окон и порога выходного буфера
  *
  * @details Round-robin: за каждый проход отправляется не более одного DATA-фрейма
@@ -3282,38 +3326,59 @@ void awh::http::Parser_HTTP2::pump() noexcept {
 		progress = false;
 		// Очищаем снимок идентификаторов потоков
 		this->_transfer.pumpIds.clear();
+		// Число записей, сохраняемых в очереди готовых
+		size_t keep = 0;
 		/**
-		 * Собираем снимок идентификаторов: прокачка может удалить поток из карты
+		 * Собираем снимок идентификаторов из очереди готовых, попутно уплотняя её
+		 * на месте. Наружу этот перебор не выходит, поэтому очередь под ним вырасти
+		 * не может; сам снимок нужен отдельным буфером - упорядочивание переставляет
+		 * ячейки, и порядка очереди после него не остаётся
 		 */
-		for(const auto & item : this->_transfer.streams){
-			/**
-			 * Данные тела отправляются только из состояний open и half-closed(remote)
-			 * (RFC 9113 §5.1) - в остальных прокачивать нечего
-			 */
-			if((item.second.state != h2::stream_state_t::OPEN) && (item.second.state != h2::stream_state_t::HALF_CLOSED_REMOTE))
-				// Переходим к следующему потоку карты
+		for(size_t i = 0; i < this->_transfer.readyIds.size(); i++){
+			// Получаем идентификатор очередного потока очереди
+			const uint32_t id = this->_transfer.readyIds[i];
+			// Выполняем поиск потока
+			stream_t * stream = this->findStream(id);
+			// Если поток удалён - запись очереди снимается вместе с ним
+			if(stream == nullptr)
+				// Переходим к следующей записи очереди
 				continue;
 			/**
-			 * Поток без данных в буфере, без источника, без отложенного завершения и
-			 * без отложенных трейлеров прогресса дать не может: он ждёт пира, а не окна
-			 * отправки. В снимок такие потоки не берём - иначе упорядочивание стоило бы
-			 * тем дороже, чем больше потоков соединения простаивает, а простаивают
-			 * на сервере почти все: тело отдаётся единицами из сотен открытых
+			 * Поток без данных в буфере, с исчерпанным источником, без отложенного
+			 * завершения и без отложенных трейлеров прогресса дать не может: он ждёт
+			 * пира, а не окна отправки. Такую запись снимаем с очереди - она своё
+			 * отработала, а назначенный заново источник поставит поток обратно
 			 */
-			if((item.second.pending() == 0) && (item.second.source == nullptr) && !item.second.endStreamPending && !item.second.trailersPending)
-				// Переходим к следующему потоку карты
+			if((stream->pending() == 0) && this->sourceDone(* stream) && !stream->endStreamPending && !stream->trailersPending){
+				// Снимаем признак нахождения потока в очереди готовых
+				stream->queued = false;
+				// Переходим к следующей записи очереди
+				continue;
+			}
+			// Сохраняем запись в уплотняемой очереди готовых
+			this->_transfer.readyIds[keep++] = id;
+			/**
+			 * Данные тела отправляются только из состояний open и half-closed(remote)
+			 * (RFC 9113 §5.1). Из очереди такой поток не снимается: содержимое при нём
+			 * остаётся, а состояние ещё вправе смениться - зарезервированный под push
+			 * поток отправит своё тело сразу после собственных заголовков
+			 */
+			if((stream->state != h2::stream_state_t::OPEN) && (stream->state != h2::stream_state_t::HALF_CLOSED_REMOTE))
+				// Переходим к следующей записи очереди
 				continue;
 			// Формируем ячейку снимка планировщика
 			transfer_t::slot_t slot;
 			// Запоминаем идентификатор потока
-			slot.id = item.first;
+			slot.id = id;
 			// Запоминаем срочность потока
-			slot.urgency = item.second.urgency;
+			slot.urgency = stream->urgency;
 			// Запоминаем признак инкрементальной доставки потока
-			slot.incremental = item.second.incremental;
+			slot.incremental = stream->incremental;
 			// Добавляем ячейку в снимок
 			this->_transfer.pumpIds.push_back(slot);
 		}
+		// Усекаем очередь готовых до числа сохранённых записей
+		this->_transfer.readyIds.resize(keep);
 		/**
 		 * Упорядочиваем снимок по расширенному приоритету (RFC 9218 §10): сначала
 		 * более срочные потоки, внутри одной срочности неинкрементальные обслуживаются
@@ -3503,6 +3568,19 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 	if((stream.source == nullptr) || stream.sourceEof)
 		// Выходим из метода
 		return;
+	/**
+	 * Ответ на запрос методом HEAD содержимого не несёт (RFC 9110 §9.3.2), поэтому
+	 * источник данных не опрашивается вовсе: иначе HEAD по большому ресурсу заставил
+	 * бы приложение вычитать его целиком - ради того, чтобы всё вычитанное отбросить
+	 */
+	if(stream.bodylessSend){
+		// Помечаем что конец тела источника достигнут
+		stream.sourceEof = true;
+		// Помечаем что на последнем фрагменте нужно выставить END_STREAM
+		stream.endStreamPending = true;
+		// Выходим из метода
+		return;
+	}
 	// Запоминаем идентификатор потока
 	const uint32_t id = stream.id;
 	// Указатель на объект потока (источник данных вправе закрыть поток)
@@ -3746,9 +3824,10 @@ void awh::http::Parser_HTTP2::parsePriority(const string_view value, uint8_t & u
  *
  * @param id    идентификатор приоритизируемого потока
  * @param value значение поля приоритета
+ * @return      результат запоминания (false - исчерпан лимит одновременных потоков)
  *
  */
-void awh::http::Parser_HTTP2::deferPriority(const uint32_t id, const string_view value) noexcept {
+bool awh::http::Parser_HTTP2::deferPriority(const uint32_t id, const string_view value) noexcept {
 	// Формируем запись отложенного приоритета
 	transfer_t::pending_t pending;
 	// Запоминаем идентификатор приоритизируемого потока
@@ -3763,16 +3842,31 @@ void awh::http::Parser_HTTP2::deferPriority(const uint32_t id, const string_view
 		if(item.id == id){
 			// Новый сигнал заменяет прежний целиком (RFC 9218 §4)
 			item = pending;
-			// Выходим из метода
-			return;
+			// Приоритет запомнен (нового потока сигнал не добавил)
+			return true;
 		}
 	}
-	// Если кольцо заполнено - вытесняем самую старую запись
+	/**
+	 * Сумма приоритизированных потоков в состоянии idle и активных потоков пира
+	 * не вправе превысить объявленный нами SETTINGS_MAX_CONCURRENT_STREAMS
+	 * (RFC 9218 §7.1): иначе пир занимал бы сигналами приоритета слоты сверх
+	 * того лимита, которым мы ограничили его одновременные потоки
+	 */
+	if((this->_transfer.pendingPriorities.size() + this->_transfer.peerStreamCount) >= this->_local.maxConcurrentStreams)
+		// Приоритет не запомнен - лимит одновременных потоков исчерпан
+		return false;
+	/**
+	 * Кольцо ограничивает цену сигнала и сверху, независимо от лимита потоков:
+	 * при высоком SETTINGS_MAX_CONCURRENT_STREAMS оно вытесняет самую старую
+	 * запись, а не растёт вслед за объявленным лимитом
+	 */
 	if(this->_transfer.pendingPriorities.size() >= PENDING_PRIORITIES_CACHE)
 		// Снимаем самую старую запись кольца
 		this->_transfer.pendingPriorities.erase(this->_transfer.pendingPriorities.begin());
 	// Запоминаем приоритет до открытия потока
 	this->_transfer.pendingPriorities.push_back(pending);
+	// Приоритет запомнен
+	return true;
 }
 /**
  * @brief Метод применения приоритета, отложенного до открытия потока
@@ -4037,6 +4131,8 @@ bool awh::http::Parser_HTTP2::deferTrailers(const uint32_t sid, const vector <h2
 		stream->trailers = fields;
 		// Помечаем что секция трейлеров отложена
 		stream->trailersPending = true;
+		// Ставим поток в очередь готовых к отправке
+		this->markReady(* stream);
 		// Если трейлеры не завершают поток - это нарушение (RFC 9113 §8.1)
 		if(!endStream)
 			// Записываем сообщение об ошибке в лог
@@ -4324,6 +4420,8 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 	this->_transfer.streams.clear();
 	// Очищаем снимок идентификаторов потоков
 	this->_transfer.pumpIds.clear();
+	// Очищаем очередь готовых к отправке потоков
+	this->_transfer.readyIds.clear();
 	// Очищаем снимок идентификаторов закрываемых потоков
 	this->_transfer.closeIds.clear();
 	// Очищаем кольцо приоритетов ещё не открытых потоков
@@ -4914,6 +5012,17 @@ void awh::http::Parser_HTTP2::sendShutdown(string_view debug) noexcept {
  */
 void awh::http::Parser_HTTP2::sendPriority(const uint32_t sid, const uint8_t urgency, const bool incremental) noexcept {
 	/**
+	 * Кадр отправляет только клиент: серверу это запрещено прямо, а получивший
+	 * его клиент обязан оборвать соединение (RFC 9218 §7.1). Приоритет своего
+	 * ответа сервер объявляет заголовком priority, а не кадром
+	 */
+	if(this->_direct == direct_t::REQUEST){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print("HTTP/2 server is not allowed to send PRIORITY_UPDATE", log_t::flag_t::WARNING);
+		// Выходим из метода
+		return;
+	}
+	/**
 	 * Клиент вправе приоритизировать не только собственный поток запроса, но и
 	 * обещанный ему push-поток (RFC 9218 §7.1). Поток пира, о котором мы ничего
 	 * не знаем, приоритизировать нельзя: для push это состояние idle, а его
@@ -5048,6 +5157,29 @@ size_t awh::http::Parser_HTTP2::sendData(const uint32_t sid, const void * buffer
 		if(stream->trailersPending)
 			// Выводим число принятых байт
 			return result;
+		/**
+		 * Ответ на запрос методом HEAD содержимого не несёт (RFC 9110 §9.3.2): тело
+		 * принимается и отбрасывается, а не отвергается. Отказ приёмом нуля байт
+		 * приложение прочло бы как заполненный буфер и ждало бы сигнала writable,
+		 * которого при пустом буфере не будет
+		 */
+		if(stream->bodylessSend){
+			// Признаём принятым весь фрагмент, не отправляя из него ничего
+			result = size;
+			// Если фрагмент финальный - поток всё равно обязан завершиться
+			if(endStream){
+				// Помечаем что на последнем фрагменте нужно выставить END_STREAM
+				stream->endStreamPending = true;
+				// Ставим поток в очередь готовых к отправке
+				this->markReady(* stream);
+			}
+			// Прокачиваем отправку по всем потокам
+			this->pump();
+			// Передаём исходящие байты сетевому слою (выход минует общий flush метода)
+			this->flush();
+			// Выводим число принятых байт
+			return result;
+		}
 		// Вычисляем свободное место в буфере отправки до high-water
 		const size_t room = ((stream->pending() < this->_transfer.sendHighWater) ? (this->_transfer.sendHighWater - stream->pending()) : 0);
 		// Принимаем столько байт, сколько влезает (частичный приём + счётчик)
@@ -5060,6 +5192,8 @@ size_t awh::http::Parser_HTTP2::sendData(const uint32_t sid, const void * buffer
 		if(endStream && (result == size))
 			// Помечаем что на последнем фрагменте нужно выставить END_STREAM
 			stream->endStreamPending = true;
+		// Ставим поток в очередь готовых к отправке
+		this->markReady(* stream);
 		// Если буфер отправки поднялся выше low-water - взводим сигнал writable снова
 		if(stream->pending() > this->_transfer.sendLowWater)
 			// Взводим сигнал writable для следующего провала буфера
@@ -5538,6 +5672,8 @@ void awh::http::Parser_HTTP2::dataSource(const uint32_t sid, data_source_callbac
 	stream->source = ::move(source);
 	// Сбрасываем флаг достижения конца тела источника
 	stream->sourceEof = false;
+	// Ставим поток в очередь готовых к отправке
+	this->markReady(* stream);
 	// Прокачиваем отправку по всем потокам
 	this->pump();
 	// Передаём исходящие байты сетевому слою

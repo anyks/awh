@@ -2733,6 +2733,81 @@ TEST_F(ParserHttp3Fixture, HeadResponseSkipsBodyPhase){
 }
 
 /**
+ * @brief Проверка запрета серверу отправлять кадр приоритета (RFC 9218 §7.2)
+ *
+ * @details Серверу запрещены обе разновидности кадра, поэтому запрос приложения
+ *          обязан остаться без байтов в управляющем потоке. Приоритет своего
+ *          ответа сервер объявляет заголовком priority, а не кадром
+ *
+ */
+TEST_F(ParserHttp3Fixture, PriorityUpdateNotSentByServer){
+	// Сторона сервера
+	endpoint_t server;
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Отправляем параметры соединения со стороны сервера
+	server.parser->sendSettings();
+	// Очищаем очередь исходящих данных от служебных байтов рукопожатия
+	server.queue.clear();
+	// Запрашиваем отправку приоритета потока запроса
+	server.parser->sendPriority(0, 0, false);
+	// Запрашиваем отправку приоритета обещания push
+	server.parser->sendPushPriority(0, 0, false);
+	// Проверяем что сервер не отправил ни одного байта
+	ASSERT_TRUE(server.queue.empty());
+}
+
+/**
+ * @brief Проверка подавления тела ответа на запрос методом HEAD (RFC 9110 §9.3.2)
+ *
+ * @details Ответ на HEAD содержимого не несёт, поэтому тело, отданное приложением,
+ *          обязано быть принято и отброшено: отказ приёмом нуля байт приложение
+ *          прочло бы как сигнал приостановить выдачу. Проверяется провод, а не
+ *          приём клиента: безтелесность ответа клиент отслеживает и сам
+ *
+ */
+TEST_F(ParserHttp3Fixture, HeadResponseBodySuppressed){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Отправляем секцию полей запроса методом HEAD
+	client.parser->sendHeaders(0, this->request("HEAD", "/index.html"), true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Отправляем секцию полей ответа, оставляя поток открытым
+	server.parser->sendHeaders(0, this->response("200"), false);
+	// Очищаем очередь исходящих данных от секции полей ответа
+	server.queue.clear();
+	// Формируем тело ответа
+	const std::string body(4 * 1024, 'z');
+	// Отдаём тело ответа с завершением потока
+	const size_t accepted = server.parser->sendData(0, body.data(), body.size(), true);
+	// Тело обязано быть принято целиком: отказ приложение прочло бы как backpressure
+	ASSERT_EQ(accepted, body.size());
+	// Признак обнаружения завершения потока в очереди
+	bool completed = false;
+	/**
+	 * Перебираем очередь исходящих данных: тела на проводе быть не должно,
+	 * а завершение потока обязано дойти признаком FIN транспорта
+	 */
+	for(const auto & item : server.queue){
+		// Данных тела в очереди быть не должно
+		ASSERT_TRUE(std::get <1> (item).empty());
+		// Если запись несёт завершение потока
+		if(std::get <2> (item))
+			// Запоминаем что завершение потока ушло на провод
+			completed = true;
+	}
+	// Завершение потока обязано дойти до клиента
+	ASSERT_TRUE(completed);
+}
+
+/**
  * @brief Проверка разбора приоритета с параметрами structured fields
  *
  * @details Член словаря вправе нести параметры (RFC 8941 §3.1.2): неизвестные

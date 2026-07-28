@@ -928,6 +928,45 @@ void awh::quic2::Connection::rtt(const uint64_t sample, const uint64_t delay) no
 	}
 }
 /**
+ * @brief Метод получения переиспользуемой учётной записи пакета из пула
+ *
+ * @return учётная запись со свежими полями и сохранённой ёмкостью векторов
+ *
+ */
+awh::quic2::Connection::sent_t awh::quic2::Connection::acquire() noexcept {
+	// Создаём запись со свежими скалярными полями (конструктор по умолчанию)
+	sent_t record;
+	// Если в пуле есть освобождённые записи
+	if(!this->_sentPool.empty()){
+		// Переносим в запись сохранённую ёмкость векторов из пула (пуловые векторы уже пусты)
+		record.stream.swap(this->_sentPool.back().stream);
+		record.control.swap(this->_sentPool.back().control);
+		record.crypto.swap(this->_sentPool.back().crypto);
+		// Удаляем опустошённую запись из пула
+		this->_sentPool.pop_back();
+	}
+	// Возвращаем подготовленную запись
+	return record;
+}
+/**
+ * @brief Метод возврата учётной записи пакета в пул для переиспользования
+ *
+ * @param record освобождаемая учётная запись отправленного пакета
+ *
+ */
+void awh::quic2::Connection::recycle(sent_t & record) noexcept {
+	// Предел размера пула: не удерживаем больше записей, чем бывает пакетов в полёте
+	if(this->_sentPool.size() >= 512)
+		// Сверх предела запись просто освобождается
+		return;
+	// Очищаем векторы записи с сохранением выделенной ёмкости
+	record.stream.clear();
+	record.control.clear();
+	record.crypto.clear();
+	// Сохраняем запись в пуле для переиспользования её буферов
+	this->_sentPool.push_back(::move(record));
+}
+/**
  * @brief Метод повторной постановки содержимого пакета в очереди отправки (RFC 9002 §6.3)
  *
  * @param space  пространство номеров пакетов
@@ -3146,6 +3185,8 @@ awh::quic2::status_t awh::quic2::Connection::frames(const level_t level, const u
 						for(auto & chunk : i->stream)
 							// Учитываем подтверждение отправленного блока данных потока
 							this->settle(chunk);
+						// Возвращаем учётную запись подтверждённого пакета в пул
+						this->recycle(* i);
 					}
 					// Удаляем подтверждённые пакеты из списка отправленных
 					item.sent.erase(position, item.sent.end());
@@ -6080,7 +6121,9 @@ bool awh::quic2::Connection::write(string & output, const uint64_t now) noexcept
 		explicit Spec() noexcept : level(level_t::INITIAL), elicit(false) {}
 	} spec_t;
 	// Список собранных нагрузок пакетов датаграммы
-	vector <spec_t> specs;
+	spec_t specs[4];
+	// Количество собранных пакетов датаграммы (не более числа уровней шифрования)
+	size_t count = 0;
 	// Оценка занятого размера датаграммы
 	size_t used = 0;
 	// Флаг исчерпанного окна перегрузки (RFC 9002 §7)
@@ -6106,6 +6149,8 @@ bool awh::quic2::Connection::write(string & output, const uint64_t now) noexcept
 			break;
 		// Собираемый пакет уровня
 		spec_t spec;
+		// Берём учётную запись пакета из пула переиспользования
+		spec.meta = this->acquire();
 		// Устанавливаем уровень шифрования пакета
 		spec.level = level;
 		// Устанавливаем флаг отправки пакета на уровне ранних данных (RFC 9001 §4.6.2)
@@ -6121,10 +6166,10 @@ bool awh::quic2::Connection::write(string & output, const uint64_t now) noexcept
 		// Учитываем предельную оценку размера пакета: накладные расходы и нагрузка
 		used += (reserve + buffer.size());
 		// Добавляем нагрузку пакета в список сборки
-		specs.push_back(::move(spec));
+		specs[count++] = ::move(spec);
 	}
 	// Если нагрузок для отправки нет
-	if(specs.empty())
+	if(count == 0)
 		// Выводим отрицательный результат
 		return false;
 	// Флаг наличия пакета Initial в датаграмме
@@ -6133,7 +6178,7 @@ bool awh::quic2::Connection::write(string & output, const uint64_t now) noexcept
 	/**
 	 * Перебираем список собранных нагрузок
 	 */
-	for(auto & spec : specs){
+	for(size_t s = 0; s < count; s++){ auto & spec = specs[s];
 		// Датаграмма с пакетом Initial дополняется до минимального размера (RFC 9000 §14.1)
 		expand = (expand || (spec.level == level_t::INITIAL));
 		/**
@@ -6166,7 +6211,7 @@ bool awh::quic2::Connection::write(string & output, const uint64_t now) noexcept
 			/**
 			 * Перебираем список собранных нагрузок
 			 */
-			for(auto & spec : specs){
+			for(size_t s = 0; s < count; s++){ auto & spec = specs[s];
 				// Получаем состояние пространства номеров пакетов
 				const auto & item = this->_spaces[static_cast <size_t> (this->space(spec.level))];
 				// Получаем размер собранной нагрузки уровня
@@ -6181,13 +6226,13 @@ bool awh::quic2::Connection::write(string & output, const uint64_t now) noexcept
 				// Учитываем количество добавленных октетов PADDING
 				added += (proto::MIN_INITIAL_SIZE - total);
 				// Дополняем нагрузку последнего пакета фреймами PADDING
-				frame::serialize::padding(this->_buffer.payload[static_cast <size_t> (specs.back().level)], proto::MIN_INITIAL_SIZE - total);
+				frame::serialize::padding(this->_buffer.payload[static_cast <size_t> (specs[count - 1].level)], proto::MIN_INITIAL_SIZE - total);
 			// Если датаграмма превысила минимум из-за роста поля Length (varint)
 			} else if((total > proto::MIN_INITIAL_SIZE) && (added >= (total - proto::MIN_INITIAL_SIZE))){
 				// Учитываем количество удаляемых октетов PADDING
 				added -= (total - proto::MIN_INITIAL_SIZE);
 				// Удаляем излишек фреймов PADDING из конца нагрузки
-				this->_buffer.payload[static_cast <size_t> (specs.back().level)].erase(this->_buffer.payload[static_cast <size_t> (specs.back().level)].size() - (total - proto::MIN_INITIAL_SIZE));
+				this->_buffer.payload[static_cast <size_t> (specs[count - 1].level)].erase(this->_buffer.payload[static_cast <size_t> (specs[count - 1].level)].size() - (total - proto::MIN_INITIAL_SIZE));
 			// Если датаграмма достигла минимального размера
 			} else
 				// Прекращаем дополнение
@@ -6200,7 +6245,7 @@ bool awh::quic2::Connection::write(string & output, const uint64_t now) noexcept
 	 * Первая фаза: собираем и защищаем пакеты, не трогая состояние восстановления
 	 * потерь. Учётные записи фиксируются только после успешной сборки всей датаграммы
 	 */
-	for(; assembled < specs.size(); assembled++){
+	for(; assembled < count; assembled++){
 		// Получаем собираемую нагрузку
 		auto & spec = specs[assembled];
 		// Получаем состояние пространства номеров пакетов
@@ -6234,7 +6279,7 @@ bool awh::quic2::Connection::write(string & output, const uint64_t now) noexcept
 	 * снятые с очередей CRYPTO-данные, блоки потоков и управляющие фреймы
 	 * потерялись бы безвозвратно - в список отправленных они не попадают
 	 */
-	for(size_t i = assembled; i < specs.size(); i++){
+	for(size_t i = assembled; i < count; i++){
 		// Определяем пространство номеров пакетов несобранного пакета
 		const space_t space = this->space(specs[i].level);
 		// Возвращаем содержимое пакета в очереди отправки

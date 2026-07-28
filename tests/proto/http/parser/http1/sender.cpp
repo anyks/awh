@@ -402,6 +402,8 @@ TEST_F(ParserFixture, SendWritableSignalTest){
 	const std::string expected(2000, 'q');
 	// Формируем контейнер заголовков запроса с провайдером
 	headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::POST, std::string("/api")));
+	// Дописываем обязательный для запроса HTTP/1.1 заголовок Host
+	request.emplace("Host", "example.com");
 	// Дописываем заголовок фиксированного размера тела
 	request.emplace("Content-Length", std::to_string(expected.size()));
 	// Отправляем заголовки запроса (тело последует)
@@ -2175,5 +2177,394 @@ TEST_F(ParserFixture, SendUnfixableTransferEncodingTest){
 		ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
 		// Проверяем что тело передано без искажений
 		ASSERT_EQ(events.body, "hello");
+	}
+}
+/**
+ * @brief Метод проверки отказа собрать сообщение с непригодными полями
+ *
+ * @details Название поля обязано быть токеном, значение - состоять только из
+ *          HTAB / SP / VCHAR / obs-text (RFC 9110 §5.1, §5.5). Управляющий символ
+ *          внутри значения расщепляет собираемое сообщение: получатель прочитал бы
+ *          дописанное вызывающей стороной как отдельное поле либо как отдельное
+ *          сообщение. Непригодное поле отвергает сообщение целиком - вычистить его
+ *          означало бы молча изменить смысл того, что просили отправить
+ *
+ */
+TEST_F(ParserFixture, SendInjectedFieldTest){
+	/**
+	 * @brief Функция сборки запроса с заданным полем
+	 *
+	 * @param name  название поля
+	 * @param value значение поля
+	 * @return      собранные байты исходящего сообщения
+	 *
+	 */
+	auto build = [this](const std::string & name, const std::string & value) noexcept -> std::string {
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Формируем контейнер заголовков запроса с провайдером
+		headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::GET, std::string("/")));
+		// Дописываем обязательный для запроса HTTP/1.1 заголовок Host
+		request.emplace("Host", "example.com");
+		// Дописываем проверяемое поле
+		request.emplace(name, value);
+		// Отправляем заголовки запроса с завершением сообщения
+		sender->sendHeaders(request, true);
+		// Выводим собранные байты исходящего сообщения
+		return std::string(sender->pending());
+	};
+	// Проверяем что перевод строки внутри значения отвергает сообщение
+	EXPECT_TRUE(build("X-Bad", "va\r\nX-Injected: yes").empty());
+	// Проверяем что одиночный возврат каретки внутри значения отвергает сообщение
+	EXPECT_TRUE(build("X-Bad", "va\rlue").empty());
+	// Проверяем что одиночный перевод строки внутри значения отвергает сообщение
+	EXPECT_TRUE(build("X-Bad", "va\nlue").empty());
+	// Проверяем что нулевой символ внутри значения отвергает сообщение
+	EXPECT_TRUE(build("X-Bad", std::string("va\0lue", 6)).empty());
+	// Проверяем что управляющий символ внутри значения отвергает сообщение
+	EXPECT_TRUE(build("X-Bad", "va\x01lue").empty());
+	// Проверяем что пробел внутри названия отвергает сообщение
+	EXPECT_TRUE(build("X Bad", "value").empty());
+	// Проверяем что перевод строки внутри названия отвергает сообщение
+	EXPECT_TRUE(build("X-Bad\r\nY", "value").empty());
+	// Проверяем что двоеточие внутри названия отвергает сообщение
+	EXPECT_TRUE(build("X:Bad", "value").empty());
+	/**
+	 * Проверяем что законное поле по-прежнему уходит на провод
+	 *
+	 * Грамматика поля допускает пробельные символы по краям значения
+	 * (field-line = field-name ":" OWS field-value OWS), и отвергать их означало бы
+	 * ломать законный трафик
+	 */
+	EXPECT_NE(build("X-Pad", "  value  ").find("X-Pad:"), std::string::npos);
+	// Проверяем что символ obs-text внутри значения сообщение не отвергает
+	EXPECT_NE(build("X-Obs", "va\xC3\xA9lue").find("X-Obs:"), std::string::npos);
+}
+/**
+ * @brief Метод проверки отказа собрать сообщение с непригодной стартовой строкой
+ *
+ * @details Цель запроса не содержит пробелов и управляющих символов (RFC 9112 §3.2),
+ *          код состояния записывается тремя цифрами, а пояснение к нему собирается
+ *          из того же набора символов, что и значение поля (RFC 9112 §4). Непригодная
+ *          стартовая строка отвергает сообщение: заменить её нечем, а отправленное
+ *          получатель прочитал бы как два разных сообщения
+ *
+ */
+TEST_F(ParserFixture, SendInjectedStartLineTest){
+	/**
+	 * @brief Функция сборки запроса с заданной целью
+	 *
+	 * @param target цель запроса
+	 * @return       собранные байты исходящего сообщения
+	 *
+	 */
+	auto request = [this](const std::string & target) noexcept -> std::string {
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Формируем контейнер заголовков запроса с провайдером
+		headers_t block(std::make_unique <request_t> (version_t::HTTP1_1, method_t::GET, target));
+		// Дописываем обязательный для запроса HTTP/1.1 заголовок Host
+		block.emplace("Host", "example.com");
+		// Отправляем заголовки запроса с завершением сообщения
+		sender->sendHeaders(block, true);
+		// Выводим собранные байты исходящего сообщения
+		return std::string(sender->pending());
+	};
+	/**
+	 * @brief Функция сборки ответа с заданным кодом состояния и пояснением к нему
+	 *
+	 * @param code    код состояния ответа
+	 * @param message пояснение к коду состояния
+	 * @return        собранные байты исходящего сообщения
+	 *
+	 */
+	auto response = [this](const uint16_t code, const std::string & message) noexcept -> std::string {
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Формируем объект провайдера ответа сервера
+		auto provider = std::make_unique <response_t> (version_t::HTTP1_1, code);
+		// Устанавливаем пояснение к коду состояния
+		provider->message = message;
+		// Формируем контейнер заголовков ответа с провайдером
+		headers_t block(std::move(provider));
+		// Объявляем нулевой размер тела ответа
+		block.emplace("Content-Length", "0");
+		// Отправляем заголовки ответа с завершением сообщения
+		sender->sendHeaders(block, true);
+		// Выводим собранные байты исходящего сообщения
+		return std::string(sender->pending());
+	};
+	// Проверяем что пробел внутри цели запроса отвергает сообщение
+	EXPECT_TRUE(request("/a b").empty());
+	// Проверяем что перевод строки внутри цели запроса отвергает сообщение
+	EXPECT_TRUE(request("/a HTTP/1.1\r\nX-Injected: yes\r\n\r\nGET /b").empty());
+	// Проверяем что горизонтальная табуляция внутри цели запроса отвергает сообщение
+	EXPECT_TRUE(request("/a\tb").empty());
+	// Проверяем что пустая цель запроса отвергает сообщение
+	EXPECT_TRUE(request("").empty());
+	// Проверяем что законная цель запроса по-прежнему уходит на провод
+	EXPECT_NE(request("/a?b=c&d=e").find("GET /a?b=c&d=e HTTP/1.1\r\n"), std::string::npos);
+	/**
+	 * @brief Функция сборки запроса с заданным методом
+	 *
+	 * @param method   метод запроса
+	 * @param spelling оригинальное написание метода (только для method_t::UNKNOWN)
+	 * @return         собранные байты исходящего сообщения
+	 *
+	 */
+	auto method = [this](const method_t method, const std::string & spelling) noexcept -> std::string {
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Формируем объект провайдера запроса клиента
+		auto provider = std::make_unique <request_t> (version_t::HTTP1_1, method, std::string("/"));
+		// Устанавливаем оригинальное написание метода запроса
+		provider->methodName = spelling;
+		// Формируем контейнер заголовков запроса с провайдером
+		headers_t block(std::move(provider));
+		// Дописываем обязательный для запроса HTTP/1.1 заголовок Host
+		block.emplace("Host", "example.com");
+		// Отправляем заголовки запроса с завершением сообщения
+		sender->sendHeaders(block, true);
+		// Выводим собранные байты исходящего сообщения
+		return std::string(sender->pending());
+	};
+	// Проверяем что неустановленный метод запроса отвергает сообщение
+	EXPECT_TRUE(method(method_t::NONE, "").empty());
+	// Проверяем что пробел внутри написания метода отвергает сообщение
+	EXPECT_TRUE(method(method_t::UNKNOWN, "BAD METHOD").empty());
+	// Проверяем что перевод строки внутри написания метода отвергает сообщение
+	EXPECT_TRUE(method(method_t::UNKNOWN, "A\r\nX-Injected: yes").empty());
+	// Проверяем что пустое написание нераспознанного метода отвергает сообщение
+	EXPECT_TRUE(method(method_t::UNKNOWN, "").empty());
+	/**
+	 * Проверяем что нераспознанный метод с законным написанием уходит на провод
+	 *
+	 * Оригинальное написание существует ради прозрачного проксирования экзотических
+	 * методов, и стартовая строка обязана его нести
+	 */
+	EXPECT_EQ(method(method_t::UNKNOWN, "PROPFIND").substr(0, 21), "PROPFIND / HTTP/1.1\r\n");
+	// Проверяем что метод WebDAV из перечисления также уходит на провод
+	EXPECT_EQ(method(method_t::LOCK, "").substr(0, 17), "LOCK / HTTP/1.1\r\n");
+	// Проверяем что перевод строки внутри пояснения отвергает сообщение
+	EXPECT_TRUE(response(200, "OK\r\nX-Injected: yes").empty());
+	// Проверяем что одиночный возврат каретки внутри пояснения отвергает сообщение
+	EXPECT_TRUE(response(200, "O\rK").empty());
+	// Проверяем что код состояния короче трёх цифр отвергает сообщение
+	EXPECT_TRUE(response(7, "Weird").empty());
+	// Проверяем что код состояния длиннее трёх цифр отвергает сообщение
+	EXPECT_TRUE(response(1000, "Weird").empty());
+	// Проверяем что нестандартный трёхзначный код состояния по-прежнему уходит на провод
+	EXPECT_NE(response(599, "").find("HTTP/1.1 599 "), std::string::npos);
+	// Проверяем что законное пояснение по-прежнему уходит на провод
+	EXPECT_NE(response(200, "All Good").find("HTTP/1.1 200 All Good\r\n"), std::string::npos);
+}
+/**
+ * @brief Метод проверки обязательного заголовка Host в исходящем запросе
+ *
+ * @details Запрос HTTP/1.1 обязан нести заголовок Host (RFC 9110 §7.2), а сервер
+ *          обязан отвергнуть запрос без него кодом [400 Bad Request]. Собирать
+ *          сообщение, которое любой соответствующий стандарту получатель отвергнет,
+ *          незачем - в отличие от симметричной проверки на приёме, здесь послабления
+ *          не предусмотрено. В HTTP/1.0 заголовка Host не существовало, и его
+ *          отсутствие ошибкой не является
+ *
+ */
+TEST_F(ParserFixture, SendRequestHostRequirementTest){
+	/**
+	 * @brief Функция сборки запроса заданной версии с заданным заголовком Host
+	 *
+	 * @param version версия протокола запроса
+	 * @param host    значение заголовка Host (пустое - заголовок не дописывается)
+	 * @return        собранные байты исходящего сообщения
+	 *
+	 */
+	auto build = [this](const version_t version, const std::string & host) noexcept -> std::string {
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Формируем контейнер заголовков запроса с провайдером
+		headers_t request(std::make_unique <request_t> (version, method_t::GET, std::string("/")));
+		// Если заголовок Host задан - дописываем его в контейнер
+		if(!host.empty())
+			// Дописываем заголовок Host
+			request.emplace("Host", host);
+		// Отправляем заголовки запроса с завершением сообщения
+		sender->sendHeaders(request, true);
+		// Выводим собранные байты исходящего сообщения
+		return std::string(sender->pending());
+	};
+	// Проверяем что запрос HTTP/1.1 без заголовка Host не собирается
+	EXPECT_TRUE(build(version_t::HTTP1_1, "").empty());
+	// Проверяем что запрос HTTP/1.1 с заголовком Host уходит на провод
+	EXPECT_NE(build(version_t::HTTP1_1, "example.com").find("Host: example.com"), std::string::npos);
+	// Проверяем что запрос HTTP/1.1 с портом в заголовке Host уходит на провод
+	EXPECT_NE(build(version_t::HTTP1_1, "example.com:8080").find("Host: example.com:8080"), std::string::npos);
+	/**
+	 * Проверяем что пробел внутри значения заголовка Host отвергает сообщение
+	 *
+	 * Проверка повторяет ту, что выполняется на приёме: собранное сообщение обязано
+	 * быть разбираемым собственным приёмником
+	 */
+	EXPECT_TRUE(build(version_t::HTTP1_1, "example.com foo").empty());
+	// Проверяем что запрос HTTP/1.0 без заголовка Host уходит на провод
+	EXPECT_NE(build(version_t::HTTP1_0, "").find("GET / HTTP/1.0\r\n"), std::string::npos);
+}
+/**
+ * @brief Метод проверки ответа, который не может нести тела
+ *
+ * @details Ответ на запрос HEAD и любой ответ с кодом 1xx, [204 No Content] либо
+ *          [304 Not Modified] заканчивается первой пустой строкой после блока
+ *          заголовков независимо от присутствующих в нём полей (RFC 9112 §6.3 п.1):
+ *          выданные следом байты получатель прочитает как начало следующего ответа.
+ *          Ответы 1xx и 204 не несут и объявлений кадрирования (§6.1, §6.2), а
+ *          ответу на HEAD и ответу 304 оба заголовка разрешены - они описывают тело,
+ *          которое было бы отправлено в ответ на такой же запрос GET
+ *
+ */
+TEST_F(ParserFixture, SendBodilessResponseTest){
+	/**
+	 * @brief Функция сборки ответа на заданный метод с заданным кадрированием и телом
+	 *
+	 * @param method   метод запроса, которому соответствует ответ
+	 * @param code     код состояния ответа
+	 * @param name     название заголовка кадрирования
+	 * @param value    значение заголовка кадрирования
+	 * @param accepted ожидаемое число принятых к отправке байт тела
+	 * @return         собранные байты исходящего сообщения
+	 *
+	 */
+	auto build = [this](const method_t method, const uint16_t code, const std::string & name, const std::string & value, const size_t accepted) noexcept -> std::string {
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Устанавливаем метод запроса, которому соответствует собираемый ответ
+		sender->method(method);
+		// Формируем контейнер заголовков ответа с провайдером
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, code));
+		// Дописываем заголовок кадрирования тела
+		response.emplace(name, value);
+		// Отправляем заголовки ответа (тело последует)
+		sender->sendHeaders(response, false);
+		// Проверяем что тело принимается к отправке в ожидаемом объёме
+		EXPECT_EQ(sender->sendData("hello", 5, true), accepted);
+		// Выводим собранные байты исходящего сообщения
+		return std::string(sender->pending());
+	};
+	// Проверяем что ответ 1xx собирается без объявления размера тела и без самого тела
+	EXPECT_EQ(build(method_t::GET, 100, "Content-Length", "5", 0u), "HTTP/1.1 100 Continue\r\n\r\n");
+	// Проверяем что ответ 1xx собирается без объявления кодирования тела
+	EXPECT_EQ(build(method_t::GET, 100, "Transfer-Encoding", "chunked", 0u), "HTTP/1.1 100 Continue\r\n\r\n");
+	// Проверяем что нулевой размер тела в ответе 204 также снимается с провода
+	EXPECT_EQ(build(method_t::GET, 204, "Content-Length", "0", 0u), "HTTP/1.1 204 No Content\r\n\r\n");
+	// Проверяем что ответ 204 собирается без объявления кодирования тела
+	EXPECT_EQ(build(method_t::GET, 204, "Transfer-Encoding", "chunked", 0u), "HTTP/1.1 204 No Content\r\n\r\n");
+	/**
+	 * Проверяем что ответ 304 сохраняет объявление размера тела, но тела не несёт
+	 *
+	 * Заголовок описывает размер тела, которое было бы отправлено в ответ на такой же
+	 * запрос GET, и отправлять его разрешено - запрещено отправлять само тело
+	 */
+	EXPECT_EQ(build(method_t::GET, 304, "Content-Length", "5", 0u), "HTTP/1.1 304 Not Modified\r\nContent-Length: 5\r\n\r\n");
+	// Проверяем что ответ 304 сохраняет объявление кодирования тела, но тела не несёт
+	EXPECT_EQ(build(method_t::GET, 304, "Transfer-Encoding", "chunked", 0u), "HTTP/1.1 304 Not Modified\r\nTransfer-Encoding: chunked\r\n\r\n");
+	// Проверяем что ответ на запрос HEAD сохраняет объявление размера тела, но тела не несёт
+	EXPECT_EQ(build(method_t::HEAD, 200, "Content-Length", "5", 0u), "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\n");
+	// Проверяем что ответ на запрос HEAD сохраняет объявление кодирования тела, но тела не несёт
+	EXPECT_EQ(build(method_t::HEAD, 200, "Transfer-Encoding", "chunked", 0u), "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+	// Проверяем что обычный ответ на запрос GET тело по-прежнему несёт
+	EXPECT_EQ(build(method_t::GET, 200, "Content-Length", "5", 5u), "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello");
+}
+/**
+ * @brief Метод проверки ответа, открывающего туннель
+ *
+ * @details Успешный ответ на запрос CONNECT превращает соединение в туннель сразу за
+ *          пустой строкой, завершающей блок заголовков (RFC 9112 §6.3 п.2). Заголовки
+ *          Content-Length и Transfer-Encoding в таком ответе отправлять запрещено
+ *          (§6.2), а байты за блоком заголовков принадлежат туннелю и кадрированию
+ *          не подлежат. Неуспешный ответ на CONNECT остаётся обычным ответом
+ *
+ */
+TEST_F(ParserFixture, SendTunnelResponseTest){
+	/**
+	 * @brief Функция сборки ответа на запрос CONNECT
+	 *
+	 * @param code  код состояния ответа
+	 * @param name  название заголовка кадрирования
+	 * @param value значение заголовка кадрирования
+	 * @return      собранные байты исходящего сообщения
+	 *
+	 */
+	auto build = [this](const uint16_t code, const std::string & name, const std::string & value) noexcept -> std::string {
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Устанавливаем метод запроса, которому соответствует собираемый ответ
+		sender->method(method_t::CONNECT);
+		// Формируем контейнер заголовков ответа с провайдером
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, code));
+		// Дописываем заголовок кадрирования тела
+		response.emplace(name, value);
+		// Отправляем заголовки ответа (содержимое туннеля последует)
+		sender->sendHeaders(response, false);
+		// Передаём содержимое туннеля
+		sender->sendData("hello", 5, false);
+		// Выводим собранные байты исходящего сообщения
+		return std::string(sender->pending());
+	};
+	// Проверяем что успешный ответ снимает объявление размера тела, а содержимое туннеля идёт без кадрирования
+	EXPECT_EQ(build(200, "Content-Length", "5"), "HTTP/1.1 200 OK\r\n\r\nhello");
+	// Проверяем что успешный ответ снимает и объявление кодирования тела
+	EXPECT_EQ(build(200, "Transfer-Encoding", "chunked"), "HTTP/1.1 200 OK\r\n\r\nhello");
+	// Проверяем что неуспешный ответ на CONNECT остаётся обычным ответом с кадрированным телом
+	EXPECT_EQ(build(407, "Content-Length", "5"), "HTTP/1.1 407 Proxy Authentication Required\r\nContent-Length: 5\r\n\r\nhello");
+}
+/**
+ * @brief Метод проверки отказа отправить непригодные трейлеры
+ *
+ * @details Блок трейлеров с непригодным полем отбрасывается целиком, но тело всё
+ *          равно завершается нулевым чанком: тело уже ушло на провод, и без него
+ *          получатель ждал бы продолжения до закрытия соединения. Трейлеры же
+ *          необязательны - получатель вправе не понимать их вовсе (RFC 9110 §6.5),
+ *          и сообщение без них остаётся полноценным
+ *
+ */
+TEST_F(ParserFixture, SendInjectedTrailersTest){
+	// Создаём объект парсера-отправителя ответа
+	auto sender = this->make(direct_t::RESPONSE);
+	// Создаём объект парсера-приёмника ответа
+	auto receiver = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+	receiver->method(method_t::GET);
+	// Формируем контейнер заголовков ответа с провайдером
+	headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+	// Дописываем заголовок кодирования тела сообщения
+	response.emplace("Transfer-Encoding", "chunked");
+	// Отправляем заголовки ответа (тело последует)
+	sender->sendHeaders(response, false);
+	// Отправляем тело ответа без завершения сообщения
+	ASSERT_EQ(sender->sendData("hello", 5, false), 5u);
+	// Формируем блок трейлеров с непригодным значением поля
+	headers_t trailers;
+	// Дописываем поле с переводом строки внутри значения
+	trailers.emplace("X-Checksum", "abc\r\nX-Injected: yes");
+	// Отправляем блок трейлеров
+	sender->sendHeaders(trailers, true);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	// Проверяем что собранное сообщение разбирается собственным приёмником
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело передано без искажений
+	ASSERT_EQ(events.body, "hello");
+	// Проверяем что блок трейлеров на провод не ушёл вовсе
+	ASSERT_TRUE(events.trailers.empty());
+	/**
+	 * Выполняем перебор всех разобранных приёмником трейлеров
+	 */
+	for(const auto & trailer : events.trailers){
+		// Проверяем что дописанное вызывающей стороной поле на провод не ушло
+		ASSERT_NE(trailer.first, "X-Injected");
+		// Проверяем что и само непригодное поле на провод не ушло
+		ASSERT_NE(trailer.first, "X-Checksum");
 	}
 }
