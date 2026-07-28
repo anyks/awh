@@ -804,7 +804,41 @@ awh::http::Parser_HTTP3::Stream::Stream() noexcept :
  state(h3::stream_state_t::IDLE), headers(false), trailers(false), body(false),
  generation(0), completed(false), headless(false), headlessSend(false), trailerless(false), trailerlessSend(false), localFin(false), length(0), declared(UINT64_MAX),
  urgency(h3::proto::DEFAULT_URGENCY), incremental(false), prioritized(false),
- blockedActive(false), blockedType(0), blockedPushId(UINT64_MAX), blockedFin(false) {}
+ blockedActive(false), blockedType(0), blockedPushId(UINT64_MAX), blockedFin(false),
+ sendOffset(0), sourceEof(false), endStreamPending(false), writableNotified(false), trailersPending(false), headersSent(false) {}
+/**
+ * @brief Метод получения объёма ещё не обёрнутого в кадры тела
+ *
+ * @return объём данных буфера отправки
+ *
+ */
+size_t awh::http::Parser_HTTP3::Stream::pending() const noexcept {
+	// Выводим объём данных буфера отправки за вычетом уже обёрнутого
+	return (this->sendBuffer.size() - this->sendOffset);
+}
+/**
+ * @brief Метод амортизированного уплотнения буфера отправки
+ *
+ * @details Обёрнутый в кадры префикс не вырезается на каждой отправке: вырезание
+ *          сдвигает весь остаток и даёт квадратичную стоимость на длинном теле.
+ *          Буфер уплотняется, когда обёрнутая часть занимает половину и больше
+ *
+ */
+void awh::http::Parser_HTTP3::Stream::compactSendBuffer() noexcept {
+	// Если буфер выдан целиком - очищаем его без сдвига остатка
+	if(this->sendOffset >= this->sendBuffer.size()){
+		// Выполняем очистку буфера отправки
+		this->sendBuffer.clear();
+		// Сбрасываем количество обёрнутых октетов
+		this->sendOffset = 0;
+	// Если обёрнутая часть занимает половину буфера и больше - уплотняем
+	} else if(this->sendOffset >= (this->sendBuffer.size() / 2)) {
+		// Вырезаем обёрнутый префикс буфера отправки
+		this->sendBuffer.erase(0, this->sendOffset);
+		// Сбрасываем количество обёрнутых октетов
+		this->sendOffset = 0;
+	}
+}
 /**
  * @brief Конструктор
  *
@@ -4660,6 +4694,14 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const vector <h3::
 		return;
 	}
 	/**
+	 * Секция полей, идущая по потоку следом за уже отправленной, - это трейлеры,
+	 * и уйти они обязаны строго после тела, которое завершают. Пока в буфере
+	 * отправки остаётся тело либо не исчерпан источник, секция откладывается
+	 */
+	if((target != nullptr) && target->headersSent && this->deferTrailers(sid, fields, endStream))
+		// Выходим из метода
+		return;
+	/**
 	 * После GOAWAY сервера клиент не открывает новых потоков запроса (RFC 9114 §5.2):
 	 * сервер объявил, что не станет их обрабатывать. Проверяется именно открытие -
 	 * секции уже открытого потока, включая трейлеры, отправляются штатно. Сравнение
@@ -4706,6 +4748,8 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const vector <h3::
 	}
 	// Получаем состояние потока
 	stream_t & stream = this->stream(sid);
+	// Помечаем что секция полей по этому потоку нами отправлена
+	stream.headersSent = true;
 	/**
 	 * Ответ на запрос HEAD тела не несёт, поэтому объявленная в нём длина тела
 	 * к принятому телу не применяется (RFC 9110 §9.3.2), а отправляемые нами
@@ -4900,50 +4944,475 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const headers_t & 
  *
  */
 size_t awh::http::Parser_HTTP3::sendData(const uint64_t sid, const void * buffer, const size_t size, const bool endStream) noexcept {
+	// Результат работы функции - число принятых байт
+	size_t result = 0;
 	// Если соединение завершено
 	if(this->_closed)
-		// Выводим количество принятых к отправке байт
-		return 0;
+		// Выводим число принятых байт
+		return result;
 	// Выполняем поиск состояния потока
-	stream_t * const target = this->findStream(sid);
+	stream_t * stream = this->findStream(sid);
+	// Если поток закрыт - данные не принимаются
+	if(stream == nullptr)
+		// Выводим число принятых байт
+		return result;
+	// Нельзя слать тело после уже поставленного завершения потока
+	if(stream->endStreamPending || stream->localFin)
+		// Выводим число принятых байт
+		return result;
+	// Если секция трейлеров уже отложена - тело после неё не принимается
+	if(stream->trailersPending)
+		// Выводим число принятых байт
+		return result;
+	/**
+	 * Тело потока, которому назначен pull-источник, приложение не досылает само:
+	 * два писателя в один буфер перемешали бы тело
+	 */
+	if(stream->source != nullptr){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print(
+			"HTTP/3 stream %llu is fed by a data source, direct body is not accepted",
+			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+		);
+		// Выводим число принятых байт
+		return result;
+	}
 	/**
 	 * Ответ на запрос методом HEAD содержимого не несёт (RFC 9110 §9.3.2): тело
 	 * принимается и отбрасывается, а не отвергается. Отказ приёмом нуля байт
-	 * приложение прочло бы как сигнал приостановить выдачу
+	 * приложение прочло бы как заполненный буфер и ждало бы сигнала готовности,
+	 * которого при пустом буфере не будет
 	 */
-	const bool headless = ((target != nullptr) && target->headlessSend);
-	// Если данные тела переданы и сообщение вправе их нести
-	if(!headless && (buffer != nullptr) && (size > 0)){
-		// Выполняем очистку буфера сборки кадра
-		this->_frame.clear();
-		// Собираем кадр данных тела
-		h3::frame::serialize::data(this->_frame, string_view(reinterpret_cast <const char *> (buffer), size));
-		// Отправляем кадр данных тела
-		this->emit(sid, this->_frame.data(), this->_frame.size(), endStream);
-	/**
-	 * Пустой кадр DATA смысла не имеет: завершение потока передаётся признаком FIN
-	 * транспорта, а не кадром (RFC 9114 §4.1)
-	 */
-	} else if(endStream)
-		// Отправляем признак завершения потока
-		this->emit(sid, nullptr, 0, true);
-	// Если поток завершается вместе с данными
-	if(endStream){
-		// Выполняем поиск состояния потока
-		stream_t * stream = this->findStream(sid);
-		// Если поток жив
-		if(stream != nullptr){
-			// Запоминаем завершение потока в нашем направлении
-			stream->localFin = true;
-			// Закрываем поток, если оба направления завершены
-			this->maybeClose(sid);
-		}
+	if(stream->headlessSend){
+		// Признаём принятым весь фрагмент, не отправляя из него ничего
+		result = size;
+		// Если фрагмент финальный - поток всё равно обязан завершиться
+		if(endStream)
+			// Помечаем что поток обязан завершиться на последнем фрагменте
+			stream->endStreamPending = true;
+		// Выполняем выдачу накопленного тела потока
+		this->pumpStream(sid);
+		// Выводим число принятых байт
+		return result;
 	}
-	// Выводим количество принятых к отправке байт
-	return size;
+	// Вычисляем свободное место в буфере отправки до верхней метки
+	const size_t room = ((stream->pending() < this->_sendHighWater) ? (this->_sendHighWater - stream->pending()) : 0);
+	// Принимаем столько байт, сколько влезает (частичный приём)
+	result = ::std::min(size, room);
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если есть что принимать - дописываем данные в буфер отправки потока
+		if((result > 0) && (buffer != nullptr))
+			// Дописываем данные в буфер отправки потока
+			stream->sendBuffer.append(static_cast <const char *> (buffer), result);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception &) {
+		// Данные принять не удалось
+		result = 0;
+	}
+	// Завершение потока помечаем только когда принят весь финальный фрагмент
+	if(endStream && (result == size))
+		// Помечаем что поток обязан завершиться на последнем фрагменте
+		stream->endStreamPending = true;
+	// Если буфер отправки поднялся выше нижней метки - взводим сигнал готовности снова
+	if(stream->pending() > this->_sendLowWater)
+		// Взводим сигнал готовности для следующего опустошения буфера
+		stream->writableNotified = false;
+	// Выполняем выдачу накопленного тела потока
+	this->pumpStream(sid);
+	// Выводим число принятых байт
+	return result;
 }
 /**
- * @brief Метод отправки анонса server push (только сервер)
+ * @brief Метод назначения pull-источника данных тела потока
+ *
+ * @param sid    идентификатор потока
+ * @param source pull-источник данных тела
+ *
+ */
+void awh::http::Parser_HTTP3::dataSource(const uint64_t sid, data_source_callback_t source) noexcept {
+	// Выполняем поиск состояния потока
+	stream_t * stream = this->findStream(sid);
+	// Если поток закрыт - назначать источник некуда
+	if(stream == nullptr)
+		// Выходим из метода
+		return;
+	// Запоминаем источник данных тела потока
+	stream->source = ::move(source);
+	// Снимаем признак достижения конца тела: источник назначен заново
+	stream->sourceEof = false;
+	// Выполняем выдачу накопленного тела потока
+	this->pumpStream(sid);
+}
+/**
+ * @brief Метод настройки порогов буфера отправки потока
+ *
+ * @param high ёмкость буфера отправки потока (high-water)
+ * @param low  порог сигнала готовности (low-water)
+ *
+ */
+void awh::http::Parser_HTTP3::sendWaterMarks(const size_t high, const size_t low) noexcept {
+	// Ёмкость буфера отправки не может быть нулевой: приём тела встал бы совсем
+	this->_sendHighWater = ((high > 0) ? high : SEND_HIGH_WATER);
+	// Порог сигнала готовности не может превышать ёмкость буфера
+	this->_sendLowWater = ::std::min(low, this->_sendHighWater);
+}
+/**
+ * @brief Метод настройки порога накопленных исходящих данных потока
+ *
+ * @param high порог накопленных исходящих данных потока
+ *
+ */
+void awh::http::Parser_HTTP3::outputHighWater(const size_t high) noexcept {
+	// Порог накопленных исходящих данных не может быть нулевым: выдача встала бы совсем
+	this->_outputHighWater = ((high > 0) ? high : OUTPUT_HIGH_WATER);
+}
+/**
+ * @brief Метод откладывания секции трейлеров до конца отправки тела
+ *
+ * @details Секция трейлеров уходит строго после тела, которое завершает. Пока
+ *          в буфере отправки остаётся тело либо не исчерпан источник, секция
+ *          запоминается и выдаётся выдачей тела
+ *
+ * @param sid       идентификатор потока
+ * @param fields    поля секции трейлеров
+ * @param endStream признак завершения потока
+ * @return          признак откладывания секции
+ *
+ */
+bool awh::http::Parser_HTTP3::deferTrailers(const uint64_t sid, const vector <h3::qpack::field_t> & fields, const bool endStream) noexcept {
+	// Выполняем поиск состояния потока
+	stream_t * stream = this->findStream(sid);
+	// Если поток закрыт либо его секция полей ещё не отправлена - откладывать нечего
+	if(stream == nullptr)
+		// Откладывание не требуется
+		return false;
+	// Если тело потока отправлено полностью - трейлеры уходят сразу за ним
+	if((stream->pending() == 0) && this->sourceDone(* stream) && !stream->endStreamPending)
+		// Откладывание не требуется
+		return false;
+	// Повторная секция трейлеров недопустима
+	if(stream->trailersPending){
+		// Записываем сообщение об ошибке в лог
+		this->_log->print(
+			"HTTP/3 trailers for stream %llu are already pending",
+			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+		);
+		// Отправка отложена (повторную секцию отбрасываем)
+		return true;
+	}
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Запоминаем поля отложенной секции трейлеров
+		stream->sendTrailers = fields;
+		// Помечаем что секция трейлеров отложена
+		stream->trailersPending = true;
+		// Помечаем что поток обязан завершиться вместе с секцией
+		stream->endStreamPending = true;
+		// Если трейлеры не завершают поток - это нарушение порядка частей сообщения
+		if(!endStream)
+			// Записываем сообщение об ошибке в лог
+			this->_log->print(
+				"HTTP/3 trailers for stream %llu must finish the stream",
+				log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+			);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception &) {
+		// Секцию трейлеров запомнить не удалось
+		stream->trailersPending = false;
+	}
+	// Выполняем выдачу накопленного тела потока
+	this->pumpStream(sid);
+	// Отправка отложена
+	return true;
+}
+/**
+ * @brief Метод отправки отложенной секции трейлеров потока
+ *
+ * @param sid идентификатор потока
+ *
+ */
+void awh::http::Parser_HTTP3::flushTrailers(const uint64_t sid) noexcept {
+	// Выполняем поиск состояния потока
+	stream_t * stream = this->findStream(sid);
+	// Если поток закрыт либо секция трейлеров не откладывалась
+	if((stream == nullptr) || !stream->trailersPending)
+		// Выходим из метода
+		return;
+	// Забираем поля отложенной секции трейлеров
+	const vector <h3::qpack::field_t> fields = ::move(stream->sendTrailers);
+	// Снимаем признак отложенной секции трейлеров
+	stream->trailersPending = false;
+	// Выполняем очистку полей отложенной секции
+	stream->sendTrailers.clear();
+	// Отправляем секцию трейлеров, завершая ею поток
+	this->sendHeaders(sid, fields, true);
+}
+/**
+ * @brief Метод получения объёма накопленных исходящих данных потока
+ *
+ * @param sid идентификатор потока
+ * @return    объём ещё не выданных наружу октетов
+ *
+ */
+size_t awh::http::Parser_HTTP3::outputPending(const uint64_t sid) const noexcept {
+	// Выполняем поиск буфера исходящих данных потока
+	auto i = this->_pending.find(sid);
+	// Если буфер исходящих данных не найден - копить нечего
+	if(i == this->_pending.end())
+		// Выводим нулевой объём
+		return 0;
+	// Выводим объём ещё не выданных наружу октетов
+	return (i->second.buffer.size() - i->second.consumed);
+}
+/**
+ * @brief Метод проверки того, что всё тело потока для отправки получено
+ *
+ * @param stream объект потока
+ * @return       результат проверки (источника нет либо достигнут его конец)
+ *
+ */
+bool awh::http::Parser_HTTP3::sourceDone(const stream_t & stream) const noexcept {
+	// Выводим признак отсутствия источника либо достижения его конца
+	return ((stream.source == nullptr) || stream.sourceEof);
+}
+/**
+ * @brief Метод вызова функции обратного вызова готовности потока
+ *
+ * @param sid  идентификатор потока
+ * @param room свободное место в буфере отправки потока
+ *
+ */
+void awh::http::Parser_HTTP3::fireWritable(const uint64_t sid, const size_t room) noexcept {
+	// Если функция обратного вызова готовности не установлена - сообщать некому
+	if(this->_callbacks.writable == nullptr)
+		// Выходим из метода
+		return;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Уведомляем о готовности потока принимать данные тела
+		this->_callbacks.writable(sid, room);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception &) {
+		// Исключение из пользовательской функции обратного вызова гасим на месте
+	}
+}
+/**
+ * @brief Метод сигнализации о готовности потока принимать данные
+ *
+ * @param sid    идентификатор потока
+ * @param stream объект потока
+ *
+ */
+void awh::http::Parser_HTTP3::maybeNotifyWritable(const uint64_t sid, stream_t & stream) noexcept {
+	/**
+	 * Сигнал предназначен push-модели: при назначенном источнике парсер опрашивает
+	 * его сам, и приложению нечего досылать по сигналу
+	 */
+	if((stream.source != nullptr) || (this->_callbacks.writable == nullptr))
+		// Выходим из метода
+		return;
+	// Если сигнал ещё не подан и буфер отправки опустился ниже нижней метки
+	if(!stream.writableNotified && (stream.pending() <= this->_sendLowWater)){
+		// Помечаем что сигнал для текущего заполнения буфера подан
+		stream.writableNotified = true;
+		// Уведомляем о готовности потока принимать данные тела
+		this->fireWritable(sid, (this->_sendHighWater - stream.pending()));
+	}
+}
+/**
+ * @brief Метод дозагрузки буфера отправки потока из pull-источника
+ *
+ * @param sid    идентификатор потока
+ * @param stream объект потока (ссылка может стать недействительной)
+ *
+ */
+void awh::http::Parser_HTTP3::refillFromSource(const uint64_t sid, stream_t & stream) noexcept {
+	// Если источник данных не задан либо его тело уже закончилось - дозагружать нечего
+	if((stream.source == nullptr) || stream.sourceEof)
+		// Выходим из метода
+		return;
+	/**
+	 * Ответ на запрос методом HEAD содержимого не несёт (RFC 9110 §9.3.2), поэтому
+	 * источник данных не опрашивается вовсе: иначе HEAD по большому ресурсу заставил
+	 * бы приложение вычитать его целиком - ради того, чтобы всё вычитанное отбросить
+	 */
+	if(stream.headlessSend){
+		// Помечаем что конец тела источника достигнут
+		stream.sourceEof = true;
+		// Помечаем что поток обязан завершиться на последнем фрагменте
+		stream.endStreamPending = true;
+		// Выходим из метода
+		return;
+	}
+	// Запоминаем идентификатор потока
+	const uint64_t id = sid;
+	// Указатель на объект потока (источник данных вправе закрыть поток)
+	stream_t * sp = &stream;
+	/**
+	 * Держим буфер наполненным до верхней метки, запрашивая источник порциями
+	 */
+	while((sp->pending() < this->_sendHighWater) && !sp->sourceEof){
+		// Вычисляем ёмкость запрашиваемой порции
+		const size_t cap = ::std::min(SOURCE_CHUNK, (this->_sendHighWater - sp->pending()));
+		// Запоминаем текущий размер буфера отправки
+		const size_t offset = sp->sendBuffer.size();
+		// Резервируем место под порцию данных прямо в буфере отправки (без промежуточной копии)
+		sp->sendBuffer.resize(offset + cap);
+		// Флаг достижения конца тела
+		bool eof = false;
+		// Результат запроса данных у источника
+		int64_t bytes = -1;
+		/**
+		 * Забираем источник данных на время вызова: приложение вправе сбросить поток
+		 * прямо из источника, а уничтожение вызываемого объекта под собственным вызовом
+		 * недопустимо
+		 */
+		data_source_callback_t source = ::move(sp->source);
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Запрашиваем порцию данных у источника (источник пишет напрямую в буфер отправки)
+			bytes = source(id, reinterpret_cast <uint8_t *> (&sp->sendBuffer[offset]), cap, eof);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception &) {
+			// Исключение из пользовательского источника гасим на месте
+			bytes = -1;
+		}
+		// Перечитываем указатель на поток (источник мог его закрыть либо сбросить парсер)
+		sp = this->findStream(id);
+		// Если поток удалён - буфер отправки уничтожен вместе с ним, дозагружать некуда
+		if(sp == nullptr)
+			// Выходим из метода
+			return;
+		// Возвращаем источник данных потоку, если из самого источника не назначен новый
+		if(sp->source == nullptr)
+			// Возвращаем источник данных обратно потоку
+			sp->source = ::move(source);
+		// Обрезаем буфер отправки до фактически записанного источником размера
+		sp->sendBuffer.resize(offset + static_cast <size_t> (((bytes > 0) && (bytes <= static_cast <int64_t> (cap))) ? bytes : 0));
+		// Если источник сообщил об ошибке данных либо нарушил контракт (записал больше ёмкости)
+		if((bytes < 0) || (bytes > static_cast <int64_t> (cap))){
+			// Обрываем поток с кодом внутренней ошибки
+			this->sendReset(id, error_t::H3_INTERNAL_ERROR);
+			// Выходим из метода
+			return;
+		}
+		// Если достигнут конец тела источника
+		if(eof){
+			// Помечаем что конец тела источника достигнут
+			sp->sourceEof = true;
+			// Помечаем что поток обязан завершиться на последнем фрагменте
+			sp->endStreamPending = true;
+		}
+		// Если источник временно без данных - прерываем дозагрузку
+		if((bytes == 0) && !eof)
+			// Прерываем дозагрузку до следующей прокачки
+			break;
+	}
+}
+/**
+ * @brief Метод выдачи накопленного тела потока кадрами DATA
+ *
+ * @param sid идентификатор потока
+ *
+ */
+void awh::http::Parser_HTTP3::pumpStream(const uint64_t sid) noexcept {
+	/**
+	 * Выполняем выдачу, пока у потока есть что отправить и есть куда: в push-модели
+	 * место наружу неограниченно, в pull-модели его освобождает consumePending()
+	 */
+	for(;;){
+		// Выполняем поиск состояния потока
+		stream_t * stream = this->findStream(sid);
+		// Если поток закрыт - выдавать некуда
+		if(stream == nullptr)
+			// Выходим из метода
+			return;
+		// Дозагружаем буфер отправки из источника данных
+		this->refillFromSource(sid, * stream);
+		// Перечитываем состояние потока (источник вправе его закрыть)
+		stream = this->findStream(sid);
+		// Если поток закрыт источником
+		if(stream == nullptr)
+			// Выходим из метода
+			return;
+		/**
+		 * Накопленное наружу не вычитано до порога: в pull-модели это и есть обратное
+		 * давление - новые кадры тела не собираются, пока обвязка не заберёт прежние
+		 */
+		if((this->_callbacks.write == nullptr) && (this->outputPending(sid) >= this->_outputHighWater))
+			// Выходим из метода
+			return;
+		// Получаем объём ещё не обёрнутого в кадры тела
+		const size_t remaining = stream->pending();
+		// Если тело кончилось
+		if(remaining == 0){
+			// Если поток обязан завершиться, а всё тело уже выдано
+			if(stream->endStreamPending && this->sourceDone(* stream)){
+				// Снимаем признак отложенного завершения потока
+				stream->endStreamPending = false;
+				// Если секция трейлеров отложена - поток завершает она
+				if(stream->trailersPending)
+					// Отправляем отложенную секцию трейлеров
+					this->flushTrailers(sid);
+				// Иначе завершаем поток признаком транспорта
+				else {
+					// Отправляем признак завершения потока
+					this->emit(sid, nullptr, 0, true);
+					// Выполняем поиск состояния потока
+					stream = this->findStream(sid);
+					// Если поток жив
+					if(stream != nullptr){
+						// Запоминаем завершение потока в нашем направлении
+						stream->localFin = true;
+						// Закрываем поток, если оба направления завершены
+						this->maybeClose(sid);
+					}
+				}
+			}
+			// Выходим из метода
+			return;
+		}
+		// Вычисляем размер выдаваемого фрагмента тела
+		const size_t size = ::std::min(remaining, SOURCE_CHUNK);
+		// Выполняем очистку буфера сборки кадра
+		this->_frame.clear();
+		// Собираем кадр данных тела из буфера отправки потока
+		h3::frame::serialize::data(this->_frame, string_view(stream->sendBuffer.data() + stream->sendOffset, size));
+		// Отмечаем обёрнутый префикс без сдвига всего буфера
+		stream->sendOffset += size;
+		// Выполняем амортизированное уплотнение буфера отправки
+		stream->compactSendBuffer();
+		// Отправляем кадр данных тела
+		this->emit(sid, this->_frame.data(), this->_frame.size(), false);
+		// Перечитываем состояние потока (выдача выходит в обвязку)
+		stream = this->findStream(sid);
+		// Если поток закрыт обвязкой
+		if(stream == nullptr)
+			// Выходим из метода
+			return;
+		// Сигнализируем о готовности потока принимать данные (если буфер просел)
+		this->maybeNotifyWritable(sid, * stream);
+	}
+}
+/**
+ * @brief Метод анонса server push (только сервер)
  *
  * @param sid    идентификатор ассоциированного потока запроса
  * @param fields поля обещанного запроса
@@ -5376,6 +5845,12 @@ void awh::http::Parser_HTTP3::consumePending(const uint64_t sid, const size_t si
 			// Удаляем буфер исходящих данных завершённого потока
 			this->_pending.erase(i);
 	}
+	/**
+	 * Вычитанное обвязкой освободило место наружу: продолжаем выдачу тела и
+	 * опрашиваем источник. Это и есть точка, в которой обратное давление
+	 * pull-модели превращается обратно в разрешение отправлять
+	 */
+	this->pumpStream(sid);
 }
 /**
  * @brief Метод проверки завершения потока в исходящем направлении
@@ -5525,6 +6000,16 @@ void awh::http::Parser_HTTP3::on(data_callback_t callback) noexcept {
 	this->_callbacks.data = ::std::move(callback);
 }
 /**
+ * @brief Метод установки функции обратного вызова готовности потока принимать данные
+ *
+ * @param callback функция обратного вызова
+ *
+ */
+void awh::http::Parser_HTTP3::on(writable_callback_t callback) noexcept {
+	// Устанавливаем функцию обратного вызова готовности потока
+	this->_callbacks.writable = ::move(callback);
+}
+/**
  * @brief Конструктор
  *
  * @param direct направление разбора сообщений
@@ -5536,6 +6021,7 @@ awh::http::Parser_HTTP3::Parser_HTTP3(const direct_t direct, const fmk_t * fmk, 
  parser_t(direct, fmk, log),
  _endpoint((direct == direct_t::REQUEST) ? h3::endpoint_t::SERVER : h3::endpoint_t::CLIENT),
  _proto(proto_t::HTTP3),
+ _sendLowWater(SEND_LOW_WATER), _sendHighWater(SEND_HIGH_WATER), _outputHighWater(OUTPUT_HIGH_WATER),
  _encoder(0, 0), _decoder(h3::proto::QPACK_TABLE_CAPACITY, h3::proto::QPACK_BLOCKED_STREAMS),
  _controlLocal(UINT64_MAX), _controlRemote(UINT64_MAX), _encoderLocal(UINT64_MAX),
  _decoderLocal(UINT64_MAX), _encoderRemote(UINT64_MAX), _decoderRemote(UINT64_MAX),

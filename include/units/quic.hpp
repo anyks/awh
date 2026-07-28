@@ -1189,6 +1189,31 @@ namespace awh {
 				 */
 				bool send(const event::id_t oid, const uint64_t sid, string_view data, const bool fin = false) noexcept;
 				/**
+				 * @brief Метод установки водяных меток буфера отправки потоков соединения (backpressure)
+				 *
+				 * @note Верхняя метка ограничивает объём несобранных данных на поток: сверх неё send()
+				 *       принимает данные лишь частично, а по опустошению буфера ниже нижней метки поток
+				 *       сигнализируется колбэком "writable". Ноль снимает ограничение (буфер не ограничен)
+				 *
+				 * @param oid  идентификатор события сессии
+				 * @param high верхняя водяная метка (ёмкость буфера отправки потока)
+				 * @param low  нижняя водяная метка (порог сигнала "writable")
+				 *
+				 */
+				void sendWaterMarks(const event::id_t oid, const size_t high, const size_t low) noexcept;
+				/**
+				 * @brief Метод назначения pull-источника данных потока (RFC 9000 §2.2)
+				 *
+				 * @note Альтернатива send() для больших тел: движок сам запрашивает данные у источника
+				 *       по мере места в буфере отправки потока, не требуя держать копию всего тела
+				 *
+				 * @param oid    идентификатор события сессии
+				 * @param sid    идентификатор потока приложения
+				 * @param source pull-источник данных тела потока
+				 *
+				 */
+				void dataSource(const event::id_t oid, const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept;
+				/**
 				 * @brief Метод отправки датаграммы приложения соединению (RFC 9221)
 				 *
 				 * @note Доставка датаграмм ненадёжна: потерянная датаграмма повторно
@@ -2020,6 +2045,29 @@ namespace awh {
 				 *
 				 */
 				bool send(const uint64_t sid, string_view data, const bool fin = false) noexcept;
+				/**
+				 * @brief Метод установки водяных меток буфера отправки потоков соединения (backpressure)
+				 *
+				 * @note Верхняя метка ограничивает объём несобранных данных на поток: сверх неё send()
+				 *       принимает данные лишь частично, а по опустошению буфера ниже нижней метки поток
+				 *       сигнализируется колбэком "writable". Ноль снимает ограничение (буфер не ограничен)
+				 *
+				 * @param high верхняя водяная метка (ёмкость буфера отправки потока)
+				 * @param low  нижняя водяная метка (порог сигнала "writable")
+				 *
+				 */
+				void sendWaterMarks(const size_t high, const size_t low) noexcept;
+				/**
+				 * @brief Метод назначения pull-источника данных потока (RFC 9000 §2.2)
+				 *
+				 * @note Альтернатива send() для больших тел: движок сам запрашивает данные у источника
+				 *       по мере места в буфере отправки потока, не требуя держать копию всего тела
+				 *
+				 * @param sid    идентификатор потока приложения
+				 * @param source pull-источник данных тела потока
+				 *
+				 */
+				void dataSource(const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept;
 				/**
 				 * @brief Метод отправки датаграммы приложения серверу (RFC 9221)
 				 *

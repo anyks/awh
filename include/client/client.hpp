@@ -501,6 +501,29 @@ namespace awh {
 			 */
 			virtual size_t send(const uint64_t sid, const void * buffer, const size_t size, const bool fin = false) noexcept;
 			/**
+			 * @brief Метод установки водяных меток буфера отправки потоков соединения QUIC (backpressure)
+			 *
+			 * @note Верхняя метка ограничивает несобранный буфер потока (send() принимает частично),
+			 *       по опустошению ниже нижней метки поток сигнализируется колбэком "writable". Ноль -
+			 *       ограничение снято. Для потоковых транспортов метод не действует
+			 *
+			 * @param high верхняя водяная метка (ёмкость буфера отправки потока)
+			 * @param low  нижняя водяная метка (порог сигнала "writable")
+			 *
+			 */
+			virtual void sendWaterMarks(const size_t high, const size_t low) noexcept;
+			/**
+			 * @brief Метод назначения pull-источника данных потока соединения QUIC (RFC 9000 §2.2)
+			 *
+			 * @note Альтернатива send() для больших тел: движок сам тянет данные у источника по мере
+			 *       места в буфере отправки, не требуя держать копию тела. Для потоковых транспортов не действует
+			 *
+			 * @param sid    идентификатор потока приложения
+			 * @param source pull-источник данных тела потока
+			 *
+			 */
+			virtual void dataSource(const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept;
+			/**
 			 * @brief Метод отправки датаграммы соединению (QUIC DATAGRAM по RFC 9221 либо дейтаграмма UDP)
 			 *
 			 * @param buffer буфер данных датаграммы для отправки

@@ -1280,6 +1280,40 @@ size_t awh::Client::send(const uint64_t sid, const void * buffer, const size_t s
 	return this->send(buffer, size);
 }
 /**
+ * @brief Метод установки водяных меток буфера отправки потоков соединения QUIC (backpressure)
+ *
+ * @param high верхняя водяная метка (ёмкость буфера отправки потока)
+ * @param low  нижняя водяная метка (порог сигнала "writable")
+ *
+ */
+void awh::Client::sendWaterMarks(const size_t high, const size_t low) noexcept {
+	// Определяем протокол транспорта клиента
+	switch(static_cast <uint8_t> (this->_protocol)){
+		// Для транспорта QUIC устанавливаем водяные метки буфера отправки потоков
+		case static_cast <uint8_t> (event::protocol_t::QUIC):
+			// Устанавливаем водяные метки буфера отправки потоков соединения
+			this->_unit->quic.sendWaterMarks(high, low);
+		break;
+	}
+}
+/**
+ * @brief Метод назначения pull-источника данных потока соединения QUIC (RFC 9000 §2.2)
+ *
+ * @param sid    идентификатор потока приложения
+ * @param source pull-источник данных тела потока
+ *
+ */
+void awh::Client::dataSource(const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept {
+	// Определяем протокол транспорта клиента
+	switch(static_cast <uint8_t> (this->_protocol)){
+		// Для транспорта QUIC назначаем pull-источник данных потока
+		case static_cast <uint8_t> (event::protocol_t::QUIC):
+			// Назначаем pull-источник данных тела потока
+			this->_unit->quic.dataSource(sid, source);
+		break;
+	}
+}
+/**
  * @brief Метод отправки датаграммы приложения серверу QUIC (RFC 9221)
  *
  * @param buffer буфер данных датаграммы для отправки

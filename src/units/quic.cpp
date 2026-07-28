@@ -1803,6 +1803,44 @@ bool awh::unit::QuicServer::send(const event::id_t oid, const uint64_t sid, stri
 	return true;
 }
 /**
+ * @brief Метод установки водяных меток буфера отправки потоков соединения (backpressure)
+ *
+ * @param oid  идентификатор события сессии
+ * @param high верхняя водяная метка (ёмкость буфера отправки потока)
+ * @param low  нижняя водяная метка (порог сигнала "writable")
+ *
+ */
+void awh::unit::QuicServer::sendWaterMarks(const event::id_t oid, const size_t high, const size_t low) noexcept {
+	// Выполняем поиск сессии соединения
+	auto i = this->_sessions.find(oid);
+	// Если сессия соединения не найдена либо соединение не создано
+	if((i == this->_sessions.end()) || (i->second.connection == nullptr))
+		// Выходим из метода
+		return;
+	// Устанавливаем водяные метки буфера отправки потоков соединения
+	i->second.connection->sendWaterMarks(high, low);
+}
+/**
+ * @brief Метод назначения pull-источника данных потока (RFC 9000 §2.2)
+ *
+ * @param oid    идентификатор события сессии
+ * @param sid    идентификатор потока приложения
+ * @param source pull-источник данных тела потока
+ *
+ */
+void awh::unit::QuicServer::dataSource(const event::id_t oid, const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept {
+	// Выполняем поиск сессии соединения
+	auto i = this->_sessions.find(oid);
+	// Если сессия соединения не найдена либо соединение не создано
+	if((i == this->_sessions.end()) || (i->second.connection == nullptr))
+		// Выходим из метода
+		return;
+	// Назначаем pull-источник данных тела потока
+	i->second.connection->dataSource(sid, source);
+	// Отправляем готовые исходящие датаграммы: движок начнёт тянуть данные источника
+	this->flush(oid, i->second);
+}
+/**
  * @brief Метод отправки датаграммы приложения соединению (RFC 9221)
  *
  * @param oid  идентификатор события сессии
@@ -4099,6 +4137,38 @@ bool awh::unit::QuicClient::send(const uint64_t sid, string_view data, const boo
 	this->flush();
 	// Выводим положительный результат
 	return true;
+}
+/**
+ * @brief Метод установки водяных меток буфера отправки потоков соединения (backpressure)
+ *
+ * @param high верхняя водяная метка (ёмкость буфера отправки потока)
+ * @param low  нижняя водяная метка (порог сигнала "writable")
+ *
+ */
+void awh::unit::QuicClient::sendWaterMarks(const size_t high, const size_t low) noexcept {
+	// Если соединение не создано
+	if(this->_connection == nullptr)
+		// Выходим из метода
+		return;
+	// Устанавливаем водяные метки буфера отправки потоков соединения
+	this->_connection->sendWaterMarks(high, low);
+}
+/**
+ * @brief Метод назначения pull-источника данных потока (RFC 9000 §2.2)
+ *
+ * @param sid    идентификатор потока приложения
+ * @param source pull-источник данных тела потока
+ *
+ */
+void awh::unit::QuicClient::dataSource(const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept {
+	// Если соединение не создано
+	if(this->_connection == nullptr)
+		// Выходим из метода
+		return;
+	// Назначаем pull-источник данных тела потока
+	this->_connection->dataSource(sid, source);
+	// Отправляем готовые исходящие датаграммы: движок начнёт тянуть данные источника
+	this->flush();
 }
 /**
  * @brief Метод отправки датаграммы приложения серверу (RFC 9221)

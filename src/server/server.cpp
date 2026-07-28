@@ -1649,6 +1649,34 @@ size_t awh::Server::send(const event::id_t cid, const uint64_t sid, const void *
 	return 0;
 }
 /**
+ * @brief Метод установки водяных меток буфера отправки потоков сессии соединения QUIC (backpressure)
+ *
+ * @param cid  идентификатор сессии соединения
+ * @param high верхняя водяная метка (ёмкость буфера отправки потока)
+ * @param low  нижняя водяная метка (порог сигнала "writable")
+ *
+ */
+void awh::Server::sendWaterMarks(const event::id_t cid, const size_t high, const size_t low) noexcept {
+	// Если сервер в рабочем состоянии и транспорт является QUIC
+	if(this->active() && (this->_protocol == event::protocol_t::QUIC))
+		// Устанавливаем водяные метки буфера отправки потоков сессии соединения
+		this->_unit->quic.sendWaterMarks(cid, high, low);
+}
+/**
+ * @brief Метод назначения pull-источника данных потока сессии соединения QUIC (RFC 9000 §2.2)
+ *
+ * @param cid    идентификатор сессии соединения
+ * @param sid    идентификатор потока приложения
+ * @param source pull-источник данных тела потока
+ *
+ */
+void awh::Server::dataSource(const event::id_t cid, const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept {
+	// Если сервер в рабочем состоянии и транспорт является QUIC
+	if(this->active() && (this->_protocol == event::protocol_t::QUIC))
+		// Назначаем pull-источник данных тела потока сессии соединения
+		this->_unit->quic.dataSource(cid, sid, source);
+}
+/**
  * @brief Метод отправки датаграммы приложения соединению QUIC (RFC 9221)
  *
  * @param cid    идентификатор сессии соединения
