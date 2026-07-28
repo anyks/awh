@@ -2136,6 +2136,76 @@ TEST_F(Quic2Fixture, StreamEchoTest){
 }
 
 /**
+ * @brief Тест отправки тела потока pull-источником (RFC 9000 §2.2)
+ *
+ */
+TEST_F(Quic2Fixture, StreamDataSourceTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Полный объём тела, отдаваемого pull-источником
+	const size_t total = 100000;
+	// Счётчик уже отданных источником байт
+	size_t produced = 0;
+	// Назначаем pull-источник тела потока: движок сам запрашивает данные по мере места
+	client.dataSource(sid, [&produced, total](const uint64_t, uint8_t * buffer, const size_t cap, bool & eof) -> int64_t {
+		// Объём порции: оставшийся хвост тела, но не более ёмкости буфера
+		const size_t n = std::min(cap, total - produced);
+		// Заполняем буфер детерминированным шаблоном по глобальному смещению
+		for(size_t k = 0; k < n; k++)
+			// Записываем очередной символ шаблона
+			buffer[k] = static_cast <uint8_t> ('A' + ((produced + k) % 26));
+		// Продвигаем счётчик отданных байт
+		produced += n;
+		// Помечаем конец тела по исчерпании
+		eof = (produced >= total);
+		// Возвращаем объём отданной порции
+		return static_cast <int64_t> (n);
+	});
+	// Принятое тело потока на сервере
+	std::string body = "";
+	// Флаг завершения потока
+	bool fin = false;
+	// Прокачиваем обмен и выдаём данные, пока поток не завершён (с запасом итераций)
+	for(size_t it = 0; (it < 20) && !fin; it++){
+		// Выполняем обмен датаграммами
+		::pump(client, server, now);
+		// Дописываем собранные непрерывные данные потока на сервере
+		server.receive(sid, body, fin);
+	}
+	// Проверяем, что источник отдан целиком
+	ASSERT_EQ(produced, total);
+	// Проверяем завершение потока
+	ASSERT_TRUE(fin);
+	// Проверяем объём принятого тела
+	ASSERT_EQ(body.size(), total);
+	// Проверяем содержимое тела по шаблону
+	bool pattern = true;
+	// Перебираем принятое тело
+	for(size_t j = 0; (j < body.size()) && pattern; j++)
+		// Сверяем символ с ожидаемым по глобальному смещению
+		pattern = (static_cast <uint8_t> (body[j]) == static_cast <uint8_t> ('A' + (j % 26)));
+	// Проверяем совпадение шаблона
+	ASSERT_TRUE(pattern);
+	// Проверяем отсутствие ошибок транспорта
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
  * @brief Тест приёма фрейма STREAM в датаграмме с завершением хендшейка (RFC 9000 §12.2)
  *
  */

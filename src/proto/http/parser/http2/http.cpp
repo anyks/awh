@@ -5183,7 +5183,7 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
 		}
 	}
 	// Список отправляемых параметров SETTINGS
-	h2::frame::setting_entry_t items[8];
+	h2::frame::setting_entry_t items[SETTINGS_ENTRIES];
 	// Количество отправляемых параметров
 	size_t count = 0;
 	// Добавляем параметр размера динамической таблицы HPACK

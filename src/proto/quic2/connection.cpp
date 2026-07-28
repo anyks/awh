@@ -341,6 +341,15 @@ namespace {
 	 */
 	static constexpr size_t SENT_POOL_LIMIT = 4096;
 	/**
+	 * @brief Размер порции запроса к pull-источнику при снятой верхней водяной метке
+	 *
+	 * @details Когда ограничение буфера отправки снято (верхняя метка ноль), pull-источник
+	 *          опрашивается порциями этого размера, а не всем телом сразу: иначе движок
+	 *          затянул бы в буфер весь объём тела за один проход
+	 *
+	 */
+	static constexpr size_t PULL_CHUNK = (64 * 1024);
+	/**
 	 * @brief Запас октетов на заголовок фрейма CRYPTO (тип, смещение и длина)
 	 *
 	 */
@@ -4482,6 +4491,52 @@ bool awh::quic2::Connection::payload(const level_t level, const size_t budget, s
 				// Переходим к следующему потоку
 				continue;
 			}
+			/**
+			 * Если поток питается pull-источником и ещё не завершён - дозаполняем буфер
+			 * отправки данными источника до верхней водяной метки. Источник пишет напрямую
+			 * в хвост буфера, поэтому приложение не держит копию всего тела (RFC 9000 §2.2)
+			 */
+			if(stream.txSource && !stream.txFin){
+				// Текущий несобранный объём буфера отправки потока
+				const size_t backlog = (stream.txBuffer.size() - stream.txCursor);
+				// Ёмкость запроса к источнику: место до верхней метки, при снятой метке - порция по умолчанию
+				const size_t cap = ((this->_sendHigh > 0) ? ((this->_sendHigh > backlog) ? (this->_sendHigh - backlog) : 0) : PULL_CHUNK);
+				// Если в буфере есть место под данные источника
+				if(cap > 0){
+					// Резервируем ёмкость буфера один раз под верхнюю метку (как в send())
+					if((this->_sendHigh > 0) && (stream.txBuffer.capacity() < this->_sendHigh))
+						// Резервируем ёмкость буфера отправки под верхнюю водяную метку
+						stream.txBuffer.reserve(this->_sendHigh);
+					// Смещение хвоста буфера, с которого источник пишет данные
+					const size_t base = stream.txBuffer.size();
+					// Расширяем буфер под запрашиваемый объём: источник пишет напрямую в его хвост
+					stream.txBuffer.resize(base + cap);
+					// Флаг достижения конца тела источником
+					bool eof = false;
+					// Запрашиваем данные у источника напрямую в хвост буфера отправки
+					const int64_t got = stream.txSource(sid, reinterpret_cast <uint8_t *> (& stream.txBuffer[base]), cap, eof);
+					// Если источник сообщил об ошибке
+					if(got < 0){
+						// Откатываем расширение буфера
+						stream.txBuffer.resize(base);
+						// Аварийно завершаем поток фреймом RESET_STREAM (код приложения по умолчанию)
+						this->reset(sid, 0);
+						// Удаляем поток из набора потоков с данными
+						this->_stream.writable.erase(wit);
+						// Переходим к следующему потоку
+						continue;
+					}
+					// Усекаем буфер до фактически записанного источником объёма
+					stream.txBuffer.resize(base + static_cast <size_t> (got));
+					// Если источник исчерпан - помечаем завершение потока и снимаем источник
+					if(eof){
+						// Устанавливаем флаг постановки завершения потока
+						stream.txFin = true;
+						// Снимаем исчерпанный pull-источник
+						stream.txSource = nullptr;
+					}
+				}
+			}
 			// Вычисляем объём неупакованных данных потока
 			const size_t pending = (stream.txBuffer.size() - stream.txCursor);
 			// Если есть данные для отправки
@@ -4609,8 +4664,8 @@ bool awh::quic2::Connection::payload(const level_t level, const size_t budget, s
 				// Устанавливаем флаг выполненной отправки завершения потока
 				stream.txFinSent = true;
 			}
-			// Если у потока не осталось данных к отправке - отсеиваем его из набора
-			if((stream.txBuffer.size() == stream.txCursor) && !(stream.txFin && !stream.txFinSent))
+			// Если у потока не осталось данных к отправке и не ждёт данных pull-источник - отсеиваем
+			if((stream.txBuffer.size() == stream.txCursor) && !(stream.txFin && !stream.txFinSent) && !(stream.txSource && !stream.txFin))
 				// Удаляем слитый поток из набора потоков с данными
 				this->dequeue(sid);
 		}
@@ -7552,6 +7607,31 @@ void awh::quic2::Connection::sendWaterMarks(const size_t high, const size_t low)
 	this->_sendHigh = high;
 	// Нижнюю метку удерживаем не выше верхней: иначе сигнал возобновления не подать
 	this->_sendLow = ::min(low, high);
+}
+/**
+ * @brief Метод назначения pull-источника данных потока (RFC 9000 §2.2)
+ *
+ * @param sid    идентификатор потока
+ * @param source pull-источник данных тела потока
+ *
+ */
+void awh::quic2::Connection::dataSource(const uint64_t sid, data_source_callback_t source) noexcept {
+	// Если отправка данных в поток локальным эндпоинтом недопустима
+	if(!this->sendable(sid))
+		// Выходим из метода
+		return;
+	// Ищем поток по идентификатору
+	auto i = this->_stream.list.find(sid);
+	// Если поток не найден либо отправка его уже завершена/прекращена
+	if((i == this->_stream.list.end()) || i->second.txFin || i->second.txReset || i->second.txResetSent)
+		// Выходим из метода
+		return;
+	// Запоминаем pull-источник данных тела потока
+	i->second.txSource = ::move(source);
+	// Если источник задан - ставим поток в набор к отправке: движок начнёт дозаполнять буфер
+	if(i->second.txSource)
+		// Ставим поток в набор потоков с данными к отправке
+		this->pending(sid);
 }
 /**
  * @brief Метод открытия нового потока приложения (RFC 9000 §2.1)
