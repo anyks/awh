@@ -16280,3 +16280,47 @@ TEST_F(IoFixture, IoBandwidthGlobalDuplexTest){
 	// Проверяем что заданный предел не превышен
 	ASSERT_LT(consumers[0].rate, (limit * 1.35));
 }
+
+/**
+ * @brief Тест глобального ограничения пропускной способности на нескольких узлах
+ *
+ * @details Ограничение это общее на весь движок, и проверять его одним узлом
+ *          недостаточно: одиночный узел уложится в предел и при поузловом
+ *          ограничителе. Смысл глобального предела в том, что суммарная
+ *          скорость всех узлов разом обязана в него уложиться, а поделиться
+ *          между ними она может как угодно
+ *
+ */
+TEST_F(IoFixture, IoBandwidthGlobalSharedTest){
+	// Устанавливаем глобальный предел пропускной способности на отправку
+	this->_io->bandwidth(awh::event::limiting_t::EGRESS, "8Mbps");
+	// Заводим три потребителя нагрузки без поузлового ограничения
+	std::vector <bandwidth_consumer_t> consumers = {
+		bandwidth_consumer_t("", ""),
+		bandwidth_consumer_t("", ""),
+		bandwidth_consumer_t("", "")
+	};
+	// Выполняем прогон нагрузки
+	ASSERT_TRUE(::bandwidth(this->_io.get(), consumers));
+	// Снимаем глобальный предел пропускной способности
+	this->_io->bandwidth(awh::event::limiting_t::EGRESS, "auto");
+	// Получаем заданный предел пропускной способности в октетах в секунду
+	const double limit = ::limitBytes(this->_fmk.get(), "8Mbps");
+	// Суммарная достигнутая скорость всех потребителей нагрузки
+	double total = 0.0;
+	/**
+	 * Проверяем каждого потребителя нагрузки в отдельности
+	 */
+	for(const auto & consumer : consumers){
+		// Проверяем что передача состоялась
+		ASSERT_GT(consumer.received, 0u);
+		// Проверяем что принятое совпадает с образцом передачи
+		ASSERT_FALSE(consumer.corrupted);
+		// Проверяем что весь поставленный в очередь объём принят до октета
+		ASSERT_EQ(consumer.received, consumer.queued);
+		// Накапливаем суммарную достигнутую скорость
+		total += consumer.rate;
+	}
+	// Проверяем что суммарная скорость всех узлов уложилась в общий предел
+	ASSERT_LT(total, (limit * 1.35));
+}

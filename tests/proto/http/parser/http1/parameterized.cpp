@@ -880,6 +880,368 @@ TEST_F(ParserFixture, ForbiddenTrailerCategoriesTest){
 }
 
 /**
+ * @brief Метод проверки отказов при разборе непригодного блока трейлеров
+ *
+ * @details Блок трейлеров разбирается собственным набором состояний конечного автомата,
+ *          и проверки в них повторяют проверки блока заголовков: символы имени и значения,
+ *          лимиты длины, окончание строки. Повторение означает, что каждая из них может
+ *          разойтись с оригиналом независимо, поэтому проверяется отдельно - тем более что
+ *          блок трейлеров приходит после тела, то есть после того, как получатель уже начал
+ *          считать сообщение доставленным
+ *
+ */
+TEST_F(ParserFixture, TrailerErrorPathsTest){
+	/**
+	 * @brief Структура проверяемого отказа разбора блока трейлеров
+	 *
+	 */
+	struct probe_t {
+		// Название проверяемого отказа
+		const char * name;
+		// Разбираемый блок трейлеров (дописывается к завершённому телу)
+		std::string trailers;
+		// Ожидаемый код ошибки разбора
+		parser_http_t::error_t error;
+		// Требование строгого окончания строк
+		bool strictEOL;
+		// Предельная длина имени заголовка (ноль - значение по умолчанию)
+		size_t maxHeaderName;
+		// Предельная длина значения заголовка (ноль - значение по умолчанию)
+		size_t maxHeaderValue;
+		// Предельный суммарный размер заголовков (ноль - значение по умолчанию)
+		size_t maxHeadersTotal;
+	};
+	// Формируем перечень проверяемых отказов разбора блока трейлеров
+	const std::vector <probe_t> probes = {
+		// Недопустимый символ в имени трейлера
+		{"недопустимый символ имени", "X-Bad\x01Name: value\r\n\r\n", parser_http_t::error_t::INVALID_HEADER_TOKEN, false, 0, 0, 0},
+		// Недопустимый символ в значении трейлера
+		{"недопустимый символ значения", "X-Check: va\x01lue\r\n\r\n", parser_http_t::error_t::INVALID_HEADER_VALUE, false, 0, 0, 0},
+		// Недопустимый символ в значении трейлера, начинающемся с OWS
+		{"недопустимый символ после OWS", "X-Check: \x01value\r\n\r\n", parser_http_t::error_t::INVALID_HEADER_VALUE, false, 0, 0, 0},
+		/**
+		 * Пределы подобраны так, чтобы блок основных заголовков в них укладывался:
+		 * иначе разбор отказал бы ещё до тела, и проверялась бы не та ветка
+		 */
+		// Превышение предельной длины имени трейлера
+		{"превышение длины имени", "X-Very-Long-Trailer-Name-Here: value\r\n\r\n", parser_http_t::error_t::HEADER_OVERFLOW, false, 20, 0, 0},
+		// Превышение предельной длины значения трейлера
+		{"превышение длины значения", "X-Check: 0123456789\r\n\r\n", parser_http_t::error_t::HEADER_OVERFLOW, false, 0, 8, 0},
+		/**
+		 * Блок трейлеров получает собственный бюджет суммарного размера, поэтому предел
+		 * должен вмещать блок основных заголовков, а поток OWS - его превышать
+		 */
+		{"превышение размера на OWS", ("X-Check:" + std::string(64, ' ') + "value\r\n\r\n"), parser_http_t::error_t::HEADER_OVERFLOW, false, 0, 0, 40},
+		// Одиночный LF в роли окончания строки трейлера при строгом режиме
+		{"голый LF после значения", "X-Check: done\n\r\n", parser_http_t::error_t::INVALID_EOL, true, 0, 0, 0},
+		// Одиночный LF в роли окончания строки пустого значения при строгом режиме
+		{"голый LF при пустом значении", "X-Check:\n\r\n", parser_http_t::error_t::INVALID_EOL, true, 0, 0, 0},
+		// Одиночный LF в роли завершающей блок пустой строки при строгом режиме
+		{"голый LF в конце блока", "X-Check: done\r\n\n", parser_http_t::error_t::INVALID_EOL, true, 0, 0, 0},
+		// Пробел в начале строки трейлера (obs-fold запрещён RFC 7230 §3.2.4)
+		{"obs-fold в начале строки", " X-Check: done\r\n\r\n", parser_http_t::error_t::INVALID_HEADER_TOKEN, false, 0, 0, 0},
+		// Табуляция в начале строки трейлера
+		{"табуляция в начале строки", "\tX-Check: done\r\n\r\n", parser_http_t::error_t::INVALID_HEADER_TOKEN, false, 0, 0, 0},
+		// Символ, не являющийся символом токена, в начале строки трейлера
+		{"не-токен в начале строки", "(X-Check: done\r\n\r\n", parser_http_t::error_t::INVALID_HEADER_TOKEN, false, 0, 0, 0},
+		// Отсутствие LF после CR в конце строки трейлера
+		{"CR без LF после значения", "X-Check: done\rX", parser_http_t::error_t::INVALID_EOL, false, 0, 0, 0},
+		// Отсутствие LF после CR при пустом значении трейлера
+		{"CR без LF при пустом значении", "X-Check:\rX", parser_http_t::error_t::INVALID_EOL, false, 0, 0, 0},
+		// Отсутствие LF после CR завершающей блок пустой строки
+		{"CR без LF в конце блока", "X-Check: done\r\n\rX", parser_http_t::error_t::INVALID_EOL, false, 0, 0, 0}
+	};
+	/**
+	 * Каждый отказ проверяется двумя способами подачи
+	 *
+	 * Пределы длины имени и значения проверяются дважды: крупноблочным сканером,
+	 * который принимает непрерывный участок целиком, и посимвольным разбором. При
+	 * подаче сообщения одним куском срабатывает первый, и вторая защита остаётся
+	 * недостижимой - до неё доходит только подача по одному октету, при которой
+	 * непрерывного участка не возникает вовсе
+	 */
+	for(auto & probe : probes)
+	for(const bool bytewise : {false, true}){
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Создаём объект сборщика событий парсера
+		events_t events;
+		// Подписываем сборщик событий на все функции обратного вызова парсера
+		this->attach(* parser, events);
+		// Получаем текущий набор ограничений парсера
+		parser_http_t::limits_t limits = parser->limits();
+		// Устанавливаем требование строгого окончания строк
+		limits.strictEOL = probe.strictEOL;
+		// Если предельная длина имени заголовка задана
+		if(probe.maxHeaderName > 0)
+			// Устанавливаем предельную длину имени заголовка
+			limits.maxHeaderName = probe.maxHeaderName;
+		// Если предельная длина значения заголовка задана
+		if(probe.maxHeaderValue > 0)
+			// Устанавливаем предельную длину значения заголовка
+			limits.maxHeaderValue = probe.maxHeaderValue;
+		// Если предельный суммарный размер заголовков задан
+		if(probe.maxHeadersTotal > 0)
+			// Устанавливаем предельный суммарный размер заголовков
+			limits.maxHeadersTotal = probe.maxHeadersTotal;
+		// Устанавливаем сформированный набор ограничений
+		parser->limits(limits);
+		// Формируем сообщение с телом и проверяемым блоком трейлеров
+		const std::string message = (
+			"HTTP/1.1 200 OK\r\n"
+			"Transfer-Encoding: chunked\r\n"
+			"\r\n"
+			"5\r\nhello\r\n"
+			"0\r\n" + probe.trailers
+		);
+		// Формируем описание проверяемого отказа для диагностики
+		const std::string details = (std::string("отказ: ") + probe.name + (bytewise ? " (по октету)" : " (целиком)"));
+		// Если сообщение подаётся по одному октету
+		if(bytewise){
+			/**
+			 * Подаём сообщение по одному октету до фиксации отказа
+			 */
+			for(size_t i = 0; i < message.size(); i++){
+				// Выполняем разбор очередного октета сообщения
+				parser->parse(message.data() + i, 1);
+				// Если отказ зафиксирован
+				if(parser->error() != parser_http_t::error_t::NONE)
+					// Прекращаем подачу
+					break;
+			}
+		// Выполняем разбор сформированного сообщения целиком
+		} else parser->parse(message.data(), message.size());
+		// Проверяем что зафиксирована ожидаемая ошибка разбора
+		ASSERT_EQ(parser->error(), probe.error) << details;
+		// Проверяем что сообщение не признано полностью разобранным
+		ASSERT_NE(parser->status(), parser_t::status_t::COMPLETE) << details;
+		/**
+		 * Проверяем что тело, принятое до блока трейлеров, не искажено отказом:
+		 * непригодный трейлер обязан отменить сообщение, а не переписать доставленное
+		 */
+		ASSERT_EQ(events.body, "hello") << details;
+	}
+}
+
+/**
+ * @brief Метод проверки значимой семантики разобранного сообщения
+ *
+ * @details Разобранное сообщение отдаётся вызывающей стороне как значение: его копируют,
+ *          перемещают и сравнивают, чтобы отличить одно сообщение от другого. Внутри
+ *          лежит провайдер стартовой строки, владение которым исключительное, поэтому
+ *          копия обязана создавать собственный провайдер, а не разделять чужой - иначе
+ *          два сообщения освободили бы одну и ту же память
+ *
+ */
+TEST_F(ParserFixture, MessageValueSemanticsTest){
+	/**
+	 * @brief Функция разбора сообщения и получения его значения
+	 *
+	 * @param fixture набор проверок парсера
+	 * @param data    разбираемое сообщение
+	 * @return        разобранное сообщение
+	 *
+	 */
+	auto parse = [this](const std::string & data) -> parser_http_t::message_t {
+		// Создаём объект парсера-приёмника запроса
+		auto parser = this->make(direct_t::REQUEST);
+		// Выполняем разбор переданного сообщения
+		parser->parse(data.data(), data.size());
+		// Выводим копию разобранного сообщения
+		return parser_http_t::message_t(parser->message());
+	};
+	// Разбираем сообщение запроса
+	const parser_http_t::message_t first = parse("GET /index.html HTTP/1.1\r\nHost: anyks.com\r\n\r\n");
+	// Разбираем такое же сообщение запроса
+	const parser_http_t::message_t same = parse("GET /index.html HTTP/1.1\r\nHost: anyks.com\r\n\r\n");
+	// Разбираем сообщение запроса с другим адресом
+	const parser_http_t::message_t other = parse("GET /other.html HTTP/1.1\r\nHost: anyks.com\r\n\r\n");
+	// Разбираем сообщение запроса с телом фиксированного размера
+	const parser_http_t::message_t sized = parse("POST /index.html HTTP/1.1\r\nHost: anyks.com\r\nContent-Length: 5\r\n\r\nhello");
+	// Создаём копию разобранного сообщения
+	parser_http_t::message_t copy(first);
+	// Проверяем что копия равна оригиналу
+	ASSERT_TRUE(copy == first);
+	// Проверяем что копия получила собственный провайдер стартовой строки
+	ASSERT_NE(copy.provider.get(), first.provider.get());
+	// Проверяем что одинаковые сообщения признаны равными
+	ASSERT_TRUE(first == same);
+	// Проверяем что сообщения с разными адресами признаны различными
+	ASSERT_TRUE(first != other);
+	// Проверяем что сообщения с разным кадрированием тела признаны различными
+	ASSERT_TRUE(first != sized);
+	// Выполняем присваивание копированием другого сообщения
+	copy = other;
+	// Проверяем что присвоенное значение равно источнику
+	ASSERT_TRUE(copy == other);
+	// Проверяем что присвоенное значение получило собственный провайдер стартовой строки
+	ASSERT_NE(copy.provider.get(), other.provider.get());
+	// Создаём перемещаемое сообщение
+	parser_http_t::message_t source(sized);
+	// Запоминаем провайдер перемещаемого сообщения
+	const provider_t * origin = source.provider.get();
+	// Выполняем перемещение сообщения
+	parser_http_t::message_t moved(::std::move(source));
+	// Проверяем что провайдер перешёл к перемещённому сообщению без копирования
+	ASSERT_EQ(moved.provider.get(), origin);
+	// Проверяем что перемещённое сообщение равно исходному значению
+	ASSERT_TRUE(moved == sized);
+	// Выполняем присваивание перемещением
+	copy = ::std::move(moved);
+	// Проверяем что присвоенное перемещением значение равно исходному
+	ASSERT_TRUE(copy == sized);
+}
+
+/**
+ * @brief Метод проверки названий кодов ошибок разбора
+ *
+ * @details Название кода ошибки уходит в журнал и в диагностику вызывающей стороны:
+ *          пропущенный в разборе названий код печатался бы как неизвестный, и разбор
+ *          отказа по журналу стал бы невозможен
+ *
+ */
+TEST_F(ParserFixture, ErrorNameCoverageTest){
+	// Создаём объект парсера-приёмника запроса
+	auto parser = this->make(direct_t::REQUEST);
+	// Проверяем название кода ошибки текущего состояния парсера
+	ASSERT_EQ(parser->errorName(), "NONE");
+	// Формируем сообщение с недопустимым символом в имени заголовка
+	const std::string message = "GET / HTTP/1.1\r\nHost: anyks.com\r\nX-Bad\x01Name: value\r\n\r\n";
+	// Выполняем разбор сформированного сообщения
+	parser->parse(message.data(), message.size());
+	// Проверяем что название кода ошибки соответствует зафиксированной ошибке
+	ASSERT_EQ(parser->errorName(), parser_http_t::errorName(parser->error()));
+	// Проверяем что название кода ошибки не пустое
+	ASSERT_FALSE(parser->errorName().empty());
+	/**
+	 * Выполняем перебор всех кодов ошибок разбора
+	 */
+	for(uint32_t code = 0; code <= 0xFF; code++){
+		// Получаем название проверяемого кода ошибки
+		const std::string_view name = parser_http_t::errorName(static_cast <parser_http_t::error_t> (code));
+		// Проверяем что название кода ошибки не пустое
+		ASSERT_FALSE(name.empty()) << ("код ошибки: " + std::to_string(code));
+	}
+}
+
+/**
+ * @brief Метод проверки пределов длины строк на всех состояниях их разбора
+ *
+ * @details Предел длины проверяется в каждом состоянии разбора строки по отдельности,
+ *          и состояний этих больше десятка: метод запроса, request-target, версия
+ *          протокола, разделительные пробелы, код и текст состояния ответа, строка размера
+ *          чанка. Проверка, пропущенная в одном из них, оставляет ровно один способ
+ *          подать строку неограниченной длины, поэтому проверяется каждое состояние
+ *
+ */
+TEST_F(ParserFixture, LineLimitsTest){
+	/**
+	 * @brief Структура проверяемого превышения предела длины строки
+	 *
+	 */
+	struct probe_t {
+		// Название проверяемого превышения
+		const char * name;
+		// Направление разбираемого трафика
+		direct_t direct;
+		// Разбираемое сообщение
+		std::string message;
+		// Ожидаемый код ошибки разбора
+		parser_http_t::error_t error;
+	};
+	// Предел длины стартовой строки для всех проверок
+	static constexpr size_t LINE = 32;
+	// Формируем перечень проверяемых превышений предела длины строки
+	const std::vector <probe_t> probes = {
+		// Превышение предела длины методом запроса
+		{"длинный метод запроса", direct_t::REQUEST, (std::string(64, 'G') + " / HTTP/1.1\r\n\r\n"), parser_http_t::error_t::URL_OVERFLOW},
+		// Превышение предела длины адресом запроса
+		{"длинный адрес запроса", direct_t::REQUEST, ("GET /" + std::string(64, 'a') + " HTTP/1.1\r\n\r\n"), parser_http_t::error_t::URL_OVERFLOW},
+		// Превышение предела длины разделительными пробелами перед кодом ответа
+		{"длинный разделитель ответа", direct_t::RESPONSE, ("HTTP/1.1" + std::string(64, ' ') + "200 OK\r\n\r\n"), parser_http_t::error_t::URL_OVERFLOW},
+		// Превышение предела длины текстом состояния ответа
+		{"длинный текст состояния", direct_t::RESPONSE, ("HTTP/1.1 200 " + std::string(64, 'O') + "\r\n\r\n"), parser_http_t::error_t::URL_OVERFLOW},
+		// Превышение предела длины расширениями строки размера чанка
+		{"длинные расширения чанка", direct_t::RESPONSE,
+		 ("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5;" + std::string(64, 'a') + "\r\nhello\r\n0\r\n\r\n"),
+		 parser_http_t::error_t::CHUNK_OVERFLOW}
+	};
+	/**
+	 * Каждое превышение проверяется двумя способами подачи: крупноблочный сканер и
+	 * посимвольный разбор считают длину строки по отдельности
+	 */
+	for(auto & probe : probes)
+	for(const bool bytewise : {false, true}){
+		// Создаём объект парсера-приёмника
+		auto parser = this->make(probe.direct);
+		// Получаем текущий набор ограничений парсера
+		parser_http_t::limits_t limits = parser->limits();
+		// Устанавливаем предел длины стартовой строки
+		limits.maxRequestLine = LINE;
+		// Устанавливаем предел длины строки размера чанка
+		limits.maxChunkLine = LINE;
+		// Устанавливаем сформированный набор ограничений
+		parser->limits(limits);
+		// Формируем описание проверяемого превышения для диагностики
+		const std::string details = (std::string("предел: ") + probe.name + (bytewise ? " (по октету)" : " (целиком)"));
+		// Если сообщение подаётся по одному октету
+		if(bytewise){
+			/**
+			 * Подаём сообщение по одному октету до фиксации отказа
+			 */
+			for(size_t i = 0; i < probe.message.size(); i++){
+				// Выполняем разбор очередного октета сообщения
+				parser->parse(probe.message.data() + i, 1);
+				// Если отказ зафиксирован
+				if(parser->error() != parser_http_t::error_t::NONE)
+					// Прекращаем подачу
+					break;
+			}
+		// Выполняем разбор сформированного сообщения целиком
+		} else parser->parse(probe.message.data(), probe.message.size());
+		// Проверяем что зафиксирована ожидаемая ошибка разбора
+		ASSERT_EQ(parser->error(), probe.error) << details;
+		// Проверяем что сообщение не признано полностью разобранным
+		ASSERT_NE(parser->status(), parser_t::status_t::COMPLETE) << details;
+	}
+}
+
+/**
+ * @brief Метод проверки прерывания разбора потребителем внутри блока трейлеров
+ *
+ * @details Потребитель вправе прервать разбор из любой функции обратного вызова, и блок
+ *          трейлеров - последнее место, где это ещё возможно: тело уже доставлено, а
+ *          сообщение ещё не завершено. Отказ обязан фиксироваться как прерывание разбора,
+ *          а не как успешное завершение сообщения
+ *
+ */
+TEST_F(ParserFixture, TrailerAbortedByConsumerTest){
+	// Создаём объект парсера-приёмника ответа
+	auto parser = this->make(direct_t::RESPONSE);
+	// Устанавливаем функцию обратного вызова получения заголовка, прерывающую разбор на трейлере
+	parser->on(static_cast <parser_http_t::header_callback_t> (
+		[](const uint32_t, const std::string_view, const std::string_view, const parser_http_t::part_t part) -> bool {
+			// Прерываем разбор при получении поля блока трейлеров
+			return (part != parser_http_t::part_t::TRAILER);
+		}
+	));
+	// Формируем сообщение с телом и блоком трейлеров
+	const std::string message = (
+		"HTTP/1.1 200 OK\r\n"
+		"Transfer-Encoding: chunked\r\n"
+		"\r\n"
+		"5\r\nhello\r\n"
+		"0\r\nX-Check: done\r\n\r\n"
+	);
+	// Выполняем разбор сформированного сообщения
+	parser->parse(message.data(), message.size());
+	// Проверяем что разбор прерван потребителем
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::ABORTED);
+	// Проверяем что сообщение не признано полностью разобранным
+	ASSERT_NE(parser->status(), parser_t::status_t::COMPLETE);
+}
+
+/**
  * @brief Метод тестирования отказа при получении сообщения HTTP/1.0 с Transfer-Encoding
  *
  * @details RFC 9112 §6.1 требует считать сообщение HTTP/1.0, несущее заголовок

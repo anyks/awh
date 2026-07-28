@@ -1534,7 +1534,7 @@ awh::http::Parser_HTTP::Message & awh::http::Parser_HTTP::Message::operator = (c
  * @return        результат сравнения
  *
  */
-bool awh::http::Parser_HTTP::Message::operator == (const Message & message) noexcept {
+bool awh::http::Parser_HTTP::Message::operator == (const Message & message) const noexcept {
 	// Выполняем сравнение всех параметров сообщения кроме провайдера
 	const bool result = (
 		(this->part == message.part) &&
@@ -1585,7 +1585,7 @@ bool awh::http::Parser_HTTP::Message::operator == (const Message & message) noex
  * @return        результат сравнения
  *
  */
-bool awh::http::Parser_HTTP::Message::operator != (const Message & message) noexcept {
+bool awh::http::Parser_HTTP::Message::operator != (const Message & message) const noexcept {
 	// Выполняем сравнение всех параметров сообщения
 	return !((* this) == message);
 }

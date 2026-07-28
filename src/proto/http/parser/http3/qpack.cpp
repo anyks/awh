@@ -357,6 +357,16 @@ void awh::http::h3::qpack::DynamicTable::release() noexcept {
  * @return количество удерживаемых записей
  *
  */
+void awh::http::h3::qpack::DynamicTable::holding(const bool holding) noexcept {
+	// Запоминаем признак выданных наружу представлений
+	this->_holding = holding;
+}
+/**
+ * @brief Метод получения количества удерживаемых вытесненных записей
+ *
+ * @return количество удерживаемых записей
+ *
+ */
 size_t awh::http::h3::qpack::DynamicTable::retained() const noexcept {
 	// Выводим количество удерживаемых вытесненных записей
 	return this->_retained;
@@ -491,10 +501,16 @@ void awh::http::h3::qpack::DynamicTable::evict(const uint64_t room) noexcept {
 		// Уменьшаем суммарный размер таблицы
 		this->_size -= entrySize(entry.name, entry.value);
 		/**
-		 * Запись не снимается физически, а лишь помечается удерживаемой: наружу могли
-		 * уйти представления в её строки, и снять их вправе только release()
+		 * Пока наружу выданы представления в записи таблицы, вытесненная запись не
+		 * снимается физически, а лишь помечается удерживаемой: снять её вправе только
+		 * release(). Если представлений наружу не выдано - снимаем сразу, иначе поток
+		 * из одних вставок удерживал бы все вытесненные записи разом
 		 */
-		this->_retained++;
+		if(this->_holding)
+			// Помечаем запись удерживаемой
+			this->_retained++;
+		// Иначе снимаем самую старую живую запись таблицы
+		else this->_entries.pop_front();
 		// Наращиваем количество вытесненных записей
 		this->_dropped++;
 	}
@@ -712,7 +728,7 @@ void awh::http::h3::qpack::DynamicTable::clear() noexcept {
  *
  */
 awh::http::h3::qpack::DynamicTable::DynamicTable(const uint64_t capacity) noexcept :
- _retained(0), _size(0), _capacity(capacity), _inserts(0), _dropped(0), _indexing(false) {}
+ _retained(0), _holding(false), _size(0), _capacity(capacity), _inserts(0), _dropped(0), _indexing(false) {}
 
 /**
  * @brief Метод декодирования строки, закодированной литералом либо Huffman
@@ -898,6 +914,11 @@ void awh::http::h3::qpack::Decoder::emit(string_view name, string_view value, co
 	slice.value = value;
 	// Устанавливаем признак чувствительного значения
 	slice.sensitive = sensitive;
+	/**
+	 * Помечаем, что наружу выданы представления в записи таблицы: с этого момента
+	 * вытеснение обязано откладываться, иначе представления повиснут
+	 */
+	this->_table.holding(true);
 	// Дописываем срез декодированного поля
 	this->_slices.push_back(slice);
 }
@@ -996,6 +1017,8 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decodeEncoderStream(strin
 	 * действительности представлений проходит по входу в разбор - в любой из двух
 	 */
 	this->_table.release();
+	// Снимаем признак выданных наружу представлений
+	this->_table.holding(false);
 	// Сбрасываем количество разобранных октетов
 	consumed = 0;
 	// Получаем указатель на входной буфер
@@ -1398,6 +1421,8 @@ awh::http::h3::status_t awh::http::h3::qpack::Decoder::decode(const uint64_t sid
 	 * прошлым вызовом, с этого момента недействительны - ровно как обещано контрактом
 	 */
 	this->_table.release();
+	// Снимаем признак выданных наружу представлений
+	this->_table.holding(false);
 	/**
 	 * Отводим арену на всю секцию сразу, по оценке сверху. Оценка верна потому, что
 	 * закодированные строки секции не перекрываются, а декодирование Huffman удлиняет

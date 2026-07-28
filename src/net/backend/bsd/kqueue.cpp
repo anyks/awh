@@ -1004,8 +1004,16 @@ namespace io {
 		double tokens;
 		// Время последнего обновления пропускной способности в наносекундах
 		uint64_t time;
-		// Лимит пропускной способности в байтах в секунду
-		uint32_t limit;
+		/**
+		 * Лимит пропускной способности в байтах в секунду
+		 *
+		 * @note Ширина поля выбрана по разрядности разборщика: метод разбора
+		 *       строки предела отдаёт size_t, и в тридцати двух разрядах предел
+		 *       выше 34 гигабит в секунду молчаливо заворачивался. Поле не
+		 *       увеличивает набор: восемь октетов ложатся в хвостовое
+		 *       выравнивание, набор как занимал тридцать два октета, так и занимает
+		 */
+		uint64_t limit;
 		// Таймаут пропускной способности
 		timeout_t timeout;
 		/**
@@ -3069,12 +3077,12 @@ namespace bandwidth {
 	 * @brief Количество разрешённых на получение байт за 1 секунду времени
 	 *
 	 */
-	static uint32_t read = 0;
+	static uint64_t read = 0;
 	/**
 	 * @brief Количество разрешённых на передачу байт за 1 секунду времени
 	 *
 	 */
-	static uint32_t write = 0;
+	static uint64_t write = 0;
 };
 
 /**
@@ -57646,7 +57654,7 @@ void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view ba
 					// Устанавливаем пропускную способность для автоматического определения пропускной способности
 					::bandwidth::write = 0;
 				// Устанавливаем пропускную способность для ограничения исходящего трафика
-				else ::bandwidth::write = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+				else ::bandwidth::write = this->_fmk->bpsSize(bandwidth);
 			} break;
 			// Если режим ограничения пропускной способности является входящим
 			case static_cast <uint8_t> (event::limiting_t::INGRESS): {
@@ -57655,7 +57663,7 @@ void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view ba
 					// Устанавливаем пропускную способность для автоматического определения пропускной способности
 					::bandwidth::read = 0;
 				// Устанавливаем пропускную способность для ограничения входящего трафика
-				else ::bandwidth::read = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+				else ::bandwidth::read = this->_fmk->bpsSize(bandwidth);
 			} break;
 		}
 	/**
@@ -57726,7 +57734,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											// Устанавливаем пропускную способность для автоматического определения пропускной способности
 											peer->bandwidthUse().write.limit = 0;
 										// Устанавливаем пропускную способность для ограничения исходящего трафика
-										else peer->bandwidthUse().write.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										else peer->bandwidthUse().write.limit = this->_fmk->bpsSize(bandwidth);
 										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
 										if(peer->bandwidth().write.limit == 0){
 											/**
@@ -57753,7 +57761,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											// Устанавливаем пропускную способность для автоматического определения пропускной способности
 											peer->bandwidthUse().read.limit = 0;
 										// Устанавливаем пропускную способность для ограничения входящего трафика
-										else peer->bandwidthUse().read.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										else peer->bandwidthUse().read.limit = this->_fmk->bpsSize(bandwidth);
 										// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
 										if(peer->bandwidth().read.limit == 0){
 											/**
@@ -57836,7 +57844,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											// Устанавливаем пропускную способность для автоматического определения пропускной способности
 											origin->wrate.limit = 0;
 										// Устанавливаем пропускную способность для ограничения исходящего трафика
-										else origin->wrate.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										else origin->wrate.limit = this->_fmk->bpsSize(bandwidth);
 										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
 										if(origin->wrate.limit == 0){
 											/**
@@ -57939,7 +57947,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											// Устанавливаем пропускную способность для автоматического определения пропускной способности
 											client->bandwidthUse().write.limit = 0;
 										// Устанавливаем пропускную способность для ограничения исходящего трафика
-										else client->bandwidthUse().write.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										else client->bandwidthUse().write.limit = this->_fmk->bpsSize(bandwidth);
 										// Если пропускная способность для ограничения исходящего трафика установлена в автоматическое определение пропускной способности
 										if(client->bandwidth().write.limit == 0){
 											/**
@@ -57966,7 +57974,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											// Устанавливаем пропускную способность для автоматического определения пропускной способности
 											client->bandwidthUse().read.limit = 0;
 										// Устанавливаем пропускную способность для ограничения входящего трафика
-										else client->bandwidthUse().read.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										else client->bandwidthUse().read.limit = this->_fmk->bpsSize(bandwidth);
 										// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
 										if(client->bandwidth().read.limit == 0){
 											/**
@@ -58065,7 +58073,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 											// Устанавливаем пропускную способность для автоматического определения пропускной способности
 											server->wrate.limit = 0;
 										// Устанавливаем пропускную способность для ограничения входящего трафика
-										else server->wrate.limit = static_cast <uint32_t> (this->_fmk->bpsSize(bandwidth));
+										else server->wrate.limit = this->_fmk->bpsSize(bandwidth);
 										// Если пропускная способность для ограничения входящего трафика установлена в автоматическое определение пропускной способности
 										if(server->wrate.limit == 0){
 											/**

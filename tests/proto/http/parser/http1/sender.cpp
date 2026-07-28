@@ -1316,6 +1316,146 @@ TEST_F(ParserFixture, SendBodylessContentLengthTest){
 }
 
 /**
+ * @brief Метод проверки сборки ответов, не несущих кадрированного тела
+ *
+ * @details Ответ на CONNECT с кодом 2xx открывает туннель, а ответы 1xx, [204 No Content]
+ *          и [304 Not Modified] заканчиваются первой пустой строкой независимо от полей
+ *          блока (RFC 9112 §6.3). Кадрировать тело в таком ответе означает рассинхронизировать
+ *          соединение: получатель прочитает выданные следом байты как начало следующего
+ *          ответа. Проверяется собственным приёмником - он трактует эти ответы так же,
+ *          и расхождение сборки с разбором вылезло бы сразу
+ *
+ */
+TEST_F(ParserFixture, SendBodilessResponsesTest){
+	/**
+	 * @brief Структура проверяемого ответа, не несущего кадрированного тела
+	 *
+	 */
+	struct probe_t {
+		// Название проверяемого ответа
+		const char * name;
+		// Код ответа сервера
+		uint32_t code;
+		// Текст состояния ответа сервера
+		const char * status;
+		// Метод запроса, на который отправляется ответ
+		method_t method;
+		// Признак переключения протокола у принимающей стороны
+		bool upgrade;
+		// Признак вычистки заголовка кадрирования из блока
+		bool dropEncoding;
+	};
+	/**
+	 * Формируем перечень проверяемых ответов
+	 *
+	 * Заголовок кадрирования вычищается не из всякого ответа без тела: RFC 9112 §6.1
+	 * запрещает его лишь в ответах 1xx, [204 No Content] и в ответах 2xx на CONNECT.
+	 * Ответ [304 Not Modified] описывает полями гипотетическое тело, которое было бы
+	 * отправлено в ответе 200, поэтому кадрирование в нём законно - и обязано
+	 * доехать до получателя, не заставив его ждать тело
+	 */
+	const std::vector <probe_t> probes = {
+		// Успешный ответ на CONNECT открывает туннель
+		{"200 на CONNECT", 200, "Connection Established", method_t::CONNECT, true, true},
+		// Ответ на CONNECT кодом из середины диапазона 2xx
+		{"299 на CONNECT", 299, "Tunnel", method_t::CONNECT, true, true},
+		// Промежуточный ответ тела не несёт
+		{"103 Early Hints", 103, "Early Hints", method_t::GET, false, true},
+		// Ответ об отсутствии содержимого тела не несёт
+		{"204 No Content", 204, "No Content", method_t::GET, false, true},
+		// Ответ о неизменности содержимого сохраняет объявление гипотетического тела
+		{"304 Not Modified", 304, "Not Modified", method_t::GET, false, false}
+	};
+	/**
+	 * Выполняем перебор всех проверяемых ответов
+	 */
+	for(auto & probe : probes){
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Создаём объект парсера-приёмника ответа
+		auto receiver = this->make(direct_t::RESPONSE);
+		// Создаём объект сборщика событий парсера-приёмника
+		events_t events;
+		// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+		this->attach(* receiver, events);
+		// Сообщаем отправителю метод запроса, на который отправляется ответ
+		sender->method(probe.method);
+		// Сообщаем приёмнику метод запроса, на который получен ответ
+		receiver->method(probe.method);
+		// Формируем контейнер заголовков ответа с провайдером
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, probe.code, std::string(probe.status)));
+		// Дописываем заголовок кадрирования тела, недопустимый в таком ответе
+		response.emplace("Transfer-Encoding", "chunked");
+		// Отправляем заголовки ответа без завершения сообщения
+		sender->sendHeaders(response, false);
+		// Формируем описание проверяемого ответа для диагностики
+		const std::string details = (std::string("ответ: ") + probe.name);
+		// Перекачиваем исходящие байты отправителя в принимающий парсер
+		::drain(* sender, * receiver);
+		// Проверяем что принимающая сторона считает сообщение завершённым
+		ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE) << details;
+		// Проверяем что разбор ответа прошёл без ошибок
+		ASSERT_EQ(receiver->error(), parser_http_t::error_t::NONE) << details;
+		// Проверяем что тело сообщения отсутствует
+		ASSERT_TRUE(events.body.empty()) << details;
+		// Проверяем совпадение признака переключения протокола со сборкой
+		ASSERT_EQ(receiver->message().flags.upgrade, probe.upgrade) << details;
+		// Признак присутствия заголовка кадрирования тела на проводе
+		bool encoding = false;
+		/**
+		 * Выполняем перебор всех разобранных заголовков сообщения
+		 */
+		for(const auto & header : events.headers){
+			// Если получен заголовок кадрирования тела
+			if(header.first == "Transfer-Encoding")
+				// Помечаем что заголовок кадрирования тела дошёл до получателя
+				encoding = true;
+		}
+		// Проверяем что заголовок кадрирования тела вычищен ровно там, где это требуется
+		ASSERT_EQ(encoding, !probe.dropEncoding) << details;
+	}
+}
+
+/**
+ * @brief Метод проверки сборки при непригодном к разбору заголовке Content-Length
+ *
+ * @details Значение заголовка вызывающая сторона формирует сама, и нечисловое значение
+ *          при завершении сообщения заголовками обязано вычищаться так же, как ненулевое:
+ *          на проводе оно осталось бы объявлением тела, которого не будет
+ *
+ */
+TEST_F(ParserFixture, SendUnparsableContentLengthTest){
+	// Создаём объект парсера-отправителя запроса
+	auto sender = this->make(direct_t::REQUEST);
+	// Создаём объект парсера-приёмника запроса
+	auto receiver = this->make(direct_t::REQUEST);
+	// Создаём объект сборщика событий парсера-приёмника
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера-приёмника
+	this->attach(* receiver, events);
+	// Формируем контейнер заголовков запроса с провайдером
+	headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::POST, std::string("/api")));
+	// Дописываем заголовок Host
+	request.emplace("Host", "anyks.com");
+	// Дописываем непригодный к разбору размер тела
+	request.emplace("Content-Length", "abc");
+	// Отправляем заголовки запроса с завершением сообщения (тела не будет)
+	sender->sendHeaders(request, true);
+	// Перекачиваем исходящие байты отправителя в принимающий парсер
+	::drain(* sender, * receiver);
+	// Проверяем что принимающая сторона считает сообщение завершённым
+	ASSERT_EQ(receiver->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что разбор запроса прошёл без ошибок
+	ASSERT_EQ(receiver->error(), parser_http_t::error_t::NONE);
+	/**
+	 * Выполняем перебор всех разобранных заголовков сообщения
+	 */
+	for(const auto & header : events.headers)
+		// Проверяем что непригодный заголовок размера тела на провод не ушёл
+		ASSERT_STRNE(header.first.c_str(), "Content-Length");
+}
+
+/**
  * @brief Метод проверки вычистки запрещённых полей из исходящих трейлеров
  *
  */

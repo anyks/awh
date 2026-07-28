@@ -339,11 +339,16 @@ namespace awh {
 						/**
 						 * @brief Оператор сравнения
 						 *
+						 * @note Оператор объявлен константным: разобранное сообщение выдаётся
+						 *       методом message константной ссылкой, и неконстантный оператор
+						 *       сравнения оказался бы неприменим ровно к тому значению, ради
+						 *       которого он и существует
+						 *
 						 * @param message объект сообщения для сравнения
 						 * @return        результат сравнения
 						 *
 						 */
-						bool operator == (const Message & message) noexcept;
+						bool operator == (const Message & message) const noexcept;
 						/**
 						 * @brief Оператор сравнения
 						 *
@@ -351,7 +356,7 @@ namespace awh {
 						 * @return        результат сравнения
 						 *
 						 */
-						bool operator != (const Message & message) noexcept;
+						bool operator != (const Message & message) const noexcept;
 					public:
 						/**
 						 * @brief Конструктор перемещения
