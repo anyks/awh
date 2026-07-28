@@ -8815,7 +8815,7 @@ namespace io {
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
 									if(peer->limitedRead()){
 										// Вычисляем время в миллисекундах, необходимое для получения данных, с учётом установленного ограничения пропускной способности
-										peer->bandwidth().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth().read.limit)) * 1000.);
+										peer->bandwidthUse().read.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth().read.limit)) * 1000.);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -8823,12 +8823,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
-												::timer1::set({::timer::flag_t::FORCED, peer->bandwidth().read.timeout}, peer->id, event::rate_t::DEFERRED, log);
+												::timer1::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Обновляем таймаут на получение данных
-												::timer2::set({::timer::flag_t::FORCED, peer->bandwidth().read.timeout}, peer->id, event::rate_t::DEFERRED, log);
+												::timer2::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED, log);
 											break;
 										}
 										// Выходим из цикла
@@ -13950,13 +13950,13 @@ namespace io {
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
-											peer->bandwidth().write.tokens -= static_cast <double> (bytes);
+											peer->bandwidthUse().write.tokens -= static_cast <double> (bytes);
 											// Если очередь передачи данных не пуста
 											if(!peer->transfer.queue.empty()){
 												// Если токенов для отправки данных больше нет
 												if(peer->bandwidth().write.tokens < static_cast <double> (size)){
 													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													peer->bandwidth().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
+													peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (bytes) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -13964,12 +13964,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer1::set({::timer::flag_t::FORCED, peer->bandwidth().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+															::timer1::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer2::set({::timer::flag_t::FORCED, peer->bandwidth().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+															::timer2::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
 														break;
 													}
 												// Если токены для отправки данных ещё есть
@@ -13999,7 +13999,7 @@ namespace io {
 									// Если в очереди событий появились данные для отправки
 									} else if(!peer->transfer.queue.empty()) {
 										// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										peer->bandwidth().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
+										peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> ((static_cast <double> (size) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -14008,7 +14008,7 @@ namespace io {
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем и обновляем таймаут на ожидание записи данных
 												::timer1::set(
-													{::timer::flag_t::FORCED, peer->bandwidth().write.timeout},
+													{::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout},
 													{::timer::flag_t::SIMPLE, peer->timeouts.write},
 													peer->id, event::rate_t::DEFERRED, log
 												);
@@ -14017,7 +14017,7 @@ namespace io {
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем и обновляем таймаут на ожидание записи данных
 												::timer2::set(
-													{::timer::flag_t::FORCED, peer->bandwidth().write.timeout},
+													{::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout},
 													{::timer::flag_t::SIMPLE, peer->timeouts.write},
 													peer->id, event::rate_t::DEFERRED, log
 												);
@@ -18061,7 +18061,7 @@ namespace io {
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
-											peer->bandwidth().write.tokens -= static_cast <double> (result);
+											peer->bandwidthUse().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
 										} else if(errno == EAGAIN) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -18120,7 +18120,7 @@ namespace io {
 											// Если таймаут на запись данных не активирован
 											if(peer->bandwidth().write.timeout.status == event::status_t::NONE){
 												// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												peer->bandwidth().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth().write.tokens) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
+												peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth().write.tokens) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -18128,12 +18128,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer1::set({::timer::flag_t::FORCED, peer->bandwidth().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+														::timer1::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer2::set({::timer::flag_t::FORCED, peer->bandwidth().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+														::timer2::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
 													break;
 												}
 											}
@@ -18410,7 +18410,7 @@ namespace io {
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
-												peer->bandwidth().write.tokens -= static_cast <double> (result);
+												peer->bandwidthUse().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
 											} else if(errno == EAGAIN) {
 												// Сохраняем оставшиеся данные для последующей отправки
@@ -18469,7 +18469,7 @@ namespace io {
 												// Если таймаут на запись данных не активирован
 												if(peer->bandwidth().write.timeout.status == event::status_t::NONE){
 													// Вычисляем время в миллисекундах, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-													peer->bandwidth().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth().write.tokens) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
+													peer->bandwidthUse().write.timeout.delay = static_cast <uint32_t> (((static_cast <double> (size) - peer->bandwidth().write.tokens) / static_cast <double> (peer->bandwidth().write.limit)) * 1000.);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -18477,12 +18477,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer1::set({::timer::flag_t::FORCED, peer->bandwidth().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+															::timer1::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer2::set({::timer::flag_t::FORCED, peer->bandwidth().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+															::timer2::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
 														break;
 													}
 												}
@@ -26439,9 +26439,9 @@ namespace io {
 												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 												if(peer->bandwidth().write.time == 0){
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-													peer->bandwidth().write.time = date;
+													peer->bandwidthUse().write.time = date;
 													// Устанавливаем количество токенов для ограничения пропускной способности
-													peer->bandwidth().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+													peer->bandwidthUse().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 													// Формируем положительный результат
 													return true;
 												}
@@ -26450,9 +26450,9 @@ namespace io {
 												// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 												if(elapsed > 0){
 													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-													peer->bandwidth().write.tokens += static_cast <double> (peer->bandwidth().write.limit * (elapsed / 1e9));
+													peer->bandwidthUse().write.tokens += static_cast <double> (peer->bandwidth().write.limit * (elapsed / 1e9));
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-													peer->bandwidth().write.time = date;
+													peer->bandwidthUse().write.time = date;
 												}
 												// Формируем положительный результат
 												return true;
@@ -26462,9 +26462,9 @@ namespace io {
 												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 												if(peer->bandwidth().read.time == 0){
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-													peer->bandwidth().read.time = date;
+													peer->bandwidthUse().read.time = date;
 													// Устанавливаем количество токенов для ограничения пропускной способности
-													peer->bandwidth().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
+													peer->bandwidthUse().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 													// Формируем положительный результат
 													return true;
 												}
@@ -26473,15 +26473,15 @@ namespace io {
 												// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 												if(elapsed > 0){
 													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-													peer->bandwidth().read.tokens += static_cast <double> (peer->bandwidth().read.limit * (elapsed / 1e9));
+													peer->bandwidthUse().read.tokens += static_cast <double> (peer->bandwidth().read.limit * (elapsed / 1e9));
 													// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 													const double burst = ::local::burst(peer->bandwidth().read.limit, AWH_MTU_UDP_IPV4_PAYLOAD_SIZE);
 													// Если количество токенов для ограничения пропускной способности превышает размер ведра
 													if(peer->bandwidth().read.tokens > burst)
 														// Устанавливаем количество токенов равным размеру ведра
-														peer->bandwidth().read.tokens = burst;
+														peer->bandwidthUse().read.tokens = burst;
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-													peer->bandwidth().read.time = date;
+													peer->bandwidthUse().read.time = date;
 												}
 												// Формируем положительный результат
 												return true;
@@ -26499,9 +26499,9 @@ namespace io {
 												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 												if(peer->bandwidth().write.time == 0){
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-													peer->bandwidth().write.time = date;
+													peer->bandwidthUse().write.time = date;
 													// Устанавливаем количество токенов для ограничения пропускной способности
-													peer->bandwidth().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+													peer->bandwidthUse().write.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 													// Формируем положительный результат
 													return true;
 												}
@@ -26510,9 +26510,9 @@ namespace io {
 												// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 												if(elapsed > 0){
 													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-													peer->bandwidth().write.tokens += static_cast <double> (peer->bandwidth().write.limit * (elapsed / 1e9));
+													peer->bandwidthUse().write.tokens += static_cast <double> (peer->bandwidth().write.limit * (elapsed / 1e9));
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-													peer->bandwidth().write.time = date;
+													peer->bandwidthUse().write.time = date;
 												}
 												// Формируем положительный результат
 												return true;
@@ -26522,9 +26522,9 @@ namespace io {
 												// Если время последнего обновления таймера ограничения пропускной способности равно не установлено
 												if(peer->bandwidth().read.time == 0){
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-													peer->bandwidth().read.time = date;
+													peer->bandwidthUse().read.time = date;
 													// Устанавливаем количество токенов для ограничения пропускной способности
-													peer->bandwidth().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
+													peer->bandwidthUse().read.tokens = static_cast <double> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 													// Формируем положительный результат
 													return true;
 												}
@@ -26533,15 +26533,15 @@ namespace io {
 												// Если прошло время с момента последнего обновления таймера ограничения пропускной способности
 												if(elapsed > 0){
 													// Вычисляем количество токенов для ограничения пропускной способности, добавляемое за прошедшее время
-													peer->bandwidth().read.tokens += static_cast <double> (peer->bandwidth().read.limit * (elapsed / 1e9));
+													peer->bandwidthUse().read.tokens += static_cast <double> (peer->bandwidth().read.limit * (elapsed / 1e9));
 													// Ограничение ведра: не более окна всплеска накопления (защита от переполнения)
 													const double burst = ::local::burst(peer->bandwidth().read.limit, AWH_MTU_UDP_IPV6_PAYLOAD_SIZE);
 													// Если количество токенов для ограничения пропускной способности превышает размер ведра
 													if(peer->bandwidth().read.tokens > burst)
 														// Устанавливаем количество токенов равным размеру ведра
-														peer->bandwidth().read.tokens = burst;
+														peer->bandwidthUse().read.tokens = burst;
 													// Устанавливаем время последнего обновления таймера ограничения пропускной способности
-													peer->bandwidth().read.time = date;
+													peer->bandwidthUse().read.time = date;
 												}
 												// Формируем положительный результат
 												return true;
