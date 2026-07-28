@@ -2536,6 +2536,80 @@ TEST_F(ParserFixture, SendTunnelResponseTest){
 	EXPECT_EQ(build(407, "Content-Length", "5"), "HTTP/1.1 407 Proxy Authentication Required\r\nContent-Length: 5\r\n\r\nhello");
 }
 /**
+ * @brief Метод проверки автоматически формируемых заголовков
+ *
+ * @details Контейнер умеет дописывать недостающие заголовки сам: Date, Server и
+ *          X-Powered-By ответу сервера, User-Agent запросу клиента. Их значения
+ *          обязаны проходить проверку пригодности наравне с заголовками вызывающей
+ *          стороны - Server, X-Powered-By и User-Agent собираются из задаваемой
+ *          пользователем идентификации сервиса, и управляющий символ в её названии
+ *          дописал бы получателю произвольное поле в каждом собранном сообщении
+ *
+ */
+TEST_F(ParserFixture, SendDefaultHeadersTest){
+	/**
+	 * Проверяем что автоматически сформированные заголовки ответа уходят на провод
+	 */
+	{
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Формируем контейнер заголовков ответа с провайдером
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Объявляем нулевой размер тела ответа
+		response.emplace("Content-Length", "0");
+		// Проверяем что недостающие заголовки ответа дописаны
+		ASSERT_TRUE(response.addDefaultHeaders());
+		// Отправляем заголовки ответа с завершением сообщения
+		sender->sendHeaders(response, true);
+		// Получаем собранные байты исходящего сообщения
+		const std::string wire{sender->pending()};
+		// Проверяем что заголовок даты ушёл на провод
+		ASSERT_NE(wire.find("\r\nDate: "), std::string::npos) << wire;
+		// Проверяем что заголовок идентификации сервера ушёл на провод
+		ASSERT_NE(wire.find("\r\nServer: "), std::string::npos) << wire;
+	}
+	/**
+	 * Проверяем что автоматически сформированные заголовки запроса уходят на провод
+	 */
+	{
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Формируем контейнер заголовков запроса с провайдером
+		headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::GET, std::string("/")));
+		// Дописываем обязательный для запроса HTTP/1.1 заголовок Host
+		request.emplace("Host", "example.com");
+		// Проверяем что недостающие заголовки запроса дописаны
+		ASSERT_TRUE(request.addDefaultHeaders());
+		// Отправляем заголовки запроса с завершением сообщения
+		sender->sendHeaders(request, true);
+		// Проверяем что заголовок идентификации клиента ушёл на провод
+		ASSERT_NE(std::string(sender->pending()).find("\r\nUser-Agent: "), std::string::npos);
+	}
+	/**
+	 * Проверяем что перевод строки внутри идентификации сервиса отвергает сообщение
+	 *
+	 * Идентификация задаётся пользователем и попадает сразу в три автоматически
+	 * формируемых заголовка: без проверки она дописывала бы получателю произвольное
+	 * поле в каждом собранном сообщении
+	 */
+	{
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Формируем контейнер заголовков ответа с провайдером
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Устанавливаем идентификацию сервиса с переводом строки внутри названия
+		response.ident("AWH\r\nX-Injected: yes", "1.0", "https://anyks.com");
+		// Объявляем нулевой размер тела ответа
+		response.emplace("Content-Length", "0");
+		// Дописываем недостающие заголовки ответа
+		response.addDefaultHeaders();
+		// Отправляем заголовки ответа с завершением сообщения
+		sender->sendHeaders(response, true);
+		// Проверяем что сообщение с непригодной идентификацией не собирается
+		ASSERT_TRUE(sender->pending().empty());
+	}
+}
+/**
  * @brief Метод проверки отказа отправить непригодные трейлеры
  *
  * @details Блок трейлеров с непригодным полем отбрасывается целиком, но тело всё
