@@ -21,6 +21,7 @@
  * Стандартные заголовочные файлы
  */
 #include <cstring>
+#include <algorithm>
 
 /**
  * Заголовочные файлы BoringSSL
@@ -326,6 +327,29 @@ namespace {
 	 */
 	static constexpr size_t COMPACT_THRESHOLD = 16384;
 	/**
+	 * @brief Предел числа учётных записей пакетов в пуле переиспользования
+	 *
+	 * @details Пул удерживает буферы освобождённых учётных записей отправленных
+	 *          пакетов, чтобы на каждый пакет не выделять их заново. Предел
+	 *          соразмерен числу пакетов в полёте на канале с высоким произведением
+	 *          полосы на задержку: меньший предел на таком канале не покрывает пик
+	 *          одновременно отправленных пакетов, и пул вырождается в поштучное
+	 *          выделение. Записи малы (вектор блоков), поэтому удержание предела
+	 *          записей стоит порядка сотен килобайт и окупается снятием выделения
+	 *          на каждую датаграмму (по образцу objpool ngtcp2)
+	 *
+	 */
+	static constexpr size_t SENT_POOL_LIMIT = 4096;
+	/**
+	 * @brief Размер порции запроса к pull-источнику при снятой верхней водяной метке
+	 *
+	 * @details Когда ограничение буфера отправки снято (верхняя метка ноль), pull-источник
+	 *          опрашивается порциями этого размера, а не всем телом сразу: иначе движок
+	 *          затянул бы в буфер весь объём тела за один проход
+	 *
+	 */
+	static constexpr size_t PULL_CHUNK = (64 * 1024);
+	/**
 	 * @brief Запас октетов на заголовок фрейма CRYPTO (тип, смещение и длина)
 	 *
 	 */
@@ -575,7 +599,7 @@ awh::quic::Connection::RemoteCid::RemoteCid() noexcept : seq(0), used(false), ha
 awh::quic::Connection::Stream::Stream() noexcept :
  txOffset(0), txBuffer{""}, txCursor(0), txAcked(0), txMax(0), txFin(false), txFinSent(false),
  txReset(false), txResetSent(false), txResetCode(0), txBlocked(false),
- txBlockedAt(numeric_limits <uint64_t>::max()),
+ txBlockedAt(numeric_limits <uint64_t>::max()), writableNotified(true),
  rxOffset(0), rxHigh(0), rxReady{""}, rxMax(0), rxMaxQueued(false),
  rxFin(false), rxFinal(0), rxFinDelivered(false), rxCounted(0),
  rxReset(false), rxResetCode(0), stopQueued(false), stopSent(false),
@@ -928,6 +952,45 @@ void awh::quic::Connection::rtt(const uint64_t sample, const uint64_t delay) noe
 	}
 }
 /**
+ * @brief Метод получения переиспользуемой учётной записи пакета из пула
+ *
+ * @return учётная запись со свежими полями и сохранённой ёмкостью векторов
+ *
+ */
+awh::quic::Connection::sent_t awh::quic::Connection::acquire() noexcept {
+	// Создаём запись со свежими скалярными полями (конструктор по умолчанию)
+	sent_t record;
+	// Если в пуле есть освобождённые записи
+	if(!this->_sentPool.empty()){
+		// Переносим в запись сохранённую ёмкость векторов из пула (пуловые векторы уже пусты)
+		record.stream.swap(this->_sentPool.back().stream);
+		record.control.swap(this->_sentPool.back().control);
+		record.crypto.swap(this->_sentPool.back().crypto);
+		// Удаляем опустошённую запись из пула
+		this->_sentPool.pop_back();
+	}
+	// Возвращаем подготовленную запись
+	return record;
+}
+/**
+ * @brief Метод возврата учётной записи пакета в пул для переиспользования
+ *
+ * @param record освобождаемая учётная запись отправленного пакета
+ *
+ */
+void awh::quic::Connection::recycle(sent_t & record) noexcept {
+	// Предел размера пула: не удерживаем больше записей, чем бывает пакетов в полёте
+	if(this->_sentPool.size() >= SENT_POOL_LIMIT)
+		// Сверх предела запись просто освобождается
+		return;
+	// Очищаем векторы записи с сохранением выделенной ёмкости
+	record.stream.clear();
+	record.control.clear();
+	record.crypto.clear();
+	// Сохраняем запись в пуле для переиспользования её буферов
+	this->_sentPool.push_back(::move(record));
+}
+/**
  * @brief Метод повторной постановки содержимого пакета в очереди отправки (RFC 9002 §6.3)
  *
  * @param space  пространство номеров пакетов
@@ -1178,6 +1241,32 @@ void awh::quic::Connection::schedule(const uint64_t sid) noexcept {
 		// Добавляем идентификатор потока в список ожидающих управляющих фреймов
 		this->_stream.control.push_back(sid);
 	}
+}
+/**
+ * @brief Метод постановки потока в набор потоков с данными к отправке
+ *
+ * @param sid идентификатор потока
+ *
+ */
+void awh::quic::Connection::pending(const uint64_t sid) noexcept {
+	// Позиция вставки в отсортированном наборе потоков с данными
+	auto pos = lower_bound(this->_stream.writable.begin(), this->_stream.writable.end(), sid);
+	// Если поток ещё не в наборе - вставляем с сохранением порядка (ёмкость вектора переиспользуется, узлы не выделяются)
+	if((pos == this->_stream.writable.end()) || (* pos != sid))
+		this->_stream.writable.insert(pos, sid);
+}
+/**
+ * @brief Метод удаления потока из набора потоков с данными к отправке
+ *
+ * @param sid идентификатор потока
+ *
+ */
+void awh::quic::Connection::dequeue(const uint64_t sid) noexcept {
+	// Позиция потока в отсортированном наборе потоков с данными
+	auto pos = lower_bound(this->_stream.writable.begin(), this->_stream.writable.end(), sid);
+	// Если поток присутствует в наборе - удаляем его
+	if((pos != this->_stream.writable.end()) && (* pos == sid))
+		this->_stream.writable.erase(pos);
 }
 /**
  * @brief Метод возврата содержимого отправленных ранних данных в очереди отправки (RFC 9001 §4.6.2)
@@ -3146,6 +3235,8 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 						for(auto & chunk : i->stream)
 							// Учитываем подтверждение отправленного блока данных потока
 							this->settle(chunk);
+						// Возвращаем учётную запись подтверждённого пакета в пул
+						this->recycle(* i);
 					}
 					// Удаляем подтверждённые пакеты из списка отправленных
 					item.sent.erase(position, item.sent.end());
@@ -3579,9 +3670,14 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 						return status_t::ERROR;
 					}
 					// Если разобран фрейм лимита данных потока MAX_STREAM_DATA
-					if(type == frame_t::MAX_STREAM_DATA)
+					if(type == frame_t::MAX_STREAM_DATA){
 						// Обновляем лимит отправки потока (лимиты только растут)
 						stream->txMax = ::max(stream->txMax, value);
+						// Если поднятый лимит разблокировал поток с данными - возвращаем его в набор к отправке
+						if((stream->txBuffer.size() > stream->txCursor) || (stream->txFin && !stream->txFinSent))
+							// Возвращаем поток в набор потоков с данными к отправке
+							this->pending(streamId);
+					}
 				}
 				// Устанавливаем флаг приёма ack-eliciting фрейма
 				elicit = true;
@@ -4362,27 +4458,85 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 		 * с начала списка отдавал бы датаграмму потокам с наименьшими идентификаторами,
 		 * а остальные простаивали бы неограниченно долго
 		 */
-		for(size_t index = 0; index < this->_stream.list.size(); index++){
+		for(size_t rounds = this->_stream.writable.size(); (rounds > 0) && !this->_stream.writable.empty(); rounds--){
 			// Если в датаграмме не осталось места на фрейм STREAM
 			if(budget <= (output.size() + STREAM_OVERHEAD))
 				// Прекращаем упаковку данных потоков
 				break;
-			// Ищем первый поток начиная с позиции курсора
-			auto position = this->_stream.list.lower_bound(this->_stream.cursor);
+			// Ищем первый поток с данными начиная с позиции курсора
+			auto wit = lower_bound(this->_stream.writable.begin(), this->_stream.writable.end(), this->_stream.cursor);
 			// Если потоки от позиции курсора закончились
-			if(position == this->_stream.list.end())
-				// Продолжаем обход с начала списка
-				position = this->_stream.list.begin();
+			if(wit == this->_stream.writable.end())
+				// Продолжаем обход с начала набора
+				wit = this->_stream.writable.begin();
+			// Идентификатор обслуживаемого потока
+			const uint64_t sid = (* wit);
 			// Продвигаем курсор на следующий поток обхода
-			this->_stream.cursor = (position->first + 1);
-			// Получаем ссылку на запись потока
-			auto & entry = (* position);
-			// Получаем состояние потока
-			auto & stream = entry.second;
-			// Если отправка потока аварийно завершена - данные не отправляются
-			if(stream.txReset || stream.txResetSent)
+			this->_stream.cursor = (sid + 1);
+			// Ищем состояние потока
+			auto position = this->_stream.list.find(sid);
+			// Если поток удалён - устаревшая запись из набора отсеивается
+			if(position == this->_stream.list.end()){
+				// Удаляем устаревший идентификатор из набора потоков с данными
+				this->_stream.writable.erase(wit);
 				// Переходим к следующему потоку
 				continue;
+			}
+			// Получаем состояние потока
+			auto & stream = position->second;
+			// Если отправка потока аварийно завершена - поток из набора отсеивается
+			if(stream.txReset || stream.txResetSent){
+				// Удаляем поток из набора потоков с данными
+				this->_stream.writable.erase(wit);
+				// Переходим к следующему потоку
+				continue;
+			}
+			/**
+			 * Если поток питается pull-источником и ещё не завершён - дозаполняем буфер
+			 * отправки данными источника до верхней водяной метки. Источник пишет напрямую
+			 * в хвост буфера, поэтому приложение не держит копию всего тела (RFC 9000 §2.2)
+			 */
+			if(stream.txSource && !stream.txFin){
+				// Текущий несобранный объём буфера отправки потока
+				const size_t backlog = (stream.txBuffer.size() - stream.txCursor);
+				// Ёмкость запроса к источнику: место до верхней метки, при снятой метке - порция по умолчанию
+				const size_t cap = ((this->_sendHigh > 0) ? ((this->_sendHigh > backlog) ? (this->_sendHigh - backlog) : 0) : PULL_CHUNK);
+				// Если в буфере есть место под данные источника
+				if(cap > 0){
+					// Резервируем ёмкость буфера один раз под верхнюю метку (как в send())
+					if((this->_sendHigh > 0) && (stream.txBuffer.capacity() < this->_sendHigh))
+						// Резервируем ёмкость буфера отправки под верхнюю водяную метку
+						stream.txBuffer.reserve(this->_sendHigh);
+					// Смещение хвоста буфера, с которого источник пишет данные
+					const size_t base = stream.txBuffer.size();
+					// Расширяем буфер под запрашиваемый объём: источник пишет напрямую в его хвост
+					stream.txBuffer.resize(base + cap);
+					// Флаг достижения конца тела источником
+					bool eof = false;
+					// Запрашиваем данные у источника напрямую в хвост буфера отправки
+					const int64_t got = stream.txSource(sid, reinterpret_cast <uint8_t *> (& stream.txBuffer[base]), cap, eof);
+					// Если источник сообщил об ошибке
+					if(got < 0){
+						// Откатываем расширение буфера
+						stream.txBuffer.resize(base);
+						// Аварийно завершаем поток фреймом RESET_STREAM (код приложения по умолчанию)
+						this->reset(sid, 0);
+						// Удаляем поток из набора потоков с данными
+						this->_stream.writable.erase(wit);
+						// Переходим к следующему потоку
+						continue;
+					}
+					// Усекаем буфер до фактически записанного источником объёма
+					stream.txBuffer.resize(base + static_cast <size_t> (got));
+					// Если источник исчерпан - помечаем завершение потока и снимаем источник
+					if(eof){
+						// Устанавливаем флаг постановки завершения потока
+						stream.txFin = true;
+						// Снимаем исчерпанный pull-источник
+						stream.txSource = nullptr;
+					}
+				}
+			}
 			// Вычисляем объём неупакованных данных потока
 			const size_t pending = (stream.txBuffer.size() - stream.txCursor);
 			// Если есть данные для отправки
@@ -4404,8 +4558,10 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 						// Устанавливаем флаг заблокированной отправки данных потока
 						stream.txBlocked = true;
 						// Ставим поток в список ожидающих управляющих фреймов
-						this->schedule(entry.first);
+						this->schedule(sid);
 					}
+					// Поток упёрся в лимит своих данных - отсеиваем из набора до подъёма лимита MAX_STREAM_DATA
+					this->_stream.writable.erase(wit);
 					// Переходим к следующему потоку
 					continue;
 				}
@@ -4425,11 +4581,11 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 				// Определяем флаг завершения потока для фрагмента
 				const bool fin = (stream.txFin && (chunk == pending));
 				// Выполняем сборку фрейма STREAM (RFC 9000 §19.8)
-				frame::serialize::stream(output, entry.first, stream.txOffset, string_view(stream.txBuffer.data() + stream.txCursor, chunk), fin);
+				frame::serialize::stream(output, sid, stream.txOffset, string_view(stream.txBuffer.data() + stream.txCursor, chunk), fin);
 				// Формируем блок данных для учётной записи пакета
 				chunk_t sent;
 				// Устанавливаем идентификатор потока
-				sent.sid = entry.first;
+				sent.sid = sid;
 				// Устанавливаем смещение данных в потоке
 				sent.offset = stream.txOffset;
 				// Устанавливаем длину отправленного блока
@@ -4477,14 +4633,26 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 				if(fin)
 					// Устанавливаем флаг выполненной отправки завершения потока
 					stream.txFinSent = true;
+				/**
+				 * Если буфер, заполненный ранее до верхней метки, дренировался ниже нижней -
+				 * подаём одноразовый сигнал возобновления: поток попадает в drained(), и
+				 * приложение, получившее в send() частичный приём, досылает остаток данных.
+				 * Флаг writableNotified удерживает ровно один сигнал на одно заполнение
+				 */
+				if(!stream.writableNotified && (this->_sendHigh > 0) && ((stream.txBuffer.size() - stream.txCursor) <= this->_sendLow)){
+					// Помечаем сигнал возобновления как поданный для текущего заполнения
+					stream.writableNotified = true;
+					// Ставим поток в список сигналов возобновления отправки
+					this->_stream.drained.push_back(sid);
+				}
 			// Если данных нет, но требуется отправка завершения потока (пустой фрейм с FIN)
 			} else if(stream.txFin && !stream.txFinSent){
 				// Выполняем сборку пустого фрейма STREAM с флагом FIN
-				frame::serialize::stream(output, entry.first, stream.txOffset, string_view(), true);
+				frame::serialize::stream(output, sid, stream.txOffset, string_view(), true);
 				// Формируем блок данных для учётной записи пакета
 				chunk_t sent;
 				// Устанавливаем идентификатор потока
-				sent.sid = entry.first;
+				sent.sid = sid;
 				// Устанавливаем смещение данных в потоке
 				sent.offset = stream.txOffset;
 				// Устанавливаем флаг завершения потока
@@ -4496,6 +4664,10 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 				// Устанавливаем флаг выполненной отправки завершения потока
 				stream.txFinSent = true;
 			}
+			// Если у потока не осталось данных к отправке и не ждёт данных pull-источник - отсеиваем
+			if((stream.txBuffer.size() == stream.txCursor) && !(stream.txFin && !stream.txFinSent) && !(stream.txSource && !stream.txFin))
+				// Удаляем слитый поток из набора потоков с данными
+				this->dequeue(sid);
 		}
 	}
 	// Если требуется отправка зондирующего фрейма PING (RFC 9002 §6.2.4)
@@ -6057,7 +6229,9 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		explicit Spec() noexcept : level(level_t::INITIAL), elicit(false) {}
 	} spec_t;
 	// Список собранных нагрузок пакетов датаграммы
-	vector <spec_t> specs;
+	spec_t specs[4];
+	// Количество собранных пакетов датаграммы (не более числа уровней шифрования)
+	size_t count = 0;
 	// Оценка занятого размера датаграммы
 	size_t used = 0;
 	// Флаг исчерпанного окна перегрузки (RFC 9002 §7)
@@ -6083,6 +6257,8 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 			break;
 		// Собираемый пакет уровня
 		spec_t spec;
+		// Берём учётную запись пакета из пула переиспользования
+		spec.meta = this->acquire();
 		// Устанавливаем уровень шифрования пакета
 		spec.level = level;
 		// Устанавливаем флаг отправки пакета на уровне ранних данных (RFC 9001 §4.6.2)
@@ -6098,10 +6274,10 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		// Учитываем предельную оценку размера пакета: накладные расходы и нагрузка
 		used += (reserve + buffer.size());
 		// Добавляем нагрузку пакета в список сборки
-		specs.push_back(::move(spec));
+		specs[count++] = ::move(spec);
 	}
 	// Если нагрузок для отправки нет
-	if(specs.empty())
+	if(count == 0)
 		// Выводим отрицательный результат
 		return false;
 	// Флаг наличия пакета Initial в датаграмме
@@ -6110,7 +6286,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 	/**
 	 * Перебираем список собранных нагрузок
 	 */
-	for(auto & spec : specs){
+	for(size_t s = 0; s < count; s++){ auto & spec = specs[s];
 		// Датаграмма с пакетом Initial дополняется до минимального размера (RFC 9000 §14.1)
 		expand = (expand || (spec.level == level_t::INITIAL));
 		/**
@@ -6143,7 +6319,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 			/**
 			 * Перебираем список собранных нагрузок
 			 */
-			for(auto & spec : specs){
+			for(size_t s = 0; s < count; s++){ auto & spec = specs[s];
 				// Получаем состояние пространства номеров пакетов
 				const auto & item = this->_spaces[static_cast <size_t> (this->space(spec.level))];
 				// Получаем размер собранной нагрузки уровня
@@ -6158,13 +6334,13 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 				// Учитываем количество добавленных октетов PADDING
 				added += (proto::MIN_INITIAL_SIZE - total);
 				// Дополняем нагрузку последнего пакета фреймами PADDING
-				frame::serialize::padding(this->_buffer.payload[static_cast <size_t> (specs.back().level)], proto::MIN_INITIAL_SIZE - total);
+				frame::serialize::padding(this->_buffer.payload[static_cast <size_t> (specs[count - 1].level)], proto::MIN_INITIAL_SIZE - total);
 			// Если датаграмма превысила минимум из-за роста поля Length (varint)
 			} else if((total > proto::MIN_INITIAL_SIZE) && (added >= (total - proto::MIN_INITIAL_SIZE))){
 				// Учитываем количество удаляемых октетов PADDING
 				added -= (total - proto::MIN_INITIAL_SIZE);
 				// Удаляем излишек фреймов PADDING из конца нагрузки
-				this->_buffer.payload[static_cast <size_t> (specs.back().level)].erase(this->_buffer.payload[static_cast <size_t> (specs.back().level)].size() - (total - proto::MIN_INITIAL_SIZE));
+				this->_buffer.payload[static_cast <size_t> (specs[count - 1].level)].erase(this->_buffer.payload[static_cast <size_t> (specs[count - 1].level)].size() - (total - proto::MIN_INITIAL_SIZE));
 			// Если датаграмма достигла минимального размера
 			} else
 				// Прекращаем дополнение
@@ -6177,7 +6353,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 	 * Первая фаза: собираем и защищаем пакеты, не трогая состояние восстановления
 	 * потерь. Учётные записи фиксируются только после успешной сборки всей датаграммы
 	 */
-	for(; assembled < specs.size(); assembled++){
+	for(; assembled < count; assembled++){
 		// Получаем собираемую нагрузку
 		auto & spec = specs[assembled];
 		// Получаем состояние пространства номеров пакетов
@@ -6211,7 +6387,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 	 * снятые с очередей CRYPTO-данные, блоки потоков и управляющие фреймы
 	 * потерялись бы безвозвратно - в список отправленных они не попадают
 	 */
-	for(size_t i = assembled; i < specs.size(); i++){
+	for(size_t i = assembled; i < count; i++){
 		// Определяем пространство номеров пакетов несобранного пакета
 		const space_t space = this->space(specs[i].level);
 		// Возвращаем содержимое пакета в очереди отправки
@@ -7420,6 +7596,44 @@ bool awh::quic::Connection::writable() const noexcept {
 	return (this->_crypto.handshake.encryption(level_t::EARLY_DATA) != nullptr);
 }
 /**
+ * @brief Метод установки водяных меток буфера отправки одного потока (backpressure)
+ *
+ * @param high верхняя водяная метка (ёмкость буфера отправки потока)
+ * @param low  нижняя водяная метка (порог сигнала возобновления writable)
+ *
+ */
+void awh::quic::Connection::sendWaterMarks(const size_t high, const size_t low) noexcept {
+	// Устанавливаем верхнюю водяную метку буфера отправки одного потока
+	this->_sendHigh = high;
+	// Нижнюю метку удерживаем не выше верхней: иначе сигнал возобновления не подать
+	this->_sendLow = ::min(low, high);
+}
+/**
+ * @brief Метод назначения pull-источника данных потока (RFC 9000 §2.2)
+ *
+ * @param sid    идентификатор потока
+ * @param source pull-источник данных тела потока
+ *
+ */
+void awh::quic::Connection::dataSource(const uint64_t sid, data_source_callback_t source) noexcept {
+	// Если отправка данных в поток локальным эндпоинтом недопустима
+	if(!this->sendable(sid))
+		// Выходим из метода
+		return;
+	// Ищем поток по идентификатору
+	auto i = this->_stream.list.find(sid);
+	// Если поток не найден либо отправка его уже завершена/прекращена
+	if((i == this->_stream.list.end()) || i->second.txFin || i->second.txReset || i->second.txResetSent)
+		// Выходим из метода
+		return;
+	// Запоминаем pull-источник данных тела потока
+	i->second.txSource = ::move(source);
+	// Если источник задан - ставим поток в набор к отправке: движок начнёт дозаполнять буфер
+	if(i->second.txSource)
+		// Ставим поток в набор потоков с данными к отправке
+		this->pending(sid);
+}
+/**
  * @brief Метод открытия нового потока приложения (RFC 9000 §2.1)
  *
  * @param unidirectional флаг однонаправленного потока
@@ -7476,33 +7690,74 @@ uint64_t awh::quic::Connection::open(const bool unidirectional) noexcept {
  * @return     результат постановки (OK/ERROR)
  *
  */
-awh::quic::status_t awh::quic::Connection::send(const uint64_t sid, string_view data, const bool fin) noexcept {
+size_t awh::quic::Connection::send(const uint64_t sid, string_view data, const bool fin) noexcept {
 	// Если соединение к отправке данных приложения не готово
 	if(!this->writable())
-		// Выводим отрицательный результат
-		return status_t::ERROR;
+		// Ничего не принято
+		return 0;
 	// Если отправка данных в поток локальным эндпоинтом недопустима
 	if(!this->sendable(sid))
-		// Выводим отрицательный результат
-		return status_t::ERROR;
+		// Ничего не принято
+		return 0;
 	// Ищем поток по идентификатору
 	auto i = this->_stream.list.find(sid);
 	// Если поток не найден
 	if(i == this->_stream.list.end())
-		// Выводим отрицательный результат
-		return status_t::ERROR;
+		// Ничего не принято
+		return 0;
 	// Если отправка потока завершена либо аварийно прекращена
 	if(i->second.txFin || i->second.txReset || i->second.txResetSent)
-		// Выводим отрицательный результат
-		return status_t::ERROR;
-	// Дописываем данные в буфер исходящих данных потока
-	i->second.txBuffer.append(data);
-	// Если приложение завершает поток
-	if(fin)
+		// Ничего не принято
+		return 0;
+	// Объём данных, принимаемый в очередь: по умолчанию все переданные данные
+	size_t accepted = data.size();
+	/**
+	 * Частичный приём по верхней водяной метке (backpressure): принимаем лишь столько,
+	 * сколько влезает до метки от текущего несобранного объёма буфера. Буферизировать
+	 * больше, чем движок способен держать в полёте, бессмысленно, а неограниченный буфер -
+	 * латентный источник неограниченного роста памяти. Остаток приложение дописывает
+	 * позже, по сигналу drained(). Верхняя метка ноль снимает ограничение
+	 */
+	if(this->_sendHigh > 0){
+		// Текущий несобранный объём буфера отправки потока
+		const size_t backlog = (i->second.txBuffer.size() - i->second.txCursor);
+		// Свободное место до верхней водяной метки
+		const size_t room = ((this->_sendHigh > backlog) ? (this->_sendHigh - backlog) : 0);
+		// Ограничиваем приём свободным местом
+		accepted = ::min(accepted, room);
+		/**
+		 * Резервируем ёмкость буфера отправки один раз под верхнюю метку. Иначе дописывание
+		 * наращивало бы строку геометрически - чередой перевыделений с копированием, дающей
+		 * многократный кумулятивный расход памяти. Объём буфера метка и ограничивает, поэтому
+		 * единичный резерв под неё убирает перевыделения роста: выделение один раз на поток
+		 */
+		if((accepted > 0) && (i->second.txBuffer.capacity() < this->_sendHigh))
+			// Резервируем ёмкость буфера отправки под верхнюю водяную метку
+			i->second.txBuffer.reserve(this->_sendHigh);
+	}
+	// Дописываем принятую часть данных в буфер исходящих данных потока
+	if(accepted > 0)
+		// Дописываем принятые данные
+		i->second.txBuffer.append(data.substr(0, accepted));
+	// Признак приёма переданных данных целиком (в т.ч. пустых - для одиночного FIN)
+	const bool complete = (accepted == data.size());
+	// Флаг завершения потока применяется только при приёме данных целиком
+	if(fin && complete)
 		// Устанавливаем флаг постановки завершения потока
 		i->second.txFin = true;
-	// Выводим положительный результат
-	return status_t::OK;
+	/**
+	 * Приём неполный - буфер достиг верхней метки: взводим сигнал возобновления, чтобы
+	 * при падении буфера ниже нижней метки поток попал в drained() и приложение досылало
+	 */
+	if(!complete)
+		// Взводим сигнал writable для текущего заполнения буфера
+		i->second.writableNotified = false;
+	// Если есть что отправлять (принятые данные либо одиночный FIN) - ставим поток в набор
+	if((accepted > 0) || (fin && complete))
+		// Ставим поток в набор потоков с данными к отправке
+		this->pending(sid);
+	// Выводим число принятых в очередь байт
+	return accepted;
 }
 /**
  * @brief Метод постановки датаграммы приложения в очередь отправки (RFC 9221 §4)
@@ -7620,6 +7875,26 @@ void awh::quic::Connection::readable(vector <uint64_t> & output) noexcept {
 	}
 	// Удаляем устаревшие записи из списка готовых
 	this->_stream.readable.erase(position, this->_stream.readable.end());
+}
+/**
+ * @brief Метод получения списка потоков с освободившимся буфером отправки (сигнал writable)
+ *
+ * @param output список идентификаторов потоков, готовых принять данные
+ *
+ */
+void awh::quic::Connection::drained(vector <uint64_t> & output) noexcept {
+	// Очищаем выходной список идентификаторов потоков
+	output.clear();
+	// Если сигналов возобновления нет - список пуст
+	if(this->_stream.drained.empty())
+		// Выходим из метода
+		return;
+	/**
+	 * Переносим накопленные сигналы в выходной список и очищаем внутренний: сигнал
+	 * возобновления одноразовый - на одно заполнение буфера приходится один сигнал,
+	 * повторная подача до следующего заполнения не нужна (флаг writableNotified)
+	 */
+	output.swap(this->_stream.drained);
 }
 /**
  * @brief Метод выдачи собранных данных потока приложению (RFC 9000 §2.2)

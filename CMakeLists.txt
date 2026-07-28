@@ -657,14 +657,6 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/proto/quic/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/quic/handshake.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/quic/connection.cpp"
-    "${CMAKE_SOURCE_DIR}/src/proto/quic2/quic.cpp"
-    "${CMAKE_SOURCE_DIR}/src/proto/quic2/varint.cpp"
-    "${CMAKE_SOURCE_DIR}/src/proto/quic2/params.cpp"
-    "${CMAKE_SOURCE_DIR}/src/proto/quic2/crypto.cpp"
-    "${CMAKE_SOURCE_DIR}/src/proto/quic2/packet.cpp"
-    "${CMAKE_SOURCE_DIR}/src/proto/quic2/frame.cpp"
-    "${CMAKE_SOURCE_DIR}/src/proto/quic2/handshake.cpp"
-    "${CMAKE_SOURCE_DIR}/src/proto/quic2/connection.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 

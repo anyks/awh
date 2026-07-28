@@ -59,7 +59,7 @@ namespace {
 	 *          случайности не должен зависеть от платформы и запуска
 	 *
 	 */
-	class Random {
+	class QuicRandom {
 		private:
 			// Текущее состояние генератора
 			uint64_t _state;
@@ -94,7 +94,7 @@ namespace {
 			 * @param seed зерно генератора
 			 *
 			 */
-			explicit Random(const uint64_t seed) noexcept : _state(seed) {}
+			explicit QuicRandom(const uint64_t seed) noexcept : _state(seed) {}
 	};
 	/**
 	 * @brief Функция генерации псевдослучайного буфера
@@ -104,7 +104,7 @@ namespace {
 	 * @return       сгенерированный буфер
 	 *
 	 */
-	static std::string generate(Random & random, const std::string & prefix = "") noexcept {
+	static std::string generate(QuicRandom & random, const std::string & prefix = "") noexcept {
 		// Результирующий буфер
 		std::string result = prefix;
 		// Определяем размер случайной части буфера
@@ -132,7 +132,7 @@ namespace {
  */
 TEST_F(QuicFixture, FuzzFrameParsersTest){
 	// Генератор псевдослучайных чисел с фиксированным зерном
-	Random random(0x5157080000449eULL);
+	QuicRandom random(0x5157080000449eULL);
 	/**
 	 * Перебираем итерации фаззинга
 	 */
@@ -262,7 +262,7 @@ TEST_F(QuicFixture, FuzzFrameParsersTest){
  */
 TEST_F(QuicFixture, FuzzFrameBodiesTest){
 	// Генератор псевдослучайных чисел с фиксированным зерном
-	Random random(0x8394c8f03e5157ULL);
+	QuicRandom random(0x8394c8f03e5157ULL);
 	// Количество успешных разборов фреймов
 	size_t accepted = 0;
 	/**
@@ -359,7 +359,7 @@ TEST_F(QuicFixture, FuzzFrameBodiesTest){
  */
 TEST_F(QuicFixture, FuzzTransportParamsTest){
 	// Генератор псевдослучайных чисел с фиксированным зерном
-	Random random(0xf067a5502a4262ULL);
+	QuicRandom random(0xf067a5502a4262ULL);
 	// Список проверяемых ролей отправителя параметров
 	const endpoint_t senders[] = {endpoint_t::CLIENT, endpoint_t::SERVER};
 	// Количество успешных разборов транспортных параметров
@@ -428,7 +428,7 @@ TEST_F(QuicFixture, FuzzTransportParamsTest){
  */
 TEST_F(QuicFixture, FuzzPacketHeaderTest){
 	// Генератор псевдослучайных чисел с фиксированным зерном
-	Random random(0x2a4262b500407ULL);
+	QuicRandom random(0x2a4262b500407ULL);
 	// Количество успешных разборов заголовков пакетов
 	size_t accepted = 0;
 	/**

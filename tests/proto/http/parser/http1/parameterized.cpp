@@ -2175,6 +2175,256 @@ TEST_F(ParserFixture, UpgradeFramingTest){
 		// Проверяем что рукопожатие собрано
 		ASSERT_NE(std::string(sender->pending()).find("Upgrade: websocket"), std::string::npos);
 	}
+	/**
+	 * Проверяем что рукопожатие с объявленным chunked не собирается и при пустом теле
+	 *
+	 * Объявленное вызывающей стороной кодирование уходит на провод и без тела -
+	 * завершённым нулевым чанком, а собственного кадрирования отправитель при этом
+	 * не выбирает вовсе. Проверять выбранный способ кадрирования здесь недостаточно:
+	 * приёмник смотрит на объявленные заголовки и такой запрос отвергает
+	 */
+	{
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Устанавливаем протокол работы парсера
+		sender->proto(proto_t::PROXY1);
+		// Формируем контейнер заголовков запроса с провайдером
+		headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::GET, std::string("/chat")));
+		// Дописываем обязательный для запроса HTTP/1.1 заголовок Host
+		request.emplace("Host", "anyks.com");
+		// Дописываем заголовок запроса переключения протокола
+		request.emplace("Upgrade", "websocket");
+		// Объявляем кодирование тела запроса
+		request.emplace("Transfer-Encoding", "chunked");
+		// Отправляем заголовки запроса с завершением сообщения
+		sender->sendHeaders(request, true);
+		// Проверяем что рукопожатие с объявленным кодированием не собирается
+		ASSERT_TRUE(sender->pending().empty());
+	}
+	/**
+	 * Проверяем что объявленный нулевой размер тела рукопожатию не мешает
+	 *
+	 * Тела он не описывает, и собственный приёмник такой запрос принимает: отказ
+	 * в сборке был бы строже приёма, то есть отбрасывал бы законное рукопожатие
+	 */
+	{
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Устанавливаем протокол работы парсера
+		sender->proto(proto_t::PROXY1);
+		// Формируем контейнер заголовков запроса с провайдером
+		headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::GET, std::string("/chat")));
+		// Дописываем обязательный для запроса HTTP/1.1 заголовок Host
+		request.emplace("Host", "anyks.com");
+		// Дописываем заголовок запроса переключения протокола
+		request.emplace("Upgrade", "websocket");
+		// Объявляем нулевой размер тела запроса
+		request.emplace("Content-Length", "0");
+		// Отправляем заголовки запроса с завершением сообщения
+		sender->sendHeaders(request, true);
+		// Получаем собранные байты исходящего запроса
+		const std::string wire(sender->pending());
+		// Проверяем что рукопожатие собрано
+		ASSERT_NE(wire.find("Upgrade: websocket"), std::string::npos);
+		// Проверяем что собранное рукопожатие принимает собственный приёмник
+		ASSERT_EQ(handshake("Content-Length: 0\r\n\r\n", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	}
+}
+
+/**
+ * @brief Метод тестирования переноса настроек клонированием
+ *
+ * @details Соединения обслуживают клоны, а настраивают фабрику: настройка, забытая
+ *          в clone, оставляет обслуживающий парсер в умолчаниях, и всё, что она
+ *          включает, у него молча выключено. Каждая настройка проверяется по
+ *          поведению клона, а не по значению геттера: совпадение значений не
+ *          означает, что настройка применена - именно так дефект переноса протокола
+ *          пережил первую версию собственной проверки
+ *
+ */
+TEST_F(ParserFixture, CloneCarriesSettingsTest){
+	/**
+	 * Проверяем перенос протокола работы
+	 */
+	{
+		// Создаём фабрику парсеров ответов
+		auto factory = this->make(direct_t::RESPONSE);
+		// Настраиваем фабрику на работу через прокси
+		factory->proto(proto_t::PROXY1);
+		// Клонируем настроенную фабрику
+		auto cloned = factory->clone();
+		// Проверяем что клон получен
+		ASSERT_NE(cloned, nullptr);
+		// Получаем объект клонированного парсера
+		auto parser = static_cast <parser_http_t *> (cloned.get());
+		// Формируем ответ, объявляющий кадрирование при невозможности нести тело
+		const std::string message = "HTTP/1.1 204 No Content\r\nContent-Length: 5\r\n\r\n";
+		// Выполняем разбор сформированного ответа
+		parser->parse(message.data(), message.size());
+		// Проверяем что клон отверг объявленное кадрирование как работающий через прокси
+		ASSERT_EQ(parser->error(), parser_http_t::error_t::INVALID_CONTENT_LENGTH);
+	}
+	/**
+	 * Проверяем перенос метода запроса, которому соответствует ожидаемый ответ,
+	 * и перенос установленных функций обратного вызова
+	 */
+	{
+		// Количество принятых клоном заголовков
+		size_t count = 0;
+		// Размер принятого клоном тела
+		size_t bytes = 0;
+		// Создаём фабрику парсеров ответов
+		auto factory = this->make(direct_t::RESPONSE);
+		// Настраиваем фабрику на ответ, соответствующий запросу методом HEAD
+		factory->method(method_t::HEAD);
+		// Устанавливаем функцию обратного вызова обработки заголовков сообщения
+		factory->on(parser_http_t::header_callback_t([&count](const uint32_t, const std::string_view, const std::string_view, const parser_t::part_t) noexcept -> bool {
+			// Считаем принятый заголовок сообщения
+			count++;
+			// Продолжаем разбор
+			return true;
+		}));
+		// Устанавливаем функцию обратного вызова обработки фрагмента тела сообщения
+		factory->on(parser_http_t::data_callback_t([&bytes](const uint32_t, const void *, const size_t size, const bool) noexcept -> bool {
+			// Считаем принятые байты тела сообщения
+			bytes += size;
+			// Продолжаем разбор
+			return true;
+		}));
+		// Клонируем настроенную фабрику
+		auto cloned = factory->clone();
+		// Проверяем что клон получен
+		ASSERT_NE(cloned, nullptr);
+		// Получаем объект клонированного парсера
+		auto parser = static_cast <parser_http_t *> (cloned.get());
+		/**
+		 * Формируем ответ с объявленным размером тела: ответ на запрос HEAD его не
+		 * несёт, и объявленный размер описывает тело, которое было бы отправлено
+		 * в ответ на такой же запрос GET (RFC 9110 §9.3.2)
+		 */
+		const std::string message = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\n";
+		// Выполняем разбор сформированного ответа
+		parser->parse(message.data(), message.size());
+		// Проверяем что ответ разобран целиком без ожидания тела
+		ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+		// Проверяем что тело до потребителя не дошло
+		ASSERT_EQ(bytes, 0u);
+		// Проверяем что функция обратного вызова обработки заголовков перенесена
+		ASSERT_EQ(count, 1u);
+	}
+	/**
+	 * Проверяем перенос лимитов безопасности разбора
+	 */
+	{
+		// Создаём фабрику парсеров запросов
+		auto factory = this->make(direct_t::REQUEST);
+		// Формируем лимиты безопасности с пониженным пределом названия заголовка
+		parser_http_t::limits_t limits;
+		// Понижаем предел размера названия заголовка
+		limits.maxHeaderName = 8;
+		// Настраиваем фабрику пониженными лимитами
+		factory->limits(limits);
+		// Клонируем настроенную фабрику
+		auto cloned = factory->clone();
+		// Проверяем что клон получен
+		ASSERT_NE(cloned, nullptr);
+		// Получаем объект клонированного парсера
+		auto parser = static_cast <parser_http_t *> (cloned.get());
+		// Формируем запрос с названием заголовка длиннее установленного предела
+		const std::string message = "GET / HTTP/1.1\r\nHost: anyks.com\r\nX-Very-Long-Header-Name: value\r\n\r\n";
+		// Выполняем разбор сформированного запроса
+		parser->parse(message.data(), message.size());
+		// Проверяем что клон отверг заголовок по пониженному пределу
+		ASSERT_EQ(parser->error(), parser_http_t::error_t::HEADER_OVERFLOW);
+	}
+	/**
+	 * Проверяем перенос порогов выходного буфера
+	 */
+	{
+		// Создаём фабрику парсеров ответов
+		auto factory = this->make(direct_t::RESPONSE);
+		// Понижаем пороги выходного буфера отправки
+		factory->sendWaterMarks(64, 32);
+		// Клонируем настроенную фабрику
+		auto cloned = factory->clone();
+		// Проверяем что клон получен
+		ASSERT_NE(cloned, nullptr);
+		// Получаем объект клонированного парсера
+		auto parser = static_cast <parser_http_t *> (cloned.get());
+		// Формируем контейнер заголовков ответа с провайдером
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Объявляем размер тела ответа
+		response.emplace("Content-Length", "10000");
+		// Отправляем заголовки ответа (тело последует)
+		parser->sendHeaders(response, false);
+		// Формируем тело ответа заведомо большего размера, чем понижённый порог
+		const std::string body(10000, 'A');
+		/**
+		 * Проверяем что выходной буфер принял не всё тело: при пороге по умолчанию
+		 * тело такого размера уместилось бы целиком, и перенос порога остался бы
+		 * непроверенным
+		 */
+		ASSERT_LT(parser->sendData(body.data(), body.size(), true), body.size());
+	}
+	/**
+	 * Проверяем перенос объёма одной прокачки pull-источника данных
+	 */
+	{
+		// Позиция чтения тела источником данных
+		size_t position = 0;
+		// Создаём фабрику парсеров ответов
+		auto factory = this->make(direct_t::RESPONSE);
+		/**
+		 * Устанавливаем функцию обратного вызова записи исходящих байтов
+		 *
+		 * Объём одной прокачки применяется только в push-модели: в pull-модели
+		 * выходной буфер наполняется до верхнего порога однократно, и настройка
+		 * не участвует в работе вовсе
+		 */
+		factory->on(parser_http_t::write_callback_t([](const void *, const size_t) noexcept {}));
+		/**
+		 * Понижаем пороги выходного буфера вместе с объёмом одной прокачки
+		 *
+		 * Одна дозагрузка ограничена свободным местом буфера, а прокачка прекращается
+		 * по накоплении заданного объёма, поэтому связывает их пара: с объёмом по
+		 * умолчанию прокачка выкачала бы тело целиком за один заход, опустошая буфер
+		 * записью после каждой дозагрузки
+		 */
+		factory->sendWaterMarks(256, 128);
+		// Понижаем объём одной прокачки pull-источника данных
+		factory->pumpLimit(128);
+		// Клонируем настроенную фабрику
+		auto cloned = factory->clone();
+		// Проверяем что клон получен
+		ASSERT_NE(cloned, nullptr);
+		// Получаем объект клонированного парсера
+		auto parser = static_cast <parser_http_t *> (cloned.get());
+		// Формируем контейнер заголовков ответа с провайдером
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Объявляем размер тела ответа
+		response.emplace("Content-Length", "10000");
+		// Отправляем заголовки ответа (тело последует из pull-источника данных)
+		parser->sendHeaders(response, false);
+		// Назначаем pull-источник данных тела сообщения
+		parser->dataSource(parser_http_t::data_source_callback_t([&position](const uint32_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+			// Вычисляем размер выдаваемой порции тела
+			const size_t size = std::min(cap, (static_cast <size_t> (10000) - position));
+			// Заполняем выдаваемую порцию тела
+			std::memset(buffer, 'A', size);
+			// Сдвигаем позицию чтения тела источником
+			position += size;
+			// Выставляем признак достижения конца тела
+			eof = (position == 10000);
+			// Выводим размер выданной порции тела
+			return static_cast <int64_t> (size);
+		}));
+		// Проверяем что прокачка всё же состоялась
+		ASSERT_GT(position, 0u);
+		// Проверяем что первая прокачка ограничена перенесённым объёмом
+		ASSERT_LT(position, 1024u);
+		// Проверяем что отправка тела осталась незавершённой
+		ASSERT_TRUE(parser->sourcePending());
+	}
 }
 
 /**

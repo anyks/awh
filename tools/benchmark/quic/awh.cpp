@@ -147,10 +147,8 @@ static bool transfer(const size_t streams, rival::transfer_t & output) noexcept 
 			if(queued[i] < target){
 				// Вычисляем размер очередного блока данных
 				const size_t length = ::std::min(rival::BLOCK_SIZE, target - queued[i]);
-				// Ставим блок данных в очередь отправки потока
-				if(client.send(identifiers[i], std::string_view(block.data(), length), false) == status_t::OK)
-					// Учитываем поставленный в очередь объём данных
-					queued[i] += length;
+				// Ставим блок данных в очередь отправки потока (частичный приём: учитываем принятое)
+				queued[i] += client.send(identifiers[i], std::string_view(block.data(), length), false);
 			}
 		}
 		// Флаг передачи хотя бы одной датаграммы на шаге

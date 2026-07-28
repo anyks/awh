@@ -175,9 +175,48 @@ namespace {
 		direct_t direct;
 		// Метод запроса, которому соответствует ожидаемый ответ
 		method_t method;
+		// Протокол, с которым работает парсер
+		proto_t proto;
+		/**
+		 * Признак получения парсера клонированием настроенной фабрики
+		 *
+		 * Соединения обслуживают именно клоны, а настройка выполняется на фабрике:
+		 * настройка, забытая в clone, оставляет обслуживающий парсер в умолчаниях,
+		 * и все включаемые ею проверки у него молча выключены
+		 */
+		bool factory;
 		// Лимиты безопасности разбора
 		parser_http_t::limits_t limits;
 	} setup_t;
+	/**
+	 * @brief Структура признаков сформированного сообщения
+	 *
+	 * @details Признаки записывает сам генератор: они описывают то, что он в сообщение
+	 *          заложил, и служат входом таблицы предсказаний режимов. Выводить их
+	 *          обратно из текста сообщения означало бы написать второй разборщик и
+	 *          сверять парсер с ним, а не с намерением
+	 *
+	 */
+	typedef struct Traits {
+		// Признак умышленной порчи сообщения заменой октета либо обрывом
+		bool corrupted;
+		// Признак объявления заголовка смены протокола
+		bool upgrade;
+		// Признак объявления размера тела фиксированного размера
+		bool contentLength;
+		// Объявленный размер тела фиксированного размера
+		size_t length;
+		// Признак объявления транспортного кодирования
+		bool transferEncoding;
+		// Признак объявления кодирования chunked последним в списке кодирований
+		bool chunkedLast;
+		// Код состояния ответа сервера (0 - разбирается запрос либо код не трёхзначный)
+		uint16_t code;
+		// Признак записи цели запроса в absolute-form
+		bool absoluteForm;
+		// Признак расхождения адресата цели запроса с адресатом заголовка Host
+		bool authorityMismatch;
+	} traits_t;
 	/**
 	 * @brief Функция формирования текстового представления стартовой строки
 	 *
@@ -227,43 +266,46 @@ namespace {
 	 * @param setup    настройки разбора сообщения
 	 * @param message  разбираемое сообщение
 	 * @param fragment размер фрагмента подачи (0 - сообщение подаётся целиком)
+	 * @param closed   признак сообщения приёмнику о закрытии соединения после подачи
 	 * @return         наблюдаемый результат разбора
 	 *
 	 */
-	static outcome_t parsing(const awh::fmk_t * fmk, const awh::log_t * log, const setup_t & setup, const std::string & message, const size_t fragment) noexcept {
+	static outcome_t parsing(const awh::fmk_t * fmk, const awh::log_t * log, const setup_t & setup, const std::string & message, const size_t fragment, const bool closed = false) noexcept {
 		// Результат разбора сообщения
 		outcome_t result;
-		// Создаём объект парсера
-		parser_http_t parser(setup.direct, fmk, log);
+		// Создаём объект настраиваемой фабрики парсеров
+		parser_http_t factory(setup.direct, fmk, log);
 		// Применяем лимиты безопасности разбора
-		parser.limits(setup.limits);
+		factory.limits(setup.limits);
+		// Применяем протокол, с которым работает парсер
+		factory.proto(setup.proto);
 		// Если разбирается ответ сервера
 		if(setup.direct == direct_t::RESPONSE)
 			// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
-			parser.method(setup.method);
+			factory.method(setup.method);
 		// Устанавливаем функцию обратного вызова обработки фрагмента тела сообщения
-		parser.on(parser_http_t::data_callback_t([&result](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
+		factory.on(parser_http_t::data_callback_t([&result](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
 			// Собираем фрагмент тела сообщения
 			result.body.append(static_cast <const char *> (buffer), size);
 			// Продолжаем разбор
 			return true;
 		}));
 		// Устанавливаем функцию обратного вызова обработки фазы разбора сообщения
-		parser.on(parser_http_t::phase_callback_t([&result](const uint32_t, const parser_t::phase_t phase, const parser_t::part_t part) noexcept -> bool {
+		factory.on(parser_http_t::phase_callback_t([&result](const uint32_t, const parser_t::phase_t phase, const parser_t::part_t part) noexcept -> bool {
 			// Собираем фазовое событие
 			result.phases.emplace_back(phase, part);
 			// Продолжаем разбор
 			return true;
 		}));
 		// Устанавливаем функцию обратного вызова обработки границ чанков
-		parser.on(parser_http_t::chunk_callback_t([&result](const parser_t::phase_t phase, const uint64_t size, const std::string_view extension) noexcept -> bool {
+		factory.on(parser_http_t::chunk_callback_t([&result](const parser_t::phase_t phase, const uint64_t size, const std::string_view extension) noexcept -> bool {
 			// Собираем событие границы чанка
 			result.chunks.emplace_back(phase, size, std::string(extension));
 			// Продолжаем разбор
 			return true;
 		}));
 		// Устанавливаем функцию обратного вызова обработки заголовков сообщения
-		parser.on(parser_http_t::header_callback_t([&result](const uint32_t, const std::string_view name, const std::string_view value, const parser_t::part_t part) noexcept -> bool {
+		factory.on(parser_http_t::header_callback_t([&result](const uint32_t, const std::string_view name, const std::string_view value, const parser_t::part_t part) noexcept -> bool {
 			// Если получен трейлер сообщения
 			if(part == parser_t::part_t::TRAILER)
 				// Собираем трейлер сообщения
@@ -273,6 +315,14 @@ namespace {
 			// Продолжаем разбор
 			return true;
 		}));
+		/**
+		 * Получаем парсер клонированием настроенной фабрики: клон обязан прийти с теми
+		 * же настройками и теми же функциями обратного вызова, что и фабрика, - иначе
+		 * разбор одного и того же сообщения зависел бы от способа получения парсера
+		 */
+		std::unique_ptr <parser_t> cloned = (setup.factory ? factory.clone() : nullptr);
+		// Ссылка на объект парсера, выполняющего разбор
+		parser_http_t & parser = ((cloned != nullptr) ? (* static_cast <parser_http_t *> (cloned.get())) : factory);
 		// Если сообщение подаётся целиком
 		if(fragment == 0)
 			// Выполняем разбор сообщения одним вызовом
@@ -289,6 +339,16 @@ namespace {
 				parser.parse(message.data() + i, size);
 			}
 		}
+		/**
+		 * Сообщаем приёмнику о закрытии соединения
+		 *
+		 * Тело, кадрированное закрытием соединения (RFC 9112 §6.3 п.3), иначе не
+		 * завершается вовсе: без этого сообщения такой ответ навсегда остаётся
+		 * недоразобранным, и всё, что за ним следует, остаётся непроверенным
+		 */
+		if(closed)
+			// Сообщаем приёмнику о закрытии соединения
+			parser.eof();
 		// Собираем итоговый статус разбора
 		result.status = parser.status();
 		// Собираем код ошибки разбора
@@ -341,7 +401,7 @@ namespace {
 	 * @return стартовая строка запроса клиента
 	 *
 	 */
-	static std::string request() noexcept {
+	static std::string request(const std::string & name, const std::string & port, traits_t & traits) noexcept {
 		// Набор написаний метода запроса: распознаваемые, экзотические и недопустимые
 		static const char * methods[] = {
 			"GET", "GET", "GET", "PUT", "HEAD", "POST", "POST", "TRACE", "DELETE",
@@ -370,8 +430,80 @@ namespace {
 		result.append(methods[::pick(sizeof(methods) / sizeof(methods[0]))]);
 		// Дописываем разделитель после метода запроса
 		result.append(::chance(10) ? "  " : " ");
-		// Дописываем адрес запрашиваемого ресурса
-		result.append("/").append(::token(::pick(24)));
+		/**
+		 * Изредка цель запроса записывается в absolute-form
+		 *
+		 * Такая цель несёт адресата сама, и в запросе их оказывается два: адресат цели
+		 * и адресат заголовка. Совпадение сверяется только режимом прокси (RFC 9112
+		 * §3.2.2, RFC 9110 §7.2), поэтому формы совпадения и расхождения формируются
+		 * поровну, а результат записывается в признаки: выводить его из текста цели
+		 * означало бы разобрать URI второй раз и сверять парсер с самим собой
+		 */
+		if(!name.empty() && ::chance(22)){
+			// Полная запись адресата заголовка
+			const std::string full = (name + (port.empty() ? std::string() : (":" + port)));
+			// Признак совпадения адресата цели с адресатом заголовка
+			bool matches = true;
+			// Признак защищённой схемы цели запроса
+			bool secure = ::chance(50);
+			// Адресат цели запроса
+			std::string authority;
+			/**
+			 * Выбираем форму записи адресата цели запроса
+			 */
+			switch(::pick(5)){
+				// Записываем адресата дословно как в заголовке
+				case 0: authority = full; break;
+				// Записываем имя узла в другом регистре: регистр имени незначим (RFC 9110 §4.2.3)
+				case 1: {
+					/**
+					 * Приводим имя узла к верхнему регистру
+					 */
+					for(const char item : name)
+						// Дописываем очередной символ имени узла
+						authority.push_back(((item >= 'a') && (item <= 'z')) ? static_cast <char> (item - 32) : item);
+					// Дописываем порт адресата
+					if(!port.empty())
+						// Дописываем порт адресата цели запроса
+						authority.append(":").append(port);
+				} break;
+				// Записываем порт схемы иначе: явный стандартный порт равен опущенному (RFC 9110 §4.2.3)
+				case 2: {
+					// Если заголовок несёт стандартный порт схемы - опускаем порт в цели
+					if((port.compare("80") == 0) || (port.compare("443") == 0)){
+						// Выбираем схему, стандартному порту которой равен порт заголовка
+						secure = (port.compare("443") == 0);
+						// Записываем адресата без порта
+						authority = name;
+					// Если заголовок порта не несёт - дописываем в цель стандартный порт схемы
+					} else if(port.empty())
+						// Записываем адресата со стандартным портом схемы
+						authority = (name + (secure ? ":443" : ":80"));
+					// Прочие порты подстановке не поддаются - записываем адресата дословно
+					else authority = full;
+				} break;
+				// Предваряем адресата параметрами пользователя: в сверку они не входят (RFC 9110 §7.2)
+				case 3: authority = (::token(::pick(6) + 1) + "@" + full); break;
+				// Разводим адресата цели с адресатом заголовка
+				default: {
+					// Отмечаем расхождение адресатов
+					matches = false;
+					// Если расхождение вносится в порт адресата
+					if(::chance(50))
+						// Записываем адресата с портом, отличным от порта заголовка
+						authority = (name + ":" + (port.empty() ? std::string("8080") : (port.compare("1") == 0 ? "2" : "1")));
+					// Записываем адресата с именем узла, отличным от имени заголовка
+					else authority = (name + "x" + (port.empty() ? std::string() : (":" + port)));
+				}
+			}
+			// Запоминаем запись цели запроса в absolute-form
+			traits.absoluteForm = true;
+			// Запоминаем расхождение адресата цели с адресатом заголовка
+			traits.authorityMismatch = !matches;
+			// Дописываем цель запроса в absolute-form
+			result.append(secure ? "https://" : "http://").append(authority).append("/").append(::token(::pick(16)));
+		// Дописываем цель запроса в origin-form
+		} else result.append("/").append(::token(::pick(24)));
 		// Если адрес дополняется параметрами запроса
 		if(::chance(30))
 			// Дописываем параметры запроса
@@ -395,7 +527,7 @@ namespace {
 	 * @return стартовая строка ответа сервера
 	 *
 	 */
-	static std::string response() noexcept {
+	static std::string response(traits_t & traits) noexcept {
 		// Набор кодов состояния ответа: обычные, бестелесные и недопустимые
 		/**
 		 * Набор кодов состояния ответа
@@ -413,8 +545,25 @@ namespace {
 		std::string result;
 		// Дописываем версию протокола
 		result.append(::chance(20) ? "HTTP/1.0" : "HTTP/1.1").append(" ");
+		/**
+		 * Выбираем код состояния ответа
+		 *
+		 * Коды, кадрирование которых ужесточается режимом работы, выбираются заметно
+		 * чаще прочих: без этого сочетание такого кода с объявлением кадрирования
+		 * выпадало бы слишком редко, чтобы проверять предсказание режима
+		 */
+		const char * code = (::chance(25) ? (::chance(50) ? "204" : (::chance(50) ? "101" : "100"))
+		 : codes[::pick(sizeof(codes) / sizeof(codes[0]))]);
 		// Дописываем код состояния ответа
-		result.append(codes[::pick(sizeof(codes) / sizeof(codes[0]))]);
+		result.append(code);
+		/**
+		 * Запоминаем код состояния ответа: трёхзначным кодом описывается кадрирование,
+		 * а прочие написания отвергаются разбором и предсказанию режима не подлежат
+		 */
+		if((::strlen(code) == 3) && (code[0] >= '0') && (code[0] <= '9') &&
+		   (code[1] >= '0') && (code[1] <= '9') && (code[2] >= '0') && (code[2] <= '9'))
+			// Запоминаем код состояния собираемого ответа
+			traits.code = static_cast <uint16_t> (((code[0] - '0') * 100) + ((code[1] - '0') * 10) + (code[2] - '0'));
 		/**
 		 * Если код состояния дополняется пояснением
 		 *
@@ -438,7 +587,7 @@ namespace {
 	 * @return        блок заголовков сообщения
 	 *
 	 */
-	static std::string headers(bool & chunked, size_t & length) noexcept {
+	static std::string headers(bool & chunked, size_t & length, const std::string & host, traits_t & traits) noexcept {
 		// Результат работы функции
 		std::string result;
 		// Сбрасываем признак кодирования тела методом chunked
@@ -446,9 +595,9 @@ namespace {
 		// Сбрасываем размер тела фиксированного размера
 		length = 0;
 		// Если сообщение содержит заголовок адреса сервера
-		if(::chance(80)){
+		if(!host.empty()){
 			// Дописываем заголовок адреса сервера
-			result.append("Host: ").append(::token(::pick(12) + 1)).append(".com");
+			result.append("Host: ").append(host);
 			/**
 			 * Изредка вносим в значение пробельный символ
 			 *
@@ -467,9 +616,20 @@ namespace {
 			 * Два противоречащих Host отвергаются безусловно: выбор звеньями цепочки
 			 * разных из них - тот же механизм рассинхронизации, что и конфликт кадрирования
 			 */
-			if(::chance(6))
+			if(::chance(6)){
 				// Дописываем второй заголовок адреса сервера
 				result.append("Host: ").append(::token(::pick(12) + 1)).append(".net").append(::eol());
+				/**
+				 * Второй адресат заведомо расходится с адресатом цели: совпасть с ним оба
+				 * заголовка не могут по построению. Режим прокси сверяет каждый заголовок
+				 * при его применении и отвергает запрос на втором, а прямое соединение
+				 * доходит до конца блока и отвергает его по дублированию - обе стороны
+				 * отвергают запрос, и разница только в том, где именно разбор остановился
+				 */
+				if(traits.absoluteForm)
+					// Запоминаем расхождение адресата цели с адресатом заголовка
+					traits.authorityMismatch = true;
+			}
 		}
 		/**
 		 * Дописываем произвольные заголовки сообщения
@@ -540,17 +700,27 @@ namespace {
 				(::strcmp(encoding, "chunked,") == 0) || (::strcmp(encoding, " , chunked , ") == 0) ||
 				(::strcmp(encoding, "gzip;q=1, chunked") == 0)
 			);
+			// Запоминаем объявление транспортного кодирования
+			traits.transferEncoding = true;
+			// Запоминаем объявление кодирования chunked последним в списке кодирований
+			traits.chunkedLast = chunked;
 		}
 		// Если сообщение содержит заголовок размера тела
 		if(::chance(35)){
 			// Выбираем размер тела фиксированного размера
 			length = ::pick(64);
+			// Запоминаем объявление размера тела фиксированного размера
+			traits.contentLength = true;
 			// Если значение заголовка размера тела недопустимо
-			if(::chance(10))
+			if(::chance(10)){
 				// Дописываем недопустимое значение заголовка размера тела
 				result.append("Content-Length: abc").append(::eol());
+				// Недопустимое значение размера тела кадрирования не описывает
+				traits.length = 0;
 			// Если значение заголовка размера тела корректно
-			else {
+			} else {
+				// Запоминаем объявленный размер тела фиксированного размера
+				traits.length = length;
 				// Дописываем заголовок размера тела сообщения
 				result.append("Content-Length: ").append(std::to_string(length)).append(::eol());
 				// Если заголовок размера тела дублируется
@@ -572,10 +742,20 @@ namespace {
 		if(::chance(10))
 			// Дописываем заголовок ожидания продолжения
 			result.append("Expect: 100-continue").append(::eol());
-		// Если сообщение содержит заголовок смены протокола
-		if(::chance(8))
+		/**
+		 * Если сообщение содержит заголовок смены протокола
+		 *
+		 * Доля заголовка поднята против прочих намеренно: запрос со сменой протокола
+		 * и телом отвергается режимами прокси и переключения протокола, и при редком
+		 * заголовке это сочетание выпадало бы слишком редко, чтобы проверять
+		 * предсказание режима
+		 */
+		if(::chance(18)){
 			// Дописываем заголовок смены протокола
 			result.append("Upgrade: websocket").append(::eol());
+			// Запоминаем объявление смены протокола
+			traits.upgrade = true;
+		}
 		// Дописываем окончание блока заголовков
 		result.append(::eol());
 		// Выводим блок заголовков сообщения
@@ -662,15 +842,32 @@ namespace {
 	 * @return       разбираемое сообщение
 	 *
 	 */
-	static std::string generate(const direct_t direct) noexcept {
+	static std::string generate(const direct_t direct, traits_t & traits) noexcept {
 		// Признак кодирования тела методом chunked
 		bool chunked = false;
 		// Размер тела фиксированного размера
 		size_t length = 0;
+		// Имя узла заголовка адресата (пустое - заголовок не формируется)
+		std::string name;
+		// Порт заголовка адресата (пустой - порт не указывается)
+		std::string port;
+		// Если сообщение содержит заголовок адресата
+		if(::chance(80)){
+			// Формируем имя узла заголовка адресата
+			name = (::token(::pick(12) + 1) + ".com");
+			// Если заголовок адресата содержит порт
+			if(::chance(30))
+				/**
+				 * Формируем порт заголовка адресата: стандартный порт схемы выбирается
+				 * наравне с произвольным - подстановка стандартного порта проверяется
+				 * в обе стороны, и с ним указанный явно порт обязан совпасть с опущенным
+				 */
+				port = (::chance(40) ? (::chance(50) ? "80" : "443") : std::to_string(::pick(60000) + 1));
+		}
 		// Формируем стартовую строку сообщения
-		std::string result = ((direct == direct_t::REQUEST) ? ::request() : ::response());
+		std::string result = ((direct == direct_t::REQUEST) ? ::request(name, port, traits) : ::response(traits));
 		// Дописываем блок заголовков сообщения
-		result.append(::headers(chunked, length));
+		result.append(::headers(chunked, length, (name.empty() ? std::string() : (name + (port.empty() ? std::string() : (":" + port)))), traits));
 		// Если тело сообщения закодировано методом chunked
 		if(chunked)
 			// Дописываем тело сообщения в кодировке chunked
@@ -679,14 +876,27 @@ namespace {
 		else if(length > 0)
 			// Дописываем тело сообщения фиксированного размера, изредка неполное
 			result.append(::token(::chance(10) ? ::pick(length) : length));
-		// Если сообщение портится точечной заменой октета
-		if(::chance(6) && !result.empty())
+		/**
+		 * Если сообщение портится точечной заменой октета
+		 *
+		 * Порча помечается в признаках: она вносится вслепую и способна переписать
+		 * ровно то, что признаки описывают - код состояния, название заголовка либо
+		 * адресата цели. Предсказывать поведение режима по признакам, которых в
+		 * сообщении больше нет, означало бы ловить ложные расхождения
+		 */
+		if(::chance(6) && !result.empty()){
 			// Выполняем замену случайного октета сообщения
 			result[::pick(result.size())] = static_cast <char> (::pick(256));
+			// Помечаем сообщение как испорченное
+			traits.corrupted = true;
+		}
 		// Если сообщение обрывается
-		if(::chance(4) && !result.empty())
+		if(::chance(4) && !result.empty()){
 			// Выполняем обрыв сообщения в случайной позиции
 			result.resize(::pick(result.size()));
+			// Помечаем сообщение как испорченное
+			traits.corrupted = true;
+		}
 		// Выводим разбираемое сообщение
 		return result;
 	}
@@ -699,8 +909,10 @@ namespace {
 	 *
 	 */
 	static setup_t setup(const direct_t direct, const parser_http_t::limits_t & initial) noexcept {
+		// Набор протоколов, с которыми работает парсер
+		static const proto_t protocols[] = {proto_t::HTTP1, proto_t::PROXY1, proto_t::WEBSOCKET1};
 		// Результат работы функции
-		setup_t result{direct, method_t::NONE, initial};
+		setup_t result{direct, method_t::NONE, protocols[::pick(sizeof(protocols) / sizeof(protocols[0]))], ::chance(50), initial};
 		// Если применяется строгий набор лимитов безопасности
 		if(::chance(12))
 			// Применяем строгий набор лимитов безопасности
@@ -741,6 +953,199 @@ namespace {
 		}
 		// Выводим настройки разбора сообщения
 		return result;
+	}
+	/**
+	 * @brief Функция проверки неспособности ответа нести тело
+	 *
+	 * @details Ответ на запрос HEAD и ответ с кодом 1xx, [204 No Content] либо
+	 *          [304 Not Modified] заканчивается первой пустой строкой после блока
+	 *          заголовков независимо от присутствующих в нём полей (RFC 9112 §6.3 п.1),
+	 *          а успешный ответ на CONNECT открывает за ней туннель (§6.3 п.2)
+	 *
+	 * @param setup  настройки разбора сообщения
+	 * @param traits признаки сформированного сообщения
+	 * @return       результат проверки
+	 *
+	 */
+	static bool noBodyResponse(const setup_t & setup, const traits_t & traits) noexcept {
+		// Выводим признак неспособности ответа нести тело
+		return ((setup.direct == direct_t::RESPONSE) && (
+			(setup.method == method_t::HEAD) ||
+			((setup.method == method_t::CONNECT) && (traits.code >= 200) && (traits.code < 300)) ||
+			((traits.code >= 100) && (traits.code < 200)) || (traits.code == 204) || (traits.code == 304)
+		));
+	}
+	/**
+	 * @brief Функция предсказания отказа режима работы парсера принять сообщение
+	 *
+	 * @details Таблица предсказаний повторяет порядок проверок парсера: у сообщения,
+	 *          попадающего под несколько правил сразу, зафиксированной оказывается
+	 *          ошибка того правила, которое отработает первым. Сверять только сам
+	 *          факт отказа означало бы принимать отказ по любой причине за отказ по
+	 *          нужной
+	 *
+	 * @param proto  протокол, с которым работает парсер
+	 * @param setup  настройки разбора сообщения
+	 * @param traits признаки сформированного сообщения
+	 * @param error  выводимый код ожидаемой ошибки разбора
+	 * @return       результат предсказания
+	 *
+	 */
+	static bool modeRejects(const proto_t proto, const setup_t & setup, const traits_t & traits, parser_http_t::error_t & error) noexcept {
+		// Прямому соединению режим работы ничего не ужесточает
+		if((proto != proto_t::PROXY1) && (proto != proto_t::WEBSOCKET1))
+			// Выводим отсутствие предсказанного отказа
+			return false;
+		// Если разбирается запрос клиента
+		if(setup.direct == direct_t::REQUEST){
+			/**
+			 * Адресат заголовка сверяется с адресатом цели при применении заголовка,
+			 * то есть прежде любых проверок кадрирования: у запроса, нарушающего оба
+			 * правила, зафиксированной окажется именно эта ошибка
+			 */
+			if((proto == proto_t::PROXY1) && traits.authorityMismatch){
+				// Ожидается ошибка недопустимого заголовка Host
+				error = parser_http_t::error_t::INVALID_HOST;
+				// Выводим предсказанный отказ
+				return true;
+			}
+			// Если запрос требует смены протокола
+			if(traits.upgrade){
+				// Если объявлено транспортное кодирование
+				if(traits.transferEncoding){
+					// Ожидается ошибка некорректного Transfer-Encoding
+					error = parser_http_t::error_t::INVALID_TRANSFER_ENCODING;
+					// Выводим предсказанный отказ
+					return true;
+				}
+				// Если объявлен ненулевой размер тела
+				if(traits.contentLength && (traits.length > 0)){
+					// Ожидается ошибка некорректного Content-Length
+					error = parser_http_t::error_t::INVALID_CONTENT_LENGTH;
+					// Выводим предсказанный отказ
+					return true;
+				}
+			}
+			// Выводим отсутствие предсказанного отказа
+			return false;
+		}
+		/**
+		 * Определяем ответы, объявленное кадрирование которых режиму недопустимо:
+		 * узлу цепочки опасен любой ответ, границу которого следующее звено определит
+		 * иначе, а соединению со сменой протокола - ответ [101 Switching Protocols],
+		 * за пустой строкой которого начинается поток нового протокола
+		 */
+		const bool declared = ((proto == proto_t::PROXY1)
+		 ? (((traits.code >= 100) && (traits.code < 200)) || (traits.code == 204)) : (traits.code == 101));
+		// Если ответ принадлежит к тем, что кадрирования не несут вовсе
+		if(declared){
+			// Если объявлено транспортное кодирование
+			if(traits.transferEncoding){
+				// Ожидается ошибка некорректного Transfer-Encoding
+				error = parser_http_t::error_t::INVALID_TRANSFER_ENCODING;
+				// Выводим предсказанный отказ
+				return true;
+			}
+			// Если объявлен размер тела
+			if(traits.contentLength){
+				// Ожидается ошибка некорректного Content-Length
+				error = parser_http_t::error_t::INVALID_CONTENT_LENGTH;
+				// Выводим предсказанный отказ
+				return true;
+			}
+		}
+		/**
+		 * Тело, ограниченное закрытием соединения, само себя не размечает: передать
+		 * его дальше по цепочке узел может, лишь закрыв соединение следующему звену.
+		 * Ответу, тела не несущему, объявленное кодирование не мешает - оно просто
+		 * игнорируется, и до чтения тела разбор не доходит
+		 */
+		if((proto == proto_t::PROXY1) && traits.transferEncoding &&
+		   !traits.chunkedLast && !::noBodyResponse(setup, traits)){
+			// Ожидается ошибка некорректного Transfer-Encoding
+			error = parser_http_t::error_t::INVALID_TRANSFER_ENCODING;
+			// Выводим предсказанный отказ
+			return true;
+		}
+		// Выводим отсутствие предсказанного отказа
+		return false;
+	}
+	/**
+	 * @brief Функция сверки режимов работы парсера между собой
+	 *
+	 * @details Режим работы описывает роль узла на соединении, а не разбираемое
+	 *          сообщение, поэтому расходиться с прямым соединением он обязан ровно
+	 *          там, где таблица предсказаний это предписывает, и совпадать с ним
+	 *          октет в октет везде остальном. Сверка держит обе стороны: защита,
+	 *          не сработавшая на своём сообщении, и защита, сработавшая на чужом,
+	 *          ловятся одинаково
+	 *
+	 * @param fmk     объект фреймворка
+	 * @param log     объект логирования
+	 * @param setup   настройки разбора сообщения
+	 * @param message разбираемое сообщение
+	 * @param traits  признаки сформированного сообщения
+	 * @param reason  выводимая причина расхождения
+	 * @return        результат сверки
+	 *
+	 */
+	static bool crossmode(const awh::fmk_t * fmk, const awh::log_t * log, const setup_t & setup, const std::string & message, const traits_t & traits, std::string & reason) noexcept {
+		// Формируем настройки разбора прямым соединением
+		setup_t options = setup;
+		// Эталоном служит прямое соединение: ему режим ничего не ужесточает
+		options.proto = proto_t::HTTP1;
+		// Выполняем разбор сообщения прямым соединением
+		const outcome_t plain = ::parsing(fmk, log, options, message, 0, true);
+		/**
+		 * Перебираем режимы работы, ужесточающие разбор
+		 */
+		for(const proto_t proto : {proto_t::PROXY1, proto_t::WEBSOCKET1}){
+			// Устанавливаем проверяемый режим работы парсера
+			options.proto = proto;
+			// Выполняем разбор того же сообщения проверяемым режимом
+			const outcome_t actual = ::parsing(fmk, log, options, message, 0, true);
+			// Код ошибки, предсказанной проверяемому режиму
+			parser_http_t::error_t error = parser_http_t::error_t::NONE;
+			// Если режим обязан отвергнуть сообщение
+			if(::modeRejects(proto, options, traits, error)){
+				/**
+				 * Отказ сверяется только у сообщений, принятых прямым соединением целиком:
+				 * у сообщения, отвергнутого и без режима, разбор до проверки режима мог
+				 * не дойти вовсе, и требовать от него именно этой ошибки нельзя
+				 */
+				if(plain.status != parser_t::status_t::COMPLETE)
+					// Переходим к следующему режиму работы
+					continue;
+				// Если режим сообщение не отверг
+				if(actual.status != parser_t::status_t::ERROR){
+					// Формируем причину расхождения
+					reason = ("режим " + std::to_string(static_cast <uint32_t> (proto)) +
+					 " не отверг сообщение: статус " + std::to_string(static_cast <uint32_t> (actual.status)));
+					// Выводим отрицательный результат
+					return false;
+				}
+				// Если режим отверг сообщение не по предсказанной причине
+				if(actual.error != error){
+					// Формируем причину расхождения
+					reason = ("режим " + std::to_string(static_cast <uint32_t> (proto)) +
+					 " отверг сообщение ошибкой " + std::to_string(static_cast <uint32_t> (actual.error)) +
+					 " вместо " + std::to_string(static_cast <uint32_t> (error)));
+					// Выводим отрицательный результат
+					return false;
+				}
+			// Если режим разобрал сообщение иначе, чем прямое соединение
+			} else if(actual != plain) {
+				// Формируем причину расхождения
+				reason = ("режим " + std::to_string(static_cast <uint32_t> (proto)) +
+				 " разошёлся с прямым соединением: статус " + std::to_string(static_cast <uint32_t> (actual.status)) +
+				 "/" + std::to_string(static_cast <uint32_t> (plain.status)) + ", ошибка " +
+				 std::to_string(static_cast <uint32_t> (actual.error)) + "/" + std::to_string(static_cast <uint32_t> (plain.error)));
+				// Выводим отрицательный результат
+				return false;
+			}
+		}
+		// Выводим положительный результат
+		return true;
 	}
 	/**
 	 * @brief Функция вывода сообщения в экранированном виде
@@ -788,6 +1193,8 @@ namespace {
 	typedef struct Outgoing {
 		// Направление собираемого трафика
 		direct_t direct;
+		// Протокол, с которым работает отправитель
+		proto_t proto;
 		// Метод собираемого запроса
 		method_t method;
 		// Адрес запрашиваемого ресурса
@@ -822,6 +1229,10 @@ namespace {
 		bool tunnel;
 		// Признак умышленно непригодного к отправке блока трейлеров
 		bool badTrailers;
+		// Признак объявления смены протокола в собираемом запросе
+		bool upgrade;
+		// Признак расхождения адресата цели запроса с адресатом заголовка Host
+		bool authorityMismatch;
 		// Размер одной порции выдачи тела
 		size_t portion;
 		// Верхний порог выходного буфера
@@ -869,7 +1280,34 @@ namespace {
 		 * непригодным элементом: управляющим символом в поле, стартовой строке либо
 		 * пояснении к коду состояния, а также отсутствием обязательного заголовка Host
 		 */
-		return (outgoing.malformed ||
+		/**
+		 * Режимы прокси и переключения протокола отвергают запрос со сменой протокола,
+		 * объявляющий тело: точка переключения стала бы предметом догадки. Считается
+		 * объявленное на проводе кадрирование, а не наличие тела - приёмник смотрит
+		 * именно на заголовки:
+		 * объявление chunked уходит на провод и при пустом теле, завершённым нулевым
+		 * чанком, а в HTTP/1.0 оно снимается с провода целиком; объявленный размер
+		 * тела остаётся на проводе ненулевым только вместе с телом - у запроса без
+		 * тела отправитель снимает его сам, а нулевой размер приёмником допускается
+		 */
+		const bool switching = ((outgoing.direct == direct_t::REQUEST) && outgoing.upgrade &&
+		 ((outgoing.proto == proto_t::PROXY1) || (outgoing.proto == proto_t::WEBSOCKET1)) &&
+		 (outgoing.chunked ? !outgoing.legacy : !outgoing.body.empty()));
+		/**
+		 * Режим прокси отвергает запрос, адресат цели которого расходится с адресатом
+		 * заголовка: собранное сообщение обязано быть принято собственным приёмником,
+		 * а он в этом режиме такое расхождение отвергает
+		 */
+		const bool routing = ((outgoing.direct == direct_t::REQUEST) &&
+		 (outgoing.proto == proto_t::PROXY1) && outgoing.authorityMismatch && !outgoing.host.empty());
+		/**
+		 * Выводим признак отказа отправителя собрать сообщение целиком
+		 *
+		 * Кроме неисправимого объявления кодирования сообщение отвергается умышленно
+		 * непригодным элементом: управляющим символом в поле, стартовой строке либо
+		 * пояснении к коду состояния, а также отсутствием обязательного заголовка Host
+		 */
+		return (outgoing.malformed || switching || routing ||
 		 ((outgoing.unfixable || outgoing.parametrized) && !::encodingDropped(outgoing)));
 	}
 	/**
@@ -905,12 +1343,47 @@ namespace {
 		 * решало бы судьбу собираемого сообщения мусором
 		 */
 		outgoing_t result{};
+		// Набор протоколов, с которыми работает отправитель
+		static const proto_t protocols[] = {proto_t::HTTP1, proto_t::PROXY1, proto_t::WEBSOCKET1};
 		// Выбираем направление собираемого трафика
 		result.direct = (::chance(50) ? direct_t::REQUEST : direct_t::RESPONSE);
+		// Выбираем протокол, с которым работает отправитель
+		result.proto = protocols[::pick(sizeof(protocols) / sizeof(protocols[0]))];
 		// Выбираем метод собираемого запроса
 		result.method = methods[::pick(sizeof(methods) / sizeof(methods[0]))];
-		// Формируем адрес запрашиваемого ресурса
-		result.target = ("/" + ::token(::pick(20)));
+		/**
+		 * Формируем значение обязательного для запроса HTTP/1.1 заголовка Host
+		 * (RFC 9110 §7.2): без него отправитель собирать запрос откажется. Значение
+		 * формируется прежде цели запроса: цель в absolute-form несёт адресата сама,
+		 * и совпадение с заголовком закладывается в момент её формирования
+		 */
+		const std::string name = ::token(::pick(12) + 1);
+		// Формируем порт заголовка адресата
+		const std::string port = (::chance(30) ? (":" + std::to_string(::pick(60000) + 1)) : std::string());
+		// Формируем значение заголовка адресата
+		result.host = (name + port);
+		/**
+		 * Изредка цель запроса записывается в absolute-form
+		 *
+		 * Совпадение её адресата с адресатом заголовка сверяется только режимом прокси
+		 * (RFC 9112 §3.2.2), и расхождение обязано быть отвергнуто на сборке так же,
+		 * как оно отвергается на приёме: собранное сообщение обязано быть принято
+		 * собственным приёмником
+		 */
+		if(::chance(20)){
+			// Признак расхождения адресатов
+			const bool mismatch = ::chance(40);
+			/**
+			 * Расхождение вносится в имя узла, а не в порт: имя записывается заведомо
+			 * отличным, тогда как отличный порт пришлось бы сверять с подстановкой
+			 * стандартного порта схемы - то есть повторять в генераторе логику парсера
+			 */
+			result.target = (std::string(::chance(50) ? "http://" : "https://") +
+			 (mismatch ? (name + "x") : name) + port + "/" + ::token(::pick(16)));
+			// Запоминаем расхождение адресата цели с адресатом заголовка
+			result.authorityMismatch = mismatch;
+		// Записываем цель запроса в origin-form
+		} else result.target = ("/" + ::token(::pick(20)));
 		// Выбираем код состояния собираемого ответа
 		result.code = static_cast <uint16_t> (::chance(70) ? 200 : (::chance(50) ? 404 : 500));
 		/**
@@ -978,11 +1451,6 @@ namespace {
 		 * собирать его отправитель обязан отказаться
 		 */
 		result.parametrized = (result.chunked && !result.unfixable && !result.legacy && ::chance(10));
-		/**
-		 * Формируем значение обязательного для запроса HTTP/1.1 заголовка Host
-		 * (RFC 9110 §7.2): без него отправитель собирать запрос откажется
-		 */
-		result.host = (::token(::pick(12) + 1) + (::chance(30) ? (":" + std::to_string(::pick(60000) + 1)) : std::string()));
 		// Изредка задаём пояснение к коду состояния собираемого ответа
 		result.reason = (::chance(25) ? ::token(::pick(12)) : std::string());
 		// Формируем тело собираемого сообщения
@@ -1007,6 +1475,19 @@ namespace {
 		for(size_t i = 0, count = ::pick(6); i < count; i++)
 			// Дописываем очередной заголовок собираемого сообщения
 			result.headers.emplace_back(("X-" + ::token(::pick(10) + 1) + "-" + std::to_string(i)), ::token(::pick(30)));
+		/**
+		 * Изредка запрос требует смены протокола
+		 *
+		 * Запрос со сменой протокола, несущий тело, режимы прокси и переключения
+		 * отвергают: точка переключения стала бы предметом догадки - принятые за
+		 * блоком заголовков байты окажутся либо телом, либо началом нового протокола
+		 */
+		if((result.direct == direct_t::REQUEST) && ::chance(18)){
+			// Дописываем заголовок смены протокола
+			result.headers.emplace_back("Upgrade", "websocket");
+			// Запоминаем объявление смены протокола
+			result.upgrade = true;
+		}
 		// Если тело сообщения кадрируется методом chunked (в HTTP/1.0 его нет, а с ним нет и трейлеров)
 		if(result.chunked && !result.legacy && !result.body.empty()){
 			/**
@@ -1121,6 +1602,8 @@ namespace {
 		std::string wire;
 		// Создаём объект парсера-отправителя
 		parser_http_t sender(outgoing.direct, fmk, log);
+		// Устанавливаем протокол, с которым работает отправитель
+		sender.proto(outgoing.proto);
 		// Устанавливаем пороги выходного буфера
 		sender.sendWaterMarks(outgoing.high, outgoing.low);
 		// Если байты выдаются функцией обратного вызова записи
@@ -1378,6 +1861,12 @@ namespace {
 	static bool roundtrip(const awh::fmk_t * fmk, const awh::log_t * log, const outgoing_t & outgoing, const std::string & wire, std::string & reason) noexcept {
 		// Создаём объект парсера-приёмника собранного сообщения
 		parser_http_t receiver(outgoing.direct, fmk, log);
+		/**
+		 * Устанавливаем приёмнику тот же протокол, что и отправителю: проверяемый
+		 * инвариант в том, что собранное нами сообщение принимает наш же приёмник,
+		 * а он в этих режимах строже - принимать собранное обязан именно он
+		 */
+		receiver.proto(outgoing.proto);
 		// Если разбирается ответ сервера
 		if(outgoing.direct == direct_t::RESPONSE)
 			// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
@@ -1579,8 +2068,10 @@ namespace {
 		const direct_t direct = (::chance(50) ? direct_t::REQUEST : direct_t::RESPONSE);
 		// Создаём объект парсера
 		parser_http_t parser(direct, fmk, log);
+		// Признаки формируемого сообщения: реентрантности они не нужны
+		traits_t traits{};
 		// Формируем разбираемое сообщение
-		const std::string message = ::generate(direct);
+		const std::string message = ::generate(direct, traits);
 		// Признак удаления функций обратного вызова из обработчика
 		bool cleared = false;
 		/**
@@ -1702,6 +2193,8 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	size_t rejected = 0;
 	// Количество выполненных сверок
 	size_t checks = 0;
+	// Количество выполненных сверок режимов работы парсера
+	size_t modes = 0;
 	// Количество собранных исходящих сообщений
 	size_t emitted = 0;
 	// Количество выполненных сеансов проверки реентрантности
@@ -1718,8 +2211,13 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 		for(const direct_t direct : {direct_t::REQUEST, direct_t::RESPONSE}){
 			// Формируем настройки разбора сообщения
 			const setup_t options = ::setup(direct, initial);
+			/**
+			 * Признаки формируемого сообщения: генератор записывает в них то, что в
+			 * сообщение заложил, а таблица предсказаний режимов читает их как есть
+			 */
+			traits_t traits{};
 			// Формируем разбираемое сообщение
-			const std::string message = ::generate(direct);
+			const std::string message = ::generate(direct, traits);
 			/**
 			 * Эталоном служит посимвольная подача: на ней не срабатывает ни один
 			 * крупноблочный путь, поэтому она разбирает сообщение самым простым
@@ -1779,6 +2277,33 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 				::dump(message);
 				// Выводим код выхода с ошибкой
 				return 1;
+			}
+			/**
+			 * Сверяем режимы работы парсера между собой
+			 *
+			 * Испорченные сообщения из сверки исключаются: порча вносится вслепую и
+			 * способна переписать ровно то, что описывают признаки, а предсказание
+			 * строится по ним
+			 */
+			if(!traits.corrupted){
+				// Причина расхождения режимов работы парсера
+				std::string reason;
+				// Считаем выполненную сверку режимов
+				modes++;
+				// Если режим разобрал сообщение не так, как предписано таблицей предсказаний
+				if(!::crossmode(&fmk, &log, options, message, traits, reason)){
+					// Выводим сообщение о расхождении режимов работы
+					::printf(
+						"РАСХОЖДЕНИЕ РЕЖИМОВ: итерация %zu, направление %s, %s\n",
+						round, ((direct == direct_t::REQUEST) ? "REQUEST" : "RESPONSE"), reason.c_str()
+					);
+					// Выводим разбираемое сообщение
+					::printf("  сообщение: ");
+					// Выводим сообщение в экранированном виде
+					::dump(message);
+					// Выводим код выхода с ошибкой
+					return 1;
+				}
 			}
 		}
 		/**
@@ -1874,8 +2399,9 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	// Выводим статистику выполненного прогона
 	::printf(
 		"http1 fuzz: %zu сообщений (%zu разобрано полностью, %zu отвергнуто), %zu сверок путей,\n"
-		"            %zu собранных исходящих сообщений, %zu сеансов реентрантности - расхождений нет\n",
-		total, completed, rejected, checks, emitted, reentrant
+		"            %zu сверок режимов, %zu собранных исходящих сообщений,\n"
+		"            %zu сеансов реентрантности - расхождений нет\n",
+		total, completed, rejected, checks, modes, emitted, reentrant
 	);
 	// Выводим успешный код выхода
 	return 0;

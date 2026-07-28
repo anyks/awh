@@ -104,22 +104,6 @@ if [ -f "$RELEASE/libawh.a" ]; then
 		-I"$ROOT/contrib/include" -I"$ROOT/third_party/include/pcre2" -I"$ROOT/third_party/include" -isystem "$ROOT/include" \
 		"$RELEASE/libawh.a" "$ROOT/third_party/lib/libdependence.a" "$ROOT/third_party/lib/libcommon.a" \
 		$(if [ "$(uname -a | awk '{print $1}')" = "Darwin" ]; then echo "-framework Foundation"; fi) 2> /dev/null || exit 1
-
-	##
-	# Стенд транспорта параллельного движка AWH (quic2)
-	#
-	# Тот же стенд и та же обвязка замера, что и у "awh", но поверх движка awh::quic2 -
-	# изолированной ветки рефакторинга памяти. Позволяет мерить прогресс quic2 против
-	# ngtcp2 и исходного quic, не трогая рабочий движок
-	#
-	echo "Build \"awh2\""
-	c++ -std=gnu++17 $FLAGS -pthread -DAWH_STATICLIB \
-		-Wno-reserved-user-defined-literal -Wno-implicitly-unsigned-literal -Wno-unused-command-line-argument \
-		-o "$OUTPUT/awh2" "$STANDS/awh2.cpp" "$ROOT/benchmark/proto/quic/quic2.cpp" \
-		-I"$ROOT/tools/benchmark/syscount" \
-		-I"$ROOT/contrib/include" -I"$ROOT/third_party/include/pcre2" -I"$ROOT/third_party/include" -isystem "$ROOT/include" \
-		"$RELEASE/libawh.a" "$ROOT/third_party/lib/libdependence.a" "$ROOT/third_party/lib/libcommon.a" \
-		$(if [ "$(uname -a | awk '{print $1}')" = "Darwin" ]; then echo "-framework Foundation"; fi) 2> /dev/null || exit 1
 else
 	# Выводим сообщение об отсутствии сборки библиотеки с оптимизацией
 	echo "Skip \"awh\": build the library first with"

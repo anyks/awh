@@ -484,7 +484,7 @@ bool awh::unit::QuicServer::inject(const event::id_t oid, const uint8_t * data, 
 		// Возвращаем значение по умолчанию
 		return false;
 	// Если постановка байт в очередь отправки туннельного потока не выполнена
-	if(i->second.connection->send(i->second.tunnel, string_view(reinterpret_cast <const char *> (data), size), false) != quic::status_t::OK)
+	if(i->second.connection->send(i->second.tunnel, string_view(reinterpret_cast <const char *> (data), size), false) < size)
 		// Возвращаем значение по умолчанию
 		return false;
 	// Отправляем готовые исходящие датаграммы удалённому эндпоинту
@@ -1794,7 +1794,7 @@ bool awh::unit::QuicServer::send(const event::id_t oid, const uint64_t sid, stri
 		// Выводим отрицательный результат
 		return false;
 	// Если постановка данных в очередь отправки не выполнена
-	if(i->second.connection->send(sid, data, fin) != quic::status_t::OK)
+	if(i->second.connection->send(sid, data, fin) < data.size())
 		// Выводим отрицательный результат
 		return false;
 	// Отправляем все готовые исходящие датаграммы
@@ -2858,7 +2858,7 @@ bool awh::unit::QuicClient::inject(const uint8_t * data, const size_t size) noex
 		// Возвращаем значение по умолчанию
 		return false;
 	// Если постановка байт в очередь отправки туннельного потока не выполнена
-	if(this->_connection->send(this->_tunnel, string_view(reinterpret_cast <const char *> (data), size), false) != quic::status_t::OK)
+	if(this->_connection->send(this->_tunnel, string_view(reinterpret_cast <const char *> (data), size), false) < size)
 		// Возвращаем значение по умолчанию
 		return false;
 	// Отправляем готовые исходящие датаграммы удалённому серверу
@@ -3267,7 +3267,7 @@ size_t awh::unit::QuicClient::send(const event::id_t eid, const void * buffer, c
 		// Возвращаем значение по умолчанию
 		return 0;
 	// Если постановка данных в очередь отправки потока не выполнена
-	if(this->_connection->send(sid, string_view(reinterpret_cast <const char *> (buffer), size), false) != quic::status_t::OK)
+	if(this->_connection->send(sid, string_view(reinterpret_cast <const char *> (buffer), size), false) < size)
 		// Возвращаем значение по умолчанию
 		return 0;
 	// Отправляем все готовые исходящие датаграммы
@@ -4092,7 +4092,7 @@ bool awh::unit::QuicClient::send(const uint64_t sid, string_view data, const boo
 		// Выводим отрицательный результат
 		return false;
 	// Если постановка данных в очередь отправки не выполнена
-	if(this->_connection->send(sid, data, fin) != quic::status_t::OK)
+	if(this->_connection->send(sid, data, fin) < data.size())
 		// Выводим отрицательный результат
 		return false;
 	// Отправляем все готовые исходящие датаграммы

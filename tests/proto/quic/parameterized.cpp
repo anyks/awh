@@ -37,7 +37,7 @@ using namespace awh::quic;
  * @brief Структура параметров теста границ кодека целых чисел переменной длины
  *
  */
-struct VarintBoundaryParameter {
+struct QuicVarintBoundaryParameter {
 	// Кодируемое число
 	uint64_t value;
 	// Ожидаемый размер кодирования в октетах
@@ -48,17 +48,17 @@ struct VarintBoundaryParameter {
  * @brief Класс фикстуры теста границ кодека целых чисел переменной длины
  *
  */
-class VarintBoundaryParameterizedFixture : public QuicFixture, public ::testing::WithParamInterface <VarintBoundaryParameter> {
+class QuicVarintBoundaryParameterizedFixture : public QuicFixture, public ::testing::WithParamInterface <QuicVarintBoundaryParameter> {
 	public:
 		// Параметры теста границ кодека
-		VarintBoundaryParameter _parameter = GetParam();
+		QuicVarintBoundaryParameter _parameter = GetParam();
 };
 
 /**
  * @brief Метод тестирования полного цикла записи и чтения чисел на границах кодирования
  *
  */
-TEST_P(VarintBoundaryParameterizedFixture, RoundTrip){
+TEST_P(QuicVarintBoundaryParameterizedFixture, RoundTrip){
 	// Выходной буфер записи
 	std::string output;
 	// Записываем число
@@ -84,24 +84,24 @@ TEST_P(VarintBoundaryParameterizedFixture, RoundTrip){
  */
 INSTANTIATE_TEST_SUITE_P(
 	Quic,
-	VarintBoundaryParameterizedFixture,
+	QuicVarintBoundaryParameterizedFixture,
 	::testing::Values(
 		// Нижняя граница одноктетного кодирования
-		VarintBoundaryParameter{0, 1},
+		QuicVarintBoundaryParameter{0, 1},
 		// Верхняя граница одноктетного кодирования
-		VarintBoundaryParameter{63, 1},
+		QuicVarintBoundaryParameter{63, 1},
 		// Нижняя граница двухоктетного кодирования
-		VarintBoundaryParameter{64, 2},
+		QuicVarintBoundaryParameter{64, 2},
 		// Верхняя граница двухоктетного кодирования
-		VarintBoundaryParameter{16383, 2},
+		QuicVarintBoundaryParameter{16383, 2},
 		// Нижняя граница четырёхоктетного кодирования
-		VarintBoundaryParameter{16384, 4},
+		QuicVarintBoundaryParameter{16384, 4},
 		// Верхняя граница четырёхоктетного кодирования
-		VarintBoundaryParameter{1073741823, 4},
+		QuicVarintBoundaryParameter{1073741823, 4},
 		// Нижняя граница восьмиоктетного кодирования
-		VarintBoundaryParameter{1073741824, 8},
+		QuicVarintBoundaryParameter{1073741824, 8},
 		// Верхняя граница восьмиоктетного кодирования (2^62 - 1)
-		VarintBoundaryParameter{0x3FFFFFFFFFFFFFFF, 8}
+		QuicVarintBoundaryParameter{0x3FFFFFFFFFFFFFFF, 8}
 	)
 );
 
@@ -109,7 +109,7 @@ INSTANTIATE_TEST_SUITE_P(
  * @brief Структура параметров теста вариантов фрейма STREAM
  *
  */
-struct StreamFrameParameter {
+struct QuicStreamFrameParameter {
 	// Идентификатор потока
 	uint64_t streamId;
 	// Смещение данных в потоке
@@ -124,17 +124,17 @@ struct StreamFrameParameter {
  * @brief Класс фикстуры теста вариантов фрейма STREAM
  *
  */
-class StreamFrameParameterizedFixture : public QuicFixture, public ::testing::WithParamInterface <StreamFrameParameter> {
+class QuicStreamFrameParameterizedFixture : public QuicFixture, public ::testing::WithParamInterface <QuicStreamFrameParameter> {
 	public:
 		// Параметры теста вариантов фрейма STREAM
-		StreamFrameParameter _parameter = GetParam();
+		QuicStreamFrameParameter _parameter = GetParam();
 };
 
 /**
  * @brief Метод тестирования полного цикла сборки и разбора вариантов фрейма STREAM
  *
  */
-TEST_P(StreamFrameParameterizedFixture, RoundTrip){
+TEST_P(QuicStreamFrameParameterizedFixture, RoundTrip){
 	// Выходной буфер сборки
 	std::string output;
 	// Собираем фрейм STREAM согласно параметрам
@@ -164,19 +164,19 @@ TEST_P(StreamFrameParameterizedFixture, RoundTrip){
  */
 INSTANTIATE_TEST_SUITE_P(
 	Quic,
-	StreamFrameParameterizedFixture,
+	QuicStreamFrameParameterizedFixture,
 	::testing::Values(
 		// Клиентский двунаправленный поток без смещения
-		StreamFrameParameter{0, 0, false, "first-chunk"},
+		QuicStreamFrameParameter{0, 0, false, "first-chunk"},
 		// Поток со смещением данных
-		StreamFrameParameter{4, 1024, false, "middle-chunk"},
+		QuicStreamFrameParameter{4, 1024, false, "middle-chunk"},
 		// Завершающий фрагмент потока
-		StreamFrameParameter{8, 65536, true, "last-chunk"},
+		QuicStreamFrameParameter{8, 65536, true, "last-chunk"},
 		// Пустой завершающий фрагмент (только FIN)
-		StreamFrameParameter{12, 2048, true, ""},
+		QuicStreamFrameParameter{12, 2048, true, ""},
 		// Большой идентификатор потока с большим смещением
-		StreamFrameParameter{0x3FFFFFFF, 0x3FFFFFFF, false, "big-ids"},
+		QuicStreamFrameParameter{0x3FFFFFFF, 0x3FFFFFFF, false, "big-ids"},
 		// Серверный однонаправленный поток
-		StreamFrameParameter{3, 0, true, "server-uni"}
+		QuicStreamFrameParameter{3, 0, true, "server-uni"}
 	)
 );

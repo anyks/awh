@@ -825,12 +825,15 @@ namespace io {
 	/**
 	 * @brief Структура метаданных RAW-пакета
 	 *
+	 * @details Держит только то, что переживает приём и отдаётся наружу методом
+	 *          получения метаданных. Описание сообщения и буфер полезной нагрузки
+	 *          здесь тоже лежали, хотя заполнялись заново на каждый приём и
+	 *          дочитывались тут же: в узле они занимали 64 октета, ничего между
+	 *          вызовами не храня, и переехали на стек той функции, которая ими и
+	 *          пользуется
+	 *
 	 */
 	typedef struct RAW_Endpoint {
-		// Буфер полезной нагрузки
-		struct iovec iov;
-		// Объект описания входящего сообщения
-		struct msghdr msg;
 		// Метаданные последнего принятого пакета
 		net::dgram_info_t info;
 		/**
@@ -10365,30 +10368,35 @@ namespace io {
 								 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
 								 */
 								if(client->state.options & event::options::DGRAM_INFO){
+									/**
+									 * Рабочая область описания сообщения: заполняется заново на каждый приём
+									 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
+									 * на стеке, а не в узле события
+									 */
+									struct iovec iov{};
+									struct msghdr msg{};
 									// Устанавливаем семейство адресов текущего события
 									client->raw.info.family = client->state.family;
 									// Устанавливаем протокол текущего события
 									client->raw.info.protocol = client->state.protocol;
-									// Зануляем буфер для получения данных и информационных метаданных из сокета
-									::memset(&client->raw.msg, 0, sizeof(client->raw.msg));
 									// Устанавливаем буфер для получения данных из сокета
-									client->raw.iov.iov_base = ::__awh_buffer__;
+									iov.iov_base = ::__awh_buffer__;
 									// Устанавливаем размер буфера для получения данных из сокета
-									client->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+									iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
 									// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-									client->raw.msg.msg_iov = &client->raw.iov;
+									msg.msg_iov = &iov;
 									// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-									client->raw.msg.msg_iovlen = 1;
+									msg.msg_iovlen = 1;
 									// Устанавливаем буфер для получения служебных метаданных из сокета
-									client->raw.msg.msg_control = ::__awh_cmsgbuf__;
+									msg.msg_control = ::__awh_cmsgbuf__;
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
-									client->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+									msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 									// Выполняем чтение данных и служебных метаданных из RAW-сокета
-									bytes = ::recvmsg(client->transfer.fd, &client->raw.msg, MSG_NOSIGNAL);
+									bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
 									/**
 									 * Извлекаем значение TTL/HopLimit из control message
 									 */
-									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->raw.msg, cmsg)){
+									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 										/** 
 										 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 										 */
@@ -10615,30 +10623,35 @@ namespace io {
 							 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
 							 */
 							if(client->state.options & event::options::DGRAM_INFO){
+								/**
+								 * Рабочая область описания сообщения: заполняется заново на каждый приём
+								 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
+								 * на стеке, а не в узле события
+								 */
+								struct iovec iov{};
+								struct msghdr msg{};
 								// Устанавливаем семейство адресов текущего события
 								client->raw.info.family = client->state.family;
 								// Устанавливаем протокол текущего события
 								client->raw.info.protocol = client->state.protocol;
-								// Зануляем буфер для получения данных и информационных метаданных из сокета
-								::memset(&client->raw.msg, 0, sizeof(client->raw.msg));
 								// Устанавливаем буфер для получения данных из сокета
-								client->raw.iov.iov_base = ::__awh_buffer__;
+								iov.iov_base = ::__awh_buffer__;
 								// Устанавливаем размер буфера для получения данных из сокета
-								client->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+								iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
 								// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-								client->raw.msg.msg_iov = &client->raw.iov;
+								msg.msg_iov = &iov;
 								// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-								client->raw.msg.msg_iovlen = 1;
+								msg.msg_iovlen = 1;
 								// Устанавливаем буфер для получения служебных метаданных из сокета
-								client->raw.msg.msg_control = ::__awh_cmsgbuf__;
+								msg.msg_control = ::__awh_cmsgbuf__;
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
-								client->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+								msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 								// Выполняем чтение данных и служебных метаданных из RAW-сокета
-								bytes = ::recvmsg(client->transfer.fd, &client->raw.msg, MSG_NOSIGNAL);
+								bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
 								/**
 								 * Извлекаем значение TTL/HopLimit из control message
 								 */
-								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->raw.msg, cmsg)){
+								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 									/** 
 									 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 									 */
@@ -10829,34 +10842,39 @@ namespace io {
 								 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
 								 */
 								if(client->state.options & event::options::DGRAM_INFO){
+									/**
+									 * Рабочая область описания сообщения: заполняется заново на каждый приём
+									 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
+									 * на стеке, а не в узле события
+									 */
+									struct iovec iov{};
+									struct msghdr msg{};
 									// Устанавливаем семейство адресов текущего события
 									client->raw.info.family = client->state.family;
 									// Устанавливаем протокол текущего события
 									client->raw.info.protocol = client->state.protocol;
-									// Зануляем буфер для получения данных и информационных метаданных из сокета
-									::memset(&client->raw.msg, 0, sizeof(client->raw.msg));
 									// Устанавливаем буфер для получения данных из сокета
-									client->raw.iov.iov_base = ::__awh_buffer__;
+									iov.iov_base = ::__awh_buffer__;
 									// Устанавливаем размер буфера для получения данных из сокета
-									client->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+									iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
 									// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-									client->raw.msg.msg_iov = &client->raw.iov;
+									msg.msg_iov = &iov;
 									// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-									client->raw.msg.msg_iovlen = 1;
+									msg.msg_iovlen = 1;
 									// Устанавливаем размер буфера для получения адреса отправителя из сокета
-									client->raw.msg.msg_namelen = client->endpoint.size;
+									msg.msg_namelen = client->endpoint.size;
 									// Устанавливаем буфер для получения адреса отправителя из сокета
-									client->raw.msg.msg_name = &::trust_cast <struct sockaddr> (client->endpoint.server);
+									msg.msg_name = &::trust_cast <struct sockaddr> (client->endpoint.server);
 									// Устанавливаем буфер для получения служебных метаданных из сокета
-									client->raw.msg.msg_control = ::__awh_cmsgbuf__;
+									msg.msg_control = ::__awh_cmsgbuf__;
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
-									client->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+									msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 									// Выполняем чтение данных и служебных метаданных из RAW-сокета
-									bytes = ::recvmsg(client->transfer.fd, &client->raw.msg, MSG_NOSIGNAL);
+									bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
 									/**
 									 * Извлекаем значение TTL/HopLimit из control message
 									 */
-									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->raw.msg, cmsg)){
+									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 										/** 
 										 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 										 */
@@ -11092,34 +11110,39 @@ namespace io {
 							 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
 							 */
 							if(client->state.options & event::options::DGRAM_INFO){
+								/**
+								 * Рабочая область описания сообщения: заполняется заново на каждый приём
+								 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
+								 * на стеке, а не в узле события
+								 */
+								struct iovec iov{};
+								struct msghdr msg{};
 								// Устанавливаем семейство адресов текущего события
 								client->raw.info.family = client->state.family;
 								// Устанавливаем протокол текущего события
 								client->raw.info.protocol = client->state.protocol;
-								// Зануляем буфер для получения данных и информационных метаданных из сокета
-								::memset(&client->raw.msg, 0, sizeof(client->raw.msg));
 								// Устанавливаем буфер для получения данных из сокета
-								client->raw.iov.iov_base = ::__awh_buffer__;
+								iov.iov_base = ::__awh_buffer__;
 								// Устанавливаем размер буфера для получения данных из сокета
-								client->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+								iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
 								// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-								client->raw.msg.msg_iov = &client->raw.iov;
+								msg.msg_iov = &iov;
 								// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-								client->raw.msg.msg_iovlen = 1;
+								msg.msg_iovlen = 1;
 								// Устанавливаем размер буфера для получения адреса отправителя из сокета
-								client->raw.msg.msg_namelen = client->endpoint.size;
+								msg.msg_namelen = client->endpoint.size;
 								// Устанавливаем буфер для получения адреса отправителя из сокета
-								client->raw.msg.msg_name = &::trust_cast <struct sockaddr> (client->endpoint.server);
+								msg.msg_name = &::trust_cast <struct sockaddr> (client->endpoint.server);
 								// Устанавливаем буфер для получения служебных метаданных из сокета
-								client->raw.msg.msg_control = ::__awh_cmsgbuf__;
+								msg.msg_control = ::__awh_cmsgbuf__;
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
-								client->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+								msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 								// Выполняем чтение данных и служебных метаданных из RAW-сокета
-								bytes = ::recvmsg(client->transfer.fd, &client->raw.msg, MSG_NOSIGNAL);
+								bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
 								/**
 								 * Извлекаем значение TTL/HopLimit из control message
 								 */
-								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->raw.msg, cmsg)){
+								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 									/** 
 									 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 									 */
@@ -12030,34 +12053,39 @@ namespace io {
 								 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
 								 */
 								if(server->state.options & event::options::DGRAM_INFO){
+									/**
+									 * Рабочая область описания сообщения: заполняется заново на каждый приём
+									 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
+									 * на стеке, а не в узле события
+									 */
+									struct iovec iov{};
+									struct msghdr msg{};
 									// Устанавливаем семейство адресов текущего события
 									server->raw.info.family = server->state.family;
 									// Устанавливаем протокол текущего события
 									server->raw.info.protocol = server->state.protocol;
-									// Зануляем буфер для получения данных и информационных метаданных из сокета
-									::memset(&server->raw.msg, 0, sizeof(server->raw.msg));
 									// Устанавливаем буфер для получения данных из сокета
-									server->raw.iov.iov_base = ::__awh_buffer__;
+									iov.iov_base = ::__awh_buffer__;
 									// Устанавливаем размер буфера для получения данных из сокета
-									server->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+									iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
 									// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-									server->raw.msg.msg_iov = &server->raw.iov;
+									msg.msg_iov = &iov;
 									// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-									server->raw.msg.msg_iovlen = 1;
+									msg.msg_iovlen = 1;
 									// Устанавливаем размер буфера для получения адреса отправителя из сокета
-									server->raw.msg.msg_namelen = server->endpoint.size;
+									msg.msg_namelen = server->endpoint.size;
 									// Устанавливаем буфер для получения адреса отправителя из сокета
-									server->raw.msg.msg_name = &::trust_cast <struct sockaddr> (server->endpoint.client),
+									msg.msg_name = &::trust_cast <struct sockaddr> (server->endpoint.client),
 									// Устанавливаем буфер для получения служебных метаданных из сокета
-									server->raw.msg.msg_control = ::__awh_cmsgbuf__;
+									msg.msg_control = ::__awh_cmsgbuf__;
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
-									server->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+									msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 									// Выполняем чтение данных и служебных метаданных из RAW-сокета
-									bytes = ::recvmsg(server->fd, &server->raw.msg, MSG_NOSIGNAL);
+									bytes = ::recvmsg(server->fd, &msg, MSG_NOSIGNAL);
 									/**
 									 * Извлекаем значение TTL/HopLimit из control message
 									 */
-									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&server->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&server->raw.msg, cmsg)){
+									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 										/** 
 										 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 										 */
@@ -12324,34 +12352,39 @@ namespace io {
 							 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
 							 */
 							if(server->state.options & event::options::DGRAM_INFO){
+								/**
+								 * Рабочая область описания сообщения: заполняется заново на каждый приём
+								 * и дочитывается разбором служебных метаданных тут же, поэтому живёт
+								 * на стеке, а не в узле события
+								 */
+								struct iovec iov{};
+								struct msghdr msg{};
 								// Устанавливаем семейство адресов текущего события
 								server->raw.info.family = server->state.family;
 								// Устанавливаем протокол текущего события
 								server->raw.info.protocol = server->state.protocol;
-								// Зануляем буфер для получения данных и информационных метаданных из сокета
-								::memset(&server->raw.msg, 0, sizeof(server->raw.msg));
 								// Устанавливаем буфер для получения данных из сокета
-								server->raw.iov.iov_base = ::__awh_buffer__;
+								iov.iov_base = ::__awh_buffer__;
 								// Устанавливаем размер буфера для получения данных из сокета
-								server->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+								iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
 								// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-								server->raw.msg.msg_iov = &server->raw.iov;
+								msg.msg_iov = &iov;
 								// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-								server->raw.msg.msg_iovlen = 1;
+								msg.msg_iovlen = 1;
 								// Устанавливаем размер буфера для получения адреса отправителя из сокета
-								server->raw.msg.msg_namelen = server->endpoint.size;
+								msg.msg_namelen = server->endpoint.size;
 								// Устанавливаем буфер для получения адреса отправителя из сокета
-								server->raw.msg.msg_name = &::trust_cast <struct sockaddr> (server->endpoint.client),
+								msg.msg_name = &::trust_cast <struct sockaddr> (server->endpoint.client),
 								// Устанавливаем буфер для получения служебных метаданных из сокета
-								server->raw.msg.msg_control = ::__awh_cmsgbuf__;
+								msg.msg_control = ::__awh_cmsgbuf__;
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
-								server->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+								msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 								// Выполняем чтение данных и служебных метаданных из RAW-сокета
-								bytes = ::recvmsg(server->fd, &server->raw.msg, MSG_NOSIGNAL);
+								bytes = ::recvmsg(server->fd, &msg, MSG_NOSIGNAL);
 								/**
 								 * Извлекаем значение TTL/HopLimit из control message
 								 */
-								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&server->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&server->raw.msg, cmsg)){
+								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)){
 									/** 
 									 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 									 */
