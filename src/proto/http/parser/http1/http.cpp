@@ -5662,27 +5662,48 @@ bool awh::http::Parser_HTTP::checkOutgoingStartLine(const headers_t & headers) c
 			 * uri-host здесь, как и на приёме, не разбирается намеренно
 			 */
 			if(headers.has("Host")){
-				// Получаем значение заголовка Host
-				const string & host = headers.at("Host");
-				// Указатель на начало значения заголовка
-				const char * hb = host.data();
-				// Указатель на конец значения заголовка
-				const char * he = (host.data() + host.size());
-				// Выполняем триминг OWS по краям значения заголовка
-				::trimOWS(hb, he);
+				// Получаем все значения заголовка Host
+				const vector <string> values = headers.range("Host");
 				/**
-				 * Выполняем поиск пробельных символов внутри значения заголовка
+				 * Повторный заголовок Host запрос нести не вправе: получатель обязан
+				 * отвергнуть такой запрос, а звенья цепочки, разошедшиеся в выборе
+				 * действующего значения, - классический вектор подмены адресата.
+				 * Приёмник отвергает повтор безусловно, и собираемое сообщение обязано
+				 * этому соответствовать
 				 */
-				for(const char * current = hb; current < he; ++current){
-					// Если внутри значения обнаружен пробельный символ
-					if((* current == ' ') || (* current == '\t')){
-						// Записываем сообщение о непригодном заголовке Host в лог
-						this->_log->print(
-							"HTTP/1.x outgoing Host field contains whitespace inside its value: message dropped",
-							log_t::flag_t::CRITICAL
-						);
-						// Выводим результат проверки
-						return false;
+				if(values.size() > 1){
+					// Записываем сообщение о повторном заголовке Host в лог
+					this->_log->print(
+						"HTTP/1.x outgoing request declares the Host field more than once: message dropped",
+						log_t::flag_t::CRITICAL
+					);
+					// Выводим результат проверки
+					return false;
+				}
+				/**
+				 * Выполняем перебор всех значений заголовка Host
+				 */
+				for(const auto & host : values){
+					// Указатель на начало значения заголовка
+					const char * hb = host.data();
+					// Указатель на конец значения заголовка
+					const char * he = (host.data() + host.size());
+					// Выполняем триминг OWS по краям значения заголовка
+					::trimOWS(hb, he);
+					/**
+					 * Выполняем поиск пробельных символов внутри значения заголовка
+					 */
+					for(const char * current = hb; current < he; ++current){
+						// Если внутри значения обнаружен пробельный символ
+						if((* current == ' ') || (* current == '\t')){
+							// Записываем сообщение о непригодном заголовке Host в лог
+							this->_log->print(
+								"HTTP/1.x outgoing Host field contains whitespace inside its value: message dropped",
+								log_t::flag_t::CRITICAL
+							);
+							// Выводим результат проверки
+							return false;
+						}
 					}
 				}
 			}

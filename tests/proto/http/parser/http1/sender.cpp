@@ -2407,6 +2407,26 @@ TEST_F(ParserFixture, SendRequestHostRequirementTest){
 	EXPECT_TRUE(build(version_t::HTTP1_1, "example.com foo").empty());
 	// Проверяем что запрос HTTP/1.0 без заголовка Host уходит на провод
 	EXPECT_NE(build(version_t::HTTP1_0, "").find("GET / HTTP/1.0\r\n"), std::string::npos);
+	/**
+	 * Проверяем что повторный заголовок Host отвергает сообщение
+	 *
+	 * Приёмник отвергает повтор безусловно: звенья цепочки, разошедшиеся в выборе
+	 * действующего значения, - классический вектор подмены адресата
+	 */
+	{
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Формируем контейнер заголовков запроса с провайдером
+		headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::GET, std::string("/")));
+		// Дописываем первый заголовок Host, сохраняя одноимённые
+		request.emplace("Host", "example.com", headers_t::mode_t::APPEND);
+		// Дописываем второй заголовок Host, сохраняя одноимённые
+		request.emplace("Host", "evil.example", headers_t::mode_t::APPEND);
+		// Отправляем заголовки запроса с завершением сообщения
+		sender->sendHeaders(request, true);
+		// Проверяем что сообщение с повторным заголовком Host не собирается
+		EXPECT_TRUE(sender->pending().empty());
+	}
 }
 /**
  * @brief Метод проверки ответа, который не может нести тела
