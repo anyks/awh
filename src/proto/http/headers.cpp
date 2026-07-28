@@ -1246,18 +1246,12 @@ string awh::http::Headers::date(const uint64_t date) const noexcept {
 	 */
 	} catch(const exception & error) {
 		/**
-		 * Если включён режим отладки
+		 * Контейнер заголовков создаётся и без объекта логирования, поэтому запись
+		 * выполняется общей функцией вывода ошибки: прямое обращение к объекту
+		 * логирования разыменовало бы пустой указатель, а метод объявлен как noexcept
+		 * и вызывается при формировании заголовка Date, то есть на штатном пути
 		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::WARNING, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
-		#endif
+		::printError(this->_log, __PRETTY_FUNCTION__, error.what(), log_t::flag_t::WARNING);
 	}
 	// Выводим результат
 	return result;
@@ -1377,14 +1371,19 @@ string awh::http::Headers::ident() const noexcept {
 				const char * os = "Unknown OS";
 			#endif
 			/**
-			 * Выполняем генерацию User-Agent клиента выполняющего HTTP-запрос
+			 * Выполняем генерацию User-Agent клиента выполняющего HTTP-запрос:
+			 * значение складывается напрямую, без объекта фреймворка - контейнер
+			 * заголовков создаётся и без него, а вызов его метода по пустому
+			 * указателю является неопределённым поведением
 			 */
-			result = ::move(this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str()));
+			result.append(this->_ident.name).append(" (").append(os).append("; ");
+			// Добавляем идентификатор и версию сервиса
+			result.append(this->_ident.id).append("/").append(this->_ident.version).append(")");
 		} break;
 		// Если установлен ответ сервера
 		case static_cast <uint8_t> (direct_t::RESPONSE):
 			// Выполняем генерацию X-Powered-By сервера, формирующего HTTP-ответ
-			result = ::move(this->_fmk->format("%s/%s", this->_ident.id.c_str(), this->_ident.version.c_str()));
+			result.append(this->_ident.id).append("/").append(this->_ident.version);
 		break;
 	}
 	// Выводим результат
@@ -1428,17 +1427,16 @@ void awh::http::Headers::ident(string_view id, string_view name, string_view ver
 			// Выходим из функции
 			return;
 		}
+		// Буфер текста сообщения о непригодной составляющей идентификации
+		char message[128];
+		// Формируем текст сообщения о непригодной составляющей идентификации
+		::snprintf(message, sizeof(message), "HTTP service %s contains octets not allowed in a field value and has not been changed", title);
 		/**
-		 * Записываем сообщение о непригодной составляющей в лог: контейнер заголовков
-		 * создаётся и без объекта логирования - молчание в этом случае лучше падения,
-		 * а составляющая не применяется в любом случае
+		 * Записываем сообщение общей функцией вывода ошибки: контейнер заголовков
+		 * создаётся и без объекта логирования, а составляющая не применяется в любом
+		 * случае - остаться об этом без следа хуже, чем записать в поток ошибок
 		 */
-		if(this->_log != nullptr)
-			// Записываем сообщение о непригодной составляющей идентификации в лог
-			this->_log->print(
-				"HTTP service %s contains octets not allowed in a field value and has not been changed",
-				log_t::flag_t::CRITICAL, title
-			);
+		::printError(this->_log, __PRETTY_FUNCTION__, message, log_t::flag_t::CRITICAL);
 	};
 	// Применяем идентификатор сервиса
 	apply(this->_ident.id, id, "identifier");

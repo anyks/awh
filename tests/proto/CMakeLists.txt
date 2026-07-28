@@ -139,6 +139,7 @@ if (${GTest_FOUND})
                 http/parser/http1/static.cpp
                 http/parser/http1/sender.cpp
                 http/parser/http1/parameterized.cpp
+                http/parser/http1/volume.cpp
             )
         # Если не нужно собрать тесты для подмодуля парсера HTTP/1.0 и HTTP/1.1
         else()
@@ -207,6 +208,7 @@ if (${GTest_FOUND})
                 quic/handshake.cpp
                 quic/connection.cpp
                 quic/parameterized.cpp
+                quic/facade.cpp
             )
         # Если не нужно собрать тесты для подмодуля протокола QUIC
         else()

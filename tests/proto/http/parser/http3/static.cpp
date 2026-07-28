@@ -3927,3 +3927,162 @@ TEST_F(ParserHttp3Fixture, TrailersDeferredUntilBodySent){
 	// Соединение обязано остаться живым
 	ASSERT_TRUE(client.events.errors.empty());
 }
+/**
+ * @brief Проверка молчания пути отправки после завершения потока нами
+ *
+ * @details Признак FIN закрывает наше направление потока (RFC 9114 §4.1), и всё,
+ *          что после него, ушло бы на провод следом за концом потока. Источник
+ *          данных, назначенный такому потоку, не опрашивается вовсе: вычитывать
+ *          из приложения тело, которое отправить уже нельзя, - работа впустую
+ *
+ */
+TEST_F(ParserHttp3Fixture, SendPathSilentAfterLocalFin){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	/**
+	 * Запрос не завершаем: иначе оба направления потока закрыты, поток снимается
+	 * с учёта, и назначать источник оказалось бы просто некуда - проверка прошла
+	 * бы вхолостую, ничего не измерив
+	 */
+	client.parser->sendHeaders(0, this->request("POST", "/upload"), false);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Отправляем секцию полей ответа, не завершая поток
+	server.parser->sendHeaders(0, this->response("200"), false);
+	// Отправляем тело ответа, завершая им поток
+	server.parser->sendData(0, "body", 4, true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Тело обязано дойти до клиента целиком
+	ASSERT_EQ(client.events.bodies[0], "body");
+	// Количество вызовов источника
+	size_t calls = 0;
+	// Назначаем источник данных уже завершённому нами потоку
+	server.parser->dataSource(0, [&calls](const uint64_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+		// Наращиваем количество вызовов источника
+		calls++;
+		// Вычисляем размер выдаваемой порции
+		const size_t size = std::min <size_t> (cap, 5);
+		// Заполняем порцию узнаваемым содержимым
+		std::memcpy(buffer, "after", size);
+		// Выставляем признак достижения конца тела
+		eof = true;
+		// Выводим количество записанных октетов
+		return static_cast <int64_t> (size);
+	});
+	// Возобновляем выдачу тела потока
+	server.parser->resume(0);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Источник обязан остаться неопрошенным
+	ASSERT_EQ(calls, 0u);
+	// Тело клиента обязано остаться прежним
+	ASSERT_EQ(client.events.bodies[0], "body");
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(client.events.errors.empty());
+}
+/**
+ * @brief Проверка молчания пути отправки после завершения соединения
+ *
+ * @details Ошибка уровня соединения делает соединение нерабочим целиком, и выдача
+ *          по нему прекращается. Источник данных при этом не опрашивается: его
+ *          содержимое некуда девать, а приложение читало бы его впустую
+ *
+ */
+TEST_F(ParserHttp3Fixture, SendPathSilentAfterConnectionError){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Отправляем секцию полей запроса, не завершая поток
+	client.parser->sendHeaders(0, this->request("POST", "/upload"), false);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Отправляем секцию полей ответа, не завершая поток
+	server.parser->sendHeaders(0, this->response("200"), false);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	/**
+	 * Валим соединение сервера вторым управляющим потоком: управляющий поток
+	 * у каждой стороны ровно один (RFC 9114 §6.2.1)
+	 */
+	server.parser->parse(11, "\x00", 1, false);
+	// Соединение сервера обязано быть признано нерабочим
+	ASSERT_FALSE(server.events.errors.empty());
+	// Количество вызовов источника
+	size_t calls = 0;
+	// Назначаем источник данных потоку уже нерабочего соединения
+	server.parser->dataSource(0, [&calls](const uint64_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+		// Наращиваем количество вызовов источника
+		calls++;
+		// Вычисляем размер выдаваемой порции
+		const size_t size = std::min <size_t> (cap, 5);
+		// Заполняем порцию узнаваемым содержимым
+		std::memcpy(buffer, "after", size);
+		// Выставляем признак достижения конца тела
+		eof = true;
+		// Выводим количество записанных октетов
+		return static_cast <int64_t> (size);
+	});
+	// Возобновляем выдачу тела потока
+	server.parser->resume(0);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Источник обязан остаться неопрошенным
+	ASSERT_EQ(calls, 0u);
+	// Тела до клиента дойти не должно
+	ASSERT_TRUE(client.events.bodies.empty());
+}
+/**
+ * @brief Проверка отказа в секции полей после завершения потока нами
+ *
+ * @details Секция полей после отправленного FIN пришла бы пиру уже за концом
+ *          потока. Проверяется именно отправленный признак завершения, а не
+ *          отложенный: отложенный означает лишь то, что тело дочитано до конца,
+ *          и это как раз момент отправки секции трейлеров
+ *
+ */
+TEST_F(ParserHttp3Fixture, TrailersRejectedAfterLocalFin){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Отправляем секцию полей запроса, не завершая поток
+	client.parser->sendHeaders(0, this->request("POST", "/upload"), false);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Отправляем секцию полей ответа, не завершая поток
+	server.parser->sendHeaders(0, this->response("200"), false);
+	// Отправляем тело ответа, завершая им поток
+	server.parser->sendData(0, "body", 4, true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Тело обязано дойти до клиента целиком
+	ASSERT_EQ(client.events.bodies[0], "body");
+	// Собираем поля секции трейлеров
+	std::vector <qpack::field_t> trailers;
+	// Дописываем поле секции трейлеров
+	trailers.emplace_back("x-checksum", "deadbeef");
+	// Отправляем секцию трейлеров уже завершённому нами потоку
+	server.parser->sendHeaders(0, trailers, true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Поле секции трейлеров до приложения дойти не должно
+	ASSERT_EQ(this->field(client.events, 0, "x-checksum"), "");
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(client.events.errors.empty());
+}
