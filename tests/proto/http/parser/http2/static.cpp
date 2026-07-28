@@ -5370,6 +5370,217 @@ TEST_F(ParserHttp2Fixture, ProxyPseudoHeaderSplittingTest){
 }
 
 /**
+ * @brief Метод проверки разрешения расширенного CONNECT ролью узла (RFC 8441 §3)
+ *
+ * @details Соединение, объявленное несущим WebSocket, без анонса
+ *          SETTINGS_ENABLE_CONNECT_PROTOCOL бессмысленно: клиент не вправе слать
+ *          расширенный CONNECT, не получив разрешения, а мы обязаны такой запрос
+ *          отвергать. Роль выдаёт разрешение сама, не требуя дублировать его
+ *          параметром, а без роли поведение остаётся прежним
+ *
+ */
+TEST_F(ParserHttp2Fixture, WebSocketRoleEnablesExtendedConnectTest){
+	/**
+	 * Проверяем обе роли узла: расхождение поведения и есть предмет проверки
+	 */
+	for(const bool websocket : {false, true}){
+		// Создаём объект парсера сервера
+		auto server = this->make(direct_t::REQUEST);
+		// Создаём объект парсера клиента
+		auto client = this->make(direct_t::RESPONSE);
+		// Устанавливаем роль узла проверяемому парсеру
+		server->proto(websocket ? proto_t::WEBSOCKET2 : proto_t::HTTP2);
+		// Создаём объекты сборщиков событий парсеров
+		events_t serverEvents, clientEvents;
+		// Подписываем сборщик событий сервера
+		this->attach(* server, serverEvents);
+		// Подписываем сборщик событий клиента
+		this->attach(* client, clientEvents);
+		// Соединяем парсеры каналами записи
+		this->connect(* client, * server);
+		// Выполняем рукопожатие соединения
+		this->handshake(* client, * server);
+		// Проверяем что разрешение расширенного CONNECT анонсировано ролью
+		ASSERT_EQ(client->remoteSettings().enableConnectProtocol, (websocket ? 1u : 0u)) << "websocket: " << websocket;
+		// Формируем провайдер запроса расширенного CONNECT
+		auto request = std::make_unique <request_t> (version_t::HTTP2, method_t::CONNECT, "/chat");
+		// Устанавливаем протокол поднимаемого туннеля
+		request->protocol = "websocket";
+		// Формируем контейнер заголовков запроса
+		headers_t headers(std::move(request));
+		// Дописываем заголовок авторитета запроса
+		headers.emplace("Host", "example.com");
+		// Выделяем идентификатор нового потока клиента
+		const uint32_t sid = client->nextStreamId();
+		// Отправляем запрос расширенного CONNECT
+		client->sendHeaders(sid, headers, false);
+		// Если соединение объявлено несущим WebSocket
+		if(websocket){
+			// Поток на сервере обязан открыться
+			ASSERT_EQ(serverEvents.begins.size(), 1u) << "websocket: " << websocket;
+			// Заголовки запроса обязаны дойти до приложения
+			ASSERT_FALSE(serverEvents.providers.empty()) << "websocket: " << websocket;
+			// Сброса потока быть не должно
+			ASSERT_TRUE(serverEvents.closes.empty()) << "websocket: " << websocket;
+		// Без роли клиент запрос не отправляет вовсе: разрешения он не получал
+		} else {
+			// Поток на сервере открыться не должен
+			ASSERT_TRUE(serverEvents.begins.empty()) << "websocket: " << websocket;
+			// Заголовки запроса доставлены быть не должны
+			ASSERT_TRUE(serverEvents.providers.empty()) << "websocket: " << websocket;
+		}
+		// Проверяем что соединение осталось живо в любом случае
+		ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL) << "websocket: " << websocket;
+	}
+}
+
+/**
+ * @brief Метод проверки схемы цели запроса WebSocket на приёме (RFC 8441 §5)
+ *
+ * @details Схему цели запроса WebSocket задаёт RFC 8441 §5: [https] для адресов
+ *          [wss] и [http] для адресов [ws]. Схема самого адреса в псевдо-заголовок
+ *          не переносится - узел, принявший [wss] за схему цели, соберёт из
+ *          псевдо-заголовков не тот URI, который имел в виду отправитель.
+ *          На обычном соединении расширенный CONNECT поднимает туннель любого
+ *          зарегистрированного протокола, и правила WebSocket к нему не относятся
+ *
+ */
+TEST_F(ParserHttp2Fixture, WebSocketTargetSchemeTest){
+	/**
+	 * Проверяем обе роли узла: расхождение поведения и есть предмет проверки
+	 */
+	for(const bool websocket : {false, true}){
+		/**
+		 * Проверяем схему цели запроса, задающую форму URI, и схему адреса WebSocket
+		 */
+		for(const std::string & scheme : {std::string("https"), std::string("wss")}){
+			// Создаём объект парсера сервера
+			auto server = this->make(direct_t::REQUEST);
+			// Создаём объект парсера клиента
+			auto client = this->make(direct_t::RESPONSE);
+			// Устанавливаем роль узла проверяемому парсеру
+			server->proto(websocket ? proto_t::WEBSOCKET2 : proto_t::HTTP2);
+			// Если роль узла разрешения расширенного CONNECT не подразумевает
+			if(!websocket){
+				// Получаем параметры SETTINGS сервера
+				auto settings = server->settings();
+				// Разрешаем расширенный CONNECT параметром
+				settings.enableConnectProtocol = 1;
+				// Применяем параметры SETTINGS сервера
+				server->settings(settings);
+			}
+			// Создаём объекты сборщиков событий парсеров
+			events_t serverEvents, clientEvents;
+			// Подписываем сборщик событий сервера
+			this->attach(* server, serverEvents);
+			// Подписываем сборщик событий клиента
+			this->attach(* client, clientEvents);
+			// Соединяем парсеры каналами записи
+			this->connect(* client, * server);
+			// Выполняем рукопожатие соединения
+			this->handshake(* client, * server);
+			/**
+			 * Дальше сервер разбирает поток, открытый в обход клиента, поэтому его
+			 * исходящие байты клиенту не адресованы: сброс потока, которого клиент
+			 * не открывал, оборвал бы соединение по причине, к проверке не относящейся
+			 */
+			server->on(parser_http2_t::write_callback_t([](const void *, const size_t) noexcept {}));
+			/**
+			 * Блок заголовков запроса собирается вручную: собственный клиент схему
+			 * адреса WebSocket в псевдо-заголовок цели не поставит, а проверяется
+			 * здесь приём
+			 */
+			const std::string headers = ::frame(0x01, 0x04, 1, ::block({
+				{":method", "CONNECT"}, {":protocol", "websocket"}, {":scheme", scheme},
+				{":authority", "example.com"}, {":path", "/chat"}
+			}));
+			// Подаём блок заголовков запроса на разбор серверу
+			server->parse(headers.data(), headers.size());
+			// Если соединение объявлено несущим WebSocket, а схема цели недопустима
+			if(websocket && (scheme != "https")){
+				// Проверяем что поток сброшен как малформированный
+				ASSERT_EQ(serverEvents.closes.size(), 1u) << "websocket: " << websocket << ", scheme: " << scheme;
+				// Проверяем код сброса потока
+				ASSERT_EQ(serverEvents.closes.front().second, parser_http2_t::error_t::PROTOCOL_ERROR)
+					<< "websocket: " << websocket << ", scheme: " << scheme;
+			// В остальных случаях запрос принимается
+			} else {
+				// Сброса потока быть не должно
+				ASSERT_TRUE(serverEvents.closes.empty()) << "websocket: " << websocket << ", scheme: " << scheme;
+				// Заголовки запроса обязаны дойти до приложения
+				ASSERT_FALSE(serverEvents.providers.empty()) << "websocket: " << websocket << ", scheme: " << scheme;
+			}
+			// Проверяем что соединение осталось живо в любом случае
+			ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL) << "websocket: " << websocket << ", scheme: " << scheme;
+		}
+	}
+}
+
+/**
+ * @brief Метод проверки схемы цели запроса WebSocket на отправке (RFC 8441 §5)
+ *
+ * @details Отправить [wss] схемой цели значило бы собрать у принимающей стороны
+ *          не тот URI, который имелся в виду. Запрос не отправляется целиком:
+ *          подменять схему за приложение парсер не вправе - оно адресовало
+ *          запрос осознанно
+ *
+ */
+TEST_F(ParserHttp2Fixture, WebSocketTargetSchemeNotSentTest){
+	/**
+	 * Проверяем схему цели запроса, задающую форму URI, и схему адреса WebSocket
+	 */
+	for(const std::string & scheme : {std::string("https"), std::string("wss")}){
+		// Создаём объект парсера сервера
+		auto server = this->make(direct_t::REQUEST);
+		// Создаём объект парсера клиента
+		auto client = this->make(direct_t::RESPONSE);
+		// Объявляем обе стороны несущими WebSocket
+		server->proto(proto_t::WEBSOCKET2);
+		// Устанавливаем роль узла клиенту
+		client->proto(proto_t::WEBSOCKET2);
+		// Создаём объекты сборщиков событий парсеров
+		events_t serverEvents, clientEvents;
+		// Подписываем сборщик событий сервера
+		this->attach(* server, serverEvents);
+		// Подписываем сборщик событий клиента
+		this->attach(* client, clientEvents);
+		// Соединяем парсеры каналами записи
+		this->connect(* client, * server);
+		// Выполняем рукопожатие соединения
+		this->handshake(* client, * server);
+		// Проверяем что сервер анонсировал разрешение расширенного CONNECT
+		ASSERT_EQ(client->remoteSettings().enableConnectProtocol, 1u) << "scheme: " << scheme;
+		// Формируем провайдер запроса расширенного CONNECT
+		auto request = std::make_unique <request_t> (version_t::HTTP2, method_t::CONNECT, "/chat");
+		// Устанавливаем протокол поднимаемого туннеля
+		request->protocol = "websocket";
+		// Формируем контейнер заголовков запроса
+		headers_t headers(std::move(request));
+		// Дописываем заголовок авторитета запроса
+		headers.emplace("Host", "example.com");
+		// Выделяем идентификатор нового потока клиента
+		const uint32_t sid = client->nextStreamId();
+		// Отправляем запрос расширенного CONNECT проверяемой схемой цели
+		client->sendHeaders(sid, headers, false, scheme);
+		// Если схема цели запроса допустима
+		if(scheme == "https"){
+			// Поток на сервере обязан открыться
+			ASSERT_EQ(serverEvents.begins.size(), 1u) << "scheme: " << scheme;
+			// Заголовки запроса обязаны дойти до приложения
+			ASSERT_FALSE(serverEvents.providers.empty()) << "scheme: " << scheme;
+		// Запрос со схемой адреса WebSocket отправлен быть не должен
+		} else {
+			// Поток на сервере открыться не должен
+			ASSERT_TRUE(serverEvents.begins.empty()) << "scheme: " << scheme;
+			// Заголовки запроса доставлены быть не должны
+			ASSERT_TRUE(serverEvents.providers.empty()) << "scheme: " << scheme;
+		}
+		// Проверяем что соединение осталось живо в любом случае
+		ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL) << "scheme: " << scheme;
+	}
+}
+
+/**
  * @brief Метод проверки плавного завершения соединения двухфазным GOAWAY (RFC 9113 §6.8)
  *
  */

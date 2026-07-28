@@ -1208,6 +1208,18 @@ namespace awh {
 				 */
 				bool validateSection(const uint64_t sid, const bool trailer, error_t & error, const bool promise = false) noexcept;
 				/**
+				 * @brief Метод проверки того, что расширенный CONNECT разрешён нами
+				 *
+				 * @details Разрешение выдаётся параметром SETTINGS_ENABLE_CONNECT_PROTOCOL
+				 *          либо подразумевается ролью узла: соединение, объявленное несущим
+				 *          WebSocket, иначе отвергало бы единственный запрос, ради которого
+				 *          заведено (RFC 9220 §3)
+				 *
+				 * @return признак разрешения расширенного CONNECT
+				 *
+				 */
+				bool connectProtocol() const noexcept;
+				/**
 				 * @brief Метод сборки провайдера полей потока
 				 *
 				 * @param request признак сборки провайдера запроса клиента

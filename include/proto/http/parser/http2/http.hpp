@@ -1473,6 +1473,18 @@ namespace awh {
 				 *
 				 */
 				unique_ptr <provider_t> buildProvider(const vector <h2::hpack::field_view_t> & fields, const bool request) const noexcept;
+				/**
+				 * @brief Метод проверки того, что расширенный CONNECT разрешён нами
+				 *
+				 * @details Разрешение выдаётся параметром SETTINGS_ENABLE_CONNECT_PROTOCOL
+				 *          либо подразумевается ролью узла: соединение, объявленное несущим
+				 *          WebSocket, иначе отвергало бы единственный запрос, ради которого
+				 *          заведено (RFC 8441 §3, §5)
+				 *
+				 * @return признак разрешения расширенного CONNECT
+				 *
+				 */
+				bool connectProtocol() const noexcept;
 			public:
 				/**
 				 * @brief Метод полной очистки всех данных парсера

@@ -3380,3 +3380,183 @@ TEST_F(ParserHttp3Fixture, ProxyPseudoHeaderSplitting){
 		}
 	}
 }
+/**
+ * @brief Проверка разрешения расширенного CONNECT ролью узла
+ *
+ * @details Соединение, объявленное несущим WebSocket, без анонса
+ *          SETTINGS_ENABLE_CONNECT_PROTOCOL бессмысленно: клиент не вправе слать
+ *          расширенный CONNECT, не получив разрешения, а мы обязаны такой запрос
+ *          отвергать (RFC 9220 §3). Роль выдаёт разрешение сама, не требуя
+ *          дублировать его параметром, а без роли поведение остаётся прежним
+ *
+ */
+TEST_F(ParserHttp3Fixture, WebSocketRoleEnablesExtendedConnect){
+	/**
+	 * Проверяем обе роли узла: расхождение поведения и есть предмет проверки
+	 */
+	for(const bool websocket : {false, true}){
+		// Стороны соединения
+		endpoint_t client, server;
+		// Подготавливаем сторону клиента
+		this->setup(client, direct_t::RESPONSE);
+		// Подготавливаем сторону сервера
+		this->setup(server, direct_t::REQUEST);
+		// Устанавливаем роль узла проверяемой стороне
+		server.parser->proto(websocket ? proto_t::WEBSOCKET3 : proto_t::HTTP3);
+		// Выполняем рукопожатие соединения
+		this->handshake(client, server);
+		// Проверяем что разрешение расширенного CONNECT анонсировано ролью
+		ASSERT_EQ(client.parser->remoteSettings().enableConnectProtocol, websocket) << "websocket: " << websocket;
+		// Собираем набор полей запроса расширенного CONNECT
+		std::vector <qpack::field_t> fields = {
+			qpack::field_t{":method", "CONNECT"}, qpack::field_t{":protocol", "websocket"},
+			qpack::field_t{":scheme", "https"}, qpack::field_t{":authority", "example.com"},
+			qpack::field_t{":path", "/chat"}
+		};
+		// Отправляем секцию полей запроса
+		client.parser->sendHeaders(0, fields, false);
+		// Выполняем прокачку очередей исходящих данных
+		this->pump(client, server);
+		// Если соединение объявлено несущим WebSocket
+		if(websocket){
+			// Обрыва потока быть не должно
+			ASSERT_TRUE(server.events.aborts.empty()) << "websocket: " << websocket;
+			// Метод запроса обязан дойти до приложения
+			ASSERT_EQ(server.events.method, "CONNECT") << "websocket: " << websocket;
+		// Без роли расширенный CONNECT недопустим: разрешения мы не выдавали
+		} else {
+			// Поток обязан быть оборван
+			ASSERT_FALSE(server.events.aborts.empty()) << "websocket: " << websocket;
+			// Код обрыва потока обязан указывать на искажённое сообщение
+			ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << "websocket: " << websocket;
+		}
+		// Соединение обязано остаться живым в любом случае
+		ASSERT_TRUE(server.events.errors.empty()) << "websocket: " << websocket;
+	}
+}
+/**
+ * @brief Проверка схемы цели запроса WebSocket на приёме
+ *
+ * @details Схему цели запроса WebSocket задаёт RFC 8441 §5, и RFC 9220 §3
+ *          переносит его правила в HTTP/3 без изменений: [https] для адресов
+ *          [wss] и [http] для адресов [ws]. Схема самого адреса в псевдо-заголовок
+ *          не переносится - узел, принявший [wss] за схему цели, соберёт из
+ *          псевдо-заголовков не тот URI, который имел в виду отправитель.
+ *          На обычном соединении расширенный CONNECT поднимает туннель любого
+ *          зарегистрированного протокола, и правила WebSocket к нему не относятся
+ *
+ */
+TEST_F(ParserHttp3Fixture, WebSocketTargetScheme){
+	/**
+	 * Проверяем обе роли узла: расхождение поведения и есть предмет проверки
+	 */
+	for(const bool websocket : {false, true}){
+		/**
+		 * Проверяем схему цели запроса, задающую форму URI, и схему адреса WebSocket
+		 */
+		for(const std::string & scheme : {std::string("https"), std::string("wss")}){
+			// Стороны соединения
+			endpoint_t client, server;
+			// Подготавливаем сторону клиента
+			this->setup(client, direct_t::RESPONSE);
+			// Подготавливаем сторону сервера
+			this->setup(server, direct_t::REQUEST);
+			// Устанавливаем роль узла проверяемой стороне
+			server.parser->proto(websocket ? proto_t::WEBSOCKET3 : proto_t::HTTP3);
+			// Если роль узла разрешения расширенного CONNECT не подразумевает
+			if(!websocket){
+				// Получаем наши параметры
+				auto settings = server.parser->settings();
+				// Разрешаем расширенный CONNECT параметром
+				settings.enableConnectProtocol = true;
+				// Применяем наши параметры
+				server.parser->settings(settings);
+			}
+			// Выполняем рукопожатие соединения
+			this->handshake(client, server);
+			// Собираем набор полей запроса расширенного CONNECT
+			std::vector <qpack::field_t> fields = {
+				qpack::field_t{":method", "CONNECT"}, qpack::field_t{":protocol", "websocket"},
+				qpack::field_t{":scheme", scheme}, qpack::field_t{":authority", "example.com"},
+				qpack::field_t{":path", "/chat"}
+			};
+			// Отправляем секцию полей запроса
+			client.parser->sendHeaders(0, fields, false);
+			// Выполняем прокачку очередей исходящих данных
+			this->pump(client, server);
+			// Если соединение объявлено несущим WebSocket, а схема цели недопустима
+			if(websocket && (scheme != "https")){
+				// Поток обязан быть оборван
+				ASSERT_FALSE(server.events.aborts.empty()) << "websocket: " << websocket << ", scheme: " << scheme;
+				// Код обрыва потока обязан указывать на искажённое сообщение
+				ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR)
+					<< "websocket: " << websocket << ", scheme: " << scheme;
+			// В остальных случаях запрос принимается
+			} else {
+				// Обрыва потока быть не должно
+				ASSERT_TRUE(server.events.aborts.empty()) << "websocket: " << websocket << ", scheme: " << scheme;
+				// Метод запроса обязан дойти до приложения
+				ASSERT_EQ(server.events.method, "CONNECT") << "websocket: " << websocket << ", scheme: " << scheme;
+			}
+			// Соединение обязано остаться живым в любом случае
+			ASSERT_TRUE(server.events.errors.empty()) << "websocket: " << websocket << ", scheme: " << scheme;
+		}
+	}
+}
+/**
+ * @brief Проверка схемы цели запроса WebSocket на отправке
+ *
+ * @details Отправить [wss] схемой цели значило бы собрать у принимающей стороны
+ *          не тот URI, который имелся в виду. Запрос не отправляется целиком:
+ *          подменять схему за приложение парсер не вправе - оно адресовало
+ *          запрос осознанно
+ *
+ */
+TEST_F(ParserHttp3Fixture, WebSocketTargetSchemeNotSent){
+	/**
+	 * Проверяем схему цели запроса, задающую форму URI, и схему адреса WebSocket
+	 */
+	for(const std::string & scheme : {std::string("https"), std::string("wss")}){
+		// Стороны соединения
+		endpoint_t client, server;
+		// Подготавливаем сторону клиента
+		this->setup(client, direct_t::RESPONSE);
+		// Подготавливаем сторону сервера
+		this->setup(server, direct_t::REQUEST);
+		// Объявляем сервер несущим WebSocket
+		server.parser->proto(proto_t::WEBSOCKET3);
+		// Объявляем клиента несущим WebSocket
+		client.parser->proto(proto_t::WEBSOCKET3);
+		// Выполняем рукопожатие соединения
+		this->handshake(client, server);
+		// Проверяем что сервер анонсировал разрешение расширенного CONNECT
+		ASSERT_TRUE(client.parser->remoteSettings().enableConnectProtocol) << "scheme: " << scheme;
+		// Формируем провайдер запроса расширенного CONNECT
+		auto request = std::make_unique <request_t> (version_t::HTTP3, method_t::CONNECT, "/chat");
+		// Устанавливаем протокол поднимаемого туннеля
+		request->protocol = "websocket";
+		// Формируем контейнер полей запроса
+		headers_t headers(std::move(request));
+		// Дописываем поле адресата запроса
+		headers.emplace("Host", "example.com");
+		// Отправляем секцию полей запроса проверяемой схемой цели
+		client.parser->sendHeaders(0, headers, false, scheme);
+		// Выполняем прокачку очередей исходящих данных
+		this->pump(client, server);
+		// Если схема цели запроса допустима
+		if(scheme == "https"){
+			// Метод запроса обязан дойти до приложения
+			ASSERT_EQ(server.events.method, "CONNECT") << "scheme: " << scheme;
+			// Обрыва потока быть не должно
+			ASSERT_TRUE(server.events.aborts.empty()) << "scheme: " << scheme;
+		// Запрос со схемой адреса WebSocket отправлен быть не должен
+		} else {
+			// Секция полей доставлена быть не должна
+			ASSERT_TRUE(server.events.headers.empty()) << "scheme: " << scheme;
+			// Поток на сервере открыться не должен
+			ASSERT_TRUE(server.events.begins.empty()) << "scheme: " << scheme;
+		}
+		// Соединение обязано остаться живым в любом случае
+		ASSERT_TRUE(server.events.errors.empty()) << "scheme: " << scheme;
+	}
+}

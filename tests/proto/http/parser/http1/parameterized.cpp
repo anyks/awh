@@ -1974,6 +1974,142 @@ TEST_F(ParserFixture, ProxyTargetHostTest){
 }
 
 /**
+ * @brief Метод тестирования кадрирования при переключении протокола
+ *
+ * @details Запрос с заголовком Upgrade получает в ответ [101 Switching Protocols], за
+ *          пустой строкой которого начинается поток нового протокола. Объявленное этим
+ *          же запросом тело делает точку переключения предметом догадки: звено,
+ *          уважившее объявленный размер, съест байты как тело, а звено, признавшее
+ *          переключение состоявшимся, прочитает их как начало нового протокола -
+ *          и атакующая сторона выберет первый кадр чужого соединения. Рукопожатие
+ *          WebSocket тела не определяет вовсе (RFC 6455 §4.1).
+ *          Прямому соединению это не опасно: оно переключаться не собирается, читает
+ *          обычный запрос с телом, а заголовок Upgrade игнорирует
+ *
+ */
+TEST_F(ParserFixture, UpgradeFramingTest){
+	/**
+	 * @brief Функция разбора запроса рукопожатия с заданным кадрированием тела
+	 *
+	 * @param framing строки заголовков кадрирования и тело сообщения
+	 * @param proto   протокол работы парсера
+	 * @return        код ошибки разбора
+	 *
+	 */
+	auto handshake = [this](const std::string & framing, const proto_t proto) noexcept -> parser_http_t::error_t {
+		// Создаём объект парсера-приёмника запроса
+		auto parser = this->make(direct_t::REQUEST);
+		// Устанавливаем протокол работы парсера
+		parser->proto(proto);
+		// Формируем разбираемое рукопожатие клиента
+		const std::string message = (
+			"GET /chat HTTP/1.1\r\nHost: anyks.com\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+			"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n" + framing
+		);
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Выводим код ошибки разбора
+		return parser->error();
+	};
+	/**
+	 * @brief Функция разбора ответа переключения протокола с заданным кадрированием
+	 *
+	 * @param framing строка заголовка кадрирования
+	 * @param proto   протокол работы парсера
+	 * @return        код ошибки разбора
+	 *
+	 */
+	auto accept = [this](const std::string & framing, const proto_t proto) noexcept -> parser_http_t::error_t {
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Устанавливаем протокол работы парсера
+		parser->proto(proto);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		parser->method(method_t::GET);
+		// Формируем разбираемый ответ переключения протокола
+		const std::string message = (
+			"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n" + framing + "\r\n"
+		);
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Выводим код ошибки разбора
+		return parser->error();
+	};
+	// Проверяем что чистое рукопожатие принимается во всех режимах
+	ASSERT_EQ(handshake("\r\n", proto_t::HTTP1), parser_http_t::error_t::NONE);
+	// Проверяем что чистое рукопожатие принимается при переключении протокола
+	ASSERT_EQ(handshake("\r\n", proto_t::WEBSOCKET1), parser_http_t::error_t::NONE);
+	// Проверяем что чистое рукопожатие принимается через прокси
+	ASSERT_EQ(handshake("\r\n", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что нулевой размер тела рукопожатию не мешает
+	ASSERT_EQ(handshake("Content-Length: 0\r\n\r\n", proto_t::WEBSOCKET1), parser_http_t::error_t::NONE);
+	// Проверяем что объявленный размер тела рукопожатия отвергается при переключении протокола
+	ASSERT_EQ(handshake("Content-Length: 5\r\n\r\nhello", proto_t::WEBSOCKET1), parser_http_t::error_t::INVALID_CONTENT_LENGTH);
+	// Проверяем что объявленное кодирование тела рукопожатия отвергается при переключении протокола
+	ASSERT_EQ(handshake("Transfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n", proto_t::WEBSOCKET1), parser_http_t::error_t::INVALID_TRANSFER_ENCODING);
+	// Проверяем что объявленный размер тела рукопожатия отвергается и через прокси
+	ASSERT_EQ(handshake("Content-Length: 5\r\n\r\nhello", proto_t::PROXY1), parser_http_t::error_t::INVALID_CONTENT_LENGTH);
+	/**
+	 * Проверяем что при прямом соединении тело рукопожатия принимается
+	 *
+	 * Переключаться такое соединение не собирается: заголовок Upgrade оно игнорирует,
+	 * а запрос читает как обычный запрос с телом
+	 */
+	ASSERT_EQ(handshake("Content-Length: 5\r\n\r\nhello", proto_t::HTTP1), parser_http_t::error_t::NONE);
+	// Проверяем что чистый ответ переключения протокола принимается
+	ASSERT_EQ(accept("", proto_t::WEBSOCKET1), parser_http_t::error_t::NONE);
+	// Проверяем что объявленный размер тела в ответе переключения отвергается
+	ASSERT_EQ(accept("Content-Length: 5\r\n", proto_t::WEBSOCKET1), parser_http_t::error_t::INVALID_CONTENT_LENGTH);
+	// Проверяем что объявленное кодирование тела в ответе переключения отвергается
+	ASSERT_EQ(accept("Transfer-Encoding: chunked\r\n", proto_t::WEBSOCKET1), parser_http_t::error_t::INVALID_TRANSFER_ENCODING);
+	// Проверяем что при прямом соединении объявление в ответе переключения игнорируется
+	ASSERT_EQ(accept("Content-Length: 5\r\n", proto_t::HTTP1), parser_http_t::error_t::NONE);
+	/**
+	 * Проверяем что собрать рукопожатие с телом также нельзя
+	 *
+	 * Собранное сообщение обязано быть принято собственным приёмником, а он такой
+	 * запрос отвергает
+	 */
+	{
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Устанавливаем протокол работы парсера
+		sender->proto(proto_t::WEBSOCKET1);
+		// Формируем контейнер заголовков запроса с провайдером
+		headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::GET, std::string("/chat")));
+		// Дописываем обязательный для запроса HTTP/1.1 заголовок Host
+		request.emplace("Host", "anyks.com");
+		// Дописываем заголовок запроса переключения протокола
+		request.emplace("Upgrade", "websocket");
+		// Объявляем размер тела запроса
+		request.emplace("Content-Length", "5");
+		// Отправляем заголовки запроса (тело последует)
+		sender->sendHeaders(request, false);
+		// Проверяем что рукопожатие с телом не собирается
+		ASSERT_TRUE(sender->pending().empty());
+	}
+	/**
+	 * Проверяем что рукопожатие без тела собирается
+	 */
+	{
+		// Создаём объект парсера-отправителя запроса
+		auto sender = this->make(direct_t::REQUEST);
+		// Устанавливаем протокол работы парсера
+		sender->proto(proto_t::WEBSOCKET1);
+		// Формируем контейнер заголовков запроса с провайдером
+		headers_t request(std::make_unique <request_t> (version_t::HTTP1_1, method_t::GET, std::string("/chat")));
+		// Дописываем обязательный для запроса HTTP/1.1 заголовок Host
+		request.emplace("Host", "anyks.com");
+		// Дописываем заголовок запроса переключения протокола
+		request.emplace("Upgrade", "websocket");
+		// Отправляем заголовки запроса с завершением сообщения
+		sender->sendHeaders(request, true);
+		// Проверяем что рукопожатие собрано
+		ASSERT_NE(std::string(sender->pending()).find("Upgrade: websocket"), std::string::npos);
+	}
+}
+
+/**
  * @brief Метод тестирования игнорирования полей HTTP/1.1 в запросе HTTP/1.0
  *
  * @details Заголовок Upgrade в запросе HTTP/1.0 предписано игнорировать (RFC 9110 §7.8),

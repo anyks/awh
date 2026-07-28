@@ -470,11 +470,12 @@ namespace {
 	 * @param isTrailers      блок является трейлерами
 	 * @param connectProtocol расширенный CONNECT разрешён нашим SETTINGS (RFC 8441)
 	 * @param proxy           парсер работает промежуточным узлом (RFC 9113 §10.3)
+	 * @param websocket       соединение несёт WebSocket поверх расширенного CONNECT (RFC 8441)
 	 * @param fmk             объект фреймворка
 	 * @return                код ошибки протокола (NO_ERROR - блок корректен, PROTOCOL_ERROR - malformed)
 	 *
 	 */
-	http::h2::error_t validateHeaders(const vector <http::h2::hpack::field_view_t> & fields, const bool isRequest, const bool isTrailers, const bool connectProtocol, const bool proxy, const fmk_t * fmk) noexcept {
+	http::h2::error_t validateHeaders(const vector <http::h2::hpack::field_view_t> & fields, const bool isRequest, const bool isTrailers, const bool connectProtocol, const bool proxy, const bool websocket, const fmk_t * fmk) noexcept {
 		// Значение псевдо-заголовка [:method]
 		string_view method{""};
 		// Значение псевдо-заголовка [:authority]
@@ -485,6 +486,8 @@ namespace {
 		string_view path{""};
 		// Значение псевдо-заголовка [:status]
 		string_view status{""};
+		// Значение псевдо-заголовка [:protocol]
+		string_view protocol{""};
 		// Значение заголовка [host]
 		string_view host{""};
 		// Флаг наличия обычного (не псевдо) заголовка
@@ -607,6 +610,8 @@ namespace {
 							return http::h2::error_t::PROTOCOL_ERROR;
 						// Помечаем что псевдо-заголовок получен
 						hasProtocol = true;
+						// Запоминаем значение протокола туннеля
+						protocol = field.value;
 					// Неизвестный/неуместный псевдо-заголовок недопустим
 					} else return http::h2::error_t::PROTOCOL_ERROR;
 				// Если блок принадлежит ответу сервера
@@ -796,6 +801,19 @@ namespace {
 			 * которым место в заголовке авторизации. Отделяет его символ [@]
 			 */
 			if(::isHttpScheme(scheme) && (authority.find('@') != string_view::npos))
+				// Блок заголовков некорректен
+				return http::h2::error_t::PROTOCOL_ERROR;
+			/**
+			 * Схему цели запроса WebSocket задаёт RFC 8441 §5: [https] для адресов
+			 * [wss] и [http] для адресов [ws]. Схема самого адреса WebSocket в
+			 * псевдо-заголовок не переносится - [ws] и [wss] задают форму адреса,
+			 * а не цели запроса, и узел, принявший их за схему цели, соберёт
+			 * из псевдо-заголовков не тот URI, который имел в виду отправитель.
+			 * Проверка привязана к роли: на обычном соединении расширенный CONNECT
+			 * поднимает туннель любого зарегистрированного протокола, и правила
+			 * WebSocket к нему не относятся
+			 */
+			if(websocket && hasProtocol && fmk->compare("websocket", protocol) && !::isHttpScheme(scheme))
 				// Блок заголовков некорректен
 				return http::h2::error_t::PROTOCOL_ERROR;
 		// Если блок принадлежит ответу сервера
@@ -1340,7 +1358,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 		return h2::status_t::OK;
 	}
 	// Выполняем валидацию HTTP-семантики блока заголовков (RFC 9113 §8)
-	const error_t vErr = ::validateHeaders(fields, isRequest, isTrailers, (this->_local.enableConnectProtocol != 0), (this->_proto == proto_t::PROXY2), this->_fmk);
+	const error_t vErr = ::validateHeaders(fields, isRequest, isTrailers, this->connectProtocol(), (this->_proto == proto_t::PROXY2), (this->_proto == proto_t::WEBSOCKET2), this->_fmk);
 	// Если блок заголовков малформирован
 	if(vErr != error_t::NO_ERROR){
 		// Малформированный запрос/ответ - потоковая ошибка (RFC 9113 §8.1.1), соединение живёт
@@ -2751,7 +2769,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 		// Фиксируем ошибку уровня соединения
 		return this->fail(error_t::INTERNAL_ERROR, "promised stream vanished");
 	// Обещанный блок - это всегда запрос (псевдо-заголовки запроса), без трейлеров
-	const error_t vErr = ::validateHeaders(fields, true, false, (this->_local.enableConnectProtocol != 0), (this->_proto == proto_t::PROXY2), this->_fmk);
+	const error_t vErr = ::validateHeaders(fields, true, false, this->connectProtocol(), (this->_proto == proto_t::PROXY2), (this->_proto == proto_t::WEBSOCKET2), this->_fmk);
 	// Если блок заголовков малформирован
 	if(vErr != error_t::NO_ERROR){
 		// Малформированный обещанный запрос - потоковая ошибка, соединение живёт
@@ -4979,6 +4997,21 @@ void awh::http::Parser_HTTP2::proto(const proto_t proto) noexcept {
 	}
 }
 /**
+ * @brief Метод проверки того, что расширенный CONNECT разрешён нами
+ *
+ * @details Разрешение выдаётся параметром SETTINGS_ENABLE_CONNECT_PROTOCOL либо
+ *          подразумевается ролью узла: соединение, объявленное несущим WebSocket,
+ *          иначе отвергало бы единственный запрос, ради которого заведено
+ *          (RFC 8441 §3, §5)
+ *
+ * @return признак разрешения расширенного CONNECT
+ *
+ */
+bool awh::http::Parser_HTTP2::connectProtocol() const noexcept {
+	// Выводим признак разрешения расширенного CONNECT
+	return ((this->_local.enableConnectProtocol != 0) || (this->_proto == proto_t::WEBSOCKET2));
+}
+/**
  * @brief Метод получения лимитов безопасности
  *
  * @return лимиты безопасности
@@ -5191,12 +5224,17 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
 		// Устанавливаем значение параметра
 		items[count++].value = this->_local.maxHeaderListSize;
 	}
-	// Расширенный CONNECT анонсируется только когда включён (RFC 8441 §3: отзыв запрещён)
-	if(this->_local.enableConnectProtocol != 0){
+	/**
+	 * Расширенный CONNECT анонсируется когда включён параметром либо когда его
+	 * подразумевает роль узла (RFC 8441 §3: отзыв запрещён). Соединение, объявленное
+	 * несущим WebSocket, без этого анонса бессмысленно: клиент не вправе слать
+	 * расширенный CONNECT, не получив разрешения, а мы обязаны такой запрос отвергать
+	 */
+	if(this->connectProtocol()){
 		// Добавляем параметр разрешения расширенного CONNECT
 		items[count].id = h2::setting_t::ENABLE_CONNECT_PROTOCOL;
 		// Устанавливаем значение параметра
-		items[count++].value = this->_local.enableConnectProtocol;
+		items[count++].value = ((this->_local.enableConnectProtocol != 0) ? this->_local.enableConnectProtocol : 1);
 	}
 	// Анонсируем отказ от приоритетов RFC 7540, если он объявлен (RFC 9218 §2.1)
 	if(this->_local.noRfc7540Priorities != 0){
@@ -5797,6 +5835,23 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 				// Записываем сообщение об отказе в лог
 				this->_log->print(
 					"HTTP/2 peer does not support extended CONNECT (RFC 8441), request for stream %u is not sent",
+					log_t::flag_t::WARNING, sid
+				);
+				// Выходим из метода
+				return;
+			}
+			/**
+			 * Схему цели запроса WebSocket задаёт RFC 8441 §5: [https] для адресов
+			 * [wss] и [http] для адресов [ws]. Отправить [ws] либо [wss] схемой цели
+			 * значило бы собрать у принимающей стороны не тот URI, который имелся
+			 * в виду, поэтому запрос не отправляется целиком: подменять схему за
+			 * приложение парсер не вправе - оно адресовало запрос осознанно
+			 */
+			if((this->_proto == proto_t::WEBSOCKET2) && (request->method == method_t::CONNECT) &&
+			   this->_fmk->compare("websocket", request->protocol) && !::isHttpScheme(scheme)){
+				// Записываем сообщение об отказе в лог
+				this->_log->print(
+					"HTTP/2 WebSocket target URI requires http or https scheme (RFC 8441), request for stream %u is not sent",
 					log_t::flag_t::WARNING, sid
 				);
 				// Выходим из метода

@@ -3503,6 +3503,8 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 	const bool request = (promise || (this->_direct == direct_t::REQUEST));
 	// Признак работы парсера промежуточным узлом (RFC 9114 §10.3)
 	const bool proxy = (this->_proto == proto_t::PROXY3);
+	// Признак соединения, несущего WebSocket поверх расширенного CONNECT (RFC 9220 §3)
+	const bool websocket = (this->_proto == proto_t::WEBSOCKET3);
 	/**
 	 * Состояние потока обещанию не принадлежит: кадр приходит на поток запроса,
 	 * ответом на который он является, а собственный поток push откроется позже.
@@ -3524,7 +3526,7 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 	// Признак наличия поля адресата HTTP/1.1
 	bool hasHost = false;
 	// Значения псевдо-заголовков, участвующих в перекрёстных проверках
-	string_view method, authority, status, path, host, scheme;
+	string_view method, authority, status, path, host, scheme, protocol;
 	// Объявленная длина тела сообщения
 	uint64_t declared = UINT64_MAX;
 	/**
@@ -3618,6 +3620,8 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 						return false;
 					// Запоминаем наличие псевдо-заголовка протокола туннеля
 					hasProtocol = true;
+					// Запоминаем значение протокола туннеля
+					protocol = field.value;
 					// Пустой протокол туннеля недопустим (RFC 9220 §4)
 					if(field.value.empty())
 						// Выводим отрицательный результат
@@ -3750,7 +3754,7 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 				 * Расширенный CONNECT допустим, только если мы сами его анонсировали:
 				 * иначе клиент пользуется разрешением, которого не получал
 				 */
-				if(!this->_settings.enableConnectProtocol)
+				if(!this->connectProtocol())
 					// Выводим отрицательный результат
 					return false;
 			}
@@ -3795,6 +3799,19 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 		 * которым место в заголовке авторизации. Отделяет его символ [@]
 		 */
 		if(::httpScheme(scheme) && (authority.find('@') != string_view::npos))
+			// Выводим отрицательный результат
+			return false;
+		/**
+		 * Схему цели запроса WebSocket задаёт RFC 8441 §5, и RFC 9220 §3 переносит
+		 * его правила в HTTP/3 без изменений: [https] для адресов [wss] и [http]
+		 * для адресов [ws]. Схема самого адреса WebSocket в псевдо-заголовок не
+		 * переносится - [ws] и [wss] задают форму адреса, а не цели запроса, и узел,
+		 * принявший их за схему цели, соберёт из псевдо-заголовков не тот URI,
+		 * который имел в виду отправитель. Проверка привязана к роли: на обычном
+		 * соединении расширенный CONNECT поднимает туннель любого зарегистрированного
+		 * протокола, и правила WebSocket к нему не относятся
+		 */
+		if(websocket && hasProtocol && this->_fmk->compare("websocket", protocol) && !::httpScheme(scheme))
 			// Выводим отрицательный результат
 			return false;
 		/**
@@ -4363,6 +4380,21 @@ void awh::http::Parser_HTTP3::aborted(const uint64_t sid, const uint64_t code) n
 }
 
 /**
+ * @brief Метод проверки того, что расширенный CONNECT разрешён нами
+ *
+ * @details Разрешение выдаётся параметром SETTINGS_ENABLE_CONNECT_PROTOCOL либо
+ *          подразумевается ролью узла: соединение, объявленное несущим WebSocket,
+ *          иначе отвергало бы единственный запрос, ради которого заведено
+ *          (RFC 9220 §3)
+ *
+ * @return признак разрешения расширенного CONNECT
+ *
+ */
+bool awh::http::Parser_HTTP3::connectProtocol() const noexcept {
+	// Выводим признак разрешения расширенного CONNECT
+	return (this->_settings.enableConnectProtocol || (this->_proto == proto_t::WEBSOCKET3));
+}
+/**
  * @brief Метод получения протокола, с которым работает парсер
  *
  * @return протокол работы парсера
@@ -4565,8 +4597,13 @@ void awh::http::Parser_HTTP3::sendSettings() noexcept {
 		// Дописываем параметр в набор
 		items.push_back(item);
 	}
-	// Если сервер разрешает расширенный CONNECT
-	if((this->_endpoint == h3::endpoint_t::SERVER) && this->_settings.enableConnectProtocol){
+	/**
+	 * Расширенный CONNECT анонсирует сервер: разрешение выдаётся параметром либо
+	 * подразумевается ролью узла. Соединение, объявленное несущим WebSocket, без
+	 * этого анонса бессмысленно: клиент не вправе слать расширенный CONNECT,
+	 * не получив разрешения, а мы обязаны такой запрос отвергать
+	 */
+	if((this->_endpoint == h3::endpoint_t::SERVER) && this->connectProtocol()){
 		// Устанавливаем идентификатор параметра расширенного CONNECT
 		item.id = static_cast <uint64_t> (h3::setting_t::ENABLE_CONNECT_PROTOCOL);
 		// Устанавливаем значение параметра расширенного CONNECT
@@ -4750,6 +4787,23 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const headers_t & 
 					// Записываем сообщение об отказе в лог
 					this->_log->print(
 						"HTTP/3 peer does not support extended CONNECT (RFC 9220), request for stream %llu is not sent",
+						log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+					);
+					// Выходим из метода
+					return;
+				}
+				/**
+				 * Схему цели запроса WebSocket задаёт RFC 8441 §5: [https] для адресов
+				 * [wss] и [http] для адресов [ws]. Отправить [ws] либо [wss] схемой цели
+				 * значило бы собрать у принимающей стороны не тот URI, который имелся
+				 * в виду, поэтому запрос не отправляется целиком: подменять схему за
+				 * приложение парсер не вправе - оно адресовало запрос осознанно
+				 */
+				if((this->_proto == proto_t::WEBSOCKET3) && extended &&
+				   this->_fmk->compare("websocket", request->protocol) && !::httpScheme(scheme)){
+					// Записываем сообщение об отказе в лог
+					this->_log->print(
+						"HTTP/3 WebSocket target URI requires http or https scheme (RFC 8441), request for stream %llu is not sent",
 						log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
 					);
 					// Выходим из метода
