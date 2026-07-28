@@ -230,6 +230,84 @@ namespace {
 		);
 	}
 	/**
+	 * @brief Массив частей адреса постоянной ёмкости
+	 *
+	 * @details Разбиение адреса на части выполняется на каждое создание события
+	 *          и на каждое принятое подключение, а динамический массив на этом
+	 *          пути набирал ёмкость удвоением с нуля - три выделения памяти на
+	 *          один разбор. Частей же у адреса не бывает больше восьми: четыре
+	 *          октета у IPv4 и восемь хекстетов у IPv6. Ёмкость взята на одну
+	 *          больше предельной, чтобы разбор отличал адрес с лишними частями
+	 *          от допустимого, а не молча его обрезал
+	 *
+	 */
+	typedef struct Parts {
+		// Предельное количество частей адреса с запасом на признак превышения
+		static constexpr size_t CAPACITY = 9;
+		private:
+			// Количество занятых частей адреса
+			size_t _count;
+			// Части адреса
+			string_view _items[CAPACITY];
+		public:
+			/**
+			 * @brief Метод очистки массива частей адреса
+			 *
+			 */
+			void clear() noexcept {
+				// Сбрасываем количество занятых частей адреса
+				this->_count = 0;
+			}
+			/**
+			 * @brief Метод получения количества частей адреса
+			 *
+			 * @return количество частей адреса
+			 *
+			 */
+			size_t size() const noexcept {
+				// Выводим количество занятых частей адреса
+				return this->_count;
+			}
+			/**
+			 * @brief Метод проверки заполненности массива частей адреса
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool full() const noexcept {
+				// Массив заполнен, если заняты все части
+				return (this->_count >= CAPACITY);
+			}
+			/**
+			 * @brief Метод добавления части адреса
+			 *
+			 * @param item часть адреса
+			 *
+			 */
+			void add(string_view item) noexcept {
+				// Добавляем часть адреса, если для неё есть место
+				if(this->_count < CAPACITY)
+					// Запоминаем очередную часть адреса
+					this->_items[this->_count++] = item;
+			}
+			/**
+			 * @brief Оператор получения части адреса по индексу
+			 *
+			 * @param index индекс части адреса
+			 * @return      часть адреса
+			 *
+			 */
+			string_view operator [] (const size_t index) const noexcept {
+				// Выводим часть адреса по индексу
+				return this->_items[index];
+			}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Parts() noexcept : _count(0) {}
+	} parts_t;
+	/**
 	 * @brief Вспомогательная функция для разбиения строки по разделителю
 	 *
 	 * @param text   исходный текст для разбиения
@@ -238,7 +316,7 @@ namespace {
 	 * @param max    максимальное количество частей строки
 	 *
 	 */
-	void split(string_view text, const char delim, vector <string_view> & result, const size_t max = numeric_limits <size_t>::max()) noexcept {
+	void split(string_view text, const char delim, parts_t & result, const size_t max = parts_t::CAPACITY) noexcept {
 		// Очищаем результирующий массив частей строки
 		result.clear();
 		// Позиция в строке, её размер и следующая позиция разделителя
@@ -246,7 +324,7 @@ namespace {
 		/**
 		 * Пока не достигнут конец строки и не превышено максимальное количество частей строки
 		 */
-		while((pos <= length) && (result.size() < max)){
+		while((pos <= length) && (result.size() < max) && !result.full()){
 			// Ищем следующую позицию разделителя
 			next = ((pos < length) ? text.find(delim, pos) : string_view::npos);
 			// Если разделитель не найден
@@ -254,7 +332,7 @@ namespace {
 				// Устанавливаем позицию конца строки
 				next = length;
 			// Добавляем часть строки в результирующий массив
-			result.emplace_back(text.substr(pos, next - pos));
+			result.add(text.substr(pos, next - pos));
 			// Устанавливаем позицию следующего символа после разделителя
 			pos = (next + 1);
 			// Если достигнут конец строки
@@ -372,7 +450,7 @@ namespace {
 	 */
 	bool parseIPv4(string_view ip, vector <uint8_t> & result, const bool allowLegacy, const bool allowNonDecimal) noexcept {
 		// Части строки IP-адреса
-		vector <string_view> octets;
+		parts_t octets;
 		// Разбиваем строку IP-адреса на части
 		::split(ip, '.', octets);
 		// Если частей ровно 4
@@ -505,7 +583,7 @@ namespace {
 	 */
 	bool parseIPv4DecQuad(string_view ip, vector <uint8_t> & result) noexcept {
 		// Части строки IP-адреса
-		vector <string_view> octets;
+		parts_t octets;
 		// Разбиваем строку IP-адреса на октеты
 		::split(ip, '.', octets);
 		// Проверяем количество октетов строки IP-адреса
@@ -572,7 +650,7 @@ namespace {
 		// Проверяем, найден ли "::"
 		const bool hasDcol = (dcol != string_view::npos);
 		// Части левой и правой части адреса
-		vector <string_view> leftParts, rightParts;
+		parts_t leftParts, rightParts;
 		// Разбиваем адрес на левую и правую части
 		if(hasDcol){
 			// Получаем левую часть IP-адреса

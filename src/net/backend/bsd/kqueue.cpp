@@ -957,6 +957,12 @@ namespace io {
 	/**
 	 * @brief Структура таймаутов
 	 *
+	 * @note Деструктор намеренно не виртуальный, хотя от структуры наследуется
+	 *       набор таймаутов клиента. Полиморфного удаления нет: набор живёт
+	 *       только полем узла события, указателей на него движок не заводит.
+	 *       Виртуальность обошлась бы таблицей на каждый узел, а это восемь
+	 *       октетов на каждое подключение при полном отсутствии пользы
+	 *
 	 */
 	typedef struct Timeouts {
 		// Таймаут чтения
@@ -988,22 +994,6 @@ namespace io {
 		 connect(3), reconnect(4) {}
 	} timeouts_client_t;
 
-	/**
-	 * @brief Общий набор таймаутов для событий, которым таймауты не заданы
-	 *
-	 * @details Отдаётся на чтение узлам, ни один таймаут которым не выставлялся:
-	 *          набор в этом случае несёт одни значения по умолчанию и одинаков
-	 *          для всех. Отдаётся именно константной ссылкой: записать через неё
-	 *          нельзя, а значит испортить общий набор неоткуда
-	 *
-	 */
-	static const timeouts_t __awh_timeouts_none__;
-
-	/**
-	 * @brief Общий набор таймаутов клиента для событий, которым таймауты не заданы
-	 *
-	 */
-	static const timeouts_client_t __awh_timeouts_client_none__;
 
 	/**
 	 * @brief Структура ограничения пропускной способности
@@ -1529,6 +1519,22 @@ namespace io {
 			return ((this->_bandwidth != nullptr) && (this->_bandwidth->read.limit > 0));
 		}
 		/**
+		 * @brief Метод проверки того, что событию заводился набор параметров полосы
+		 *
+		 * @details Нужен там, где к набору обращаются не ради чтения предела, а
+		 *          ради таймаутов внутри него - например при снятии всех таймаутов
+		 *          освобождаемого узла. Без этой проверки обращение шло бы через
+		 *          изменяющий доступ, и набор заводился бы событию, которое предела
+		 *          никогда не имело, - за мгновение до уничтожения самого узла
+		 *
+		 * @return результат проверки
+		 *
+		 */
+		bool hasBandwidth() const noexcept {
+			// Набор заводился, если указатель на него не пуст
+			return (this->_bandwidth != nullptr);
+		}
+		/**
 		 * @brief Метод проверки того, что записи задано ограничение полосы
 		 *
 		 * @return результат проверки
@@ -1647,6 +1653,22 @@ namespace io {
 		bool limitedRead() const noexcept {
 			// Ограничение задано, если набор заведён и предел чтения положителен
 			return ((this->_bandwidth != nullptr) && (this->_bandwidth->read.limit > 0));
+		}
+		/**
+		 * @brief Метод проверки того, что событию заводился набор параметров полосы
+		 *
+		 * @details Нужен там, где к набору обращаются не ради чтения предела, а
+		 *          ради таймаутов внутри него - например при снятии всех таймаутов
+		 *          освобождаемого узла. Без этой проверки обращение шло бы через
+		 *          изменяющий доступ, и набор заводился бы событию, которое предела
+		 *          никогда не имело, - за мгновение до уничтожения самого узла
+		 *
+		 * @return результат проверки
+		 *
+		 */
+		bool hasBandwidth() const noexcept {
+			// Набор заводился, если указатель на него не пуст
+			return (this->_bandwidth != nullptr);
 		}
 		/**
 		 * @brief Метод проверки того, что записи задано ограничение полосы
@@ -25157,24 +25179,40 @@ namespace io {
 							// Если тип таймера для событий сетевого движка является простым
 							case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 								// Отменяем все установленные таймауты для данного однорангового узла
-								::timer1::cancel(
-									peer->timeouts.read,
-									peer->timeouts.write,
-									peer->bandwidthUse().read.timeout,
-									peer->bandwidthUse().write.timeout,
-									peer->id
-								);
+								if(peer->hasBandwidth())
+									::timer1::cancel(
+										peer->timeouts.read,
+										peer->timeouts.write,
+										peer->bandwidthUse().read.timeout,
+										peer->bandwidthUse().write.timeout,
+										peer->id
+									);
+								// Событию без набора параметров полосы снимать в нём нечего
+								else
+									::timer1::cancel(
+										peer->timeouts.read,
+										peer->timeouts.write,
+										peer->id
+									);
 							} break;
 							// Если тип таймера для событий сетевого движка является сложным
 							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 								// Отменяем все установленные таймауты для данного однорангового узла
-								::timer2::cancel(
-									peer->timeouts.read,
-									peer->timeouts.write,
-									peer->bandwidthUse().read.timeout,
-									peer->bandwidthUse().write.timeout,
-									peer->id
-								);
+								if(peer->hasBandwidth())
+									::timer2::cancel(
+										peer->timeouts.read,
+										peer->timeouts.write,
+										peer->bandwidthUse().read.timeout,
+										peer->bandwidthUse().write.timeout,
+										peer->id
+									);
+								// Событию без набора параметров полосы снимать в нём нечего
+								else
+									::timer2::cancel(
+										peer->timeouts.read,
+										peer->timeouts.write,
+										peer->id
+									);
 							break;
 						}
 						/**
@@ -25353,28 +25391,48 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 													// Отменяем все установленные таймауты для данного клиента
-													::timer1::cancel(
-														client->timeouts.read,
-														client->timeouts.write,
-														client->timeouts.connect,
-														client->timeouts.reconnect,
-														client->bandwidthUse().read.timeout,
-														client->bandwidthUse().write.timeout,
-														client->id
-													);
+													if(client->hasBandwidth())
+														::timer1::cancel(
+															client->timeouts.read,
+															client->timeouts.write,
+															client->timeouts.connect,
+															client->timeouts.reconnect,
+															client->bandwidthUse().read.timeout,
+															client->bandwidthUse().write.timeout,
+															client->id
+														);
+													// Событию без набора параметров полосы снимать в нём нечего
+													else
+														::timer1::cancel(
+															client->timeouts.read,
+															client->timeouts.write,
+															client->timeouts.connect,
+															client->timeouts.reconnect,
+															client->id
+														);
 												} break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Отменяем все установленные таймауты для данного клиента
-													::timer2::cancel(
-														client->timeouts.read,
-														client->timeouts.write,
-														client->timeouts.connect,
-														client->timeouts.reconnect,
-														client->bandwidthUse().read.timeout,
-														client->bandwidthUse().write.timeout,
-														client->id
-													);
+													if(client->hasBandwidth())
+														::timer2::cancel(
+															client->timeouts.read,
+															client->timeouts.write,
+															client->timeouts.connect,
+															client->timeouts.reconnect,
+															client->bandwidthUse().read.timeout,
+															client->bandwidthUse().write.timeout,
+															client->id
+														);
+													// Событию без набора параметров полосы снимать в нём нечего
+													else
+														::timer2::cancel(
+															client->timeouts.read,
+															client->timeouts.write,
+															client->timeouts.connect,
+															client->timeouts.reconnect,
+															client->id
+														);
 												break;
 											}
 											/**
@@ -25422,28 +25480,48 @@ namespace io {
 									// Если тип таймера для событий сетевого движка является простым
 									case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 										// Отменяем все установленные таймауты для данного клиента
-										::timer1::cancel(
-											client->timeouts.read,
-											client->timeouts.write,
-											client->timeouts.connect,
-											client->timeouts.reconnect,
-											client->bandwidthUse().read.timeout,
-											client->bandwidthUse().write.timeout,
-											client->id
-										);
+										if(client->hasBandwidth())
+											::timer1::cancel(
+												client->timeouts.read,
+												client->timeouts.write,
+												client->timeouts.connect,
+												client->timeouts.reconnect,
+												client->bandwidthUse().read.timeout,
+												client->bandwidthUse().write.timeout,
+												client->id
+											);
+										// Событию без набора параметров полосы снимать в нём нечего
+										else
+											::timer1::cancel(
+												client->timeouts.read,
+												client->timeouts.write,
+												client->timeouts.connect,
+												client->timeouts.reconnect,
+												client->id
+											);
 									} break;
 									// Если тип таймера для событий сетевого движка является сложным
 									case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 										// Отменяем все установленные таймауты для данного клиента
-										::timer2::cancel(
-											client->timeouts.read,
-											client->timeouts.write,
-											client->timeouts.connect,
-											client->timeouts.reconnect,
-											client->bandwidthUse().read.timeout,
-											client->bandwidthUse().write.timeout,
-											client->id
-										);
+										if(client->hasBandwidth())
+											::timer2::cancel(
+												client->timeouts.read,
+												client->timeouts.write,
+												client->timeouts.connect,
+												client->timeouts.reconnect,
+												client->bandwidthUse().read.timeout,
+												client->bandwidthUse().write.timeout,
+												client->id
+											);
+										// Событию без набора параметров полосы снимать в нём нечего
+										else
+											::timer2::cancel(
+												client->timeouts.read,
+												client->timeouts.write,
+												client->timeouts.connect,
+												client->timeouts.reconnect,
+												client->id
+											);
 									break;
 								}
 								/**
@@ -51449,24 +51527,40 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 													// Отменяем все установленные таймауты для данного однорангового узла
-													::timer1::cancel(
-														peer->timeouts.read,
-														peer->timeouts.write,
-														peer->bandwidthUse().read.timeout,
-														peer->bandwidthUse().write.timeout,
-														peer->id
-													);
+													if(peer->hasBandwidth())
+														::timer1::cancel(
+															peer->timeouts.read,
+															peer->timeouts.write,
+															peer->bandwidthUse().read.timeout,
+															peer->bandwidthUse().write.timeout,
+															peer->id
+														);
+													// Событию без набора параметров полосы снимать в нём нечего
+													else
+														::timer1::cancel(
+															peer->timeouts.read,
+															peer->timeouts.write,
+															peer->id
+														);
 												} break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Отменяем все установленные таймауты для данного однорангового узла
-													::timer2::cancel(
-														peer->timeouts.read,
-														peer->timeouts.write,
-														peer->bandwidthUse().read.timeout,
-														peer->bandwidthUse().write.timeout,
-														peer->id
-													);
+													if(peer->hasBandwidth())
+														::timer2::cancel(
+															peer->timeouts.read,
+															peer->timeouts.write,
+															peer->bandwidthUse().read.timeout,
+															peer->bandwidthUse().write.timeout,
+															peer->id
+														);
+													// Событию без набора параметров полосы снимать в нём нечего
+													else
+														::timer2::cancel(
+															peer->timeouts.read,
+															peer->timeouts.write,
+															peer->id
+														);
 												break;
 											}
 											// Если необходимо активировать таймаут на чтение для однорангового узла
@@ -51494,28 +51588,48 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 													// Отменяем все установленные таймауты для данного клиента
-													::timer1::cancel(
-														client->timeouts.read,
-														client->timeouts.write,
-														client->timeouts.connect,
-														client->timeouts.reconnect,
-														client->bandwidthUse().read.timeout,
-														client->bandwidthUse().write.timeout,
-														client->id
-													);
+													if(client->hasBandwidth())
+														::timer1::cancel(
+															client->timeouts.read,
+															client->timeouts.write,
+															client->timeouts.connect,
+															client->timeouts.reconnect,
+															client->bandwidthUse().read.timeout,
+															client->bandwidthUse().write.timeout,
+															client->id
+														);
+													// Событию без набора параметров полосы снимать в нём нечего
+													else
+														::timer1::cancel(
+															client->timeouts.read,
+															client->timeouts.write,
+															client->timeouts.connect,
+															client->timeouts.reconnect,
+															client->id
+														);
 												} break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Отменяем все установленные таймауты для данного клиента
-													::timer2::cancel(
-														client->timeouts.read,
-														client->timeouts.write,
-														client->timeouts.connect,
-														client->timeouts.reconnect,
-														client->bandwidthUse().read.timeout,
-														client->bandwidthUse().write.timeout,
-														client->id
-													);
+													if(client->hasBandwidth())
+														::timer2::cancel(
+															client->timeouts.read,
+															client->timeouts.write,
+															client->timeouts.connect,
+															client->timeouts.reconnect,
+															client->bandwidthUse().read.timeout,
+															client->bandwidthUse().write.timeout,
+															client->id
+														);
+													// Событию без набора параметров полосы снимать в нём нечего
+													else
+														::timer2::cancel(
+															client->timeouts.read,
+															client->timeouts.write,
+															client->timeouts.connect,
+															client->timeouts.reconnect,
+															client->id
+														);
 												break;
 											}
 											// Если необходимо активировать таймаут на чтение для клиента
@@ -52322,24 +52436,40 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 															// Отменяем все установленные таймауты для данного однорангового узла
-															::timer1::cancel(
-																peer->timeouts.read,
-																peer->timeouts.write,
-																peer->bandwidthUse().read.timeout,
-																peer->bandwidthUse().write.timeout,
-																peer->id
-															);
+															if(peer->hasBandwidth())
+																::timer1::cancel(
+																	peer->timeouts.read,
+																	peer->timeouts.write,
+																	peer->bandwidthUse().read.timeout,
+																	peer->bandwidthUse().write.timeout,
+																	peer->id
+																);
+															// Событию без набора параметров полосы снимать в нём нечего
+															else
+																::timer1::cancel(
+																	peer->timeouts.read,
+																	peer->timeouts.write,
+																	peer->id
+																);
 														} break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Отменяем все установленные таймауты для данного однорангового узла
-															::timer2::cancel(
-																peer->timeouts.read,
-																peer->timeouts.write,
-																peer->bandwidthUse().read.timeout,
-																peer->bandwidthUse().write.timeout,
-																peer->id
-															);
+															if(peer->hasBandwidth())
+																::timer2::cancel(
+																	peer->timeouts.read,
+																	peer->timeouts.write,
+																	peer->bandwidthUse().read.timeout,
+																	peer->bandwidthUse().write.timeout,
+																	peer->id
+																);
+															// Событию без набора параметров полосы снимать в нём нечего
+															else
+																::timer2::cancel(
+																	peer->timeouts.read,
+																	peer->timeouts.write,
+																	peer->id
+																);
 														break;
 													}
 													// Если необходимо активировать таймаут на чтение для однорангового узла
@@ -52367,28 +52497,48 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 															// Отменяем все установленные таймауты для данного клиента
-															::timer1::cancel(
-																client->timeouts.read,
-																client->timeouts.write,
-																client->timeouts.connect,
-																client->timeouts.reconnect,
-																client->bandwidthUse().read.timeout,
-																client->bandwidthUse().write.timeout,
-																client->id
-															);
+															if(client->hasBandwidth())
+																::timer1::cancel(
+																	client->timeouts.read,
+																	client->timeouts.write,
+																	client->timeouts.connect,
+																	client->timeouts.reconnect,
+																	client->bandwidthUse().read.timeout,
+																	client->bandwidthUse().write.timeout,
+																	client->id
+																);
+															// Событию без набора параметров полосы снимать в нём нечего
+															else
+																::timer1::cancel(
+																	client->timeouts.read,
+																	client->timeouts.write,
+																	client->timeouts.connect,
+																	client->timeouts.reconnect,
+																	client->id
+																);
 														} break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Отменяем все установленные таймауты для данного клиента
-															::timer2::cancel(
-																client->timeouts.read,
-																client->timeouts.write,
-																client->timeouts.connect,
-																client->timeouts.reconnect,
-																client->bandwidthUse().read.timeout,
-																client->bandwidthUse().write.timeout,
-																client->id
-															);
+															if(client->hasBandwidth())
+																::timer2::cancel(
+																	client->timeouts.read,
+																	client->timeouts.write,
+																	client->timeouts.connect,
+																	client->timeouts.reconnect,
+																	client->bandwidthUse().read.timeout,
+																	client->bandwidthUse().write.timeout,
+																	client->id
+																);
+															// Событию без набора параметров полосы снимать в нём нечего
+															else
+																::timer2::cancel(
+																	client->timeouts.read,
+																	client->timeouts.write,
+																	client->timeouts.connect,
+																	client->timeouts.reconnect,
+																	client->id
+																);
 														break;
 													}
 													// Если необходимо активировать таймаут на чтение для клиента
@@ -61438,24 +61588,40 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 									// Если тип таймера для событий сетевого движка является простым
 									case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 										// Отменяем все установленные таймауты для данного однорангового узла
-										::timer1::cancel(
-											peer->timeouts.read,
-											peer->timeouts.write,
-											peer->bandwidthUse().read.timeout,
-											peer->bandwidthUse().write.timeout,
-											peer->id
-										);
+										if(peer->hasBandwidth())
+											::timer1::cancel(
+												peer->timeouts.read,
+												peer->timeouts.write,
+												peer->bandwidthUse().read.timeout,
+												peer->bandwidthUse().write.timeout,
+												peer->id
+											);
+										// Событию без набора параметров полосы снимать в нём нечего
+										else
+											::timer1::cancel(
+												peer->timeouts.read,
+												peer->timeouts.write,
+												peer->id
+											);
 									} break;
 									// Если тип таймера для событий сетевого движка является сложным
 									case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 										// Отменяем все установленные таймауты для данного однорангового узла
-										::timer2::cancel(
-											peer->timeouts.read,
-											peer->timeouts.write,
-											peer->bandwidthUse().read.timeout,
-											peer->bandwidthUse().write.timeout,
-											peer->id
-										);
+										if(peer->hasBandwidth())
+											::timer2::cancel(
+												peer->timeouts.read,
+												peer->timeouts.write,
+												peer->bandwidthUse().read.timeout,
+												peer->bandwidthUse().write.timeout,
+												peer->id
+											);
+										// Событию без набора параметров полосы снимать в нём нечего
+										else
+											::timer2::cancel(
+												peer->timeouts.read,
+												peer->timeouts.write,
+												peer->id
+											);
 									break;
 								}
 							// Если событие является блокирующим
@@ -61548,28 +61714,48 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 									// Если тип таймера для событий сетевого движка является простым
 									case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 										// Отменяем все установленные таймауты для данного клиента
-										::timer1::cancel(
-											client->timeouts.read,
-											client->timeouts.write,
-											client->timeouts.connect,
-											client->timeouts.reconnect,
-											client->bandwidthUse().read.timeout,
-											client->bandwidthUse().write.timeout,
-											client->id
-										);
+										if(client->hasBandwidth())
+											::timer1::cancel(
+												client->timeouts.read,
+												client->timeouts.write,
+												client->timeouts.connect,
+												client->timeouts.reconnect,
+												client->bandwidthUse().read.timeout,
+												client->bandwidthUse().write.timeout,
+												client->id
+											);
+										// Событию без набора параметров полосы снимать в нём нечего
+										else
+											::timer1::cancel(
+												client->timeouts.read,
+												client->timeouts.write,
+												client->timeouts.connect,
+												client->timeouts.reconnect,
+												client->id
+											);
 									} break;
 									// Если тип таймера для событий сетевого движка является сложным
 									case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 										// Отменяем все установленные таймауты для данного клиента
-										::timer2::cancel(
-											client->timeouts.read,
-											client->timeouts.write,
-											client->timeouts.connect,
-											client->timeouts.reconnect,
-											client->bandwidthUse().read.timeout,
-											client->bandwidthUse().write.timeout,
-											client->id
-										);
+										if(client->hasBandwidth())
+											::timer2::cancel(
+												client->timeouts.read,
+												client->timeouts.write,
+												client->timeouts.connect,
+												client->timeouts.reconnect,
+												client->bandwidthUse().read.timeout,
+												client->bandwidthUse().write.timeout,
+												client->id
+											);
+										// Событию без набора параметров полосы снимать в нём нечего
+										else
+											::timer2::cancel(
+												client->timeouts.read,
+												client->timeouts.write,
+												client->timeouts.connect,
+												client->timeouts.reconnect,
+												client->id
+											);
 									break;
 								}
 							// Если событие является блокирующим
@@ -62376,24 +62562,40 @@ void awh::engine::IO::clear() noexcept {
 							// Если тип таймера для событий сетевого движка является простым
 							case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 								// Отменяем все установленные таймауты для данного однорангового узла
-								::timer1::cancel(
-									peer->timeouts.read,
-									peer->timeouts.write,
-									peer->bandwidthUse().read.timeout,
-									peer->bandwidthUse().write.timeout,
-									peer->id
-								);
+								if(peer->hasBandwidth())
+									::timer1::cancel(
+										peer->timeouts.read,
+										peer->timeouts.write,
+										peer->bandwidthUse().read.timeout,
+										peer->bandwidthUse().write.timeout,
+										peer->id
+									);
+								// Событию без набора параметров полосы снимать в нём нечего
+								else
+									::timer1::cancel(
+										peer->timeouts.read,
+										peer->timeouts.write,
+										peer->id
+									);
 							} break;
 							// Если тип таймера для событий сетевого движка является сложным
 							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 								// Отменяем все установленные таймауты для данного однорангового узла
-								::timer2::cancel(
-									peer->timeouts.read,
-									peer->timeouts.write,
-									peer->bandwidthUse().read.timeout,
-									peer->bandwidthUse().write.timeout,
-									peer->id
-								);
+								if(peer->hasBandwidth())
+									::timer2::cancel(
+										peer->timeouts.read,
+										peer->timeouts.write,
+										peer->bandwidthUse().read.timeout,
+										peer->bandwidthUse().write.timeout,
+										peer->id
+									);
+								// Событию без набора параметров полосы снимать в нём нечего
+								else
+									::timer2::cancel(
+										peer->timeouts.read,
+										peer->timeouts.write,
+										peer->id
+									);
 							break;
 						}
 						// Если дескриптор сокета действительный
@@ -62548,28 +62750,48 @@ void awh::engine::IO::clear() noexcept {
 							// Если тип таймера для событий сетевого движка является простым
 							case static_cast <uint8_t> (event::timer_t::SIMPLE): {
 								// Отменяем все установленные таймауты для данного клиента
-								::timer1::cancel(
-									client->timeouts.read,
-									client->timeouts.write,
-									client->timeouts.connect,
-									client->timeouts.reconnect,
-									client->bandwidthUse().read.timeout,
-									client->bandwidthUse().write.timeout,
-									client->id
-								);
+								if(client->hasBandwidth())
+									::timer1::cancel(
+										client->timeouts.read,
+										client->timeouts.write,
+										client->timeouts.connect,
+										client->timeouts.reconnect,
+										client->bandwidthUse().read.timeout,
+										client->bandwidthUse().write.timeout,
+										client->id
+									);
+								// Событию без набора параметров полосы снимать в нём нечего
+								else
+									::timer1::cancel(
+										client->timeouts.read,
+										client->timeouts.write,
+										client->timeouts.connect,
+										client->timeouts.reconnect,
+										client->id
+									);
 							} break;
 							// Если тип таймера для событий сетевого движка является сложным
 							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 								// Отменяем все установленные таймауты для данного клиента
-								::timer2::cancel(
-									client->timeouts.read,
-									client->timeouts.write,
-									client->timeouts.connect,
-									client->timeouts.reconnect,
-									client->bandwidthUse().read.timeout,
-									client->bandwidthUse().write.timeout,
-									client->id
-								);
+								if(client->hasBandwidth())
+									::timer2::cancel(
+										client->timeouts.read,
+										client->timeouts.write,
+										client->timeouts.connect,
+										client->timeouts.reconnect,
+										client->bandwidthUse().read.timeout,
+										client->bandwidthUse().write.timeout,
+										client->id
+									);
+								// Событию без набора параметров полосы снимать в нём нечего
+								else
+									::timer2::cancel(
+										client->timeouts.read,
+										client->timeouts.write,
+										client->timeouts.connect,
+										client->timeouts.reconnect,
+										client->id
+									);
 							break;
 						}
 						// Если дескриптор сокета действительный
