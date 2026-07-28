@@ -559,6 +559,32 @@ namespace {
 		return (litLower[size] == '\0');
 	}
 	/**
+	 * @brief Функция сравнения двух участков памяти без учёта регистра
+	 *
+	 * @details Отличается от сравнения с литералом тем, что регистр приводится у обеих
+	 *          сторон: заранее приведённой к нижнему регистру среди них нет - обе
+	 *          приходят из разбираемого сообщения
+	 *
+	 * @param first  начало первого участка
+	 * @param second начало второго участка
+	 * @param size   размер сравниваемых участков
+	 * @return       результат сравнения
+	 *
+	 */
+	bool iequalsRange(const char * first, const char * second, const size_t size) noexcept {
+		/**
+		 * Выполняем перебор всех символов сравниваемых участков
+		 */
+		for(size_t i = 0; i < size; ++i){
+			// Если символы не совпадают без учёта регистра - участки не равны
+			if(lower(first[i]) != lower(second[i]))
+				// Участки не равны
+				return false;
+		}
+		// Участки равны
+		return true;
+	}
+	/**
 	 * @brief Функция сравнения строки с литералом без учёта регистра (литерал в нижнем регистре)
 	 *
 	 * @param str      сравниваемая строка
@@ -626,6 +652,218 @@ namespace {
 		return true;
 	}
 	/**
+	 * @brief Функция определения стандартного порта схемы цели запроса
+	 *
+	 * @details Знание о стандартных портах живёт в модуле URI, но тащить его сюда
+	 *          целиком незачем: разборщику сообщений нужен не URI, а один вопрос -
+	 *          совпадает ли адресат цели с адресатом заголовка Host. Схем, способных
+	 *          оказаться в цели запроса HTTP, всего четыре (RFC 9110 §4.2): http и ws
+	 *          работают через порт 80, https и wss - через 443. Для схемы за пределами
+	 *          этого набора стандартный порт неизвестен, и сравнение по порту не
+	 *          выполняется вовсе - лучше пропустить подозрительный запрос, чем
+	 *          отвергнуть законный по догадке
+	 *
+	 * @param begin начало схемы цели запроса
+	 * @param end   конец схемы цели запроса
+	 * @return      стандартный порт схемы (0 - схема неизвестна)
+	 *
+	 */
+	uint16_t defaultPort(const char * begin, const char * end) noexcept {
+		// Определяем длину схемы цели запроса
+		const size_t length = static_cast <size_t> (end - begin);
+		// Если схема соответствует http либо ws - стандартным является порт 80
+		if(iequalsLit(begin, length, "http") || iequalsLit(begin, length, "ws"))
+			// Выводим стандартный порт схемы
+			return 80;
+		// Если схема соответствует https либо wss - стандартным является порт 443
+		if(iequalsLit(begin, length, "https") || iequalsLit(begin, length, "wss"))
+			// Выводим стандартный порт схемы
+			return 443;
+		// Для остальных схем стандартный порт неизвестен
+		return 0;
+	}
+	/**
+	 * @brief Функция разбора адресата на имя узла и порт
+	 *
+	 * @details Разбирается не URI, а authority: имя узла и необязательный порт после
+	 *          двоеточия. Двоеточие ищется с конца - внутри литерала IPv6 их несколько,
+	 *          и порт отделяется только тем, что стоит за закрывающей скобкой.
+	 *          Аллокаций не выполняется: наружу отдаются границы имени узла
+	 *
+	 * @param begin     начало адресата
+	 * @param end       конец адресата
+	 * @param hostBegin начало имени узла
+	 * @param hostEnd   конец имени узла
+	 * @param port      разобранный порт (0 - порт не указан либо неразбираем)
+	 *
+	 */
+	void splitAuthority(const char * begin, const char * end, const char *& hostBegin, const char *& hostEnd, uint16_t & port) noexcept {
+		// Устанавливаем границы имени узла по всему адресату
+		hostBegin = begin;
+		// Устанавливаем конец имени узла по концу адресата
+		hostEnd = end;
+		// Сбрасываем разобранный порт
+		port = 0;
+		// Если адресат пустой - разбирать нечего
+		if(begin >= end)
+			// Выходим из функции
+			return;
+		/**
+		 * Определяем позицию, с которой начинается поиск разделителя порта: у литерала
+		 * IPv6 порт отделяется двоеточием за закрывающей скобкой, и двоеточия внутри
+		 * самого литерала разделителями не являются
+		 */
+		const char * search = begin;
+		// Если адресат начинается с литерала IPv6
+		if(* begin == '['){
+			// Выполняем поиск закрывающей скобки литерала
+			const char * bracket = static_cast <const char *> (::memchr(begin, ']', static_cast <size_t> (end - begin)));
+			// Если закрывающая скобка не найдена - адресат неразбираем
+			if(bracket == nullptr)
+				// Выходим из функции
+				return;
+			// Смещаем начало поиска разделителя порта за закрывающую скобку
+			search = bracket;
+		}
+		// Выполняем поиск разделителя порта
+		const char * separator = nullptr;
+		/**
+		 * Выполняем поиск последнего двоеточия начиная с вычисленной позиции
+		 */
+		for(const char * current = search; current < end; ++current){
+			// Если обнаружено двоеточие - запоминаем его как разделитель порта
+			if(* current == ':')
+				// Запоминаем позицию разделителя порта
+				separator = current;
+		}
+		// Если разделитель порта не обнаружен - адресат состоит из одного имени узла
+		if(separator == nullptr)
+			// Выходим из функции
+			return;
+		// Ограничиваем имя узла позицией разделителя порта
+		hostEnd = separator;
+		// Значение разобранного порта
+		uint64_t value = 0;
+		/**
+		 * Выполняем разбор порта: непустая последовательность цифр, укладывающаяся
+		 * в разрядность номера порта. Всё остальное оставляет порт неопределённым,
+		 * и сравнение по нему не выполняется
+		 */
+		if(::parseDecimal((separator + 1), static_cast <size_t> (end - (separator + 1)), value) && (value > 0) && (value <= 65535))
+			// Устанавливаем разобранный порт
+			port = static_cast <uint16_t> (value);
+	}
+	/**
+	 * @brief Функция сверки адресата заголовка Host с адресатом цели запроса
+	 *
+	 * @details Сверяются имя узла без учёта регистра и порт с подстановкой стандартного
+	 *          для схемы. Цель, адресата не несущая (origin-form, asterisk-form,
+	 *          authority-form), сверку проходит: сравнивать не с чем. Полная грамматика
+	 *          URI не разбирается - она принадлежит слою URI, а не разборщику сообщений
+	 *
+	 * @param target цель запроса
+	 * @param begin  начало значения заголовка Host
+	 * @param end    конец значения заголовка Host
+	 * @return       результат сверки
+	 *
+	 */
+	bool authorityMatches(const string & target, const char * begin, const char * end) noexcept {
+		// Указатель на начало цели запроса
+		const char * tb = target.data();
+		// Указатель на конец цели запроса
+		const char * te = (tb + target.size());
+		/**
+		 * Выполняем поиск разделителя схемы: адресата несёт только цель в absolute-form,
+		 * у остальных форм сверять нечего - origin-form и asterisk-form адресата не
+		 * содержат вовсе, а authority-form используется методом CONNECT, где цель и есть
+		 * адресат и заголовок ему по построению не противоречит
+		 */
+		const char * separator = nullptr;
+		/**
+		 * Выполняем поиск последовательности "://" в цели запроса
+		 */
+		for(const char * current = tb; (current + 2) < te; ++current){
+			// Если обнаружен разделитель схемы - запоминаем его позицию
+			if((current[0] == ':') && (current[1] == '/') && (current[2] == '/')){
+				// Запоминаем позицию разделителя схемы
+				separator = current;
+				// Прекращаем поиск
+				break;
+			}
+		}
+		// Если разделитель схемы не обнаружен - цель адресата не несёт
+		if(separator == nullptr)
+			// Выводим результат сверки
+			return true;
+		// Определяем начало адресата цели запроса
+		const char * ab = (separator + 3);
+		// Определяем конец адресата цели запроса
+		const char * ae = te;
+		/**
+		 * Выполняем поиск конца адресата: он оканчивается началом пути, параметров либо
+		 * якоря - смотря что встретится первым
+		 */
+		for(const char * current = ab; current < te; ++current){
+			// Если обнаружен разделитель, оканчивающий адресата
+			if((* current == '/') || (* current == '?') || (* current == '#')){
+				// Ограничиваем адресата обнаруженным разделителем
+				ae = current;
+				// Прекращаем поиск
+				break;
+			}
+		}
+		/**
+		 * Отсекаем параметры пользователя: заголовок Host обязан совпадать с адресатом
+		 * цели без них (RFC 9110 §7.2), поэтому сверяются части после последнего "@"
+		 */
+		for(const char * current = ae; current > ab; --current){
+			// Если обнаружен разделитель параметров пользователя
+			if(* (current - 1) == '@'){
+				// Смещаем начало адресата за разделитель
+				ab = current;
+				// Прекращаем поиск
+				break;
+			}
+		}
+		// Начало имени узла из цели запроса
+		const char * targetHostBegin = nullptr;
+		// Конец имени узла из цели запроса
+		const char * targetHostEnd = nullptr;
+		// Порт, указанный в цели запроса
+		uint16_t targetPort = 0;
+		// Разбираем адресата цели запроса на имя узла и порт
+		splitAuthority(ab, ae, targetHostBegin, targetHostEnd, targetPort);
+		// Начало имени узла из заголовка Host
+		const char * fieldHostBegin = nullptr;
+		// Конец имени узла из заголовка Host
+		const char * fieldHostEnd = nullptr;
+		// Порт, указанный в заголовке Host
+		uint16_t fieldPort = 0;
+		// Разбираем адресата заголовка Host на имя узла и порт
+		splitAuthority(begin, end, fieldHostBegin, fieldHostEnd, fieldPort);
+		// Определяем длину имени узла из цели запроса
+		const size_t targetLength = static_cast <size_t> (targetHostEnd - targetHostBegin);
+		// Если имена узлов не совпадают без учёта регистра
+		if((targetLength != static_cast <size_t> (fieldHostEnd - fieldHostBegin)) ||
+		   !iequalsRange(targetHostBegin, fieldHostBegin, targetLength))
+			// Выводим результат сверки
+			return false;
+		/**
+		 * Подставляем стандартный порт схемы вместо неуказанного: адресат "anyks.com" и
+		 * адресат "anyks.com:80" при схеме http обозначают один и тот же узел, и считать
+		 * их разными означало бы отвергать законный трафик. Для схемы, стандартный порт
+		 * которой неизвестен, подстановки не происходит, и сравнение выполняется только
+		 * когда порт указан с обеих сторон
+		 */
+		const uint16_t standard = defaultPort(tb, separator);
+		// Определяем действующий порт цели запроса
+		const uint16_t effectiveTarget = ((targetPort > 0) ? targetPort : standard);
+		// Определяем действующий порт заголовка Host
+		const uint16_t effectiveField = ((fieldPort > 0) ? fieldPort : standard);
+		// Выводим результат сверки портов
+		return !((effectiveTarget > 0) && (effectiveField > 0) && (effectiveTarget != effectiveField));
+	}
+	/**
 	 * @brief Функция триминга OWS (SP/HTAB) по краям подстроки [begin, end)
 	 *
 	 * @param begin начало подстроки
@@ -650,9 +888,13 @@ namespace {
 	 * @brief Функция отсечения параметров транспортного кодирования от его имени
 	 *
 	 * @details По RFC 9112 §7 элемент Transfer-Encoding имеет вид
-	 *          token *( OWS ";" OWS transfer-parameter ), поэтому запись
-	 *          "chunked;foo=bar" является корректным указанием кодировки chunked
-	 *          и обязана распознаваться наравне с голым "chunked"
+	 *          token *( OWS ";" OWS transfer-parameter ), и параметры принадлежат
+	 *          именно кодированию, а не списку: "gzip;q=1" обязано распознаваться
+	 *          как gzip. Исключение составляет само кодирование chunked - параметров
+	 *          оно не определяет, и §7.1 предписывает считать их присутствие ошибкой.
+	 *          Отсечение здесь выполняется безусловно, а решение о допустимости
+	 *          отсечённого принимает вызывающая сторона: приёму - applyTransferEncoding,
+	 *          сборке - chunkedWithParameters
 	 *
 	 * @param begin начало элемента списка
 	 * @param end   конец элемента списка
@@ -698,6 +940,44 @@ namespace {
 		trimParameters(begin, end);
 		// Выводим результат сравнения последнего кодирования с chunked
 		return iequalsLit(begin, static_cast <size_t> (end - begin), "chunked");
+	}
+	/**
+	 * @brief Функция проверки наличия параметров у кодирования chunked
+	 *
+	 * @details Кодирование chunked параметров не определяет, и RFC 9112 §7.1
+	 *          предписывает считать их присутствие ошибкой. Собственный приёмник
+	 *          отвергает такое объявление, и собираемое сообщение обязано этому
+	 *          соответствовать: выданный на провод кадр иначе отвергался бы обеими
+	 *          сторонами - и получателем, и самой библиотекой при разборе того же
+	 *          байтового потока. Проверяется последний элемент списка - кадрирование
+	 *          определяет именно он
+	 *
+	 * @param value значение заголовка Transfer-Encoding
+	 * @return      результат проверки
+	 *
+	 */
+	bool chunkedWithParameters(const string & value) noexcept {
+		// Получаем указатель на начало последнего элемента списка
+		const char * begin = value.data();
+		// Получаем указатель на конец последнего элемента списка
+		const char * end = (begin + value.size());
+		// Выполняем поиск последнего разделителя списка
+		const size_t comma = value.find_last_of(',');
+		// Если разделитель обнаружен - последним является элемент после него
+		if(comma != string::npos)
+			// Смещаем начало последнего элемента списка
+			begin = (value.data() + comma + 1);
+		// Выполняем триминг OWS по краям последнего элемента списка
+		trimOWS(begin, end);
+		// Запоминаем конец элемента списка до отсечения параметров кодирования
+		const char * parameters = end;
+		// Отсекаем параметры транспортного кодирования от его имени
+		trimParameters(begin, end);
+		// Выводим признак наличия параметров у кодирования chunked
+		return (
+			(parameters > end) &&
+			iequalsLit(begin, static_cast <size_t> (end - begin), "chunked")
+		);
 	}
 	/**
 	 * @brief Функция проверки наличия токена chunked в списке транспортных кодирований
@@ -1478,6 +1758,43 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 	// Признак отсутствия тела у ответа сервера по правилам RFC
 	const bool noBody = ((this->_direct == direct_t::RESPONSE) && this->responseHasNoBody());
 	/**
+	 * Если работа идёт через прокси - ответ, не способный нести тела, не вправе
+	 * объявлять кадрирование
+	 *
+	 * Ответы с кодом 1xx и [204 No Content] заканчиваются первой пустой строкой после
+	 * блока заголовков независимо от присутствующих в нём полей (RFC 9112 §6.3 п.1),
+	 * а отправлять в них Content-Length и Transfer-Encoding запрещено (§6.1, §6.2).
+	 * Само по себе такое объявление разбору не мешает - оно просто игнорируется.
+	 * Но узел, передающий сообщение дальше по цепочке, обязан отвергнуть то, что
+	 * следующее звено может истолковать иначе: звено, уважившее объявленный размер,
+	 * прочитает следующий ответ как тело этого, и граница сообщений в цепочке
+	 * разойдётся. Это тот же механизм рассинхронизации, что у CL+TE, и на границе
+	 * сети он превращается в подмену ответа.
+	 * Ответу [304 Not Modified] и ответу на HEAD оба заголовка, напротив, разрешены:
+	 * они описывают тело, которое было бы отправлено в ответ на такой же запрос GET
+	 */
+	if(noBody && (this->_proto == proto_t::PROXY1)){
+		// Получаем статус-код ответа сервера
+		const uint16_t code = static_cast <const response_t *> (this->_message.provider.get())->code;
+		// Если ответ принадлежит к тем, что кадрирования не несут вовсе
+		if(((code >= 100) && (code < 200)) || (code == 204)){
+			// Если объявлено транспортное кодирование
+			if(this->_flags.transferEncodingSeen){
+				// Фиксируем ошибку некорректного Transfer-Encoding
+				this->_error = error_t::INVALID_TRANSFER_ENCODING;
+				// Выходим из метода
+				return;
+			}
+			// Если объявлен размер тела
+			if(this->_flags.contentLengthSeen){
+				// Фиксируем ошибку некорректного Content-Length
+				this->_error = error_t::INVALID_CONTENT_LENGTH;
+				// Выходим из метода
+				return;
+			}
+		}
+	}
+	/**
 	 * Лимиты кадрирования проверяются до уведомления потребителя: иначе потребитель
 	 * успевает получить готовый блок заголовков и завести приём тела, а следом
 	 * получить ошибку по уже начатому сообщению
@@ -1628,6 +1945,22 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 	 * закрытием соединения
 	 */
 	if(this->_flags.transferEncodingSeen){
+		/**
+		 * Если работа идёт через прокси - такое кадрирование отвергается
+		 *
+		 * Тело, ограниченное только закрытием соединения, само себя не размечает
+		 * (RFC 9112 §6.3 п.3), и передать его дальше по цепочке узел может, лишь
+		 * закрыв соединение следующему звену. Хуже того, звено, разошедшееся с нами
+		 * в трактовке объявленного кодирования, определит границу сообщения иначе.
+		 * Отвергнуть такой ответ на границе сети дешевле, чем ретранслировать
+		 * кадрирование, о котором нельзя договориться
+		 */
+		if(this->_proto == proto_t::PROXY1){
+			// Фиксируем ошибку некорректного Transfer-Encoding
+			this->_error = error_t::INVALID_TRANSFER_ENCODING;
+			// Выходим из метода
+			return;
+		}
 		// Устанавливаем партицию тела сообщения
 		this->_message.part = part_t::BODY;
 		// Тело кадрируется закрытием соединения - оно не переиспользуемо
@@ -1772,7 +2105,9 @@ bool awh::http::Parser_HTTP::commitHeader(const string_view name, string_view va
 					/**
 					 * Выполняем интерпретацию значения заголовка Host
 					 */
-					this->applyHost(begin, end);
+					if(!this->applyHost(begin, end))
+						// Разбор прерван (код ошибки уже установлен)
+						return false;
 				}
 			} break;
 			// Заголовки начинающиеся на "E"
@@ -2909,9 +3244,10 @@ void awh::http::Parser_HTTP::applyConnection(const char * begin, const char * en
  *
  * @param begin начало значения заголовка
  * @param end   конец значения заголовка
+ * @return      результат интерпретации
  *
  */
-void awh::http::Parser_HTTP::applyHost(const char * begin, const char * end) noexcept {
+bool awh::http::Parser_HTTP::applyHost(const char * begin, const char * end) noexcept {
 	// Указатели на границы значения заголовка
 	const char * hb = begin;
 	// Указатель на конец значения заголовка
@@ -2926,10 +3262,51 @@ void awh::http::Parser_HTTP::applyHost(const char * begin, const char * end) noe
 		if((* current == ' ') || (* current == '\t')){
 			// Фиксируем ошибку недопустимого значения заголовка Host
 			this->_error = error_t::INVALID_HOST;
-			// Выходим из метода
-			return;
+			// Выводим результат интерпретации
+			return false;
 		}
 	}
+	/**
+	 * Если работа идёт через прокси - адресат заголовка обязан совпасть с адресатом цели
+	 *
+	 * Цель в absolute-form несёт адресата сама, и тогда в запросе их оказывается два.
+	 * Получателю предписано брать адресата из цели и заголовок игнорировать
+	 * (RFC 9112 §3.2.2), а клиенту - присылать заголовок, совпадающий с адресатом цели
+	 * (RFC 9110 §7.2). Соблюдают это не все звенья: одно маршрутизирует по цели, другое
+	 * (фильтр доступа, журнал, кэш) смотрит на заголовок - и они расходятся в том, кому
+	 * адресован один и тот же запрос. Для узла, передающего запрос дальше, это подмена
+	 * адресата, и проверка выполняется только в режиме прокси: конечному получателю
+	 * расходиться не с кем - он адресат сам
+	 */
+	if((this->_proto == proto_t::PROXY1) && (this->_direct == direct_t::REQUEST))
+		// Выводим результат сверки адресата заголовка с адресатом цели запроса
+		return this->checkTargetHost(hb, he);
+	// Выводим результат интерпретации
+	return true;
+}
+/**
+ * @brief Метод сверки адресата заголовка Host с адресатом цели запроса
+ *
+ * @param begin начало значения заголовка Host
+ * @param end   конец значения заголовка Host
+ * @return      результат сверки
+ *
+ */
+bool awh::http::Parser_HTTP::checkTargetHost(const char * begin, const char * end) noexcept {
+	// Если объект провайдера сообщения ещё не сформирован - сверять не с чем
+	if(this->_message.provider == nullptr)
+		// Выводим результат сверки
+		return true;
+	// Получаем цель разбираемого запроса
+	const string & target = static_cast <const request_t *> (this->_message.provider.get())->uri;
+	// Если адресат заголовка совпадает с адресатом цели запроса
+	if(::authorityMatches(target, begin, end))
+		// Выводим результат сверки
+		return true;
+	// Фиксируем ошибку недопустимого значения заголовка Host
+	this->_error = error_t::INVALID_HOST;
+	// Выводим результат сверки
+	return false;
 }
 /**
  * @brief Метод интерпретации заголовка Expect
@@ -3291,6 +3668,45 @@ void awh::http::Parser_HTTP::method(const method_t method) noexcept {
 	this->_method = method;
 }
 /**
+ * @brief Метод получения протокола, с которым работает парсер
+ *
+ * @return протокол работы парсера
+ *
+ */
+awh::http::proto_t awh::http::Parser_HTTP::proto() const noexcept {
+	// Выводим протокол работы парсера
+	return this->_proto;
+}
+/**
+ * @brief Метод установки протокола, с которым работает парсер
+ *
+ * @param proto протокол работы парсера
+ *
+ */
+void awh::http::Parser_HTTP::proto(const proto_t proto) noexcept {
+	/**
+	 * Определяем принадлежность указанного протокола к семейству HTTP/1.x
+	 */
+	switch(static_cast <uint8_t> (proto)){
+		// Прямое соединение с узлом, соединение с прокси-сервером либо будущий WebSocket
+		case static_cast <uint8_t> (proto_t::HTTP1):
+		case static_cast <uint8_t> (proto_t::PROXY1):
+		case static_cast <uint8_t> (proto_t::WEBSOCKET1):
+			// Устанавливаем протокол работы парсера
+			this->_proto = proto;
+		break;
+		/**
+		 * Протокол другого семейства этот парсер разобрать не может, и принять такое
+		 * указание молча означало бы оставить вызывающую сторону в уверенности, что
+		 * оно учтено
+		 */
+		default: this->_log->print(
+			"HTTP/1.x parser speaks HTTP/1.0 and HTTP/1.1 only: the protocol has not been changed",
+			log_t::flag_t::CRITICAL
+		);
+	}
+}
+/**
  * @brief Метод клонирования объекта парсера
  *
  * @details Клон получает те же направление трафика, лимиты безопасности и функции
@@ -3535,8 +3951,16 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				case static_cast <uint8_t> (scan_t::SCAN_BODY_CLOSE): {
 					// Определяем количество доступных байт данных
 					const size_t avail = (size - i);
-					// Если общий размер тела превышает лимит
-					if((this->_statsBody.bytes + avail) > this->_limits.maxBodySize){
+					/**
+					 * Если общий размер тела превышает лимит
+					 *
+					 * Сравнение построено вычитанием из лимита, а не сложением с
+					 * принятым: сумма переполнилась бы при лимите, заданном близко
+					 * к пределу разрядности, и проверка пропустила бы тело любого
+					 * размера. Вычитание безопасно всегда - принятое лимита не
+					 * превышает, иначе разбор остановился бы раньше
+					 */
+					if(avail > (this->_limits.maxBodySize - this->_statsBody.bytes)){
 						// Фиксируем ошибку превышения размера тела с записью в лог
 						this->fail(error_t::BODY_OVERFLOW);
 						// Выводим количество обработанных байт данных
@@ -3579,8 +4003,14 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					const uint64_t avail = static_cast <uint64_t> (size - i);
 					// Определяем сколько байт данных можно забрать
 					const uint64_t take = (avail < this->_statsBody.bytesRemaining ? avail : this->_statsBody.bytesRemaining);
-					// Если общий размер тела превышает лимит
-					if((this->_statsBody.bytes + take) > this->_limits.maxBodySize){
+					/**
+					 * Если общий размер тела превышает лимит
+					 *
+					 * Сравнение построено вычитанием из лимита по той же причине,
+					 * что и у тела до закрытия соединения: сложение переполнилось бы
+					 * при лимите, заданном близко к пределу разрядности
+					 */
+					if(take > (this->_limits.maxBodySize - this->_statsBody.bytes)){
 						// Фиксируем ошибку превышения размера тела с записью в лог
 						this->fail(error_t::BODY_OVERFLOW);
 						// Выводим количество обработанных байт данных
@@ -5705,6 +6135,24 @@ bool awh::http::Parser_HTTP::checkOutgoingStartLine(const headers_t & headers) c
 							return false;
 						}
 					}
+					/**
+					 * Если работа идёт через прокси - адресат заголовка обязан совпасть
+					 * с адресатом цели запроса
+					 *
+					 * Проверка повторяет ту, что выполняется на приёме: собранное
+					 * сообщение обязано быть принято собственным приёмником, а он в этом
+					 * режиме расхождение адресатов отвергает. Выдать такой запрос на
+					 * провод означало бы собрать кадр, отвергаемый обеими сторонами
+					 */
+					if((this->_proto == proto_t::PROXY1) && !::authorityMatches(request->uri, hb, he)){
+						// Записываем сообщение о расхождении адресатов в лог
+						this->_log->print(
+							"HTTP/1.x outgoing Host field does not match the authority of the request target: message dropped",
+							log_t::flag_t::CRITICAL
+						);
+						// Выводим результат проверки
+						return false;
+					}
 				}
 			}
 		} break;
@@ -5939,8 +6387,15 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 					// Выходим из метода
 					return;
 				}
-				// Сериализуем блок трейлеров сообщения
-				string block = headers.print(http::proto_t::HTTP1);
+				/**
+				 * Сериализуем блок трейлеров сообщения по установленному протоколу
+				 *
+				 * Протокол берётся у парсера, а не у контейнера: контейнер вызывающая
+				 * сторона вправе пометить любым значением, в том числе чужого семейства,
+				 * а собирается сообщение всё равно этим парсером. Все три значения
+				 * семейства HTTP/1.x дают одну и ту же форму записи полей
+				 */
+				string block = headers.print(this->_proto);
 				// Вычищаем из блока поля, запрещённые в трейлерах
 				const size_t dropped = ::dropForbiddenTrailers(block);
 				// Если запрещённые поля обнаружены
@@ -6020,30 +6475,37 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			static_cast <const response_t *> (headers.provider())->code : 0
 		);
 		/**
+		 * Признак ответа, передающего соединение другому протоколу
+		 *
+		 * Ответ [101 Switching Protocols] переключает протокол, а успешный ответ на
+		 * запрос CONNECT открывает туннель - и то и другое вступает в силу сразу за
+		 * пустой строкой, завершающей блок заголовков (RFC 9110 §15.2.2,
+		 * RFC 9112 §6.3 п.2). Байты, выданные следом, принадлежат уже не HTTP-сообщению,
+		 * а тому, чему соединение передано, и кадрированию не подлежат: они уходят
+		 * на провод как есть. Заголовки Content-Length и Transfer-Encoding в таком
+		 * ответе отправлять запрещено (RFC 9112 §6.1, §6.2), а получатель обязан их
+		 * игнорировать. Приёмник трактует оба ответа одинаково - признаком переключения
+		 * протокола, - и сборка обязана этому соответствовать: иначе выдача,
+		 * принимаемая на одном конце, отбрасывалась бы на другом
+		 */
+		const bool tunnel = ((this->_direct == direct_t::RESPONSE) && ((code == 101) ||
+			((this->_method == method_t::CONNECT) && (code >= 200) && (code < 300))
+		));
+		/**
 		 * Признак ответа, который не может нести тела
 		 *
 		 * Ответ на запрос HEAD и любой ответ с кодом 1xx, [204 No Content] либо
 		 * [304 Not Modified] заканчивается первой пустой строкой после блока заголовков
 		 * независимо от присутствующих в нём полей (RFC 9112 §6.3 п.1). Байты, выданные
 		 * следом, получатель прочитает не как тело, а как начало следующего ответа -
-		 * то есть кадрировать тело здесь означает рассинхронизировать соединение
+		 * то есть кадрировать тело здесь означает рассинхронизировать соединение.
+		 * Ответ, передающий соединение другому протоколу, сюда не относится: за его
+		 * блоком заголовков идёт не тело и не следующий ответ, а поток нового протокола
 		 */
-		const bool bodiless = ((this->_direct == direct_t::RESPONSE) && (
+		const bool bodiless = ((this->_direct == direct_t::RESPONSE) && !tunnel && (
 			(this->_method == method_t::HEAD) ||
 			((code >= 100) && (code < 200)) || (code == 204) || (code == 304)
 		));
-		/**
-		 * Признак ответа, открывающего туннель
-		 *
-		 * Успешный ответ на запрос CONNECT превращает соединение в туннель сразу за
-		 * пустой строкой, завершающей блок заголовков (RFC 9112 §6.3 п.2). Заголовки
-		 * Content-Length и Transfer-Encoding в таком ответе отправлять запрещено
-		 * (RFC 9112 §6.2), а получатель обязан их игнорировать: выданные следом байты
-		 * принадлежат туннелю и кадрированию не подлежат
-		 */
-		const bool tunnel = ((this->_direct == direct_t::RESPONSE) &&
-			(this->_method == method_t::CONNECT) && (code >= 200) && (code < 300)
-		);
 		// Признак необходимости дописать заголовок Transfer-Encoding: chunked
 		bool injectChunked = false;
 		// Признак необходимости завершить объявленное кадрирование chunked нулевым чанком
@@ -6158,7 +6620,8 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 				);
 		}
 		/**
-		 * Если ответ открывает туннель - байты за блоком заголовков ему и принадлежат
+		 * Если ответ передаёт соединение другому протоколу - байты за блоком заголовков
+		 * принадлежат уже ему
 		 *
 		 * Кадрирование к ним не применяется, а объявления Content-Length и
 		 * Transfer-Encoding снимаются с провода: отправлять их запрещено
@@ -6166,7 +6629,7 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 		 * объявление разошлось бы с тем, чем содержимое туннеля кадрируется на самом деле
 		 */
 		else if(tunnel) {
-			// Содержимое туннеля передаётся без кадрирования
+			// Поток протокола, которому передано соединение, передаётся без кадрирования
 			this->_sender.framing = sender_t::framing_t::RAW;
 			// Помечаем заголовок Content-Length к вычистке из блока
 			dropLength = hasLength;
@@ -6176,7 +6639,7 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			if(dropLength || dropFraming)
 				// Записываем сообщение о недопустимых в таком ответе заголовках в лог
 				this->_log->print(
-					"HTTP/1.x outgoing successful CONNECT response must not declare Content-Length or Transfer-Encoding: the field(s) have been dropped",
+					"HTTP/1.x outgoing protocol switching response must not declare Content-Length or Transfer-Encoding: the field(s) have been dropped",
 					log_t::flag_t::WARNING
 				);
 		}
@@ -6321,6 +6784,26 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 		if(hasEncoding && !dropEncoding && !dropLegacyEncoding && !dropFraming){
 			// Получаем все значения заголовка транспортного кодирования
 			const vector <string> values = headers.range("Transfer-Encoding");
+			/**
+			 * Если кадрирующее кодирование объявлено с параметрами, сообщение не
+			 * собирается вовсе: параметров chunked не определяет, и их присутствие
+			 * RFC 9112 §7.1 предписывает считать ошибкой. Отсечь их библиотека не
+			 * вправе - объявление принадлежит вызывающей стороне, а отсечённое
+			 * молча изменило бы то, что она просила отправить. Собственный приёмник
+			 * такое объявление отвергает, и выдать его на провод означало бы собрать
+			 * кадр, отвергаемый обеими сторонами
+			 */
+			if(!values.empty() && ::chunkedWithParameters(values.back())){
+				// Возвращаем кадрирование тела в исходное состояние
+				this->_sender.framing = sender_t::framing_t::NONE;
+				// Записываем сообщение о недопустимых параметрах кодирования в лог
+				this->_log->print(
+					"HTTP/1.x outgoing Transfer-Encoding declares chunked with parameters: message dropped",
+					log_t::flag_t::CRITICAL
+				);
+				// Выходим из метода
+				return;
+			}
 			// Если последнее кодирование не заканчивается токеном chunked
 			if(!values.empty() && !::endsWithChunked(values.back())){
 				/**
@@ -6342,8 +6825,8 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 				}
 			}
 		}
-		// Сериализуем стартовую строку и заголовки сообщения
-		string block = headers.print(http::proto_t::HTTP1);
+		// Сериализуем стартовую строку и заголовки сообщения по установленному протоколу
+		string block = headers.print(this->_proto);
 		// Если необходимо вычистить некорректный заголовок Content-Length
 		if(dropLength)
 			// Удаляем некорректный заголовок из сериализованного блока
@@ -6659,7 +7142,7 @@ void awh::http::Parser_HTTP::on(writable_callback_t callback) noexcept {
  */
 awh::http::Parser_HTTP::Parser_HTTP(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
  parser_t(direct, fmk, log), _error(error_t::NONE), _recycled(false),
- _state(static_cast <uint8_t> (S_START)), _method(method_t::NONE) {
+ _state(static_cast <uint8_t> (S_START)), _method(method_t::NONE), _proto(proto_t::HTTP1) {
 	// Устанавливаем объект логирования буферу исходящих байтов
 	this->_sender.output.setLogger(log);
 	// Устанавливаем объект логирования буферу передачи в сетевой слой

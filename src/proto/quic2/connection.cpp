@@ -21,6 +21,7 @@
  * Стандартные заголовочные файлы
  */
 #include <cstring>
+#include <algorithm>
 
 /**
  * Заголовочные файлы BoringSSL
@@ -325,6 +326,20 @@ namespace {
 	 *
 	 */
 	static constexpr size_t COMPACT_THRESHOLD = 16384;
+	/**
+	 * @brief Предел числа учётных записей пакетов в пуле переиспользования
+	 *
+	 * @details Пул удерживает буферы освобождённых учётных записей отправленных
+	 *          пакетов, чтобы на каждый пакет не выделять их заново. Предел
+	 *          соразмерен числу пакетов в полёте на канале с высоким произведением
+	 *          полосы на задержку: меньший предел на таком канале не покрывает пик
+	 *          одновременно отправленных пакетов, и пул вырождается в поштучное
+	 *          выделение. Записи малы (вектор блоков), поэтому удержание предела
+	 *          записей стоит порядка сотен килобайт и окупается снятием выделения
+	 *          на каждую датаграмму (по образцу objpool ngtcp2)
+	 *
+	 */
+	static constexpr size_t SENT_POOL_LIMIT = 4096;
 	/**
 	 * @brief Запас октетов на заголовок фрейма CRYPTO (тип, смещение и длина)
 	 *
@@ -956,7 +971,7 @@ awh::quic2::Connection::sent_t awh::quic2::Connection::acquire() noexcept {
  */
 void awh::quic2::Connection::recycle(sent_t & record) noexcept {
 	// Предел размера пула: не удерживаем больше записей, чем бывает пакетов в полёте
-	if(this->_sentPool.size() >= 512)
+	if(this->_sentPool.size() >= SENT_POOL_LIMIT)
 		// Сверх предела запись просто освобождается
 		return;
 	// Очищаем векторы записи с сохранением выделенной ёмкости
@@ -1217,6 +1232,32 @@ void awh::quic2::Connection::schedule(const uint64_t sid) noexcept {
 		// Добавляем идентификатор потока в список ожидающих управляющих фреймов
 		this->_stream.control.push_back(sid);
 	}
+}
+/**
+ * @brief Метод постановки потока в набор потоков с данными к отправке
+ *
+ * @param sid идентификатор потока
+ *
+ */
+void awh::quic2::Connection::pending(const uint64_t sid) noexcept {
+	// Позиция вставки в отсортированном наборе потоков с данными
+	auto pos = lower_bound(this->_stream.writable.begin(), this->_stream.writable.end(), sid);
+	// Если поток ещё не в наборе - вставляем с сохранением порядка (ёмкость вектора переиспользуется, узлы не выделяются)
+	if((pos == this->_stream.writable.end()) || (* pos != sid))
+		this->_stream.writable.insert(pos, sid);
+}
+/**
+ * @brief Метод удаления потока из набора потоков с данными к отправке
+ *
+ * @param sid идентификатор потока
+ *
+ */
+void awh::quic2::Connection::dequeue(const uint64_t sid) noexcept {
+	// Позиция потока в отсортированном наборе потоков с данными
+	auto pos = lower_bound(this->_stream.writable.begin(), this->_stream.writable.end(), sid);
+	// Если поток присутствует в наборе - удаляем его
+	if((pos != this->_stream.writable.end()) && (* pos == sid))
+		this->_stream.writable.erase(pos);
 }
 /**
  * @brief Метод возврата содержимого отправленных ранних данных в очереди отправки (RFC 9001 §4.6.2)
@@ -3626,7 +3667,7 @@ awh::quic2::status_t awh::quic2::Connection::frames(const level_t level, const u
 						// Если поднятый лимит разблокировал поток с данными - возвращаем его в набор к отправке
 						if((stream->txBuffer.size() > stream->txCursor) || (stream->txFin && !stream->txFinSent))
 							// Возвращаем поток в набор потоков с данными к отправке
-							this->_stream.writable.insert(streamId);
+							this->pending(streamId);
 					}
 				}
 				// Устанавливаем флаг приёма ack-eliciting фрейма
@@ -4414,7 +4455,7 @@ bool awh::quic2::Connection::payload(const level_t level, const size_t budget, s
 				// Прекращаем упаковку данных потоков
 				break;
 			// Ищем первый поток с данными начиная с позиции курсора
-			auto wit = this->_stream.writable.lower_bound(this->_stream.cursor);
+			auto wit = lower_bound(this->_stream.writable.begin(), this->_stream.writable.end(), this->_stream.cursor);
 			// Если потоки от позиции курсора закончились
 			if(wit == this->_stream.writable.end())
 				// Продолжаем обход с начала набора
@@ -4559,7 +4600,7 @@ bool awh::quic2::Connection::payload(const level_t level, const size_t budget, s
 			// Если у потока не осталось данных к отправке - отсеиваем его из набора
 			if((stream.txBuffer.size() == stream.txCursor) && !(stream.txFin && !stream.txFinSent))
 				// Удаляем слитый поток из набора потоков с данными
-				this->_stream.writable.erase(sid);
+				this->dequeue(sid);
 		}
 	}
 	// Если требуется отправка зондирующего фрейма PING (RFC 9002 §6.2.4)
@@ -7488,6 +7529,16 @@ bool awh::quic2::Connection::writable() const noexcept {
 	return (this->_crypto.handshake.encryption(level_t::EARLY_DATA) != nullptr);
 }
 /**
+ * @brief Метод установки предела буфера отправки одного потока (backpressure)
+ *
+ * @param size предел буфера отправки потока в октетах
+ *
+ */
+void awh::quic2::Connection::sendBuffer(const size_t size) noexcept {
+	// Устанавливаем предел несобранного буфера отправки одного потока
+	this->_sendBuffer = size;
+}
+/**
  * @brief Метод открытия нового потока приложения (RFC 9000 §2.1)
  *
  * @param unidirectional флаг однонаправленного потока
@@ -7563,6 +7614,24 @@ awh::quic2::status_t awh::quic2::Connection::send(const uint64_t sid, string_vie
 	if(i->second.txFin || i->second.txReset || i->second.txResetSent)
 		// Выводим отрицательный результат
 		return status_t::ERROR;
+	/**
+	 * Если несобранный буфер отправки потока достиг предела: применяем backpressure -
+	 * буферизировать больше движок не станет, приложение дописывает данные позже, по
+	 * мере упаковки уже поставленных. Без предела буфер рос бы неограниченно
+	 */
+	if((this->_sendBuffer > 0) && ((i->second.txBuffer.size() - i->second.txCursor) >= this->_sendBuffer))
+		// Выводим признак заполненного буфера отправки потока
+		return status_t::BLOCKED;
+	/**
+	 * Резервируем ёмкость буфера отправки один раз под предел backpressure. Иначе
+	 * дописывание данных наращивало бы строку геометрически - чередой перевыделений
+	 * с копированием, дающей многократный кумулятивный расход памяти. При заданном
+	 * пределе объём буфера им же и ограничен, поэтому единичный резерв под предел
+	 * убирает перевыделения роста: выделение происходит один раз на поток
+	 */
+	if((this->_sendBuffer > 0) && (i->second.txBuffer.capacity() < this->_sendBuffer))
+		// Резервируем ёмкость буфера отправки под предел backpressure
+		i->second.txBuffer.reserve(this->_sendBuffer);
 	// Дописываем данные в буфер исходящих данных потока
 	i->second.txBuffer.append(data);
 	// Если приложение завершает поток
@@ -7570,7 +7639,7 @@ awh::quic2::status_t awh::quic2::Connection::send(const uint64_t sid, string_vie
 		// Устанавливаем флаг постановки завершения потока
 		i->second.txFin = true;
 	// Ставим поток в набор потоков с данными к отправке
-	this->_stream.writable.insert(sid);
+	this->pending(sid);
 	// Выводим положительный результат
 	return status_t::OK;
 }

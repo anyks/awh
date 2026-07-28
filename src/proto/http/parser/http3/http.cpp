@@ -75,6 +75,26 @@ namespace {
 		static constexpr string_view CONTENT_LENGTH = "content-length";
 		static constexpr string_view CONTENT_ENCODING = "content-encoding";
 		static constexpr string_view PROXY_AUTHORIZATION = "proxy-authorization";
+		// Заголовки, запрещённые в трейлерах (RFC 9110 §6.5.1)
+		static constexpr string_view AGE = "age";
+		static constexpr string_view AUTHENTICATION_INFO = "authentication-info";
+		static constexpr string_view COOKIE = "cookie";
+		static constexpr string_view DATE = "date";
+		static constexpr string_view EXPIRES = "expires";
+		static constexpr string_view IF_MATCH = "if-match";
+		static constexpr string_view IF_MODIFIED_SINCE = "if-modified-since";
+		static constexpr string_view IF_NONE_MATCH = "if-none-match";
+		static constexpr string_view IF_RANGE = "if-range";
+		static constexpr string_view IF_UNMODIFIED_SINCE = "if-unmodified-since";
+		static constexpr string_view LOCATION = "location";
+		static constexpr string_view PRAGMA = "pragma";
+		static constexpr string_view PROXY_AUTHENTICATE = "proxy-authenticate";
+		static constexpr string_view PROXY_AUTHENTICATION_INFO = "proxy-authentication-info";
+		static constexpr string_view RETRY_AFTER = "retry-after";
+		static constexpr string_view SET_COOKIE = "set-cookie";
+		static constexpr string_view VARY = "vary";
+		static constexpr string_view WARNING = "warning";
+		static constexpr string_view WWW_AUTHENTICATE = "www-authenticate";
 		// Заголовок приоритета запроса (RFC 9218 §5)
 		static constexpr string_view PRIORITY = "priority";
 	};
@@ -237,6 +257,97 @@ namespace {
 		return true;
 	}
 	/**
+	 * @brief Функция проверки пригодности значения поля к трансляции в другую версию HTTP (RFC 9114 §10.3)
+	 *
+	 * @details Минимальная проверка отсеивает только NUL, CR и LF: конечному
+	 *          получателю прочие управляющие символы безразличны, он передаёт
+	 *          значение приложению как есть. Узлу, транслирующему сообщение в
+	 *          другую версию протокола, они безразличны быть не могут: грамматика
+	 *          field-content (RFC 9110 §5.5) управляющих символов не допускает,
+	 *          а вертикальную табуляцию и перевод страницы часть реализаций
+	 *          HTTP/1.1 разбирает как разделители строк. Звено, прочитавшее их
+	 *          именно так, определит границу поля иначе
+	 *
+	 * @param value проверяемое значение поля
+	 * @return      результат проверки
+	 *
+	 */
+	bool translatable(string_view value) noexcept {
+		/**
+		 * Выполняем перебор всех символов значения поля
+		 */
+		for(const char item : value){
+			// Получаем очередной символ значения поля
+			const uint8_t letter = static_cast <uint8_t> (item);
+			// Управляющие символы (кроме табуляции) и DEL в значение поля не входят (RFC 9110 §5.5)
+			if(((letter < 0x20) && (letter != 0x09)) || (letter == 0x7F))
+				// Выводим отрицательный результат
+				return false;
+		}
+		// Выводим положительный результат
+		return true;
+	}
+	/**
+	 * @brief Функция проверки пригодности значения псевдо-заголовка к сборке стартовой строки (RFC 9114 §10.3)
+	 *
+	 * @details Из [:scheme], [:authority] и [:path] следующее звено собирает цель
+	 *          запроса, а из неё вместе с методом - стартовую строку HTTP/1.1.
+	 *          Пробел, табуляция и управляющие символы расщепляют эту строку на
+	 *          элементы, которых отправитель туда не помещал
+	 *
+	 * @param value проверяемое значение псевдо-заголовка
+	 * @return      результат проверки
+	 *
+	 */
+	bool translatablePseudo(string_view value) noexcept {
+		/**
+		 * Выполняем перебор всех символов значения псевдо-заголовка
+		 */
+		for(const char item : value){
+			// Получаем очередной символ значения псевдо-заголовка
+			const uint8_t letter = static_cast <uint8_t> (item);
+			// Пробел, табуляция, управляющие символы и DEL стартовую строку расщепляют
+			if((letter <= 0x20) || (letter == 0x7F))
+				// Выводим отрицательный результат
+				return false;
+		}
+		// Выводим положительный результат
+		return true;
+	}
+	/**
+	 * @brief Функция проверки принадлежности значения к набору token (RFC 9110 §5.6.2)
+	 *
+	 * @note От isToken отличается тем, что заглавные латинские буквы допускает:
+	 *       ограничение нижним регистром относится к названиям полей HTTP/3,
+	 *       а метод запроса регистрозависим и заглавные буквы несут как раз
+	 *       все стандартные методы
+	 *
+	 * @param value проверяемое значение
+	 * @return      результат проверки
+	 *
+	 */
+	bool tokenValue(string_view value) noexcept {
+		// Пустое значение токеном не является
+		if(value.empty())
+			// Выводим отрицательный результат
+			return false;
+		/**
+		 * Выполняем перебор всех символов значения
+		 */
+		for(const char letter : value){
+			// Если символ является заглавной латинской буквой - он допустим
+			if((letter >= 'A') && (letter <= 'Z'))
+				// Переходим к следующему символу значения
+				continue;
+			// Если символ не принадлежит набору token
+			if(!isToken(letter))
+				// Выводим отрицательный результат
+				return false;
+		}
+		// Выводим положительный результат
+		return true;
+	}
+	/**
 	 * @brief Функция проверки названия поля на псевдо-заголовок
 	 *
 	 * @param name проверяемое название поля
@@ -278,15 +389,53 @@ namespace {
 	 *
 	 */
 	bool isForbiddenTrailer(string_view name) noexcept {
-		// Выводим признак недопустимого в трейлерах поля
-		return (
-			(name == header::TE) || (name == header::HOST) || (name == header::RANGE) ||
-			(name == header::EXPECT) || (name == header::TRAILER) || (name == header::CONTENT_TYPE) ||
-			(name == header::CACHE_CONTROL) || (name == header::CONTENT_RANGE) ||
-			(name == header::MAX_FORWARDS) || (name == header::AUTHORIZATION) ||
-			(name == header::CONTENT_LENGTH) || (name == header::CONTENT_ENCODING) ||
-			(name == header::PROXY_AUTHORIZATION)
-		);
+		/**
+		 * Выполняем проверку названия по списку запрещённых (диспетчер по первой букве):
+		 * названия полей в этой версии протокола обязаны быть в нижнем регистре,
+		 * поэтому регистр приводить не нужно, а перебор всего списка на каждое поле
+		 * секции обходился бы тем дороже, чем полнее список
+		 */
+		switch(name.empty() ? '\0' : name.front()){
+			// Поля управляющих данных ответа и аутентификации
+			case 'a': return ((name == header::AGE) || (name == header::AUTHORIZATION) || (name == header::AUTHENTICATION_INFO));
+			// Поля обработки содержимого, управления кэшированием и состояния сессии
+			case 'c': return (
+				(name == header::COOKIE) || (name == header::CONTENT_TYPE) || (name == header::CACHE_CONTROL) ||
+				(name == header::CONTENT_RANGE) || (name == header::CONTENT_LENGTH) || (name == header::CONTENT_ENCODING)
+			);
+			// Поле отметки времени сообщения
+			case 'd': return (name == header::DATE);
+			// Поля ожидания промежуточного ответа и срока годности ответа
+			case 'e': return ((name == header::EXPECT) || (name == header::EXPIRES));
+			// Поле целевого узла
+			case 'h': return (name == header::HOST);
+			// Условные поля запроса
+			case 'i': return (
+				(name == header::IF_MATCH) || (name == header::IF_RANGE) || (name == header::IF_NONE_MATCH) ||
+				(name == header::IF_MODIFIED_SINCE) || (name == header::IF_UNMODIFIED_SINCE)
+			);
+			// Поле перенаправления
+			case 'l': return (name == header::LOCATION);
+			// Поле ограничения числа промежуточных узлов
+			case 'm': return (name == header::MAX_FORWARDS);
+			// Поля аутентификации на прокси и совместимости с HTTP/1.0
+			case 'p': return (
+				(name == header::PRAGMA) || (name == header::PROXY_AUTHENTICATE) ||
+				(name == header::PROXY_AUTHORIZATION) || (name == header::PROXY_AUTHENTICATION_INFO)
+			);
+			// Поля запроса диапазона и указания времени повтора
+			case 'r': return ((name == header::RANGE) || (name == header::RETRY_AFTER));
+			// Поле установки сессионных данных
+			case 's': return (name == header::SET_COOKIE);
+			// Поля объявления трейлеров и расширений передачи
+			case 't': return ((name == header::TE) || (name == header::TRAILER));
+			// Поле ключа вариативности кэша
+			case 'v': return (name == header::VARY);
+			// Поля запроса аутентификации и предупреждения о содержимом
+			case 'w': return ((name == header::WARNING) || (name == header::WWW_AUTHENTICATE));
+		}
+		// Поле в секции трейлеров разрешено
+		return false;
 	}
 	/**
 	 * @brief Функция разбора значения поля [content-length]
@@ -653,7 +802,7 @@ void awh::http::Parser_HTTP3::Framing::clear() noexcept {
  */
 awh::http::Parser_HTTP3::Stream::Stream() noexcept :
  state(h3::stream_state_t::IDLE), headers(false), trailers(false), body(false),
- generation(0), completed(false), headless(false), headlessSend(false), localFin(false), length(0), declared(UINT64_MAX),
+ generation(0), completed(false), headless(false), headlessSend(false), trailerless(false), trailerlessSend(false), localFin(false), length(0), declared(UINT64_MAX),
  urgency(h3::proto::DEFAULT_URGENCY), incremental(false), prioritized(false),
  blockedActive(false), blockedType(0), blockedPushId(UINT64_MAX), blockedFin(false) {}
 /**
@@ -1194,9 +1343,12 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 					 * Ответы 204 и 304, а равно ответ на запрос HEAD, содержимого
 					 * не несут по определению (RFC 9110 §8.6, §9.3.2). Тело в них
 					 * делает сообщение искажённым, а это причина отвергнуть поток,
-					 * а не соединение: остальные потоки к нему отношения не имеют
+					 * а не соединение: остальные потоки к нему отношения не имеют.
+					 * Пустой кадр DATA содержимого не добавляет и сообщение
+					 * искажённым не делает - это выбор нарезки, а не семантика,
+					 * и HTTP/2 трактует его так же
 					 */
-					if(current->headless){
+					if(current->headless && (framing.length > 0)){
 						// Обрываем поток с кодом ошибки сообщения
 						this->sendReset(sid, error_t::H3_MESSAGE_ERROR);
 						// Выводим результат разбора
@@ -1209,6 +1361,19 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 					if(current->trailers)
 						// Фиксируем ошибку уровня соединения
 						return this->fail(error_t::H3_FRAME_UNEXPECTED, "кадр HEADERS после секции трейлеров");
+					/**
+					 * Ответы 204 и 304 завершаются концом секции полей и не несут
+					 * ни содержимого, ни трейлеров (RFC 9110 §15.3.5, §15.4.5).
+					 * Вторая секция по такому потоку - это и есть трейлеры, и она
+					 * делает сообщение искажённым: причина отвергнуть поток,
+					 * а не соединение
+					 */
+					if(current->headers && current->trailerless){
+						// Обрываем поток с кодом ошибки сообщения
+						this->sendReset(sid, error_t::H3_MESSAGE_ERROR);
+						// Выводим результат разбора
+						return h3::status_t::OK;
+					}
 					/**
 					 * Длина кадра протоколом не ограничена, поэтому границу ставит
 					 * лимит парсера: иначе отправитель одним кадром задавал бы
@@ -3336,6 +3501,8 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 	 * его отправляет сервер от имени клиента (RFC 9114 §4.6)
 	 */
 	const bool request = (promise || (this->_direct == direct_t::REQUEST));
+	// Признак работы парсера промежуточным узлом (RFC 9114 §10.3)
+	const bool proxy = (this->_proto == proto_t::PROXY3);
 	/**
 	 * Состояние потока обещанию не принадлежит: кадр приходит на поток запроса,
 	 * ответом на который он является, а собственный поток push откроется позже.
@@ -3374,6 +3541,14 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 			return false;
 		// Если название либо значение поля синтаксически некорректно
 		if(!::validName(field.name) || !::validValue(field.value))
+			// Выводим отрицательный результат
+			return false;
+		/**
+		 * Узел, передающий сообщение дальше по цепочке, проверяет значение по
+		 * грамматике field-content целиком: конечному получателю достаточно
+		 * минимальной проверки, а транслирующему - нет (RFC 9114 §10.3)
+		 */
+		if(proxy && !::translatable(field.value))
 			// Выводим отрицательный результат
 			return false;
 		// Если поле является псевдо-заголовком
@@ -3523,6 +3698,24 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 		if(!hasMethod)
 			// Выводим отрицательный результат
 			return false;
+		/**
+		 * Из псевдо-заголовков запроса следующее звено собирает стартовую строку,
+		 * а отдельных правил их проверки протокол не содержит: RFC 9114 §10.3
+		 * оставляет её тому, кто значения использует. Пробел либо управляющий
+		 * символ внутри значения расщепляет стартовую строку на элементы, которых
+		 * отправитель туда не помещал, а метод сверх того обязан быть токеном
+		 * (RFC 9110 §9.1)
+		 */
+		if(proxy){
+			// Если метод запроса токеном не является
+			if(!::tokenValue(method))
+				// Выводим отрицательный результат
+				return false;
+			// Если схема, адресат либо путь запроса к сборке стартовой строки непригодны
+			if(!::translatablePseudo(scheme) || !::translatablePseudo(authority) || !::translatablePseudo(path))
+				// Выводим отрицательный результат
+				return false;
+		}
 		// Признак метода установления туннеля
 		const bool connect = (method == value::CONNECT);
 		/**
@@ -3635,9 +3828,25 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 		 * Ответы 204 и 304 тела не несут по определению, поэтому объявленная
 		 * длина тела к ним не применяется (RFC 9110 §8.6)
 		 */
-		if((status == value::NO_CONTENT) || (status == value::NOT_MODIFIED))
+		if((status == value::NO_CONTENT) || (status == value::NOT_MODIFIED)){
 			// Запоминаем безтелесность сообщения
 			stream->headless = true;
+			// Запоминаем что сообщение не может нести и секцию трейлеров
+			stream->trailerless = true;
+		}
+		/**
+		 * Ответы 1xx и [204 No Content] тела не несут по определению, и в HTTP/3
+		 * объявленная у них длина попросту игнорируется (RFC 9114 §4.1.2 разрешает
+		 * ненулевой Content-Length прямо). Но узел, передающий такой ответ дальше
+		 * по цепочке, отправить это поле следующему звену не вправе (RFC 9112 §6.1),
+		 * а звено, всё же его получившее и уважившее, прочитает следующий ответ как
+		 * тело этого - граница сообщений в цепочке разойдётся. Ответу
+		 * [304 Not Modified] и ответу на HEAD поле, напротив, разрешено: оно
+		 * описывает тело, которое было бы отправлено в ответ на такой же запрос GET
+		 */
+		if(proxy && (declared != UINT64_MAX) && (((code >= 100) && (code < 200)) || (code == 204)))
+			// Выводим отрицательный результат
+			return false;
 	}
 	// Если проверялась секция потока, а не обещания
 	if(!promise){
@@ -4055,6 +4264,8 @@ void awh::http::Parser_HTTP3::reset() noexcept {
 void awh::http::Parser_HTTP3::clear() noexcept {
 	// Выполняем очистку базового состояния разбора
 	parser_t::clear();
+	// Возвращаем протокол работы парсера к значению по умолчанию
+	this->_proto = proto_t::HTTP3;
 	// Возвращаем лимиты безопасности к значениям по умолчанию
 	this->_limits = limits_t();
 	// Возвращаем наши параметры к значениям по умолчанию
@@ -4077,6 +4288,8 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP3::clone() const noexcept
 	try {
 		// Создаём копию парсера с теми же направлением и настройками
 		unique_ptr <Parser_HTTP3> result(new Parser_HTTP3(this->_direct, this->_fmk, this->_log));
+		// Переносим протокол работы парсера: роль узла на соединении - такая же настройка, как лимиты
+		result->_proto = this->_proto;
 		// Переносим лимиты безопасности
 		result->_limits = this->_limits;
 		// Переносим наши параметры
@@ -4149,6 +4362,45 @@ void awh::http::Parser_HTTP3::aborted(const uint64_t sid, const uint64_t code) n
 	this->closeStream(sid, static_cast <error_t> (code));
 }
 
+/**
+ * @brief Метод получения протокола, с которым работает парсер
+ *
+ * @return протокол работы парсера
+ *
+ */
+awh::http::proto_t awh::http::Parser_HTTP3::proto() const noexcept {
+	// Выводим протокол работы парсера
+	return this->_proto;
+}
+/**
+ * @brief Метод установки протокола, с которым работает парсер
+ *
+ * @param proto протокол работы парсера
+ *
+ */
+void awh::http::Parser_HTTP3::proto(const proto_t proto) noexcept {
+	/**
+	 * Определяем принадлежность указанного протокола к семейству HTTP/3
+	 */
+	switch(static_cast <uint8_t> (proto)){
+		// Прямое соединение с узлом, работа промежуточным узлом либо туннель WebSocket
+		case static_cast <uint8_t> (proto_t::HTTP3):
+		case static_cast <uint8_t> (proto_t::PROXY3):
+		case static_cast <uint8_t> (proto_t::WEBSOCKET3):
+			// Устанавливаем протокол работы парсера
+			this->_proto = proto;
+		break;
+		/**
+		 * Протокол другого семейства этот парсер разобрать не может, и принять такое
+		 * указание молча означало бы оставить вызывающую сторону в уверенности, что
+		 * оно учтено
+		 */
+		default: this->_log->print(
+			"HTTP/3 parser speaks HTTP/3 only: the protocol has not been changed",
+			log_t::flag_t::CRITICAL
+		);
+	}
+}
 /**
  * @brief Метод получения лимитов безопасности парсера
  *
@@ -4355,6 +4607,22 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const vector <h3::
 		// Выходим из метода
 		return;
 	/**
+	 * Ответы 204 и 304 завершаются концом секции полей и не несут ни содержимого,
+	 * ни трейлеров (RFC 9110 §15.3.5, §15.4.5). Признак ставится в момент отправки
+	 * самой такой секции, поэтому любая следующая по этому потоку - уже трейлеры
+	 */
+	const stream_t * target = this->findStream(sid);
+	// Если по потоку уже отправлен ответ, трейлеров не допускающий
+	if((target != nullptr) && target->trailerlessSend){
+		// Записываем сообщение об отказе в лог
+		this->_log->print(
+			"HTTP/3 response on stream %llu cannot carry trailers",
+			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+		);
+		// Выходим из метода
+		return;
+	}
+	/**
 	 * После GOAWAY сервера клиент не открывает новых потоков запроса (RFC 9114 §5.2):
 	 * сервер объявил, что не станет их обрабатывать. Проверяется именно открытие -
 	 * секции уже открытого потока, включая трейлеры, отправляются штатно. Сравнение
@@ -4399,19 +4667,15 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const vector <h3::
 		// Выходим из метода
 		return;
 	}
-	// Выгружаем накопленные инструкции кодека
-	this->flushQpack();
-	// Выполняем очистку буфера сборки кадра
-	this->_frame.clear();
-	// Собираем кадр секции полей
-	h3::frame::serialize::headers(this->_frame, this->_section);
-	// Отправляем кадр секции полей
-	this->emit(sid, this->_frame.data(), this->_frame.size(), endStream);
 	// Получаем состояние потока
 	stream_t & stream = this->stream(sid);
 	/**
 	 * Ответ на запрос HEAD тела не несёт, поэтому объявленная в нём длина тела
-	 * к принятому телу не применяется (RFC 9110 §9.3.2)
+	 * к принятому телу не применяется (RFC 9110 §9.3.2), а отправляемые нами
+	 * ответы 204 и 304 не несут ни содержимого, ни трейлеров (§15.3.5, §15.4.5).
+	 * Признаки выставляются до выхода наружу: emit() отдаёт байты обвязке
+	 * синхронно, и та вправе прямо оттуда продолжить сообщение - тело либо
+	 * трейлеры ушли бы на провод раньше, чем запрет на них начал действовать
 	 */
 	for(const auto & field : fields){
 		// Если запрос отправляется методом HEAD
@@ -4420,8 +4684,24 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const vector <h3::
 			stream.headless = true;
 			// Прекращаем перебор полей секции
 			break;
+		// Если отправляется ответ, не несущий ни тела, ни трейлеров
+		} else if((field.name == header::STATUS) && ((field.value == value::NO_CONTENT) || (field.value == value::NOT_MODIFIED))) {
+			// Запоминаем что отправляемое сообщение тела нести не может
+			stream.headlessSend = true;
+			// Запоминаем что отправляемое сообщение трейлеров нести не может
+			stream.trailerlessSend = true;
+			// Прекращаем перебор полей секции
+			break;
 		}
 	}
+	// Выгружаем накопленные инструкции кодека
+	this->flushQpack();
+	// Выполняем очистку буфера сборки кадра
+	this->_frame.clear();
+	// Собираем кадр секции полей
+	h3::frame::serialize::headers(this->_frame, this->_section);
+	// Отправляем кадр секции полей
+	this->emit(sid, this->_frame.data(), this->_frame.size(), endStream);
 	// Если поток завершается вместе с секцией полей
 	if(endStream){
 		// Запоминаем завершение потока в нашем направлении
@@ -5201,6 +5481,7 @@ void awh::http::Parser_HTTP3::on(data_callback_t callback) noexcept {
 awh::http::Parser_HTTP3::Parser_HTTP3(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
  parser_t(direct, fmk, log),
  _endpoint((direct == direct_t::REQUEST) ? h3::endpoint_t::SERVER : h3::endpoint_t::CLIENT),
+ _proto(proto_t::HTTP3),
  _encoder(0, 0), _decoder(h3::proto::QPACK_TABLE_CAPACITY, h3::proto::QPACK_BLOCKED_STREAMS),
  _controlLocal(UINT64_MAX), _controlRemote(UINT64_MAX), _encoderLocal(UINT64_MAX),
  _decoderLocal(UINT64_MAX), _encoderRemote(UINT64_MAX), _decoderRemote(UINT64_MAX),

@@ -2470,6 +2470,8 @@ TEST_F(ParserFixture, SendBodilessResponseTest){
 	};
 	// Проверяем что ответ 1xx собирается без объявления размера тела и без самого тела
 	EXPECT_EQ(build(method_t::GET, 100, "Content-Length", "5", 0u), "HTTP/1.1 100 Continue\r\n\r\n");
+	// Проверяем что промежуточный ответ 102 также собирается без тела
+	EXPECT_EQ(build(method_t::GET, 102, "Content-Length", "5", 0u), "HTTP/1.1 102 Processing\r\n\r\n");
 	// Проверяем что ответ 1xx собирается без объявления кодирования тела
 	EXPECT_EQ(build(method_t::GET, 100, "Transfer-Encoding", "chunked", 0u), "HTTP/1.1 100 Continue\r\n\r\n");
 	// Проверяем что нулевой размер тела в ответе 204 также снимается с провода
@@ -2493,16 +2495,19 @@ TEST_F(ParserFixture, SendBodilessResponseTest){
 	EXPECT_EQ(build(method_t::GET, 200, "Content-Length", "5", 5u), "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello");
 }
 /**
- * @brief Метод проверки ответа, открывающего туннель
+ * @brief Метод проверки ответа, передающего соединение другому протоколу
  *
- * @details Успешный ответ на запрос CONNECT превращает соединение в туннель сразу за
- *          пустой строкой, завершающей блок заголовков (RFC 9112 §6.3 п.2). Заголовки
- *          Content-Length и Transfer-Encoding в таком ответе отправлять запрещено
- *          (§6.2), а байты за блоком заголовков принадлежат туннелю и кадрированию
- *          не подлежат. Неуспешный ответ на CONNECT остаётся обычным ответом
+ * @details Ответ [101 Switching Protocols] переключает протокол, а успешный ответ на
+ *          запрос CONNECT открывает туннель - и то и другое вступает в силу сразу за
+ *          пустой строкой, завершающей блок заголовков (RFC 9110 §15.2.2,
+ *          RFC 9112 §6.3 п.2). Заголовки Content-Length и Transfer-Encoding в таком
+ *          ответе отправлять запрещено (RFC 9112 §6.1, §6.2), а байты за блоком
+ *          заголовков принадлежат уже новому протоколу и кадрированию не подлежат.
+ *          Приёмник трактует оба ответа одинаково, и сборка обязана этому
+ *          соответствовать. Неуспешный ответ на CONNECT остаётся обычным ответом
  *
  */
-TEST_F(ParserFixture, SendTunnelResponseTest){
+TEST_F(ParserFixture, SendProtocolSwitchResponseTest){
 	/**
 	 * @brief Функция сборки ответа на запрос CONNECT
 	 *
@@ -2512,11 +2517,11 @@ TEST_F(ParserFixture, SendTunnelResponseTest){
 	 * @return      собранные байты исходящего сообщения
 	 *
 	 */
-	auto build = [this](const uint16_t code, const std::string & name, const std::string & value) noexcept -> std::string {
+	auto build = [this](const method_t method, const uint16_t code, const std::string & name, const std::string & value) noexcept -> std::string {
 		// Создаём объект парсера-отправителя ответа
 		auto sender = this->make(direct_t::RESPONSE);
 		// Устанавливаем метод запроса, которому соответствует собираемый ответ
-		sender->method(method_t::CONNECT);
+		sender->method(method);
 		// Формируем контейнер заголовков ответа с провайдером
 		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, code));
 		// Дописываем заголовок кадрирования тела
@@ -2528,12 +2533,82 @@ TEST_F(ParserFixture, SendTunnelResponseTest){
 		// Выводим собранные байты исходящего сообщения
 		return std::string(sender->pending());
 	};
-	// Проверяем что успешный ответ снимает объявление размера тела, а содержимое туннеля идёт без кадрирования
-	EXPECT_EQ(build(200, "Content-Length", "5"), "HTTP/1.1 200 OK\r\n\r\nhello");
-	// Проверяем что успешный ответ снимает и объявление кодирования тела
-	EXPECT_EQ(build(200, "Transfer-Encoding", "chunked"), "HTTP/1.1 200 OK\r\n\r\nhello");
+	// Проверяем что успешный ответ на CONNECT снимает объявление размера тела, а содержимое туннеля идёт без кадрирования
+	EXPECT_EQ(build(method_t::CONNECT, 200, "Content-Length", "5"), "HTTP/1.1 200 OK\r\n\r\nhello");
+	// Проверяем что успешный ответ на CONNECT снимает и объявление кодирования тела
+	EXPECT_EQ(build(method_t::CONNECT, 200, "Transfer-Encoding", "chunked"), "HTTP/1.1 200 OK\r\n\r\nhello");
 	// Проверяем что неуспешный ответ на CONNECT остаётся обычным ответом с кадрированным телом
-	EXPECT_EQ(build(407, "Content-Length", "5"), "HTTP/1.1 407 Proxy Authentication Required\r\nContent-Length: 5\r\n\r\nhello");
+	EXPECT_EQ(build(method_t::CONNECT, 407, "Content-Length", "5"), "HTTP/1.1 407 Proxy Authentication Required\r\nContent-Length: 5\r\n\r\nhello");
+	/**
+	 * Проверяем что ответ 101 пропускает поток переключённого протокола без кадрирования
+	 *
+	 * Приёмник оставляет байты за блоком заголовков переключённому протоколу, и
+	 * отбрасывать их на сборке означало бы терять каждый кадр нового протокола
+	 */
+	EXPECT_EQ(build(method_t::GET, 101, "Upgrade", "websocket"), "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\nhello");
+	// Проверяем что ответ 101 снимает объявление размера тела, запрещённое в ответах 1xx
+	EXPECT_EQ(build(method_t::GET, 101, "Content-Length", "5"), "HTTP/1.1 101 Switching Protocols\r\n\r\nhello");
+	// Проверяем что ответ 101 снимает и объявление кодирования тела
+	EXPECT_EQ(build(method_t::GET, 101, "Transfer-Encoding", "chunked"), "HTTP/1.1 101 Switching Protocols\r\n\r\nhello");
+}
+/**
+ * @brief Метод проверки отказа собрать сообщение с параметрами у кодирования chunked
+ *
+ * @details Кодирование chunked параметров не определяет, и RFC 9112 §7.1 предписывает
+ *          считать их присутствие ошибкой. Собственный приёмник такое объявление
+ *          отвергает, поэтому выдать его на провод означало бы собрать кадр,
+ *          отвергаемый обеими сторонами. Параметры у прочих кодирований, напротив,
+ *          законны и объявление не портят
+ *
+ */
+TEST_F(ParserFixture, SendChunkedWithParametersTest){
+	/**
+	 * @brief Функция сборки ответа с заданным объявлением кодирования
+	 *
+	 * @param value значение заголовка транспортного кодирования
+	 * @return      собранные байты исходящего сообщения
+	 *
+	 */
+	auto build = [this](const std::string & value) noexcept -> std::string {
+		// Создаём объект парсера-отправителя ответа
+		auto sender = this->make(direct_t::RESPONSE);
+		// Формируем контейнер заголовков ответа с провайдером
+		headers_t response(std::make_unique <response_t> (version_t::HTTP1_1, static_cast <uint16_t> (200)));
+		// Дописываем заголовок кодирования тела сообщения
+		response.emplace("Transfer-Encoding", value);
+		// Отправляем заголовки ответа (тело последует)
+		sender->sendHeaders(response, false);
+		// Передаём тело ответа с завершением сообщения
+		sender->sendData("hello", 5, true);
+		// Выводим собранные байты исходящего сообщения
+		return std::string(sender->pending());
+	};
+	// Проверяем что параметры у кадрирующего кодирования отвергают сообщение
+	EXPECT_TRUE(build("chunked;foo=bar").empty());
+	// Проверяем что параметры у кадрирующего кодирования отвергают сообщение и в списке
+	EXPECT_TRUE(build("gzip, chunked;foo=bar").empty());
+	// Проверяем что параметры у прочих кодирований объявление не портят
+	EXPECT_FALSE(build("gzip;q=1, chunked").empty());
+	// Проверяем что голое кадрирующее кодирование по-прежнему принимается
+	EXPECT_FALSE(build("chunked").empty());
+	/**
+	 * Проверяем что собранное объявление разбирается собственным приёмником
+	 *
+	 * Именно это свойство проверка и защищает: выданное на провод обязано быть
+	 * принято тем же кодом, что его разбирает
+	 */
+	{
+		// Создаём объект парсера-приёмника ответа
+		auto receiver = this->make(direct_t::RESPONSE);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		receiver->method(method_t::GET);
+		// Получаем собранные байты исходящего сообщения
+		const std::string wire = build("gzip;q=1, chunked");
+		// Разбираем собранное сообщение собственным приёмником
+		receiver->parse(wire.data(), wire.size());
+		// Проверяем что собранное сообщение разобрано полностью
+		EXPECT_EQ(receiver->status(), parser_t::status_t::COMPLETE) << receiver->errorName();
+	}
 }
 /**
  * @brief Метод проверки автоматически формируемых заголовков

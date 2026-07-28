@@ -1752,6 +1752,225 @@ TEST_F(ParserFixture, HostRequirementsTest){
 	ASSERT_EQ(probe("", false), parser_http_t::error_t::NONE);
 	// Проверяем что отсутствие заголовка Host в строгом режиме отвергается
 	ASSERT_EQ(probe("", true), parser_http_t::error_t::INVALID_HOST);
+	/**
+	 * Проверяем что негодный заголовок Host не доходит до функции обратного вызова
+	 *
+	 * Обработка поля прерывается до уведомления - тем же порядком, что и у негодного
+	 * Content-Length. Иначе вызывающая сторона получала бы заведомо битый заголовок и
+	 * узнавала о его негодности лишь по итогу разбора: прокси успел бы передать его
+	 * дальше по цепочке
+	 */
+	{
+		// Создаём объект парсера-приёмника запроса
+		auto parser = this->make(direct_t::REQUEST);
+		// Число доставленных функции обратного вызова полей
+		size_t delivered = 0;
+		// Устанавливаем функцию обратного вызова обработки заголовков сообщения
+		parser->on(parser_http_t::header_callback_t([&delivered](const int32_t, const std::string_view, const std::string_view, const parser_t::part_t) noexcept -> bool {
+			// Считаем доставленное поле
+			++delivered;
+			// Продолжаем разбор
+			return true;
+		}));
+		// Формируем запрос с недопустимым значением заголовка Host
+		const std::string message = "GET / HTTP/1.1\r\nHost: anyks.com evil.com\r\n\r\n";
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Проверяем что разбор остановлен по недопустимому значению заголовка Host
+		ASSERT_EQ(parser->error(), parser_http_t::error_t::INVALID_HOST);
+		// Проверяем что негодный заголовок наружу не отдан
+		ASSERT_EQ(delivered, 0u);
+	}
+}
+
+/**
+ * @brief Метод тестирования ужесточённого кадрирования в режиме прокси
+ *
+ * @details Ответы с кодом 1xx и [204 No Content] заканчиваются первой пустой строкой
+ *          после блока заголовков независимо от присутствующих в нём полей
+ *          (RFC 9112 §6.3 п.1), а отправлять в них Content-Length и Transfer-Encoding
+ *          запрещено (§6.1, §6.2). При прямом соединении объявление просто
+ *          игнорируется, но узел, передающий сообщение дальше по цепочке, обязан
+ *          отвергнуть то, что следующее звено может истолковать иначе: звено,
+ *          уважившее объявленный размер, прочитает следующий ответ как тело этого.
+ *          По той же причине отвергается кодирование, не заканчивающееся токеном
+ *          chunked: такое тело ограничено только закрытием соединения и само себя
+ *          не размечает. Ответу [304 Not Modified] и ответу на HEAD объявления
+ *          разрешены - они описывают тело, которое ушло бы в ответ на такой же GET
+ *
+ */
+TEST_F(ParserFixture, ProxyFramingStrictnessTest){
+	/**
+	 * @brief Функция разбора ответа сервера с заданным протоколом работы
+	 *
+	 * @param message разбираемое сообщение
+	 * @param proto   протокол работы парсера
+	 * @return        код ошибки разбора
+	 *
+	 */
+	auto probe = [this](const std::string & message, const proto_t proto) noexcept -> parser_http_t::error_t {
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Устанавливаем протокол работы парсера
+		parser->proto(proto);
+		// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
+		parser->method(method_t::GET);
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Выводим код ошибки разбора
+		return parser->error();
+	};
+	// Формируем ответ [204 No Content] с объявленным размером тела
+	const std::string lengthy = "HTTP/1.1 204 No Content\r\nContent-Length: 5\r\n\r\nhello";
+	// Формируем ответ [204 No Content] с объявленным кодированием тела
+	const std::string chunked = "HTTP/1.1 204 No Content\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n";
+	// Формируем информационный ответ с объявленным размером тела
+	const std::string interim = "HTTP/1.1 100 Continue\r\nContent-Length: 5\r\n\r\nhello";
+	// Формируем ответ с кодированием, не заканчивающимся токеном chunked
+	const std::string unframed = "HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip\r\n\r\nbody";
+	/**
+	 * Проверяем что при прямом соединении объявления игнорируются, а не отвергаются
+	 *
+	 * Это буквальное следование RFC 9112 §6.3, и ужесточать его вне цепочки узлов
+	 * означало бы ломать законный трафик
+	 */
+	ASSERT_EQ(probe(lengthy, proto_t::HTTP1), parser_http_t::error_t::NONE);
+	// Проверяем что объявленное кодирование при прямом соединении также игнорируется
+	ASSERT_EQ(probe(chunked, proto_t::HTTP1), parser_http_t::error_t::NONE);
+	// Проверяем что информационный ответ при прямом соединении принимается
+	ASSERT_EQ(probe(interim, proto_t::HTTP1), parser_http_t::error_t::NONE);
+	// Проверяем что кодирование без завершающего chunked при прямом соединении принимается
+	ASSERT_EQ(probe(unframed, proto_t::HTTP1), parser_http_t::error_t::NONE);
+	// Проверяем что в режиме прокси объявленный размер тела у ответа 204 отвергается
+	ASSERT_EQ(probe(lengthy, proto_t::PROXY1), parser_http_t::error_t::INVALID_CONTENT_LENGTH);
+	// Проверяем что в режиме прокси объявленное кодирование у ответа 204 отвергается
+	ASSERT_EQ(probe(chunked, proto_t::PROXY1), parser_http_t::error_t::INVALID_TRANSFER_ENCODING);
+	// Проверяем что в режиме прокси объявленный размер тела у информационного ответа отвергается
+	ASSERT_EQ(probe(interim, proto_t::PROXY1), parser_http_t::error_t::INVALID_CONTENT_LENGTH);
+	// Проверяем что в режиме прокси кодирование без завершающего chunked отвергается
+	ASSERT_EQ(probe(unframed, proto_t::PROXY1), parser_http_t::error_t::INVALID_TRANSFER_ENCODING);
+	/**
+	 * Проверяем что ответу [304 Not Modified] объявление размера тела разрешено
+	 *
+	 * Заголовок описывает тело, которое было бы отправлено в ответ на такой же
+	 * запрос GET, и отвергать его недопустимо даже на границе сети
+	 */
+	ASSERT_EQ(probe("HTTP/1.1 304 Not Modified\r\nContent-Length: 5\r\n\r\n", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что обычный ответ с размером тела в режиме прокси принимается
+	ASSERT_EQ(probe("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что обычный ответ с кадрированием chunked в режиме прокси принимается
+	ASSERT_EQ(probe("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	/**
+	 * Проверяем что протокол чужого семейства не принимается
+	 *
+	 * Разбирать HTTP/2 этот парсер не умеет, и молчаливое принятие такого указания
+	 * создало бы у вызывающей стороны ложное представление о происходящем
+	 */
+	{
+		// Создаём объект парсера-приёмника ответа
+		auto parser = this->make(direct_t::RESPONSE);
+		// Проверяем что по умолчанию установлено прямое соединение
+		ASSERT_EQ(parser->proto(), proto_t::HTTP1);
+		// Пытаемся установить протокол чужого семейства
+		parser->proto(proto_t::HTTP2);
+		// Проверяем что протокол работы парсера не изменился
+		ASSERT_EQ(parser->proto(), proto_t::HTTP1);
+		// Устанавливаем протокол работы через прокси-сервер
+		parser->proto(proto_t::PROXY1);
+		// Проверяем что протокол работы парсера установлен
+		ASSERT_EQ(parser->proto(), proto_t::PROXY1);
+	}
+}
+
+/**
+ * @brief Метод тестирования сверки адресата цели запроса с заголовком Host
+ *
+ * @details Цель в absolute-form несёт адресата сама, и тогда в запросе их оказывается
+ *          два. Получателю предписано брать адресата из цели и заголовок игнорировать
+ *          (RFC 9112 §3.2.2), а клиенту - присылать заголовок, совпадающий с адресатом
+ *          цели (RFC 9110 §7.2). Соблюдают это не все звенья цепочки: одно
+ *          маршрутизирует по цели, другое смотрит на заголовок - и они расходятся в
+ *          том, кому адресован один и тот же запрос. Проверка выполняется только в
+ *          режиме прокси: конечному получателю расходиться не с кем.
+ *          Адресат "anyks.com" и адресат "anyks.com:80" при схеме http обозначают один
+ *          узел, поэтому порт сверяется с подстановкой стандартного для схемы
+ *
+ */
+TEST_F(ParserFixture, ProxyTargetHostTest){
+	/**
+	 * @brief Функция разбора запроса с заданной целью и заголовком Host
+	 *
+	 * @param target цель запроса
+	 * @param host   значение заголовка Host
+	 * @param proto  протокол работы парсера
+	 * @return       код ошибки разбора
+	 *
+	 */
+	auto probe = [this](const std::string & target, const std::string & host, const proto_t proto) noexcept -> parser_http_t::error_t {
+		// Создаём объект парсера-приёмника запроса
+		auto parser = this->make(direct_t::REQUEST);
+		// Устанавливаем протокол работы парсера
+		parser->proto(proto);
+		// Формируем разбираемое сообщение
+		const std::string message = ("GET " + target + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n");
+		// Выполняем разбор сформированного сообщения
+		parser->parse(message.data(), message.size());
+		// Выводим код ошибки разбора
+		return parser->error();
+	};
+	// Проверяем что совпадающий адресат принимается
+	ASSERT_EQ(probe("http://anyks.com/x", "anyks.com", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что явно указанный стандартный порт схемы расхождением не считается
+	ASSERT_EQ(probe("http://anyks.com/x", "anyks.com:80", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что стандартный порт схемы в цели расхождением не считается
+	ASSERT_EQ(probe("http://anyks.com:80/x", "anyks.com", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что стандартный порт защищённой схемы также подставляется
+	ASSERT_EQ(probe("https://anyks.com/x", "anyks.com:443", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что регистр имени узла на сверку не влияет
+	ASSERT_EQ(probe("http://ANYKS.COM/x", "anyks.com", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что совпадающий нестандартный порт принимается
+	ASSERT_EQ(probe("http://anyks.com:8080/x", "anyks.com:8080", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что параметры пользователя в цели на сверку не влияют
+	ASSERT_EQ(probe("http://user:pass@anyks.com/x", "anyks.com", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что литерал IPv6 разбирается вместе с портом
+	ASSERT_EQ(probe("http://[::1]:8080/x", "[::1]:8080", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что литерал IPv6 без порта также принимается
+	ASSERT_EQ(probe("http://[::1]/x", "[::1]", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	/**
+	 * Проверяем что цель без адресата сверку проходит
+	 *
+	 * Ни origin-form, ни asterisk-form адресата не содержат, и сравнивать не с чем
+	 */
+	ASSERT_EQ(probe("/x", "anyks.com", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что цель вида asterisk-form сверку также проходит
+	ASSERT_EQ(probe("*", "anyks.com", proto_t::PROXY1), parser_http_t::error_t::NONE);
+	// Проверяем что подмена имени узла отвергается
+	ASSERT_EQ(probe("http://anyks.com/x", "evil.com", proto_t::PROXY1), parser_http_t::error_t::INVALID_HOST);
+	/**
+	 * Проверяем что подмена имени узла той же длины отвергается
+	 *
+	 * Случай отделён намеренно: подмену другой длины отсекает сравнение длин, и без
+	 * равной длины посимвольное сравнение имён оставалось бы непроверенным
+	 */
+	ASSERT_EQ(probe("http://anyks.com/x", "anyks.net", proto_t::PROXY1), parser_http_t::error_t::INVALID_HOST);
+	// Проверяем что подмена имени узла регистронезависимо отличающимся именем отвергается
+	ASSERT_EQ(probe("http://anyks.com/x", "ANYKS.NET", proto_t::PROXY1), parser_http_t::error_t::INVALID_HOST);
+	// Проверяем что подмена имени узла поддоменом отвергается
+	ASSERT_EQ(probe("http://anyks.com/x", "anyks.com.evil.com", proto_t::PROXY1), parser_http_t::error_t::INVALID_HOST);
+	// Проверяем что расхождение по порту отвергается
+	ASSERT_EQ(probe("http://anyks.com/x", "anyks.com:8080", proto_t::PROXY1), parser_http_t::error_t::INVALID_HOST);
+	// Проверяем что расхождение по порту отвергается и в обратную сторону
+	ASSERT_EQ(probe("http://anyks.com:8080/x", "anyks.com", proto_t::PROXY1), parser_http_t::error_t::INVALID_HOST);
+	/**
+	 * Проверяем что при прямом соединении сверка не выполняется
+	 *
+	 * Получателю предписано брать адресата из цели и заголовок игнорировать, и
+	 * отвергать по расхождению вне цепочки узлов означало бы ужесточать RFC там,
+	 * где расходиться не с кем
+	 */
+	ASSERT_EQ(probe("http://anyks.com/x", "evil.com", proto_t::HTTP1), parser_http_t::error_t::NONE);
+	// Проверяем что расхождение по порту при прямом соединении также принимается
+	ASSERT_EQ(probe("http://anyks.com:8080/x", "anyks.com", proto_t::HTTP1), parser_http_t::error_t::NONE);
 }
 
 /**

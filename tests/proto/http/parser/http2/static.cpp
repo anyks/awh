@@ -75,6 +75,39 @@ namespace {
 		// Выводим собранный кадр
 		return result;
 	}
+	/**
+	 * @brief Функция сборки блока заголовков литералами без индексирования (RFC 7541 §6.2.2)
+	 *
+	 * @details Литерал без индексирования динамическую таблицу не меняет, поэтому
+	 *          собранный вручную блок не расходится с состоянием кодера пира.
+	 *          Названия и значения кодируются без Хаффмана и длиной до 127 октетов -
+	 *          для проверок этого достаточно
+	 *
+	 * @param fields список полей блока
+	 * @return       собранный блок заголовков
+	 *
+	 */
+	std::string block(const std::vector <std::pair <std::string, std::string>> & fields) noexcept {
+		// Результат работы функции - собранный блок заголовков
+		std::string result;
+		/**
+		 * Выполняем перебор всех полей блока
+		 */
+		for(const auto & field : fields){
+			// Дописываем префикс литерала без индексирования с новым названием
+			result.push_back('\x00');
+			// Дописываем длину названия поля
+			result.push_back(static_cast <char> (field.first.size() & 0x7F));
+			// Дописываем название поля
+			result += field.first;
+			// Дописываем длину значения поля
+			result.push_back(static_cast <char> (field.second.size() & 0x7F));
+			// Дописываем значение поля
+			result += field.second;
+		}
+		// Выводим собранный блок заголовков
+		return result;
+	}
 }
 
 /**
@@ -4873,6 +4906,470 @@ TEST_F(ParserHttp2Fixture, ForbiddenTrailerTest){
 }
 
 /**
+ * @brief Метод проверки полноты списка запрещённых в трейлерах полей (RFC 9110 §6.5.1)
+ *
+ * @details RFC перечисляет категории, а не поля: кадрирование, маршрутизация,
+ *          модификаторы и условные поля запроса, аутентификация, управляющие
+ *          данные ответа, состояние сессии. Проверяется по представителю каждой
+ *          категории, а заодно и обратное: в обычном блоке заголовков то же поле
+ *          проходит - запрет принадлежит секции трейлеров, а не самому полю
+ *
+ */
+TEST_F(ParserHttp2Fixture, ForbiddenTrailerCategoriesTest){
+	/**
+	 * Таблица проверяемых полей: представитель категории и признак запрета
+	 * в секции трейлеров
+	 */
+	const std::vector <std::pair <const char *, bool>> probes = {
+		{"if-modified-since", true},  // условные поля запроса
+		{"date", true},               // управляющие данные ответа
+		{"set-cookie", true},         // состояние сессии
+		{"www-authenticate", true},   // аутентификация
+		{"vary", true},               // управляющие данные ответа
+		{"x-checksum", false}         // поле без определённой семантики - разрешено
+	};
+	/**
+	 * Выполняем перебор всех проверяемых полей
+	 */
+	for(const auto & probe : probes){
+		/**
+		 * Проверяем обе секции: в трейлерах поле обязано быть отвергнуто,
+		 * а в обычном блоке заголовков - принято
+		 */
+		for(int variant = 0; variant < 2; ++variant){
+			// Создаём объект парсера сервера
+			auto server = this->make(direct_t::REQUEST);
+			// Создаём объект парсера клиента
+			auto client = this->make(direct_t::RESPONSE);
+			// Создаём объекты сборщиков событий парсеров
+			events_t serverEvents, clientEvents;
+			// Подписываем сборщик событий сервера
+			this->attach(* server, serverEvents);
+			// Подписываем сборщик событий клиента
+			this->attach(* client, clientEvents);
+			// Соединяем парсеры каналами записи
+			this->connect(* client, * server);
+			// Выполняем рукопожатие соединения
+			this->handshake(* client, * server);
+			// Выделяем идентификатор нового потока клиента
+			const uint32_t sid = client->nextStreamId();
+			// Формируем заголовки запроса
+			std::vector <h2::hpack::field_t> fields;
+			// Дописываем псевдо-заголовок метода запроса
+			fields.emplace_back(":method", "POST");
+			// Дописываем псевдо-заголовок схемы запроса
+			fields.emplace_back(":scheme", "https");
+			// Дописываем псевдо-заголовок адресата запроса
+			fields.emplace_back(":authority", "example.com");
+			// Дописываем псевдо-заголовок пути запроса
+			fields.emplace_back(":path", "/upload");
+			// Если проверяется обычный блок заголовков - кладём поле в него
+			if(variant == 1)
+				// Дописываем проверяемое поле в блок заголовков запроса
+				fields.emplace_back(probe.first, "value");
+			// Отправляем заголовки запроса (тело последует)
+			client->sendHeaders(sid, fields, false);
+			// Формируем тело запроса
+			const std::string body(16, 'x');
+			// Отправляем тело без завершения потока (завершат трейлеры)
+			client->sendData(sid, body.data(), body.size(), false);
+			// Формируем секцию трейлеров
+			std::vector <h2::hpack::field_t> trailers;
+			// Дописываем в трейлеры проверяемое поле либо заведомо разрешённое
+			trailers.emplace_back(((variant == 0) ? probe.first : "x-trailer"), "value");
+			// Отправляем трейлеры с завершением потока
+			client->sendHeaders(sid, trailers, true);
+			// Признак ожидаемого отказа: запрещённое поле только в секции трейлеров
+			const bool rejected = (probe.second && (variant == 0));
+			// Если поток обязан быть сброшен как малформированный
+			if(rejected){
+				// Проверяем что поток сброшен
+				ASSERT_EQ(serverEvents.closes.size(), 1u) << "field: " << probe.first << ", variant: " << variant;
+				// Проверяем код сброса потока
+				ASSERT_EQ(serverEvents.closes.front().second, parser_http2_t::error_t::PROTOCOL_ERROR) << "field: " << probe.first;
+			// Иначе поток обязан быть принят целиком
+			} else {
+				/**
+				 * Сброса быть не должно: поток остаётся открытым, потому что своей
+				 * половины сервер ещё не завершил, и события закрытия не будет вовсе
+				 */
+				ASSERT_TRUE(serverEvents.closes.empty()) << "field: " << probe.first << ", variant: " << variant;
+				// Признак доставки секции трейлеров приложению
+				bool delivered = false;
+				/**
+				 * Выполняем поиск поля секции трейлеров среди собранных сервером полей
+				 */
+				for(const auto & item : serverEvents.headers){
+					// Если найдено поле секции трейлеров
+					if(std::get <3> (item) == parser_t::part_t::TRAILER)
+						// Запоминаем что секция трейлеров доставлена
+						delivered = true;
+				}
+				// Секция трейлеров обязана дойти до приложения
+				ASSERT_TRUE(delivered) << "field: " << probe.first << ", variant: " << variant;
+			}
+			// Проверяем что соединение осталось живо в любом случае
+			ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL) << "field: " << probe.first << ", variant: " << variant;
+		}
+	}
+}
+
+/**
+ * @brief Метод проверки отбраковки трейлеров в принимаемых ответах 204 и 304 (RFC 9110 §15.3.5, §15.4.5)
+ *
+ * @details Оба ответа завершаются концом секции заголовков и не несут ни
+ *          содержимого, ни трейлеров. Тело на приёме отвергалось и раньше,
+ *          а секция трейлеров проходила: запрет был односторонним - действовал
+ *          на отправке и не действовал на приёме
+ *
+ */
+TEST_F(ParserHttp2Fixture, NoContentResponseTrailersRejectedTest){
+	/**
+	 * Проверяем оба статуса: правило у них общее, а формулировки в RFC раздельные
+	 */
+	for(const uint16_t code : {204, 304}){
+		// Создаём объект парсера сервера
+		auto server = this->make(direct_t::REQUEST);
+		// Создаём объект парсера клиента
+		auto client = this->make(direct_t::RESPONSE);
+		// Создаём объекты сборщиков событий парсеров
+		events_t serverEvents, clientEvents;
+		// Подписываем сборщик событий сервера
+		this->attach(* server, serverEvents);
+		// Подписываем сборщик событий клиента
+		this->attach(* client, clientEvents);
+		// Соединяем парсеры каналами записи
+		this->connect(* client, * server);
+		// Выполняем рукопожатие соединения
+		this->handshake(* client, * server);
+		// Формируем заголовки запроса
+		std::vector <h2::hpack::field_t> fields;
+		// Дописываем псевдо-заголовок метода запроса
+		fields.emplace_back(":method", "GET");
+		// Дописываем псевдо-заголовок схемы запроса
+		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок адресата запроса
+		fields.emplace_back(":authority", "example.com");
+		// Дописываем псевдо-заголовок пути запроса
+		fields.emplace_back(":path", "/data");
+		// Выделяем идентификатор нового потока клиента
+		const uint32_t sid = client->nextStreamId();
+		// Отправляем запрос с завершением потока
+		client->sendHeaders(sid, fields, true);
+		// Формируем заголовки ответа проверяемым статусом
+		headers_t response(std::make_unique <response_t> (version_t::HTTP2, code));
+		// Отправляем заголовки ответа без завершения потока
+		server->sendHeaders(sid, response, false);
+		// Проверяем что ответ доставлен клиенту
+		ASSERT_EQ(clientEvents.code, code) << "code: " << code;
+		/**
+		 * Секция трейлеров кодируется литералом без индексирования: собственный
+		 * сервер её больше не выпустит, а посторонний кодер разошёлся бы
+		 * с динамической таблицей клиента
+		 */
+		const std::string block = std::string("\x10\x0A", 2) + "x-checksum" + std::string("\x08", 1) + "deadbeef";
+		// Собираем кадр секции трейлеров с завершением потока
+		const std::string trailers = ::frame(0x01, 0x05, sid, block);
+		// Подаём кадр секции трейлеров на разбор клиенту
+		client->parse(trailers.data(), trailers.size());
+		// Проверяем что поток сброшен как малформированный
+		ASSERT_EQ(clientEvents.closes.size(), 1u) << "code: " << code;
+		// Проверяем код сброса потока
+		ASSERT_EQ(clientEvents.closes.front().second, parser_http2_t::error_t::PROTOCOL_ERROR) << "code: " << code;
+		// Проверяем что соединение осталось живо
+		ASSERT_EQ(client->status(), parser_t::status_t::PARTIAL) << "code: " << code;
+	}
+}
+
+/**
+ * @brief Метод проверки семейства протоколов, принимаемых парсером
+ *
+ * @details Парсер разбирает только HTTP/2, поэтому указание протокола другого
+ *          семейства обязано быть отвергнуто, а установленное ранее значение -
+ *          сохранено. Клон получает роль узла наравне с прочими настройками:
+ *          иначе фабрика, настроенная промежуточным узлом, выпускала бы
+ *          соединения, эту роль потерявшие
+ *
+ */
+TEST_F(ParserHttp2Fixture, ProtoFamilyGuardTest){
+	// Создаём объект парсера сервера
+	auto parser = this->make(direct_t::REQUEST);
+	// По умолчанию парсер работает прямым соединением с узлом
+	ASSERT_EQ(parser->proto(), proto_t::HTTP2);
+	// Устанавливаем режим работы промежуточным узлом
+	parser->proto(proto_t::PROXY2);
+	// Проверяем что режим установлен
+	ASSERT_EQ(parser->proto(), proto_t::PROXY2);
+	/**
+	 * Выполняем перебор протоколов чужих семейств
+	 */
+	for(const proto_t proto : {proto_t::HTTP1, proto_t::PROXY1, proto_t::HTTP3, proto_t::PROXY3, proto_t::WEBSOCKET1}){
+		// Выполняем попытку установки протокола чужого семейства
+		parser->proto(proto);
+		// Проверяем что установленный ранее протокол сохранён
+		ASSERT_EQ(parser->proto(), proto_t::PROXY2) << "proto: " << static_cast <uint16_t> (proto);
+	}
+	// Устанавливаем режим туннеля WebSocket поверх расширенного CONNECT
+	parser->proto(proto_t::WEBSOCKET2);
+	// Проверяем что режим своего семейства принят
+	ASSERT_EQ(parser->proto(), proto_t::WEBSOCKET2);
+	// Возвращаем режим работы промежуточным узлом
+	parser->proto(proto_t::PROXY2);
+	// Создаём клон объекта парсера
+	auto clone = parser->clone();
+	// Проверяем что клон создан
+	ASSERT_NE(clone, nullptr);
+	// Проверяем что клон получил роль узла оригинала
+	ASSERT_EQ(static_cast <parser_http2_t *> (clone.get())->proto(), proto_t::PROXY2);
+	// Выполняем полную очистку парсера
+	parser->clear();
+	// Проверяем что протокол вернулся к значению по умолчанию
+	ASSERT_EQ(parser->proto(), proto_t::HTTP2);
+}
+
+/**
+ * @brief Метод проверки отбраковки объявленной длины тела у ответов 1xx и 204 промежуточным узлом (RFC 9113 §10.3)
+ *
+ * @details В HTTP/2 границу сообщения задаёт END_STREAM, поэтому объявленная у
+ *          безтелесного ответа длина ни на что не влияет - RFC 9113 §8.1.1
+ *          разрешает её прямо, и прямому соединению отвергать такой ответ незачем.
+ *          Узел, передающий ответ дальше по цепочке, отправить это поле следующему
+ *          звену не вправе (RFC 9112 §6.1), а звено, всё же его получившее и
+ *          уважившее, прочитает следующий ответ как тело этого. Ровно на это
+ *          указывает RFC 9113 §10.3
+ *
+ */
+TEST_F(ParserHttp2Fixture, ProxyBodylessResponseFramingTest){
+	/**
+	 * Проверяем обе роли узла: расхождение поведения и есть предмет проверки
+	 */
+	for(const bool proxy : {false, true}){
+		/**
+		 * Проверяем оба класса ответов, кадрирования не несущих вовсе
+		 */
+		for(const std::string & code : {std::string("100"), std::string("204")}){
+			// Создаём объект парсера сервера
+			auto server = this->make(direct_t::REQUEST);
+			// Создаём объект парсера клиента
+			auto client = this->make(direct_t::RESPONSE);
+			// Устанавливаем роль узла проверяемому парсеру
+			client->proto(proxy ? proto_t::PROXY2 : proto_t::HTTP2);
+			// Создаём объекты сборщиков событий парсеров
+			events_t serverEvents, clientEvents;
+			// Подписываем сборщик событий сервера
+			this->attach(* server, serverEvents);
+			// Подписываем сборщик событий клиента
+			this->attach(* client, clientEvents);
+			// Соединяем парсеры каналами записи
+			this->connect(* client, * server);
+			// Выполняем рукопожатие соединения
+			this->handshake(* client, * server);
+			// Формируем заголовки запроса
+			std::vector <h2::hpack::field_t> fields;
+			// Дописываем псевдо-заголовок метода запроса
+			fields.emplace_back(":method", "GET");
+			// Дописываем псевдо-заголовок схемы запроса
+			fields.emplace_back(":scheme", "https");
+			// Дописываем псевдо-заголовок адресата запроса
+			fields.emplace_back(":authority", "example.com");
+			// Дописываем псевдо-заголовок пути запроса
+			fields.emplace_back(":path", "/data");
+			// Выделяем идентификатор нового потока клиента
+			const uint32_t sid = client->nextStreamId();
+			// Отправляем запрос с завершением потока
+			client->sendHeaders(sid, fields, true);
+			/**
+			 * Блок заголовков ответа собирается вручную: собственный сервер объявленную
+			 * длину тела к такому ответу не приписывает, а проверяется здесь приём
+			 */
+			const std::string headers = ::frame(0x01, 0x04, sid, ::block({{":status", code}, {"content-length", "5"}}));
+			// Подаём блок заголовков ответа на разбор клиенту
+			client->parse(headers.data(), headers.size());
+			// Если парсер работает промежуточным узлом
+			if(proxy){
+				// Проверяем что поток сброшен как малформированный
+				ASSERT_EQ(clientEvents.closes.size(), 1u) << "code: " << code;
+				// Проверяем код сброса потока
+				ASSERT_EQ(clientEvents.closes.front().second, parser_http2_t::error_t::PROTOCOL_ERROR) << "code: " << code;
+			// Прямое соединение такой ответ принимает
+			} else ASSERT_TRUE(clientEvents.closes.empty()) << "code: " << code;
+			// Проверяем что соединение осталось живо в любом случае
+			ASSERT_EQ(client->status(), parser_t::status_t::PARTIAL) << "code: " << code;
+		}
+	}
+}
+
+/**
+ * @brief Метод проверки отбраковки управляющих символов в значениях полей промежуточным узлом (RFC 9113 §10.3)
+ *
+ * @details Минимальная проверка RFC 9113 §8.2.1 отсеивает только NUL, CR и LF -
+ *          прочие управляющие символы конечный получатель передаёт приложению
+ *          как есть. Узел, транслирующий сообщение в HTTP/1.1, так поступить не
+ *          может: грамматика field-content управляющих символов не допускает, а
+ *          вертикальную табуляцию и перевод страницы часть реализаций HTTP/1.1
+ *          разбирает как разделители строк
+ *
+ */
+TEST_F(ParserHttp2Fixture, ProxyFieldValueControlCharacterTest){
+	/**
+	 * Проверяем обе роли узла: расхождение поведения и есть предмет проверки
+	 */
+	for(const bool proxy : {false, true}){
+		/**
+		 * Проверяем управляющие символы, минимальной проверкой не отсеиваемые
+		 */
+		for(const char letter : {'\x01', '\x0B', '\x0C', '\x1F', '\x7F'}){
+			// Создаём объект парсера сервера
+			auto server = this->make(direct_t::REQUEST);
+			// Создаём объект парсера клиента
+			auto client = this->make(direct_t::RESPONSE);
+			// Устанавливаем роль узла проверяемому парсеру
+			server->proto(proxy ? proto_t::PROXY2 : proto_t::HTTP2);
+			// Создаём объекты сборщиков событий парсеров
+			events_t serverEvents, clientEvents;
+			// Подписываем сборщик событий сервера
+			this->attach(* server, serverEvents);
+			// Подписываем сборщик событий клиента
+			this->attach(* client, clientEvents);
+			// Соединяем парсеры каналами записи
+			this->connect(* client, * server);
+			// Выполняем рукопожатие соединения
+			this->handshake(* client, * server);
+			/**
+			 * Дальше сервер разбирает поток, открытый в обход клиента, поэтому его
+			 * исходящие байты клиенту не адресованы: сброс потока, которого клиент
+			 * не открывал, оборвал бы соединение по причине, к проверке не относящейся
+			 */
+			server->on(parser_http2_t::write_callback_t([](const void *, const size_t) noexcept {}));
+			// Собираем значение поля с управляющим символом внутри
+			const std::string value = std::string("a") + std::string(1, letter) + std::string("b");
+			/**
+			 * Блок заголовков запроса собирается вручную: собственный клиент такого
+			 * значения не выпустит, а проверяется здесь приём
+			 */
+			const std::string headers = ::frame(0x01, 0x05, 1, ::block({
+				{":method", "GET"}, {":scheme", "https"}, {":authority", "example.com"},
+				{":path", "/data"}, {"x-probe", value}
+			}));
+			// Подаём блок заголовков запроса на разбор серверу
+			server->parse(headers.data(), headers.size());
+			// Если парсер работает промежуточным узлом
+			if(proxy){
+				// Проверяем что поток сброшен как малформированный
+				ASSERT_EQ(serverEvents.closes.size(), 1u) << "letter: " << static_cast <uint16_t> (static_cast <uint8_t> (letter));
+				// Проверяем код сброса потока
+				ASSERT_EQ(serverEvents.closes.front().second, parser_http2_t::error_t::PROTOCOL_ERROR)
+					<< "letter: " << static_cast <uint16_t> (static_cast <uint8_t> (letter));
+			// Прямое соединение такой запрос принимает
+			} else {
+				// Сброса потока быть не должно
+				ASSERT_TRUE(serverEvents.closes.empty()) << "letter: " << static_cast <uint16_t> (static_cast <uint8_t> (letter));
+				// Признак доставки поля приложению
+				bool delivered = false;
+				/**
+				 * Выполняем поиск проверяемого поля среди собранных сервером
+				 */
+				for(const auto & item : serverEvents.headers){
+					// Если найдено проверяемое поле с исходным значением
+					if((std::get <1> (item) == "x-probe") && (std::get <2> (item) == value))
+						// Запоминаем что поле доставлено
+						delivered = true;
+				}
+				// Поле обязано дойти до приложения без изменений
+				ASSERT_TRUE(delivered) << "letter: " << static_cast <uint16_t> (static_cast <uint8_t> (letter));
+			}
+			// Проверяем что соединение осталось живо в любом случае
+			ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL)
+				<< "letter: " << static_cast <uint16_t> (static_cast <uint8_t> (letter));
+		}
+	}
+}
+
+/**
+ * @brief Метод проверки отбраковки псевдо-заголовков, расщепляющих стартовую строку (RFC 9113 §10.3)
+ *
+ * @details Правил проверки псевдо-заголовков RFC 9113 §8.2 не содержит вовсе, и
+ *          §10.3 указывает на это прямо: простая склейка [:scheme], [:authority]
+ *          и [:path] в единый URI безопасной не является. Пробел внутри значения
+ *          расщепляет стартовую строку HTTP/1.1 на элементы, которых отправитель
+ *          туда не помещал, а метод сверх того обязан быть токеном (RFC 9110 §9.1)
+ *
+ */
+TEST_F(ParserHttp2Fixture, ProxyPseudoHeaderSplittingTest){
+	// Проверяемые псевдо-заголовки: название поля и значение, стартовую строку расщепляющее
+	const std::vector <std::pair <std::string, std::string>> probes = {
+		{":path", "/data /evil"},
+		{":authority", "example.com evil.com"},
+		{":method", "GE T"},
+		{":method", "GET/evil"},
+		{":scheme", "ht tps"}
+	};
+	/**
+	 * Проверяем обе роли узла: расхождение поведения и есть предмет проверки
+	 */
+	for(const bool proxy : {false, true}){
+		/**
+		 * Выполняем перебор всех проверяемых псевдо-заголовков
+		 */
+		for(const auto & probe : probes){
+			// Создаём объект парсера сервера
+			auto server = this->make(direct_t::REQUEST);
+			// Создаём объект парсера клиента
+			auto client = this->make(direct_t::RESPONSE);
+			// Устанавливаем роль узла проверяемому парсеру
+			server->proto(proxy ? proto_t::PROXY2 : proto_t::HTTP2);
+			// Создаём объекты сборщиков событий парсеров
+			events_t serverEvents, clientEvents;
+			// Подписываем сборщик событий сервера
+			this->attach(* server, serverEvents);
+			// Подписываем сборщик событий клиента
+			this->attach(* client, clientEvents);
+			// Соединяем парсеры каналами записи
+			this->connect(* client, * server);
+			// Выполняем рукопожатие соединения
+			this->handshake(* client, * server);
+			/**
+			 * Дальше сервер разбирает поток, открытый в обход клиента, поэтому его
+			 * исходящие байты клиенту не адресованы: сброс потока, которого клиент
+			 * не открывал, оборвал бы соединение по причине, к проверке не относящейся
+			 */
+			server->on(parser_http2_t::write_callback_t([](const void *, const size_t) noexcept {}));
+			// Собираем псевдо-заголовки запроса значениями по умолчанию
+			std::vector <std::pair <std::string, std::string>> fields = {
+				{":method", "GET"}, {":scheme", "https"}, {":authority", "example.com"}, {":path", "/data"}
+			};
+			/**
+			 * Выполняем подстановку проверяемого значения в соответствующий псевдо-заголовок
+			 */
+			for(auto & field : fields){
+				// Если найден проверяемый псевдо-заголовок
+				if(field.first == probe.first)
+					// Подставляем проверяемое значение
+					field.second = probe.second;
+			}
+			/**
+			 * Блок заголовков запроса собирается вручную: собственный клиент такого
+			 * значения не выпустит, а проверяется здесь приём
+			 */
+			const std::string headers = ::frame(0x01, 0x05, 1, ::block(fields));
+			// Подаём блок заголовков запроса на разбор серверу
+			server->parse(headers.data(), headers.size());
+			// Если парсер работает промежуточным узлом
+			if(proxy){
+				// Проверяем что поток сброшен как малформированный
+				ASSERT_EQ(serverEvents.closes.size(), 1u) << "pseudo: " << probe.first << ", value: " << probe.second;
+				// Проверяем код сброса потока
+				ASSERT_EQ(serverEvents.closes.front().second, parser_http2_t::error_t::PROTOCOL_ERROR)
+					<< "pseudo: " << probe.first << ", value: " << probe.second;
+			// Прямое соединение такой запрос принимает
+			} else ASSERT_TRUE(serverEvents.closes.empty()) << "pseudo: " << probe.first << ", value: " << probe.second;
+			// Проверяем что соединение осталось живо в любом случае
+			ASSERT_EQ(server->status(), parser_t::status_t::PARTIAL) << "pseudo: " << probe.first << ", value: " << probe.second;
+		}
+	}
+}
+
+/**
  * @brief Метод проверки плавного завершения соединения двухфазным GOAWAY (RFC 9113 §6.8)
  *
  */
@@ -7215,6 +7712,190 @@ TEST_F(ParserHttp2Fixture, HeadResponseBodySuppressedTest){
 	ASSERT_FALSE(payload);
 	// Завершение потока обязано дойти до клиента
 	ASSERT_TRUE(completed);
+}
+
+/**
+ * @brief Метод проверки допустимости трейлеров в ответе на запрос методом HEAD
+ *
+ * @details RFC 9110 §9.3.2 запрещает ответу на HEAD только содержимое, а секцию
+ *          трейлеров не запрещает вовсе, и кадрирование HTTP/2 её допускает.
+ *          Сторожит границу между двумя признаками безтелесности отправки:
+ *          подавление тела не вправе заодно съесть разрешённое
+ *
+ */
+TEST_F(ParserHttp2Fixture, HeadResponseAllowsTrailersTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	// Формируем заголовки запроса методом HEAD
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "HEAD");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/data");
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Отправляем запрос с завершением потока
+	client->sendHeaders(sid, fields, true);
+	// Формируем заголовки ответа
+	headers_t response(std::make_unique <response_t> (version_t::HTTP2, 200));
+	// Отправляем заголовки ответа без завершения потока
+	server->sendHeaders(sid, response, false);
+	// Формируем тело ответа
+	const std::string body(1024, 'z');
+	// Отдаём тело ответа без завершения потока (оно будет отброшено)
+	server->sendData(sid, body.data(), body.size(), false);
+	// Формируем секцию трейлеров
+	std::vector <h2::hpack::field_t> trailers;
+	// Дописываем поле секции трейлеров
+	trailers.emplace_back("x-checksum", "deadbeef");
+	// Отправляем секцию трейлеров с завершением потока
+	server->sendHeaders(sid, trailers, true);
+	// Признак получения клиентом поля секции трейлеров
+	bool received = false;
+	/**
+	 * Выполняем поиск поля секции трейлеров среди собранных клиентом полей
+	 */
+	for(const auto & item : clientEvents.headers){
+		// Если найдено поле секции трейлеров
+		if((std::get <1> (item) == "x-checksum") && (std::get <3> (item) == parser_t::part_t::TRAILER))
+			// Запоминаем что поле секции трейлеров доставлено
+			received = true;
+	}
+	// Секция трейлеров ответа на HEAD обязана дойти до клиента
+	ASSERT_TRUE(received);
+	// Тело такого ответа приложению не доставляется
+	ASSERT_TRUE(clientEvents.bodies[sid].empty());
+}
+
+/**
+ * @brief Метод проверки подавления тела и трейлеров в ответах 204 и 304 (RFC 9110 §15.3.5, §15.4.5)
+ *
+ * @details Оба ответа завершаются концом секции заголовков и не несут ни
+ *          содержимого, ни трейлеров. В отличие от ответа на HEAD, где запрещено
+ *          только содержимое, здесь запрещено и то и другое, поэтому признака два
+ *
+ */
+TEST_F(ParserHttp2Fixture, NoContentResponseBodySuppressedTest){
+	/**
+	 * Проверяем оба статуса: правило у них общее, а формулировки в RFC раздельные
+	 */
+	for(const uint16_t code : {204, 304}){
+		// Создаём объект парсера сервера
+		auto server = this->make(direct_t::REQUEST);
+		// Создаём объект парсера клиента
+		auto client = this->make(direct_t::RESPONSE);
+		// Создаём объекты сборщиков событий парсеров
+		events_t serverEvents, clientEvents;
+		// Подписываем сборщик событий сервера
+		this->attach(* server, serverEvents);
+		// Подписываем сборщик событий клиента
+		this->attach(* client, clientEvents);
+		// Соединяем парсеры каналами записи
+		this->connect(* client, * server);
+		// Выполняем рукопожатие соединения
+		this->handshake(* client, * server);
+		// Формируем заголовки запроса
+		std::vector <h2::hpack::field_t> fields;
+		// Дописываем псевдо-заголовок метода запроса
+		fields.emplace_back(":method", "GET");
+		// Дописываем псевдо-заголовок схемы запроса
+		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-заголовок адресата запроса
+		fields.emplace_back(":authority", "example.com");
+		// Дописываем псевдо-заголовок пути запроса
+		fields.emplace_back(":path", "/data");
+		// Выделяем идентификатор нового потока клиента
+		const uint32_t sid = client->nextStreamId();
+		// Отправляем запрос с завершением потока
+		client->sendHeaders(sid, fields, true);
+		// Проверяем что поток на сервере открыт
+		ASSERT_EQ(serverEvents.begins.size(), 1u) << "code: " << code;
+		// Буфер исходящих байтов сервера
+		std::string output;
+		// Перехватываем исходящие байты сервера вместо передачи их клиенту
+		server->on(parser_http2_t::write_callback_t([&output](const void * buffer, const size_t size) noexcept {
+			// Дописываем исходящие байты сервера в буфер
+			output.append(static_cast <const char *> (buffer), size);
+		}));
+		// Формируем заголовки ответа проверяемым статусом
+		headers_t response(std::make_unique <response_t> (version_t::HTTP2, code));
+		// Отправляем заголовки ответа без завершения потока
+		server->sendHeaders(sid, response, false);
+		// Число кадров блока заголовков, ушедших на провод
+		size_t blocks = 0;
+		/**
+		 * Считаем блоки заголовков, ушедшие до попытки отправить трейлеры:
+		 * с ними сравнивается число блоков после неё
+		 */
+		for(size_t offset = 0; (offset + 9) <= output.size();){
+			// Вычисляем длину полезной нагрузки кадра
+			const size_t length = ((static_cast <uint8_t> (output[offset]) << 16) | (static_cast <uint8_t> (output[offset + 1]) << 8) | static_cast <uint8_t> (output[offset + 2]));
+			// Если кадр несёт блок заголовков
+			if(static_cast <uint8_t> (output[offset + 3]) == 0x01)
+				// Наращиваем число блоков заголовков
+				++blocks;
+			// Переходим к следующему кадру
+			offset += (9 + length);
+		}
+		// Блок заголовков ответа обязан уйти
+		ASSERT_EQ(blocks, 1u) << "code: " << code;
+		// Формируем тело ответа
+		const std::string body(4 * 1024, 'z');
+		// Отдаём тело ответа без завершения потока
+		const size_t accepted = server->sendData(sid, body.data(), body.size(), false);
+		// Тело обязано быть принято целиком: отказ приложение прочло бы как backpressure
+		ASSERT_EQ(accepted, body.size()) << "code: " << code;
+		// Формируем секцию трейлеров
+		std::vector <h2::hpack::field_t> trailers;
+		// Дописываем поле секции трейлеров
+		trailers.emplace_back("x-checksum", "deadbeef");
+		// Отправляем секцию трейлеров с завершением потока
+		server->sendHeaders(sid, trailers, true);
+		// Признак обнаружения кадра данных на проводе
+		bool payload = false;
+		// Число блоков заголовков после попытки отправить трейлеры
+		size_t total = 0;
+		/**
+		 * Разбираем исходящие байты сервера по заголовкам кадров: ни тела,
+		 * ни второго блока заголовков на проводе быть не должно
+		 */
+		for(size_t offset = 0; (offset + 9) <= output.size();){
+			// Вычисляем длину полезной нагрузки кадра
+			const size_t length = ((static_cast <uint8_t> (output[offset]) << 16) | (static_cast <uint8_t> (output[offset + 1]) << 8) | static_cast <uint8_t> (output[offset + 2]));
+			// Получаем тип кадра
+			const uint8_t type = static_cast <uint8_t> (output[offset + 3]);
+			// Если кадр несёт данные тела
+			if((type == 0x00) && (length > 0))
+				// Запоминаем что тело ушло на провод
+				payload = true;
+			// Если кадр несёт блок заголовков
+			if(type == 0x01)
+				// Наращиваем число блоков заголовков
+				++total;
+			// Переходим к следующему кадру
+			offset += (9 + length);
+		}
+		// Тело такого ответа на провод уйти не вправе
+		ASSERT_FALSE(payload) << "code: " << code;
+		// Секция трейлеров такого ответа на провод уйти не вправе
+		ASSERT_EQ(total, blocks) << "code: " << code;
+	}
 }
 
 /**

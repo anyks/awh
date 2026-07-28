@@ -399,6 +399,8 @@ int32_t main(int32_t argc, char * argv[]){
 		{"трейлеры без END_STREAM", (::frame(0x01, 0x04, 1, request) + ::frame(0x01, 0x04, 1, ::block({{"x-trailer", "value"}})))},
 		// Псевдо-заголовок в секции трейлеров
 		{"псевдо-заголовок в трейлерах", (::frame(0x01, 0x04, 1, request) + ::frame(0x01, 0x05, 1, ::block({{":method", "GET"}})))},
+		// Управляющие данные ответа в секции трейлеров (RFC 9110 §6.5.1)
+		{"запрещённое поле в трейлерах", (::frame(0x01, 0x04, 1, request) + ::frame(0x01, 0x05, 1, ::block({{"date", "Tue, 28 Jul 2026 00:00:00 GMT"}})))},
 		// Длина заполнения превышает длину кадра
 		{"DATA с избыточным padding", (::frame(0x01, 0x04, 1, request) + ::frame(0x00, 0x08, 1, std::string(1, '\xFF') + "body"))},
 		// Некорректный индекс HPACK

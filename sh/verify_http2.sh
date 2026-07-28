@@ -51,7 +51,7 @@ readonly NGHTTP2_EXPECTED="1.69.90"
 # сменилось - у нас либо у эталона, - и это обязано попасть человеку на глаза,
 # а не пройти молча. Список расхождений ведётся в tools/interop/README.md
 #
-readonly NEGATIVE_EXPECTED=5
+readonly NEGATIVE_EXPECTED=6
 
 ##
 # Эталонная реализация берётся из подмодуля, а не системной

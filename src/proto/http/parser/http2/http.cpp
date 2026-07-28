@@ -80,6 +80,26 @@ namespace {
 		static constexpr string_view CONTENT_LENGTH = "content-length";
 		static constexpr string_view CONTENT_ENCODING = "content-encoding";
 		static constexpr string_view PROXY_AUTHORIZATION = "proxy-authorization";
+		// Заголовки, запрещённые в трейлерах (RFC 9110 §6.5.1)
+		static constexpr string_view AGE = "age";
+		static constexpr string_view AUTHENTICATION_INFO = "authentication-info";
+		static constexpr string_view COOKIE = "cookie";
+		static constexpr string_view DATE = "date";
+		static constexpr string_view EXPIRES = "expires";
+		static constexpr string_view IF_MATCH = "if-match";
+		static constexpr string_view IF_MODIFIED_SINCE = "if-modified-since";
+		static constexpr string_view IF_NONE_MATCH = "if-none-match";
+		static constexpr string_view IF_RANGE = "if-range";
+		static constexpr string_view IF_UNMODIFIED_SINCE = "if-unmodified-since";
+		static constexpr string_view LOCATION = "location";
+		static constexpr string_view PRAGMA = "pragma";
+		static constexpr string_view PROXY_AUTHENTICATE = "proxy-authenticate";
+		static constexpr string_view PROXY_AUTHENTICATION_INFO = "proxy-authentication-info";
+		static constexpr string_view RETRY_AFTER = "retry-after";
+		static constexpr string_view SET_COOKIE = "set-cookie";
+		static constexpr string_view VARY = "vary";
+		static constexpr string_view WARNING = "warning";
+		static constexpr string_view WWW_AUTHENTICATE = "www-authenticate";
 		// Заголовок приоритета запроса (RFC 9218 §5)
 		static constexpr string_view PRIORITY = "priority";
 	};
@@ -267,6 +287,102 @@ namespace {
 		return true;
 	}
 	/**
+	 * @brief Функция проверки пригодности значения заголовка к трансляции в другую версию HTTP (RFC 9113 §10.3)
+	 *
+	 * @details Минимальная проверка RFC 9113 §8.2.1 отсеивает только NUL, CR и LF:
+	 *          конечному получателю прочие управляющие символы безразличны, он
+	 *          передаёт значение приложению как есть. Узлу, транслирующему
+	 *          сообщение в другую версию протокола, они безразличны быть не могут:
+	 *          грамматика field-content (RFC 9110 §5.5) управляющих символов не
+	 *          допускает, а вертикальную табуляцию и перевод страницы часть
+	 *          реализаций HTTP/1.1 разбирает как разделители строк. Звено,
+	 *          прочитавшее их именно так, определит границу поля иначе, и это
+	 *          тот же механизм рассинхронизации, что у CL+TE
+	 *
+	 * @param value значение заголовка
+	 * @return      результат проверки
+	 *
+	 */
+	bool isTranslatableValue(string_view value) noexcept {
+		/**
+		 * Выполняем перебор всех символов значения заголовка
+		 */
+		for(const char item : value){
+			// Получаем очередной символ значения заголовка
+			const uint8_t letter = static_cast <uint8_t> (item);
+			// Управляющие символы (кроме табуляции) и DEL в значение поля не входят (RFC 9110 §5.5)
+			if(((letter < 0x20) && (letter != 0x09)) || (letter == 0x7F))
+				// Значение заголовка к трансляции непригодно
+				return false;
+		}
+		// Значение заголовка к трансляции пригодно
+		return true;
+	}
+	/**
+	 * @brief Функция проверки пригодности значения псевдо-заголовка к сборке стартовой строки (RFC 9113 §10.3)
+	 *
+	 * @details Правил проверки псевдо-заголовков RFC 9113 §8.2 не содержит вовсе,
+	 *          и §10.3 указывает на это прямо: если значения используются, нужна
+	 *          дополнительная проверка, а простая склейка [:scheme], [:authority]
+	 *          и [:path] в единый URI безопасной не является. Пробел, табуляция и
+	 *          управляющие символы расщепляют стартовую строку HTTP/1.1 на части,
+	 *          которые следующее звено разберёт как отдельные элементы запроса
+	 *
+	 * @param value значение псевдо-заголовка
+	 * @return      результат проверки
+	 *
+	 */
+	bool isTranslatablePseudo(string_view value) noexcept {
+		/**
+		 * Выполняем перебор всех символов значения псевдо-заголовка
+		 */
+		for(const char item : value){
+			// Получаем очередной символ значения псевдо-заголовка
+			const uint8_t letter = static_cast <uint8_t> (item);
+			// Пробел, табуляция, управляющие символы и DEL стартовую строку расщепляют
+			if((letter <= 0x20) || (letter == 0x7F))
+				// Значение псевдо-заголовка к трансляции непригодно
+				return false;
+		}
+		// Значение псевдо-заголовка к трансляции пригодно
+		return true;
+	}
+	/**
+	 * @brief Функция проверки принадлежности значения к набору token (RFC 9110 §5.6.2)
+	 *
+	 * @note От isTokenChar отличается тем, что заглавные латинские буквы
+	 *       допускает: ограничение нижним регистром относится к названиям
+	 *       заголовков HTTP/2, а метод запроса регистрозависим и заглавные
+	 *       буквы несут как раз все стандартные методы
+	 *
+	 * @param value проверяемое значение
+	 * @return      результат проверки
+	 *
+	 */
+	bool isToken(string_view value) noexcept {
+		// Пустое значение токеном не является
+		if(value.empty())
+			// Значение набору token не принадлежит
+			return false;
+		/**
+		 * Выполняем перебор всех символов значения
+		 */
+		for(const char item : value){
+			// Получаем очередной символ значения
+			const uint8_t letter = static_cast <uint8_t> (item);
+			// Если символ является заглавной латинской буквой - он допустим
+			if((letter >= 'A') && (letter <= 'Z'))
+				// Переходим к следующему символу значения
+				continue;
+			// Если найден символ вне набора token
+			if(!isTokenChar(letter))
+				// Значение набору token не принадлежит
+				return false;
+		}
+		// Значение набору token принадлежит
+		return true;
+	}
+	/**
 	 * @brief Функция проверки принадлежности заголовка к запрещённым в HTTP/2 connection-specific заголовкам (RFC 9113 §8.2.2)
 	 *
 	 * @note Имя заголовка к этому моменту уже провалидировано и находится
@@ -298,22 +414,53 @@ namespace {
 	 *
 	 */
 	bool isForbiddenTrailer(string_view name) noexcept {
-		// Выполняем сравнение со списком запрещённых в трейлерах заголовков
-		return (
-			(name == header::TE) ||
-			(name == header::HOST) ||
-			(name == header::RANGE) ||
-			(name == header::EXPECT) ||
-			(name == header::TRAILER) ||
-			(name == header::CONTENT_TYPE) ||
-			(name == header::CACHE_CONTROL) ||
-			(name == header::CONTENT_RANGE) ||
-			(name == header::MAX_FORWARDS) ||
-			(name == header::AUTHORIZATION) ||
-			(name == header::CONTENT_LENGTH) ||
-			(name == header::CONTENT_ENCODING) ||
-			(name == header::PROXY_AUTHORIZATION)
-		);
+		/**
+		 * Выполняем проверку названия по списку запрещённых (диспетчер по первой букве):
+		 * названия полей в этой версии протокола обязаны быть в нижнем регистре,
+		 * поэтому регистр приводить не нужно, а перебор всего списка на каждое поле
+		 * секции обходился бы тем дороже, чем полнее список
+		 */
+		switch(name.empty() ? '\0' : name.front()){
+			// Поля управляющих данных ответа и аутентификации
+			case 'a': return ((name == header::AGE) || (name == header::AUTHORIZATION) || (name == header::AUTHENTICATION_INFO));
+			// Поля обработки содержимого, управления кэшированием и состояния сессии
+			case 'c': return (
+				(name == header::COOKIE) || (name == header::CONTENT_TYPE) || (name == header::CACHE_CONTROL) ||
+				(name == header::CONTENT_RANGE) || (name == header::CONTENT_LENGTH) || (name == header::CONTENT_ENCODING)
+			);
+			// Поле отметки времени сообщения
+			case 'd': return (name == header::DATE);
+			// Поля ожидания промежуточного ответа и срока годности ответа
+			case 'e': return ((name == header::EXPECT) || (name == header::EXPIRES));
+			// Поле целевого узла
+			case 'h': return (name == header::HOST);
+			// Условные поля запроса
+			case 'i': return (
+				(name == header::IF_MATCH) || (name == header::IF_RANGE) || (name == header::IF_NONE_MATCH) ||
+				(name == header::IF_MODIFIED_SINCE) || (name == header::IF_UNMODIFIED_SINCE)
+			);
+			// Поле перенаправления
+			case 'l': return (name == header::LOCATION);
+			// Поле ограничения числа промежуточных узлов
+			case 'm': return (name == header::MAX_FORWARDS);
+			// Поля аутентификации на прокси и совместимости с HTTP/1.0
+			case 'p': return (
+				(name == header::PRAGMA) || (name == header::PROXY_AUTHENTICATE) ||
+				(name == header::PROXY_AUTHORIZATION) || (name == header::PROXY_AUTHENTICATION_INFO)
+			);
+			// Поля запроса диапазона и указания времени повтора
+			case 'r': return ((name == header::RANGE) || (name == header::RETRY_AFTER));
+			// Поле установки сессионных данных
+			case 's': return (name == header::SET_COOKIE);
+			// Поля объявления трейлеров и расширений передачи
+			case 't': return ((name == header::TE) || (name == header::TRAILER));
+			// Поле ключа вариативности кэша
+			case 'v': return (name == header::VARY);
+			// Поля запроса аутентификации и предупреждения о содержимом
+			case 'w': return ((name == header::WARNING) || (name == header::WWW_AUTHENTICATE));
+		}
+		// Поле в секции трейлеров разрешено
+		return false;
 	}
 	/**
 	 * @brief Функция валидации HTTP-семантики блока заголовков (RFC 9113 §8.1-8.3)
@@ -322,11 +469,12 @@ namespace {
 	 * @param isRequest       блок принадлежит запросу клиента (true) или ответу сервера (false)
 	 * @param isTrailers      блок является трейлерами
 	 * @param connectProtocol расширенный CONNECT разрешён нашим SETTINGS (RFC 8441)
+	 * @param proxy           парсер работает промежуточным узлом (RFC 9113 §10.3)
 	 * @param fmk             объект фреймворка
 	 * @return                код ошибки протокола (NO_ERROR - блок корректен, PROTOCOL_ERROR - malformed)
 	 *
 	 */
-	http::h2::error_t validateHeaders(const vector <http::h2::hpack::field_view_t> & fields, const bool isRequest, const bool isTrailers, const bool connectProtocol, const fmk_t * fmk) noexcept {
+	http::h2::error_t validateHeaders(const vector <http::h2::hpack::field_view_t> & fields, const bool isRequest, const bool isTrailers, const bool connectProtocol, const bool proxy, const fmk_t * fmk) noexcept {
 		// Значение псевдо-заголовка [:method]
 		string_view method{""};
 		// Значение псевдо-заголовка [:authority]
@@ -335,6 +483,8 @@ namespace {
 		string_view scheme{""};
 		// Значение псевдо-заголовка [:path]
 		string_view path{""};
+		// Значение псевдо-заголовка [:status]
+		string_view status{""};
 		// Значение заголовка [host]
 		string_view host{""};
 		// Флаг наличия обычного (не псевдо) заголовка
@@ -364,6 +514,14 @@ namespace {
 			 * значение - не содержать CR/LF/NUL и обрамляющих пробелов (RFC 9113 §8.2.1)
 			 */
 			if(!::isValidHeaderName(name) || !::isValidHeaderValue(field.value))
+				// Блок заголовков некорректен
+				return http::h2::error_t::PROTOCOL_ERROR;
+			/**
+			 * Узел, передающий сообщение дальше по цепочке, проверяет значение по
+			 * грамматике field-content целиком: конечному получателю достаточно
+			 * минимальной проверки, а транслирующему - нет (RFC 9113 §10.3)
+			 */
+			if(proxy && !::isTranslatableValue(field.value))
 				// Блок заголовков некорректен
 				return http::h2::error_t::PROTOCOL_ERROR;
 			// Если заголовок является псевдо-заголовком
@@ -461,6 +619,8 @@ namespace {
 							return http::h2::error_t::PROTOCOL_ERROR;
 						// Помечаем что псевдо-заголовок получен
 						hasStatus = true;
+						// Запоминаем значение статус-кода ответа
+						status = field.value;
 						// Статус-код обязан состоять ровно из трёх цифр (RFC 9113 §8.3.2)
 						if(field.value.size() != 3)
 							// Блок заголовков некорректен
@@ -544,6 +704,24 @@ namespace {
 		// Если блок принадлежит запросу клиента
 		if(isRequest){
 			/**
+			 * Из псевдо-заголовков запроса следующее звено собирает стартовую строку,
+			 * а правил их проверки RFC 9113 §8.2 не содержит вовсе: §10.3 указывает
+			 * на это прямо и требует дополнительной проверки от того, кто значения
+			 * использует. Пробел либо управляющий символ внутри значения расщепляет
+			 * стартовую строку на элементы, которых отправитель туда не помещал,
+			 * а метод сверх того обязан быть токеном (RFC 9110 §9.1)
+			 */
+			if(proxy){
+				// Если метод запроса токеном не является
+				if(hasMethod && !::isToken(method))
+					// Блок заголовков некорректен
+					return http::h2::error_t::PROTOCOL_ERROR;
+				// Если схема, адресат либо путь запроса к сборке стартовой строки непригодны
+				if(!::isTranslatablePseudo(scheme) || !::isTranslatablePseudo(authority) || !::isTranslatablePseudo(path))
+					// Блок заголовков некорректен
+					return http::h2::error_t::PROTOCOL_ERROR;
+			}
+			/**
 			 * Метод запроса - регистрозависимый токен (RFC 9110 §9.1), поэтому
 			 * сравнение выполняется строгое: [connect] методом CONNECT не является
 			 */
@@ -620,10 +798,29 @@ namespace {
 			if(::isHttpScheme(scheme) && (authority.find('@') != string_view::npos))
 				// Блок заголовков некорректен
 				return http::h2::error_t::PROTOCOL_ERROR;
-		// Ответ сервера обязан содержать [:status]
-		} else if(!hasStatus)
-			// Блок заголовков некорректен
-			return http::h2::error_t::PROTOCOL_ERROR;
+		// Если блок принадлежит ответу сервера
+		} else {
+			// Ответ сервера обязан содержать [:status]
+			if(!hasStatus)
+				// Блок заголовков некорректен
+				return http::h2::error_t::PROTOCOL_ERROR;
+			/**
+			 * Ответы 1xx и [204 No Content] тела не несут по определению, и в HTTP/2
+			 * объявленная у них длина попросту игнорируется (RFC 9113 §8.1.1 разрешает
+			 * ненулевой content-length прямо). Но узел, передающий такой ответ дальше
+			 * по цепочке, отправить этот заголовок следующему звену не вправе
+			 * (RFC 9112 §6.1), а звено, всё же его получившее и уважившее, прочитает
+			 * следующий ответ как тело этого - граница сообщений в цепочке разойдётся.
+			 * Ровно на это указывает RFC 9113 §10.3: промежуточному узлу следует
+			 * следить за content-length, чтобы кадрирование осталось верным при
+			 * трансляции в HTTP/1.1. Ответу [304 Not Modified] и ответу на HEAD
+			 * заголовок, напротив, разрешён: он описывает тело, которое было бы
+			 * отправлено в ответ на такой же запрос GET
+			 */
+			if(proxy && hasLength && ((status.front() == '1') || (status == value::NO_CONTENT)))
+				// Блок заголовков некорректен
+				return http::h2::error_t::PROTOCOL_ERROR;
+		}
 		// Блок заголовков корректен
 		return http::h2::error_t::NO_ERROR;
 	}
@@ -771,7 +968,7 @@ void awh::http::Parser_HTTP2::Stream::compactSendBuffer() noexcept {
 awh::http::Parser_HTTP2::Stream::Stream() noexcept :
  id(0), sourceEof(false), headersDone(false),
  endStreamSent(false), endStreamPending(false),
- writableNotified(false), queued(false), recvBody(0), contentLength(-1), bodyless(false), bodylessSend(false),
+ writableNotified(false), queued(false), recvBody(0), contentLength(-1), bodyless(false), bodylessSend(false), trailerless(false), trailerlessSend(false),
  urgency(h2::proto::DEFAULT_URGENCY), incremental(false), prioritized(false),
  localWindow(h2::proto::DEFAULT_WINDOW_SIZE),
  remoteWindow(h2::proto::DEFAULT_WINDOW_SIZE),
@@ -1128,8 +1325,22 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	const bool isTrailers = stream->headersDone;
 	// Определяем принадлежность блока: запрос клиента (мы - сервер) или ответ сервера
 	const bool isRequest = (this->_direct == direct_t::REQUEST);
+	/**
+	 * Ответы 204 и 304 завершаются концом секции заголовков и не несут ни
+	 * содержимого, ни трейлеров (RFC 9110 §15.3.5, §15.4.5). Тело в них
+	 * отвергается на кадре DATA, а секция трейлеров - здесь: блок к этому
+	 * моменту уже декодирован, поэтому таблица HPACK остаётся согласованной
+	 */
+	if(isTrailers && stream->trailerless){
+		// Малформированный ответ - потоковая ошибка, соединение живёт
+		this->rejectStream(streamId, error_t::PROTOCOL_ERROR);
+		// Закрываем поток с вызовом функции обратного вызова закрытия
+		this->closeStream(streamId, error_t::PROTOCOL_ERROR);
+		// Обработка блока завершена
+		return h2::status_t::OK;
+	}
 	// Выполняем валидацию HTTP-семантики блока заголовков (RFC 9113 §8)
-	const error_t vErr = ::validateHeaders(fields, isRequest, isTrailers, (this->_local.enableConnectProtocol != 0), this->_fmk);
+	const error_t vErr = ::validateHeaders(fields, isRequest, isTrailers, (this->_local.enableConnectProtocol != 0), (this->_proto == proto_t::PROXY2), this->_fmk);
 	// Если блок заголовков малформирован
 	if(vErr != error_t::NO_ERROR){
 		// Малформированный запрос/ответ - потоковая ошибка (RFC 9113 §8.1.1), соединение живёт
@@ -1184,9 +1395,12 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 				 * Ответы 204 и 304 тела не несут, но content-length в них допустим
 				 * и описывает тело, которого не будет (RFC 9110 §8.6, §15.4.5)
 				 */
-				if((field.value == value::NO_CONTENT) || (field.value == value::NOT_MODIFIED))
+				if((field.value == value::NO_CONTENT) || (field.value == value::NOT_MODIFIED)){
 					// Помечаем что сообщение не может нести тело
 					stream->bodyless = true;
+					// Помечаем что сообщение не может нести и секцию трейлеров
+					stream->trailerless = true;
+				}
 				// Прекращаем поиск
 				break;
 			}
@@ -2537,7 +2751,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 		// Фиксируем ошибку уровня соединения
 		return this->fail(error_t::INTERNAL_ERROR, "promised stream vanished");
 	// Обещанный блок - это всегда запрос (псевдо-заголовки запроса), без трейлеров
-	const error_t vErr = ::validateHeaders(fields, true, false, (this->_local.enableConnectProtocol != 0), this->_fmk);
+	const error_t vErr = ::validateHeaders(fields, true, false, (this->_local.enableConnectProtocol != 0), (this->_proto == proto_t::PROXY2), this->_fmk);
 	// Если блок заголовков малформирован
 	if(vErr != error_t::NO_ERROR){
 		// Малформированный обещанный запрос - потоковая ошибка, соединение живёт
@@ -4044,6 +4258,18 @@ bool awh::http::Parser_HTTP2::canSendHeaders(const uint32_t sid) noexcept {
 			return false;
 		}
 		/**
+		 * Ответы 204 и 304 завершаются концом секции заголовков и не несут ни
+		 * содержимого, ни трейлеров (RFC 9110 §15.3.5, §15.4.5). Повторный блок
+		 * по такому потоку - это и есть секция трейлеров: первый ушёл вместе
+		 * с признаком headersSent
+		 */
+		if(stream->headersSent && stream->trailerlessSend){
+			// Записываем сообщение об ошибке в лог
+			this->_log->print("HTTP/2 response on stream %u cannot carry trailers", log_t::flag_t::WARNING, sid);
+			// Отправка недопустима
+			return false;
+		}
+		/**
 		 * Блок заголовков допустим из состояний: open и half-closed(remote) (ответ,
 		 * продолжение, трейлеры) и reserved(local) (ответ на собственный push).
 		 * Поток, зарезервированный пиром, отвечает не наша сторона (RFC 9113 §5.1)
@@ -4358,6 +4584,8 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
  *
  */
 void awh::http::Parser_HTTP2::clear() noexcept {
+	// Возвращаем протокол работы парсера к значению по умолчанию
+	this->_proto = proto_t::HTTP2;
 	// Возвращаем лимиты безопасности к значениям по умолчанию
 	this->_limits = limits_t();
 	// Возвращаем наши параметры SETTINGS к значениям по умолчанию
@@ -4499,9 +4727,9 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 /**
  * @brief Метод клонирования объекта парсера
  *
- * @details Клон получает те же направление трафика, лимиты безопасности,
- *          параметры SETTINGS и функции обратного вызова, но чистое
- *          состояние соединения ("фабрика с теми же настройками").
+ * @details Клон получает те же направление трафика, роль узла на соединении,
+ *          лимиты безопасности, параметры SETTINGS и функции обратного вызова,
+ *          но чистое состояние соединения ("фабрика с теми же настройками").
  *
  * @return копия объекта парсера
  *
@@ -4515,6 +4743,8 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP2::clone() const noexcept
 	try {
 		// Создаём новый объект парсера с теми же направлением трафика и инфраструктурой
 		unique_ptr <Parser_HTTP2> parser(new Parser_HTTP2(this->_direct, this->_fmk, this->_log));
+		// Копируем протокол работы парсера: роль узла на соединении - такая же настройка, как лимиты
+		parser->_proto = this->_proto;
 		// Копируем лимиты безопасности (с применением к rate-лимитам)
 		parser->limits(this->_limits);
 		// Копируем наши параметры SETTINGS
@@ -4708,6 +4938,45 @@ string_view awh::http::Parser_HTTP2::errorName() const noexcept {
 string_view awh::http::Parser_HTTP2::errorName(const error_t error) noexcept {
 	// Выводим название кода ошибки
 	return h2::errorName(error);
+}
+/**
+ * @brief Метод получения протокола, с которым работает парсер
+ *
+ * @return протокол работы парсера
+ *
+ */
+awh::http::proto_t awh::http::Parser_HTTP2::proto() const noexcept {
+	// Выводим протокол работы парсера
+	return this->_proto;
+}
+/**
+ * @brief Метод установки протокола, с которым работает парсер
+ *
+ * @param proto протокол работы парсера
+ *
+ */
+void awh::http::Parser_HTTP2::proto(const proto_t proto) noexcept {
+	/**
+	 * Определяем принадлежность указанного протокола к семейству HTTP/2
+	 */
+	switch(static_cast <uint8_t> (proto)){
+		// Прямое соединение с узлом, работа промежуточным узлом либо туннель WebSocket
+		case static_cast <uint8_t> (proto_t::HTTP2):
+		case static_cast <uint8_t> (proto_t::PROXY2):
+		case static_cast <uint8_t> (proto_t::WEBSOCKET2):
+			// Устанавливаем протокол работы парсера
+			this->_proto = proto;
+		break;
+		/**
+		 * Протокол другого семейства этот парсер разобрать не может, и принять такое
+		 * указание молча означало бы оставить вызывающую сторону в уверенности, что
+		 * оно учтено
+		 */
+		default: this->_log->print(
+			"HTTP/2 parser speaks HTTP/2 only: the protocol has not been changed",
+			log_t::flag_t::CRITICAL
+		);
+	}
 }
 /**
  * @brief Метод получения лимитов безопасности
@@ -5386,8 +5655,10 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 		// Отправляем HPACK-блок заголовков потока
 		this->commitHeaders(sid, block, endStream);
 		/**
-		 * Выполняем поиск метода запроса: ответ на HEAD объявляет content-length,
-		 * но тела не несёт (RFC 9110 §9.3.2) - сверять их нельзя
+		 * Выполняем поиск псевдо-заголовков, задающих безтелесность сообщения:
+		 * ответ на HEAD объявляет content-length, но тела не несёт (RFC 9110 §9.3.2),
+		 * а отправляемые нами ответы 204 и 304 не несут ни тела, ни трейлеров
+		 * (§15.3.5, §15.4.5). В секции трейлеров ни того, ни другого нет
 		 */
 		for(const h2::hpack::field_t & field : fields){
 			// Если получен псевдо-заголовок метода запроса
@@ -5400,6 +5671,22 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 					if(stream != nullptr)
 						// Помечаем что ответ на этот поток тела не несёт
 						stream->bodyless = true;
+				}
+				// Прекращаем поиск
+				break;
+			// Если получен псевдо-заголовок статуса ответа
+			} else if(field.name == header::STATUS) {
+				// Если ответ не несёт ни тела, ни трейлеров
+				if((field.value == value::NO_CONTENT) || (field.value == value::NOT_MODIFIED)){
+					// Выполняем поиск потока
+					stream_t * stream = this->findStream(sid);
+					// Если поток найден
+					if(stream != nullptr){
+						// Помечаем что отправляемое сообщение тела нести не может
+						stream->bodylessSend = true;
+						// Помечаем что отправляемое сообщение трейлеров нести не может
+						stream->trailerlessSend = true;
+					}
 				}
 				// Прекращаем поиск
 				break;
@@ -5603,6 +5890,25 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 			if(stream != nullptr)
 				// Помечаем что ответ на этот поток тела не несёт (RFC 9110 §9.3.2)
 				stream->bodyless = true;
+		/**
+		 * Отправляемые нами ответы 204 и 304 завершаются концом секции заголовков
+		 * и не несут ни содержимого, ни трейлеров (RFC 9110 §15.3.5, §15.4.5)
+		 */
+		} else if((provider != nullptr) && (provider->direct == direct_t::RESPONSE)) {
+			// Получаем статус-код отправляемого ответа
+			const uint16_t code = static_cast <const response_t *> (provider)->code;
+			// Если ответ не несёт ни тела, ни трейлеров
+			if((code == 204) || (code == 304)){
+				// Выполняем поиск потока
+				stream_t * stream = this->findStream(sid);
+				// Если поток найден
+				if(stream != nullptr){
+					// Помечаем что отправляемое сообщение тела нести не может
+					stream->bodylessSend = true;
+					// Помечаем что отправляемое сообщение трейлеров нести не может
+					stream->trailerlessSend = true;
+				}
+			}
 		}
 	/**
 	 * Если возникает ошибка
@@ -5912,7 +6218,7 @@ void awh::http::Parser_HTTP2::on(provider_callback_t callback) noexcept {
  *
  */
 awh::http::Parser_HTTP2::Parser_HTTP2(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
- parser_t(direct, fmk, log), _epoch(0), _error(error_t::NO_ERROR) {
+ parser_t(direct, fmk, log), _epoch(0), _error(error_t::NO_ERROR), _proto(proto_t::HTTP2) {
 	// Лимит одновременных потоков пира по умолчанию не задан (RFC 9113 §6.5.2)
 	this->_remote.maxConcurrentStreams = 0xFFFFFFFF;
 	// Пир не заявлял отказ от приоритетов RFC 7540, пока не прислал параметр

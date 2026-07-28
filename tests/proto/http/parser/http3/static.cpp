@@ -635,6 +635,246 @@ TEST_F(ParserHttp3Fixture, TrailerSection){
 	ASSERT_TRUE(std::get <1> (client.events.providers.back()));
 }
 /**
+ * @brief Проверка подавления тела ответа 204, продолженного из функции записи
+ *
+ * @details Байты секции полей уходят обвязке синхронно, и та вправе прямо
+ *          из функции записи продолжить сообщение. Признаки безтелесности
+ *          обязаны действовать уже к этому моменту: выставленные после отправки,
+ *          они опоздали бы ровно на такое продолжение
+ *
+ */
+TEST_F(ParserHttp3Fixture, NoContentResponseSuppressedFromWriteCallback){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Отправляем секцию полей запроса
+	client.parser->sendHeaders(0, this->request("GET", "/index.html"), true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Формируем тело ответа
+	const std::string body(1024, 'z');
+	// Признак выполненного продолжения сообщения из функции записи
+	bool continued = false;
+	// Указатель на сторону сервера для использования из функции записи
+	endpoint_t * target = &server;
+	/**
+	 * Перехватываем функцию записи и продолжаем сообщение прямо из неё:
+	 * это и есть момент, в который признаки обязаны быть уже выставлены
+	 */
+	server.parser->on(parser_http3_t::write_callback_t([target, &continued, &body](const uint64_t sid, const void * buffer, const size_t size, const bool fin) noexcept {
+		// Складываем исходящие байты в очередь эмулятора транспорта
+		target->queue.emplace_back(sid, std::string(reinterpret_cast <const char *> (buffer), size), fin);
+		// Если продолжение сообщения ещё не выполнялось
+		if(!continued && (sid == 0)){
+			// Помечаем что продолжение сообщения выполнено
+			continued = true;
+			// Отдаём тело ответа прямо из функции записи
+			target->parser->sendData(0, body.data(), body.size(), true);
+		}
+	}));
+	// Очищаем очередь исходящих данных от служебных байтов рукопожатия
+	server.queue.clear();
+	// Отправляем секцию полей ответа, оставляя поток открытым
+	server.parser->sendHeaders(0, this->response("204"), false);
+	// Продолжение сообщения из функции записи обязано было выполниться
+	ASSERT_TRUE(continued);
+	// Число записей очереди, несущих данные тела
+	size_t payload = 0;
+	/**
+	 * Перебираем очередь исходящих данных: секция полей уйти обязана,
+	 * а тело - нет
+	 */
+	for(const auto & item : server.queue){
+		// Если запись несёт данные сверх секции полей
+		if(std::get <1> (item).find(body.substr(0, 64)) != std::string::npos)
+			// Наращиваем число записей с телом
+			++payload;
+	}
+	// Тело ответа 204 на провод уйти не вправе
+	ASSERT_EQ(payload, 0u);
+}
+
+/**
+ * @brief Проверка допустимости пустого кадра DATA в безтелесном сообщении
+ *
+ * @details Пустой кадр содержимого не добавляет: это выбор нарезки, а не
+ *          семантика сообщения. Отвергать его - значит рвать поток по признаку,
+ *          которого в сообщении нет. HTTP/2 трактует пустой DATA так же,
+ *          и расходиться двум версиям одного правила незачем
+ *
+ */
+TEST_F(ParserHttp3Fixture, EmptyDataOnHeadlessAllowed){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	// Отправляем секцию полей запроса
+	client.parser->sendHeaders(0, this->request("GET", "/index.html"), true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Отправляем безтелесный ответ сервера, оставляя поток открытым
+	server.parser->sendHeaders(0, this->response("204"), false);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Буфер кадра данных нулевой длины
+	std::string data;
+	// Собираем заголовок кадра данных нулевой длины
+	frame::serialize::header(data, static_cast <uint64_t> (frame_t::DATA), 0);
+	// Подаём пустой кадр данных на разбор клиенту
+	ASSERT_EQ(this->feed(client, 0, data, true), status_t::OK);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(client.events.errors.empty());
+	// Поток обрываться не должен: содержимого пустой кадр не несёт
+	ASSERT_TRUE(client.events.aborts.empty());
+	// Тело доставлено быть не должно
+	ASSERT_TRUE(client.events.bodies.empty());
+}
+
+/**
+ * @brief Проверка отбраковки трейлеров в принимаемых ответах 204 и 304 (RFC 9110 §15.3.5, §15.4.5)
+ *
+ * @details Оба ответа завершаются концом секции полей и не несут ни содержимого,
+ *          ни трейлеров. Тело на приёме отвергалось и раньше, а секция трейлеров
+ *          проходила: запрет был односторонним - действовал на отправке
+ *          и не действовал на приёме
+ *
+ */
+TEST_F(ParserHttp3Fixture, NoContentResponseTrailersRejected){
+	/**
+	 * Проверяем оба статуса: правило у них общее, а формулировки в RFC раздельные
+	 */
+	for(const char * code : {"204", "304"}){
+		// Стороны соединения
+		endpoint_t client, server;
+		// Подготавливаем сторону клиента
+		this->setup(client, direct_t::RESPONSE);
+		// Подготавливаем сторону сервера
+		this->setup(server, direct_t::REQUEST);
+		// Выполняем рукопожатие соединения
+		this->handshake(client, server);
+		// Отправляем секцию полей запроса
+		client.parser->sendHeaders(0, this->request("GET", "/index.html"), true);
+		// Выполняем прокачку очередей исходящих данных
+		this->pump(client, server);
+		// Отправляем секцию полей ответа, оставляя поток открытым
+		server.parser->sendHeaders(0, this->response(code), false);
+		// Выполняем прокачку очередей исходящих данных
+		this->pump(client, server);
+		// Ответ обязан дойти до клиента
+		ASSERT_EQ(client.events.code, ::atoi(code)) << "code: " << code;
+		// Объект кодера секции трейлеров
+		qpack::encoder_t encoder;
+		// Буфер закодированной секции трейлеров
+		std::string section;
+		/**
+		 * Секция трейлеров кодируется отдельным кодером: собственный сервер
+		 * её больше не выпустит, подавляя трейлеры такого ответа у себя
+		 */
+		encoder.encode(0, {qpack::field_t{"x-checksum", "deadbeef"}}, section);
+		// Буфер потока с секцией трейлеров
+		std::string stream;
+		// Дописываем заголовок кадра секции полей
+		frame::serialize::header(stream, static_cast <uint64_t> (frame_t::HEADERS), section.size());
+		// Дописываем секцию трейлеров
+		stream.append(section);
+		// Подаём секцию трейлеров на разбор клиенту
+		ASSERT_EQ(this->feed(client, 0, stream, true), status_t::OK) << "code: " << code;
+		// Соединение обязано остаться живым
+		ASSERT_TRUE(client.events.errors.empty()) << "code: " << code;
+		// Поток обязан быть оборван
+		ASSERT_FALSE(client.events.aborts.empty()) << "code: " << code;
+		// Код обрыва потока обязан указывать на ошибку сообщения
+		ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << "code: " << code;
+	}
+}
+
+/**
+ * @brief Проверка полноты списка запрещённых в трейлерах полей (RFC 9110 §6.5.1)
+ *
+ * @details RFC перечисляет категории, а не поля: кадрирование, маршрутизация,
+ *          модификаторы и условные поля запроса, аутентификация, управляющие
+ *          данные ответа, состояние сессии. Проверяется по представителю каждой
+ *          категории, а заодно и обратное: в обычном блоке заголовков то же поле
+ *          проходит - запрет принадлежит секции трейлеров, а не самому полю
+ *
+ */
+TEST_F(ParserHttp3Fixture, ForbiddenTrailerCategories){
+	/**
+	 * Таблица проверяемых полей: представитель категории и признак запрета
+	 * в секции трейлеров
+	 */
+	const std::vector <std::pair <const char *, bool>> probes = {
+		{"if-modified-since", true},  // условные поля запроса
+		{"date", true},               // управляющие данные ответа
+		{"set-cookie", true},         // состояние сессии
+		{"www-authenticate", true},   // аутентификация
+		{"vary", true},               // управляющие данные ответа
+		{"x-checksum", false}         // поле без определённой семантики - разрешено
+	};
+	/**
+	 * Выполняем перебор всех проверяемых полей
+	 */
+	for(const auto & probe : probes){
+		/**
+		 * Проверяем обе секции: в трейлерах поле обязано быть отвергнуто,
+		 * а в обычном блоке заголовков - принято
+		 */
+		for(int variant = 0; variant < 2; ++variant){
+			// Стороны соединения
+			endpoint_t client, server;
+			// Подготавливаем сторону клиента
+			this->setup(client, direct_t::RESPONSE);
+			// Подготавливаем сторону сервера
+			this->setup(server, direct_t::REQUEST);
+			// Выполняем рукопожатие соединения
+			this->handshake(client, server);
+			// Собираем набор полей запроса
+			std::vector <qpack::field_t> fields = this->request("POST", "/upload");
+			// Если проверяется обычный блок заголовков - кладём поле в него
+			if(variant == 1)
+				// Дописываем проверяемое поле в секцию полей запроса
+				fields.emplace_back(probe.first, "value");
+			// Отправляем секцию полей запроса, оставляя поток открытым
+			client.parser->sendHeaders(0, fields, false);
+			// Отправляем тело запроса без завершения потока (завершат трейлеры)
+			client.parser->sendData(0, "chunk", 5, false);
+			// Собираем секцию трейлеров
+			std::vector <qpack::field_t> trailers;
+			// Дописываем в трейлеры проверяемое поле либо заведомо разрешённое
+			trailers.emplace_back(((variant == 0) ? probe.first : "x-trailer"), "value");
+			// Отправляем секцию трейлеров вместе с завершением потока
+			client.parser->sendHeaders(0, trailers, true);
+			// Выполняем прокачку очередей исходящих данных
+			this->pump(client, server);
+			// Соединение обязано остаться живым в любом случае
+			ASSERT_TRUE(server.events.errors.empty()) << "field: " << probe.first << ", variant: " << variant;
+			// Если поле запрещено именно в секции трейлеров
+			if(probe.second && (variant == 0)){
+				// Поток обязан быть оборван
+				ASSERT_FALSE(server.events.aborts.empty()) << "field: " << probe.first;
+				// Код обрыва потока обязан указывать на ошибку сообщения
+				ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << "field: " << probe.first;
+			// Иначе сообщение обязано быть принято целиком
+			} else {
+				// Обрыва потока быть не должно
+				ASSERT_TRUE(server.events.aborts.empty()) << "field: " << probe.first << ", variant: " << variant;
+				// Секция трейлеров обязана дойти до приложения
+				ASSERT_EQ(this->field(server.events, 0, ((variant == 0) ? probe.first : "x-trailer")), "value") << "field: " << probe.first << ", variant: " << variant;
+			}
+		}
+	}
+}
+
+/**
  * @brief Проверка отбраковки расхождения объявленной и принятой длины тела
  *
  */
@@ -1528,10 +1768,18 @@ TEST_F(ParserHttp3Fixture, DataOnHeadlessResponse){
 	this->pump(client, server);
 	// Отправляем безтелесный ответ сервера
 	server.parser->sendHeaders(0, this->response("204"), false);
-	// Отправляем тело, которого у ответа 204 быть не может
-	server.parser->sendData(0, "hello", 5, true);
 	// Выполняем прокачку очередей исходящих данных
 	this->pump(client, server);
+	// Буфер кадра данных тела
+	std::string data;
+	/**
+	 * Тело подаётся сырыми байтами: собственный сервер его больше не выпустит,
+	 * подавляя содержимое ответа 204 у себя (RFC 9110 §15.3.5), а проверяется
+	 * здесь реакция принимающей стороны на пира, который этого не соблюдает
+	 */
+	frame::serialize::data(data, "hello");
+	// Подаём кадр данных тела на разбор клиенту
+	this->feed(client, 0, data, true);
 	// Соединение обязано остаться живым
 	ASSERT_TRUE(client.events.errors.empty());
 	// Поток обязан быть оборван
@@ -2808,6 +3056,57 @@ TEST_F(ParserHttp3Fixture, HeadResponseBodySuppressed){
 }
 
 /**
+ * @brief Проверка подавления тела и трейлеров в ответах 204 и 304 (RFC 9110 §15.3.5, §15.4.5)
+ *
+ * @details Оба ответа завершаются концом секции полей и не несут ни содержимого,
+ *          ни трейлеров. В отличие от ответа на HEAD, где запрещено только
+ *          содержимое, здесь запрещено и то и другое, поэтому признака два
+ *
+ */
+TEST_F(ParserHttp3Fixture, NoContentResponseBodySuppressed){
+	/**
+	 * Проверяем оба статуса: правило у них общее, а формулировки в RFC раздельные
+	 */
+	for(const char * code : {"204", "304"}){
+		// Стороны соединения
+		endpoint_t client, server;
+		// Подготавливаем сторону клиента
+		this->setup(client, direct_t::RESPONSE);
+		// Подготавливаем сторону сервера
+		this->setup(server, direct_t::REQUEST);
+		// Выполняем рукопожатие соединения
+		this->handshake(client, server);
+		// Отправляем секцию полей запроса
+		client.parser->sendHeaders(0, this->request("GET", "/index.html"), true);
+		// Выполняем прокачку очередей исходящих данных
+		this->pump(client, server);
+		// Отправляем секцию полей ответа, оставляя поток открытым
+		server.parser->sendHeaders(0, this->response(code), false);
+		// Очищаем очередь исходящих данных от секции полей ответа
+		server.queue.clear();
+		// Формируем тело ответа
+		const std::string body(4 * 1024, 'z');
+		// Отдаём тело ответа без завершения потока
+		const size_t accepted = server.parser->sendData(0, body.data(), body.size(), false);
+		// Тело обязано быть принято целиком: отказ приложение прочло бы как backpressure
+		ASSERT_EQ(accepted, body.size()) << "code: " << code;
+		// Формируем секцию трейлеров
+		std::vector <qpack::field_t> trailers;
+		// Дописываем поле секции трейлеров
+		trailers.emplace_back("x-checksum", "deadbeef");
+		// Отправляем секцию трейлеров с завершением потока
+		server.parser->sendHeaders(0, trailers, true);
+		/**
+		 * Перебираем очередь исходящих данных: ни тела, ни секции трейлеров
+		 * на проводе быть не должно
+		 */
+		for(const auto & item : server.queue)
+			// Данных в очереди быть не должно
+			ASSERT_TRUE(std::get <1> (item).empty()) << "code: " << code;
+	}
+}
+
+/**
  * @brief Проверка разбора приоритета с параметрами structured fields
  *
  * @details Член словаря вправе нести параметры (RFC 8941 §3.1.2): неизвестные
@@ -2851,4 +3150,233 @@ TEST_F(ParserHttp3Fixture, PriorityParametersIgnored){
 	ASSERT_FALSE(server.parser->priority(0).incremental);
 	// Ошибок уровня соединения быть не должно
 	ASSERT_TRUE(server.events.errors.empty());
+}
+/**
+ * @brief Проверка семейства протоколов, принимаемых парсером
+ *
+ * @details Парсер разбирает только HTTP/3, поэтому указание протокола другого
+ *          семейства обязано быть отвергнуто, а установленное ранее значение -
+ *          сохранено. Клон получает роль узла наравне с прочими настройками:
+ *          иначе фабрика, настроенная промежуточным узлом, выпускала бы
+ *          соединения, эту роль потерявшие
+ *
+ */
+TEST_F(ParserHttp3Fixture, ProtoFamilyGuard){
+	// Сторона соединения
+	endpoint_t server;
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// По умолчанию парсер работает прямым соединением с узлом
+	ASSERT_EQ(server.parser->proto(), proto_t::HTTP3);
+	// Устанавливаем режим работы промежуточным узлом
+	server.parser->proto(proto_t::PROXY3);
+	// Проверяем что режим установлен
+	ASSERT_EQ(server.parser->proto(), proto_t::PROXY3);
+	/**
+	 * Выполняем перебор протоколов чужих семейств
+	 */
+	for(const proto_t proto : {proto_t::HTTP1, proto_t::PROXY1, proto_t::HTTP2, proto_t::PROXY2, proto_t::WEBSOCKET2}){
+		// Выполняем попытку установки протокола чужого семейства
+		server.parser->proto(proto);
+		// Проверяем что установленный ранее протокол сохранён
+		ASSERT_EQ(server.parser->proto(), proto_t::PROXY3) << "proto: " << static_cast <uint16_t> (proto);
+	}
+	// Устанавливаем режим туннеля WebSocket поверх расширенного CONNECT
+	server.parser->proto(proto_t::WEBSOCKET3);
+	// Проверяем что режим своего семейства принят
+	ASSERT_EQ(server.parser->proto(), proto_t::WEBSOCKET3);
+	// Возвращаем режим работы промежуточным узлом
+	server.parser->proto(proto_t::PROXY3);
+	// Создаём клон объекта парсера
+	auto clone = server.parser->clone();
+	// Проверяем что клон создан
+	ASSERT_NE(clone, nullptr);
+	// Проверяем что клон получил роль узла оригинала
+	ASSERT_EQ(static_cast <parser_http3_t *> (clone.get())->proto(), proto_t::PROXY3);
+	// Выполняем полную очистку парсера
+	server.parser->clear();
+	// Проверяем что протокол вернулся к значению по умолчанию
+	ASSERT_EQ(server.parser->proto(), proto_t::HTTP3);
+}
+/**
+ * @brief Проверка отбраковки объявленной длины тела у ответов 1xx и 204 промежуточным узлом
+ *
+ * @details В HTTP/3 границу сообщения задаёт завершение потока, поэтому
+ *          объявленная у безтелесного ответа длина ни на что не влияет -
+ *          RFC 9114 §4.1.2 разрешает её прямо, и прямому соединению отвергать
+ *          такой ответ незачем. Узел, передающий ответ дальше по цепочке,
+ *          отправить это поле следующему звену не вправе (RFC 9112 §6.1), а
+ *          звено, всё же его получившее и уважившее, прочитает следующий ответ
+ *          как тело этого. Ровно на это указывает RFC 9114 §10.3
+ *
+ */
+TEST_F(ParserHttp3Fixture, ProxyBodylessResponseFraming){
+	/**
+	 * Проверяем обе роли узла: расхождение поведения и есть предмет проверки
+	 */
+	for(const bool proxy : {false, true}){
+		/**
+		 * Проверяем оба класса ответов, кадрирования не несущих вовсе
+		 */
+		for(const std::string & code : {std::string("103"), std::string("204")}){
+			// Стороны соединения
+			endpoint_t client, server;
+			// Подготавливаем сторону клиента
+			this->setup(client, direct_t::RESPONSE);
+			// Подготавливаем сторону сервера
+			this->setup(server, direct_t::REQUEST);
+			// Устанавливаем роль узла проверяемой стороне
+			client.parser->proto(proxy ? proto_t::PROXY3 : proto_t::HTTP3);
+			// Выполняем рукопожатие соединения
+			this->handshake(client, server);
+			// Отправляем секцию полей запроса
+			client.parser->sendHeaders(0, this->request("GET", "/"), true);
+			// Выполняем прокачку очередей исходящих данных
+			this->pump(client, server);
+			// Собираем набор полей ответа проверяемым статусом
+			std::vector <qpack::field_t> fields = this->response(code);
+			// Объявляем длину тела, которого у такого ответа быть не может
+			fields.emplace_back("content-length", "5");
+			// Отправляем секцию полей ответа, не завершая поток
+			server.parser->sendHeaders(0, fields, false);
+			// Выполняем прокачку очередей исходящих данных
+			this->pump(client, server);
+			// Если парсер работает промежуточным узлом
+			if(proxy){
+				// Поток обязан быть оборван
+				ASSERT_FALSE(client.events.aborts.empty()) << "code: " << code;
+				// Код обрыва потока обязан указывать на искажённое сообщение
+				ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << "code: " << code;
+			// Прямое соединение такой ответ принимает
+			} else ASSERT_TRUE(client.events.aborts.empty()) << "code: " << code;
+			// Соединение обязано остаться живым в любом случае
+			ASSERT_TRUE(client.events.errors.empty()) << "code: " << code;
+		}
+	}
+}
+/**
+ * @brief Проверка отбраковки управляющих символов в значениях полей промежуточным узлом
+ *
+ * @details Минимальная проверка отсеивает только NUL, CR и LF - прочие
+ *          управляющие символы конечный получатель передаёт приложению как есть.
+ *          Узел, транслирующий сообщение в HTTP/1.1, так поступить не может:
+ *          грамматика field-content управляющих символов не допускает, а
+ *          вертикальную табуляцию и перевод страницы часть реализаций HTTP/1.1
+ *          разбирает как разделители строк (RFC 9114 §10.3)
+ *
+ */
+TEST_F(ParserHttp3Fixture, ProxyFieldValueControlCharacter){
+	/**
+	 * Проверяем обе роли узла: расхождение поведения и есть предмет проверки
+	 */
+	for(const bool proxy : {false, true}){
+		/**
+		 * Проверяем управляющие символы, минимальной проверкой не отсеиваемые
+		 */
+		for(const char letter : {'\x01', '\x0B', '\x0C', '\x1F', '\x7F'}){
+			// Стороны соединения
+			endpoint_t client, server;
+			// Подготавливаем сторону клиента
+			this->setup(client, direct_t::RESPONSE);
+			// Подготавливаем сторону сервера
+			this->setup(server, direct_t::REQUEST);
+			// Устанавливаем роль узла проверяемой стороне
+			server.parser->proto(proxy ? proto_t::PROXY3 : proto_t::HTTP3);
+			// Выполняем рукопожатие соединения
+			this->handshake(client, server);
+			// Собираем значение поля с управляющим символом внутри
+			const std::string value = std::string("a") + std::string(1, letter) + std::string("b");
+			// Собираем набор полей запроса клиента
+			std::vector <qpack::field_t> fields = this->request("GET", "/");
+			// Дописываем поле с управляющим символом в значении
+			fields.emplace_back("x-probe", value);
+			// Отправляем секцию полей запроса
+			client.parser->sendHeaders(0, fields, true);
+			// Выполняем прокачку очередей исходящих данных
+			this->pump(client, server);
+			// Собираем описание проверяемого символа
+			const uint16_t probe = static_cast <uint16_t> (static_cast <uint8_t> (letter));
+			// Если парсер работает промежуточным узлом
+			if(proxy){
+				// Поток обязан быть оборван
+				ASSERT_FALSE(server.events.aborts.empty()) << "letter: " << probe;
+				// Код обрыва потока обязан указывать на искажённое сообщение
+				ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << "letter: " << probe;
+			// Прямое соединение такой запрос принимает
+			} else {
+				// Обрыва потока быть не должно
+				ASSERT_TRUE(server.events.aborts.empty()) << "letter: " << probe;
+				// Поле обязано дойти до приложения без изменений
+				ASSERT_EQ(this->field(server.events, 0, "x-probe"), value) << "letter: " << probe;
+			}
+			// Соединение обязано остаться живым в любом случае
+			ASSERT_TRUE(server.events.errors.empty()) << "letter: " << probe;
+		}
+	}
+}
+/**
+ * @brief Проверка отбраковки псевдо-заголовков, расщепляющих стартовую строку
+ *
+ * @details Отдельных правил проверки псевдо-заголовков протокол не содержит, и
+ *          RFC 9114 §10.3 оставляет её тому, кто значения использует. Пробел
+ *          внутри значения расщепляет стартовую строку HTTP/1.1 на элементы,
+ *          которых отправитель туда не помещал, а метод сверх того обязан быть
+ *          токеном (RFC 9110 §9.1)
+ *
+ */
+TEST_F(ParserHttp3Fixture, ProxyPseudoHeaderSplitting){
+	// Проверяемые псевдо-заголовки: название поля и значение, стартовую строку расщепляющее
+	const std::vector <std::pair <std::string, std::string>> probes = {
+		{":path", "/data /evil"},
+		{":authority", "example.com evil.com"},
+		{":method", "GE T"},
+		{":method", "GET/evil"},
+		{":scheme", "ht tps"}
+	};
+	/**
+	 * Проверяем обе роли узла: расхождение поведения и есть предмет проверки
+	 */
+	for(const bool proxy : {false, true}){
+		/**
+		 * Выполняем перебор всех проверяемых псевдо-заголовков
+		 */
+		for(const auto & probe : probes){
+			// Стороны соединения
+			endpoint_t client, server;
+			// Подготавливаем сторону клиента
+			this->setup(client, direct_t::RESPONSE);
+			// Подготавливаем сторону сервера
+			this->setup(server, direct_t::REQUEST);
+			// Устанавливаем роль узла проверяемой стороне
+			server.parser->proto(proxy ? proto_t::PROXY3 : proto_t::HTTP3);
+			// Выполняем рукопожатие соединения
+			this->handshake(client, server);
+			// Собираем набор полей запроса клиента
+			std::vector <qpack::field_t> fields = this->request("GET", "/data");
+			/**
+			 * Выполняем подстановку проверяемого значения в соответствующий псевдо-заголовок
+			 */
+			for(auto & field : fields){
+				// Если найден проверяемый псевдо-заголовок
+				if(field.name == probe.first)
+					// Подставляем проверяемое значение
+					field.value = probe.second;
+			}
+			// Отправляем секцию полей запроса
+			client.parser->sendHeaders(0, fields, true);
+			// Выполняем прокачку очередей исходящих данных
+			this->pump(client, server);
+			// Если парсер работает промежуточным узлом
+			if(proxy){
+				// Поток обязан быть оборван
+				ASSERT_FALSE(server.events.aborts.empty()) << "pseudo: " << probe.first << ", value: " << probe.second;
+				// Код обрыва потока обязан указывать на искажённое сообщение
+				ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR)
+					<< "pseudo: " << probe.first << ", value: " << probe.second;
+			// Прямое соединение такой запрос принимает
+			} else ASSERT_TRUE(server.events.aborts.empty()) << "pseudo: " << probe.first << ", value: " << probe.second;
+			// Соединение обязано остаться живым в любом случае
+			ASSERT_TRUE(server.events.errors.empty()) << "pseudo: " << probe.first << ", value: " << probe.second;
+		}
+	}
 }
