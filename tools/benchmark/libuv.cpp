@@ -645,6 +645,17 @@ namespace {
 		::uv_tcp_init(server->loop, peer);
 		// Выполняем принятие входящего подключения
 		::uv_accept(server, reinterpret_cast <uv_stream_t *> (peer));
+		/**
+		 * Подписываем принятое подключение на чтение
+		 *
+		 * @note Движок AWH отдаёт из приёма подключения готовый узел события,
+		 *       подписанный на чтение, - настоящему серверу принятый сокет и нужен
+		 *       именно таким. Прежде стенд принятое подключение сразу закрывал, и
+		 *       подписка ему не стоила ничего
+		 */
+		::uv_read_start(reinterpret_cast <uv_stream_t *> (peer), &::allocate, &::peerRead);
+		// Прекращаем чтение принятого подключения
+		::uv_read_stop(reinterpret_cast <uv_stream_t *> (peer));
 		// Выполняем закрытие принятого подключения
 		::uv_close(reinterpret_cast <uv_handle_t *> (peer), &::release);
 	}

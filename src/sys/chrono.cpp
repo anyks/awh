@@ -127,6 +127,121 @@ namespace {
 		 */
 		explicit match_t() noexcept : end(-1), begin(-1) {}
 	};
+	/**
+	 * @brief Наибольшее количество групп совпадения, которое выводит нативный разбор
+	 *
+	 * @details Больше всего групп выводит разбор записи функции asctime: всё совпадение
+	 *          целиком и семь составляющих даты
+	 *
+	 */
+	static constexpr size_t MAX_MATCHES = 8;
+	/**
+	 * @brief Структура списка групп совпадения
+	 *
+	 * @details Список размещается целиком в самом объекте и памяти не выделяет. Разбор
+	 *          записи выполняет по одному вызову нативного разбора на каждую переменную
+	 *          формата, и выделение памяти на каждом из них обходилось дороже самого
+	 *          разбора: запись стандарта ISO 8601 требовала десяти выделений
+	 *
+	 * @note Обращение за пределы ёмкости списка выводит последнюю его группу, а не
+	 *       уводит в чужую память: разбор дат идёт над недоверенными записями
+	 *
+	 */
+	struct matches_t {
+		private:
+			// Количество групп совпадения в списке
+			size_t _count;
+			// Группы совпадения
+			match_t _items[MAX_MATCHES];
+		public:
+			/**
+			 * @brief Метод проверки списка групп совпадения на пустоту
+			 *
+			 * @return признак отсутствия групп совпадения в списке
+			 *
+			 */
+			bool empty() const noexcept {
+				// Выводим признак отсутствия групп совпадения
+				return (this->_count == 0);
+			}
+			/**
+			 * @brief Метод извлечения количества групп совпадения
+			 *
+			 * @return количество групп совпадения в списке
+			 *
+			 */
+			size_t size() const noexcept {
+				// Выводим количество групп совпадения
+				return this->_count;
+			}
+			/**
+			 * @brief Метод изменения количества групп совпадения
+			 *
+			 * @param count требуемое количество групп совпадения
+			 *
+			 */
+			void resize(const size_t count) noexcept {
+				// Устанавливаем количество групп, не выходя за ёмкость списка
+				this->_count = ((count < MAX_MATCHES) ? count : MAX_MATCHES);
+			}
+		public:
+			/**
+			 * @brief Оператор извлечения группы совпадения по её номеру
+			 *
+			 * @param index номер группы совпадения
+			 * @return      группа совпадения
+			 *
+			 */
+			match_t & operator [] (const size_t index) noexcept {
+				// Выводим группу совпадения, не выходя за ёмкость списка
+				return this->_items[(index < MAX_MATCHES) ? index : (MAX_MATCHES - 1)];
+			}
+			/**
+			 * @brief Оператор извлечения группы совпадения по её номеру
+			 *
+			 * @param index номер группы совпадения
+			 * @return      группа совпадения
+			 *
+			 */
+			const match_t & operator [] (const size_t index) const noexcept {
+				// Выводим группу совпадения, не выходя за ёмкость списка
+				return this->_items[(index < MAX_MATCHES) ? index : (MAX_MATCHES - 1)];
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			matches_t() noexcept : _count(0) {}
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param count количество групп совпадения в списке
+			 *
+			 */
+			explicit matches_t(const size_t count) noexcept : _count(0) {
+				// Устанавливаем требуемое количество групп совпадения
+				this->resize(count);
+			}
+	};
+	/**
+	 * @brief Структура диапазона количества цифр в одной группе
+	 *
+	 */
+	struct digits_t {
+		// Наименьшее количество цифр в группе
+		size_t min;
+		// Наибольшее количество цифр в группе
+		size_t max;
+	};
+	// Диапазоны цифровых групп записи (\d{1,2}):(\d{1,2}) формата %R
+	static constexpr digits_t DIGITS_HM[] = {{1, 2}, {1, 2}};
+	// Диапазоны цифровых групп записи (\d{1,2}):(\d{1,2}):(\d{1,2}) формата %T
+	static constexpr digits_t DIGITS_HMS[] = {{1, 2}, {1, 2}, {1, 2}};
+	// Диапазоны цифровых групп записи (\d{1,2})/(\d{1,2})/(\d{2}) формата %D
+	static constexpr digits_t DIGITS_MDY[] = {{1, 2}, {1, 2}, {2, 2}};
+	// Диапазоны цифровых групп записи (\d{4})-(\d{1,2})-(\d{1,2}) формата %F
+	static constexpr digits_t DIGITS_YMD[] = {{4, 4}, {1, 2}, {1, 2}};
 
 	/**
 	 * @brief Функция проверки, является ли символ десятичной цифрой ('0'–'9')
@@ -365,9 +480,9 @@ namespace {
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 *
 	 */
-	vector <match_t> parseDigits(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
+	matches_t parseDigits(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
 		// Итоговый список групп: остаётся пустым, если совпадение не найдено
-		vector <match_t> result;
+		matches_t result;
 		/**
 		 * Сканируем текст слева направо в поисках первой подходящей серии цифр
 		 */
@@ -401,9 +516,9 @@ namespace {
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 *
 	 */
-	vector <match_t> parseWord(const char * text, const size_t length) noexcept {
+	matches_t parseWord(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если слово не найдено
-		vector <match_t> result;
+		matches_t result;
 		/**
 		 * Сканируем текст слева направо в поисках первого словесного символа
 		 */
@@ -439,9 +554,9 @@ namespace {
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 *
 	 */
-	vector <match_t> parseAlpha2(const char * text, const size_t length) noexcept {
+	matches_t parseAlpha2(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если пара букв не найдена
-		vector <match_t> result;
+		matches_t result;
 		/**
 		 * Пробуем найти пару букв, начиная поочерёдно с каждой позиции текста
 		 */
@@ -473,9 +588,9 @@ namespace {
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 *
 	 */
-	vector <match_t> parseName(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
+	matches_t parseName(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
 		// Итоговый список групп: остаётся пустым, если название не найдено
-		vector <match_t> result;
+		matches_t result;
 		/**
 		 * Пробуем разобрать название, начиная поочерёдно с каждой позиции текста
 		 */
@@ -503,13 +618,14 @@ namespace {
 	 * @param text   анализируемый текст
 	 * @param length длина анализируемого текста
 	 * @param sep    символ разделителя между группами
-	 * @param specs  список диапазонов [min,max] для каждой группы
+	 * @param specs  диапазоны [min,max] количества цифр для каждой группы
+	 * @param count  количество цифровых групп в записи
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
 	 *
 	 */
-	vector <match_t> parseDigitGroups(const char * text, const size_t length, const char sep, const vector <pair <size_t, size_t>> & specs) noexcept {
+	matches_t parseDigitGroups(const char * text, const size_t length, const char sep, const digits_t * specs, const size_t count) noexcept {
 		// Итоговый список групп: остаётся пустым, если последовательность не найдена
-		vector <match_t> result;
+		matches_t result;
 		/**
 		 * Сканируем текст в поисках начала последовательности (первой цифры)
 		 */
@@ -522,21 +638,21 @@ namespace {
 			size_t pos = i;
 			// Признак того, что все группы и разделители разобраны без ошибок
 			bool ok = true;
-			// Группы совпадения: индекс 0 зарезервирован под всё совпадение, далее по группе на каждый spec
-			vector <match_t> groups(specs.size() + 1);
+			// Группы совпадения: индекс 0 зарезервирован под всё совпадение, далее по группе на каждый диапазон
+			matches_t groups(count + 1);
 			/**
-			 * Последовательно разбираем каждую цифровую группу из specs
+			 * Последовательно разбираем каждую цифровую группу из диапазонов
 			 */
-			for(size_t j = 0; j < specs.size(); j++){
+			for(size_t j = 0; j < count; j++){
 				// Группа не набрала нужное число цифр — разбор последовательности сорван
-				if(!matchDigits(text, length, pos, specs[j].first, specs[j].second, groups[j + 1])){
+				if(!matchDigits(text, length, pos, specs[j].min, specs[j].max, groups[j + 1])){
 					// Разбор очередной группы не удался — выставляем признак ошибки
 					ok = false;
 					// Выходим из цикла, так как дальнейший разбор уже не имеет смысла
 					break;
 				}
 				// Между группами (но не после последней) обязателен разделитель
-				if((j + 1) < specs.size()){
+				if((j + 1) < count){
 					// Ожидаемого разделителя нет — разбор последовательности сорван
 					if(!matchLiteral(text, length, pos, sep)){
 						// Разделитель не найден — выставляем признак ошибки
@@ -570,9 +686,9 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
 	 *
 	 */
-	vector <match_t> parseTimeMeridiem(const char * text, const size_t length) noexcept {
+	matches_t parseTimeMeridiem(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если время с меткой не найдено
-		vector <match_t> result;
+		matches_t result;
 		/**
 		 * Время начинается с цифры часов — ищем её, сканируя текст
 		 */
@@ -584,7 +700,7 @@ namespace {
 			// Курсор для пробного разбора, начинающийся с текущей позиции
 			size_t pos = i;
 			// Группы: [0] — всё совпадение, [1..3] — часы/минуты/секунды, [4] — метка AM/PM
-			vector <match_t> groups(5);
+			matches_t groups(5);
 			// Разбираем «ЧЧ:ММ:СС <метка>» одной цепочкой: любое звено может оборвать совпадение
 			if(matchDigits(text, length, pos, 1, 2, groups[1]) &&
 			   matchLiteral(text, length, pos, ':') &&
@@ -615,9 +731,9 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
 	 *
 	 */
-	vector <match_t> parseAsctime(const char * text, const size_t length) noexcept {
+	matches_t parseAsctime(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если дата asctime не найдена
-		vector <match_t> result;
+		matches_t result;
 		/**
 		 * Дата asctime начинается с названия дня недели (с заглавной буквы) — ищем её
 		 */
@@ -629,7 +745,7 @@ namespace {
 			// Курсор для пробного разбора, начинающийся с текущей позиции
 			size_t pos = i;
 			// Группы: [0] — всё совпадение, далее день недели, месяц, число, ЧЧ, ММ, СС и год
-			vector <match_t> groups(8);
+			matches_t groups(8);
 			// Разбираем «Ddd Mmm DD HH:MM:SS YYYY» одной цепочкой: сбой любого звена прерывает разбор
 			if(matchName(text, length, pos, 2, 2, groups[1]) &&
 			   matchSpaces(text, length, pos) &&
@@ -666,9 +782,9 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - знак, группа 2 - блок смещения, группы 3 и 4 - часы и минуты при формате с двоеточием, группа 5 - цифровое смещение при формате без двоеточия)
 	 *
 	 */
-	vector <match_t> parseZoneOffset(const char * text, const size_t length) noexcept {
+	matches_t parseZoneOffset(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если смещение зоны не найдено
-		vector <match_t> result;
+		matches_t result;
 		/**
 		 * Смещение начинается со знака — ищем '+' или '-', сканируя текст
 		 */
@@ -678,7 +794,7 @@ namespace {
 				// Переходим к следующей позиции текста
 				continue;
 			// Группы: [0] — всё совпадение, [1] — знак, [2] — блок смещения, [3]/[4] — часы/минуты, [5] — слитное смещение
-			vector <match_t> groups(6);
+			matches_t groups(6);
 			/**
 			 * Группа знака занимает один символ — сам '+' или '-'
 			 */
@@ -753,9 +869,9 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - слово, группа 2 - блок смещения, группа 3 - знак, группа 4 - значение смещения, группы 5 и 6 - часы и минуты при формате с двоеточием)
 	 *
 	 */
-	vector <match_t> parseZoneFull(const char * text, const size_t length) noexcept {
+	matches_t parseZoneFull(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если ни слова, ни смещения не нашлось
-		vector <match_t> result;
+		matches_t result;
 		/**
 		 * Оба элемента шаблона необязательны, поэтому ищем первое непустое совпадение
 		 */
@@ -763,7 +879,7 @@ namespace {
 			// Курсор разбора, начинающийся с текущей позиции
 			size_t pos = i;
 			// Группы: [0] всё, [1] слово, [2] блок смещения, [3] знак, [4] значение, [5]/[6] часы/минуты
-			vector <match_t> groups(7);
+			matches_t groups(7);
 			// Необязательная часть (\w+)?: название зоны словом
 			if(isWordChar(text[pos])){
 				// Курсор для поглощения всего слова
@@ -888,9 +1004,9 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - число, группа 2 - единица размерности)
 	 *
 	 */
-	vector <match_t> parseSeconds(const char * text, const size_t length) noexcept {
+	matches_t parseSeconds(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если число с единицей не найдено
-		vector <match_t> result;
+		matches_t result;
 		/**
 		 * Число начинается со знака, цифры, точки или запятой — ищем такую позицию
 		 */
@@ -941,7 +1057,7 @@ namespace {
 				// После единицы есть ещё символы — это не совпадение по формату, переходим к следующей позиции текста
 				continue;
 			// Группы: [0] — всё совпадение, [1] — число, [2] — единица размерности
-			vector <match_t> groups(3);
+			matches_t groups(3);
 			/**
 			 * Группа 0 охватывает число вместе с единицей (включая пробелы между ними)
 			 */
@@ -1684,7 +1800,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 		// Длина анализируемого текста
 		const size_t len = (text.size() - pos);
 		// Список групп совпадения
-		vector <match_t> match;
+		matches_t match;
 		/**
 		 * Выбираем нативный парсер в зависимости от формата
 		 */
@@ -1708,13 +1824,13 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 			// Если формат соответствует %Z ((\w+)?((\+|\-)((\d{1,2}):(\d{1,2})|(\d{1,4})))?)
 			case static_cast <uint8_t> (format_t::Z): match = ::parseZoneFull(src, len); break;
 			// Если формат соответствует %R ((\d{1,2}):(\d{1,2}))
-			case static_cast <uint8_t> (format_t::R): match = ::parseDigitGroups(src, len, ':', {{1, 2}, {1, 2}}); break;
+			case static_cast <uint8_t> (format_t::R): match = ::parseDigitGroups(src, len, ':', DIGITS_HM, 2); break;
 			// Если формат соответствует %T ((\d{1,2}):(\d{1,2}):(\d{1,2}))
-			case static_cast <uint8_t> (format_t::T): match = ::parseDigitGroups(src, len, ':', {{1, 2}, {1, 2}, {1, 2}}); break;
+			case static_cast <uint8_t> (format_t::T): match = ::parseDigitGroups(src, len, ':', DIGITS_HMS, 3); break;
 			// Если формат соответствует %D ((\d{1,2})/(\d{1,2})/(\d{2}))
-			case static_cast <uint8_t> (format_t::D): match = ::parseDigitGroups(src, len, '/', {{1, 2}, {1, 2}, {2, 2}}); break;
+			case static_cast <uint8_t> (format_t::D): match = ::parseDigitGroups(src, len, '/', DIGITS_MDY, 3); break;
 			// Если формат соответствует %F ((\d{4})-(\d{1,2})-(\d{1,2}))
-			case static_cast <uint8_t> (format_t::F): match = ::parseDigitGroups(src, len, '-', {{4, 4}, {1, 2}, {1, 2}}); break;
+			case static_cast <uint8_t> (format_t::F): match = ::parseDigitGroups(src, len, '-', DIGITS_YMD, 3); break;
 			// Если формат соответствует %r ((\d{1,2}):(\d{1,2}):(\d{1,2})\s+([A-Za-z]{2}))
 			case static_cast <uint8_t> (format_t::r): match = ::parseTimeMeridiem(src, len); break;
 			// Если формат соответствует %c (asctime)
@@ -4504,7 +4620,7 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 		 */
 		try {
 			// Выполняем нативный разбор строки размерности времени
-			const vector <match_t> match = ::parseSeconds(value.data(), value.size());
+			const matches_t match = ::parseSeconds(value.data(), value.size());
 			// Если совпадение получено
 			if(!match.empty()){
 				// Обрабатываем полученные группы совпадения
@@ -6768,24 +6884,16 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 		 */
 		try {
 			// Выполняем нативный разбор названия временной зоны (\w+)
-			const vector <match_t> match = ::parseWord(zone.data(), zone.size());
+			const matches_t match = ::parseWord(zone.data(), zone.size());
 			// Если совпадение получено
 			if(!match.empty()){
-				// Обрабатываем полученные группы совпадения
+				// Обрабатываем полученную группу совпадения
 				{
-					// Создаём массив собранных результатов
-					vector <string> data(match.size());
 					/**
-					 * Выполняем перебор всех полученных вариантов
+					 * Название временной зоны разбор выводит единственной группой
+					 * совпадения, и собирать из групп список незачем
 					 */
-					for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
-						// Если результат получен
-						if(match[j].end > match[j].begin)
-							// Выполняем установку результата
-							data[j].assign(zone.data() + match[j].begin, match[j].end - match[j].begin);
-					}
-					// Если временная зона извлечена
-					if(!data.empty() && !data.front().empty()){
+					if(match[0].end > match[0].begin){
 						// Статическая таблица соответствия названий временных зон их идентификаторам
 						static const unordered_map <string, zone_t> matches = {
 							{"z", zone_t::UTC},
@@ -6971,8 +7079,8 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 							{"hovst", zone_t::HOVST},
 							{"ulast", zone_t::ULAST}
 						};
-						// Приводим извлечённое название временной зоны к нижнему регистру
-						string name = data.front();
+						// Получаем извлечённое название временной зоны
+						string name(zone.data() + match[0].begin, static_cast <size_t> (match[0].end - match[0].begin));
 						// Выполняем поиск временной зоны в таблице соответствия
 						auto j = matches.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
 						// Если временная зона найдена в таблице соответствия
@@ -7567,7 +7675,7 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 		 */
 		try {
 			// Выполняем нативный разбор временной зоны со смещением (формат %e)
-			const vector <match_t> match = ::parseZoneFull(zone.data(), zone.size());
+			const matches_t match = ::parseZoneFull(zone.data(), zone.size());
 			// Если совпадение получено
 			if(!match.empty()){
 				// Название временной зоны, указанное перед смещением
@@ -9065,7 +9173,7 @@ bool awh::Chrono::validateTimeZone(string_view zone) const noexcept {
 	 */
 	try {
 		// Выполняем нативный разбор временной зоны со смещением (формат %e)
-		const vector <match_t> match = ::parseZoneFull(zone.data(), zone.size());
+		const matches_t match = ::parseZoneFull(zone.data(), zone.size());
 		// Если разобрать обозначение не удалось
 		if(match.empty())
 			// Обозначение непригодно
@@ -9113,7 +9221,7 @@ bool awh::Chrono::validateSeconds(string_view value) const noexcept {
 	 */
 	try {
 		// Выполняем нативный разбор обозначения размерности времени
-		const vector <match_t> match = ::parseSeconds(value.data(), value.size());
+		const matches_t match = ::parseSeconds(value.data(), value.size());
 		// Если разобрать обозначение не удалось
 		if(match.empty())
 			// Обозначение непригодно

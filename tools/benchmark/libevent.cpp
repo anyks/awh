@@ -633,7 +633,7 @@ namespace {
 	 * @param fd дескриптор слушающего сокета
 	 *
 	 */
-	static void handshakeAccept(evutil_socket_t fd, short, void *) noexcept {
+	static void handshakeAccept(evutil_socket_t fd, short, void * arg) noexcept {
 		/**
 		 * Выполняем приём всех ожидающих подключений
 		 */
@@ -644,6 +644,19 @@ namespace {
 			if(peer < 0)
 				// Завершаем приём подключений
 				return;
+			/**
+			 * Заводим наблюдатель готовности принятого подключения
+			 *
+			 * @note Движок AWH отдаёт из приёма подключения готовый узел события,
+			 *       подписанный на чтение, - настоящему серверу принятый сокет и
+			 *       нужен именно таким. Прежде стенд принятое подключение сразу
+			 *       закрывал, и подписка ему не стоила ничего
+			 */
+			struct event * peerWatcher = ::event_new(reinterpret_cast <struct event_base *> (arg), peer, EV_READ, &::handshakeAccept, arg);
+			// Активируем наблюдатель готовности принятого подключения
+			::event_add(peerWatcher, nullptr);
+			// Освобождаем наблюдатель готовности принятого подключения
+			::event_free(peerWatcher);
 			// Выполняем закрытие принятого подключения
 			::close(peer);
 		}
@@ -659,6 +672,19 @@ namespace {
 		handshake_t * state = reinterpret_cast <handshake_t *> (arg);
 		// Освобождаем наблюдатель завершения текущего подключения
 		::event_free(state->watcher);
+		/**
+		 * Проверяем исход подключения
+		 *
+		 * @note Неблокирующее подключение сообщает о своём исходе через параметр
+		 *       сокета, а не готовностью записи: готовность наступает и при отказе.
+		 *       Движок AWH этот параметр запрашивает, и без такой же проверки стенд
+		 *       засчитывал бы за состоявшееся подключение любое пробуждение
+		 */
+		int32_t code = 0;
+		// Размер получаемого значения
+		socklen_t length = sizeof(code);
+		// Выполняем получение исхода подключения
+		::getsockopt(state->fd, SOL_SOCKET, SO_ERROR, &code, &length);
 		// Выполняем закрытие сокета текущего подключения
 		::close(state->fd);
 		// Если замер ещё не начат
@@ -711,7 +737,7 @@ namespace {
 		// Создаём слушающий сокет петлевого интерфейса
 		const int32_t server = listener(state.address);
 		// Создаём наблюдатель готовности слушающего сокета
-		struct event * listen = ::event_new(state.base, server, EV_READ | EV_PERSIST, &::handshakeAccept, nullptr);
+		struct event * listen = ::event_new(state.base, server, EV_READ | EV_PERSIST, &::handshakeAccept, state.base);
 		// Активируем наблюдатель готовности слушающего сокета
 		::event_add(listen, nullptr);
 		// Выполняем подключение первого цикла

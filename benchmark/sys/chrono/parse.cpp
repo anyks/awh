@@ -44,9 +44,9 @@ namespace {
 	 *          операционной системы
 	 *
 	 */
-	static constexpr double PARSE_ISO_THRESHOLD = 185000.0;
-	static constexpr double PARSE_CLF_THRESHOLD = 165000.0;
-	static constexpr double PARSE_COMPACT_THRESHOLD = 200000.0;
+	static constexpr double PARSE_ISO_THRESHOLD = 340000.0;
+	static constexpr double PARSE_CLF_THRESHOLD = 350000.0;
+	static constexpr double PARSE_COMPACT_THRESHOLD = 440000.0;
 	/**
 	 * @brief Пороги количества выделений памяти на один разбор
 	 *
@@ -67,9 +67,9 @@ namespace {
 	 *          нескольких цифр из уже готовой строки, и списка групп ему не нужно
 	 *
 	 */
-	static constexpr double PARSE_ISO_ALLOCATIONS = 10.0;
-	static constexpr double PARSE_CLF_ALLOCATIONS = 7.0;
-	static constexpr double PARSE_COMPACT_ALLOCATIONS = 7.0;
+	static constexpr double PARSE_ISO_ALLOCATIONS = 0.01;
+	static constexpr double PARSE_CLF_ALLOCATIONS = 0.01;
+	static constexpr double PARSE_COMPACT_ALLOCATIONS = 0.01;
 
 	/**
 	 * @brief Разбираемая запись даты формата ISO 8601

@@ -44,7 +44,7 @@ namespace {
 	 *          операционной системы
 	 *
 	 */
-	static constexpr double PARSE_THRESHOLD = 1850000.0;
+	static constexpr double PARSE_THRESHOLD = 2650000.0;
 	static constexpr double PRINT_THRESHOLD = 590000.0;
 	/**
 	 * @brief Пороги количества выделений памяти на одну операцию
@@ -55,8 +55,8 @@ namespace {
 	 *          "1.03h" короче порога размещения строки внутри самого объекта
 	 *
 	 */
-	static constexpr double PARSE_ALLOCATIONS = 1.0;
-	static constexpr double PRINT_ALLOCATIONS = 0.5;
+	static constexpr double PARSE_ALLOCATIONS = 0.01;
+	static constexpr double PRINT_ALLOCATIONS = 0.01;
 
 	/**
 	 * @brief Разбираемое обозначение размерности времени

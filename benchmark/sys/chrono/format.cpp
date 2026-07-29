@@ -46,7 +46,7 @@ namespace {
 	 */
 	static constexpr double FORMAT_ISO_THRESHOLD = 750000.0;
 	static constexpr double FORMAT_CLF_THRESHOLD = 800000.0;
-	static constexpr double FORMAT_STRIP_THRESHOLD = 120000.0;
+	static constexpr double FORMAT_STRIP_THRESHOLD = 200000.0;
 	static constexpr double FORMAT_ZONE_THRESHOLD = 10000000.0;
 	/**
 	 * @brief Пороги количества выделений памяти на одно формирование записи
@@ -70,8 +70,8 @@ namespace {
 	 */
 	static constexpr double FORMAT_ISO_ALLOCATIONS = 1.0;
 	static constexpr double FORMAT_CLF_ALLOCATIONS = 1.0;
-	static constexpr double FORMAT_STRIP_ALLOCATIONS = 9.0;
-	static constexpr double FORMAT_ZONE_ALLOCATIONS = 0.5;
+	static constexpr double FORMAT_STRIP_ALLOCATIONS = 1.0;
+	static constexpr double FORMAT_ZONE_ALLOCATIONS = 0.01;
 
 	/**
 	 * @brief Формат формирования записи даты ISO 8601

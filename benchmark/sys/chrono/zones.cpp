@@ -49,8 +49,8 @@ namespace {
 	 *          операционной системы
 	 *
 	 */
-	static constexpr double MATCH_THRESHOLD = 950000.0;
-	static constexpr double SHIFT_THRESHOLD = 320000.0;
+	static constexpr double MATCH_THRESHOLD = 1850000.0;
+	static constexpr double SHIFT_THRESHOLD = 780000.0;
 	/**
 	 * @brief Пороги количества выделений памяти на одну операцию
 	 *
@@ -64,8 +64,8 @@ namespace {
 	 *          больше. Понижать их следует правкой модуля, а не правкой порога
 	 *
 	 */
-	static constexpr double MATCH_ALLOCATIONS = 2.0;
-	static constexpr double SHIFT_ALLOCATIONS = 3.0;
+	static constexpr double MATCH_ALLOCATIONS = 0.01;
+	static constexpr double SHIFT_ALLOCATIONS = 0.01;
 
 	/**
 	 * @brief Сопоставляемое обозначение временной зоны
