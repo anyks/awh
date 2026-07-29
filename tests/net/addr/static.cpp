@@ -724,3 +724,36 @@ TEST_F(NetFixture, NetHostMatchesFullScanTest){
 	// Возвращаем режим строгости разбора адресов
 	this->_addr->strict(false);
 }
+
+/**
+ * @brief Тест независимости разбора адреса от системной локали
+ *
+ * @details Обрезка пробелов перед разбором адреса опиралась на библиотечную
+ *          проверку пробельного символа, а та смотрит на LC_CTYPE. Фреймворк же
+ *          в своём конструкторе локаль устанавливает, и по умолчанию она
+ *          "en_US.UTF-8" против "C" под MS Windows. Выходило, что байт 0xA0 -
+ *          неразрывный пробел кодировки Latin-1 - в одной локали считался
+ *          пробелом и обрезался, а в другой нет: строка "1.2.3.4\xA0"
+ *          разбиралась как годный IPv4-адрес на одной платформе и не
+ *          разбиралась на другой.
+ *
+ *          Разбор адреса от настроек локали зависеть не должен, поэтому
+ *          пробельным набором считается набор основной локали и только он:
+ *          пробел и пятёрка управляющих символов от табуляции до возврата
+ *          каретки. Тест закрепляет это: обычные пробелы обрезаются, байты
+ *          старше 0x7F - нет
+ *
+ */
+TEST_F(NetFixture, NetTrimIsLocaleIndependentTest){
+	// Обычные пробельные символы обрезаются
+	ASSERT_EQ(awh::net_addr_t::type_t::IPV4, this->_addr->host(" 1.2.3.4 "));
+	ASSERT_EQ(awh::net_addr_t::type_t::IPV4, this->_addr->host("\t1.2.3.4\r\n"));
+	ASSERT_EQ(awh::net_addr_t::type_t::IPV6, this->_addr->host(" ::1 "));
+	// Неразрывный пробел Latin-1 пробелом не считается ни в какой локали
+	ASSERT_NE(awh::net_addr_t::type_t::IPV4, this->_addr->host(std::string("1.2.3.4\xA0")));
+	ASSERT_NE(awh::net_addr_t::type_t::IPV4, this->_addr->host(std::string("\xA0" "1.2.3.4")));
+	ASSERT_NE(awh::net_addr_t::type_t::IPV6, this->_addr->host(std::string("::1\xA0")));
+	// Прочие байты старше 0x7F пробелом не считаются тоже
+	ASSERT_NE(awh::net_addr_t::type_t::IPV4, this->_addr->host(std::string("1.2.3.4\x85")));
+	ASSERT_NE(awh::net_addr_t::type_t::IPV4, this->_addr->host(std::string("1.2.3.4\xFF")));
+}

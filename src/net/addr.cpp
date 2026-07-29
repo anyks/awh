@@ -121,7 +121,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	bool ishex(const char letter) noexcept {
+	inline bool ishex(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return (
 			((letter >= '0') && (letter <= '9')) ||
@@ -136,7 +136,7 @@ namespace {
 	 * @return       числовое значение символа
 	 *
 	 */
-	int32_t hexval(const char letter) noexcept {
+	inline int32_t hexval(const char letter) noexcept {
 		// Проверяем шестнадцатеричный символ
 		if((letter >= '0') && (letter <= '9'))
 			// Возвращаем числовое значение символа
@@ -159,7 +159,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	bool isdec(const char letter) noexcept {
+	inline bool isdec(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return ((letter >= '0') && (letter <= '9'));
 	}
@@ -170,9 +170,45 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	bool isoct(const char letter) noexcept {
+	inline bool isoct(const char letter) noexcept {
 		// Возвращаем результат проверки
 		return ((letter >= '0') && (letter <= '7'));
+	}
+	/**
+	 * @brief Вспомогательная функция для проверки пробельного символа
+	 *
+	 * @details Проверка повторяет пробельный набор основной локали: пробел и
+	 *          пятёрка управляющих символов от табуляции до возврата каретки,
+	 *          идущих подряд.
+	 *
+	 *          Своя проверка заведена вместо библиотечной не ради краткости.
+	 *          Обрезка пробелов стоит на пути каждого разбора и каждой проверки
+	 *          адреса, библиотечная же проверка встраиванию не поддаётся, и
+	 *          обрезка строки в тринадцать символов обходилась в два вызова
+	 *          внешней функции - дороже, чем весь остальной разбор IPv4-адреса
+	 *
+	 * @param letter проверяемый символ
+	 * @return       результат проверки
+	 *
+	 */
+	inline bool isspacer(const char letter) noexcept {
+		// Возвращаем результат проверки
+		return ((letter == ' ') || ((letter >= '\t') && (letter <= '\r')));
+	}
+	/**
+	 * @brief Вспомогательная функция для проверки буквенно-цифрового символа
+	 *
+	 * @param letter проверяемый символ
+	 * @return       результат проверки
+	 *
+	 */
+	inline bool isalnumer(const char letter) noexcept {
+		// Возвращаем результат проверки
+		return (
+			((letter >= '0') && (letter <= '9')) ||
+			((letter >= 'a') && (letter <= 'z')) ||
+			((letter >= 'A') && (letter <= 'Z'))
+		);
 	}
 	/**
 	 * @brief Вспомогательная функция для обрезки пробелов в строке
@@ -187,13 +223,13 @@ namespace {
 		/**
 		 * Выполняем обрезку пробелов в начале и конце строки
 		 */
-		while((i < j) && ((text[i] == '\0') || ::isspace(static_cast <uint8_t> (text[i]))))
+		while((i < j) && ((text[i] == '\0') || ::isspacer(text[i])))
 			// Увеличиваем позицию начала строки
 			++i;
 		/**
 		 * Обрезаем пробелы в конце строки
 		 */
-		while((j > i) && ((text[j - 1] == '\0') || ::isspace(static_cast <uint8_t> (text[j - 1]))))
+		while((j > i) && ((text[j - 1] == '\0') || ::isspacer(text[j - 1])))
 			// Уменьшаем позицию конца строки
 			--j;
 		// Возвращаем обрезанную строку
@@ -2148,11 +2184,17 @@ awh::Network_Address::type_t awh::Network_Address::host(string_view host) const 
 			 * IPv4-адрес стоит в переборе первым, и выигрыша от примет он не
 			 * получил бы никакого, а обход строки ради их снятия обошёлся бы ему
 			 * в треть его собственной цены. Поэтому проверяется он сразу, а от
-			 * заведомо чужих строк отгораживается двумя поисками разделителей:
-			 * ни двоеточия, ни косой черты в IPv4-адресе не бывает, а поиск
-			 * одного символа обходится много дешевле снятия примет
+			 * заведомо чужих строк отгораживается поиском двоеточия: двоеточия
+			 * в IPv4-адресе не бывает, а поиск одного символа обходится много
+			 * дешевле снятия примет.
+			 *
+			 * Косая черта такой заставки не удостоена намеренно: её разбор
+			 * IPv4-адреса отвергает на первом же символе части, тогда как
+			 * двоеточие встречается у половины разновидностей - у IPv6-адреса,
+			 * у аппаратного адреса, у URL-адреса, у сети IPv6 и у оконного
+			 * адреса файловой системы
 			 */
-			if((host.find(':') == string_view::npos) && (host.find('/') == string_view::npos)){
+			if(host.find(':') == string_view::npos){
 				// Если строка оказалась IPv4-адресом
 				if(this->check(host, type_t::IPV4))
 					// Возвращаем результат
@@ -2808,7 +2850,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						// Получаем маску переданной сети
 						const string_view suffix = addr.substr(pos + 1);
 						// Проверяем является ли суффикс числом
-						if(::all_of(suffix.begin(), suffix.end(), ::isdigit)){
+						if(::all_of(suffix.begin(), suffix.end(), ::isdec)){
 							// Получаем префикс сети
 							if(this->_fmk->atoi <uint8_t> (suffix.data(), suffix.length()) > 32)
 								// Если префикс сети больше допустимого значения
@@ -2838,7 +2880,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						// Получаем маску переданной сети
 						const string_view suffix = addr.substr(pos + 1);
 						// Проверяем является ли суффикс числом
-						if(::all_of(suffix.begin(), suffix.end(), ::isdigit)){
+						if(::all_of(suffix.begin(), suffix.end(), ::isdec)){
 							// Получаем префикс сети
 							if(this->_fmk->atoi <uint8_t> (suffix.data(), suffix.length()) > 128)
 								// Если префикс сети больше допустимого значения
@@ -2928,7 +2970,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						 */
 						for(char c : label){
 							// Если символ не является допустимым
-							if(!(::isalnum(c) || (c == '-')))
+							if(!(::isalnumer(c) || (c == '-')))
 								// Возвращаем результат проверки
 								return false;
 						}
@@ -5688,13 +5730,13 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 				/**
 				 * Выполняем обрезку пробелов в начале и конце строки
 				 */
-				while((i < j) && ((result[i] == '\0') || ::isspace(static_cast <uint8_t> (result[i]))))
+				while((i < j) && ((result[i] == '\0') || ::isspacer(result[i])))
 					// Увеличиваем позицию начала строки
 					++i;
 				/**
 				 * Обрезаем пробелы в конце строки
 				 */
-				while((j > i) && ((result[j - 1] == '\0') || ::isspace(static_cast <uint8_t> (result[j - 1]))))
+				while((j > i) && ((result[j - 1] == '\0') || ::isspacer(result[j - 1])))
 					// Уменьшаем позицию конца строки
 					--j;
 				// Если необходимо удалить определённое количество символов с конца строки
