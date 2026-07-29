@@ -90,21 +90,6 @@ namespace {
 		output.push_back(static_cast <char> (num & 0xFF));
 	}
 	/**
-	 * @brief Функция записи 24-битного числа в сетевом порядке байт
-	 *
-	 * @param output выходной буфер
-	 * @param num записываемое число
-	 *
-	 */
-	inline void wr24(string & output, const uint32_t num) noexcept {
-		// Дописываем старший байт числа
-		output.push_back(static_cast <char> ((num >> 16) & 0xFF));
-		// Дописываем средний байт числа
-		output.push_back(static_cast <char> ((num >> 8) & 0xFF));
-		// Дописываем младший байт числа
-		output.push_back(static_cast <char> (num & 0xFF));
-	}
-	/**
 	 * @brief Функция записи 32-битного числа в сетевом порядке байт
 	 *
 	 * @param output выходной буфер

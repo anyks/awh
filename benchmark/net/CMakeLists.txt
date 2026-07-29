@@ -46,6 +46,23 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks IO submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_IO_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для подмодуля работы с адресами
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_ADDR_BENCHMARK "Build ADDR benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для подмодуля работы с адресами
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_ADDR_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для подмодуля работы с адресами
+        message(STATUS "Build benchmarks ADDR submodule: Yes\n")
+        # Дополняем список источников бенчмарками для подмодуля работы с адресами
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            addr/addr.cpp
+        )
+    # Если не нужно собрать бенчмарки для подмодуля работы с адресами
+    else()
+        # Выводим сообщение о сборке бенчмарков для подмодуля работы с адресами
+        message(STATUS "Build benchmarks ADDR submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_ADDR_BENCHMARK})
+
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 

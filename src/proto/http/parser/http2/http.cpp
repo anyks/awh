@@ -1076,14 +1076,14 @@ awh::http::Parser_HTTP2::Flags::Flags() noexcept :
  */
 awh::http::Parser_HTTP2::Transfer::Transfer() noexcept :
  lastStreamId(0),
+ resetStreams(RESET_STREAMS_CACHE),
+ resetCursor(0),
+ resetMaxId(0),
  localOpened(0),
  nextStreamId(1),
  peerStreamCount(0),
  localStreamCount(0),
  settingsAckPending(0),
- resetStreams(RESET_STREAMS_CACHE),
- resetCursor(0),
- resetMaxId(0),
  sendLowWater(SEND_LOW_WATER),
  sendHighWater(SEND_HIGH_WATER),
  outputHighWater(OUTPUT_HIGH_WATER) {}

@@ -72,4 +72,4 @@ http3 http3/session/multiplexed             ratio     1.37   0.08  min
 http3 http3/qpack/compression               absolute 12.37   0.02  max
 http3 http3/allocations/per-request         absolute  2.00   0.02  max
 http3 http3/allocations/per-decoded-section absolute  0.00   0.02  max
-http3 http3/allocations/per-data-frame      absolute  0.10   0.05  max
+http3 http3/allocations/per-data-frame      absolute  0.01   0.05  max

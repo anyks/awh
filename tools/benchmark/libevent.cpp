@@ -351,6 +351,155 @@ namespace {
 		return result;
 	}
 	/**
+	 * @brief Функция обратного вызова завершения подключения сценария наблюдения
+	 *
+	 * @details Отличается от обмена тем, что первое сообщение не отправляется:
+	 *          обмен начинается лишь после того, как установлены все наблюдаемые
+	 *          подключения. Иначе окно замера захватило бы часть установления, и
+	 *          количество наблюдаемых во время замера не было бы постоянным
+	 *
+	 * @param fd  дескриптор сокета подключения
+	 * @param arg состояние подключения
+	 *
+	 */
+	static void idleConnect(evutil_socket_t fd, short, void * arg) noexcept {
+		// Получаем состояние подключения
+		connection_t * connection = reinterpret_cast <connection_t *> (arg);
+		// Освобождаем наблюдатель завершения подключения
+		::event_free(connection->watcher);
+		// Создаём наблюдатель готовности чтения подключения
+		connection->watcher = ::event_new(connection->base, fd, EV_READ | EV_PERSIST, &::clientRead, connection);
+		// Активируем наблюдатель готовности чтения
+		::event_add(connection->watcher, nullptr);
+	}
+	/**
+	 * @brief Функция прогона сценария обмена при множестве наблюдаемых подключений
+	 *
+	 * @details Устанавливается заданное количество подключений, все они остаются
+	 *          под наблюдением до конца прогона, но обмен идёт только на первых
+	 *          сорока. Это единственный сценарий стенда, где готовых много меньше
+	 *          наблюдаемых, - тот самый режим, ради которого создавались
+	 *          современные механизмы опроса
+	 *
+	 * @return итоги прогона сценария
+	 *
+	 */
+	static outcome_t watched() noexcept {
+		// Итоги прогона сценария
+		outcome_t result;
+		// Состояние прогона сценария
+		echo_t state(IDLE_ACTIVE, IDLE_ROUNDS);
+		// Устанавливаем требуемое количество обменов прогрева
+		state.warmup = IDLE_WARMUP;
+		// Создаём цикл событий стенда
+		struct event_base * base = ::event_base_new();
+		// Параметры привязки слушающего сокета
+		struct sockaddr_in address{};
+		// Создаём слушающий сокет петлевого интерфейса
+		const int32_t server = listener(address);
+		// Список состояний принятых подключений
+		vector <unique_ptr <connection_t>> accepted;
+		// Резервируем память под состояния принятых подключений
+		accepted.reserve(IDLE_WATCHED);
+		// Список состояний клиентских подключений
+		vector <unique_ptr <connection_t>> clients;
+		// Резервируем память под состояния клиентских подключений
+		clients.reserve(IDLE_WATCHED);
+		// Контекст слушающего сокета
+		acceptor_t context;
+		// Устанавливаем цикл событий стенда контексту слушающего сокета
+		context.base = base;
+		// Устанавливаем список состояний принятых подключений
+		context.accepted = &accepted;
+		// Создаём наблюдатель готовности слушающего сокета
+		struct event * listen = ::event_new(base, server, EV_READ | EV_PERSIST, &::echoAccept, &context);
+		// Активируем наблюдатель готовности слушающего сокета
+		::event_add(listen, nullptr);
+		/**
+		 * Выполняем установление требуемого количества подключений порциями
+		 */
+		for(size_t i = 0; i < IDLE_WATCHED; i++){
+			// Создаём состояние клиентского подключения
+			clients.push_back(unique_ptr <connection_t> (new connection_t));
+			// Получаем состояние созданного подключения
+			connection_t * connection = clients.back().get();
+			// Выполняем подключение к слушающему сокету
+			connection->fd = connector(address);
+			// Включаем немедленный обрыв соединения при закрытии сокета
+			hardClose(connection->fd);
+			// Устанавливаем состояние прогона сценария
+			connection->state = &state;
+			// Устанавливаем цикл событий стенда
+			connection->base = base;
+			// Создаём наблюдатель завершения подключения
+			connection->watcher = ::event_new(base, connection->fd, EV_WRITE, &::idleConnect, connection);
+			// Активируем наблюдатель завершения подключения
+			::event_add(connection->watcher, nullptr);
+			// Если порция подключений подана не полностью, продолжаем её подачу
+			if((((i + 1) % IDLE_BATCH) != 0) && ((i + 1) < IDLE_WATCHED))
+				// Переходим к следующему подключению порции
+				continue;
+			// Запоминаем момент начала установления порции подключений
+			const auto started = now();
+			/**
+			 * Дожидаемся принятия всех поданных подключений
+			 */
+			while(accepted.size() <= i){
+				// Прокручиваем цикл событий без ожидания
+				::event_base_loop(base, EVLOOP_NONBLOCK);
+				// Если порция подключений не установилась в отведённый срок
+				if(elapsed(started, now()) > IDLE_DEADLINE){
+					// Сообщаем о неустановившейся порции: молча усечённый прогон читался бы как полный
+					::fprintf(stderr, "idle: подключения не установились за %.0f с, подано %zu, принято %zu\n", IDLE_DEADLINE, (i + 1), accepted.size());
+					// Выводим пустые итоги прогона
+					return result;
+				}
+			}
+		}
+		/**
+		 * Начинаем обмен на подключениях, которым он назначен
+		 */
+		for(size_t i = 0; i < IDLE_ACTIVE; i++)
+			// Отправляем первое сообщение обмена
+			::send(clients[i]->fd, gPayload, ECHO_PAYLOAD, 0);
+		/**
+		 * Запускаем цикл событий до выполнения требуемого количества обменов
+		 */
+		::event_base_dispatch(base);
+		// Устанавливаем количество выполненных операций
+		result.operations = state.done;
+		// Устанавливаем объём переданных данных с учётом обоих направлений обмена
+		result.bytes = (state.done * ECHO_PAYLOAD * 2);
+		// Устанавливаем затраченное время
+		result.seconds = elapsed(state.start, state.finish);
+		/**
+		 * Выполняем освобождение принятых подключений
+		 */
+		for(auto & connection : accepted){
+			// Освобождаем наблюдатель готовности подключения
+			::event_free(connection->watcher);
+			// Выполняем закрытие сокета подключения
+			::close(connection->fd);
+		}
+		/**
+		 * Выполняем освобождение клиентских подключений
+		 */
+		for(auto & connection : clients){
+			// Освобождаем наблюдатель готовности подключения
+			::event_free(connection->watcher);
+			// Выполняем закрытие сокета подключения
+			::close(connection->fd);
+		}
+		// Освобождаем наблюдатель готовности слушающего сокета
+		::event_free(listen);
+		// Выполняем закрытие слушающего сокета
+		::close(server);
+		// Освобождаем цикл событий стенда
+		::event_base_free(base);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
 	 * @brief Функция обратного вызова готовности чтения приёмника потока
 	 *
 	 * @param fd  дескриптор сокета приёмника
@@ -539,6 +688,8 @@ namespace {
 		}
 		// Выполняем подключение очередного цикла
 		state->fd = connector(state->address);
+		// Включаем немедленный обрыв соединения при закрытии сокета
+		hardClose(state->fd);
 		// Создаём наблюдатель завершения подключения
 		state->watcher = ::event_new(state->base, state->fd, EV_WRITE, &::handshakeConnect, state);
 		// Активируем наблюдатель завершения подключения
@@ -565,6 +716,8 @@ namespace {
 		::event_add(listen, nullptr);
 		// Выполняем подключение первого цикла
 		state.fd = connector(state.address);
+		// Включаем немедленный обрыв соединения при закрытии сокета
+		hardClose(state.fd);
 		// Создаём наблюдатель завершения подключения
 		state.watcher = ::event_new(state.base, state.fd, EV_WRITE, &::handshakeConnect, &state);
 		// Активируем наблюдатель завершения подключения
@@ -1021,6 +1174,12 @@ int32_t main(int32_t argc, char ** argv){
 		report("net/io/echo/single", "обменов/с", perSecond(outcome), outcome);
 	}
 	// Если сценарий обмена на множестве подключений выполняется
+	if(selected("net/io/idle/exchanges", name)){
+		// Выполняем прогон сценария обмена при множестве наблюдаемых подключений
+		const outcome_t outcome = ::watched();
+		// Выводим результат прогона сценария
+		report("net/io/idle/exchanges", "обменов/с", perSecond(outcome), outcome);
+	}
 	if(selected("net/io/echo/multi", name)){
 		// Выполняем прогон сценария обмена на множестве подключений
 		const outcome_t outcome = ::exchange(ECHO_MULTI_CONNECTIONS, ECHO_MULTI_ROUNDS);

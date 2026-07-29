@@ -60,6 +60,15 @@ namespace {
 	static vector <uint8_t> gChunk(STREAM_CHUNK, 0x5A);
 	// Буфер приёма данных
 	static vector <uint8_t> gBuffer(STREAM_CHUNK, 0);
+	/**
+	 * @brief Количество принятых подключений сценария наблюдения
+	 *
+	 * @note Счётчик вынесен в область видимости стенда, потому что дескриптор
+	 *       слушающего сокета библиотеки несёт единственное поле пользовательских
+	 *       данных, и оно занято под иные нужды в прочих сценариях
+	 *
+	 */
+	static size_t gAccepted = 0;
 
 	/**
 	 * @brief Структура состояния одного подключения сценария обмена
@@ -263,6 +272,8 @@ namespace {
 		peer->data = new uv_write_t;
 		// Запускаем чтение данных принятого подключения
 		::uv_read_start(reinterpret_cast <uv_stream_t *> (peer), &::allocate, &::peerRead);
+		// Считаем принятое подключение
+		gAccepted++;
 	}
 	/**
 	 * @brief Функция прогона сценария обмена короткими сообщениями
@@ -319,6 +330,137 @@ namespace {
 			connection->connection.data = connection;
 			// Выполняем подключение к слушающему сокету
 			::uv_tcp_connect(&connection->connection, &connection->handle, reinterpret_cast <const struct sockaddr *> (&address), &::clientConnect);
+		}
+		/**
+		 * Запускаем цикл событий до выполнения требуемого количества обменов
+		 */
+		::uv_run(&loop, UV_RUN_DEFAULT);
+		// Устанавливаем количество выполненных операций
+		result.operations = state.done;
+		// Устанавливаем объём переданных данных с учётом обоих направлений обмена
+		result.bytes = (state.done * ECHO_PAYLOAD * 2);
+		// Устанавливаем затраченное время
+		result.seconds = elapsed(state.start, state.finish);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
+	 * @brief Функция обратного вызова завершения подключения сценария наблюдения
+	 *
+	 * @details Отличается от обмена тем, что первое сообщение не отправляется:
+	 *          обмен начинается лишь после того, как установлены все наблюдаемые
+	 *          подключения. Иначе окно замера захватило бы часть установления, и
+	 *          количество наблюдаемых во время замера не было бы постоянным
+	 *
+	 * @param request запрос подключения к серверу
+	 *
+	 */
+	static void idleConnect(uv_connect_t * request, int32_t) noexcept {
+		// Получаем состояние подключения
+		connection_t * connection = reinterpret_cast <connection_t *> (request->data);
+		// Устанавливаем состояние подключения дескриптору
+		connection->handle.data = connection;
+		// Дескриптор сокета подключения
+		uv_os_fd_t fd = -1;
+		// Если дескриптор сокета подключения получен
+		if(::uv_fileno(reinterpret_cast <uv_handle_t *> (&connection->handle), &fd) == 0)
+			// Включаем немедленный обрыв соединения при закрытии сокета
+			hardClose(static_cast <int32_t> (fd));
+		// Запускаем чтение данных подключения
+		::uv_read_start(reinterpret_cast <uv_stream_t *> (&connection->handle), &::allocate, &::clientRead);
+	}
+	/**
+	 * @brief Функция прогона сценария обмена при множестве наблюдаемых подключений
+	 *
+	 * @details Устанавливается заданное количество подключений, все они остаются
+	 *          под наблюдением до конца прогона, но обмен идёт только на первых
+	 *          сорока. Это единственный сценарий стенда, где готовых много меньше
+	 *          наблюдаемых, - тот самый режим, ради которого создавались
+	 *          современные механизмы опроса
+	 *
+	 * @return итоги прогона сценария
+	 *
+	 */
+	static outcome_t watched() noexcept {
+		// Итоги прогона сценария
+		outcome_t result;
+		// Состояние прогона сценария
+		echo_t state(IDLE_ACTIVE, IDLE_ROUNDS);
+		// Устанавливаем требуемое количество обменов прогрева
+		state.warmup = IDLE_WARMUP;
+		// Обнуляем количество принятых подключений
+		gAccepted = 0;
+		// Цикл событий стенда
+		uv_loop_t loop{};
+		// Выполняем инициализацию цикла событий стенда
+		::uv_loop_init(&loop);
+		// Параметры привязки слушающего сокета
+		struct sockaddr_in address{};
+		// Формируем адрес привязки слушающего сокета
+		::uv_ip4_addr("127.0.0.1", 0, &address);
+		// Дескриптор слушающего сокета
+		uv_tcp_t server{};
+		// Выполняем инициализацию дескриптора слушающего сокета
+		::uv_tcp_init(&loop, &server);
+		// Выполняем привязку слушающего сокета
+		::uv_tcp_bind(&server, reinterpret_cast <const struct sockaddr *> (&address), 0);
+		// Размер структуры параметров сокета
+		int32_t length = sizeof(address);
+		// Извлекаем параметры привязки слушающего сокета
+		::uv_tcp_getsockname(&server, reinterpret_cast <struct sockaddr *> (&address), &length);
+		// Переводим слушающий сокет в режим прослушивания
+		::uv_listen(reinterpret_cast <uv_stream_t *> (&server), BACKLOG, &::echoAccept);
+		// Список состояний клиентских подключений
+		vector <unique_ptr <connection_t>> clients;
+		// Резервируем память под состояния клиентских подключений
+		clients.reserve(IDLE_WATCHED);
+		/**
+		 * Выполняем установление требуемого количества подключений порциями
+		 */
+		for(size_t i = 0; i < IDLE_WATCHED; i++){
+			// Создаём состояние клиентского подключения
+			clients.push_back(unique_ptr <connection_t> (new connection_t));
+			// Получаем состояние созданного подключения
+			connection_t * connection = clients.back().get();
+			// Устанавливаем состояние прогона сценария
+			connection->state = &state;
+			// Выполняем инициализацию дескриптора подключения
+			::uv_tcp_init(&loop, &connection->handle);
+			// Отключаем алгоритм Нейгла подключения
+			::uv_tcp_nodelay(&connection->handle, 1);
+			// Устанавливаем состояние подключения запросу подключения
+			connection->connection.data = connection;
+			// Выполняем подключение к слушающему сокету
+			::uv_tcp_connect(&connection->connection, &connection->handle, reinterpret_cast <const struct sockaddr *> (&address), &::idleConnect);
+			// Если порция подключений подана не полностью, продолжаем её подачу
+			if((((i + 1) % IDLE_BATCH) != 0) && ((i + 1) < IDLE_WATCHED))
+				// Переходим к следующему подключению порции
+				continue;
+			// Запоминаем момент начала установления порции подключений
+			const auto started = now();
+			/**
+			 * Дожидаемся принятия всех поданных подключений
+			 */
+			while(gAccepted <= i){
+				// Прокручиваем цикл событий без ожидания
+				::uv_run(&loop, UV_RUN_NOWAIT);
+				// Если порция подключений не установилась в отведённый срок
+				if(elapsed(started, now()) > IDLE_DEADLINE){
+					// Сообщаем о неустановившейся порции: молча усечённый прогон читался бы как полный
+					::fprintf(stderr, "idle: подключения не установились за %.0f с, подано %zu, принято %zu\n", IDLE_DEADLINE, (i + 1), gAccepted);
+					// Выводим пустые итоги прогона
+					return result;
+				}
+			}
+		}
+		/**
+		 * Начинаем обмен на подключениях, которым он назначен
+		 */
+		for(size_t i = 0; i < IDLE_ACTIVE; i++){
+			// Формируем блок отправляемых данных
+			uv_buf_t payload = ::uv_buf_init(reinterpret_cast <char *> (gPayload), ECHO_PAYLOAD);
+			// Отправляем первое сообщение обмена
+			::uv_write(&clients[i]->request, reinterpret_cast <uv_stream_t *> (&clients[i]->handle), &payload, 1, nullptr);
 		}
 		/**
 		 * Запускаем цикл событий до выполнения требуемого количества обменов
@@ -565,6 +707,19 @@ namespace {
 		handshake_t * state = reinterpret_cast <handshake_t *> (request->data);
 		// Устанавливаем состояние прогона сценария дескриптору подключения
 		state->handle->data = state;
+		// Дескриптор сокета подключения
+		uv_os_fd_t fd = -1;
+		/**
+		 * Если дескриптор сокета подключения получен
+		 *
+		 * @note Библиотека создаёт сокет сама, и до завершения подключения
+		 *       дескриптора у стенда нет. Опция задержки закрытия нужна лишь
+		 *       к моменту закрытия, поэтому ставится здесь - и стенд перестаёт
+		 *       расходовать динамические порты иначе, чем остальные три
+		 */
+		if(::uv_fileno(reinterpret_cast <uv_handle_t *> (state->handle), &fd) == 0)
+			// Включаем немедленный обрыв соединения при закрытии сокета
+			hardClose(static_cast <int32_t> (fd));
 		// Выполняем закрытие текущего подключения
 		::uv_close(reinterpret_cast <uv_handle_t *> (state->handle), &::handshakeClosed);
 	}
@@ -1043,6 +1198,12 @@ int32_t main(int32_t argc, char ** argv){
 		report("net/io/echo/single", "обменов/с", perSecond(outcome), outcome);
 	}
 	// Если сценарий обмена на множестве подключений выполняется
+	if(selected("net/io/idle/exchanges", name)){
+		// Выполняем прогон сценария обмена при множестве наблюдаемых подключений
+		const outcome_t outcome = ::watched();
+		// Выводим результат прогона сценария
+		report("net/io/idle/exchanges", "обменов/с", perSecond(outcome), outcome);
+	}
 	if(selected("net/io/echo/multi", name)){
 		// Выполняем прогон сценария обмена на множестве подключений
 		const outcome_t outcome = ::exchange(ECHO_MULTI_CONNECTIONS, ECHO_MULTI_ROUNDS);

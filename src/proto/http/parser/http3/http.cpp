@@ -801,8 +801,9 @@ void awh::http::Parser_HTTP3::Framing::clear() noexcept {
  *
  */
 awh::http::Parser_HTTP3::Stream::Stream() noexcept :
- state(h3::stream_state_t::IDLE), headers(false), trailers(false), body(false),
- generation(0), completed(false), headless(false), headlessSend(false), trailerless(false), trailerlessSend(false), localFin(false), length(0), declared(UINT64_MAX),
+ state(h3::stream_state_t::IDLE), generation(0),
+ headers(false), trailers(false), body(false),
+ completed(false), headless(false), headlessSend(false), trailerless(false), trailerlessSend(false), localFin(false), length(0), declared(UINT64_MAX),
  urgency(h3::proto::DEFAULT_URGENCY), incremental(false), prioritized(false),
  blockedActive(false), blockedType(0), blockedPushId(UINT64_MAX), blockedFin(false),
  sendOffset(0), sourceEof(false), endStreamPending(false), writableNotified(false), trailersPending(false), headersSent(false) {}
@@ -6059,16 +6060,16 @@ void awh::http::Parser_HTTP3::on(writable_callback_t callback) noexcept {
 awh::http::Parser_HTTP3::Parser_HTTP3(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
  parser_t(direct, fmk, log),
  _endpoint((direct == direct_t::REQUEST) ? h3::endpoint_t::SERVER : h3::endpoint_t::CLIENT),
+ _encoder(0, 0), _decoder(h3::proto::QPACK_TABLE_CAPACITY, h3::proto::QPACK_BLOCKED_STREAMS),
  _proto(proto_t::HTTP3),
  _sendLowWater(SEND_LOW_WATER), _sendHighWater(SEND_HIGH_WATER), _outputHighWater(OUTPUT_HIGH_WATER),
- _encoder(0, 0), _decoder(h3::proto::QPACK_TABLE_CAPACITY, h3::proto::QPACK_BLOCKED_STREAMS),
  _controlLocal(UINT64_MAX), _controlRemote(UINT64_MAX), _encoderLocal(UINT64_MAX),
  _decoderLocal(UINT64_MAX), _encoderRemote(UINT64_MAX), _decoderRemote(UINT64_MAX),
  _settingsReceived(false), _settingsSent(false), _closed(false),
  _maxPushId(UINT64_MAX), _localMaxPushId(UINT64_MAX), _nextPushId(0),
  _promisedPush(PUSH_HISTORY_CACHE), _promisedCursor(0),
- _generation(0), _goawayLocal(h3::proto::MAX_VARINT), _goawayRemote(h3::proto::MAX_VARINT),
- _error(error_t::H3_NO_ERROR), _epoch(0) {
+ _goawayLocal(h3::proto::MAX_VARINT), _goawayRemote(h3::proto::MAX_VARINT),
+ _error(error_t::H3_NO_ERROR), _epoch(0), _generation(0) {
 	/**
 	 * Разрешение расширенного CONNECT выдаёт только сервер: анонс клиента
 	 * не имел бы адресата (RFC 9220 §3)
