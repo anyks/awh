@@ -16,9 +16,16 @@
 #
 # Откуда допуски. Разлёт медианы попарных долей между независимыми сериями
 # по девять прогонов замерен и составил 1.0 % на кодировании, 2.3 % на разборе
-# потока запросов и 6.0 % на приёме тела. Допуск 6 % покрывает первые два
-# с запасом втрое и ловит просадку от 6 %; приёму тела отведено 12 % - сценарий
-# шумит вдвое сильнее прочих, и сузить допуск значило бы получать ложные срабатывания.
+# потока запросов и 1.4-1.9 % на приёме тела. Допуск 6 % покрывает все три
+# с запасом втрое и ловит просадку от 6 %.
+#
+# Приёму тела прежде отводилось 12 %: сценарий шумел вдвое сильнее прочих.
+# Причина шума оказалась не в измерении, а в стенде - у сценария не было
+# прогревочного прохода, тогда как остальные повторяют работу от пятидесяти
+# до двухсот тысяч раз и холодный старт в них тонет. Прогрев добавлен в общий
+# драйвер обоих протоколов, разлёт упал вчетверо, а сами границы выросли
+# с 0.85 и 0.87 до 0.96 и 0.98: холодным замером мерился разгон реализации,
+# а не её установившаяся скорость.
 #
 # По HTTP/1 разлёт снят тремя сериями и вышел разным по сценариям: 0.5 % на теле
 # фиксированного размера, 1.4 % на запросе браузера, 2.8-2.9 % на chunked и
@@ -54,7 +61,7 @@ http1 http1/allocations/per-parsed-message   absolute  0.00   0.02  max
 http2 http2/hpack/encode                    ratio     0.66   0.06  min
 http2 http2/hpack/decode                    ratio     1.79   0.06  min
 http2 http2/parse/request-stream            ratio     1.27   0.06  min
-http2 http2/parse/data-body                 ratio     0.85   0.12  min
+http2 http2/parse/data-body                 ratio     0.96   0.06  min
 http2 http2/session/round-trip              ratio     1.20   0.06  min
 http2 http2/session/multiplexed             ratio     1.19   0.06  min
 http2 http2/hpack/compression               absolute 11.74   0.02  max
@@ -66,10 +73,10 @@ http2 http2/allocations/per-data-frame      absolute  0.34   0.05  max
 http3 http3/qpack/encode                    ratio     0.80   0.06  min
 http3 http3/qpack/decode                    ratio     1.73   0.06  min
 http3 http3/parse/request-stream            ratio     1.53   0.06  min
-http3 http3/parse/data-body                 ratio     0.87   0.12  min
+http3 http3/parse/data-body                 ratio     0.98   0.06  min
 http3 http3/session/round-trip              ratio     1.52   0.06  min
 http3 http3/session/multiplexed             ratio     1.37   0.08  min
 http3 http3/qpack/compression               absolute 12.37   0.02  max
 http3 http3/allocations/per-request         absolute  2.00   0.02  max
 http3 http3/allocations/per-decoded-section absolute  0.00   0.02  max
-http3 http3/allocations/per-data-frame      absolute  0.01   0.05  max
+http3 http3/allocations/per-data-frame      absolute  0.00   0.05  max
