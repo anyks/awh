@@ -10,8 +10,9 @@
  * @site: https://anyks.com
  *
  * @brief Пробник совместимости расширений HTTP/2 с эталонной реализацией nghttp2 —
- *        проверка расширенного CONNECT (RFC 8441) в обе стороны,
- *        кадра PRIORITY_UPDATE (RFC 9218) и реакции сторон на GOAWAY с необработанными потоками
+ *        проверка расширенного CONNECT (RFC 8441) в обе стороны, кадров ALTSVC
+ *        (RFC 7838) и ORIGIN (RFC 8336) в обе стороны, кадра PRIORITY_UPDATE
+ *        (RFC 9218) и реакции сторон на GOAWAY с необработанными потоками
  *
  * @copyright: Copyright © 2026
  *
@@ -19,8 +20,9 @@
 
 /**
  * Пробник: сверка расширений и завершения соединения с эталонной реализацией.
- * Проверяются расширенный CONNECT (RFC 8441) в обе стороны, кадр PRIORITY_UPDATE
- * (RFC 9218) и реакция обеих сторон на GOAWAY с необработанными потоками
+ * Проверяются расширенный CONNECT (RFC 8441) в обе стороны, анонсы ALTSVC
+ * (RFC 7838) и ORIGIN (RFC 8336) в обе стороны, кадр PRIORITY_UPDATE (RFC 9218)
+ * и реакция обеих сторон на GOAWAY с необработанными потоками
  */
 
 #include <map>
@@ -615,6 +617,300 @@ static void checkConnectServer(const fmk_t * fmk, const log_t * log) noexcept {
 	::nghttp2_session_del(session);
 }
 
+/**
+ * @brief Структура состояния проверки анонсов ALTSVC и ORIGIN
+ *
+ */
+typedef struct Announce {
+	// Принятые анонсы альтернативного сервиса в виде "поток|origin|значение"
+	std::vector <std::string> altsvc;
+	// Принятый набор origin, обслуживаемых соединением
+	std::vector <std::string> origins;
+	// Байты от клиента к серверу
+	std::string toServer;
+	// Байты от сервера к клиенту
+	std::string toClient;
+} announce_t;
+
+/**
+ * @brief Функция сборки принятого анонса альтернативного сервиса в строку сверки
+ *
+ * @param sid    идентификатор потока, либо 0 для соединения
+ * @param origin origin анонсируемого сервиса
+ * @param value  значение поля Alt-Svc
+ *
+ */
+static std::string announced(const uint32_t sid, const std::string & origin, const std::string & value) noexcept {
+	// Собираем анонс в виде, пригодном для прямого сравнения
+	return (std::to_string(sid) + "|" + origin + "|" + value);
+}
+
+/**
+ * @brief Функция обработки анонса, принятого клиентом nghttp2
+ *
+ */
+static int onAnnounce(nghttp2_session *, const nghttp2_frame * frame, void * data) noexcept {
+	// Получаем объект состояния проверки
+	announce_t * state = static_cast <announce_t *> (data);
+	// Если принят анонс альтернативного сервиса
+	if(frame->hd.type == NGHTTP2_ALTSVC){
+		// Получаем разобранную эталоном нагрузку кадра
+		const nghttp2_ext_altsvc * payload = static_cast <const nghttp2_ext_altsvc *> (frame->ext.payload);
+		// Собираем принятый анонс
+		state->altsvc.push_back(::announced(
+			static_cast <uint32_t> (frame->hd.stream_id),
+			std::string(reinterpret_cast <const char *> (payload->origin), payload->origin_len),
+			std::string(reinterpret_cast <const char *> (payload->field_value), payload->field_value_len)
+		));
+	// Если принят набор origin, обслуживаемых соединением
+	} else if(frame->hd.type == NGHTTP2_ORIGIN) {
+		// Получаем разобранную эталоном нагрузку кадра
+		const nghttp2_ext_origin * payload = static_cast <const nghttp2_ext_origin *> (frame->ext.payload);
+		/**
+		 * Выполняем сбор всех origin набора
+		 */
+		for(size_t i = 0; i < payload->nov; i++)
+			// Собираем очередной принятый origin
+			state->origins.emplace_back(reinterpret_cast <const char *> (payload->ov[i].origin), payload->ov[i].origin_len);
+	}
+	// Продолжаем разбор
+	return 0;
+}
+
+/**
+ * @brief Функция сверки собранного набора с ожидаемым
+ *
+ * @param title    название сверяемого набора
+ * @param received собранный набор
+ * @param expected ожидаемый набор
+ *
+ */
+static void compare(const std::string & title, const std::vector <std::string> & received, const std::vector <std::string> & expected) noexcept {
+	// Если набор совпал с ожидаемым - сверять больше нечего
+	if(received == expected)
+		// Выходим из функции
+		return;
+	// Собранное описание принятого набора
+	std::string shown;
+	/**
+	 * Выполняем сборку описания принятого набора
+	 */
+	for(auto & item : received)
+		// Дописываем очередную запись набора
+		shown.append(shown.empty() ? "" : ", ").append("[").append(item).append("]");
+	// Фиксируем расхождение
+	::mismatch(title + " принят как {" + shown + "}, ожидалось записей: " + std::to_string(expected.size()));
+}
+
+/**
+ * @brief Функция проверки анонсов ALTSVC и ORIGIN нашим клиентом
+ *
+ * @param fmk объект фреймворка
+ * @param log объект логов
+ *
+ */
+static void checkAnnounceClient(const fmk_t * fmk, const log_t * log) noexcept {
+	// Печатаем название проверки
+	std::cout << "ALTSVC и ORIGIN: сервер nghttp2 против нашего клиента" << std::endl;
+	// Объект состояния проверки
+	announce_t state;
+	// Создаём объект парсера нашего клиента
+	parser_http2_t client(direct_t::RESPONSE, fmk, log);
+	// Устанавливаем функцию обратного вызова записи исходящих байт
+	client.on(parser_http2_t::write_callback_t([&](const void * buffer, const size_t size) noexcept {
+		// Накапливаем байты для сессии nghttp2
+		state.toServer.append(static_cast <const char *> (buffer), size);
+	}));
+	// Устанавливаем функцию обратного вызова анонса альтернативного сервиса
+	client.on(parser_http2_t::altsvc_callback_t([&](const uint32_t sid, const std::string_view origin, const std::string_view value) noexcept {
+		// Собираем принятый анонс
+		state.altsvc.push_back(::announced(sid, std::string(origin), std::string(value)));
+	}));
+	// Устанавливаем функцию обратного вызова набора origin
+	client.on(parser_http2_t::origin_callback_t([&](const std::string_view origin) noexcept {
+		// Собираем очередной принятый origin
+		state.origins.emplace_back(origin);
+	}));
+	// Объект набора функций обратного вызова nghttp2
+	nghttp2_session_callbacks * callbacks = nullptr;
+	// Создаём объект набора функций обратного вызова nghttp2
+	::nghttp2_session_callbacks_new(&callbacks);
+	// Объект сессии сервера nghttp2
+	nghttp2_session * session = nullptr;
+	// Создаём объект сессии сервера nghttp2
+	::nghttp2_session_server_new(&session, callbacks, &state);
+	// Удаляем объект набора функций обратного вызова nghttp2
+	::nghttp2_session_callbacks_del(callbacks);
+	// Отправляем SETTINGS сервера nghttp2
+	::nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, nullptr, 0);
+	// Отправляем preface нашего клиента
+	client.sendPreface();
+	// Выполняем обмен байтами до получения параметров сервера
+	::exchange(client, session, state.toServer, state.toClient);
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Наполняем заголовки запроса
+	fields.emplace_back(":method", "GET");
+	fields.emplace_back(":scheme", "https");
+	fields.emplace_back(":path", "/");
+	fields.emplace_back(":authority", "example.com");
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client.nextStreamId();
+	/**
+	 * Отправляем запрос не завершая поток: анонс для потока получатель обязан
+	 * игнорировать, если такого потока не существует (RFC 7838 §4)
+	 */
+	client.sendHeaders(sid, fields, false);
+	// Выполняем обмен байтами
+	::exchange(client, session, state.toServer, state.toClient);
+	// Origin анонса для соединения
+	const std::string origin = "https://example.com";
+	// Значение поля Alt-Svc анонса для соединения
+	const std::string first = "h3=\":443\"; ma=3600";
+	// Значение поля Alt-Svc анонса для потока
+	const std::string second = "h2=\"alt.example.com:443\"";
+	// Отправляем анонс для соединения целиком (origin обязателен)
+	if(::nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 0, reinterpret_cast <const uint8_t *> (origin.data()), origin.size(), reinterpret_cast <const uint8_t *> (first.data()), first.size()) != 0)
+		// Фиксируем расхождение
+		::mismatch("эталон отказался отправлять ALTSVC для соединения");
+	// Отправляем анонс для потока (origin определяется самим потоком и обязан быть пуст)
+	if(::nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, static_cast <int32_t> (sid), reinterpret_cast <const uint8_t *> (""), 0, reinterpret_cast <const uint8_t *> (second.data()), second.size()) != 0)
+		// Фиксируем расхождение
+		::mismatch("эталон отказался отправлять ALTSVC для потока");
+	// Набор origin, обслуживаемых соединением
+	const nghttp2_origin_entry entries[] = {
+		{(uint8_t *) "https://example.com", 19},
+		{(uint8_t *) "https://cdn.example.com", 23}
+	};
+	// Отправляем набор origin, обслуживаемых соединением
+	if(::nghttp2_submit_origin(session, NGHTTP2_FLAG_NONE, entries, 2) != 0)
+		// Фиксируем расхождение
+		::mismatch("эталон отказался отправлять ORIGIN");
+	// Выполняем обмен байтами
+	::exchange(client, session, state.toServer, state.toClient);
+	// Сверяем принятые нашим клиентом анонсы альтернативного сервиса
+	::compare("анонс альтернативного сервиса", state.altsvc, {::announced(0, origin, first), ::announced(sid, "", second)});
+	// Сверяем принятый нашим клиентом набор origin
+	::compare("набор origin", state.origins, {"https://example.com", "https://cdn.example.com"});
+	// Печатаем итог проверки
+	std::cout << "  анонсов принято: " << state.altsvc.size() << ", origin принято: " << state.origins.size() << std::endl;
+	// Удаляем объект сессии сервера nghttp2
+	::nghttp2_session_del(session);
+}
+
+/**
+ * @brief Функция проверки анонсов ALTSVC и ORIGIN нашим сервером
+ *
+ * @param fmk объект фреймворка
+ * @param log объект логов
+ *
+ */
+static void checkAnnounceServer(const fmk_t * fmk, const log_t * log) noexcept {
+	// Печатаем название проверки
+	std::cout << "ALTSVC и ORIGIN: наш сервер против клиента nghttp2" << std::endl;
+	// Объект состояния проверки
+	announce_t state;
+	// Идентификатор потока запроса, принятого нашим сервером
+	uint32_t stream = 0;
+	// Origin анонса для соединения
+	const std::string origin = "https://example.com";
+	// Значение поля Alt-Svc анонса для соединения
+	const std::string first = "h3=\":443\"; ma=3600";
+	// Значение поля Alt-Svc анонса для потока
+	const std::string second = "h2=\"alt.example.com:443\"";
+	// Создаём объект парсера нашего сервера
+	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	// Устанавливаем функцию обратного вызова записи исходящих байт
+	server.on(parser_http2_t::write_callback_t([&](const void * buffer, const size_t size) noexcept {
+		// Накапливаем байты для сессии nghttp2
+		state.toClient.append(static_cast <const char *> (buffer), size);
+	}));
+	// Устанавливаем функцию обратного вызова фазы приёма сообщения
+	server.on(parser_http2_t::phase_callback_t([&](const uint32_t sid, const parser_t::phase_t phase, const parser_t::part_t part) noexcept -> bool {
+		// Если приём запроса завершён полностью
+		if((phase == parser_t::phase_t::END) && (part == parser_t::part_t::NONE)){
+			// Запоминаем идентификатор потока запроса
+			stream = sid;
+			/**
+			 * Отправляем анонс для потока до ответа: поток обязан быть жив на обеих
+			 * сторонах, а ответ с завершением потока его закрывает (RFC 7838 §4)
+			 */
+			server.sendAltSvc(sid, "", second);
+			// Формируем заголовки ответа сервера
+			std::vector <h2::hpack::field_t> response;
+			// Дописываем псевдо-заголовок статуса ответа
+			response.emplace_back(":status", "200");
+			// Отправляем ответ с завершением потока
+			server.sendHeaders(sid, response, true);
+		}
+		// Продолжаем разбор
+		return true;
+	}));
+	// Объект набора функций обратного вызова nghttp2
+	nghttp2_session_callbacks * callbacks = nullptr;
+	// Создаём объект набора функций обратного вызова nghttp2
+	::nghttp2_session_callbacks_new(&callbacks);
+	// Устанавливаем функцию обработки принятого анонса
+	::nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, ::onAnnounce);
+	// Объект параметров сессии nghttp2
+	nghttp2_option * option = nullptr;
+	// Создаём объект параметров сессии nghttp2
+	::nghttp2_option_new(&option);
+	/**
+	 * Разбирать кадры расширений эталон соглашается только по прямому указанию:
+	 * без него ALTSVC и ORIGIN отбрасываются как неизвестные, и сверка проверяла бы
+	 * лишь то, что мы не оборвали соединение
+	 */
+	::nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ALTSVC);
+	// Разрешаем эталону разбирать набор origin
+	::nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ORIGIN);
+	// Объект сессии клиента nghttp2
+	nghttp2_session * session = nullptr;
+	// Создаём объект сессии клиента nghttp2
+	::nghttp2_session_client_new2(&session, callbacks, &state, option);
+	// Удаляем объект параметров сессии nghttp2
+	::nghttp2_option_del(option);
+	// Удаляем объект набора функций обратного вызова nghttp2
+	::nghttp2_session_callbacks_del(callbacks);
+	// Отправляем SETTINGS клиента nghttp2
+	::nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, nullptr, 0);
+	// Отправляем preface нашего сервера
+	server.sendPreface();
+	// Выполняем обмен байтами до получения параметров нашего сервера
+	::exchange(server, session, state.toClient, state.toServer);
+	// Формируем заголовки запроса клиента nghttp2
+	const nghttp2_nv nva[] = {
+		{(uint8_t *) ":method", (uint8_t *) "GET", 7, 3, NGHTTP2_NV_FLAG_NONE},
+		{(uint8_t *) ":scheme", (uint8_t *) "https", 7, 5, NGHTTP2_NV_FLAG_NONE},
+		{(uint8_t *) ":path", (uint8_t *) "/", 5, 1, NGHTTP2_NV_FLAG_NONE},
+		{(uint8_t *) ":authority", (uint8_t *) "example.com", 10, 11, NGHTTP2_NV_FLAG_NONE}
+	};
+	// Отправляем запрос клиента nghttp2
+	if(::nghttp2_submit_request(session, nullptr, nva, 4, nullptr, nullptr) < 0)
+		// Фиксируем расхождение
+		::mismatch("эталон отказался отправлять запрос");
+	// Выполняем обмен байтами
+	::exchange(server, session, state.toClient, state.toServer);
+	// Если запрос нашим сервером принят не был
+	if(stream == 0)
+		// Фиксируем расхождение
+		::mismatch("наш сервер не принял запрос эталона");
+	// Отправляем анонс для соединения целиком (origin обязателен)
+	server.sendAltSvc(0, origin, first);
+	// Отправляем набор origin, обслуживаемых соединением
+	server.sendOrigin({"https://example.com", "https://cdn.example.com"});
+	// Выполняем обмен байтами
+	::exchange(server, session, state.toClient, state.toServer);
+	// Сверяем принятые эталоном анонсы альтернативного сервиса
+	::compare("анонс альтернативного сервиса", state.altsvc, {::announced(stream, "", second), ::announced(0, origin, first)});
+	// Сверяем принятый эталоном набор origin
+	::compare("набор origin", state.origins, {"https://example.com", "https://cdn.example.com"});
+	// Печатаем итог проверки
+	std::cout << "  анонсов принято: " << state.altsvc.size() << ", origin принято: " << state.origins.size() << std::endl;
+	// Удаляем объект сессии клиента nghttp2
+	::nghttp2_session_del(session);
+}
+
 int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
@@ -630,6 +926,10 @@ int32_t main(){
 	::checkGoaway(&fmk, &log);
 	// Выполняем проверку кадра обновления приоритета
 	::checkPriority(&fmk, &log);
+	// Выполняем проверку анонсов ALTSVC и ORIGIN нашим клиентом
+	::checkAnnounceClient(&fmk, &log);
+	// Выполняем проверку анонсов ALTSVC и ORIGIN нашим сервером
+	::checkAnnounceServer(&fmk, &log);
 	// Печатаем итог сверки
 	std::cout << "расхождений: " << ::failures << std::endl;
 	// Выводим результат

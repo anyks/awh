@@ -2704,7 +2704,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Приоритеты RFC 7540 deprecated - игнорируем
 			return h2::status_t::OK;
 		}
-		// Фрейм обновления расширенного приоритета потока (RFC 9218 §7.1)
+		// Фрейм анонса альтернативного сервиса (RFC 7838 §4)
 		case h2::frame_t::ALTSVC: {
 			/**
 			 * Анонс отправляет только сервер: присланный клиентом кадр сервер обязан

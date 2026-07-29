@@ -98,7 +98,22 @@ for PROTO in http2 http3; do
 	bash "$ROOT/tools/benchmark/$PROTO/build.sh" "$WORK/rival-$PROTO" "$RELEASE" > "$WORK/stands-$PROTO.log" 2>&1 \
 		|| abort "не собраны стенды $PROTO, подробности в $WORK/stands-$PROTO.log"
 done
-accept "стенды собраны в \"$WORK\""
+accept "стенды http2 и http3 собраны в \"$WORK\""
+
+##
+# Стенды HTTP/1 необязательны
+#
+# Эталоны HTTP/2 и HTTP/3 берутся из подмодулей и собираются на любой машине,
+# где собирается сам проект. Стенды HTTP/1 - нет: им нужны исходные тексты
+# соперников, получаемые отдельно, и системные пакеты llhttp и boost. Обрывать
+# из-за них всю проверку значило бы лишить машину и тех сторожей, что собрались:
+# протокол без стендов сверка сама пометит пропуском
+#
+if bash "$ROOT/tools/benchmark/http1/build.sh" "$WORK/rival-http1" "$RELEASE" > "$WORK/stands-http1.log" 2>&1; then
+	accept "стенды http1 собраны в \"$WORK\""
+else
+	skip "стенды http1 не собраны, HTTP/1 сверен не будет: подробности в $WORK/stands-http1.log"
+fi
 
 ##
 # Шаг 3. Чередующийся замер и сверка с сохранённым эталоном
