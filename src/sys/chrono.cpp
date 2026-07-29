@@ -1208,6 +1208,26 @@ void awh::Chrono::clear() noexcept {
 	}
 }
 /**
+ * @brief Метод получения допуска отката года
+ *
+ * @return допуск отката года в секундах, ноль если откат отключён
+ *
+ */
+uint32_t awh::Chrono::yearRollback() const noexcept {
+	// Выводим установленный допуск отката года
+	return this->_yearRollback;
+}
+/**
+ * @brief Метод установки допуска отката года
+ *
+ * @param seconds допуск отката года в секундах, ноль отключает откат
+ *
+ */
+void awh::Chrono::yearRollback(const uint32_t seconds) noexcept {
+	// Устанавливаем допуск отката года
+	this->_yearRollback = seconds;
+}
+/**
  * @brief Метод установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
@@ -8090,8 +8110,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 		char letter = 0;
 		// Режим детекции переменной формата
 		bool mode = false;
-		// Текущее количество минут прошедших с 1970-го года
-		uint64_t lastMinutes = 0;
+		// Текущий штамп времени, относительно которого опознаётся запись прошлого года
+		uint64_t current = 0;
 		// Флаги установки параметров
 		bool flags[8] = {
 			false, // Флаг установки временной зоны
@@ -8119,8 +8139,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				this->_dt.microseconds = 0;
 				// Получаем текущее значение штампа времени
 				result = this->makeDate(this->_dt);
-				// Получаем количество минут прошедших с 1970-го года
-				lastMinutes = (result / 60000);
+				// Запоминаем текущий штамп времени
+				current = result;
 			} break;
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8128,8 +8148,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				result = this->timestamp(type_t::MILLISECONDS);
 				// Заполняем объект даты из штампа времени
 				this->makeDate(result, dt);
-				// Получаем количество минут прошедших с 1970-го года
-				lastMinutes = (result / 60000);
+				// Запоминаем текущий штамп времени
+				current = result;
 			} break;
 		}
 		/**
@@ -8772,8 +8792,13 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Возвращаем значение временной зоны обратно
 					this->_dt.offset = offset;
 				}
-				// Если количество минут переданной даты с начала 1970-го года выше чем текущее количество минут
-				if(!flags[1] && ((result / 60000) > lastMinutes)){
+				/**
+				 * Запись, года не содержащая, относится к текущему году, но если она
+				 * уходит вперёд дальше допуска - к предыдущему. Нулевой допуск откат
+				 * отключает целиком
+				 */
+				if(!flags[1] && (this->_yearRollback > 0) &&
+				   (result > (current + (static_cast <uint64_t> (this->_yearRollback) * 1000)))){
 					// Уменьшаем значение текущего года
 					this->_dt.year--;
 					// Устанавливаем флаг високосного года
@@ -8823,8 +8848,13 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					dt.milliseconds = 0;
 				// Выполняем формирование UnixTimestamp
 				result = this->makeDate(dt);
-				// Если количество минут переданной даты с начала 1970-го года выше чем текущее количество минут
-				if(!flags[1] && ((result / 60000) > lastMinutes)){
+				/**
+				 * Запись, года не содержащая, относится к текущему году, но если она
+				 * уходит вперёд дальше допуска - к предыдущему. Нулевой допуск откат
+				 * отключает целиком
+				 */
+				if(!flags[1] && (this->_yearRollback > 0) &&
+				   (result > (current + (static_cast <uint64_t> (this->_yearRollback) * 1000)))){
 					// Уменьшаем значение текущего года
 					dt.year--;
 					// Устанавливаем флаг високосного года
@@ -10681,7 +10711,21 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
  * @param log объект для работы с логами
  *
  */
-awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+/**
+ * @brief Допуск отката года по умолчанию
+ *
+ * @details Двадцать шесть часов - полный разброс временных зон, от UTC+14 до UTC-12.
+ *          Устаревший стандарт системного журнала RFC 3164 временной зоны в записи не
+ *          указывает: штамп содержит местное время отправителя, а читается он в зоне
+ *          получателя, поэтому запись законно опережает получателя на величину вплоть
+ *          до этого разброса. Меньший допуск отправлял бы на год назад каждую запись
+ *          хоста, стоящего восточнее получателя
+ *
+ */
+static constexpr uint32_t DEFAULT_YEAR_ROLLBACK = (26 * 3600);
+
+awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept :
+	_yearRollback(DEFAULT_YEAR_ROLLBACK), _fmk(fmk), _log(log) {
 	/**
 	 * Деактивируем мьютексы на время инициализации
 	 */
