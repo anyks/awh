@@ -60,7 +60,7 @@ using namespace awh::quic;
  * @return        результат прогона (false - соединение не установлено)
  *
  */
-static bool transfer(const size_t streams, rival::transfer_t & output) noexcept {
+static bool transfer(const size_t streams, rival::transfer_t & output, const size_t sendHigh = 0) noexcept {
 	// Объект фреймворка
 	static awh::fmk_t fmk;
 	// Объект логирования
@@ -75,6 +75,11 @@ static bool transfer(const size_t streams, rival::transfer_t & output) noexcept 
 	connection_t server(endpoint_t::SERVER, security.context(endpoint_t::SERVER), security.coder(), &log);
 	// Выполняем подготовку соединения клиента
 	awh::benchmark::quic::configure(client);
+	// Ограничиваем стейджинг буфера отправки водяными метками (для честного сравнения
+	// с всегда-ограниченной моделью ngtcp2): при нуле - прежний безлимитный режим
+	if(sendHigh > 0)
+		// Включаем backpressure отправки на переданной верхней метке
+		client.sendWaterMarks(sendHigh, sendHigh / 2);
 	// Выполняем подготовку соединения сервера
 	awh::benchmark::quic::configure(server);
 	// Выполняем начало соединения клиентом
@@ -236,7 +241,7 @@ static bool transfer(const size_t streams, rival::transfer_t & output) noexcept 
  * @param mask    фильтр названий сценариев
  *
  */
-static void execute(const char * name, const size_t streams, const bool metric, const char * mask) noexcept {
+static void execute(const char * name, const size_t streams, const bool metric, const char * mask, const size_t sendHigh = 0) noexcept {
 	// Если название сценария не соответствует фильтру
 	if(!rival::selected(name, mask))
 		// Выходим без выполнения сценария
@@ -244,7 +249,7 @@ static void execute(const char * name, const size_t streams, const bool metric, 
 	// Итоги прогона передачи данных
 	rival::transfer_t transfer;
 	// Если прогон передачи данных не выполнен
-	if(!::transfer(streams, transfer)){
+	if(!::transfer(streams, transfer, sendHigh)){
 		// Выводим сообщение о неудачном прогоне сценария
 		rival::skip(name, "прогон не выполнен: соединение не установлено");
 		// Выходим из сценария
@@ -272,6 +277,9 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	execute("quic/throughput/single-stream", 1, false, mask);
 	// Выполняем сценарий передачи по множеству потоков
 	execute("quic/throughput/multi-stream", rival::STREAM_COUNT, false, mask);
+	// Выполняем сценарий передачи по множеству потоков с ограниченным стейджингом
+	// (честное сравнение с моделью ngtcp2: у неё стейджинг отправки ограничен всегда)
+	execute("quic/throughput/multi-stream-bounded", rival::STREAM_COUNT, false, mask, (64 * 1024));
 	// Выполняем сценарий количества выделений памяти на датаграмму
 	execute("quic/allocations/per-datagram", 1, true, mask);
 	// Выводим успешный код возврата

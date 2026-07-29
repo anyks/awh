@@ -787,6 +787,9 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	execute("quic/throughput/single-stream", 1, false, mask);
 	// Выполняем сценарий передачи по множеству потоков
 	execute("quic/throughput/multi-stream", rival::STREAM_COUNT, false, mask);
+	// Парный ограниченному сценарию awh: у ngtcp2 стейджинг отправки ограничен всегда
+	// (модель zero-copy), отдельного безлимитного режима нет - прогон тот же
+	execute("quic/throughput/multi-stream-bounded", rival::STREAM_COUNT, false, mask);
 	// Выполняем сценарий количества выделений памяти на датаграмму
 	execute("quic/allocations/per-datagram", 1, true, mask);
 	// Выводим успешный код возврата

@@ -38,6 +38,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             io/timers.cpp
             io/deadlines.cpp
             io/bandwidth.cpp
+            io/idle.cpp
         )
     # Если не нужно собрать бенчмарки для подмодуля сетевого движка
     else()
