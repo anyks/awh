@@ -1039,8 +1039,22 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkNoexpParameterizedFixture,
 		FmkNoexpTestParameter({4, 2986.808299, false, "2986.8083"}),
 		FmkNoexpTestParameter({0, 1000000000.808299, false, "1000000000.808299"}),
 		FmkNoexpTestParameter({0, 1000000000.808299, true, "1000000000.808299"}),
-		FmkNoexpTestParameter({0, 0.80829989222211145, true, "0.8083"}),
-		FmkNoexpTestParameter({0, 1e+19, false, "10000000000000000000"})
+		FmkNoexpTestParameter({0, 0.80829989222211145, true, "0.8082998922221114"}),
+		FmkNoexpTestParameter({0, 1e+19, false, "10000000000000000000"}),
+		FmkNoexpTestParameter({0, 0.111, false, "0.111"}),
+		FmkNoexpTestParameter({0, 0.001, false, "0.001"}),
+		FmkNoexpTestParameter({0, 0.0001, false, "0.0001"}),
+		FmkNoexpTestParameter({0, 1e-5, false, "0.00001"}),
+		FmkNoexpTestParameter({0, 1.001, false, "1.001"}),
+		FmkNoexpTestParameter({0, 1536. / 1024., false, "1.5"}),
+		FmkNoexpTestParameter({0, 1500. / 1024., false, "1.46484375"}),
+		FmkNoexpTestParameter({0, 2986., false, "2986"}),
+		FmkNoexpTestParameter({0, 0., false, "0"}),
+		FmkNoexpTestParameter({0, -2986.808299, false, "-2986.808299"}),
+		FmkNoexpTestParameter({0, -0.111, true, "-0.111"}),
+		FmkNoexpTestParameter({3, 2986., false, "2986"}),
+		FmkNoexpTestParameter({3, -2986.808299, false, "-2986.808"}),
+		FmkNoexpTestParameter({8, 0.111, false, "0.11100000"})
 	)
 );
 

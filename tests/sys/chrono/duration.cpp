@@ -91,8 +91,12 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, DurationParseParameterizedFixture,
 		// Дробные значения через точку
 		DurationParseTestParameter({"1.5h", 5400.}),
 		DurationParseTestParameter({"0.5d", 43200.}),
-		// Знак числа при разборе не учитывается
-		DurationParseTestParameter({"-1h", 3600.}),
+		// Знак числа сохраняется: продолжительность бывает и отрицательной
+		DurationParseTestParameter({"-1h", -3600.}),
+		DurationParseTestParameter({"-90m", -5400.}),
+		DurationParseTestParameter({"-1.5h", -5400.}),
+		// Знак плюса избыточен и частью числа не считается
+		DurationParseTestParameter({"+1h", 3600.}),
 		// Обозначения, разбору не подлежащие
 		DurationParseTestParameter({"", 0.}),
 		DurationParseTestParameter({"abc", 0.}),
@@ -153,16 +157,16 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, DurationPrintParameterizedFixture,
 		DurationPrintTestParameter({59., "59s"}),
 		// Границы перехода к минутам
 		DurationPrintTestParameter({60., "1m"}),
-		DurationPrintTestParameter({61., "1.0167m"}),
-		DurationPrintTestParameter({3599., "59.9833m"}),
+		DurationPrintTestParameter({61., "1.02m"}),
+		DurationPrintTestParameter({3599., "59.98m"}),
 		// Границы перехода к часам
 		DurationPrintTestParameter({3600., "1h"}),
-		DurationPrintTestParameter({3725., "1.034722h"}),
+		DurationPrintTestParameter({3725., "1.03h"}),
 		// Последняя секунда суток округляется до целого числа часов
 		DurationPrintTestParameter({86399., "24h"}),
 		// Границы перехода к суткам
 		DurationPrintTestParameter({86400., "1d"}),
-		DurationPrintTestParameter({90000., "1.04167d"}),
+		DurationPrintTestParameter({90000., "1.04d"}),
 		// Границы перехода к неделям
 		DurationPrintTestParameter({604800., "1w"}),
 		DurationPrintTestParameter({1209600., "2w"}),

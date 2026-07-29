@@ -370,28 +370,35 @@ TEST_F(SyslogFixture, ExecutionSyslogYearChronoTest){
 TEST_F(SyslogFixture, ExecutionSyslogRollbackChronoTest){
 	// Выполняем проверку величины допуска по умолчанию
 	ASSERT_EQ(this->_chrono->yearRollback(), 26 * 3600);
-	// Получаем текущий момент времени
-	const uint64_t now = this->_chrono->timestamp(awh::chrono_t::type_t::MILLISECONDS);
-	// Получаем текущее значение года
-	const uint16_t year = this->_chrono->year(now);
+	/**
+	 * Часы закрепляются на середине года: отсчёт от текущего момента сделал бы
+	 * проверку зависимой от календаря - в декабре запись, опережающая на месяц,
+	 * попадала бы в январь следующего года и оказывалась бы не впереди, а позади
+	 */
+	// Момент, на котором закрепляются часы локального хранилища
+	const uint64_t now = this->_chrono->parse("2025-07-15 12:00:00", "%Y-%m-%d %H:%M:%S");
 	/**
 	 * Выполняем перебор опережений, укладывающихся в допуск по умолчанию
 	 */
 	for(uint64_t hours : {0, 1, 12, 20, 25}){
+		// Закрепляем часы локального хранилища на исходном моменте
+		this->_chrono->timestamp(now, awh::chrono_t::type_t::MILLISECONDS);
 		// Формируем запись штампа времени опережающего момента
 		const std::string record = this->_chrono->format(now + (hours * 3600000), BSD_FORMAT);
 		// Выполняем проверку того, что год остался текущим
-		ASSERT_EQ(this->_chrono->year(this->_chrono->parse(record, BSD_FORMAT)), year)
+		ASSERT_EQ(this->_chrono->year(this->_chrono->parse(record, BSD_FORMAT, awh::chrono_t::storage_t::LOCAL)), 2025)
 			<< record << " (опережение " << hours << " ч)";
 	}
 	/**
 	 * Выполняем перебор опережений, допуск превышающих
 	 */
 	for(uint64_t hours : {27, 40, 24 * 30}){
+		// Закрепляем часы локального хранилища на исходном моменте
+		this->_chrono->timestamp(now, awh::chrono_t::type_t::MILLISECONDS);
 		// Формируем запись штампа времени опережающего момента
 		const std::string record = this->_chrono->format(now + (hours * 3600000), BSD_FORMAT);
 		// Выполняем проверку того, что год откатился на предыдущий
-		ASSERT_EQ(this->_chrono->year(this->_chrono->parse(record, BSD_FORMAT)), year - 1)
+		ASSERT_EQ(this->_chrono->year(this->_chrono->parse(record, BSD_FORMAT, awh::chrono_t::storage_t::LOCAL)), 2024)
 			<< record << " (опережение " << hours << " ч)";
 	}
 }
@@ -405,32 +412,39 @@ TEST_F(SyslogFixture, ExecutionSyslogRollbackChronoTest){
  *
  */
 TEST_F(SyslogFixture, ExecutionSyslogRollbackSetupChronoTest){
-	// Получаем текущий момент времени
-	const uint64_t now = this->_chrono->timestamp(awh::chrono_t::type_t::MILLISECONDS);
-	// Получаем текущее значение года
-	const uint16_t year = this->_chrono->year(now);
-	// Формируем запись штампа времени, опережающего текущий момент на двадцать часов
+	// Момент, на котором закрепляются часы локального хранилища
+	const uint64_t now = this->_chrono->parse("2025-07-15 12:00:00", "%Y-%m-%d %H:%M:%S");
+	// Формируем запись штампа времени, опережающего закреплённый момент на двадцать часов
 	const std::string record = this->_chrono->format(now + (20 * 3600000), BSD_FORMAT);
-	// Устанавливаем допуск в один час, разброса зон не покрывающий
-	this->_chrono->yearRollback(3600);
-	// Выполняем проверку величины установленного допуска
-	ASSERT_EQ(this->_chrono->yearRollback(), 3600);
-	// Выполняем проверку того, что запись уехала на год назад
-	ASSERT_EQ(this->_chrono->year(this->_chrono->parse(record, BSD_FORMAT)), year - 1) << record;
-	// Устанавливаем допуск с запасом на разъехавшиеся часы
-	this->_chrono->yearRollback(30 * 3600);
-	// Выполняем проверку того, что год остался текущим
-	ASSERT_EQ(this->_chrono->year(this->_chrono->parse(record, BSD_FORMAT)), year) << record;
-	// Отключаем откат года целиком
-	this->_chrono->yearRollback(0);
-	// Выполняем проверку величины установленного допуска
-	ASSERT_EQ(this->_chrono->yearRollback(), 0);
-	// Выполняем проверку того, что год остался текущим при любом опережении
-	ASSERT_EQ(this->_chrono->year(this->_chrono->parse(record, BSD_FORMAT)), year) << record;
-	// Формируем запись штампа времени, опережающего текущий момент на месяц
+	// Величины допуска и отвечающие им года разбора записи
+	const std::pair <uint32_t, uint16_t> cases[] = {
+		// Допуск в один час разброса зон не покрывает, и запись уезжает на год назад
+		{3600, 2024},
+		// Допуск с запасом на разъехавшиеся часы оставляет год текущим
+		{30 * 3600, 2025},
+		// Нулевой допуск отключает откат целиком
+		{0, 2025}
+	};
+	/**
+	 * Выполняем перебор всех проверяемых величин допуска
+	 */
+	for(auto & item : cases){
+		// Устанавливаем проверяемую величину допуска
+		this->_chrono->yearRollback(item.first);
+		// Выполняем проверку величины установленного допуска
+		ASSERT_EQ(this->_chrono->yearRollback(), item.first);
+		// Закрепляем часы локального хранилища на исходном моменте
+		this->_chrono->timestamp(now, awh::chrono_t::type_t::MILLISECONDS);
+		// Выполняем проверку года разбора записи
+		ASSERT_EQ(this->_chrono->year(this->_chrono->parse(record, BSD_FORMAT, awh::chrono_t::storage_t::LOCAL)), item.second)
+			<< record << " (допуск " << item.first << " сек)";
+	}
+	// Формируем запись штампа времени, опережающего закреплённый момент на месяц
 	const std::string far = this->_chrono->format(now + (24 * 30 * 3600000ULL), BSD_FORMAT);
-	// Выполняем проверку того, что откат не сработал и на нём
-	ASSERT_EQ(this->_chrono->year(this->_chrono->parse(far, BSD_FORMAT)), year) << far;
+	// Закрепляем часы локального хранилища на исходном моменте
+	this->_chrono->timestamp(now, awh::chrono_t::type_t::MILLISECONDS);
+	// Выполняем проверку того, что при нулевом допуске откат не сработал и на нём
+	ASSERT_EQ(this->_chrono->year(this->_chrono->parse(far, BSD_FORMAT, awh::chrono_t::storage_t::LOCAL)), 2025) << far;
 }
 
 /**

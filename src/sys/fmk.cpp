@@ -21,6 +21,8 @@
  */
 #include <cmath>
 #include <atomic>
+#include <locale>
+#include <charconv>
 #include <bitset>
 #include <chrono>
 #include <memory>
@@ -347,97 +349,117 @@ namespace {
 		#endif
 	}
 	/**
-	 * @brief Функция определения количества знаков после запятой
+	 * @brief Функция записи числа с плавающей точкой в безэкспоненциальной форме
 	 *
-	 * @param number число в котором нужно определить количество знаков
-	 * @param log    объект работы с логами
-	 * @return       количество знаков после запятой
+	 * @details Запись выполняется без обращения к текущей локали: разделителем дробной
+	 *          части всегда служит точка, разделителей разрядов запись не содержит.
+	 *          Количество знаков после запятой либо задаётся явно, либо, если задано
+	 *          отрицательным, подбирается наименьшим из тех, при котором запись
+	 *          читается обратно ровно тем же числом. Подбор даёт краткую запись, не
+	 *          теряя при этом ни одного значащего разряда: число 0.111 остаётся
+	 *          записью «0.111», а результат деления 1536 на 1024 - записью «1.5»
+	 *
+	 * @param number    число для записи
+	 * @param precision количество знаков после запятой, отрицательное для подбора
+	 * @return          число в безэкспоненциальной форме
 	 *
 	 */
-	uint8_t decimalPlaces(double number, const awh::log_t * log) noexcept {
-		// Переменная результата
-		uint8_t result = 0;
+	string noexpFixed(const double number, const int32_t precision) noexcept {
+		// Если число не является конечным, записывать нечего
+		if(!::isfinite(number))
+			// Выводим нулевой результат
+			return string(1, '0');
 		/**
-		 * Выполняем отлов ошибок
+		 * Если стандартная библиотека умеет записывать числа с плавающей точкой
 		 */
-		try {
-			// Результирующее число
-			double intpart = 0.;
-			// Если у числа нет дробной части
-			if(::modf(number, &intpart) > 0){
-				// Получаем остаток от деления
-				int64_t remainder = -1, item = 0;
-				/**
-				 * Если у числа есть дробная часть
-				 */
-				while((::modf(number, &intpart) > 0) && (result < 15)){
-					// Если остаток от деления совпадает
-					if(((item = (static_cast <int64_t> (intpart) % 10L)) == remainder) && (remainder != 0))
-						// Выходим из цикла
-						break;
-					// Если результат уже собран
-					if(result > 0)
-						// Запоминаем остаток от деления
-						remainder = item;
-					// Увеличиваем число на один порядок
-					number *= 10.;
-					// Считаем количество чисел
-					result++;
-				}
-				/**
-				 * Если собранное число больше нуля
-				 */
-				while(intpart > 0){
-					// Если последний символ нулевой
-					if((result > 0) && ((static_cast <uint64_t> (intpart) % 10L) == 0)){
-						// Уменьшаем размер числа
-						result--;
-						// Уменьшаем размер числа
-						intpart /= 10.;
-					// Выходим из цикла
-					} else break;
-				}
+		#if defined(__cpp_lib_to_chars)
+			/**
+			 * Размер буфера взят с запасом: наибольшую безэкспоненциальную запись даёт
+			 * денормализованное число, и она занимает менее восьмисот разрядов
+			 */
+			char buffer[1024];
+			// Выполняем запись числа в буфер
+			const to_chars_result data = (
+				(precision < 0) ?
+				::to_chars(buffer, buffer + sizeof(buffer), number, chars_format::fixed) :
+				::to_chars(buffer, buffer + sizeof(buffer), number, chars_format::fixed, precision)
+			);
+			// Если запись числа выполнена
+			if(data.ec == errc())
+				// Выводим полученную запись числа
+				return string(buffer, data.ptr);
+			// Размер буфера, которого не хватило на запись числа
+			size_t size = sizeof(buffer);
+			/**
+			 * Буфера не хватило - увеличиваем его, пока запись не уместится
+			 */
+			while(size <= 0x10000){
+				// Увеличиваем размер буфера вдвое
+				size *= 2;
+				// Выделяем буфер увеличенного размера
+				unique_ptr <char []> scratch(new char[size]);
+				// Выполняем запись числа в увеличенный буфер
+				const to_chars_result data = (
+					(precision < 0) ?
+					::to_chars(scratch.get(), scratch.get() + size, number, chars_format::fixed) :
+					::to_chars(scratch.get(), scratch.get() + size, number, chars_format::fixed, precision)
+				);
+				// Если запись числа выполнена
+				if(data.ec == errc())
+					// Выводим полученную запись числа
+					return string(scratch.get(), data.ptr);
 			}
+			// Записать число не удалось
+			return string(1, '0');
 		/**
-		 * Если возникает ошибка
+		 * Иначе выполняем запись потоком, подбирая точность перебором
 		 */
-		} catch(const exception & error) {
-			// Выполняем сброс количества знаков после запятой
-			result = 0;
-			// Если объект логирования установлен
-			if(log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(number), awh::log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
+		#else
+			// Поток записи числа
+			stringstream stream;
+			/**
+			 * Классическая локаль исключает разделители разрядов и запятую в роли
+			 * разделителя дробной части, какой бы ни была локаль приложения
+			 */
+			stream.imbue(locale::classic());
+			// Если количество знаков после запятой задано явно
+			if(precision >= 0){
+				// Выполняем запись числа с заданной точностью
+				stream << fixed << ::setprecision(precision) << number;
+				// Выводим полученную запись числа
+				return stream.str();
 			}
-		}
-		// Возвращаем результат
-		return result;
+			// Запись числа
+			string result = "";
+			/**
+			 * Подбираем наименьшую точность, при которой запись читается обратно тем же
+			 * числом. Предел перебора покрывает и денормализованные числа
+			 */
+			for(int32_t i = 0; i < 350; i++){
+				// Выполняем очистку потока записи
+				stream.str("");
+				// Выполняем сброс состояния потока записи
+				stream.clear();
+				// Выполняем запись числа с очередной точностью
+				stream << fixed << ::setprecision(i) << number;
+				// Получаем выполненную запись числа
+				result = stream.str();
+				// Поток чтения выполненной записи
+				istringstream reader(result);
+				// Устанавливаем классическую локаль потоку чтения
+				reader.imbue(locale::classic());
+				// Число, прочитанное обратно из записи
+				double value = 0.;
+				// Выполняем чтение числа из записи
+				reader >> value;
+				// Если число прочитано обратно без потерь
+				if(!reader.fail() && (value == number))
+					// Выводим полученную запись числа
+					return result;
+			}
+			// Выводим последнюю выполненную запись числа
+			return result;
+		#endif
 	}
 
 	/**
@@ -5462,42 +5484,19 @@ void awh::Framework::atoi(const wchar_t * value, const size_t length, const uint
 string awh::Framework::noexp(const double number, const uint8_t step) const noexcept {
 	// Переменная результата
 	string result = "";
-	// Если размер шага и число переданы
-	if((number > 0.) && (step > 0.)){
+	// Если размер шага после запятой передан
+	if(step > 0){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Создаём поток для конвертации числа
-			stringstream ss;
-			// Временное значение переменной
-			double intpart = 0;
-			// Выполняем проверку есть ли дробная часть у числа
-			if(::modf(number, &intpart) > 0)
-				// Записываем число в поток
-				ss << fixed << ::setprecision(step) << number;
-			// Записываем число как оно есть
-			else ss << fixed << ::setprecision(0) << number;
-			// Получаем из потока строку
-			ss >> result;
-			// Если результат получен
-			if(!result.empty()){
-				/**
-				 * Переходим по всему числу
-				 */
-				for(auto i = result.begin(); i != result.end();){
-					// Если это первый символ
-					if(i == result.begin() && ((* i) == '-'))
-						// Увеличиваем значение итератора
-						++i;
-					// Проверяем является ли символ числом
-					else if(symbols.isArabic(* i) || ((* i) == '.'))
-						// Увеличиваем значение итератора
-						++i;
-					// Иначе удаляем символ
-					else i = result.erase(i);
-				}
-			}
+			// Целая часть числа
+			double intpart = 0.;
+			/**
+			 * Целое число записывается без дробной части вовсе, а дробное - с
+			 * количеством знаков после запятой, заданным размером шага
+			 */
+			result = ::noexpFixed(number, ((::modf(number, &intpart) != 0.) ? static_cast <int32_t> (step) : 0));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -5537,9 +5536,9 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 			}
 		}
 	}
-	// Если идентификатор обнулился после переполнения счётчика
+	// Если запись числа выполнить не удалось
 	if(result.empty())
-		// Сбрасываем полученный результат
+		// Выводим нулевой результат
 		result = "0";
 	// Возвращаем результат
 	return result;
@@ -5553,127 +5552,61 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
  *
  */
 string awh::Framework::noexp(const double number, const bool onlyNum) const noexcept {
+	/**
+	 * Запись выполняется без обращения к локали и посторонних символов не содержит,
+	 * поэтому отбор одних лишь разрядов ничего в ней не меняет. Довод сохранён ради
+	 * совместимости вызовов
+	 */
+	(void) onlyNum;
 	// Переменная результата
 	string result = "";
-	// Если размер шага и число переданы
-	if(number > 0.){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Создаём поток для конвертации числа
-			stringstream ss;
-			// Получаем количество знаков после запятой
-			const uint8_t count = ::decimalPlaces(number, this->_log);
-			// Записываем число в поток
-			ss << fixed << ::setprecision(count) << number;
-			// Получаем из потока строку
-			ss >> result;
-			// Если результат получен
-			if((count > 0) && !result.empty()){
-				/**
-				 * Удаляем хвостовые нули, а затем разделитель дробной части (если он остался)
-				 */
-				while(!result.empty()){
-					// Получаем последний символ
-					const char letter = result.back();
-					// Если это хвостовой ноль
-					if(letter == '0')
-						// Удаляем последний символ
-						result.pop_back();
-					// Если это разделитель дробной части
-					else if((letter == '.') || (letter == ',')){
-						// Удаляем разделитель дробной части и завершаем перебор
-						result.pop_back();
-						// Выходим из цикла
-						break;
-					// В остальных случаях завершаем перебор
-					} else break;
-				}
-			}
-			// Если количество цифр после запятой больше нуля
-			if((count > 0) && (result.size() > 2)){
-				// Устанавливаем значение последнего символа
-				char last = '$';
-				/**
-				 * Выполняем перебор всех символов
-				 */
-				for(auto i = (result.end() - 2); i != (result.begin() - 1);){
-					// Если символ не является последним
-					if(i != (result.end() - 2)){
-						// Если символы совпадают
-						if((* i) == last)
-							// Выполняем удаление лишних символов
-							result.erase(i);
-						// Если символы не совпадат, выходим
-						else break;
-					}
-					// Запоминаем текущее значение символа
-					last = (* i);
-					// Уменьшаем значение итератора
-					i--;
-				}
-			}
-			// Если нужно выводить только числа
-			if(onlyNum && !result.empty()){
-				/**
-				 * Переходим по всему числу
-				 */
-				for(auto i = result.begin(); i != result.end();){
-					// Если это первый символ
-					if(i == result.begin() && ((* i) == '-'))
-						// Выполняем увеличение значения итератора
-						++i;
-					// Проверяем является ли символ числом
-					else if(symbols.isArabic(* i) || ((* i) == '.'))
-						// Выполняем увеличение значения итератора
-						++i;
-					// Иначе удаляем символ
-					else i = result.erase(i);
-				}
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Сбрасываем полученный результат
-			result.clear();
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(number, onlyNum), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем запись числа наименьшей точной записью
+		result = ::noexpFixed(number, -1);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Сбрасываем полученный результат
+		result.clear();
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(number, onlyNum), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
 		}
 	}
-	// Если идентификатор обнулился после переполнения счётчика
+	// Если запись числа выполнить не удалось
 	if(result.empty())
-		// Сбрасываем полученный результат
+		// Выводим нулевой результат
 		result = "0";
 	// Возвращаем результат
 	return result;

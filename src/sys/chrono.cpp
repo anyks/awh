@@ -892,15 +892,26 @@ namespace {
 		// Итоговый список групп: остаётся пустым, если число с единицей не найдено
 		vector <match_t> result;
 		/**
-		 * Число начинается с цифры, точки или запятой — ищем такую позицию
+		 * Число начинается со знака, цифры, точки или запятой — ищем такую позицию
 		 */
 		for(size_t i = 0; i < length; i++){
+			// Позиция первого разряда числа, знак при наличии стоит перед нею
+			size_t begin = i;
+			/**
+			 * Знак занимает один символ и учитывается лишь тогда, когда за ним стоит
+			 * само число: без него запись «-2h» разбиралась как «2h», и продолжительность
+			 * меняла знак на обратный. Знак плюса частью числа не считается - он
+			 * избыточен, а перевод числа с ним не справляется
+			 */
+			if((text[i] == '-') && ((i + 1) < length))
+				// Разряды числа начинаются сразу за знаком
+				begin = (i + 1);
 			// Число может начинаться только с цифры, точки или запятой — иначе пропускаем
-			if(!(isDigitChar(text[i]) || (text[i] == '.') || (text[i] == ',')))
+			if(!(isDigitChar(text[begin]) || (text[begin] == '.') || (text[begin] == ',')))
 				// Переходим к следующей позиции текста
 				continue;
 			// pos1 — курсор конца числа (поглощает серию [\d.,]+)
-			size_t pos1 = i;
+			size_t pos1 = begin;
 			/**
 			 * Расширяем число, пока подряд идут цифры, точки или запятые
 			 */
@@ -977,6 +988,100 @@ namespace {
 			result = ((result * 10) + static_cast <uint32_t> (text[i] - '0'));
 		// Выводим собранное число
 		return result;
+	}
+	/**
+	 * @brief Функция округления величины продолжительности
+	 *
+	 * @details Обозначение продолжительности предназначено для чтения человеком, и
+	 *          дробная часть выводилась в нём со всей разрядностью двоичного числа:
+	 *          тридцать суток давали 4.285714285714286w. Округление до сотых даёт
+	 *          4.29w, но величины мельче сотой доли единицы оно обратило бы в ноль,
+	 *          поэтому они выводятся без округления
+	 *
+	 * @param value величина продолжительности в единицах её измерения
+	 * @return      округлённая величина продолжительности
+	 *
+	 */
+	inline double roundDuration(const double value) noexcept {
+		// Величины мельче сотой доли единицы округление обратило бы в ноль
+		if(value < 0.01)
+			// Выводим величину без округления
+			return value;
+		// Выводим величину, округлённую до сотых
+		return (::round(value * 100.) / 100.);
+	}
+	/**
+	 * @brief Функция раскладки номера дня в году на месяц и число месяца
+	 *
+	 * @details Номер дня в году задаётся переменной формата %j, но сборка штампа
+	 *          времени опирается на месяц и число месяца, а номер дня не читает.
+	 *          Раскладка выполняется в конце разбора: год к тому времени уже известен,
+	 *          а от него зависит длительность февраля
+	 *
+	 * @param days  номер дня в году, отсчитываемый от нуля
+	 * @param leap  признак високосного года
+	 * @param month месяц, в который раскладывается номер дня
+	 * @param date  число месяца, в которое раскладывается номер дня
+	 *
+	 */
+	inline void dateFromDays(const uint16_t days, const bool leap, uint8_t & month, uint8_t & date) noexcept {
+		// Остаток дней, ещё не отнесённых ни к одному месяцу
+		uint16_t remain = days;
+		/**
+		 * Вычитаем длительность месяцев, пока остаток не уместится в очередном
+		 */
+		for(uint8_t i = 0; i < static_cast <uint8_t> (params.daysInMonths.size()); i++){
+			// Получаем количество суток в очередном месяце с учётом високосности года
+			const uint16_t count = (params.daysInMonths[i] + (((i == 1) && leap) ? 1 : 0));
+			// Если остаток умещается в очередном месяце
+			if(remain < count){
+				// Устанавливаем номер найденного месяца
+				month = static_cast <uint8_t> (i + 1);
+				// Устанавливаем число месяца, отсчитываемое от единицы
+				date = static_cast <uint8_t> (remain + 1);
+				// Раскладка выполнена
+				return;
+			}
+			// Переходим к следующему месяцу
+			remain -= count;
+		}
+		// Номер дня вышел за пределы года - оставляем последний день декабря
+		month = 12;
+		date = 31;
+	}
+	/**
+	 * @brief Функция проверки допустимости составляющих даты
+	 *
+	 * @details Проверяются только пределы самих составляющих, но не их сочетание с
+	 *          временной зоной: смещение зоны на пределы календарных полей не влияет.
+	 *          Количество секунд допускается до шестидесяти включительно - секунду
+	 *          координации разрешают и RFC 3339, и стандарты, на него ссылающиеся
+	 *
+	 * @param month        номер месяца
+	 * @param date         число месяца
+	 * @param hour         количество часов
+	 * @param minutes      количество минут
+	 * @param seconds      количество секунд
+	 * @param milliseconds количество миллисекунд
+	 * @param leap         признак високосного года
+	 * @return             признак допустимости составляющих
+	 *
+	 */
+	inline bool validDate(const uint8_t month, const uint8_t date, const uint8_t hour,
+	                      const uint8_t minutes, const uint8_t seconds, const uint32_t milliseconds,
+	                      const bool leap) noexcept {
+		// Номер месяца лежит в пределах от первого до двенадцатого
+		if((month < 1) || (month > 12))
+			// Составляющие даты недопустимы
+			return false;
+		// Получаем количество суток в указанном месяце
+		const uint8_t days = (params.daysInMonths[month - 1] + (((month == 2) && leap) ? 1 : 0));
+		// Число месяца лежит в пределах от первого до последнего дня месяца
+		if((date < 1) || (date > days))
+			// Составляющие даты недопустимы
+			return false;
+		// Проверяем пределы составляющих времени суток
+		return ((hour <= 23) && (minutes <= 59) && (seconds <= 60) && (milliseconds <= 999));
 	}
 	/**
 	 * @brief Функция перевода доли секунды в миллисекунды
@@ -4320,43 +4425,43 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
 			// Если переданное значение соответствует году
 			if(seconds >= year){
 				// Выполняем преобразование в количество лет
-				result = this->_fmk->noexp(seconds / year, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / year), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'y');
 			// Если переданное значение соответствует месяцу
 			} else if((seconds >= month) && (seconds < year)) {
 				// Выполняем преобразование в количество месяцев
-				result = this->_fmk->noexp(seconds / month, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / month), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'M');
 			// Если переданное значение соответствует недели
 			} else if((seconds >= week) && (seconds < month)) {
 				// Выполняем преобразование в количество недель
-				result = this->_fmk->noexp(seconds / week, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / week), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'w');
 			// Если переданное значение соответствует дням
 			} else if((seconds >= day) && (seconds < week)) {
 				// Выполняем преобразование в количество дней
-				result = this->_fmk->noexp(seconds / day, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / day), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'd');
 			// Если переданное значение соответствует часам
 			} else if((seconds >= hour) && (seconds < day)) {
 				// Выполняем преобразование в количество часов
-				result = this->_fmk->noexp(seconds / hour, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / hour), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'h');
 			// Если переданное значение соответствует минут
 			} else if((seconds >= minute) && (seconds < hour)) {
 				// Выполняем преобразование в количество минут
-				result = this->_fmk->noexp(seconds / minute, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / minute), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'm');
 			// Если переданное значение соответствует секундам
 			} else {
 				// Выполняем преобразование в количество секунд
-				result = this->_fmk->noexp(seconds, true);
+				result = this->_fmk->noexp(::roundDuration(seconds), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 's');
 			}
@@ -8097,7 +8202,11 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
  * @return        дата в UnixTimestamp
  *
  */
-uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_t storage) noexcept {
+uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_t storage, bool * valid) noexcept {
+	// Если признак пригодности записи запрошен
+	if(valid != nullptr)
+		// Считаем запись непригодной, пока не разобрана каждая переменная формата
+		(* valid) = false;
 	// Переменная результата
 	uint64_t result = 0;
 	// Если дата для парсинга и формат переданы
@@ -8113,7 +8222,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 		// Текущий штамп времени, относительно которого опознаётся запись прошлого года
 		uint64_t current = 0;
 		// Флаги установки параметров
-		bool flags[8] = {
+		bool flags[9] = {
 			false, // Флаг установки временной зоны
 			false, // Флаг установки года
 			false, // Флаг установки часа
@@ -8121,7 +8230,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 			false, // Флаг установки секунд
 			false, // Флаг установки миллисекунд
 			false, // Флаг установки месяца
-			false  // Флаг установки числа месяца
+			false, // Флаг установки числа месяца
+			false  // Флаг установки номера дня в году
 		};
 		/**
 		 * Определяем хранилище значение времени
@@ -8316,10 +8426,12 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 										pos = this->prepare(this->_dt, date, format_t::A, pos);
 									break;
 									// Если мы нашли переменную (j)
-									case 'j':
+									case 'j': {
 										// Выполняем обработку полученных данных
 										pos = this->prepare(this->_dt, date, format_t::j, pos);
-									break;
+										// Устанавливаем флаг установки номера дня в году
+										flags[8] = (pos > -1);
+									} break;
 									// Если мы нашли переменную (u)
 									case 'u':
 										// Выполняем обработку полученных данных
@@ -8542,10 +8654,12 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 										pos = this->prepare(dt, date, format_t::A, pos);
 									break;
 									// Если мы нашли переменную (j)
-									case 'j':
+									case 'j': {
 										// Выполняем обработку полученных данных
 										pos = this->prepare(dt, date, format_t::j, pos);
-									break;
+										// Устанавливаем флаг установки номера дня в году
+										flags[8] = (pos > -1);
+									} break;
 									// Если мы нашли переменную (u)
 									case 'u':
 										// Выполняем обработку полученных данных
@@ -8728,8 +8842,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 		if(flags[1]) level = 1;
 		// Если месяц задан форматом
 		if(flags[6]) level = 2;
-		// Если число месяца задано форматом
-		if(flags[7]) level = 3;
+		// Если число месяца либо номер дня в году заданы форматом
+		if(flags[7] || flags[8]) level = 3;
 		// Если час задан форматом
 		if(flags[2]) level = 4;
 		// Если минуты заданы форматом
@@ -8759,6 +8873,14 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				if(offset != 0)
 					// Выполняем инверсию
 					this->_dt.offset *= -1;
+				/**
+				 * Номер дня в году задаёт дату целиком, но сборка штампа времени
+				 * опирается на месяц и число месяца, поэтому раскладываем его. Если
+				 * месяц либо число заданы форматом отдельно, они имеют преимущество
+				 */
+				if(flags[8] && !flags[6] && !flags[7])
+					// Раскладываем номер дня в году на месяц и число месяца
+					::dateFromDays(this->_dt.days, this->leap(this->_dt.year), this->_dt.month, this->_dt.date);
 				// Если задан только год, месяц задаём первым в году
 				if(level == 1)
 					// Выполняем сброс месяца
@@ -8783,6 +8905,15 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				if((level > 0) && (level < 7))
 					// Выполняем сброс миллисекунд
 					this->_dt.milliseconds = 0;
+				// Если признак пригодности записи запрошен
+				if(valid != nullptr)
+					// Запись пригодна, если разобрана каждая переменная формата и поля допустимы
+					(* valid) = (
+						(pos > -1) && ::validDate(
+							this->_dt.month, this->_dt.date, this->_dt.hour, this->_dt.minutes,
+							this->_dt.seconds, this->_dt.milliseconds, this->leap(this->_dt.year)
+						)
+					);
 				// Выполняем формирование UnixTimestamp
 				result = this->makeDate(this->_dt);
 				// Если смещение временной зоны установлено
@@ -8822,6 +8953,14 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				if(dt.offset != 0)
 					// Выполняем инверсию
 					dt.offset *= -1;
+				/**
+				 * Номер дня в году задаёт дату целиком, но сборка штампа времени
+				 * опирается на месяц и число месяца, поэтому раскладываем его. Если
+				 * месяц либо число заданы форматом отдельно, они имеют преимущество
+				 */
+				if(flags[8] && !flags[6] && !flags[7])
+					// Раскладываем номер дня в году на месяц и число месяца
+					::dateFromDays(dt.days, this->leap(dt.year), dt.month, dt.date);
 				// Если задан только год, месяц задаём первым в году
 				if(level == 1)
 					// Выполняем сброс месяца
@@ -8846,6 +8985,15 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				if((level > 0) && (level < 7))
 					// Выполняем сброс миллисекунд
 					dt.milliseconds = 0;
+				// Если признак пригодности записи запрошен
+				if(valid != nullptr)
+					// Запись пригодна, если разобрана каждая переменная формата и поля допустимы
+					(* valid) = (
+						(pos > -1) && ::validDate(
+							dt.month, dt.date, dt.hour, dt.minutes,
+							dt.seconds, dt.milliseconds, this->leap(dt.year)
+						)
+					);
 				// Выполняем формирование UnixTimestamp
 				result = this->makeDate(dt);
 				/**
@@ -8867,6 +9015,141 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 	}
 	// Возвращаем результат
 	return result;
+}
+/**
+ * @brief Метод парсинга строки даты и времени в UnixTimestamp
+ *
+ * @param date    строка даты
+ * @param format  формат даты
+ * @param storage хранение значение времени
+ * @return        дата в UnixTimestamp
+ *
+ */
+uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_t storage) noexcept {
+	// Выполняем разбор записи без проверки её пригодности
+	return this->parse(date, format, storage, nullptr);
+}
+/**
+ * @brief Метод проверки пригодности записи даты для разбора
+ *
+ * @param date   строка даты
+ * @param format формат даты
+ * @return       признак пригодности записи для разбора
+ *
+ */
+bool awh::Chrono::validate(string_view date, string_view format) noexcept {
+	// Признак пригодности записи для разбора
+	bool result = false;
+	/**
+	 * Разбор выполняется в глобальном хранилище: проверка внутреннего объекта даты
+	 * изменять не должна, каким бы ни было хранилище последующего разбора
+	 */
+	this->parse(date, format, storage_t::GLOBAL, &result);
+	// Выводим признак пригодности записи
+	return result;
+}
+/**
+ * @brief Метод проверки пригодности обозначения временной зоны
+ *
+ * @param zone обозначение временной зоны
+ * @return     признак пригодности обозначения
+ *
+ */
+bool awh::Chrono::validateTimeZone(string_view zone) const noexcept {
+	// Если обозначение временной зоны не указано
+	if(zone.empty())
+		// Обозначение непригодно
+		return false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем нативный разбор временной зоны со смещением (формат %e)
+		const vector <match_t> match = ::parseZoneFull(zone.data(), zone.size());
+		// Если разобрать обозначение не удалось
+		if(match.empty())
+			// Обозначение непригодно
+			return false;
+		// Если разобрано смещение временной зоны
+		const bool offset = (match[3].end > match[3].begin);
+		// Если название временной зоны не указано
+		if(match[1].end <= match[1].begin)
+			// Обозначение пригодно, если состоит из одного смещения
+			return offset;
+		// Получаем название временной зоны
+		string name(zone.data() + match[1].begin, static_cast <size_t> (match[1].end - match[1].begin));
+		// Если название найдено в списке временных зон
+		if(this->_timeZones.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE)) != this->_timeZones.end())
+			// Обозначение пригодно
+			return true;
+		// Если название временной зоны является числом
+		if(this->_fmk->is(name, fmk_t::check_t::NUMBER))
+			// Обозначение пригодно
+			return true;
+		// Обозначение пригодно, если название соответствует известной временной зоне
+		return (this->matchTimeZone(name) != zone_t::NONE);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception &) {
+		// Обозначение непригодно
+		return false;
+	}
+}
+/**
+ * @brief Метод проверки пригодности обозначения размерности времени
+ *
+ * @param value строка обозначения размерности (s, m, h, d, w, M, y)
+ * @return      признак пригодности обозначения
+ *
+ */
+bool awh::Chrono::validateSeconds(string_view value) const noexcept {
+	// Если обозначение размерности не указано
+	if(value.empty())
+		// Обозначение непригодно
+		return false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем нативный разбор обозначения размерности времени
+		const vector <match_t> match = ::parseSeconds(value.data(), value.size());
+		// Если разобрать обозначение не удалось
+		if(match.empty())
+			// Обозначение непригодно
+			return false;
+		// Получаем разобранное число обозначения
+		const string number(value.data() + match[1].begin, static_cast <size_t> (match[1].end - match[1].begin));
+		/**
+		 * Число обязано состоять из разрядов и не более чем одной точки: запятую
+		 * разбор захватывает вместе с числом, но перевести её в число не может
+		 */
+		// Количество разделителей дробной части в разобранном числе
+		uint8_t points = 0;
+		/**
+		 * Выполняем перебор всех символов разобранного числа, пропуская его знак
+		 */
+		for(size_t i = (((number.front() == '-') || (number.front() == '+')) ? 1 : 0); i < number.length(); i++){
+			// Получаем очередной символ разобранного числа
+			const char letter = number[i];
+			// Если очередной символ является разделителем дробной части
+			if(letter == '.')
+				// Учитываем разделитель дробной части
+				points++;
+			// Если очередной символ не является разрядом
+			else if((letter < '0') || (letter > '9'))
+				// Обозначение непригодно
+				return false;
+		}
+		// Обозначение пригодно, если разделитель дробной части не повторяется
+		return (points <= 1);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception &) {
+		// Обозначение непригодно
+		return false;
+	}
 }
 /**
  * @brief Метод форматирования временной зоны
@@ -9978,8 +10261,20 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							case 'W':
 							// Если мы нашли переменную (U)
 							case 'U': {
-								// Получаем количество недель с начала года
-								string weeks = std::to_string(dt.weeks);
+								/**
+								 * Номер недели в году отсчитывается от первого дня недели:
+								 * переменная %U считает неделю начинающейся с воскресенья,
+								 * переменная %W - с понедельника. Дни, предшествующие
+								 * первому такому дню года, относятся к нулевой неделе.
+								 * Величина эта отличается от количества недель, прошедших
+								 * с начала года, которое выдаёт извлечение unit_t::WEEKS
+								 */
+								// Получаем номер дня недели, отсчитываемый от воскресенья
+								const uint16_t day = (dt.day % 7);
+								// Получаем номер первого дня недели по проверяемой переменной
+								const uint16_t first = ((letter == 'U') ? day : ((day + 6) % 7));
+								// Получаем номер недели в году
+								string weeks = std::to_string((dt.days + 7 - first) / 7);
 								// Если первого нуля нет
 								if(weeks.length() == 1)
 									// Добавляем предстоящий ноль
@@ -10339,7 +10634,12 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
  */
 string awh::Chrono::format(const uint64_t date, string_view format) const noexcept {
 	// Если формат даты передан
-	if((date > 0) && !format.empty()){
+	/**
+	 * Нулевая дата - это полночь первого января 1970 года, дата не менее
+	 * действительная, чем любая другая: заполнение объекта даты её обрабатывает,
+	 * и отказ формировать по ней запись был здесь единственным исключением
+	 */
+	if(!format.empty()){
 		// Создаем структуру времени
 		dt_t dt;
 		// Заполняем объект даты из штампа времени
@@ -10370,7 +10670,12 @@ string awh::Chrono::format(const uint64_t date, string_view format) const noexce
  */
 string awh::Chrono::format(const uint64_t date, const int32_t zone, string_view format) const noexcept {
 	// Если формат даты передан
-	if((date > 0) && !format.empty()){
+	/**
+	 * Нулевая дата - это полночь первого января 1970 года, дата не менее
+	 * действительная, чем любая другая: заполнение объекта даты её обрабатывает,
+	 * и отказ формировать по ней запись был здесь единственным исключением
+	 */
+	if(!format.empty()){
 		// Создаем структуру времени
 		dt_t dt;
 		// Заполняем объект даты из штампа времени
@@ -10401,7 +10706,12 @@ string awh::Chrono::format(const uint64_t date, const int32_t zone, string_view 
  */
 string awh::Chrono::format(const uint64_t date, const zone_t zone, string_view format) const noexcept {
 	// Если формат даты передан
-	if((date > 0) && !format.empty()){
+	/**
+	 * Нулевая дата - это полночь первого января 1970 года, дата не менее
+	 * действительная, чем любая другая: заполнение объекта даты её обрабатывает,
+	 * и отказ формировать по ней запись был здесь единственным исключением
+	 */
+	if(!format.empty()){
 		// Создаем структуру времени
 		dt_t dt;
 		// Заполняем объект даты из штампа времени
@@ -10434,7 +10744,12 @@ string awh::Chrono::format(const uint64_t date, const zone_t zone, string_view f
  */
 string awh::Chrono::format(const uint64_t date, string_view zone, string_view format) const noexcept {
 	// Если формат даты передан
-	if((date > 0) && !format.empty()){
+	/**
+	 * Нулевая дата - это полночь первого января 1970 года, дата не менее
+	 * действительная, чем любая другая: заполнение объекта даты её обрабатывает,
+	 * и отказ формировать по ней запись был здесь единственным исключением
+	 */
+	if(!format.empty()){
 		// Создаем структуру времени
 		dt_t dt;
 		// Заполняем объект даты из штампа времени

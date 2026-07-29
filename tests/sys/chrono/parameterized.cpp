@@ -935,7 +935,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatParameterizedFixture,
 		FormatChronoTestParameter({1743943021520, "%a %h %e %H:%M:%S %z", "Sun Apr  6 12:37:01 +0000"}),
 		FormatChronoTestParameter({1743943021520, "%a %h %e %Y %H:%M:%S %Z%z", "Sun Apr  6 2025 12:37:01 UTC+0000"}),
 		FormatChronoTestParameter({1743943021520, "%h %d %H:%M %Z%z", "Apr 06 12:37 UTC+0000"}),
-		FormatChronoTestParameter({1743943021520, "%a %h %e %H:%M:%S %W %z %j", "Sun Apr  6 12:37:01 14 +0000 096"}),
+		FormatChronoTestParameter({1743943021520, "%a %h %e %H:%M:%S %W %z %j", "Sun Apr  6 12:37:01 13 +0000 096"}),
 		FormatChronoTestParameter({1743943021520, "%Y%m%dT%H%M%S%z", "20250406T123701+0000"})
 	)
 );
