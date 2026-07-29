@@ -9,8 +9,8 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @brief Реализация модуля работы с сетевыми адресами — разбор, нормализация, сравнение и форматирование IPv4-,
- *        IPv6- и MAC-адресов, вычисление префиксов и масок сети,
+ * @brief Реализация модуля работы с сетевыми адресами — разбор, нормализация, сравнение и форматирование IPv4,
+ *        IPv6 и MAC-адресов, вычисление префиксов и масок сети,
  *        определение типа адреса и его принадлежности зарезервированным диапазонам
  *
  * @copyright: Copyright © 2025
@@ -312,6 +312,88 @@ namespace {
 			explicit Parts() noexcept : _count(0) {}
 	} parts_t;
 	/**
+	 * @brief Класс массива слов IPv6-адреса постоянной ёмкости
+	 *
+	 * @details Сборка IPv6-адреса из хекстетов заводила три динамических массива:
+	 *          слова левой части, слова правой части и полный набор слов - три
+	 *          выделения памяти на один разбор. Слов же у адреса ровно восемь, и
+	 *          известно это до начала разбора. Ёмкость взята с запасом на два
+	 *          слова: часть адреса со встроенным IPv4 даёт сразу пару слов, и
+	 *          запас позволяет разбору отличить адрес с лишними словами от
+	 *          допустимого, а не молча его обрезать
+	 *
+	 */
+	typedef class Words {
+		public:
+			// Предельное количество слов адреса с запасом на признак превышения
+			static constexpr size_t CAPACITY = 10;
+		private:
+			// Количество занятых слов адреса
+			size_t _count;
+			// Слова адреса
+			uint16_t _items[CAPACITY];
+		public:
+			/**
+			 * @brief Метод очистки массива слов адреса
+			 *
+			 */
+			void clear() noexcept {
+				// Сбрасываем количество занятых слов адреса
+				this->_count = 0;
+			}
+			/**
+			 * @brief Метод получения количества слов адреса
+			 *
+			 * @return количество слов адреса
+			 *
+			 */
+			size_t size() const noexcept {
+				// Выводим количество занятых слов адреса
+				return this->_count;
+			}
+			/**
+			 * @brief Метод проверки заполненности массива слов адреса
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool full() const noexcept {
+				// Массив заполнен, если заняты все слова
+				return (this->_count >= CAPACITY);
+			}
+		public:
+			/**
+			 * @brief Метод добавления слова адреса
+			 *
+			 * @param item слово адреса
+			 *
+			 */
+			void add(const uint16_t item) noexcept {
+				// Добавляем слово адреса, если для него есть место
+				if(this->_count < CAPACITY)
+					// Запоминаем очередное слово адреса
+					this->_items[this->_count++] = item;
+			}
+		public:
+			/**
+			 * @brief Оператор получения слова адреса по индексу
+			 *
+			 * @param index индекс слова адреса
+			 * @return      слово адреса
+			 *
+			 */
+			uint16_t operator [] (const size_t index) const noexcept {
+				// Выводим слово адреса по индексу
+				return this->_items[index];
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Words() noexcept : _count(0), _items{} {}
+	} words_t;
+	/**
 	 * @brief Вспомогательная функция для разбиения строки по разделителю
 	 *
 	 * @param text   исходный текст для разбиения
@@ -451,8 +533,12 @@ namespace {
 	 * @param allowNonDecimal флаг разрешения не-десятичной системы счисления
 	 * @return                результат выполнения парсинга
 	 *
+	 * @note Результат принимается указателем на буфер размером в четыре байта, а
+	 *       не динамическим массивом: разбор пишет ровно четыре октета, и размер
+	 *       буфера известен до его начала
+	 *
 	 */
-	bool parseIPv4(string_view ip, vector <uint8_t> & result, const bool allowLegacy, const bool allowNonDecimal) noexcept {
+	bool parseIPv4(string_view ip, uint8_t * result, const bool allowLegacy, const bool allowNonDecimal) noexcept {
 		// Части строки IP-адреса
 		parts_t octets;
 		// Разбиваем строку IP-адреса на части
@@ -584,8 +670,12 @@ namespace {
 	 * @param result результат парсинга в виде массива байт
 	 * @return       результат выполнения парсинга
 	 *
+	 * @note Результат принимается массивом постоянного размера, а не динамическим:
+	 *       октетов у десятичного квадрата ровно четыре, и заводить под них
+	 *       выделение памяти незачем
+	 *
 	 */
-	bool parseIPv4DecQuad(string_view ip, vector <uint8_t> & result) noexcept {
+	bool parseIPv4DecQuad(string_view ip, uint8_t (& result)[4]) noexcept {
 		// Части строки IP-адреса
 		parts_t octets;
 		// Разбиваем строку IP-адреса на октеты
@@ -640,12 +730,16 @@ namespace {
 	 * @param allowEmbeddedV4 флаг разрешения встроенного IPv4-адреса
 	 * @return                результат выполнения парсинга
 	 *
+	 * @note Результат принимается указателем на буфер размером в шестнадцать байт,
+	 *       а не динамическим массивом: разбор пишет ровно восемь слов, и размер
+	 *       буфера известен до его начала
+	 *
 	 */
-	bool parseIPv6(string_view ip, vector <uint8_t> & result, const bool allowEmbeddedV4) noexcept {
+	bool parseIPv6(string_view ip, uint8_t * result, const bool allowEmbeddedV4) noexcept {
 		// Специальный случай "::"
 		if(ip.compare("::") == 0){
 			// Зануляем результат
-			::memset(&result[0], 0, result.size());
+			::memset(result, 0, 16);
 			// Возвращаем успешный результат парсинга
 			return true;
 		}
@@ -717,7 +811,7 @@ namespace {
 		 */
 		auto parseIPv4TailAsTwoHextets = [](string_view ip, uint16_t & hextet1, uint16_t & hextet2) noexcept -> bool {
 			// Спарсеный IPv4-адрес
-			vector <uint8_t> v4(4, 0);
+			uint8_t v4[4] = {0};
 			// Парсим IPv4-адрес
 			if(!::parseIPv4DecQuad(ip, v4))
 				// Возвращаем ошибку
@@ -730,9 +824,7 @@ namespace {
 			return true;
 		};
 		// Собранные слова IPv6-адреса
-		vector <uint16_t> words;
-		// Резервируем место под 8 слов
-		words.reserve(8);
+		words_t words;
 		// Первый и второй хекстеты IPv4-адреса
 		uint16_t hextet1 = 0, hextet2 = 0;
 		/**
@@ -758,8 +850,8 @@ namespace {
 					// Возвращаем ошибку
 					return false;
 				// Добавляем хекстеты в IPv6-адрес
-				words.push_back(hextet1);
-				words.push_back(hextet2);
+				words.add(hextet1);
+				words.add(hextet2);
 			// Иначе парсим обычный хекстет
 			} else {
 				// Сбрасываем значение хекстета
@@ -769,13 +861,13 @@ namespace {
 					// Возвращаем ошибку
 					return false;
 				// Добавляем хекстет в IPv6-адрес
-				words.push_back(hextet1);
+				words.add(hextet1);
 			}
 		}
 		// Количество слов в правой части
 		uint8_t rightWordsCount = 0;
 		// Собранные слова правой части IPv6-адреса
-		vector <uint16_t> rightWords;
+		words_t rightWords;
 		// Разбираем правую часть при наличии
 		if(hasDcol){
 			/**
@@ -797,8 +889,8 @@ namespace {
 						// Возвращаем ошибку
 						return false;
 					// Добавляем хекстеты в правую часть IPv6-адреса
-					rightWords.push_back(hextet1);
-					rightWords.push_back(hextet2);
+					rightWords.add(hextet1);
+					rightWords.add(hextet2);
 				// Иначе парсим обычный хекстет
 				} else {
 					// Сбрасываем значение хекстета
@@ -808,7 +900,7 @@ namespace {
 						// Возвращаем ошибку
 						return false;
 					// Добавляем хекстет в правую часть IPv6-адреса
-					rightWords.push_back(hextet1);
+					rightWords.add(hextet1);
 				}
 			}
 			// Запоминаем количество слов в правой части
@@ -822,34 +914,46 @@ namespace {
 				return false;
 			// Вычисляем количество нулевых слов для вставки
 			const uint8_t zerosToInsert = (8 - (static_cast <uint8_t> (words.size()) + rightWordsCount));
-			// Полный набор слов IPv6-адреса
-			vector <uint16_t> full;
-			// Резервируем место под 8 слов
-			full.reserve(8);
-			// Собираем полный адрес
-			full.insert(full.end(), words.begin(), words.end());
+			// Позиция очередного слова полного адреса
+			uint8_t index = 0;
 			/**
-			 * Вставляем нулевые слова
+			 * @brief Запись очередного слова полного адреса в результат парсинга
+			 *
+			 * @param word слово полного адреса
+			 *
+			 * @note Полный набор слов адреса прежде собирался отдельным массивом,
+			 *       а тот заводил третье выделение памяти на разбор. Слова же
+			 *       ложатся в результат по порядку - слева направо, - и
+			 *       промежуточный набор им не нужен
+			 *
 			 */
-			for(uint8_t i = 0; i < zerosToInsert; ++i)
-				// Вставляем нулевое слово
-				full.push_back(0);
-			// Добавляем правые слова
-			full.insert(full.end(), rightWords.begin(), rightWords.end());
-			// Проверяем размер полного адреса
-			if(full.size() != 8)
-				// Возвращаем ошибку
-				return false;
-			/**
-			 * Перебираем все слова полного адреса
-			 */
-			for(uint8_t i = 0; i < 8; ++i){
+			auto store = [&index, &result](const uint16_t word) noexcept -> void {
 				/**
 				 * Выполняем формирование результата парсинга
 				 */
-				result[2 * i] = static_cast <uint8_t> ((full[i] >> 8) & 0xFF);
-				result[2 * i + 1] = static_cast <uint8_t> (full[i] & 0xFF);
-			}
+				result[2 * index] = static_cast <uint8_t> ((word >> 8) & 0xFF);
+				result[2 * index + 1] = static_cast <uint8_t> (word & 0xFF);
+				// Переходим к следующему слову полного адреса
+				++index;
+			};
+			/**
+			 * Записываем слова левой части адреса
+			 */
+			for(uint8_t i = 0; i < static_cast <uint8_t> (words.size()); ++i)
+				// Записываем очередное слово левой части адреса
+				store(words[i]);
+			/**
+			 * Записываем нулевые слова на место сжатия
+			 */
+			for(uint8_t i = 0; i < zerosToInsert; ++i)
+				// Записываем очередное нулевое слово
+				store(0);
+			/**
+			 * Записываем слова правой части адреса
+			 */
+			for(uint8_t i = 0; i < rightWordsCount; ++i)
+				// Записываем очередное слово правой части адреса
+				store(rightWords[i]);
 			// Возвращаем успешный результат парсинга
 			return true;
 		// Иначе без сжатия
@@ -891,8 +995,12 @@ namespace {
 	 * @param options опции парсинга
 	 * @return        результат выполнения парсинга
 	 *
+	 * @note Результат принимается указателем на буфер размером в четыре байта:
+	 *       проверка адреса заводила под него динамический массив, а выделение
+	 *       памяти ради проверки, ничего наружу не отдающей, есть работа впустую
+	 *
 	 */
-	bool ipv4(string_view ip, vector <uint8_t> & result, const options_t & options = {}) noexcept {
+	bool ipv4(string_view ip, uint8_t * result, const options_t & options = {}) noexcept {
 		// Тримминг строки IP-адреса
 		auto addr = ::trim(ip);
 		// Обрабатываем скобки
@@ -915,8 +1023,12 @@ namespace {
 	 * @param options опции парсинга
 	 * @return        результат выполнения парсинга
 	 *
+	 * @note Результат принимается указателем на буфер размером в шестнадцать байт:
+	 *       проверка адреса заводила под него динамический массив, а выделение
+	 *       памяти ради проверки, ничего наружу не отдающей, есть работа впустую
+	 *
 	 */
-	bool ipv6(string_view ip, vector <uint8_t> & result, string & zone, const options_t & options = {}) noexcept {
+	bool ipv6(string_view ip, uint8_t * result, string & zone, const options_t & options = {}) noexcept {
 		// Тримминг строки IP-адреса
 		auto addr = ::trim(ip);
 		// Обрабатываем скобки
@@ -1131,6 +1243,105 @@ awh::Network_Address::LocalNet::LocalNet(const fmk_t * fmk, const log_t * log) n
  reserved(false), prefix(0),
  end(make_unique <Network_Address> (fmk, log)),
  begin(make_unique <Network_Address> (fmk, log)) {}
+
+/**
+ * @brief Метод проверки заполненности буфера
+ *
+ * @return результат проверки
+ *
+ */
+bool awh::Network_Address::Buffer::empty() const noexcept {
+	// Буфер пуст, если не занято ни одного байта
+	return (this->_size == 0);
+}
+/**
+ * @brief Метод получения размера буфера
+ *
+ * @return размер буфера
+ *
+ */
+size_t awh::Network_Address::Buffer::size() const noexcept {
+	// Выводим количество занятых байт буфера
+	return this->_size;
+}
+/**
+ * @brief Метод очистки буфера
+ *
+ */
+void awh::Network_Address::Buffer::clear() noexcept {
+	// Сбрасываем количество занятых байт буфера
+	this->_size = 0;
+}
+/**
+ * @brief Метод изменения размера буфера
+ *
+ * @param size  новый размер буфера
+ * @param value значение заполнения добавленных байт
+ *
+ * @note Размер сверх ёмкости обрезается: адреса длиннее
+ *       шестнадцати байт не бывает, и запрос такого размера
+ *       означал бы ошибку вызывающей стороны
+ *
+ */
+void awh::Network_Address::Buffer::resize(const size_t size, const uint8_t value) noexcept {
+	// Получаем размер буфера в пределах его ёмкости
+	const size_t actual = ((size < CAPACITY) ? size : CAPACITY);
+	/**
+		* Заполняем добавленные байты буфера
+		*/
+	for(size_t i = this->_size; i < actual; ++i)
+		// Устанавливаем значение заполнения очередного байта
+		this->_data[i] = value;
+	// Запоминаем новый размер буфера
+	this->_size = actual;
+}
+/**
+ * @brief Метод получения указателя на данные буфера
+ *
+ * @return указатель на данные буфера
+ *
+ */
+uint8_t * awh::Network_Address::Buffer::data() noexcept {
+	// Выводим указатель на данные буфера
+	return this->_data;
+}
+/**
+ * @brief Метод получения указателя на данные буфера
+ *
+ * @return указатель на данные буфера
+ *
+ */
+const uint8_t * awh::Network_Address::Buffer::data() const noexcept {
+	// Выводим указатель на данные буфера
+	return this->_data;
+}
+/**
+ * @brief Оператор получения байта буфера по индексу
+ *
+ * @param index индекс байта буфера
+ * @return      байт буфера
+ *
+ */
+uint8_t & awh::Network_Address::Buffer::operator [] (const size_t index) noexcept {
+	// Выводим байт буфера по индексу
+	return this->_data[index];
+}
+/**
+ * @brief Оператор получения байта буфера по индексу
+ *
+ * @param index индекс байта буфера
+ * @return      байт буфера
+ *
+ */
+const uint8_t & awh::Network_Address::Buffer::operator [] (const size_t index) const noexcept {
+	// Выводим байт буфера по индексу
+	return this->_data[index];
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::Network_Address::Buffer::Buffer() noexcept : _size(0), _data{0} {}
 
 /**
  * @brief Метод инициализации списка локальных адресов
@@ -1683,8 +1894,12 @@ awh::Network_Address::type_t awh::Network_Address::host(string_view host) const 
 					// По умолчанию устанавливаем тип NONE
 					default: result = type_t::NONE;
 				}
+				// Если тип не определён, завершаем перебор
+				if(result == type_t::NONE)
+					// Возвращаем результат
+					return result;
 				// Если проверка пройдена успешно
-				if((result != type_t::NONE) && this->check(host, result))
+				if(this->check(host, result))
 					// Возвращаем результат
 					return result;
 			}
@@ -2266,7 +2481,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4): {
 					// Временный буфер для проверки IP-адреса
-					vector <uint8_t> buffer(4, 0);
+					uint8_t buffer[4] = {0};
 					// Выполняем проверку IP-адреса IPv4
 					return ::ipv4(addr, buffer, ::makeOptions(this->_strict));
 				}
@@ -2275,7 +2490,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 					// Временное значение зоны для проверки IP-адреса
 					string zone = "";
 					// Временный буфер для проверки IP-адреса
-					vector <uint8_t> buffer(16, 0);
+					uint8_t buffer[16] = {0};
 					// Выполняем проверку IP-адреса IPv6
 					return ::ipv6(addr, buffer, zone, ::makeOptions(this->_strict));
 				}
@@ -2286,7 +2501,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 					// Если разделитель найден
 					if(pos != string::npos){
 						// Временный буфер для проверки IP-адреса
-						vector <uint8_t> buffer(4, 0);
+						uint8_t buffer[4] = {0};
 						// Получаем IP-адрес без маски сети
 						const string_view ip = addr.substr(0, pos);
 						// Получаем маску переданной сети
@@ -2302,7 +2517,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 							// Возвращаем результат проверки
 							return false;
 						// Зануляем структуру
-						::memset(&buffer[0], 0, buffer.size());
+						::memset(buffer, 0, sizeof(buffer));
 						// Выполняем проверку IP-адреса IPv4
 						return ::ipv4(ip, buffer, ::makeOptions(this->_strict));
 					}
@@ -2316,7 +2531,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						// Временное значение зоны для проверки IP-адреса
 						string zone = "";
 						// Временный буфер для проверки IP-адреса
-						vector <uint8_t> buffer(16, 0);
+						uint8_t buffer[16] = {0};
 						// Получаем IP-адрес без маски сети
 						const string_view ip = addr.substr(0, pos);
 						// Получаем маску переданной сети
@@ -2332,7 +2547,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 							// Возвращаем результат проверки
 							return false;
 						// Зануляем структуру
-						::memset(&buffer[0], 0, buffer.size());
+						::memset(buffer, 0, sizeof(buffer));
 						// Выполняем проверку IP-адреса IPv6
 						return ::ipv6(ip, buffer, zone, ::makeOptions(this->_strict));
 					}
@@ -3739,7 +3954,7 @@ bool awh::Network_Address::parse(string_view addr) noexcept {
 						// Выполняем инициализацию буфера
 						this->_buffer.resize(4, 0);
 						// Выполняем парсинг IPv4 адреса
-						if(::ipv4(addr, this->_buffer, ::makeOptions(this->_strict))){
+						if(::ipv4(addr, this->_buffer.data(), ::makeOptions(this->_strict))){
 							// Устанавливаем тип адреса
 							this->_type = type_t::IPV4;
 							// Выводрим положительный результат
@@ -3755,7 +3970,7 @@ bool awh::Network_Address::parse(string_view addr) noexcept {
 						// Выполняем инициализацию буфера
 						this->_buffer.resize(16, 0);
 						// Выполняем парсинг IPv6 адреса
-						if(::ipv6(addr, this->_buffer, this->_zone, ::makeOptions(this->_strict))){
+						if(::ipv6(addr, this->_buffer.data(), this->_zone, ::makeOptions(this->_strict))){
 							// Устанавливаем тип адреса
 							this->_type = type_t::IPV6;
 							// Выводрим положительный результат
@@ -3839,7 +4054,7 @@ bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(4, 0);
 					// Выполняем парсинг IPv4 адреса
-					if(::ipv4(addr, this->_buffer, ::makeOptions(this->_strict))){
+					if(::ipv4(addr, this->_buffer.data(), ::makeOptions(this->_strict))){
 						// Устанавливаем тип адреса
 						this->_type = type;
 						// Выводрим положительный результат
@@ -3855,7 +4070,7 @@ bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(16, 0);
 					// Выполняем парсинг IPv6 адреса
-					if(::ipv6(addr, this->_buffer, this->_zone, ::makeOptions(this->_strict))){
+					if(::ipv6(addr, this->_buffer.data(), this->_zone, ::makeOptions(this->_strict))){
 						// Устанавливаем тип адреса
 						this->_type = type;
 						// Выводрим положительный результат

@@ -10,7 +10,7 @@
  * @site: https://anyks.com
  *
  * @brief Заголовочный файл модуля работы с сетевыми адресами — класс Network_Address для разбора, нормализации,
- *        сравнения и форматирования IPv4-, IPv6- и MAC-адресов, работы с префиксами и масками сети,
+ *        сравнения и форматирования IPv4, IPv6 и MAC-адресов, работы с префиксами и масками сети,
  *        определения типов и принадлежности адреса зарезервированным диапазонам
  *
  * @copyright: Copyright © 2025
@@ -28,7 +28,6 @@
  */
 #include <array>
 #include <string>
-#include <vector>
 #include <memory>
 #include <cstdint>
 #include <iostream>
@@ -143,6 +142,104 @@ namespace awh {
 				 */
 				explicit LocalNet(const fmk_t * fmk, const log_t * log) noexcept;
 			} localNet_t;
+			/**
+			 * @brief Структура бинарного буфера адреса постоянной ёмкости
+			 *
+			 * @details Буфер держит адрес в двоичном виде, и длина его известна
+			 *          заранее: четыре байта у IPv4, шесть у аппаратного адреса,
+			 *          шестнадцать у IPv6. Динамический массив на этом месте
+			 *          заводил выделение памяти на каждый разобранный адрес, а
+			 *          проверка принадлежности сети создаёт временный объект
+			 *          адреса на каждый вызов, и выделение приходилось на каждую
+			 *          проверку. Постоянный буфер снимает и то, и другое, а объект
+			 *          адреса становится копируемым без обращений к куче
+			 *
+			 * @note Набор методов повторяет ту часть работы с динамическим массивом,
+			 *       которой модуль пользовался, чтобы замена оставалась подстановкой,
+			 *       а не переписыванием мест обращения к буферу
+			 *
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Buffer {
+				public:
+					// Предельный размер бинарного буфера адреса
+					static constexpr size_t CAPACITY = 16;
+				private:
+					// Количество занятых байт буфера
+					size_t _size;
+					// Байты бинарного буфера адреса
+					uint8_t _data[CAPACITY];
+				public:
+					/**
+					 * @brief Метод проверки заполненности буфера
+					 *
+					 * @return результат проверки
+					 *
+					 */
+					bool empty() const noexcept;
+					/**
+					 * @brief Метод получения размера буфера
+					 *
+					 * @return размер буфера
+					 *
+					 */
+					size_t size() const noexcept;
+				public:
+					/**
+					 * @brief Метод очистки буфера
+					 *
+					 */
+					void clear() noexcept;
+					/**
+					 * @brief Метод изменения размера буфера
+					 *
+					 * @param size  новый размер буфера
+					 * @param value значение заполнения добавленных байт
+					 *
+					 * @note Размер сверх ёмкости обрезается: адреса длиннее
+					 *       шестнадцати байт не бывает, и запрос такого размера
+					 *       означал бы ошибку вызывающей стороны
+					 *
+					 */
+					void resize(const size_t size, const uint8_t value = 0) noexcept;
+				public:
+					/**
+					 * @brief Метод получения указателя на данные буфера
+					 *
+					 * @return указатель на данные буфера
+					 *
+					 */
+					uint8_t * data() noexcept;
+					/**
+					 * @brief Метод получения указателя на данные буфера
+					 *
+					 * @return указатель на данные буфера
+					 *
+					 */
+					const uint8_t * data() const noexcept;
+				public:
+					/**
+					 * @brief Оператор получения байта буфера по индексу
+					 *
+					 * @param index индекс байта буфера
+					 * @return      байт буфера
+					 *
+					 */
+					uint8_t & operator [] (const size_t index) noexcept;
+					/**
+					 * @brief Оператор получения байта буфера по индексу
+					 *
+					 * @param index индекс байта буфера
+					 * @return      байт буфера
+					 *
+					 */
+					const uint8_t & operator [] (const size_t index) const noexcept;
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Buffer() noexcept;
+			} buffer_t;
 		private:
 			// Тип обрабатываемого адреса
 			type_t _type;
@@ -154,7 +251,7 @@ namespace awh {
 			string _zone;
 		private:
 			// Бинарный буфер данных
-			vector <uint8_t> _buffer;
+			buffer_t _buffer;
 		private:
 			// Список локальных адресов
 			unordered_multimap <type_t, localNet_t> _localsNet;

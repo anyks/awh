@@ -24,7 +24,6 @@
 #include <ctime>
 #include <chrono>
 #include <cstdarg>
-#include <iostream>
 
 /**
  * Подключаем заголовочные файлы проекта

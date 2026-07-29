@@ -51,12 +51,12 @@ namespace {
 	 *          планировщика операционной системы
 	 *
 	 */
-	static constexpr double PARSE_IPV4_THRESHOLD = 1000000.0;
-	static constexpr double PARSE_IPV6_THRESHOLD = 500000.0;
-	static constexpr double PRINT_IPV4_THRESHOLD = 1000000.0;
-	static constexpr double PRINT_IPV6_THRESHOLD = 500000.0;
-	static constexpr double HOST_THRESHOLD = 500000.0;
-	static constexpr double MAPPING_THRESHOLD = 200000.0;
+	static constexpr double PARSE_IPV4_THRESHOLD = 1800000.0;
+	static constexpr double PARSE_IPV6_THRESHOLD = 800000.0;
+	static constexpr double PRINT_IPV4_THRESHOLD = 3400000.0;
+	static constexpr double PRINT_IPV6_THRESHOLD = 1700000.0;
+	static constexpr double HOST_THRESHOLD = 600000.0;
+	static constexpr double MAPPING_THRESHOLD = 850000.0;
 	/**
 	 * @brief Пороги количества выделений памяти на одну операцию
 	 *
@@ -66,26 +66,33 @@ namespace {
 	 *          выделять память не обязан вовсе, и всякое выделение здесь -
 	 *          работа, которой можно не делать.
 	 *
-	 *          Измеренное разошлось по разновидностям адреса вчетверо, и
-	 *          разошлось не в пользу IPv6. Разбор IPv4 не выделяет памяти
-	 *          вовсе, разбор IPv6 выделяет трижды на адрес; определение
-	 *          разновидности - четырежды с четвертью. Пороги эти поэтому не
-	 *          столько стражи от регрессии, сколько список целей: каждый из
-	 *          них надлежит понизить правкой модуля, а не правкой порога.
+	 *          Первый замер показал расхождение по разновидностям адреса
+	 *          вчетверо, и расхождение не в пользу IPv6: разбор IPv4 не
+	 *          выделял памяти вовсе, разбор IPv6 выделял трижды на адрес,
+	 *          определение разновидности - четырежды с четвертью, проверка
+	 *          принадлежности сети - единожды. Источников оказалось три:
+	 *          сборка IPv6-адреса заводила три динамических массива слов,
+	 *          проверка адреса заводила динамический массив под буфер, ничего
+	 *          наружу не отдающий, а бинарный буфер самого адреса был
+	 *          динамическим при заведомо известной предельной длине. После их
+	 *          устранения ни один из перечисленных сценариев памяти не
+	 *          выделяет, и пороги стоят на нуле - обратно они подниматься не
+	 *          должны.
 	 *
 	 *          Печать IPv4 не выделяет памяти по случайности, а не по
 	 *          устройству: строка "192.168.1.100" короче порога размещения
 	 *          строки внутри самого объекта, а строка IPv6 длиннее его, и
 	 *          выделение у неё - это возвращаемое значение. Убрать его можно
-	 *          лишь сменой сигнатуры, отдающей строку наружу
+	 *          лишь сменой сигнатуры, отдающей строку наружу, поэтому порог
+	 *          печати IPv6 единственный оставлен ненулевым
 	 *
 	 */
-	static constexpr double PARSE_IPV4_ALLOCATIONS = 0.5;
-	static constexpr double PARSE_IPV6_ALLOCATIONS = 3.0;
-	static constexpr double PRINT_IPV4_ALLOCATIONS = 0.5;
+	static constexpr double PARSE_IPV4_ALLOCATIONS = 0.0;
+	static constexpr double PARSE_IPV6_ALLOCATIONS = 0.0;
+	static constexpr double PRINT_IPV4_ALLOCATIONS = 0.0;
 	static constexpr double PRINT_IPV6_ALLOCATIONS = 1.0;
-	static constexpr double HOST_ALLOCATIONS = 4.25;
-	static constexpr double MAPPING_ALLOCATIONS = 1.0;
+	static constexpr double HOST_ALLOCATIONS = 0.0;
+	static constexpr double MAPPING_ALLOCATIONS = 0.0;
 
 	/**
 	 * @brief Набор образцов адресов IPv4 сценариев разбора и печати

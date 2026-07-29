@@ -42,6 +42,28 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks BigNum submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_BIGNUM_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для подмодуля работы с датой и временем
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_CHRONO_BENCHMARK "Build Chrono benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для подмодуля работы с датой и временем
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_CHRONO_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для подмодуля работы с датой и временем
+        message(STATUS "Build benchmarks Chrono submodule: Yes\n")
+        # Дополняем список источников бенчмарками для подмодуля работы с датой и временем
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            chrono/chrono.cpp
+            chrono/parse.cpp
+            chrono/format.cpp
+            chrono/units.cpp
+            chrono/zones.cpp
+            chrono/duration.cpp
+        )
+    # Если не нужно собрать бенчмарки для подмодуля работы с датой и временем
+    else()
+        # Выводим сообщение о сборке бенчмарков для подмодуля работы с датой и временем
+        message(STATUS "Build benchmarks Chrono submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_CHRONO_BENCHMARK})
+
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 
