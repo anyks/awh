@@ -208,6 +208,7 @@ if(${GTest_FOUND})
                 chrono/syslog.cpp
                 chrono/substitution.cpp
                 chrono/validate.cpp
+                chrono/limits.cpp
                 chrono/duration.cpp
                 chrono/calendar.cpp
                 chrono/parameterized.cpp

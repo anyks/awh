@@ -20,10 +20,8 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <array>
 #include <cctype>
-#include <fstream>
-#include <sstream>
-#include <iomanip>
 #include <string_view>
 
 /**
@@ -613,165 +611,252 @@ namespace uri {
 	}
 
 	/**
-	 * @brief Функция проверки допустимых символов для различных элементов URI
+	 * @brief Признаки разрешённости символа в наборах элементов URI
 	 *
-	 * @param letter символ для проверки
-	 * @param item   тип элемента URI, для которого выполняется проверка
-	 * @return       результат проверки
+	 * @details Наборов разрешённых символов у элементов URI пять, и различаются
+	 *          они десятком-другим знаков препинания. Каждому символу набора
+	 *          отведён свой разряд, поэтому принадлежность символа любому из
+	 *          наборов снимается одним наложением маски.
 	 *
 	 */
-	[[nodiscard]] static bool isalnum(const char letter, const uri_t::item_t item) noexcept {
+	enum class allow_t : uint8_t {
+		ALNUM      = 0x01, // Символ является буквенно-цифровым ASCII
+		SCHEME     = 0x02, // Символ допустим в схеме URI
+		PATH       = 0x04, // Символ допустим в пути URI
+		QUERY      = 0x08, // Символ допустим в параметрах URI
+		UNRESERVED = 0x10  // Символ незарезервирован (логин, хост, якорь)
+	};
+
+	/**
+	 * @brief Вспомогательная функция формирования таблицы разрешённых символов
+	 *
+	 * @details Проверка разрешённости стоит на пути каждого символа каждой
+	 *          кодируемой части URI. Выписанная цепочкой сравнений, она обходилась
+	 *          в два десятка ветвлений на символ - дороже, чем запись самой
+	 *          процент-последовательности. Сведённая в таблицу, она становится
+	 *          одним чтением и одним наложением маски.
+	 *
+	 *          Наборы заданы по RFC 3986 и общим рекомендациям по кодированию URI.
+	 *          Проверки диапазонов выписаны явно, а не через библиотечную
+	 *          `isalnum`: та смотрит на локаль и на UTF-8 трактует октеты свыше
+	 *          127 как буквы, из-за чего кириллица в пути осталась бы
+	 *          незакодированной.
+	 *
+	 * @return сформированная таблица разрешённых символов
+	 *
+	 */
+	static array <uint8_t, 256> makeAllowed() noexcept {
+		// Формируемая таблица разрешённых символов
+		array <uint8_t, 256> result = {0};
 		/**
-		 * Проверяем, является ли символ допустимым для данного элемента URI в соответствии с RFC 3986 и общими рекомендациями по кодированию URI.
+		 * Проходим по всем возможным значениям символа
+		 */
+		for(size_t i = 0; i < result.size(); ++i){
+			// Текущий символ таблицы
+			const char letter = static_cast <char> (i);
+			// Признак буквенно-цифрового символа ASCII
+			const bool alnum = (
+				((letter >= 'a') && (letter <= 'z')) ||
+				((letter >= 'A') && (letter <= 'Z')) ||
+				((letter >= '0') && (letter <= '9'))
+			);
+			// Если символ является буквенно-цифровым ASCII
+			if(alnum)
+				// Устанавливаем признак буквенно-цифрового символа
+				result[i] |= static_cast <uint8_t> (allow_t::ALNUM);
+			// Если символ допустим в схеме URI: буквенно-цифровые ASCII и + - .
+			if(alnum || (letter == '+') || (letter == '-') || (letter == '.'))
+				// Устанавливаем признак допустимости символа в схеме URI
+				result[i] |= static_cast <uint8_t> (allow_t::SCHEME);
+			// Если символ незарезервирован: буквенно-цифровые ASCII и - _ . ~
+			if(alnum || (letter == '-') || (letter == '_') || (letter == '.') || (letter == '~'))
+				// Устанавливаем признак незарезервированного символа
+				result[i] |= static_cast <uint8_t> (allow_t::UNRESERVED);
+			/**
+			 * Если символ допустим в пути URI: незарезервированные и знаки препинания,
+			 * кодировать которые в пути не рекомендуется
+			 */
+			if(
+				alnum ||
+				(letter == '-') || (letter == '_') ||
+				(letter == '.') || (letter == '~') ||
+				(letter == '@') || (letter == ':') ||
+				(letter == '!') || (letter == '$') ||
+				(letter == '&') || (letter == '\'') ||
+				(letter == '(') || (letter == ')') ||
+				(letter == '*') || (letter == '+') ||
+				(letter == ',') || (letter == ';') || (letter == '=')
+			)
+				// Устанавливаем признак допустимости символа в пути URI
+				result[i] |= static_cast <uint8_t> (allow_t::PATH);
+			/**
+			 * Если символ допустим в параметрах URI: в них разрешено больше, но
+			 * & = ? # лучше закодировать, если они являются частью самих данных
+			 */
+			if(
+				alnum ||
+				(letter == '-') || (letter == '_') ||
+				(letter == '.') || (letter == '~') ||
+				(letter == '@') || (letter == ':') ||
+				(letter == '!') || (letter == '$') ||
+				(letter == '\'') || (letter == '(') ||
+				(letter == ')') || (letter == '*') ||
+				(letter == '+') || (letter == ',') ||
+				(letter == ';') || (letter == '/') ||
+				(letter == '[') || (letter == ']')
+			)
+				// Устанавливаем признак допустимости символа в параметрах URI
+				result[i] |= static_cast <uint8_t> (allow_t::QUERY);
+		}
+		// Возвращаем сформированную таблицу разрешённых символов
+		return result;
+	}
+	// Таблица разрешённости символов в наборах элементов URI
+	static const array <uint8_t, 256> ALLOWED = makeAllowed();
+
+	/**
+	 * @brief Функция получения маски разрешённых символов элемента URI
+	 *
+	 * @param item тип элемента URI, для которого выполняется кодирование
+	 * @return     маска разрешённых символов набора
+	 *
+	 */
+	[[nodiscard]] static inline uint8_t allowance(const uri_t::item_t item) noexcept {
+		/**
+		 * Определяем набор разрешённых символов по типу элемента URI
 		 */
 		switch(static_cast <uint8_t> (item)){
 			// Для схемы URI разрешены буквенно-цифровые ASCII и + - .
 			case static_cast <uint8_t> (uri_t::item_t::SCHEME):
-				/**
-				 * Разрешённые символы для схемы URI: буквенно-цифровые ASCII и + - .
-				 */
-				return (
-					((letter >= 'a') && (letter <= 'z')) ||
-					((letter >= 'A') && (letter <= 'Z')) ||
-					((letter >= '0') && (letter <= '9')) ||
-					(letter == '+') || (letter == '-') || (letter == '.')
-				);
-			// Для пути URI разрешены буквенно-цифровые ASCII и - _ . ~ и некоторые спецсимволы, которые не рекомендуется кодировать в пути, но можно кодировать в других частях URI
+				// Выводим маску набора схемы URI
+				return static_cast <uint8_t> (allow_t::SCHEME);
+			// Для пути URI разрешены незарезервированные символы и часть знаков препинания
 			case static_cast <uint8_t> (uri_t::item_t::PATH):
-				/**
-				 * Не трогаем символы, разрешённые по RFC 3986 без кодирования:
-				 * незарезервированные символы: буквенно-цифровые ASCII и - _ . ~
-				 * Используем явные диапазонные проверки (locale-независимые),
-				 * а не isalnum(), которая на UTF-8 локали трактует байты >127 как буквы.
-				 */
-				return (
-					((letter >= 'a') && (letter <= 'z')) ||
-					((letter >= 'A') && (letter <= 'Z')) ||
-					((letter >= '0') && (letter <= '9')) ||
-					(letter == '-') || (letter == '_') ||
-					(letter == '.') || (letter == '~') ||
-					(letter == '@') || (letter == ':') ||
-					(letter == '!') || (letter == '$') ||
-					(letter == '&') || (letter == '\'') ||
-					(letter == '(') || (letter == ')') ||
-					(letter == '*') || (letter == '+') ||
-					(letter == ',') || (letter == ';') || (letter == '=')
-				);
-			// Для запроса URI разрешены буквенно-цифровые ASCII и - _ . ~ и более широкий набор спецсимволов, которые не рекомендуется кодировать в пути, но можно кодировать в других частях URI
+				// Выводим маску набора пути URI
+				return static_cast <uint8_t> (allow_t::PATH);
+			// Для параметров URI разрешён более широкий набор знаков препинания
 			case static_cast <uint8_t> (uri_t::item_t::QUERY):
-				/**
-				 * В query разрешено больше, но & = ? # лучше закодировать, если они часть данных
-				 */
-				return (
-					((letter >= 'a') && (letter <= 'z')) ||
-					((letter >= 'A') && (letter <= 'Z')) ||
-					((letter >= '0') && (letter <= '9')) ||
-					(letter == '-') || (letter == '_') ||
-					(letter == '.') || (letter == '~') ||
-					(letter == '@') || (letter == ':') ||
-					(letter == '!') || (letter == '$') ||
-					(letter == '\'') || (letter == '(') ||
-					(letter == ')') || (letter == '*') ||
-					(letter == '+') || (letter == ',') ||
-					(letter == ';') || (letter == '/') ||
-					(letter == '[') || (letter == ']')
-				);
-			// Для userinfo, host и fragment URI разрешены буквенно-цифровые ASCII и - _ . ~
+				// Выводим маску набора параметров URI
+				return static_cast <uint8_t> (allow_t::QUERY);
+			// Для логина, хоста и якоря URI разрешены только незарезервированные символы
 			case static_cast <uint8_t> (uri_t::item_t::USER):
 			case static_cast <uint8_t> (uri_t::item_t::HOST):
 			case static_cast <uint8_t> (uri_t::item_t::FRAGMENT):
-				/**
-				 * Разрешённые символы для остальных частей URI: буквенно-цифровые ASCII и - _ . ~
-				 */
-				return (
-					((letter >= 'a') && (letter <= 'z')) ||
-					((letter >= 'A') && (letter <= 'Z')) ||
-					((letter >= '0') && (letter <= '9')) ||
-					(letter == '-') || (letter == '_') ||
-					(letter == '.') || (letter == '~')
-				);
-			// Для всех остальных элементов URI разрешаем только буквенно-цифровые ASCII
-			default:
-				/**
-				 * Для неизвестного элемента URI разрешаем только буквенно-цифровые ASCII
-				 */
-				return (
-					((letter >= 'a') && (letter <= 'z')) ||
-					((letter >= 'A') && (letter <= 'Z')) ||
-					((letter >= '0') && (letter <= '9'))
-				);
+				// Выводим маску набора незарезервированных символов
+				return static_cast <uint8_t> (allow_t::UNRESERVED);
 		}
-		// Возвращаем значение по умолчанию
-		return false;
+		// Для неизвестного элемента URI разрешаем только буквенно-цифровые ASCII
+		return static_cast <uint8_t> (allow_t::ALNUM);
 	}
 
 	/**
 	 * @brief Функция кодирования строки в URL-адресе
 	 *
-	 * @param text строка текста для кодирования
-	 * @param item тип элемента URI, для которого выполняется кодирование (например, путь, запрос, фрагмент)
-	 * @param log  объект работы с логами
-	 * @return     результат кодирования
+	 * @details Закодированная строка дописывается в результат, а не отдаётся
+	 *          наружу отдельной строкой: сборка URI склеивает результат из
+	 *          десятка таких кусков, и каждый из них, отданный отдельной строкой,
+	 *          стоил бы выделения памяти под неё саму - тем более неизбежного,
+	 *          что запас под процент-кодирование втрое превышает исходную длину и
+	 *          размещению строки внутри объекта не поддаётся.
+	 *
+	 * @param result результат, в который добавляется закодированная строка
+	 * @param text   строка текста для кодирования
+	 * @param item   тип элемента URI, для которого выполняется кодирование
+	 * @param log    объект работы с логами
 	 *
 	 */
-	[[nodiscard]] static string encode(string_view text, const uri_t::item_t item, const log_t * log) noexcept {
-		// Переменная результата
-		string result = "";
-		// Если строка передана
-		if(!text.empty()){
+	static void encode(string & result, string_view text, const uri_t::item_t item, const log_t * log) noexcept {
+		// Если строка не передана, то добавлять нечего
+		if(text.empty())
+			// Выходим из функции
+			return;
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Таблица шестнадцатеричных символов в верхнем регистре
+			static constexpr char hex[] = "0123456789ABCDEF";
+			// Маска разрешённых символов элемента URI
+			const uint8_t mask = allowance(item);
+			// Позиция начала неразрывного участка разрешённых символов
+			size_t start = 0;
 			/**
-			 * Выполняем отлов ошибок
+			 * Перебираем все символы
 			 */
-			try {
-				// Таблица шестнадцатеричных символов в верхнем регистре
-				static constexpr char hex[] = "0123456789ABCDEF";
-				// Резервируем память с запасом на процент-кодирование (в худшем случае каждый символ кодируется как %XX)
-				result.reserve(text.size() * 3);
-				/**
-				 * Перебираем все символы
-				 */
-				for(char letter : text){
-					// Если символ разрешён для данного элемента URI, записываем его как есть
-					if(isalnum(letter, item)){
-						// Записываем символ, как он есть
-						result.append(1, letter);
-						// Пропускаем итерацию
-						continue;
-					}
-					// Получаем код символа
-					const uint8_t value = static_cast <uint8_t> (letter);
-					// Записываем символ в виде %XX (старший и младший полубайты)
-					result.append(1, '%');
-					// Записываем старший полубайт
-					result.append(1, hex[(value >> 4) & 0x0F]);
-					// Записываем младший полубайт
-					result.append(1, hex[value & 0x0F]);
-				}
-			/**
-			 * Если возникает ошибка
-			 */
-			} catch(const exception & error) {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::WARNING, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::WARNING, error.what());
-				#endif
+			for(size_t i = 0; i < text.size(); i++){
+				// Получаем код текущего символа
+				const uint8_t value = static_cast <uint8_t> (text[i]);
+				// Если символ разрешён для данного элемента URI, продлеваем участок
+				if(ALLOWED[value] & mask)
+					// Пропускаем итерацию
+					continue;
+				// Если участок разрешённых символов набран, добавляем его целиком
+				if(i > start)
+					// Добавляем накопленный участок разрешённых символов
+					result.append(text.data() + start, i - start);
+				// Записываем символ в виде %XX (старший и младший полубайты)
+				const char triplet[3] = {'%', hex[(value >> 4) & 0x0F], hex[value & 0x0F]};
+				// Добавляем процент-последовательность в результат
+				result.append(triplet, 3);
+				// Переносим начало участка за закодированный символ
+				start = (i + 1);
 			}
+			// Если после последней процент-последовательности остался участок
+			if(start < text.size())
+				// Добавляем остаток строки целиком
+				result.append(text.data() + start, text.size() - start);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
-		// Возвращаем результат
-		return result;
+	}
+
+	/**
+	 * @brief Функция перевода шестнадцатеричной цифры в её значение
+	 *
+	 * @param letter символ для перевода
+	 * @return       значение цифры либо -1, если символ цифрой не является
+	 *
+	 */
+	[[nodiscard]] static inline int8_t nibble(const char letter) noexcept {
+		// Если символ является десятичной цифрой
+		if((letter >= '0') && (letter <= '9'))
+			// Выводим значение десятичной цифры
+			return static_cast <int8_t> (letter - '0');
+		// Если символ является шестнадцатеричной цифрой в нижнем регистре
+		if((letter >= 'a') && (letter <= 'f'))
+			// Выводим значение шестнадцатеричной цифры
+			return static_cast <int8_t> (letter - 'a' + 10);
+		// Если символ является шестнадцатеричной цифрой в верхнем регистре
+		if((letter >= 'A') && (letter <= 'F'))
+			// Выводим значение шестнадцатеричной цифры
+			return static_cast <int8_t> (letter - 'A' + 10);
+		// Выводим признак того, что символ цифрой не является
+		return -1;
 	}
 
 	/**
 	 * @brief Функция декодирования строки в URL-адресе
+	 *
+	 * @details Строка, в которой нечего декодировать, копируется целиком: ни
+	 *          процент-последовательности, ни объединяющего слова плюса в ней нет,
+	 *          и посимвольный обход дал бы тот же результат за куда большее время.
+	 *          Таких строк подавляющее большинство - процент-кодирование в пути и
+	 *          в параметрах запроса встречается заметно реже, чем отсутствует.
 	 *
 	 * @param text строка текста для декодирования
 	 * @param log  объект работы с логами
@@ -787,59 +872,68 @@ namespace uri {
 			 * Выполняем отлов ошибок
 			 */
 			try {
-				// Создаём бинарный буфер данных
-				char buffer[3];
-				// Устанавливаем завершение строки
-				buffer[2] = '\0';
-				// Код символа в 16-м виде
-				uint16_t hex = 0;
-				// Смещение в текстовом буфере
-				const char * offset = nullptr;
+				// Позиция первого символа, требующего декодирования
+				const size_t position = text.find_first_of("%+");
+				// Если декодировать в строке нечего, копируем её целиком
+				if(position == string_view::npos)
+					// Выводим результат
+					return string(text);
 				// Выделяем память для строки
 				result.reserve(text.length());
+				// Добавляем участок строки до первого требующего декодирования символа
+				result.append(text.data(), position);
+				// Позиция начала неразрывного участка неизменяемых символов
+				size_t start = position;
 				/**
-				 * @brief Функция проверки, является ли символ шестнадцатеричной цифрой
-				 *
-				 * @param letter символ для проверки
-				 * @return       результат проверки
-				 *
+				 * Переходим по всей длине строки, начиная с первого требующего декодирования символа
 				 */
-				auto isHex = [](const char letter) noexcept -> bool {
-					// Возвращаем результат проверки символа на шестнадцатеричную цифру
-					return (
-						((letter >= '0') && (letter <= '9')) ||
-						((letter >= 'a') && (letter <= 'f')) ||
-						((letter >= 'A') && (letter <= 'F'))
-					);
-				};
-				/**
-				 * Переходим по всей длине строки
-				 */
-				for(size_t i = 0; i < text.length(); i++){
+				for(size_t i = position; i < text.length(); i++){
 					// Получаем текущее смещение в текстовом буфере
-					offset = (text.data() + i);
+					const char * offset = (text.data() + i);
 					/**
 					 * Если это проценты и впереди есть ещё минимум два валидных шестнадцатеричных символа
 					 * (проверка границ обязательна, так как text — невладеющий string_view без гарантии нуль-терминатора)
 					 */
-					if((offset[0] == '%') && ((i + 2) < text.length()) && isHex(offset[1]) && isHex(offset[2])){
-						// Сбрасываем код символа в 16-м виде
-						hex = 0;
-						// Выполняем копирование в бинарный буфер полученных байт
-						::memcpy(buffer, offset + 1, 2);
-						// Извлекаем из 16-х символов наш код числа
-						::sscanf(buffer, "%hx", &hex);
-						// Запоминаем полученный символ
-						result.append(1, static_cast <char> (hex));
-						// Смещаем итератор
-						i += 2;
+					if((offset[0] == '%') && ((i + 2) < text.length())){
+						// Извлекаем старший полубайт кода символа
+						const int8_t high = nibble(offset[1]);
+						// Извлекаем младший полубайт кода символа
+						const int8_t low = nibble(offset[2]);
+						// Если оба полубайта являются шестнадцатеричными цифрами
+						if((high >= 0) && (low >= 0)){
+							// Если участок неизменяемых символов набран, добавляем его целиком
+							if(i > start)
+								// Добавляем накопленный участок неизменяемых символов
+								result.append(text.data() + start, i - start);
+							// Запоминаем полученный символ
+							result.append(1, static_cast <char> ((high << 4) | low));
+							// Смещаем итератор
+							i += 2;
+							// Переносим начало участка за декодированную последовательность
+							start = (i + 1);
+							// Пропускаем итерацию
+							continue;
+						}
 					// Если это объединение двух слов
-					} else if(offset[0] == '+')
+					} else if(offset[0] == '+') {
+						// Если участок неизменяемых символов набран, добавляем его целиком
+						if(i > start)
+							// Добавляем накопленный участок неизменяемых символов
+							result.append(text.data() + start, i - start);
 						// Выполняем добавление разделителя
 						result.append(1, ' ');
-					// Иначе копируем букву как она есть (включая одиночный '%' без корректного кода)
-					else result.append(1, offset[0]);
+						// Переносим начало участка за разделитель
+						start = (i + 1);
+					}
+					/**
+					 * Иначе символ остаётся как есть (включая одиночный '%' без корректного кода)
+					 * и войдёт в результат вместе со своим участком
+					 */
 				}
+				// Если после последнего декодированного символа остался участок
+				if(start < text.length())
+					// Добавляем остаток строки целиком
+					result.append(text.data() + start, text.length() - start);
 			/**
 			 * Если возникает ошибка
 			 */
@@ -861,6 +955,283 @@ namespace uri {
 		}
 		// Возвращаем результат
 		return result;
+	}
+
+	/**
+	 * @brief Функция добавления десятичной записи числа в результат
+	 *
+	 * @details Записью числа занималось форматирование по образцу, а оно на каждый
+	 *          вызов заводит буфер в килобайт и разбирает строку образца. Номер
+	 *          порта - это до пяти цифр, и стоить его запись должна пяти делений.
+	 *
+	 * @param result результат, в который добавляется запись числа
+	 * @param value  число для записи
+	 *
+	 */
+	static void appendNumber(string & result, const uint16_t value) noexcept {
+		// Буфер записи числа: наибольшее 16-разрядное число занимает пять цифр
+		char buffer[5];
+		// Позиция записи очередной цифры
+		uint8_t offset = sizeof(buffer);
+		// Остаток числа, ещё не записанный в буфер
+		uint16_t rest = value;
+		/**
+		 * Записываем цифры числа справа налево, начиная с младшего разряда
+		 */
+		do {
+			// Записываем очередную цифру числа
+			buffer[--offset] = static_cast <char> ('0' + (rest % 10));
+			// Отбрасываем записанный разряд числа
+			rest /= 10;
+		} while(rest > 0);
+		// Добавляем записанное число в результат
+		result.append(buffer + offset, sizeof(buffer) - offset);
+	}
+
+	/**
+	 * @brief Признак принадлежности символа алфавиту сетевых адресов
+	 *
+	 */
+	static constexpr uint8_t ADDRESSABLE = 0x20;
+	/**
+	 * @brief Вспомогательная функция формирования таблицы алфавита сетевых адресов
+	 *
+	 * @details Алфавит собран объединением алфавитов трёх разборов, которые
+	 *          выполняет разбор адреса: IPv4-адреса (десятичные и, в либеральном
+	 *          режиме, шестнадцатеричные цифры с приставкой "x", а также точка),
+	 *          IPv6-адреса (шестнадцатеричные цифры, двоеточие, точка встроенного
+	 *          IPv4-адреса и квадратные скобки, в которых он приходит из URI) и
+	 *          аппаратного адреса (шестнадцатеричные цифры и двоеточие). В него же
+	 *          входит пробельный набор: разбор IPv4-адреса и IPv6-адреса обрезает
+	 *          пробелы вокруг строки, поэтому строка с ними адресом оказаться
+	 *          способна.
+	 *
+	 *          Алфавит обязан быть надмножеством: символ, который разбор адреса
+	 *          принять мог бы, обязан в алфавит попасть. Лишний символ стоит одной
+	 *          попытки разбора впустую, недостающий изменил бы разновидность хоста.
+	 *
+	 * @return сформированная таблица алфавита сетевых адресов
+	 *
+	 */
+	static array <uint8_t, 256> makeAddressable() noexcept {
+		// Формируемая таблица алфавита сетевых адресов
+		array <uint8_t, 256> result = {0};
+		/**
+		 * Проходим по всем возможным значениям символа
+		 */
+		for(size_t i = 0; i < result.size(); ++i){
+			// Текущий символ таблицы
+			const char letter = static_cast <char> (i);
+			// Если символ входит в алфавит сетевых адресов
+			if(
+				((letter >= '0') && (letter <= '9')) ||
+				((letter >= 'a') && (letter <= 'f')) ||
+				((letter >= 'A') && (letter <= 'F')) ||
+				(letter == 'x') || (letter == 'X') ||
+				(letter == '.') || (letter == ':') ||
+				(letter == '[') || (letter == ']') ||
+				(letter == ' ') || (letter == '\t') ||
+				(letter == '\n') || (letter == '\v') ||
+				(letter == '\f') || (letter == '\r')
+			)
+				// Устанавливаем признак алфавита сетевых адресов
+				result[i] |= ADDRESSABLE;
+		}
+		// Возвращаем сформированную таблицу алфавита сетевых адресов
+		return result;
+	}
+	// Таблица алфавита сетевых адресов
+	static const array <uint8_t, 256> ADDRESS = makeAddressable();
+
+	/**
+	 * @brief Функция определения разновидности сетевого адреса, которой строка способна оказаться
+	 *
+	 * @details Установка хоста URI начиналась перебором разновидностей: строка
+	 *          разбиралась как IPv4-адрес, затем как IPv6-адрес, затем как
+	 *          аппаратный адрес, - и для доменного имени все три разбора заведомо
+	 *          неудачны, причём последний из них заводит завершённую нулём копию
+	 *          строки и разбирает её по образцу. Доменное имя, однако, само
+	 *          сообщает, что адресом оно не является: буквы вне шестнадцатеричного
+	 *          алфавита в адресе не встречаются, а в имени встречаются почти всегда.
+	 *
+	 *          Тот же обход отбирает и единственную разновидность, которой строка
+	 *          способна оказаться: двоеточия в IPv4-адресе не бывает, а IPv6-адреса
+	 *          без двоеточия не бывает. Аппаратный адрес отдельной разновидностью не
+	 *          выделяется - атрибутов сетевого адреса ему всё равно не завести, и
+	 *          обрабатывается он как имя.
+	 *
+	 *          Обход прекращается на символе процента: за ним у IPv6-адреса стоит
+	 *          обозначение зоны, и обозначение это произвольно.
+	 *
+	 * @param host строка хоста для проверки
+	 * @return     разновидность сетевого адреса либо NONE, если строка адресом быть не может
+	 *
+	 */
+	[[nodiscard]] static net_addr_t::type_t addressType(string_view host) noexcept {
+		// Признак наличия двоеточия в строке хоста
+		bool colon = false;
+		/**
+		 * Перебираем все символы строки хоста
+		 */
+		for(char letter : host){
+			// Если встретился символ процента, то за ним стоит обозначение зоны IPv6-адреса
+			if(letter == '%')
+				// Выводим разновидность IPv6-адреса
+				return net_addr_t::type_t::IPV6;
+			// Если символ в алфавит сетевых адресов не входит
+			if(!(ADDRESS[static_cast <uint8_t> (letter)] & ADDRESSABLE))
+				// Выводим признак неспособности строки оказаться сетевым адресом
+				return net_addr_t::type_t::NONE;
+			// Если встретилось двоеточие, запоминаем его наличие
+			if(letter == ':')
+				// Запоминаем наличие двоеточия в строке хоста
+				colon = true;
+		}
+		// Выводим разновидность адреса по наличию двоеточия в строке хоста
+		return (colon ? net_addr_t::type_t::IPV6 : net_addr_t::type_t::IPV4);
+	}
+
+	/**
+	 * @brief Функция разбора номера порта URI
+	 *
+	 * @details Разбором занималась связка из проверки представления на число и двух
+	 *          переводов его в число: первый - для сверки с границей диапазона,
+	 *          второй - для получения самого значения. Проходов по представлению
+	 *          выходило три, а проверка на число вдобавок обрезала пробелы, которых
+	 *          в авторити URI не бывает. Одного прохода довольно и для сверки, и для
+	 *          получения значения: разряд, выводящий число за границу диапазона,
+	 *          обнаруживается на нём же.
+	 *
+	 * @param text  представление номера порта
+	 * @param value ссылка для сохранения номера порта
+	 * @return      признак годности представления номера порта
+	 *
+	 */
+	[[nodiscard]] static bool parsePort(string_view text, uint16_t & value) noexcept {
+		// Если представление номера порта пустое, разбирать нечего
+		if(text.empty())
+			// Выводим признак негодности представления
+			return false;
+		// Накопитель номера порта
+		uint32_t result = 0;
+		/**
+		 * Перебираем все символы представления номера порта
+		 */
+		for(char letter : text){
+			// Если символ не является десятичной цифрой
+			if((letter < '0') || (letter > '9'))
+				// Выводим признак негодности представления
+				return false;
+			// Добавляем очередной разряд к накопителю номера порта
+			result = ((result * 10) + static_cast <uint32_t> (letter - '0'));
+			// Если номер порта вышел за пределы диапазона портов
+			if(result > 65535)
+				// Выводим признак негодности представления
+				return false;
+		}
+		// Устанавливаем полученный номер порта
+		value = static_cast <uint16_t> (result);
+		// Выводим признак годности представления
+		return true;
+	}
+
+	/**
+	 * @brief Функция определения типа URI по его схеме
+	 *
+	 * @details Схема сличается с полутора десятками известных, и сличение это
+	 *          выполняется дважды - при разборе строки URI и при установке схемы
+	 *          извне. Выписанное цепочкой сличений без учёта регистра, оно
+	 *          обходилось в полтора десятка проходов по строке схемы на каждый
+	 *          разбор. Отбор по длине оставляет из них не более трёх: схем одной
+	 *          длины в наборе больше трёх не встречается.
+	 *
+	 * @param fmk    объект фреймворка
+	 * @param scheme схема URI для определения типа
+	 * @return       тип URI, соответствующий схеме
+	 *
+	 */
+	[[nodiscard]] static uri_t::type_t schemeType(const fmk_t * fmk, string_view scheme) noexcept {
+		/**
+		 * Отбираем известные схемы по их длине
+		 */
+		switch(scheme.size()){
+			// Если длина схемы составляет два символа
+			case 2: {
+				// Если протокол является WS
+				if(fmk->compare(scheme, "ws"))
+					// Выводим тип URI как WS
+					return uri_t::type_t::WS;
+			} break;
+			// Если длина схемы составляет три символа
+			case 3: {
+				// Если протокол является WSS
+				if(fmk->compare(scheme, "wss"))
+					// Выводим тип URI как WSS
+					return uri_t::type_t::WSS;
+				// Если протокол является SSH
+				if(fmk->compare(scheme, "ssh"))
+					// Выводим тип URI как SSH
+					return uri_t::type_t::SSH;
+				// Если протокол является FTP
+				if(fmk->compare(scheme, "ftp"))
+					// Выводим тип URI как FTP
+					return uri_t::type_t::FTP;
+			} break;
+			// Если длина схемы составляет четыре символа
+			case 4: {
+				// Если протокол является HTTP
+				if(fmk->compare(scheme, "http"))
+					// Выводим тип URI как HTTP
+					return uri_t::type_t::HTTP;
+				// Если протокол является MQTT
+				if(fmk->compare(scheme, "mqtt"))
+					// Выводим тип URI как MQTT
+					return uri_t::type_t::MQTT;
+				// Если протокол является File
+				if(fmk->compare(scheme, "file"))
+					// Выводим тип URI как File
+					return uri_t::type_t::FILE;
+				// Если протокол является Unix Socket
+				if(fmk->compare(scheme, "unix"))
+					// Выводим тип URI как Unix Socket
+					return uri_t::type_t::UDS;
+			} break;
+			// Если длина схемы составляет пять символов
+			case 5: {
+				// Если протокол является HTTPS
+				if(fmk->compare(scheme, "https"))
+					// Выводим тип URI как HTTPS
+					return uri_t::type_t::HTTPS;
+				// Если протокол является REDIS
+				if(fmk->compare(scheme, "redis"))
+					// Выводим тип URI как REDIS
+					return uri_t::type_t::REDIS;
+				// Если протокол является MySQL
+				if(fmk->compare(scheme, "mysql"))
+					// Выводим тип URI как MySQL
+					return uri_t::type_t::MYSQL;
+			} break;
+			// Если длина схемы составляет шесть символов
+			case 6: {
+				// Если протокол является E-mail
+				if(fmk->compare(scheme, "mailto"))
+					// Выводим тип URI как E-mail
+					return uri_t::type_t::EMAIL;
+				// Если протокол является Socks5
+				if(fmk->compare(scheme, "socks5"))
+					// Выводим тип URI как Socks5
+					return uri_t::type_t::SOCKS5;
+			} break;
+			// Если длина схемы составляет десять символов
+			case 10: {
+				// Если протокол является PostgreSQL
+				if(fmk->compare(scheme, "postgresql"))
+					// Выводим тип URI как PostgreSQL
+					return uri_t::type_t::POSTGRESQL;
+			} break;
+		}
+		// Если это просто произвольная схема URI, то выводим тип URI как SCHEME
+		return uri_t::type_t::SCHEME;
 	}
 };
 
@@ -940,64 +1311,8 @@ const string & awh::Uniform_Resource_Identifier::scheme() const noexcept {
 void awh::Uniform_Resource_Identifier::scheme(string_view scheme) noexcept {
 	// Устанавливаем схему URI
 	this->_scheme = scheme;
-	// Если протокол является HTTP
-	if(this->_fmk->compare(scheme, "http"))
-		// Устанавливаем тип URI как HTTP
-		this->_type = type_t::HTTP;
-	// Если протокол является HTTPS
-	else if(this->_fmk->compare(scheme, "https"))
-		// Устанавливаем тип URI как HTTPS
-		this->_type = type_t::HTTPS;
-	// Если протокол является WS
-	else if(this->_fmk->compare(scheme, "ws"))
-		// Устанавливаем тип URI как WS
-		this->_type = type_t::WS;
-	// Если протокол является WSS
-	else if(this->_fmk->compare(scheme, "wss"))
-		// Устанавливаем тип URI как WSS
-		this->_type = type_t::WSS;
-	// Если протокол является SSH
-	else if(this->_fmk->compare(scheme, "ssh"))
-		// Устанавливаем тип URI как SSH
-		this->_type = type_t::SSH;
-	// Если протокол является FTP
-	else if(this->_fmk->compare(scheme, "ftp"))
-		// Устанавливаем тип URI как FTP
-		this->_type = type_t::FTP;
-	// Если протокол является MQTT
-	else if(this->_fmk->compare(scheme, "mqtt"))
-		// Устанавливаем тип URI как MQTT
-		this->_type = type_t::MQTT;
-	// Если протокол является REDIS
-	else if(this->_fmk->compare(scheme, "redis"))
-		// Устанавливаем тип URI как REDIS
-		this->_type = type_t::REDIS;
-	// Если протокол является E-mail
-	else if(this->_fmk->compare(scheme, "mailto"))
-		// Устанавливаем тип URI как E-mail
-		this->_type = type_t::EMAIL;
-	// Если протокол является Socks5
-	else if(this->_fmk->compare(scheme, "socks5"))
-		// Устанавливаем тип URI как Socks5
-		this->_type = type_t::SOCKS5;
-	// Если протокол является File
-	else if(this->_fmk->compare(scheme, "file"))
-		// Устанавливаем тип URI как File
-		this->_type = type_t::FILE;
-	// Если протокол является Unix Socket
-	else if(this->_fmk->compare(scheme, "unix"))
-		// Устанавливаем тип URI как Unix Socket
-		this->_type = type_t::UDS;
-	// Если протокол является MySQL
-	else if(this->_fmk->compare(scheme, "mysql"))
-		// Устанавливаем тип URI как MySQL
-		this->_type = type_t::MYSQL;
-	// Если протокол является PostgreSQL
-	else if(this->_fmk->compare(scheme, "postgresql"))
-		// Устанавливаем тип URI как PostgreSQL
-		this->_type = type_t::POSTGRESQL;
-	// Если это просто произвольная схема URI, то устанавливаем тип URI как SCHEME
-	else this->_type = type_t::SCHEME;
+	// Устанавливаем тип URI, соответствующий схеме
+	this->_type = uri::schemeType(this->_fmk, scheme);
 }
 /**
  * @brief Метод получения параметров пользователя URI
@@ -1224,8 +1539,14 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем парсинг переданного адреса
-		if(this->_addr->parse(host)){
+		// Признак того, что хост URI установлен как сетевой адрес
+		bool network = false;
+		// Определяем разновидность сетевого адреса, которой строка хоста способна оказаться
+		const net_addr_t::type_t expected = uri::addressType(host);
+		/**
+		 * Выполняем парсинг переданного адреса единственной разновидностью, которой он способен оказаться
+		 */
+		if((expected != net_addr_t::type_t::NONE) && this->_addr->parse(host, expected)){
 			// Порт хоста в атрибутах URI адреса
 			uint16_t port = 0;
 			/**
@@ -1234,6 +1555,8 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 			switch(static_cast <uint8_t> (this->_addr->type())){
 				// Если хост URI является IPv4-адресом
 				case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+					// Помечаем хост URI как сетевой адрес
+					network = true;
 					// Если атрибуты URI не инициализированы или уже инициализированы, но не являются IPv4-адресом
 					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::IPV4)){
 						// Инициализируем атрибуты URI
@@ -1247,6 +1570,8 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 				} break;
 				// Если хост URI является IPv6-адресом
 				case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+					// Помечаем хост URI как сетевой адрес
+					network = true;
 					// Если атрибуты URI не инициализированы или уже инициализированы, но не являются IPv6-адресом
 					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::IPV6)){
 						// Инициализируем атрибуты URI
@@ -1259,51 +1584,102 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 						port = awh_cast <net::attr_net_t *> (this->_attr.get())->port;
 				} break;
 			}
-			// Устанавливаем порт хоста в атрибутах URI адреса
-			awh_cast <net::attr_net_t *> (this->_attr.get())->port = port;
-			// Инициализируем IP-адрес хоста в атрибутах URI адреса
-			awh_cast <net::attr_net_t *> (this->_attr.get())->ip = ::move(this->_addr->source(net_addr_t::endian_t::LITTLE));
-		// Если парсинг не выполнен
-		} else {
 			/**
-			 * Определяем тип полученного хоста URI адреса
+			 * Если разобранный адрес оказался сетевым, переносим его в атрибуты URI
 			 */
-			switch(static_cast <uint8_t> (this->_addr->host(host))){
-				// Если хост URI является файловой системой
-				case static_cast <uint8_t> (net_addr_t::type_t::FS): {
-					// Если атрибуты URI не инициализированы или уже инициализированы, но не являются FS-адресом
-					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FS)){
-						// Инициализируем атрибуты URI
-						this->_attr = make_unique <net::attr_uds_t> ();
-						// Устанавливаем тип атрибутов URI адреса
-						this->_attr->type = net::type_t::FS;
+			if(network){
+				// Извлекаем атрибуты URI адреса как сетевой адрес
+				net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+				// Устанавливаем порт хоста в атрибутах URI адреса
+				attr->port = port;
+				/**
+				 * Если IP-адрес хоста в атрибутах URI уже заведён, заполняем его на
+				 * месте.
+				 *
+				 * Извлечение адреса в чистом виде отдаёт его новым объектом, то есть
+				 * берёт под него память, - а разновидность заведённого совпадает с
+				 * разновидностью извлекаемого (иначе атрибуты были бы заведены заново
+				 * выше), и содержимое его - это четыре или шестнадцать октетов. Модуль
+				 * адресов отдаёт их и без выделения памяти, отдельными методами на
+				 * каждую разновидность, и здесь нужны именно они
+				 */
+				if(attr->ip != nullptr){
+					/**
+					 * Определяем разновидность заведённого IP-адреса хоста
+					 */
+					switch(static_cast <uint8_t> (attr->type)){
+						// Если IP-адрес хоста является IPv4-адресом
+						case static_cast <uint8_t> (net::type_t::IPV4):
+							// Заполняем IPv4-адрес хоста на месте
+							awh_cast <net::addr_net_ipv4_t *> (attr->ip.get())->address = this->_addr->v4(net_addr_t::endian_t::LITTLE);
+						break;
+						// Если IP-адрес хоста является IPv6-адресом
+						case static_cast <uint8_t> (net::type_t::IPV6):
+							// Заполняем IPv6-адрес хоста на месте
+							awh_cast <net::addr_net_ipv6_t *> (attr->ip.get())->address = this->_addr->v6(net_addr_t::endian_t::LITTLE);
+						break;
 					}
-					// Если путь к сокету в атрибутах URI адреса не инициализирован
-					if(awh_cast <net::attr_uds_t *> (this->_attr.get())->path == nullptr)
-						// Инициализируем путь к сокету в атрибутах URI адреса
-						awh_cast <net::attr_uds_t *> (this->_attr.get())->path = make_unique <net::addr_fs_t> ();
-					// Копируем путь к сокету из атрибутов URI адреса
-					awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address = host;
-				} break;
-				// Если хост URI является доменным именем
-				default: {
-					// Порт хоста в атрибутах URI адреса
-					uint16_t port = 0;
-					// Если атрибуты URI не инициализированы или уже инициализированы, но не являются FQDN-адресом
-					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FQDN)){
-						// Инициализируем атрибуты URI
-						this->_attr = make_unique <net::attr_fqdn_t> ();
-						// Устанавливаем тип атрибутов URI адреса
-						this->_attr->type = net::type_t::FQDN;
-					// Если атрибуты URI уже инициализированы — сохраняем текущий порт, чтобы не потерять его при обновлении хоста
-					} else if(this->_attr != nullptr)
-						// Если атрибуты URI адреса уже инициализированы, то сохраняем порт хоста из атрибутов URI адреса
-						port = awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port;
-					// Устанавливаем порт хоста в атрибутах URI адреса
-					awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port = port;
-					// Копируем доменное имя хоста из атрибутов URI адреса
-					awh_cast <net::attr_fqdn_t *> (this->_attr.get())->domain = host;
-				} break;
+				// Инициализируем IP-адрес хоста в атрибутах URI адреса
+				} else attr->ip = ::move(this->_addr->source(net_addr_t::endian_t::LITTLE));
+			}
+		}
+		/**
+		 * Если хост URI сетевым адресом не оказался, определяем его разновидность.
+		 * Сюда попадает и разобранный адрес, сетевым не являющийся, - аппаратный:
+		 * атрибутов сетевого адреса ему не завести, и обрабатывается он как имя
+		 */
+		if(!network){
+			/**
+			 * Определяем разновидность полученного хоста URI адреса.
+			 *
+			 * Разновидностей хост может принимать восемь, но различает их модуль URI
+			 * всего две: путь файловой системы, которому заводятся атрибуты доменного
+			 * сокета, и всё остальное, которому заводятся атрибуты имени. Полное же
+			 * определение разновидности обходит строку, снимает с неё приметы и
+			 * проверяет её на каждую из подошедших по приметам разновидностей - и
+			 * доменное имя, стоящее в этом переборе последним, платит за все
+			 * предшествующие ему проверки впустую.
+			 *
+			 * Спрошено поэтому ровно то, что нужно: принадлежность строки к путям
+			 * файловой системы. Проверка эта состоит из сравнения первых символов, и
+			 * ответ её совпадает с ответом полного перебора: разновидности, стоящие в
+			 * переборе до пути файловой системы, начинаются либо с приставки
+			 * протокола, либо с символа из алфавита сетевых адресов, а путь
+			 * файловой системы - с косой черты, тильды, точки или обозначения
+			 * устройства. Совпадение закреплено тестом UriFixture.HostKindMatchesFullScanTest
+			 */
+			if(this->_addr->check(host, net_addr_t::type_t::FS)){
+				// Если атрибуты URI не инициализированы или уже инициализированы, но не являются FS-адресом
+				if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FS)){
+					// Инициализируем атрибуты URI
+					this->_attr = make_unique <net::attr_uds_t> ();
+					// Устанавливаем тип атрибутов URI адреса
+					this->_attr->type = net::type_t::FS;
+				}
+				// Если путь к сокету в атрибутах URI адреса не инициализирован
+				if(awh_cast <net::attr_uds_t *> (this->_attr.get())->path == nullptr)
+					// Инициализируем путь к сокету в атрибутах URI адреса
+					awh_cast <net::attr_uds_t *> (this->_attr.get())->path = make_unique <net::addr_fs_t> ();
+				// Копируем путь к сокету из атрибутов URI адреса
+				awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address = host;
+			// Если хост URI является доменным именем
+			} else {
+				// Порт хоста в атрибутах URI адреса
+				uint16_t port = 0;
+				// Если атрибуты URI не инициализированы или уже инициализированы, но не являются FQDN-адресом
+				if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FQDN)){
+					// Инициализируем атрибуты URI
+					this->_attr = make_unique <net::attr_fqdn_t> ();
+					// Устанавливаем тип атрибутов URI адреса
+					this->_attr->type = net::type_t::FQDN;
+				// Если атрибуты URI уже инициализированы — сохраняем текущий порт, чтобы не потерять его при обновлении хоста
+				} else if(this->_attr != nullptr)
+					// Если атрибуты URI адреса уже инициализированы, то сохраняем порт хоста из атрибутов URI адреса
+					port = awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port;
+				// Устанавливаем порт хоста в атрибутах URI адреса
+				awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port = port;
+				// Копируем доменное имя хоста из атрибутов URI адреса
+				awh_cast <net::attr_fqdn_t *> (this->_attr.get())->domain = host;
 			}
 		}
 	/**
@@ -1390,16 +1766,22 @@ void awh::Uniform_Resource_Identifier::appendScheme(string & result) const noexc
 		case static_cast <uint8_t> (type_t::MYSQL):
 		case static_cast <uint8_t> (type_t::SOCKS5):
 		case static_cast <uint8_t> (type_t::POSTGRESQL):
-			// Добавляем схему URI в результат
-			result.append(this->_fmk->format("%s://", this->_scheme.c_str()));
-		break;
+			{
+				// Добавляем схему URI в результат
+				result.append(this->_scheme);
+				// Добавляем разделитель схемы и авторити
+				result.append("://", 3);
+			} break;
 		// Если тип URI является SSH, E-mail или Scheme, то добавляем схему URI в результат без "://"
 		case static_cast <uint8_t> (type_t::SSH):
 		case static_cast <uint8_t> (type_t::EMAIL):
 		case static_cast <uint8_t> (type_t::SCHEME):
-			// Добавляем схему URI в результат
-			result.append(this->_fmk->format("%s:", this->_scheme.c_str()));
-		break;
+			{
+				// Добавляем схему URI в результат
+				result.append(this->_scheme);
+				// Добавляем разделитель схемы
+				result.append(1, ':');
+			} break;
 	}
 }
 /**
@@ -1417,13 +1799,16 @@ void awh::Uniform_Resource_Identifier::appendUser(string & result, const bool de
 	// Добавляем логин пользователя URI в результат
 	result.append(this->_user.username);
 	// Если пароль пользователя URI не пустой, то добавляем его в результат
-	if(!this->_user.password.empty())
+	if(!this->_user.password.empty()){
+		// Добавляем разделитель логина и пароля пользователя URI
+		result.append(1, ':');
 		// Добавляем пароль пользователя URI в результат
-		result.append(this->_fmk->format(":%s", this->_user.password.c_str()));
+		result.append(this->_user.password);
+	}
 	// Если требуется разделитель, добавляем символ "@" после параметров пользователя URI
 	if(delimiter)
 		// Добавляем символ "@" после параметров пользователя URI
-		result.append("@");
+		result.append(1, '@');
 }
 /**
  * @brief Метод добавления хоста (и порта для сетевых адресов) в результат
@@ -1476,8 +1861,12 @@ void awh::Uniform_Resource_Identifier::appendHost(string & result, const format_
 				net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 				// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 				this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-				// Добавляем IP-адрес хоста в виде строки в квадратных скобках
-				result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
+				// Добавляем открывающую скобку IPv6-адреса
+				result.append(1, '[');
+				// Добавляем IP-адрес хоста в виде строки
+				result.append(static_cast <string> (* this->_addr.get()));
+				// Добавляем закрывающую скобку IPv6-адреса
+				result.append(1, ']');
 				// Добавляем порт хоста в результат с учётом формата генерации
 				this->appendPort(result, attr->port, format);
 			} break;
@@ -1521,16 +1910,22 @@ void awh::Uniform_Resource_Identifier::appendPort(string & result, const uint16_
 			// Используем явно заданный порт, иначе стандартный порт для типа URI
 			const uint16_t value = ((port != 0) ? port : standard);
 			// Если итоговый порт определён, добавляем его в результат
-			if(value != 0)
+			if(value != 0){
+				// Добавляем разделитель хоста и порта
+				result.append(1, ':');
 				// Добавляем порт хоста в результат
-				result.append(this->_fmk->format(":%u", value));
+				uri::appendNumber(result, value);
+			}
 		} break;
 		// Если режим формата URI является сокращённым, то выводим порт только если он нестандартный
 		case static_cast <uint8_t> (format_t::SMART): {
 			// Если порт задан явно и отличается от стандартного порта для типа URI, добавляем его в результат
-			if((port != 0) && (port != standard))
+			if((port != 0) && (port != standard)){
+				// Добавляем разделитель хоста и порта
+				result.append(1, ':');
 				// Добавляем порт хоста в результат
-				result.append(this->_fmk->format(":%u", port));
+				uri::appendNumber(result, port);
+			}
 		} break;
 	}
 }
@@ -1706,64 +2101,8 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 				this->clear();
 				// Устанавливаем схему URI
 				this->_scheme = scheme;
-				// Если протокол является HTTP
-				if(this->_fmk->compare(scheme, "http"))
-					// Устанавливаем тип URI как HTTP
-					this->_type = type_t::HTTP;
-				// Если протокол является HTTPS
-				else if(this->_fmk->compare(scheme, "https"))
-					// Устанавливаем тип URI как HTTPS
-					this->_type = type_t::HTTPS;
-				// Если протокол является WS
-				else if(this->_fmk->compare(scheme, "ws"))
-					// Устанавливаем тип URI как WS
-					this->_type = type_t::WS;
-				// Если протокол является WSS
-				else if(this->_fmk->compare(scheme, "wss"))
-					// Устанавливаем тип URI как WSS
-					this->_type = type_t::WSS;
-				// Если протокол является SSH
-				else if(this->_fmk->compare(scheme, "ssh"))
-					// Устанавливаем тип URI как SSH
-					this->_type = type_t::SSH;
-				// Если протокол является FTP
-				else if(this->_fmk->compare(scheme, "ftp"))
-					// Устанавливаем тип URI как FTP
-					this->_type = type_t::FTP;
-				// Если протокол является MQTT
-				else if(this->_fmk->compare(scheme, "mqtt"))
-					// Устанавливаем тип URI как MQTT
-					this->_type = type_t::MQTT;
-				// Если протокол является REDIS
-				else if(this->_fmk->compare(scheme, "redis"))
-					// Устанавливаем тип URI как REDIS
-					this->_type = type_t::REDIS;
-				// Если протокол является E-mail
-				else if(this->_fmk->compare(scheme, "mailto"))
-					// Устанавливаем тип URI как E-mail
-					this->_type = type_t::EMAIL;
-				// Если протокол является Socks5
-				else if(this->_fmk->compare(scheme, "socks5"))
-					// Устанавливаем тип URI как Socks5
-					this->_type = type_t::SOCKS5;
-				// Если протокол является File
-				else if(this->_fmk->compare(scheme, "file"))
-					// Устанавливаем тип URI как File
-					this->_type = type_t::FILE;
-				// Если протокол является Unix Socket
-				else if(this->_fmk->compare(scheme, "unix"))
-					// Устанавливаем тип URI как Unix Socket
-					this->_type = type_t::UDS;
-				// Если протокол является MySQL
-				else if(this->_fmk->compare(scheme, "mysql"))
-					// Устанавливаем тип URI как MySQL
-					this->_type = type_t::MYSQL;
-				// Если протокол является PostgreSQL
-				else if(this->_fmk->compare(scheme, "postgresql"))
-					// Устанавливаем тип URI как PostgreSQL
-					this->_type = type_t::POSTGRESQL;
-				// Если это просто произвольная схема URI, то устанавливаем тип URI как SCHEME
-				else this->_type = type_t::SCHEME;
+				// Устанавливаем тип URI, соответствующий схеме
+				this->_type = uri::schemeType(this->_fmk, scheme);
 			}
 			// Если параметры пользователя URI не пустые
 			if(!userinfo.empty()){
@@ -1782,16 +2121,18 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 			if(!host.empty())
 				// Устанавливаем хост URI
 				this->host(host);
+			// Номер порта URI, полученный разбором его представления
+			uint16_t number = 0;
 			// Если порт URI не пустой, является числом и не выходит за пределы диапазона портов (0-65535)
-			if(!port.empty() && this->_fmk->is(port, fmk_t::check_t::NUMBER) && (this->_fmk->atoi <uint32_t> (port) <= 65535)){
-				// Устанавливаем порт URI, преобразуя строку порта в число
-				this->port(this->_fmk->atoi <uint16_t> (port));
+			if(uri::parsePort(port, number)){
+				// Устанавливаем порт URI
+				this->port(number);
 				// Если тип URI не определён, то пытаемся определить его по схеме URI
 				if(this->_type == type_t::NONE){
 					/**
 					 * Определяем тип порта URI адреса
 					 */
-					switch(this->port()){
+					switch(number){
 						// Если порт URI является 443, то это может быть HTTPS
 						case 443: {
 							// Устанавливаем схему URI
@@ -2047,12 +2388,49 @@ string awh::Uniform_Resource_Identifier::etag(string_view text, const uint8_t si
 				// 16 hex символов (64 бита)
 				mask = 0xFFFFFFFFFFFFFFFFULL;
 			}
-			// Формируем ETag в виде "hexhash"
-			stringstream ss;
-			// Записываем хэш в шестнадцатеричном виде, с ведущими нулями, в кавычках
-			ss << "\"" << std::hex << std::setw(width) << std::setfill('0') << (hash & mask) << "\"";
+			/**
+			 * Записываем хэш в шестнадцатеричном виде, с ведущими нулями, в кавычках.
+			 * Записью занимался поток форматирования, а он на каждое обращение
+			 * заводит буфер, разбирает набор признаков вывода и обращается к
+			 * средствам локали. Стоило это дороже, чем обход хэшируемой строки
+			 * длиной в две сотни символов, тогда как сама запись - это шестнадцать
+			 * чтений из таблицы цифр
+			 */
+			// Таблица шестнадцатеричных символов в нижнем регистре
+			static constexpr char digits[] = "0123456789abcdef";
+			// Буфер записи хэша: пара кавычек и до шестнадцати шестнадцатеричных цифр
+			char buffer[18];
+			// Значащая часть хэша
+			const uint64_t value = (hash & mask);
+			// Количество значащих шестнадцатеричных цифр хэша
+			uint8_t count = 1;
+			/**
+			 * Считаем значащие цифры хэша, отбрасывая ведущие нули
+			 */
+			for(uint64_t rest = (value >> 4); rest > 0; rest >>= 4)
+				// Считаем очередную значащую цифру хэша
+				count++;
+			// Ширина записи хэша: до запрошенной она дополняется ведущими нулями
+			const uint8_t length = ((count > width) ? count : width);
+			// Позиция записи очередного символа
+			uint8_t offset = static_cast <uint8_t> (length + 1);
+			// Записываем закрывающую кавычку
+			buffer[offset] = '"';
+			// Остаток хэша, ещё не записанный в буфер
+			uint64_t rest = value;
+			/**
+			 * Записываем цифры хэша справа налево, начиная с младшего разряда
+			 */
+			while(offset > 1){
+				// Записываем очередную цифру хэша
+				buffer[--offset] = digits[rest & 0x0F];
+				// Отбрасываем записанный разряд хэша
+				rest >>= 4;
+			}
+			// Записываем открывающую кавычку
+			buffer[0] = '"';
 			// Получаем строку ETag
-			return ss.str();
+			return string(buffer, static_cast <size_t> (length) + 2);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -2128,7 +2506,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								// Добавляем символ "/" перед сегментом пути URI
 								result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(segment, item_t::PATH, this->_log));
+								uri::encode(result, segment, item_t::PATH, this->_log);
 							}
 						} break;
 						// Если тип URI является SSH
@@ -2144,7 +2522,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									// Добавляем символ "/" перед сегментом пути URI
 									result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(* i, item_t::PATH, this->_log));
+								uri::encode(result, * i, item_t::PATH, this->_log);
 							}
 						} break;
 						// Если тип URI является Scheme
@@ -2158,7 +2536,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									// Добавляем символ "/" перед сегментом пути URI
 									result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(* i, item_t::PATH, this->_log));
+								uri::encode(result, * i, item_t::PATH, this->_log);
 							}
 						} break;
 					}
@@ -2210,9 +2588,16 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							/**
 							 * Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
 							 */
-							for(const auto & [key, value] : this->_query)
-								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
-								result.append(this->_fmk->format("%s=%s&", uri::encode(key, item_t::QUERY, this->_log).c_str(), uri::encode(value, item_t::QUERY, this->_log).c_str()));
+							for(const auto & [key, value] : this->_query){
+								// Добавляем ключ параметра URI в результат
+								uri::encode(result, key, item_t::QUERY, this->_log);
+								// Добавляем разделитель ключа и значения параметра URI
+								result.append(1, '=');
+								// Добавляем значение параметра URI в результат
+								uri::encode(result, value, item_t::QUERY, this->_log);
+								// Добавляем разделитель пар параметров URI
+								result.append(1, '&');
+							}
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Выполняем генерацию параметров URI с помощью функции обратного вызова
@@ -2239,8 +2624,10 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::HTTP):
 						case static_cast <uint8_t> (type_t::HTTPS):
 						case static_cast <uint8_t> (type_t::SCHEME):
-							// Добавляем якорь URI в результат, предваряя его символом "#"
-							result.append(this->_fmk->format("#%s", uri::encode(this->_fragment, item_t::FRAGMENT, this->_log).c_str()));
+							// Добавляем разделитель якоря URI
+							result.append(1, '#');
+							// Добавляем якорь URI в результат
+							uri::encode(result, this->_fragment, item_t::FRAGMENT, this->_log);
 						break;
 					}
 				}
@@ -2288,7 +2675,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								// Добавляем символ "/" перед сегментом пути URI
 								result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(segment, item_t::PATH, this->_log));
+								uri::encode(result, segment, item_t::PATH, this->_log);
 							}
 						} break;
 						// Если тип URI является SSH
@@ -2304,7 +2691,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									// Добавляем символ "/" перед сегментом пути URI
 									result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(* i, item_t::PATH, this->_log));
+								uri::encode(result, * i, item_t::PATH, this->_log);
 							}
 						} break;
 						// Если тип URI является Scheme
@@ -2318,7 +2705,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									// Добавляем символ "/" перед сегментом пути URI
 									result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(* i, item_t::PATH, this->_log));
+								uri::encode(result, * i, item_t::PATH, this->_log);
 							}
 						} break;
 					}
@@ -2371,9 +2758,16 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							/**
 							 * Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
 							 */
-							for(const auto & [key, value] : this->_query)
-								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
-								result.append(this->_fmk->format("%s=%s&", uri::encode(key, item_t::QUERY, this->_log).c_str(), uri::encode(value, item_t::QUERY, this->_log).c_str()));
+							for(const auto & [key, value] : this->_query){
+								// Добавляем ключ параметра URI в результат
+								uri::encode(result, key, item_t::QUERY, this->_log);
+								// Добавляем разделитель ключа и значения параметра URI
+								result.append(1, '=');
+								// Добавляем значение параметра URI в результат
+								uri::encode(result, value, item_t::QUERY, this->_log);
+								// Добавляем разделитель пар параметров URI
+								result.append(1, '&');
+							}
 							// Удаляем последний символ "&" из результата
 							result.pop_back();
 						} break;
@@ -2396,7 +2790,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::HTTPS):
 						case static_cast <uint8_t> (type_t::SCHEME):
 							// Добавляем якорь URI в результат
-							result.append(uri::encode(this->_fragment, item_t::FRAGMENT, this->_log));
+							uri::encode(result, this->_fragment, item_t::FRAGMENT, this->_log);
 						break;
 					}
 				}
@@ -2439,7 +2833,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								// Добавляем символ "/" перед сегментом пути URI
 								result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(segment, item_t::PATH, this->_log));
+								uri::encode(result, segment, item_t::PATH, this->_log);
 							}
 						// Если путь URI пустой, но параметры URI не пустые, то добавляем символ "/" в результат перед параметрами URI
 						} else result.append(1, '/');
@@ -2450,9 +2844,16 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							/**
 							 * Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
 							 */
-							for(const auto & [key, value] : this->_query)
-								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
-								result.append(this->_fmk->format("%s=%s&", uri::encode(key, item_t::QUERY, this->_log).c_str(), uri::encode(value, item_t::QUERY, this->_log).c_str()));
+							for(const auto & [key, value] : this->_query){
+								// Добавляем ключ параметра URI в результат
+								uri::encode(result, key, item_t::QUERY, this->_log);
+								// Добавляем разделитель ключа и значения параметра URI
+								result.append(1, '=');
+								// Добавляем значение параметра URI в результат
+								uri::encode(result, value, item_t::QUERY, this->_log);
+								// Добавляем разделитель пар параметров URI
+								result.append(1, '&');
+							}
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Выполняем генерацию параметров URI с помощью функции обратного вызова
@@ -2465,9 +2866,12 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							} else result.pop_back();
 						}
 						// Если якорь URI не пустой, то добавляем его в результат
-						if(!this->_fragment.empty())
-							// Добавляем якорь URI в результат, предваряя его символом "#"
-							result.append(this->_fmk->format("#%s", uri::encode(this->_fragment, item_t::FRAGMENT, this->_log).c_str()));
+						if(!this->_fragment.empty()){
+							// Добавляем разделитель якоря URI
+							result.append(1, '#');
+							// Добавляем якорь URI в результат
+							uri::encode(result, this->_fragment, item_t::FRAGMENT, this->_log);
+						}
 					} break;
 					// Если тип URI является E-mail или Scheme, то добавляем схему URI в результат без "://"
 					case static_cast <uint8_t> (type_t::EMAIL): {
@@ -2484,9 +2888,12 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								// Возвращаем доменное имя хоста из атрибутов URI адреса
 								result.append(attr->domain);
 								// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
-								if((attr->port != 0) && (attr->port != 25))
+								if((attr->port != 0) && (attr->port != 25)){
+									// Добавляем разделитель хоста и порта
+									result.append(1, ':');
 									// Добавляем порт хоста в результат, если он не равен 0
-									result.append(this->_fmk->format(":%u", attr->port));
+									uri::appendNumber(result, attr->port);
+								}
 								// Если порт хоста в атрибутах URI адреса равен 0, то пытаемся определить его по схеме URI
 								else if(attr->port == 0)
 									// Устанавливаем порт URI как 25
@@ -2501,9 +2908,12 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								// Возвращаем IP-адрес хоста в виде строки
 								result.append(static_cast <string> (* this->_addr.get()));
 								// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
-								if((attr->port != 0) && (attr->port != 25))
+								if((attr->port != 0) && (attr->port != 25)){
+									// Добавляем разделитель хоста и порта
+									result.append(1, ':');
 									// Добавляем порт хоста в результат, если он не равен 0
-									result.append(this->_fmk->format(":%u", attr->port));
+									uri::appendNumber(result, attr->port);
+								}
 								// Если порт хоста в атрибутах URI адреса равен 0, то пытаемся определить его по схеме URI
 								else if(attr->port == 0)
 									// Устанавливаем порт URI как 25
@@ -2515,12 +2925,19 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 								// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 								this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем IP-адрес хоста в виде строки
-								result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
+								// Добавляем открывающую скобку IPv6-адреса
+								result.append(1, '[');
+								// Добавляем IP-адрес хоста в виде строки
+								result.append(static_cast <string> (* this->_addr.get()));
+								// Добавляем закрывающую скобку IPv6-адреса
+								result.append(1, ']');
 								// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
-								if((attr->port != 0) && (attr->port != 25))
+								if((attr->port != 0) && (attr->port != 25)){
+									// Добавляем разделитель хоста и порта
+									result.append(1, ':');
 									// Добавляем порт хоста в результат, если он не равен 0
-									result.append(this->_fmk->format(":%u", attr->port));
+									uri::appendNumber(result, attr->port);
+								}
 								// Если порт хоста в атрибутах URI адреса равен 0, то пытаемся определить его по схеме URI
 								else if(attr->port == 0)
 									// Устанавливаем порт URI как 25
@@ -2542,7 +2959,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									// Добавляем символ "/" перед сегментом пути URI
 									result.append(1, '/');
 								// Добавляем сегмент пути URI в результат
-								result.append(uri::encode(* i, item_t::PATH, this->_log));
+								uri::encode(result, * i, item_t::PATH, this->_log);
 							}
 						}
 					} break;

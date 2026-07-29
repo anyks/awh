@@ -225,6 +225,52 @@ namespace {
 			}
 	};
 	/**
+	 * @brief Наибольший год, представимый календарём модуля
+	 *
+	 * @details Год записывается четырьмя разрядами во всех стандартах, которым служит
+	 *          модуль, и хранится полем разрядностью в два октета
+	 *
+	 */
+	static constexpr uint16_t MAX_YEAR = 9999;
+	/**
+	 * @brief Наибольший штамп времени, представимый календарём модуля
+	 *
+	 * @details Последняя миллисекунда 9999 года. Штамп времени за этим пределом
+	 *          раскладывать нечем: поле года его обрезало, а остаток суток за вычетом
+	 *          начала обрезанного года выходил за разрядность полей месяца и числа,
+	 *          и разложение давало несуществующие даты вида 1934-12-200. Приведение
+	 *          вещественного значения вне диапазона целевого типа к тому же является
+	 *          неопределённым поведением, а не заворачиванием
+	 *
+	 */
+	static constexpr uint64_t MAX_TIMESTAMP = 253402300799999ULL;
+	/**
+	 * @brief Наибольшее смещение временной зоны относительно UTC (в секундах)
+	 *
+	 * @details Пояса Земли укладываются в промежуток от UTC-12 до UTC+14, и крайние
+	 *          его точки заняты: UTC-12 - необитаемые острова Бейкер и Хауленд,
+	 *          UTC+14 - острова Лайн в составе Кирибати. Обозначение зоны за этими
+	 *          пределами не означает ничего
+	 *
+	 */
+	static constexpr int32_t MAX_ZONE_OFFSET = (14 * 3600);
+	/**
+	 * @brief Наименьшее смещение временной зоны относительно UTC (в секундах)
+	 *
+	 */
+	static constexpr int32_t MIN_ZONE_OFFSET = (-12 * 3600);
+	/**
+	 * @brief Функция приведения штампа времени к пределу представимости
+	 *
+	 * @param date штамп времени в миллисекундах
+	 * @return     штамп времени, не выходящий за предел представимости
+	 *
+	 */
+	inline uint64_t clampDate(const uint64_t date) noexcept {
+		// Штамп времени за пределом представимости приводится к последнему представимому
+		return ((date > MAX_TIMESTAMP) ? MAX_TIMESTAMP : date);
+	}
+	/**
 	 * @brief Структура диапазона количества цифр в одной группе
 	 *
 	 */
@@ -1173,6 +1219,16 @@ namespace {
 	 *          Количество секунд допускается до шестидесяти включительно - секунду
 	 *          координации разрешают и RFC 3339, и стандарты, на него ссылающиеся
 	 *
+	 * @details Год проверяется на представимость календарём модуля: отсчёт штампа
+	 *          времени ведётся от начала 1970 года, и запись прежних лет представить
+	 *          нечем. Проверка эта отвечает за то, чтобы разбор такой записи не выдал
+	 *          начало эпохи за честный её разбор
+	 *
+	 * @details Смещение временной зоны проверяется на попадание в промежуток земных
+	 *          поясов: запись вида «+9999» разбор принимал и накладывал смещение в сто
+	 *          часов, унося момент записи на четверо суток
+	 *
+	 * @param year         полное обозначение года
 	 * @param month        номер месяца
 	 * @param date         число месяца
 	 * @param hour         количество часов
@@ -1180,12 +1236,21 @@ namespace {
 	 * @param seconds      количество секунд
 	 * @param milliseconds количество миллисекунд
 	 * @param leap         признак високосного года
+	 * @param offset       смещение временной зоны в секундах
 	 * @return             признак допустимости составляющих
 	 *
 	 */
-	inline bool validDate(const uint8_t month, const uint8_t date, const uint8_t hour,
+	inline bool validDate(const uint16_t year, const uint8_t month, const uint8_t date, const uint8_t hour,
 	                      const uint8_t minutes, const uint8_t seconds, const uint32_t milliseconds,
-	                      const bool leap) noexcept {
+	                      const bool leap, const int32_t offset) noexcept {
+		// Год лежит в пределах представимости календаря модуля
+		if((year < 1970) || (year > MAX_YEAR))
+			// Составляющие даты недопустимы
+			return false;
+		// Смещение временной зоны лежит в промежутке земных поясов
+		if((offset < MIN_ZONE_OFFSET) || (offset > MAX_ZONE_OFFSET))
+			// Составляющие даты недопустимы
+			return false;
 		// Номер месяца лежит в пределах от первого до двенадцатого
 		if((month < 1) || (month > 12))
 			// Составляющие даты недопустимы
@@ -1581,8 +1646,17 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		/**
+		 * Год ранее 1970-го штампом времени не представим: отсчёт миллисекунд ведётся
+		 * от начала этого года. Разность лет считалась в разрядности поля года, и
+		 * запись 1969 года сворачивалась в шестьдесят три тысячи прошедших лет, давая
+		 * штамп времени порядка двух квадриллионов вместо отказа
+		 */
+		if(dt.year < 1970)
+			// Выводим начало эпохи
+			return 0;
 		// Определяем количество прошедших лет
-		const uint16_t lastYears = (dt.year > 0 ? (dt.year - 1970) : 0);
+		const uint16_t lastYears = (dt.year - 1970);
 		// Определяем количество прошедших високосных лет
 		const uint16_t leapCount = (lastYears > 0 ? this->leapYears(lastYears) : 0);
 		// Получаем штамп времени начала года
@@ -1607,14 +1681,34 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		result += (static_cast <uint64_t> (date - 1) * static_cast <uint64_t> (86400000));
 		// Увеличиваем на количество часов
 		result += (static_cast <uint64_t> (dt.hour) * static_cast <uint64_t> (3600000));
-		// Увеличиваем на указанное смещение времени
-		result += static_cast <uint64_t> (dt.offset * 1000);
 		// Увеличиваем на количество минут
 		result += (static_cast <uint64_t> (dt.minutes) * static_cast <uint64_t> (60000));
 		// Увеличиваем на количество секунд
 		result += (static_cast <uint64_t> (dt.seconds) * static_cast <uint64_t> (1000));
 		// Увеличиваем на количество миллисекунд
 		result += static_cast <uint64_t> (dt.milliseconds);
+		/**
+		 * Смещение временной зоны накладывается последним и в знаковой разрядности:
+		 * произведение считалось в разрядности int и переполнялось на смещениях свыше
+		 * шестисот часов, а местная полночь первого дня эпохи в зоне восточнее UTC
+		 * приходится на момент до её начала, и беззнаковый оборот давал вместо нуля
+		 * штамп времени порядка восемнадцати квинтиллионов
+		 */
+		const int64_t offset = (static_cast <int64_t> (dt.offset) * 1000);
+		// Если смещение временной зоны уводит штамп времени до начала эпохи
+		if((offset < 0) && (static_cast <uint64_t> (-offset) > result))
+			// Выводим начало эпохи
+			return 0;
+		// Накладываем смещение временной зоны
+		result += static_cast <uint64_t> (offset);
+		/**
+		 * Смещение зоны западнее UTC уводит последний момент 9999 года за предел
+		 * представимости: местная полночь там наступает позже, чем в нулевой зоне.
+		 * Штамп времени приводится к последнему представимому, как это делает и
+		 * обратное разложение, - иначе разбор выдавал бы штамп, который формирование
+		 * записи прочитать обратно уже не могло
+		 */
+		result = ::clampDate(result);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1645,7 +1739,12 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
  * @param dt   объект даты который необходимо заполнить
  *
  */
-void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
+void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
+	/**
+	 * Штамп времени за пределом представимости приводится к последнему представимому:
+	 * разложение таких штампов давало несуществующие даты и неопределённое поведение
+	 */
+	const uint64_t date = ::clampDate(stamp);
 	// Если дата передана
 	if(date > 0){
 		/**
@@ -2377,7 +2476,12 @@ std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t
  * @return     конец указанной даты в формате UnixTimestamp
  *
  */
-uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept {
+uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcept {
+	/**
+	 * Штамп времени за пределом представимости приводится к последнему представимому:
+	 * разложение таких штампов давало несуществующие даты и неопределённое поведение
+	 */
+	const uint64_t date = ::clampDate(stamp);
 	// Переменная результата
 	uint64_t result = 0;
 	// Если дата передана
@@ -2509,7 +2613,12 @@ uint64_t awh::Chrono::end(const type_t type, const storage_t storage) const noex
  * @return     начало указанной даты в формате UnixTimestamp
  *
  */
-uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexcept {
+uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexcept {
+	/**
+	 * Штамп времени за пределом представимости приводится к последнему представимому:
+	 * разложение таких штампов давало несуществующие даты и неопределённое поведение
+	 */
+	const uint64_t date = ::clampDate(stamp);
 	// Переменная результата
 	uint64_t result = 0;
 	// Если дата передана
@@ -2678,7 +2787,12 @@ uint64_t awh::Chrono::begin(const type_t type, const storage_t storage) const no
  * @return       результат вычисления
  *
  */
-uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type_t type, const actual_t actual) const noexcept {
+uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const type_t type, const actual_t actual) const noexcept {
+	/**
+	 * Штамп времени за пределом представимости приводится к последнему представимому:
+	 * разложение таких штампов давало несуществующие даты и неопределённое поведение
+	 */
+	const uint64_t date = ::clampDate(stamp);
 	// Переменная результата
 	uint64_t result = 0;
 	// Если дата передана
@@ -4517,15 +4631,21 @@ uint64_t awh::Chrono::offset(const uint64_t value, const type_t type, const offs
  * @return        обозначение времени с указанием размерности
  *
  */
-string awh::Chrono::seconds(const double seconds) const noexcept {
+string awh::Chrono::seconds(const double duration) const noexcept {
 	// Переменная результата
 	string result = "0s";
 	// Если количество секунд передано
-	if(seconds > 0.){
+	if(duration != 0.){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			/**
+			 * Обозначение собирается по величине продолжительности, а знак дописывается
+			 * к готовому: разбор обозначения знак читает, и вывод обязан его писать -
+			 * иначе продолжительность в минус два часа выводилась обозначением «0s»
+			 */
+			const double seconds = ((duration < 0.) ? -duration : duration);
 			// Шаблон минуты
 			const double minute = 60.;
 			// Шаблон часа
@@ -4581,6 +4701,10 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
 				// Добавляем наименование единицы измерения
 				result.append(1, 's');
 			}
+			// Если продолжительность отрицательна
+			if(duration < 0.)
+				// Дописываем знак продолжительности к готовому обозначению
+				result.insert(result.begin(), 1, '-');
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4590,7 +4714,7 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(seconds), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(duration), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4803,7 +4927,12 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
  * @param date дата для извлечения года
  *
  */
-uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
+uint16_t awh::Chrono::year(const uint64_t stamp) const noexcept {
+	/**
+	 * Штамп времени за пределом представимости приводится к последнему представимому:
+	 * разложение таких штампов давало несуществующие даты и неопределённое поведение
+	 */
+	const uint64_t date = ::clampDate(stamp);
 	// Переменная результата
 	uint16_t result = 0;
 	/**
@@ -7678,6 +7807,15 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 			const matches_t match = ::parseZoneFull(zone.data(), zone.size());
 			// Если совпадение получено
 			if(!match.empty()){
+				/**
+				 * Смещение собирается от нуля, а не от смещения, установленного объекту:
+				 * обозначение задаёт временную зону целиком, а не поправку к текущей.
+				 * Сбор от установленного смещения превращал метод в накапливающий, и
+				 * повторный его вызов с тем же обозначением давал вдвое большее смещение
+				 */
+				int32_t offset = 0;
+				// Признак того, что обозначение задало смещение временной зоны
+				bool assigned = false;
 				// Название временной зоны, указанное перед смещением
 				string name;
 				// Если название временной зоны указано
@@ -7687,29 +7825,69 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 				// Выполняем поиск временной зоны в списке временных зон
 				auto i = this->_timeZones.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
 				// Если временная зона найдена
-				if(i != this->_timeZones.end())
+				if(i != this->_timeZones.end()){
 					// Устанавливаем значение временной зоны
-					result = i->second;
+					offset = i->second;
+					// Обозначение задало смещение временной зоны
+					assigned = true;
 				// Если временная зона не найдена
-				else {
+				} else {
 					// Признак того, что смещение, указанное за названием зоны, следует наложить
 					bool apply = true;
 					// Если название временной зоны получено
 					if(!name.empty()){
 						// Если название временной зоны является числом
 						if(this->_fmk->is(name, fmk_t::check_t::NUMBER)){
-							// Получаем время смещения
-							result += (this->_fmk->atoi <int32_t> (name) * 3600);
-							// Смещение задано самим названием зоны, накладывать его повторно не нужно
-							apply = false;
+							// Получаем количество часов смещения, заданное самим названием зоны
+							const int64_t hours = this->_fmk->atoi <int64_t> (name);
+							/**
+							 * Название зоны числом означает целое количество часов смещения, и
+							 * ограничивать его необходимо: произведение считалось в разрядности
+							 * int и переполнялось на названиях от шестисот тысяч, а название
+							 * «999» задавало смещение в тысячу часов, уводившее в разнос всякий
+							 * последующий расчёт даты
+							 */
+							if((hours >= (MIN_ZONE_OFFSET / 3600)) && (hours <= (MAX_ZONE_OFFSET / 3600))){
+								// Получаем время смещения
+								offset = static_cast <int32_t> (hours * 3600);
+								// Обозначение задало смещение временной зоны
+								assigned = true;
+								// Смещение задано самим названием зоны, накладывать его повторно не нужно
+								apply = false;
+							}
 						// Получаем смещение времени по найденной в таблице соответствия временной зоне
-						} else result = this->getTimeZone(this->matchTimeZone(name));
+						} else {
+							// Выполняем матчинг временной зоны по её названию
+							const zone_t item = this->matchTimeZone(name);
+							// Если временная зона по названию определена
+							if(item != zone_t::NONE){
+								// Получаем смещение найденной временной зоны
+								offset = this->getTimeZone(item);
+								// Обозначение задало смещение временной зоны
+								assigned = true;
+							}
+						}
 					}
 					// Если смещение следует наложить
-					if(apply)
-						// Накладываем разобранное смещение временной зоны
-						result += ::readZoneOffset(zone.data(), match[3], match[4], match[5], match[6]);
+					if(apply && (match[3].end > match[3].begin)){
+						// Получаем разобранное смещение временной зоны
+						const int32_t value = ::readZoneOffset(zone.data(), match[3], match[4], match[5], match[6]);
+						/**
+						 * Обозначение зоны со смещением за промежутком земных поясов не
+						 * означает ничего: запись «-99999» давала смещение в сто часов
+						 */
+						if((value >= MIN_ZONE_OFFSET) && (value <= MAX_ZONE_OFFSET)){
+							// Накладываем разобранное смещение временной зоны
+							offset += value;
+							// Обозначение задало смещение временной зоны
+							assigned = true;
+						}
+					}
 				}
+				// Если обозначение задало смещение временной зоны
+				if(assigned)
+					// Устанавливаем заданное обозначением смещение временной зоны
+					result = offset;
 			}
 		/**
 		 * Если возникает ошибка
@@ -9018,8 +9196,9 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Запись пригодна, если разобрана каждая переменная формата и поля допустимы
 					(* valid) = (
 						(pos > -1) && ::validDate(
-							this->_dt.month, this->_dt.date, this->_dt.hour, this->_dt.minutes,
-							this->_dt.seconds, this->_dt.milliseconds, this->leap(this->_dt.year)
+							this->_dt.year, this->_dt.month, this->_dt.date, this->_dt.hour,
+							this->_dt.minutes, this->_dt.seconds, this->_dt.milliseconds,
+							this->leap(this->_dt.year), offset
 						)
 					);
 				// Выполняем формирование UnixTimestamp
@@ -9057,6 +9236,12 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Устанавливаем смещение временной зоны по умолчанию
 					dt.offset = this->getTimeZone();
 				}
+				/**
+				 * Смещение временной зоны запоминается до инверсии: сборка штампа времени
+				 * его вычитает, приводя запись к UTC, и хранит потому с обратным знаком,
+				 * а проверка пригодности рассуждает о смещении так же, как сама запись
+				 */
+				const int32_t offset = dt.offset;
 				// Если смещение временной зоны установлено
 				if(dt.offset != 0)
 					// Выполняем инверсию
@@ -9098,8 +9283,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Запись пригодна, если разобрана каждая переменная формата и поля допустимы
 					(* valid) = (
 						(pos > -1) && ::validDate(
-							dt.month, dt.date, dt.hour, dt.minutes,
-							dt.seconds, dt.milliseconds, this->leap(dt.year)
+							dt.year, dt.month, dt.date, dt.hour,
+							dt.minutes, dt.seconds, dt.milliseconds, this->leap(dt.year), offset
 						)
 					);
 				// Выполняем формирование UnixTimestamp

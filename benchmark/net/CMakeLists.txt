@@ -63,6 +63,27 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks ADDR submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_ADDR_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для подмодуля работы с идентификаторами ресурсов
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_URI_BENCHMARK "Build URI benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для подмодуля работы с идентификаторами ресурсов
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_URI_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для подмодуля работы с идентификаторами ресурсов
+        message(STATUS "Build benchmarks URI submodule: Yes\n")
+        # Дополняем список источников бенчмарками для подмодуля работы с идентификаторами ресурсов
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            uri/uri.cpp
+            uri/parse.cpp
+            uri/print.cpp
+            uri/etag.cpp
+            uri/access.cpp
+        )
+    # Если не нужно собрать бенчмарки для подмодуля работы с идентификаторами ресурсов
+    else()
+        # Выводим сообщение о сборке бенчмарков для подмодуля работы с идентификаторами ресурсов
+        message(STATUS "Build benchmarks URI submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_URI_BENCHMARK})
+
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 
