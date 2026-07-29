@@ -55,7 +55,7 @@ namespace {
 	static constexpr double PARSE_IPV6_THRESHOLD = 800000.0;
 	static constexpr double PRINT_IPV4_THRESHOLD = 3400000.0;
 	static constexpr double PRINT_IPV6_THRESHOLD = 1700000.0;
-	static constexpr double HOST_THRESHOLD = 600000.0;
+	static constexpr double HOST_THRESHOLD = 1400000.0;
 	static constexpr double MAPPING_THRESHOLD = 850000.0;
 	/**
 	 * @brief Пороги количества выделений памяти на одну операцию
