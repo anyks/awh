@@ -686,6 +686,24 @@ namespace awh {
 			 *
 			 */
 			string print(const format_size_t size = format_size_t::NONE, const format_flag_t flag = format_flag_t::NONE, const char delim = -1) const noexcept;
+			/**
+			 * @brief Метод записи IP-адреса в накопитель в виде строки
+			 *
+			 * @details Запись дописывается в конец накопителя, а не замещает его
+			 *          содержимое: сборщику строки, склеивающему её из частей, запись
+			 *          адреса нужна не сама по себе, а на своём месте в накопителе.
+			 *          Возвращающая же перегрузка обходится ему выделением памяти под
+			 *          саму отдаваемую строку - запись IPv6-адреса длиннее порога
+			 *          размещения строки внутри объекта, - и всё это выделение уходит
+			 *          на перенос трёх десятков октетов в накопитель, который уже есть.
+			 *
+			 * @param result накопитель, в который дописывается строка IP-адреса
+			 * @param size   размер формата вывода IP-адреса
+			 * @param flag   флаг формата вывода IP-адреса
+			 * @param delim  разделитель для формата вывода IP-адреса
+			 *
+			 */
+			void print(string & result, const format_size_t size = format_size_t::NONE, const format_flag_t flag = format_flag_t::NONE, const char delim = -1) const noexcept;
 		public:
 			/**
 			 * @brief Оператор вывода IP-адреса в качестве строки

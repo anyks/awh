@@ -4419,6 +4419,35 @@ bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 string awh::Network_Address::print(const format_size_t size, const format_flag_t flag, const char delim) const noexcept {
 	// Переменная результата
 	string result = "";
+	// Выполняем запись IP-адреса в результат
+	this->print(result, size, flag, delim);
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод записи данных IP-адреса в накопитель
+ *
+ * @details Запись дописывается в конец накопителя, а не замещает его содержимое:
+ *          сборщику строки, склеивающему её из частей, запись адреса нужна не сама
+ *          по себе, а на своём месте в накопителе. Возвращающая же перегрузка
+ *          обходится ему выделением памяти под саму отдаваемую строку - запись
+ *          IPv6-адреса длиннее порога размещения строки внутри объекта, - и всё это
+ *          выделение уходит на перенос трёх десятков октетов в накопитель, который
+ *          уже есть.
+ *
+ * @param result накопитель, в который дописывается строка IP-адреса
+ * @param size   размер формата формирования IP-адреса
+ * @param flag   флаг форматирования IP-адреса
+ * @param delim  разделитель формата формирования IP-адреса
+ *
+ */
+void awh::Network_Address::print(string & result, const format_size_t size, const format_flag_t flag, const char delim) const noexcept {
+	/**
+	 * Запоминаем позицию, с которой начинается дописываемая запись адреса: накопитель
+	 * приходит снаружи и своё содержимое в нём уже может быть, а вся работа ниже
+	 * ведётся по указателю в него и обрезкой его хвоста
+	 */
+	const size_t offset = result.size();
 	// Если бинарный буфер данных существует
 	if(!this->_buffer.empty()){
 		/**
@@ -4458,10 +4487,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель не указан
 										if(delim == 0){
 											// Перераспределяем объект результата
-											result.resize(12);
+											result.resize(offset + 12);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%02X%02X%02X%02X%02X%02X",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4470,10 +4499,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель указан
 										} else {
 											// Перераспределяем объект результата
-											result.resize(17);
+											result.resize(offset + 17);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%02X%c%02X%c%02X%c%02X%c%02X%c%02X",
 												this->_buffer[0], delim, this->_buffer[1], delim,
 												this->_buffer[2], delim, this->_buffer[3], delim,
@@ -4486,10 +4515,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель не указан
 										if(delim == 0){
 											// Перераспределяем объект результата
-											result.resize(18);
+											result.resize(offset + 18);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%02u%02u%02u%02u%02u%02u",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4498,10 +4527,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель указан
 										} else {
 											// Перераспределяем объект результата
-											result.resize(23);
+											result.resize(offset + 23);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%02u%c%02u%c%02u%c%02u%c%02u%c%02u",
 												this->_buffer[0], delim, this->_buffer[1], delim,
 												this->_buffer[2], delim, this->_buffer[3], delim,
@@ -4514,10 +4543,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель не указан
 										if(delim == 0){
 											// Перераспределяем объект результата
-											result.resize(18);
+											result.resize(offset + 18);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%02o%02o%02o%02o%02o%02o",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4526,10 +4555,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель указан
 										} else {
 											// Перераспределяем объект результата
-											result.resize(23);
+											result.resize(offset + 23);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%02o%c%02o%c%02o%c%02o%c%02o%c%02o",
 												this->_buffer[0], delim, this->_buffer[1], delim,
 												this->_buffer[2], delim, this->_buffer[3], delim,
@@ -4552,10 +4581,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель не указан
 										if(delim == 0){
 											// Перераспределяем объект результата
-											result.resize(12);
+											result.resize(offset + 12);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%X%X%X%X%X%X",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4564,10 +4593,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель указан
 										} else {
 											// Перераспределяем объект результата
-											result.resize(17);
+											result.resize(offset + 17);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%X%c%X%c%X%c%X%c%X%c%X",
 												this->_buffer[0], delim, this->_buffer[1], delim,
 												this->_buffer[2], delim, this->_buffer[3], delim,
@@ -4580,10 +4609,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель не указан
 										if(delim == 0){
 											// Перераспределяем объект результата
-											result.resize(18);
+											result.resize(offset + 18);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%u%u%u%u%u%u",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4592,10 +4621,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель указан
 										} else {
 											// Перераспределяем объект результата
-											result.resize(23);
+											result.resize(offset + 23);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%u%c%u%c%u%c%u%c%u%c%u",
 												this->_buffer[0], delim, this->_buffer[1], delim,
 												this->_buffer[2], delim, this->_buffer[3], delim,
@@ -4608,10 +4637,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель не указан
 										if(delim == 0){
 											// Перераспределяем объект результата
-											result.resize(18);
+											result.resize(offset + 18);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%o%o%o%o%o%o",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4620,10 +4649,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель указан
 										} else {
 											// Перераспределяем объект результата
-											result.resize(23);
+											result.resize(offset + 23);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%o%c%o%c%o%c%o%c%o%c%o",
 												this->_buffer[0], delim, this->_buffer[1], delim,
 												this->_buffer[2], delim, this->_buffer[3], delim,
@@ -4646,10 +4675,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель не указан
 										if(delim == 0){
 											// Перераспределяем объект результата
-											result.resize(18);
+											result.resize(offset + 18);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%03X%03X%03X%03X%03X%03X",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4658,10 +4687,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель указан
 										} else {
 											// Перераспределяем объект результата
-											result.resize(23);
+											result.resize(offset + 23);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%03X%c%03X%c%03X%c%03X%c%03X%c%03X",
 												this->_buffer[0], delim, this->_buffer[1], delim,
 												this->_buffer[2], delim, this->_buffer[3], delim,
@@ -4674,10 +4703,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель не указан
 										if(delim == 0){
 											// Перераспределяем объект результата
-											result.resize(18);
+											result.resize(offset + 18);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%03u%03u%03u%03u%03u%03u",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4686,10 +4715,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель указан
 										} else {
 											// Перераспределяем объект результата
-											result.resize(23);
+											result.resize(offset + 23);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%03u%c%03u%c%03u%c%03u%c%03u%c%03u",
 												this->_buffer[0], delim, this->_buffer[1], delim,
 												this->_buffer[2], delim, this->_buffer[3], delim,
@@ -4702,10 +4731,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель не указан
 										if(delim == 0){
 											// Перераспределяем объект результата
-											result.resize(18);
+											result.resize(offset + 18);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%03o%03o%03o%03o%03o%03o",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4714,10 +4743,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Если разделитель указан
 										} else {
 											// Перераспределяем объект результата
-											result.resize(23);
+											result.resize(offset + 23);
 											// Выполняем получение MAC адреса
 											pos = ::sprintf(
-												&result[0],
+												&result[offset],
 												"%03o%c%03o%c%03o%c%03o%c%03o%c%03o",
 												this->_buffer[0], delim, this->_buffer[1], delim,
 												this->_buffer[2], delim, this->_buffer[3], delim,
@@ -4755,10 +4784,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(12);
+										result.resize(offset + 12);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%u%u%u%u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -4766,10 +4795,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(15);
+										result.resize(offset + 15);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%u%c%u%c%u%c%u",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -4785,10 +4814,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(8);
+										result.resize(offset + 8);
 										// Выполняем получение IPv4 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%X%X%X%X",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -4796,10 +4825,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(11);
+										result.resize(offset + 11);
 										// Выполняем получение IPv4 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%X%c%X%c%X%c%X",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -4815,10 +4844,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(12);
+										result.resize(offset + 12);
 										// Выполняем получение IPv4 адреса в 8-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%o%o%o%o",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -4826,10 +4855,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(15);
+										result.resize(offset + 15);
 										// Выполняем получение IPv4 адреса в 8-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%o%c%o%c%o%c%o",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -4845,10 +4874,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(12);
+										result.resize(offset + 12);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%u%u%u%u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -4856,10 +4885,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(22);
+										result.resize(offset + 22);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"::FFFF:%u%c%u%c%u%c%u",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -4875,10 +4904,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(8);
+										result.resize(offset + 8);
 										// Выполняем получение IPv4 адреса в формате IPv6
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%X%X",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -4886,10 +4915,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(16);
+										result.resize(offset + 16);
 										// Выполняем получение IPv4 адреса в формате IPv6
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%c%cFFFF%c%X%c%X", delim, delim, delim,
 											(this->_buffer[0] << 8) | this->_buffer[1], delim,
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -4915,10 +4944,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(12);
+										result.resize(offset + 12);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02u%02u%02u%02u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -4926,10 +4955,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(15);
+										result.resize(offset + 15);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02u%c%02u%c%02u%c%02u",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -4945,10 +4974,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(8);
+										result.resize(offset + 8);
 										// Выполняем получение IPv4 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02X%02X%02X%02X",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -4956,10 +4985,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(11);
+										result.resize(offset + 11);
 										// Выполняем получение IPv4 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02X%c%02X%c%02X%c%02X",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -4975,10 +5004,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(12);
+										result.resize(offset + 12);
 										// Выполняем получение IPv4 адреса в 8-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02o%02o%02o%02o",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -4986,10 +5015,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(15);
+										result.resize(offset + 15);
 										// Выполняем получение IPv4 адреса в 8-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02o%c%02o%c%02o%c%02o",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -5005,10 +5034,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(12);
+										result.resize(offset + 12);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02u%02u%02u%02u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5016,10 +5045,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(22);
+										result.resize(offset + 22);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"::FFFF:%02u%c%02u%c%02u%c%02u",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -5035,10 +5064,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(8);
+										result.resize(offset + 8);
 										// Выполняем получение IPv4 адреса в формате IPv6
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02X%02X",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -5046,10 +5075,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(16);
+										result.resize(offset + 16);
 										// Выполняем получение IPv4 адреса в формате IPv6
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%c%cFFFF%c%02X%c%02X", delim, delim, delim,
 											(this->_buffer[0] << 8) | this->_buffer[1], delim,
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -5075,10 +5104,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(12);
+										result.resize(offset + 12);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%03u%03u%03u%03u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5086,10 +5115,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(15);
+										result.resize(offset + 15);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%03u%c%03u%c%03u%c%03u",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -5105,10 +5134,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(12);
+										result.resize(offset + 12);
 										// Выполняем получение IPv4 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%03X%03X%03X%03X",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5116,10 +5145,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(15);
+										result.resize(offset + 15);
 										// Выполняем получение IPv4 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%03X%c%03X%c%03X%c%03X",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -5135,10 +5164,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(12);
+										result.resize(offset + 12);
 										// Выполняем получение IPv4 адреса в 8-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%03o%03o%03o%03o",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5146,10 +5175,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(15);
+										result.resize(offset + 15);
 										// Выполняем получение IPv4 адреса в 8-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%03o%c%03o%c%03o%c%03o",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -5165,10 +5194,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(12);
+										result.resize(offset + 12);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%03u%03u%03u%03u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5176,10 +5205,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(22);
+										result.resize(offset + 22);
 										// Выполняем получение IPv4 адреса в 10-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"::FFFF:%03u%c%03u%c%03u%c%03u",
 											this->_buffer[0], delim, this->_buffer[1], delim,
 											this->_buffer[2], delim, this->_buffer[3]
@@ -5195,10 +5224,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(8);
+										result.resize(offset + 8);
 										// Выполняем получение IPv4 адреса в формате IPv6
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%04X%04X",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -5206,10 +5235,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(16);
+										result.resize(offset + 16);
 										// Выполняем получение IPv4 адреса в формате IPv6
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%c%cFFFF%c%04X%c%04X", delim, delim, delim,
 											(this->_buffer[0] << 8) | this->_buffer[1], delim,
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -5255,7 +5284,7 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 								// Если разрешено выводить только формат IPv6
 								case static_cast <uint8_t> (format_flag_t::HEX_IPV6): {
 									// Перераспределяем объект результата под максимальный размер HEX-формата (x:x:x:x:x:x:w.x.y.z)
-									result.resize(45);
+									result.resize(offset + 45);
 									// 2. Проверка IPv4-встраивания (опционально)
 									bool useIPv4 = false;
 									// Если формат зеркального вещания IPv4 => IPv6 активен
@@ -5280,29 +5309,29 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 											// Если хекстет 5 равен FFFF
 											if(hexets[5] == 0xFFFF)
 												// Возвращаем результат в формате ::FFFF:w.x.y.z
-												pos = ::sprintf(&result[0], "%c%cFFFF%c%u.%u.%u.%u", delim, delim, delim, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
+												pos = ::sprintf(&result[offset], "%c%cFFFF%c%u.%u.%u.%u", delim, delim, delim, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
 											// Возвращаем результат в формате ::w.x.y.z
-											else pos = ::sprintf(&result[0], "%c%c%u.%u.%u.%u", delim, delim, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
+											else pos = ::sprintf(&result[offset], "%c%c%u.%u.%u.%u", delim, delim, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
 										// Возвращаем результат в формате x:x:x:x:x:x:w.x.y.z
-										} else pos = ::sprintf(&result[0], "%X%c%X%c%X%c%X%c%X%c%X%c%u.%u.%u.%u", hexets[0], delim, hexets[1], delim, hexets[2], delim, hexets[3], delim, hexets[4], delim, hexets[5], delim, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
+										} else pos = ::sprintf(&result[offset], "%X%c%X%c%X%c%X%c%X%c%X%c%u.%u.%u.%u", hexets[0], delim, hexets[1], delim, hexets[2], delim, hexets[3], delim, hexets[4], delim, hexets[5], delim, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
 									// Если нужно использовать стандартный вывод IPv6
 									} else
 										// Формируем сжатую строку IPv6 в шестнадцатеричном виде
-										pos = ::emitIPv6(&result[0], hexets, 'X', delim);
+										pos = ::emitIPv6(&result[offset], hexets, 'X', delim);
 								} break;
 								// Если формат указан в 10-м виде
 								case static_cast <uint8_t> (format_flag_t::DECIMAL): {
 									// Перераспределяем объект результата под максимальный размер DECIMAL-формата (8*5 + 7)
-									result.resize(48);
+									result.resize(offset + 48);
 									// Формируем сжатую строку IPv6 в десятичном виде
-									pos = ::emitIPv6(&result[0], hexets, 'u', delim);
+									pos = ::emitIPv6(&result[offset], hexets, 'u', delim);
 								} break;
 								// Если формат указан в 8-м виде
 								case static_cast <uint8_t> (format_flag_t::OCTAL): {
 									// Перераспределяем объект результата под максимальный размер OCTAL-формата (8*6 + 7)
-									result.resize(56);
+									result.resize(offset + 56);
 									// Формируем сжатую строку IPv6 в восьмеричном виде
-									pos = ::emitIPv6(&result[0], hexets, 'o', delim);
+									pos = ::emitIPv6(&result[offset], hexets, 'o', delim);
 								} break;
 							}
 						} break;
@@ -5321,10 +5350,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(32);
+										result.resize(offset + 32);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%X%X%X%X%X%X%X%X",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3],
@@ -5338,10 +5367,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(39);
+										result.resize(offset + 39);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%X%c%X%c%X%c%X%c%X%c%X%c%X%c%X",
 											(this->_buffer[0] << 8) | this->_buffer[1], delim,
 											(this->_buffer[2] << 8) | this->_buffer[3], delim,
@@ -5359,10 +5388,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(39);
+										result.resize(offset + 39);
 										// Возвращаем результат в формате xxxxxxwx.y.z
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02X%02X%02X%02X%02X%02X%u.%u.%u.%u",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3],
@@ -5375,10 +5404,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(45);
+										result.resize(offset + 45);
 										// Возвращаем результат в формате x:x:x:x:x:x:w.x.y.z
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02X%c%02X%c%02X%c%02X%c%02X%c%02X%c%u.%u.%u.%u",
 											(this->_buffer[0] << 8) | this->_buffer[1], delim,
 											(this->_buffer[2] << 8) | this->_buffer[3], delim,
@@ -5395,10 +5424,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(45);
+										result.resize(offset + 45);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%u%u%u%u%u%u%u%u",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3],
@@ -5412,10 +5441,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(47);
+										result.resize(offset + 47);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%u%c%u%c%u%c%u%c%u%c%u%c%u%c%u",
 											(this->_buffer[0] << 8) | this->_buffer[1], delim,
 											(this->_buffer[2] << 8) | this->_buffer[3], delim,
@@ -5433,10 +5462,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(48);
+										result.resize(offset + 48);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%o%o%o%o%o%o%o%o",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3],
@@ -5450,10 +5479,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(55);
+										result.resize(offset + 55);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%o%c%o%c%o%c%o%c%o%c%o%c%o%c%o",
 											(this->_buffer[0] << 8) | this->_buffer[1], delim,
 											(this->_buffer[2] << 8) | this->_buffer[3], delim,
@@ -5483,10 +5512,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(32);
+										result.resize(offset + 32);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3],
@@ -5500,10 +5529,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(39);
+										result.resize(offset + 39);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X",
 											this->_buffer[0], this->_buffer[1], delim,
 											this->_buffer[2], this->_buffer[3], delim,
@@ -5521,10 +5550,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(39);
+										result.resize(offset + 39);
 										// Возвращаем результат в формате xxxxxxwx.y.z
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%04X%04X%04X%04X%04X%04X%u.%u.%u.%u",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3],
@@ -5537,10 +5566,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(45);
+										result.resize(offset + 45);
 										// Возвращаем результат в формате x:x:x:x:x:x:w.x.y.z
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%04X%c%04X%c%04X%c%04X%c%04X%c%04X%c%u.%u.%u.%u",
 											(this->_buffer[0] << 8) | this->_buffer[1], delim,
 											(this->_buffer[2] << 8) | this->_buffer[3], delim,
@@ -5557,10 +5586,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(45);
+										result.resize(offset + 45);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%03u%03u%03u%03u%03u%03u%03u%03u",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3],
@@ -5574,10 +5603,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(47);
+										result.resize(offset + 47);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%03u%c%03u%c%03u%c%03u%c%03u%c%03u%c%03u%c%03u",
 											(this->_buffer[0] << 8) | this->_buffer[1], delim,
 											(this->_buffer[2] << 8) | this->_buffer[3], delim,
@@ -5595,10 +5624,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель не указан
 									if(delim == 0){
 										// Перераспределяем объект результата
-										result.resize(48);
+										result.resize(offset + 48);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%03o%03o%03o%03o%03o%03o%03o%03o",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3],
@@ -5612,10 +5641,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 									// Если разделитель указан
 									} else {
 										// Перераспределяем объект результата
-										result.resize(55);
+										result.resize(offset + 55);
 										// Выполняем получение IPv6 адреса в 16-м формате
 										pos = ::sprintf(
-											&result[0],
+											&result[offset],
 											"%03o%c%03o%c%03o%c%03o%c%03o%c%03o%c%03o%c%03o",
 											(this->_buffer[0] << 8) | this->_buffer[1], delim,
 											(this->_buffer[2] << 8) | this->_buffer[3], delim,
@@ -5636,13 +5665,13 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 			// Если позиция заполнения больше нуля
 			if(pos > 0)
 				// Обрезаем результат по фактической длине
-				result.resize(pos);
-			// Если результат не пустой
-			if(!result.empty()){
+				result.resize(offset + pos);
+			// Если запись адреса дописана
+			if(result.size() > offset){
 				// Определяем размер строки
 				const size_t length = result.length();
 				// Позиции начала и конца обрезанной строки
-				size_t i = 0, j = length;
+				size_t i = offset, j = length;
 				/**
 				 * Выполняем обрезку пробелов в начале и конце строки
 				 */
@@ -5659,10 +5688,10 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 				if(j < length)
 					// Удаляем лишние символы с конца строки
 					result.erase(j);
-				// Если нужно удалить определённое количество символов с начала строки
-				if(i > 0)
-					// Удаляем лишние символы с начала строки
-					result.erase(0, i);
+				// Если нужно удалить определённое количество символов с начала записи
+				if(i > offset)
+					// Удаляем лишние символы с начала записи
+					result.erase(offset, i - offset);
 			}
 		/**
 		 * Если возникает ошибка
@@ -5695,26 +5724,31 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 			// Если - это не IP-адрес, а MAC-адрес
 			case static_cast <uint8_t> (type_t::MAC):
 				// Устанавливаем MAC-адрес по умолчанию
-				result = "00:00:00:00:00:00";
+				result.append("00:00:00:00:00:00");
 			break;
 			// Если IP-адрес определён как IPv4
 			case static_cast <uint8_t> (type_t::IPV4):
 				// Устанавливаем IPv4-адрес по умолчанию
-				result = "0.0.0.0";
+				result.append("0.0.0.0");
 			break;
 			// Если IP-адрес определён как IPv6
 			case static_cast <uint8_t> (type_t::IPV6):
 				// Устанавливаем IPv6-адрес по умолчанию
-				result = "::";
+				result.append("::");
 			break;
 		}
 	}
-	// Если результат не пустой и зона адреса определена
-	if(!result.empty() && !this->_zone.empty())
-		// Добавляем зону адреса к результату
-		result.append('%' + this->_zone);
-	// Возвращаем результат
-	return result;
+	/**
+	 * Если запись адреса дописана и зона адреса определена, дописываем и её.
+	 * Разделитель дописывается отдельно: склейка его с зоной заводила бы временную
+	 * строку, а вся суть этой перегрузки в том, чтобы временных строк не заводить
+	 */
+	if((result.size() > offset) && !this->_zone.empty()){
+		// Дописываем разделитель зоны адреса
+		result.append(1, '%');
+		// Дописываем зону адреса
+		result.append(this->_zone);
+	}
 }
 /**
  * @brief Оператор вывода IP-адреса в качестве строки

@@ -1420,33 +1420,69 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 				} break;
 				// Если атрибуты URI адреса являются IPv4-адресом
 				case static_cast <uint8_t> (net::type_t::IPV4): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					// Извлекаем копируемые атрибуты URI адреса как сетевой адрес
+					const net::attr_net_t * source = awh_cast <const net::attr_net_t *> (attr);
+					/**
+					 * Если атрибуты URI не инициализированы либо инициализированы иной
+					 * разновидностью, заводим их заново: приведение атрибутов имени к
+					 * атрибутам сетевого адреса разновидностей не меняет
+					 */
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::IPV4)){
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_net_t> ();
-					// Если IP-адрес хоста в атрибутах URI адреса не инициализирован
-					if(awh_cast <net::attr_net_t *> (this->_attr.get())->ip == nullptr)
-						// Инициализируем IP-адрес хоста в атрибутах URI адреса
-						awh_cast <net::attr_net_t *> (this->_attr.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+						// Устанавливаем тип атрибутов URI адреса
+						this->_attr->type = net::type_t::IPV4;
+					}
+					// Извлекаем атрибуты URI адреса как сетевой адрес
+					net::attr_net_t * target = awh_cast <net::attr_net_t *> (this->_attr.get());
 					// Копируем порт хоста из атрибутов URI адреса
-					awh_cast <net::attr_net_t *> (this->_attr.get())->port = awh_cast <const net::attr_net_t *> (attr)->port;
-					// Копируем IP-адрес хоста из атрибутов URI адреса
-					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (attr)->ip.get())->address;
+					target->port = source->port;
+					// Если копируемый IP-адрес хоста не заведён, сбрасываем и свой
+					if(source->ip == nullptr)
+						// Сбрасываем IP-адрес хоста в атрибутах URI адреса
+						target->ip.reset(nullptr);
+					// Иначе копируем IP-адрес хоста
+					else {
+						// Если свой объект IP-адреса хоста не подходит по размеру, заводим его заново
+						if((target->ip == nullptr) || (target->ip->size != 4))
+							// Инициализируем IP-адрес хоста в атрибутах URI адреса
+							target->ip = make_unique <net::addr_net_ipv4_t> ();
+						// Копируем IP-адрес хоста из атрибутов URI адреса
+						awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (source->ip.get())->address;
+					}
 				} break;
 				// Если атрибуты URI адреса являются IPv6-адресом
 				case static_cast <uint8_t> (net::type_t::IPV6): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					// Извлекаем копируемые атрибуты URI адреса как сетевой адрес
+					const net::attr_net_t * source = awh_cast <const net::attr_net_t *> (attr);
+					/**
+					 * Если атрибуты URI не инициализированы либо инициализированы иной
+					 * разновидностью, заводим их заново: приведение атрибутов имени к
+					 * атрибутам сетевого адреса разновидностей не меняет
+					 */
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::IPV6)){
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_net_t> ();
-					// Если IP-адрес хоста в атрибутах URI адреса не инициализирован
-					if(awh_cast <net::attr_net_t *> (this->_attr.get())->ip == nullptr)
-						// Инициализируем IP-адрес хоста в атрибутах URI адреса
-						awh_cast <net::attr_net_t *> (this->_attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+						// Устанавливаем тип атрибутов URI адреса
+						this->_attr->type = net::type_t::IPV6;
+					}
+					// Извлекаем атрибуты URI адреса как сетевой адрес
+					net::attr_net_t * target = awh_cast <net::attr_net_t *> (this->_attr.get());
 					// Копируем порт хоста из атрибутов URI адреса
-					awh_cast <net::attr_net_t *> (this->_attr.get())->port = awh_cast <const net::attr_net_t *> (attr)->port;
-					// Копируем IP-адрес хоста из атрибутов URI адреса
-					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (attr)->ip.get())->address[0], 16);
+					target->port = source->port;
+					// Если копируемый IP-адрес хоста не заведён, сбрасываем и свой
+					if(source->ip == nullptr)
+						// Сбрасываем IP-адрес хоста в атрибутах URI адреса
+						target->ip.reset(nullptr);
+					// Иначе копируем IP-адрес хоста
+					else {
+						// Если свой объект IP-адреса хоста не подходит по размеру, заводим его заново
+						if((target->ip == nullptr) || (target->ip->size != 16))
+							// Инициализируем IP-адрес хоста в атрибутах URI адреса
+							target->ip = make_unique <net::addr_net_ipv6_t> ();
+						// Копируем IP-адрес хоста из атрибутов URI адреса
+						awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address = awh_cast <const net::addr_net_ipv6_t *> (source->ip.get())->address;
+					}
 				} break;
 			}
 			// Устанавливаем тип атрибутов URI адреса
@@ -1500,8 +1536,14 @@ string awh::Uniform_Resource_Identifier::host() const noexcept {
 				case static_cast <uint8_t> (net::type_t::IPV4):
 				// Если атрибуты URI адреса являются IPv6-адресом
 				case static_cast <uint8_t> (net::type_t::IPV6): {
+					// Извлекаем атрибуты URI адреса как сетевой адрес
+					net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
+					// Если IP-адрес хоста в атрибутах URI адреса не заведён, отдавать нечего
+					if(attr->ip == nullptr)
+						// Выводим пустой хост
+						return "";
 					// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-					this->_addr->source(awh_cast <net::attr_net_t *> (this->_attr.get())->ip.get(), net_addr_t::endian_t::LITTLE);
+					this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
 					// Возвращаем IP-адрес хоста в виде строки
 					return static_cast <string> (* this->_addr.get());
 				}
@@ -1849,10 +1891,13 @@ void awh::Uniform_Resource_Identifier::appendHost(string & result, const format_
 			case static_cast <uint8_t> (net::type_t::IPV4): {
 				// Извлекаем атрибуты URI адреса как сетевой адрес
 				net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-				// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-				this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-				// Добавляем IP-адрес хоста в виде строки
-				result.append(static_cast <string> (* this->_addr.get()));
+				// Если IP-адрес хоста в атрибутах URI адреса заведён
+				if(attr->ip != nullptr){
+					// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+					this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+					// Дописываем IP-адрес хоста прямо в результат
+					this->_addr->print(result);
+				}
 				// Добавляем порт хоста в результат с учётом формата генерации
 				this->appendPort(result, attr->port, format);
 			} break;
@@ -1860,14 +1905,17 @@ void awh::Uniform_Resource_Identifier::appendHost(string & result, const format_
 			case static_cast <uint8_t> (net::type_t::IPV6): {
 				// Извлекаем атрибуты URI адреса как сетевой адрес
 				net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-				// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-				this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-				// Добавляем открывающую скобку IPv6-адреса
-				result.append(1, '[');
-				// Добавляем IP-адрес хоста в виде строки
-				result.append(static_cast <string> (* this->_addr.get()));
-				// Добавляем закрывающую скобку IPv6-адреса
-				result.append(1, ']');
+				// Если IP-адрес хоста в атрибутах URI адреса заведён
+				if(attr->ip != nullptr){
+					// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+					this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+					// Добавляем открывающую скобку IPv6-адреса
+					result.append(1, '[');
+					// Дописываем IP-адрес хоста прямо в результат
+					this->_addr->print(result);
+					// Добавляем закрывающую скобку IPv6-адреса
+					result.append(1, ']');
+				}
 				// Добавляем порт хоста в результат с учётом формата генерации
 				this->appendPort(result, attr->port, format);
 			} break;
@@ -2904,10 +2952,13 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							case static_cast <uint8_t> (net::type_t::IPV4): {
 								// Извлекаем атрибуты URI адреса как сетевой адрес
 								net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-								// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-								this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Возвращаем IP-адрес хоста в виде строки
-								result.append(static_cast <string> (* this->_addr.get()));
+								// Если IP-адрес хоста в атрибутах URI адреса заведён
+								if(attr->ip != nullptr){
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Дописываем IP-адрес хоста прямо в результат
+									this->_addr->print(result);
+								}
 								// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
 								if((attr->port != 0) && (attr->port != 25)){
 									// Добавляем разделитель хоста и порта
@@ -2924,14 +2975,17 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							case static_cast <uint8_t> (net::type_t::IPV6): {
 								// Извлекаем атрибуты URI адреса как сетевой адрес
 								net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-								// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
-								this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Добавляем открывающую скобку IPv6-адреса
-								result.append(1, '[');
-								// Добавляем IP-адрес хоста в виде строки
-								result.append(static_cast <string> (* this->_addr.get()));
-								// Добавляем закрывающую скобку IPv6-адреса
-								result.append(1, ']');
+								// Если IP-адрес хоста в атрибутах URI адреса заведён
+								if(attr->ip != nullptr){
+									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
+									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Добавляем открывающую скобку IPv6-адреса
+									result.append(1, '[');
+									// Дописываем IP-адрес хоста прямо в результат
+									this->_addr->print(result);
+									// Добавляем закрывающую скобку IPv6-адреса
+									result.append(1, ']');
+								}
 								// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
 								if((attr->port != 0) && (attr->port != 25)){
 									// Добавляем разделитель хоста и порта
@@ -3152,21 +3206,43 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 							} break;
 							// Если атрибуты URI адреса являются IPv4-адресом
 							case static_cast <uint8_t> (net::type_t::IPV4): {
+								// Извлекаем атрибуты сравниваемых URI адресов как сетевые адреса
+								net::attr_net_t * first = awh_cast <net::attr_net_t *> (this->_attr.get());
+								const net::attr_net_t * second = awh_cast <const net::attr_net_t *> (uri._attr.get());
 								// Выполняем сравнение портов хоста в атрибутах URI адреса
-								result = (awh_cast <net::attr_net_t *> (this->_attr.get())->port == awh_cast <const net::attr_net_t *> (uri._attr.get())->port);
+								result = (first->port == second->port);
 								// Если порты хоста в атрибутах URI адреса равны
-								if(result)
-									// Выполняем сравнение IP-адресов хоста в атрибутах URI адреса
-									result = (awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_attr.get())->ip.get())->address == awh_cast <const net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (uri._attr.get())->ip.get())->address);
+								if(result){
+									/**
+									 * Выполняем сравнение наличия IP-адресов хоста: адрес заводится
+									 * отдельно от самих атрибутов и у них может отсутствовать вовсе
+									 */
+									result = ((first->ip == nullptr) == (second->ip == nullptr));
+									// Если IP-адреса хоста заведены у обоих
+									if(result && (first->ip != nullptr))
+										// Выполняем сравнение IP-адресов хоста в атрибутах URI адреса
+										result = (awh_cast <net::addr_net_ipv4_t *> (first->ip.get())->address == awh_cast <const net::addr_net_ipv4_t *> (second->ip.get())->address);
+								}
 							} break;
 							// Если атрибуты URI адреса являются IPv6-адресом
 							case static_cast <uint8_t> (net::type_t::IPV6): {
+								// Извлекаем атрибуты сравниваемых URI адресов как сетевые адреса
+								net::attr_net_t * first = awh_cast <net::attr_net_t *> (this->_attr.get());
+								const net::attr_net_t * second = awh_cast <const net::attr_net_t *> (uri._attr.get());
 								// Выполняем сравнение портов хоста в атрибутах URI адреса
-								result = (awh_cast <net::attr_net_t *> (this->_attr.get())->port == awh_cast <const net::attr_net_t *> (uri._attr.get())->port);
+								result = (first->port == second->port);
 								// Если порты хоста в атрибутах URI адреса равны
-								if(result)
-									// Выполняем сравнение IP-адресов хоста в атрибутах URI адреса
-									result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (uri._attr.get())->ip.get())->address[0], 16) == 0);
+								if(result){
+									/**
+									 * Выполняем сравнение наличия IP-адресов хоста: адрес заводится
+									 * отдельно от самих атрибутов и у них может отсутствовать вовсе
+									 */
+									result = ((first->ip == nullptr) == (second->ip == nullptr));
+									// Если IP-адреса хоста заведены у обоих
+									if(result && (first->ip != nullptr))
+										// Выполняем сравнение IP-адресов хоста в атрибутах URI адреса
+										result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (first->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (second->ip.get())->address[0], 16) == 0);
+								}
 							} break;
 						}
 					}
@@ -3314,21 +3390,43 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 							} break;
 							// Если атрибуты URI адреса являются IPv4-адресом
 							case static_cast <uint8_t> (net::type_t::IPV4): {
+								// Извлекаем атрибуты сравниваемых URI адресов как сетевые адреса
+								net::attr_net_t * first = awh_cast <net::attr_net_t *> (this->_attr.get());
+								const net::attr_net_t * second = awh_cast <const net::attr_net_t *> (uri._attr.get());
 								// Выполняем сравнение портов хоста в атрибутах URI адреса
-								result = (awh_cast <net::attr_net_t *> (this->_attr.get())->port != awh_cast <const net::attr_net_t *> (uri._attr.get())->port);
+								result = (first->port != second->port);
 								// Если порты хоста в атрибутах URI адреса равны
-								if(!result)
-									// Выполняем сравнение IP-адресов хоста в атрибутах URI адреса
-									result = (awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_attr.get())->ip.get())->address != awh_cast <const net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (uri._attr.get())->ip.get())->address);
+								if(!result){
+									/**
+									 * Выполняем сравнение наличия IP-адресов хоста: адрес заводится
+									 * отдельно от самих атрибутов и у них может отсутствовать вовсе
+									 */
+									result = ((first->ip == nullptr) != (second->ip == nullptr));
+									// Если IP-адреса хоста заведены у обоих
+									if(!result && (first->ip != nullptr))
+										// Выполняем сравнение IP-адресов хоста в атрибутах URI адреса
+										result = (awh_cast <net::addr_net_ipv4_t *> (first->ip.get())->address != awh_cast <const net::addr_net_ipv4_t *> (second->ip.get())->address);
+								}
 							} break;
 							// Если атрибуты URI адреса являются IPv6-адресом
 							case static_cast <uint8_t> (net::type_t::IPV6): {
+								// Извлекаем атрибуты сравниваемых URI адресов как сетевые адреса
+								net::attr_net_t * first = awh_cast <net::attr_net_t *> (this->_attr.get());
+								const net::attr_net_t * second = awh_cast <const net::attr_net_t *> (uri._attr.get());
 								// Выполняем сравнение портов хоста в атрибутах URI адреса
-								result = (awh_cast <net::attr_net_t *> (this->_attr.get())->port != awh_cast <const net::attr_net_t *> (uri._attr.get())->port);
+								result = (first->port != second->port);
 								// Если порты хоста в атрибутах URI адреса равны
-								if(!result)
-									// Выполняем сравнение IP-адресов хоста в атрибутах URI адреса
-									result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (uri._attr.get())->ip.get())->address[0], 16) != 0);
+								if(!result){
+									/**
+									 * Выполняем сравнение наличия IP-адресов хоста: адрес заводится
+									 * отдельно от самих атрибутов и у них может отсутствовать вовсе
+									 */
+									result = ((first->ip == nullptr) != (second->ip == nullptr));
+									// Если IP-адреса хоста заведены у обоих
+									if(!result && (first->ip != nullptr))
+										// Выполняем сравнение IP-адресов хоста в атрибутах URI адреса
+										result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (first->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (second->ip.get())->address[0], 16) != 0);
+								}
 							} break;
 						}
 					}
@@ -3568,37 +3666,61 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 				} break;
 				// Если атрибуты URI адреса являются IPv4-адресом
 				case static_cast <uint8_t> (net::type_t::IPV4): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					// Извлекаем копируемые атрибуты URI адреса как сетевой адрес
+					const net::attr_net_t * source = awh_cast <const net::attr_net_t *> (uri._attr.get());
+					// Если атрибуты URI не инициализированы либо инициализированы иной разновидностью
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::IPV4)){
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип атрибутов URI адреса
+						this->_attr->type = net::type_t::IPV4;
+					}
 					// Получаем атрибуты URI адреса
 					net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-					// Если IP-адрес хоста в атрибутах URI адреса не инициализирован
-					if(attr->ip == nullptr)
-						// Инициализируем IP-адрес хоста в атрибутах URI адреса
-						attr->ip = make_unique <net::addr_net_ipv4_t> ();
 					// Копируем порт хоста из атрибутов URI адреса
-					attr->port = awh_cast <const net::attr_net_t *> (uri._attr.get())->port;
-					// Копируем IP-адрес хоста из атрибутов URI адреса
-					awh_cast <net::addr_net_ipv4_t *> (attr->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (uri._attr.get())->ip.get())->address;
+					attr->port = source->port;
+					// Если копируемый IP-адрес хоста не заведён, сбрасываем и свой
+					if(source->ip == nullptr)
+						// Сбрасываем IP-адрес хоста в атрибутах URI адреса
+						attr->ip.reset(nullptr);
+					// Иначе копируем IP-адрес хоста
+					else {
+						// Если свой объект IP-адреса хоста не подходит по размеру, заводим его заново
+						if((attr->ip == nullptr) || (attr->ip->size != 4))
+							// Инициализируем IP-адрес хоста в атрибутах URI адреса
+							attr->ip = make_unique <net::addr_net_ipv4_t> ();
+						// Копируем IP-адрес хоста из атрибутов URI адреса
+						awh_cast <net::addr_net_ipv4_t *> (attr->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (source->ip.get())->address;
+					}
 				} break;
 				// Если атрибуты URI адреса являются IPv6-адресом
 				case static_cast <uint8_t> (net::type_t::IPV6): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					// Извлекаем копируемые атрибуты URI адреса как сетевой адрес
+					const net::attr_net_t * source = awh_cast <const net::attr_net_t *> (uri._attr.get());
+					// Если атрибуты URI не инициализированы либо инициализированы иной разновидностью
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::IPV6)){
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип атрибутов URI адреса
+						this->_attr->type = net::type_t::IPV6;
+					}
 					// Получаем атрибуты URI адреса
 					net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-					// Если IP-адрес хоста в атрибутах URI адреса не инициализирован
-					if(attr->ip == nullptr)
-						// Инициализируем IP-адрес хоста в атрибутах URI адреса
-						attr->ip = make_unique <net::addr_net_ipv6_t> ();
 					// Копируем порт хоста из атрибутов URI адреса
-					attr->port = awh_cast <const net::attr_net_t *> (uri._attr.get())->port;
-					// Копируем IP-адрес хоста из атрибутов URI адреса
-					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (attr->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (uri._attr.get())->ip.get())->address[0], 16);
+					attr->port = source->port;
+					// Если копируемый IP-адрес хоста не заведён, сбрасываем и свой
+					if(source->ip == nullptr)
+						// Сбрасываем IP-адрес хоста в атрибутах URI адреса
+						attr->ip.reset(nullptr);
+					// Иначе копируем IP-адрес хоста
+					else {
+						// Если свой объект IP-адреса хоста не подходит по размеру, заводим его заново
+						if((attr->ip == nullptr) || (attr->ip->size != 16))
+							// Инициализируем IP-адрес хоста в атрибутах URI адреса
+							attr->ip = make_unique <net::addr_net_ipv6_t> ();
+						// Копируем IP-адрес хоста из атрибутов URI адреса
+						awh_cast <net::addr_net_ipv6_t *> (attr->ip.get())->address = awh_cast <const net::addr_net_ipv6_t *> (source->ip.get())->address;
+					}
 				} break;
 			}
 			// Устанавливаем тип атрибутов URI адреса
@@ -3748,37 +3870,61 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 				} break;
 				// Если атрибуты URI адреса являются IPv4-адресом
 				case static_cast <uint8_t> (net::type_t::IPV4): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					// Извлекаем копируемые атрибуты URI адреса как сетевой адрес
+					const net::attr_net_t * source = awh_cast <const net::attr_net_t *> (uri._attr.get());
+					// Если атрибуты URI не инициализированы либо инициализированы иной разновидностью
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::IPV4)){
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип атрибутов URI адреса
+						this->_attr->type = net::type_t::IPV4;
+					}
 					// Получаем атрибуты URI адреса
 					net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-					// Если IP-адрес хоста в атрибутах URI адреса не инициализирован
-					if(attr->ip == nullptr)
-						// Инициализируем IP-адрес хоста в атрибутах URI адреса
-						attr->ip = make_unique <net::addr_net_ipv4_t> ();
 					// Копируем порт хоста из атрибутов URI адреса
-					attr->port = awh_cast <const net::attr_net_t *> (uri._attr.get())->port;
-					// Копируем IP-адрес хоста из атрибутов URI адреса
-					awh_cast <net::addr_net_ipv4_t *> (attr->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (uri._attr.get())->ip.get())->address;
+					attr->port = source->port;
+					// Если копируемый IP-адрес хоста не заведён, сбрасываем и свой
+					if(source->ip == nullptr)
+						// Сбрасываем IP-адрес хоста в атрибутах URI адреса
+						attr->ip.reset(nullptr);
+					// Иначе копируем IP-адрес хоста
+					else {
+						// Если свой объект IP-адреса хоста не подходит по размеру, заводим его заново
+						if((attr->ip == nullptr) || (attr->ip->size != 4))
+							// Инициализируем IP-адрес хоста в атрибутах URI адреса
+							attr->ip = make_unique <net::addr_net_ipv4_t> ();
+						// Копируем IP-адрес хоста из атрибутов URI адреса
+						awh_cast <net::addr_net_ipv4_t *> (attr->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (source->ip.get())->address;
+					}
 				} break;
 				// Если атрибуты URI адреса являются IPv6-адресом
 				case static_cast <uint8_t> (net::type_t::IPV6): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					// Извлекаем копируемые атрибуты URI адреса как сетевой адрес
+					const net::attr_net_t * source = awh_cast <const net::attr_net_t *> (uri._attr.get());
+					// Если атрибуты URI не инициализированы либо инициализированы иной разновидностью
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::IPV6)){
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип атрибутов URI адреса
+						this->_attr->type = net::type_t::IPV6;
+					}
 					// Получаем атрибуты URI адреса
 					net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
-					// Если IP-адрес хоста в атрибутах URI адреса не инициализирован
-					if(attr->ip == nullptr)
-						// Инициализируем IP-адрес хоста в атрибутах URI адреса
-						attr->ip = make_unique <net::addr_net_ipv6_t> ();
 					// Копируем порт хоста из атрибутов URI адреса
-					attr->port = awh_cast <const net::attr_net_t *> (uri._attr.get())->port;
-					// Копируем IP-адрес хоста из атрибутов URI адреса
-					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (attr->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (uri._attr.get())->ip.get())->address[0], 16);
+					attr->port = source->port;
+					// Если копируемый IP-адрес хоста не заведён, сбрасываем и свой
+					if(source->ip == nullptr)
+						// Сбрасываем IP-адрес хоста в атрибутах URI адреса
+						attr->ip.reset(nullptr);
+					// Иначе копируем IP-адрес хоста
+					else {
+						// Если свой объект IP-адреса хоста не подходит по размеру, заводим его заново
+						if((attr->ip == nullptr) || (attr->ip->size != 16))
+							// Инициализируем IP-адрес хоста в атрибутах URI адреса
+							attr->ip = make_unique <net::addr_net_ipv6_t> ();
+						// Копируем IP-адрес хоста из атрибутов URI адреса
+						awh_cast <net::addr_net_ipv6_t *> (attr->ip.get())->address = awh_cast <const net::addr_net_ipv6_t *> (source->ip.get())->address;
+					}
 				} break;
 			}
 			// Устанавливаем тип атрибутов URI адреса

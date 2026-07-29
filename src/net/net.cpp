@@ -101,15 +101,14 @@ awh::net::Attributes_FQDN::Attributes_FQDN() noexcept :
  *
  */
 awh::net::Attributes_Network::Attributes_Network() noexcept :
- attr_t(type_t::IPV4), port(0),
- ip(make_unique <addr_net_ipv4_t> ()) {}
+ attr_t(type_t::NONE), port(0), ip(nullptr) {}
 
 /**
  * @brief Конструктор
  *
  */
 awh::net::Attributes_Unix_Domain_Socket::Attributes_Unix_Domain_Socket() noexcept :
- attr_t(type_t::FS), path(make_unique <addr_fs_t> ()) {}
+ attr_t(type_t::FS), path(nullptr) {}
 
 /**
  * @brief Конструктор
