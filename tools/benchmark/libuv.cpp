@@ -838,27 +838,49 @@ namespace {
 			// Записываем описатель наблюдателя в реестр
 			registry.emplace(static_cast <uint32_t> (i + 1), &timers[i]);
 		}
-		// Запоминаем момент начала замера
-		const auto start = now();
+		// Время самого быстрого прохода замера
+		double best = 0.0;
 		/**
-		 * Выполняем постановку всех таймеров с разрешением описателя по идентификатору
+		 * Выполняем требуемое количество проходов замера
 		 */
-		for(size_t k = 0; k < count; k++){
-			// Разрешаем описатель наблюдателя по идентификатору
-			auto i = registry.find(static_cast <uint32_t> (k + 1));
-			// Если описатель наблюдателя не найден
-			if(i == registry.end())
-				// Переходим к следующему таймеру
-				continue;
-			// Ставим таймер в структуру дедлайнов
-			::uv_timer_start(i->second, &::deadlineFired, ::deadline(i->first - 1), 0);
+		for(size_t pass = 0; pass < DEADLINE_PASSES; pass++){
+			// Снимаем таймеры, поставленные прошлым проходом, вне окна замера
+			if(pass > 0){
+				/**
+				 * Выполняем снятие всех таймеров набора
+				 */
+				for(size_t k = 0; k < count; k++)
+					// Снимаем таймер со структуры дедлайнов
+					::uv_timer_stop(&timers[k]);
+			}
+			// Запоминаем момент начала замера
+			const auto start = now();
+			/**
+			 * Выполняем постановку всех таймеров с разрешением описателя по идентификатору
+			 */
+			for(size_t k = 0; k < count; k++){
+				// Разрешаем описатель наблюдателя по идентификатору
+				auto i = registry.find(static_cast <uint32_t> (k + 1));
+				// Если описатель наблюдателя не найден
+				if(i == registry.end())
+					// Переходим к следующему таймеру
+					continue;
+				// Ставим таймер в структуру дедлайнов
+				::uv_timer_start(i->second, &::deadlineFired, ::deadline(i->first - 1), 0);
+			}
+			// Запоминаем момент окончания замера
+			const auto finish = now();
+			// Получаем время текущего прохода замера
+			const double seconds = elapsed(start, finish);
+			// Запоминаем время прохода, если он оказался самым быстрым
+			if((best <= 0.0) || (seconds < best))
+				// Запоминаем время самого быстрого прохода замера
+				best = seconds;
 		}
-		// Запоминаем момент окончания замера
-		const auto finish = now();
 		// Устанавливаем количество выполненных операций
 		result.operations = count;
 		// Устанавливаем затраченное время
-		result.seconds = elapsed(start, finish);
+		result.seconds = best;
 		// Освобождаем цикл событий стенда
 		::uv_loop_close(&loop);
 		// Выводим итоги прогона сценария
@@ -895,27 +917,49 @@ namespace {
 			// Записываем описатель наблюдателя в реестр
 			registry.emplace(static_cast <uint32_t> (i + 1), &timers[i]);
 		}
-		// Запоминаем момент начала замера
-		const auto start = now();
+		// Время самого быстрого прохода замера
+		double best = 0.0;
 		/**
-		 * Выполняем отмену всех таймеров с разрешением описателя по идентификатору
+		 * Выполняем требуемое количество проходов замера
 		 */
-		for(size_t k = 0; k < count; k++){
-			// Разрешаем описатель наблюдателя по идентификатору
-			auto i = registry.find(static_cast <uint32_t> (k + 1));
-			// Если описатель наблюдателя не найден
-			if(i == registry.end())
-				// Переходим к следующему таймеру
-				continue;
-			// Снимаем таймер со структуры дедлайнов
-			::uv_timer_stop(i->second);
+		for(size_t pass = 0; pass < DEADLINE_PASSES; pass++){
+			// Возвращаем таймеры в структуру дедлайнов вне окна замера
+			if(pass > 0){
+				/**
+				 * Выполняем постановку всех таймеров набора
+				 */
+				for(size_t k = 0; k < count; k++)
+					// Ставим таймер в структуру дедлайнов
+					::uv_timer_start(&timers[k], &::deadlineFired, ::deadline(k), 0);
+			}
+			// Запоминаем момент начала замера
+			const auto start = now();
+			/**
+			 * Выполняем отмену всех таймеров с разрешением описателя по идентификатору
+			 */
+			for(size_t k = 0; k < count; k++){
+				// Разрешаем описатель наблюдателя по идентификатору
+				auto i = registry.find(static_cast <uint32_t> (k + 1));
+				// Если описатель наблюдателя не найден
+				if(i == registry.end())
+					// Переходим к следующему таймеру
+					continue;
+				// Снимаем таймер со структуры дедлайнов
+				::uv_timer_stop(i->second);
+			}
+			// Запоминаем момент окончания замера
+			const auto finish = now();
+			// Получаем время текущего прохода замера
+			const double seconds = elapsed(start, finish);
+			// Запоминаем время прохода, если он оказался самым быстрым
+			if((best <= 0.0) || (seconds < best))
+				// Запоминаем время самого быстрого прохода замера
+				best = seconds;
 		}
-		// Запоминаем момент окончания замера
-		const auto finish = now();
 		// Устанавливаем количество выполненных операций
 		result.operations = count;
 		// Устанавливаем затраченное время
-		result.seconds = elapsed(start, finish);
+		result.seconds = best;
 		// Освобождаем цикл событий стенда
 		::uv_loop_close(&loop);
 		// Выводим итоги прогона сценария
@@ -952,27 +996,40 @@ namespace {
 			// Записываем описатель наблюдателя в реестр
 			registry.emplace(static_cast <uint32_t> (i + 1), &timers[i]);
 		}
-		// Запоминаем момент начала замера
-		const auto start = now();
+		// Время самого быстрого прохода замера
+		double best = 0.0;
 		/**
-		 * Выполняем перевзведение всех таймеров с разрешением описателя по идентификатору
+		 * Выполняем требуемое количество проходов замера
 		 */
-		for(size_t k = 0; k < count; k++){
-			// Разрешаем описатель наблюдателя по идентификатору
-			auto i = registry.find(static_cast <uint32_t> (k + 1));
-			// Если описатель наблюдателя не найден
-			if(i == registry.end())
-				// Переходим к следующему таймеру
-				continue;
-			// Сдвигаем дедлайн таймера вперёд
-			::uv_timer_start(i->second, &::deadlineFired, (::deadline(i->first - 1) + DEADLINE_SPREAD), 0);
+		for(size_t pass = 0; pass < DEADLINE_PASSES; pass++){
+			// Запоминаем момент начала замера
+			const auto start = now();
+			/**
+			 * Выполняем перевзведение всех таймеров с разрешением описателя по идентификатору
+			 */
+			for(size_t k = 0; k < count; k++){
+				// Разрешаем описатель наблюдателя по идентификатору
+				auto i = registry.find(static_cast <uint32_t> (k + 1));
+				// Если описатель наблюдателя не найден
+				if(i == registry.end())
+					// Переходим к следующему таймеру
+					continue;
+				// Сдвигаем дедлайн таймера вперёд
+				::uv_timer_start(i->second, &::deadlineFired, (::deadline(i->first - 1) + (static_cast <uint64_t> (pass + 1) * DEADLINE_SPREAD)), 0);
+			}
+			// Запоминаем момент окончания замера
+			const auto finish = now();
+			// Получаем время текущего прохода замера
+			const double seconds = elapsed(start, finish);
+			// Запоминаем время прохода, если он оказался самым быстрым
+			if((best <= 0.0) || (seconds < best))
+				// Запоминаем время самого быстрого прохода замера
+				best = seconds;
 		}
-		// Запоминаем момент окончания замера
-		const auto finish = now();
 		// Устанавливаем количество выполненных операций
 		result.operations = count;
 		// Устанавливаем затраченное время
-		result.seconds = elapsed(start, finish);
+		result.seconds = best;
 		// Освобождаем цикл событий стенда
 		::uv_loop_close(&loop);
 		// Выводим итоги прогона сценария

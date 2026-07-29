@@ -65,7 +65,7 @@ namespace {
 	 *
 	 */
 	static constexpr double MATCH_ALLOCATIONS = 2.0;
-	static constexpr double SHIFT_ALLOCATIONS = 4.0;
+	static constexpr double SHIFT_ALLOCATIONS = 3.0;
 
 	/**
 	 * @brief Сопоставляемое обозначение временной зоны

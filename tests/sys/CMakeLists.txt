@@ -204,6 +204,9 @@ if(${GTest_FOUND})
                 chrono/format.cpp
                 chrono/parse.cpp
                 chrono/roundtrip.cpp
+                chrono/zones.cpp
+                chrono/syslog.cpp
+                chrono/substitution.cpp
                 chrono/duration.cpp
                 chrono/calendar.cpp
                 chrono/parameterized.cpp

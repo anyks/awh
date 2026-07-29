@@ -89,6 +89,20 @@ namespace {
 	 *
 	 */
 	static constexpr double SCALING_THRESHOLD = 2.0;
+	/**
+	 * @brief Количество проходов замера одной операции
+	 *
+	 * @details Один проход по набору таймеров занимает доли миллисекунды, а на
+	 *          таком окне замер меряет шум наравне с работой: у самых быстрых
+	 *          структур показатель гулял вдвое между прогонами. Проходов делается
+	 *          несколько, и в зачёт идёт самый быстрый из них - обычная защита
+	 *          короткого замера от постороннего вмешательства операционной
+	 *          системы, потому что помешать проходу она может, а помочь - нет.
+	 *
+	 *          Подготовка набора к очередному проходу выполняется вне окна замера
+	 *
+	 */
+	static constexpr size_t DEADLINE_PASSES = 50;
 
 	/**
 	 * @brief Структура набора подготовленных таймеров
@@ -161,6 +175,37 @@ namespace {
 				// Ставим таймер в структуру дедлайнов
 				this->io.launch(this->ids[i]);
 		}
+		/**
+		 * @brief Функция снятия всех таймеров набора
+		 *
+		 * @details Снятие выражается нулевой задержкой, поэтому вместе с таймером
+		 *          обнуляется и заданная ему задержка
+		 *
+		 */
+		void disarm() noexcept {
+			/**
+			 * Выполняем снятие всех таймеров набора
+			 */
+			for(size_t i = 0; i < this->ids.size(); i++)
+				// Снимаем таймер со структуры дедлайнов
+				this->io.setTimeout(this->ids[i], awh::event::action_t::NONE, 0);
+		}
+		/**
+		 * @brief Функция восстановления задержек всех таймеров набора
+		 *
+		 * @details Возвращает набор к состоянию, в котором он вышел из
+		 *          конструктора: таймеры сняты, а задержки заданы. Нужна между
+		 *          проходами замера, потому что снятие задержки обнуляет
+		 *
+		 */
+		void restore() noexcept {
+			/**
+			 * Выполняем восстановление задержек всех таймеров набора
+			 */
+			for(size_t i = 0; i < this->ids.size(); i++)
+				// Возвращаем таймеру заданную ему задержку
+				this->io.setTimeout(this->ids[i], awh::event::action_t::NONE, deadline(i));
+		}
 	} fleet_t;
 
 	/**
@@ -183,23 +228,43 @@ namespace {
 		if(fleet.ids.empty())
 			// Выводим пустые итоги прогона
 			return result;
-		// Включаем учёт выделений памяти
-		awh::benchmark::counting(true);
-		// Включаем учёт системных вызовов
-		awh::benchmark::syscall::counting(true);
-		// Запоминаем момент начала замера
-		const auto start = std::chrono::steady_clock::now();
-		// Выполняем постановку всех таймеров набора
-		fleet.arm();
-		// Запоминаем момент окончания замера
-		const auto finish = std::chrono::steady_clock::now();
-		// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
-		awh::benchmark::counting(false);
-		awh::benchmark::syscall::counting(false);
+		// Время самого быстрого прохода замера
+		double best = 0.0;
+		/**
+		 * Выполняем требуемое количество проходов замера
+		 */
+		for(size_t pass = 0; pass < DEADLINE_PASSES; pass++){
+			// Возвращаем набор к исходному состоянию вне окна замера
+			if(pass > 0){
+				// Снимаем все таймеры набора, поставленные прошлым проходом
+				fleet.disarm();
+				// Возвращаем таймерам заданные им задержки
+				fleet.restore();
+			}
+			// Включаем учёт выделений памяти
+			awh::benchmark::counting(true);
+			// Включаем учёт системных вызовов
+			awh::benchmark::syscall::counting(true);
+			// Запоминаем момент начала замера
+			const auto start = std::chrono::steady_clock::now();
+			// Выполняем постановку всех таймеров набора
+			fleet.arm();
+			// Запоминаем момент окончания замера
+			const auto finish = std::chrono::steady_clock::now();
+			// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
+			awh::benchmark::counting(false);
+			awh::benchmark::syscall::counting(false);
+			// Получаем время текущего прохода замера
+			const double seconds = std::chrono::duration <double> (finish - start).count();
+			// Запоминаем время прохода, если он оказался самым быстрым
+			if((best <= 0.0) || (seconds < best))
+				// Запоминаем время самого быстрого прохода замера
+				best = seconds;
+		}
 		// Устанавливаем количество выполненных операций
 		result.operations = fleet.ids.size();
 		// Устанавливаем затраченное время
-		result.seconds = std::chrono::duration <double> (finish - start).count();
+		result.seconds = best;
 		// Снимаем показатели окружения по итогам замера
 		collect(result);
 		// Выводим итоги прогона сценария
@@ -226,29 +291,46 @@ namespace {
 		if(fleet.ids.empty())
 			// Выводим пустые итоги прогона
 			return result;
-		// Выполняем постановку всех таймеров набора
-		fleet.arm();
-		// Включаем учёт выделений памяти
-		awh::benchmark::counting(true);
-		// Включаем учёт системных вызовов
-		awh::benchmark::syscall::counting(true);
-		// Запоминаем момент начала замера
-		const auto start = std::chrono::steady_clock::now();
+		// Время самого быстрого прохода замера
+		double best = 0.0;
 		/**
-		 * Выполняем отмену всех таймеров набора
+		 * Выполняем требуемое количество проходов замера
 		 */
-		for(size_t i = 0; i < fleet.ids.size(); i++)
-			// Снимаем таймер со структуры дедлайнов
-			fleet.io.setTimeout(fleet.ids[i], awh::event::action_t::NONE, 0);
-		// Запоминаем момент окончания замера
-		const auto finish = std::chrono::steady_clock::now();
-		// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
-		awh::benchmark::counting(false);
-		awh::benchmark::syscall::counting(false);
+		for(size_t pass = 0; pass < DEADLINE_PASSES; pass++){
+			// Возвращаем таймерам задержки, обнулённые снятием прошлого прохода
+			if(pass > 0)
+				// Возвращаем таймерам заданные им задержки
+				fleet.restore();
+			// Выполняем постановку всех таймеров набора вне окна замера
+			fleet.arm();
+			// Включаем учёт выделений памяти
+			awh::benchmark::counting(true);
+			// Включаем учёт системных вызовов
+			awh::benchmark::syscall::counting(true);
+			// Запоминаем момент начала замера
+			const auto start = std::chrono::steady_clock::now();
+			/**
+			 * Выполняем отмену всех таймеров набора
+			 */
+			for(size_t i = 0; i < fleet.ids.size(); i++)
+				// Снимаем таймер со структуры дедлайнов
+				fleet.io.setTimeout(fleet.ids[i], awh::event::action_t::NONE, 0);
+			// Запоминаем момент окончания замера
+			const auto finish = std::chrono::steady_clock::now();
+			// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
+			awh::benchmark::counting(false);
+			awh::benchmark::syscall::counting(false);
+			// Получаем время текущего прохода замера
+			const double seconds = std::chrono::duration <double> (finish - start).count();
+			// Запоминаем время прохода, если он оказался самым быстрым
+			if((best <= 0.0) || (seconds < best))
+				// Запоминаем время самого быстрого прохода замера
+				best = seconds;
+		}
 		// Устанавливаем количество выполненных операций
 		result.operations = fleet.ids.size();
 		// Устанавливаем затраченное время
-		result.seconds = std::chrono::duration <double> (finish - start).count();
+		result.seconds = best;
 		// Снимаем показатели окружения по итогам замера
 		collect(result);
 		// Выводим итоги прогона сценария
@@ -278,27 +360,46 @@ namespace {
 			return result;
 		// Выполняем постановку всех таймеров набора
 		fleet.arm();
-		// Включаем учёт выделений памяти
-		awh::benchmark::counting(true);
-		// Включаем учёт системных вызовов
-		awh::benchmark::syscall::counting(true);
-		// Запоминаем момент начала замера
-		const auto start = std::chrono::steady_clock::now();
+		// Время самого быстрого прохода замера
+		double best = 0.0;
 		/**
-		 * Выполняем перевзведение всех таймеров набора
+		 * Выполняем требуемое количество проходов замера
+		 *
+		 * @note Подготовки между проходами перевзведение не требует: каждый проход
+		 *       отодвигает дедлайны на один и тот же шаг, оставляя набор
+		 *       поставленным и пригодным для следующего прохода
 		 */
-		for(size_t i = 0; i < fleet.ids.size(); i++)
-			// Сдвигаем дедлайн таймера вперёд
-			fleet.io.setTimeout(fleet.ids[i], awh::event::action_t::NONE, (fleet_t::deadline(i) + DEADLINE_SPREAD));
-		// Запоминаем момент окончания замера
-		const auto finish = std::chrono::steady_clock::now();
-		// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
-		awh::benchmark::counting(false);
-		awh::benchmark::syscall::counting(false);
+		for(size_t pass = 0; pass < DEADLINE_PASSES; pass++){
+			// Величина, на которую текущий проход отодвигает дедлайны
+			const uint32_t shift = (static_cast <uint32_t> (pass + 1) * DEADLINE_SPREAD);
+			// Включаем учёт выделений памяти
+			awh::benchmark::counting(true);
+			// Включаем учёт системных вызовов
+			awh::benchmark::syscall::counting(true);
+			// Запоминаем момент начала замера
+			const auto start = std::chrono::steady_clock::now();
+			/**
+			 * Выполняем перевзведение всех таймеров набора
+			 */
+			for(size_t i = 0; i < fleet.ids.size(); i++)
+				// Сдвигаем дедлайн таймера вперёд
+				fleet.io.setTimeout(fleet.ids[i], awh::event::action_t::NONE, (fleet_t::deadline(i) + shift));
+			// Запоминаем момент окончания замера
+			const auto finish = std::chrono::steady_clock::now();
+			// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
+			awh::benchmark::counting(false);
+			awh::benchmark::syscall::counting(false);
+			// Получаем время текущего прохода замера
+			const double seconds = std::chrono::duration <double> (finish - start).count();
+			// Запоминаем время прохода, если он оказался самым быстрым
+			if((best <= 0.0) || (seconds < best))
+				// Запоминаем время самого быстрого прохода замера
+				best = seconds;
+		}
 		// Устанавливаем количество выполненных операций
 		result.operations = fleet.ids.size();
 		// Устанавливаем затраченное время
-		result.seconds = std::chrono::duration <double> (finish - start).count();
+		result.seconds = best;
 		// Снимаем показатели окружения по итогам замера
 		collect(result);
 		// Выводим итоги прогона сценария

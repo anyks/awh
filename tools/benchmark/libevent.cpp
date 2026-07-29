@@ -751,9 +751,9 @@ namespace {
 	 * @return      дедлайн таймера
 	 *
 	 */
-	static struct timeval deadline(const size_t index) noexcept {
+	static struct timeval deadline(const size_t index, const uint32_t shift = 0) noexcept {
 		// Дедлайн таймера в миллисекундах, отнесённый далеко в будущее
-		const uint32_t milliseconds = (DEADLINE_OFFSET + static_cast <uint32_t> (index % DEADLINE_SPREAD));
+		const uint32_t milliseconds = (DEADLINE_OFFSET + static_cast <uint32_t> (index % DEADLINE_SPREAD) + shift);
 		// Выводим дедлайн таймера
 		return timeval{static_cast <time_t> (milliseconds / 1000), static_cast <suseconds_t> ((milliseconds % 1000) * 1000)};
 	}
@@ -790,28 +790,50 @@ namespace {
 			// Записываем описатель наблюдателя в реестр
 			registry.emplace(static_cast <uint32_t> (i + 1), timers[i]);
 		}
-		// Запоминаем момент начала замера
-		const auto start = now();
+		// Время самого быстрого прохода замера
+		double best = 0.0;
 		/**
-		 * Выполняем постановку всех таймеров с разрешением описателя по идентификатору
+		 * Выполняем требуемое количество проходов замера
 		 */
-		for(size_t k = 0; k < count; k++){
-			// Разрешаем описатель наблюдателя по идентификатору
-			auto i = registry.find(static_cast <uint32_t> (k + 1));
-			// Если описатель наблюдателя не найден
-			if(i == registry.end())
-				// Переходим к следующему таймеру
-				continue;
-			// Ставим таймер в структуру дедлайнов
-			struct timeval tv = ::deadline(i->first - 1);
-				::evtimer_add(i->second, &tv);
+		for(size_t pass = 0; pass < DEADLINE_PASSES; pass++){
+			// Снимаем таймеры, поставленные прошлым проходом, вне окна замера
+			if(pass > 0){
+				/**
+				 * Выполняем снятие всех таймеров набора
+				 */
+				for(size_t k = 0; k < count; k++)
+					// Снимаем таймер со структуры дедлайнов
+					::evtimer_del(timers[k]);
+			}
+			// Запоминаем момент начала замера
+			const auto start = now();
+			/**
+			 * Выполняем постановку всех таймеров с разрешением описателя по идентификатору
+			 */
+			for(size_t k = 0; k < count; k++){
+				// Разрешаем описатель наблюдателя по идентификатору
+				auto i = registry.find(static_cast <uint32_t> (k + 1));
+				// Если описатель наблюдателя не найден
+				if(i == registry.end())
+					// Переходим к следующему таймеру
+					continue;
+				// Ставим таймер в структуру дедлайнов
+				struct timeval tv = ::deadline(i->first - 1);
+					::evtimer_add(i->second, &tv);
+			}
+			// Запоминаем момент окончания замера
+			const auto finish = now();
+			// Получаем время текущего прохода замера
+			const double seconds = elapsed(start, finish);
+			// Запоминаем время прохода, если он оказался самым быстрым
+			if((best <= 0.0) || (seconds < best))
+				// Запоминаем время самого быстрого прохода замера
+				best = seconds;
 		}
-		// Запоминаем момент окончания замера
-		const auto finish = now();
 		// Устанавливаем количество выполненных операций
 		result.operations = count;
 		// Устанавливаем затраченное время
-		result.seconds = elapsed(start, finish);
+		result.seconds = best;
 		// Освобождаем цикл событий стенда
 		for(size_t i = 0; i < count; i++)
 			::event_free(timers[i]);
@@ -849,27 +871,51 @@ namespace {
 			// Записываем описатель наблюдателя в реестр
 			registry.emplace(static_cast <uint32_t> (i + 1), timers[i]);
 		}
-		// Запоминаем момент начала замера
-		const auto start = now();
+		// Время самого быстрого прохода замера
+		double best = 0.0;
 		/**
-		 * Выполняем отмену всех таймеров с разрешением описателя по идентификатору
+		 * Выполняем требуемое количество проходов замера
 		 */
-		for(size_t k = 0; k < count; k++){
-			// Разрешаем описатель наблюдателя по идентификатору
-			auto i = registry.find(static_cast <uint32_t> (k + 1));
-			// Если описатель наблюдателя не найден
-			if(i == registry.end())
-				// Переходим к следующему таймеру
-				continue;
-			// Снимаем таймер со структуры дедлайнов
-			::evtimer_del(i->second);
+		for(size_t pass = 0; pass < DEADLINE_PASSES; pass++){
+			// Возвращаем таймеры в структуру дедлайнов вне окна замера
+			if(pass > 0){
+				/**
+				 * Выполняем постановку всех таймеров набора
+				 */
+				for(size_t k = 0; k < count; k++){
+					// Ставим таймер в структуру дедлайнов
+					struct timeval tv = ::deadline(k);
+					::evtimer_add(timers[k], &tv);
+				}
+			}
+			// Запоминаем момент начала замера
+			const auto start = now();
+			/**
+			 * Выполняем отмену всех таймеров с разрешением описателя по идентификатору
+			 */
+			for(size_t k = 0; k < count; k++){
+				// Разрешаем описатель наблюдателя по идентификатору
+				auto i = registry.find(static_cast <uint32_t> (k + 1));
+				// Если описатель наблюдателя не найден
+				if(i == registry.end())
+					// Переходим к следующему таймеру
+					continue;
+				// Снимаем таймер со структуры дедлайнов
+				::evtimer_del(i->second);
+			}
+			// Запоминаем момент окончания замера
+			const auto finish = now();
+			// Получаем время текущего прохода замера
+			const double seconds = elapsed(start, finish);
+			// Запоминаем время прохода, если он оказался самым быстрым
+			if((best <= 0.0) || (seconds < best))
+				// Запоминаем время самого быстрого прохода замера
+				best = seconds;
 		}
-		// Запоминаем момент окончания замера
-		const auto finish = now();
 		// Устанавливаем количество выполненных операций
 		result.operations = count;
 		// Устанавливаем затраченное время
-		result.seconds = elapsed(start, finish);
+		result.seconds = best;
 		// Освобождаем цикл событий стенда
 		for(size_t i = 0; i < count; i++)
 			::event_free(timers[i]);
@@ -907,28 +953,41 @@ namespace {
 			// Записываем описатель наблюдателя в реестр
 			registry.emplace(static_cast <uint32_t> (i + 1), timers[i]);
 		}
-		// Запоминаем момент начала замера
-		const auto start = now();
+		// Время самого быстрого прохода замера
+		double best = 0.0;
 		/**
-		 * Выполняем перевзведение всех таймеров с разрешением описателя по идентификатору
+		 * Выполняем требуемое количество проходов замера
 		 */
-		for(size_t k = 0; k < count; k++){
-			// Разрешаем описатель наблюдателя по идентификатору
-			auto i = registry.find(static_cast <uint32_t> (k + 1));
-			// Если описатель наблюдателя не найден
-			if(i == registry.end())
-				// Переходим к следующему таймеру
-				continue;
-			// Сдвигаем дедлайн таймера вперёд
-			struct timeval tv = ::deadline((i->first - 1) + DEADLINE_SPREAD);
-				::evtimer_add(i->second, &tv);
+		for(size_t pass = 0; pass < DEADLINE_PASSES; pass++){
+			// Запоминаем момент начала замера
+			const auto start = now();
+			/**
+			 * Выполняем перевзведение всех таймеров с разрешением описателя по идентификатору
+			 */
+			for(size_t k = 0; k < count; k++){
+				// Разрешаем описатель наблюдателя по идентификатору
+				auto i = registry.find(static_cast <uint32_t> (k + 1));
+				// Если описатель наблюдателя не найден
+				if(i == registry.end())
+					// Переходим к следующему таймеру
+					continue;
+				// Сдвигаем дедлайн таймера вперёд
+				struct timeval tv = ::deadline(i->first - 1, static_cast <uint32_t> (pass + 1) * DEADLINE_SPREAD);
+					::evtimer_add(i->second, &tv);
+			}
+			// Запоминаем момент окончания замера
+			const auto finish = now();
+			// Получаем время текущего прохода замера
+			const double seconds = elapsed(start, finish);
+			// Запоминаем время прохода, если он оказался самым быстрым
+			if((best <= 0.0) || (seconds < best))
+				// Запоминаем время самого быстрого прохода замера
+				best = seconds;
 		}
-		// Запоминаем момент окончания замера
-		const auto finish = now();
 		// Устанавливаем количество выполненных операций
 		result.operations = count;
 		// Устанавливаем затраченное время
-		result.seconds = elapsed(start, finish);
+		result.seconds = best;
 		// Освобождаем цикл событий стенда
 		for(size_t i = 0; i < count; i++)
 			::event_free(timers[i]);
@@ -1069,7 +1128,7 @@ namespace {
 		 */
 		for(size_t i = 0; i < count; i++){
 			// Получаем сдвинутый вперёд дедлайн таймера
-			struct timeval tv = ::deadline(i + DEADLINE_SPREAD);
+			struct timeval tv = ::deadline(i, DEADLINE_SPREAD);
 			// Сдвигаем дедлайн таймера вперёд
 			::evtimer_add(timers[i], &tv);
 		}

@@ -958,6 +958,180 @@ namespace {
 		// Числа с единицей размерности в тексте не нашлось
 		return result;
 	}
+	/**
+	 * @brief Функция перевода серии десятичных цифр в число
+	 *
+	 * @param text   серия десятичных цифр
+	 * @param length количество цифр в серии
+	 * @return       полученное число
+	 *
+	 */
+	inline uint32_t readNumber(const char * text, const size_t length) noexcept {
+		// Накопитель разрядов числа
+		uint32_t result = 0;
+		/**
+		 * Собираем число, приписывая очередную цифру младшим разрядом
+		 */
+		for(size_t i = 0; i < length; i++)
+			// Сдвигаем накопленное на разряд и добавляем очередную цифру
+			result = ((result * 10) + static_cast <uint32_t> (text[i] - '0'));
+		// Выводим собранное число
+		return result;
+	}
+	/**
+	 * @brief Функция перевода доли секунды в миллисекунды
+	 *
+	 * @details Доля секунды записывается десятичной дробью, а не числом миллисекунд:
+	 *          её значение задаётся разрядами после точки, а не их количеством, и
+	 *          записи .5, .50 и .500 означают одну и ту же половину секунды. Так её
+	 *          определяют RFC 3339 и RFC 5424, разрешающий долю длиной до шести
+	 *          разрядов, - и так же её понимают все прочие стандарты записи дат.
+	 *          Разряды за третьим отбрасываются: миллисекунда - предел разрешающей
+	 *          способности штампа времени модуля.
+	 *
+	 * @param text   разряды доли секунды, записанные после разделителя
+	 * @param length количество разрядов доли секунды
+	 * @return       количество миллисекунд
+	 *
+	 */
+	inline uint32_t readFraction(const char * text, const size_t length) noexcept {
+		// Накопитель миллисекунд
+		uint32_t result = 0;
+		/**
+		 * Миллисекунды дают ровно три первых разряда доли, недостающие считаются нулевыми
+		 */
+		for(size_t i = 0; i < 3; i++)
+			// Сдвигаем накопленное на разряд и добавляем очередной разряд доли
+			result = ((result * 10) + ((i < length) ? static_cast <uint32_t> (text[i] - '0') : 0));
+		// Выводим полученное количество миллисекунд
+		return result;
+	}
+	/**
+	 * @brief Функция перевода часов и минут смещения временной зоны в секунды
+	 *
+	 * @param hour     количество часов смещения
+	 * @param minutes  количество минут смещения
+	 * @param negative признак отрицательного смещения
+	 * @return         смещение временной зоны в секундах
+	 *
+	 */
+	inline int32_t makeZoneOffset(const uint32_t hour, const uint32_t minutes, const bool negative) noexcept {
+		// Собираем смещение из часов и минут
+		const int32_t result = static_cast <int32_t> ((hour * 3600) + (minutes * 60));
+		// Выводим смещение с учётом его знака
+		return (negative ? -result : result);
+	}
+	/**
+	 * @brief Функция перевода слитной записи смещения временной зоны в секунды
+	 *
+	 * @details Разрядность записи задаёт разбиение на часы и минуты: одна и две цифры
+	 *          означают целое количество часов (±h и ±hh стандарта ISO 8601), четыре —
+	 *          часы с минутами (±hhmm того же стандарта, RFC 5322 и strftime %z), три —
+	 *          те же часы с минутами без ведущего нуля (±hmm). Трёхзначная запись ни
+	 *          одним стандартом не предусмотрена, но встречается в журналах, а до этой
+	 *          правки её печатал и сам модуль, поэтому принимается наравне с остальными.
+	 *
+	 * @param text     слитная запись смещения без знака
+	 * @param length   длина записи смещения
+	 * @param negative признак отрицательного смещения
+	 * @return         смещение временной зоны в секундах
+	 *
+	 */
+	inline int32_t makeZoneOffset(const char * text, const size_t length, const bool negative) noexcept {
+		/**
+		 * Определяем разрядность записи смещения
+		 */
+		switch(length){
+			// Запись ±hmm: первая цифра означает часы, оставшиеся две - минуты
+			case 3: return makeZoneOffset(readNumber(text, 1), readNumber(text + 1, 2), negative);
+			// Запись ±hhmm: первые две цифры означают часы, оставшиеся две - минуты
+			case 4: return makeZoneOffset(readNumber(text, 2), readNumber(text + 2, 2), negative);
+		}
+		// Записи ±h и ±hh означают целое количество часов
+		return makeZoneOffset(readNumber(text, length), 0, negative);
+	}
+	/**
+	 * @brief Функция извлечения смещения временной зоны из групп совпадения
+	 *
+	 * @details Обе функции разбора зоны (parseZoneOffset и parseZoneFull) выделяют
+	 *          одни и те же составляющие смещения, но раскладывают их по разным
+	 *          номерам групп, поэтому группы передаются по отдельности.
+	 *
+	 * @param text    разобранный текст
+	 * @param sign    группа знака смещения
+	 * @param value   группа слитной записи смещения
+	 * @param hour    группа часов записи смещения через двоеточие
+	 * @param minutes группа минут записи смещения через двоеточие
+	 * @return        смещение временной зоны в секундах
+	 *
+	 */
+	inline int32_t readZoneOffset(const char * text, const match_t & sign, const match_t & value, const match_t & hour, const match_t & minutes) noexcept {
+		// Без знака смещения записи смещения нет вовсе
+		if(sign.end <= sign.begin)
+			// Смещение отсутствует
+			return 0;
+		// Определяем знак смещения по единственному символу его группы
+		const bool negative = (text[sign.begin] == '-');
+		// Если смещение записано часами и минутами через двоеточие
+		if((hour.end > hour.begin) && (minutes.end > minutes.begin))
+			// Собираем смещение из разобранных часов и минут
+			return makeZoneOffset(
+				readNumber(text + hour.begin, static_cast <size_t> (hour.end - hour.begin)),
+				readNumber(text + minutes.begin, static_cast <size_t> (minutes.end - minutes.begin)),
+				negative
+			);
+		// Если смещение записано слитно
+		if(value.end > value.begin)
+			// Разбираем смещение из слитной записи
+			return makeZoneOffset(text + value.begin, static_cast <size_t> (value.end - value.begin), negative);
+		// За знаком смещения не оказалось значения
+		return 0;
+	}
+	/**
+	 * @brief Функция формирования записи смещения временной зоны
+	 *
+	 * @details Составляющие смещения получаются целочисленно, поскольку смещение
+	 *          некратно часу у шести временных зон (India +5:30, Nepal +5:45,
+	 *          Newfoundland -3:30, Chatham +12:45 и подобных), а перевод в дробное
+	 *          число часов терял минуты: смещение +1:01 давало запись +10, читавшуюся
+	 *          обратно как десять часов.
+	 *
+	 * @param result  строка, в которую дописывается запись смещения
+	 * @param offset  смещение временной зоны в секундах
+	 * @param divider разделитель часов и минут ('\0' - записывать слитно)
+	 * @param compact признак сокращённой записи без ведущего нуля часов и без нулевых минут
+	 *
+	 */
+	void appendZoneOffset(string & result, const int32_t offset, const char divider, const bool compact) noexcept {
+		// Записываем знак смещения, считая нулевое смещение положительным
+		result.append(1, ((offset < 0) ? '-' : '+'));
+		// Получаем смещение по модулю, знак которого уже записан
+		const uint32_t value = static_cast <uint32_t> ((offset < 0) ? -offset : offset);
+		// Получаем количество целых часов смещения
+		const uint32_t hour = (value / 3600);
+		// Получаем количество минут, оставшихся сверх целых часов
+		const uint32_t minutes = ((value % 3600) / 60);
+		// Если запись полная, а количество часов умещается в один разряд
+		if(!compact && (hour < 10))
+			// Дополняем количество часов ведущим нулём
+			result.append(1, '0');
+		// Записываем количество часов смещения
+		result.append(std::to_string(hour));
+		// Сокращённая запись нулевые минуты опускает вместе с разделителем
+		if(compact && (minutes == 0))
+			// Записывать больше нечего
+			return;
+		// Если разделитель часов и минут задан
+		if(divider != '\0')
+			// Записываем разделитель часов и минут
+			result.append(1, divider);
+		// Если количество минут умещается в один разряд
+		if(minutes < 10)
+			// Дополняем количество минут ведущим нулём
+			result.append(1, '0');
+		// Записываем количество минут смещения
+		result.append(std::to_string(minutes));
+	}
 };
 
 /**
@@ -1406,8 +1580,8 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 			case static_cast <uint8_t> (format_t::a): match = ::parseName(src, len, 2, 2); break;
 			// Если формат соответствует %A ([A-Z][a-z]{2,})
 			case static_cast <uint8_t> (format_t::A): match = ::parseName(src, len, 2, static_cast <size_t> (-1)); break;
-			// Если формат соответствует %Z (\w+)
-			case static_cast <uint8_t> (format_t::Z): match = ::parseWord(src, len); break;
+			// Если формат соответствует %Z ((\w+)?((\+|\-)((\d{1,2}):(\d{1,2})|(\d{1,4})))?)
+			case static_cast <uint8_t> (format_t::Z): match = ::parseZoneFull(src, len); break;
 			// Если формат соответствует %R ((\d{1,2}):(\d{1,2}))
 			case static_cast <uint8_t> (format_t::R): match = ::parseDigitGroups(src, len, ':', {{1, 2}, {1, 2}}); break;
 			// Если формат соответствует %T ((\d{1,2}):(\d{1,2}):(\d{1,2}))
@@ -1447,8 +1621,6 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 					case static_cast <uint8_t> (format_t::a):
 					// Если формат получен как %A
 					case static_cast <uint8_t> (format_t::A):
-					// Если формат получен как %Z
-					case static_cast <uint8_t> (format_t::Z):
 					// Если формат получен как %W
 					case static_cast <uint8_t> (format_t::W): {
 						/**
@@ -1531,20 +1703,13 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если формат получен как %s
 									case static_cast <uint8_t> (format_t::s):
 										// Устанавливаем количество миллисекунд
-										dt.milliseconds = this->_fmk->atoi <uint32_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
+										dt.milliseconds = ::readFraction(text.data() + pos + match[j].begin, static_cast <size_t> (match[j].end - match[j].begin));
 									break;
 									// Если формат получен как %S
 									case static_cast <uint8_t> (format_t::S):
 										// Устанавливаем значение указанного количества секунд
 										dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									break;
-									// Если формат получен как %Z
-									case static_cast <uint8_t> (format_t::Z): {
-										// Выполняем матчинг временной зоны
-										dt.zone = this->matchTimeZone(string(text.data() + pos + match[j].begin, match[j].end - match[j].begin));
-										// Получаем название временной зоны
-										dt.offset = this->getTimeZone(dt.zone);
-									} break;
 									// Если формат получен как %a
 									case static_cast <uint8_t> (format_t::a): {
 										// Получаем название дня недели
@@ -1632,70 +1797,38 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 							}
 						}
 					} break;
+					// Если формат получен как %Z
+					case static_cast <uint8_t> (format_t::Z): {
+						// Если группа всего совпадения получена
+						if(match[0].end > match[0].begin)
+							// Получаем смещение в тексте
+							result = static_cast <ssize_t> (pos + match[0].end);
+						// Если название временной зоны указано
+						if(match[1].end > match[1].begin){
+							// Выполняем матчинг временной зоны
+							dt.zone = this->matchTimeZone(string(text.data() + pos + match[1].begin, static_cast <size_t> (match[1].end - match[1].begin)));
+							// Получаем смещение найденной временной зоны
+							dt.offset = this->getTimeZone(dt.zone);
+						}
+						/**
+						 * Накладываем смещение, записанное следом за названием зоны: сам
+						 * модуль печатает переменную %Z именно так (UTC+5:30, MSK+1), и
+						 * без этого шага собственная его запись читалась бы обратно как UTC
+						 */
+						dt.offset += ::readZoneOffset(text.data() + pos, match[3], match[4], match[5], match[6]);
+					} break;
 					// Если формат получен как %z
 					case static_cast <uint8_t> (format_t::z): {
 						// Если временная зона не установлена
 						if(dt.zone == zone_t::NONE)
 							// Выполняем сброс временной зоны
 							dt.offset = 0;
-						// Создаём массив собранных результатов
-						vector <string> data(match.size());
-						/**
-						 * Выполняем перебор всех полученных вариантов
-						 */
-						for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
-							// Если результат получен
-							if(match[j].end > match[j].begin){
-								// Если это первый элемент
-								if(j == 0)
-									// Получаем смещение в тексте
-									result = static_cast <ssize_t> (pos + match[j].end);
-								// Выполняем установку результата
-								data[j].assign(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
-							}
-						}
-						// Если название временной зоны указано
-						if(!data[1].empty() && (dt.zone == zone_t::UTC))
-							// Выполняем установку временной зоны
-							dt.zone = zone_t::UTC;
-						// Получаем смещение времени
-						const string & offset = data[2];
-						// Если полученное смещение является числом
-						if(this->_fmk->is(offset, fmk_t::check_t::NUMBER)){
-							// Если указано 4 символа
-							if(offset.size() == 4){
-								// Получаем количество часов
-								const uint8_t hour = this->_fmk->atoi <uint8_t> (offset.c_str(), 2);
-								// Получаем количество минут
-								const uint8_t minutes = this->_fmk->atoi <uint8_t> (offset.c_str() + 2, offset.length() - 2);
-								// Если смещение времени положительное
-								if(data[1].compare("+") == 0)
-									// Получаем время смещения
-									dt.offset += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-								// Устанавливаем отрицательное смещение времени
-								else dt.offset -= static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-							// Если установлен всего один символ
-							} else {
-								// Если смещение времени положительное
-								if(data[1].compare("+") == 0)
-									// Получаем время смещения
-									dt.offset += (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
-								// Устанавливаем отрицательное смещение времени
-								else dt.offset -= (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
-							}
-						// Если получено время в формате часов
-						} else if((data.size() > 4) && !data[3].empty() && !data[4].empty()) {
-							// Получаем количество часов
-							const uint8_t hour = this->_fmk->atoi <uint8_t> (data[3]);
-							// Получаем количество минут
-							const uint8_t minutes = this->_fmk->atoi <uint8_t> (data[4]);
-							// Если смещение времени положительное
-							if(data[1].compare("+") == 0)
-								// Получаем время смещения
-								dt.offset += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-							// Устанавливаем отрицательное смещение времени
-							else dt.offset -= static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-						}
+						// Если группа всего совпадения получена
+						if(match[0].end > match[0].begin)
+							// Получаем смещение в тексте
+							result = static_cast <ssize_t> (pos + match[0].end);
+						// Накладываем разобранное смещение временной зоны
+						dt.offset += ::readZoneOffset(text.data() + pos, match[1], match[5], match[3], match[4]);
 					} break;
 					// Если формат получен как %R
 					case static_cast <uint8_t> (format_t::R): {
@@ -4436,17 +4569,25 @@ uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		/**
+		 * Оценка количества суток, добавленных к этому моменту високосными годами:
+		 * високосные сутки прибавляются раз в 1464 суток, и эта оценка вычитается
+		 * из даты, чтобы остаток делился на год постоянной длительности
+		 */
+		const uint64_t leapDays = (
+			static_cast <uint64_t> (
+				::ceil(date / 126489600000.L)
+			) * static_cast <uint64_t> (86400000)
+		);
+		/**
+		 * Оценка округляется вверх и на первых сутках эпохи даёт целые сутки при
+		 * дате меньше суток. Вычитание без этой проверки уходило за ноль, а
+		 * беззнаковый оборот давал год 35588 вместо 1970 всюду от одной
+		 * миллисекунды до конца первых суток
+		 */
 		// Выполняем извлечение значения года из даты
 		result = static_cast <uint16_t> (
-			::floor(
-				(
-					date - (
-						static_cast <uint64_t> (
-							::ceil(date / 126489600000.L)
-						) * static_cast <uint64_t> (86400000)
-					)
-				) / 31536000000.L
-			)
+			::floor(((date > leapDays) ? (date - leapDays) : 0) / 31536000000.L)
 		);
 		// Определяем количество прошедших високосных лет
 		const uint16_t leaps = this->leapYears(result);
@@ -7304,126 +7445,37 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 			const vector <match_t> match = ::parseZoneFull(zone.data(), zone.size());
 			// Если совпадение получено
 			if(!match.empty()){
-				// Обрабатываем полученные группы совпадения
-				{
-					// Создаём массив собранных результатов
-					vector <string> data(match.size());
-					/**
-					 * Выполняем перебор всех полученных вариантов
-					 */
-					for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
-						// Если результат получен
-						if(match[j].end > match[j].begin)
-							// Выполняем установку результата
-							data[j].assign(zone.data() + match[j].begin, match[j].end - match[j].begin);
+				// Название временной зоны, указанное перед смещением
+				string name;
+				// Если название временной зоны указано
+				if(match[1].end > match[1].begin)
+					// Получаем название временной зоны
+					name.assign(zone.data() + match[1].begin, static_cast <size_t> (match[1].end - match[1].begin));
+				// Выполняем поиск временной зоны в списке временных зон
+				auto i = this->_timeZones.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
+				// Если временная зона найдена
+				if(i != this->_timeZones.end())
+					// Устанавливаем значение временной зоны
+					result = i->second;
+				// Если временная зона не найдена
+				else {
+					// Признак того, что смещение, указанное за названием зоны, следует наложить
+					bool apply = true;
+					// Если название временной зоны получено
+					if(!name.empty()){
+						// Если название временной зоны является числом
+						if(this->_fmk->is(name, fmk_t::check_t::NUMBER)){
+							// Получаем время смещения
+							result += (this->_fmk->atoi <int32_t> (name) * 3600);
+							// Смещение задано самим названием зоны, накладывать его повторно не нужно
+							apply = false;
+						// Получаем смещение времени по найденной в таблице соответствия временной зоне
+						} else result = this->getTimeZone(this->matchTimeZone(name));
 					}
-					// Если временная зона извлечена
-					if(!data.empty() && (data.size() > 1)){
-						// Получаем название временной зоны
-						string name = data[1];
-						// Выполняем поиск временной зоны в списке временных зон
-						auto i = this->_timeZones.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
-						// Если временная зона найдена
-						if(i != this->_timeZones.end())
-							// Устанавливаем значение временной зоны
-							result = i->second;
-						// Если временная зона не найдена
-						else {
-							// Если название временной зоны не получено
-							if(name.empty()){
-								// Если смещение времени указано
-								if((data.size() > 5) && !data[4].empty()){
-									// Получаем смещение времени
-									const string & offset = data[4];
-									// Если полученное смещение является числом
-									if(this->_fmk->is(offset, fmk_t::check_t::NUMBER)){
-										// Если указано 4 символа
-										if(offset.size() == 4){
-											// Получаем количество часов
-											const uint8_t hour = this->_fmk->atoi <uint8_t> (offset.c_str(), 2);
-											// Получаем количество минут
-											const uint8_t minutes = this->_fmk->atoi <uint8_t> (offset.c_str() + 2, offset.length() - 2);
-											// Если смещение времени положительное
-											if(data[3].compare("+") == 0)
-												// Получаем время смещения
-												result += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-											// Устанавливаем отрицательное смещение времени
-											else result -= static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-										// Если установлен всего один символ
-										} else {
-											// Если смещение времени положительное
-											if(data[3].compare("+") == 0)
-												// Получаем время смещения
-												result += (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
-											// Устанавливаем отрицательное смещение времени
-											else result -= (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
-										}
-									// Если получено время в формате часов
-									} else if((data.size() > 6) && !data[5].empty() && !data[6].empty()) {
-										// Получаем количество часов
-										const uint8_t hour = this->_fmk->atoi <uint8_t> (data[5]);
-										// Получаем количество минут
-										const uint8_t minutes = this->_fmk->atoi <uint8_t> (data[6]);
-										// Если смещение времени положительное
-										if(data[3].compare("+") == 0)
-											// Получаем время смещения
-											result += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-										// Устанавливаем отрицательное смещение времени
-										else result -= static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-									}
-								}
-							// Если название временной зоны является числом
-							} else if(this->_fmk->is(name, fmk_t::check_t::NUMBER))
-								// Получаем время смещения
-								result += (this->_fmk->atoi <int32_t> (name) * 60 * 60);
-							// Если временная зона получена в виде названия
-							else {
-								// Получаем смещение времени по найденной в таблице соответствия временной зоне
-								result = this->getTimeZone(this->matchTimeZone(name));
-								// Если смещение времени указано
-								if((data.size() > 5) && !data[4].empty()){
-									// Получаем смещение времени
-									const string & offset = data[4];
-									// Если полученное смещение является числом
-									if(this->_fmk->is(offset, fmk_t::check_t::NUMBER)){
-										// Если указано 4 символа
-										if(offset.size() == 4){
-											// Получаем количество часов
-											const uint8_t hour = this->_fmk->atoi <uint8_t> (offset.c_str(), 2);
-											// Получаем количество минут
-											const uint8_t minutes = this->_fmk->atoi <uint8_t> (offset.c_str() + 2, offset.length() - 2);
-											// Если смещение времени положительное
-											if(data[3].compare("+") == 0)
-												// Получаем время смещения
-												result += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-											// Устанавливаем отрицательное смещение времени
-											else result -= static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-										// Если установлен всего один символ
-										} else {
-											// Если смещение времени положительное
-											if(data[3].compare("+") == 0)
-												// Получаем время смещения
-												result += (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
-											// Устанавливаем отрицательное смещение времени
-											else result -= (this->_fmk->atoi <int32_t> (offset) * 60 * 60);
-										}
-									// Если получено время в формате часов
-									} else if((data.size() > 6) && !data[5].empty() && !data[6].empty()) {
-										// Получаем количество часов
-										const uint8_t hour = this->_fmk->atoi <uint8_t> (data[5]);
-										// Получаем количество минут
-										const uint8_t minutes = this->_fmk->atoi <uint8_t> (data[6]);
-										// Если смещение времени положительное
-										if(data[3].compare("+") == 0)
-											// Получаем время смещения
-											result += static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-										// Устанавливаем отрицательное смещение времени
-										else result -= static_cast <int32_t> ((hour * 60 * 60) + (minutes * 60));
-									}
-								}
-							}
-						}
-					}
+					// Если смещение следует наложить
+					if(apply)
+						// Накладываем разобранное смещение временной зоны
+						result += ::readZoneOffset(zone.data(), match[3], match[4], match[5], match[6]);
 				}
 			}
 		/**
@@ -8008,6 +8060,17 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 /**
  * @brief Метод парсинга строки даты и времени в UnixTimestamp
  *
+ * @details Поля, форматом не заданные, подставляются по несимметричному
+ *          правилу: поля крупнее самого крупного заданного берутся текущими,
+ *          поля мельче самого мелкого заданного задаются наименьшим своим
+ *          значением. Записи "%Y" отвечает первое января указанного года,
+ *          записи "%Y-%m-%d" - начало указанных суток, записи "%H:%M:%S" -
+ *          указанное время текущих суток. Первая половина правила введена
+ *          ради устаревшего стандарта системного журнала RFC 3164, года не
+ *          записывающего: без неё все его записи попадали бы в 1970-й год.
+ *          Если подстановка текущего года относит запись в будущее, берётся
+ *          предыдущий год - так же поступают rsyslog и syslog-ng.
+ *
  * @param date    строка даты
  * @param format  формат даты
  * @param storage хранение значение времени
@@ -8030,13 +8093,15 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 		// Текущее количество минут прошедших с 1970-го года
 		uint64_t lastMinutes = 0;
 		// Флаги установки параметров
-		bool flags[6] = {
+		bool flags[8] = {
 			false, // Флаг установки временной зоны
 			false, // Флаг установки года
 			false, // Флаг установки часа
 			false, // Флаг установки минут
 			false, // Флаг установки секунд
-			false  // Флаг установки миллисекунд
+			false, // Флаг установки миллисекунд
+			false, // Флаг установки месяца
+			false  // Флаг установки числа месяца
 		};
 		/**
 		 * Определяем хранилище значение времени
@@ -8078,7 +8143,14 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 			 */
 			switch(letter){
 				// Если мы нашли идентификатор переменной
-				case '%': mode = true; break;
+				case '%':
+					/**
+					 * Удвоенный знак процента означает сам этот знак, а не начало
+					 * переменной формата: разбор литеральных символов записи не
+					 * выполняет, поэтому знак процента только переключает режим
+					 */
+					mode = !mode;
+				break;
 				// Если мы нашли переменную (y)
 				case 'y':
 				// Если мы нашли переменную (g)
@@ -8143,6 +8215,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				case 'c':
 				// Если мы нашли переменную (o)
 				case 'o':
+				// Если мы нашли переменную (i)
+				case 'i':
 				// Если мы нашли переменную (z)
 				case 'z':
 				// Если мы нашли переменную (Z)
@@ -8182,27 +8256,35 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 									// Если мы нашли переменную (b)
 									case 'b':
 									// Если мы нашли переменную (h)
-									case 'h':
+									case 'h': {
 										// Выполняем обработку полученных данных
 										pos = this->prepare(this->_dt, date, format_t::b, pos);
-									break;
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+									} break;
 									// Если мы нашли переменную (B)
-									case 'B':
+									case 'B': {
 										// Выполняем обработку полученных данных
 										pos = this->prepare(this->_dt, date, format_t::B, pos);
-									break;
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+									} break;
 									// Если мы нашли переменную (m)
-									case 'm':
+									case 'm': {
 										// Выполняем обработку полученных данных
 										pos = this->prepare(this->_dt, date, format_t::m, pos);
-									break;
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+									} break;
 									// Если мы нашли переменную (d)
 									case 'd':
 									// Если мы нашли переменную (e)
-									case 'e':
+									case 'e': {
 										// Выполняем обработку полученных данных
 										pos = this->prepare(this->_dt, date, format_t::d, pos);
-									break;
+										// Устанавливаем флаг установки числа месяца
+										flags[7] = (pos > -1);
+									} break;
 									// Если мы нашли переменную (a)
 									case 'a':
 										// Выполняем обработку полученных данных
@@ -8243,6 +8325,10 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 										pos = this->prepare(this->_dt, date, format_t::D, pos);
 										// Устанавливаем флаг установки года
 										flags[1] = (pos > -1);
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+										// Устанавливаем флаг установки числа месяца
+										flags[7] = (pos > -1);
 									} break;
 									// Если мы нашли переменную (F)
 									case 'F': {
@@ -8250,6 +8336,10 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 										pos = this->prepare(this->_dt, date, format_t::F, pos);
 										// Устанавливаем флаг установки года
 										flags[1] = (pos > -1);
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+										// Устанавливаем флаг установки числа месяца
+										flags[7] = (pos > -1);
 									} break;
 									// Если мы нашли переменную (H)
 									case 'H': {
@@ -8330,6 +8420,10 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 										pos = this->prepare(this->_dt, date, format_t::c, pos);
 										// Устанавливаем флаг установки года
 										flags[1] = (pos > -1);
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+										// Устанавливаем флаг установки числа месяца
+										flags[7] = (pos > -1);
 										// Устанавливаем флаг установки часа
 										flags[2] = (pos > -1);
 										// Устанавливаем флаг установки минут
@@ -8337,6 +8431,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 										// Устанавливаем флаг установки секунд
 										flags[4] = (pos > -1);
 									} break;
+									// Если мы нашли переменную (o)
+									case 'o':
 									// Если мы нашли переменную (z)
 									case 'z': {
 										// Выполняем обработку полученных данных
@@ -8346,6 +8442,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 											// Устанавливаем флаг установки смещения временной зоны
 											flags[0] = (pos > -1);
 									} break;
+									// Если мы нашли переменную (i)
+									case 'i':
 									// Если мы нашли переменную (Z)
 									case 'Z': {
 										// Выполняем обработку полученных данных
@@ -8384,27 +8482,35 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 									// Если мы нашли переменную (b)
 									case 'b':
 									// Если мы нашли переменную (h)
-									case 'h':
+									case 'h': {
 										// Выполняем обработку полученных данных
 										pos = this->prepare(dt, date, format_t::b, pos);
-									break;
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+									} break;
 									// Если мы нашли переменную (B)
-									case 'B':
+									case 'B': {
 										// Выполняем обработку полученных данных
 										pos = this->prepare(dt, date, format_t::B, pos);
-									break;
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+									} break;
 									// Если мы нашли переменную (m)
-									case 'm':
+									case 'm': {
 										// Выполняем обработку полученных данных
 										pos = this->prepare(dt, date, format_t::m, pos);
-									break;
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+									} break;
 									// Если мы нашли переменную (d)
 									case 'd':
 									// Если мы нашли переменную (e)
-									case 'e':
+									case 'e': {
 										// Выполняем обработку полученных данных
 										pos = this->prepare(dt, date, format_t::d, pos);
-									break;
+										// Устанавливаем флаг установки числа месяца
+										flags[7] = (pos > -1);
+									} break;
 									// Если мы нашли переменную (a)
 									case 'a':
 										// Выполняем обработку полученных данных
@@ -8445,6 +8551,10 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 										pos = this->prepare(dt, date, format_t::D, pos);
 										// Устанавливаем флаг установки года
 										flags[1] = (pos > -1);
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+										// Устанавливаем флаг установки числа месяца
+										flags[7] = (pos > -1);
 									} break;
 									// Если мы нашли переменную (F)
 									case 'F': {
@@ -8452,6 +8562,10 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 										pos = this->prepare(dt, date, format_t::F, pos);
 										// Устанавливаем флаг установки года
 										flags[1] = (pos > -1);
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+										// Устанавливаем флаг установки числа месяца
+										flags[7] = (pos > -1);
 									} break;
 									// Если мы нашли переменную (H)
 									case 'H': {
@@ -8532,6 +8646,10 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 										pos = this->prepare(dt, date, format_t::c, pos);
 										// Устанавливаем флаг установки года
 										flags[1] = (pos > -1);
+										// Устанавливаем флаг установки месяца
+										flags[6] = (pos > -1);
+										// Устанавливаем флаг установки числа месяца
+										flags[7] = (pos > -1);
 										// Устанавливаем флаг установки часа
 										flags[2] = (pos > -1);
 										// Устанавливаем флаг установки минут
@@ -8550,6 +8668,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 											// Устанавливаем флаг установки смещения временной зоны
 											flags[0] = (pos > -1);
 									} break;
+									// Если мы нашли переменную (i)
+									case 'i':
 									// Если мы нашли переменную (Z)
 									case 'Z': {
 										// Выполняем обработку полученных данных
@@ -8575,6 +8695,30 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 			}
 		}
 		/**
+		 * Определяем самое мелкое из полей, заданных форматом: поля мельче него
+		 * задаются наименьшим своим значением, а не текущим, поля крупнее -
+		 * наоборот, текущим. Правило это несимметрично намеренно: устаревший
+		 * стандарт системного журнала RFC 3164 года не записывает, и запись без
+		 * года обязана попадать в текущий год, а не в 1970-й, тогда как запись
+		 * одной только даты обязана означать её начало, а не текущее время суток
+		 */
+		// Уровень самого мелкого заданного поля, нулевой - не задано ни одного
+		uint8_t level = 0;
+		// Если год задан форматом
+		if(flags[1]) level = 1;
+		// Если месяц задан форматом
+		if(flags[6]) level = 2;
+		// Если число месяца задано форматом
+		if(flags[7]) level = 3;
+		// Если час задан форматом
+		if(flags[2]) level = 4;
+		// Если минуты заданы форматом
+		if(flags[3]) level = 5;
+		// Если секунды заданы форматом
+		if(flags[4]) level = 6;
+		// Если миллисекунды заданы форматом
+		if(flags[5]) level = 7;
+		/**
 		 * Определяем хранилище значение времени
 		 */
 		switch(static_cast <uint8_t> (storage)){
@@ -8595,12 +8739,28 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				if(offset != 0)
 					// Выполняем инверсию
 					this->_dt.offset *= -1;
-				// Если час или минуты установлены а секунды нет
-				if((flags[2] || flags[3]) && !flags[4])
+				// Если задан только год, месяц задаём первым в году
+				if(level == 1)
+					// Выполняем сброс месяца
+					this->_dt.month = 1;
+				// Если поля мельче месяца не заданы, число задаём первым в месяце
+				if((level > 0) && (level < 3))
+					// Выполняем сброс числа месяца
+					this->_dt.date = 1;
+				// Если поля мельче суток не заданы, время задаём началом суток
+				if((level > 0) && (level < 4))
+					// Выполняем сброс часа
+					this->_dt.hour = 0;
+				// Если поля мельче часа не заданы
+				if((level > 0) && (level < 5))
+					// Выполняем сброс минут
+					this->_dt.minutes = 0;
+				// Если поля мельче минуты не заданы
+				if((level > 0) && (level < 6))
 					// Выполняем сброс секунд
 					this->_dt.seconds = 0;
-				// Если часы, минуты или секунды установлены а миллисекунды нет
-				if((flags[2] || flags[3] || flags[4]) && !flags[5])
+				// Если поля мельче секунды не заданы
+				if((level > 0) && (level < 7))
 					// Выполняем сброс миллисекунд
 					this->_dt.milliseconds = 0;
 				// Выполняем формирование UnixTimestamp
@@ -8637,12 +8797,28 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				if(dt.offset != 0)
 					// Выполняем инверсию
 					dt.offset *= -1;
-				// Если час или минуты установлены а секунды нет
-				if((flags[2] || flags[3]) && !flags[4])
+				// Если задан только год, месяц задаём первым в году
+				if(level == 1)
+					// Выполняем сброс месяца
+					dt.month = 1;
+				// Если поля мельче месяца не заданы, число задаём первым в месяце
+				if((level > 0) && (level < 3))
+					// Выполняем сброс числа месяца
+					dt.date = 1;
+				// Если поля мельче суток не заданы, время задаём началом суток
+				if((level > 0) && (level < 4))
+					// Выполняем сброс часа
+					dt.hour = 0;
+				// Если поля мельче часа не заданы
+				if((level > 0) && (level < 5))
+					// Выполняем сброс минут
+					dt.minutes = 0;
+				// Если поля мельче минуты не заданы
+				if((level > 0) && (level < 6))
 					// Выполняем сброс секунд
 					dt.seconds = 0;
-				// Если часы, минуты или секунды установлены а миллисекунды нет
-				if((flags[2] || flags[3] || flags[4]) && !flags[5])
+				// Если поля мельче секунды не заданы
+				if((level > 0) && (level < 7))
 					// Выполняем сброс миллисекунд
 					dt.milliseconds = 0;
 				// Выполняем формирование UnixTimestamp
@@ -8678,29 +8854,14 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Если переданная зона больше нуля
-			if(zone >= 0)
-				// Добавляем плюс
-				result.append(1, '+');
-			// Добавляем минус
-			else result.append(1, '-');
-			// Временное значение переменной
-			double intpart = 0;
-			// Выполняем конвертацию секунд в часы
-			const double seconds = (::abs(zone) / 3600.L);
-			// Выполняем проверку есть ли дробная часть у числа
-			if(::modf(seconds, &intpart) == 0)
-				// Добавляем переданную зону
-				result.append(std::to_string(static_cast <uint32_t> (seconds)));
-			// Если мы нашли дробную часть числа
-			else {
-				// Добавляем первую часть часа
-				result.append(std::to_string(static_cast <uint32_t> (intpart)));
-				// Добавляем разделитель времени
-				result.append(1, ':');
-				// Добавляем дробную часть часа
-				result.append(std::to_string(static_cast <uint32_t> ((seconds - intpart) * 60)));
-			}
+			/**
+			 * Записываем смещение сокращённо: целые часы записываются одним числом
+			 * (UTC+3), некратные часу - часами и минутами через двоеточие (UTC+5:30).
+			 * Такая запись ни одному стандарту не соответствует - все они требуют
+			 * ведущего нуля у часов, - но она предназначена для чтения человеком, а
+			 * не для обмена, и разбор её принимает наравне с полной
+			 */
+			appendZoneOffset(result, zone, ':', true);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -9612,7 +9773,18 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 			 */
 			switch(letter){
 				// Если мы нашли идентификатор переменной
-				case '%': mode = true; break;
+				case '%': {
+					/**
+					 * Удвоенный знак процента означает сам этот знак, а не начало
+					 * переменной формата: так его определяет стандарт POSIX для
+					 * strftime, и так же он записывается в форматах строк языка C
+					 */
+					if(mode)
+						// Записываем знак процента как обычный символ
+						result.append(1, letter);
+					// Переключаем режим соответствия переменной формата
+					mode = !mode;
+				} break;
 				// Если мы нашли переменную (y)
 				case 'y':
 				// Если мы нашли переменную (g)
@@ -9677,6 +9849,8 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 				case 'c':
 				// Если мы нашли переменную (o)
 				case 'o':
+				// Если мы нашли переменную (i)
+				case 'i':
 				// Если мы нашли переменную (z)
 				case 'z':
 				// Если мы нашли переменную (Z)
@@ -9737,6 +9911,16 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							} break;
 							// Если мы нашли переменную (e)
 							case 'e':
+								/**
+								 * Число месяца меньше десяти дополняется пробелом: этого
+								 * требует и одноимённая переменная стандарта POSIX, и поле
+								 * даты стандарта RFC 3164, где запись занимает ровно
+								 * пятнадцать разрядов и разбирается получателем по их
+								 * положению
+								 */
+								if(dt.date < 10)
+									// Добавляем разделитель вместо ведущего нуля
+									result.append(1, ' ');
 								// Добавляем полученный результат
 								result.append(std::to_string(dt.date));
 							break;
@@ -10053,73 +10237,38 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 								result.append(std::to_string(dt.year));
 							} break;
 							// Если мы нашли переменную (o)
-							case 'o': {
-								// Если переданная зона больше нуля
-								if(dt.offset >= 0)
-									// Добавляем плюс
-									result.append(1, '+');
-								// Добавляем минус
-								else result.append(1, '-');
-								// Временное значение переменной
-								double intpart = 0;
-								// Выполняем конвертацию секунд в часы
-								const double seconds = (::abs(dt.offset) / 3600.);
-								// Выполняем проверку есть ли дробная часть у числа
-								if(::modf(seconds, &intpart) == 0) {
-									// Получаем количество часов времени
-									string num = std::to_string(static_cast <uint32_t> (seconds));
-									// Если первого нуля нет
-									if(num.length() == 1)
-										// Добавляем предстоящий ноль
-										num.insert(num.begin(), 1, '0');
-									// Добавляем полученный результат
-									result.append(::move(num));
-									// Добавляем разделитель
-									result.append(1, ':');
-									// Добавляем конечные нули
-									result.append(2, '0');
-								// Если мы нашли дробную часть числа
-								} else {
-									// Добавляем первую часть часа
-									result.append(std::to_string(static_cast <uint32_t> (intpart)));
-									// Добавляем разделитель
-									result.append(1, ':');
-									// Добавляем дробную часть часа
-									result.append(std::to_string(static_cast <uint32_t> ((seconds - intpart) * 60)));
-								}
+							case 'o':
+								/**
+								 * Записываем смещение в расширенной записи ±hh:mm: её требуют
+								 * RFC 3339 и расширенная запись ISO 8601, ей же соответствует
+								 * переменная %:z библиотеки glibc
+								 */
+								appendZoneOffset(result, dt.offset, ':', false);
+							break;
+							// Если мы нашли переменную (i)
+							case 'i': {
+								/**
+								 * Записываем смещение зоны так, как того требует поле
+								 * time-offset стандарта RFC 3339: нулевое смещение
+								 * обозначается заглавной буквой Z, остальные - записью
+								 * ±hh:mm. Этой же записи требует штамп времени стандарта
+								 * RFC 5424, ссылающийся на RFC 3339
+								 */
+								if(dt.offset == 0)
+									// Записываем обозначение нулевого смещения
+									result.append(1, 'Z');
+								// Записываем смещение в расширенной записи
+								else appendZoneOffset(result, dt.offset, ':', false);
 							} break;
 							// Если мы нашли переменную (z)
-							case 'z': {
-								// Если переданная зона больше нуля
-								if(dt.offset >= 0)
-									// Добавляем плюс
-									result.append(1, '+');
-								// Добавляем минус
-								else result.append(1, '-');
-								// Временное значение переменной
-								double intpart = 0;
-								// Выполняем конвертацию секунд в часы
-								const double seconds = (::abs(dt.offset) / 3600.);
-								// Выполняем проверку есть ли дробная часть у числа
-								if(::modf(seconds, &intpart) == 0) {
-									// Получаем количество часов времени
-									string num = std::to_string(static_cast <uint32_t> (seconds));
-									// Если первого нуля нет
-									if(num.length() == 1)
-										// Добавляем предстоящий ноль
-										num.insert(num.begin(), 1, '0');
-									// Добавляем полученный результат
-									result.append(::move(num));
-									// Добавляем конечные нули
-									result.append(2, '0');
-								// Если мы нашли дробную часть числа
-								} else {
-									// Добавляем первую часть часа
-									result.append(std::to_string(static_cast <uint32_t> (intpart)));
-									// Добавляем дробную часть часа
-									result.append(std::to_string(static_cast <uint32_t> ((seconds - intpart) * 60)));
-								}
-							} break;
+							case 'z':
+								/**
+								 * Записываем смещение в основной записи ±hhmm: её требуют
+								 * переменная %z стандарта POSIX, поле зоны RFC 5322, журнал
+								 * веб-сервера в общем формате и основная запись ISO 8601
+								 */
+								appendZoneOffset(result, dt.offset, '\0', false);
+							break;
 							// Если мы нашли переменную (Z)
 							case 'Z': {
 								// Если временная зона установлена пустая

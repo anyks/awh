@@ -70,7 +70,7 @@ namespace {
 	 */
 	static constexpr double FORMAT_ISO_ALLOCATIONS = 1.0;
 	static constexpr double FORMAT_CLF_ALLOCATIONS = 1.0;
-	static constexpr double FORMAT_STRIP_ALLOCATIONS = 10.0;
+	static constexpr double FORMAT_STRIP_ALLOCATIONS = 9.0;
 	static constexpr double FORMAT_ZONE_ALLOCATIONS = 0.5;
 
 	/**

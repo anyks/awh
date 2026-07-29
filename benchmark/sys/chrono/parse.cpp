@@ -68,8 +68,8 @@ namespace {
 	 *
 	 */
 	static constexpr double PARSE_ISO_ALLOCATIONS = 10.0;
-	static constexpr double PARSE_CLF_ALLOCATIONS = 8.0;
-	static constexpr double PARSE_COMPACT_ALLOCATIONS = 8.0;
+	static constexpr double PARSE_CLF_ALLOCATIONS = 7.0;
+	static constexpr double PARSE_COMPACT_ALLOCATIONS = 7.0;
 
 	/**
 	 * @brief Разбираемая запись даты формата ISO 8601

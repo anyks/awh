@@ -75,7 +75,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatSpecifierParameterizedFixture,
 		FormatSpecifierTestParameter({1743943021520, "%B", "April"}),
 		FormatSpecifierTestParameter({1743943021520, "%m", "04"}),
 		FormatSpecifierTestParameter({1743943021520, "%d", "06"}),
-		FormatSpecifierTestParameter({1743943021520, "%e", "6"}),
+		FormatSpecifierTestParameter({1743943021520, "%e", " 6"}),
 		FormatSpecifierTestParameter({1743943021520, "%a", "Sun"}),
 		FormatSpecifierTestParameter({1743943021520, "%A", "Sunday"}),
 		FormatSpecifierTestParameter({1743943021520, "%u", "7"}),
@@ -107,7 +107,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatSpecifierParameterizedFixture,
 		FormatSpecifierTestParameter({1704067200000, "%B", "January"}),
 		FormatSpecifierTestParameter({1704067200000, "%m", "01"}),
 		FormatSpecifierTestParameter({1704067200000, "%d", "01"}),
-		FormatSpecifierTestParameter({1704067200000, "%e", "1"}),
+		FormatSpecifierTestParameter({1704067200000, "%e", " 1"}),
 		FormatSpecifierTestParameter({1704067200000, "%a", "Mon"}),
 		FormatSpecifierTestParameter({1704067200000, "%A", "Monday"}),
 		FormatSpecifierTestParameter({1704067200000, "%u", "1"}),
@@ -267,7 +267,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatSpecifierParameterizedFixture,
 		FormatSpecifierTestParameter({86400000, "%B", "January"}),
 		FormatSpecifierTestParameter({86400000, "%m", "01"}),
 		FormatSpecifierTestParameter({86400000, "%d", "02"}),
-		FormatSpecifierTestParameter({86400000, "%e", "2"}),
+		FormatSpecifierTestParameter({86400000, "%e", " 2"}),
 		FormatSpecifierTestParameter({86400000, "%a", "Fri"}),
 		FormatSpecifierTestParameter({86400000, "%A", "Friday"}),
 		FormatSpecifierTestParameter({86400000, "%u", "5"}),
@@ -299,7 +299,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatSpecifierParameterizedFixture,
 		FormatSpecifierTestParameter({1762084800000, "%B", "November"}),
 		FormatSpecifierTestParameter({1762084800000, "%m", "11"}),
 		FormatSpecifierTestParameter({1762084800000, "%d", "02"}),
-		FormatSpecifierTestParameter({1762084800000, "%e", "2"}),
+		FormatSpecifierTestParameter({1762084800000, "%e", " 2"}),
 		FormatSpecifierTestParameter({1762084800000, "%a", "Sun"}),
 		FormatSpecifierTestParameter({1762084800000, "%A", "Sunday"}),
 		FormatSpecifierTestParameter({1762084800000, "%u", "7"}),
@@ -323,3 +323,36 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatSpecifierParameterizedFixture,
 		FormatSpecifierTestParameter({1762084800000, "%c", "Sun Nov 2 12:00:00 2025"})
 	)
 );
+
+/**
+ * @brief Тест записи литерального знака процента
+ *
+ * @details Удвоенный знак процента означает сам этот знак, а не начало переменной
+ *          формата: так его определяет стандарт POSIX для strftime. До правки второй
+ *          знак лишь повторно включал режим поиска переменной, отчего запись
+ *          проглатывала оба знака целиком, а формат «100%%» давал «100»
+ *
+ */
+TEST_F(ChronoFixture, FormatPercentChronoTest){
+	/**
+	 * Дата задаётся переменной разрядности штампа времени: перегрузки метода
+	 * формирования принимают первым доводом и дату, и смещение временной зоны,
+	 * и целочисленный литерал подходит обеим одинаково
+	 */
+	// Эталонная дата всех проверок набора
+	const uint64_t date = 1743943021520;
+	// Выполняем проверку записи одного только удвоенного знака процента
+	ASSERT_EQ(this->_chrono->format(date, "%%"), "%");
+	// Выполняем проверку записи знака процента следом за обычным текстом
+	ASSERT_EQ(this->_chrono->format(date, "100%%"), "100%");
+	// Выполняем проверку записи знака процента следом за переменной формата
+	ASSERT_EQ(this->_chrono->format(date, "%Y%%"), "2025%");
+	// Выполняем проверку записи знака процента между переменными формата
+	ASSERT_EQ(this->_chrono->format(date, "%d%% of %m"), "06% of 04");
+	// Выполняем проверку записи нескольких знаков процента подряд
+	ASSERT_EQ(this->_chrono->format(date, "%%%%"), "%%");
+	// Выполняем проверку того, что знак процента не поглощает следующую переменную
+	ASSERT_EQ(this->_chrono->format(date, "%%%Y"), "%2025");
+	// Выполняем проверку записи знака процента внутри полного формата даты
+	ASSERT_EQ(this->_chrono->format(date, "%Y-%m-%d 100%% %H:%M:%S"), "2025-04-06 100% 12:37:01");
+}
