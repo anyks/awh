@@ -1,0 +1,75 @@
+# Сохранённый эталон производительности
+#
+# Формат: протокол сценарий режим граница допуск направление
+#
+#   режим       ratio    - доля от эталонной реализации, снятая попарными прогонами
+#               absolute - само значение показателя
+#   граница     ожидаемая величина
+#   допуск      доля от границы, на которую разрешено отклонение
+#   направление min - не опускаться ниже, max - не подниматься выше
+#
+# Почему доля, а не значение. Абсолютные показатели зависят от машины,
+# компилятора и теплового состояния: за один сеанс они плывут на 4-8 %, и
+# записанное в репозиторий число на другой машине не значит ничего. Доля
+# от эталонной реализации, снятая тем же прогоном, переживает и то, и другое:
+# когда падает наш показатель, падает и эталонный.
+#
+# Откуда допуски. Разлёт медианы попарных долей между независимыми сериями
+# по девять прогонов замерен и составил 1.0 % на кодировании, 2.3 % на разборе
+# потока запросов и 6.0 % на приёме тела. Допуск 6 % покрывает первые два
+# с запасом втрое и ловит просадку от 6 %; приёму тела отведено 12 % - сценарий
+# шумит вдвое сильнее прочих, и сузить допуск значило бы получать ложные срабатывания.
+#
+# По HTTP/1 разлёт снят тремя сериями и вышел разным по сценариям: 0.5 % на теле
+# фиксированного размера, 1.4 % на запросе браузера, 2.8-2.9 % на chunked и
+# побайтовой подаче, 3.8 % на запросе без заголовков. Допуск везде втрое от разлёта -
+# 6 %, 9 % и 12 % соответственно. Самый слабый сторож при этом tiny-request: замер
+# там длится единицы миллисекунд, и с допуском 12 % он ловит просадку лишь от 12 %.
+# Регрессии в разборе заголовков ловят typical-request и fragmented-request,
+# у которых допуск 6 % и 9 %.
+#
+# Показатели, от машины не зависящие вовсе - число выделений памяти и степень
+# сжатия, - сверяются самим значением и с узким допуском: они детерминированы,
+# и любое их изменение означает изменение поведения, а не погрешность замера.
+#
+# Границы сняты на Apple M4 Max, macOS 26.5.2, Apple clang, эталоны nghttp2
+# 1.69.90 и nghttp3 1.18.90 из подмодулей. При обновлении эталона границы
+# подлежат пересъёмке: чужое ускорение иначе однажды примут за нашу регрессию.
+#
+# Эталон HTTP/1 - llhttp 9.4.2, и он единственный берётся пакетной сборкой,
+# а не подмодулем: собственной сборкой Node.js-парсера мы мерили бы не то, что
+# получает пользователь. Плата за это - версия меняется обновлением пакета,
+# без правки репозитория. Расхождение по всем пяти сценариям HTTP/1 сразу
+# и в одну сторону означает смену версии эталона, а не нашу регрессию.
+
+# --- HTTP/1, эталон llhttp
+http1 http1/parse/tiny-request               ratio     1.05   0.12  min
+http1 http1/parse/typical-request            ratio     0.63   0.06  min
+http1 http1/parse/fragmented-request         ratio     0.75   0.09  min
+http1 http1/parse/identity-body              ratio     1.00   0.06  min
+http1 http1/parse/chunked-body               ratio     0.99   0.09  min
+http1 http1/allocations/per-parsed-message   absolute  0.00   0.02  max
+
+# --- HTTP/2, эталон nghttp2
+http2 http2/hpack/encode                    ratio     0.66   0.06  min
+http2 http2/hpack/decode                    ratio     1.79   0.06  min
+http2 http2/parse/request-stream            ratio     1.27   0.06  min
+http2 http2/parse/data-body                 ratio     0.85   0.12  min
+http2 http2/session/round-trip              ratio     1.20   0.06  min
+http2 http2/session/multiplexed             ratio     1.19   0.06  min
+http2 http2/hpack/compression               absolute 11.74   0.02  max
+http2 http2/allocations/per-request         absolute  2.00   0.02  max
+http2 http2/allocations/per-decoded-block   absolute  0.00   0.02  max
+http2 http2/allocations/per-data-frame      absolute  0.34   0.05  max
+
+# --- HTTP/3, эталон nghttp3
+http3 http3/qpack/encode                    ratio     0.80   0.06  min
+http3 http3/qpack/decode                    ratio     1.73   0.06  min
+http3 http3/parse/request-stream            ratio     1.53   0.06  min
+http3 http3/parse/data-body                 ratio     0.87   0.12  min
+http3 http3/session/round-trip              ratio     1.52   0.06  min
+http3 http3/session/multiplexed             ratio     1.37   0.08  min
+http3 http3/qpack/compression               absolute 12.37   0.02  max
+http3 http3/allocations/per-request         absolute  2.00   0.02  max
+http3 http3/allocations/per-decoded-section absolute  0.00   0.02  max
+http3 http3/allocations/per-data-frame      absolute  0.10   0.05  max
