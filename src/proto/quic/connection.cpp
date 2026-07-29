@@ -4874,6 +4874,7 @@ void awh::quic::Connection::address(const net::addr_t * addr, const uint16_t por
 	this->_core.address.clear();
 	// Если структура сетевого адреса не передана — оставляем представление пустым
 	if(addr == nullptr)
+		// Выходим из функции, так как адрес не передан
 		return;
 	/**
 	 * Формируем опаковое сравнимое представление пути из чистых байт адреса и порта.
@@ -5295,7 +5296,7 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 				return status_t::OK;
 			}
 			// Токен пакета Retry
-			string_view token;
+			string_view token = "";
 			// Тег целостности пакета Retry
 			uint8_t tag[proto::RETRY_TAG_SIZE];
 			// Код ошибки транспорта разбора пакета Retry

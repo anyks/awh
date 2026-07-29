@@ -362,15 +362,19 @@ awh::server::Socks5::Origin & awh::server::Socks5::Origin::from(const net::attr_
 			case static_cast <uint8_t> (net::type_t::IPV4): {
 				// Устанавливаем порт
 				this->ip4.port = htons(awh_cast <const net::attr_net_t *> (addr)->port);
-				// Устанавливаем адрес инициатора запроса
-				this->ip4.address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (addr)->ip.get())->address;
+				// Если адрес инициатора запроса установлен
+				if(awh_cast <const net::attr_net_t *> (addr)->ip != nullptr)
+					// Устанавливаем адрес инициатора запроса
+					this->ip4.address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (addr)->ip.get())->address;
 			} break;
 			// Если тип адреса соответствует IPv6
 			case static_cast <uint8_t> (net::type_t::IPV6): {
 				// Устанавливаем порт
 				this->ip6.port = htons(awh_cast <const net::attr_net_t *> (addr)->port);
-				// Устанавливаем адрес инициатора запроса
-				::memcpy(&this->ip6.address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (addr)->ip.get())->address[0], 16);
+				// Если адрес инициатора запроса установлен
+				if(awh_cast <const net::attr_net_t *> (addr)->ip != nullptr)
+					// Устанавливаем адрес инициатора запроса
+					::memcpy(&this->ip6.address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (addr)->ip.get())->address[0], 16);
 			} break;
 		}
 	}
@@ -1368,6 +1372,8 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
 						j->second.ctx.host = make_unique <net::attr_net_t> ();
 						// Устанавливаем тип адреса как IPv4
 						j->second.ctx.host->type = net::type_t::IPV4;
+						// Создаём новый объект адреса IPv4 для ответа с адресом 0.0.0.0
+						awh_cast <net::attr_net_t *> (j->second.ctx.host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 						// Отправляем ответ прокси-клиенту и закрываем пира
 						this->sendReply(i->second, j->second.ctx, true);
 						// Если исходящий клиент был создан
@@ -2688,6 +2694,8 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
 																// Устанавливаем тип параметров подключения
 																attr->type = net::type_t::IPV4;
+																// Создаём новый объект адреса IPv4
+																awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 																// Устанавливаем полученный порт
 																awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
 																// Устанавливаем полученный IP-адрес
@@ -2731,6 +2739,8 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																			i->second.ctx.host = make_unique <net::attr_net_t> ();
 																			// Устанавливаем тип параметров подключения
 																			i->second.ctx.host->type = net::type_t::IPV4;
+																			// Создаём новый объект адреса IPv4
+																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 																			// Устанавливаем полученный порт
 																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
 																			// Устанавливаем полученный IP-адрес
@@ -2748,6 +2758,8 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																			i->second.ctx.host = make_unique <net::attr_net_t> ();
 																			// Устанавливаем тип параметров подключения
 																			i->second.ctx.host->type = net::type_t::IPV6;
+																			// Создаём новый объект адреса IPv6
+																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 																			// Устанавливаем полученный порт
 																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
 																			// Устанавливаем полученный IP-адрес
@@ -2784,6 +2796,8 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
 																// Устанавливаем тип параметров подключения
 																attr->type = net::type_t::IPV6;
+																// Создаём новый объект адреса IPv6
+																awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 																// Устанавливаем полученный порт
 																awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
 																// Устанавливаем полученный IP-адрес
@@ -2827,6 +2841,8 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																			i->second.ctx.host = make_unique <net::attr_net_t> ();
 																			// Устанавливаем тип параметров подключения
 																			i->second.ctx.host->type = net::type_t::IPV4;
+																			// Создаём новый объект адреса IPv4
+																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 																			// Устанавливаем полученный порт
 																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
 																			// Устанавливаем полученный IP-адрес
@@ -2844,6 +2860,8 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																			i->second.ctx.host = make_unique <net::attr_net_t> ();
 																			// Устанавливаем тип параметров подключения
 																			i->second.ctx.host->type = net::type_t::IPV6;
+																			// Создаём новый объект адреса IPv6
+																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 																			// Устанавливаем полученный порт
 																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
 																			// Устанавливаем полученный IP-адрес
@@ -3051,6 +3069,8 @@ void awh::server::Socks5::failure(const unit::dns_t::id_t id, const unit::dns_t:
 				j->second.ctx.host = make_unique <net::attr_net_t> ();
 				// Устанавливаем тип адреса как IPv4
 				j->second.ctx.host->type = net::type_t::IPV4;
+				// Создаём новый объект адреса IPv4 для ответа с адресом 0.0.0.0
+				awh_cast <net::attr_net_t *> (j->second.ctx.host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 				// Удаляем связь DNS-резолвера и идентификатора пира
 				this->_resolves.erase(i);
 				// Отправляем ответ прокси-клиенту и закрываем пира
@@ -5459,6 +5479,8 @@ void awh::server::Socks5::setAlias(const net::attr_t * addr, const net::attr_t *
 					attr = make_unique <net::attr_net_t> ();
 					// Устанавливаем тип параметров подключения
 					attr->type = net::type_t::IPV4;
+					// Создаём новый объект адреса IPv4
+					awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 					// Устанавливаем полученный порт
 					awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <const net::attr_net_t *> (addr)->port;
 					// Устанавливаем полученный IP-адрес
@@ -5505,6 +5527,8 @@ void awh::server::Socks5::setAlias(const net::attr_t * addr, const net::attr_t *
 						ret.first->second = make_unique <net::attr_net_t> ();
 						// Устанавливаем тип параметров подключения
 						ret.first->second->type = net::type_t::IPV4;
+						// Создаём новый объект адреса IPv4
+						awh_cast <net::attr_net_t *> (ret.first->second.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 						// Устанавливаем полученный порт
 						awh_cast <net::attr_net_t *> (ret.first->second.get())->port = awh_cast <const net::attr_net_t *> (alias)->port;
 						// Устанавливаем полученный IP-адрес
@@ -5516,6 +5540,8 @@ void awh::server::Socks5::setAlias(const net::attr_t * addr, const net::attr_t *
 						ret.first->second = make_unique <net::attr_net_t> ();
 						// Устанавливаем тип параметров подключения
 						ret.first->second->type = net::type_t::IPV6;
+						// Создаём новый объект адреса IPv6
+						awh_cast <net::attr_net_t *> (ret.first->second.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 						// Устанавливаем полученный порт
 						awh_cast <net::attr_net_t *> (ret.first->second.get())->port = awh_cast <const net::attr_net_t *> (alias)->port;
 						// Устанавливаем полученный IP-адрес

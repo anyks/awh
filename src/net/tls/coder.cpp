@@ -5524,21 +5524,21 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 							switch(static_cast <uint8_t> (this->_addr.type())){
 								// Для IPv4-адреса
 								case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-									// Выполняем инициализацию объекта IP-адреса
-									address->ip = make_unique <net::addr_net_ipv4_t> ();
+									// Устанавливаем тип адреса однорангового узла
+									address->type = net::type_t::IPV4;
 									// Устанавливаем порт
 									address->port = port;
-									// Устанавливаем IP-адрес
-									awh_cast <net::addr_net_ipv4_t *> (address->ip.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
+									// Выполняем инициализацию объекта IP-адреса
+									address->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 								} break;
 								// Для IPv6-адреса
 								case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-									// Выполняем инициализацию объекта IP-адреса
-									address->ip = make_unique <net::addr_net_ipv6_t> ();
+									// Устанавливаем тип адреса однорангового узла
+									address->type = net::type_t::IPV6;
 									// Устанавливаем порт
 									address->port = port;
-									// Устанавливаем полученный IP-адрес
-									awh_cast <net::addr_net_ipv6_t *> (address->ip.get())->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+									// Выполняем инициализацию объекта IP-адреса
+									address->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 								} break;
 								// Для других типов адресов
 								default: {

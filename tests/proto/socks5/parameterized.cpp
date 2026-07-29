@@ -91,8 +91,12 @@ class ConnectAddressParameterizedFixture : public Socks5Fixture, public ::testin
 				case static_cast <uint8_t> (awh::net::type_t::IPV4): {
 					// Создаём объект IP-адреса хоста
 					std::unique_ptr <awh::net::attr_net_t> host = std::make_unique <awh::net::attr_net_t> ();
+					// Устанавливаем тип адреса IPv4
+					host->type = awh::net::type_t::IPV4;
 					// Устанавливаем порт хоста
 					host->port = 8080;
+					// Создаём объект IPv4-адреса хоста
+					host->ip = std::make_unique <awh::net::addr_net_ipv4_t> ();
 					// Устанавливаем IPv4-адрес хоста
 					static_cast <awh::net::addr_net_ipv4_t *> (host->ip.get())->address = 0x0100007F;
 					// Возвращаем сформированный объект адреса хоста
@@ -383,8 +387,12 @@ class UDPAddressParameterizedFixture : public Socks5Fixture, public ::testing::W
 				case static_cast <uint8_t> (awh::net::type_t::IPV4): {
 					// Создаём объект IP-адреса конечного получателя
 					std::unique_ptr <awh::net::attr_net_t> host = std::make_unique <awh::net::attr_net_t> ();
+					// Устанавливаем тип адреса IPv4
+					host->type = awh::net::type_t::IPV4;
 					// Устанавливаем порт конечного получателя
 					host->port = 53;
+					// Создаём объект IPv4-адреса конечного получателя
+					host->ip = std::make_unique <awh::net::addr_net_ipv4_t> ();
 					// Устанавливаем IPv4-адрес конечного получателя
 					static_cast <awh::net::addr_net_ipv4_t *> (host->ip.get())->address = 0x08080808;
 					// Возвращаем сформированный объект адреса конечного получателя

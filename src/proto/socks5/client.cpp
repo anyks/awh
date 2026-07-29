@@ -432,6 +432,8 @@ bool awh::proto::Client_Socks5::parse(const void * buffer, const size_t size, ct
 											ctx.host->type = net::type_t::IPV4;
 											// Устанавливаем порт хоста для подключения
 											awh_cast <net::attr_net_t *> (ctx.host.get())->port = ntohs(server.port);
+											// Создаём новый объект адреса клиента IPv4
+											awh_cast <net::attr_net_t *> (ctx.host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 											// Устанавливаем IP-адрес хоста для подключения
 											awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (ctx.host.get())->ip.get())->address = server.host;
 											// Устанавливаем стейт рукопожатия
@@ -582,6 +584,8 @@ bool awh::proto::Client_Socks5::parse(const void * buffer, const size_t size, ud
 							udp.host->type = net::type_t::IPV4;
 							// Устанавливаем порт хоста для подключения
 							awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(server.port);
+							// Создаём новый объект адреса клиента IPv4
+							awh_cast <net::attr_net_t *> (udp.host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 							// Устанавливаем IP-адрес хоста для подключения
 							awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = server.host;
 							// Увеличиваем размер данных в объекте UDP заголовка
@@ -740,8 +744,14 @@ bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
 						case static_cast <uint8_t> (net::type_t::IPV4): {
 							// Добавляем тип адреса "IPv4" в буфер для отправки данных
 							::addPayload(addr_type_t::IPV4);
-							// Добавляем IP адрес хоста для подключения в буфер для отправки данных
-							::addPayload(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (ctx.host.get())->ip.get())->address);
+							// Получаем объект атрибутов хоста для подключения
+							net::attr_net_t * host = awh_cast <net::attr_net_t *> (ctx.host.get());
+							// Если IP-адрес хоста для подключения установлен
+							if(host->ip != nullptr)
+								// Добавляем IP адрес хоста для подключения в буфер для отправки данных
+								::addPayload(awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address);
+							// Добавляем нулевой IP-адрес в буфер для отправки данных, если адрес хоста не установлен (RFC 1928)
+							else ::addPayload(static_cast <uint32_t> (0));
 							// Добавляем порт хоста для подключения в буфер для отправки данных
 							::addPayload(htons(awh_cast <net::attr_net_t *> (ctx.host.get())->port));
 						} break;
@@ -749,8 +759,14 @@ bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
 						case static_cast <uint8_t> (net::type_t::IPV6): {
 							// Добавляем тип адреса "IPv6" в буфер для отправки данных
 							::addPayload(addr_type_t::IPV6);
-							// Добавляем IP адрес хоста для подключения в буфер для отправки данных
-							::addPayload(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (ctx.host.get())->ip.get())->address);
+							// Получаем объект атрибутов хоста для подключения
+							net::attr_net_t * host = awh_cast <net::attr_net_t *> (ctx.host.get());
+							// Если IP-адрес хоста для подключения установлен
+							if(host->ip != nullptr)
+								// Добавляем IP адрес хоста для подключения в буфер для отправки данных
+								::addPayload(awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address);
+							// Добавляем нулевой IP-адрес в буфер для отправки данных, если адрес хоста не установлен (RFC 1928)
+							else ::addPayload(array <uint8_t, 16> {});
 							// Добавляем порт хоста для подключения в буфер для отправки данных
 							::addPayload(htons(awh_cast <net::attr_net_t *> (ctx.host.get())->port));
 						} break;
@@ -830,8 +846,14 @@ bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, const u
 				result = true;
 				// Добавляем тип адреса "IPv4" в буфер для отправки данных
 				::addPayload(addr_type_t::IPV4);
-				// Добавляем IP адрес хоста для подключения в буфер для отправки данных
-				::addPayload(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address);
+				// Получаем объект атрибутов хоста для подключения
+				net::attr_net_t * host = awh_cast <net::attr_net_t *> (udp.host.get());
+				// Если IP-адрес хоста для подключения установлен
+				if(host->ip != nullptr)
+					// Добавляем IP адрес хоста для подключения в буфер для отправки данных
+					::addPayload(awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address);
+				// Добавляем нулевой IP-адрес в буфер для отправки данных, если адрес хоста не установлен (RFC 1928)
+				else ::addPayload(static_cast <uint32_t> (0));
 				// Добавляем порт хоста для подключения в буфер для отправки данных
 				::addPayload(htons(awh_cast <net::attr_net_t *> (udp.host.get())->port));
 			} break;
@@ -841,8 +863,14 @@ bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, const u
 				result = true;
 				// Добавляем тип адреса "IPv6" в буфер для отправки данных
 				::addPayload(addr_type_t::IPV6);
-				// Добавляем IP адрес хоста для подключения в буфер для отправки данных
-				::addPayload(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address);
+				// Получаем объект атрибутов хоста для подключения
+				net::attr_net_t * host = awh_cast <net::attr_net_t *> (udp.host.get());
+				// Если IP-адрес хоста для подключения установлен
+				if(host->ip != nullptr)
+					// Добавляем IP адрес хоста для подключения в буфер для отправки данных
+					::addPayload(awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address);
+				// Добавляем нулевой IP-адрес в буфер для отправки данных, если адрес хоста не установлен (RFC 1928)
+				else ::addPayload(array <uint8_t, 16> {});
 				// Добавляем порт хоста для подключения в буфер для отправки данных
 				::addPayload(htons(awh_cast <net::attr_net_t *> (udp.host.get())->port));
 			} break;

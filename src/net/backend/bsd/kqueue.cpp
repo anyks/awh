@@ -40181,6 +40181,8 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										client->target = make_unique <net::attr_uds_t> ();
 										// Устанавливаем тип пакета как файловая система
 										client->target->type = net::type_t::FS;
+										// Выполняем инициализацию объекта адреса файловой системы
+										awh_cast <net::attr_uds_t *> (client->target.get())->path = make_unique <net::addr_fs_t> ();
 									}
 									// Если тип адреса не установлен
 									if(client->state.address == event::address_t::NONE)
@@ -40338,6 +40340,8 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										server->host = make_unique <net::attr_uds_t> ();
 										// Устанавливаем тип пакета как файловая система
 										server->host->type = net::type_t::FS;
+										// Выполняем инициализацию объекта адреса файловой системы
+										awh_cast <net::attr_uds_t *> (server->host.get())->path = make_unique <net::addr_fs_t> ();
 									}
 									// Если тип адреса не установлен
 									if(server->state.address == event::address_t::NONE)
@@ -41434,6 +41438,8 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									client->target = make_unique <net::attr_uds_t> ();
 									// Устанавливаем тип пакета как файловая система
 									client->target->type = net::type_t::FS;
+									// Выполняем инициализацию объекта адреса файловой системы
+									awh_cast <net::attr_uds_t *> (client->target.get())->path = make_unique <net::addr_fs_t> ();
 								}
 								// Если тип адреса не установлен
 								if(client->state.address == event::address_t::NONE)
@@ -41502,6 +41508,8 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									server->host = make_unique <net::attr_uds_t> ();
 									// Устанавливаем тип пакета как файловая система
 									server->host->type = net::type_t::FS;
+									// Выполняем инициализацию объекта адреса файловой системы
+									awh_cast <net::attr_uds_t *> (server->host.get())->path = make_unique <net::addr_fs_t> ();
 								}
 								// Если тип адреса не установлен
 								if(server->state.address == event::address_t::NONE)

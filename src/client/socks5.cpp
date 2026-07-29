@@ -502,17 +502,19 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										this->_ctx.host = make_unique <net::attr_net_t> ();
 										// Устанавливаем тип адреса события
 										this->_ctx.host->type = net::type_t::IPV4;
+										// Получаем объект хоста для подключения
+										net::attr_net_t * host = awh_cast <net::attr_net_t *> (this->_ctx.host.get());
 										// Устанавливаем внутренний IP-адрес клиента
-										this->_unit->client.getAddress(this->_endpoint.udp.eid, event::address_t::IPV4, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip);
+										this->_unit->client.getAddress(this->_endpoint.udp.eid, event::address_t::IPV4, host->ip);
 										// Если адрес клиента установлен а порт не установлен
-										if((awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address > 0) && (port == 0)){
+										if((host->ip != nullptr) && (awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address > 0) && (port == 0)){
 											// Получаем внутренний порт socks5-клиента
 											port = this->_unit->client.getSourcePort(this->_id.eid);
 											// Устанавливаем внутренний порт клиента
 											this->_unit->client.setSourcePort(this->_endpoint.udp.eid, port);
 										}
 										// Устанавливаем внутренний порт клиента
-										awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = port;
+										host->port = port;
 									} break;
 									// Если тип данных соответствует IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -520,17 +522,19 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										this->_ctx.host = make_unique <net::attr_net_t> ();
 										// Устанавливаем тип адреса события
 										this->_ctx.host->type = net::type_t::IPV6;
+										// Получаем объект хоста для подключения
+										net::attr_net_t * host = awh_cast <net::attr_net_t *> (this->_ctx.host.get());
 										// Устанавливаем внутренний IP-адрес клиента
-										this->_unit->client.getAddress(this->_endpoint.udp.eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip);
+										this->_unit->client.getAddress(this->_endpoint.udp.eid, event::address_t::IPV6, host->ip);
 										// Если адрес клиента установлен а порт не установлен
-										if((::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0) && (port == 0)){
+										if((host->ip != nullptr) && (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0) && (port == 0)){
 											// Получаем внутренний порт socks5-клиента
 											port = this->_unit->client.getSourcePort(this->_id.eid);
 											// Устанавливаем внутренний порт клиента
 											this->_unit->client.setSourcePort(this->_endpoint.udp.eid, port);
 										}
 										// Устанавливаем внутренний порт клиента
-										awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = port;
+										host->port = port;
 									} break;
 								}
 							// Если клиент для работы с UDP-протоколом не активирован
@@ -560,6 +564,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										this->_ctx.host->type = net::type_t::IPV4;
 										// Устанавливаем порт хоста для подключения
 										awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
+										// Создаём новый объект адреса клиента IPv4
+										awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 										// Устанавливаем IP-адрес хоста для подключения
 										awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address;
 									} break;
@@ -1140,6 +1146,8 @@ void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_
 									this->_endpoint.udp.ctx.host = make_unique <net::attr_net_t> ();
 									// Устанавливаем тип адреса события
 									this->_endpoint.udp.ctx.host->type = net::type_t::IPV4;
+									// Создаём новый объект адреса клиента IPv4
+									awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 								}
 								// Устанавливаем порт хоста для подключения
 								awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
@@ -1547,6 +1555,8 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 							this->_endpoint.udp.ctx.host = make_unique <net::attr_net_t> ();
 							// Устанавливаем тип адреса события
 							this->_endpoint.udp.ctx.host->type = net::type_t::IPV4;
+							// Создаём новый объект адреса клиента IPv4
+							awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 						}
 						// Устанавливаем порт хоста для подключения
 						awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
@@ -1777,7 +1787,7 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 		 */
 		try {
 			// Если исходящий адрес для UDP-клиента не пустой
-			if(addr != nullptr){
+			if((addr != nullptr) && (addr->ip != nullptr)){
 				// Если клиент для работы с UDP протоколом инициализирован
 				if(this->_endpoint.udp.eid > 0)
 					// Удаляем клиент, принадлежащий пиру
@@ -2107,17 +2117,31 @@ bool awh::client::Socks5::endpoint(const net::attr_t * attr) noexcept {
 					} break;
 					// Для типа IPv4
 					case static_cast <uint8_t> (net::type_t::IPV4): {
+						// Получаем объект переданных атрибутов сетевого адреса
+						const net::attr_net_t * source = awh_cast <const net::attr_net_t *> (attr);
+						// Если в переданных атрибутах IP-адрес не установлен
+						if(source->ip == nullptr)
+							// Прерываем выполнение
+							break;
 						// Создаём объект параметров подключения для идентификатора события клиента
 						this->_endpoint.attr = make_unique <net::attr_net_t> ();
 						// Устанавливаем тип параметров подключения для идентификатора события клиента
 						this->_endpoint.attr->type = net::type_t::IPV4;
 						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port = awh_cast <const net::attr_net_t *> (attr)->port;
+						awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port = source->port;
+						// Создаём новый объект адреса клиента IPv4
+						awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 						// Устанавливаем полученный IP-адрес
-						awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (attr)->ip.get())->address;
+						awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
 					} break;
 					// Для типа IPv6
 					case static_cast <uint8_t> (net::type_t::IPV6): {
+						// Получаем объект переданных атрибутов сетевого адреса
+						const net::attr_net_t * source = awh_cast <const net::attr_net_t *> (attr);
+						// Если в переданных атрибутах IP-адрес не установлен
+						if(source->ip == nullptr)
+							// Прерываем выполнение
+							break;
 						// Создаём объект параметров подключения для идентификатора события клиента
 						this->_endpoint.attr = make_unique <net::attr_net_t> ();
 						// Устанавливаем тип параметров подключения для идентификатора события клиента
@@ -2125,13 +2149,13 @@ bool awh::client::Socks5::endpoint(const net::attr_t * attr) noexcept {
 						// Создаём новый объект адреса клиента IPv6
 						awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port = awh_cast <const net::attr_net_t *> (attr)->port;
+						awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port = source->port;
 						// Устанавливаем полученный IP-адрес
-						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (attr)->ip.get())->address[0], 16);
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
 					} break;
 				}
 				// Возвращаем результат наличия объекта атрибутов конечной точки для идентификатора события клиента
-				return (this->_endpoint.attr->type != net::type_t::NONE);
+				return ((this->_endpoint.attr != nullptr) && (this->_endpoint.attr->type != net::type_t::NONE));
 			}
 		/**
 		 * Если возникает ошибка

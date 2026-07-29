@@ -3191,10 +3191,20 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 						 */
 						switch(static_cast <uint8_t> (uri._attr->type)){
 							// Если атрибуты URI адреса являются адресом файловой системы
-							case static_cast <uint8_t> (net::type_t::FS):
-								// Выполняем сравнение адресов файловой системы в атрибутах URI адреса (с учётом регистра)
-								result = (awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address == awh_cast <const net::addr_fs_t *> (awh_cast <const net::attr_uds_t *> (uri._attr.get())->path.get())->address);
-							break;
+							case static_cast <uint8_t> (net::type_t::FS): {
+								// Извлекаем атрибуты сравниваемых URI адресов как адреса файловой системы
+								net::attr_uds_t * first = awh_cast <net::attr_uds_t *> (this->_attr.get());
+								const net::attr_uds_t * second = awh_cast <const net::attr_uds_t *> (uri._attr.get());
+								/**
+								 * Выполняем сравнение наличия путей к сокету: путь заводится
+								 * отдельно от самих атрибутов и у них может отсутствовать вовсе
+								 */
+								result = ((first->path == nullptr) == (second->path == nullptr));
+								// Если пути к сокету заведены у обоих
+								if((first->path != nullptr) && (second->path != nullptr))
+									// Выполняем сравнение адресов файловой системы в атрибутах URI адреса (с учётом регистра)
+									result = (awh_cast <net::addr_fs_t *> (first->path.get())->address == awh_cast <const net::addr_fs_t *> (second->path.get())->address);
+							} break;
 							// Если атрибуты URI адреса являются FQDN-адресом
 							case static_cast <uint8_t> (net::type_t::FQDN): {
 								// Выполняем сравнение портов хоста в атрибутах URI адреса
@@ -3375,10 +3385,20 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 						 */
 						switch(static_cast <uint8_t> (uri._attr->type)){
 							// Если атрибуты URI адреса являются адресом файловой системы
-							case static_cast <uint8_t> (net::type_t::FS):
-								// Выполняем сравнение адресов файловой системы в атрибутах URI адреса (с учётом регистра)
-								result = (awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address != awh_cast <const net::addr_fs_t *> (awh_cast <const net::attr_uds_t *> (uri._attr.get())->path.get())->address);
-							break;
+							case static_cast <uint8_t> (net::type_t::FS): {
+								// Извлекаем атрибуты сравниваемых URI адресов как адреса файловой системы
+								net::attr_uds_t * first = awh_cast <net::attr_uds_t *> (this->_attr.get());
+								const net::attr_uds_t * second = awh_cast <const net::attr_uds_t *> (uri._attr.get());
+								/**
+								 * Выполняем сравнение наличия путей к сокету: путь заводится
+								 * отдельно от самих атрибутов и у них может отсутствовать вовсе
+								 */
+								result = ((first->path == nullptr) != (second->path == nullptr));
+								// Если пути к сокету заведены у обоих
+								if((first->path != nullptr) && (second->path != nullptr))
+									// Выполняем сравнение адресов файловой системы в атрибутах URI адреса (с учётом регистра)
+									result = (awh_cast <net::addr_fs_t *> (first->path.get())->address != awh_cast <const net::addr_fs_t *> (second->path.get())->address);
+							} break;
 							// Если атрибуты URI адреса являются FQDN-адресом
 							case static_cast <uint8_t> (net::type_t::FQDN): {
 								// Выполняем сравнение портов хоста в атрибутах URI адреса

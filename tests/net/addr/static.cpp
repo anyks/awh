@@ -757,3 +757,43 @@ TEST_F(NetFixture, NetTrimIsLocaleIndependentTest){
 	ASSERT_NE(awh::net_addr_t::type_t::IPV4, this->_addr->host(std::string("1.2.3.4\x85")));
 	ASSERT_NE(awh::net_addr_t::type_t::IPV4, this->_addr->host(std::string("1.2.3.4\xFF")));
 }
+
+/**
+ * @brief Тест умолчаний структур атрибутов подключения
+ *
+ * @details Атрибуты подключения объект самого адреса по умолчанию не заводят:
+ *          у сетевых атрибутов разновидность не определена и IP-адрес пуст,
+ *          у атрибутов UNIX-доменного сокета пуст путь. Заводит их тот, кто
+ *          атрибуты наполняет, и обходится это на одно выделение памяти дешевле,
+ *          когда наполнять их не приходится вовсе.
+ *
+ *          Прежде сетевые атрибуты создавались с разновидностью IPV4 и готовым
+ *          объектом IPv4-адреса, и записи вида
+ *
+ *              attr->ip.get() ... ->address = value;
+ *
+ *          работали без создания объекта. Со сменой умолчания такая запись
+ *          разыменовывает пустой указатель, а запись шестнадцати байт IPv6
+ *          поверх готового четырёхбайтового IPv4 портила память и до неё.
+ *          Тест закрепляет умолчания: если их вернуть обратно, он не пройдёт,
+ *          и станет видно, что места наполнения атрибутов нужно проверить снова
+ *
+ */
+TEST_F(NetFixture, NetAttributesHaveNoAddressByDefaultTest){
+	// Сетевые атрибуты подключения разновидности не имеют
+	awh::net::attr_net_t network;
+	ASSERT_EQ(awh::net::type_t::NONE, network.type);
+	// Сетевые атрибуты подключения объекта IP-адреса не имеют
+	ASSERT_EQ(nullptr, network.ip);
+	// Порт хоста обнулён
+	ASSERT_EQ(0, network.port);
+	// Атрибуты UNIX-доменного сокета объекта пути не имеют
+	awh::net::attr_uds_t socket;
+	ASSERT_EQ(awh::net::type_t::FS, socket.type);
+	ASSERT_EQ(nullptr, socket.path);
+	// Атрибуты доменного имени хранят имя строкой и заводить ничего не требуют
+	awh::net::attr_fqdn_t domain;
+	ASSERT_EQ(awh::net::type_t::FQDN, domain.type);
+	ASSERT_EQ(0, domain.port);
+	ASSERT_TRUE(domain.domain.empty());
+}
