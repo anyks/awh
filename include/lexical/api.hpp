@@ -65,7 +65,7 @@ namespace awh {
 		 * @return результат проверки
 		 *
 		 */
-		AWH_LEXICAL_INLINE bool roundsToNearest() noexcept {
+		AWH_ASCII_INLINE bool roundsToNearest() noexcept {
 			/**
 			 * При расширенной точности промежуточных вычислений проверка неприменима
 			 */
@@ -153,7 +153,7 @@ namespace awh {
 		 * @return         результат выполнения быстрого пути
 		 *
 		 */
-		AWH_LEXICAL_INLINE bool clingerFastPath(const uint64_t mantissa, const int64_t exponent, const bool negative, T & value) noexcept {
+		AWH_ASCII_INLINE bool clingerFastPath(const uint64_t mantissa, const int64_t exponent, const bool negative, T & value) noexcept {
 			// Если показатель степени выходит за пределы быстрого пути
 			if((exponent < static_cast <int64_t> (binary_t <T>::minExponentFastPath())) ||
 			   (exponent > static_cast <int64_t> (binary_t <T>::maxExponentFastPath())))

@@ -276,7 +276,7 @@ namespace awh {
 		 * @return    изменённый формат разбора
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr format_t & operator &= (format_t & lhs, const format_t rhs) noexcept {
+		AWH_ASCII_INLINE constexpr format_t & operator &= (format_t & lhs, const format_t rhs) noexcept {
 			// Выполняем применение операции к исходному формату
 			return (lhs = (lhs & rhs));
 		}
@@ -288,7 +288,7 @@ namespace awh {
 		 * @return    изменённый формат разбора
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr format_t & operator |= (format_t & lhs, const format_t rhs) noexcept {
+		AWH_ASCII_INLINE constexpr format_t & operator |= (format_t & lhs, const format_t rhs) noexcept {
 			// Выполняем применение операции к исходному формату
 			return (lhs = (lhs | rhs));
 		}
@@ -300,7 +300,7 @@ namespace awh {
 		 * @return    изменённый формат разбора
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr format_t & operator ^= (format_t & lhs, const format_t rhs) noexcept {
+		AWH_ASCII_INLINE constexpr format_t & operator ^= (format_t & lhs, const format_t rhs) noexcept {
 			// Выполняем применение операции к исходному формату
 			return (lhs = (lhs ^ rhs));
 		}
@@ -312,7 +312,7 @@ namespace awh {
 		 * @return       результат проверки
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr bool isFormat(const format_t format, const format_t flag) noexcept {
+		AWH_ASCII_INLINE constexpr bool isFormat(const format_t format, const format_t flag) noexcept {
 			// Выполняем проверку наличия искомого флага
 			return ((format & flag) != format_t::NONE);
 		}
@@ -520,7 +520,7 @@ namespace awh {
 		 * @return      количество ведущих нулевых бит
 		 *
 		 */
-		AWH_LEXICAL_INLINE int32_t leadingZeros(const uint64_t value) noexcept {
+		AWH_ASCII_INLINE int32_t leadingZeros(const uint64_t value) noexcept {
 			// Если исходное значение нулевое, значащих бит нет
 			if(value == 0)
 				// Выводим полную разрядность значения
@@ -601,7 +601,7 @@ namespace awh {
 		 * @return  результат умножения
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr uint64_t multiply32(const uint32_t x, const uint32_t y) noexcept {
+		AWH_ASCII_INLINE constexpr uint64_t multiply32(const uint32_t x, const uint32_t y) noexcept {
 			// Выполняем умножение с расширением разрядности
 			return (static_cast <uint64_t> (x) * static_cast <uint64_t> (y));
 		}
@@ -614,7 +614,7 @@ namespace awh {
 		 * @return  результат умножения в виде пары 64-битных слов
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr value128_t multiply128Generic(const uint64_t x, const uint64_t y) noexcept {
+		AWH_ASCII_INLINE constexpr value128_t multiply128Generic(const uint64_t x, const uint64_t y) noexcept {
 			// Произведение младших слов множителей
 			const uint64_t lowLow = multiply32(static_cast <uint32_t> (x), static_cast <uint32_t> (y));
 			// Произведение старшего слова первого множителя на младшее слово второго
@@ -640,7 +640,7 @@ namespace awh {
 		 * @return  результат умножения в виде пары 64-битных слов
 		 *
 		 */
-		AWH_LEXICAL_INLINE value128_t multiply128(const uint64_t x, const uint64_t y) noexcept {
+		AWH_ASCII_INLINE value128_t multiply128(const uint64_t x, const uint64_t y) noexcept {
 			/**
 			 * Для платформ с поддержкой 128-битного целого используем нативный тип
 			 */
@@ -1746,7 +1746,7 @@ namespace awh {
 		 * @param value    ссылка на результат сборки
 		 *
 		 */
-		AWH_LEXICAL_INLINE void toFloat(const bool negative, const mantissa_t & mantissa, T & value) noexcept {
+		AWH_ASCII_INLINE void toFloat(const bool negative, const mantissa_t & mantissa, T & value) noexcept {
 			/**
 			 * Создаём тип данных эквивалентного беззнакового целого
 			 */
@@ -1775,7 +1775,7 @@ namespace awh {
 		 * @return      скорректированная мантисса расширенной точности
 		 *
 		 */
-		AWH_LEXICAL_INLINE mantissa_t toExtended(const T value) noexcept {
+		AWH_ASCII_INLINE mantissa_t toExtended(const T value) noexcept {
 			/**
 			 * Создаём тип данных эквивалентного беззнакового целого
 			 */
@@ -1821,7 +1821,7 @@ namespace awh {
 		 * @return      скорректированная мантисса середины интервала
 		 *
 		 */
-		AWH_LEXICAL_INLINE mantissa_t toExtendedHalfway(const T value) noexcept {
+		AWH_ASCII_INLINE mantissa_t toExtendedHalfway(const T value) noexcept {
 			// Получаем расширенное представление исходного числа
 			mantissa_t result = toExtended(value);
 			// Компенсируем удвоение мантиссы показателем степени
@@ -1915,7 +1915,7 @@ namespace awh {
 		 * @return         результат сравнения
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr bool compareIgnoreCase(const UC * actual, const UC * expected, const size_t length) noexcept {
+		AWH_ASCII_INLINE constexpr bool compareIgnoreCase(const UC * actual, const UC * expected, const size_t length) noexcept {
 			/**
 			 * Выполняем перебор всех сравниваемых символов
 			 */
@@ -1945,7 +1945,7 @@ namespace awh {
 		 * @return       результат проверки
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr bool isSpace(const UC symbol) noexcept {
+		AWH_ASCII_INLINE constexpr bool isSpace(const UC symbol) noexcept {
 			// Выполняем проверку по таблице пробельных символов
 			return ((symbol < 256) && luts_t <>::spaces[static_cast <uint8_t> (symbol)]);
 		}
@@ -1964,7 +1964,7 @@ namespace awh {
 		 * @return       результат проверки
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr bool isDigit(const UC symbol) noexcept {
+		AWH_ASCII_INLINE constexpr bool isDigit(const UC symbol) noexcept {
 			// Выполняем проверку попадания символа в диапазон десятичных цифр
 			return !((symbol > UC('9')) || (symbol < UC('0')));
 		}
@@ -1983,7 +1983,7 @@ namespace awh {
 		 * @return       значение цифры или 255 если символ цифрой не является
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr uint8_t charToDigit(const UC symbol) noexcept {
+		AWH_ASCII_INLINE constexpr uint8_t charToDigit(const UC symbol) noexcept {
 			/**
 			 * Создаём тип данных беззнакового символа
 			 */
@@ -2003,7 +2003,7 @@ namespace awh {
 		 * @return     максимальное количество цифр
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr size_t maxDigitsU64(const int32_t base) noexcept {
+		AWH_ASCII_INLINE constexpr size_t maxDigitsU64(const int32_t base) noexcept {
 			// Выводим максимальное количество цифр из таблицы
 			return luts_t <>::maxDigits[base - 2];
 		}

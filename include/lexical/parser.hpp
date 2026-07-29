@@ -94,7 +94,7 @@ namespace awh {
 		 * @return результат проверки
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr bool hasSimd() noexcept {
+		AWH_ASCII_INLINE constexpr bool hasSimd() noexcept {
 			/**
 			 * Определяем доступность векторного разбора
 			 */
@@ -117,7 +117,7 @@ namespace awh {
 		 * @return      значение с обратным порядком байт
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr uint64_t swapBytes(const uint64_t value) noexcept {
+		AWH_ASCII_INLINE constexpr uint64_t swapBytes(const uint64_t value) noexcept {
 			// Выполняем перестановку байт значения
 			return (
 				((value & 0xFF00000000000000ULL) >> 56) |
@@ -148,7 +148,7 @@ namespace awh {
 		 * @return      упакованное 64-битное значение
 		 *
 		 */
-		AWH_LEXICAL_INLINE uint64_t readBlock(const UC * chars) noexcept {
+		AWH_ASCII_INLINE uint64_t readBlock(const UC * chars) noexcept {
 			// Если символы исходной строки шире одного байта
 			if(!is_same <UC, char>::value){
 				// Аккумулятор упакованного значения
@@ -188,7 +188,7 @@ namespace awh {
 			 * @return     упакованное 64-битное значение
 			 *
 			 */
-			AWH_LEXICAL_INLINE uint64_t readBlockSimd(const __m128i data) noexcept {
+			AWH_ASCII_INLINE uint64_t readBlockSimd(const __m128i data) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
 				AWH_LEXICAL_SIMD_DISABLE_WARNINGS
 				// Выполняем упаковку 16-битных элементов в 8-битные
@@ -220,7 +220,7 @@ namespace awh {
 			 * @return      упакованное 64-битное значение
 			 *
 			 */
-			AWH_LEXICAL_INLINE uint64_t readBlockSimd(const char16_t * chars) noexcept {
+			AWH_ASCII_INLINE uint64_t readBlockSimd(const char16_t * chars) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
 				AWH_LEXICAL_SIMD_DISABLE_WARNINGS
 				// Выполняем загрузку блока символов и его упаковку
@@ -239,7 +239,7 @@ namespace awh {
 			 * @return     упакованное 64-битное значение
 			 *
 			 */
-			AWH_LEXICAL_INLINE uint64_t readBlockSimd(const uint16x8_t data) noexcept {
+			AWH_ASCII_INLINE uint64_t readBlockSimd(const uint16x8_t data) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
 				AWH_LEXICAL_SIMD_DISABLE_WARNINGS
 				// Выполняем сужение 16-битных элементов до 8-битных
@@ -256,7 +256,7 @@ namespace awh {
 			 * @return      упакованное 64-битное значение
 			 *
 			 */
-			AWH_LEXICAL_INLINE uint64_t readBlockSimd(const char16_t * chars) noexcept {
+			AWH_ASCII_INLINE uint64_t readBlockSimd(const char16_t * chars) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
 				AWH_LEXICAL_SIMD_DISABLE_WARNINGS
 				// Выполняем загрузку блока символов и его упаковку
@@ -291,7 +291,7 @@ namespace awh {
 		 * @return      числовое значение блока цифр
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr uint32_t parseBlock(uint64_t value) noexcept {
+		AWH_ASCII_INLINE constexpr uint32_t parseBlock(uint64_t value) noexcept {
 			// Маска выделения байтовых пар результата
 			constexpr uint64_t MASK = 0x000000FF000000FFULL;
 			// Первый множитель свёртки разрядов
@@ -322,7 +322,7 @@ namespace awh {
 		 * @return      числовое значение блока цифр
 		 *
 		 */
-		AWH_LEXICAL_INLINE uint32_t parseBlock(const UC * chars) noexcept {
+		AWH_ASCII_INLINE uint32_t parseBlock(const UC * chars) noexcept {
 			// Если векторный разбор для типа символа недоступен
 			if(!hasSimd <UC> ())
 				// Выполняем скалярный разбор упакованного блока
@@ -338,7 +338,7 @@ namespace awh {
 		 * @return      результат проверки
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr bool isDigitBlock(const uint64_t value) noexcept {
+		AWH_ASCII_INLINE constexpr bool isDigitBlock(const uint64_t value) noexcept {
 			// Выполняем одновременную проверку всех байт блока на диапазон цифр
 			return !(((value + 0x4646464646464646ULL) | (value - 0x3030303030303030ULL)) & 0x8080808080808080ULL);
 		}
@@ -355,7 +355,7 @@ namespace awh {
 			 * @return      результат разбора блока
 			 *
 			 */
-			AWH_LEXICAL_INLINE bool parseBlockSimd(const char16_t * chars, uint64_t & value) noexcept {
+			AWH_ASCII_INLINE bool parseBlockSimd(const char16_t * chars, uint64_t & value) noexcept {
 				/**
 				 * Выполняем разбор блока доступным набором векторных инструкций
 				 */
@@ -446,7 +446,7 @@ namespace awh {
 		 * @param value ссылка на аккумулятор числового значения
 		 *
 		 */
-		AWH_LEXICAL_INLINE void parseBlocks(const UC * & p, const UC * const pend, uint64_t & value) noexcept {
+		AWH_ASCII_INLINE void parseBlocks(const UC * & p, const UC * const pend, uint64_t & value) noexcept {
 			// Если векторный разбор для типа символа недоступен
 			if(!hasSimd <UC> ())
 				// Завершаем блочный разбор
@@ -470,7 +470,7 @@ namespace awh {
 		 * @param value ссылка на аккумулятор числового значения
 		 *
 		 */
-		AWH_LEXICAL_INLINE void parseBlocks(const char * & p, const char * const pend, uint64_t & value) noexcept {
+		AWH_ASCII_INLINE void parseBlocks(const char * & p, const char * const pend, uint64_t & value) noexcept {
 			/**
 			 * Выполняем разбор блоков цифр, пока это возможно
 			 */
@@ -491,7 +491,7 @@ namespace awh {
 		 * @return      результат выполнения операции
 		 *
 		 */
-		AWH_LEXICAL_INLINE bool mulAddChecked(uint64_t & value, const uint64_t base, const uint64_t digit) noexcept {
+		AWH_ASCII_INLINE bool mulAddChecked(uint64_t & value, const uint64_t base, const uint64_t digit) noexcept {
 			/**
 			 * Для компиляторов с поддержкой встроенной проверки используем её
 			 */
@@ -578,7 +578,7 @@ namespace awh {
 		 * @return      результат разбора числовой строки
 		 *
 		 */
-		AWH_LEXICAL_INLINE parsedNumber_t <UC> reportError(const UC * p, const error_t error) noexcept {
+		AWH_ASCII_INLINE parsedNumber_t <UC> reportError(const UC * p, const error_t error) noexcept {
 			// Результат разбора числовой строки
 			parsedNumber_t <UC> result;
 			// Запоминаем, что разбор завершился отказом

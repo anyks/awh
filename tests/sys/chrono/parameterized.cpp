@@ -68,21 +68,21 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, ParsingParameterizedFixture,
 		ParsingChronoTestParameter({"2024-08-06T11:08:55.101Z", "%Y-%m-%dT%H:%M:%S.%s%Z", 1722942535101}),
 		ParsingChronoTestParameter({"2024-08-06T14:47:34.741876+03:00", "%Y-%m-%dT%H:%M:%S.%s%o", 1722945595876}),
 		ParsingChronoTestParameter({"2024-08-06T14:47:34.728093306+03:0", "%Y-%m-%dT%H:%M:%S.%s%o", 1723672947306}),
-		ParsingChronoTestParameter({"7/26/2023 2:39:42 PM", "%m/%d/%Y %I:%M:%S %p", 1690371582000}),
-		ParsingChronoTestParameter({"2023-07-26T14:39:4", "%Y-%m-%dT%H:%M:%S", 1690371544000}),
-		ParsingChronoTestParameter({"7/26/2023 2:39:42 PM (2934007)", "%m/%d/%Y %I:%M:%S %p (%s)", 1690374516007}),
-		ParsingChronoTestParameter({"2024-11-15 17:14:03,331", "%Y-%m-%d %H:%M:%S,%s", 1731680043331}),
-		ParsingChronoTestParameter({"Tue Jul 16 10:45:40.020399 2024", "%a %h %d %H:%M:%S.%s %Y", 1721115960399}),
+		ParsingChronoTestParameter({"7/26/2023 2:39:42 PM", "%m/%d/%Y %I:%M:%S %p", 1690382382000}),
+		ParsingChronoTestParameter({"2023-07-26T14:39:4", "%Y-%m-%dT%H:%M:%S", 1690382344000}),
+		ParsingChronoTestParameter({"7/26/2023 2:39:42 PM (2934007)", "%m/%d/%Y %I:%M:%S %p (%s)", 1690385316007}),
+		ParsingChronoTestParameter({"2024-11-15 17:14:03,331", "%Y-%m-%d %H:%M:%S,%s", 1731690843331}),
+		ParsingChronoTestParameter({"Tue Jul 16 10:45:40.020399 2024", "%a %h %d %H:%M:%S.%s %Y", 1721126760399}),
 		ParsingChronoTestParameter({"05/Apr/2023:12:45:12.345678901 +0300", "%d/%h/%Y:%H:%M:%S.%s %z", 1681033590901}),
-		ParsingChronoTestParameter({"2024-10-16 10:30:45.789", "%Y-%m-%d %H:%M:%S.%s", 1729063845789}),
+		ParsingChronoTestParameter({"2024-10-16 10:30:45.789", "%Y-%m-%d %H:%M:%S.%s", 1729074645789}),
 		ParsingChronoTestParameter({"[18/Jul/2024:13:34:00 +0300]", "%d/%h/%Y:%H:%M:%S %z", 1721298840000}),
 		ParsingChronoTestParameter({"[18/Jul/24:13:34:00 +0300]", "%d/%h/%y:%H:%M:%S %z", 1721298840000}),
-		ParsingChronoTestParameter({"2024/07/18 13:33:17", "%Y/%m/%d %H:%M:%S", 1721298797000}),
-		ParsingChronoTestParameter({"17.07.2023 13:25:53", "%d.%m.%Y %H:%M:%S", 1689589553000}),
+		ParsingChronoTestParameter({"2024/07/18 13:33:17", "%Y/%m/%d %H:%M:%S", 1721309597000}),
+		ParsingChronoTestParameter({"17.07.2023 13:25:53", "%d.%m.%Y %H:%M:%S", 1689600353000}),
 		ParsingChronoTestParameter({"Wed Mar 19 2025 15:51:10 GMT+0300", "%a %h %e %Y %H:%M:%S %z", 1742388670000}),
 		ParsingChronoTestParameter({"Wed Mar 30 2025 15:51:10 GMT+0300", "%a %h %e %Y %H:%M:%S %Z%z", 1743339070000}),
 		ParsingChronoTestParameter({"20050809T183142+0330", "%Y%m%dT%H%M%S%z", 1123599702000}),
-		ParsingChronoTestParameter({"Wed Mar 19 2025 15:51:10", "%a %h %e %Y %H:%M:%S", 1742388670000})//,
+		ParsingChronoTestParameter({"Wed Mar 19 2025 15:51:10", "%a %h %e %Y %H:%M:%S", 1742399470000})//,
 		// ParsingChronoTestParameter({"May 27 13:12:47", "%Y-%m-%dT%H:%M:%S.%fZ", 0})
 	)
 );
@@ -791,8 +791,8 @@ TEST_F(ChronoFixture, GetTimeZoneChronoTest){
 	ASSERT_EQ(this->_chrono->getTimeZone("GMT-0328"), -12480);
 	// Проверяем смещение временных зон YEKT
 	ASSERT_EQ(this->_chrono->getTimeZone("YEKT"), 18000);
-	// Устанавливаем временную зону MSK
-	ASSERT_EQ(this->_chrono->getTimeZone(), 10800);
+	// Проверяем смещение временной зоны окружения: фикстура закрепляет её на UTC
+	ASSERT_EQ(this->_chrono->getTimeZone(), 0);
 }
 
 /**
@@ -917,26 +917,26 @@ TEST_P(FormatParameterizedFixture, ExecutionFormatChronoTest){
  */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FormatParameterizedFixture,
 	::testing::Values(
-		FormatChronoTestParameter({1743943021520, "%Y-%m-%dT%H:%M:%S.%s%o", "2025-04-06T15:37:01.520+03:00"}),
-		FormatChronoTestParameter({1743943021520, "%m/%d/%Y %I:%M:%S %p", "04/06/2025 03:37:01 PM"}),
-		FormatChronoTestParameter({1743943021520, "%m/%d/%y %I:%M:%S %p", "04/06/25 03:37:01 PM"}),
-		FormatChronoTestParameter({1743943021520, "%Y-%m-%dT%H:%M:%S", "2025-04-06T15:37:01"}),
-		FormatChronoTestParameter({1743943021520, "%m/%d/%Y %I:%M:%S %p (%s)", "04/06/2025 03:37:01 PM (520)"}),
-		FormatChronoTestParameter({1743943021520, "%a %h %d %H:%M:%S.%s %Y", "Sun Apr 06 15:37:01.520 2025"}),
-		FormatChronoTestParameter({1743943021520, "%d/%h/%Y:%H:%M:%S.%s %z", "06/Apr/2025:15:37:01.520 +0300"}),
-		FormatChronoTestParameter({1743943021520, "%h %d %H:%M:%S", "Apr 06 15:37:01"}),
-		FormatChronoTestParameter({1743943021520, "%Y-%m-%d %H:%M:%S.%s", "2025-04-06 15:37:01.520"}),
-		FormatChronoTestParameter({1743943021520, "%d/%h/%Y:%H:%M:%S %z", "06/Apr/2025:15:37:01 +0300"}),
-		FormatChronoTestParameter({1743943021520, "%Y/%m/%d %H:%M:%S", "2025/04/06 15:37:01"}),
-		FormatChronoTestParameter({1743943021520, "%d.%m.%Y %H:%M:%S", "06.04.2025 15:37:01"}),
-		FormatChronoTestParameter({1743943021520, "%m-%d %H:%M:%S.%s", "04-06 15:37:01.520"}),
-		FormatChronoTestParameter({1743943021520, "%H:%M:%S", "15:37:01"}),
-		FormatChronoTestParameter({1743943021520, "%a %h %e %Y %H:%M:%S %z", "Sun Apr 6 2025 15:37:01 +0300"}),
-		FormatChronoTestParameter({1743943021520, "%a %h %e %H:%M:%S %z", "Sun Apr 6 15:37:01 +0300"}),
-		FormatChronoTestParameter({1743943021520, "%a %h %e %Y %H:%M:%S %Z%z", "Sun Apr 6 2025 15:37:01 UTC+3+0300"}),
-		FormatChronoTestParameter({1743943021520, "%h %d %H:%M %Z%z", "Apr 06 15:37 UTC+3+0300"}),
-		FormatChronoTestParameter({1743943021520, "%a %h %e %H:%M:%S %W %z %j", "Sun Apr 6 15:37:01 14 +0300 096"}),
-		FormatChronoTestParameter({1743943021520, "%Y%m%dT%H%M%S%z", "20250406T153701+0300"})
+		FormatChronoTestParameter({1743943021520, "%Y-%m-%dT%H:%M:%S.%s%o", "2025-04-06T12:37:01.520+00:00"}),
+		FormatChronoTestParameter({1743943021520, "%m/%d/%Y %I:%M:%S %p", "04/06/2025 12:37:01 PM"}),
+		FormatChronoTestParameter({1743943021520, "%m/%d/%y %I:%M:%S %p", "04/06/25 12:37:01 PM"}),
+		FormatChronoTestParameter({1743943021520, "%Y-%m-%dT%H:%M:%S", "2025-04-06T12:37:01"}),
+		FormatChronoTestParameter({1743943021520, "%m/%d/%Y %I:%M:%S %p (%s)", "04/06/2025 12:37:01 PM (520)"}),
+		FormatChronoTestParameter({1743943021520, "%a %h %d %H:%M:%S.%s %Y", "Sun Apr 06 12:37:01.520 2025"}),
+		FormatChronoTestParameter({1743943021520, "%d/%h/%Y:%H:%M:%S.%s %z", "06/Apr/2025:12:37:01.520 +0000"}),
+		FormatChronoTestParameter({1743943021520, "%h %d %H:%M:%S", "Apr 06 12:37:01"}),
+		FormatChronoTestParameter({1743943021520, "%Y-%m-%d %H:%M:%S.%s", "2025-04-06 12:37:01.520"}),
+		FormatChronoTestParameter({1743943021520, "%d/%h/%Y:%H:%M:%S %z", "06/Apr/2025:12:37:01 +0000"}),
+		FormatChronoTestParameter({1743943021520, "%Y/%m/%d %H:%M:%S", "2025/04/06 12:37:01"}),
+		FormatChronoTestParameter({1743943021520, "%d.%m.%Y %H:%M:%S", "06.04.2025 12:37:01"}),
+		FormatChronoTestParameter({1743943021520, "%m-%d %H:%M:%S.%s", "04-06 12:37:01.520"}),
+		FormatChronoTestParameter({1743943021520, "%H:%M:%S", "12:37:01"}),
+		FormatChronoTestParameter({1743943021520, "%a %h %e %Y %H:%M:%S %z", "Sun Apr 6 2025 12:37:01 +0000"}),
+		FormatChronoTestParameter({1743943021520, "%a %h %e %H:%M:%S %z", "Sun Apr 6 12:37:01 +0000"}),
+		FormatChronoTestParameter({1743943021520, "%a %h %e %Y %H:%M:%S %Z%z", "Sun Apr 6 2025 12:37:01 UTC+0000"}),
+		FormatChronoTestParameter({1743943021520, "%h %d %H:%M %Z%z", "Apr 06 12:37 UTC+0000"}),
+		FormatChronoTestParameter({1743943021520, "%a %h %e %H:%M:%S %W %z %j", "Sun Apr 6 12:37:01 14 +0000 096"}),
+		FormatChronoTestParameter({1743943021520, "%Y%m%dT%H%M%S%z", "20250406T123701+0000"})
 	)
 );
 
@@ -946,5 +946,5 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatParameterizedFixture,
  */
 TEST_F(ChronoFixture, StripChronoTest){
 	// Преобразуем дату из одного формата в другой
-	ASSERT_EQ(this->_chrono->strip("Sun Apr 6 2025 15:37:01 +0300", "%a %h %e %Y %H:%M:%S %z", "%d/%h/%Y:%H:%M:%S %z"), std::string{"06/Apr/2025:15:37:01 +0300"});
+	ASSERT_EQ(this->_chrono->strip("Sun Apr 6 2025 15:37:01 +0300", "%a %h %e %Y %H:%M:%S %z", "%d/%h/%Y:%H:%M:%S %z"), std::string{"06/Apr/2025:12:37:01 +0000"});
 }

@@ -277,7 +277,7 @@
 	/**
 	 * Принудительная подстановка средствами Visual Studio
 	 */
-	#define AWH_LEXICAL_INLINE __forceinline
+	#define AWH_ASCII_INLINE __forceinline
 /**
  * Если компилятор принадлежит к семейству GCC или Clang
  */
@@ -285,7 +285,7 @@
 	/**
 	 * Принудительная подстановка средствами GCC и Clang
 	 */
-	#define AWH_LEXICAL_INLINE inline __attribute__((always_inline))
+	#define AWH_ASCII_INLINE inline __attribute__((always_inline))
 #endif
 
 /**

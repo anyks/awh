@@ -17,6 +17,24 @@
  */
 
 /**
+ * Если компилятор принадлежит к семейству Visual Studio
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_ASCII_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_ASCII_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
  * Стандартные заголовочные файлы
  */
 #include <algorithm>
@@ -203,7 +221,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	__attribute__((always_inline)) inline bool isTokenChar(const uint8_t letter) noexcept {
+	AWH_ASCII_INLINE bool isTokenChar(const uint8_t letter) noexcept {
 		// Цифры и латинские буквы нижнего регистра допустимы
 		if(((letter >= '0') && (letter <= '9')) || ((letter >= 'a') && (letter <= 'z')))
 			// Символ допустим

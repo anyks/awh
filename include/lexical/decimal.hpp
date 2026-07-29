@@ -60,7 +60,7 @@ namespace awh {
 		 * @return      смещение двоичной экспоненты
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr int32_t powerExponent(const int32_t power) noexcept {
+		AWH_ASCII_INLINE constexpr int32_t powerExponent(const int32_t power) noexcept {
 			// Выводим приближение произведения показателя степени на двоичный логарифм пяти
 			return ((((152170 + 65536) * power) >> 16) + 63);
 		}
@@ -85,7 +85,7 @@ namespace awh {
 		 * @return         приближённое 128-битное произведение
 		 *
 		 */
-		AWH_LEXICAL_INLINE value128_t approximateProduct(const int64_t power, const uint64_t mantissa) noexcept {
+		AWH_ASCII_INLINE value128_t approximateProduct(const int64_t power, const uint64_t mantissa) noexcept {
 			// Выполняем проверку допустимости требуемой точности
 			static_assert((PRECISION >= 0) && (PRECISION <= 64), "AWH lexical: precision should be in range (0, 64]");
 			// Выполняем проверку принадлежности показателя степени диапазону таблицы
@@ -132,7 +132,7 @@ namespace awh {
 		 * @return         скорректированная мантисса с невалидным показателем степени
 		 *
 		 */
-		AWH_LEXICAL_INLINE mantissa_t computeErrorScaled(const int64_t power, const uint64_t mantissa, const int32_t zeros) noexcept {
+		AWH_ASCII_INLINE mantissa_t computeErrorScaled(const int64_t power, const uint64_t mantissa, const int32_t zeros) noexcept {
 			// Дополнительный сдвиг, если старший бит мантиссы не установлен
 			const int32_t shift = (static_cast <int32_t> (mantissa >> 63) ^ 1);
 			// Смещение показателя степени относительно минимального
@@ -162,7 +162,7 @@ namespace awh {
 		 * @return         скорректированная мантисса с невалидным показателем степени
 		 *
 		 */
-		AWH_LEXICAL_INLINE mantissa_t computeError(const int64_t power, const uint64_t mantissa) noexcept {
+		AWH_ASCII_INLINE mantissa_t computeError(const int64_t power, const uint64_t mantissa) noexcept {
 			// Если показатель степени выходит за пределы таблицы степеней
 			if(!powers::isSupported(power))
 				// Выводим нулевую мантиссу с невалидным показателем степени

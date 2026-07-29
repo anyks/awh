@@ -71,14 +71,26 @@
 #include <algorithm>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include <net/addr.hpp>
+#include <sys/ascii.hpp>
 
 /**
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Сокращаем пространство имён проверок символов таблицы ASCII
+ *
+ * @details Проверки эти прежде были заведены здесь местными копиями. Нужны они
+ *          не только адресам - имена заголовков HTTP, схемы URI и числа
+ *          разбираются теми же проверками, - и держать копию в каждом модуле
+ *          значило бы разойтись между ними при первой же правке.
+ *
+ */
+namespace ascii = awh::ascii;
 
 /**
  * @brief Инкапсулируем статические функции в пространство имён
@@ -115,102 +127,6 @@ namespace {
 		#endif
 	}
 	/**
-	 * @brief Вспомогательная функция для проверки шестнадцатеричного символа
-	 *
-	 * @param letter проверяемый символ
-	 * @return       результат проверки
-	 *
-	 */
-	inline bool ishex(const char letter) noexcept {
-		// Возвращаем результат проверки
-		return (
-			((letter >= '0') && (letter <= '9')) ||
-			((letter >= 'a') && (letter <= 'f')) ||
-			((letter >= 'A') && (letter <= 'F'))
-		);
-	}
-	/**
-	 * @brief Вспомогательная функция для получения числового значения шестнадцатеричного символа
-	 *
-	 * @param letter проверяемый символ
-	 * @return       числовое значение символа
-	 *
-	 */
-	inline int32_t hexval(const char letter) noexcept {
-		// Проверяем шестнадцатеричный символ
-		if((letter >= '0') && (letter <= '9'))
-			// Возвращаем числовое значение символа
-			return (letter - '0');
-		// Проверяем шестнадцатеричный символ в нижнем регистре
-		if((letter >= 'a') && (letter <= 'f'))
-			// Возвращаем числовое значение символа
-			return (10 + (letter - 'a'));
-		// Проверяем шестнадцатеричный символ в верхнем регистре
-		if((letter >= 'A') && (letter <= 'F'))
-			// Возвращаем числовое значение символа
-			return (10 + (letter - 'A'));
-		// Возвращаем ошибку
-		return -1;
-	}
-	/**
-	 * @brief Вспомогательная функция для проверки десятичного символа
-	 *
-	 * @param letter проверяемый символ
-	 * @return       результат проверки
-	 *
-	 */
-	inline bool isdec(const char letter) noexcept {
-		// Возвращаем результат проверки
-		return ((letter >= '0') && (letter <= '9'));
-	}
-	/**
-	 * @brief Вспомогательная функция для проверки восьмеричного символа
-	 *
-	 * @param letter проверяемый символ
-	 * @return       результат проверки
-	 *
-	 */
-	inline bool isoct(const char letter) noexcept {
-		// Возвращаем результат проверки
-		return ((letter >= '0') && (letter <= '7'));
-	}
-	/**
-	 * @brief Вспомогательная функция для проверки пробельного символа
-	 *
-	 * @details Проверка повторяет пробельный набор основной локали: пробел и
-	 *          пятёрка управляющих символов от табуляции до возврата каретки,
-	 *          идущих подряд.
-	 *
-	 *          Своя проверка заведена вместо библиотечной не ради краткости.
-	 *          Обрезка пробелов стоит на пути каждого разбора и каждой проверки
-	 *          адреса, библиотечная же проверка встраиванию не поддаётся, и
-	 *          обрезка строки в тринадцать символов обходилась в два вызова
-	 *          внешней функции - дороже, чем весь остальной разбор IPv4-адреса
-	 *
-	 * @param letter проверяемый символ
-	 * @return       результат проверки
-	 *
-	 */
-	inline bool isspacer(const char letter) noexcept {
-		// Возвращаем результат проверки
-		return ((letter == ' ') || ((letter >= '\t') && (letter <= '\r')));
-	}
-	/**
-	 * @brief Вспомогательная функция для проверки буквенно-цифрового символа
-	 *
-	 * @param letter проверяемый символ
-	 * @return       результат проверки
-	 *
-	 */
-	inline bool isalnumer(const char letter) noexcept {
-		// Возвращаем результат проверки
-		return (
-			((letter >= '0') && (letter <= '9')) ||
-			((letter >= 'a') && (letter <= 'z')) ||
-			((letter >= 'A') && (letter <= 'Z'))
-		);
-	}
-	/**
 	 * @brief Вспомогательная функция для обрезки пробелов в строке
 	 *
 	 * @param text исходный текст для обрезки
@@ -223,13 +139,13 @@ namespace {
 		/**
 		 * Выполняем обрезку пробелов в начале и конце строки
 		 */
-		while((i < j) && ((text[i] == '\0') || ::isspacer(text[i])))
+		while((i < j) && ((text[i] == '\0') || ascii::isSpace(text[i])))
 			// Увеличиваем позицию начала строки
 			++i;
 		/**
 		 * Обрезаем пробелы в конце строки
 		 */
-		while((j > i) && ((text[j - 1] == '\0') || ::isspacer(text[j - 1])))
+		while((j > i) && ((text[j - 1] == '\0') || ascii::isSpace(text[j - 1])))
 			// Уменьшаем позицию конца строки
 			--j;
 		// Возвращаем обрезанную строку
@@ -274,7 +190,7 @@ namespace {
 	 *          один разбор. Частей же у адреса не бывает больше восьми: четыре
 	 *          октета у IPv4 и восемь хекстетов у IPv6. Ёмкость взята на одну
 	 *          больше предельной, чтобы разбор отличал адрес с лишними частями
-	 *          от допустимого, а не молча его обрезал
+	 *          от допустимого, а не молча его обрезал.
 	 *
 	 */
 	typedef class Parts {
@@ -356,7 +272,7 @@ namespace {
 	 *          известно это до начала разбора. Ёмкость взята с запасом на два
 	 *          слова: часть адреса со встроенным IPv4 даёт сразу пару слов, и
 	 *          запас позволяет разбору отличить адрес с лишними словами от
-	 *          допустимого, а не молча его обрезать
+	 *          допустимого, а не молча его обрезать.
 	 *
 	 */
 	typedef class Words {
@@ -483,7 +399,7 @@ namespace {
 		// Проверяем восьмеричную систему счисления
 		if((token.size() > 1) && (token[0] == '0')){
 			// Если только 0-7 -> oct, иначе decimal
-			if(::all_of(token.begin() + 1, token.end(), ::isoct))
+			if(::all_of(token.begin() + 1, token.end(), ascii::isOctal))
 				// Возвращаем восьмеричную систему счисления
 				return 8;
 		}
@@ -527,7 +443,7 @@ namespace {
 			// Проверяем символ в зависимости от основания системы счисления
 			if(base == 10){
 				// Проверяем десятичный символ
-				if(!::isdec(letter))
+				if(!ascii::isDigit(letter))
 					// Возвращаем ошибку
 					return false;
 				// Получаем числовое значение символа
@@ -535,7 +451,7 @@ namespace {
 			// Если основание восьмеричное
 			} else if(base == 8) {
 				// Проверяем восьмеричный символ
-				if(!::isoct(letter))
+				if(!ascii::isOctal(letter))
 					// Возвращаем ошибку
 					return false;
 				// Получаем числовое значение символа
@@ -543,7 +459,7 @@ namespace {
 			// Если основание шестнадцатеричное
 			} else if(base == 16) {
 				// Проверяем шестнадцатеричный символ
-				dig = ::hexval(letter);
+				dig = ascii::hexValue(letter);
 				// Если символ не шестнадцатеричный
 				if(dig < 0)
 					// Возвращаем ошибку
@@ -733,7 +649,7 @@ namespace {
 				// Возвращаем ошибку
 				return false;
 			// Проверяем каждый символ октета строки IP-адреса
-			if(!::all_of(octet.begin(), octet.end(), ::isdec))
+			if(!::all_of(octet.begin(), octet.end(), ascii::isDigit))
 				// Возвращаем ошибку
 				return false;
 			// Разрешаем ведущие нули, но это всё равно десятичный формат
@@ -821,11 +737,11 @@ namespace {
 			 */
 			for(char letter : hextet){
 				// Проверяем шестнадцатеричный символ
-				if(!::ishex(letter))
+				if(!ascii::isHex(letter))
 					// Возвращаем ошибку
 					return false;
 				// Обновляем значение хекстета
-				value = ((value << 4) | static_cast <uint32_t> (::hexval(letter)));
+				value = ((value << 4) | static_cast <uint32_t> (ascii::hexValue(letter)));
 				// Проверяем переполнение хекстета
 				if(value > 0xFFFF)
 					// Возвращаем ошибку
@@ -1308,7 +1224,7 @@ namespace {
 			// Текущий символ таблицы
 			const char letter = static_cast <char> (i);
 			// Проверяем шестнадцатеричный символ
-			const bool hex = ::ishex(letter);
+			const bool hex = ascii::isHex(letter);
 			// Если символ входит в алфавит IPv4-адреса
 			if(hex || (letter == '.') || (letter == 'x') || (letter == 'X'))
 				// Устанавливаем признак алфавита IPv4-адреса
@@ -1444,7 +1360,7 @@ namespace {
 		 */
 		for(char letter : text){
 			// Если символ не входит в алфавит аппаратного адреса
-			if(!::ishex(letter) && (letter != ':') && (letter != '-'))
+			if(!ascii::isHex(letter) && (letter != ':') && (letter != '-'))
 				// Возвращаем результат проверки
 				return false;
 		}
@@ -2793,7 +2709,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						 */
 						for(char letter : addr){
 							// Если символ не является шестнадцатеричным
-							if(!::ishex(letter))
+							if(!ascii::isHex(letter))
 								// Возвращаем результат проверки
 								return false;
 						}
@@ -2813,7 +2729,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						// Если символ является частью шестнадцатеричного числа
 						} else {
 							// Если символ не является шестнадцатеричным
-							if(!::ishex(addr[i]))
+							if(!ascii::isHex(addr[i]))
 								// Возвращаем результат проверки
 								return false;
 						}
@@ -2850,7 +2766,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						// Получаем маску переданной сети
 						const string_view suffix = addr.substr(pos + 1);
 						// Проверяем является ли суффикс числом
-						if(::all_of(suffix.begin(), suffix.end(), ::isdec)){
+						if(::all_of(suffix.begin(), suffix.end(), ascii::isDigit)){
 							// Получаем префикс сети
 							if(this->_fmk->atoi <uint8_t> (suffix.data(), suffix.length()) > 32)
 								// Если префикс сети больше допустимого значения
@@ -2880,7 +2796,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						// Получаем маску переданной сети
 						const string_view suffix = addr.substr(pos + 1);
 						// Проверяем является ли суффикс числом
-						if(::all_of(suffix.begin(), suffix.end(), ::isdec)){
+						if(::all_of(suffix.begin(), suffix.end(), ascii::isDigit)){
 							// Получаем префикс сети
 							if(this->_fmk->atoi <uint8_t> (suffix.data(), suffix.length()) > 128)
 								// Если префикс сети больше допустимого значения
@@ -2970,7 +2886,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						 */
 						for(char c : label){
 							// Если символ не является допустимым
-							if(!(::isalnumer(c) || (c == '-')))
+							if(!(ascii::isAlnum(c) || (c == '-')))
 								// Возвращаем результат проверки
 								return false;
 						}
@@ -4241,7 +4157,7 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
 							// Текущий символ
 							letter = data[pos];
 							// Преобразуем символ в числовой формат
-							value = ::hexval(letter);
+							value = ascii::hexValue(letter);
 							// Если преобразование не удалось
 							if(value == -1)
 								// Неверный формат записи
@@ -5730,13 +5646,13 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 				/**
 				 * Выполняем обрезку пробелов в начале и конце строки
 				 */
-				while((i < j) && ((result[i] == '\0') || ::isspacer(result[i])))
+				while((i < j) && ((result[i] == '\0') || ascii::isSpace(result[i])))
 					// Увеличиваем позицию начала строки
 					++i;
 				/**
 				 * Обрезаем пробелы в конце строки
 				 */
-				while((j > i) && ((result[j - 1] == '\0') || ::isspacer(result[j - 1])))
+				while((j > i) && ((result[j - 1] == '\0') || ascii::isSpace(result[j - 1])))
 					// Уменьшаем позицию конца строки
 					--j;
 				// Если необходимо удалить определённое количество символов с конца строки

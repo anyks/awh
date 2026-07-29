@@ -21,6 +21,24 @@
 #define __AWH_HTTP_PARSER_HTTP2_HPACK__
 
 /**
+ * Если компилятор принадлежит к семейству Visual Studio
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_ASCII_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_ASCII_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
  * Стандартные заголовочные файлы
  */
 #include <deque>
@@ -187,7 +205,7 @@ namespace awh {
 				 * @return       признак совпадения строк
 				 *
 				 */
-				__attribute__((always_inline)) inline bool sameText(string_view first, string_view second) noexcept {
+				AWH_ASCII_INLINE bool sameText(string_view first, string_view second) noexcept {
 					// Получаем длину сравниваемых строк
 					const size_t length = first.size();
 					// Если длины строк не совпадают

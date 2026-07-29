@@ -25,6 +25,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/ascii.hpp>
 #include <proto/http/auth/auth.hpp>
 #include <proto/http/auth/hmac.hpp>
 #include <proto/http/auth/basic.hpp>
@@ -231,13 +232,13 @@ bool awh::http::Authorization::Scheme::schemePayload(const string_view header, c
 	// Перемещаем индекс за название схемы
 	size_t index = scheme.size();
 	// После названия схемы должен быть пробельный символ
-	if((index >= text.size()) || !::isspace(static_cast <uint8_t> (text[index])))
+	if((index >= text.size()) || !awh::ascii::isSpace(text[index]))
 		// Сообщаем о неудачном извлечении
 		return false;
 	/**
 	 * Пропускаем пробелы после названия схемы
 	 */
-	while((index < text.size()) && ::isspace(static_cast <uint8_t> (text[index])))
+	while((index < text.size()) && awh::ascii::isSpace(text[index]))
 		// Переходим к следующему символу
 		++index;
 	// Если полезная нагрузка отсутствует

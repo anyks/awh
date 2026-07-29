@@ -23,7 +23,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <deque>
 #include <string>
 #include <vector>
 #include <cstdint>

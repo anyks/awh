@@ -35,8 +35,9 @@
 #include <sys/types.h>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/ascii.hpp>
 #include <units/dns.hpp>
 
 /**
@@ -326,7 +327,7 @@ namespace {
 			 */
 			for(char c : domain){
 				// Приводим к lowercase на лету (если ещё не нормализовали)
-				char lower = static_cast <char> (::tolower(static_cast<uint8_t>(c)));
+				char lower = awh::ascii::toLower(c);
 				// Смешиваем текущий символ с накопленным значением
 				result ^= static_cast <uint64_t> (lower);
 				// Умножаем на константу FNV prime

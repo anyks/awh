@@ -423,7 +423,7 @@ using namespace std;
 						 */
 						for(const char item : result){
 							// Если символ является пробельным
-							if(::isspace(static_cast <uint8_t> (item))){
+							if(awh::ascii::isSpace(item)){
 								// Если очередь уже не пустая
 								if(!data.empty()){
 									// Если запись является числом
@@ -436,7 +436,7 @@ using namespace std;
 									} else data.back().first.append(1, ' ');
 								}
 							// Если символ является числом
-							} else if(std::isdigit(static_cast <uint8_t> (item)) || ((item == '-') && (data.empty() || data.back().first.empty()))) {
+							} else if(awh::ascii::isDigit(item) || ((item == '-') && (data.empty() || data.back().first.empty()))) {
 								// Если данных в очереди ещё нет
 								if(data.empty())
 									// Выполняем создание блока данных
@@ -492,7 +492,7 @@ using namespace std;
 								// Если запись является текстом
 								} else {
 									// Если последний символ является пробельным, удаляем его
-									if(::isspace(static_cast <uint8_t> (data.front().first.back())))
+									if(awh::ascii::isSpace(data.front().first.back()))
 										// Выполняем удаление последнего символа
 										data.front().first.pop_back();
 									// Выполняем добавление новой записи в буфер

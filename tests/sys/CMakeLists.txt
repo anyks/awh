@@ -201,6 +201,11 @@ if(${GTest_FOUND})
             # Дополняем список источников тестами для модуля работы с датой и временем
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 chrono/chrono.cpp
+                chrono/format.cpp
+                chrono/parse.cpp
+                chrono/roundtrip.cpp
+                chrono/duration.cpp
+                chrono/calendar.cpp
                 chrono/parameterized.cpp
             )
         # Если не нужно собрать тесты для работы с датой и временем

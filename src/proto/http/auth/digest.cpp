@@ -35,8 +35,9 @@
 #include <cstdlib>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/ascii.hpp>
 #include <proto/http/auth/digest.hpp>
 
 /**
@@ -71,7 +72,7 @@ namespace nc {
 		 */
 		for(const char symbol : nc){
 			// Если символ не является шестнадцатеричной цифрой
-			if(!::isxdigit(static_cast <uint8_t> (symbol)))
+			if(!awh::ascii::isHex(symbol))
 				// Сообщаем о некорректном счётчике
 				return false;
 		}

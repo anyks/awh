@@ -395,7 +395,7 @@ void awh::Process_Resolver::scanning() noexcept {
 				 */
 				while((entry = ::readdir(dir)) != nullptr){
 					// Если запись является каталогом и её имя начинается с цифры
-					if((entry->d_type == DT_DIR) && ::isdigit(static_cast <unsigned char> (entry->d_name[0]))){
+					if((entry->d_type == DT_DIR) && awh::ascii::isDigit(entry->d_name[0])){
 						// Получаем идентификатор процесса из имени каталога
 						pid_t pid = ::atoi(entry->d_name);
 						// Буфер для хранения названия приложения которому принадлежит процесс

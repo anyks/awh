@@ -91,7 +91,7 @@ namespace awh {
 		 * @return упакованный блок символов нуля
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr uint64_t zerosPattern() noexcept {
+		AWH_ASCII_INLINE constexpr uint64_t zerosPattern() noexcept {
 			// Выполняем проверку допустимости разрядности символа
 			static_assert((sizeof(UC) == 1) || (sizeof(UC) == 2) || (sizeof(UC) == 4), "AWH lexical: unsupported character size");
 			// Выводим упакованный блок символов нуля
@@ -115,7 +115,7 @@ namespace awh {
 		 * @return количество символов в упакованном блоке
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr size_t patternLength() noexcept {
+		AWH_ASCII_INLINE constexpr size_t patternLength() noexcept {
 			// Выводим количество символов, помещающихся в 64-битное слово
 			return (sizeof(uint64_t) / sizeof(UC));
 		}
@@ -132,7 +132,7 @@ namespace awh {
 		 * @return         показатель степени в научной записи
 		 *
 		 */
-		AWH_LEXICAL_INLINE constexpr int32_t scientificExponent(uint64_t mantissa, int32_t exponent) noexcept {
+		AWH_ASCII_INLINE constexpr int32_t scientificExponent(uint64_t mantissa, int32_t exponent) noexcept {
 			/**
 			 * Выполняем сжатие мантиссы четвёрками десятичных разрядов
 			 */
@@ -179,7 +179,7 @@ namespace awh {
 		 * @param callback обработчик решения об округлении вверх
 		 *
 		 */
-		AWH_LEXICAL_INLINE void roundNearestTieEven(mantissa_t & mantissa, const int32_t shift, CALLBACK callback) noexcept {
+		AWH_ASCII_INLINE void roundNearestTieEven(mantissa_t & mantissa, const int32_t shift, CALLBACK callback) noexcept {
 			// Маска отбрасываемых младших бит
 			const uint64_t mask = ((shift == 64) ? UINT64_MAX : ((uint64_t(1) << shift) - 1));
 			// Значение ровно посередине между представимыми числами
@@ -211,7 +211,7 @@ namespace awh {
 		 * @param shift    количество отбрасываемых младших бит
 		 *
 		 */
-		AWH_LEXICAL_INLINE void roundDown(mantissa_t & mantissa, const int32_t shift) noexcept {
+		AWH_ASCII_INLINE void roundDown(mantissa_t & mantissa, const int32_t shift) noexcept {
 			// Если отбрасывается вся мантисса
 			if(shift == 64)
 				// Обнуляем мантиссу
@@ -237,7 +237,7 @@ namespace awh {
 		 * @param callback обработчик сдвига и округления мантиссы
 		 *
 		 */
-		AWH_LEXICAL_INLINE void roundMantissa(mantissa_t & mantissa, CALLBACK callback) noexcept {
+		AWH_ASCII_INLINE void roundMantissa(mantissa_t & mantissa, CALLBACK callback) noexcept {
 			// Величина сдвига для нормализованного числа
 			const int32_t shift = (64 - binary_t <T>::mantissaExplicitBits() - 1);
 			// Если результат попадает в субнормальный диапазон
@@ -283,7 +283,7 @@ namespace awh {
 		 * @param last  конец диапазона символов
 		 *
 		 */
-		AWH_LEXICAL_INLINE void skipZeros(const UC * & first, const UC * const last) noexcept {
+		AWH_ASCII_INLINE void skipZeros(const UC * & first, const UC * const last) noexcept {
 			// Упакованный блок символов
 			uint64_t block = 0;
 			/**
@@ -329,7 +329,7 @@ namespace awh {
 		 * @return      результат проверки
 		 *
 		 */
-		AWH_LEXICAL_INLINE bool isTruncated(const UC * first, const UC * const last) noexcept {
+		AWH_ASCII_INLINE bool isTruncated(const UC * first, const UC * const last) noexcept {
 			// Упакованный блок символов
 			uint64_t block = 0;
 			/**
@@ -374,7 +374,7 @@ namespace awh {
 		 * @return      результат проверки
 		 *
 		 */
-		AWH_LEXICAL_INLINE bool isTruncated(const span_t <UC> range) noexcept {
+		AWH_ASCII_INLINE bool isTruncated(const span_t <UC> range) noexcept {
 			// Выполняем проверку диапазона символов
 			return isTruncated(range.ptr, range.ptr + range.len());
 		}
@@ -388,7 +388,7 @@ namespace awh {
 		 * @return         результат выполнения операции
 		 *
 		 */
-		AWH_LEXICAL_INLINE bool mulAdd(bigint_t & value, const limb_t power, const limb_t addition) noexcept {
+		AWH_ASCII_INLINE bool mulAdd(bigint_t & value, const limb_t power, const limb_t addition) noexcept {
 			// Выполняем умножение значения на степень десятки
 			if(!value.mul(power))
 				// Сообщаем, что операция не выполнена
