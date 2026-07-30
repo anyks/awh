@@ -86,6 +86,39 @@ namespace uri {
 	}
 
 	/**
+	 * @brief Функция проверки токена на незакрытую скобку адреса IPv6
+	 *
+	 * @details Разбор со схемы, признав токен хостом, переходит к его чтению и
+	 *          заново перебирает уже пройденные символы не с начала: скобки адреса
+	 *          IPv6 остаются позади, и признак нахождения внутри адреса ставился по
+	 *          одной лишь первой из них. Токен же бывает и закрытым: у записи
+	 *          "[)]:path" скобка закрыта, а двоеточие за нею разбор считал частью
+	 *          адреса и хостом брал всю строку целиком
+	 *
+	 * @param begin начало проверяемого токена
+	 * @param end   конец проверяемого токена
+	 * @return      результат проверки
+	 *
+	 */
+	[[nodiscard]] static inline bool openIPv6(const char * begin, const char * end) noexcept {
+		// Если токен пустой либо открывающей скобки у него нет, то и адреса IPv6 в нём нет
+		if((begin >= end) || ((* begin) != '['))
+			// Выводим результат проверки
+			return false;
+		/**
+		 * Перебираем все символы токена в поисках закрывающей скобки
+		 */
+		for(const char * letter = begin; letter < end; ++letter){
+			// Если закрывающая скобка найдена, то адрес IPv6 уже закрыт
+			if((* letter) == ']')
+				// Выводим результат проверки
+				return false;
+		}
+		// Скобка осталась незакрытой
+		return true;
+	}
+
+	/**
 	 * @brief Функция проверки токена на приметы хоста
 	 *
 	 * @details Схемы у адреса может не быть, и хост тогда отбирается по примете -
@@ -125,8 +158,19 @@ namespace uri {
 	}
 
 	/**
+	 * @brief Функция определения вида записи адреса по его схеме
+	 *
+	 * @param fmk    объект фреймворка
+	 * @param scheme схема URI
+	 * @return       вид записи адреса
+	 *
+	 */
+	[[nodiscard]] static uri_t::form_t schemeForm(const fmk_t * fmk, string_view scheme) noexcept;
+
+	/**
 	 * @brief Парсинг URI в один проход (Single Pass)
 	 *
+	 * @param fmk      объект фреймворка
 	 * @param uri      строка URI для парсинга
 	 * @param scheme   ссылка для сохранения схемы URI
 	 * @param userinfo ссылка для сохранения параметров пользователя URI
@@ -135,10 +179,12 @@ namespace uri {
 	 * @param path     ссылка для сохранения пути URI
 	 * @param query    ссылка для сохранения параметров URI
 	 * @param fragment ссылка для сохранения якоря URI
+	 * @param form     ссылка для сохранения вида записи адреса
 	 * @return         результат парсинга
 	 *
 	 */
 	[[nodiscard]] static bool parse(
+		const fmk_t * fmk,
 		string_view uri,
 		string_view & scheme,
 		string_view & userinfo,
@@ -146,10 +192,13 @@ namespace uri {
 		string_view & port,
 		string_view & path,
 		string_view & query,
-		string_view & fragment
+		string_view & fragment,
+		uri_t::form_t & form
 	) noexcept {
 		// Инициализируем все выходные параметры пустыми строками
 		scheme = userinfo = host = port = path = query = fragment = {};
+		// Инициализируем вид записи адреса
+		form = uri_t::form_t::NONE;
 		// Если URI пустой
 		if(uri.empty())
 			// Возвращаем результат парсинга
@@ -168,6 +217,10 @@ namespace uri {
 		bool schemeValid = false;
 		// Флаг для определения наличия авторити (//)
 		bool hasAuthority = false;
+		// Флаг того, что авторити отделена двумя косыми чертами
+		bool hasSlashes = false;
+		// Флаг записи копирования по сети, у которой путь отделён от хоста двоеточием
+		bool hasCommand = false;
 		// Текущее состояние парсинга URI
 		state_t state = state_t::SCHEME;
 		// Вспомогательный маркер для хоста URI
@@ -182,6 +235,8 @@ namespace uri {
 		if((uri.size() > 1) && (uri[0] == '/') && (uri[1] == '/')){
 			// Помечаем наличие авторити
 			hasAuthority = true;
+			// Запоминаем, что авторити отделена двумя косыми чертами
+			hasSlashes = true;
 			// Переходим к чтению хоста
 			state = state_t::HOST;
 			// Устанавливаем начало токена за двумя косыми чертами
@@ -222,7 +277,7 @@ namespace uri {
 								// Переходим к чтению хоста
 								state = state_t::HOST;
 								// Если хост начинается с [ — мы внутри IPv6-адреса
-								inIPv6 = (* tokenBegin == '[');
+								inIPv6 = uri::openIPv6(tokenBegin, ptr);
 								// Начало хоста — начало строки
 								hostBegin = tokenBegin;
 								// Начало userinfo — то же место
@@ -251,7 +306,7 @@ namespace uri {
 								// Переходим к чтению хоста
 								state = state_t::HOST;
 								// Если хост начинается с [ — мы внутри IPv6-адреса
-								inIPv6 = (* tokenBegin == '[');
+								inIPv6 = uri::openIPv6(tokenBegin, ptr);
 								// Начало хоста — начало строки
 								hostBegin = tokenBegin;
 								// Начало userinfo — то же место
@@ -297,7 +352,7 @@ namespace uri {
 							// Переходим к чтению хоста
 							state = state_t::HOST;
 							// Если хост начинается с [ — мы внутри IPv6-адреса
-							inIPv6 = (* tokenBegin == '[');
+							inIPv6 = uri::openIPv6(tokenBegin, ptr);
 							// Начало хоста и userinfo — начало строки
 							hostBegin = tokenBegin;
 							// Начало userinfo — то же место
@@ -357,6 +412,8 @@ namespace uri {
 					} else if(((ptr - tokenBegin) == 1) && (letter == '/')) {
 						// Подтвердили //
 						hasAuthority = true;
+						// Запоминаем, что авторити отделена двумя косыми чертами
+						hasSlashes = true;
 						// Устанавливаем состояние на чтение хоста
 						state = state_t::HOST;
 						// Устанавливаем начало токена на следующий символ после //
@@ -370,23 +427,40 @@ namespace uri {
 					 * это opaque URI вида scheme:user@host (например mailto:user@example.com)
 					 */
 					} else {
-						// Ищем @ до первого /, ?, # или конца строки
-						bool hasAtInOpaque = false;
 						/**
-						 * Перебираем символы начиная с текущего
+						 * Вид записи отбирается по схеме: у схем вроде "mailto:", "sip:" или
+						 * "stun:" авторити стоит сразу за двоеточием, а у схем обозначений
+						 * вроде "news:" или "urn:" её нет вовсе - собачка внутри обозначения
+						 * сообщения разделителем не является. Отбиралась же авторити по одной
+						 * лишь собачке, и запись "news:msgid@example.com" разбиралась как
+						 * учётная запись с хостом, а запись "stun:example.com:3478" хоста не
+						 * давала вовсе - он целиком ложился сегментом пути
 						 */
-						for(const char * look = ptr; look < end; ++look){
-							// Если нашли @ - это userinfo@host без //
-							if(* look == '@'){
-								// Нашли @ в opaque URI
-								hasAtInOpaque = true;
-								// Прерываем поиск
-								break;
+						const uri_t::form_t form = uri::schemeForm(fmk, scheme);
+						// Признак того, что авторити записана сразу за двоеточием схемы
+						bool hasAtInOpaque = (form == uri_t::form_t::BARE);
+						/**
+						 * Собачку ищем лишь тогда, когда схема вида своего не задаёт: у схемы
+						 * иерархической авторити за двоеточием быть не должно, но запись
+						 * "custom:user@host" встречается, и терять её не следует
+						 */
+						if(form == uri_t::form_t::SLASHES){
+							/**
+							 * Перебираем символы начиная с текущего
+							 */
+							for(const char * look = ptr; look < end; ++look){
+								// Если нашли @ - это userinfo@host без //
+								if(* look == '@'){
+									// Нашли @ в opaque URI
+									hasAtInOpaque = true;
+									// Прерываем поиск
+									break;
+								}
+								// Если нашли /, ?, # раньше @ - это обычный путь без userinfo
+								if((* look == '/') || (* look == '?') || (* look == '#'))
+									// Прерываем поиск
+									break;
 							}
-							// Если нашли /, ?, # раньше @ - это обычный путь без userinfo
-							if((* look == '/') || (* look == '?') || (* look == '#'))
-								// Прерываем поиск
-								break;
 						}
 						// Если @ найден — парсим как userinfo@host (например mailto:user@example.com)
 						if(hasAtInOpaque){
@@ -470,12 +544,61 @@ namespace uri {
 						}
 						// Если @ впереди не найден — текущий : является разделителем хоста и порта
 						if(!hasAtAhead){
+							/**
+							 * Двоеточие после хоста разделяет его с портом лишь у записи с двумя
+							 * косыми чертами: авторити у неё кончается на "/", "?" или "#", и
+							 * ничему, кроме номера порта, места между ними нет.
+							 *
+							 * У записи же без косых черт двоеточие может отделять и путь: довод
+							 * команды копирования по сети "git@github.com:group/repo.git"
+							 * записывается именно так. Читался он как номер порта, и негодный
+							 * номер уносил с собой первый сегмент пути - от записи оставалось
+							 * "//git@github.com/repo.git".
+							 *
+							 * Различаются они по содержимому: номером порта запись быть может
+							 * только из одних цифр
+							 */
+							// Признак того, что за двоеточием стоит номер порта
+							bool isPort = true;
+							// Если авторити косыми чертами не отделена, отбираем номер порта по его записи
+							if(!hasSlashes){
+								/**
+								 * Перебираем символы после текущего :
+								 */
+								for(const char * look = (ptr + 1); look < end; ++look){
+									// Если встретили конец авторити, то разбирать больше нечего
+									if((* look == '/') || (* look == '?') || (* look == '#'))
+										// Прерываем поиск
+										break;
+									// Если встретили символ, цифрой не являющийся, то это не порт
+									if((* look < '0') || (* look > '9')){
+										// Запоминаем, что за двоеточием стоит не порт
+										isPort = false;
+										// Прерываем поиск
+										break;
+									}
+								}
+							}
 							// Разделитель хоста и порта
 							host = string_view(hostBegin, ptr - hostBegin);
-							// Переходим к чтению порта
-							state = state_t::PORT;
-							// Устанавливаем начало токена на следующий символ после :
-							tokenBegin = (ptr + 1);
+							// Если за двоеточием стоит номер порта
+							if(isPort){
+								// Переходим к чтению порта
+								state = state_t::PORT;
+								// Устанавливаем начало токена на следующий символ после :
+								tokenBegin = (ptr + 1);
+							/**
+							 * Иначе за двоеточием стоит путь, и запись эта - довод команды
+							 * копирования по сети
+							 */
+							} else {
+								// Запоминаем вид записи как запись копирования по сети
+								hasCommand = true;
+								// Переходим к чтению пути
+								state = state_t::PATH;
+								// Устанавливаем начало токена на следующий символ после :
+								tokenBegin = (ptr + 1);
+							}
 						}
 					/**
 					 * Иначе : является частью userinfo (например разделитель логина и пароля), продолжаем чтение хоста
@@ -631,6 +754,29 @@ namespace uri {
 				fragment = string_view(tokenBegin, end - tokenBegin);
 			break;
 		}
+		/**
+		 * Вид записи собирается из увиденного разбором: авторити либо нет вовсе, либо
+		 * она отделена двумя косыми чертами, либо стоит сразу за двоеточием схемы.
+		 *
+		 * Вид записи за двоеточием у ссылки без схемы смысла не имеет - двоеточия у
+		 * неё нет, - и ссылка сетевого пути записывается двумя косыми чертами
+		 * (RFC 3986 4.2). Исключение составляет лишь запись копирования по сети: она
+		 * адресом ресурса не является, схемы не несёт и записывается как есть
+		 */
+		// Если разбор увидел запись копирования по сети
+		if(hasCommand)
+			// Устанавливаем вид записи как запись копирования по сети
+			form = uri_t::form_t::COMMAND;
+		// Если авторити у записи нет, вида ей не достаётся
+		else if(!hasAuthority)
+			// Устанавливаем вид записи как запись без авторити
+			form = uri_t::form_t::NONE;
+		// Если авторити отделена косыми чертами либо схемы у записи нет
+		else if(hasSlashes || scheme.empty())
+			// Устанавливаем вид записи как авторити за двумя косыми чертами
+			form = uri_t::form_t::SLASHES;
+		// Иначе авторити записана сразу за двоеточием схемы
+		else form = uri_t::form_t::BARE;
 		// Возвращаем результат парсинга
 		return true;
 	}
@@ -1496,6 +1642,95 @@ namespace uri {
 		// Если это просто произвольная схема URI, то выводим тип URI как SCHEME
 		return uri_t::type_t::SCHEME;
 	}
+
+	/**
+	 * @brief Функция определения вида записи адреса по его схеме
+	 *
+	 * @details Схем, записывающих авторити сразу за двоеточием, полтора десятка:
+	 *          "mailto:" (RFC 6068), "acct:" (RFC 7565), "im:" (RFC 3860),
+	 *          "pres:" (RFC 3859), "xmpp:" (RFC 5122), "sip:" и "sips:" (RFC 3261),
+	 *          "h323:" (RFC 3508), "stun:" и "stuns:" (RFC 7064), "turn:" и "turns:"
+	 *          (RFC 7065). Учётной записи у трёх последних пар нет вовсе - авторити
+	 *          у них сводится к хосту с портом, - и приметой вида собачка служить
+	 *          не может.
+	 *
+	 *          Схемы обозначений авторити не несут совсем: за двоеточием у них стоит
+	 *          само обозначение, и собачка внутри него разделителем не является.
+	 *          Таковы "news:" (RFC 5538), "mid:" и "cid:" (RFC 2392), а также
+	 *          "urn:" (RFC 8141), "tel:" (RFC 3966), "sms:" (RFC 5724),
+	 *          "data:" (RFC 2397), "geo:" (RFC 5870) и "magnet:".
+	 *
+	 *          Схема неизвестная считается иерархической: их подавляющее большинство
+	 *
+	 * @param fmk    объект фреймворка
+	 * @param scheme схема URI
+	 * @return       вид записи адреса
+	 *
+	 */
+	[[nodiscard]] static uri_t::form_t schemeForm(const fmk_t * fmk, string_view scheme) noexcept {
+		/**
+		 * Отбираем известные схемы по их длине
+		 */
+		switch(scheme.size()){
+			// Если длина схемы составляет два символа
+			case 2: {
+				// Если схема является IM, то авторити записана сразу за двоеточием
+				if(fmk->compare(scheme, "im"))
+					// Выводим вид записи адреса как авторити за двоеточием
+					return uri_t::form_t::BARE;
+			} break;
+			// Если длина схемы составляет три символа
+			case 3: {
+				// Если схема является SIP, то авторити записана сразу за двоеточием
+				if(fmk->compare(scheme, "sip"))
+					// Выводим вид записи адреса как авторити за двоеточием
+					return uri_t::form_t::BARE;
+				// Если схема является обозначением сообщения, то авторити у неё нет
+				if(fmk->compare(scheme, "mid") || fmk->compare(scheme, "cid"))
+					// Выводим вид записи адреса как запись без авторити
+					return uri_t::form_t::NONE;
+				// Если схема является обозначением ресурса, номера или места, то авторити у неё нет
+				if(fmk->compare(scheme, "urn") || fmk->compare(scheme, "tel") ||
+				   fmk->compare(scheme, "sms") || fmk->compare(scheme, "geo"))
+					// Выводим вид записи адреса как запись без авторити
+					return uri_t::form_t::NONE;
+			} break;
+			// Если длина схемы составляет четыре символа
+			case 4: {
+				// Если схема является ACCT, PRES, XMPP, SIPS, H323, STUN или TURN, то авторити записана сразу за двоеточием
+				if(fmk->compare(scheme, "acct") || fmk->compare(scheme, "pres") ||
+				   fmk->compare(scheme, "xmpp") || fmk->compare(scheme, "sips") ||
+				   fmk->compare(scheme, "h323") || fmk->compare(scheme, "stun") ||
+				   fmk->compare(scheme, "turn"))
+					// Выводим вид записи адреса как авторити за двоеточием
+					return uri_t::form_t::BARE;
+				// Если схема является обозначением статьи или данных, то авторити у неё нет
+				if(fmk->compare(scheme, "news") || fmk->compare(scheme, "data"))
+					// Выводим вид записи адреса как запись без авторити
+					return uri_t::form_t::NONE;
+			} break;
+			// Если длина схемы составляет пять символов
+			case 5: {
+				// Если схема является STUNS или TURNS, то авторити записана сразу за двоеточием
+				if(fmk->compare(scheme, "stuns") || fmk->compare(scheme, "turns"))
+					// Выводим вид записи адреса как авторити за двоеточием
+					return uri_t::form_t::BARE;
+			} break;
+			// Если длина схемы составляет шесть символов
+			case 6: {
+				// Если схема является почтовой, то авторити записана сразу за двоеточием
+				if(fmk->compare(scheme, "mailto"))
+					// Выводим вид записи адреса как авторити за двоеточием
+					return uri_t::form_t::BARE;
+				// Если схема является ссылкой на содержимое, то авторити у неё нет
+				if(fmk->compare(scheme, "magnet"))
+					// Выводим вид записи адреса как запись без авторити
+					return uri_t::form_t::NONE;
+			} break;
+		}
+		// Если это схема неизвестная, то считаем её иерархической
+		return uri_t::form_t::SLASHES;
+	}
 };
 
 /**
@@ -1524,8 +1759,8 @@ void awh::Uniform_Resource_Identifier::clear() noexcept {
 	this->_user.password.clear();
 	// Сбрасываем тип URI
 	this->_type = type_t::NONE;
-	// Сбрасываем признак наличия авторити у URI
-	this->_authority = false;
+	// Сбрасываем вид записи адреса
+	this->_form = form_t::NONE;
 	// Сбрасываем атрибуты URI
 	this->_attr.reset(nullptr);
 }
@@ -1544,7 +1779,7 @@ bool awh::Uniform_Resource_Identifier::empty() const noexcept {
 		this->_fragment.empty() &&
 		this->_user.password.empty() &&
 		this->_user.username.empty() &&
-		!this->_authority && (this->_attr == nullptr)
+		!this->hasAuthority() && (this->_attr == nullptr)
 	);
 }
 /**
@@ -1556,6 +1791,26 @@ bool awh::Uniform_Resource_Identifier::empty() const noexcept {
 awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::type() const noexcept {
 	// Возвращаем тип URI
 	return this->_type;
+}
+/**
+ * @brief Метод получения вида записи адреса
+ *
+ * @return вид записи адреса
+ *
+ */
+awh::Uniform_Resource_Identifier::form_t awh::Uniform_Resource_Identifier::form() const noexcept {
+	// Выводим вид записи адреса
+	return this->_form;
+}
+/**
+ * @brief Метод установки вида записи адреса
+ *
+ * @param form вид записи адреса для установки
+ *
+ */
+void awh::Uniform_Resource_Identifier::form(const form_t form) noexcept {
+	// Устанавливаем вид записи адреса
+	this->_form = form;
 }
 /**
  * @brief Метод получения схемы URI
@@ -1580,6 +1835,29 @@ void awh::Uniform_Resource_Identifier::scheme(string_view scheme) noexcept {
 	this->_scheme = uri::lower(scheme);
 	// Устанавливаем тип URI, соответствующий схеме
 	this->_type = uri::schemeType(this->_fmk, scheme);
+	/**
+	 * Вид записи отбирается по схеме, и смена схемы его за собой ведёт: адрес,
+	 * переведённый со схемы "http" на "mailto", записывается уже одним двоеточием.
+	 *
+	 * Записи, авторити не несущей, вид этот не достаётся: авторити у неё нет, и
+	 * взяться ей неоткуда - адрес "custom:path", переведённый на схему HTTP, вышел
+	 * бы как "http:///path" с пустым хостом.
+	 *
+	 * Не отнимается авторити и схемой, её не несущей: у записи "urn:" авторити не
+	 * бывает, но хост у адреса уже стоит, и снятие вида склеивало его с путём -
+	 * адрес "http://user@e.com/x" на схеме "urn" выходил как "urn:user@e.comx".
+	 * Авторити такому адресу записывается сразу за двоеточием.
+	 *
+	 * Запись копирования по сети вида своего не меняет: схемы у неё нет вовсе, а
+	 * задана она может быть только явно
+	 */
+	// Если вид записи задан не явно, а авторити у адреса есть
+	if((this->_form != form_t::COMMAND) && this->hasAuthority()){
+		// Вид записи, соответствующий новой схеме URI
+		const form_t form = uri::schemeForm(this->_fmk, scheme);
+		// Устанавливаем вид записи адреса, соответствующий новой схеме URI
+		this->_form = ((form == form_t::NONE) ? form_t::BARE : form);
+	}
 	/**
 	 * Порт, стандартный для типа URI, разбор сохраняет в атрибутах адреса, чтобы
 	 * атрибуты годились для подключения и без оглядки на схему. Заданный явно порт
@@ -1790,9 +2068,9 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 			 * пустому объекту URI разыменовывала пустой указатель
 			 */
 			// Если атрибуты адреса завелись, значит завелась и авторити, которой они принадлежат
-			if(this->_attr != nullptr)
-				// Запоминаем наличие авторити у URI
-				this->_authority = true;
+			if((this->_attr != nullptr) && !this->hasAuthority())
+				// Запоминаем вид записи, отбирая его по схеме адреса
+				this->_form = uri::schemeForm(this->_fmk, this->_scheme);
 		}
 	/**
 	 * Если возникает ошибка
@@ -1899,7 +2177,9 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 		 * частям адрес прежде авторити не имел, и две косые черты за схемой у него
 		 * не записывались
 		 */
-		this->_authority = true;
+		if(!this->hasAuthority())
+			// Запоминаем вид записи, отбирая его по схеме адреса
+			this->_form = uri::schemeForm(this->_fmk, this->_scheme);
 		// Признак того, что хост URI установлен как сетевой адрес
 		bool network = false;
 		/**
@@ -2136,29 +2416,19 @@ void awh::Uniform_Resource_Identifier::appendScheme(string & result) const noexc
 	/**
 	 * Схему от авторити отделяют двоеточие с двумя косыми чертами, а схему,
 	 * авторити не имеющую, - одно двоеточие. Признаком служит не разновидность
-	 * URI, а наличие самой авторити: у произвольной схемы её может и не быть, а
-	 * разделитель ей доставался всегда одинарный, и адрес "custom://host/path"
-	 * собирался как "custom:hostpath" - хост склеивался с путём.
+	 * URI, а вид самой записи: у произвольной схемы авторити может быть, а может
+	 * и не быть, а разделитель ей доставался всегда одинарный, и адрес
+	 * "custom://host/path" собирался как "custom:hostpath" - хост склеивался с
+	 * путём.
 	 *
-	 * Опаковые схемы авторити не несут по своему устройству: у адреса почты за
-	 * схемой стоит сам адрес получателя.
-	 *
-	 * Записывался опаковой и схема SSH - учётной записью с машиной в виде
-	 * "ssh:user@host:path", принятом у копирования по сети. Вид этот, однако,
-	 * адресом ресурса не является: это довод команды копирования, и разбор его
-	 * обратно читает двоеточие перед путём как разделитель порта. Первый сегмент
-	 * пути при этом съедался негодным номером порта, и каждый оборот адреса
-	 * "ssh://u@h.com:22/a/b" отбирал по сегменту, а адрес без учётной записи
-	 * наращивал по двоеточию. Схема SSH записывается поэтому обычным
-	 * иерархическим видом "ssh://user@host:port/path", который и разбирается
-	 * обратно без потерь
+	 * Записываться сразу за двоеточием авторити может и у схемы иерархической:
+	 * одинарный разделитель доставался прежде одной лишь почте, и записи
+	 * "acct:user@host", "sip:user@host:5060" или "stun:host:3478" собирались с
+	 * двумя косыми чертами, которых у них не бывает. Разделитель отбирается
+	 * поэтому по виду записи, а вид этот - по схеме (RFC 6068, 7565, 3860, 3859,
+	 * 5122, 3261, 3508, 7064, 7065)
 	 */
 	switch(static_cast <uint8_t> (this->_type)){
-		// Если тип URI является E-mail, то авторити у него нет
-		case static_cast <uint8_t> (type_t::EMAIL):
-			// Добавляем разделитель схемы
-			result.append(1, ':');
-		break;
 		/**
 		 * Доменный сокет и файловая система авторити несут всегда, пусть и
 		 * пустую: записи "unix:///var/run/x.sock" и "file:///etc/hosts" - это
@@ -2169,13 +2439,13 @@ void awh::Uniform_Resource_Identifier::appendScheme(string & result) const noexc
 			// Добавляем разделитель схемы и авторити
 			result.append("://", 3);
 		break;
-		// Для остальных разновидностей разделитель определяется наличием авторити
+		// Для остальных разновидностей разделитель определяется видом записи адреса
 		default: {
-			// Если авторити у URI есть
-			if(this->_authority)
+			// Если авторити отделена от схемы двумя косыми чертами
+			if(this->_form == form_t::SLASHES)
 				// Добавляем разделитель схемы и авторити
 				result.append("://", 3);
-			// Добавляем разделитель схемы, если авторити у URI нет
+			// Добавляем разделитель схемы, если авторити стоит сразу за ним либо её нет вовсе
 			else result.append(1, ':');
 		}
 	}
@@ -2188,8 +2458,17 @@ void awh::Uniform_Resource_Identifier::appendScheme(string & result) const noexc
  *
  */
 void awh::Uniform_Resource_Identifier::appendUser(string & result, const bool delimiter) const noexcept {
-	// Если логин пользователя URI пустой, то добавлять нечего
-	if(this->_user.username.empty())
+	/**
+	 * Учётная запись сводится к логину с паролем, и пустой её делает пустота их
+	 * обоих. Записывалась она по одному лишь логину, и пароль без логина -
+	 * запись "://:secret@example.com" - терялся молча: разбор её отдавал уже
+	 * пустой пароль, а объекты, дающие одну строку, равными не считались.
+	 *
+	 * Пароль без логина запись допускает: двоеточие входит в набор символов
+	 * учётной записи (RFC 3986 3.2.1)
+	 */
+	// Если учётная запись пользователя URI пустая, то добавлять нечего
+	if(this->_user.username.empty() && this->_user.password.empty())
 		// Выходим из метода
 		return;
 	/**
@@ -2382,6 +2661,44 @@ void awh::Uniform_Resource_Identifier::appendPath(string & result, const bool le
 	}
 }
 /**
+ * @brief Метод проверки наличия авторити у URI
+ *
+ * @return результат проверки
+ *
+ */
+bool awh::Uniform_Resource_Identifier::hasAuthority() const noexcept {
+	// Выводим результат проверки: авторити нет лишь у записи без неё
+	return (this->_form != form_t::NONE);
+}
+/**
+ * @brief Метод проверки записи адреса на вид копирования по сети
+ *
+ * @details Записью копирования по сети адрес записывается лишь тогда, когда
+ *          записать его так вообще возможно. Довод "git@github.com:group/repo.git"
+ *          схемы не несёт, и разобрать его обратно позволяет собачка: она отделяет
+ *          учётную запись от хоста, и стоит она раньше всякого двоеточия - в логине
+ *          двоеточие кодируется (RFC 3986 3.2.1).
+ *
+ *          Пароль это равновесие рушит: запись ":p@host:path" начинается с
+ *          двоеточия, а запись "u:p@host:path" - с двоеточия за логином, и первый
+ *          сегмент относительной ссылки двоеточия не несёт (RFC 3986 4.2). Разбор
+ *          брал такую строку целиком за путь, и адрес рассыпался.
+ *
+ *          Адрес со схемой этим не страдает: двоеточие схемы стоит перед учётной
+ *          записью, и разбирается она за ним при любом её составе
+ *
+ * @return результат проверки
+ *
+ */
+bool awh::Uniform_Resource_Identifier::commandForm() const noexcept {
+	// Если запись адреса видом копирования по сети не является, то и проверять нечего
+	if(this->_form != form_t::COMMAND)
+		// Выводим результат проверки
+		return false;
+	// Выводим результат проверки: без схемы записать так можно лишь адрес с одним логином
+	return (!this->_scheme.empty() || (!this->_user.username.empty() && this->_user.password.empty()));
+}
+/**
  * @brief Метод проверки наличия параметров URI для записи
  *
  * @return результат проверки
@@ -2409,7 +2726,7 @@ bool awh::Uniform_Resource_Identifier::rootPath() const noexcept {
 	 * они по-разному - пустым набором сегментов и набором из одного пустого
 	 * сегмента, - и сличение адресов, дающих одну строку, равенства не давало
 	 */
-	return (this->_path.empty() || (this->_authority && (this->_path.size() == 1) && this->_path.front().empty()));
+	return (this->_path.empty() || (this->hasAuthority() && (this->_path.size() == 1) && this->_path.front().empty()));
 }
 /**
  * @brief Метод добавления пар ключ-значение параметров URI в результат
@@ -2738,8 +3055,10 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 	try {
 		// Результат парсинга URI
 		string_view scheme, userinfo, host, port, path, query, fragment;
+		// Вид записи разбираемого адреса
+		form_t form = form_t::NONE;
 		// Выполняем парсинг URI
-		if(uri::parse(uri, scheme, userinfo, host, port, path, query, fragment)){
+		if(uri::parse(this->_fmk, uri, scheme, userinfo, host, port, path, query, fragment, form)){
 			/**
 			 * Разбор строки URI разрешает её относительно уже разобранной
 			 * (RFC 3986 5.2.2): сервер отдаёт в заголовке Location ссылку, которая
@@ -2770,7 +3089,7 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 				 * Авторити берётся от ссылки вместе со схемой, даже если ссылка её не
 				 * несёт: ссылка со схемой замещает собой весь адрес (RFC 3986 5.2.2)
 				 */
-				this->_authority = refAuthority;
+				this->_form = (refAuthority ? form : form_t::NONE);
 				// Устанавливаем схему URI, приведённую к нижнему регистру (RFC 3986 6.2.2.1)
 				this->_scheme = uri::lower(scheme);
 				// Устанавливаем тип URI, соответствующий схеме
@@ -2780,8 +3099,8 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 			 * пользователя и портом, - а схему оставляет от прежнего адреса
 			 */
 			} else if(refAuthority) {
-				// Запоминаем наличие авторити у URI
-				this->_authority = true;
+				// Запоминаем вид записи, полученный разбором ссылки
+				this->_form = form;
 				// Очищаем логин пользователя URI
 				this->_user.username.clear();
 				// Очищаем пароль пользователя URI
@@ -2903,6 +3222,15 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 							this->_type = type_t::POSTGRESQL;
 						} break;
 					}
+					/**
+					 * Вид записи ведётся вслед за выведенной схемой: почтовый адрес
+					 * записывается сразу за двоеточием, и ссылка "//user@a.com:25/x"
+					 * собиралась как "mailto://user@a.com/x" - косых черт у почты не бывает
+					 */
+					// Если схема из номера порта вывелась
+					if(!this->_scheme.empty())
+						// Устанавливаем вид записи адреса, соответствующий выведенной схеме
+						this->_form = uri::schemeForm(this->_fmk, this->_scheme);
 				}
 			// Если порт не указан явно в строке URI
 			} else if(port.empty()) {
@@ -3134,19 +3462,39 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 				 * нет (RFC 3986 5.3): ссылка сетевого пути "//cdn.example.com/x" их теряла,
 				 * и повторный разбор собранной строки принимал хост за первый сегмент пути
 				 */
-				if(this->_scheme.empty() && this->_authority)
+				if(this->_scheme.empty() && this->hasAuthority() && !this->commandForm())
 					// Добавляем разделитель авторити
 					result.append("//", 2);
+				// Место, с которого записывается авторити адреса
+				const size_t offset = result.size();
 				// Добавляем параметры пользователя URI в результат
 				this->appendUser(result, true);
 				// Добавляем хост и порт URI в результат с учётом формата генерации
 				this->appendHost(result, format);
+				/**
+				 * Записана ли авторити, отбирается по самой записи, а не по виду адреса:
+				 * вид этот задаётся и снаружи, и вид без авторити, установленный адресу
+				 * с хостом, склеивал хост с путём - "custom:user@e.com" с путём "a/b"
+				 * выходил как "custom:user@e.coma/b"
+				 */
+				// Признак того, что авторити записана в результат
+				const bool authority = (result.size() > offset);
 				// Если путь URI не пустой, то добавляем его в результат
 				if(!this->_path.empty()){
 					/**
-					 * Определяем тип URI адреса по схеме URI
+					 * Путь записи копирования по сети отделяется от хоста двоеточием:
+					 * довод "git@github.com:group/repo.git" записывается именно так, и
+					 * косой черты, ведущей от корня, у него нет
 					 */
-					switch(static_cast <uint8_t> (this->_type)){
+					if(this->commandForm()){
+						// Добавляем разделитель хоста и пути
+						result.append(1, ':');
+						// Добавляем сегменты пути URI в результат
+						this->appendPath(result, false);
+					/**
+					 * Иначе разделитель пути определяется разновидностью адреса
+					 */
+					} else switch(static_cast <uint8_t> (this->_type)){
 						// Если тип URI является WS, WSS, UDS, FTP, FILE, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS
 						case static_cast <uint8_t> (type_t::NONE):
 						case static_cast <uint8_t> (type_t::WS):
@@ -3177,7 +3525,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							 * двоеточием. Записывался он всегда вторым способом, и хост с путём
 							 * склеивались
 							 */
-							if(this->_authority){
+							if(authority){
 								// Добавляем сегменты пути URI в результат
 								this->appendPath(result, true);
 							// Если авторити у URI нет, путь записывается сразу за двоеточием
@@ -3193,7 +3541,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 				 * (RFC 3986 6.2.3). У ссылки же без авторити косая черта эта делает путь
 				 * ведущим от корня, и относительная ссылка "?a=1" собиралась как "/?a=1"
 				 */
-				} else if(this->_authority && (!this->_query.empty() || !this->_fragment.empty())) {
+				} else if(authority && (!this->_query.empty() || !this->_fragment.empty())) {
 					/**
 					 * Определяем тип URI адреса по схеме URI
 					 */
@@ -3312,9 +3660,17 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 				// Если путь URI не пустой, то добавляем его в результат
 				if(!this->_path.empty()){
 					/**
-					 * Определяем тип URI адреса по схеме URI
+					 * Путь записи копирования по сети от корня не ведёт: у довода
+					 * "git@github.com:group/repo.git" путь отделён от хоста двоеточием,
+					 * а не косой чертой
 					 */
-					switch(static_cast <uint8_t> (this->_type)){
+					if(this->commandForm()){
+						// Добавляем сегменты пути URI в результат
+						this->appendPath(result, false);
+					/**
+					 * Иначе разделитель пути определяется разновидностью адреса
+					 */
+					} else switch(static_cast <uint8_t> (this->_type)){
 						// Если тип URI является WS, WSS, UDS, FTP, FILE, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS
 						case static_cast <uint8_t> (type_t::NONE):
 						case static_cast <uint8_t> (type_t::WS):
@@ -3345,7 +3701,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							 * двоеточием. Записывался он всегда вторым способом, и хост с путём
 							 * склеивались
 							 */
-							if(this->_authority){
+							if(this->hasAuthority()){
 								// Добавляем сегменты пути URI в результат
 								this->appendPath(result, true);
 							// Если авторити у URI нет, путь записывается сразу за двоеточием
@@ -3361,7 +3717,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 				 * (RFC 3986 6.2.3). У ссылки же без авторити косая черта эта делает путь
 				 * ведущим от корня, и относительная ссылка "?a=1" собиралась как "/?a=1"
 				 */
-				} else if(this->_authority && (!this->_query.empty() || !this->_fragment.empty())) {
+				} else if(this->hasAuthority() && (!this->_query.empty() || !this->_fragment.empty())) {
 					/**
 					 * Определяем тип URI адреса по схеме URI
 					 */
@@ -3483,7 +3839,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 				 * нет (RFC 3986 5.3): ссылка сетевого пути "//cdn.example.com/x" их теряла,
 				 * и повторный разбор собранной строки принимал хост за первый сегмент пути
 				 */
-				if(this->_scheme.empty() && this->_authority)
+				if(this->_scheme.empty() && this->hasAuthority() && !this->commandForm())
 					// Добавляем разделитель авторити
 					result.append("//", 2);
 				// Добавляем хост и порт URI в результат с учётом формата генерации
@@ -3607,7 +3963,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						 * Запрос же к адресу "custom://host.com/?c=1" выходил и вовсе
 						 * пустым, тогда как пустой строки запроса не бывает
 						 */
-						if(this->_authority)
+						if(this->hasAuthority())
 							// Добавляем относительный URI-запрос в результат
 							this->appendRequest(result);
 						// Добавляем сегменты пути URI в результат, если авторити у URI нет
@@ -4217,8 +4573,8 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 	try {
 		// Устанавливаем тип URI
 		this->_type = uri._type;
-		// Устанавливаем признак наличия авторити у URI
-		this->_authority = uri._authority;
+		// Устанавливаем вид записи адреса
+		this->_form = uri._form;
 		// Перемещаем атрибуты URI
 		this->_attr = ::move(uri._attr);
 		// Перемещаем хост URI
@@ -4276,8 +4632,8 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 	try {
 		// Устанавливаем тип URI
 		this->_type = uri._type;
-		// Устанавливаем признак наличия авторити у URI
-		this->_authority = uri._authority;
+		// Устанавливаем вид записи адреса
+		this->_form = uri._form;
 		// Копируем хост URI
 		this->_path = uri._path;
 		// Копируем параметры URI
@@ -4439,7 +4795,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept :
- _type(type_t::NONE), _authority(false), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _form(form_t::NONE), _scheme{""}, _fragment{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
@@ -4451,8 +4807,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
 		this->_log = uri._log;
 		// Устанавливаем тип URI
 		this->_type = uri._type;
-		// Устанавливаем признак наличия авторити у URI
-		this->_authority = uri._authority;
+		// Устанавливаем вид записи адреса
+		this->_form = uri._form;
 		// Перемещаем атрибуты URI
 		this->_attr = ::move(uri._attr);
 		// Перемещаем хост URI
@@ -4503,7 +4859,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept :
- _type(type_t::NONE), _authority(false), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _form(form_t::NONE), _scheme{""}, _fragment{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
@@ -4515,8 +4871,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 		this->_log = uri._log;
 		// Устанавливаем тип URI
 		this->_type = uri._type;
-		// Устанавливаем признак наличия авторити у URI
-		this->_authority = uri._authority;
+		// Устанавливаем вид записи адреса
+		this->_form = uri._form;
 		// Копируем хост URI
 		this->_path = uri._path;
 		// Копируем параметры URI
@@ -4673,7 +5029,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept :
- _type(type_t::NONE), _authority(false), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _form(form_t::NONE), _scheme{""}, _fragment{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(fmk), _log(log) {
 	// Инициализируем объект работы с сетевыми адресами
 	this->_addr = make_unique <net_addr_t> (fmk, log);

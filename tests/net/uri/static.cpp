@@ -2152,3 +2152,364 @@ TEST_F(UriFixture, HostWithoutSchemeBeforeDelimiterTest){
 		ASSERT_EQ(sample.second, again.print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
 	}
 }
+
+/**
+ * @brief Тест сохранения вида записи схем, несущих авторити за двоеточием
+ *
+ */
+TEST_F(UriFixture, BareAuthoritySchemesKeepFormTest){
+	/**
+	 * Схем, записывающих авторити сразу за двоеточием, полтора десятка, и
+	 * разделитель им доставался от разновидности адреса: одинарное двоеточие
+	 * получала одна лишь почта, а прочие собирались с двумя косыми чертами,
+	 * которых у них не бывает
+	 */
+	// Образцы строк, обязанные пережить оборот без изменений
+	const std::vector <std::string> samples = {
+		"mailto:user@example.com",
+		"mailto:user@example.com?subject=hi",
+		"acct:user@example.com",
+		"im:user@example.com",
+		"pres:user@example.com",
+		"xmpp:node@example.com",
+		"xmpp:node@example.com/resource",
+		"sip:user@example.com",
+		"sip:user@example.com:5060",
+		"sips:user@example.com",
+		"h323:user@example.com:1720",
+		"stun:example.com",
+		"stun:example.com:3478",
+		"stuns:example.com:5349",
+		"turn:example.com:3478",
+		"turns:example.com:5349"
+	};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(sample);
+		// Вид записи обязан оказаться авторити за двоеточием
+		ASSERT_EQ(awh::uri_t::form_t::BARE, this->_uri->form()) << "строка: " << sample;
+		// Собранная строка обязана совпасть с исходной
+		ASSERT_EQ(sample, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample;
+		// Хост обязан извлечься из записи
+		ASSERT_EQ("example.com", this->_uri->host()) << "строка: " << sample;
+	}
+}
+
+/**
+ * @brief Тест разбора хоста с портом у схем, учётной записи не несущих
+ *
+ */
+TEST_F(UriFixture, BareAuthorityWithoutUserTest){
+	/**
+	 * Авторити у схем STUN и TURN сводится к хосту с портом: учётной записи у
+	 * них нет вовсе, и приметой вида собачка служить не может. Отбиралась
+	 * авторити по одной лишь собачке, и запись "stun:example.com:3478" хоста не
+	 * давала вовсе - он целиком ложился сегментом пути (RFC 7064, 7065)
+	 */
+	// Выполняем разбор записи адреса сервера STUN
+	this->_uri->parse("stun:example.com:3478");
+	// Проверяем хост, извлечённый из записи
+	ASSERT_EQ("example.com", this->_uri->host());
+	// Проверяем порт, извлечённый из записи
+	ASSERT_EQ(3478, this->_uri->port());
+	// Сегментов пути у записи быть не должно
+	ASSERT_TRUE(this->_uri->path().empty());
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор записи адреса сервера TURN с параметром
+	this->_uri->parse("turn:example.com:3478?transport=udp");
+	// Проверяем хост, извлечённый из записи
+	ASSERT_EQ("example.com", this->_uri->host());
+	// Проверяем порт, извлечённый из записи
+	ASSERT_EQ(3478, this->_uri->port());
+	// Проверяем строку, собранную из разобранной записи
+	ASSERT_EQ("turn:example.com:3478?transport=udp", this->_uri->print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест схем обозначений, авторити не несущих
+ *
+ */
+TEST_F(UriFixture, IdentifierSchemesHaveNoAuthorityTest){
+	/**
+	 * Собачка внутри обозначения сообщения разделителем не является: у записей
+	 * "news:", "mid:" и "cid:" за схемой стоит само обозначение (RFC 5538, 2392).
+	 * Отбиралась авторити по одной лишь собачке, и обозначение разбиралось как
+	 * учётная запись с хостом - строка собиралась уже как "news://msgid@host"
+	 */
+	// Образцы строк, обязанные пережить оборот без изменений
+	const std::vector <std::string> samples = {
+		"news:comp.lang.c",
+		"news:msgid@example.com",
+		"mid:foo4%25foo1@bar.net",
+		"cid:foo4%25foo1@bar.net",
+		"urn:isbn:0451450523",
+		"tel:+15105550101",
+		"sms:+15105550101",
+		"data:text/plain,hi"
+	};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(sample);
+		// Вид записи обязан оказаться записью без авторити
+		ASSERT_EQ(awh::uri_t::form_t::NONE, this->_uri->form()) << "строка: " << sample;
+		// Учётной записи у обозначения быть не должно
+		ASSERT_TRUE(this->_uri->user().username.empty()) << "строка: " << sample;
+		// Хоста у обозначения быть не должно
+		ASSERT_TRUE(this->_uri->host().empty()) << "строка: " << sample;
+		// Собранная строка обязана совпасть с исходной
+		ASSERT_EQ(sample, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample;
+	}
+}
+
+/**
+ * @brief Тест разбора записи копирования по сети
+ *
+ */
+TEST_F(UriFixture, NetworkCopyCommandFormTest){
+	/**
+	 * Довод команды копирования по сети "git@github.com:group/repo.git" адресом
+	 * ресурса не является, но встречается повсеместно. Двоеточие перед путём
+	 * разбор принимал за разделитель порта, и негодный номер уносил с собой
+	 * первый сегмент пути - от записи оставалось "//git@github.com/repo.git"
+	 */
+	// Образцы строк, обязанные пережить оборот без изменений
+	const std::vector <std::string> samples = {
+		"git@github.com:group/repo.git",
+		"user@example.com:path",
+		"ssh:user@example.com:path/to/file",
+		"git:user@example.com:group/repo.git"
+	};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(sample);
+		// Вид записи обязан оказаться записью копирования по сети
+		ASSERT_EQ(awh::uri_t::form_t::COMMAND, this->_uri->form()) << "строка: " << sample;
+		// Собранная строка обязана совпасть с исходной
+		ASSERT_EQ(sample, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample;
+	}
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор довода команды копирования по сети
+	this->_uri->parse("git@github.com:group/repo.git");
+	// Проверяем логин, извлечённый из записи
+	ASSERT_EQ("git", this->_uri->user().username);
+	// Проверяем хост, извлечённый из записи
+	ASSERT_EQ("github.com", this->_uri->host());
+	// Порта у записи копирования по сети быть не должно
+	ASSERT_EQ(0, this->_uri->port());
+	// Проверяем число сегментов пути, извлечённых из записи
+	ASSERT_EQ(2, this->_uri->path().size());
+	// Проверяем первый сегмент пути, извлечённый из записи
+	ASSERT_EQ("group", this->_uri->path().front());
+	// Проверяем последний сегмент пути, извлечённый из записи
+	ASSERT_EQ("repo.git", this->_uri->path().back());
+}
+
+/**
+ * @brief Тест отбора порта от пути за двоеточием хоста
+ *
+ */
+TEST_F(UriFixture, PortIsTakenOnlyFromDigitsTest){
+	/**
+	 * Двоеточие после хоста разделяет его с портом лишь у записи с двумя косыми
+	 * чертами: авторити у неё кончается на "/", "?" или "#". У записи же без
+	 * косых черт двоеточие отделяет и путь, и различаются они по содержимому
+	 */
+	// Образцы строк и ожидаемые от них номер порта с числом сегментов пути
+	const std::vector <std::tuple <std::string, uint16_t, size_t>> samples = {
+		{"ssh:user@example.com:22/a/b", 22, 2},
+		{"ssh:user@example.com:path/to/file", 22, 3},
+		{"stun:example.com:3478", 3478, 0},
+		{"//example.com:8080/x", 8080, 1}
+	};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(std::get <0> (sample));
+		// Проверяем номер порта, извлечённый из записи
+		ASSERT_EQ(std::get <1> (sample), this->_uri->port()) << "строка: " << std::get <0> (sample);
+		// Проверяем число сегментов пути, извлечённых из записи
+		ASSERT_EQ(std::get <2> (sample), this->_uri->path().size()) << "строка: " << std::get <0> (sample);
+	}
+	/**
+	 * Порт у записи с двумя косыми чертами читается номером и тогда, когда номером
+	 * он не является: авторити кончается на разделителе, и путём стать ему негде
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор записи с негодным номером порта
+	this->_uri->parse("http://example.com:80a/x");
+	// Проверяем хост, извлечённый из записи
+	ASSERT_EQ("example.com", this->_uri->host());
+	// Проверяем число сегментов пути, извлечённых из записи
+	ASSERT_EQ(1, this->_uri->path().size());
+}
+
+/**
+ * @brief Тест ведения вида записи вслед за схемой
+ *
+ */
+TEST_F(UriFixture, FormFollowsSchemeTest){
+	/**
+	 * Вид записи отбирается по схеме, и смена схемы его за собой ведёт. Взяться
+	 * ему, однако, неоткуда у записи, авторити не несущей, и снятие его у записи
+	 * с хостом склеивало хост с путём
+	 */
+	// Выполняем разбор адреса с авторити
+	this->_uri->parse("http://user@example.com/x");
+	// Вид записи обязан оказаться авторити за двумя косыми чертами
+	ASSERT_EQ(awh::uri_t::form_t::SLASHES, this->_uri->form());
+	// Устанавливаем почтовую схему URI
+	this->_uri->scheme("mailto");
+	// Вид записи обязан смениться на авторити за двоеточием
+	ASSERT_EQ(awh::uri_t::form_t::BARE, this->_uri->form());
+	// Проверяем строку, собранную после смены схемы
+	ASSERT_EQ("mailto:user@example.com/x", this->_uri->print(awh::uri_t::item_t::URI));
+	// Устанавливаем схему обозначения ресурса, авторити не несущую
+	this->_uri->scheme("urn");
+	// Хост обязан остаться отделённым от пути
+	ASSERT_EQ("urn:user@example.com/x", this->_uri->print(awh::uri_t::item_t::URI));
+	// Возвращаем адресу иерархическую схему
+	this->_uri->scheme("https");
+	// Вид записи обязан вернуться к авторити за двумя косыми чертами
+	ASSERT_EQ(awh::uri_t::form_t::SLASHES, this->_uri->form());
+	// Проверяем строку, собранную после возврата схемы
+	ASSERT_EQ("https://user@example.com/x", this->_uri->print(awh::uri_t::item_t::URI));
+	/**
+	 * Записи, авторити не несущей, вид от схемы не достаётся: авторити у неё нет,
+	 * и адрес "custom:path" на схеме HTTP вышел бы как "http:///path"
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса без авторити
+	this->_uri->parse("custom:path");
+	// Устанавливаем иерархическую схему URI
+	this->_uri->scheme("http");
+	// Авторити у записи взяться неоткуда
+	ASSERT_EQ(awh::uri_t::form_t::NONE, this->_uri->form());
+	// Проверяем строку, собранную после смены схемы
+	ASSERT_EQ("http:/path", this->_uri->print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест вида записи, заданного снаружи
+ *
+ */
+TEST_F(UriFixture, FormIsSetFromOutsideTest){
+	// Виды записи адреса и ожидаемые от них строки
+	const std::vector <std::pair <awh::uri_t::form_t, std::string>> samples = {
+		{awh::uri_t::form_t::NONE, "custom:user@example.com/a/b"},
+		{awh::uri_t::form_t::BARE, "custom:user@example.com/a/b"},
+		{awh::uri_t::form_t::SLASHES, "custom://user@example.com/a/b"},
+		{awh::uri_t::form_t::COMMAND, "custom:user@example.com:a/b"}
+	};
+	/**
+	 * Перебираем все виды записи адреса
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Устанавливаем схему URI
+		this->_uri->scheme("custom");
+		// Устанавливаем хост URI
+		this->_uri->host("example.com");
+		// Устанавливаем логин пользователя URI
+		this->_uri->user("user", "");
+		// Устанавливаем путь URI
+		this->_uri->path({"a", "b"});
+		// Устанавливаем вид записи адреса
+		this->_uri->form(sample.first);
+		// Проверяем строку, собранную заданным видом записи
+		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI));
+		// Повторный разбор собранной строки обязан дать ту же строку
+		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор собранной строки
+		again.parse(sample.second);
+		// Проверяем строку, собранную повторно
+		ASSERT_EQ(sample.second, again.print(awh::uri_t::item_t::URI));
+	}
+}
+
+/**
+ * @brief Тест записи пароля пользователя без логина
+ *
+ */
+TEST_F(UriFixture, PasswordWithoutLoginIsKeptTest){
+	/**
+	 * Учётная запись сводится к логину с паролем, и записывалась она по одному
+	 * лишь логину: пароль без логина терялся молча, и объекты, дающие одну
+	 * строку, равными не считались. Двоеточие в набор символов учётной записи
+	 * входит (RFC 3986 3.2.1)
+	 */
+	// Устанавливаем схему URI
+	this->_uri->scheme("http");
+	// Устанавливаем хост URI
+	this->_uri->host("example.com");
+	// Устанавливаем один лишь пароль пользователя URI
+	this->_uri->user("", "secret");
+	// Проверяем строку, собранную с одним паролем
+	ASSERT_EQ("http://:secret@example.com", this->_uri->print(awh::uri_t::item_t::URI));
+	// Повторный разбор собранной строки обязан вернуть пароль
+	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор собранной строки
+	again.parse("http://:secret@example.com");
+	// Проверяем пароль, извлечённый из записи
+	ASSERT_EQ("secret", again.user().password);
+	// Логина у записи быть не должно
+	ASSERT_TRUE(again.user().username.empty());
+	// Объекты, дающие одну строку, обязаны считаться равными
+	ASSERT_TRUE((* this->_uri) == again);
+}
+
+/**
+ * @brief Тест признака адреса IPv6 у токена с закрытой скобкой
+ *
+ */
+TEST_F(UriFixture, ClosedIPv6BracketEndsAddressTest){
+	/**
+	 * Разбор со схемы, признав токен хостом, перебирает пройденные символы не с
+	 * начала, и признак нахождения внутри адреса IPv6 ставился по одной лишь
+	 * первой скобке. Токен же бывает и закрытым: у записи "[)]:path" скобка
+	 * закрыта, а двоеточие за нею разбор считал частью адреса
+	 */
+	// Выполняем разбор записи с закрытой скобкой
+	this->_uri->parse("[::1]:8080/x");
+	// Проверяем хост, извлечённый из записи
+	ASSERT_EQ("::1", this->_uri->host());
+	// Проверяем порт, извлечённый из записи
+	ASSERT_EQ(8080, this->_uri->port());
+	// Проверяем число сегментов пути, извлечённых из записи
+	ASSERT_EQ(1, this->_uri->path().size());
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Собранная строка обязана пережить оборот
+	this->_uri->parse("[::1]:8080/x");
+	// Ожидаемая строка собранного адреса
+	const std::string expected = this->_uri->print(awh::uri_t::item_t::URI);
+	// Выполняем повторный разбор собранной строки
+	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор собранной строки
+	again.parse(expected);
+	// Проверяем строку, собранную повторно
+	ASSERT_EQ(expected, again.print(awh::uri_t::item_t::URI));
+}
