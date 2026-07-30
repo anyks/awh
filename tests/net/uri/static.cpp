@@ -2860,3 +2860,104 @@ TEST_F(UriFixture, MailRequestKeepsQueryTest){
 	// Запрос адреса без заголовков состоит из одной учётной записи с хостом
 	ASSERT_EQ("user@example.com", this->_uri->print(awh::uri_t::item_t::REQUEST));
 }
+
+/**
+ * @brief Тест инициализации копированием
+ *
+ */
+TEST_F(UriFixture, CopyInitializationTest){
+	/**
+	 * Явным конструктор копирования быть не может: инициализация копированием -
+	 * возврат объекта из функции, передача его по значению, задание его знаком
+	 * равенства - через явный конструктор не проходит, и запись "return uri;"
+	 * не собиралась
+	 */
+	// Собираем объект URI и возвращаем его по значению
+	auto make = [this](const std::string & text) -> awh::uri_t {
+		// Заводим объект работы с URI
+		awh::uri_t uri(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор строки
+		uri.parse(text);
+		// Возвращаем собранный объект
+		return uri;
+	};
+	// Принимаем объект URI по значению
+	auto text = [](awh::uri_t uri) -> std::string {
+		// Возвращаем строку собранного адреса
+		return uri.print(awh::uri_t::item_t::URI);
+	};
+	// Объект, возвращённый из функции по значению
+	const awh::uri_t returned = make("http://example.com/a/b?k=v");
+	// Проверяем строку объекта, возвращённого по значению
+	ASSERT_EQ("http://example.com/a/b?k=v", returned.print(awh::uri_t::item_t::URI));
+	// Инициализация копированием знаком равенства
+	const awh::uri_t assigned = returned;
+	// Проверяем строку объекта, заданного знаком равенства
+	ASSERT_EQ("http://example.com/a/b?k=v", assigned.print(awh::uri_t::item_t::URI));
+	// Передача объекта по значению
+	ASSERT_EQ("http://example.com/a/b?k=v", text(assigned));
+	// Объекты обязаны считаться равными
+	ASSERT_TRUE(returned == assigned);
+	// Набор объектов URI собирается перечислением
+	const std::vector <awh::uri_t> group = {make("http://a.com/x"), make("mailto:user@b.com")};
+	// Проверяем число объектов в наборе
+	ASSERT_EQ(2, group.size());
+	// Проверяем строку первого объекта набора
+	ASSERT_EQ("http://a.com/x", group.front().print(awh::uri_t::item_t::URI));
+	// Проверяем строку последнего объекта набора
+	ASSERT_EQ("mailto:user@b.com", group.back().print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест завершения разбора на схеме и на хосте
+ *
+ */
+TEST_F(UriFixture, ParsingEndsOnSchemeAndHostTest){
+	/**
+	 * Строка без разделителей - относительный путь целиком: собачку перехватывает
+	 * сам цикл разбора, и до завершения на схеме доходит лишь строка, её не
+	 * несущая
+	 */
+	// Образцы строк без разделителей и ожидаемые от них сегменты пути
+	const std::vector <std::string> tokens = {"example", "abc", "localhost", "x"};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & token : tokens){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(token);
+		// Строка обязана стать единственным сегментом пути
+		ASSERT_EQ(1, this->_uri->path().size()) << "строка: " << token;
+		// Проверяем сегмент пути, извлечённый из строки
+		ASSERT_EQ(token, this->_uri->path().front()) << "строка: " << token;
+		// Хоста у относительного пути быть не должно
+		ASSERT_TRUE(this->_uri->host().empty()) << "строка: " << token;
+		// Собранная строка обязана совпасть с исходной
+		ASSERT_EQ(token, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << token;
+	}
+	/**
+	 * Завершение разбора на хосте авторити несёт непременно: все переходы на
+	 * чтение хоста её выставляют
+	 */
+	// Образцы строк, разбор которых завершается на чтении хоста
+	const std::vector <std::pair <std::string, std::string>> hosts = {
+		{"//example.com", "example.com"},
+		{"user@example.com", "example.com"},
+		{"//user@example.com", "example.com"},
+		{"//[::1]", "::1"},
+		{"example.com:80", "example.com"}
+	};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & host : hosts){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(host.first);
+		// Проверяем хост, извлечённый из записи
+		ASSERT_EQ(host.second, this->_uri->host()) << "строка: " << host.first;
+	}
+}

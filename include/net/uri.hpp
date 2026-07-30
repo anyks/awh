@@ -684,17 +684,22 @@ namespace awh {
 			/**
 			 * @brief Конструктор перемещения
 			 *
+			 * @details Явным конструктор копирования быть не может: инициализация
+			 *          копированием - возврат объекта из функции, передача его по
+			 *          значению, задание его знаком равенства - через явный конструктор
+			 *          не проходит, и запись "return uri;" не собиралась
+			 *
 			 * @param uri параметры URI для перемещения
 			 *
 			 */
-			explicit Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept;
+			Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept;
 			/**
 			 * @brief Конструктор копирования
 			 *
 			 * @param uri параметры URI для копирования
 			 *
 			 */
-			explicit Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept;
+			Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept;
 		public:
 			/**
 			 * @brief Конструктор
