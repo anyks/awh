@@ -111,7 +111,7 @@ struct UriTestParsingParameter {
 	// Путь URI для проверки
 	std::vector <std::string> path;
 	// Параметры URI для проверки
-	std::unordered_map <std::string, std::string> query;
+	std::unordered_multimap <std::string, std::string> query;
 };
 
 /**

@@ -1349,7 +1349,7 @@ namespace uri {
 	 * @param log    объект работы с логами
 	 *
 	 */
-	static void splitQuery(unordered_map <string, string> & result, string_view query, const log_t * log) noexcept {
+	static void splitQuery(unordered_multimap <string, string> & result, string_view query, const log_t * log) noexcept {
 		// Если параметры пустые, разбирать нечего
 		if(query.empty())
 			// Выходим из функции
@@ -2424,7 +2424,7 @@ void awh::Uniform_Resource_Identifier::path(const vector <string> & path) noexce
  * @return параметры URI
  *
  */
-const unordered_map <string, string> & awh::Uniform_Resource_Identifier::query() const noexcept {
+const unordered_multimap <string, string> & awh::Uniform_Resource_Identifier::query() const noexcept {
 	// Возвращаем параметры URI
 	return this->_query;
 }
@@ -2434,7 +2434,7 @@ const unordered_map <string, string> & awh::Uniform_Resource_Identifier::query()
  * @param query параметры URI для установки
  *
  */
-void awh::Uniform_Resource_Identifier::query(const unordered_map <string, string> & query) noexcept {
+void awh::Uniform_Resource_Identifier::query(const unordered_multimap <string, string> & query) noexcept {
 	// Устанавливаем параметры URI
 	this->_query = query;
 }
@@ -3554,7 +3554,7 @@ awh::Uniform_Resource_Identifier::operator const vector <string> & () const noex
  * @return параметры URI
  *
  */
-awh::Uniform_Resource_Identifier::operator const unordered_map <string, string> & () const noexcept {
+awh::Uniform_Resource_Identifier::operator const unordered_multimap <string, string> & () const noexcept {
 	// Возвращаем параметры URI
 	return this->query();
 }
@@ -3713,22 +3713,13 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 			}
 			// Если пути URI равны
 			if(result){
-				// Выполняем сравнение размеров параметров URI
-				result = (this->_query.size() == uri._query.size());
-				// Если размеры параметров URI равны
-				if(result && !this->_query.empty()){
-					/**
-					 * Выполняем сравнение размеров параметров URI
-					 */
-					for(auto & [key, value] : this->_query){
-						// Ищем ключ в сравниваемых параметрах URI
-						auto i = uri._query.find(key);
-						// Выполняем сравнение наличия ключа и значения (с учётом регистра, единый поиск по ключу)
-						if(!(result = ((i != uri._query.end()) && (i->second == value))))
-							// Если параметры URI не равны, то прекращаем сравнение
-							break;
-					}
-				}
+				/**
+				 * Выполняем сравнение параметров URI средствами самого хранилища:
+				 * ключи в параметрах повторяются, и поиск по ключу отдаёт лишь первое
+				 * из значений, а сличать нужно все. Хранилище же сличает совпадающие по
+				 * ключу наборы значений целиком, не глядя на их порядок
+				 */
+				result = (this->_query == uri._query);
 			}
 		}
 	/**
@@ -3907,22 +3898,12 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 			}
 			// Если пути URI равны
 			if(!result){
-				// Выполняем сравнение размеров параметров URI
-				result = (this->_query.size() != uri._query.size());
-				// Если размеры параметров URI равны
-				if(!result && !this->_query.empty()){
-					/**
-					 * Выполняем сравнение размеров параметров URI
-					 */
-					for(auto & [key, value] : this->_query){
-						// Ищем ключ в сравниваемых параметрах URI
-						auto i = uri._query.find(key);
-						// Выполняем сравнение наличия ключа и значения (с учётом регистра, единый поиск по ключу)
-						if((result = ((i == uri._query.end()) || (i->second != value))))
-							// Если параметры URI не равны, то прекращаем сравнение
-							break;
-					}
-				}
+				/**
+				 * Выполняем сравнение параметров URI средствами самого хранилища:
+				 * ключи в параметрах повторяются, и поиск по ключу отдаёт лишь первое
+				 * из значений, а сличать нужно все
+				 */
+				result = (this->_query != uri._query);
 			}
 		}
 	/**
@@ -4005,7 +3986,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  * @return      текущий объект
  *
  */
-awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const unordered_map <string, string> & query) noexcept {
+awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const unordered_multimap <string, string> & query) noexcept {
 	// Устанавливаем параметры URI
 	this->query(query);
 	// Возвращаем результат

@@ -138,7 +138,7 @@ namespace awh {
 			// Путь URI
 			vector <string> _path;
 			// Параметры URI
-			unordered_map <string, string> _query;
+			unordered_multimap <string, string> _query;
 		private:
 			/**
 			 * @brief Функция обратного вызова для генерации параметра URI (например, для генерации контрольной суммы)
@@ -340,14 +340,14 @@ namespace awh {
 			 * @return параметры URI
 			 *
 			 */
-			const unordered_map <string, string> & query() const noexcept;
+			const unordered_multimap <string, string> & query() const noexcept;
 			/**
 			 * @brief Метод установки параметров URI
 			 *
 			 * @param query параметры URI для установки
 			 *
 			 */
-			void query(const unordered_map <string, string> & query) noexcept;
+			void query(const unordered_multimap <string, string> & query) noexcept;
 		public:
 			/**
 			 * @brief Метод парсинга URI-запроса
@@ -435,7 +435,7 @@ namespace awh {
 			 * @return параметры URI
 			 *
 			 */
-			operator const unordered_map <string, string> & () const noexcept;
+			operator const unordered_multimap <string, string> & () const noexcept;
 		public:
 			/**
 			 * @brief Оператор сравнения
@@ -493,7 +493,7 @@ namespace awh {
 			 * @return      текущий объект
 			 *
 			 */
-			Uniform_Resource_Identifier & operator = (const unordered_map <string, string> & query) noexcept;
+			Uniform_Resource_Identifier & operator = (const unordered_multimap <string, string> & query) noexcept;
 		public:
 			/**
 			 * @brief Оператор перемещающего присваивания параметров URI

@@ -1064,3 +1064,72 @@ TEST_F(UriFixture, ReferenceReplacesWholeAuthorityTest){
 	// Проверяем собранный адрес
 	ASSERT_EQ("https://second.example.com/three", this->_uri->print(awh::uri_t::item_t::URI));
 }
+
+/**
+ * @brief Тест сохранения повторяющихся ключей параметров URI
+ *
+ * @details Ключи в параметрах URI повторяются штатно: разбивка строки параметров
+ *          на пары пришла из кодирования форм, и повтор имени там - это сам
+ *          способ выразить список значений. Множественный выбор и группа флажков
+ *          отправляют по паре на каждое выбранное значение, все с одним именем, и
+ *          другого способа в формате нет. Хранилищем параметров служило
+ *          отображение, повторов не держащее, и адрес вида
+ *
+ *              ?labels=bug&labels=help+wanted
+ *
+ *          после разбора и сборки превращался в "?labels=bug" - то есть в другой
+ *          запрос. Фреймворк адреса не только читает, но и пересылает, и на
+ *          перенаправлениях с прокси потеря доходила до сервера.
+ *
+ *          Порядок значений внутри одного ключа сохраняется: хранилище держит
+ *          совпадающие по ключу записи рядом и в порядке занесения
+ *
+ */
+TEST_F(UriFixture, QueryKeepsRepeatedKeysTest){
+	// Образцы адресов с повторяющимися ключами параметров
+	const std::vector <std::pair <std::string, size_t>> samples = {
+		{"https://example.com/x?labels=bug&labels=help", 2},
+		{"https://example.com/x?tag=one&tag=two&tag=three", 3},
+		{"https://example.com/x?a[]=1&a[]=2&a[]=3", 3},
+		{"https://example.com/x?f=json&f=xml&limit=10", 3}
+	};
+	/**
+	 * Перебираем все образцы адресов
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца адреса
+		this->_uri->parse(sample.first);
+		// Все пары параметров обязаны сохраниться
+		ASSERT_EQ(sample.second, this->_uri->query().size()) << "адрес: " << sample.first;
+	}
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса с повторяющимся ключом
+	this->_uri->parse("https://example.com/x?tag=one&tag=two&tag=three");
+	// Извлекаем набор значений повторяющегося ключа
+	const auto range = this->_uri->query().equal_range("tag");
+	// Ожидаемые значения повторяющегося ключа в порядке их занесения
+	const std::vector <std::string> expected = {"one", "two", "three"};
+	// Полученные значения повторяющегося ключа
+	std::vector <std::string> values;
+	/**
+	 * Перебираем все значения повторяющегося ключа
+	 */
+	for(auto i = range.first; i != range.second; ++i)
+		// Запоминаем очередное значение повторяющегося ключа
+		values.push_back(i->second);
+	// Порядок значений внутри одного ключа обязан сохраниться
+	ASSERT_EQ(expected, values);
+	// Собранный обратно адрес обязан совпасть с исходным
+	ASSERT_EQ("https://example.com/x?tag=one&tag=two&tag=three", this->_uri->print(awh::uri_t::item_t::URI));
+	// Объекты с разным числом одинаковых ключей равными не считаются
+	awh::uri_t other(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор адреса с меньшим числом повторов ключа
+	other.parse("https://example.com/x?tag=one&tag=two");
+	// Объекты обязаны различаться
+	ASSERT_FALSE(other == (* this->_uri));
+	// Проверяем наличие неравенства
+	ASSERT_TRUE(other != (* this->_uri));
+}
