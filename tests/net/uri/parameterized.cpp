@@ -853,7 +853,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, UriTestParsingParameterizedFixture,
 		}),
 		UriTestParsingParameter({
 			0,
-			"",
+			"/var/run/socket.sock",
 			"",
 			"",
 			"unix",
@@ -863,7 +863,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, UriTestParsingParameterizedFixture,
 			awh::uri_t::type_t::UDS,
 			awh::uri_t::item_t::URI,
 			awh::uri_t::format_t::SMART,
-			{"var", "run", "socket.sock"},
+			{},
 			{}
 		}),
 		UriTestParsingParameter({

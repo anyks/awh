@@ -282,6 +282,13 @@ namespace awh {
 			 */
 			bool rootedPath() const noexcept;
 			/**
+			 * @brief Метод проверки хоста URI на путь к доменному сокету
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool socketHost() const noexcept;
+			/**
 			 * @brief Метод проверки записи адреса на вид копирования по сети
 			 *
 			 * @return результат проверки
