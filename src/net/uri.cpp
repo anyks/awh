@@ -170,6 +170,34 @@ namespace uri {
 	 * @return      результат проверки
 	 *
 	 */
+	/**
+	 * @brief Функция проверки хоста на наличие управляющих символов
+	 *
+	 * @details Управляющий символ в хосте недопустим ни одной из разновидностей
+	 *          адреса: ни доменное имя, ни адрес сети его не содержат (RFC 1123 2.1,
+	 *          RFC 3986 3.2.2). Процент-кодирование его не спасает: хост при разборе
+	 *          не раскодируется и при сборке не кодируется, - и записанный в хост
+	 *          перевод строки выходил из сборки как есть, разрывая заголовок,
+	 *          в который собранный адрес подставлен
+	 *
+	 * @param host хост URI для проверки
+	 * @return     результат проверки
+	 *
+	 */
+	[[nodiscard]] static inline bool hasControl(string_view host) noexcept {
+		/**
+		 * Перебираем все символы хоста
+		 */
+		for(const char letter : host){
+			// Если символ является управляющим
+			if((static_cast <uint8_t> (letter) < 0x20) || (static_cast <uint8_t> (letter) == 0x7F))
+				// Выводим, что управляющий символ в хосте найден
+				return true;
+		}
+		// Выводим, что управляющих символов в хосте нет
+		return false;
+	}
+
 	[[nodiscard]] static inline bool hostLike(const char * begin, const char * end) noexcept {
 		// Признак наличия точки в токене
 		bool dot = false;
@@ -309,12 +337,20 @@ namespace uri {
 						if((ptr > tokenBegin) && schemeValid){
 							/**
 							 * Проверяем, содержит ли кандидат точку.
-							 * Настоящие схемы URI (http, ftp, mailto, ...) точек не содержат.
-							 * Если точка есть — это доменное имя (www.example.com:443/...),
-							 * а не схема, и мы переходим к разбору хоста.
+							 * Схемы URI, точку содержащие, есть - "iris.beep", "soap.beep",
+							 * "z39.50r" (RFC 3983, RFC 3288, RFC 2056), - но и доменное имя
+							 * с портом "www.example.com:443" записывается точно так же.
+							 *
+							 * Различает их то, что стоит за двоеточием: у схемы там могут
+							 * стоять две косые черты, отделяющие авторити, а у хоста - только
+							 * номер порта, косой чертой не начинающийся (RFC 3986 3.2.3).
+							 * Без этой оговорки запись "iris.beep://host/path" разбиралась как
+							 * хост "iris.beep" с путём "/host/path"
 							 */
+							// Признак того, что за двоеточием стоят две косые черты
+							const bool slashes = (((ptr + 2) < end) && ((* (ptr + 1)) == '/') && ((* (ptr + 2)) == '/'));
 							// Если у кандидата приметы хоста — это домен, а не схема
-							if(uri::hostLike(tokenBegin, ptr)){
+							if(!slashes && uri::hostLike(tokenBegin, ptr)){
 								// Помечаем наличие authority без //
 								hasAuthority = true;
 								// Переходим к чтению хоста
@@ -1846,6 +1882,8 @@ void awh::Uniform_Resource_Identifier::clear() noexcept {
 	this->_scheme.clear();
 	// Очищаем якорь URI
 	this->_fragment.clear();
+	// Выполняем очистку зоны IPv6-адреса хоста URI
+	this->_zone.clear();
 	// Очищаем логин пользователя URI
 	this->_user.username.clear();
 	// Очищаем пароль пользователя URI
@@ -2065,6 +2103,12 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		/**
+		 * Атрибуты адреса зоны не несут, и зона прежнего хоста к новому отношения
+		 * не имеет: без сброса она дописывалась бы к нему при печати
+		 */
+		// Сбрасываем зону IPv6-адреса хоста URI
+		this->_zone.clear();
 		// Если атрибуты URI не пустые
 		if(attr != nullptr){
 			/**
@@ -2250,6 +2294,8 @@ string awh::Uniform_Resource_Identifier::host() const noexcept {
 						return "";
 					// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 					this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+					// Устанавливаем зону IPv6-адреса хоста, хранимую самой записью
+					this->_addr->zone(this->_zone);
 					// Возвращаем IP-адрес хоста в виде строки
 					return static_cast <string> (* this->_addr.get());
 				}
@@ -2303,6 +2349,8 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 		 * как "custom:///path"
 		 */
 		if(host.empty()){
+			// Сбрасываем зону IPv6-адреса хоста URI
+			this->_zone.clear();
 			// Сбрасываем атрибуты URI адреса
 			this->_attr.reset(nullptr);
 			// Выходим из метода
@@ -2311,6 +2359,12 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 		if(!this->hasAuthority())
 			// Запоминаем вид записи, отбирая его по схеме адреса
 			this->_form = uri::schemeForm(this->_fmk, this->_scheme);
+		/**
+		 * Зона принадлежит одному лишь IPv6-адресу: у прочих разновидностей хоста
+		 * её нет, и от прежнего хоста новому она достаться не должна
+		 */
+		// Сбрасываем зону IPv6-адреса хоста URI
+		this->_zone.clear();
 		// Признак того, что хост URI установлен как сетевой адрес
 		bool network = false;
 		/**
@@ -2370,6 +2424,8 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 				case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 					// Помечаем хост URI как сетевой адрес
 					network = true;
+					// Запоминаем зону IPv6-адреса хоста: атрибуты её не несут
+					this->_zone = this->_addr->zone();
 					// Сохраняем порт хоста, снятый с прежних атрибутов URI адреса
 					port = current;
 					// Если атрибуты URI не инициализированы или уже инициализированы, но не являются IPv6-адресом
@@ -2427,6 +2483,24 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 		 * атрибутов сетевого адреса ему не завести, и обрабатывается он как имя
 		 */
 		if(!network){
+			/**
+			 * Хост, сетевым адресом не оказавшийся, сохраняется строкой как есть:
+			 * при разборе он не раскодируется и при сборке не кодируется. Оттого
+			 * управляющий символ в нём переживал оборот и выходил из сборки наружу,
+			 * разрывая заголовок, в который собранный адрес подставлен. Недопустим
+			 * он ни имени, ни пути (RFC 1123 2.1, RFC 3986 3.2.2), и хост такой не
+			 * принимается вовсе.
+			 *
+			 * Разобранного сетевого адреса проверка эта не касается: модуль адресов
+			 * пробельные символы по краям записи срезает, и хранится такой адрес
+			 * октетами, а не строкой
+			 */
+			if(uri::hasControl(host)){
+				// Сбрасываем атрибуты URI адреса
+				this->_attr.reset(nullptr);
+				// Выходим из метода
+				return;
+			}
 			/**
 			 * Определяем разновидность полученного хоста URI адреса.
 			 *
@@ -2719,6 +2793,8 @@ void awh::Uniform_Resource_Identifier::appendHost(string & result, const format_
 				if(attr->ip != nullptr){
 					// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 					this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+					// Устанавливаем зону IPv6-адреса хоста, хранимую самой записью
+					this->_addr->zone(this->_zone);
 					// Добавляем открывающую скобку IPv6-адреса
 					result.append(1, '[');
 					// Запоминаем позицию, с которой начинается запись адреса
@@ -4136,6 +4212,8 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								if(attr->ip != nullptr){
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
+									// Устанавливаем зону IPv6-адреса хоста, хранимую самой записью
+									this->_addr->zone(this->_zone);
 									// Добавляем открывающую скобку IPv6-адреса
 									result.append(1, '[');
 									// Запоминаем позицию, с которой начинается запись адреса
@@ -4342,6 +4420,15 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 			if(result)
 				// Выполняем сравнение якорей URI (с учётом регистра, согласно RFC 3986)
 				result = (this->_fragment == uri._fragment);
+		}
+		// Если типы URI равны
+		if(result){
+			// Выполняем сравнение размеров зон IPv6-адресов хостов URI
+			result = (this->_zone.size() == uri._zone.size());
+			// Если зоны IPv6-адресов хостов URI равны
+			if(result)
+				// Выполняем сравнение зон IPv6-адресов хостов URI
+				result = (this->_zone == uri._zone);
 		}
 		// Если типы URI равны
 		if(result){
@@ -4562,6 +4649,15 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 			if(!result)
 				// Выполняем сравнение якорей URI (с учётом регистра, согласно RFC 3986)
 				result = (this->_fragment != uri._fragment);
+		}
+		// Если URI пока равны
+		if(!result){
+			// Выполняем сравнение размеров зон IPv6-адресов хостов URI
+			result = (this->_zone.size() != uri._zone.size());
+			// Если размеры зон IPv6-адресов хостов URI совпадают
+			if(!result)
+				// Выполняем сравнение зон IPv6-адресов хостов URI
+				result = (this->_zone != uri._zone);
 		}
 		// Если типы URI равны
 		if(!result){
@@ -4849,6 +4945,8 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		this->_scheme = ::move(uri._scheme);
 		// Перемещаем якорь URI
 		this->_fragment = ::move(uri._fragment);
+		// Выполняем перемещение зоны IPv6-адреса хоста URI
+		this->_zone = ::move(uri._zone);
 		// Перемещаем параметры пользователя URI
 		this->_user.password = ::move(uri._user.password);
 		// Перемещаем логин пользователя URI
@@ -4915,6 +5013,8 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		this->_scheme = uri._scheme;
 		// Копируем якорь URI
 		this->_fragment = uri._fragment;
+		// Выполняем копирование зоны IPv6-адреса хоста URI
+		this->_zone = uri._zone;
 		// Копируем параметры пользователя URI
 		this->_user.password = uri._user.password;
 		// Копируем логин пользователя URI
@@ -5068,7 +5168,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept :
- _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""}, _zone{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
@@ -5094,6 +5194,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
 		this->_scheme = ::move(uri._scheme);
 		// Перемещаем якорь URI
 		this->_fragment = ::move(uri._fragment);
+		// Выполняем перемещение зоны IPv6-адреса хоста URI
+		this->_zone = ::move(uri._zone);
 		// Перемещаем параметры пользователя URI
 		this->_user.password = ::move(uri._user.password);
 		// Перемещаем логин пользователя URI
@@ -5134,7 +5236,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept :
- _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""}, _zone{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
@@ -5158,6 +5260,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 		this->_scheme = uri._scheme;
 		// Копируем якорь URI
 		this->_fragment = uri._fragment;
+		// Выполняем копирование зоны IPv6-адреса хоста URI
+		this->_zone = uri._zone;
 		// Копируем параметры пользователя URI
 		this->_user.password = uri._user.password;
 		// Копируем логин пользователя URI
@@ -5306,7 +5410,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept :
- _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""}, _zone{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(fmk), _log(log) {
 	// Инициализируем объект работы с сетевыми адресами
 	this->_addr = make_unique <net_addr_t> (fmk, log);

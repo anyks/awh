@@ -797,3 +797,60 @@ TEST_F(NetFixture, NetAttributesHaveNoAddressByDefaultTest){
 	ASSERT_EQ(0, domain.port);
 	ASSERT_TRUE(domain.domain.empty());
 }
+
+/**
+ * @brief Тест принадлежности зоны разобранному адресу
+ *
+ */
+TEST_F(NetFixture, NetZoneBelongsToAddressTest){
+	/**
+	 * Зона обозначает область действия адреса локальной связи и есть только у
+	 * IPv6: ни у IPv4-адреса, ни у MAC-адреса её быть не может. Очистка её,
+	 * однако, стояла в одной лишь ветви разбора IPv6-адреса, а разбор IPv4
+	 * до неё не доходил - и зона прежнего адреса доставалась новому: адрес
+	 * "127.0.0.1", разобранный вслед за "fe80::1%eth0", печатался как
+	 * "127.0.0.1%eth0"
+	 */
+	// Выполняем разбор адреса с зоной
+	(* this->_addr.get()) = "fe80::1%eth0";
+	// Проверяем зону, извлечённую из адреса
+	ASSERT_EQ("eth0", this->_addr->zone());
+	// Выполняем разбор адреса IPv4 тем же объектом
+	(* this->_addr.get()) = "127.0.0.1";
+	// Зона прежнего адреса новому достаться не должна
+	ASSERT_TRUE(this->_addr->zone().empty());
+	// Проверяем запись адреса
+	ASSERT_EQ("127.0.0.1", static_cast <std::string> (* this->_addr.get()));
+	// Выполняем разбор адреса с зоной
+	(* this->_addr.get()) = "fe80::1%en0";
+	// Проверяем зону, извлечённую из адреса
+	ASSERT_EQ("en0", this->_addr->zone());
+	// Выполняем разбор MAC-адреса тем же объектом
+	(* this->_addr.get()) = "73:0b:04:0d:db:79";
+	// Зона прежнего адреса новому достаться не должна
+	ASSERT_TRUE(this->_addr->zone().empty());
+	/**
+	 * Разбор адреса одной лишь разновидностью очищать зону обязан тоже
+	 */
+	// Выполняем разбор адреса с зоной
+	(* this->_addr.get()) = "fe80::1%eth1";
+	// Проверяем зону, извлечённую из адреса
+	ASSERT_EQ("eth1", this->_addr->zone());
+	// Выполняем разбор адреса IPv4 разновидностью, заданной явно
+	ASSERT_TRUE(this->_addr->parse("10.0.0.1", awh::net_addr_t::type_t::IPV4));
+	// Зона прежнего адреса новому достаться не должна
+	ASSERT_TRUE(this->_addr->zone().empty());
+	// Проверяем запись адреса
+	ASSERT_EQ("10.0.0.1", static_cast <std::string> (* this->_addr.get()));
+	/**
+	 * Установка адреса в чистом виде зоны не несёт и прежнюю снимать обязана
+	 */
+	// Выполняем разбор адреса с зоной
+	(* this->_addr.get()) = "fe80::1%eth2";
+	// Снимаем адрес в чистом виде
+	std::unique_ptr <awh::net::addr_t> source = this->_addr->source(awh::net_addr_t::endian_t::LITTLE);
+	// Выполняем установку адреса в чистом виде
+	this->_addr->source(source.get(), awh::net_addr_t::endian_t::LITTLE);
+	// Зона прежнего адреса установленному достаться не должна
+	ASSERT_TRUE(this->_addr->zone().empty());
+}
