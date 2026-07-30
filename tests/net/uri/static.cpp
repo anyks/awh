@@ -21,6 +21,7 @@
  * Стандартные заголовочные файлы
  */
 #include <random>
+#include <sstream>
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -1603,4 +1604,551 @@ TEST_F(UriFixture, EquivalentUriCompareEqualTest){
 	ASSERT_FALSE(bare == other);
 	// Проверяем наличие неравенства
 	ASSERT_TRUE(bare != other);
+}
+
+/**
+ * @brief Тест сборки адресов протокола SSH
+ *
+ */
+TEST_F(UriFixture, SshUriIsHierarchicalTest){
+	/**
+	 * Схема SSH записывалась опаковым видом "ssh:user@host:path", принятым у
+	 * копирования по сети. Вид этот адресом ресурса не является: разбор его
+	 * обратно читает двоеточие перед путём как разделитель порта, и первый
+	 * сегмент пути съедался негодным номером порта. Каждый оборот адреса
+	 * отбирал по сегменту, а адрес без учётной записи наращивал по двоеточию
+	 */
+	// Образцы адресов SSH и их ожидаемая сборка
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"ssh://u@h.com:22/a/b", "ssh://u@h.com/a/b"},
+		{"ssh://u@h.com:2222/a/b", "ssh://u@h.com:2222/a/b"},
+		{"ssh://h.com/a/b", "ssh://h.com/a/b"},
+		{"ssh://u@h.com", "ssh://u@h.com"},
+		{"ssh://u:p@h.com:22/a", "ssh://u:p@h.com/a"}
+	};
+	/**
+	 * Перебираем все образцы адресов
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца адреса
+		this->_uri->parse(sample.first);
+		// Собранная строка обязана совпасть с ожидаемой
+		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "адрес: " << sample.first;
+		// Повторный разбор собранной строки обязан дать ту же строку
+		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор собранной строки
+		again.parse(sample.second);
+		// Проверяем строку, собранную повторно
+		ASSERT_EQ(sample.second, again.print(awh::uri_t::item_t::URI)) << "адрес: " << sample.first;
+		// Сегменты пути обязаны сохраниться в целости
+		ASSERT_EQ(this->_uri->path(), again.path()) << "адрес: " << sample.first;
+	}
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса SSH с путём и параметрами
+	this->_uri->parse("ssh://u@h.com:2222/a/b?c=1#d");
+	// Запрос обязан строиться как у всякого иерархического адреса
+	ASSERT_EQ("/a/b?c=1#d", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	// Путь обязан строиться от корня
+	ASSERT_EQ("/a/b", this->_uri->print(awh::uri_t::item_t::PATH));
+	// Происхождение ресурса обязано нести порт, схеме не принадлежащий
+	ASSERT_EQ("ssh://h.com:2222", this->_uri->print(awh::uri_t::item_t::ORIGIN));
+}
+
+/**
+ * @brief Тест вывода почтовой схемы URI из номера порта
+ *
+ */
+TEST_F(UriFixture, MailSchemeNeedsUserTest){
+	/**
+	 * Порт 25 даёт почтовую схему лишь при заданной учётной записи: адрес почты
+	 * без получателя бессмыслен, а записывается он опаковым видом, и хост из
+	 * ссылки "//a.com:25/x" при повторном разборе становился сегментом пути
+	 */
+	// Выполняем разбор ссылки с почтовым портом, но без учётной записи
+	this->_uri->parse("//a.com:25/x");
+	// Почтовая схема выводиться не должна
+	ASSERT_TRUE(this->_uri->scheme().empty());
+	// Собранная строка обязана остаться ссылкой сетевого пути
+	ASSERT_EQ("//a.com:25/x", this->_uri->print(awh::uri_t::item_t::URI));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса с почтовым портом и учётной записью
+	this->_uri->parse("user@example.com:25");
+	// Почтовая схема обязана вывестись
+	ASSERT_EQ("mailto", this->_uri->scheme());
+	// Проверяем тип URI
+	ASSERT_EQ(awh::uri_t::type_t::EMAIL, this->_uri->type());
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("mailto:user@example.com", this->_uri->print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест операторов приведения объекта URI к типам его составляющих
+ *
+ */
+TEST_F(UriFixture, ConversionOperatorsTest){
+	// Выполняем разбор образца адреса
+	this->_uri->parse("https://user:pass@example.com:8443/a/b?c=1#d");
+	// Приведение к признаку существования данных
+	ASSERT_TRUE(static_cast <bool> (* this->_uri));
+	// Приведение к типу URI
+	ASSERT_EQ(awh::uri_t::type_t::HTTPS, static_cast <awh::uri_t::type_t> (* this->_uri));
+	// Приведение к строке URI
+	ASSERT_EQ("https://user:pass@example.com:8443/a/b?c=1#d", static_cast <std::string> (* this->_uri));
+	// Приведение к пути URI
+	const std::vector <std::string> & path = (* this->_uri);
+	// Проверяем сегменты пути URI
+	ASSERT_EQ(2, path.size());
+	// Приведение к параметрам URI
+	const std::unordered_multimap <std::string, std::string> & query = (* this->_uri);
+	// Проверяем число пар параметров URI
+	ASSERT_EQ(1, query.size());
+	// Приведение к атрибутам URI
+	const awh::net::attr_t * attr = (* this->_uri);
+	// Атрибуты URI обязаны быть заведены
+	ASSERT_TRUE(attr != nullptr);
+	// Проверяем разновидность атрибутов URI
+	ASSERT_EQ(awh::net::type_t::FQDN, attr->type);
+	// Приведение пустого объекта к признаку существования данных
+	awh::uri_t empty(this->_fmk.get(), this->_log.get());
+	// Пустой объект обязан считаться пустым
+	ASSERT_FALSE(static_cast <bool> (empty));
+}
+
+/**
+ * @brief Тест операторов установки составляющих объекта URI
+ *
+ */
+TEST_F(UriFixture, AssignmentOperatorsTest){
+	// Выполняем разбор образца адреса, служащего источником составляющих
+	this->_uri->parse("https://user:pass@example.com:8443/a/b?c=1#d");
+	// Объект, наполняемый через операторы установки
+	awh::uri_t target(this->_fmk.get(), this->_log.get());
+	// Устанавливаем схему URI
+	target.scheme("https");
+	// Устанавливаем атрибуты URI через оператор
+	target = this->_uri->attr();
+	// Хост обязан перенестись вместе с атрибутами
+	ASSERT_EQ("example.com", target.host());
+	// Проверяем порт хоста
+	ASSERT_EQ(8443, target.port());
+	// Устанавливаем параметры пользователя URI через оператор
+	target = this->_uri->user();
+	// Проверяем логин пользователя URI
+	ASSERT_EQ("user", target.user().username);
+	// Проверяем пароль пользователя URI
+	ASSERT_EQ("pass", target.user().password);
+	// Устанавливаем путь URI через оператор
+	target = this->_uri->path();
+	// Проверяем число сегментов пути URI
+	ASSERT_EQ(2, target.path().size());
+	// Устанавливаем параметры URI через оператор
+	target = this->_uri->query();
+	// Проверяем число пар параметров URI
+	ASSERT_EQ(1, target.query().size());
+	// Устанавливаем якорь URI
+	target.fragment("d");
+	// Собранный адрес обязан совпасть с исходным
+	ASSERT_EQ("https://user:pass@example.com:8443/a/b?c=1#d", target.print(awh::uri_t::item_t::URI));
+	// Устанавливаем адрес URI через оператор разбора строки
+	target = std::string_view("http://other.example.com/y");
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("http://other.example.com/y", target.print(awh::uri_t::item_t::URI));
+	// Установка параметров пользователя целиком
+	awh::uri_t::user_t user = this->_uri->user();
+	// Устанавливаем параметры пользователя URI
+	target.user(user);
+	// Проверяем логин пользователя URI
+	ASSERT_EQ("user", target.user().username);
+	// Перемещающее присваивание объекта URI
+	awh::uri_t moved(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор адреса, замещаемого перемещением
+	moved.parse("http://replaced.example.com/z");
+	// Выполняем перемещающее присваивание
+	moved = std::move(target);
+	// Перемещённый объект обязан нести и учётную запись, установленную выше
+	ASSERT_EQ("http://user:pass@other.example.com/y", moved.print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест сличения адресов всех разновидностей хоста
+ *
+ */
+TEST_F(UriFixture, CompareAllHostKindsTest){
+	// Образцы пар адресов и ожидаемый итог их сличения
+	const std::vector <std::tuple <std::string, std::string, bool>> samples = {
+		{"http://127.0.0.1/x", "http://127.0.0.1/x", true},
+		{"http://127.0.0.1/x", "http://127.0.0.2/x", false},
+		{"http://127.0.0.1:8080/x", "http://127.0.0.1:9090/x", false},
+		{"http://[2001:db8::1]/x", "http://[2001:db8::1]/x", true},
+		{"http://[2001:db8::1]/x", "http://[2001:db8::2]/x", false},
+		{"http://[::1]:8080/x", "http://[::1]:8080/x", true},
+		{"http://example.com/x", "http://example.com/x", true},
+		{"http://example.com/x", "http://other.com/x", false}
+	};
+	/**
+	 * Перебираем все образцы пар адресов
+	 */
+	for(auto & sample : samples){
+		// Объекты сличаемых адресов
+		awh::uri_t first(this->_fmk.get(), this->_log.get()), second(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор первого адреса пары
+		first.parse(std::get <0> (sample));
+		// Выполняем разбор второго адреса пары
+		second.parse(std::get <1> (sample));
+		// Проверяем равенство адресов
+		ASSERT_EQ(std::get <2> (sample), (first == second)) << std::get <0> (sample) << " и " << std::get <1> (sample);
+		// Неравенство обязано быть согласовано с равенством
+		ASSERT_EQ(!std::get <2> (sample), (first != second)) << std::get <0> (sample) << " и " << std::get <1> (sample);
+	}
+	// Адреса доменного сокета сличаются по пути к сокету
+	awh::uri_t one(this->_fmk.get(), this->_log.get()), two(this->_fmk.get(), this->_log.get());
+	// Устанавливаем путь к сокету первому адресу
+	one.host("/var/run/x.sock");
+	// Устанавливаем тот же путь к сокету второму адресу
+	two.host("/var/run/x.sock");
+	// Адреса с одним путём к сокету обязаны считаться равными
+	ASSERT_TRUE(one == two);
+	// Неравенства между ними быть не должно
+	ASSERT_FALSE(one != two);
+	// Устанавливаем второму адресу иной путь к сокету
+	two.host("/var/run/y.sock");
+	// Адреса с разными путями к сокету равными считаться не должны
+	ASSERT_FALSE(one == two);
+	// Проверяем наличие неравенства
+	ASSERT_TRUE(one != two);
+	// Собранный адрес доменного сокета обязан нести путь к сокету
+	one.scheme("unix");
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("unix:///var/run/x.sock", one.print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест сборки почтового адреса с сетевым адресом хоста
+ *
+ */
+TEST_F(UriFixture, MailUriWithNetworkHostTest){
+	// Образцы почтовых адресов
+	const std::vector <std::string> samples = {
+		"mailto:user@example.com", "mailto:user@127.0.0.1", "mailto:user@[2001:DB8::1]",
+		"mailto:user@example.com:2525", "mailto:user@127.0.0.1:2525", "mailto:user@[2001:DB8::1]:2525"
+	};
+	/**
+	 * Перебираем все образцы почтовых адресов
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца почтового адреса
+		this->_uri->parse(sample);
+		// Собранный адрес обязан совпасть с исходным
+		ASSERT_EQ(sample, this->_uri->print(awh::uri_t::item_t::URI)) << "адрес: " << sample;
+		// Запрос почтового адреса несёт получателя без разделителя схемы
+		ASSERT_EQ(sample.substr(7), this->_uri->print(awh::uri_t::item_t::REQUEST)) << "адрес: " << sample;
+	}
+}
+
+/**
+ * @brief Тест строки параметров, не умещающейся в набор на стеке
+ *
+ */
+TEST_F(UriFixture, LargeQueryGoesToHeapTest){
+	/**
+	 * Набор указателей на пары параметров размещается на стеке до определённого
+	 * их числа, а за ним уходит в кучу. Проверяются обе стороны границы
+	 */
+	for(size_t count : {size_t(1), size_t(2), size_t(31), size_t(32), size_t(33), size_t(64), size_t(300)}){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Устанавливаем схему URI
+		this->_uri->scheme("http");
+		// Устанавливаем хост URI
+		this->_uri->host("example.com");
+		// Набор пар ключ-значение параметров URI
+		std::unordered_multimap <std::string, std::string> query;
+		/**
+		 * Заводим требуемое число пар ключ-значение параметров URI
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Добавляем очередную пару ключ-значение параметров URI
+			query.emplace("k" + std::to_string(i), "v" + std::to_string(i));
+		// Устанавливаем параметры URI
+		this->_uri->query(query);
+		// Строка адреса, полученная первой сборкой
+		const std::string first = this->_uri->print(awh::uri_t::item_t::URI);
+		// Объект, разобранный из собранной строки
+		awh::uri_t back(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор собранной строки
+		back.parse(first);
+		// Все пары параметров обязаны сохраниться
+		ASSERT_EQ(count, back.query().size()) << "параметров: " << count;
+		// Строка обязана быть устойчивой
+		ASSERT_EQ(first, back.print(awh::uri_t::item_t::URI)) << "параметров: " << count;
+	}
+}
+
+/**
+ * @brief Тест вывода схемы URI из номера порта для всех известных портов
+ *
+ */
+TEST_F(UriFixture, SchemeGuessedFromEveryKnownPortTest){
+	// Образцы ссылок и ожидаемые схемы
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"//a.com:443/x", "https"}, {"//a.com:80/x", "http"},  {"//a.com:22/x", "ssh"},
+		{"//a.com:21/x", "ftp"},    {"//a.com:1883/x", "mqtt"}, {"//a.com:1080/x", "socks5"},
+		{"//a.com:6379/x", "redis"}, {"//a.com:3306/x", "mysql"}, {"//a.com:5432/x", "postgresql"},
+		{"//a.com:9999/x", ""}
+	};
+	/**
+	 * Перебираем все образцы ссылок
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца ссылки
+		this->_uri->parse(sample.first);
+		// Схема обязана вывестись из номера порта
+		ASSERT_EQ(sample.second, this->_uri->scheme()) << "ссылка: " << sample.first;
+		// Собранный адрес обязан пережить оборот
+		const std::string first = this->_uri->print(awh::uri_t::item_t::URI);
+		// Объект, разобранный из собранной строки
+		awh::uri_t back(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор собранной строки
+		back.parse(first);
+		// Проверяем строку, собранную повторно
+		ASSERT_EQ(first, back.print(awh::uri_t::item_t::URI)) << "ссылка: " << sample.first;
+	}
+}
+
+/**
+ * @brief Тест потоковых операторов чтения и вывода URI
+ *
+ */
+TEST_F(UriFixture, StreamOperatorsTest){
+	// Поток для чтения адреса URI
+	std::istringstream is("https://example.com:8443/a/b?c=1#d");
+	// Выполняем чтение адреса URI из потока
+	is >> (* this->_uri);
+	// Проверяем хост URI
+	ASSERT_EQ("example.com", this->_uri->host());
+	// Поток для вывода адреса URI
+	std::ostringstream os;
+	// Выполняем вывод адреса URI в поток
+	os << (* this->_uri);
+	// Строка, выведенная в поток, обязана совпасть с исходной
+	ASSERT_EQ("https://example.com:8443/a/b?c=1#d", os.str());
+	// Чтение из пустого потока состояния объекта менять не должно
+	std::istringstream empty("");
+	// Выполняем чтение адреса URI из пустого потока
+	empty >> (* this->_uri);
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("https://example.com:8443/a/b?c=1#d", this->_uri->print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест переноса атрибутов сетевого адреса между объектами URI
+ *
+ */
+TEST_F(UriFixture, AttributesOfNetworkKindAreCopiedTest){
+	// Образцы адресов всех разновидностей хоста
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"http://192.168.1.1:8080/x", "192.168.1.1"},
+		{"http://[2001:DB8::1]:9090/x", "2001:DB8::1"},
+		{"http://example.com:7070/x", "example.com"}
+	};
+	/**
+	 * Перебираем все образцы адресов
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца адреса
+		this->_uri->parse(sample.first);
+		// Объект, принимающий атрибуты адреса
+		awh::uri_t target(this->_fmk.get(), this->_log.get());
+		// Выполняем установку атрибутов адреса
+		target.attr(this->_uri->attr());
+		// Хост обязан перенестись вместе с атрибутами
+		ASSERT_EQ(sample.second, target.host()) << "адрес: " << sample.first;
+		// Порт обязан перенестись вместе с атрибутами
+		ASSERT_EQ(this->_uri->port(), target.port()) << "адрес: " << sample.first;
+		// Разновидность атрибутов обязана совпасть
+		ASSERT_EQ(this->_uri->attr()->type, target.attr()->type) << "адрес: " << sample.first;
+		/**
+		 * Повторная установка атрибутов той же разновидности заводит их заново
+		 * лишь при несовпадении разновидностей, а объект адреса переиспользует
+		 */
+		ASSERT_NO_THROW(target.attr(this->_uri->attr()));
+		// Хост обязан остаться прежним
+		ASSERT_EQ(sample.second, target.host()) << "адрес: " << sample.first;
+	}
+	// Атрибуты сетевого адреса без заведённого адреса переносятся как пустые
+	awh::net::attr_net_t bare;
+	// Устанавливаем разновидность атрибутов
+	bare.type = awh::net::type_t::IPV4;
+	// Устанавливаем порт хоста
+	bare.port = 1234;
+	// Объект, принимающий атрибуты адреса
+	awh::uri_t target(this->_fmk.get(), this->_log.get());
+	// Выполняем установку атрибутов адреса
+	ASSERT_NO_THROW(target.attr(& bare));
+	// Хост обязан отдаться пустым
+	ASSERT_EQ("", target.host());
+	// Порт обязан перенестись
+	ASSERT_EQ(1234, target.port());
+}
+
+/**
+ * @brief Тест углов разбора строки URI
+ *
+ */
+TEST_F(UriFixture, ParserCornerCasesTest){
+	// Образцы строк и ожидаемая их сборка
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		// Порт, оканчивающийся разделителем параметров либо якоря
+		{"http://a.com:8080?x=1", "http://a.com:8080/?x=1"},
+		{"http://a.com:8080#f", "http://a.com:8080/#f"},
+		// Схема, обесцененная недопустимым символом, читается как путь
+		{"ab_cd:x", "/ab_cd:x"},
+		// Кандидат в схему без примет хоста читается как путь
+		{"1:x", "/1:x"},
+		{":x", "/:x"},
+		// IPv6-адрес без схемы
+		{"[::1]/x", "//[::1]/x"},
+		{"[::1]:8080/x", "//[::1]:8080/x"},
+		// Схема без авторити и без пути
+		{"http:", "http:"},
+		// Путь, оканчивающийся обозначением каталога, оставляет за собой разделитель
+		{"http://a.com/b/.", "http://a.com/b/"},
+		{"http://a.com/b/c/..", "http://a.com/b/"},
+		{"http://a.com/b/./", "http://a.com/b/"}
+	};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(sample.first);
+		// Собранная строка обязана совпасть с ожидаемой
+		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
+		// Повторный разбор собранной строки обязан дать ту же строку
+		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор собранной строки
+		again.parse(sample.second);
+		// Проверяем строку, собранную повторно
+		ASSERT_EQ(sample.second, again.print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
+	}
+}
+
+/**
+ * @brief Тест копирования объектов URI со всеми разновидностями хоста
+ *
+ */
+TEST_F(UriFixture, CopyKeepsEveryHostKindTest){
+	// Образцы адресов всех разновидностей хоста
+	const std::vector <std::string> samples = {
+		"http://192.168.1.1:8080/x", "http://[2001:DB8::1]:9090/x",
+		"http://example.com:7070/x", "unix:///var/run/x.sock"
+	};
+	/**
+	 * Перебираем все образцы адресов
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца адреса
+		this->_uri->parse(sample);
+		// Ожидаемая строка собранного адреса
+		const std::string expected = this->_uri->print(awh::uri_t::item_t::URI);
+		// Копия объекта URI обязана дать ту же строку
+		awh::uri_t copy(* this->_uri);
+		// Проверяем строку, собранную копией объекта
+		ASSERT_EQ(expected, copy.print(awh::uri_t::item_t::URI)) << "адрес: " << sample;
+		// Копия обязана считаться равной исходному объекту
+		ASSERT_TRUE(copy == (* this->_uri)) << "адрес: " << sample;
+		/**
+		 * Присваивание поверх объекта с иной разновидностью хоста заводит атрибуты
+		 * заново: приведение атрибутов одной разновидности к другой разновидностей
+		 * не меняет, и запись пошла бы не в те поля
+		 */
+		awh::uri_t target(this->_fmk.get(), this->_log.get());
+		// Заводим получателю хост иной разновидности
+		target.parse("http://10.0.0.1:1234/y");
+		// Выполняем присваивание объекта URI
+		target = (* this->_uri);
+		// Проверяем строку, собранную получателем
+		ASSERT_EQ(expected, target.print(awh::uri_t::item_t::URI)) << "адрес: " << sample;
+		// Заводим получателю хост доменного имени
+		target.parse("http://other.example.com/y");
+		// Выполняем присваивание объекта URI
+		target = (* this->_uri);
+		// Проверяем строку, собранную получателем
+		ASSERT_EQ(expected, target.print(awh::uri_t::item_t::URI)) << "адрес: " << sample;
+	}
+	/**
+	 * Адрес доменного сокета, заданный хостом, несёт атрибуты файловой системы:
+	 * записи "unix:///var/run/x.sock" атрибутов не заводится вовсе - у неё
+	 * пустая авторити с путём от корня
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Устанавливаем схему URI
+	this->_uri->scheme("unix");
+	// Устанавливаем путь к сокету хостом URI
+	this->_uri->host("/var/run/x.sock");
+	// Атрибуты обязаны оказаться атрибутами файловой системы
+	ASSERT_EQ(awh::net::type_t::FS, this->_uri->attr()->type);
+	// Ожидаемая строка собранного адреса
+	const std::string expected = this->_uri->print(awh::uri_t::item_t::URI);
+	// Копия объекта URI обязана дать ту же строку
+	awh::uri_t copy(* this->_uri);
+	// Проверяем строку, собранную копией объекта
+	ASSERT_EQ(expected, copy.print(awh::uri_t::item_t::URI));
+	// Присваивание поверх объекта с сетевым хостом заводит атрибуты заново
+	awh::uri_t target(this->_fmk.get(), this->_log.get());
+	// Заводим получателю сетевой хост
+	target.parse("http://10.0.0.1:1234/y");
+	// Выполняем присваивание объекта URI
+	target = (* this->_uri);
+	// Проверяем строку, собранную получателем
+	ASSERT_EQ(expected, target.print(awh::uri_t::item_t::URI));
+	// Проверяем путь к сокету, перенесённый присваиванием
+	ASSERT_EQ("/var/run/x.sock", target.host());
+}
+
+/**
+ * @brief Тест разбора хоста без схемы перед разделителем
+ *
+ */
+TEST_F(UriFixture, HostWithoutSchemeBeforeDelimiterTest){
+	// Образцы строк и ожидаемая их сборка
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"example.com/path", "//example.com/path"},
+		{"example.com?x=1", "//example.com/?x=1"},
+		{"example.com#f", "//example.com/#f"},
+		{"192.168.0.1/path", "//192.168.0.1/path"},
+		{"path/to/file", "/path/to/file"}
+	};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(sample.first);
+		// Собранная строка обязана совпасть с ожидаемой
+		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
+		// Повторный разбор собранной строки обязан дать ту же строку
+		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор собранной строки
+		again.parse(sample.second);
+		// Проверяем строку, собранную повторно
+		ASSERT_EQ(sample.second, again.print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
+	}
 }

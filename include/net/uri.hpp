@@ -102,7 +102,7 @@ namespace awh {
 				SCHEME     = 0x0E, // URI для схемы
 				POSTGRESQL = 0x0F  // URI для протокола PostgreSQL
 			};
-		private:
+		public:
 			/**
 			 * @brief Структура пользователя URI
 			 *

@@ -2141,12 +2141,20 @@ void awh::Uniform_Resource_Identifier::appendScheme(string & result) const noexc
 	 * собирался как "custom:hostpath" - хост склеивался с путём.
 	 *
 	 * Опаковые схемы авторити не несут по своему устройству: у адреса почты за
-	 * схемой стоит сам адрес получателя, а у SSH - учётная запись с машиной в
-	 * записи, принятой у копирования по сети
+	 * схемой стоит сам адрес получателя.
+	 *
+	 * Записывался опаковой и схема SSH - учётной записью с машиной в виде
+	 * "ssh:user@host:path", принятом у копирования по сети. Вид этот, однако,
+	 * адресом ресурса не является: это довод команды копирования, и разбор его
+	 * обратно читает двоеточие перед путём как разделитель порта. Первый сегмент
+	 * пути при этом съедался негодным номером порта, и каждый оборот адреса
+	 * "ssh://u@h.com:22/a/b" отбирал по сегменту, а адрес без учётной записи
+	 * наращивал по двоеточию. Схема SSH записывается поэтому обычным
+	 * иерархическим видом "ssh://user@host:port/path", который и разбирается
+	 * обратно без потерь
 	 */
 	switch(static_cast <uint8_t> (this->_type)){
-		// Если тип URI является SSH или E-mail, то авторити у него нет
-		case static_cast <uint8_t> (type_t::SSH):
+		// Если тип URI является E-mail, то авторити у него нет
 		case static_cast <uint8_t> (type_t::EMAIL):
 			// Добавляем разделитель схемы
 			result.append(1, ':');
@@ -2851,12 +2859,20 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 							// Устанавливаем тип URI как MQTT
 							this->_type = type_t::MQTT;
 						} break;
-						// Если порт URI является 25, то это может быть E-mail
+						/**
+						 * Порт 25 даёт почтовую схему лишь при заданной учётной записи: адрес
+						 * почты без получателя бессмыслен, а записывается он опаковым видом, и
+						 * хост из ссылки "//a.com:25/x" при повторном разборе собранной строки
+						 * становился первым сегментом пути
+						 */
 						case 25: {
-							// Устанавливаем схему URI
-							this->_scheme = "mailto";
-							// Устанавливаем тип URI как E-mail
-							this->_type = type_t::EMAIL;
+							// Если учётная запись у адреса задана
+							if(!this->_user.username.empty()){
+								// Устанавливаем схему URI
+								this->_scheme = "mailto";
+								// Устанавливаем тип URI как E-mail
+								this->_type = type_t::EMAIL;
+							}
 						} break;
 						// Если порт URI является 1080, то это может быть Socks5
 						case 1080: {
@@ -3137,6 +3153,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::WSS):
 						case static_cast <uint8_t> (type_t::UDS):
 						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::SSH):
 						case static_cast <uint8_t> (type_t::FILE):
 						case static_cast <uint8_t> (type_t::HTTP):
 						case static_cast <uint8_t> (type_t::HTTPS):
@@ -3150,13 +3167,6 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::POSTGRESQL): {
 							// Добавляем сегменты пути URI в результат
 							this->appendPath(result, true);
-						} break;
-						// Если тип URI является SSH
-						case static_cast <uint8_t> (type_t::SSH): {
-							// Добавляем символ ":" перед сегментом пути URI
-							result.append(1, ':');
-							// Добавляем сегменты пути URI в результат
-							this->appendPath(result, false);
 						} break;
 						// Если тип URI является Scheme
 						case static_cast <uint8_t> (type_t::SCHEME): {
@@ -3194,6 +3204,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::WSS):
 						case static_cast <uint8_t> (type_t::UDS):
 						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::SSH):
 						case static_cast <uint8_t> (type_t::FILE):
 						case static_cast <uint8_t> (type_t::HTTP):
 						case static_cast <uint8_t> (type_t::HTTPS):
@@ -3310,6 +3321,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::WSS):
 						case static_cast <uint8_t> (type_t::UDS):
 						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::SSH):
 						case static_cast <uint8_t> (type_t::FILE):
 						case static_cast <uint8_t> (type_t::HTTP):
 						case static_cast <uint8_t> (type_t::HTTPS):
@@ -3323,13 +3335,6 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::POSTGRESQL): {
 							// Добавляем сегменты пути URI в результат
 							this->appendPath(result, true);
-						} break;
-						// Если тип URI является SSH
-						case static_cast <uint8_t> (type_t::SSH): {
-							// Добавляем символ ":" перед сегментом пути URI
-							result.append(1, ':');
-							// Добавляем сегменты пути URI в результат
-							this->appendPath(result, false);
 						} break;
 						// Если тип URI является Scheme
 						case static_cast <uint8_t> (type_t::SCHEME): {
@@ -3367,6 +3372,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::WSS):
 						case static_cast <uint8_t> (type_t::UDS):
 						case static_cast <uint8_t> (type_t::FTP):
+						case static_cast <uint8_t> (type_t::SSH):
 						case static_cast <uint8_t> (type_t::FILE):
 						case static_cast <uint8_t> (type_t::HTTP):
 						case static_cast <uint8_t> (type_t::HTTPS):
@@ -3495,6 +3501,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 					case static_cast <uint8_t> (type_t::WSS):
 					case static_cast <uint8_t> (type_t::FTP):
 					case static_cast <uint8_t> (type_t::UDS):
+					case static_cast <uint8_t> (type_t::SSH):
 					case static_cast <uint8_t> (type_t::FILE):
 					case static_cast <uint8_t> (type_t::MQTT):
 					case static_cast <uint8_t> (type_t::HTTP):
@@ -3586,11 +3593,6 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							} break;
 						}
 					} break;
-					// Если тип URI является SSH
-					case static_cast <uint8_t> (type_t::SSH):
-						// Добавляем сегменты пути URI в результат
-						this->appendPath(result, false);
-					break;
 					// Если тип URI является Scheme
 					case static_cast <uint8_t> (type_t::SCHEME): {
 						/**
