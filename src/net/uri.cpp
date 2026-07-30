@@ -168,6 +168,16 @@ namespace uri {
 	[[nodiscard]] static uri_t::form_t schemeForm(const fmk_t * fmk, string_view scheme) noexcept;
 
 	/**
+	 * @brief Функция определения стандартного порта схемы, разновидности не имеющей
+	 *
+	 * @param fmk    объект фреймворка
+	 * @param scheme схема URI
+	 * @return       стандартный порт или 0, если для схемы он не определён
+	 *
+	 */
+	[[nodiscard]] static uint16_t schemePort(const fmk_t * fmk, string_view scheme) noexcept;
+
+	/**
 	 * @brief Парсинг URI в один проход (Single Pass)
 	 *
 	 * @param fmk      объект фреймворка
@@ -1731,6 +1741,64 @@ namespace uri {
 		// Если это схема неизвестная, то считаем её иерархической
 		return uri_t::form_t::SLASHES;
 	}
+
+	/**
+	 * @brief Функция определения стандартного порта схемы, разновидности не имеющей
+	 *
+	 * @details Стандартный порт отбирался по разновидности URI, а её заводят лишь
+	 *          протоколам, с которыми фреймворк работает сам. Схемы же, авторити за
+	 *          двоеточием несущие, порт в записи имеют: "sip:" отведён порт 5060,
+	 *          "sips:" - 5061 (RFC 3261), "h323:" - 1720 (RFC 3508), "stun:" и
+	 *          "turn:" - 3478, "stuns:" и "turns:" - 5349 (RFC 7064, 7065). Порт
+	 *          стандартный записывался у них наравне с заданным явно.
+	 *
+	 *          Схемам "acct:", "im:", "pres:" и "xmpp:" порта не отведено вовсе:
+	 *          записи их порта не несут, и опускать у них нечего (RFC 7565, 3860,
+	 *          3859, 5122)
+	 *
+	 * @param fmk    объект фреймворка
+	 * @param scheme схема URI
+	 * @return       стандартный порт или 0, если для схемы он не определён
+	 *
+	 */
+	[[nodiscard]] static uint16_t schemePort(const fmk_t * fmk, string_view scheme) noexcept {
+		/**
+		 * Отбираем известные схемы по их длине
+		 */
+		switch(scheme.size()){
+			// Если длина схемы составляет три символа
+			case 3: {
+				// Если схема является SIP, то стандартный порт 5060
+				if(fmk->compare(scheme, "sip"))
+					// Выводим стандартный порт схемы
+					return 5060;
+			} break;
+			// Если длина схемы составляет четыре символа
+			case 4: {
+				// Если схема является SIPS, то стандартный порт 5061
+				if(fmk->compare(scheme, "sips"))
+					// Выводим стандартный порт схемы
+					return 5061;
+				// Если схема является H323, то стандартный порт 1720
+				if(fmk->compare(scheme, "h323"))
+					// Выводим стандартный порт схемы
+					return 1720;
+				// Если схема является STUN или TURN, то стандартный порт 3478
+				if(fmk->compare(scheme, "stun") || fmk->compare(scheme, "turn"))
+					// Выводим стандартный порт схемы
+					return 3478;
+			} break;
+			// Если длина схемы составляет пять символов
+			case 5: {
+				// Если схема является STUNS или TURNS, то стандартный порт 5349
+				if(fmk->compare(scheme, "stuns") || fmk->compare(scheme, "turns"))
+					// Выводим стандартный порт схемы
+					return 5349;
+			} break;
+		}
+		// Если это схема неизвестная, то стандартного порта у неё нет
+		return 0;
+	}
 };
 
 /**
@@ -2396,6 +2464,13 @@ uint16_t awh::Uniform_Resource_Identifier::defaultPort() const noexcept {
 		case static_cast <uint8_t> (type_t::MYSQL): return 3306;
 		// Если тип URI является PostgreSQL, то стандартный порт 5432
 		case static_cast <uint8_t> (type_t::POSTGRESQL): return 5432;
+		/**
+		 * Разновидность заводится протоколам, с которыми фреймворк работает сам, а
+		 * порт отведён и схемам, разновидности не имеющим: у записей "sip:",
+		 * "stun:" или "turn:" он такая же принадлежность схемы, как порт 80 у HTTP,
+		 * и записывался наравне с заданным явно
+		 */
+		case static_cast <uint8_t> (type_t::SCHEME): return uri::schemePort(this->_fmk, this->_scheme);
 	}
 	// Для неизвестного типа URI стандартный порт не определён
 	return 0;

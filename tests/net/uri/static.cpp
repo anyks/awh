@@ -2164,24 +2164,26 @@ TEST_F(UriFixture, BareAuthoritySchemesKeepFormTest){
 	 * получала одна лишь почта, а прочие собирались с двумя косыми чертами,
 	 * которых у них не бывает
 	 */
-	// Образцы строк, обязанные пережить оборот без изменений
-	const std::vector <std::string> samples = {
-		"mailto:user@example.com",
-		"mailto:user@example.com?subject=hi",
-		"acct:user@example.com",
-		"im:user@example.com",
-		"pres:user@example.com",
-		"xmpp:node@example.com",
-		"xmpp:node@example.com/resource",
-		"sip:user@example.com",
-		"sip:user@example.com:5060",
-		"sips:user@example.com",
-		"h323:user@example.com:1720",
-		"stun:example.com",
-		"stun:example.com:3478",
-		"stuns:example.com:5349",
-		"turn:example.com:3478",
-		"turns:example.com:5349"
+	// Образцы строк и ожидаемая их сборка: стандартный порт схемы в записи опускается
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"mailto:user@example.com", "mailto:user@example.com"},
+		{"mailto:user@example.com?subject=hi", "mailto:user@example.com?subject=hi"},
+		{"acct:user@example.com", "acct:user@example.com"},
+		{"im:user@example.com", "im:user@example.com"},
+		{"pres:user@example.com", "pres:user@example.com"},
+		{"xmpp:node@example.com", "xmpp:node@example.com"},
+		{"xmpp:node@example.com/resource", "xmpp:node@example.com/resource"},
+		{"sip:user@example.com", "sip:user@example.com"},
+		{"sip:user@example.com:5060", "sip:user@example.com"},
+		{"sip:user@example.com:5062", "sip:user@example.com:5062"},
+		{"sips:user@example.com", "sips:user@example.com"},
+		{"h323:user@example.com:1720", "h323:user@example.com"},
+		{"stun:example.com", "stun:example.com"},
+		{"stun:example.com:3478", "stun:example.com"},
+		{"stun:example.com:3479", "stun:example.com:3479"},
+		{"stuns:example.com:5349", "stuns:example.com"},
+		{"turn:example.com:3478", "turn:example.com"},
+		{"turns:example.com:5349", "turns:example.com"}
 	};
 	/**
 	 * Перебираем все образцы строк
@@ -2190,13 +2192,19 @@ TEST_F(UriFixture, BareAuthoritySchemesKeepFormTest){
 		// Выполняем очистку объекта работы с URI
 		this->_uri->clear();
 		// Выполняем разбор образца строки
-		this->_uri->parse(sample);
+		this->_uri->parse(sample.first);
 		// Вид записи обязан оказаться авторити за двоеточием
-		ASSERT_EQ(awh::uri_t::form_t::BARE, this->_uri->form()) << "строка: " << sample;
-		// Собранная строка обязана совпасть с исходной
-		ASSERT_EQ(sample, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample;
+		ASSERT_EQ(awh::uri_t::form_t::BARE, this->_uri->form()) << "строка: " << sample.first;
+		// Собранная строка обязана совпасть с ожидаемой
+		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
 		// Хост обязан извлечься из записи
-		ASSERT_EQ("example.com", this->_uri->host()) << "строка: " << sample;
+		ASSERT_EQ("example.com", this->_uri->host()) << "строка: " << sample.first;
+		// Повторный разбор собранной строки обязан дать ту же строку
+		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор собранной строки
+		again.parse(sample.second);
+		// Проверяем строку, собранную повторно
+		ASSERT_EQ(sample.second, again.print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
 	}
 }
 
@@ -2227,8 +2235,11 @@ TEST_F(UriFixture, BareAuthorityWithoutUserTest){
 	ASSERT_EQ("example.com", this->_uri->host());
 	// Проверяем порт, извлечённый из записи
 	ASSERT_EQ(3478, this->_uri->port());
-	// Проверяем строку, собранную из разобранной записи
-	ASSERT_EQ("turn:example.com:3478?transport=udp", this->_uri->print(awh::uri_t::item_t::URI));
+	// Стандартный порт схемы в собранной записи опускается
+	ASSERT_EQ("turn:example.com?transport=udp", this->_uri->print(awh::uri_t::item_t::URI));
+	// Полный формат записи обязан нести порт явно
+	ASSERT_EQ("turn:example.com:3478?transport=udp",
+		this->_uri->print(awh::uri_t::item_t::URI, awh::uri_t::format_t::FULL));
 }
 
 /**
@@ -2512,4 +2523,92 @@ TEST_F(UriFixture, ClosedIPv6BracketEndsAddressTest){
 	again.parse(expected);
 	// Проверяем строку, собранную повторно
 	ASSERT_EQ(expected, again.print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест стандартных портов схем, разновидности не имеющих
+ *
+ */
+TEST_F(UriFixture, DefaultPortOfBareSchemesTest){
+	/**
+	 * Стандартный порт отбирался по разновидности URI, а её заводят лишь
+	 * протоколам, с которыми фреймворк работает сам. Порт же отведён и схемам,
+	 * разновидности не имеющим, и записывался у них наравне с заданным явно
+	 * (RFC 3261, 3508, 7064, 7065)
+	 */
+	// Схемы и отведённые им стандартные порты
+	const std::vector <std::pair <std::string, uint16_t>> samples = {
+		{"sip:user@example.com", 5060},
+		{"sips:user@example.com", 5061},
+		{"h323:user@example.com", 1720},
+		{"stun:example.com", 3478},
+		{"turn:example.com", 3478},
+		{"stuns:example.com", 5349},
+		{"turns:example.com", 5349}
+	};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(sample.first);
+		// Проверяем стандартный порт, отведённый схеме
+		ASSERT_EQ(sample.second, this->_uri->port()) << "строка: " << sample.first;
+		// Полный формат записи обязан нести порт явно
+		ASSERT_EQ(sample.first + ":" + std::to_string(sample.second),
+			this->_uri->print(awh::uri_t::item_t::URI, awh::uri_t::format_t::FULL)) << "строка: " << sample.first;
+		// Умный формат записи стандартный порт опускает
+		ASSERT_EQ(sample.first, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
+		// Заданный явно стандартный порт из записи также опускается
+		awh::uri_t explicitly(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор записи с явно заданным стандартным портом
+		explicitly.parse(sample.first + ":" + std::to_string(sample.second));
+		// Проверяем строку, собранную из записи с явно заданным портом
+		ASSERT_EQ(sample.first, explicitly.print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
+		// Адреса с опущенным и с заданным портом обязаны считаться равными
+		ASSERT_TRUE((* this->_uri) == explicitly) << "строка: " << sample.first;
+	}
+	/**
+	 * Схемам обозначений порта не отведено вовсе: записи их порта не несут, и
+	 * опускать у них нечего (RFC 7565, 3860, 3859, 5122)
+	 */
+	// Схемы, порта не имеющие
+	const std::vector <std::string> without = {
+		"acct:user@example.com", "im:user@example.com",
+		"pres:user@example.com", "xmpp:node@example.com"
+	};
+	/**
+	 * Перебираем все схемы, порта не имеющие
+	 */
+	for(auto & sample : without){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(sample);
+		// Порта у схемы обозначения быть не должно
+		ASSERT_EQ(0, this->_uri->port()) << "строка: " << sample;
+		// Полный формат записи порта не несёт
+		ASSERT_EQ(sample, this->_uri->print(awh::uri_t::item_t::URI, awh::uri_t::format_t::FULL)) << "строка: " << sample;
+	}
+	/**
+	 * Порт переводится вслед за схемой и у схем, разновидности не имеющих
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор записи со стандартным портом
+	this->_uri->parse("sip:user@example.com:5060");
+	// Переводим адрес на защищённую схему
+	this->_uri->scheme("sips");
+	// Порт обязан смениться вслед за схемой
+	ASSERT_EQ(5061, this->_uri->port());
+	// Проверяем строку, собранную после смены схемы
+	ASSERT_EQ("sips:user@example.com", this->_uri->print(awh::uri_t::item_t::URI));
+	// Переводим адрес на иерархическую схему
+	this->_uri->scheme("http");
+	// Порт обязан смениться вслед за схемой
+	ASSERT_EQ(80, this->_uri->port());
+	// Проверяем строку, собранную после смены схемы
+	ASSERT_EQ("http://user@example.com", this->_uri->print(awh::uri_t::item_t::URI));
 }
