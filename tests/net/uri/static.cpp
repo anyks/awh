@@ -2961,3 +2961,141 @@ TEST_F(UriFixture, ParsingEndsOnSchemeAndHostTest){
 		ASSERT_EQ(host.second, this->_uri->host()) << "строка: " << host.first;
 	}
 }
+
+/**
+ * @brief Тест порта у записи копирования по сети
+ *
+ */
+TEST_F(UriFixture, CommandFormHasNoPortTest){
+	/**
+	 * Порту в записи копирования по сети места нет: двоеточие за хостом занято
+	 * путём, и записанный порт становился первым его сегментом. Полный формат
+	 * порт выводит всегда, и запись "ssh:user@host:path" выходила как
+	 * "ssh:user@host:22:path" - с каждым оборотом номер прирастал
+	 */
+	// Выполняем разбор записи копирования по сети
+	this->_uri->parse("ssh:user@example.com:path/to/file");
+	// Стандартный порт схемы у записи сохраняется
+	ASSERT_EQ(22, this->_uri->port());
+	// Умный формат записи порта не несёт
+	ASSERT_EQ("ssh:user@example.com:path/to/file", this->_uri->print(awh::uri_t::item_t::URI));
+	// Полный формат записи порта не несёт тоже
+	ASSERT_EQ("ssh:user@example.com:path/to/file",
+		this->_uri->print(awh::uri_t::item_t::URI, awh::uri_t::format_t::FULL));
+	// Полный формат записи обязан пережить оборот
+	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор строки полного формата
+	again.parse(this->_uri->print(awh::uri_t::item_t::URI, awh::uri_t::format_t::FULL));
+	// Проверяем строку, собранную повторно
+	ASSERT_EQ("ssh:user@example.com:path/to/file",
+		again.print(awh::uri_t::item_t::URI, awh::uri_t::format_t::FULL));
+	/**
+	 * Порт, стандартным для схемы не являющийся, записью копирования по сети
+	 * передан быть не может, и адрес записывается обычным иерархическим видом
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор записи копирования по сети
+	this->_uri->parse("ssh:user@example.com:path/to/file");
+	// Устанавливаем порт, стандартным для схемы не являющийся
+	this->_uri->port(2222);
+	// Запись обязана стать иерархической, чтобы порт не потерялся
+	ASSERT_EQ("ssh://user@example.com:2222/path/to/file", this->_uri->print(awh::uri_t::item_t::URI));
+	// Собранная строка обязана пережить оборот
+	awh::uri_t back(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор собранной строки
+	back.parse("ssh://user@example.com:2222/path/to/file");
+	// Проверяем порт, переживший оборот
+	ASSERT_EQ(2222, back.port());
+	// Проверяем строку, собранную повторно
+	ASSERT_EQ("ssh://user@example.com:2222/path/to/file", back.print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест счётчика вложенности скобок при поиске границы авторити
+ *
+ */
+TEST_F(UriFixture, BracketDepthDoesNotUnderflowTest){
+	/**
+	 * Двоеточие внутри авторити отделяет логин от пароля либо хост от порта, и
+	 * различаются они наличием собачки впереди. Собачка внутри скобок адреса
+	 * IPv6 разделителем не является, и поиск её считает вложенность скобок.
+	 * Счётчик же беззнаковый: скобка непарная уводила его ниже нуля, глубина
+	 * оборачивалась в шестьдесят пять тысяч, и следующая скобка возвращала её к
+	 * нулю - собачка за нею считалась стоящей вне адреса, и граница авторити
+	 * ползла
+	 */
+	// Образцы строк с непарными скобками и ожидаемые от них хосты
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"//a]b@example.com/x", "example.com"},
+		{"//user:pa]ss@example.com/x", "example.com"},
+		{"//user:p]a[s]s@example.com/x", "example.com"},
+		{"//u:p@[::1]:8080/x", "::1"}
+	};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(sample.first);
+		// Проверяем хост, извлечённый из записи
+		ASSERT_EQ(sample.second, this->_uri->host()) << "строка: " << sample.first;
+		// Собранная строка обязана пережить оборот
+		const std::string expected = this->_uri->print(awh::uri_t::item_t::URI);
+		// Выполняем повторный разбор собранной строки
+		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор собранной строки
+		again.parse(expected);
+		// Проверяем строку, собранную повторно
+		ASSERT_EQ(expected, again.print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
+	}
+}
+
+/**
+ * @brief Тест углов печати, тестами не задетых
+ *
+ */
+TEST_F(UriFixture, PrintCornerCasesTest){
+	// Разбор пустой строки данных не заводит
+	ASSERT_EQ(awh::uri_t::type_t::NONE, this->_uri->parse(""));
+	// Объект после разбора пустой строки обязан остаться пустым
+	ASSERT_TRUE(this->_uri->empty());
+	/**
+	 * Пустой путь при непустых параметрах сводится к одной косой черте у адреса
+	 * с авторити: пустой путь ей равнозначен (RFC 3986 6.2.3)
+	 */
+	// Выполняем разбор адреса с параметрами и без пути
+	this->_uri->parse("http://example.com?a=1#f");
+	// Путь адреса сводится к одной косой черте
+	ASSERT_EQ("/", this->_uri->print(awh::uri_t::item_t::PATH));
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("http://example.com/?a=1#f", this->_uri->print(awh::uri_t::item_t::URI));
+	/**
+	 * Обозначение зоны IPv6-адреса отделяется знаком процента, а в URI знак этот
+	 * открывает процент-последовательность, поэтому сам он записывается
+	 * последовательностью "%25" (RFC 6874)
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса с обозначением зоны
+	this->_uri->parse("http://[fe80::1%25eth0]:8080/x");
+	// Проверяем строку собранного адреса: адрес IPv6 записывается верхним регистром
+	ASSERT_EQ("http://[FE80::1%25eth0]:8080/x", this->_uri->print(awh::uri_t::item_t::URI));
+	// Собранная строка обязана пережить оборот
+	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор собранной строки
+	again.parse("http://[FE80::1%25eth0]:8080/x");
+	// Проверяем строку, собранную повторно
+	ASSERT_EQ("http://[FE80::1%25eth0]:8080/x", again.print(awh::uri_t::item_t::URI));
+	/**
+	 * Якорь почтового адреса в режиме запроса записывается наравне с параметрами
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор почтового адреса с якорем
+	this->_uri->parse("mailto:user@example.com?subject=hi#f");
+	// Проверяем запрос, собранный из почтового адреса
+	ASSERT_EQ("user@example.com?subject=hi#f", this->_uri->print(awh::uri_t::item_t::REQUEST));
+}
