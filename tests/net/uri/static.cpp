@@ -2612,3 +2612,106 @@ TEST_F(UriFixture, DefaultPortOfBareSchemesTest){
 	// Проверяем строку, собранную после смены схемы
 	ASSERT_EQ("http://user@example.com", this->_uri->print(awh::uri_t::item_t::URI));
 }
+
+/**
+ * @brief Тест режимов печати записей нового вида
+ *
+ */
+TEST_F(UriFixture, PrintModesOfBareAndCommandFormsTest){
+	// Образцы строк и ожидаемые от них путь с запросом
+	const std::vector <std::tuple <std::string, std::string, std::string>> samples = {
+		{"git@github.com:group/repo.git", "group/repo.git", "/group/repo.git"},
+		{"ssh:user@example.com:path/to/file", "path/to/file", "/path/to/file"},
+		{"custom:user@example.com/a/b?k=v", "/a/b", "/a/b?k=v"},
+		{"acct:user@example.com", "", "/"},
+		{"stun:example.com", "", "/"}
+	};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(std::get <0> (sample));
+		// Проверяем путь, собранный из разобранной записи
+		ASSERT_EQ(std::get <1> (sample), this->_uri->print(awh::uri_t::item_t::PATH)) << "строка: " << std::get <0> (sample);
+		// Проверяем запрос, собранный из разобранной записи
+		ASSERT_EQ(std::get <2> (sample), this->_uri->print(awh::uri_t::item_t::REQUEST)) << "строка: " << std::get <0> (sample);
+	}
+}
+
+/**
+ * @brief Тест ссылки на содержимое и одиночного токена
+ *
+ */
+TEST_F(UriFixture, MagnetAndBareTokenTest){
+	/**
+	 * Ссылка на содержимое авторити не несёт вовсе: за схемой у неё сразу стоят
+	 * параметры
+	 */
+	// Выполняем разбор ссылки на содержимое
+	this->_uri->parse("magnet:?xt=urn:btih:abc&dn=name");
+	// Вид записи обязан оказаться записью без авторити
+	ASSERT_EQ(awh::uri_t::form_t::NONE, this->_uri->form());
+	// Проверяем число параметров, извлечённых из ссылки
+	ASSERT_EQ(2, this->_uri->query().size());
+	/**
+	 * Одиночный токен разделителей не несёт, и разбор завершается на схеме
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор одиночного токена
+	this->_uri->parse("example");
+	// Авторити у одиночного токена быть не должно
+	ASSERT_EQ(awh::uri_t::form_t::NONE, this->_uri->form());
+	// Токен обязан стать единственным сегментом пути
+	ASSERT_EQ(1, this->_uri->path().size());
+	// Проверяем сегмент пути, извлечённый из токена
+	ASSERT_EQ("example", this->_uri->path().front());
+}
+
+/**
+ * @brief Тест скобок, разделителю авторити не принадлежащих
+ *
+ */
+TEST_F(UriFixture, BracketsOutsideOfAddressTest){
+	/**
+	 * Признак нахождения внутри адреса IPv6 ставился по первой скобке без
+	 * оглядки на то, закрыта ли она: у записи "[)]:path" скобка закрыта, а
+	 * двоеточие за нею разбор считал частью адреса и хостом брал всю строку
+	 */
+	// Выполняем разбор записи с закрытой скобкой перед двоеточием
+	this->_uri->parse("[)]:path");
+	// Проверяем хост, извлечённый из записи
+	ASSERT_EQ("[)]", this->_uri->host());
+	// Проверяем число сегментов пути, извлечённых из записи
+	ASSERT_EQ(1, this->_uri->path().size());
+	// Проверяем сегмент пути, извлечённый из записи
+	ASSERT_EQ("path", this->_uri->path().front());
+	/**
+	 * Скобка в пароле пользователя разделителем авторити не является: поиск
+	 * собачки за двоеточием считает вложенность скобок, и скобка в пароле её
+	 * поднимает
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор записи со скобками в пароле пользователя
+	this->_uri->parse("//user:pa[ss]@example.com/x");
+	// Проверяем логин, извлечённый из записи
+	ASSERT_EQ("user", this->_uri->user().username);
+	// Проверяем пароль, извлечённый из записи
+	ASSERT_EQ("pa[ss]", this->_uri->user().password);
+	// Проверяем хост, извлечённый из записи
+	ASSERT_EQ("example.com", this->_uri->host());
+	// Собранная строка обязана пережить оборот
+	const std::string expected = this->_uri->print(awh::uri_t::item_t::URI);
+	// Выполняем повторный разбор собранной строки
+	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор собранной строки
+	again.parse(expected);
+	// Проверяем строку, собранную повторно
+	ASSERT_EQ(expected, again.print(awh::uri_t::item_t::URI));
+	// Проверяем пароль, переживший оборот
+	ASSERT_EQ("pa[ss]", again.user().password);
+}
