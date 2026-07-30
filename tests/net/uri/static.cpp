@@ -210,8 +210,12 @@ TEST_F(UriFixture, SmartNonStandardPortForUntypedUriTest){
 	ASSERT_EQ("example.com", this->_uri->host());
 	// Проверяем порт URI
 	ASSERT_EQ(8080, this->_uri->port());
-	// Нестандартный порт должен сохраняться в SMART-формате, так как стандартный порт для типа не определён
-	ASSERT_EQ("example.com:8080", this->_uri->print(awh::uri_t::item_t::URI, awh::uri_t::format_t::SMART));
+	/**
+	 * Нестандартный порт должен сохраняться в SMART-формате, так как стандартный
+	 * порт для типа не определён, а авторити отделяется двумя косыми чертами и при
+	 * отсутствии схемы (RFC 3986 5.3)
+	 */
+	ASSERT_EQ("//example.com:8080", this->_uri->print(awh::uri_t::item_t::URI, awh::uri_t::format_t::SMART));
 }
 
 /**
@@ -1464,8 +1468,8 @@ TEST_F(UriFixture, SchemeIsGuessedOnlyWithHostTest){
 	ASSERT_TRUE(this->_uri->scheme().empty());
 	// Тип URI определиться не должен
 	ASSERT_EQ(awh::uri_t::type_t::NONE, this->_uri->type());
-	// Собранная строка обязана остаться относительной ссылкой
-	ASSERT_EQ("/x", this->_uri->print(awh::uri_t::item_t::URI));
+	// Собранная строка обязана нести пустую авторити с путём от корня
+	ASSERT_EQ("///x", this->_uri->print(awh::uri_t::item_t::URI));
 	// Выполняем очистку объекта работы с URI
 	this->_uri->clear();
 	// Выполняем разбор ссылки сетевого пути с хостом
@@ -1484,4 +1488,115 @@ TEST_F(UriFixture, SchemeIsGuessedOnlyWithHostTest){
 	ASSERT_EQ("mysql", this->_uri->scheme());
 	// Проверяем строку собранного адреса
 	ASSERT_EQ("mysql://127.0.0.1/x", this->_uri->print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест разделителя авторити у ссылки без схемы
+ *
+ */
+TEST_F(UriFixture, AuthoritySeparatorSurvivesWithoutSchemeTest){
+	/**
+	 * Авторити отделяется двумя косыми чертами и тогда, когда схемы у адреса нет
+	 * (RFC 3986 5.3): прежде они терялись, и повторный разбор собранной строки
+	 * принимал хост за первый сегмент пути
+	 */
+	// Образцы ссылок сетевого пути и их ожидаемая сборка
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"//cdn.example.com/lib.js", "//cdn.example.com/lib.js"},
+		{"//a/x", "//a/x"},
+		{"//example.com", "//example.com"},
+		{"//user@a.com/x", "//user@a.com/x"},
+		{"//a.com:8080/x", "//a.com:8080/x"},
+		{"///x", "///x"},
+		{"http:////a", "http:////a"}
+	};
+	/**
+	 * Перебираем все образцы ссылок
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца ссылки
+		this->_uri->parse(sample.first);
+		// Собранная строка обязана нести разделитель авторити
+		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "ссылка: " << sample.first;
+		// Повторный разбор собранной строки обязан дать ту же строку
+		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор собранной строки
+		again.parse(sample.second);
+		// Проверяем строку, собранную повторно
+		ASSERT_EQ(sample.second, again.print(awh::uri_t::item_t::URI)) << "ссылка: " << sample.first;
+	}
+	// Разделитель авторити не пишется у ссылки, авторити не имеющей
+	this->_uri->clear();
+	// Выполняем разбор относительной ссылки
+	this->_uri->parse("a/b");
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("/a/b", this->_uri->print(awh::uri_t::item_t::URI));
+	// Разделитель авторити не пишется у опакового адреса
+	this->_uri->clear();
+	// Выполняем разбор опакового адреса
+	this->_uri->parse("custom:opaque/path");
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("custom:opaque/path", this->_uri->print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест сличения адресов, дающих одну и ту же строку
+ *
+ */
+TEST_F(UriFixture, EquivalentUriCompareEqualTest){
+	/**
+	 * Порт сличается по действующему его значению: разбор сохраняет в атрибутах
+	 * порт, стандартный для схемы, а собранный по частям адрес его не несёт, и
+	 * адреса, дающие одну и ту же строку, равными не считались
+	 */
+	// Объект, полученный разбором строки адреса
+	this->_uri->parse("http://example.com/x");
+	// Объект, собранный по частям
+	awh::uri_t built(this->_fmk.get(), this->_log.get());
+	// Устанавливаем схему URI
+	built.scheme("http");
+	// Устанавливаем хост URI
+	built.host("example.com");
+	// Устанавливаем путь URI
+	built.path({"x"});
+	// Строки обоих объектов обязаны совпасть
+	ASSERT_EQ(this->_uri->print(awh::uri_t::item_t::URI), built.print(awh::uri_t::item_t::URI));
+	// Объекты обязаны считаться равными
+	ASSERT_TRUE(built == (* this->_uri));
+	// Неравенства между ними быть не должно
+	ASSERT_FALSE(built != (* this->_uri));
+	// Адрес со стандартным портом, заданным явно, равен адресу без него
+	awh::uri_t explicitPort(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор адреса со стандартным портом
+	explicitPort.parse("http://example.com:80/x");
+	// Объекты обязаны считаться равными
+	ASSERT_TRUE(explicitPort == (* this->_uri));
+	/**
+	 * У адреса с авторити отсутствие пути равнозначно пути из одной косой черты
+	 * (RFC 3986 6.2.3), и сборка их обоих даёт одну и ту же строку
+	 */
+	// Объект с пустым путём и параметрами
+	awh::uri_t bare(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор адреса без пути
+	bare.parse("http://example.com?a=1");
+	// Объект с путём из одной косой черты
+	awh::uri_t rooted(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор адреса с путём от корня
+	rooted.parse("http://example.com/?a=1");
+	// Строки обоих объектов обязаны совпасть
+	ASSERT_EQ(bare.print(awh::uri_t::item_t::URI), rooted.print(awh::uri_t::item_t::URI));
+	// Объекты обязаны считаться равными
+	ASSERT_TRUE(bare == rooted);
+	// Неравенства между ними быть не должно
+	ASSERT_FALSE(bare != rooted);
+	// Адреса с разными путями равными считаться не должны
+	awh::uri_t other(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор адреса с иным путём
+	other.parse("http://example.com/y?a=1");
+	// Объекты обязаны различаться
+	ASSERT_FALSE(bare == other);
+	// Проверяем наличие неравенства
+	ASSERT_TRUE(bare != other);
 }

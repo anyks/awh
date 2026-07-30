@@ -1524,6 +1524,8 @@ void awh::Uniform_Resource_Identifier::clear() noexcept {
 	this->_user.password.clear();
 	// Сбрасываем тип URI
 	this->_type = type_t::NONE;
+	// Сбрасываем признак наличия авторити у URI
+	this->_authority = false;
 	// Сбрасываем атрибуты URI
 	this->_attr.reset(nullptr);
 }
@@ -1542,7 +1544,7 @@ bool awh::Uniform_Resource_Identifier::empty() const noexcept {
 		this->_fragment.empty() &&
 		this->_user.password.empty() &&
 		this->_user.username.empty() &&
-		(this->_attr == nullptr)
+		!this->_authority && (this->_attr == nullptr)
 	);
 }
 /**
@@ -1672,6 +1674,8 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 	try {
 		// Если атрибуты URI не пустые
 		if(attr != nullptr){
+			// Атрибуты адреса принадлежат авторити, и установка их её заводит
+			this->_authority = true;
 			/**
 			 * Определяем тип атрибутов URI адреса
 			 */
@@ -1888,6 +1892,12 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		/**
+		 * Хост принадлежит авторити, и установка его извне её заводит: собранный по
+		 * частям адрес прежде авторити не имел, и две косые черты за схемой у него
+		 * не записывались
+		 */
+		this->_authority = true;
 		// Признак того, что хост URI установлен как сетевой адрес
 		bool network = false;
 		/**
@@ -2152,7 +2162,7 @@ void awh::Uniform_Resource_Identifier::appendScheme(string & result) const noexc
 		// Для остальных разновидностей разделитель определяется наличием авторити
 		default: {
 			// Если авторити у URI есть
-			if(this->_attr != nullptr)
+			if(this->_authority)
 				// Добавляем разделитель схемы и авторити
 				result.append("://", 3);
 			// Добавляем разделитель схемы, если авторити у URI нет
@@ -2375,6 +2385,21 @@ bool awh::Uniform_Resource_Identifier::hasQuery() const noexcept {
 	 * функция обратного вызова установлена
 	 */
 	return (!this->_query.empty() || (this->_callback != nullptr));
+}
+/**
+ * @brief Метод проверки равнозначности пути URI корневому
+ *
+ * @return результат проверки
+ *
+ */
+bool awh::Uniform_Resource_Identifier::rootPath() const noexcept {
+	/**
+	 * У адреса с авторити отсутствие пути равнозначно пути из одной косой черты
+	 * (RFC 3986 6.2.3), и сборка их обоих даёт одну и ту же строку. Хранятся же
+	 * они по-разному - пустым набором сегментов и набором из одного пустого
+	 * сегмента, - и сличение адресов, дающих одну строку, равенства не давало
+	 */
+	return (this->_path.empty() || (this->_authority && (this->_path.size() == 1) && this->_path.front().empty()));
 }
 /**
  * @brief Метод добавления пар ключ-значение параметров URI в результат
@@ -2731,6 +2756,11 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 			if(refScheme){
 				// Очищаем все предыдущие данные URI
 				this->clear();
+				/**
+				 * Авторити берётся от ссылки вместе со схемой, даже если ссылка её не
+				 * несёт: ссылка со схемой замещает собой весь адрес (RFC 3986 5.2.2)
+				 */
+				this->_authority = refAuthority;
 				// Устанавливаем схему URI, приведённую к нижнему регистру (RFC 3986 6.2.2.1)
 				this->_scheme = uri::lower(scheme);
 				// Устанавливаем тип URI, соответствующий схеме
@@ -2740,6 +2770,8 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 			 * пользователя и портом, - а схему оставляет от прежнего адреса
 			 */
 			} else if(refAuthority) {
+				// Запоминаем наличие авторити у URI
+				this->_authority = true;
 				// Очищаем логин пользователя URI
 				this->_user.username.clear();
 				// Очищаем пароль пользователя URI
@@ -3079,6 +3111,14 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 			case static_cast <uint8_t> (item_t::URI): {
 				// Добавляем схему URI в результат
 				this->appendScheme(result);
+				/**
+				 * Авторити отделяется двумя косыми чертами и тогда, когда схемы у адреса
+				 * нет (RFC 3986 5.3): ссылка сетевого пути "//cdn.example.com/x" их теряла,
+				 * и повторный разбор собранной строки принимал хост за первый сегмент пути
+				 */
+				if(this->_scheme.empty() && this->_authority)
+					// Добавляем разделитель авторити
+					result.append("//", 2);
 				// Добавляем параметры пользователя URI в результат
 				this->appendUser(result, true);
 				// Добавляем хост и порт URI в результат с учётом формата генерации
@@ -3125,7 +3165,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							 * двоеточием. Записывался он всегда вторым способом, и хост с путём
 							 * склеивались
 							 */
-							if(this->_attr != nullptr){
+							if(this->_authority){
 								// Добавляем сегменты пути URI в результат
 								this->appendPath(result, true);
 							// Если авторити у URI нет, путь записывается сразу за двоеточием
@@ -3135,8 +3175,13 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							}
 						} break;
 					}
-				// Если путь URI пустой, но параметры URI не пустые, то добавляем символ "/" в результат перед параметрами URI
-				} else if(!this->_query.empty() || !this->_fragment.empty()) {
+				/**
+				 * Пустой путь при непустых параметрах либо якоре сводится к одной косой
+				 * черте, но лишь у адреса с авторити: пустой путь ей равнозначен
+				 * (RFC 3986 6.2.3). У ссылки же без авторити косая черта эта делает путь
+				 * ведущим от корня, и относительная ссылка "?a=1" собиралась как "/?a=1"
+				 */
+				} else if(this->_authority && (!this->_query.empty() || !this->_fragment.empty())) {
 					/**
 					 * Определяем тип URI адреса по схеме URI
 					 */
@@ -3293,7 +3338,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							 * двоеточием. Записывался он всегда вторым способом, и хост с путём
 							 * склеивались
 							 */
-							if(this->_attr != nullptr){
+							if(this->_authority){
 								// Добавляем сегменты пути URI в результат
 								this->appendPath(result, true);
 							// Если авторити у URI нет, путь записывается сразу за двоеточием
@@ -3303,8 +3348,13 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							}
 						} break;
 					}
-				// Если путь URI пустой, но параметры URI не пустые, то добавляем символ "/" в результат перед параметрами URI
-				} else if(!this->_query.empty() || !this->_fragment.empty()) {
+				/**
+				 * Пустой путь при непустых параметрах либо якоре сводится к одной косой
+				 * черте, но лишь у адреса с авторити: пустой путь ей равнозначен
+				 * (RFC 3986 6.2.3). У ссылки же без авторити косая черта эта делает путь
+				 * ведущим от корня, и относительная ссылка "?a=1" собиралась как "/?a=1"
+				 */
+				} else if(this->_authority && (!this->_query.empty() || !this->_fragment.empty())) {
 					/**
 					 * Определяем тип URI адреса по схеме URI
 					 */
@@ -3420,6 +3470,14 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 				 */
 				// Добавляем схему URI в результат
 				this->appendScheme(result);
+				/**
+				 * Авторити отделяется двумя косыми чертами и тогда, когда схемы у адреса
+				 * нет (RFC 3986 5.3): ссылка сетевого пути "//cdn.example.com/x" их теряла,
+				 * и повторный разбор собранной строки принимал хост за первый сегмент пути
+				 */
+				if(this->_scheme.empty() && this->_authority)
+					// Добавляем разделитель авторити
+					result.append("//", 2);
 				// Добавляем хост и порт URI в результат с учётом формата генерации
 				this->appendHost(result, format);
 			} break;
@@ -3545,7 +3603,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						 * Запрос же к адресу "custom://host.com/?c=1" выходил и вовсе
 						 * пустым, тогда как пустой строки запроса не бывает
 						 */
-						if(this->_attr != nullptr)
+						if(this->_authority)
 							// Добавляем относительный URI-запрос в результат
 							this->appendRequest(result);
 						// Добавляем сегменты пути URI в результат, если авторити у URI нет
@@ -3740,8 +3798,13 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 							} break;
 							// Если атрибуты URI адреса являются FQDN-адресом
 							case static_cast <uint8_t> (net::type_t::FQDN): {
-								// Выполняем сравнение портов хоста в атрибутах URI адреса
-								result = (awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port == awh_cast <const net::attr_fqdn_t *> (uri._attr.get())->port);
+								/**
+								 * Порт сличается по действующему его значению, а не по хранимому:
+								 * разбор сохраняет в атрибутах порт, стандартный для схемы, а
+								 * собранный по частям адрес его не несёт, и адреса, дающие одну и
+								 * ту же строку, равными не считались
+								 */
+								result = (this->port() == uri.port());
 								// Если порты хоста в атрибутах URI адреса равны
 								if(result)
 									// Выполняем сравнение доменов в атрибутах URI адреса
@@ -3752,8 +3815,13 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 								// Извлекаем атрибуты сравниваемых URI адресов как сетевые адреса
 								net::attr_net_t * first = awh_cast <net::attr_net_t *> (this->_attr.get());
 								const net::attr_net_t * second = awh_cast <const net::attr_net_t *> (uri._attr.get());
-								// Выполняем сравнение портов хоста в атрибутах URI адреса
-								result = (first->port == second->port);
+								/**
+								 * Порт сличается по действующему его значению, а не по хранимому:
+								 * разбор сохраняет в атрибутах порт, стандартный для схемы, а
+								 * собранный по частям адрес его не несёт, и адреса, дающие одну и
+								 * ту же строку, равными не считались
+								 */
+								result = (this->port() == uri.port());
 								// Если порты хоста в атрибутах URI адреса равны
 								if(result){
 									/**
@@ -3772,8 +3840,13 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 								// Извлекаем атрибуты сравниваемых URI адресов как сетевые адреса
 								net::attr_net_t * first = awh_cast <net::attr_net_t *> (this->_attr.get());
 								const net::attr_net_t * second = awh_cast <const net::attr_net_t *> (uri._attr.get());
-								// Выполняем сравнение портов хоста в атрибутах URI адреса
-								result = (first->port == second->port);
+								/**
+								 * Порт сличается по действующему его значению, а не по хранимому:
+								 * разбор сохраняет в атрибутах порт, стандартный для схемы, а
+								 * собранный по частям адрес его не несёт, и адреса, дающие одну и
+								 * ту же строку, равными не считались
+								 */
+								result = (this->port() == uri.port());
 								// Если порты хоста в атрибутах URI адреса равны
 								if(result){
 									/**
@@ -3794,18 +3867,29 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 		}
 		// Если типы URI равны
 		if(result){
-			// Выполняем сравнение размеров путей URI
-			result = (this->_path.size() == uri._path.size());
-			// Если размеры путей URI равны
-			if(result && !this->_path.empty()){
-				/**
-				 * Выполняем сравнение путей URI
-				 */
-				for(size_t i = 0; i < this->_path.size(); ++i){
-					// Выполняем сравнение сегментов путей URI (с учётом регистра, согласно RFC 3986)
-					if(!(result = (this->_path[i] == uri._path[i])))
-						// Если сегменты путей URI не равны, то прекращаем сравнение
-						break;
+			/**
+			 * Пути, равнозначные корневому, сличаются между собой как равные:
+			 * у адреса с авторити отсутствие пути равнозначно пути из одной
+			 * косой черты (RFC 3986 6.2.3), а хранятся они по-разному
+			 */
+			if(this->rootPath() && uri.rootPath())
+				// Оба пути равнозначны корневому
+				result = true;
+			// Иначе сличаем пути посегментно
+			else {
+				// Выполняем сравнение размеров путей URI
+				result = (this->_path.size() == uri._path.size());
+				// Если размеры путей URI равны
+				if(result && !this->_path.empty()){
+					/**
+					 * Выполняем сравнение путей URI
+					 */
+					for(size_t i = 0; i < this->_path.size(); ++i){
+						// Выполняем сравнение сегментов путей URI (с учётом регистра, согласно RFC 3986)
+						if(!(result = (this->_path[i] == uri._path[i])))
+							// Если сегменты путей URI не равны, то прекращаем сравнение
+							break;
+					}
 				}
 			}
 			// Если пути URI равны
@@ -3925,8 +4009,13 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 							} break;
 							// Если атрибуты URI адреса являются FQDN-адресом
 							case static_cast <uint8_t> (net::type_t::FQDN): {
-								// Выполняем сравнение портов хоста в атрибутах URI адреса
-								result = (awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port != awh_cast <const net::attr_fqdn_t *> (uri._attr.get())->port);
+								/**
+								 * Порт сличается по действующему его значению, а не по хранимому:
+								 * разбор сохраняет в атрибутах порт, стандартный для схемы, а
+								 * собранный по частям адрес его не несёт, и адреса, дающие одну и
+								 * ту же строку, равными не считались
+								 */
+								result = (this->port() != uri.port());
 								// Если порты хоста в атрибутах URI адреса равны
 								if(!result)
 									// Выполняем сравнение доменов в атрибутах URI адреса
@@ -3937,8 +4026,13 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 								// Извлекаем атрибуты сравниваемых URI адресов как сетевые адреса
 								net::attr_net_t * first = awh_cast <net::attr_net_t *> (this->_attr.get());
 								const net::attr_net_t * second = awh_cast <const net::attr_net_t *> (uri._attr.get());
-								// Выполняем сравнение портов хоста в атрибутах URI адреса
-								result = (first->port != second->port);
+								/**
+								 * Порт сличается по действующему его значению, а не по хранимому:
+								 * разбор сохраняет в атрибутах порт, стандартный для схемы, а
+								 * собранный по частям адрес его не несёт, и адреса, дающие одну и
+								 * ту же строку, равными не считались
+								 */
+								result = (this->port() != uri.port());
 								// Если порты хоста в атрибутах URI адреса равны
 								if(!result){
 									/**
@@ -3957,8 +4051,13 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 								// Извлекаем атрибуты сравниваемых URI адресов как сетевые адреса
 								net::attr_net_t * first = awh_cast <net::attr_net_t *> (this->_attr.get());
 								const net::attr_net_t * second = awh_cast <const net::attr_net_t *> (uri._attr.get());
-								// Выполняем сравнение портов хоста в атрибутах URI адреса
-								result = (first->port != second->port);
+								/**
+								 * Порт сличается по действующему его значению, а не по хранимому:
+								 * разбор сохраняет в атрибутах порт, стандартный для схемы, а
+								 * собранный по частям адрес его не несёт, и адреса, дающие одну и
+								 * ту же строку, равными не считались
+								 */
+								result = (this->port() != uri.port());
 								// Если порты хоста в атрибутах URI адреса равны
 								if(!result){
 									/**
@@ -3979,18 +4078,29 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 		}
 		// Если типы URI равны
 		if(!result){
-			// Выполняем сравнение размеров путей URI
-			result = (this->_path.size() != uri._path.size());
-			// Если размеры путей URI равны
-			if(!result && !this->_path.empty()){
-				/**
-				 * Выполняем сравнение путей URI
-				 */
-				for(size_t i = 0; i < this->_path.size(); ++i){
-					// Выполняем сравнение сегментов путей URI (с учётом регистра, согласно RFC 3986)
-					if((result = (this->_path[i] != uri._path[i])))
-						// Если сегменты путей URI не равны, то прекращаем сравнение
-						break;
+			/**
+			 * Пути, равнозначные корневому, сличаются между собой как равные:
+			 * у адреса с авторити отсутствие пути равнозначно пути из одной
+			 * косой черты (RFC 3986 6.2.3), а хранятся они по-разному
+			 */
+			if(this->rootPath() && uri.rootPath())
+				// Оба пути равнозначны корневому
+				result = false;
+			// Иначе сличаем пути посегментно
+			else {
+				// Выполняем сравнение размеров путей URI
+				result = (this->_path.size() != uri._path.size());
+				// Если размеры путей URI равны
+				if(!result && !this->_path.empty()){
+					/**
+					 * Выполняем сравнение путей URI
+					 */
+					for(size_t i = 0; i < this->_path.size(); ++i){
+						// Выполняем сравнение сегментов путей URI (с учётом регистра, согласно RFC 3986)
+						if((result = (this->_path[i] != uri._path[i])))
+							// Если сегменты путей URI не равны, то прекращаем сравнение
+							break;
+					}
 				}
 			}
 			// Если пути URI равны
@@ -4103,6 +4213,8 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 	try {
 		// Устанавливаем тип URI
 		this->_type = uri._type;
+		// Устанавливаем признак наличия авторити у URI
+		this->_authority = uri._authority;
 		// Перемещаем атрибуты URI
 		this->_attr = ::move(uri._attr);
 		// Перемещаем хост URI
@@ -4160,6 +4272,8 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 	try {
 		// Устанавливаем тип URI
 		this->_type = uri._type;
+		// Устанавливаем признак наличия авторити у URI
+		this->_authority = uri._authority;
 		// Копируем хост URI
 		this->_path = uri._path;
 		// Копируем параметры URI
@@ -4321,7 +4435,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept :
- _type(type_t::NONE), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _authority(false), _scheme{""}, _fragment{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
@@ -4333,6 +4447,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
 		this->_log = uri._log;
 		// Устанавливаем тип URI
 		this->_type = uri._type;
+		// Устанавливаем признак наличия авторити у URI
+		this->_authority = uri._authority;
 		// Перемещаем атрибуты URI
 		this->_attr = ::move(uri._attr);
 		// Перемещаем хост URI
@@ -4383,7 +4499,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept :
- _type(type_t::NONE), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _authority(false), _scheme{""}, _fragment{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
@@ -4395,6 +4511,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 		this->_log = uri._log;
 		// Устанавливаем тип URI
 		this->_type = uri._type;
+		// Устанавливаем признак наличия авторити у URI
+		this->_authority = uri._authority;
 		// Копируем хост URI
 		this->_path = uri._path;
 		// Копируем параметры URI
@@ -4551,7 +4669,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept :
- _type(type_t::NONE), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _authority(false), _scheme{""}, _fragment{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(fmk), _log(log) {
 	// Инициализируем объект работы с сетевыми адресами
 	this->_addr = make_unique <net_addr_t> (fmk, log);
