@@ -1328,8 +1328,8 @@ TEST_F(UriFixture, QueryStringIsStableAcrossRoundTripsTest){
 TEST_F(UriFixture, RequestOfCustomSchemeKeepsQueryTest){
 	// Выполняем разбор адреса произвольной схемы с авторити
 	this->_uri->parse("custom://host.com/a/b?c=1#d");
-	// Запрос обязан строиться как у всякого иерархического адреса
-	ASSERT_EQ("/a/b?c=1#d", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	// Запрос обязан строиться как у всякого иерархического адреса, но без якоря
+	ASSERT_EQ("/a/b?c=1", this->_uri->print(awh::uri_t::item_t::REQUEST));
 	// Выполняем очистку объекта работы с URI
 	this->_uri->clear();
 	// Выполняем разбор адреса произвольной схемы без пути
@@ -1661,8 +1661,8 @@ TEST_F(UriFixture, SshUriIsHierarchicalTest){
 	this->_uri->clear();
 	// Выполняем разбор адреса SSH с путём и параметрами
 	this->_uri->parse("ssh://u@h.com:2222/a/b?c=1#d");
-	// Запрос обязан строиться как у всякого иерархического адреса
-	ASSERT_EQ("/a/b?c=1#d", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	// Запрос обязан строиться как у всякого иерархического адреса, но без якоря
+	ASSERT_EQ("/a/b?c=1", this->_uri->print(awh::uri_t::item_t::REQUEST));
 	// Путь обязан строиться от корня
 	ASSERT_EQ("/a/b", this->_uri->print(awh::uri_t::item_t::PATH));
 	// Происхождение ресурса обязано нести порт, схеме не принадлежащий
@@ -3102,14 +3102,17 @@ TEST_F(UriFixture, PrintCornerCasesTest){
 	// Проверяем строку, собранную повторно
 	ASSERT_EQ("http://[FE80::1%25eth0]:8080/x", again.print(awh::uri_t::item_t::URI));
 	/**
-	 * Якорь почтового адреса в режиме запроса записывается наравне с параметрами
+	 * Параметры почтового адреса несут его заголовки и в запрос входят, а якорь
+	 * в строку запроса не входит ни у какой разновидности адреса (RFC 3986 3.5)
 	 */
 	// Выполняем очистку объекта работы с URI
 	this->_uri->clear();
 	// Выполняем разбор почтового адреса с якорем
 	this->_uri->parse("mailto:user@example.com?subject=hi#f");
 	// Проверяем запрос, собранный из почтового адреса
-	ASSERT_EQ("user@example.com?subject=hi#f", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	ASSERT_EQ("user@example.com?subject=hi", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	// Якорь при этом обязан сохраниться у самой записи
+	ASSERT_EQ("f", this->_uri->fragment());
 }
 
 /**
@@ -3701,4 +3704,45 @@ TEST_F(UriFixture, CompatibleResolveModeTest){
 	copy.resolve(awh::uri_t::resolve_t::NONE);
 	// Проверяем режим разрешения ссылок после установки неустановленного
 	ASSERT_EQ(awh::uri_t::resolve_t::COMPATIBLE, copy.resolve());
+}
+
+/**
+ * @brief Тест отсутствия якоря в строке запроса
+ *
+ */
+TEST_F(UriFixture, RequestCarriesNoFragmentTest){
+	/**
+	 * Якорь отведён обработке на стороне клиента и другой стороне не передаётся
+	 * вовсе (RFC 3986 3.5, RFC 9110 7.1): строка запроса состоит из пути и
+	 * параметров, и более ни из чего (RFC 9112 3.2.1). Якорь же уходил в неё
+	 * как есть - а нести он способен и чувствительные данные, вроде маркера
+	 * доступа неявного потока OAuth
+	 */
+	// Записи с якорем и ожидаемые строки запроса
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"https://example.com/a/b?x=1#f", "/a/b?x=1"},
+		{"http://example.com/a#f", "/a"},
+		{"http://example.com/#f", "/"},
+		{"http://example.com#f", "/"},
+		{"http://example.com/a?#f", "/a"},
+		{"ws://example.com/socket?v=1#f", "/socket?v=1"},
+		{"ssh://u@h.com:2222/a/b?c=1#d", "/a/b?c=1"},
+		{"custom://host.com/a/b?c=1#d", "/a/b?c=1"},
+		{"mailto:user@example.com?subject=hi#f", "user@example.com?subject=hi"}
+	};
+	/**
+	 * Перебираем все записи с якорем
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор записи с якорем
+		this->_uri->parse(sample.first);
+		// Проверяем строку запроса, собранную из записи
+		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::REQUEST)) << "адрес: " << sample.first;
+		// Якорь при этом обязан сохраниться у самой записи
+		ASSERT_FALSE(this->_uri->fragment().empty()) << "адрес: " << sample.first;
+		// И обязан выходить в полной записи адреса
+		ASSERT_NE(std::string::npos, this->_uri->print(awh::uri_t::item_t::URI).find('#')) << "адрес: " << sample.first;
+	}
 }

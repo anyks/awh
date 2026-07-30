@@ -3216,13 +3216,12 @@ void awh::Uniform_Resource_Identifier::appendRequest(string & result) const noex
 	else result.append(1, '/');
 	// Добавляем строку параметров URI в результат вместе с её разделителем
 	this->appendQuery(result, true, true);
-	// Если якорь URI не пустой, то добавляем его в результат
-	if(!this->_fragment.empty()){
-		// Добавляем разделитель якоря URI
-		result.append(1, '#');
-		// Добавляем якорь URI в результат
-		uri::encode(result, this->_fragment, item_t::FRAGMENT, this->_log);
-	}
+	/**
+	 * Якорь в строку запроса не входит: он отведён обработке на стороне клиента
+	 * и другой стороне не передаётся вовсе (RFC 3986 3.5, RFC 9110 7.1).
+	 * Строка запроса состоит из пути и параметров, и более ни из чего
+	 * (RFC 9112 3.2.1)
+	 */
 }
 /**
  * @brief Метод получения порта URI
@@ -4308,20 +4307,13 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						if(this->hasQuery())
 							// Добавляем строку параметров URI в результат вместе с её разделителем
 							this->appendQuery(result, true, true);
-						// Если якорь URI не пустой, то добавляем его в результат
-						if(!this->_fragment.empty()){
-							// Добавляем разделитель якоря URI
-							result.append(1, '#');
-							// Добавляем якорь URI в результат
-							uri::encode(result, this->_fragment, item_t::FRAGMENT, this->_log);
-						}
 					} break;
 					// Если тип URI является Scheme
 					case static_cast <uint8_t> (type_t::SCHEME): {
 						/**
 						 * У произвольной схемы авторити может быть, а может и не быть.
 						 * Запрос при её наличии строится как у всякого иерархического
-						 * адреса - путём от корня с параметрами и якорем, - а при
+						 * адреса - путём от корня с параметрами, - а при
 						 * отсутствии несёт один лишь путь, записанный за двоеточием.
 						 *
 						 * Строился он всегда вторым способом, и запрос к адресу
