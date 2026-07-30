@@ -1674,8 +1674,6 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 	try {
 		// Если атрибуты URI не пустые
 		if(attr != nullptr){
-			// Атрибуты адреса принадлежат авторити, и установка их её заводит
-			this->_authority = true;
 			/**
 			 * Определяем тип атрибутов URI адреса
 			 */
@@ -1791,6 +1789,10 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 			 * только что заведённые, разновидности ещё не несут, и установка их
 			 * пустому объекту URI разыменовывала пустой указатель
 			 */
+			// Если атрибуты адреса завелись, значит завелась и авторити, которой они принадлежат
+			if(this->_attr != nullptr)
+				// Запоминаем наличие авторити у URI
+				this->_authority = true;
 		}
 	/**
 	 * Если возникает ошибка

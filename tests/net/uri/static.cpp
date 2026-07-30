@@ -1196,6 +1196,10 @@ TEST_F(UriFixture, AttributesOfUnknownKindAreIgnoredTest){
 	ASSERT_NO_THROW(this->_uri->attr(& fresh));
 	// Атрибутов у объекта URI завестись не должно
 	ASSERT_TRUE(this->_uri->attr() == nullptr);
+	// Авторити, которой атрибуты принадлежат, завестись тоже не должна
+	ASSERT_TRUE(this->_uri->empty());
+	// Собранная строка обязана остаться пустой
+	ASSERT_EQ("", this->_uri->print(awh::uri_t::item_t::URI));
 	// Хост обязан отдаться пустым
 	ASSERT_EQ("", this->_uri->host());
 	// Выполняем разбор адреса, заводящего атрибуты имени
