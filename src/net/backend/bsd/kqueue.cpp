@@ -816,6 +816,9 @@ namespace io {
 			explicit SCTP_Endpoint() noexcept :
 			 id(0), flags(0), info{0} {}
 		} sctp_endpoint_t;
+
+		// Общий пустой набор параметров SCTP, отдаётся у узлов, где набор не заводился
+		static const sctp_endpoint_t __awh_sctp_none__;
 	#endif
 
 	/**
@@ -875,8 +878,76 @@ namespace io {
 		 * Если операционной системой является FreeBSD
 		 */
 		#if __FreeBSD__
-			// Объект SCTP-событий
-			sctp_endpoint_t sctp;
+			private:
+				/**
+				 * Параметры SCTP-протокола, заводятся при первом обращении.
+				 *
+				 * Встроенный по значению набор занимал 272 октета в каждом узле - у
+				 * подключений TCP и UDP тоже, хотя нужен он одному лишь SCTP. На
+				 * сервере, держащем сотню тысяч подключений, это два с половиной
+				 * десятка мегабайт впустую, поэтому набор заводится по надобности
+				 */
+				unique_ptr <sctp_endpoint_t> _sctp;
+			public:
+				/**
+				 * @brief Метод проверки, заведён ли набор параметров SCTP
+				 *
+				 * @return результат проверки
+				 *
+				 */
+				bool hasSctp() const noexcept {
+					// Набор заводился, если указатель на него не пуст
+					return (this->_sctp != nullptr);
+				}
+				/**
+				 * @brief Метод чтения набора параметров SCTP
+				 *
+				 * @note Набора не заводит: у незаведённого отдаётся общий пустой,
+				 *       поэтому читать разрешено у любого узла
+				 *
+				 * @return набор параметров SCTP
+				 *
+				 */
+				const sctp_endpoint_t & sctp() const noexcept {
+					// Возвращаем собственный набор, а при его отсутствии - общий пустой
+					return ((this->_sctp != nullptr) ? (* this->_sctp) : __awh_sctp_none__);
+				}
+				/**
+				 * @brief Метод получения набора параметров SCTP для правки
+				 *
+				 * @note Незаведённый набор заводится: обращаться следует лишь там,
+				 *       где узел и вправду работает по SCTP
+				 *
+				 * @return набор параметров SCTP
+				 *
+				 */
+				sctp_endpoint_t & sctpUse() noexcept {
+					// Если собственный набор ещё не заведён
+					if(this->_sctp == nullptr)
+						// Заводим набор параметров SCTP-протокола
+						this->_sctp = unique_ptr <sctp_endpoint_t> (new sctp_endpoint_t);
+					// Возвращаем собственный набор
+					return (* this->_sctp);
+				}
+				/**
+				 * @brief Метод сброса набора параметров SCTP
+				 *
+				 * @note Обратные связи переживают сброс: подписка задаётся один раз, а
+				 *       сбрасываются числовые параметры очередного обмена
+				 *
+				 */
+				void sctpReset() noexcept {
+					// Если набор не заводился, сбрасывать нечего
+					if(this->_sctp == nullptr)
+						// Выходим из функции
+						return;
+					// Сохраняем объект функций обратного вызова SCTP
+					auto callbacks = ::move(this->_sctp->callbacks);
+					// Выполняем зануление набора параметров SCTP
+					::memset(this->_sctp.get(), 0, sizeof(sctp_endpoint_t));
+					// Восстанавливаем объект функций обратного вызова SCTP
+					this->_sctp->callbacks = ::move(callbacks);
+				}
 		#endif
 		/**
 		 * @brief Конструктор
@@ -1066,6 +1137,7 @@ namespace io {
 	 *
 	 */
 	static const bandwidth_t __awh_bandwidth_none__;
+
 
 	/**
 	 * @brief Структура обратных вызовов события
@@ -2485,10 +2557,26 @@ namespace {
 	pair <Storage_Transport_Layer_Nodes::Iterator, bool> Storage_Transport_Layer_Nodes::emplace(const event::id_t id, unique_ptr <::io::node_t> && node) noexcept {
 		// Вычисляем номер чанка для данного идентификатора
 		const size_t number = (static_cast <size_t> (id) / CHUNK_SIZE);
-		// Если номер чанка младше обслуживаемого картой диапазона, добавить узел нельзя
-		if(number < this->_base)
-			// Выводим отрицательный результат
-			return make_pair(this->end(), false);
+		/**
+		 * Если номер чанка младше обслуживаемого картой диапазона.
+		 *
+		 * Счётчик идентификаторов только растёт и с хранилищем никак не связан, а
+		 * отбрасывание опустевшей головы карты сдвигает базу вперёд. Когда узлы
+		 * уничтожаются все разом, опустевшей оказывается карта целиком, и база
+		 * уезжает за чанк, в который попадёт следующий выданный идентификатор -
+		 * хотя тот идентификатор больше всех прежних. Пустому хранилищу держаться
+		 * за прежнюю базу незачем, поэтому она переносится на новый идентификатор
+		 */
+		if(number < this->_base){
+			// Если в хранилище остались узлы, переносить базу нельзя
+			if(this->_count > 0)
+				// Выводим отрицательный результат
+				return make_pair(this->end(), false);
+			// Очищаем карту опустевших чанков
+			this->_chunks.clear();
+			// Переносим базу на чанк нового идентификатора
+			this->_base = number;
+		}
 		// Вычисляем индекс чанка внутри карты
 		const size_t index = (number - this->_base);
 		// Если индекс чанка превышает размер карты, расширяем её
@@ -8533,8 +8621,8 @@ namespace io {
 											peer->transfer.fd,
 											::__awh_buffer__, size,
 											nullptr, nullptr,
-											&peer->transfer.sctp.info,
-											&peer->transfer.sctp.flags
+											&peer->transfer.sctpUse().info,
+											&peer->transfer.sctpUse().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
@@ -8600,16 +8688,16 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP){
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-											if(peer->transfer.sctp.callbacks.info != nullptr){
+											if(peer->transfer.sctp().callbacks.info != nullptr){
 												// Объект для хранения информационных метаданных SCTP сообщения
 												net::sctp::minfo_t minfo;
 												// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-												::sctp::info(peer->transfer.sctp.info, minfo);
+												::sctp::info(peer->transfer.sctpUse().info, minfo);
 												// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-												peer->transfer.sctp.callbacks.info(peer->id, minfo);
+												peer->transfer.sctp().callbacks.info(peer->id, minfo);
 											}
 											// Если мы получили уведомления SCTP
-											if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
+											if(peer->transfer.sctpUse().flags & MSG_NOTIFICATION){
 												// Обрабатываем события SCTP
 												offset = static_cast <ssize_t> (::sctp::events(peer, ::__awh_buffer__, bytes, log));
 												// Если все полученные байты были уведомлениями SCTP
@@ -8742,8 +8830,8 @@ namespace io {
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&peer->transfer.sctp.info,
-									&peer->transfer.sctp.flags
+									&peer->transfer.sctpUse().info,
+									&peer->transfer.sctpUse().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -8797,16 +8885,16 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(peer->state.protocol == event::protocol_t::SCTP){
 									// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-									if(peer->transfer.sctp.callbacks.info != nullptr){
+									if(peer->transfer.sctp().callbacks.info != nullptr){
 										// Объект для хранения информационных метаданных SCTP сообщения
 										net::sctp::minfo_t minfo;
 										// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-										::sctp::info(peer->transfer.sctp.info, minfo);
+										::sctp::info(peer->transfer.sctpUse().info, minfo);
 										// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-										peer->transfer.sctp.callbacks.info(peer->id, minfo);
+										peer->transfer.sctp().callbacks.info(peer->id, minfo);
 									}
 									// Если мы получили уведомления SCTP
-									if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
+									if(peer->transfer.sctpUse().flags & MSG_NOTIFICATION){
 										// Обрабатываем события SCTP
 										offset = ::sctp::events(peer, ::__awh_buffer__, bytes, log);
 										// Если все полученные байты были уведомлениями SCTP
@@ -8873,8 +8961,8 @@ namespace io {
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										nullptr, nullptr,
-										&peer->transfer.sctp.info,
-										&peer->transfer.sctp.flags
+										&peer->transfer.sctpUse().info,
+										&peer->transfer.sctpUse().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -8929,16 +9017,16 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP){
 										// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-										if(peer->transfer.sctp.callbacks.info != nullptr){
+										if(peer->transfer.sctp().callbacks.info != nullptr){
 											// Объект для хранения информационных метаданных SCTP сообщения
 											net::sctp::minfo_t minfo;
 											// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-											::sctp::info(peer->transfer.sctp.info, minfo);
+											::sctp::info(peer->transfer.sctpUse().info, minfo);
 											// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-											peer->transfer.sctp.callbacks.info(peer->id, minfo);
+											peer->transfer.sctp().callbacks.info(peer->id, minfo);
 										}
 										// Если мы получили уведомления SCTP
-										if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
+										if(peer->transfer.sctpUse().flags & MSG_NOTIFICATION){
 											// Обрабатываем события SCTP
 											::sctp::events(peer, ::__awh_buffer__, bytes, log);
 											// Пропускаем дальнейшую обработку
@@ -9013,8 +9101,8 @@ namespace io {
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&peer->transfer.sctp.info,
-									&peer->transfer.sctp.flags
+									&peer->transfer.sctpUse().info,
+									&peer->transfer.sctpUse().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -9055,16 +9143,16 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(peer->state.protocol == event::protocol_t::SCTP){
 									// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-									if(peer->transfer.sctp.callbacks.info != nullptr){
+									if(peer->transfer.sctp().callbacks.info != nullptr){
 										// Объект для хранения информационных метаданных SCTP сообщения
 										net::sctp::minfo_t minfo;
 										// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-										::sctp::info(peer->transfer.sctp.info, minfo);
+										::sctp::info(peer->transfer.sctpUse().info, minfo);
 										// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-										peer->transfer.sctp.callbacks.info(peer->id, minfo);
+										peer->transfer.sctp().callbacks.info(peer->id, minfo);
 									}
 									// Если мы получили уведомления SCTP
-									if(peer->transfer.sctp.flags & MSG_NOTIFICATION){
+									if(peer->transfer.sctpUse().flags & MSG_NOTIFICATION){
 										// Обрабатываем события SCTP
 										::sctp::events(peer, ::__awh_buffer__, bytes, log);
 										// Формируем положительный результат
@@ -10385,8 +10473,8 @@ namespace io {
 											client->transfer.fd,
 											::__awh_buffer__, size,
 											nullptr, nullptr,
-											&client->transfer.sctp.info,
-											&client->transfer.sctp.flags
+											&client->transfer.sctpUse().info,
+											&client->transfer.sctpUse().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
@@ -10452,16 +10540,16 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP){
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-											if(client->transfer.sctp.callbacks.info != nullptr){
+											if(client->transfer.sctp().callbacks.info != nullptr){
 												// Объект для хранения информационных метаданных SCTP сообщения
 												net::sctp::minfo_t minfo;
 												// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-												::sctp::info(client->transfer.sctp.info, minfo);
+												::sctp::info(client->transfer.sctpUse().info, minfo);
 												// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-												client->transfer.sctp.callbacks.info(client->id, minfo);
+												client->transfer.sctp().callbacks.info(client->id, minfo);
 											}
 											// Если мы получили уведомления SCTP
-											if(client->transfer.sctp.flags & MSG_NOTIFICATION){
+											if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
 												// Обрабатываем события SCTP
 												offset = static_cast <ssize_t> (::sctp::events(client, ::__awh_buffer__, bytes, log));
 												// Если все полученные байты были уведомлениями SCTP
@@ -10594,8 +10682,8 @@ namespace io {
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&client->transfer.sctp.info,
-									&client->transfer.sctp.flags
+									&client->transfer.sctpUse().info,
+									&client->transfer.sctpUse().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -10649,16 +10737,16 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP){
 									// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-									if(client->transfer.sctp.callbacks.info != nullptr){
+									if(client->transfer.sctp().callbacks.info != nullptr){
 										// Объект для хранения информационных метаданных SCTP сообщения
 										net::sctp::minfo_t minfo;
 										// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-										::sctp::info(client->transfer.sctp.info, minfo);
+										::sctp::info(client->transfer.sctpUse().info, minfo);
 										// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-										client->transfer.sctp.callbacks.info(client->id, minfo);
+										client->transfer.sctp().callbacks.info(client->id, minfo);
 									}
 									// Если мы получили уведомления SCTP
-									if(client->transfer.sctp.flags & MSG_NOTIFICATION){
+									if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
 										// Обрабатываем события SCTP
 										offset = ::sctp::events(client, ::__awh_buffer__, bytes, log);
 										// Если все полученные байты были уведомлениями SCTP
@@ -11707,8 +11795,8 @@ namespace io {
 											::__awh_buffer__,
 											AWH_EVENT_MAX_BUFFER_SIZE,
 											nullptr, nullptr,
-											&client->transfer.sctp.info,
-											&client->transfer.sctp.flags
+											&client->transfer.sctpUse().info,
+											&client->transfer.sctpUse().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -11774,18 +11862,18 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP){
 											// Запоминаем идентификатор ассоциации SCTP
-											client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+											client->transfer.sctpUse().id = client->transfer.sctpUse().info.sinfo_assoc_id;
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-											if(client->transfer.sctp.callbacks.info != nullptr){
+											if(client->transfer.sctp().callbacks.info != nullptr){
 												// Объект для хранения информационных метаданных SCTP сообщения
 												net::sctp::minfo_t minfo;
 												// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-												::sctp::info(client->transfer.sctp.info, minfo);
+												::sctp::info(client->transfer.sctpUse().info, minfo);
 												// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-												client->transfer.sctp.callbacks.info(client->id, minfo);
+												client->transfer.sctp().callbacks.info(client->id, minfo);
 											}
 											// Если мы получили уведомления SCTP
-											if(client->transfer.sctp.flags & MSG_NOTIFICATION){
+											if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
 												// Обрабатываем события SCTP
 												::sctp::events(client, ::__awh_buffer__, bytes, log);
 												// Пропускаем дальнейшую обработку
@@ -11865,8 +11953,8 @@ namespace io {
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										nullptr, nullptr,
-										&client->transfer.sctp.info,
-										&client->transfer.sctp.flags
+										&client->transfer.sctpUse().info,
+										&client->transfer.sctpUse().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -11918,18 +12006,18 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP){
 										// Запоминаем идентификатор ассоциации SCTP
-										client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+										client->transfer.sctpUse().id = client->transfer.sctpUse().info.sinfo_assoc_id;
 										// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-										if(client->transfer.sctp.callbacks.info != nullptr){
+										if(client->transfer.sctp().callbacks.info != nullptr){
 											// Объект для хранения информационных метаданных SCTP сообщения
 											net::sctp::minfo_t minfo;
 											// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-											::sctp::info(client->transfer.sctp.info, minfo);
+											::sctp::info(client->transfer.sctpUse().info, minfo);
 											// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-											client->transfer.sctp.callbacks.info(client->id, minfo);
+											client->transfer.sctp().callbacks.info(client->id, minfo);
 										}
 										// Если мы получили уведомления SCTP
-										if(client->transfer.sctp.flags & MSG_NOTIFICATION){
+										if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
 											// Обрабатываем события SCTP
 											::sctp::events(client, ::__awh_buffer__, bytes, log);
 											// Формируем положительный результат
@@ -11994,8 +12082,8 @@ namespace io {
 											AWH_EVENT_MAX_BUFFER_SIZE,
 											&::trust_cast <struct sockaddr> (client->endpoint.server),
 											&client->endpoint.size,
-											&client->transfer.sctp.info,
-											&client->transfer.sctp.flags
+											&client->transfer.sctpUse().info,
+											&client->transfer.sctpUse().flags
 										);
 									// Выполняем чтение данных из UDP-сокета
 									else bytes = ::recvfrom(
@@ -12073,18 +12161,18 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP){
 											// Запоминаем идентификатор ассоциации SCTP
-											client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+											client->transfer.sctpUse().id = client->transfer.sctpUse().info.sinfo_assoc_id;
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-											if(client->transfer.sctp.callbacks.info != nullptr){
+											if(client->transfer.sctp().callbacks.info != nullptr){
 												// Объект для хранения информационных метаданных SCTP сообщения
 												net::sctp::minfo_t minfo;
 												// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-												::sctp::info(client->transfer.sctp.info, minfo);
+												::sctp::info(client->transfer.sctpUse().info, minfo);
 												// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-												client->transfer.sctp.callbacks.info(client->id, minfo);
+												client->transfer.sctp().callbacks.info(client->id, minfo);
 											}
 											// Если мы получили уведомления SCTP
-											if(client->transfer.sctp.flags & MSG_NOTIFICATION){
+											if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
 												// Обрабатываем события SCTP
 												::sctp::events(client, ::__awh_buffer__, bytes, log);
 												// Пропускаем дальнейшую обработку
@@ -12165,8 +12253,8 @@ namespace io {
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										&client->endpoint.size,
-										&client->transfer.sctp.info,
-										&client->transfer.sctp.flags
+										&client->transfer.sctpUse().info,
+										&client->transfer.sctpUse().flags
 									);
 								// Выполняем чтение данных из UDP-сокета
 								else bytes = ::recvfrom(
@@ -12230,18 +12318,18 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP){
 										// Запоминаем идентификатор ассоциации SCTP
-										client->transfer.sctp.id = client->transfer.sctp.info.sinfo_assoc_id;
+										client->transfer.sctpUse().id = client->transfer.sctpUse().info.sinfo_assoc_id;
 										// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-										if(client->transfer.sctp.callbacks.info != nullptr){
+										if(client->transfer.sctp().callbacks.info != nullptr){
 											// Объект для хранения информационных метаданных SCTP сообщения
 											net::sctp::minfo_t minfo;
 											// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-											::sctp::info(client->transfer.sctp.info, minfo);
+											::sctp::info(client->transfer.sctpUse().info, minfo);
 											// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-											client->transfer.sctp.callbacks.info(client->id, minfo);
+											client->transfer.sctp().callbacks.info(client->id, minfo);
 										}
 										// Если мы получили уведомления SCTP
-										if(client->transfer.sctp.flags & MSG_NOTIFICATION){
+										if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
 											// Обрабатываем события SCTP
 											::sctp::events(client, ::__awh_buffer__, bytes, log);
 											// Формируем положительный результат
@@ -13543,11 +13631,11 @@ namespace io {
 												peer->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												peer->transfer.sctp.info.sinfo_ppid,
-												peer->transfer.sctp.info.sinfo_flags,
-												peer->transfer.sctp.info.sinfo_stream,
-												peer->transfer.sctp.info.sinfo_timetolive,
-												peer->transfer.sctp.info.sinfo_context
+												peer->transfer.sctpUse().info.sinfo_ppid,
+												peer->transfer.sctpUse().info.sinfo_flags,
+												peer->transfer.sctpUse().info.sinfo_stream,
+												peer->transfer.sctpUse().info.sinfo_timetolive,
+												peer->transfer.sctpUse().info.sinfo_context
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -13921,11 +14009,11 @@ namespace io {
 												peer->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												peer->transfer.sctp.info.sinfo_ppid,
-												peer->transfer.sctp.info.sinfo_flags,
-												peer->transfer.sctp.info.sinfo_stream,
-												peer->transfer.sctp.info.sinfo_timetolive,
-												peer->transfer.sctp.info.sinfo_context
+												peer->transfer.sctpUse().info.sinfo_ppid,
+												peer->transfer.sctpUse().info.sinfo_flags,
+												peer->transfer.sctpUse().info.sinfo_stream,
+												peer->transfer.sctpUse().info.sinfo_timetolive,
+												peer->transfer.sctpUse().info.sinfo_context
 											);
 										// Выполняем отправку данных в UDP-сокет
 										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -14881,11 +14969,11 @@ namespace io {
 												client->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												client->transfer.sctp.info.sinfo_ppid,
-												client->transfer.sctp.info.sinfo_flags,
-												client->transfer.sctp.info.sinfo_stream,
-												client->transfer.sctp.info.sinfo_timetolive,
-												client->transfer.sctp.info.sinfo_context
+												client->transfer.sctpUse().info.sinfo_ppid,
+												client->transfer.sctpUse().info.sinfo_flags,
+												client->transfer.sctpUse().info.sinfo_stream,
+												client->transfer.sctpUse().info.sinfo_timetolive,
+												client->transfer.sctpUse().info.sinfo_context
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -15603,11 +15691,11 @@ namespace io {
 													reinterpret_cast <const uint8_t *> (buffer), size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctp.info.sinfo_ppid,
-													client->transfer.sctp.info.sinfo_flags,
-													client->transfer.sctp.info.sinfo_stream,
-													client->transfer.sctp.info.sinfo_timetolive,
-													client->transfer.sctp.info.sinfo_context
+													client->transfer.sctpUse().info.sinfo_ppid,
+													client->transfer.sctpUse().info.sinfo_flags,
+													client->transfer.sctpUse().info.sinfo_stream,
+													client->transfer.sctpUse().info.sinfo_timetolive,
+													client->transfer.sctpUse().info.sinfo_context
 												);
 											// Выполняем отправку данных в TCP/IP сокет
 											else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -15636,11 +15724,11 @@ namespace io {
 													reinterpret_cast <const uint8_t *> (buffer), size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctp.info.sinfo_ppid,
-													client->transfer.sctp.info.sinfo_flags,
-													client->transfer.sctp.info.sinfo_stream,
-													client->transfer.sctp.info.sinfo_timetolive,
-													client->transfer.sctp.info.sinfo_context
+													client->transfer.sctpUse().info.sinfo_ppid,
+													client->transfer.sctpUse().info.sinfo_flags,
+													client->transfer.sctpUse().info.sinfo_stream,
+													client->transfer.sctpUse().info.sinfo_timetolive,
+													client->transfer.sctpUse().info.sinfo_context
 												);
 											// Выполняем отправку данных в UDP-сокет
 											else bytes = ::sendto(
@@ -17195,11 +17283,11 @@ namespace io {
 											bytes = ::sctp_sendmsg(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctp.info.sinfo_ppid,
-												peer->transfer.sctp.info.sinfo_flags,
-												peer->transfer.sctp.info.sinfo_stream,
-												peer->transfer.sctp.info.sinfo_timetolive,
-												peer->transfer.sctp.info.sinfo_context
+												peer->transfer.sctpUse().info.sinfo_ppid,
+												peer->transfer.sctpUse().info.sinfo_flags,
+												peer->transfer.sctpUse().info.sinfo_stream,
+												peer->transfer.sctpUse().info.sinfo_timetolive,
+												peer->transfer.sctpUse().info.sinfo_context
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -17600,11 +17688,11 @@ namespace io {
 											bytes = ::sctp_sendmsg(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctp.info.sinfo_ppid,
-												peer->transfer.sctp.info.sinfo_flags,
-												peer->transfer.sctp.info.sinfo_stream,
-												peer->transfer.sctp.info.sinfo_timetolive,
-												peer->transfer.sctp.info.sinfo_context
+												peer->transfer.sctpUse().info.sinfo_ppid,
+												peer->transfer.sctpUse().info.sinfo_flags,
+												peer->transfer.sctpUse().info.sinfo_stream,
+												peer->transfer.sctpUse().info.sinfo_timetolive,
+												peer->transfer.sctpUse().info.sinfo_context
 											);
 										// Выполняем отправку данных в сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -17966,11 +18054,11 @@ namespace io {
 								bytes = ::sctp_sendmsg(
 									peer->transfer.fd,
 									buffer, size, nullptr, 0,
-									peer->transfer.sctp.info.sinfo_ppid,
-									peer->transfer.sctp.info.sinfo_flags,
-									peer->transfer.sctp.info.sinfo_stream,
-									peer->transfer.sctp.info.sinfo_timetolive,
-									peer->transfer.sctp.info.sinfo_context
+									peer->transfer.sctpUse().info.sinfo_ppid,
+									peer->transfer.sctpUse().info.sinfo_flags,
+									peer->transfer.sctpUse().info.sinfo_stream,
+									peer->transfer.sctpUse().info.sinfo_timetolive,
+									peer->transfer.sctpUse().info.sinfo_context
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -18072,11 +18160,11 @@ namespace io {
 											bytes = ::sctp_sendmsg(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctp.info.sinfo_ppid,
-												peer->transfer.sctp.info.sinfo_flags,
-												peer->transfer.sctp.info.sinfo_stream,
-												peer->transfer.sctp.info.sinfo_timetolive,
-												peer->transfer.sctp.info.sinfo_context
+												peer->transfer.sctpUse().info.sinfo_ppid,
+												peer->transfer.sctpUse().info.sinfo_flags,
+												peer->transfer.sctpUse().info.sinfo_stream,
+												peer->transfer.sctpUse().info.sinfo_timetolive,
+												peer->transfer.sctpUse().info.sinfo_context
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -18414,11 +18502,11 @@ namespace io {
 												bytes = ::sctp_sendmsg(
 													peer->transfer.fd,
 													buffer, size, nullptr, 0,
-													peer->transfer.sctp.info.sinfo_ppid,
-													peer->transfer.sctp.info.sinfo_flags,
-													peer->transfer.sctp.info.sinfo_stream,
-													peer->transfer.sctp.info.sinfo_timetolive,
-													peer->transfer.sctp.info.sinfo_context
+													peer->transfer.sctpUse().info.sinfo_ppid,
+													peer->transfer.sctpUse().info.sinfo_flags,
+													peer->transfer.sctpUse().info.sinfo_stream,
+													peer->transfer.sctpUse().info.sinfo_timetolive,
+													peer->transfer.sctpUse().info.sinfo_context
 												);
 											// Выполняем отправку данных в TCP/IP сокет
 											else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -18743,11 +18831,11 @@ namespace io {
 								bytes = ::sctp_sendmsg(
 									peer->transfer.fd,
 									buffer, size, nullptr, 0,
-									peer->transfer.sctp.info.sinfo_ppid,
-									peer->transfer.sctp.info.sinfo_flags,
-									peer->transfer.sctp.info.sinfo_stream,
-									peer->transfer.sctp.info.sinfo_timetolive,
-									peer->transfer.sctp.info.sinfo_context
+									peer->transfer.sctpUse().info.sinfo_ppid,
+									peer->transfer.sctpUse().info.sinfo_flags,
+									peer->transfer.sctpUse().info.sinfo_stream,
+									peer->transfer.sctpUse().info.sinfo_timetolive,
+									peer->transfer.sctpUse().info.sinfo_context
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -20750,11 +20838,11 @@ namespace io {
 											bytes = ::sctp_sendmsg(
 												client->transfer.fd,
 												buffer, size, nullptr, 0,
-												client->transfer.sctp.info.sinfo_ppid,
-												client->transfer.sctp.info.sinfo_flags,
-												client->transfer.sctp.info.sinfo_stream,
-												client->transfer.sctp.info.sinfo_timetolive,
-												client->transfer.sctp.info.sinfo_context
+												client->transfer.sctpUse().info.sinfo_ppid,
+												client->transfer.sctpUse().info.sinfo_flags,
+												client->transfer.sctpUse().info.sinfo_stream,
+												client->transfer.sctpUse().info.sinfo_timetolive,
+												client->transfer.sctpUse().info.sinfo_context
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -21155,11 +21243,11 @@ namespace io {
 											bytes = ::sctp_sendmsg(
 												client->transfer.fd,
 												buffer, size, nullptr, 0,
-												client->transfer.sctp.info.sinfo_ppid,
-												client->transfer.sctp.info.sinfo_flags,
-												client->transfer.sctp.info.sinfo_stream,
-												client->transfer.sctp.info.sinfo_timetolive,
-												client->transfer.sctp.info.sinfo_context
+												client->transfer.sctpUse().info.sinfo_ppid,
+												client->transfer.sctpUse().info.sinfo_flags,
+												client->transfer.sctpUse().info.sinfo_stream,
+												client->transfer.sctpUse().info.sinfo_timetolive,
+												client->transfer.sctpUse().info.sinfo_context
 											);
 										// Выполняем отправку данных в сокет
 										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -21521,11 +21609,11 @@ namespace io {
 								bytes = ::sctp_sendmsg(
 									client->transfer.fd,
 									buffer, size, nullptr, 0,
-									client->transfer.sctp.info.sinfo_ppid,
-									client->transfer.sctp.info.sinfo_flags,
-									client->transfer.sctp.info.sinfo_stream,
-									client->transfer.sctp.info.sinfo_timetolive,
-									client->transfer.sctp.info.sinfo_context
+									client->transfer.sctpUse().info.sinfo_ppid,
+									client->transfer.sctpUse().info.sinfo_flags,
+									client->transfer.sctpUse().info.sinfo_stream,
+									client->transfer.sctpUse().info.sinfo_timetolive,
+									client->transfer.sctpUse().info.sinfo_context
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -23163,11 +23251,11 @@ namespace io {
 													buffer, size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctp.info.sinfo_ppid,
-													client->transfer.sctp.info.sinfo_flags,
-													client->transfer.sctp.info.sinfo_stream,
-													client->transfer.sctp.info.sinfo_timetolive,
-													client->transfer.sctp.info.sinfo_context
+													client->transfer.sctpUse().info.sinfo_ppid,
+													client->transfer.sctpUse().info.sinfo_flags,
+													client->transfer.sctpUse().info.sinfo_stream,
+													client->transfer.sctpUse().info.sinfo_timetolive,
+													client->transfer.sctpUse().info.sinfo_context
 												);
 											// Выполняем отправку данных в сокет
 											else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -23518,11 +23606,11 @@ namespace io {
 														buffer, size,
 														&::trust_cast <struct sockaddr> (client->endpoint.server),
 														client->endpoint.size,
-														client->transfer.sctp.info.sinfo_ppid,
-														client->transfer.sctp.info.sinfo_flags,
-														client->transfer.sctp.info.sinfo_stream,
-														client->transfer.sctp.info.sinfo_timetolive,
-														client->transfer.sctp.info.sinfo_context
+														client->transfer.sctpUse().info.sinfo_ppid,
+														client->transfer.sctpUse().info.sinfo_flags,
+														client->transfer.sctpUse().info.sinfo_stream,
+														client->transfer.sctpUse().info.sinfo_timetolive,
+														client->transfer.sctpUse().info.sinfo_context
 													);
 												// Выполняем отправку данных в сокет
 												else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -23860,11 +23948,11 @@ namespace io {
 										buffer, size,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										client->endpoint.size,
-										client->transfer.sctp.info.sinfo_ppid,
-										client->transfer.sctp.info.sinfo_flags,
-										client->transfer.sctp.info.sinfo_stream,
-										client->transfer.sctp.info.sinfo_timetolive,
-										client->transfer.sctp.info.sinfo_context
+										client->transfer.sctpUse().info.sinfo_ppid,
+										client->transfer.sctpUse().info.sinfo_flags,
+										client->transfer.sctpUse().info.sinfo_stream,
+										client->transfer.sctpUse().info.sinfo_timetolive,
+										client->transfer.sctpUse().info.sinfo_context
 									);
 								// Выполняем отправку данных в сокет
 								else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -23993,11 +24081,11 @@ namespace io {
 													buffer, size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctp.info.sinfo_ppid,
-													client->transfer.sctp.info.sinfo_flags,
-													client->transfer.sctp.info.sinfo_stream,
-													client->transfer.sctp.info.sinfo_timetolive,
-													client->transfer.sctp.info.sinfo_context
+													client->transfer.sctpUse().info.sinfo_ppid,
+													client->transfer.sctpUse().info.sinfo_flags,
+													client->transfer.sctpUse().info.sinfo_stream,
+													client->transfer.sctpUse().info.sinfo_timetolive,
+													client->transfer.sctpUse().info.sinfo_context
 												);
 											// Выполняем отправку данных в UDP-сокет
 											else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
@@ -24348,11 +24436,11 @@ namespace io {
 														buffer, size,
 														&::trust_cast <struct sockaddr> (client->endpoint.server),
 														client->endpoint.size,
-														client->transfer.sctp.info.sinfo_ppid,
-														client->transfer.sctp.info.sinfo_flags,
-														client->transfer.sctp.info.sinfo_stream,
-														client->transfer.sctp.info.sinfo_timetolive,
-														client->transfer.sctp.info.sinfo_context
+														client->transfer.sctpUse().info.sinfo_ppid,
+														client->transfer.sctpUse().info.sinfo_flags,
+														client->transfer.sctpUse().info.sinfo_stream,
+														client->transfer.sctpUse().info.sinfo_timetolive,
+														client->transfer.sctpUse().info.sinfo_context
 													);
 												// Выполняем отправку данных в UDP-сокет
 												else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
@@ -24690,11 +24778,11 @@ namespace io {
 										buffer, size,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										client->endpoint.size,
-										client->transfer.sctp.info.sinfo_ppid,
-										client->transfer.sctp.info.sinfo_flags,
-										client->transfer.sctp.info.sinfo_stream,
-										client->transfer.sctp.info.sinfo_timetolive,
-										client->transfer.sctp.info.sinfo_context
+										client->transfer.sctpUse().info.sinfo_ppid,
+										client->transfer.sctpUse().info.sinfo_flags,
+										client->transfer.sctpUse().info.sinfo_stream,
+										client->transfer.sctpUse().info.sinfo_timetolive,
+										client->transfer.sctpUse().info.sinfo_context
 									);
 								// Выполняем отправку данных в UDP-сокет
 								else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
@@ -25549,14 +25637,8 @@ namespace io {
 						 * Если операционной системой является FreeBSD
 						 */
 						#if __FreeBSD__
-							{
-								// Сохраняем объект функции обратного вызова SCTP
-								auto callbacks = ::move(client->transfer.sctp.callbacks);
-								// Выполняем зануление объекта информации SCTP
-								::memset(&client->transfer.sctp, 0, sizeof(client->transfer.sctp));
-								// Восстанавливаем объект функции обратного вызова SCTP
-								client->transfer.sctp.callbacks = ::move(callbacks);
-							}
+							// Сбрасываем числовые параметры SCTP, сохраняя обратные связи
+							client->transfer.sctpReset();
 						#endif
 						/**
 						 * Определяем тип сокета
@@ -27841,7 +27923,7 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
-										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.events);
+										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctpUse().events);
 								#endif
 							} break;
 							// Для семейства IPv6
@@ -28033,7 +28115,7 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
-										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.events);
+										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctpUse().events);
 								#endif
 							} break;
 						}
@@ -28057,6 +28139,17 @@ namespace io {
 						else peer->transfer.queue.type(net_queue_t::type_t::UDP);
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(::local::identifier(), ::move(peer));
+						// Если добавить узел события в хранилище не удалось
+						if(!ret.second){
+							// Если установлена функция обратного вызова
+							if(server->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова об ошибке отказа
+								server->callbacks.status(server->id, event::status_t::FAILURE);
+							// Закрываем сокет принятого подключения
+							::close(sock);
+							// Выходим из функции, так как принять подключение не удалось
+							return false;
+						}
 						{
 							// Получаем текущее значение объекта однорангового узла-источника
 							::io::peer_t * peer = awh_cast <::io::peer_t *> (ret.first->second.get());
@@ -29708,6 +29801,15 @@ namespace io {
 				origin->transfer.queue.type(net_queue_t::type_t::UDP);
 				// Выполняем создание события
 				auto ret = ::__awh_nodes__.emplace(::local::identifier(), ::move(origin));
+				// Если добавить узел события в хранилище не удалось
+				if(!ret.second){
+					// Если установлена функция обратного вызова
+					if(server->callbacks.status != nullptr)
+						// Вызываем функцию обратного вызова об ошибке отказа
+						server->callbacks.status(server->id, event::status_t::FAILURE);
+					// Выходим из функции, так как создать сессию источника не удалось
+					return false;
+				}
 				{
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (ret.first->second.get());
@@ -30006,9 +30108,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
+								if(peer->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30017,9 +30119,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
+								if(client->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+									client->transfer.sctp().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -30129,9 +30231,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
+								if(peer->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30140,9 +30242,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
+								if(client->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+									client->transfer.sctp().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -30222,9 +30324,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
+								if(peer->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30233,9 +30335,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
+								if(client->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+									client->transfer.sctp().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -30289,9 +30391,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
+								if(peer->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30300,9 +30402,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
+								if(client->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+									client->transfer.sctp().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -30341,9 +30443,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
+								if(peer->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30352,9 +30454,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
+								if(client->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+									client->transfer.sctp().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -30396,9 +30498,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
+								if(peer->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30407,9 +30509,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
+								if(client->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+									client->transfer.sctp().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -30458,9 +30560,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
+								if(peer->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30469,9 +30571,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
+								if(client->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+									client->transfer.sctp().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -30534,9 +30636,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
+								if(peer->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30545,9 +30647,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
+								if(client->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+									client->transfer.sctp().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -30620,9 +30722,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp.callbacks.events != nullptr)
+									if(peer->transfer.sctp().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+										peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30631,9 +30733,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp.callbacks.events != nullptr)
+									if(client->transfer.sctp().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp.callbacks.events(client->id, ::move(event));
+										client->transfer.sctp().callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -30662,9 +30764,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp.callbacks.events != nullptr)
+									if(peer->transfer.sctp().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+										peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30673,9 +30775,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp.callbacks.events != nullptr)
+									if(client->transfer.sctp().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp.callbacks.events(client->id, ::move(event));
+										client->transfer.sctp().callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -30715,9 +30817,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
+								if(peer->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30726,9 +30828,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
+								if(client->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+									client->transfer.sctp().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -30795,9 +30897,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
+								if(peer->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30806,9 +30908,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
+								if(client->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+									client->transfer.sctp().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -30863,9 +30965,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.callbacks.events != nullptr)
+								if(peer->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30874,9 +30976,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.callbacks.events != nullptr)
+								if(client->transfer.sctp().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.callbacks.events(client->id, ::move(event));
+									client->transfer.sctp().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -30946,9 +31048,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp.callbacks.events != nullptr)
+									if(peer->transfer.sctp().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+										peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30957,9 +31059,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp.callbacks.events != nullptr)
+									if(client->transfer.sctp().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp.callbacks.events(client->id, ::move(event));
+										client->transfer.sctp().callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -30988,9 +31090,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp.callbacks.events != nullptr)
+									if(peer->transfer.sctp().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp.callbacks.events(peer->id, ::move(event));
+										peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -30999,9 +31101,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp.callbacks.events != nullptr)
+									if(client->transfer.sctp().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp.callbacks.events(client->id, ::move(event));
+										client->transfer.sctp().callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -31075,12 +31177,12 @@ namespace sctp {
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER):
 						// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-						::sctp::info(awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.info, result);
+						::sctp::info(awh_cast <::io::peer_t *> (i->second.get())->transfer.sctpUse().info, result);
 					break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT):
 						// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-						::sctp::info(awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.info, result);
+						::sctp::info(awh_cast <::io::client_t *> (i->second.get())->transfer.sctpUse().info, result);
 					break;
 					// Если узел является другим типом узла
 					default: {
@@ -31150,17 +31252,17 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(peer->state.protocol == event::protocol_t::SCTP){
 							// Выполняем зануление объекта информации SCTP
-							::memset(&peer->transfer.sctp.info, 0, sizeof(peer->transfer.sctp.info));
+							::memset(&peer->transfer.sctpUse().info, 0, sizeof(peer->transfer.sctpUse().info));
 							// Устанавливаем номер потока SCTP в результат работы функции
-							peer->transfer.sctp.info.sinfo_stream = info.num;
+							peer->transfer.sctpUse().info.sinfo_stream = info.num;
 							// Устанавливаем контекст сообщения SCTP в результат работы функции
-							peer->transfer.sctp.info.sinfo_context = info.ctx;
+							peer->transfer.sctpUse().info.sinfo_context = info.ctx;
 							// Устанавливаем время жизни сообщения SCTP в результат работы функции
-							peer->transfer.sctp.info.sinfo_timetolive = info.ttl;
+							peer->transfer.sctpUse().info.sinfo_timetolive = info.ttl;
 							// Устанавливаем тип полезной нагрузки SCTP сообщения
-							peer->transfer.sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
+							peer->transfer.sctpUse().info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
 							// Выполняем зануление флагов SCTP в результат работы функции
-							peer->transfer.sctp.info.sinfo_flags = 0;
+							peer->transfer.sctpUse().info.sinfo_flags = 0;
 							// Если флаги SCTP установлены
 							if(!info.flags.empty()){
 								/**
@@ -31174,47 +31276,47 @@ namespace sctp {
 										// Если установлен флаг EOF в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::STATUS_EOF):
 											// Устанавливаем флаг EOF в результат работы функции
-											peer->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
+											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_EOF;
 										break;
 										// Если установлен флаг ABORT в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::STATUS_ABORT):
 											// Устанавливаем флаг ABORT в результат работы функции
-											peer->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
+											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_ABORT;
 										break;
 										// Если установлен флаг SENDALL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::SEND_ALL):
 											// Устанавливаем флаг SENDALL в результат работы функции
-											peer->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
+											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_SENDALL;
 										break;
 										// Если установлен флаг UNORDERED в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::DELIVERY_UNORDERED):
 											// Устанавливаем флаг UNORDERED в результат работы функции
-											peer->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
+											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_UNORDERED;
 										break;
 										// Если установлен флаг ADDR_OVER в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::ADDR_OVER):
 											// Устанавливаем флаг ADDR_OVER в результат работы функции
-											peer->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
+											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_ADDR_OVER;
 										break;
 										// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::SACK_IMMEDIATELY):
 											// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-											peer->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
+											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
 										break;
 										// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_TTL):
 											// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-											peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_TTL;
 										break;
 										// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_RTX):
 											// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-											peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_RTX;
 										break;
 										// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_PRIO):
 											// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-											peer->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
 										break;
 									}
 								}
@@ -31256,17 +31358,17 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(client->state.protocol == event::protocol_t::SCTP){
 							// Выполняем зануление объекта информации SCTP
-							::memset(&client->transfer.sctp.info, 0, sizeof(client->transfer.sctp.info));
+							::memset(&client->transfer.sctpUse().info, 0, sizeof(client->transfer.sctpUse().info));
 							// Устанавливаем номер потока SCTP в результат работы функции
-							client->transfer.sctp.info.sinfo_stream = info.num;
+							client->transfer.sctpUse().info.sinfo_stream = info.num;
 							// Устанавливаем контекст сообщения SCTP в результат работы функции
-							client->transfer.sctp.info.sinfo_context = info.ctx;
+							client->transfer.sctpUse().info.sinfo_context = info.ctx;
 							// Устанавливаем время жизни сообщения SCTP в результат работы функции
-							client->transfer.sctp.info.sinfo_timetolive = info.ttl;
+							client->transfer.sctpUse().info.sinfo_timetolive = info.ttl;
 							// Устанавливаем тип полезной нагрузки SCTP сообщения
-							client->transfer.sctp.info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
+							client->transfer.sctpUse().info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
 							// Выполняем зануление флагов SCTP в результат работы функции
-							client->transfer.sctp.info.sinfo_flags = 0;
+							client->transfer.sctpUse().info.sinfo_flags = 0;
 							// Если флаги SCTP установлены
 							if(!info.flags.empty()){
 								/**
@@ -31280,47 +31382,47 @@ namespace sctp {
 										// Если установлен флаг EOF в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::STATUS_EOF):
 											// Устанавливаем флаг EOF в результат работы функции
-											client->transfer.sctp.info.sinfo_flags |= SCTP_EOF;
+											client->transfer.sctpUse().info.sinfo_flags |= SCTP_EOF;
 										break;
 										// Если установлен флаг ABORT в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::STATUS_ABORT):
 											// Устанавливаем флаг ABORT в результат работы функции
-											client->transfer.sctp.info.sinfo_flags |= SCTP_ABORT;
+											client->transfer.sctpUse().info.sinfo_flags |= SCTP_ABORT;
 										break;
 										// Если установлен флаг SENDALL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::SEND_ALL):
 											// Устанавливаем флаг SENDALL в результат работы функции
-											client->transfer.sctp.info.sinfo_flags |= SCTP_SENDALL;
+											client->transfer.sctpUse().info.sinfo_flags |= SCTP_SENDALL;
 										break;
 										// Если установлен флаг UNORDERED в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::DELIVERY_UNORDERED):
 											// Устанавливаем флаг UNORDERED в результат работы функции
-											client->transfer.sctp.info.sinfo_flags |= SCTP_UNORDERED;
+											client->transfer.sctpUse().info.sinfo_flags |= SCTP_UNORDERED;
 										break;
 										// Если установлен флаг ADDR_OVER в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::ADDR_OVER):
 											// Устанавливаем флаг ADDR_OVER в результат работы функции
-											client->transfer.sctp.info.sinfo_flags |= SCTP_ADDR_OVER;
+											client->transfer.sctpUse().info.sinfo_flags |= SCTP_ADDR_OVER;
 										break;
 										// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::SACK_IMMEDIATELY):
 											// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-											client->transfer.sctp.info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
+											client->transfer.sctpUse().info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
 										break;
 										// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_TTL):
 											// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-											client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+											client->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_TTL;
 										break;
 										// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_RTX):
 											// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-											client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+											client->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_RTX;
 										break;
 										// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_PRIO):
 											// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-											client->transfer.sctp.info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+											client->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
 										break;
 									}
 								}
@@ -31431,7 +31533,7 @@ namespace sctp {
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 									// Устанавливаем идентификатор ассоциации SCTP
-									result.id = peer->transfer.sctp.id;
+									result.id = peer->transfer.sctpUse().id;
 									// Инициализируем рукопожатие SCTP для клиента
 									this->_eth.sctp.status(peer->transfer.fd, result);
 								} break;
@@ -31510,7 +31612,7 @@ namespace sctp {
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 									// Устанавливаем идентификатор ассоциации SCTP
-									result.id = client->transfer.sctp.id;
+									result.id = client->transfer.sctpUse().id;
 									// Инициализируем рукопожатие SCTP для клиента
 									this->_eth.sctp.status(client->transfer.fd, result);
 								} break;
@@ -31805,11 +31907,11 @@ namespace sctp {
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER):
 						// Получаем опции подписки SCTP событий
-						return awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.events;
+						return awh_cast <::io::peer_t *> (i->second.get())->transfer.sctpUse().events;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT):
 						// Получаем опции подписки SCTP событий
-						return awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.events;
+						return awh_cast <::io::client_t *> (i->second.get())->transfer.sctpUse().events;
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER):
 						// Получаем опции подписки SCTP событий
@@ -31866,7 +31968,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(client->state.protocol == event::protocol_t::SCTP)
 							// Устанавливаем опции подписки SCTP событий
-							client->transfer.sctp.events = events;
+							client->transfer.sctpUse().events = events;
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -32005,9 +32107,9 @@ namespace sctp {
 									break;
 								}
 								// Получаем значение таймаута SCTP события
-								return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.id, type, &endpoint);
+								return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctpUse().id, type, &endpoint);
 							// Получаем значение таймаута SCTP события
-							} else return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.id, type);
+							} else return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctpUse().id, type);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -32047,9 +32149,9 @@ namespace sctp {
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT)
 								// Получаем значение таймаута SCTP события
-								return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.id, type, &client->endpoint.server);
+								return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctpUse().id, type, &client->endpoint.server);
 							// Получаем значение таймаута SCTP события
-							else return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.id, type);
+							else return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctpUse().id, type);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -32195,9 +32297,9 @@ namespace sctp {
 									break;
 								}
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout, &endpoint);
+								return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctpUse().id, type, timeout, &endpoint);
 							// Устанавливаем значение таймаута SCTP события
-							} else return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.id, type, timeout);
+							} else return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctpUse().id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -32237,9 +32339,9 @@ namespace sctp {
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT)
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.id, type, timeout, &client->endpoint.server);
+								return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctpUse().id, type, timeout, &client->endpoint.server);
 							// Устанавливаем значение таймаута SCTP события
-							else return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.id, type, timeout);
+							else return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctpUse().id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -32495,11 +32597,11 @@ namespace sctp {
 								// Если необходимо активировать ключ аутентификации SCTP сокета
 								case static_cast <uint8_t> (event::mode_t::ENABLED):
 									// Активируем ключ аутентификации SCTP сокета
-									return this->_eth.sctp.authenticateKey(client->transfer.fd, net::socket_mode_t::ENABLED, client->transfer.sctp.id, num);
+									return this->_eth.sctp.authenticateKey(client->transfer.fd, net::socket_mode_t::ENABLED, client->transfer.sctpUse().id, num);
 								// Если необходимо деактивировать ключ аутентификации SCTP сокета
 								case static_cast <uint8_t> (event::mode_t::DISABLED):
 									// Деактивируем ключ аутентификации SCTP сокета
-									return this->_eth.sctp.authenticateKey(client->transfer.fd, net::socket_mode_t::DISABLED, client->transfer.sctp.id, num);
+									return this->_eth.sctp.authenticateKey(client->transfer.fd, net::socket_mode_t::DISABLED, client->transfer.sctpUse().id, num);
 							}
 						// Если протокол интернета не установлен как SCTP
 						} else {
@@ -32762,7 +32864,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(peer->state.protocol == event::protocol_t::SCTP)
 							// Извлекаем чанки аутентификации SCTP сокета
-							return this->_eth.sctp.authenticateChunks(peer->transfer.fd, origin, peer->transfer.sctp.id, chunks);
+							return this->_eth.sctp.authenticateChunks(peer->transfer.fd, origin, peer->transfer.sctpUse().id, chunks);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -32800,7 +32902,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(client->state.protocol == event::protocol_t::SCTP)
 							// Извлекаем чанки аутентификации SCTP сокета
-							return this->_eth.sctp.authenticateChunks(client->transfer.fd, origin, client->transfer.sctp.id, chunks);
+							return this->_eth.sctp.authenticateChunks(client->transfer.fd, origin, client->transfer.sctpUse().id, chunks);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -33083,12 +33185,12 @@ namespace sctp {
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER):
 							// Устанавливаем функцию обратного вызова для получения метаданных SCTP-сообщения
-							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.callbacks.info = ::move(cb);
+							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctpUse().callbacks.info = ::move(cb);
 						break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Устанавливаем функцию обратного вызова для получения метаданных SCTP-сообщения
-							awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.callbacks.info = ::move(cb);
+							awh_cast <::io::client_t *> (i->second.get())->transfer.sctpUse().callbacks.info = ::move(cb);
 						break;
 						// Для других типов узлов
 						default: {
@@ -33157,12 +33259,12 @@ namespace sctp {
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER):
 							// Устанавливаем функцию обратного вызова для получения SCTP-событий
-							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.callbacks.events = ::move(cb);
+							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctpUse().callbacks.events = ::move(cb);
 						break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Устанавливаем функцию обратного вызова для получения SCTP-событий
-							awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.callbacks.events = ::move(cb);
+							awh_cast <::io::client_t *> (i->second.get())->transfer.sctpUse().callbacks.events = ::move(cb);
 						break;
 						// Для других типов узлов
 						default: {
@@ -35094,7 +35196,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если событие принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
-																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.events);
+																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctpUse().events);
 															break;
 														}
 													}
@@ -35671,7 +35773,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если событие принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
-																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.events);
+																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctpUse().events);
 															break;
 														}
 													}
@@ -38076,30 +38178,67 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-					// Если объект источника сетевого адреса инициализирован
-					if(client->source != nullptr){
+					/**
+					 * Атрибуты источника заводятся пустыми, и адрес в них появляется не
+					 * всегда. Разновидность адреса берётся поэтому из самих атрибутов
+					 * лишь когда они заполнены, а иначе - из семейства узла, которое
+					 * известно всегда, и сетевые параметры извлекаются по умолчанию
+					 */
+					const net::attr_net_t * source = (((client->source != nullptr) && (client->source->type != net::type_t::NONE)) ?
+					                                   awh_cast <const net::attr_net_t *> (client->source.get()) : nullptr);
+					// Определяем разновидность адреса источника
+					net::type_t type = net::type_t::NONE;
+					// Если атрибуты источника заполнены, берём разновидность из них
+					if(source != nullptr)
+						// Устанавливаем разновидность адреса из атрибутов источника
+						type = source->type;
+					// Иначе выводим разновидность из семейства узла
+					else {
 						/**
-						 * Определяем тип адреса
+						 * Определяем семейство адресов узла
 						 */
-						switch(static_cast <uint8_t> (client->source->type)){
-							// Если адрес является IPv4
-							case static_cast <uint8_t> (net::type_t::IPV4): {
-								// Временный объект для извлечения сетевого интерфейса
-								net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+						switch(static_cast <uint8_t> (client->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+								// Устанавливаем разновидность адреса IPv4
+								type = net::type_t::IPV4;
+							break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6):
+								// Устанавливаем разновидность адреса IPv6
+								type = net::type_t::IPV6;
+							break;
+						}
+					}
+					/**
+					 * Определяем тип адреса
+					 */
+					switch(static_cast <uint8_t> (type)){
+						// Если адрес является IPv4
+						case static_cast <uint8_t> (net::type_t::IPV4): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+							// Если адрес источника заведён, извлекаем сетевые параметры по нему
+							if((source != nullptr) && (source->ip != nullptr))
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
-								// Возвращаем название сетевого интерфейса
-								return src.iface;
-							}
-							// Если адрес является IPv6
-							case static_cast <uint8_t> (net::type_t::IPV6): {
-								// Временный объект для извлечения сетевого интерфейса
-								net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+								this->_eth.addr.fillSource(source->ip.get(), src);
+							// Иначе извлекаем сетевые параметры по умолчанию
+							else this->_eth.addr.fillSource(src);
+							// Возвращаем название сетевого интерфейса
+							return src.iface;
+						}
+						// Если адрес является IPv6
+						case static_cast <uint8_t> (net::type_t::IPV6): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+							// Если адрес источника заведён, извлекаем сетевые параметры по нему
+							if((source != nullptr) && (source->ip != nullptr))
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
-								// Возвращаем название сетевого интерфейса
-								return src.iface;
-							}
+								this->_eth.addr.fillSource(source->ip.get(), src);
+							// Иначе извлекаем сетевые параметры по умолчанию
+							else this->_eth.addr.fillSource(src);
+							// Возвращаем название сетевого интерфейса
+							return src.iface;
 						}
 					}
 				} break;
@@ -38118,7 +38257,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
-							if(host->ip->size == 4){
+							if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 4)){
 								// Извлекаем IP-адрес сети
 								net::addr_net_ipv4_t * ip = awh_cast <net::addr_net_ipv4_t *> (host->ip.get());
 								// Если префикс сети не максимальный
@@ -38178,7 +38317,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
-							if(host->ip->size == 16){
+							if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 16)){
 								// Извлекаем IP-адрес сети
 								net::addr_net_ipv6_t * ip = awh_cast <net::addr_net_ipv6_t *> (host->ip.get());
 								// Если префикс сети не максимальный
@@ -39205,7 +39344,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							// Получаем объект хоста однорангового узла
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
-							if(remote->ip->size == 4){
+							if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 4)){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(remote->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат
@@ -39245,7 +39384,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							// Получаем объект хоста однорангового узла
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
-							if(remote->ip->size == 16){
+							if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 16)){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(remote->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат
@@ -39306,7 +39445,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							// Получаем объект хоста однорангового узла
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
-							if(remote->ip->size == 4){
+							if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 4)){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(remote->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат
@@ -39346,7 +39485,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							// Получаем объект хоста однорангового узла
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
-							if(remote->ip->size == 16){
+							if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 16)){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(remote->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат
@@ -39595,7 +39734,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							// Получаем объект адреса целевой машины
 							net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
-							if(target->ip->size == 4){
+							if((target != nullptr) && (target->ip != nullptr) && (target->ip->size == 4)){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат
@@ -39635,7 +39774,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							// Получаем объект адреса целевой машины
 							net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
-							if(target->ip->size == 16){
+							if((target != nullptr) && (target->ip != nullptr) && (target->ip->size == 16)){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат
@@ -39696,7 +39835,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							// Получаем объект адреса хоста сервера
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
-							if(host->ip->size == 4){
+							if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 4)){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(host->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат
@@ -39736,7 +39875,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 							// Получаем объект адреса хоста сервера
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
-							if(host->ip->size == 16){
+							if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 16)){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(host->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат
@@ -40600,7 +40739,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 							// Получаем объект хоста однорангового узла
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
-							if(remote->ip->size == 4)
+							if((remote->ip != nullptr) && (remote->ip->size == 4))
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (target.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
 							// Если размер IP-адреса не соответствует IPv4
@@ -40642,7 +40781,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 							// Получаем объект хоста однорангового узла
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
-							if(remote->ip->size == 16)
+							if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 16))
 								// Устанавливаем полученный IP-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
 							// Если размер IP-адреса не соответствует IPv6
@@ -40709,7 +40848,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 							// Получаем объект хоста однорангового узла
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
-							if(remote->ip->size == 4)
+							if((remote->ip != nullptr) && (remote->ip->size == 4))
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (target.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
 							// Если размер IP-адреса не соответствует IPv4
@@ -40751,7 +40890,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 							// Получаем объект хоста однорангового узла
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
-							if(remote->ip->size == 16)
+							if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 16))
 								// Устанавливаем полученный IP-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
 							// Если размер IP-адреса не соответствует IPv6
@@ -41014,7 +41153,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 							// Получаем объект адреса целевой машины
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (client->target.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
-							if(remote->ip->size == 4)
+							if((remote->ip != nullptr) && (remote->ip->size == 4))
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (target.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
 							// Если размер IP-адреса не соответствует IPv4
@@ -41056,7 +41195,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 							// Получаем объект адреса целевой машины
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (client->target.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
-							if(remote->ip->size == 16)
+							if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 16))
 								// Устанавливаем полученный IP-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
 							// Если размер IP-адреса не соответствует IPv6
@@ -41123,7 +41262,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 							// Получаем объект адреса хоста сервера
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
-							if(host->ip->size == 4)
+							if((host->ip != nullptr) && (host->ip->size == 4))
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (target.get())->address = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
 							// Если размер IP-адреса не соответствует IPv4
@@ -41165,7 +41304,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 							// Получаем объект адреса хоста сервера
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
-							if(host->ip->size == 16)
+							if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 16))
 								// Устанавливаем полученный IP-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (target.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
 							// Если размер IP-адреса не соответствует IPv6
@@ -41673,7 +41812,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
 									// Если IP-адрес установлен и соответствует размеру IPv4
-									if(remote->ip->size == 4){
+									if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 4)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -41750,7 +41889,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
 									// Если IP-адрес установлен и соответствует размеру IPv6
-									if(remote->ip->size == 16){
+									if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 16)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -41870,7 +42009,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 									// Если IP-адрес установлен и соответствует размеру IPv4
-									if(remote->ip->size == 4){
+									if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 4)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -41947,7 +42086,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 									// Если IP-адрес установлен и соответствует размеру IPv6
-									if(remote->ip->size == 16){
+									if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 16)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -42328,7 +42467,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 									// Если IP-адрес установлен и соответствует размеру IPv4
-									if(host->ip->size == 4){
+									if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 4)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -42464,7 +42603,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 									// Если IP-адрес установлен и соответствует размеру IPv6
-									if(host->ip->size == 16){
+									if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 16)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -45257,7 +45396,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
 									// Если IP-адрес установлен и соответствует размеру IPv4
-									if(remote->ip->size == 4){
+									if((remote->ip != nullptr) && (remote->ip->size == 4)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -45332,7 +45471,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (peer->remote.get());
 									// Если IP-адрес установлен и соответствует размеру IPv6
-									if(remote->ip->size == 16){
+									if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 16)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -45454,7 +45593,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 									// Если IP-адрес установлен и соответствует размеру IPv4
-									if(remote->ip->size == 4){
+									if((remote->ip != nullptr) && (remote->ip->size == 4)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -45529,7 +45668,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 									// Если IP-адрес установлен и соответствует размеру IPv6
-									if(remote->ip->size == 16){
+									if((remote != nullptr) && (remote->ip != nullptr) && (remote->ip->size == 16)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -45910,7 +46049,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 									// Если IP-адрес установлен и соответствует размеру IPv4
-									if(host->ip->size == 4){
+									if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 4)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -46042,7 +46181,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Получаем объект адреса хоста сервера
 									net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 									// Если IP-адрес установлен и соответствует размеру IPv6
-									if(host->ip->size == 16){
+									if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 16)){
 										// Временный объект для извлечения сетевого интерфейса
 										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
@@ -47909,30 +48048,67 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-					// Если объект источника сетевого адреса инициализирован
-					if(client->source != nullptr){
+					/**
+					 * Атрибуты источника заводятся пустыми, и адрес в них появляется не
+					 * всегда. Разновидность адреса берётся поэтому из самих атрибутов
+					 * лишь когда они заполнены, а иначе - из семейства узла, которое
+					 * известно всегда, и сетевые параметры извлекаются по умолчанию
+					 */
+					const net::attr_net_t * source = (((client->source != nullptr) && (client->source->type != net::type_t::NONE)) ?
+					                                   awh_cast <const net::attr_net_t *> (client->source.get()) : nullptr);
+					// Определяем разновидность адреса источника
+					net::type_t type = net::type_t::NONE;
+					// Если атрибуты источника заполнены, берём разновидность из них
+					if(source != nullptr)
+						// Устанавливаем разновидность адреса из атрибутов источника
+						type = source->type;
+					// Иначе выводим разновидность из семейства узла
+					else {
 						/**
-						 * Определяем тип адреса
+						 * Определяем семейство адресов узла
 						 */
-						switch(static_cast <uint8_t> (client->source->type)){
-							// Если адрес является IPv4
-							case static_cast <uint8_t> (net::type_t::IPV4): {
-								// Временный объект для извлечения сетевого интерфейса
-								net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+						switch(static_cast <uint8_t> (client->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+								// Устанавливаем разновидность адреса IPv4
+								type = net::type_t::IPV4;
+							break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6):
+								// Устанавливаем разновидность адреса IPv6
+								type = net::type_t::IPV6;
+							break;
+						}
+					}
+					/**
+					 * Определяем тип адреса
+					 */
+					switch(static_cast <uint8_t> (type)){
+						// Если адрес является IPv4
+						case static_cast <uint8_t> (net::type_t::IPV4): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+							// Если адрес источника заведён, извлекаем сетевые параметры по нему
+							if((source != nullptr) && (source->ip != nullptr))
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
-								// Возвращаем MTU сетевого интерфейса
-								return this->_eth.iface.mtu(src.iface);
-							}
-							// Если адрес является IPv6
-							case static_cast <uint8_t> (net::type_t::IPV6): {
-								// Временный объект для извлечения сетевого интерфейса
-								net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+								this->_eth.addr.fillSource(source->ip.get(), src);
+							// Иначе извлекаем сетевые параметры по умолчанию
+							else this->_eth.addr.fillSource(src);
+							// Возвращаем MTU сетевого интерфейса
+							return this->_eth.iface.mtu(src.iface);
+						}
+						// Если адрес является IPv6
+						case static_cast <uint8_t> (net::type_t::IPV6): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+							// Если адрес источника заведён, извлекаем сетевые параметры по нему
+							if((source != nullptr) && (source->ip != nullptr))
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
-								// Возвращаем MTU сетевого интерфейса
-								return this->_eth.iface.mtu(src.iface);
-							}
+								this->_eth.addr.fillSource(source->ip.get(), src);
+							// Иначе извлекаем сетевые параметры по умолчанию
+							else this->_eth.addr.fillSource(src);
+							// Возвращаем MTU сетевого интерфейса
+							return this->_eth.iface.mtu(src.iface);
 						}
 					}
 				} break;
@@ -47951,7 +48127,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
-							if(host->ip->size == 4){
+							if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 4)){
 								// Извлекаем IP-адрес сети
 								net::addr_net_ipv4_t * ip = awh_cast <net::addr_net_ipv4_t *> (host->ip.get());
 								// Если префикс сети не максимальный
@@ -48011,7 +48187,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
-							if(host->ip->size == 16){
+							if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 16)){
 								// Извлекаем IP-адрес сети
 								net::addr_net_ipv6_t * ip = awh_cast <net::addr_net_ipv6_t *> (host->ip.get());
 								// Если префикс сети не максимальный
@@ -48163,30 +48339,67 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-					// Если объект источника сетевого адреса инициализирован
-					if(client->source != nullptr){
+					/**
+					 * Атрибуты источника заводятся пустыми, и адрес в них появляется не
+					 * всегда. Разновидность адреса берётся поэтому из самих атрибутов
+					 * лишь когда они заполнены, а иначе - из семейства узла, которое
+					 * известно всегда, и сетевые параметры извлекаются по умолчанию
+					 */
+					const net::attr_net_t * source = (((client->source != nullptr) && (client->source->type != net::type_t::NONE)) ?
+					                                   awh_cast <const net::attr_net_t *> (client->source.get()) : nullptr);
+					// Определяем разновидность адреса источника
+					net::type_t type = net::type_t::NONE;
+					// Если атрибуты источника заполнены, берём разновидность из них
+					if(source != nullptr)
+						// Устанавливаем разновидность адреса из атрибутов источника
+						type = source->type;
+					// Иначе выводим разновидность из семейства узла
+					else {
 						/**
-						 * Определяем тип адреса
+						 * Определяем семейство адресов узла
 						 */
-						switch(static_cast <uint8_t> (client->source->type)){
-							// Если адрес является IPv4
-							case static_cast <uint8_t> (net::type_t::IPV4): {
-								// Временный объект для извлечения сетевого интерфейса
-								net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+						switch(static_cast <uint8_t> (client->state.family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+								// Устанавливаем разновидность адреса IPv4
+								type = net::type_t::IPV4;
+							break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6):
+								// Устанавливаем разновидность адреса IPv6
+								type = net::type_t::IPV6;
+							break;
+						}
+					}
+					/**
+					 * Определяем тип адреса
+					 */
+					switch(static_cast <uint8_t> (type)){
+						// Если адрес является IPv4
+						case static_cast <uint8_t> (net::type_t::IPV4): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+							// Если адрес источника заведён, извлекаем сетевые параметры по нему
+							if((source != nullptr) && (source->ip != nullptr))
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
-								// Возвращаем результат установки MTU сетевого интерфейса
-								return this->_eth.iface.mtu(src.iface, mtu);
-							}
-							// Если адрес является IPv6
-							case static_cast <uint8_t> (net::type_t::IPV6): {
-								// Временный объект для извлечения сетевого интерфейса
-								net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+								this->_eth.addr.fillSource(source->ip.get(), src);
+							// Иначе извлекаем сетевые параметры по умолчанию
+							else this->_eth.addr.fillSource(src);
+							// Возвращаем результат установки MTU сетевого интерфейса
+							return this->_eth.iface.mtu(src.iface, mtu);
+						}
+						// Если адрес является IPv6
+						case static_cast <uint8_t> (net::type_t::IPV6): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+							// Если адрес источника заведён, извлекаем сетевые параметры по нему
+							if((source != nullptr) && (source->ip != nullptr))
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
-								// Возвращаем результат установки MTU сетевого интерфейса
-								return this->_eth.iface.mtu(src.iface, mtu);
-							}
+								this->_eth.addr.fillSource(source->ip.get(), src);
+							// Иначе извлекаем сетевые параметры по умолчанию
+							else this->_eth.addr.fillSource(src);
+							// Возвращаем результат установки MTU сетевого интерфейса
+							return this->_eth.iface.mtu(src.iface, mtu);
 						}
 					}
 				} break;
@@ -48205,7 +48418,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
-							if(host->ip->size == 4){
+							if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 4)){
 								// Извлекаем IP-адрес сети
 								net::addr_net_ipv4_t * ip = awh_cast <net::addr_net_ipv4_t *> (host->ip.get());
 								// Если префикс сети не максимальный
@@ -48265,7 +48478,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
-							if(host->ip->size == 16){
+							if((host != nullptr) && (host->ip != nullptr) && (host->ip->size == 16)){
 								// Извлекаем IP-адрес сети
 								net::addr_net_ipv6_t * ip = awh_cast <net::addr_net_ipv6_t *> (host->ip.get());
 								// Если префикс сети не максимальный
@@ -50176,6 +50389,10 @@ array <event::id_t, 2> awh::engine::IO::events(const event::family_t family, con
 					case static_cast <uint8_t> (event::family_t::UDS): {
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::ipc_t> (this->_fmk, this->_log));
+						// Если добавить узел события в хранилище не удалось
+						if(!ret.second)
+							// Выводим пустую пару идентификаторов событий
+							return result;
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем флаг типа сокета
@@ -50209,6 +50426,10 @@ array <event::id_t, 2> awh::engine::IO::events(const event::family_t family, con
 							case 0: {
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::client_t> (this->_fmk, this->_log));
+								// Если добавить узел события в хранилище не удалось
+								if(!ret.second)
+									// Выводим пустую пару идентификаторов событий
+									return result;
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем флаг типа сокета
@@ -50261,6 +50482,10 @@ array <event::id_t, 2> awh::engine::IO::events(const event::family_t family, con
 							case 1: {
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::server_t> (this->_fmk, this->_log));
+								// Если добавить узел события в хранилище не удалось
+								if(!ret.second)
+									// Выводим пустую пару идентификаторов событий
+									return result;
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем флаг типа сокета
@@ -50378,6 +50603,10 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					case static_cast <uint8_t> (event::family_t::IPV6): {
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::tun_t> (this->_fmk, this->_log));
+						// Если добавить узел события в хранилище не удалось
+						if(!ret.second)
+							// Выводим пустой идентификатор события
+							return 0;
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -50456,6 +50685,10 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					case static_cast <uint8_t> (event::family_t::IPV6): {
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::mediator_t> ());
+						// Если добавить узел события в хранилище не удалось
+						if(!ret.second)
+							// Выводим пустой идентификатор события
+							return 0;
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -50522,6 +50755,10 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					case static_cast <uint8_t> (event::family_t::USER): {
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::user_t> (this->_fmk, this->_log));
+						// Если добавить узел события в хранилище не удалось
+						if(!ret.second)
+							// Выводим пустой идентификатор события
+							return 0;
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -50577,6 +50814,10 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					case static_cast <uint8_t> (event::family_t::TIMER): {
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::timer_t> ());
+						// Если добавить узел события в хранилище не удалось
+						if(!ret.second)
+							// Выводим пустой идентификатор события
+							return 0;
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -50626,6 +50867,10 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					case static_cast <uint8_t> (event::family_t::FSYS): {
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::dir_t> ());
+						// Если добавить узел события в хранилище не удалось
+						if(!ret.second)
+							// Выводим пустой идентификатор события
+							return 0;
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -50677,6 +50922,10 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					case static_cast <uint8_t> (event::family_t::FSYS): {
 						// Выполняем создание события
 						auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::file_t> ());
+						// Если добавить узел события в хранилище не удалось
+						if(!ret.second)
+							// Выводим пустой идентификатор события
+							return 0;
 						// Устанавливаем идентификатор события
 						ret.first->second->id = ret.first->first;
 						// Устанавливаем тип узла события
@@ -50738,6 +50987,10 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::client_t> (this->_fmk, this->_log));
+								// Если добавить узел события в хранилище не удалось
+								if(!ret.second)
+									// Выводим пустой идентификатор события
+									return 0;
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем тип узла события
@@ -50818,6 +51071,10 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::client_t> (this->_fmk, this->_log));
+								// Если добавить узел события в хранилище не удалось
+								if(!ret.second)
+									// Выводим пустой идентификатор события
+									return 0;
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем тип узла события
@@ -50972,6 +51229,10 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::server_t> (this->_fmk, this->_log));
+								// Если добавить узел события в хранилище не удалось
+								if(!ret.second)
+									// Выводим пустой идентификатор события
+									return 0;
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем тип узла события
@@ -51046,6 +51307,10 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Выполняем создание события
 								auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::server_t> (this->_fmk, this->_log));
+								// Если добавить узел события в хранилище не удалось
+								if(!ret.second)
+									// Выводим пустой идентификатор события
+									return 0;
 								// Устанавливаем идентификатор события
 								ret.first->second->id = ret.first->first;
 								// Устанавливаем тип узла события
@@ -55079,7 +55344,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 															}
 														}
 														// Если подключение к удаленному серверу не выполнено
-														if(!(result = (::sctp_connectx(client->transfer.fd, &addrs[0], addrs.size(), &client->transfer.sctp.id) == 0))){
+														if(!(result = (::sctp_connectx(client->transfer.fd, &addrs[0], addrs.size(), &client->transfer.sctpUse().id) == 0))){
 															// Если ошибка не является ошибкой в процессе подключения
 															if(!(result = (errno == EINPROGRESS))){
 																// Если установлена функция обратного вызова
@@ -62991,14 +63256,8 @@ void awh::engine::IO::clear() noexcept {
 						 * Если операционной системой является FreeBSD
 						 */
 						#if __FreeBSD__
-							{
-								// Сохраняем объект функции обратного вызова SCTP
-								auto callbacks = ::move(client->transfer.sctp.callbacks);
-								// Выполняем зануление объекта информации SCTP
-								::memset(&client->transfer.sctp, 0, sizeof(client->transfer.sctp));
-								// Восстанавливаем объект функции обратного вызова SCTP
-								client->transfer.sctp.callbacks = ::move(callbacks);
-							}
+							// Сбрасываем числовые параметры SCTP, сохраняя обратные связи
+							client->transfer.sctpReset();
 						#endif
 						/**
 						 * Определяем тип таймера для событий сетевого движка

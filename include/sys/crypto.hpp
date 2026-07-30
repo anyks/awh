@@ -34,6 +34,7 @@
  */
 #include "fmk.hpp"
 #include "log.hpp"
+#include "hash.hpp"
 #include "locker.hpp"
 
 /**
@@ -205,60 +206,73 @@ namespace awh {
 			uint64_t hash128to64(const uint128_t & hash) const noexcept;
 		public:
 			/**
-			 * @brief Шаблон метода хэширования текста
+			 * @brief Шаблон типа результата хэширования
 			 *
-			 * @tparam T тип возвращаемого результата
+			 * @tparam T тип результата хэширования
 			 *
 			 */
-			template <typename T>
+			template <typename T = uint64_t>
 			/**
 			 * @brief Метод хэширования текста
+			 *
+			 * @details Результат хэширования выводится во встроенном числовом типе,
+			 *          в массиве байтов либо в длинном числе модуля BigNum любой
+			 *          объявленной разрядности.
 			 *
 			 * @param text текст для хэширования
 			 * @return     результат хэширования
 			 *
 			 */
-			auto hash(string_view text) const noexcept -> T;
+			AWH_HASH_INLINE T hash(string_view text) const noexcept {
+				// Выполняем хэширование текста
+				return hashing::create <T> (text.data(), text.size());
+			}
 			/**
-			 * @brief Шаблон метода хэширования текста
+			 * @brief Шаблон типа результата хэширования и типа буфера данных
 			 *
-			 * @tparam A тип возвращаемого результата
-			 * @tparam B тип буфера данных
+			 * @tparam A тип результата хэширования
+			 * @tparam B тип буфера данных для хэширования
 			 *
 			 */
-			template <typename A, typename B>
+			template <typename A = uint64_t, typename B, typename = typename B::value_type>
 			/**
-			 * @brief Метод хэширования текста
+			 * @brief Метод хэширования буфера данных
 			 *
-			 * @param text текст для хэширования
+			 * @param text буфер данных для хэширования
 			 * @return     результат хэширования
 			 *
 			 */
-			auto hash(const B & text) const noexcept -> A;
+			AWH_HASH_INLINE A hash(const B & text) const noexcept {
+				// Выполняем хэширование буфера данных
+				return hashing::create <A> (text.data(), text.size() * sizeof(typename B::value_type));
+			}
 			/**
-			 * @brief Шаблон метода хэширования текста
+			 * @brief Шаблон типа результата хэширования
 			 *
-			 * @tparam T тип возвращаемого результата
+			 * @tparam T тип результата хэширования
 			 *
 			 */
-			template <typename T>
+			template <typename T = uint64_t>
 			/**
-			 * @brief Метод хэширования текста
+			 * @brief Метод хэширования буфера данных
 			 *
 			 * @param buffer буфер данных для хэширования
 			 * @param size   размер данных для хэширования
 			 * @return       результат хэширования
 			 *
 			 */
-			auto hash(const void * buffer, const size_t size) const noexcept -> T;
+			AWH_HASH_INLINE T hash(const void * buffer, const size_t size) const noexcept {
+				// Выполняем хэширование буфера данных
+				return hashing::create <T> (buffer, size);
+			}
 		public:
 			/**
-			 * @brief Шаблон метода хэширования текста c ключом
+			 * @brief Шаблон типа результата хэширования
 			 *
-			 * @tparam T тип возвращаемого результата
+			 * @tparam T тип результата хэширования
 			 *
 			 */
-			template <typename T>
+			template <typename T = uint64_t>
 			/**
 			 * @brief Метод хэширования текста c ключом
 			 *
@@ -267,33 +281,39 @@ namespace awh {
 			 * @return     результат хэширования
 			 *
 			 */
-			auto hashWithSeed(string_view text, const T seed) const noexcept -> T;
+			AWH_HASH_INLINE T hashWithSeed(string_view text, const uint64_t seed) const noexcept {
+				// Выполняем хэширование текста с ключом
+				return hashing::create <T> (text.data(), text.size(), seed);
+			}
 			/**
-			 * @brief Шаблон метода хэширования текста c ключом
+			 * @brief Шаблон типа результата хэширования и типа буфера данных
 			 *
-			 * @tparam A тип возвращаемого результата
-			 * @tparam B тип буфера данных
+			 * @tparam A тип результата хэширования
+			 * @tparam B тип буфера данных для хэширования
 			 *
 			 */
-			template <typename A, typename B>
+			template <typename A = uint64_t, typename B, typename = typename B::value_type>
 			/**
-			 * @brief Метод хэширования текста c ключом
+			 * @brief Метод хэширования буфера данных c ключом
 			 *
-			 * @param text текст для хэширования
+			 * @param text буфер данных для хэширования
 			 * @param seed ключ для хэширования
 			 * @return     результат хэширования
 			 *
 			 */
-			auto hashWithSeed(const B & text, const A seed) const noexcept -> A;
+			AWH_HASH_INLINE A hashWithSeed(const B & text, const uint64_t seed) const noexcept {
+				// Выполняем хэширование буфера данных с ключом
+				return hashing::create <A> (text.data(), text.size() * sizeof(typename B::value_type), seed);
+			}
 			/**
-			 * @brief Шаблон метода хэширования текста c ключом
+			 * @brief Шаблон типа результата хэширования
 			 *
-			 * @tparam T тип возвращаемого результата
+			 * @tparam T тип результата хэширования
 			 *
 			 */
-			template <typename T>
+			template <typename T = uint64_t>
 			/**
-			 * @brief Метод хэширования текста c ключом
+			 * @brief Метод хэширования буфера данных c ключом
 			 *
 			 * @param buffer буфер данных для хэширования
 			 * @param size   размер данных для хэширования
@@ -301,15 +321,18 @@ namespace awh {
 			 * @return       результат хэширования
 			 *
 			 */
-			auto hashWithSeed(const void * buffer, const size_t size, const T seed) const noexcept -> T;
+			AWH_HASH_INLINE T hashWithSeed(const void * buffer, const size_t size, const uint64_t seed) const noexcept {
+				// Выполняем хэширование буфера данных с ключом
+				return hashing::create <T> (buffer, size, seed);
+			}
 		public:
 			/**
-			 * @brief Шаблон метода хэширования текста c несколькими ключами
+			 * @brief Шаблон типа результата хэширования
 			 *
-			 * @tparam T тип возвращаемого результата
+			 * @tparam T тип результата хэширования
 			 *
 			 */
-			template <typename T>
+			template <typename T = uint64_t>
 			/**
 			 * @brief Метод хэширования текста c несколькими ключами
 			 *
@@ -319,34 +342,40 @@ namespace awh {
 			 * @return      результат хэширования
 			 *
 			 */
-			auto hashWithSeeds(string_view text, const T seed1, const T seed2) const noexcept -> T;
+			AWH_HASH_INLINE T hashWithSeeds(string_view text, const uint64_t seed1, const uint64_t seed2) const noexcept {
+				// Выполняем хэширование текста с ключами
+				return hashing::create <T> (text.data(), text.size(), hashing::mix(seed1, seed2));
+			}
 			/**
-			 * @brief Шаблон метода хэширования текста c несколькими ключами
+			 * @brief Шаблон типа результата хэширования и типа буфера данных
 			 *
-			 * @tparam A тип возвращаемого результата
-			 * @tparam B тип буфера данных
+			 * @tparam A тип результата хэширования
+			 * @tparam B тип буфера данных для хэширования
 			 *
 			 */
-			template <typename A, typename B>
+			template <typename A = uint64_t, typename B, typename = typename B::value_type>
 			/**
-			 * @brief Метод хэширования текста c несколькими ключами
+			 * @brief Метод хэширования буфера данных c несколькими ключами
 			 *
-			 * @param text  текст для хэширования
+			 * @param text  буфер данных для хэширования
 			 * @param seed1 первый ключ для хэширования
 			 * @param seed2 второй ключ для хэширования
 			 * @return      результат хэширования
 			 *
 			 */
-			auto hashWithSeeds(const B & text, const A seed1, const A seed2) const noexcept -> A;
+			AWH_HASH_INLINE A hashWithSeeds(const B & text, const uint64_t seed1, const uint64_t seed2) const noexcept {
+				// Выполняем хэширование буфера данных с ключами
+				return hashing::create <A> (text.data(), text.size() * sizeof(typename B::value_type), hashing::mix(seed1, seed2));
+			}
 			/**
-			 * @brief Шаблон метода хэширования текста c несколькими ключами
+			 * @brief Шаблон типа результата хэширования
 			 *
-			 * @tparam T тип возвращаемого результата
+			 * @tparam T тип результата хэширования
 			 *
 			 */
-			template <typename T>
+			template <typename T = uint64_t>
 			/**
-			 * @brief Метод хэширования текста c несколькими ключами
+			 * @brief Метод хэширования буфера данных c несколькими ключами
 			 *
 			 * @param buffer буфер данных для хэширования
 			 * @param size   размер данных для хэширования
@@ -355,7 +384,10 @@ namespace awh {
 			 * @return       результат хэширования
 			 *
 			 */
-			auto hashWithSeeds(const void * buffer, const size_t size, const T seed1, const T seed2) const noexcept -> T;
+			AWH_HASH_INLINE T hashWithSeeds(const void * buffer, const size_t size, const uint64_t seed1, const uint64_t seed2) const noexcept {
+				// Выполняем хэширование буфера данных с ключами
+				return hashing::create <T> (buffer, size, hashing::mix(seed1, seed2));
+			}
 		public:
 			/**
 			 * @brief Шаблон метода хэширования текста

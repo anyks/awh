@@ -332,11 +332,11 @@ TEST_F(ZoneFixture, ExecutionZoneWidthChronoTest){
 		// Формируем основную запись смещения временной зоны
 		const std::string basic = this->_chrono->format(ZONE_DATE, offset, "%z");
 		// Выполняем проверку разрядности основной записи
-		ASSERT_EQ(basic.length(), 5) << basic;
+		ASSERT_EQ(basic.length(), static_cast <size_t> (5)) << basic;
 		// Формируем расширенную запись смещения временной зоны
 		const std::string extended = this->_chrono->format(ZONE_DATE, offset, "%o");
 		// Выполняем проверку разрядности расширенной записи
-		ASSERT_EQ(extended.length(), 6) << extended;
+		ASSERT_EQ(extended.length(), static_cast <size_t> (6)) << extended;
 		// Выполняем проверку положения двоеточия в расширенной записи
 		ASSERT_EQ(extended.at(3), ':') << extended;
 		// Выполняем проверку знака смещения обеих записей

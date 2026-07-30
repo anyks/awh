@@ -597,6 +597,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/binbox.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/bignum.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/hash.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/version.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"
@@ -657,7 +658,6 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/proto/quic/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/quic/handshake.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/quic/connection.cpp"
-    "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 
 # Устанавливаем имя библиотеки
@@ -887,6 +887,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(CRYPTO_APP_SYS_NAME sys-crypto)
     # Указываем что нужно собрать приложение работы с шифрованием и хэшированием
     option(CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE "Build Crypto app sample" ON)
+
+    # Устанавливаем имя приложения работы с хэшированием данных
+    SET(HASH_APP_SYS_NAME sys-hash)
+    # Указываем что нужно собрать приложение работы с хэшированием данных
+    option(CMAKE_BUILD_HASH_SYS_APP_SAMPLE "Build Hash app sample" ON)
 
     # Устанавливаем имя приложения работы с HTTP-авторизацией
     SET(AUTH_APP_PROTO_NAME proto-auth)
@@ -1400,6 +1405,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample Crypto: No\n")
     endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с хэшированием данных
+    if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Hash: Yes\n")
+        # Выполняем создание приложения работы с хэшированием данных
+        add_sample(${HASH_APP_SYS_NAME} sample/sys/hash.cpp sys)
+    # Если не нужно собирать семплы для работы с хэшированием данных
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Hash: No\n")
+    endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с HTTP-авторизацией
     if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
@@ -2244,6 +2261,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с хэшированием данных
+        if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения хэширования данных
+            target_link_libraries(
+                ${HASH_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с HTTP-авторизацией
         if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
@@ -3242,6 +3270,18 @@ else (CMAKE_SHARED_BUILD_LIB)
             )
         endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
+        # Если нужно собрать семплы для работы с хэшированием данных
+        if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения хэширования данных
+            target_link_libraries(
+                ${HASH_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+
         # Если нужно собрать семплы для работы с HTTP-авторизацией
         if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
             # Выполняем сборку приложения работы с HTTP-авторизацией
@@ -4211,6 +4251,16 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с хэшированием данных
+            if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+                # Выполняем сборку приложения хэширования данных
+                add_custom_command(TARGET "${HASH_APP_SYS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${HASH_APP_SYS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${HASH_APP_SYS_NAME}\" to enable core dump on macOS"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с HTTP-авторизацией
             if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
                 # Выполняем сборку приложения работы с HTTP-авторизацией
@@ -4779,6 +4829,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${CRYPTO_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CRYPTO_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с хэшированием данных
+            if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+                # Выполняем анализ приложения хэширования данных
+                pvs_studio_add_target(TARGET ${HASH_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${HASH_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с компрессией данных
             if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
                 # Выполняем анализ приложения блочной компрессии данных
@@ -5263,6 +5319,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с шифрованием и хэшированием
         install(TARGETS ${CRYPTO_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с хэшированием данных
+    if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+        # Устанавливаем приложение работы с хэшированием данных
+        install(TARGETS ${HASH_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с HTTP-авторизацией
     if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})

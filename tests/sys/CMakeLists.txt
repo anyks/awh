@@ -98,6 +98,8 @@ if(${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_SIGNALS_TEST "Build unit SIGNALS test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с длинными числами
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_BIGNUM_TEST "Build unit BIGNUM test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для работы с хэшированием
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_HASH_TEST "Build unit HASH test for ${UNIT_TEST_NAME}" ON)
 
         # Если нужно собрать тесты для работы с ОС
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST})
@@ -380,6 +382,22 @@ if(${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с длинными числами
             message(STATUS "Build tests BIGNUM module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_BIGNUM_TEST})
+
+        # Если нужно собрать тесты для работы с хэшированием
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HASH_TEST})
+            # Выводим сообщение о сборке тестов для модуля работы с хэшированием
+            message(STATUS "Build tests HASH module: Yes\n")
+            # Дополняем список источников тестами для модуля работы с хэшированием
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                hash/hash.cpp
+                hash/static.cpp
+                hash/bignum.cpp
+            )
+        # Если не нужно собрать тесты для работы с хэшированием
+        else()
+            # Выводим сообщение о сборке тестов для модуля работы с хэшированием
+            message(STATUS "Build tests HASH module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HASH_TEST})
 
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS

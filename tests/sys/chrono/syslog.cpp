@@ -89,7 +89,7 @@ TEST_P(SyslogBsdParameterizedFixture, ExecutionSyslogBsdChronoTest){
 	// Выполняем проверку сформированной записи
 	ASSERT_EQ(result, this->_parameter.result);
 	// Выполняем проверку разрядности записи, заданной стандартом
-	ASSERT_EQ(result.length(), 15) << result;
+	ASSERT_EQ(result.length(), static_cast <size_t> (15)) << result;
 }
 
 /**
