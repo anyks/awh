@@ -3225,3 +3225,139 @@ TEST_F(UriFixture, AuthorityIsReadableBackTest){
 	// Проверяем строку собранного адреса
 	ASSERT_EQ("http:////a", this->_uri->print(awh::uri_t::item_t::URI));
 }
+
+/**
+ * @brief Тест кругового оборота получателей и установщиков
+ *
+ */
+TEST_F(UriFixture, SettersAreIdempotentTest){
+	/**
+	 * Часть адреса, установленная заново своим же значением, менять его не должна.
+	 * Пустой же хост авторити не заводит: снятый с адреса "custom:path" хост пуст,
+	 * и установка его обратно поднимала авторити на пустом месте - адрес выходил
+	 * как "custom:///path"
+	 */
+	// Образцы записей всех видов
+	const std::vector <std::string> samples = {
+		"http://user:pass@example.com:8080/a/b?k=v#f", "mailto:user@example.com?subject=hi",
+		"stun:example.com:3479", "git@github.com:group/repo.git", "custom:path",
+		"custom:/path", "urn:isbn:0451450523", "path/to/file", "/path/to/file",
+		"unix:///var/run/x.sock", "//cdn.example.com/lib.js", "example"
+	};
+	/**
+	 * Перебираем все образцы записей
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца записи
+		this->_uri->parse(sample);
+		// Ожидаемая строка собранного адреса
+		const std::string expected = this->_uri->print(awh::uri_t::item_t::URI);
+		// Порт адреса до установки его частей заново
+		const uint16_t port = this->_uri->port();
+		// Устанавливаем схему адреса заново её же значением
+		this->_uri->scheme(this->_uri->scheme());
+		// Устанавливаем хост адреса заново его же значением
+		this->_uri->host(this->_uri->host());
+		// Устанавливаем путь адреса заново его же значением
+		this->_uri->path(this->_uri->path());
+		// Устанавливаем параметры адреса заново их же значением
+		this->_uri->query(this->_uri->query());
+		// Устанавливаем якорь адреса заново его же значением
+		this->_uri->fragment(this->_uri->fragment());
+		// Устанавливаем учётную запись адреса заново её же значением
+		this->_uri->user(this->_uri->user());
+		// Адрес обязан остаться прежним
+		ASSERT_EQ(expected, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample;
+		// Порт адреса обязан остаться прежним
+		ASSERT_EQ(port, this->_uri->port()) << "строка: " << sample;
+	}
+}
+
+/**
+ * @brief Тест присваивания объекта самому себе
+ *
+ */
+TEST_F(UriFixture, SelfAssignmentIsSafeTest){
+	/**
+	 * Перемещение забирает у источника содержимое, а при присваивании объекта
+	 * самому себе источник тот же самый: объект оставался опустошённым, теряя
+	 * схему, путь, параметры и якорь разом
+	 */
+	// Выполняем разбор адреса
+	this->_uri->parse("http://user:pass@example.com:8080/a/b?k=v#f");
+	// Ожидаемая строка собранного адреса
+	const std::string expected = this->_uri->print(awh::uri_t::item_t::URI);
+	// Ссылка на сам объект работы с URI
+	awh::uri_t & self = (* this->_uri);
+	// Выполняем присваивание объекта самому себе
+	(* this->_uri) = self;
+	// Адрес обязан остаться прежним
+	ASSERT_EQ(expected, this->_uri->print(awh::uri_t::item_t::URI));
+	// Выполняем перемещение объекта в самого себя
+	(* this->_uri) = ::std::move(self);
+	// Адрес обязан остаться прежним
+	ASSERT_EQ(expected, this->_uri->print(awh::uri_t::item_t::URI));
+	/**
+	 * Объект, у которого забрали содержимое, обязан оставаться годным к работе
+	 */
+	// Объект-источник, содержимое которого забирают
+	awh::uri_t source(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор адреса объектом-источником
+	source.parse("http://example.com/before");
+	// Забираем содержимое объекта-источника
+	awh::uri_t target(::std::move(source));
+	// Проверяем строку объекта, забравшего содержимое
+	ASSERT_EQ("http://example.com/before", target.print(awh::uri_t::item_t::URI));
+	// Опустошённому объекту можно задавать данные заново
+	source.parse("http://example.com/after");
+	// Проверяем строку опустошённого объекта
+	ASSERT_EQ("http://example.com/after", source.print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест согласия равенства с неравенством
+ *
+ */
+TEST_F(UriFixture, EqualityAgreesWithInequalityTest){
+	/**
+	 * Оператор неравенства реализован отдельно от оператора равенства, и ведение
+	 * пути от корня в него не вносилось: записи "custom:path" и "custom:/path"
+	 * равными не считались, но и неравными тоже
+	 */
+	// Пары записей, обязанные считаться неравными
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"custom:path", "custom:/path"},
+		{"path/to/file", "/path/to/file"},
+		{"http://example.com/a", "http://example.com/b"},
+		{"http://example.com", "https://example.com"},
+		{"mailto:user@example.com", "mailto:other@example.com"}
+	};
+	/**
+	 * Перебираем все пары записей
+	 */
+	for(auto & sample : samples){
+		// Первый объект пары
+		awh::uri_t first(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор первой записи пары
+		first.parse(sample.first);
+		// Второй объект пары
+		awh::uri_t second(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор второй записи пары
+		second.parse(sample.second);
+		// Записи эти равными считаться не должны
+		ASSERT_FALSE(first == second) << "записи: " << sample.first << " и " << sample.second;
+		// Неравенство обязано согласоваться с равенством
+		ASSERT_TRUE(first != second) << "записи: " << sample.first << " и " << sample.second;
+		// Сличение обязано быть симметричным
+		ASSERT_EQ((first == second), (second == first)) << "записи: " << sample.first << " и " << sample.second;
+		ASSERT_EQ((first != second), (second != first)) << "записи: " << sample.first << " и " << sample.second;
+	}
+	// Объект обязан быть равен сам себе
+	this->_uri->parse("http://user@example.com:8080/a/b?k=v#f");
+	// Проверяем равенство объекта самому себе
+	ASSERT_TRUE((* this->_uri) == (* this->_uri));
+	// Проверяем неравенство объекта самому себе
+	ASSERT_FALSE((* this->_uri) != (* this->_uri));
+}

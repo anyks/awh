@@ -2292,14 +2292,15 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 		 * частям адрес прежде авторити не имел, и две косые черты за схемой у него
 		 * не записывались
 		 */
-		if(!this->hasAuthority())
-			// Запоминаем вид записи, отбирая его по схеме адреса
-			this->_form = uri::schemeForm(this->_fmk, this->_scheme);
 		/**
 		 * Пустой хост атрибутов не заводит: авторити у записей "file:///etc/hosts" и
 		 * "http:///path" пустая, и разбор их атрибутов не создаёт. Установка же
 		 * пустого хоста извне их оставляла - с пустым доменным именем внутри, - и
-		 * объект, дающий ту же строку, равным ему уже не считался
+		 * объект, дающий ту же строку, равным ему уже не считался.
+		 *
+		 * Авторити пустой хост и не заводит: снятый с адреса "custom:path" хост пуст,
+		 * и установка его обратно поднимала авторити на пустом месте - адрес выходил
+		 * как "custom:///path"
 		 */
 		if(host.empty()){
 			// Сбрасываем атрибуты URI адреса
@@ -2307,6 +2308,9 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 			// Выходим из метода
 			return;
 		}
+		if(!this->hasAuthority())
+			// Запоминаем вид записи, отбирая его по схеме адреса
+			this->_form = uri::schemeForm(this->_fmk, this->_scheme);
 		// Признак того, что хост URI установлен как сетевой адрес
 		bool network = false;
 		/**
@@ -4703,6 +4707,15 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 							break;
 					}
 				}
+				/**
+				 * Ведение пути от корня сличается наравне с самими сегментами: записи
+				 * "custom:path" и "custom:/path" - разные адреса (RFC 3986 3.3), а
+				 * сегменты у них одни и те же
+				 */
+				// Если сегменты путей URI равны
+				if(!result)
+					// Выполняем сравнение признаков ведения путей URI от корня
+					result = (this->rootedPath() != uri.rootedPath());
 			}
 			// Если пути URI равны
 			if(!result){
@@ -4809,6 +4822,14 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  */
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (awh::Uniform_Resource_Identifier && uri) noexcept {
 	/**
+	 * Присваивание объекта самому себе делать нечего: перемещение забирает у
+	 * источника содержимое, а источник тот же самый - объект оставался
+	 * опустошённым, теряя схему, путь, параметры и якорь разом
+	 */
+	if(this == &uri)
+		// Возвращаем результат
+		return (* this);
+	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
@@ -4869,6 +4890,13 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  */
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const awh::Uniform_Resource_Identifier & uri) noexcept {
+	/**
+	 * Присваивание объекта самому себе делать нечего: копирование его же полей в
+	 * него же ничего не меняет, а обходится в набор лишних выделений памяти
+	 */
+	if(this == &uri)
+		// Возвращаем результат
+		return (* this);
 	/**
 	 * Выполняем отлов ошибок
 	 */
