@@ -251,6 +251,7 @@ namespace uri {
 	 * @param query    ссылка для сохранения параметров URI
 	 * @param fragment ссылка для сохранения якоря URI
 	 * @param form     ссылка для сохранения вида записи адреса
+	 * @param guess    признак разрешения выводить авторити по приметам хоста
 	 * @return         результат парсинга
 	 *
 	 */
@@ -264,7 +265,8 @@ namespace uri {
 		string_view & path,
 		string_view & query,
 		string_view & fragment,
-		uri_t::form_t & form
+		uri_t::form_t & form,
+		const bool guess
 	) noexcept {
 		// Инициализируем все выходные параметры пустыми строками
 		scheme = userinfo = host = port = path = query = fragment = {};
@@ -350,7 +352,7 @@ namespace uri {
 							// Признак того, что за двоеточием стоят две косые черты
 							const bool slashes = (((ptr + 2) < end) && ((* (ptr + 1)) == '/') && ((* (ptr + 2)) == '/'));
 							// Если у кандидата приметы хоста — это домен, а не схема
-							if(!slashes && uri::hostLike(tokenBegin, ptr)){
+							if(guess && !slashes && uri::hostLike(tokenBegin, ptr)){
 								// Помечаем наличие authority без //
 								hasAuthority = true;
 								// Переходим к чтению хоста
@@ -379,7 +381,7 @@ namespace uri {
 								// Проверяем кандидат на приметы хоста
 								isHost = uri::hostLike(tokenBegin, ptr);
 							// Если точка найдена или IPv6 — это host:port (например 127.0.0.1:443 или [::1]:443)
-							if(isHost){
+							if(guess && isHost){
 								// Помечаем наличие authority без //
 								hasAuthority = true;
 								// Переходим к чтению хоста
@@ -425,7 +427,7 @@ namespace uri {
 							// Проверяем кандидат на приметы хоста
 							isHost = uri::hostLike(tokenBegin, ptr);
 						// Если точка найдена или IPv6 — это хост, переходим к разбору хоста
-						if(isHost){
+						if(guess && isHost){
 							// Помечаем наличие authority без //
 							hasAuthority = true;
 							// Переходим к чтению хоста
@@ -446,7 +448,7 @@ namespace uri {
 						// Обработать символ в новом состоянии
 						continue;
 					// Если встретили @ — это userinfo@host без схемы (например user@example.com)
-					} else if(letter == '@') {
+					} else if(guess && (letter == '@')) {
 						// Всё до @ — userinfo
 						userinfo = string_view(tokenBegin, ptr - tokenBegin);
 						// Помечаем наличие authority
@@ -3363,8 +3365,16 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 		string_view scheme, userinfo, host, port, path, query, fragment;
 		// Вид записи разбираемого адреса
 		form_t form = form_t::NONE;
+		/**
+		 * Авторити выводится по приметам хоста лишь у записи самостоятельной:
+		 * разбор строки разрешает её относительно уже разобранной, и у ссылки,
+		 * разрешаемой относительно основы, первый сегмент пути авторити быть не
+		 * может (RFC 3986 4.2)
+		 */
+		// Признак разрешения выводить авторити по приметам хоста
+		const bool guess = this->empty();
 		// Выполняем парсинг URI
-		if(uri::parse(this->_fmk, uri, scheme, userinfo, host, port, path, query, fragment, form)){
+		if(uri::parse(this->_fmk, uri, scheme, userinfo, host, port, path, query, fragment, form, guess)){
 			/**
 			 * Разбор строки URI разрешает её относительно уже разобранной
 			 * (RFC 3986 5.2.2): сервер отдаёт в заголовке Location ссылку, которая

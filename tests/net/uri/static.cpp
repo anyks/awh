@@ -3523,3 +3523,78 @@ TEST_F(UriFixture, ControlLettersAreRefusedInHostTest){
 	// Хост такой записи принят быть не должен
 	ASSERT_TRUE(this->_uri->host().empty());
 }
+
+/**
+ * @brief Тест разрешения относительной ссылки, похожей на хост
+ *
+ */
+TEST_F(UriFixture, RelativeReferenceIsNotHostTest){
+	/**
+	 * Авторити выводится по приметам хоста лишь у записи самостоятельной:
+	 * записи "example.com/path" и "user@host" авторити двумя косыми чертами
+	 * не отделяют, и признают её в них по точке в первом сегменте либо по
+	 * собаке. У ссылки же, разрешаемой относительно основы, первый сегмент
+	 * пути авторити быть не может (RFC 3986 4.2), и ссылка "v2.0/api" уносила
+	 * у основы хост, подменяя его на "v2.0"
+	 */
+	// Ссылки, обязанные лечь путём, и ожидаемые записи их разрешения
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"v2.0/api", "http://example.com/dir/v2.0/api"},
+		{"a.b/c", "http://example.com/dir/a.b/c"},
+		{"..;/g", "http://example.com/dir/..;/g"},
+		{"user@host/x", "http://example.com/dir/user@host/x"},
+		{"logo.png", "http://example.com/dir/logo.png"},
+		{"img/logo.png", "http://example.com/dir/img/logo.png"}
+	};
+	/**
+	 * Перебираем все ссылки
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор основы
+		this->_uri->parse("http://example.com/dir/page.html");
+		// Выполняем разрешение ссылки относительно основы
+		this->_uri->parse(sample.first);
+		// Проверяем запись, полученную разрешением ссылки
+		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "ссылка: " << sample.first;
+		// Хост основы ссылкой смениться не должен
+		ASSERT_EQ("example.com", this->_uri->host()) << "ссылка: " << sample.first;
+	}
+	/**
+	 * Ссылка, авторити двумя косыми чертами отделяющая, хост замещать обязана
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор основы
+	this->_uri->parse("http://example.com/dir/page.html");
+	// Выполняем разрешение ссылки с авторити
+	this->_uri->parse("//other.example/x");
+	// Проверяем хост, полученный разрешением ссылки
+	ASSERT_EQ("other.example", this->_uri->host());
+	// Проверяем запись, полученную разрешением ссылки
+	ASSERT_EQ("http://other.example/x", this->_uri->print(awh::uri_t::item_t::URI));
+	/**
+	 * Самостоятельный же разбор авторити по приметам хоста выводить обязан:
+	 * записи "example.com/path" схема и две косые черты не нужны
+	 */
+	// Записи, разбираемые самостоятельно, и ожидаемые хосты
+	const std::vector <std::pair <std::string, std::string>> hosts = {
+		{"example.com/path", "example.com"},
+		{"example.com:8080/p", "example.com"},
+		{"user@example.com", "example.com"},
+		{"127.0.0.1/x", "127.0.0.1"},
+		{"git@github.com:group/repo.git", "github.com"}
+	};
+	/**
+	 * Перебираем все самостоятельные записи
+	 */
+	for(auto & host : hosts){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор самостоятельной записи
+		this->_uri->parse(host.first);
+		// Проверяем хост, выведенный по приметам
+		ASSERT_EQ(host.second, this->_uri->host()) << "запись: " << host.first;
+	}
+}
