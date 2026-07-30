@@ -1968,6 +1968,31 @@ void awh::Uniform_Resource_Identifier::rooted(const bool rooted) noexcept {
 	this->_rooted = rooted;
 }
 /**
+ * @brief Метод получения режима разрешения относительных ссылок
+ *
+ * @return режим разрешения относительных ссылок
+ *
+ */
+awh::Uniform_Resource_Identifier::resolve_t awh::Uniform_Resource_Identifier::resolve() const noexcept {
+	// Выводим режим разрешения относительных ссылок
+	return this->_resolve;
+}
+/**
+ * @brief Метод установки режима разрешения относительных ссылок
+ *
+ * @param resolve режим разрешения относительных ссылок для установки
+ *
+ */
+void awh::Uniform_Resource_Identifier::resolve(const resolve_t resolve) noexcept {
+	/**
+	 * Неустановленный режим оставляет прежний: сбросить режим в ничто
+	 * значило бы оставить разбор без правила вовсе
+	 */
+	if(resolve != resolve_t::NONE)
+		// Устанавливаем режим разрешения относительных ссылок
+		this->_resolve = resolve;
+}
+/**
  * @brief Метод получения схемы URI
  *
  * @return схема URI
@@ -3393,8 +3418,26 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 			const bool refPath = ((path.data() != nullptr) && !path.empty());
 			// Признак того, что ссылка несёт параметры
 			const bool refQuery = (query.data() != nullptr);
+			/**
+			 * Ссылка со схемой сама по себе полный адрес, и строгий разбор замещает
+			 * ею адрес целиком. Прежняя же спецификация частичных адресов схему,
+			 * совпавшую со схемой основы, отбрасывала и разрешала остаток как
+			 * относительную ссылку (RFC 1808 5.2): запись "http:page.html" означала
+			 * соседний файл. RFC 3986 5.2.2 называет это лазейкой, но допускает ради
+			 * совместимости, и заголовок Location браузеры разрешают вместе с ней.
+			 *
+			 * Увести на чужой узел лазейка не способна: срабатывает она лишь у ссылки
+			 * без авторити, а значит хост неизбежно достаётся от основы
+			 */
 			// Признак того, что ссылка несёт схему
-			const bool refScheme = !scheme.empty();
+			bool refScheme = !scheme.empty();
+			// Если разрешение ссылок ведётся в совместимом режиме
+			if(refScheme && (this->_resolve == resolve_t::COMPATIBLE) && !refAuthority && !this->_scheme.empty()){
+				// Схема, совпавшая со схемой основы, отбрасывается
+				if(this->_fmk->compare(scheme, this->_scheme))
+					// Запоминаем, что схемы ссылка не несёт
+					refScheme = false;
+			}
 			/**
 			 * Ссылка со схемой замещает собой всё: она сама по себе полный адрес
 			 */
@@ -4969,6 +5012,8 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		 */
 		// Перемещаем обработчик, дающий добавочный параметр URI
 		this->_callback = ::move(uri._callback);
+		// Выполняем перенос режима разрешения относительных ссылок
+		this->_resolve = uri._resolve;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -5037,6 +5082,8 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		 */
 		// Копируем обработчик, дающий добавочный параметр URI
 		this->_callback = uri._callback;
+		// Выполняем копирование режима разрешения относительных ссылок
+		this->_resolve = uri._resolve;
 		// Если атрибуты URI не пустые
 		if(uri._attr != nullptr){
 			/**
@@ -5178,7 +5225,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept :
- _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""}, _zone{""},
+ _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _resolve(resolve_t::STRICT), _scheme{""}, _fragment{""}, _zone{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
@@ -5218,6 +5265,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
 		 */
 		// Перемещаем обработчик, дающий добавочный параметр URI
 		this->_callback = ::move(uri._callback);
+		// Выполняем перенос режима разрешения относительных ссылок
+		this->_resolve = uri._resolve;
 		// Инициализируем объект работы с сетевыми адресами
 		this->_addr = make_unique <net_addr_t> (this->_fmk, this->_log);
 	/**
@@ -5246,7 +5295,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept :
- _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""}, _zone{""},
+ _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _resolve(resolve_t::STRICT), _scheme{""}, _fragment{""}, _zone{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
@@ -5284,6 +5333,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 		 */
 		// Копируем обработчик, дающий добавочный параметр URI
 		this->_callback = uri._callback;
+		// Выполняем копирование режима разрешения относительных ссылок
+		this->_resolve = uri._resolve;
 		// Инициализируем объект работы с сетевыми адресами
 		this->_addr = make_unique <net_addr_t> (this->_fmk, this->_log);
 		// Если атрибуты URI не пустые
@@ -5420,7 +5471,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept :
- _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""}, _zone{""},
+ _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _resolve(resolve_t::STRICT), _scheme{""}, _fragment{""}, _zone{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(fmk), _log(log) {
 	// Инициализируем объект работы с сетевыми адресами
 	this->_addr = make_unique <net_addr_t> (fmk, log);

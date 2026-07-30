@@ -3598,3 +3598,107 @@ TEST_F(UriFixture, RelativeReferenceIsNotHostTest){
 		ASSERT_EQ(host.second, this->_uri->host()) << "запись: " << host.first;
 	}
 }
+
+/**
+ * @brief Тест совместимого режима разрешения относительных ссылок
+ *
+ */
+TEST_F(UriFixture, CompatibleResolveModeTest){
+	/**
+	 * Ссылка со схемой сама по себе полный адрес, и строгий разбор замещает ею
+	 * адрес целиком. Прежняя же спецификация частичных адресов схему, совпавшую
+	 * со схемой основы, отбрасывала и разрешала остаток как относительную ссылку
+	 * (RFC 1808 5.2). RFC 3986 5.2.2 называет это лазейкой, но допускает ради
+	 * совместимости, и заголовок Location браузеры разрешают вместе с ней
+	 */
+	// Проверяем режим разрешения ссылок, установленный по умолчанию
+	ASSERT_EQ(awh::uri_t::resolve_t::STRICT, this->_uri->resolve());
+	// Выполняем разбор основы
+	this->_uri->parse("http://example.com/b/c/d;p?q");
+	// Выполняем разрешение ссылки со схемой, совпавшей со схемой основы
+	this->_uri->parse("http:g");
+	// Строгий разбор замещает адрес ссылкой целиком
+	ASSERT_EQ("http:g", this->_uri->print(awh::uri_t::item_t::URI));
+	// Хоста у такой записи нет
+	ASSERT_TRUE(this->_uri->host().empty());
+	// Переводим объект в совместимый режим разрешения ссылок
+	this->_uri->resolve(awh::uri_t::resolve_t::COMPATIBLE);
+	// Проверяем установленный режим разрешения ссылок
+	ASSERT_EQ(awh::uri_t::resolve_t::COMPATIBLE, this->_uri->resolve());
+	// Ссылки, схема которых совпадает со схемой основы, и ожидаемые записи
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"http:g", "http://example.com/b/c/g"},
+		{"http:g/h", "http://example.com/b/c/g/h"},
+		{"http:/g", "http://example.com/g"},
+		{"http:..", "http://example.com/b/"},
+		{"http:?y", "http://example.com/b/c/d;p?y"},
+		{"HTTP:g", "http://example.com/b/c/g"}
+	};
+	/**
+	 * Перебираем все ссылки
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Режим разрешения ссылок очисткой объекта сбрасываться не должен
+		ASSERT_EQ(awh::uri_t::resolve_t::COMPATIBLE, this->_uri->resolve());
+		// Выполняем разбор основы
+		this->_uri->parse("http://example.com/b/c/d;p?q");
+		// Выполняем разрешение ссылки относительно основы
+		this->_uri->parse(sample.first);
+		// Проверяем запись, полученную разрешением ссылки
+		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "ссылка: " << sample.first;
+		// Хост основы ссылкой смениться не может: авторити она не несёт
+		ASSERT_EQ("example.com", this->_uri->host()) << "ссылка: " << sample.first;
+	}
+	/**
+	 * Лазейка ограничена совпадением схемы: ссылка с иной схемой замещает адрес
+	 * целиком в любом режиме. Необязательности двух косых черт, которую браузеры
+	 * допускают особым схемам, здесь нет - она хост как раз меняет
+	 */
+	// Ссылки, схема которых со схемой основы не совпадает
+	const std::vector <std::pair <std::string, std::string>> others = {
+		{"https:g", ""},
+		{"https:evil.com/x", ""},
+		{"urn:g", ""},
+		{"mailto:a@b.com", "b.com"}
+	};
+	/**
+	 * Перебираем все ссылки с иной схемой
+	 */
+	for(auto & other : others){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор основы
+		this->_uri->parse("http://example.com/b/c/d;p?q");
+		// Выполняем разрешение ссылки относительно основы
+		this->_uri->parse(other.first);
+		/**
+		 * Хост берётся от ссылки, а не от основы: у схемы, авторити сразу за
+		 * двоеточием записывающей, он свой, у прочих его нет вовсе
+		 */
+		ASSERT_EQ(other.second, this->_uri->host()) << "ссылка: " << other.first;
+	}
+	/**
+	 * Ссылка с авторити замещает адрес целиком в любом режиме
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор основы
+	this->_uri->parse("http://example.com/b/c/d;p?q");
+	// Выполняем разрешение ссылки с авторити
+	this->_uri->parse("http://other.example/x");
+	// Проверяем хост, полученный разрешением ссылки
+	ASSERT_EQ("other.example", this->_uri->host());
+	/**
+	 * Режим принадлежит объекту и достаётся его копии
+	 */
+	// Копия объекта работы с URI
+	awh::uri_t copy = (* this->_uri);
+	// Проверяем режим разрешения ссылок у копии объекта
+	ASSERT_EQ(awh::uri_t::resolve_t::COMPATIBLE, copy.resolve());
+	// Неустановленный режим прежний сбрасывать не должен
+	copy.resolve(awh::uri_t::resolve_t::NONE);
+	// Проверяем режим разрешения ссылок после установки неустановленного
+	ASSERT_EQ(awh::uri_t::resolve_t::COMPATIBLE, copy.resolve());
+}
