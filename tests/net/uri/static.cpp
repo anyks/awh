@@ -1536,8 +1536,8 @@ TEST_F(UriFixture, AuthoritySeparatorSurvivesWithoutSchemeTest){
 	this->_uri->clear();
 	// Выполняем разбор относительной ссылки
 	this->_uri->parse("a/b");
-	// Проверяем строку собранного адреса
-	ASSERT_EQ("/a/b", this->_uri->print(awh::uri_t::item_t::URI));
+	// Относительная ссылка косой черты, ведущей от корня, не получает
+	ASSERT_EQ("a/b", this->_uri->print(awh::uri_t::item_t::URI));
 	// Разделитель авторити не пишется у опакового адреса
 	this->_uri->clear();
 	// Выполняем разбор опакового адреса
@@ -2012,10 +2012,10 @@ TEST_F(UriFixture, ParserCornerCasesTest){
 		{"http://a.com:8080?x=1", "http://a.com:8080/?x=1"},
 		{"http://a.com:8080#f", "http://a.com:8080/#f"},
 		// Схема, обесцененная недопустимым символом, читается как путь
-		{"ab_cd:x", "/ab_cd:x"},
+		{"ab_cd:x", "./ab_cd:x"},
 		// Кандидат в схему без примет хоста читается как путь
-		{"1:x", "/1:x"},
-		{":x", "/:x"},
+		{"1:x", "./1:x"},
+		{":x", "./:x"},
 		// IPv6-адрес без схемы
 		{"[::1]/x", "//[::1]/x"},
 		{"[::1]:8080/x", "//[::1]:8080/x"},
@@ -2132,7 +2132,7 @@ TEST_F(UriFixture, HostWithoutSchemeBeforeDelimiterTest){
 		{"example.com?x=1", "//example.com/?x=1"},
 		{"example.com#f", "//example.com/#f"},
 		{"192.168.0.1/path", "//192.168.0.1/path"},
-		{"path/to/file", "/path/to/file"}
+		{"path/to/file", "path/to/file"}
 	};
 	/**
 	 * Перебираем все образцы строк
@@ -2418,8 +2418,8 @@ TEST_F(UriFixture, FormFollowsSchemeTest){
 	this->_uri->scheme("http");
 	// Авторити у записи взяться неоткуда
 	ASSERT_EQ(awh::uri_t::form_t::NONE, this->_uri->form());
-	// Проверяем строку, собранную после смены схемы
-	ASSERT_EQ("http:/path", this->_uri->print(awh::uri_t::item_t::URI));
+	// Путь, от корня не ведущий, корня не получает и от смены схемы
+	ASSERT_EQ("http:path", this->_uri->print(awh::uri_t::item_t::URI));
 }
 
 /**
@@ -2714,4 +2714,149 @@ TEST_F(UriFixture, BracketsOutsideOfAddressTest){
 	ASSERT_EQ(expected, again.print(awh::uri_t::item_t::URI));
 	// Проверяем пароль, переживший оборот
 	ASSERT_EQ("pa[ss]", again.user().password);
+}
+
+/**
+ * @brief Тест сохранения признака пути, ведущего от корня
+ *
+ */
+TEST_F(UriFixture, PathRootnessIsKeptTest){
+	/**
+	 * Ведущая косая черта пути в сегментах не хранится, и признак ведения пути от
+	 * корня отбирался по разновидности адреса: иерархической он приписывался
+	 * всегда, произвольной схеме - никогда. Свойство это, однако, принадлежит
+	 * самому пути: записи "custom:path" и "custom:/path" - разные адреса
+	 * (RFC 3986 3.3), а ссылки "path/to" и "/path/to" разрешаются относительно
+	 * базового адреса по-разному (RFC 3986 5.2)
+	 */
+	// Образцы строк, обязанные пережить оборот без изменений
+	const std::vector <std::pair <std::string, bool>> samples = {
+		{"custom:path", false},
+		{"custom:/path", true},
+		{"custom:path/to", false},
+		{"custom:/path/to", true},
+		{"http:path", false},
+		{"http:/path", true},
+		{"urn:isbn:123", false},
+		{"urn:/isbn:123", true},
+		{"path/to/file", false},
+		{"/path/to/file", true},
+		{"example", false},
+		{"/example", true}
+	};
+	/**
+	 * Перебираем все образцы строк
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца строки
+		this->_uri->parse(sample.first);
+		// Проверяем признак пути, ведущего от корня
+		ASSERT_EQ(sample.second, this->_uri->rooted()) << "строка: " << sample.first;
+		// Собранная строка обязана совпасть с исходной
+		ASSERT_EQ(sample.first, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
+	}
+	/**
+	 * У адреса с авторити путь ведёт от корня всегда: пустым он ей равнозначен,
+	 * а непустой начинается с косой черты (RFC 3986 3.3)
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса с авторити
+	this->_uri->parse("http://example.com/a/b");
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("http://example.com/a/b", this->_uri->print(awh::uri_t::item_t::URI));
+	/**
+	 * Пути, отличающиеся одним лишь ведением от корня, равными не считаются
+	 */
+	// Адрес, путь которого ведёт от корня
+	awh::uri_t rooted(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор адреса, путь которого ведёт от корня
+	rooted.parse("custom:/path");
+	// Адрес, путь которого от корня не ведёт
+	awh::uri_t relative(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор адреса, путь которого от корня не ведёт
+	relative.parse("custom:path");
+	// Адреса эти равными считаться не должны
+	ASSERT_FALSE(rooted == relative);
+	// Признак ведения пути от корня задаётся и снаружи
+	relative.rooted(true);
+	// Адреса обязаны сравняться
+	ASSERT_TRUE(rooted == relative);
+	// Проверяем строку, собранную после установки признака
+	ASSERT_EQ("custom:/path", relative.print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест двоеточия в первом сегменте относительной ссылки
+ *
+ */
+TEST_F(UriFixture, RelativeReferenceWithColonTest){
+	/**
+	 * Первый сегмент относительной ссылки двоеточия нести не может: он был бы
+	 * принят за схему. Путь из одного сегмента "abc:x" собирался как "abc:x", а
+	 * разбирался обратно уже схемой "abc" с путём "x" - первый сегмент пропадал.
+	 * Отделяется он обозначением текущего каталога (RFC 3986 4.2)
+	 */
+	// Пути, первый сегмент которых несёт двоеточие
+	const std::vector <std::pair <std::vector <std::string>, std::string>> samples = {
+		{{"abc:x"}, "./abc:x"},
+		{{"1:x"}, "./1:x"},
+		{{"a:b", "c"}, "./a:b/c"},
+		{{"plain", "a:b"}, "plain/a:b"}
+	};
+	/**
+	 * Перебираем все образцы путей
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Устанавливаем путь URI
+		this->_uri->path(sample.first);
+		// Проверяем строку собранной ссылки
+		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "путь: " << sample.second;
+		// Повторный разбор собранной ссылки обязан вернуть тот же путь
+		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор собранной ссылки
+		again.parse(sample.second);
+		// Схемы у относительной ссылки быть не должно
+		ASSERT_TRUE(again.scheme().empty()) << "путь: " << sample.second;
+		// Проверяем путь, переживший оборот
+		ASSERT_EQ(sample.first, again.path()) << "путь: " << sample.second;
+	}
+	/**
+	 * Адресу со схемой обозначение текущего каталога не нужно: двоеточие схемы
+	 * стоит раньше, и сегмент за схемой её не подменяет
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Устанавливаем схему URI
+	this->_uri->scheme("custom");
+	// Устанавливаем путь URI, первый сегмент которого несёт двоеточие
+	this->_uri->path({"abc:x"});
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("custom:abc:x", this->_uri->print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест параметров почтового адреса в режиме запроса
+ *
+ */
+TEST_F(UriFixture, MailRequestKeepsQueryTest){
+	/**
+	 * Параметры почтового адреса несут его заголовки - тему письма, получателей
+	 * копии и само тело (RFC 6068 2), - и запрос без них теряет всё, ради чего
+	 * адрес и составлялся
+	 */
+	// Выполняем разбор почтового адреса с заголовками
+	this->_uri->parse("mailto:user@example.com?subject=hi");
+	// Проверяем запрос, собранный из почтового адреса
+	ASSERT_EQ("user@example.com?subject=hi", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор почтового адреса без заголовков
+	this->_uri->parse("mailto:user@example.com");
+	// Запрос адреса без заголовков состоит из одной учётной записи с хостом
+	ASSERT_EQ("user@example.com", this->_uri->print(awh::uri_t::item_t::REQUEST));
 }

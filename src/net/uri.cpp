@@ -1829,6 +1829,8 @@ void awh::Uniform_Resource_Identifier::clear() noexcept {
 	this->_type = type_t::NONE;
 	// Сбрасываем вид записи адреса
 	this->_form = form_t::NONE;
+	// Сбрасываем признак пути, ведущего от корня
+	this->_rooted = false;
 	// Сбрасываем атрибуты URI
 	this->_attr.reset(nullptr);
 }
@@ -1879,6 +1881,26 @@ awh::Uniform_Resource_Identifier::form_t awh::Uniform_Resource_Identifier::form(
 void awh::Uniform_Resource_Identifier::form(const form_t form) noexcept {
 	// Устанавливаем вид записи адреса
 	this->_form = form;
+}
+/**
+ * @brief Метод получения признака пути, ведущего от корня
+ *
+ * @return признак пути, ведущего от корня
+ *
+ */
+bool awh::Uniform_Resource_Identifier::rooted() const noexcept {
+	// Выводим признак пути, ведущего от корня
+	return this->_rooted;
+}
+/**
+ * @brief Метод установки признака пути, ведущего от корня
+ *
+ * @param rooted признак пути, ведущего от корня, для установки
+ *
+ */
+void awh::Uniform_Resource_Identifier::rooted(const bool rooted) noexcept {
+	// Устанавливаем признак пути, ведущего от корня
+	this->_rooted = rooted;
 }
 /**
  * @brief Метод получения схемы URI
@@ -2746,6 +2768,20 @@ bool awh::Uniform_Resource_Identifier::hasAuthority() const noexcept {
 	return (this->_form != form_t::NONE);
 }
 /**
+ * @brief Метод проверки пути URI на ведение от корня
+ *
+ * @details У адреса с авторити путь ведёт от корня всегда: пустым он ей
+ *          равнозначен, а непустой начинается с косой черты (RFC 3986 3.3).
+ *          Записи же без авторити свойство это принадлежит самому пути
+ *
+ * @return результат проверки
+ *
+ */
+bool awh::Uniform_Resource_Identifier::rootedPath() const noexcept {
+	// Выводим результат проверки: авторити ведёт путь от корня сама
+	return (this->_rooted || this->hasAuthority());
+}
+/**
  * @brief Метод проверки записи адреса на вид копирования по сети
  *
  * @details Записью копирования по сети адрес записывается лишь тогда, когда
@@ -2801,7 +2837,23 @@ bool awh::Uniform_Resource_Identifier::rootPath() const noexcept {
 	 * они по-разному - пустым набором сегментов и набором из одного пустого
 	 * сегмента, - и сличение адресов, дающих одну строку, равенства не давало
 	 */
-	return (this->_path.empty() || (this->hasAuthority() && (this->_path.size() == 1) && this->_path.front().empty()));
+	// Путь пустой корневому равнозначен всегда
+	if(this->_path.empty())
+		// Выводим результат проверки
+		return true;
+	// Если путь состоит из одного пустого сегмента
+	if((this->_path.size() == 1) && this->_path.front().empty()){
+		/**
+		 * У записи, от корня не ведущей, пустой сегмент и пустой путь записываются
+		 * одинаково - пустотой: точечная ссылка "." сводится снятием точечных
+		 * сегментов к пустому сегменту (RFC 3986 5.2.4), и сборка её даёт пустую
+		 * строку, разбор которой сегментов не заводит вовсе
+		 */
+		// Выводим результат проверки
+		return (this->hasAuthority() || !this->_rooted);
+	}
+	// Иначе путь корневому не равнозначен
+	return false;
 }
 /**
  * @brief Метод добавления пар ключ-значение параметров URI в результат
@@ -3348,6 +3400,13 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 			 * путь её относителен; ссылка без пути базовый путь оставляет
 			 */
 			if(refScheme || refAuthority){
+				/**
+				 * Ведущая косая черта пути в сегментах не хранится, и признак ведения
+				 * пути от корня запоминается отдельно: записи "custom:path" и
+				 * "custom:/path" - разные адреса (RFC 3986 3.3)
+				 */
+				// Запоминаем, ведёт ли путь ссылки от корня
+				this->_rooted = (!path.empty() && (path.front() == '/'));
 				// Очищаем все предыдущие сегменты пути URI
 				this->_path.clear();
 				// Разбираем путь ссылки на сегменты
@@ -3366,11 +3425,13 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 				 * последней косой черты, то есть все сегменты, кроме последнего
 				 * (RFC 3986 5.3)
 				 */
-				if(path.front() == '/')
+				if(path.front() == '/'){
+					// Запоминаем, что путь ссылки ведёт от корня
+					this->_rooted = true;
 					// Очищаем все предыдущие сегменты пути URI
 					this->_path.clear();
 				// Снимаем последний сегмент базового пути
-				else if(!this->_path.empty())
+				} else if(!this->_path.empty())
 					// Снимаем последний сегмент базового пути
 					this->_path.pop_back();
 				// Разбираем путь ссылки на сегменты
@@ -3567,48 +3628,27 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						// Добавляем сегменты пути URI в результат
 						this->appendPath(result, false);
 					/**
-					 * Иначе разделитель пути определяется разновидностью адреса
+					 * Ведущая косая черта пути в сегментах не хранится, и признак ведения
+					 * пути от корня отбирался по разновидности адреса: иерархической он
+					 * приписывался всегда, произвольной схеме - никогда. Записи теряли
+					 * корень или получали его без спроса - адрес "custom:/path" выходил
+					 * как "custom:path", а относительная ссылка "path/to" - как "/path/to"
 					 */
-					} else switch(static_cast <uint8_t> (this->_type)){
-						// Если тип URI является WS, WSS, UDS, FTP, FILE, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS
-						case static_cast <uint8_t> (type_t::NONE):
-						case static_cast <uint8_t> (type_t::WS):
-						case static_cast <uint8_t> (type_t::WSS):
-						case static_cast <uint8_t> (type_t::UDS):
-						case static_cast <uint8_t> (type_t::FTP):
-						case static_cast <uint8_t> (type_t::SSH):
-						case static_cast <uint8_t> (type_t::FILE):
-						case static_cast <uint8_t> (type_t::HTTP):
-						case static_cast <uint8_t> (type_t::HTTPS):
-						case static_cast <uint8_t> (type_t::REDIS):
-						case static_cast <uint8_t> (type_t::MYSQL):
-						case static_cast <uint8_t> (type_t::SOCKS5):
-						// Если тип URI является MQTT
-						case static_cast <uint8_t> (type_t::MQTT):
-						// Если тип URI является EMAIL
-						case static_cast <uint8_t> (type_t::EMAIL):
-						case static_cast <uint8_t> (type_t::POSTGRESQL): {
-							// Добавляем сегменты пути URI в результат
-							this->appendPath(result, true);
-						} break;
-						// Если тип URI является Scheme
-						case static_cast <uint8_t> (type_t::SCHEME): {
-							/**
-							 * У произвольной схемы авторити может быть, а может и не быть.
-							 * Путь при её наличии отделяется от неё косой чертой, как у всякого
-							 * иерархического адреса, а при отсутствии записывается сразу за
-							 * двоеточием. Записывался он всегда вторым способом, и хост с путём
-							 * склеивались
-							 */
-							if(authority){
-								// Добавляем сегменты пути URI в результат
-								this->appendPath(result, true);
-							// Если авторити у URI нет, путь записывается сразу за двоеточием
-							} else {
-								// Добавляем сегменты пути URI в результат
-								this->appendPath(result, false);
-							}
-						} break;
+					} else {
+						// Признак пути, ведущего от корня
+						const bool leading = (authority || this->rootedPath());
+						/**
+						 * Первый сегмент относительной ссылки двоеточия нести не может: он
+						 * был бы принят за схему. Путь из одного сегмента "abc:x" собирался
+						 * как "abc:x", а разбирался обратно уже схемой "abc" с путём "x" -
+						 * первый сегмент пропадал. Отделяется он обозначением текущего
+						 * каталога (RFC 3986 4.2)
+						 */
+						if(!leading && this->_scheme.empty() && (this->_path.front().find(':') != string::npos))
+							// Добавляем обозначение текущего каталога перед путём
+							result.append("./", 2);
+						// Добавляем сегменты пути URI в результат
+						this->appendPath(result, leading);
 					}
 				/**
 				 * Пустой путь при непустых параметрах либо якоре сводится к одной косой
@@ -3743,49 +3783,12 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						// Добавляем сегменты пути URI в результат
 						this->appendPath(result, false);
 					/**
-					 * Иначе разделитель пути определяется разновидностью адреса
+					 * Иначе ведущая косая черта пути ставится по признаку ведения его от
+					 * корня: свойство это принадлежит самому пути, а отбиралось оно по
+					 * разновидности адреса
 					 */
-					} else switch(static_cast <uint8_t> (this->_type)){
-						// Если тип URI является WS, WSS, UDS, FTP, FILE, REDIS, MySQL, SOCKS5, PostgreSQL, HTTP или HTTPS
-						case static_cast <uint8_t> (type_t::NONE):
-						case static_cast <uint8_t> (type_t::WS):
-						case static_cast <uint8_t> (type_t::WSS):
-						case static_cast <uint8_t> (type_t::UDS):
-						case static_cast <uint8_t> (type_t::FTP):
-						case static_cast <uint8_t> (type_t::SSH):
-						case static_cast <uint8_t> (type_t::FILE):
-						case static_cast <uint8_t> (type_t::HTTP):
-						case static_cast <uint8_t> (type_t::HTTPS):
-						case static_cast <uint8_t> (type_t::REDIS):
-						case static_cast <uint8_t> (type_t::MYSQL):
-						case static_cast <uint8_t> (type_t::SOCKS5):
-						// Если тип URI является MQTT
-						case static_cast <uint8_t> (type_t::MQTT):
-						// Если тип URI является EMAIL
-						case static_cast <uint8_t> (type_t::EMAIL):
-						case static_cast <uint8_t> (type_t::POSTGRESQL): {
-							// Добавляем сегменты пути URI в результат
-							this->appendPath(result, true);
-						} break;
-						// Если тип URI является Scheme
-						case static_cast <uint8_t> (type_t::SCHEME): {
-							/**
-							 * У произвольной схемы авторити может быть, а может и не быть.
-							 * Путь при её наличии отделяется от неё косой чертой, как у всякого
-							 * иерархического адреса, а при отсутствии записывается сразу за
-							 * двоеточием. Записывался он всегда вторым способом, и хост с путём
-							 * склеивались
-							 */
-							if(this->hasAuthority()){
-								// Добавляем сегменты пути URI в результат
-								this->appendPath(result, true);
-							// Если авторити у URI нет, путь записывается сразу за двоеточием
-							} else {
-								// Добавляем сегменты пути URI в результат
-								this->appendPath(result, false);
-							}
-						} break;
-					}
+					// Добавляем сегменты пути URI в результат
+					} else this->appendPath(result, this->rootedPath());
 				/**
 				 * Пустой путь при непустых параметрах либо якоре сводится к одной косой
 				 * черте, но лишь у адреса с авторити: пустой путь ей равнозначен
@@ -4023,6 +4026,24 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								}
 							} break;
 						}
+						/**
+						 * Параметры почтового адреса несут его заголовки - тему письма,
+						 * получателей копии и само тело (RFC 6068 2), - и запрос без них
+						 * теряет всё, ради чего адрес и составлялся: у записи
+						 * "mailto:user@example.com?subject=hi" запросом выходила одна лишь
+						 * учётная запись с хостом
+						 */
+						// Если параметры URI есть, то добавляем их в результат
+						if(this->hasQuery())
+							// Добавляем строку параметров URI в результат вместе с её разделителем
+							this->appendQuery(result, true, true);
+						// Если якорь URI не пустой, то добавляем его в результат
+						if(!this->_fragment.empty()){
+							// Добавляем разделитель якоря URI
+							result.append(1, '#');
+							// Добавляем якорь URI в результат
+							uri::encode(result, this->_fragment, item_t::FRAGMENT, this->_log);
+						}
 					} break;
 					// Если тип URI является Scheme
 					case static_cast <uint8_t> (type_t::SCHEME): {
@@ -4042,7 +4063,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							// Добавляем относительный URI-запрос в результат
 							this->appendRequest(result);
 						// Добавляем сегменты пути URI в результат, если авторити у URI нет
-						else this->appendPath(result, false);
+						else this->appendPath(result, this->rootedPath());
 					} break;
 				}
 			} break;
@@ -4326,6 +4347,15 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 							break;
 					}
 				}
+				/**
+				 * Ведение пути от корня сличается наравне с самими сегментами: записи
+				 * "custom:path" и "custom:/path" - разные адреса (RFC 3986 3.3), а
+				 * сегменты у них одни и те же
+				 */
+				// Если сегменты путей URI равны
+				if(result)
+					// Выполняем сравнение признаков ведения путей URI от корня
+					result = (this->rootedPath() == uri.rootedPath());
 			}
 			// Если пути URI равны
 			if(result){
@@ -4650,6 +4680,8 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		this->_type = uri._type;
 		// Устанавливаем вид записи адреса
 		this->_form = uri._form;
+		// Устанавливаем признак пути, ведущего от корня
+		this->_rooted = uri._rooted;
 		// Перемещаем атрибуты URI
 		this->_attr = ::move(uri._attr);
 		// Перемещаем хост URI
@@ -4709,6 +4741,8 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		this->_type = uri._type;
 		// Устанавливаем вид записи адреса
 		this->_form = uri._form;
+		// Устанавливаем признак пути, ведущего от корня
+		this->_rooted = uri._rooted;
 		// Копируем хост URI
 		this->_path = uri._path;
 		// Копируем параметры URI
@@ -4870,7 +4904,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept :
- _type(type_t::NONE), _form(form_t::NONE), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
@@ -4884,6 +4918,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
 		this->_type = uri._type;
 		// Устанавливаем вид записи адреса
 		this->_form = uri._form;
+		// Устанавливаем признак пути, ведущего от корня
+		this->_rooted = uri._rooted;
 		// Перемещаем атрибуты URI
 		this->_attr = ::move(uri._attr);
 		// Перемещаем хост URI
@@ -4934,7 +4970,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept :
- _type(type_t::NONE), _form(form_t::NONE), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
@@ -4948,6 +4984,8 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 		this->_type = uri._type;
 		// Устанавливаем вид записи адреса
 		this->_form = uri._form;
+		// Устанавливаем признак пути, ведущего от корня
+		this->_rooted = uri._rooted;
 		// Копируем хост URI
 		this->_path = uri._path;
 		// Копируем параметры URI
@@ -5104,7 +5142,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
  *
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept :
- _type(type_t::NONE), _form(form_t::NONE), _scheme{""}, _fragment{""},
+ _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _scheme{""}, _fragment{""},
  _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(fmk), _log(log) {
 	// Инициализируем объект работы с сетевыми адресами
 	this->_addr = make_unique <net_addr_t> (fmk, log);
