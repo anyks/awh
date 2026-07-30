@@ -198,6 +198,38 @@ namespace awh {
 			 *
 			 */
 			void appendPort(string & result, const uint16_t port, const format_t format) const noexcept;
+		private:
+			/**
+			 * @brief Метод добавления сегментов пути URI в результат
+			 *
+			 * @param result  результат, в который добавляются сегменты пути
+			 * @param leading флаг записи разделителя перед первым сегментом пути
+			 *
+			 */
+			void appendPath(string & result, const bool leading) const noexcept;
+			/**
+			 * @brief Метод проверки наличия параметров URI для записи
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool hasQuery() const noexcept;
+			/**
+			 * @brief Метод добавления пар ключ-значение параметров URI в результат
+			 *
+			 * @param result    результат, в который добавляются параметры
+			 * @param separator флаг записи разделителя перед строкой параметров
+			 * @param callback  флаг вызова функции обратного вызова, дающей добавочный параметр
+			 *
+			 */
+			void appendQuery(string & result, const bool separator, const bool callback) const noexcept;
+			/**
+			 * @brief Метод добавления относительного URI-запроса в результат
+			 *
+			 * @param result результат, в который добавляется URI-запрос
+			 *
+			 */
+			void appendRequest(string & result) const noexcept;
 		public:
 			/**
 			 * @brief Метод очистки URI
@@ -381,6 +413,16 @@ namespace awh {
 			/**
 			 * @brief Метод установки функции обратного вызова для генерации параметра URI (например, для генерации контрольной суммы)
 			 *
+			 * @details Функция обратного вызова даёт добавочный параметр URI, и он
+			 *          дописывается в конец строки параметров при генерации полного
+			 *          URI и относительного URI-запроса - в том числе и тогда, когда
+			 *          собственных параметров у URI нет.
+			 *
+			 * @note    Генерация строки параметров отдельным элементом функцию
+			 *          обратного вызова не вызывает: по этой самой строке она обычно
+			 *          и считает контрольную сумму, и вызов её оттуда уходил бы в
+			 *          бесконечную рекурсию
+			 *
 			 * @param cb функция обратного вызова для генерации параметра URI
 			 *
 			 */
@@ -444,7 +486,7 @@ namespace awh {
 			 * @return    результат сравнения
 			 *
 			 */
-			bool operator == (const Uniform_Resource_Identifier & uri) noexcept;
+			bool operator == (const Uniform_Resource_Identifier & uri) const noexcept;
 			/**
 			 * @brief Оператор неравенства
 			 *
@@ -452,7 +494,7 @@ namespace awh {
 			 * @return    результат сравнения
 			 *
 			 */
-			bool operator != (const Uniform_Resource_Identifier & uri) noexcept;
+			bool operator != (const Uniform_Resource_Identifier & uri) const noexcept;
 		public:
 			/**
 			 * @brief Оператор парсинга URI-запроса

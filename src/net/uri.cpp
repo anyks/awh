@@ -22,6 +22,7 @@
  */
 #include <array>
 #include <cctype>
+#include <algorithm>
 #include <string_view>
 
 /**
@@ -1094,6 +1095,17 @@ namespace uri {
 	static const array <uint8_t, 256> ADDRESS = makeAddressable();
 
 	/**
+	 * @brief Число пар ключ-значение параметров URI, выстраиваемых без выделения памяти
+	 *
+	 * @details Граница выбрана с запасом к тому, что встречается у адреса на деле:
+	 *          параметров у него единицы, и набор указателей на них укладывается
+	 *          на стеке целиком. Она же оставляет выстраивание в пределах, за
+	 *          которыми оно заводит собственный временный буфер
+	 *
+	 */
+	static constexpr size_t QUERY_INPLACE = 32;
+
+	/**
 	 * @brief Функция определения разновидности сетевого адреса, которой строка способна оказаться
 	 *
 	 * @details Установка хоста URI начиналась перебором разновидностей: строка
@@ -1560,10 +1572,29 @@ const string & awh::Uniform_Resource_Identifier::scheme() const noexcept {
  *
  */
 void awh::Uniform_Resource_Identifier::scheme(string_view scheme) noexcept {
+	// Стандартный порт, соответствующий прежнему типу URI
+	const uint16_t previous = this->defaultPort();
 	// Устанавливаем схему URI, приведённую к нижнему регистру (RFC 3986 6.2.2.1)
 	this->_scheme = uri::lower(scheme);
 	// Устанавливаем тип URI, соответствующий схеме
 	this->_type = uri::schemeType(this->_fmk, scheme);
+	/**
+	 * Порт, стандартный для типа URI, разбор сохраняет в атрибутах адреса, чтобы
+	 * атрибуты годились для подключения и без оглядки на схему. Заданный явно порт
+	 * от сохранённого стандартного этим неотличим, и смена схемы оставляла за
+	 * адресом порт прежней: адрес "http://e.com/x", переведённый на схему HTTPS,
+	 * выходил как "https://e.com:80/x".
+	 *
+	 * Порт поэтому переводится вслед за схемой, но лишь тогда, когда он совпадает
+	 * со стандартным портом прежней схемы: порт, ей не принадлежащий, задан явно,
+	 * и трогать его нельзя
+	 */
+	// Стандартный порт, соответствующий новому типу URI
+	const uint16_t current = this->defaultPort();
+	// Если стандартный порт сменился вместе со схемой, а прежний стоял в адресе
+	if((previous != current) && (previous != 0) && (this->port() == previous))
+		// Устанавливаем порт URI, стандартный для нового типа URI
+		this->port(current);
 }
 /**
  * @brief Метод получения параметров пользователя URI
@@ -1647,8 +1678,12 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 			switch(static_cast <uint8_t> (attr->type)){
 				// Если атрибуты URI адреса являются адресом файловой системы
 				case static_cast <uint8_t> (net::type_t::FS): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					/**
+					 * Если атрибуты URI не заведены либо заведены иной разновидностью,
+					 * заводим их заново: приведение атрибутов одной разновидности к
+					 * другой разновидностей не меняет, и запись пошла бы не в те поля
+					 */
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FS))
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_uds_t> ();
 					// Если путь к сокету в атрибутах URI адреса не инициализирован
@@ -1660,8 +1695,12 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 				} break;
 				// Если атрибуты URI адреса являются FQDN-адресом
 				case static_cast <uint8_t> (net::type_t::FQDN): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					/**
+					 * Если атрибуты URI не заведены либо заведены иной разновидностью,
+					 * заводим их заново: приведение атрибутов одной разновидности к
+					 * другой разновидностей не меняет, и запись пошла бы не в те поля
+					 */
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FQDN))
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_fqdn_t> ();
 					// Копируем порт хоста из атрибутов URI адреса
@@ -1736,8 +1775,18 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 					}
 				} break;
 			}
-			// Устанавливаем тип атрибутов URI адреса
-			this->_attr->type = attr->type;
+			/**
+			 * Разновидность заведённым атрибутам отдельно не проставляется: её
+			 * несёт сам конструктор атрибутов каждой разновидности, а разбор выше
+			 * заводит их заново, если разновидность не совпала.
+			 *
+			 * Прежде разновидность записывалась следом за разбором и без оглядки
+			 * на то, завелись ли атрибуты вообще. Разновидностей же у адреса
+			 * больше, чем модуль URI различает: адрес аппаратный и вовсе не
+			 * определённый в разбор не попадают. Атрибуты сетевого адреса,
+			 * только что заведённые, разновидности ещё не несут, и установка их
+			 * пустому объекту URI разыменовывала пустой указатель
+			 */
 		}
 	/**
 	 * Если возникает ошибка
@@ -2289,6 +2338,208 @@ void awh::Uniform_Resource_Identifier::appendPort(string & result, const uint16_
 	}
 }
 /**
+ * @brief Метод добавления сегментов пути URI в результат
+ *
+ * @param result  результат, в который добавляются сегменты пути
+ * @param leading флаг записи разделителя перед первым сегментом пути
+ *
+ */
+void awh::Uniform_Resource_Identifier::appendPath(string & result, const bool leading) const noexcept {
+	/**
+	 * Перебираем все сегменты пути URI
+	 */
+	for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
+		/**
+		 * Разделитель ставится перед каждым сегментом у пути, ведущего от корня,
+		 * и лишь между сегментами у пути опакового адреса, записанного сразу за
+		 * двоеточием схемы
+		 */
+		if(leading || (i != this->_path.begin()))
+			// Добавляем разделитель перед сегментом пути URI
+			result.append(1, '/');
+		// Добавляем сегмент пути URI в результат
+		uri::encode(result, * i, item_t::PATH, this->_log);
+	}
+}
+/**
+ * @brief Метод проверки наличия параметров URI для записи
+ *
+ * @return результат проверки
+ *
+ */
+bool awh::Uniform_Resource_Identifier::hasQuery() const noexcept {
+	/**
+	 * Строку параметров даёт не только само хранилище параметров, но и функция
+	 * обратного вызова: ей отведён добавочный параметр, которым подписывается
+	 * запрос. Строка поэтому считается имеющейся и при пустом хранилище, если
+	 * функция обратного вызова установлена
+	 */
+	return (!this->_query.empty() || (this->_callback != nullptr));
+}
+/**
+ * @brief Метод добавления пар ключ-значение параметров URI в результат
+ *
+ * @param result    результат, в который добавляются параметры
+ * @param separator флаг записи разделителя перед строкой параметров
+ * @param callback  флаг вызова функции обратного вызова, дающей добавочный параметр
+ *
+ */
+void awh::Uniform_Resource_Identifier::appendQuery(string & result, const bool separator, const bool callback) const noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Позиция, с которой начинается запись строки параметров URI
+		const size_t offset = result.size();
+		// Если требуется разделитель, добавляем его перед строкой параметров URI
+		if(separator)
+			// Добавляем разделитель строки параметров URI
+			result.append(1, '?');
+		// Число пар ключ-значение параметров URI
+		const size_t count = this->_query.size();
+		// Если пары ключ-значение параметров URI есть
+		if(count > 0){
+			/**
+			 * Порядок пар в строке параметров стандартом не задан, но сама строка
+			 * обязана получаться одна и та же: по строке запроса считается подпись и
+			 * метка изменения ресурса, по ней же сличаются адреса и ведётся учёт
+			 * ответов в хранилище. Хранилище параметров обходится в порядке своих
+			 * корзин, а порядок этот зависит от того, в каком порядке пары в него
+			 * заносились, и пересборка адреса из собственной же строки его меняла:
+			 * адрес "?a=1&b=2&c=3" на каждом обороте перекладывался между двумя
+			 * видами и ни к одному из них не сходился.
+			 *
+			 * Пары поэтому выстраиваются по ключу, и выстраивание это устойчиво:
+			 * совпадающие по ключу пары хранилище держит подряд и в порядке их
+			 * занесения, а порядок этот значим - параметры "?sort=name&sort=age"
+			 * задают очерёдность, и перестановка значений меняет смысл запроса.
+			 * Устойчивое выстраивание оставляет их друг относительно друга как есть,
+			 * а от порядка занесения самих ключей не зависит, и строка получается
+			 * одна и та же при любом числе оборотов.
+			 *
+			 * Выстраиваются не сами пары, а указатели на них, и набор указателей
+			 * размещается на стеке: параметров у адреса единицы, и выделение памяти
+			 * под их перечисление стоило бы дороже самого выстраивания
+			 */
+			// Набор указателей на пары ключ-значение параметров URI, размещаемый на стеке
+			const pair <const string, string> * buffer[uri::QUERY_INPLACE];
+			// Набор указателей на пары ключ-значение параметров URI, размещаемый в куче
+			vector <const pair <const string, string> *> spare;
+			// Начало набора указателей на пары ключ-значение параметров URI
+			const pair <const string, string> ** pairs = buffer;
+			// Если пар больше, чем вмещает набор на стеке, размещаем набор в куче
+			if(count > uri::QUERY_INPLACE){
+				// Выделяем память под набор указателей на пары ключ-значение параметров URI
+				spare.resize(count);
+				// Переносим начало набора указателей в кучу
+				pairs = spare.data();
+			}
+			// Позиция записи очередного указателя на пару ключ-значение параметров URI
+			size_t index = 0;
+			/**
+			 * Перебираем все пары ключ-значение параметров URI
+			 */
+			for(const auto & item : this->_query)
+				// Запоминаем указатель на очередную пару ключ-значение параметров URI
+				pairs[index++] = & item;
+			/**
+			 * Выстраиваем указатели на пары ключ-значение параметров URI по их ключу
+			 */
+			::stable_sort(pairs, pairs + count, [](const pair <const string, string> * first, const pair <const string, string> * second) noexcept -> bool {
+				// Выводим результат сравнения ключей пар
+				return (first->first < second->first);
+			});
+			/**
+			 * Перебираем все выстроенные пары ключ-значение параметров URI
+			 */
+			for(index = 0; index < count; index++){
+				// Добавляем ключ параметра URI в результат
+				uri::encode(result, pairs[index]->first, item_t::QUERY, this->_log);
+				/**
+				 * Разделитель ключа и значения ставится только при непустом значении:
+				 * параметр без значения записывается одним ключом, и приписанный ему
+				 * разделитель менял бы строку параметров при каждом обороте
+				 */
+				if(!pairs[index]->second.empty()){
+					// Добавляем разделитель ключа и значения параметра URI
+					result.append(1, '=');
+					// Добавляем значение параметра URI в результат
+					uri::encode(result, pairs[index]->second, item_t::QUERY, this->_log);
+				}
+				// Добавляем разделитель пар параметров URI
+				result.append(1, '&');
+			}
+		}
+		// Если функция обратного вызова затребована и установлена
+		if(callback && (this->_callback != nullptr)){
+			// Выполняем генерацию добавочного параметра URI
+			const string & item = this->_callback(this);
+			/**
+			 * Если добавочный параметр URI сгенерирован удачно, он встаёт за
+			 * разделителем последней пары и сам разделителем не оканчивается
+			 */
+			if(!item.empty()){
+				// Добавляем добавочный параметр URI в результат
+				result.append(item);
+				// Выходим из метода
+				return;
+			}
+		}
+		/**
+		 * Записанные пары оканчиваются разделителем, и его снимаем. Если же не
+		 * записалось ни одной пары, снимаем и разделитель самой строки параметров:
+		 * прежде строка параметров собиралась лишь при непустом хранилище, и
+		 * подпись, отведённая функции обратного вызова, у адреса без собственных
+		 * параметров пропадала вовсе
+		 */
+		if(count > 0)
+			// Снимаем разделитель последней пары параметров URI
+			result.pop_back();
+		// Снимаем разделитель строки параметров URI, оставшийся без самих параметров
+		else result.resize(offset);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод добавления относительного URI-запроса в результат
+ *
+ * @param result результат, в который добавляется URI-запрос
+ *
+ */
+void awh::Uniform_Resource_Identifier::appendRequest(string & result) const noexcept {
+	// Если путь URI не пустой, то добавляем его в результат
+	if(!this->_path.empty())
+		// Добавляем сегменты пути URI в результат
+		this->appendPath(result, true);
+	// Запрос, пути не имеющий, записывается одной косой чертой
+	else result.append(1, '/');
+	// Добавляем строку параметров URI в результат вместе с её разделителем
+	this->appendQuery(result, true, true);
+	// Если якорь URI не пустой, то добавляем его в результат
+	if(!this->_fragment.empty()){
+		// Добавляем разделитель якоря URI
+		result.append(1, '#');
+		// Добавляем якорь URI в результат
+		uri::encode(result, this->_fragment, item_t::FRAGMENT, this->_log);
+	}
+}
+/**
  * @brief Метод получения порта URI
  *
  * @return порт URI
@@ -2519,8 +2770,14 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 			if(uri::parsePort(port, number)){
 				// Устанавливаем порт URI
 				this->port(number);
-				// Если тип URI не определён, то пытаемся определить его по схеме URI
-				if(this->_type == type_t::NONE){
+				/**
+				 * Схема выводится из номера порта лишь тогда, когда у адреса есть хост:
+				 * порт принадлежит авторити, и в отрыве от хоста он о ресурсе ничего не
+				 * сообщает. Ссылка "//:443/x" хоста не несёт вовсе, а схему из порта
+				 * получала, и собиралась она как "https:/x" - строка эта хоста не имеет,
+				 * но выглядит уже полным адресом
+				 */
+				if((this->_type == type_t::NONE) && (this->_attr != nullptr)){
 					/**
 					 * Определяем тип порта URI адреса
 					 */
@@ -2849,31 +3106,15 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						// Если тип URI является EMAIL
 						case static_cast <uint8_t> (type_t::EMAIL):
 						case static_cast <uint8_t> (type_t::POSTGRESQL): {
-							/**
-							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-							 */
-							for(const string & segment : this->_path){
-								// Добавляем символ "/" перед сегментом пути URI
-								result.append(1, '/');
-								// Добавляем сегмент пути URI в результат
-								uri::encode(result, segment, item_t::PATH, this->_log);
-							}
+							// Добавляем сегменты пути URI в результат
+							this->appendPath(result, true);
 						} break;
 						// Если тип URI является SSH
 						case static_cast <uint8_t> (type_t::SSH): {
 							// Добавляем символ ":" перед сегментом пути URI
 							result.append(1, ':');
-							/**
-							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-							 */
-							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
-								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
-								if(i != this->_path.begin())
-									// Добавляем символ "/" перед сегментом пути URI
-									result.append(1, '/');
-								// Добавляем сегмент пути URI в результат
-								uri::encode(result, * i, item_t::PATH, this->_log);
-							}
+							// Добавляем сегменты пути URI в результат
+							this->appendPath(result, false);
 						} break;
 						// Если тип URI является Scheme
 						case static_cast <uint8_t> (type_t::SCHEME): {
@@ -2885,28 +3126,12 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							 * склеивались
 							 */
 							if(this->_attr != nullptr){
-								/**
-								 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-								 */
-								for(const string & segment : this->_path){
-									// Добавляем символ "/" перед сегментом пути URI
-									result.append(1, '/');
-									// Добавляем сегмент пути URI в результат
-									uri::encode(result, segment, item_t::PATH, this->_log);
-								}
+								// Добавляем сегменты пути URI в результат
+								this->appendPath(result, true);
 							// Если авторити у URI нет, путь записывается сразу за двоеточием
 							} else {
-								/**
-								 * Добавляем символ "/" между сегментами пути URI и добавляем сегменты пути URI в результат
-								 */
-								for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
-									// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
-									if(i != this->_path.begin())
-										// Добавляем символ "/" перед сегментом пути URI
-										result.append(1, '/');
-									// Добавляем сегмент пути URI в результат
-									uri::encode(result, * i, item_t::PATH, this->_log);
-								}
+								// Добавляем сегменты пути URI в результат
+								this->appendPath(result, false);
 							}
 						} break;
 					}
@@ -2936,8 +3161,8 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						break;
 					}
 				}
-				// Если параметры URI не пустые, то добавляем их в результат
-				if(!this->_query.empty()){
+				// Если параметры URI есть, то добавляем их в результат
+				if(this->hasQuery()){
 					/**
 					 * Определяем тип URI адреса по схеме URI
 					 */
@@ -2963,40 +3188,8 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						// Если тип URI является EMAIL
 						case static_cast <uint8_t> (type_t::EMAIL):
 						case static_cast <uint8_t> (type_t::POSTGRESQL): {
-							// Добавляем символ "?" перед первой парой ключ-значение параметров URI
-							result.append("?");
-							/**
-							 * Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
-							 */
-							for(const auto & [key, value] : this->_query){
-								// Добавляем ключ параметра URI в результат
-								uri::encode(result, key, item_t::QUERY, this->_log);
-								/**
-								 * Разделитель ключа и значения ставится только при непустом значении:
-								 * параметр без значения записывается одним ключом, и приписанный ему
-								 * разделитель менял бы строку параметров при каждом обороте
-								 */
-								if(!value.empty()){
-									// Добавляем разделитель ключа и значения параметра URI
-									result.append(1, '=');
-									// Добавляем значение параметра URI в результат
-									uri::encode(result, value, item_t::QUERY, this->_log);
-								}
-								// Добавляем разделитель пар параметров URI
-								result.append(1, '&');
-							}
-							// Если функция обратного вызова установлена
-							if(this->_callback != nullptr){
-								// Выполняем генерацию параметров URI с помощью функции обратного вызова
-								const string & item = this->_callback(this);
-								// Если параметры URI, сгенерированные удачно
-								if(!item.empty())
-									// Вызываем функцию обратного вызова и добавляем её результат в результат
-									result.append(item);
-								// Удаляем повисший разделитель, если функция обратного вызова ничего не дала
-								else result.pop_back();
-							// Удаляем последний символ "&" из результата
-							} else result.pop_back();
+							// Добавляем строку параметров URI в результат вместе с её разделителем
+							this->appendQuery(result, true, true);
 						} break;
 					}
 				}
@@ -3081,31 +3274,15 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						// Если тип URI является EMAIL
 						case static_cast <uint8_t> (type_t::EMAIL):
 						case static_cast <uint8_t> (type_t::POSTGRESQL): {
-							/**
-							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-							 */
-							for(const string & segment : this->_path){
-								// Добавляем символ "/" перед сегментом пути URI
-								result.append(1, '/');
-								// Добавляем сегмент пути URI в результат
-								uri::encode(result, segment, item_t::PATH, this->_log);
-							}
+							// Добавляем сегменты пути URI в результат
+							this->appendPath(result, true);
 						} break;
 						// Если тип URI является SSH
 						case static_cast <uint8_t> (type_t::SSH): {
 							// Добавляем символ ":" перед сегментом пути URI
 							result.append(1, ':');
-							/**
-							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-							 */
-							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
-								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
-								if(i != this->_path.begin())
-									// Добавляем символ "/" перед сегментом пути URI
-									result.append(1, '/');
-								// Добавляем сегмент пути URI в результат
-								uri::encode(result, * i, item_t::PATH, this->_log);
-							}
+							// Добавляем сегменты пути URI в результат
+							this->appendPath(result, false);
 						} break;
 						// Если тип URI является Scheme
 						case static_cast <uint8_t> (type_t::SCHEME): {
@@ -3117,28 +3294,12 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							 * склеивались
 							 */
 							if(this->_attr != nullptr){
-								/**
-								 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-								 */
-								for(const string & segment : this->_path){
-									// Добавляем символ "/" перед сегментом пути URI
-									result.append(1, '/');
-									// Добавляем сегмент пути URI в результат
-									uri::encode(result, segment, item_t::PATH, this->_log);
-								}
+								// Добавляем сегменты пути URI в результат
+								this->appendPath(result, true);
 							// Если авторити у URI нет, путь записывается сразу за двоеточием
 							} else {
-								/**
-								 * Добавляем символ "/" между сегментами пути URI и добавляем сегменты пути URI в результат
-								 */
-								for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
-									// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
-									if(i != this->_path.begin())
-										// Добавляем символ "/" перед сегментом пути URI
-										result.append(1, '/');
-									// Добавляем сегмент пути URI в результат
-									uri::encode(result, * i, item_t::PATH, this->_log);
-								}
+								// Добавляем сегменты пути URI в результат
+								this->appendPath(result, false);
 							}
 						} break;
 					}
@@ -3171,8 +3332,8 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 			} break;
 			// Если режим элемента URI для генерации является параметрами, то генерируем параметры URI
 			case static_cast <uint8_t> (item_t::QUERY): {
-				// Если параметры URI не пустые, то добавляем их в результат
-				if(!this->_query.empty()){
+				// Если параметры URI есть, то добавляем их в результат
+				if(this->hasQuery()){
 					/**
 					 * Определяем тип URI адреса по схеме URI
 					 */
@@ -3199,27 +3360,11 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::EMAIL):
 						case static_cast <uint8_t> (type_t::POSTGRESQL): {
 							/**
-							 * Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
+							 * Строка параметров собирается без добавочного параметра, который
+							 * даёт функция обратного вызова: по этой самой строке она подпись
+							 * и считает, и вызов её отсюда уходил бы в бесконечную рекурсию
 							 */
-							for(const auto & [key, value] : this->_query){
-								// Добавляем ключ параметра URI в результат
-								uri::encode(result, key, item_t::QUERY, this->_log);
-								/**
-								 * Разделитель ключа и значения ставится только при непустом значении:
-								 * параметр без значения записывается одним ключом, и приписанный ему
-								 * разделитель менял бы строку параметров при каждом обороте
-								 */
-								if(!value.empty()){
-									// Добавляем разделитель ключа и значения параметра URI
-									result.append(1, '=');
-									// Добавляем значение параметра URI в результат
-									uri::encode(result, value, item_t::QUERY, this->_log);
-								}
-								// Добавляем разделитель пар параметров URI
-								result.append(1, '&');
-							}
-							// Удаляем последний символ "&" из результата
-							result.pop_back();
+							this->appendQuery(result, false, false);
 						} break;
 					}
 				}
@@ -3297,65 +3442,10 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 					case static_cast <uint8_t> (type_t::REDIS):
 					case static_cast <uint8_t> (type_t::MYSQL):
 					case static_cast <uint8_t> (type_t::SOCKS5):
-					case static_cast <uint8_t> (type_t::POSTGRESQL): {
-						// Если путь URI не пустой, то добавляем его в результат
-						if(!this->_path.empty()){
-							/**
-							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-							 */
-							for(const string & segment : this->_path){
-								// Добавляем символ "/" перед сегментом пути URI
-								result.append(1, '/');
-								// Добавляем сегмент пути URI в результат
-								uri::encode(result, segment, item_t::PATH, this->_log);
-							}
-						// Если путь URI пустой, но параметры URI не пустые, то добавляем символ "/" в результат перед параметрами URI
-						} else result.append(1, '/');
-						// Если параметры URI не пустые, то добавляем их в результат
-						if(!this->_query.empty()){
-							// Добавляем символ "?" перед первой парой ключ-значение параметров URI
-							result.append("?");
-							/**
-							 * Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
-							 */
-							for(const auto & [key, value] : this->_query){
-								// Добавляем ключ параметра URI в результат
-								uri::encode(result, key, item_t::QUERY, this->_log);
-								/**
-								 * Разделитель ключа и значения ставится только при непустом значении:
-								 * параметр без значения записывается одним ключом, и приписанный ему
-								 * разделитель менял бы строку параметров при каждом обороте
-								 */
-								if(!value.empty()){
-									// Добавляем разделитель ключа и значения параметра URI
-									result.append(1, '=');
-									// Добавляем значение параметра URI в результат
-									uri::encode(result, value, item_t::QUERY, this->_log);
-								}
-								// Добавляем разделитель пар параметров URI
-								result.append(1, '&');
-							}
-							// Если функция обратного вызова установлена
-							if(this->_callback != nullptr){
-								// Выполняем генерацию параметров URI с помощью функции обратного вызова
-								const string & item = this->_callback(this);
-								// Если параметры URI, сгенерированные удачно
-								if(!item.empty())
-									// Вызываем функцию обратного вызова и добавляем её результат в результат
-									result.append(item);
-								// Удаляем повисший разделитель, если функция обратного вызова ничего не дала
-								else result.pop_back();
-							// Удаляем последний символ "&" из результата
-							} else result.pop_back();
-						}
-						// Если якорь URI не пустой, то добавляем его в результат
-						if(!this->_fragment.empty()){
-							// Добавляем разделитель якоря URI
-							result.append(1, '#');
-							// Добавляем якорь URI в результат
-							uri::encode(result, this->_fragment, item_t::FRAGMENT, this->_log);
-						}
-					} break;
+					case static_cast <uint8_t> (type_t::POSTGRESQL):
+						// Добавляем относительный URI-запрос в результат
+						this->appendRequest(result);
+					break;
 					// Если тип URI является E-mail или Scheme, то добавляем схему URI в результат без "://"
 					case static_cast <uint8_t> (type_t::EMAIL): {
 						// Добавляем параметры пользователя URI в результат
@@ -3436,23 +3526,30 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							} break;
 						}
 					} break;
-					// Если тип URI является SSH или Scheme
+					// Если тип URI является SSH
 					case static_cast <uint8_t> (type_t::SSH):
+						// Добавляем сегменты пути URI в результат
+						this->appendPath(result, false);
+					break;
+					// Если тип URI является Scheme
 					case static_cast <uint8_t> (type_t::SCHEME): {
-						// Если путь URI не пустой, то добавляем его в результат
-						if(!this->_path.empty()){
-							/**
-							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
-							 */
-							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
-								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
-								if(i != this->_path.begin())
-									// Добавляем символ "/" перед сегментом пути URI
-									result.append(1, '/');
-								// Добавляем сегмент пути URI в результат
-								uri::encode(result, * i, item_t::PATH, this->_log);
-							}
-						}
+						/**
+						 * У произвольной схемы авторити может быть, а может и не быть.
+						 * Запрос при её наличии строится как у всякого иерархического
+						 * адреса - путём от корня с параметрами и якорем, - а при
+						 * отсутствии несёт один лишь путь, записанный за двоеточием.
+						 *
+						 * Строился он всегда вторым способом, и запрос к адресу
+						 * "custom://host.com/a/b?c=1#d" выходил как "a/b": ведущей косой
+						 * черты у него не было, а параметры с якорем пропадали вовсе.
+						 * Запрос же к адресу "custom://host.com/?c=1" выходил и вовсе
+						 * пустым, тогда как пустой строки запроса не бывает
+						 */
+						if(this->_attr != nullptr)
+							// Добавляем относительный URI-запрос в результат
+							this->appendRequest(result);
+						// Добавляем сегменты пути URI в результат, если авторити у URI нет
+						else this->appendPath(result, false);
 					} break;
 				}
 			} break;
@@ -3565,7 +3662,7 @@ awh::Uniform_Resource_Identifier::operator const unordered_multimap <string, str
  * @return    результат сравнения
  *
  */
-bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Identifier & uri) noexcept {
+bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Identifier & uri) const noexcept {
 	// Переменная результата
 	bool result = true;
 	/**
@@ -3750,7 +3847,7 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
  * @return    результат сравнения
  *
  */
-bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Identifier & uri) noexcept {
+bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Identifier & uri) const noexcept {
 	// Переменная результата
 	bool result = true;
 	/**
@@ -4020,6 +4117,14 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		this->_user.password = ::move(uri._user.password);
 		// Перемещаем логин пользователя URI
 		this->_user.username = ::move(uri._user.username);
+		/**
+		 * Обработчик, дающий добавочный параметр URI, переносится вместе с самим
+		 * адресом: обработчиком этим подписывается строка запроса, и объект,
+		 * полученный копированием подписанного, подписывать переставал - разница
+		 * обнаруживалась уже на стороне, проверяющей подпись
+		 */
+		// Перемещаем обработчик, дающий добавочный параметр URI
+		this->_callback = ::move(uri._callback);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -4067,6 +4172,14 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		this->_user.password = uri._user.password;
 		// Копируем логин пользователя URI
 		this->_user.username = uri._user.username;
+		/**
+		 * Обработчик, дающий добавочный параметр URI, копируется вместе с самим
+		 * адресом: обработчиком этим подписывается строка запроса, и объект,
+		 * полученный копированием подписанного, подписывать переставал - разница
+		 * обнаруживалась уже на стороне, проверяющей подпись
+		 */
+		// Копируем обработчик, дающий добавочный параметр URI
+		this->_callback = uri._callback;
 		// Если атрибуты URI не пустые
 		if(uri._attr != nullptr){
 			/**
@@ -4075,8 +4188,12 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 			switch(static_cast <uint8_t> (uri._attr->type)){
 				// Если атрибуты URI адреса являются адресом файловой системы
 				case static_cast <uint8_t> (net::type_t::FS): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					/**
+					 * Если атрибуты URI не заведены либо заведены иной разновидностью,
+					 * заводим их заново: приведение атрибутов одной разновидности к
+					 * другой разновидностей не меняет, и запись пошла бы не в те поля
+					 */
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FS))
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_uds_t> ();
 					// Получаем атрибуты URI адреса
@@ -4090,8 +4207,12 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 				} break;
 				// Если атрибуты URI адреса являются FQDN-адресом
 				case static_cast <uint8_t> (net::type_t::FQDN): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					/**
+					 * Если атрибуты URI не заведены либо заведены иной разновидностью,
+					 * заводим их заново: приведение атрибутов одной разновидности к
+					 * другой разновидностей не меняет, и запись пошла бы не в те поля
+					 */
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FQDN))
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_fqdn_t> ();
 					// Получаем атрибуты URI адреса
@@ -4160,9 +4281,18 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 					}
 				} break;
 			}
-			// Устанавливаем тип атрибутов URI адреса
-			this->_attr->type = uri._attr->type;
-		}
+			/**
+			 * Разновидность заведённым атрибутам отдельно не проставляется: её
+			 * несёт сам конструктор атрибутов каждой разновидности, а разбор выше
+			 * заводит их заново, если разновидность не совпала
+			 */
+		/**
+		 * Атрибуты, которых у источника нет, снимаются и с получателя: прежде
+		 * получатель их за собой оставлял, и присваивание адреса доменного
+		 * сокета адресу с сетевым адресом давало объект, несущий и путь к сокету,
+		 * и IP-адрес с портом от прежнего адреса
+		 */
+		} else this->_attr.reset(nullptr);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -4217,6 +4347,14 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
 		this->_user.password = ::move(uri._user.password);
 		// Перемещаем логин пользователя URI
 		this->_user.username = ::move(uri._user.username);
+		/**
+		 * Обработчик, дающий добавочный параметр URI, переносится вместе с самим
+		 * адресом: обработчиком этим подписывается строка запроса, и объект,
+		 * полученный копированием подписанного, подписывать переставал - разница
+		 * обнаруживалась уже на стороне, проверяющей подпись
+		 */
+		// Перемещаем обработчик, дающий добавочный параметр URI
+		this->_callback = ::move(uri._callback);
 		// Инициализируем объект работы с сетевыми адресами
 		this->_addr = make_unique <net_addr_t> (this->_fmk, this->_log);
 	/**
@@ -4269,6 +4407,14 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 		this->_user.password = uri._user.password;
 		// Копируем логин пользователя URI
 		this->_user.username = uri._user.username;
+		/**
+		 * Обработчик, дающий добавочный параметр URI, копируется вместе с самим
+		 * адресом: обработчиком этим подписывается строка запроса, и объект,
+		 * полученный копированием подписанного, подписывать переставал - разница
+		 * обнаруживалась уже на стороне, проверяющей подпись
+		 */
+		// Копируем обработчик, дающий добавочный параметр URI
+		this->_callback = uri._callback;
 		// Инициализируем объект работы с сетевыми адресами
 		this->_addr = make_unique <net_addr_t> (this->_fmk, this->_log);
 		// Если атрибуты URI не пустые
@@ -4279,8 +4425,12 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 			switch(static_cast <uint8_t> (uri._attr->type)){
 				// Если атрибуты URI адреса являются адресом файловой системы
 				case static_cast <uint8_t> (net::type_t::FS): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					/**
+					 * Если атрибуты URI не заведены либо заведены иной разновидностью,
+					 * заводим их заново: приведение атрибутов одной разновидности к
+					 * другой разновидностей не меняет, и запись пошла бы не в те поля
+					 */
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FS))
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_uds_t> ();
 					// Получаем атрибуты URI адреса
@@ -4294,8 +4444,12 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 				} break;
 				// Если атрибуты URI адреса являются FQDN-адресом
 				case static_cast <uint8_t> (net::type_t::FQDN): {
-					// Если атрибуты URI не инициализированы
-					if(this->_attr == nullptr)
+					/**
+					 * Если атрибуты URI не заведены либо заведены иной разновидностью,
+					 * заводим их заново: приведение атрибутов одной разновидности к
+					 * другой разновидностей не меняет, и запись пошла бы не в те поля
+					 */
+					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FQDN))
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_fqdn_t> ();
 					// Получаем атрибуты URI адреса
@@ -4364,8 +4518,11 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 					}
 				} break;
 			}
-			// Устанавливаем тип атрибутов URI адреса
-			this->_attr->type = uri._attr->type;
+			/**
+			 * Разновидность заведённым атрибутам отдельно не проставляется: её
+			 * несёт сам конструктор атрибутов каждой разновидности, а разбор выше
+			 * заводит их заново, если разновидность не совпала
+			 */
 		}
 	/**
 	 * Если возникает ошибка

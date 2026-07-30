@@ -1133,3 +1133,355 @@ TEST_F(UriFixture, QueryKeepsRepeatedKeysTest){
 	// Проверяем наличие неравенства
 	ASSERT_TRUE(other != (* this->_uri));
 }
+
+/**
+ * @brief Тест устойчивости атрибутов URI к смене их разновидности
+ *
+ */
+TEST_F(UriFixture, AttributesKindChangeIsSafeTest){
+	// Выполняем разбор адреса с сетевым адресом, заводящего атрибуты сетевого адреса
+	this->_uri->parse("http://127.0.0.1:8080/x");
+	// Атрибуты обязаны оказаться атрибутами сетевого адреса
+	ASSERT_EQ(awh::net::type_t::IPV4, this->_uri->attr()->type);
+	/**
+	 * Подставляем поверх сетевых атрибуты имени: приведение атрибутов одной
+	 * разновидности к другой разновидностей не меняет, и запись прежде шла не в те поля
+	 */
+	awh::net::attr_fqdn_t fqdn;
+	// Устанавливаем доменное имя хоста
+	fqdn.domain = "example.com";
+	// Устанавливаем порт хоста
+	fqdn.port = 443;
+	// Выполняем установку атрибутов имени
+	ASSERT_NO_THROW(this->_uri->attr(& fqdn));
+	// Атрибуты обязаны смениться целиком
+	ASSERT_EQ(awh::net::type_t::FQDN, this->_uri->attr()->type);
+	// Хост обязан отдаться доменным именем
+	ASSERT_EQ("example.com", this->_uri->host());
+	// Порт обязан отдаться установленным
+	ASSERT_EQ(443, this->_uri->port());
+	/**
+	 * Подставляем поверх атрибутов имени атрибуты доменного сокета
+	 */
+	awh::net::attr_uds_t uds;
+	// Заводим объект пути к сокету
+	uds.path = std::make_unique <awh::net::addr_fs_t> ();
+	// Устанавливаем путь к сокету
+	awh_cast <awh::net::addr_fs_t *> (uds.path.get())->address = "/var/run/x.sock";
+	// Выполняем установку атрибутов доменного сокета
+	ASSERT_NO_THROW(this->_uri->attr(& uds));
+	// Атрибуты обязаны смениться целиком
+	ASSERT_EQ(awh::net::type_t::FS, this->_uri->attr()->type);
+	// Хост обязан отдаться путём к сокету
+	ASSERT_EQ("/var/run/x.sock", this->_uri->host());
+}
+
+/**
+ * @brief Тест установки атрибутов URI с разновидностью, модулю неизвестной
+ *
+ */
+TEST_F(UriFixture, AttributesOfUnknownKindAreIgnoredTest){
+	/**
+	 * Атрибуты сетевого адреса, только что заведённые, разновидности ещё не
+	 * несут: разновидность им проставляется отдельно, уже после заведения
+	 */
+	awh::net::attr_net_t fresh;
+	// Разновидности у только что заведённых атрибутов быть не должно
+	ASSERT_EQ(awh::net::type_t::NONE, fresh.type);
+	// Установка таких атрибутов пустому объекту URI не должна его ронять
+	ASSERT_NO_THROW(this->_uri->attr(& fresh));
+	// Атрибутов у объекта URI завестись не должно
+	ASSERT_TRUE(this->_uri->attr() == nullptr);
+	// Хост обязан отдаться пустым
+	ASSERT_EQ("", this->_uri->host());
+	// Выполняем разбор адреса, заводящего атрибуты имени
+	this->_uri->parse("http://example.com/x");
+	// Установка атрибутов неизвестной разновидности не должна трогать заведённые
+	ASSERT_NO_THROW(this->_uri->attr(& fresh));
+	// Разновидность заведённых атрибутов обязана сохраниться
+	ASSERT_EQ(awh::net::type_t::FQDN, this->_uri->attr()->type);
+	// Хост обязан сохраниться
+	ASSERT_EQ("example.com", this->_uri->host());
+}
+
+/**
+ * @brief Тест присваивания объекта URI, атрибутов не имеющего
+ *
+ */
+TEST_F(UriFixture, AssignmentDropsStaleAttributesTest){
+	// Объект-источник с адресом доменного сокета, атрибутов не имеющим
+	awh::uri_t source(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор адреса доменного сокета
+	source.parse("unix:///var/run/x.sock");
+	// Атрибутов у адреса доменного сокета быть не должно
+	ASSERT_TRUE(source.attr() == nullptr);
+	// Заводим получателю атрибуты сетевого адреса
+	this->_uri->parse("http://127.0.0.1:8080/b");
+	// Выполняем присваивание объекта URI
+	ASSERT_NO_THROW((* this->_uri) = source);
+	// Атрибуты получателя обязаны сняться вслед за атрибутами источника
+	ASSERT_TRUE(this->_uri->attr() == nullptr);
+	// Собранный адрес обязан совпасть с адресом источника
+	ASSERT_EQ("unix:///var/run/x.sock", this->_uri->print(awh::uri_t::item_t::URI));
+	// Объект-источник с атрибутами имени
+	awh::uri_t named(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор адреса с доменным именем
+	named.parse("http://example.com/a");
+	// Заводим получателю атрибуты сетевого адреса заново
+	this->_uri->parse("http://127.0.0.1:8080/b");
+	// Выполняем присваивание объекта URI
+	ASSERT_NO_THROW((* this->_uri) = named);
+	// Собранный адрес обязан совпасть с адресом источника
+	ASSERT_EQ("http://example.com/a", this->_uri->print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест переноса функции обратного вызова при копировании объекта URI
+ *
+ */
+TEST_F(UriFixture, CallbackSurvivesCopyTest){
+	// Выполняем разбор адреса с параметрами
+	this->_uri->parse("http://example.com/pay?sum=100");
+	// Устанавливаем функцию обратного вызова, дающую добавочный параметр
+	this->_uri->callback([](const awh::uri_t *) -> std::string { return "sign=1"; });
+	// Ожидаемый адрес с добавочным параметром
+	const std::string expected = "http://example.com/pay?sum=100&sign=1";
+	// Исходный объект обязан дать адрес с добавочным параметром
+	ASSERT_EQ(expected, this->_uri->print(awh::uri_t::item_t::URI));
+	// Копия объекта обязана дать тот же адрес
+	awh::uri_t copy(* this->_uri);
+	// Проверяем адрес, собранный копией объекта
+	ASSERT_EQ(expected, copy.print(awh::uri_t::item_t::URI));
+	// Объект, полученный присваиванием, обязан дать тот же адрес
+	awh::uri_t assigned(this->_fmk.get(), this->_log.get());
+	// Выполняем присваивание объекта URI
+	assigned = (* this->_uri);
+	// Проверяем адрес, собранный полученным объектом
+	ASSERT_EQ(expected, assigned.print(awh::uri_t::item_t::URI));
+	// Объект, полученный перемещением, обязан дать тот же адрес
+	awh::uri_t moved(std::move(* this->_uri));
+	// Проверяем адрес, собранный полученным объектом
+	ASSERT_EQ(expected, moved.print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест устойчивости строки параметров URI к повторной сборке
+ *
+ */
+TEST_F(UriFixture, QueryStringIsStableAcrossRoundTripsTest){
+	// Образцы адресов с параметрами
+	const std::vector <std::string> samples = {
+		"http://example.com/?a=1&b=2&c=3",
+		"http://example.com/?utm_source=x&utm_medium=y&utm_campaign=z&id=42",
+		"http://example.com/?tag=one&tag=two&tag=three",
+		"http://example.com/?a&b=2"
+	};
+	/**
+	 * Перебираем все образцы адресов
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор образца адреса
+		this->_uri->parse(sample);
+		// Строка адреса, полученная первой сборкой
+		const std::string first = this->_uri->print(awh::uri_t::item_t::URI);
+		/**
+		 * Прогоняем адрес через разбор и сборку ещё несколько раз
+		 */
+		for(uint8_t i = 0; i < 4; i++){
+			// Выполняем очистку объекта работы с URI
+			this->_uri->clear();
+			// Выполняем разбор собранной строки адреса
+			this->_uri->parse(first);
+			// Строка адреса обязана получаться одна и та же при любом числе оборотов
+			ASSERT_EQ(first, this->_uri->print(awh::uri_t::item_t::URI)) << "адрес: " << sample;
+		}
+	}
+}
+
+/**
+ * @brief Тест сборки запроса для произвольной схемы URI
+ *
+ */
+TEST_F(UriFixture, RequestOfCustomSchemeKeepsQueryTest){
+	// Выполняем разбор адреса произвольной схемы с авторити
+	this->_uri->parse("custom://host.com/a/b?c=1#d");
+	// Запрос обязан строиться как у всякого иерархического адреса
+	ASSERT_EQ("/a/b?c=1#d", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса произвольной схемы без пути
+	this->_uri->parse("custom://host.com/?c=1");
+	// Пустой строки запроса не бывает: путь обязан свестись к одной косой черте
+	ASSERT_EQ("/?c=1", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор опакового адреса произвольной схемы
+	this->_uri->parse("custom:opaque/path?c=1");
+	// Запрос опакового адреса несёт один лишь путь
+	ASSERT_EQ("opaque/path", this->_uri->print(awh::uri_t::item_t::REQUEST));
+}
+
+/**
+ * @brief Тест перевода порта URI вслед за сменой схемы
+ *
+ */
+TEST_F(UriFixture, DefaultPortFollowsSchemeChangeTest){
+	// Выполняем разбор адреса со схемой HTTP без явно заданного порта
+	this->_uri->parse("http://example.com/x");
+	// Порт обязан оказаться стандартным для схемы HTTP
+	ASSERT_EQ(80, this->_uri->port());
+	// Выполняем смену схемы URI на HTTPS
+	this->_uri->scheme("https");
+	// Порт обязан перевестись вслед за схемой
+	ASSERT_EQ(443, this->_uri->port());
+	// Стандартный порт в строке адреса не записывается
+	ASSERT_EQ("https://example.com/x", this->_uri->print(awh::uri_t::item_t::URI));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса с явно заданным портом
+	this->_uri->parse("http://example.com:8080/x");
+	// Выполняем смену схемы URI на HTTPS
+	this->_uri->scheme("https");
+	// Явно заданный порт схеме не принадлежит, и трогать его нельзя
+	ASSERT_EQ(8080, this->_uri->port());
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("https://example.com:8080/x", this->_uri->print(awh::uri_t::item_t::URI));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса со схемой HTTP
+	this->_uri->parse("http://example.com/x");
+	// Выполняем смену схемы URI на WS, стандартный порт которой тот же
+	this->_uri->scheme("ws");
+	// Порт обязан остаться прежним
+	ASSERT_EQ(80, this->_uri->port());
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("ws://example.com/x", this->_uri->print(awh::uri_t::item_t::URI));
+}
+
+/**
+ * @brief Тест сравнения постоянных объектов URI
+ *
+ */
+TEST_F(UriFixture, ConstantObjectsAreComparableTest){
+	// Выполняем разбор образца адреса
+	this->_uri->parse("http://example.com/x?a=1");
+	// Объект URI для сравнения
+	awh::uri_t other(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор того же образца адреса
+	other.parse("http://example.com/x?a=1");
+	/**
+	 * Сравнение объект не меняет, и постоянные объекты сравнивать оно обязано:
+	 * прежде операторы сравнения постоянными объявлены не были, и адрес,
+	 * полученный по постоянной ссылке, сличить было нельзя
+	 */
+	const awh::uri_t & first = (* this->_uri);
+	// Постоянная ссылка на объект URI для сравнения
+	const awh::uri_t & second = other;
+	// Объекты, разобранные из одного адреса, обязаны совпасть
+	ASSERT_TRUE(first == second);
+	// Неравенства между ними быть не должно
+	ASSERT_FALSE(first != second);
+	// Выполняем разбор иного адреса
+	other.parse("http://example.com/y?a=1");
+	// Объекты, разобранные из разных адресов, совпасть не должны
+	ASSERT_FALSE(first == second);
+	// Проверяем наличие неравенства
+	ASSERT_TRUE(first != second);
+}
+
+/**
+ * @brief Тест подписи URI, собственных параметров не имеющего
+ *
+ */
+TEST_F(UriFixture, CallbackAppliesWithoutOwnQueryTest){
+	// Устанавливаем функцию обратного вызова, дающую добавочный параметр
+	this->_uri->callback([](const awh::uri_t *) -> std::string { return "sign=1"; });
+	/**
+	 * Добавочный параметр, который даёт функция обратного вызова, дописывается и
+	 * тогда, когда собственных параметров у URI нет: прежде строка параметров
+	 * собиралась лишь при непустом их хранилище, и подпись у адреса без
+	 * собственных параметров пропадала вовсе
+	 */
+	// Выполняем разбор адреса с собственным параметром
+	this->_uri->parse("http://example.com/x?a=1");
+	// Добавочный параметр обязан встать за собственным
+	ASSERT_EQ("http://example.com/x?a=1&sign=1", this->_uri->print(awh::uri_t::item_t::URI));
+	// Проверяем строку запроса
+	ASSERT_EQ("/x?a=1&sign=1", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса без собственных параметров
+	this->_uri->parse("http://example.com/x");
+	// Добавочный параметр обязан составить строку параметров целиком
+	ASSERT_EQ("http://example.com/x?sign=1", this->_uri->print(awh::uri_t::item_t::URI));
+	// Проверяем строку запроса
+	ASSERT_EQ("/x?sign=1", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса без собственных параметров, но с якорем
+	this->_uri->parse("http://example.com/x#frag");
+	// Добавочный параметр обязан встать перед якорем
+	ASSERT_EQ("http://example.com/x?sign=1#frag", this->_uri->print(awh::uri_t::item_t::URI));
+	/**
+	 * Строка параметров отдельным элементом функцию обратного вызова не зовёт:
+	 * по этой самой строке она обычно и считает контрольную сумму, и вызов её
+	 * оттуда уходил бы в бесконечную рекурсию
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор адреса с собственным параметром
+	this->_uri->parse("http://example.com/x?a=1");
+	// Строка параметров обязана нести одни лишь собственные параметры
+	ASSERT_EQ("a=1", this->_uri->print(awh::uri_t::item_t::QUERY));
+	// Функция обратного вызова, считающая подпись по строке параметров, рекурсии давать не должна
+	this->_uri->callback([](const awh::uri_t * uri) -> std::string {
+		// Возвращаем контрольную сумму строки параметров URI
+		return ("sign=" + uri->etag(uri->print(awh::uri_t::item_t::QUERY), 8));
+	});
+	// Сборка полного URI подписью рекурсии давать не должна
+	ASSERT_NO_THROW(this->_uri->print(awh::uri_t::item_t::URI));
+	// Подпись обязана попасть в строку адреса
+	ASSERT_NE(std::string::npos, this->_uri->print(awh::uri_t::item_t::URI).find("&sign="));
+}
+
+/**
+ * @brief Тест вывода схемы URI из номера порта
+ *
+ */
+TEST_F(UriFixture, SchemeIsGuessedOnlyWithHostTest){
+	/**
+	 * Схема выводится из номера порта лишь тогда, когда у адреса есть хост: порт
+	 * принадлежит авторити, и в отрыве от хоста он о ресурсе ничего не сообщает.
+	 * Ссылка "//:443/x" хоста не несёт вовсе, а схему из порта получала, и
+	 * собиралась она как "https:/x" - строка эта хоста не имеет, но выглядит уже
+	 * полным адресом
+	 */
+	// Выполняем разбор ссылки сетевого пути без хоста
+	this->_uri->parse("//:443/x");
+	// Схемы у ссылки без хоста быть не должно
+	ASSERT_TRUE(this->_uri->scheme().empty());
+	// Тип URI определиться не должен
+	ASSERT_EQ(awh::uri_t::type_t::NONE, this->_uri->type());
+	// Собранная строка обязана остаться относительной ссылкой
+	ASSERT_EQ("/x", this->_uri->print(awh::uri_t::item_t::URI));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор ссылки сетевого пути с хостом
+	this->_uri->parse("//example.com:443/x");
+	// Схема обязана вывестись из номера порта
+	ASSERT_EQ("https", this->_uri->scheme());
+	// Тип URI обязан определиться
+	ASSERT_EQ(awh::uri_t::type_t::HTTPS, this->_uri->type());
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("https://example.com/x", this->_uri->print(awh::uri_t::item_t::URI));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор ссылки сетевого пути с сетевым адресом
+	this->_uri->parse("//127.0.0.1:3306/x");
+	// Схема обязана вывестись из номера порта
+	ASSERT_EQ("mysql", this->_uri->scheme());
+	// Проверяем строку собранного адреса
+	ASSERT_EQ("mysql://127.0.0.1/x", this->_uri->print(awh::uri_t::item_t::URI));
+}
