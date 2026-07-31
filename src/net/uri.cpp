@@ -239,6 +239,65 @@ namespace uri {
 	[[nodiscard]] static uint16_t schemePort(const fmk_t * fmk, string_view scheme) noexcept;
 
 	/**
+	 * @brief Функция определения разновидности URI по его схеме
+	 *
+	 * @param fmk    объект фреймворка
+	 * @param scheme схема URI
+	 * @return       разновидность URI
+	 *
+	 */
+	[[nodiscard]] static uri_t::type_t schemeType(const fmk_t * fmk, string_view scheme) noexcept;
+
+	/**
+	 * @brief Функция проверки хвоста записи на представление порта
+	 *
+	 * @details Записи "localhost:8080" и "myhost:80/a" схемы не несут: за
+	 *          двоеточием у них стоит номер порта, а не путь. Отличить их от схемы
+	 *          с непрозрачным путём позволяет состав хвоста - у порта он из одних
+	 *          цифр и обрывается разделителем пути, параметров либо якоря
+	 *          (RFC 3986 3.2.3)
+	 *
+	 * @param begin начало хвоста записи
+	 * @param end   конец записи
+	 * @return      результат проверки
+	 *
+	 */
+	[[nodiscard]] static inline bool portLike(const char * begin, const char * end) noexcept {
+		// Число цифр, прочитанных в хвосте записи
+		size_t count = 0;
+		// Накопитель разбираемого номера порта
+		uint32_t number = 0;
+		/**
+		 * Перебираем все символы хвоста записи
+		 */
+		for(const char * letter = begin; letter < end; ++letter){
+			// Разделитель пути, параметров либо якоря обрывает представление порта
+			if(((* letter) == '/') || ((* letter) == '?') || ((* letter) == '#'))
+				// Выводим результат проверки: порт представлен, если цифры были
+				return (count > 0);
+			// Знак, цифрой не являющийся, представление порта отменяет
+			if(((* letter) < '0') || ((* letter) > '9'))
+				// Выводим результат проверки
+				return false;
+			// Накапливаем разбираемый номер порта
+			number = ((number * 10) + static_cast <uint32_t> ((* letter) - '0'));
+			/**
+			 * Число, за пределы разрядности порта вышедшее, приметой его не служит:
+			 * запись "tel:79101234567" - это схема телефонного вызова с номером, а не
+			 * хост "tel" с портом. Признай мы её хостом, негодный порт отменил бы
+			 * разбор целиком, и запись пропала бы вовсе
+			 */
+			if(number > 65535)
+				// Выводим результат проверки
+				return false;
+			// Накапливаем число прочитанных цифр
+			count++;
+		}
+		// Выводим результат проверки: порт представлен, если цифры были
+		return (count > 0);
+	}
+
+	/**
 	 * @brief Парсинг URI в один проход (Single Pass)
 	 *
 	 * @param fmk      объект фреймворка
@@ -351,8 +410,22 @@ namespace uri {
 							 */
 							// Признак того, что за двоеточием стоят две косые черты
 							const bool slashes = (((ptr + 2) < end) && ((* (ptr + 1)) == '/') && ((* (ptr + 2)) == '/'));
+							/**
+							 * Приметой хоста служит не одна лишь точка в имени: записи
+							 * "localhost:8080" и "myhost:80/a" точки не несут, а хостом с
+							 * портом являются - за двоеточием у них стоят одни цифры, а не
+							 * путь. Прежде такая запись читалась как схема "localhost" с
+							 * непрозрачным путём "8080", и обращение шло в никуда.
+							 *
+							 * Схема, разбору знакомая, этому правилу не поддаётся: записи
+							 * "mailto:123" и "urn:123" - это схема с непрозрачным путём, и
+							 * хостом "mailto" с портом 123 они не являются
+							 */
+							// Признак того, что за двоеточием стоит представление порта
+							const bool port = (!slashes && uri::portLike(ptr + 1, end) &&
+								(uri::schemeType(fmk, string_view(tokenBegin, ptr - tokenBegin)) == uri_t::type_t::SCHEME));
 							// Если у кандидата приметы хоста — это домен, а не схема
-							if(guess && !slashes && uri::hostLike(tokenBegin, ptr)){
+							if(guess && !slashes && (port || uri::hostLike(tokenBegin, ptr))){
 								// Помечаем наличие authority без //
 								hasAuthority = true;
 								// Переходим к чтению хоста
@@ -3442,7 +3515,7 @@ void awh::Uniform_Resource_Identifier::query(const unordered_multimap <string, s
  * @return    тип URI
  *
  */
-awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse(string_view uri) noexcept {
+bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -3472,8 +3545,8 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 			 * ("http://host:/"), и разбору оно не мешает (RFC 3986 3.2.3)
 			 */
 			if(!port.empty() && !uri::parsePort(port, number))
-				// Выводим тип URI, оставляя разобранный прежде адрес нетронутым
-				return this->_type;
+				// Выводим отказ от записи, оставляя разобранный прежде адрес нетронутым
+				return false;
 			/**
 			 * Разбор строки URI разрешает её относительно уже разобранной
 			 * (RFC 3986 5.2.2): сервер отдаёт в заголовке Location ссылку, которая
@@ -3815,6 +3888,8 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 				this->_fragment = uri::decode(fragment, this->_log);
 			// Если якорь ссылкой не задан, то очищаем его
 			else this->_fragment.clear();
+			// Выводим согласие с записью: разбор её состоялся и к адресу применён
+			return true;
 		}
 	/**
 	 * Если возникает ошибка
@@ -3834,7 +3909,24 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат
+	// Выводим отказ от записи, оставляя разобранный прежде адрес нетронутым
+	return false;
+}
+/**
+ * @brief Метод парсинга URI-запроса
+ *
+ * @param uri строка URI-запроса для получения параметров
+ * @return    тип URI
+ *
+ */
+awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse(string_view uri) noexcept {
+	/**
+	 * Работу ведёт разрешение записи, а этот метод лишь отдаёт разновидность
+	 * получившегося адреса: два порознь писанных разбора разошлись бы
+	 */
+	// Выполняем разрешение записи относительно разобранного прежде адреса
+	this->resolve(uri);
+	// Выводим разновидность адреса URI
 	return this->_type;
 }
 /**
