@@ -55,7 +55,13 @@ namespace {
 	static constexpr double HOST_FQDN_THRESHOLD = 20000000.0;
 	static constexpr double HOST_IPV6_THRESHOLD = 1500000.0;
 	static constexpr double HOST_SET_THRESHOLD = 600000.0;
-	static constexpr double COMPARE_THRESHOLD = 1000000.0;
+	/**
+	 * @note Порог сличения стоял вплотную к измеренному - миллион против миллиона с
+	 *       десятой долей, - и срабатывал через раз от одного разброса между
+	 *       прогонами. Приведён к принятому двукратному запасу
+	 *
+	 */
+	static constexpr double COMPARE_THRESHOLD = 500000.0;
 	/**
 	 * @brief Пороги количества выделений памяти на одно обращение
 	 *

@@ -3945,6 +3945,64 @@ TEST_F(UriFixture, FormSurvivesRoundTripTest){
 }
 
 /**
+ * @brief Тест сличения адресов, разными видами записи собираемых
+ *
+ * @details Вид записи определяет разделитель схемы и авторити, а сличение его не
+ *          учитывало: записи "custom://user@host/a" и "custom:user@host/a" дают
+ *          разные строки, а объекты их считались равными - для кэша и отсева
+ *          повторов это означало склейку разных адресов в один.
+ *
+ *          Сличается при этом не хранимый вид, а выписываемый: хранимый из
+ *          строки невосстановим - вид копирования по сети, порт несущий,
+ *          выписывается иерархическим, - и сличение его разводило бы адреса,
+ *          различить которые снаружи нечем
+ *
+ */
+TEST_F(UriFixture, FormDistinguishesRecordsTest){
+	// Второй объект работы с URI для сличения
+	awh::uri_t second(this->_fmk.get(), this->_log.get());
+	/**
+	 * Записи, у которых один набор составляющих даёт разные строки
+	 */
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"custom://user@example.com/a/b", "custom:user@example.com/a/b"},
+		{"news://user@example.com/g", "news:user@example.com/g"}
+	};
+	/**
+	 * Перебираем все записи
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объектов работы с URI
+		this->_uri->clear();
+		second.clear();
+		// Выполняем разбор обеих записей
+		this->_uri->parse(sample.first);
+		second.parse(sample.second);
+		// Строки записей обязаны различаться
+		ASSERT_NE(this->_uri->print(awh::uri_t::item_t::URI), second.print(awh::uri_t::item_t::URI))
+			<< "записи: " << sample.first << " и " << sample.second;
+		// Записи, разными строками собираемые, равными быть не могут
+		ASSERT_FALSE((* this->_uri) == second) << "записи: " << sample.first << " и " << sample.second;
+		// Неравенство обязано согласоваться с равенством
+		ASSERT_TRUE((* this->_uri) != second) << "записи: " << sample.first << " и " << sample.second;
+	}
+	/**
+	 * Вид, выписыванию не поддающийся, сличению не мешает: запись копирования по
+	 * сети с непринятым для схемы портом выписывается видом иерархическим, и
+	 * равной ей остаётся запись, тем же видом разобранная
+	 */
+	// Выполняем очистку объектов работы с URI
+	this->_uri->clear();
+	second.clear();
+	// Выполняем разбор записи копирования по сети
+	this->_uri->parse("ssh://git@example.com:2222/repo.git");
+	// Выполняем разбор собранной строки
+	second.parse(this->_uri->print(awh::uri_t::item_t::URI));
+	// Объекты, дающие одну строку, обязаны быть равны
+	ASSERT_TRUE((* this->_uri) == second);
+}
+
+/**
  * @brief Тест снятия зоны при разрешении ссылки с пустой авторити
  *
  */
