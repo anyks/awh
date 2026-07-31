@@ -4433,68 +4433,28 @@ awh::Uniform_Resource_Identifier::operator const unordered_multimap <string, str
 	return this->query();
 }
 /**
- * @brief Оператор сравнения
+ * @brief Метод сличения хостов URI
  *
- * @param uri параметры URI для сравнения
- * @return    результат сравнения
+ * @details Хост сличается по атрибутам, а не по напечатанной записи: у адреса
+ *          сети сличаются его октеты, у имени - строка, а разным разновидностям
+ *          хоста равными не быть никогда. Оттого записи "[::1]" и
+ *          "[0:0:0:0:0:0:0:1]" несут один хост, а имя и адрес, в который оно
+ *          разрешается, - разные
+ *
+ * @note Зона IPv6-адреса здесь не сличается: принадлежит она хосту, но хранится
+ *       отдельно от атрибутов, и сличают её вызывающие
+ *
+ * @param uri объект URI для сличения
+ * @return    результат сличения
  *
  */
-bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Identifier & uri) const noexcept {
-	// Переменная результата
+bool awh::Uniform_Resource_Identifier::sameHost(const Uniform_Resource_Identifier & uri) const noexcept {
+	// Результат сличения хостов URI
 	bool result = true;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем сравнение типов URI
-		result = (this->_type == uri._type);
-		// Если типы URI равны
-		if(result){
-			// Выполняем сравнение размеров схем URI
-			result = (this->_scheme.size() == uri._scheme.size());
-			// Если схемы URI равны
-			if(result)
-				// Выполняем сравнение схем URI
-				result = this->_fmk->compare(this->_scheme, uri._scheme);
-		}
-		// Если типы URI равны
-		if(result){
-			// Выполняем сравнение размеров якорей URI
-			result = (this->_fragment.size() == uri._fragment.size());
-			// Если якоря URI равны
-			if(result)
-				// Выполняем сравнение якорей URI (с учётом регистра, согласно RFC 3986)
-				result = (this->_fragment == uri._fragment);
-		}
-		// Если типы URI равны
-		if(result){
-			// Выполняем сравнение размеров зон IPv6-адресов хостов URI
-			result = (this->_zone.size() == uri._zone.size());
-			// Если зоны IPv6-адресов хостов URI равны
-			if(result)
-				// Выполняем сравнение зон IPv6-адресов хостов URI
-				result = (this->_zone == uri._zone);
-		}
-		// Если типы URI равны
-		if(result){
-			// Выполняем сравнение размеров логинов пользователя URI
-			result = (this->_user.username.size() == uri._user.username.size());
-			// Если параметры пользователя URI равны
-			if(result)
-				// Выполняем сравнение логинов пользователя URI (с учётом регистра)
-				result = (this->_user.username == uri._user.username);
-		}
-		// Если типы URI равны
-		if(result){
-			// Выполняем сравнение размеров параметров пользователя URI
-			result = (this->_user.password.size() == uri._user.password.size());
-			// Если параметры пользователя URI равны
-			if(result)
-				// Выполняем сравнение паролей пользователя URI (с учётом регистра)
-				result = (this->_user.password == uri._user.password);
-		}
-		// Если типы URI равны
-		if(result){
 			// Выполняем сравнение атрибутов URI
 			result = (((this->_attr != nullptr) && (uri._attr != nullptr)) || ((this->_attr == nullptr) && (uri._attr == nullptr)));
 			// Если атрибуты URI равны
@@ -4592,6 +4552,141 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 					}
 				}
 			}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат сличения хостов URI
+	return result;
+}
+/**
+ * @brief Метод сличения происхождений URI
+ *
+ * @details Происхождение ресурса составляют схема, хост и порт (RFC 6454 4):
+ *          учётные данные, путь, параметры и якорь в него не входят, и записи
+ *          "http://user:pw@a.com/x?y#z" и "http://a.com" происходят из одного
+ *          места. Порт сличается по действующему его значению, отчего адрес
+ *          "http://a.com" равнозначен адресу "http://a.com:80".
+ *
+ *          Сличение это чисто адресное: разрешения имён оно не ведёт и
+ *          равнозначности сверх той, что определена самим RFC 3986 -
+ *          приведения регистра схемы и хоста да записи адреса к каноническому
+ *          виду, - не знает. Имя и адрес, в который оно разрешается, происходят
+ *          из разных мест
+ *
+ * @note Запись без схемы либо без авторити происхождения не имеет вовсе, и
+ *       сличение таких записей даёт ложь - в том числе двух одинаковых:
+ *       происхождение неопределённое равным не бывает никакому (RFC 6454 4).
+ *       Решение это намеренно осторожное - ответ этой проверки решает, нести
+ *       ли учётные данные дальше
+ *
+ * @param uri объект URI для сличения
+ * @return    результат сличения
+ *
+ */
+bool awh::Uniform_Resource_Identifier::sameOrigin(const Uniform_Resource_Identifier & uri) const noexcept {
+	// Запись без схемы происхождения не имеет
+	if(this->_scheme.empty() || uri._scheme.empty())
+		// Выводим, что происхождения записей не совпадают
+		return false;
+	// Запись без авторити происхождения не имеет
+	if((this->_attr == nullptr) || (uri._attr == nullptr))
+		// Выводим, что происхождения записей не совпадают
+		return false;
+	// Выполняем сличение схем URI
+	if(!this->_fmk->compare(this->_scheme, uri._scheme))
+		// Выводим, что происхождения записей не совпадают
+		return false;
+	/**
+	 * Зона обозначает область действия адреса локальной связи и хосту принадлежит
+	 * наравне с самим адресом (RFC 6874): адреса "fe80::1%eth0" и "fe80::1%eth1"
+	 * указывают на разные точки
+	 */
+	if(this->_zone != uri._zone)
+		// Выводим, что происхождения записей не совпадают
+		return false;
+	// Выводим результат сличения хостов и портов записей
+	return this->sameHost(uri);
+}
+/**
+ * @brief Оператор сравнения
+ *
+ * @param uri параметры URI для сравнения
+ * @return    результат сравнения
+ *
+ */
+bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Identifier & uri) const noexcept {
+	// Переменная результата
+	bool result = true;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем сравнение типов URI
+		result = (this->_type == uri._type);
+		// Если типы URI равны
+		if(result){
+			// Выполняем сравнение размеров схем URI
+			result = (this->_scheme.size() == uri._scheme.size());
+			// Если схемы URI равны
+			if(result)
+				// Выполняем сравнение схем URI
+				result = this->_fmk->compare(this->_scheme, uri._scheme);
+		}
+		// Если типы URI равны
+		if(result){
+			// Выполняем сравнение размеров якорей URI
+			result = (this->_fragment.size() == uri._fragment.size());
+			// Если якоря URI равны
+			if(result)
+				// Выполняем сравнение якорей URI (с учётом регистра, согласно RFC 3986)
+				result = (this->_fragment == uri._fragment);
+		}
+		// Если типы URI равны
+		if(result){
+			// Выполняем сравнение размеров зон IPv6-адресов хостов URI
+			result = (this->_zone.size() == uri._zone.size());
+			// Если зоны IPv6-адресов хостов URI равны
+			if(result)
+				// Выполняем сравнение зон IPv6-адресов хостов URI
+				result = (this->_zone == uri._zone);
+		}
+		// Если типы URI равны
+		if(result){
+			// Выполняем сравнение размеров логинов пользователя URI
+			result = (this->_user.username.size() == uri._user.username.size());
+			// Если параметры пользователя URI равны
+			if(result)
+				// Выполняем сравнение логинов пользователя URI (с учётом регистра)
+				result = (this->_user.username == uri._user.username);
+		}
+		// Если типы URI равны
+		if(result){
+			// Выполняем сравнение размеров параметров пользователя URI
+			result = (this->_user.password.size() == uri._user.password.size());
+			// Если параметры пользователя URI равны
+			if(result)
+				// Выполняем сравнение паролей пользователя URI (с учётом регистра)
+				result = (this->_user.password == uri._user.password);
+		}
+		// Если типы URI равны
+		if(result){
+			// Выполняем сличение хостов URI
+			result = this->sameHost(uri);
 		}
 		// Если типы URI равны
 		if(result){

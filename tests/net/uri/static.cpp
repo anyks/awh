@@ -3746,3 +3746,101 @@ TEST_F(UriFixture, RequestCarriesNoFragmentTest){
 		ASSERT_NE(std::string::npos, this->_uri->print(awh::uri_t::item_t::URI).find('#')) << "адрес: " << sample.first;
 	}
 }
+
+/**
+ * @brief Тест сличения происхождений URI
+ *
+ */
+TEST_F(UriFixture, SameOriginTest){
+	/**
+	 * Происхождение ресурса составляют схема, хост и порт (RFC 6454 4): учётные
+	 * данные, путь, параметры и якорь в него не входят. Хост сличается по
+	 * атрибутам, а не по напечатанной записи, отчего разные записи одного и того
+	 * же адреса дают одно происхождение
+	 */
+	// Пары записей, происходящих из одного места
+	const std::vector <std::pair <std::string, std::string>> same = {
+		{"http://example.com", "HTTP://EXAMPLE.COM:80/x?y#z"},
+		{"http://user:pw@a.com/x", "http://a.com"},
+		{"http://[::1]/a", "http://[0:0:0:0:0:0:0:1]/b"},
+		{"http://127.0.0.1/", "http://0177.0.0.1/"},
+		{"https://example.com/a", "https://example.com:443/b"},
+		{"http://[fe80::1%25eth0]/a", "http://[fe80::1%25eth0]/b"},
+		{"unix:/var/run/x.sock", "unix:/var/run/x.sock"},
+		{"mailto:a@b.com", "mailto:c@b.com"},
+		{"http://example.com", "http://example.com"}
+	};
+	/**
+	 * Перебираем все пары записей одного происхождения
+	 */
+	for(auto & sample : same){
+		// Первый объект пары
+		awh::uri_t first(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор первой записи пары
+		first.parse(sample.first);
+		// Второй объект пары
+		awh::uri_t second(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор второй записи пары
+		second.parse(sample.second);
+		// Записи эти обязаны происходить из одного места
+		ASSERT_TRUE(first.sameOrigin(second)) << "записи: " << sample.first << " и " << sample.second;
+		// Сличение обязано быть симметричным
+		ASSERT_TRUE(second.sameOrigin(first)) << "записи: " << sample.first << " и " << sample.second;
+	}
+	// Пары записей, происходящих из разных мест
+	const std::vector <std::pair <std::string, std::string>> other = {
+		{"http://example.com", "https://example.com"},
+		{"http://example.com", "http://example.com:8080"},
+		{"http://example.com", "http://other.com"},
+		{"http://example.com", "http://example.com."},
+		{"http://example.com", "http://[::1]"},
+		{"http://127.0.0.1", "http://[::1]"},
+		{"http://[fe80::1%25eth0]/", "http://[fe80::1%25eth1]/"},
+		{"unix:/var/run/x.sock", "unix:/var/run/y.sock"},
+		{"ws://example.com", "wss://example.com"}
+	};
+	/**
+	 * Перебираем все пары записей разного происхождения
+	 */
+	for(auto & sample : other){
+		// Первый объект пары
+		awh::uri_t first(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор первой записи пары
+		first.parse(sample.first);
+		// Второй объект пары
+		awh::uri_t second(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор второй записи пары
+		second.parse(sample.second);
+		// Записи эти обязаны происходить из разных мест
+		ASSERT_FALSE(first.sameOrigin(second)) << "записи: " << sample.first << " и " << sample.second;
+		// Сличение обязано быть симметричным
+		ASSERT_FALSE(second.sameOrigin(first)) << "записи: " << sample.first << " и " << sample.second;
+	}
+	/**
+	 * Запись без схемы либо без авторити происхождения не имеет вовсе, и сличение
+	 * таких записей даёт ложь - в том числе двух одинаковых
+	 */
+	// Записи, происхождения не имеющие
+	const std::vector <std::string> none = {"example.com/path", "custom:path", "/path/to", "urn:oasis:names"};
+	/**
+	 * Перебираем все записи без происхождения
+	 */
+	for(auto & sample : none){
+		// Первый объект сличения
+		awh::uri_t first(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор записи
+		first.parse(sample);
+		// Второй объект сличения
+		awh::uri_t second(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор той же записи
+		second.parse(sample);
+		// Происхождения у таких записей нет, и совпасть оно не может
+		ASSERT_FALSE(first.sameOrigin(second)) << "запись: " << sample;
+		// Запись не происходит из одного места даже сама с собой
+		ASSERT_FALSE(first.sameOrigin(first)) << "запись: " << sample;
+	}
+	// Запись с происхождением сама с собой происхождением совпадает
+	this->_uri->parse("http://example.com/a?b#c");
+	// Проверяем сличение записи самой с собой
+	ASSERT_TRUE(this->_uri->sameOrigin(* this->_uri));
+}
