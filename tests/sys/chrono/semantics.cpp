@@ -907,3 +907,453 @@ TEST_F(ChronoFixture, ExecutionDaysInMonthChronoTest){
 		);
 	}
 }
+
+/**
+ * @brief Тест насыщения смещения по месяцам за пределом разрядности года
+ *
+ * @details Обозначение года хранится в разрядности uint16_t, и суммарный порядковый
+ *          номер месяца свыше 65536 лет оборачивался: прибавление 786432 месяцев
+ *          возвращало исходную дату, а не последнюю представимую. Проверка ведётся по
+ *          кратным разрядности и соседним с ними значениям
+ *
+ */
+TEST_F(ChronoFixture, ExecutionOffsetMonthWrapChronoTest){
+	// Получаем эталонный момент времени
+	const uint64_t date = this->_chrono->parse("2025-04-06T12:00:00", "%Y-%m-%dT%H:%M:%S");
+	// Выполняем перебор смещений, кратных разрядности обозначения года
+	for(const uint64_t value : {static_cast <uint64_t> (65536) * 12, (static_cast <uint64_t> (65536) * 12) + 12,
+		(static_cast <uint64_t> (65536) * 12) - 12, static_cast <uint64_t> (65536) * 24, static_cast <uint64_t> (1000000000)})
+		// Выполняем проверку насыщения смещения последней представимой датой
+		ASSERT_EQ(this->_chrono->offset(date, value, awh::chrono_t::type_t::MONTH, awh::chrono_t::offset_t::INCREMENT),
+			static_cast <uint64_t> (253402300799999ULL)) << value;
+}
+
+/**
+ * @brief Тест обнуления смещения долями миллисекунды свыше самого штампа
+ *
+ * @details Уменьшение на величину, превосходящую штамп времени, обязано давать начало
+ *          промежутка представимости, как это делает путь миллисекунд. Прежде
+ *          вычитаемое просто отбрасывалось, и уменьшение возвращало исходную дату
+ *
+ */
+TEST_F(ChronoFixture, ExecutionOffsetFractionUnderflowChronoTest){
+	// Выполняем перебор долей миллисекунды
+	for(const awh::chrono_t::type_t type : {awh::chrono_t::type_t::MILLISECONDS,
+		awh::chrono_t::type_t::MICROSECONDS, awh::chrono_t::type_t::NANOSECONDS})
+		// Выполняем проверку обнуления смещения свыше самого штампа времени
+		ASSERT_EQ(this->_chrono->offset(5000, 999999999999ULL, type, awh::chrono_t::offset_t::DECREMENT),
+			static_cast <uint64_t> (0)) << static_cast <uint16_t> (type);
+}
+
+/**
+ * @brief Тест согласованности смещения по годам и по месяцам
+ *
+ * @details Год - единица календарная, как и месяц: прибавление года обязано давать ту
+ *          же дату, что и прибавление двенадцати месяцев. Прежде год отсчитывался
+ *          сутками, отчего 29 февраля переливалось на 1 марта, тогда как те же
+ *          двенадцать месяцев давали 28 февраля
+ *
+ */
+TEST_F(ChronoFixture, ExecutionOffsetYearCalendarChronoTest){
+	// Получаем момент времени 29 февраля високосного года
+	const uint64_t date = this->_chrono->parse("2024-02-29T12:00:00", "%Y-%m-%dT%H:%M:%S");
+	// Выполняем перебор направлений смещения
+	for(const awh::chrono_t::offset_t offset : {awh::chrono_t::offset_t::INCREMENT, awh::chrono_t::offset_t::DECREMENT}){
+		// Выполняем перебор количества лет смещения
+		for(uint64_t years = 1; years <= 8; years++)
+			// Выполняем проверку совпадения смещения по годам и по двенадцати месяцам
+			ASSERT_EQ(this->_chrono->offset(date, years, awh::chrono_t::type_t::YEAR, offset),
+				this->_chrono->offset(date, years * 12, awh::chrono_t::type_t::MONTH, offset)) << years;
+	}
+	// Выполняем проверку приведения 29 февраля к последнему дню февраля обычного года
+	ASSERT_EQ(this->_chrono->format(this->_chrono->offset(date, 1, awh::chrono_t::type_t::YEAR,
+		awh::chrono_t::offset_t::INCREMENT), 0, "%Y-%m-%d"), "2025-02-28");
+	// Выполняем проверку сохранения 29 февраля при попадании в високосный год
+	ASSERT_EQ(this->_chrono->format(this->_chrono->offset(date, 4, awh::chrono_t::type_t::YEAR,
+		awh::chrono_t::offset_t::INCREMENT), 0, "%Y-%m-%d"), "2028-02-29");
+}
+
+/**
+ * @brief Тест насыщения конца промежутка у края календаря
+ *
+ * @details Конец периода вычисляется как начало следующего без единицы, и для
+ *          последнего года, месяца, недели и суток календаря начало следующего периода
+ *          выходило за предел представимости: конец 9999 года выдавался мгновением,
+ *          следующим за последним
+ *
+ */
+TEST_F(ChronoFixture, ExecutionEndEdgeChronoTest){
+	// Получаем последний момент времени, представимый календарём
+	const uint64_t date = this->_chrono->parse("9999-12-31T23:59:59", "%Y-%m-%dT%H:%M:%S");
+	// Выполняем перебор единиц измерения промежутка
+	for(const awh::chrono_t::type_t type : {awh::chrono_t::type_t::YEAR, awh::chrono_t::type_t::MONTH,
+		awh::chrono_t::type_t::WEEK, awh::chrono_t::type_t::DAY, awh::chrono_t::type_t::HOUR})
+		// Выполняем проверку насыщения конца промежутка последней представимой датой
+		ASSERT_EQ(this->_chrono->end(date, type), static_cast <uint64_t> (253402300799999ULL))
+			<< static_cast <uint16_t> (type);
+}
+
+/**
+ * @brief Тест приведения числа месяца при его установке
+ *
+ * @details Смена месяца оставляла в объекте число, в новом месяце отсутствующее, и
+ *          сборка штампа времени переносила дату вперёд: 31 января со сменой месяца на
+ *          второй давало 3 марта. Длина месяца зависит и от самого месяца, и от
+ *          високосности года, поэтому проверка ведётся по обоим
+ *
+ */
+TEST_F(ChronoFixture, ExecutionSetMonthClampChronoTest){
+	// Структура параметров проверки
+	struct Parameter {
+		// Исходный момент времени
+		const char * date;
+		// Устанавливаемый номер месяца
+		uint8_t month;
+		// Ожидаемая запись даты
+		const char * result;
+	};
+	// Перечень проверяемых случаев
+	const Parameter parameters[] = {
+		{"2025-01-31T12:00:00", 2, "2025-02-28T12:00:00"},
+		{"2024-01-31T12:00:00", 2, "2024-02-29T12:00:00"},
+		{"2025-03-31T12:00:00", 4, "2025-04-30T12:00:00"},
+		{"2025-01-15T12:00:00", 2, "2025-02-15T12:00:00"}
+	};
+	// Выполняем перебор всех проверяемых случаев
+	for(const Parameter & parameter : parameters){
+		// Закрепляем исходный момент времени в местном хранилище объекта
+		this->_chrono->timestamp(this->_chrono->parse(parameter.date, "%Y-%m-%dT%H:%M:%S"),
+			awh::chrono_t::type_t::MILLISECONDS);
+		// Выполняем установку номера месяца
+		this->_chrono->set <uint8_t> (parameter.month, awh::chrono_t::unit_t::MONTH);
+		// Выполняем проверку приведения числа месяца к его настоящей длине
+		ASSERT_EQ(this->_chrono->format("%Y-%m-%dT%H:%M:%S", awh::chrono_t::storage_t::LOCAL),
+			std::string(parameter.result)) << parameter.date;
+	}
+	// Закрепляем 29 февраля високосного года в местном хранилище объекта
+	this->_chrono->timestamp(this->_chrono->parse("2024-02-29T12:00:00", "%Y-%m-%dT%H:%M:%S"),
+		awh::chrono_t::type_t::MILLISECONDS);
+	// Выполняем установку обычного года
+	this->_chrono->set <uint16_t> (2025, awh::chrono_t::unit_t::YEAR);
+	// Выполняем проверку приведения числа месяца при смене високосного года на обычный
+	ASSERT_EQ(this->_chrono->format("%Y-%m-%dT%H:%M:%S", awh::chrono_t::storage_t::LOCAL), "2025-02-28T12:00:00");
+}
+
+/**
+ * @brief Тест согласованности обозначения зоны с её смещением
+ *
+ * @details Запись, зоны не содержащая, читается в зоне окружения, обозначения не
+ *          имеющей. Прежде обозначение выставлялось в UTC при любом смещении, отчего
+ *          разбор в московской зоне давал смещение +10800 при обозначении UTC, и
+ *          переменная формата \%Z печатала UTC для московского времени. Проверка
+ *          сверяет обозначение с самим смещением, а не с ожидаемой строкой: имя зоны
+ *          зависит от настроек машины, а их согласованность - нет
+ *
+ */
+TEST_F(ChronoFixture, ExecutionZoneDesignationChronoTest){
+	// Перечень проверяемых временных зон окружения
+	const char * timezones[] = {"UTC", "Europe/Moscow", "America/New_York", "Asia/Kolkata", "Australia/Sydney"};
+	// Выполняем перебор всех проверяемых временных зон окружения
+	for(const char * timezone : timezones){
+		// Выставляем временную зону окружения
+		::setenv("TZ", timezone, 1);
+		// Создаём объект работы с датой и временем
+		awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор записи, временной зоны не содержащей
+		chrono.parse("2025-04-06 12:37:01", "%Y-%m-%d %H:%M:%S", awh::chrono_t::storage_t::LOCAL);
+		// Получаем смещение временной зоны, выставленной объекту разбором
+		const int32_t offset = chrono.getTimeZone(awh::chrono_t::storage_t::LOCAL);
+		// Выполняем проверку согласованности обозначения зоны с её смещением
+		ASSERT_EQ(chrono.getTimeZone(chrono.format("%Z", awh::chrono_t::storage_t::LOCAL)), offset) << timezone;
+	}
+	// Восстанавливаем временную зону окружения, закреплённую фикстурой
+	::setenv("TZ", "UTC", 1);
+	// Выполняем установку смещения временной зоны числом
+	this->_chrono->setTimeZone(10800);
+	// Выполняем проверку согласованности обозначения зоны, заданной числом
+	ASSERT_EQ(this->_chrono->getTimeZone(this->_chrono->format("%Z", awh::chrono_t::storage_t::LOCAL)),
+		static_cast <int32_t> (10800));
+}
+
+/**
+ * @brief Тест сброса долей миллисекунды при смене единиц штампа времени
+ *
+ * @details Штамп времени в единицах крупнее микросекунды долей миллисекунды не несёт,
+ *          а разложение штампа поля долей не трогает: прежде от прошлой установки в
+ *          объекте оставались чужие доли, и после наносекундного штампа миллисекундный
+ *          читался обратно в наносекундах не тем мгновением, каким был задан
+ *
+ */
+TEST_F(ChronoFixture, ExecutionTimestampFractionResetChronoTest){
+	// Выполняем установку наносекундного штампа времени с ненулевыми долями
+	this->_chrono->timestamp(1743943021123456789ULL, awh::chrono_t::type_t::NANOSECONDS);
+	// Выполняем проверку обратного чтения наносекундного штампа времени
+	ASSERT_EQ(this->_chrono->timestamp(awh::chrono_t::type_t::NANOSECONDS, awh::chrono_t::storage_t::LOCAL),
+		1743943021123456789ULL);
+	// Выполняем установку миллисекундного штампа времени
+	this->_chrono->timestamp(1743943021123ULL, awh::chrono_t::type_t::MILLISECONDS);
+	// Выполняем проверку обратного чтения миллисекундного штампа времени
+	ASSERT_EQ(this->_chrono->timestamp(awh::chrono_t::type_t::MILLISECONDS, awh::chrono_t::storage_t::LOCAL),
+		1743943021123ULL);
+	// Выполняем проверку отсутствия долей прошлой установки в микросекундах
+	ASSERT_EQ(this->_chrono->timestamp(awh::chrono_t::type_t::MICROSECONDS, awh::chrono_t::storage_t::LOCAL),
+		1743943021123000ULL);
+	// Выполняем проверку отсутствия долей прошлой установки в наносекундах
+	ASSERT_EQ(this->_chrono->timestamp(awh::chrono_t::type_t::NANOSECONDS, awh::chrono_t::storage_t::LOCAL),
+		1743943021123000000ULL);
+	// Выполняем перебор единиц измерения крупнее микросекунды
+	for(const awh::chrono_t::type_t type : {awh::chrono_t::type_t::SECONDS, awh::chrono_t::type_t::MINUTES,
+		awh::chrono_t::type_t::HOUR, awh::chrono_t::type_t::DAY}){
+		// Выполняем установку наносекундного штампа времени с ненулевыми долями
+		this->_chrono->timestamp(1743943021123456789ULL, awh::chrono_t::type_t::NANOSECONDS);
+		// Выполняем установку штампа времени в единицах крупнее микросекунды
+		this->_chrono->timestamp(1000, type);
+		// Выполняем проверку кратности наносекундного штампа миллисекунде
+		ASSERT_EQ(this->_chrono->timestamp(awh::chrono_t::type_t::NANOSECONDS, awh::chrono_t::storage_t::LOCAL) % 1000000ULL,
+			static_cast <uint64_t> (0)) << static_cast <uint16_t> (type);
+	}
+}
+
+/**
+ * @brief Тест сохранения явно заданной нулевой временной зоны
+ *
+ * @details Нулевое смещение, заданное записью либо методом setTimeZone, обозначается
+ *          UTC: обозначение здесь единственное, чем нулевая зона, заданная явно,
+ *          отличается от незаданной, а от этого зависит, перекладывать ли запись в
+ *          зону окружения при формировании. Прежде запись с явным смещением +0000 под
+ *          зоной окружения Europe/Moscow формировалась обратно как +0300 со сдвигом
+ *          времени на три часа. Проверка ведётся вне зоны UTC намеренно: фикстура
+ *          закрепляет окружение на UTC, и в ней расхождение не проявляется
+ *
+ */
+TEST_F(ChronoFixture, ExecutionExplicitZeroZoneChronoTest){
+	// Перечень проверяемых временных зон окружения
+	const char * timezones[] = {"Europe/Moscow", "America/New_York", "Asia/Kolkata"};
+	// Выполняем перебор всех проверяемых временных зон окружения
+	for(const char * timezone : timezones){
+		// Выставляем временную зону окружения
+		::setenv("TZ", timezone, 1);
+		{
+			// Создаём объект работы с датой и временем
+			awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+			// Выполняем разбор записи с явным нулевым смещением
+			chrono.parse("2025-04-06T12:37:01+0000", "%Y-%m-%dT%H:%M:%S%z", awh::chrono_t::storage_t::LOCAL);
+			// Выполняем проверку сохранения записи в её собственной временной зоне
+			ASSERT_EQ(chrono.format("%Y-%m-%dT%H:%M:%S%z", awh::chrono_t::storage_t::LOCAL),
+				"2025-04-06T12:37:01+0000") << timezone;
+		}
+		{
+			// Создаём объект работы с датой и временем
+			awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+			// Закрепляем момент времени в местном хранилище объекта
+			chrono.timestamp(1743943021000ULL, awh::chrono_t::type_t::MILLISECONDS);
+			// Выполняем установку нулевого смещения временной зоны
+			chrono.setTimeZone(0);
+			// Выполняем проверку сохранения выставленной временной зоны
+			ASSERT_EQ(chrono.format("%Y-%m-%dT%H:%M:%S%z", awh::chrono_t::storage_t::LOCAL),
+				"2025-04-06T12:37:01+0000") << timezone;
+		}
+	}
+	// Восстанавливаем временную зону окружения, закреплённую фикстурой
+	::setenv("TZ", "UTC", 1);
+}
+
+/**
+ * @brief Тест сохранения момента времени при смене смещения временной зоны
+ *
+ * @details Смена смещения перекладывает запись в новую зону, сохраняя сам момент
+ *          времени, ровно как это делает setTimeZone: прежде смещение писалось прямо в
+ *          поле, а гражданское время оставалось прежним, отчего установка нулевого
+ *          смещения поверх московского сдвигала момент на три часа вперёд
+ *
+ */
+TEST_F(ChronoFixture, ExecutionSetOffsetShiftChronoTest){
+	// Выполняем перебор смещений с шагом в час по всему диапазону зон
+	for(int32_t offset = -43200; offset <= 50400; offset += 3600){
+		// Закрепляем момент времени в местном хранилище объекта
+		this->_chrono->timestamp(1743943021000ULL, awh::chrono_t::type_t::MILLISECONDS);
+		// Выполняем установку временной зоны методом её выставления
+		this->_chrono->setTimeZone(10800);
+		// Выполняем установку смещения временной зоны через единицу данных
+		this->_chrono->set <int32_t> (offset, awh::chrono_t::unit_t::OFFSET);
+		// Выполняем проверку сохранения момента времени
+		ASSERT_EQ(this->_chrono->timestamp(awh::chrono_t::type_t::MILLISECONDS, awh::chrono_t::storage_t::LOCAL),
+			1743943021000ULL) << offset;
+		// Выполняем проверку установки самого смещения временной зоны
+		ASSERT_EQ(this->_chrono->getTimeZone(awh::chrono_t::storage_t::LOCAL), offset);
+	}
+}
+
+/**
+ * @brief Тест переноса даты установкой номера дня в году и номера недели
+ *
+ * @details Номер дня в году задаёт дату целиком, номер недели переносит её на
+ *          указанную неделю, сохраняя день недели и время суток. Прежде оба сеттера
+ *          писали одно лишь поле, дату не двигали вовсе, а сами поля перезаписывались
+ *          при следующем разложении штампа времени
+ *
+ */
+TEST_F(ChronoFixture, ExecutionSetDaysWeeksChronoTest){
+	// Получаем момент времени начала високосного года
+	const uint64_t date = this->_chrono->parse("2024-01-01T12:34:56", "%Y-%m-%dT%H:%M:%S");
+	// Структура параметров проверки номера дня в году
+	struct Parameter {
+		// Устанавливаемый номер дня в году
+		uint16_t days;
+		// Ожидаемая запись даты
+		const char * result;
+	};
+	// Перечень проверяемых случаев
+	const Parameter parameters[] = {
+		{0, "2024-01-01"}, {31, "2024-02-01"}, {59, "2024-02-29"},
+		{60, "2024-03-01"}, {99, "2024-04-09"}, {365, "2024-12-31"}
+	};
+	// Выполняем перебор всех проверяемых случаев
+	for(const Parameter & parameter : parameters){
+		// Закрепляем момент времени в местном хранилище объекта
+		this->_chrono->timestamp(date, awh::chrono_t::type_t::MILLISECONDS);
+		// Выполняем установку номера дня в году
+		this->_chrono->set <uint16_t> (parameter.days, awh::chrono_t::unit_t::DAYS);
+		// Выполняем проверку переноса даты на указанный день года
+		ASSERT_EQ(this->_chrono->format("%Y-%m-%d", awh::chrono_t::storage_t::LOCAL), std::string(parameter.result))
+			<< parameter.days;
+		// Выполняем проверку сохранения времени суток
+		ASSERT_EQ(this->_chrono->format("%H:%M:%S", awh::chrono_t::storage_t::LOCAL), "12:34:56") << parameter.days;
+		// Выполняем проверку обратного чтения номера дня в году
+		ASSERT_EQ(this->_chrono->get <uint16_t> (awh::chrono_t::unit_t::DAYS, awh::chrono_t::storage_t::LOCAL),
+			parameter.days);
+	}
+	// Получаем момент времени середины недели
+	const uint64_t week = this->_chrono->parse("2024-01-03T12:34:56", "%Y-%m-%dT%H:%M:%S");
+	// Выполняем перебор номеров недели, умещающихся в год
+	for(uint8_t weeks = 0; weeks < 52; weeks++){
+		// Закрепляем момент времени в местном хранилище объекта
+		this->_chrono->timestamp(week, awh::chrono_t::type_t::MILLISECONDS);
+		// Выполняем установку номера недели
+		this->_chrono->set <uint8_t> (weeks, awh::chrono_t::unit_t::WEEKS);
+		// Выполняем проверку обратного чтения номера недели
+		ASSERT_EQ(this->_chrono->get <uint8_t> (awh::chrono_t::unit_t::WEEKS, awh::chrono_t::storage_t::LOCAL), weeks);
+		// Выполняем проверку сохранения дня недели
+		ASSERT_EQ(this->_chrono->format("%A", awh::chrono_t::storage_t::LOCAL), "Wednesday") << static_cast <uint16_t> (weeks);
+		// Выполняем проверку сохранения времени суток
+		ASSERT_EQ(this->_chrono->format("%H:%M:%S", awh::chrono_t::storage_t::LOCAL), "12:34:56") << static_cast <uint16_t> (weeks);
+	}
+}
+
+/**
+ * @brief Тест согласованности выводных полей после установки задающих
+ *
+ * @details Год, месяц и число месяца задают дату целиком, а номер дня в году, номер
+ *          недели и день недели из них выводятся. Прежде установка задающего поля
+ *          выводные оставляла прежними, и два открытых способа прочитать один объект
+ *          расходились: format вычислял их заново, get читал поля как есть. После
+ *          31 января со сменой месяца на второй метод format давал 59-й день года, а
+ *          get - 30-й, то есть день, оставшийся от января
+ *
+ */
+TEST_F(ChronoFixture, ExecutionSetSyncChronoTest){
+	// Перечень исходных моментов времени
+	const char * dates[] = {"2025-01-31T12:00:00", "2024-02-29T12:00:00", "2025-04-06T12:00:00", "2024-12-31T23:00:00"};
+	// Выполняем перебор всех исходных моментов времени
+	for(const char * date : dates){
+		// Получаем исходный момент времени
+		const uint64_t stamp = this->_chrono->parse(date, "%Y-%m-%dT%H:%M:%S");
+		// Выполняем перебор устанавливаемых номеров месяца
+		for(uint8_t month = 1; month < 13; month++){
+			// Закрепляем исходный момент времени в местном хранилище объекта
+			this->_chrono->timestamp(stamp, awh::chrono_t::type_t::MILLISECONDS);
+			// Выполняем установку номера месяца
+			this->_chrono->set <uint8_t> (month, awh::chrono_t::unit_t::MONTH);
+			// Выполняем проверку согласованности номера дня в году
+			ASSERT_EQ(this->_chrono->get <uint16_t> (awh::chrono_t::unit_t::DAYS, awh::chrono_t::storage_t::LOCAL) + 1,
+				static_cast <uint16_t> (std::stoi(this->_chrono->format("%j", awh::chrono_t::storage_t::LOCAL))))
+				<< date << " " << static_cast <uint16_t> (month);
+			// Выполняем проверку согласованности дня недели
+			ASSERT_EQ(this->_chrono->get <uint8_t> (awh::chrono_t::unit_t::DAY, awh::chrono_t::storage_t::LOCAL),
+				static_cast <uint8_t> (std::stoi(this->_chrono->format("%u", awh::chrono_t::storage_t::LOCAL))))
+				<< date << " " << static_cast <uint16_t> (month);
+		}
+		// Выполняем перебор устанавливаемых чисел месяца
+		for(uint8_t day = 1; day < 32; day++){
+			// Закрепляем исходный момент времени в местном хранилище объекта
+			this->_chrono->timestamp(stamp, awh::chrono_t::type_t::MILLISECONDS);
+			// Выполняем установку числа месяца
+			this->_chrono->set <uint8_t> (day, awh::chrono_t::unit_t::DATE);
+			// Выполняем проверку согласованности номера дня в году
+			ASSERT_EQ(this->_chrono->get <uint16_t> (awh::chrono_t::unit_t::DAYS, awh::chrono_t::storage_t::LOCAL) + 1,
+				static_cast <uint16_t> (std::stoi(this->_chrono->format("%j", awh::chrono_t::storage_t::LOCAL))))
+				<< date << " " << static_cast <uint16_t> (day);
+			// Выполняем проверку приведения числа месяца к его настоящей длине
+			ASSERT_LE(this->_chrono->get <uint8_t> (awh::chrono_t::unit_t::DATE, awh::chrono_t::storage_t::LOCAL), day)
+				<< date << " " << static_cast <uint16_t> (day);
+		}
+	}
+	// Закрепляем февраль в местном хранилище объекта
+	this->_chrono->timestamp(this->_chrono->parse("2025-02-10T12:00:00", "%Y-%m-%dT%H:%M:%S"),
+		awh::chrono_t::type_t::MILLISECONDS);
+	// Выполняем установку числа месяца, в феврале отсутствующего
+	this->_chrono->set <uint8_t> (31, awh::chrono_t::unit_t::DATE);
+	// Выполняем проверку приведения числа к последнему дню февраля
+	ASSERT_EQ(this->_chrono->format("%Y-%m-%d", awh::chrono_t::storage_t::LOCAL), "2025-02-28");
+}
+
+/**
+ * @brief Тест переноса даты установкой дня недели
+ *
+ * @details День недели переносит дату на этот день той же недели, сохраняя время
+ *          суток. Прежде установка писала одно лишь поле, дату не двигала вовсе, а
+ *          само поле перезаписывалось при следующем разложении штампа времени
+ *
+ */
+TEST_F(ChronoFixture, ExecutionSetDayOfWeekChronoTest){
+	// Получаем момент времени середины недели
+	const uint64_t stamp = this->_chrono->parse("2025-04-09T12:34:56", "%Y-%m-%dT%H:%M:%S");
+	// Выполняем перебор всех дней недели
+	for(uint8_t day = 1; day < 8; day++){
+		// Закрепляем момент времени в местном хранилище объекта
+		this->_chrono->timestamp(stamp, awh::chrono_t::type_t::MILLISECONDS);
+		// Выполняем установку дня недели
+		this->_chrono->set <uint8_t> (day, awh::chrono_t::unit_t::DAY);
+		// Выполняем проверку переноса даты на указанный день недели
+		ASSERT_EQ(this->_chrono->get <uint8_t> (awh::chrono_t::unit_t::DAY, awh::chrono_t::storage_t::LOCAL), day);
+		// Выполняем проверку сохранения времени суток
+		ASSERT_EQ(this->_chrono->format("%H:%M:%S", awh::chrono_t::storage_t::LOCAL), "12:34:56")
+			<< static_cast <uint16_t> (day);
+	}
+}
+
+/**
+ * @brief Тест приведения года и номера дня в году к пределам календаря
+ *
+ * @details Год приводится к промежутку представимости: прежде принимался любой
+ *          ненулевой, и год до эпохи сбрасывал дату к её началу целиком, теряя месяц и
+ *          число месяца. Номер дня в году приводится к длине самого года: обычный год
+ *          несёт 365 суток, и номер 365 в нём выходит за последние
+ *
+ */
+TEST_F(ChronoFixture, ExecutionSetBoundsChronoTest){
+	// Получаем эталонный момент времени
+	const uint64_t stamp = this->_chrono->parse("2025-04-06T12:00:00", "%Y-%m-%dT%H:%M:%S");
+	// Выполняем перебор годов за пределами промежутка представимости
+	for(const uint16_t year : {static_cast <uint16_t> (1), static_cast <uint16_t> (1969),
+		static_cast <uint16_t> (10000), static_cast <uint16_t> (65535)}){
+		// Закрепляем эталонный момент времени в местном хранилище объекта
+		this->_chrono->timestamp(stamp, awh::chrono_t::type_t::MILLISECONDS);
+		// Выполняем установку года
+		this->_chrono->set <uint16_t> (year, awh::chrono_t::unit_t::YEAR);
+		// Выполняем проверку сохранения месяца и числа месяца
+		ASSERT_EQ(this->_chrono->format("%m-%dT%H:%M:%S", awh::chrono_t::storage_t::LOCAL), "04-06T12:00:00") << year;
+		// Выполняем проверку приведения года к промежутку представимости
+		ASSERT_EQ(this->_chrono->format("%Y", awh::chrono_t::storage_t::LOCAL), ((year < 1970) ? "1970" : "9999")) << year;
+	}
+	// Закрепляем начало обычного года в местном хранилище объекта
+	this->_chrono->timestamp(this->_chrono->parse("2025-01-01T12:00:00", "%Y-%m-%dT%H:%M:%S"),
+		awh::chrono_t::type_t::MILLISECONDS);
+	// Выполняем установку номера дня, за длину обычного года выходящего
+	this->_chrono->set <uint16_t> (365, awh::chrono_t::unit_t::DAYS);
+	// Выполняем проверку приведения даты к последним суткам года
+	ASSERT_EQ(this->_chrono->format("%Y-%m-%d", awh::chrono_t::storage_t::LOCAL), "2025-12-31");
+	// Выполняем проверку приведения номера дня к длине обычного года
+	ASSERT_EQ(this->_chrono->get <uint16_t> (awh::chrono_t::unit_t::DAYS, awh::chrono_t::storage_t::LOCAL),
+		static_cast <uint16_t> (364));
+}

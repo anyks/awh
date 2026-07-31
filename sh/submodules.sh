@@ -43,10 +43,6 @@ $ROOT/submodule.sh add miniupnpc https://gitflic.ru/project/third_party/miniupnp
 $ROOT/submodule.sh remove brotli
 $ROOT/submodule.sh add brotli https://gitflic.ru/project/third_party/brotli.git
 
-# Выполняем пересборку сабмодуля pcre2
-$ROOT/submodule.sh remove pcre2
-$ROOT/submodule.sh add pcre2 https://gitflic.ru/project/third_party/pcre2.git
-
 # Выполняем пересборку сабмодуля BoringSSL
 $ROOT/submodule.sh remove boringssl
 $ROOT/submodule.sh add boringssl https://gitflic.ru/project/third_party/boringssl.git

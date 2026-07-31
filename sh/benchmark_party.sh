@@ -43,5 +43,9 @@ $ROOT/submodule.sh add nghttp2 https://github.com/nghttp2/nghttp2.git
 $ROOT/submodule.sh remove cityhash
 $ROOT/submodule.sh add cityhash https://github.com/google/cityhash.git
 
+# Выполняем пересборку сабмодуля PCRE2
+$ROOT/submodule.sh remove pcre2
+$ROOT/submodule.sh add pcre2 https://github.com/PCRE2Project/pcre2.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

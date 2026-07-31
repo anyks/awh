@@ -29,7 +29,6 @@
 - [Density](https://github.com/k0dai/density)
 - [ZStandart](https://github.com/facebook/zstd)
 - [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
-- [PCRE2](https://www.pcre.org)
 - [BoringSSL](https://boringssl.googlesource.com/boringssl)
 - [LibIconv](https://www.gnu.org/software/libiconv)
 - [LibIdn2](https://www.gnu.org/software/libidn)

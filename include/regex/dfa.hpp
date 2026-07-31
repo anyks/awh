@@ -118,6 +118,9 @@ namespace awh {
 				// Исполняемая программа регулярного выражения
 				const program_t * _program;
 			private:
+				// Опознание исполняемой программы регулярного выражения
+				uint64_t _identity;
+			private:
 				// Текст, по которому выполняется сопоставление
 				string_view _text;
 			private:

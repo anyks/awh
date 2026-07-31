@@ -439,8 +439,14 @@ TEST_F(SyslogFixture, ExecutionSyslogRollbackSetupChronoTest){
 		ASSERT_EQ(this->_chrono->year(this->_chrono->parse(record, BSD_FORMAT, awh::chrono_t::storage_t::LOCAL)), item.second)
 			<< record << " (допуск " << item.first << " сек)";
 	}
+	/**
+	 * Смещение снимается отдельным числом заданной ширины: сложение с литералом
+	 * `ULL` даёт на FreeBSD `unsigned long long`, тогда как `uint64_t` там -
+	 * `unsigned long`, и перегрузка `format` становится неоднозначной
+	 */
+	const uint64_t offset = (24 * 30 * 3600000ULL);
 	// Формируем запись штампа времени, опережающего закреплённый момент на месяц
-	const std::string far = this->_chrono->format(now + (24 * 30 * 3600000ULL), BSD_FORMAT);
+	const std::string far = this->_chrono->format(now + offset, BSD_FORMAT);
 	// Закрепляем часы локального хранилища на исходном моменте
 	this->_chrono->timestamp(now, awh::chrono_t::type_t::MILLISECONDS);
 	// Выполняем проверку того, что при нулевом допуске откат не сработал и на нём

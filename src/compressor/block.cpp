@@ -2448,8 +2448,6 @@ awh::compressor::Block::GZip::GZip() noexcept : wbits(0) {}
  *
  */
 void awh::compressor::Block::level(const level_t level) noexcept {
-	// Выполняем блокировку потоков
-	const locker_t <> lock(this->_mtx);
 	/**
 	 * Определяем переданный уровень компрессии
 	 */
@@ -2496,24 +2494,12 @@ void awh::compressor::Block::level(const level_t level) noexcept {
 	}
 }
 /**
- * @brief Метод установки безопасности работы потоков
- *
- * @param mode флаг режима безопасности потоков
- *
- */
-void awh::compressor::Block::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности потоков
-	this->_mtx.enabled = mode;
-}
-/**
  * @brief Метод установки размера скользящего окна Zlib
  *
  * @param wbits размер скользящего окна
  *
  */
 void awh::compressor::Block::wbitsZlib(const int16_t wbits) noexcept {
-	// Выполняем блокировку потоков
-	const locker_t <> lock(this->_mtx);
 	// Устанавливаем размер скользящего окна Zlib
 	this->_zlib.wbits = wbits;
 }
@@ -2527,12 +2513,8 @@ void awh::compressor::Block::wbitsZlib(const int16_t wbits) noexcept {
 bool awh::compressor::Block::wbitsGZip(const int16_t wbits) noexcept {
 	// Переменная результата
 	bool result = false;
-	{
-		// Выполняем блокировку потоков
-		const locker_t <> lock(this->_mtx);
-		// Устанавливаем размер скользящего окна
-		this->_gzip.wbits = wbits;
-	}
+	// Устанавливаем размер скользящего окна
+	this->_gzip.wbits = wbits;
 	// Выполняем пересборку контекстов LZ77 для компрессии
 	result = this->takeoverGZip(event_t::ENCODE, this->_gzip.takeover.compress.load(std::memory_order_acquire));
 	// Если всё прошло успешно
@@ -2565,8 +2547,6 @@ bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) 
 		switch(static_cast <uint8_t> (event)){
 			// Выполняем установку флага переиспользования контекста компрессии
 			case static_cast <uint8_t> (event_t::ENCODE): {
-				// Выполняем блокировку потоков
-				const locker_t <> lock(this->_mtx);
 				// Извлекаем буфер GZip
 				z_stream & buffer = this->_gzip.buffer.compress->stream;
 				// Если уже выделена память для компрессора
@@ -2605,8 +2585,6 @@ bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) 
 			} break;
 			// Выполняем установку флага переиспользования контекста декомпрессии
 			case static_cast <uint8_t> (event_t::DECODE): {
-				// Выполняем блокировку потоков
-				const locker_t <> lock(this->_mtx);
 				// Извлекаем буфер GZip
 				z_stream & buffer = this->_gzip.buffer.decompress->stream;
 				// Если уже выделена память для декомпрессора
@@ -3129,8 +3107,6 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 			} break;
 			// Если метод компрессии установлен Deflate
 			case static_cast <uint8_t> (method_t::DEFLATE): {
-				// Выполняем блокировку потоков
-				const locker_t <> lock(this->_mtx);
 				// Выполняем компрессию данных методом Deflate
 				driver::deflate(buffer, size, this->_level[1], this->_gzip.wbits, this->_gzip.takeover.compress.load(std::memory_order_acquire), this->_gzip.buffer.compress->stream, event_t::ENCODE, result, this->_log);
 				// Если результат операции пустой - значит произошла ошибка
@@ -3560,8 +3536,6 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			} break;
 			// Если метод декомпрессии установлен Deflate
 			case static_cast <uint8_t> (method_t::DEFLATE): {
-				// Выполняем блокировку потоков
-				const locker_t <> lock(this->_mtx);
 				// Выполняем декомпрессию данных методом Deflate
 				driver::deflate(buffer, size, this->_level[1], this->_gzip.wbits, this->_gzip.takeover.decompress.load(std::memory_order_acquire), this->_gzip.buffer.decompress->stream, event_t::DECODE, result, this->_log);
 				// Если результат операции пустой - значит произошла ошибка
@@ -3639,8 +3613,6 @@ awh::compressor::Block::Block(const log_t * log) noexcept :
 	LIZARD_DEFAULT_CLEVEL,
 	DENSITY_ALGORITHM_LION
 }, _log(log) {
-	// Деактивируем мьютекс на время инициализации
-	this->_mtx.enabled = false;
 	// Выделяем память под контекст буфера GZip компрессии
 	this->_gzip.buffer.compress = new gzip_stream_t();
 	// Выделяем память под контекст буфера GZip декомпрессии

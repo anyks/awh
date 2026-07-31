@@ -551,17 +551,17 @@ TEST_F(HashFixture, NumericHashTest){
 		// Выполняем добавление данных в потоковое хэширование
 		hash.update(this->_buffer.data(), size);
 		// Проверяем совпадение числового результата одноразового хэширования с потоком октетов
-		ASSERT_EQ(this->_hash->hash <uint64_t> (this->_buffer.data(), size), value);
+		ASSERT_EQ(this->_hash->hash <uint64_t> (this->_buffer.data(), size), value) << "длина: " << size;
 		// Проверяем совпадение числового результата потокового хэширования с потоком октетов
-		ASSERT_EQ(hash.digest <uint64_t> (), value);
+		ASSERT_EQ(hash.digest <uint64_t> (), value) << "длина: " << size;
 		// Проверяем совпадение быстрого пути потокового хэширования с потоком октетов
-		ASSERT_EQ(hash.digest(), value);
+		ASSERT_EQ(hash.digest(), value) << "длина: " << size;
 		// Проверяем совпадение усечённого числового результата с потоком октетов
-		ASSERT_EQ(this->_hash->hash <uint32_t> (this->_buffer.data(), size), static_cast <uint32_t> (value));
+		ASSERT_EQ(this->_hash->hash <uint32_t> (this->_buffer.data(), size), static_cast <uint32_t> (value)) << "длина: " << size;
 		// Проверяем совпадение усечённого результата потокового хэширования с потоком октетов
-		ASSERT_EQ(hash.digest <uint16_t> (), static_cast <uint16_t> (value));
+		ASSERT_EQ(hash.digest <uint16_t> (), static_cast <uint16_t> (value)) << "длина: " << size;
 		// Проверяем совпадение знакового результата хэширования с потоком октетов
-		ASSERT_EQ(this->_hash->hash <int64_t> (this->_buffer.data(), size), static_cast <int64_t> (value));
+		ASSERT_EQ(this->_hash->hash <int64_t> (this->_buffer.data(), size), static_cast <int64_t> (value)) << "длина: " << size;
 	}
 }
 

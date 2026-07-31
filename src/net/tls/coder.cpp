@@ -2998,8 +2998,6 @@ string awh::tls::Coder::version() const noexcept {
  *
  */
 void awh::tls::Coder::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности работы потоков для компрессора
-	this->_compressor.threadSafety(mode);
 	// Если объект для работы с отпечатками TLS установлен
 	if(this->_fgp != nullptr)
 		// Устанавливаем режим безопасности работы потоков для хранилища отпечатков
@@ -12418,8 +12416,6 @@ bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcep
  */
 awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
  _addr(fmk, log), _compressor(log), _fgp(nullptr), _fmk(fmk), _log(log) {
-	// Устанавливаем режим безопасности работы потоков для компрессора
-	this->_compressor.threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
 	/**
 	 * Выполняем одноразовую инициализацию TLS-модуля для всех экземпляров класса Coder
 	 */
@@ -12444,8 +12440,6 @@ awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::tls::Coder::Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) noexcept :
  _addr(fmk, log), _compressor(log), _fgp(fgp), _fmk(fmk), _log(log) {
-	// Устанавливаем режим безопасности работы потоков для компрессора
-	this->_compressor.threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Если объект для работы с отпечатками TLS установлен
 	if(this->_fgp != nullptr)
 		// Устанавливаем режим безопасности работы потоков для хранилища отпечатков

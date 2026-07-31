@@ -87,7 +87,6 @@ find_path(AWH_INCLUDE_DIR NAMES awh/server/awh.hpp PATHS ${AWH_HEADERS_PATH} NO_
 find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${AWH_HEADERS_PATH}/brotli NO_DEFAULT_PATH)
 find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${AWH_HEADERS_PATH}/brotli NO_DEFAULT_PATH)
 find_path(OPENSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${AWH_HEADERS_PATH} NO_DEFAULT_PATH)
-find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${AWH_HEADERS_PATH}/pcre2 NO_DEFAULT_PATH)
 find_path(TCMALLOC_INCLUDE_DIR NAMES gperftools/malloc_extension.h PATHS ${AWH_HEADERS_PATH}/tcmalloc NO_DEFAULT_PATH)
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
@@ -163,7 +162,6 @@ if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
             BROTLI_INCLUDE_DECODE_DIR
             AWH_INCLUDE_DIR
             OPENSSL_INCLUDE_DIR
-            PCRE_INCLUDE_DIR
             IDN2_INCLUDE_DIR
             ICONV_INCLUDE_DIR
 
@@ -185,7 +183,6 @@ if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
             BROTLI_INCLUDE_DECODE_DIR
             AWH_INCLUDE_DIR
             OPENSSL_INCLUDE_DIR
-            PCRE_INCLUDE_DIR
             IDN2_INCLUDE_DIR
             ICONV_INCLUDE_DIR
 
@@ -204,7 +201,6 @@ if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         ${BROTLI_INCLUDE_ENCODE_DIR}
         ${AWH_INCLUDE_DIR}
         ${OPENSSL_INCLUDE_DIR}
-        ${PCRE_INCLUDE_DIR}
         ${IDN2_INCLUDE_DIR}
         ${ICONV_INCLUDE_DIR}
     )
@@ -228,7 +224,6 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
             BROTLI_INCLUDE_DECODE_DIR
             AWH_INCLUDE_DIR
             OPENSSL_INCLUDE_DIR
-            PCRE_INCLUDE_DIR
 
             FAIL_MESSAGE "AWH library is not found"
         )
@@ -251,7 +246,6 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
                 BROTLI_INCLUDE_DECODE_DIR
                 AWH_INCLUDE_DIR
                 OPENSSL_INCLUDE_DIR
-                PCRE_INCLUDE_DIR
 
                 FAIL_MESSAGE "AWH library is not found"
             )
@@ -269,7 +263,6 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
                 BROTLI_INCLUDE_DECODE_DIR
                 AWH_INCLUDE_DIR
                 OPENSSL_INCLUDE_DIR
-                PCRE_INCLUDE_DIR
 
                 FAIL_MESSAGE "AWH library is not found"
             )
@@ -287,7 +280,6 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${BROTLI_INCLUDE_ENCODE_DIR}
         ${AWH_INCLUDE_DIR}
         ${OPENSSL_INCLUDE_DIR}
-        ${PCRE_INCLUDE_DIR}
     )
 # Если операцинная система относится к Nix-подобной
 else()
@@ -306,7 +298,6 @@ else()
             BROTLI_INCLUDE_DECODE_DIR
             AWH_INCLUDE_DIR
             OPENSSL_INCLUDE_DIR
-            PCRE_INCLUDE_DIR
 
             FAIL_MESSAGE "AWH library is not found"
         )
@@ -326,7 +317,6 @@ else()
             BROTLI_INCLUDE_DECODE_DIR
             AWH_INCLUDE_DIR
             OPENSSL_INCLUDE_DIR
-            PCRE_INCLUDE_DIR
 
             FAIL_MESSAGE "AWH library is not found"
         )
@@ -343,7 +333,6 @@ else()
         ${BROTLI_INCLUDE_ENCODE_DIR}
         ${AWH_INCLUDE_DIR}
         ${OPENSSL_INCLUDE_DIR}
-        ${PCRE_INCLUDE_DIR}
     )
 endif()
 
@@ -378,7 +367,6 @@ install(DIRECTORY "${BZ2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/incl
 install(DIRECTORY "${ZSTD_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${LZMA_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${AWH_INCLUDE_DIR}/awh" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.hpp")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")

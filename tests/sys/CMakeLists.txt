@@ -70,8 +70,6 @@ if(${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_FMK_TEST "Build unit FMK test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с логированием
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_LOG_TEST "Build unit LOG test for ${UNIT_TEST_NAME}" ON)
-        # Указываем что нужно собрать тесты для работы с регулярными выражениями
-        option(CMAKE_BUILD_${UNIT_TEST_NAME}_REG_TEST "Build unit REG test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с очередями
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST "Build unit QUEUE test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с буферами
@@ -147,22 +145,6 @@ if(${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с логированием
             message(STATUS "Build tests LOG module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_LOG_TEST})
-
-        # Если нужно собрать тесты для работы с регулярными выражениями
-        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_REG_TEST})
-            # Выводим сообщение о сборке тестов для модуля работы с регулярными выражениями
-            message(STATUS "Build tests REG module: Yes\n")
-            # Дополняем список источников тестами для модуля работы с регулярными выражениями
-            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
-                reg/reg.cpp
-                reg/static.cpp
-                reg/parameterized.cpp
-            )
-        # Если не нужно собрать тесты для работы с регулярными выражениями
-        else()
-            # Выводим сообщение о сборке тестов для модуля работы с регулярными выражениями
-            message(STATUS "Build tests REG module: No\n")
-        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_REG_TEST})
 
         # Если нужно собрать тесты для работы с очередями
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST})

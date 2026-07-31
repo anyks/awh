@@ -37,7 +37,7 @@ import statistics
 import sys
 
 # Соответствие протокола эталонной реализации
-REFERENCE = {'http1': 'llhttp', 'http2': 'nghttp2', 'http3': 'nghttp3'}
+REFERENCE = {'http1': 'llhttp', 'http2': 'nghttp2', 'http3': 'nghttp3', 'headers': 'beast'}
 
 
 def run(path, scenario):

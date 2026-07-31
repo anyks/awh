@@ -3272,8 +3272,13 @@ TEST_F(HeadersFixture, ResponseHasNoAuthorityTest){
 	ASSERT_EQ(result.find(":authority"), std::string::npos);
 	// Проверяем что псевдозаголовок кода ответа на месте
 	ASSERT_NE(result.find(":status: 200\r\n"), std::string::npos);
-	// Проверяем что сам заголовок адресата отсеян наравне с прочими неуместными
-	ASSERT_EQ(result.find("host"), std::string::npos);
+	/**
+	 * Проверяем что сам заголовок адресата сохранён: снятию подлежат поля, управляющие
+	 * соединением (RFC 9113 §8.2.2), а адресат к ним не отнесён. У запроса он снимается
+	 * лишь потому, что его место занимает псевдозаголовок авторитета, здесь же авторитет
+	 * не формируется, и снятие молча теряло бы поле, передавать которое не запрещено
+	 */
+	ASSERT_NE(result.find("host: example.com\r\n"), std::string::npos);
 	// Проверяем что тот же заголовок адресата в запросе клиента переносится по-прежнему
 	request_t request(version_t::HTTP2, method_t::GET, std::string("/"));
 	// Устанавливаем провайдер запроса
@@ -4772,8 +4777,13 @@ TEST_F(HeadersFixture, ResponseWithoutProviderHasNoAuthorityTest){
 	 * набора, поскольку провайдера нет
 	 */
 	ASSERT_EQ(result.find(":authority"), std::string::npos);
-	// Проверяем что заголовок адресата отсеян, как и для запроса
-	ASSERT_EQ(result.find("host:"), std::string::npos);
+	/**
+	 * Проверяем что заголовок адресата сохранён: снятию подлежат поля, управляющие
+	 * соединением (RFC 9113 §8.2.2), а адресат к ним не отнесён. У запроса он снимается
+	 * потому, что его место занимает псевдозаголовок авторитета, здесь же авторитет
+	 * не формируется, и снятие молча теряло бы поле
+	 */
+	ASSERT_NE(result.find("host: example.com\r\n"), std::string::npos);
 	// Проверяем что псевдозаголовок статуса сохранён
 	ASSERT_NE(result.find(":status: 200\r\n"), std::string::npos);
 	// Присваиваем набор полей запроса с тем же заголовком адресата
@@ -4828,4 +4838,125 @@ TEST_F(HeadersFixture, PseudoHeadersOrderWithoutProviderTest){
 	ASSERT_LT(result.find(":status: 200\r\n"), result.find("content-type: text/plain\r\n"));
 	// Проверяем что порядок обычных полей между собой сохранён
 	ASSERT_LT(result.find("content-type: text/plain\r\n"), result.find("server: awh\r\n"));
+}
+
+/**
+ * @brief Метод проверки формирования даты по отметке, не умещающейся в тип времени
+ *
+ * @details Отметка, не умещающаяся в знаковый тип времени, приведением становится
+ *          отрицательной. Разложение выдало бы на неё правдоподобную дату вблизи
+ *          начала отсчёта - сведения, которых вызывающая сторона не передавала,
+ *          и они ушли бы на провод полем [Date]. Пустой результат обозначает
+ *          такую отметку честно: поле с ним не формируется вовсе
+ *
+ */
+TEST_F(HeadersFixture, DateOutOfRangeStampTest){
+	// Формируем дату по отметке, не умещающейся в знаковый тип времени
+	ASSERT_TRUE(this->_headers->date(std::numeric_limits <uint64_t>::max()).empty());
+	// Формируем дату по отметке на единицу больше предельной для типа времени
+	ASSERT_TRUE(this->_headers->date(static_cast <uint64_t> (std::numeric_limits <time_t>::max()) + 1).empty());
+	// Проверяем что предельная отметка типа времени пустой результат уже не даёт
+	ASSERT_FALSE(this->_headers->date(static_cast <uint64_t> (std::numeric_limits <time_t>::max())).empty());
+	// Проверяем что обычная отметка по-прежнему раскладывается
+	ASSERT_EQ(this->_headers->date(1000000000), "Sun, 09 Sep 2001 01:46:40 GMT");
+	// Проверяем что отметка в миллисекундах приводится к секундам
+	ASSERT_EQ(this->_headers->date(1000000000000), "Sun, 09 Sep 2001 01:46:40 GMT");
+}
+
+/**
+ * @brief Метод проверки приведения схемы абсолютного URI-адреса к нижнему регистру
+ *
+ * @details Схема регистронезависима, и канонической считается запись строчными
+ *          буквами (RFC 3986 §3.1). Таблица статических полей HPACK и QPACK держит
+ *          [http] и [https] строчными, поэтому схема в ином регистре теряет место
+ *          в таблице и уходит на провод полной записью
+ *
+ */
+TEST_F(HeadersFixture, SchemeCaseNormalizedTest){
+	// Создаём объект запроса клиента с абсолютной формой цели, где схема записана заглавными
+	request_t request(version_t::HTTP2, method_t::GET, std::string("HTTPS://example.com/path"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что схема приведена к нижнему регистру
+	ASSERT_NE(result.find(":scheme: https\r\n"), std::string::npos);
+	// Проверяем что запись заглавными на провод не ушла
+	ASSERT_EQ(result.find("HTTPS"), std::string::npos);
+	// Проверяем что прочие составляющие адреса разобраны по-прежнему
+	ASSERT_NE(result.find(":authority: example.com\r\n"), std::string::npos);
+	// Проверяем что путь отделён от схемы и авторитета
+	ASSERT_NE(result.find(":path: /path\r\n"), std::string::npos);
+	// Создаём объект запроса со смешанным регистром схемы обмена без шифрования
+	request_t plain(version_t::HTTP2, method_t::GET, std::string("HtTp://example.com/"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&plain);
+	// Проверяем что смешанный регистр также приведён к нижнему
+	ASSERT_NE(this->_headers->print(proto_t::HTTP2).find(":scheme: http\r\n"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки приведения пути происхождённой формы цели запроса
+ *
+ * @details Якорь обрабатывается принимающей стороной и в запрос не отправляется
+ *          вовсе (RFC 9112 §3.2.1), а псевдозаголовок пути обязан начинаться
+ *          с разделителя и не бывает пустым (RFC 9113 §8.3.1). Происхождённая
+ *          форма цели несёт якорь ничуть не реже абсолютной
+ *
+ */
+TEST_F(HeadersFixture, OriginFormPathCleanupTest){
+	// Создаём объект запроса клиента с происхождённой формой цели, несущей якорь
+	request_t request(version_t::HTTP2, method_t::GET, std::string("/page?q=1#section"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что якорь снят, а строка запроса сохранена
+	ASSERT_NE(result.find(":path: /page?q=1\r\n"), std::string::npos);
+	// Проверяем что якорь на провод не ушёл
+	ASSERT_EQ(result.find("section"), std::string::npos);
+	// Создаём объект запроса клиента с целью из одной строки запроса
+	request_t query(version_t::HTTP2, method_t::GET, std::string("?q=1"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&query);
+	// Проверяем что путь дополнен корневым разделителем
+	ASSERT_NE(this->_headers->print(proto_t::HTTP2).find(":path: /?q=1\r\n"), std::string::npos);
+	// Создаём объект запроса клиента с целью из одного якоря
+	request_t anchor(version_t::HTTP2, method_t::GET, std::string("#section"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&anchor);
+	// Проверяем что от цели остался корневой путь: пустым псевдозаголовок пути быть не может
+	ASSERT_NE(this->_headers->print(proto_t::HTTP2).find(":path: /\r\n"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки цели метода CONNECT, заданной абсолютным URI-адресом
+ *
+ * @details Цель метода CONNECT записывается authority-формой, но тип цели общий
+ *          для всех запросов, и приложение вправе положить в неё абсолютный
+ *          URI-адрес. Псевдозаголовок авторитета несёт только узел и порт
+ *          (RFC 9113 §8.5), поэтому схема в него попасть не может
+ *
+ */
+TEST_F(HeadersFixture, ConnectAbsoluteUriTargetTest){
+	// Создаём объект запроса клиента с целью метода CONNECT, заданной абсолютным URI-адресом
+	request_t request(version_t::HTTP2, method_t::CONNECT, std::string("https://example.com:443/path"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что в авторитет попали только узел и порт
+	ASSERT_NE(result.find(":authority: example.com:443\r\n"), std::string::npos);
+	// Проверяем что схема в авторитет не уехала
+	ASSERT_EQ(result.find(":authority: https"), std::string::npos);
+	// Проверяем что классический CONNECT псевдозаголовков схемы и пути не несёт
+	ASSERT_EQ(result.find(":scheme"), std::string::npos);
+	// Проверяем что псевдозаголовок пути также отсутствует
+	ASSERT_EQ(result.find(":path"), std::string::npos);
+	// Создаём объект запроса клиента с целью метода CONNECT в authority-форме
+	request_t plain(version_t::HTTP2, method_t::CONNECT, std::string("example.com:443"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&plain);
+	// Проверяем что authority-форма разбирается по-прежнему
+	ASSERT_NE(this->_headers->print(proto_t::HTTP2).find(":authority: example.com:443\r\n"), std::string::npos);
 }

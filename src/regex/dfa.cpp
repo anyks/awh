@@ -114,7 +114,7 @@ namespace {
  * @brief Конструктор
  *
  */
-awh::regex::Dfa::Dfa() noexcept : _program(nullptr), _start(0), _backward(false) {}
+awh::regex::Dfa::Dfa() noexcept : _program(nullptr), _identity(0), _start(0), _backward(false) {}
 /**
  * @brief Метод сброса кэша состояний автомата
  *
@@ -139,8 +139,30 @@ bool awh::regex::Dfa::available(const program_t & program) const noexcept {
 	if(program.instructions.empty())
 		// Выводим результат проверки применимости исполнения
 		return false;
-	// Выводим результат проверки отсутствия режима разбора UTF-8
-	return !hasFlag(program.flags, flag_t::UTF);
+	/**
+	 * Если установлен режим разбора UTF-8 либо соответствия свойствам Юникода
+	 */
+	if(hasFlag(program.flags, flag_t::UTF) || hasFlag(program.flags, flag_t::UCP))
+		// Выводим результат проверки применимости исполнения
+		return false;
+	/**
+	 * Выполняем проверку отсутствия свойств Юникода в классах символов
+	 *
+	 * @details Символы, обладающие свойством Юникода, заданы таблицами свойств
+	 *          и перечислению байтами перехода не подлежат, поэтому построение
+	 *          детерминированного автомата для них неприменимо.
+	 *
+	 */
+	for(auto & value : program.classes) {
+		/**
+		 * Если класс символов задан свойствами Юникода
+		 */
+		if(!value.properties.empty())
+			// Выводим результат проверки применимости исполнения
+			return false;
+	}
+	// Выводим результат проверки применимости исполнения
+	return true;
 }
 /**
  * @brief Метод проверки привязки к позиции в тексте
@@ -617,6 +639,16 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 	result = string_view::npos;
 	// Получаем размер текста сопоставления
 	const size_t size = text.size();
+	/**
+	 * Получаем адрес начала текста сопоставления
+	 *
+	 * @details Обращение к байтам текста выполняется по адресу, минуя проверку
+	 *          границ: положение каждого обращения в цикле прохода уже проверено
+	 *          краем текста, а проверка границ на каждом байте обошлась бы дороже
+	 *          самого перехода состояния.
+	 *
+	 */
+	const char * source = text.data();
 	// Получаем позицию начала прохода по тексту
 	size_t pos = ((from > size) ? size : from);
 	// Создаём набор адресов инструкций исходного состояния
@@ -625,6 +657,17 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 	uint32_t current = this->state(list, this->initial(text, pos));
 	// Флаг обнаружения совпадения при проходе по тексту
 	bool found = false;
+	/**
+	 * Получаем направление прохода и предварительный отбор позиций
+	 *
+	 * @details Направление прохода и отбор позиций при проходе не изменяются,
+	 *          поэтому извлекаются однажды: обращение к ним через объект
+	 *          на каждом байте текста обошлось бы дороже самого перехода.
+	 *
+	 */
+	const bool backward = this->_backward;
+	// Получаем предварительный отбор позиций сопоставления
+	const prefilter_t & prefilter = this->_program->prefilter;
 	/**
 	 * Выполняем обход байтов текста сопоставления
 	 */
@@ -638,9 +681,9 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 		 *          нулевой длины, поэтому пропуск позиций совпадений не теряет.
 		 *
 		 */
-		if(!this->_backward && this->_program->prefilter.active && this->_states.at(current).sparse) {
+		if(!backward && prefilter.active && this->_states[current].sparse) {
 			// Выполняем поиск ближайшей позиции возможного начала совпадения
-			const size_t candidate = this->_program->prefilter.search(text, pos);
+			const size_t candidate = prefilter.search(text, pos);
 			/**
 			 * Если пропущена хотя бы одна позиция текста
 			 */
@@ -674,10 +717,10 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 			}
 		}
 		// Определяем достижение края текста, завершающего проход
-		const bool edge = (this->_backward ? (pos == 0) : (pos >= size));
+		const bool edge = (backward ? (pos == 0) : (pos >= size));
 		// Определяем значение сопоставляемого байта
 		const uint32_t letter = (edge ? FINISH :
-		 static_cast <uint32_t> (static_cast <uint8_t> (text.at(this->_backward ? (pos - 1) : pos))));
+		 static_cast <uint32_t> (static_cast <uint8_t> (source[backward ? (pos - 1) : pos])));
 		/**
 		 * Определяем сопоставление последнего байта текста
 		 *
@@ -686,17 +729,24 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 		 *          поэтому такой переход не кэшируется.
 		 *
 		 */
-		const bool last = (this->_backward ? (pos == size) : ((pos + 1) == size));
+		const bool last = (backward ? (pos == size) : ((pos + 1) == size));
 		// Значение перехода состояния автомата
 		uint32_t next = UNKNOWN;
 		// Определяем допустимость кэширования перехода состояния
 		const bool cached = (!last && !edge);
 		/**
 		 * Если переход состояния подлежит кэшированию
+		 *
+		 * @details Обращение к набору переходов выполняется без проверки границ:
+		 *          набор размещается на всё пространство значений байта, а индекс
+		 *          состояния получен размещением состояния в наборе состояний.
+		 *          Проверка границ на каждом байте текста обошлась бы дороже
+		 *          самого перехода.
+		 *
 		 */
 		if(cached)
 			// Получаем сохранённое значение перехода состояния
-			next = this->_states.at(current).next.at(letter);
+			next = this->_states[current].next[letter];
 		/**
 		 * Если значение перехода состояния не определено
 		 */
@@ -721,7 +771,7 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 			 */
 			if(cached)
 				// Выполняем сохранение значения перехода состояния
-				this->_states.at(current).next.at(letter) = next;
+				this->_states[current].next[letter] = next;
 		}
 		/**
 		 * Если при замыкании состояния обнаружено совпадение
@@ -739,7 +789,7 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 			 *          требуется наименьшая позиция начала, поэтому проход продолжается.
 			 *
 			 */
-			if(!this->_backward)
+			if(!backward)
 				// Выводим результат прохода по тексту
 				return true;
 		}
@@ -752,9 +802,23 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 		// Переходим к достигнутому состоянию автомата
 		current = (next & ADDRESS);
 		/**
+		 * Если достигнутое состояние автомата пусто
+		 *
+		 * @details Пустое состояние не содержит ни одной достижимой инструкции,
+		 *          поэтому продолжение прохода совпадения не обнаружит. Проход
+		 *          в прямом направлении такого состояния не достигает, поскольку
+		 *          начало выражения достижимо в любой позиции текста, тогда как
+		 *          проход в обратном направлении им завершается, пройдя лишь
+		 *          участок текста, занятый совпадением.
+		 *
+		 */
+		if(backward && this->_states[current].list.empty())
+			// Выводим результат прохода по тексту
+			return found;
+		/**
 		 * Если проход выполняется в обратном направлении
 		 */
-		if(this->_backward)
+		if(backward)
 			// Переходим к предшествующему байту текста сопоставления
 			pos--;
 		// Переходим к следующему байту текста сопоставления
@@ -779,9 +843,11 @@ bool awh::regex::Dfa::search(const program_t & program, string_view text, const 
 	 *          поэтому кэш сохраняется между вызовами и сбрасывается лишь при их смене.
 	 *
 	 */
-	if((this->_program != &program) || this->_backward) {
+	if((this->_program != &program) || (this->_identity != program.id) || this->_backward) {
 		// Выполняем установку исполняемой программы регулярного выражения
 		this->_program = &program;
+		// Выполняем установку опознания исполняемой программы
+		this->_identity = program.id;
 		// Выполняем установку прохода в прямом направлении
 		this->_backward = false;
 		// Выполняем сброс кэша состояний автомата
@@ -816,9 +882,11 @@ bool awh::regex::Dfa::reverse(const program_t & program, string_view text, const
 	/**
 	 * Если исполняется программа либо направление, отличные от исполненных ранее
 	 */
-	if((this->_program != &program) || !this->_backward) {
+	if((this->_program != &program) || (this->_identity != program.id) || !this->_backward) {
 		// Выполняем установку исполняемой программы регулярного выражения
 		this->_program = &program;
+		// Выполняем установку опознания исполняемой программы
+		this->_identity = program.id;
 		// Выполняем установку прохода в обратном направлении
 		this->_backward = true;
 		// Выполняем сброс кэша состояний автомата

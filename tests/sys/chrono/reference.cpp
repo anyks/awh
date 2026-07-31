@@ -33,6 +33,7 @@
  */
 #include <ctime>
 #include <cstring>
+#include <vector>
 
 /**
  * Подключаем заголовочный файл проекта
@@ -182,5 +183,96 @@ TEST_F(ReferenceFixture, ExecutionReferenceParseChronoTest){
 			// Выполняем проверку разбора записи, сформированной системным эталоном
 			ASSERT_EQ(this->_chrono->parse(buffer, format), date) << format << " [" << buffer << "]";
 		}
+	}
+}
+
+/**
+ * @brief Сводные временные зоны Северной Америки и их системные соответствия
+ *
+ */
+static const struct ReferenceZone {
+	// Сводная временная зона модуля
+	awh::chrono_t::zone_t zone;
+	// Название зоны в базе временных зон системы
+	const char * name;
+} REFERENCE_ZONES[] = {
+	{awh::chrono_t::zone_t::ET, "America/New_York"},
+	{awh::chrono_t::zone_t::CT, "America/Chicago"},
+	{awh::chrono_t::zone_t::MT, "America/Denver"},
+	{awh::chrono_t::zone_t::PT, "America/Los_Angeles"},
+	{awh::chrono_t::zone_t::AT, "America/Halifax"}
+};
+
+/**
+ * @brief Тест соответствия сводных зон Северной Америки системному календарю
+ *
+ * @details Сводные зоны вроде zone_t::ET обозначают то стандартное время, то летнее, и
+ *          выбор между ними зависит от самого момента. Прежде выбор делался по
+ *          текущему моменту, каким бы ни была записываемая дата, а признак летнего
+ *          времени снимался со всемирных полей вместо местных. Проверка перебирает оба
+ *          перехода по часам за 2007-2035 годы, сверяя смещение с базой временных зон
+ *          системы: она и ловила расхождение в час на осеннем переходе
+ *
+ */
+TEST_F(ReferenceFixture, ExecutionReferenceDaylightChronoTest){
+	// Выполняем перебор всех сводных временных зон
+	for(const ReferenceZone & zone : REFERENCE_ZONES){
+		// Перечень проверяемых моментов времени
+		std::vector <uint64_t> dates;
+		// Выполняем перебор годов, в которые действует текущее правило перехода
+		for(uint16_t year = 2007; year <= 2035; year++){
+			// Выполняем перебор месяцев, в которые происходит переход
+			for(const uint8_t month : {static_cast <uint8_t> (3), static_cast <uint8_t> (11)}){
+				// Выполняем перебор первых двух недель месяца
+				for(uint8_t day = 1; day < 15; day++){
+					// Выполняем перебор всех часов суток
+					for(uint8_t hour = 0; hour < 24; hour++){
+						// Структура времени системного эталона
+						struct tm tm;
+						// Выполняем обнуление структуры времени системного эталона
+						::memset(&tm, 0, sizeof(tm));
+						// Заполняем структуру времени системного эталона
+						tm.tm_year = (year - 1900);
+						tm.tm_mon = (month - 1);
+						tm.tm_mday = day;
+						tm.tm_hour = hour;
+						// Запоминаем проверяемый момент времени
+						dates.push_back(static_cast <uint64_t> (::timegm(&tm)) * 1000ULL);
+					}
+				}
+			}
+		}
+		// Перечень смещений временной зоны, снятых системным эталоном
+		std::vector <int32_t> offsets;
+		// Резервируем место под смещения временной зоны
+		offsets.reserve(dates.size());
+		/**
+		 * Временная зона окружения выставляется однажды на всю зону, а не на каждый
+		 * момент: применение её обходится дороже самой проверки
+		 */
+		// Выставляем временную зону окружения в проверяемую
+		::setenv("TZ", zone.name, 1);
+		// Применяем выставленную временную зону окружения
+		::tzset();
+		// Выполняем перебор всех проверяемых моментов времени
+		for(const uint64_t date : dates){
+			// Получаем момент времени в единицах системного эталона
+			const time_t seconds = static_cast <time_t> (date / 1000ULL);
+			// Структура местного времени системного эталона
+			struct tm local;
+			// Получаем местное время системным эталоном
+			::localtime_r(&seconds, &local);
+			// Запоминаем смещение временной зоны системного эталона
+			offsets.push_back(static_cast <int32_t> (local.tm_gmtoff));
+		}
+		// Восстанавливаем временную зону окружения, закреплённую фикстурой
+		::setenv("TZ", "UTC", 1);
+		// Применяем восстановленную временную зону окружения
+		::tzset();
+		// Выполняем перебор всех проверяемых моментов времени
+		for(size_t i = 0; i < dates.size(); i++)
+			// Выполняем проверку соответствия смещения зоны системному эталону
+			ASSERT_EQ(this->_chrono->getTimeZone(this->_chrono->format(dates[i], zone.zone, "%z")), offsets[i])
+				<< zone.name << " " << this->_chrono->format(dates[i], 0, "%Y-%m-%dT%H:%M:%SZ");
 	}
 }

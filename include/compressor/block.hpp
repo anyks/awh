@@ -34,7 +34,6 @@
 #include "types.hpp"
 #include "stream.hpp"
 #include "../sys/log.hpp"
-#include "../sys/locker.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -136,9 +135,6 @@ namespace awh {
 				// Структура GZip
 				mutable gzip_t _gzip;
 			private:
-				// Локер для потокобезопасной работы
-				mutable lock_state_t <std::mutex> _mtx;
-			private:
 				// Объект работы с логами
 				const log_t * _log;
 			public:
@@ -149,14 +145,6 @@ namespace awh {
 				 *
 				 */
 				void level(const level_t level) noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 *
-				 */
-				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод установки размера скользящего окна Zlib

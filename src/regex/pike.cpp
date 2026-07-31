@@ -537,7 +537,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 					 */
 					if(hasFlag(instruction.flags, flag_t::CASELESS))
 						// Выполняем сопоставление символов без учёта регистра
-						matched = (fold(code) == fold(instruction.letter.code));
+						matched = (fold(code, instruction.flags) == fold(instruction.letter.code, instruction.flags));
 					// Выполняем сопоставление символов с учётом регистра
 					else matched = (code == instruction.letter.code);
 				} break;

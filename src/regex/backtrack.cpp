@@ -150,36 +150,63 @@ bool awh::regex::Backtrack::matches(const uint32_t number, const uint32_t flags,
 	if((pos + count) > this->_text.size())
 		// Выводим результат сопоставления захваченного текста
 		return false;
-	// Определяем режим сопоставления без учёта регистра
-	const bool caseless = hasFlag(flags, flag_t::CASELESS);
+	/**
+	 * Если режим сопоставления без учёта регистра не установлен
+	 */
+	if(!hasFlag(flags, flag_t::CASELESS)) {
+		/**
+		 * Если захваченный текст с текстом в позиции сопоставления не совпадает
+		 */
+		if(this->_text.compare(pos, count, this->_text, begin, count) != 0)
+			// Выводим результат сопоставления захваченного текста
+			return false;
+		// Выполняем установку длины сопоставленного захваченного текста
+		length = count;
+		// Выводим результат сопоставления захваченного текста
+		return true;
+	}
+	// Получаем размер текста сопоставления
+	const size_t size = this->_text.size();
+	// Пройденная длина захваченного группой текста
+	size_t passed = 0;
+	// Пройденная длина текста в позиции сопоставления
+	size_t matched = 0;
 	/**
 	 * Выполняем сличение захваченного текста с текстом в позиции сопоставления
+	 *
+	 * @details Приведение регистра изменяет длину символа в байтах, поэтому
+	 *          захваченный текст и текст в позиции сопоставления проходятся
+	 *          посимвольно и независимо друг от друга.
+	 *
 	 */
-	for(size_t i = 0; i < count; i++) {
-		// Получаем очередной байт захваченного группой текста
-		const uint8_t first = static_cast <uint8_t> (this->_text.at(begin + i));
-		// Получаем очередной байт текста в позиции сопоставления
-		const uint8_t second = static_cast <uint8_t> (this->_text.at(pos + i));
+	while(passed < count) {
 		/**
-		 * Если байты захваченного текста и текста сопоставления различаются
+		 * Если текст в позиции сопоставления исчерпан
 		 */
-		if(first != second) {
-			/**
-			 * Если режим сопоставления без учёта регистра не установлен
-			 */
-			if(!caseless)
-				// Выводим результат сопоставления захваченного текста
-				return false;
-			/**
-			 * Если байты различаются и приведёнными к нижнему регистру
-			 */
-			if(fold(static_cast <uint32_t> (first)) != fold(static_cast <uint32_t> (second)))
-				// Выводим результат сопоставления захваченного текста
-				return false;
-		}
+		if((pos + matched) >= size)
+			// Выводим результат сопоставления захваченного текста
+			return false;
+		// Длина символа захваченного группой текста
+		size_t width = 1;
+		// Длина символа текста в позиции сопоставления
+		size_t taken = 1;
+		// Получаем очередной символ захваченного группой текста
+		const uint32_t first = decode(this->_text, (begin + passed), flags, width);
+		// Получаем очередной символ текста в позиции сопоставления
+		const uint32_t second = decode(this->_text, (pos + matched), flags, taken);
+		/**
+		 * Если символы различаются и приведёнными к нижнему регистру
+		 */
+		if(fold(first, flags) != fold(second, flags))
+			// Выводим результат сопоставления захваченного текста
+			return false;
+		// Переходим к следующему символу захваченного группой текста
+		passed += width;
+		// Переходим к следующему символу текста в позиции сопоставления
+		matched += taken;
 	}
 	// Выполняем установку длины сопоставленного захваченного текста
-	length = count;
+	length = matched;
 	// Выводим результат сопоставления захваченного текста
 	return true;
 }
@@ -731,7 +758,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 								 */
 								if(hasFlag(instruction.flags, flag_t::CASELESS))
 									// Выполняем сопоставление символов без учёта регистра
-									matched = (fold(code) == fold(instruction.letter.code));
+									matched = (fold(code, instruction.flags) == fold(instruction.letter.code, instruction.flags));
 								// Выполняем сопоставление символов с учётом регистра
 								else matched = (code == instruction.letter.code);
 							} break;
@@ -763,6 +790,15 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 								matched = true;
 								// Выполняем установку длины единицы кодирования
 								width = 1;
+							} break;
+							/**
+							 * Выполняем сопоставление расширенного графемного кластера
+							 */
+							case static_cast <uint8_t> (opcode_t::GRAPHEME): {
+								// Получаем длину графемного кластера в позиции текста
+								width = grapheme(this->_text, current, this->_program->flags);
+								// Выполняем установку флага сопоставления графемного кластера
+								matched = (width > 0);
 							} break;
 						}
 						/**

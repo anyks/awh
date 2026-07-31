@@ -71,6 +71,7 @@ if (${GTest_FOUND})
             matching.cpp
             automaton.cpp
             engine.cpp
+            interface.cpp
         )
 
         # Библиотеки GTest для линковки

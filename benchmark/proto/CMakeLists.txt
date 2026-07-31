@@ -40,6 +40,24 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks QUIC protocol submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_QUIC_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для подмодуля контейнера HTTP-заголовков
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_HTTP_HEADERS_BENCHMARK "Build HTTP headers benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для подмодуля контейнера HTTP-заголовков
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_HTTP_HEADERS_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для подмодуля контейнера HTTP-заголовков
+        message(STATUS "Build benchmarks HTTP headers submodule: Yes\n")
+        # Дополняем список источников бенчмарками для подмодуля контейнера HTTP-заголовков
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            headers/headers.cpp
+            headers/container.cpp
+        )
+    # Если не нужно собрать бенчмарки для подмодуля контейнера HTTP-заголовков
+    else()
+        # Выводим сообщение о сборке бенчмарков для подмодуля контейнера HTTP-заголовков
+        message(STATUS "Build benchmarks HTTP headers submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_HTTP_HEADERS_BENCHMARK})
+
     # Указываем что нужно собрать бенчмарки для подмодуля протокола HTTP/1.x
     option(CMAKE_BUILD_${BENCHMARK_NAME}_HTTP1_BENCHMARK "Build HTTP/1.x benchmark for ${BENCHMARK_NAME}" ON)
 

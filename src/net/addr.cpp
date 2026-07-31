@@ -28,7 +28,14 @@
 /**
  * Если мы используем порядок байтов Little Endian
  */
-#elif __LITTLE_ENDIAN__ || _LITTLE_ENDIAN
+/**
+ * Приметы порядка байтов сличаются значениями, а не проверяются на наличие:
+ * во FreeBSD, в прочих BSD и в glibc макросы `_LITTLE_ENDIAN` и `_BIG_ENDIAN`
+ * заведены именами значений (1234 и 4321) и определены всегда, каким бы ни был
+ * порядок байтов машины. Проверка их наличием давала обратный порядок на машине
+ * с прямым - на этом уже попался модуль хэширования
+ */
+#elif defined(_BYTE_ORDER) && defined(_LITTLE_ENDIAN) && (_BYTE_ORDER == _LITTLE_ENDIAN)
 	/**
 	 * Включаем макрос поддержки Little Endian
 	 */
@@ -36,7 +43,7 @@
 /**
  * Если мы используем порядок байтов Big Endian
  */
-#elif __BIG_ENDIAN__ || _BIG_ENDIAN
+#elif (defined(_BYTE_ORDER) && defined(_BIG_ENDIAN) && (_BYTE_ORDER == _BIG_ENDIAN)) || (defined(__BIG_ENDIAN__) && !defined(__LITTLE_ENDIAN__))
 	/**
 	 * Отключаем макрос поддержки Little Endian
 	 */

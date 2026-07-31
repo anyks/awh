@@ -28,9 +28,6 @@
 [submodule "submodules/brotli"]
 	path = submodules/brotli
 	url = https://gitflic.ru/project/third_party/brotli.git
-[submodule "submodules/pcre2"]
-	path = submodules/pcre2
-	url = https://gitflic.ru/project/third_party/pcre2.git
 [submodule "submodules/boringssl"]
 	path = submodules/boringssl
 	url = https://gitflic.ru/project/third_party/boringssl.git
@@ -55,3 +52,6 @@
 [submodule "submodules/cityhash"]
 	path = submodules/cityhash
 	url = https://github.com/google/cityhash.git
+[submodule "submodules/pcre2"]
+	path = submodules/pcre2
+	url = https://github.com/PCRE2Project/pcre2.git

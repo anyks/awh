@@ -57,10 +57,34 @@ int32_t main(int32_t argc, char * argv[]){
 	crypto.salt("anyks_salt");
 	// Устанавливаем пароль шифрования
 	crypto.password("anyks_password");
+	/**
+	 * Режим блочного шифрования по умолчанию проверяет подлинность данных:
+	 * шифротекст растёт на вектор инициализации и имитовставку, зато подделка
+	 * его обнаруживается. Режим гаммирования доступен отдельно, подделку он
+	 * не обнаруживает
+	 */
+	// Устанавливаем режим блочного шифрования с проверкой подлинности
+	crypto.mode(crypto_t::mode_t::GCM);
 	// Выполняем кодирование текста
 	string encoded = crypto.encrypt <string> (data, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256);
+	/**
+	 * Шифротекст двоичен и печатной записи не имеет: вывод его как есть портит
+	 * поток вывода управляющими октетами, поэтому он показывается в BASE64
+	 */
 	// Возвращаем результат хэширования
-	cout << "Encoded1 data AES256: " << encoded << ", SIZE=" << encoded.size() << endl << flush;
+	cout << "Encoded1 data AES256: " << crypto.encrypt <string> (encoded.data(), encoded.size(), crypto_t::hash_t::SHA256, crypto_t::cipher_t::BASE64) << ", SIZE=" << encoded.size() << endl << flush;
+	/**
+	 * Вектор инициализации берётся случайным на каждое сообщение, поэтому
+	 * шифрование одних и тех же данных даёт разный шифротекст
+	 */
+	// Выполняем повторное кодирование того же текста
+	cout << "Encoded1 differs from the repeated one: " << (crypto.encrypt <string> (data, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256) != encoded) << endl << flush;
+	// Формируем поддельный шифротекст
+	string tampered = encoded;
+	// Выполняем изменение октета шифротекста
+	tampered[tampered.size() / 2] = static_cast <char> (tampered[tampered.size() / 2] ^ 0x01);
+	// Возвращаем результат обнаружения подделки шифротекста
+	cout << "Tampered ciphertext rejected: " << crypto.decrypt <string> (tampered, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256).empty() << endl << flush;
 	// Выполняем декомпрессию данных
 	string decoded = crypto.decrypt <string> (encoded, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256);
 	// Возвращаем результат хэширования
@@ -74,7 +98,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Завершаем процесс шифрования
 	crypto.finalize(encoded);
 	// Возвращаем результат хэширования
-	cout << "Encoded2 data AES192: " << encoded << ", SIZE=" << encoded.size() << endl << flush;
+	cout << "Encoded2 data AES192: " << crypto.encrypt <string> (encoded.data(), encoded.size(), crypto_t::hash_t::SHA256, crypto_t::cipher_t::BASE64) << ", SIZE=" << encoded.size() << endl << flush;
 	// Инициализируем объект криптографии для другого типа хэша
 	crypto.initialize(crypto_t::event_t::DECODE, crypto_t::hash_t::SHA224, crypto_t::cipher_t::AES192);
 	// Выполняем декомпрессию данных

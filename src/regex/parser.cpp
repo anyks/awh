@@ -26,6 +26,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <regex/parser.hpp>
+#include <regex/unicode.hpp>
 #include <sys/ascii.hpp>
 
 /**
@@ -357,6 +358,16 @@ const string & awh::regex::Parser::name(const uint32_t index) const noexcept {
 	return this->_names.at(index);
 }
 /**
+ * @brief Метод извлечения соответствия имён групп их номерам
+ *
+ * @return соответствие имён именованных групп их номерам
+ *
+ */
+const unordered_map <string, uint32_t> & awh::regex::Parser::groups() const noexcept {
+	// Выводим соответствие имён именованных групп их номерам
+	return this->_groups;
+}
+/**
  * @brief Метод извлечения последовательности символов узла
  *
  * @param offset смещение начала последовательности в хранилище строк
@@ -642,6 +653,38 @@ awh::regex::node_id_t awh::regex::Parser::makeClass(class_t & value) noexcept {
 bool awh::regex::Parser::shorthand(const char letter, class_t & result) const noexcept {
 	// Создаём набор диапазонов сокращённого класса символов
 	vector <range_t> ranges;
+	/**
+	 * Если установлен режим соответствия сокращённых классов свойствам Юникода
+	 *
+	 * @details Режим «UCP» заменяет наборы символов ASCII, задающие сокращённые классы,
+	 *          соответствующими свойствами Юникода, благодаря чему сокращённые классы
+	 *          соответствуют символам за пределами набора ASCII.
+	 *
+	 */
+	if(hasFlag(this->_flags, flag_t::UCP)) {
+		// Идентификатор свойства Юникода сокращённого класса символов
+		uint16_t id = static_cast <uint16_t> (property_id_t::UNKNOWN);
+		/**
+		 * Определяем букву сокращённого класса символов
+		 */
+		switch(ascii::toLower(letter)) {
+			// Выполняем установку свойства десятичных цифр
+			case 'd': id = static_cast <uint16_t> (property_id_t::Nd); break;
+			// Выполняем установку свойства символов слова
+			case 'w': id = static_cast <uint16_t> (property_id_t::UCP_WORD); break;
+			// Выполняем установку свойства пробельных символов
+			case 's': id = static_cast <uint16_t> (property_id_t::UCP_SPACE); break;
+		}
+		/**
+		 * Если свойство Юникода сокращённого класса определено
+		 */
+		if(id != static_cast <uint16_t> (property_id_t::UNKNOWN)) {
+			// Выполняем добавление свойства Юникода в класс символов
+			result.properties.emplace_back(id, ascii::isUpper(letter));
+			// Выводим результат формирования сокращённого класса символов
+			return true;
+		}
+	}
 	/**
 	 * Определяем букву сокращённого класса символов
 	 */
@@ -1370,60 +1413,18 @@ bool awh::regex::Parser::parseProperty(const bool negative, class_t & result) no
 		// Выполняем удаление знака отрицания из имени свойства
 		name.erase(0, 1);
 	}
+	// Выполняем извлечение идентификатора свойства Юникода по его имени
+	const uint16_t id = awh::regex::property(name);
 	/**
-	 * Создаём таблицу соответствия имён свойств их идентификаторам
-	 *
-	 * @details Ключи таблицы приведены к нормальному виду: буквы записаны
-	 *          в нижнем регистре, разделители имени опущены. Разбираемое имя
-	 *          свойства приводится к тому же виду перед поиском, благодаря чему
-	 *          имена свойств распознаются без учёта регистра и разделителей.
-	 *
+	 * Если имя свойства Юникода не распознано
 	 */
-	static const unordered_map <string, property_id_t> properties = {
-		{"any", property_id_t::ANY}, {"c", property_id_t::C}, {"cc", property_id_t::Cc},
-		{"cf", property_id_t::Cf}, {"cn", property_id_t::Cn}, {"co", property_id_t::Co},
-		{"cs", property_id_t::Cs}, {"l", property_id_t::L}, {"ll", property_id_t::Ll},
-		{"lm", property_id_t::Lm}, {"lo", property_id_t::Lo}, {"lt", property_id_t::Lt},
-		{"lu", property_id_t::Lu}, {"l&", property_id_t::L_AMP}, {"m", property_id_t::M},
-		{"mc", property_id_t::Mc}, {"me", property_id_t::Me}, {"mn", property_id_t::Mn},
-		{"n", property_id_t::N}, {"nd", property_id_t::Nd}, {"nl", property_id_t::Nl},
-		{"no", property_id_t::No}, {"p", property_id_t::P}, {"pc", property_id_t::Pc},
-		{"pd", property_id_t::Pd}, {"pe", property_id_t::Pe}, {"pf", property_id_t::Pf},
-		{"pi", property_id_t::Pi}, {"po", property_id_t::Po}, {"ps", property_id_t::Ps},
-		{"s", property_id_t::S}, {"sc", property_id_t::Sc}, {"sk", property_id_t::Sk},
-		{"sm", property_id_t::Sm}, {"so", property_id_t::So}, {"z", property_id_t::Z},
-		{"zl", property_id_t::Zl}, {"zp", property_id_t::Zp}, {"zs", property_id_t::Zs},
-		{"xan", property_id_t::XAN}, {"xps", property_id_t::XPS}, {"xsp", property_id_t::XSP},
-		{"xwd", property_id_t::XWD}, {"xuc", property_id_t::XUC}
-	};
-	// Приведённое к нормальному виду имя свойства Юникода
-	string key;
-	/**
-	 * Выполняем приведение имени свойства Юникода к нормальному виду
-	 */
-	for(auto & letter : name) {
-		/**
-		 * Если очередной символ является разделителем имени свойства
-		 */
-		if((letter == '_') || (letter == '-') || (letter == ' '))
-			// Переходим к следующему символу имени свойства
-			continue;
-		// Выполняем добавление символа имени свойства в нижнем регистре
-		key.append(1, ascii::toLower(letter));
-	}
-	// Выполняем поиск свойства Юникода в таблице соответствия
-	auto i = properties.find(key);
-	/**
-	 * Если свойство Юникода не обнаружено в таблице соответствия
-	 */
-	if(i == properties.end()) {
+	if(id == static_cast <uint16_t> (property_id_t::UNKNOWN)) {
 		// Выполняем установку ошибки неизвестного свойства Юникода
 		this->fail(error_t::BAD_PROPERTY, offset);
 		// Выводим результат выполнения разбора
 		return false;
 	}
-	// Выполняем добавление свойства Юникода в класс символов
-	result.properties.emplace_back(static_cast <uint16_t> (i->second), inverse);
+	result.properties.emplace_back(id, inverse);
 	// Выводим результат выполнения разбора
 	return true;
 }
