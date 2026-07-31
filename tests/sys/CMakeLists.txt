@@ -391,7 +391,11 @@ if(${GTest_FOUND})
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 hash/hash.cpp
                 hash/static.cpp
+                hash/engine.cpp
                 hash/bignum.cpp
+                hash/crypto.cpp
+                hash/stress.cpp
+                hash/parameterized.cpp
             )
         # Если не нужно собрать тесты для работы с хэшированием
         else()

@@ -42,6 +42,26 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks BigNum submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_BIGNUM_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для подмодуля хэширования
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_HASH_BENCHMARK "Build Hash benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для подмодуля хэширования
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_HASH_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для подмодуля хэширования
+        message(STATUS "Build benchmarks Hash submodule: Yes\n")
+        # Дополняем список источников бенчмарками для подмодуля хэширования
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            hash/hash.cpp
+            hash/oneshot.cpp
+            hash/stream.cpp
+            hash/widths.cpp
+        )
+    # Если не нужно собрать бенчмарки для подмодуля хэширования
+    else()
+        # Выводим сообщение о сборке бенчмарков для подмодуля хэширования
+        message(STATUS "Build benchmarks Hash submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_HASH_BENCHMARK})
+
     # Указываем что нужно собрать бенчмарки для подмодуля работы с датой и временем
     option(CMAKE_BUILD_${BENCHMARK_NAME}_CHRONO_BENCHMARK "Build Chrono benchmark for ${BENCHMARK_NAME}" ON)
 

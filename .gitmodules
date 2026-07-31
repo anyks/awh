@@ -52,3 +52,6 @@
 [submodule "submodules/nghttp2"]
 	path = submodules/nghttp2
 	url = https://github.com/nghttp2/nghttp2.git
+[submodule "submodules/cityhash"]
+	path = submodules/cityhash
+	url = https://github.com/google/cityhash.git

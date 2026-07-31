@@ -317,3 +317,159 @@ TEST_F(HashFixture, LargeHashTest){
 	// Проверяем отличие результатов хэширования данных разного размера
 	EXPECT_EQ(results.size(), static_cast <size_t> (((this->_buffer.size() - 1024) / 64) + 1));
 }
+
+/**
+ * @brief Тест конструкторов объекта хэширования
+ *
+ */
+TEST_F(HashFixture, ConstructorHashTest){
+	// Создаём объект хэширования с начальным значением по умолчанию
+	const awh::hash_t hash1;
+	// Создаём объект хэширования с указанным начальным значением
+	const awh::hash_t hash2(0x1234567890ABCDEFULL);
+	// Проверяем начальное значение хэширования по умолчанию
+	EXPECT_EQ(hash1.seed(), static_cast <uint64_t> (0));
+	// Проверяем указанное начальное значение хэширования
+	EXPECT_EQ(hash2.seed(), static_cast <uint64_t> (0x1234567890ABCDEFULL));
+	// Проверяем размер обработанных данных объекта хэширования
+	EXPECT_EQ(hash2.length(), static_cast <uint64_t> (0));
+	// Проверяем отличие результатов хэширования объектов с разными начальными значениями
+	EXPECT_NE(hash1.hash <uint64_t> ("Hello World!!!"), hash2.hash <uint64_t> ("Hello World!!!"));
+	// Проверяем размер блока данных хэширования
+	EXPECT_EQ(awh::hash_t::BLOCK, static_cast <size_t> (64));
+}
+
+/**
+ * @brief Тест формирования результата хэширования в буфер
+ *
+ */
+TEST_F(HashFixture, BufferHashTest){
+	// Буфер результата одноразового хэширования
+	uint8_t result1[48];
+	// Буфер результата потокового хэширования
+	uint8_t result2[48];
+	// Создаём объект потокового хэширования
+	awh::hash_t hash;
+	// Выполняем добавление данных в потоковое хэширование
+	hash.update(this->_buffer.data(), 150);
+	/**
+	 * Выполняем перебор размеров результата хэширования
+	 */
+	for(size_t length = 1; length <= sizeof(result1); length++){
+		// Заполняем буфер результата одноразового хэширования
+		::memset(result1, 0x00, sizeof(result1));
+		// Заполняем буфер результата потокового хэширования
+		::memset(result2, 0x00, sizeof(result2));
+		// Выполняем формирование результата одноразового хэширования
+		this->_hash->hash(this->_buffer.data(), 150, result1, length);
+		// Выполняем формирование результата потокового хэширования
+		hash.digest(result2, length);
+		// Проверяем совпадение результатов одноразового и потокового хэширования
+		EXPECT_EQ(::memcmp(result1, result2, length), 0);
+	}
+	// Выполняем формирование результата хэширования в отсутствующий буфер
+	this->_hash->hash(this->_buffer.data(), 150, nullptr, sizeof(result1));
+	// Выполняем формирование результата потокового хэширования в отсутствующий буфер
+	hash.digest(nullptr, sizeof(result2));
+	// Выполняем формирование результата хэширования нулевой длины
+	this->_hash->hash(this->_buffer.data(), 150, result1, 0);
+	// Выполняем формирование результата потокового хэширования нулевой длины
+	hash.digest(result2, 0);
+}
+
+/**
+ * @brief Тест добавления данных в потоковое хэширование
+ *
+ */
+TEST_F(HashFixture, UpdateHashTest){
+	// Текст для хэширования
+	const std::string text = "Anyks Framework";
+	// Формируем буфер данных из текста
+	const std::vector <char> buffer(text.begin(), text.end());
+	// Создаём объект потокового хэширования для сырых данных
+	awh::hash_t hash1;
+	// Создаём объект потокового хэширования для текста
+	awh::hash_t hash2;
+	// Создаём объект потокового хэширования для буфера данных
+	awh::hash_t hash3;
+	// Выполняем добавление сырых данных в потоковое хэширование
+	hash1.update(text.data(), text.size());
+	// Выполняем добавление текста в потоковое хэширование
+	hash2.update(text);
+	// Выполняем добавление буфера данных в потоковое хэширование
+	hash3.update(buffer);
+	// Проверяем совпадение результата добавления текста
+	EXPECT_EQ(hash2.digest <uint64_t> (), hash1.digest <uint64_t> ());
+	// Проверяем совпадение результата добавления буфера данных
+	EXPECT_EQ(hash3.digest <uint64_t> (), hash1.digest <uint64_t> ());
+	// Проверяем размер обработанных данных
+	EXPECT_EQ(hash3.length(), static_cast <uint64_t> (text.size()));
+
+	// Выполняем добавление отсутствующих данных в потоковое хэширование
+	hash1.update(nullptr, 128);
+	// Выполняем добавление данных нулевого размера в потоковое хэширование
+	hash1.update(text.data(), 0);
+	// Проверяем сохранность размера обработанных данных
+	EXPECT_EQ(hash1.length(), static_cast <uint64_t> (text.size()));
+	// Проверяем сохранность результата потокового хэширования
+	EXPECT_EQ(hash1.digest <uint64_t> (), hash2.digest <uint64_t> ());
+}
+
+/**
+ * @brief Тест потокового хэширования данных размером с блок
+ *
+ */
+TEST_F(HashFixture, BlockStreamHashTest){
+	/**
+	 * Выполняем перебор размеров данных кратных размеру блока хэширования
+	 */
+	for(size_t size = awh::hash_t::BLOCK; size <= (awh::hash_t::BLOCK * 8); size += awh::hash_t::BLOCK){
+		// Создаём объект потокового хэширования блоками
+		awh::hash_t hash1;
+		// Создаём объект потокового хэширования половинами блока
+		awh::hash_t hash2;
+		/**
+		 * Выполняем передачу данных блоками
+		 */
+		for(size_t offset = 0; offset < size; offset += awh::hash_t::BLOCK)
+			// Выполняем добавление очередного блока данных
+			hash1.update(this->_buffer.data() + offset, awh::hash_t::BLOCK);
+		/**
+		 * Выполняем передачу данных половинами блока
+		 */
+		for(size_t offset = 0; offset < size; offset += (awh::hash_t::BLOCK / 2))
+			// Выполняем добавление очередной половины блока данных
+			hash2.update(this->_buffer.data() + offset, (awh::hash_t::BLOCK / 2));
+
+		// Проверяем совпадение результата хэширования блоками с одноразовым хэшированием
+		EXPECT_EQ(hash1.digest <uint64_t> (), this->_hash->hash <uint64_t> (this->_buffer.data(), size));
+		// Проверяем совпадение результата хэширования половинами блока с одноразовым хэшированием
+		EXPECT_EQ(hash2.digest <uint64_t> (), this->_hash->hash <uint64_t> (this->_buffer.data(), size));
+	}
+}
+
+/**
+ * @brief Тест хэширования данных отличающихся размером и порядком байтов
+ *
+ */
+TEST_F(HashFixture, DistinctHashTest){
+	// Проверяем отличие результата хэширования данных разного размера
+	EXPECT_NE(this->_hash->hash <uint64_t> ("Anyks"), this->_hash->hash <uint64_t> ("Anyks "));
+	// Проверяем отличие результата хэширования данных с переставленными байтами
+	EXPECT_NE(this->_hash->hash <uint64_t> ("Anyks Framework"), this->_hash->hash <uint64_t> ("Framework Anyks"));
+	// Проверяем отличие результата хэширования данных отличающихся одним байтом
+	EXPECT_NE(this->_hash->hash <uint64_t> ("Anyks Framework"), this->_hash->hash <uint64_t> ("Anyks Framewark"));
+	// Набор сформированных результатов хэширования
+	std::set <uint64_t> results;
+	/**
+	 * Выполняем перебор размеров данных состоящих из нулевых байтов
+	 */
+	for(size_t size = 0; size <= 256; size++){
+		// Формируем буфер нулевых данных
+		const std::vector <uint8_t> buffer(size, 0);
+		// Добавляем результат хэширования нулевых данных
+		results.emplace(this->_hash->hash <uint64_t> (buffer.data(), size));
+	}
+	// Проверяем отличие результатов хэширования нулевых данных разного размера
+	EXPECT_EQ(results.size(), static_cast <size_t> (257));
+}

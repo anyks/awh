@@ -3,6 +3,8 @@
 # Получаем корневую дирректорию
 readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 
+# Удаляем директорию с исходниками libev
+rm -rf $ROOT/../submodules/libev
 # Скачиваем архив с исходниками libev
 curl https://dist.schmorp.de/libev/libev-4.33.tar.gz -o $ROOT/../submodules/libev-4.33.tar.gz
 # Переводим в директорию с сабмодулями
@@ -36,6 +38,10 @@ $ROOT/submodule.sh add nghttp3 https://github.com/ngtcp2/nghttp3.git
 # Выполняем пересборку сабмодуля nghttp2
 $ROOT/submodule.sh remove nghttp2
 $ROOT/submodule.sh add nghttp2 https://github.com/nghttp2/nghttp2.git
+
+# Выполняем пересборку сабмодуля cityhash
+$ROOT/submodule.sh remove cityhash
+$ROOT/submodule.sh add cityhash https://github.com/google/cityhash.git
 
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules
