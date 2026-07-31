@@ -29,6 +29,7 @@
 #include <array>
 #include <string>
 #include <vector>
+#include <limits>
 #include <cstring>
 #include <cstdint>
 #include <cstddef>
@@ -162,15 +163,92 @@ namespace awh {
 		 */
 		template <typename T>
 		/**
-		 * @brief Функция записи результата хэширования во встроенный числовой тип
+		 * @brief Функция записи результата хэширования во встроенный целочисленный тип
+		 *
+		 * @details Число собирается из потока октетов в порядке от младшего октета
+		 *          к старшему вне зависимости от порядка байтов процессора, поэтому
+		 *          числовое значение результата на всех платформах одинаково и
+		 *          совпадает с результатом быстрого пути функции формирования хэша.
 		 *
 		 * @param result результат хэширования для записи
 		 * @param buffer буфер сформированного хэша
 		 *
 		 */
-		AWH_HASH_INLINE typename enable_if <is_arithmetic <T>::value, void>::type assign(T & result, const uint8_t * buffer) noexcept {
-			// Копируем сформированный хэш в результат хэширования
-			::memcpy(&result, buffer, sizeof(T));
+		AWH_HASH_INLINE typename enable_if <is_integral <T>::value, void>::type assign(T & result, const uint8_t * buffer) noexcept {
+			/**
+			 * Создаём тип данных беззнакового представления результата хэширования
+			 *
+			 */
+			using value_t = typename make_unsigned <T>::type;
+			// Собираемое из потока октетов число
+			value_t value = 0;
+			/**
+			 * Выполняем перебор всех октетов сформированного хэша
+			 */
+			for(size_t i = 0; i < sizeof(T); i++)
+				// Добавляем очередной октет сформированного хэша в число
+				value |= (static_cast <value_t> (buffer[i]) << (i * 8));
+			// Записываем собранное число в результат хэширования
+			result = static_cast <T> (value);
+		}
+		/**
+		 * @brief Шаблон типа результата хэширования
+		 *
+		 * @tparam T тип результата хэширования
+		 *
+		 */
+		template <typename T>
+		/**
+		 * @brief Функция записи результата хэширования во встроенный вещественный тип
+		 *
+		 * @details Произвольный набор октетов образует бесконечность либо значение
+		 *          не являющееся числом примерно в одном случае из двухсот у числа
+		 *          одинарной точности, а такое значение неравно самому себе и в
+		 *          качестве ключа ассоциативного контейнера непригодно. Функция
+		 *          гасит старший бит порядка числа, переводя значение в конечное.
+		 *
+		 * @param result результат хэширования для записи
+		 * @param buffer буфер сформированного хэша
+		 *
+		 */
+		AWH_HASH_INLINE typename enable_if <is_floating_point <T>::value, void>::type assign(T & result, const uint8_t * buffer) noexcept {
+			/**
+			 * Проверяем соответствие вещественного типа формату IEEE-754
+			 */
+			static_assert(numeric_limits <T>::is_iec559 && (sizeof(T) <= sizeof(uint64_t)),
+			 "AWH hash: the floating point result must be an IEEE-754 binary32 or binary64 number, use bigreal_t for wider ones");
+			/**
+			 * Создаём тип данных битового представления результата хэширования
+			 *
+			 */
+			using value_t = typename conditional <sizeof(T) == sizeof(uint32_t), uint32_t, uint64_t>::type;
+			/**
+			 * Определяем разрядность мантиссы вещественного числа
+			 *
+			 */
+			constexpr uint8_t mantissa = static_cast <uint8_t> (numeric_limits <T>::digits - 1);
+			/**
+			 * Определяем маску порядка вещественного числа
+			 *
+			 */
+			constexpr value_t exponent = ((static_cast <value_t> (1) << ((sizeof(T) * 8) - mantissa - 1)) - 1);
+			// Собираемое из потока октетов число
+			value_t value = 0;
+			/**
+			 * Выполняем перебор всех октетов сформированного хэша
+			 */
+			for(size_t i = 0; i < sizeof(T); i++)
+				// Добавляем очередной октет сформированного хэша в число
+				value |= (static_cast <value_t> (buffer[i]) << (i * 8));
+			/**
+			 * Если порядок числа заполнен единицами, что означает бесконечность
+			 * либо значение не являющееся числом
+			 */
+			if(((value >> mantissa) & exponent) == exponent)
+				// Выполняем сброс старшего бита порядка числа
+				value &= ~(static_cast <value_t> (1) << ((sizeof(T) * 8) - 2));
+			// Записываем битовое представление в результат хэширования
+			::memcpy(&result, &value, sizeof(T));
 		}
 		/**
 		 * @brief Шаблон размера массива байтов результата хэширования
@@ -358,6 +436,17 @@ namespace awh {
 			 *
 			 */
 			void digest(uint8_t * result, const size_t length) const noexcept;
+			/**
+			 * @brief Метод формирования 64-битного результата потокового хэширования
+			 *
+			 * @details Метод выводит первые восемь октетов результата в виде числа,
+			 *          минуя формирование потока октетов, и предназначен для наиболее
+			 *          частого случая — хэширования ключей ассоциативных контейнеров.
+			 *
+			 * @return результат хэширования
+			 *
+			 */
+			uint64_t digest() const noexcept;
 		public:
 			/**
 			 * @brief Метод формирования хэша буфера данных
@@ -386,16 +475,28 @@ namespace awh {
 			 *
 			 */
 			AWH_HASH_INLINE T digest() const noexcept {
-				// Результат работы функции
-				T result;
-				// Буфер сформированного хэша
-				uint8_t buffer[sizeof(T)];
-				// Выполняем формирование результата потокового хэширования
-				this->digest(buffer, sizeof(T));
-				// Выполняем запись сформированного хэша в результат хэширования
-				hashing::assign(result, buffer);
-				// Выводим результат работы функции
-				return result;
+				/**
+				 * Если результатом хэширования является беззнаковое целое число,
+				 * умещающееся в разрядность вычислительного движка хэширования
+				 */
+				if constexpr(std::is_integral_v <T> && std::is_unsigned_v <T> && (sizeof(T) <= sizeof(uint64_t)))
+					// Выводим младшие разряды сформированного хэша
+					return static_cast <T> (this->digest());
+				/**
+				 * Если результат хэширования формируется в буфере
+				 */
+				else {
+					// Результат работы функции
+					T result;
+					// Буфер сформированного хэша
+					uint8_t buffer[sizeof(T)];
+					// Выполняем формирование результата потокового хэширования
+					this->digest(buffer, sizeof(T));
+					// Выполняем запись сформированного хэша в результат хэширования
+					hashing::assign(result, buffer);
+					// Выводим результат работы функции
+					return result;
+				}
 			}
 		public:
 			/**
@@ -584,10 +685,8 @@ namespace std {
 		 *
 		 */
 		size_t operator () (const awh::BigNum <BYTES, TYPE> & num) const noexcept {
-			// Объект хэширования данных
-			const awh::hash_t engine;
 			// Выполняем формирование хэша длинного числа
-			return engine.hash <size_t> (num.data(), BYTES);
+			return awh::hashing::create <size_t> (num.data(), BYTES);
 		}
 	};
 };

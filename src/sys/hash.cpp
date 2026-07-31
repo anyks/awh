@@ -23,6 +23,16 @@
 #include <cstring>
 
 /**
+ * Если сборка выполняется средствами Visual Studio
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Подключаем заголовочный файл интринсиков умножения
+	 */
+	#include <intrin.h>
+#endif
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/hash.hpp>
@@ -307,7 +317,7 @@ namespace awh {
 		 * @return       пара чисел результата свёртки
 		 *
 		 */
-		AWH_HASH_INLINE conv_t compact(const uint8_t * buffer, const size_t size, const uint64_t seed) noexcept {
+		static AWH_HASH_INLINE conv_t compact(const uint8_t * buffer, const size_t size, const uint64_t seed) noexcept {
 			// Первое поглощаемое число
 			uint64_t first = 0;
 			// Второе поглощаемое число
@@ -434,7 +444,7 @@ namespace awh {
 		 * @return       пара чисел результата свёртки
 		 *
 		 */
-		AWH_HASH_INLINE conv_t fold(const void * buffer, const size_t size, const uint64_t seed) noexcept {
+		static AWH_HASH_INLINE conv_t fold(const void * buffer, const size_t size, const uint64_t seed) noexcept {
 			// Получаем буфер данных для свёртки
 			const uint8_t * data = static_cast <const uint8_t *> (buffer);
 			// Определяем размер данных для свёртки
@@ -449,6 +459,36 @@ namespace awh {
 			 * Если размер данных превышает один блок
 			 */
 			else return extend(data, count, seed);
+		}
+		/**
+		 * @brief Функция свёртки состояния потокового хэширования в пару чисел
+		 *
+		 * @details Функция общая для обоих способов получения результата потокового
+		 *          хэширования, поэтому вывод результата числом и вывод его потоком
+		 *          октетов расходиться между собой не могут.
+		 *
+		 * @param state  состояние вычислительного движка хэширования
+		 * @param buffer буфер неполного блока данных
+		 * @param offset размер данных находящихся в буфере
+		 * @param length общий размер обработанных данных
+		 * @param seed   начальное значение хэширования
+		 * @return       пара чисел результата свёртки
+		 *
+		 */
+		static conv_t collect(const array <uint64_t, 4> & state, const uint8_t * buffer, const size_t offset, const uint64_t length, const uint64_t seed) noexcept {
+			/**
+			 * Если размер обработанных данных не превышает одного блока, а значит
+			 * все обработанные данные до сих пор находятся в буфере
+			 */
+			if(length <= awh::Hash::BLOCK)
+				// Выводим свёртку коротких данных
+				return compact(buffer, offset, seed);
+			// Копируем состояние вычислительного движка хэширования
+			array <uint64_t, 4> result = state;
+			// Выполняем поглощение последнего блока данных
+			tail(result, buffer, offset);
+			// Выводим свёртку состояния вычислительного движка
+			return collapse(result, seed, length);
 		}
 		/**
 		 * @brief Функция формирования потока байтов результата хэширования
@@ -543,6 +583,29 @@ uint64_t awh::hashing::mix(const uint64_t value1, const uint64_t value2) noexcep
 		const __uint128_t result = (static_cast <__uint128_t> (value1) * static_cast <__uint128_t> (value2));
 		// Выводим свёртку половин полученного произведения
 		return (static_cast <uint64_t> (result) ^ static_cast <uint64_t> (result >> 64));
+	/**
+	 * Если сборка выполняется средствами Visual Studio для 64-битного процессора
+	 */
+	#elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_ARM64))
+		// Старшая половина произведения чисел
+		uint64_t high = 0;
+		/**
+		 * Если сборка выполняется для процессора семейства x86
+		 */
+		#if defined(_M_X64)
+			// Выполняем умножение чисел с получением полного произведения
+			const uint64_t low = ::_umul128(value1, value2, &high);
+		/**
+		 * Если сборка выполняется для процессора семейства ARM
+		 */
+		#else
+			// Выполняем умножение чисел с получением младшей половины произведения
+			const uint64_t low = (value1 * value2);
+			// Выполняем умножение чисел с получением старшей половины произведения
+			high = ::__umulh(value1, value2);
+		#endif
+		// Выводим свёртку половин полученного произведения
+		return (low ^ high);
 	/**
 	 * Если компилятор 128-битные целые числа не поддерживает
 	 */
@@ -664,10 +727,13 @@ void awh::Hash::clear() noexcept {
 	this->_length = 0;
 	// Выполняем сброс размера данных находящихся в буфере
 	this->_offset = 0;
+	/**
+	 * Буфер неполного блока данных не очищается намеренно: значащими в нём
+	 * являются только те октеты, которые уже переданы на хэширование, а их
+	 * количество хранится отдельно.
+	 */
 	// Выполняем инициализацию состояния вычислительного движка хэширования
 	hashing::initialize(this->_state, this->_seed);
-	// Выполняем очистку буфера неполного блока данных
-	this->_buffer.fill(0);
 }
 /**
  * @brief Метод извлечения начального значения хэширования
@@ -773,26 +839,19 @@ void awh::Hash::digest(uint8_t * result, const size_t length) const noexcept {
 	/**
 	 * Если результат хэширования формировать требуется
 	 */
-	if((result != nullptr) && (length > 0)){
-		/**
-		 * Если размер обработанных данных не превышает одного блока, а значит
-		 * все обработанные данные до сих пор находятся в буфере
-		 */
-		if(this->_length <= BLOCK)
-			// Выполняем формирование результата хэширования по свёртке коротких данных
-			hashing::squeeze(hashing::compact(this->_buffer.data(), this->_offset, this->_seed), result, length);
-		/**
-		 * Если размер обработанных данных превышает один блок
-		 */
-		else {
-			// Копируем состояние вычислительного движка хэширования
-			array <uint64_t, 4> state = this->_state;
-			// Выполняем поглощение последнего блока данных
-			hashing::tail(state, this->_buffer.data(), this->_offset);
-			// Выполняем формирование результата хэширования по свёртке состояния
-			hashing::squeeze(hashing::collapse(state, this->_seed, this->_length), result, length);
-		}
-	}
+	if((result != nullptr) && (length > 0))
+		// Выполняем формирование результата хэширования по свёртке состояния
+		hashing::squeeze(hashing::collect(this->_state, this->_buffer.data(), this->_offset, this->_length, this->_seed), result, length);
+}
+/**
+ * @brief Метод формирования 64-битного результата потокового хэширования
+ *
+ * @return результат хэширования
+ *
+ */
+uint64_t awh::Hash::digest() const noexcept {
+	// Выводим первое число свёртки состояния потокового хэширования
+	return hashing::collect(this->_state, this->_buffer.data(), this->_offset, this->_length, this->_seed).value1;
 }
 /**
  * @brief Метод формирования хэша буфера данных
@@ -812,10 +871,13 @@ void awh::Hash::hash(const void * buffer, const size_t size, uint8_t * result, c
  *
  */
 awh::Hash::Hash() noexcept : _seed(0), _length(0), _offset(0) {
+	/**
+	 * Буфер неполного блока данных не очищается намеренно: значащими в нём
+	 * являются только те октеты, которые уже переданы на хэширование, а их
+	 * количество хранится отдельно.
+	 */
 	// Выполняем инициализацию состояния вычислительного движка хэширования
 	hashing::initialize(this->_state, this->_seed);
-	// Выполняем очистку буфера неполного блока данных
-	this->_buffer.fill(0);
 }
 /**
  * @brief Конструктор
@@ -824,8 +886,11 @@ awh::Hash::Hash() noexcept : _seed(0), _length(0), _offset(0) {
  *
  */
 awh::Hash::Hash(const uint64_t seed) noexcept : _seed(seed), _length(0), _offset(0) {
+	/**
+	 * Буфер неполного блока данных не очищается намеренно: значащими в нём
+	 * являются только те октеты, которые уже переданы на хэширование, а их
+	 * количество хранится отдельно.
+	 */
 	// Выполняем инициализацию состояния вычислительного движка хэширования
 	hashing::initialize(this->_state, this->_seed);
-	// Выполняем очистку буфера неполного блока данных
-	this->_buffer.fill(0);
 }

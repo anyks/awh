@@ -21,7 +21,9 @@
  * Стандартные заголовочные файлы
  */
 #include <set>
+#include <cmath>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <cstring>
 #include <cstdint>
@@ -217,6 +219,10 @@ TEST_F(HashFixture, ContainerHashTest){
 	EXPECT_EQ(this->_hash->hash <uint64_t> (binary), result);
 	// Проверяем оператор хэширования текста
 	EXPECT_EQ((* this->_hash)(text), result);
+	// Проверяем хэширование представления текста
+	EXPECT_EQ(this->_hash->hash <uint64_t> (std::string_view(text)), result);
+	// Проверяем хэширование части представления текста
+	EXPECT_EQ(this->_hash->hash <uint64_t> (std::string_view(text).substr(0, 10)), this->_hash->hash <uint64_t> (text.data(), 10));
 }
 
 /**
@@ -472,4 +478,77 @@ TEST_F(HashFixture, DistinctHashTest){
 	}
 	// Проверяем отличие результатов хэширования нулевых данных разного размера
 	EXPECT_EQ(results.size(), static_cast <size_t> (257));
+}
+
+/**
+ * @brief Тест вывода результата хэширования во встроенные вещественные типы
+ *
+ */
+TEST_F(HashFixture, RealHashTest){
+	/**
+	 * Выполняем перебор наборов данных для хэширования
+	 */
+	for(uint32_t i = 0; i < 100000; i++){
+		// Выполняем формирование результата хэширования одинарной точности
+		const float result1 = this->_hash->hash <float> (&i, sizeof(i));
+		// Выполняем формирование результата хэширования двойной точности
+		const double result2 = this->_hash->hash <double> (&i, sizeof(i));
+		// Проверяем пригодность результата хэширования в качестве ключа
+		ASSERT_TRUE(result1 == result1);
+		// Проверяем пригодность результата хэширования в качестве ключа
+		ASSERT_TRUE(result2 == result2);
+		// Проверяем конечность результата хэширования
+		ASSERT_FALSE(std::isinf(result1));
+		// Проверяем конечность результата хэширования
+		ASSERT_FALSE(std::isinf(result2));
+	}
+	// Проверяем повторяемость результата хэширования
+	EXPECT_EQ(this->_hash->hash <double> ("Anyks Framework"), this->_hash->hash <double> ("Anyks Framework"));
+	// Проверяем отличие результата хэширования других данных
+	EXPECT_NE(this->_hash->hash <double> ("Anyks Framework"), this->_hash->hash <double> ("Anyks Framewark"));
+}
+
+/**
+ * @brief Тест совпадения числового результата с потоком октетов
+ *
+ * @details Проверка не зависит от порядка байтов процессора: число собирается
+ *          из потока октетов явными сдвигами, поэтому на процессоре с обратным
+ *          порядком байтов тест поймает расхождение путей вывода результата.
+ *
+ */
+TEST_F(HashFixture, NumericHashTest){
+	// Буфер результата хэширования
+	uint8_t result[8];
+	/**
+	 * Выполняем перебор размеров данных для хэширования
+	 */
+	for(size_t size = 0; size < 200; size++){
+		// Выполняем формирование результата хэширования потоком октетов
+		this->_hash->hash(this->_buffer.data(), size, result, sizeof(result));
+		// Собираемое из потока октетов число
+		uint64_t value = 0;
+		/**
+		 * Выполняем перебор всех октетов результата хэширования
+		 */
+		for(size_t i = 0; i < sizeof(result); i++)
+			// Добавляем очередной октет результата хэширования в число
+			value |= (static_cast <uint64_t> (result[i]) << (i * 8));
+
+		// Создаём объект потокового хэширования
+		awh::hash_t hash;
+		// Выполняем добавление данных в потоковое хэширование
+		hash.update(this->_buffer.data(), size);
+		// Проверяем совпадение числового результата одноразового хэширования с потоком октетов
+		ASSERT_EQ(this->_hash->hash <uint64_t> (this->_buffer.data(), size), value);
+		// Проверяем совпадение числового результата потокового хэширования с потоком октетов
+		ASSERT_EQ(hash.digest <uint64_t> (), value);
+		// Проверяем совпадение быстрого пути потокового хэширования с потоком октетов
+		ASSERT_EQ(hash.digest(), value);
+		// Проверяем совпадение усечённого числового результата с потоком октетов
+		ASSERT_EQ(this->_hash->hash <uint32_t> (this->_buffer.data(), size), static_cast <uint32_t> (value));
+		// Проверяем совпадение усечённого результата потокового хэширования с потоком октетов
+		ASSERT_EQ(hash.digest <uint16_t> (), static_cast <uint16_t> (value));
+		// Проверяем совпадение знакового результата хэширования с потоком октетов
+		ASSERT_EQ(this->_hash->hash <int64_t> (this->_buffer.data(), size), static_cast <int64_t> (value));
+	}
 }
