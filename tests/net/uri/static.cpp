@@ -1353,8 +1353,24 @@ TEST_F(UriFixture, RequestOfCustomSchemeKeepsQueryTest){
 	this->_uri->clear();
 	// Выполняем разбор опакового адреса произвольной схемы
 	this->_uri->parse("custom:opaque/path?c=1");
-	// Запрос опакового адреса несёт один лишь путь
+	/**
+	 * Параметры в запрос входят при любом виде записи: запрос это всё, что уходит
+	 * после имени узла, и почта их дописывает наравне с иерархическим адресом
+	 */
+	// Запрос опакового адреса несёт путь с параметрами
+	ASSERT_EQ("opaque/path?c=1", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор опакового адреса без параметров
+	this->_uri->parse("custom:opaque/path");
+	// Разделителя параметров у адреса, их не несущего, быть не должно
 	ASSERT_EQ("opaque/path", this->_uri->print(awh::uri_t::item_t::REQUEST));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор почтового адреса с параметрами
+	this->_uri->parse("mailto:user@example.com?subject=hi");
+	// Запрос почтового адреса параметры несёт наравне с прочими
+	ASSERT_EQ("user@example.com?subject=hi", this->_uri->print(awh::uri_t::item_t::REQUEST));
 }
 
 /**
