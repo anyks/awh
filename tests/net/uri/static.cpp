@@ -3899,3 +3899,87 @@ TEST_F(UriFixture, EmptyQueryPairSurvivesTest){
 	// Проверяем строку, собранную из записи
 	ASSERT_EQ("http://example.com/?=", this->_uri->print(awh::uri_t::item_t::URI));
 }
+
+/**
+ * @brief Тест восстановимости вида записи из собранной строки
+ *
+ */
+TEST_F(UriFixture, FormSurvivesRoundTripTest){
+	/**
+	 * Авторити, записанная сразу за двоеточием схемы, пустой быть не может:
+	 * отметить её нечем - двух косых черт у такой записи нет, - и от записи без
+	 * авторити она ничем не отличима. Запись "mailto::" получала вид авторити за
+	 * двоеточием, собиралась как "mailto:", а та разбиралась уже как запись без
+	 * авторити: вид не переживал оборота
+	 */
+	// Записи, у которых авторити за двоеточием схемы оказывается пустой
+	const std::vector <std::string> samples = {"mailto::", "acct::", "sip::", "stun::", "mailto:"};
+	/**
+	 * Перебираем все записи
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор записи
+		this->_uri->parse(sample);
+		// Авторити у такой записи нет
+		ASSERT_EQ(awh::uri_t::form_t::NONE, this->_uri->form()) << "запись: " << sample;
+		// Собранная строка обязана дать тот же вид записи
+		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор собранной строки
+		again.parse(this->_uri->print(awh::uri_t::item_t::URI));
+		// Вид записи обязан пережить оборот
+		ASSERT_EQ(this->_uri->form(), again.form()) << "запись: " << sample;
+		// Объекты, дающие одну строку, обязаны быть равны
+		ASSERT_TRUE((* this->_uri) == again) << "запись: " << sample;
+	}
+	/**
+	 * Непустая авторити за двоеточием схемы вид свой сохраняет
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор почтового адреса
+	this->_uri->parse("mailto:user@example.com");
+	// Авторити записана сразу за двоеточием схемы
+	ASSERT_EQ(awh::uri_t::form_t::BARE, this->_uri->form());
+}
+
+/**
+ * @brief Тест снятия зоны при разрешении ссылки с пустой авторити
+ *
+ */
+TEST_F(UriFixture, ZoneIsDroppedWithAuthorityTest){
+	/**
+	 * Зона принадлежит хосту и снимается вместе с ним. У ссылки с пустой авторити
+	 * хост не устанавливается вовсе, и зона основы оставалась при записи: строки
+	 * совпадали, а объекты равными уже не считались - сличение расходилось с тем,
+	 * что объект отдаёт наружу
+	 */
+	// Ссылки с пустой авторити и ожидаемые записи их разрешения
+	const std::vector <std::pair <std::string, std::string>> samples = {
+		{"///b", "http:///b"},
+		{"//", "http://"}
+	};
+	/**
+	 * Перебираем все ссылки
+	 */
+	for(auto & sample : samples){
+		// Объект, полученный разрешением ссылки относительно основы с зоной
+		awh::uri_t resolved(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор основы с зоной IPv6-адреса
+		resolved.parse("http://[fe80::1%25eth0]/a");
+		// Выполняем разрешение ссылки относительно основы
+		resolved.parse(sample.first);
+		// Объект, полученный прямым разбором той же записи
+		awh::uri_t direct(this->_fmk.get(), this->_log.get());
+		// Выполняем разбор записи напрямую
+		direct.parse(sample.second);
+		// Строки записей обязаны совпадать
+		ASSERT_EQ(resolved.print(awh::uri_t::item_t::URI), direct.print(awh::uri_t::item_t::URI))
+			<< "ссылка: " << sample.first;
+		// Записи, дающие одну строку, обязаны быть равны
+		ASSERT_TRUE(resolved == direct) << "ссылка: " << sample.first;
+		// Неравенство обязано согласоваться с равенством
+		ASSERT_FALSE(resolved != direct) << "ссылка: " << sample.first;
+	}
+}

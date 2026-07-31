@@ -848,6 +848,17 @@ namespace uri {
 		else if(hasSlashes || scheme.empty())
 			// Устанавливаем вид записи как авторити за двумя косыми чертами
 			form = uri_t::form_t::SLASHES;
+		/**
+		 * Иначе авторити записана сразу за двоеточием схемы. Пустой она при этом
+		 * быть не может: отметить её нечем - двух косых черт у такой записи нет, -
+		 * и от записи без авторити она ничем не отличима. Запись "mailto::"
+		 * получала вид авторити за двоеточием, собиралась как "mailto:", а та
+		 * разбиралась уже как запись без авторити: вид не переживал оборота, и
+		 * объекты, дающие одну строку, различались невидимым снаружи признаком
+		 */
+		else if(host.empty() && userinfo.empty() && port.empty())
+			// Устанавливаем вид записи как запись без авторити
+			form = uri_t::form_t::NONE;
 		// Иначе авторити записана сразу за двоеточием схемы
 		else form = uri_t::form_t::BARE;
 		// Возвращаем результат парсинга
@@ -3464,6 +3475,13 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 			} else if(refAuthority) {
 				// Запоминаем вид записи, полученный разбором ссылки
 				this->_form = form;
+				/**
+				 * Зона принадлежит хосту и снимается вместе с ним: у ссылки с пустой
+				 * авторити хост не устанавливается вовсе, и зона основы оставалась при
+				 * записи - строки совпадали, а объекты равными уже не считались
+				 */
+				// Сбрасываем зону IPv6-адреса хоста URI
+				this->_zone.clear();
 				// Очищаем логин пользователя URI
 				this->_user.username.clear();
 				// Очищаем пароль пользователя URI
@@ -4769,225 +4787,15 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
  *
  */
 bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Identifier & uri) const noexcept {
-	// Переменная результата
-	bool result = true;
 	/**
-	 * Выполняем отлов ошибок
+	 * Неравенство выводится отрицанием равенства, а не собственным перебором
+	 * частей: два перебора расходились при всякой правке - признак ведения пути
+	 * от корня попал в равенство и не попал в неравенство, зона попала в оба, а
+	 * вид записи не попал ни в один, - и сличение переставало быть отношением
+	 * эквивалентности. Перебор поэтому один, и разойтись ему не с чем
 	 */
-	try {
-		// Выполняем сравнение типов URI
-		result = (this->_type != uri._type);
-		// Если типы URI равны
-		if(!result){
-			// Выполняем сравнение размеров схем URI
-			result = (this->_scheme.size() != uri._scheme.size());
-			// Если схемы URI равны
-			if(!result)
-				// Выполняем сравнение схем URI
-				result = !this->_fmk->compare(this->_scheme, uri._scheme);
-		}
-		// Если типы URI равны
-		if(!result){
-			// Выполняем сравнение размеров якорей URI
-			result = (this->_fragment.size() != uri._fragment.size());
-			// Если якоря URI равны
-			if(!result)
-				// Выполняем сравнение якорей URI (с учётом регистра, согласно RFC 3986)
-				result = (this->_fragment != uri._fragment);
-		}
-		// Если URI пока равны
-		if(!result){
-			// Выполняем сравнение размеров зон IPv6-адресов хостов URI
-			result = (this->_zone.size() != uri._zone.size());
-			// Если размеры зон IPv6-адресов хостов URI совпадают
-			if(!result)
-				// Выполняем сравнение зон IPv6-адресов хостов URI
-				result = (this->_zone != uri._zone);
-		}
-		// Если типы URI равны
-		if(!result){
-			// Выполняем сравнение размеров логинов пользователя URI
-			result = (this->_user.username.size() != uri._user.username.size());
-			// Если параметры пользователя URI равны
-			if(!result)
-				// Выполняем сравнение логинов пользователя URI (с учётом регистра)
-				result = (this->_user.username != uri._user.username);
-		}
-		// Если типы URI равны
-		if(!result){
-			// Выполняем сравнение размеров параметров пользователя URI
-			result = (this->_user.password.size() != uri._user.password.size());
-			// Если параметры пользователя URI равны
-			if(!result)
-				// Выполняем сравнение паролей пользователя URI (с учётом регистра)
-				result = (this->_user.password != uri._user.password);
-		}
-		// Если типы URI равны
-		if(!result){
-			// Выполняем сравнение атрибутов URI
-			result = (((this->_attr != nullptr) && (uri._attr == nullptr)) || ((this->_attr == nullptr) && (uri._attr != nullptr)));
-			// Если атрибуты URI равны
-			if(!result){
-				// Выполняем сравнение типов атрибутов URI
-				if((this->_attr != nullptr) && (uri._attr != nullptr)){
-					// Выполняем сравнение типов атрибутов URI
-					result = (this->_attr->type != uri._attr->type);
-					// Если типы атрибутов URI равны
-					if(!result){
-						/**
-						 * Определяем тип атрибутов URI адреса
-						 */
-						switch(static_cast <uint8_t> (uri._attr->type)){
-							// Если атрибуты URI адреса являются адресом файловой системы
-							case static_cast <uint8_t> (net::type_t::FS): {
-								// Извлекаем атрибуты сравниваемых URI адресов как адреса файловой системы
-								net::attr_uds_t * first = awh_cast <net::attr_uds_t *> (this->_attr.get());
-								const net::attr_uds_t * second = awh_cast <const net::attr_uds_t *> (uri._attr.get());
-								/**
-								 * Выполняем сравнение наличия путей к сокету: путь заводится
-								 * отдельно от самих атрибутов и у них может отсутствовать вовсе
-								 */
-								result = ((first->path == nullptr) != (second->path == nullptr));
-								// Если пути к сокету заведены у обоих
-								if((first->path != nullptr) && (second->path != nullptr))
-									// Выполняем сравнение адресов файловой системы в атрибутах URI адреса (с учётом регистра)
-									result = (awh_cast <net::addr_fs_t *> (first->path.get())->address != awh_cast <const net::addr_fs_t *> (second->path.get())->address);
-							} break;
-							// Если атрибуты URI адреса являются FQDN-адресом
-							case static_cast <uint8_t> (net::type_t::FQDN): {
-								/**
-								 * Порт сличается по действующему его значению, а не по хранимому:
-								 * разбор сохраняет в атрибутах порт, стандартный для схемы, а
-								 * собранный по частям адрес его не несёт, и адреса, дающие одну и
-								 * ту же строку, равными не считались
-								 */
-								result = (this->port() != uri.port());
-								// Если порты хоста в атрибутах URI адреса равны
-								if(!result)
-									// Выполняем сравнение доменов в атрибутах URI адреса
-									result = !this->_fmk->compare(awh_cast <net::attr_fqdn_t *> (this->_attr.get())->domain, awh_cast <const net::attr_fqdn_t *> (uri._attr.get())->domain);
-							} break;
-							// Если атрибуты URI адреса являются IPv4-адресом
-							case static_cast <uint8_t> (net::type_t::IPV4): {
-								// Извлекаем атрибуты сравниваемых URI адресов как сетевые адреса
-								net::attr_net_t * first = awh_cast <net::attr_net_t *> (this->_attr.get());
-								const net::attr_net_t * second = awh_cast <const net::attr_net_t *> (uri._attr.get());
-								/**
-								 * Порт сличается по действующему его значению, а не по хранимому:
-								 * разбор сохраняет в атрибутах порт, стандартный для схемы, а
-								 * собранный по частям адрес его не несёт, и адреса, дающие одну и
-								 * ту же строку, равными не считались
-								 */
-								result = (this->port() != uri.port());
-								// Если порты хоста в атрибутах URI адреса равны
-								if(!result){
-									/**
-									 * Выполняем сравнение наличия IP-адресов хоста: адрес заводится
-									 * отдельно от самих атрибутов и у них может отсутствовать вовсе
-									 */
-									result = ((first->ip == nullptr) != (second->ip == nullptr));
-									// Если IP-адреса хоста заведены у обоих
-									if(!result && (first->ip != nullptr))
-										// Выполняем сравнение IP-адресов хоста в атрибутах URI адреса
-										result = (awh_cast <net::addr_net_ipv4_t *> (first->ip.get())->address != awh_cast <const net::addr_net_ipv4_t *> (second->ip.get())->address);
-								}
-							} break;
-							// Если атрибуты URI адреса являются IPv6-адресом
-							case static_cast <uint8_t> (net::type_t::IPV6): {
-								// Извлекаем атрибуты сравниваемых URI адресов как сетевые адреса
-								net::attr_net_t * first = awh_cast <net::attr_net_t *> (this->_attr.get());
-								const net::attr_net_t * second = awh_cast <const net::attr_net_t *> (uri._attr.get());
-								/**
-								 * Порт сличается по действующему его значению, а не по хранимому:
-								 * разбор сохраняет в атрибутах порт, стандартный для схемы, а
-								 * собранный по частям адрес его не несёт, и адреса, дающие одну и
-								 * ту же строку, равными не считались
-								 */
-								result = (this->port() != uri.port());
-								// Если порты хоста в атрибутах URI адреса равны
-								if(!result){
-									/**
-									 * Выполняем сравнение наличия IP-адресов хоста: адрес заводится
-									 * отдельно от самих атрибутов и у них может отсутствовать вовсе
-									 */
-									result = ((first->ip == nullptr) != (second->ip == nullptr));
-									// Если IP-адреса хоста заведены у обоих
-									if(!result && (first->ip != nullptr))
-										// Выполняем сравнение IP-адресов хоста в атрибутах URI адреса
-										result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (first->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (second->ip.get())->address[0], 16) != 0);
-								}
-							} break;
-						}
-					}
-				}
-			}
-		}
-		// Если типы URI равны
-		if(!result){
-			/**
-			 * Пути, равнозначные корневому, сличаются между собой как равные:
-			 * у адреса с авторити отсутствие пути равнозначно пути из одной
-			 * косой черты (RFC 3986 6.2.3), а хранятся они по-разному
-			 */
-			if(this->rootPath() && uri.rootPath())
-				// Оба пути равнозначны корневому
-				result = false;
-			// Иначе сличаем пути посегментно
-			else {
-				// Выполняем сравнение размеров путей URI
-				result = (this->_path.size() != uri._path.size());
-				// Если размеры путей URI равны
-				if(!result && !this->_path.empty()){
-					/**
-					 * Выполняем сравнение путей URI
-					 */
-					for(size_t i = 0; i < this->_path.size(); ++i){
-						// Выполняем сравнение сегментов путей URI (с учётом регистра, согласно RFC 3986)
-						if((result = (this->_path[i] != uri._path[i])))
-							// Если сегменты путей URI не равны, то прекращаем сравнение
-							break;
-					}
-				}
-				/**
-				 * Ведение пути от корня сличается наравне с самими сегментами: записи
-				 * "custom:path" и "custom:/path" - разные адреса (RFC 3986 3.3), а
-				 * сегменты у них одни и те же
-				 */
-				// Если сегменты путей URI равны
-				if(!result)
-					// Выполняем сравнение признаков ведения путей URI от корня
-					result = (this->rootedPath() != uri.rootedPath());
-			}
-			// Если пути URI равны
-			if(!result){
-				/**
-				 * Выполняем сравнение параметров URI средствами самого хранилища:
-				 * ключи в параметрах повторяются, и поиск по ключу отдаёт лишь первое
-				 * из значений, а сличать нужно все
-				 */
-				result = (this->_query != uri._query);
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Возвращаем результат
-	return result;
+	// Выводим отрицание результата сравнения параметров URI
+	return !(* this == uri);
 }
 /**
  * @brief Оператор парсинга URI-запроса
