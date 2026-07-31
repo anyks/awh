@@ -3844,3 +3844,58 @@ TEST_F(UriFixture, SameOriginTest){
 	// Проверяем сличение записи самой с собой
 	ASSERT_TRUE(this->_uri->sameOrigin(* this->_uri));
 }
+
+/**
+ * @brief Тест сохранности параметра с пустыми ключом и значением
+ *
+ */
+TEST_F(UriFixture, EmptyQueryPairSurvivesTest){
+	/**
+	 * Разделитель ключа и значения ставится только при непустом значении:
+	 * параметр без значения записывается одним ключом. Пара же, пустая с обеих
+	 * сторон, без разделителя не записывается вовсе и пропадала при обороте:
+	 * строка "?=" несёт один параметр с пустыми ключом и значением, а собиралась
+	 * она обратно как "?" - параметра в ней уже не было
+	 */
+	// Выполняем разбор записи с пустым параметром
+	this->_uri->parse("http://example.com/?=");
+	// Параметр обязан быть разобран
+	ASSERT_EQ(1, this->_uri->query().size());
+	// Ключ и значение параметра обязаны быть пустыми
+	ASSERT_TRUE(this->_uri->query().begin()->first.empty());
+	ASSERT_TRUE(this->_uri->query().begin()->second.empty());
+	// Собранная запись обязана нести разделитель
+	ASSERT_EQ("http://example.com/?=", this->_uri->print(awh::uri_t::item_t::URI));
+	// Повторный оборот записи обязан дать ту же строку
+	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор собранной записи
+	again.parse(this->_uri->print(awh::uri_t::item_t::URI));
+	// Проверяем набор параметров, полученный повторным разбором
+	ASSERT_EQ(1, again.query().size());
+	// Проверяем строку, собранную повторно
+	ASSERT_EQ("http://example.com/?=", again.print(awh::uri_t::item_t::URI));
+	/**
+	 * Параметр без значения по-прежнему записывается одним ключом: приписанный
+	 * ему разделитель менял бы строку параметров при каждом обороте
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор записи с параметром без значения
+	this->_uri->parse("http://example.com/?a");
+	// Проверяем строку, собранную из записи
+	ASSERT_EQ("http://example.com/?a", this->_uri->print(awh::uri_t::item_t::URI));
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Выполняем разбор записи с параметром без ключа
+	this->_uri->parse("http://example.com/?=1");
+	// Проверяем строку, собранную из записи
+	ASSERT_EQ("http://example.com/?=1", this->_uri->print(awh::uri_t::item_t::URI));
+	// Установка пустой пары напрямую обязана дать тот же итог
+	this->_uri->clear();
+	// Выполняем разбор записи без параметров
+	this->_uri->parse("http://example.com/");
+	// Выполняем установку параметра с пустыми ключом и значением
+	this->_uri->query(std::unordered_multimap <std::string, std::string> {{"", ""}});
+	// Проверяем строку, собранную из записи
+	ASSERT_EQ("http://example.com/?=", this->_uri->print(awh::uri_t::item_t::URI));
+}
