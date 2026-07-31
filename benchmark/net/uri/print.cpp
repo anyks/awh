@@ -49,6 +49,7 @@ namespace {
 	static constexpr double PRINT_ORIGIN_THRESHOLD = 9000000.0;
 	static constexpr double PRINT_ENCODED_THRESHOLD = 900000.0;
 	static constexpr double PRINT_IPV6_THRESHOLD = 650000.0;
+	static constexpr double PRINT_HOST_THRESHOLD = 10000000.0;
 	/**
 	 * @brief Пороги количества выделений памяти на одну сборку
 	 *
@@ -65,6 +66,7 @@ namespace {
 	static constexpr double PRINT_ORIGIN_ALLOCATIONS = 0.0;
 	static constexpr double PRINT_ENCODED_ALLOCATIONS = 3.0;
 	static constexpr double PRINT_IPV6_ALLOCATIONS = 2.0;
+	static constexpr double PRINT_HOST_ALLOCATIONS = 0.0;
 
 	/**
 	 * @brief Собираемый полный адрес запроса
@@ -209,7 +211,22 @@ namespace {
 	// Объявляем сценарии сборки с процент-кодированием
 	AWH_URI_SCENARIO(PrintEncoded, ::printedEncoded)
 	// Объявляем сценарии сборки с IPv6-хостом
+	/**
+	 * @brief Функция получения итогов прогона сценария сборки значения заголовка Host
+	 *
+	 * @return итоги прогона сценария
+	 *
+	 */
+	static const outcome_t & printedHost() noexcept {
+		// Итоги прогона сценария сборки значения заголовка Host
+		static const outcome_t result = ::printing(SAMPLE_REQUEST, awh::uri_t::item_t::HOST, URI_ROUNDS);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+
 	AWH_URI_SCENARIO(PrintIPv6, ::printedIPv6)
+	// Объявляем сценарии сборки значения заголовка Host
+	AWH_URI_SCENARIO(PrintHost, ::printedHost)
 
 	// Регистрируем сценарий скорости сборки полного адреса
 	static const bool gPrintURI = awh::benchmark::add(
@@ -260,5 +277,15 @@ namespace {
 	static const bool gMemoryPrintIPv6 = awh::benchmark::add(
 		"net/uri/print-ipv6/allocations", "выделений", PRINT_IPV6_ALLOCATIONS,
 		awh::benchmark::bound_t::MAXIMUM, &::memoryPrintIPv6
+	);
+	// Регистрируем сценарий скорости сборки значения заголовка Host
+	static const bool gPrintHost = awh::benchmark::add(
+		"net/uri/print-host", "сборок/с", PRINT_HOST_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, &::speedPrintHost
+	);
+	// Регистрируем сценарий выделений памяти на сборку значения заголовка Host
+	static const bool gMemoryPrintHost = awh::benchmark::add(
+		"net/uri/print-host/allocations", "выделений", PRINT_HOST_ALLOCATIONS,
+		awh::benchmark::bound_t::MAXIMUM, &::memoryPrintHost
 	);
 };

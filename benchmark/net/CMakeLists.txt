@@ -77,6 +77,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             uri/print.cpp
             uri/etag.cpp
             uri/access.cpp
+            uri/resolve.cpp
         )
     # Если не нужно собрать бенчмарки для подмодуля работы с идентификаторами ресурсов
     else()
