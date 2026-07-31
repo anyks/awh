@@ -196,7 +196,31 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, NetModeParameterizedFixture,
 		}),
 		NetModeTestParameter({
 			"::1",
+			awh::net_addr_t::own_t::SYS
+		}),
+		NetModeTestParameter({
+			"127.0.0.1",
+			awh::net_addr_t::own_t::SYS
+		}),
+		NetModeTestParameter({
+			"2001:db8::1",
+			awh::net_addr_t::own_t::SYS
+		}),
+		NetModeTestParameter({
+			"192.0.2.1",
+			awh::net_addr_t::own_t::SYS
+		}),
+		NetModeTestParameter({
+			"fc00::1",
 			awh::net_addr_t::own_t::LAN
+		}),
+		NetModeTestParameter({
+			"febf::1",
+			awh::net_addr_t::own_t::LAN
+		}),
+		NetModeTestParameter({
+			"ff02::1",
+			awh::net_addr_t::own_t::SYS
 		}),
 		NetModeTestParameter({
 			"fe80::a2",
@@ -517,7 +541,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, NetPrefixParameterizedFixture,
 		NetPrefixTestParameter({
 			"2001:1234:abcd:5678:9877:3322:5541:aabb",
 			"2001:1234:ABCD:5678:9877:3322:5541:AABB",
-			"FFFF:FFFF:FFFF:FEFF::",
+			"FFFF:FFFF:FFFF:FFFE::",
 			63,
 			RangeParam({"2001:1234:abcd:5678:9877:3322:5541:1111", "2001:1234:abcd:5678:9877:3322:5541:ffff"}),
 			"2001:1234:ABCD:5678::",

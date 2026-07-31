@@ -952,6 +952,61 @@ namespace {
 	 *       памяти ради проверки, ничего наружу не отдающей, есть работа впустую
 	 *
 	 */
+	/**
+	 * @brief Функция разбора аппаратного адреса
+	 *
+	 * @param addr   аппаратный адрес для разбора
+	 * @param result результат разбора в бинарном виде
+	 * @return       результат выполнения разбора
+	 *
+	 * @note Принимаются все записи, какие признаёт проверка: разделённая
+	 *       двоеточиями, разделённая дефисами и сплошная из двенадцати
+	 *       шестнадцатеричных цифр. Прежде разбор понимал одни лишь двоеточия, и
+	 *       запись, признанную проверкой годной, разобрать не мог
+	 *
+	 * @note Результат принимается указателем на буфер размером в шесть байт:
+	 *       выделять память ради разбора, ничего наружу не отдающего, незачем
+	 *
+	 */
+	bool mac(string_view addr, uint8_t * result) noexcept {
+		// Если длина записи не отвечает ни одной из принимаемых
+		if((addr.length() != 17) && (addr.length() != 12))
+			// Выводим отрицательный результат
+			return false;
+		// Признак сплошной записи без разделителей
+		const bool solid = (addr.length() == 12);
+		// Шаг между началами октетов записи
+		const uint8_t step = (solid ? 2 : 3);
+		/**
+		 * Перебираем все октеты аппаратного адреса
+		 */
+		for(uint8_t i = 0; i < 6; i++){
+			// Позиция очередного октета в записи
+			const size_t pos = (static_cast <size_t> (i) * step);
+			// Старшая шестнадцатеричная цифра октета
+			const int32_t high = ascii::hexValue(addr[pos]);
+			// Младшая шестнадцатеричная цифра октета
+			const int32_t low = ascii::hexValue(addr[pos + 1]);
+			// Если хотя бы одна из цифр октета шестнадцатеричной не является
+			if((high < 0) || (low < 0))
+				// Выводим отрицательный результат
+				return false;
+			// Если запись разделённая, за октетом обязан идти разделитель
+			if(!solid && (i < 5)){
+				// Получаем символ, стоящий за октетом
+				const char delim = addr[pos + 2];
+				// Если символ разделителем не является
+				if((delim != ':') && (delim != '-'))
+					// Выводим отрицательный результат
+					return false;
+			}
+			// Собираем октет из двух шестнадцатеричных цифр
+			result[i] = static_cast <uint8_t> ((high << 4) | low);
+		}
+		// Выводим положительный результат
+		return true;
+	}
+
 	bool ipv4(string_view ip, uint8_t * result, const options_t & options = {}) noexcept {
 		// Тримминг строки IP-адреса
 		auto addr = ::trim(ip);
@@ -1461,17 +1516,6 @@ namespace {
 	}
 };
 
-/**
- * @brief Конструктор
- *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
- */
-awh::Network_Address::LocalNet::LocalNet(const fmk_t * fmk, const log_t * log) noexcept :
- reserved(false), prefix(0),
- end(make_unique <Network_Address> (fmk, log)),
- begin(make_unique <Network_Address> (fmk, log)) {}
 
 /**
  * @brief Метод проверки заполненности буфера
@@ -1572,378 +1616,6 @@ const uint8_t & awh::Network_Address::Buffer::operator [] (const size_t index) c
  */
 awh::Network_Address::Buffer::Buffer() noexcept : _size(0), _data{0} {}
 
-/**
- * @brief Метод инициализации списка локальных адресов
- *
- */
-void awh::Network_Address::initLocalNet() noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если список локальных адресов пустой
-		if(this->_localsNet.empty()){
-			{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 128;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("::");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 128;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("::1");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 32;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("2001::");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 32;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("2001:db8::");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 96;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("64:ff9b::");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 16;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("2002::");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 10;
-				// Устанавливаем IP-адрес начала диапазона
-				localNet.begin->parse("fe80::");
-				// Устанавливаем IP-адрес конца диапазона
-				localNet.end->parse("febf::");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 10;
-				// Устанавливаем IP-адрес начала диапазона
-				localNet.begin->parse("fec0::");
-				// Устанавливаем IP-адрес конца диапазона
-				localNet.end->parse("feff::");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 7;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("fc00::");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 8;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("ff00::");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 8;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("0.0.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 32;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("0.0.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 10;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("100.64.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 16;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("169.254.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 4;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("224.0.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 24;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("224.0.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 8;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("224.0.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 8;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("239.0.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 4;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("240.0.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 32;
-				// Устанавливаем зарезервированный флаг
-				localNet.reserved = true;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("255.255.255.255");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 8;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("10.0.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 8;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("127.0.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 12;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("172.16.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 24;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("192.0.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 29;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("192.0.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 32;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("192.0.0.170");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 32;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("192.0.0.171");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 24;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("192.0.2.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 24;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("192.88.99.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 32;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("192.88.99.1");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 16;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("192.168.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 24;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("198.51.100.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 15;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("198.18.0.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}{
-				// Создаём объект локального адреса
-				localNet_t localNet(this->_fmk, this->_log);
-				// Устанавливаем префикс сети
-				localNet.prefix = 24;
-				// Устанавливаем IP-адрес
-				localNet.begin->parse("203.0.113.0");
-				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-}
 /**
  * @brief Метод очистки данных IP-адреса
  *
@@ -2771,6 +2443,15 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						const string_view ip = addr.substr(0, pos);
 						// Получаем маску переданной сети
 						const string_view suffix = addr.substr(pos + 1);
+						/**
+						 * Пустой суффикс сетью не является: проверка на цифры давала
+						 * на пустом промежутке истину, а перевод пустой записи в число -
+						 * ноль, отчего запись вида "10.0.0.0/" принималась за сеть с
+						 * нулевым префиксом
+						 */
+						if(suffix.empty())
+							// Возвращаем результат проверки
+							return false;
 						// Проверяем является ли суффикс числом
 						if(::all_of(suffix.begin(), suffix.end(), ascii::isDigit)){
 							// Получаем префикс сети
@@ -2801,6 +2482,15 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						const string_view ip = addr.substr(0, pos);
 						// Получаем маску переданной сети
 						const string_view suffix = addr.substr(pos + 1);
+						/**
+						 * Пустой суффикс сетью не является: проверка на цифры давала
+						 * на пустом промежутке истину, а перевод пустой записи в число -
+						 * ноль, отчего запись вида "10.0.0.0/" принималась за сеть с
+						 * нулевым префиксом
+						 */
+						if(suffix.empty())
+							// Возвращаем результат проверки
+							return false;
 						// Проверяем является ли суффикс числом
 						if(::all_of(suffix.begin(), suffix.end(), ascii::isDigit)){
 							// Получаем префикс сети
@@ -3064,28 +2754,26 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 						 * Определяем тип получаемого адреса
 						 */
 						switch(static_cast <uint8_t> (addr)){
+							/**
+							 * Хекстет собирается из двух октетов буфера вручную, а не
+							 * снимается копированием в целое: буфер держит адрес в сетевом
+							 * порядке, и копирование на машине с обратным порядком байт
+							 * переставляло октеты местами - маска ложилась не на те разряды
+							 */
 							// Если мы хотим получить адрес хоста
 							case static_cast <uint8_t> (addr_t::HOST): {
 								// Зануляем все остальные биты
 								::memset(&this->_buffer[0], 0, (num * 2));
 								// Если префикс не кратен 16
 								if((prefix % 16) != 0){
-									// Данные хекстета
-									uint16_t hex = 0;
-									// Получаем нужное нам значение хекстета
-									::memcpy(&hex, &this->_buffer[0] + (num * 2), sizeof(hex));
-									// Переводим хекстет в бинарный вид
-									bitset <16> bits(hex);
-									/**
-									 * Зануляем все лишние элементы
-									 */
-									for(uint8_t i = (16 - (prefix % 16)); i < 16; i++)
-										// Зануляем все лишние биты
-										bits.set(i, 0);
-									// Устанавливаем новое значение хекстета
-									hex = static_cast <uint16_t> (bits.to_ulong());
-									// Устанавливаем новое значение хекстета
-									::memcpy(&this->_buffer[0] + (num * 2), &hex, sizeof(hex));
+									// Собираем хекстет из двух октетов буфера в сетевом порядке
+									uint16_t hex = static_cast <uint16_t> ((this->_buffer[num * 2] << 8) | this->_buffer[(num * 2) + 1]);
+									// Оставляем младшие разряды хекстета, зануляя сетевые
+									hex &= static_cast <uint16_t> ((1U << (16 - (prefix % 16))) - 1U);
+									// Записываем старший октет хекстета обратно в буфер
+									this->_buffer[num * 2] = static_cast <uint8_t> (hex >> 8);
+									// Записываем младший октет хекстета обратно в буфер
+									this->_buffer[(num * 2) + 1] = static_cast <uint8_t> (hex & 0xFF);
 								}
 							} break;
 							// Если мы хотим получить сетевой адрес
@@ -3096,22 +2784,14 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 									::memset(&this->_buffer[0] + (num * 2), 0, this->_buffer.size() - (num * 2));
 								// Если префикс не кратен 16
 								else {
-									// Данные хекстета
-									uint16_t hex = 0;
-									// Получаем нужное нам значение хекстета
-									::memcpy(&hex, &this->_buffer[0] + (num * 2), sizeof(hex));
-									// Переводим хекстет в бинарный вид
-									bitset <16> bits(hex);
-									/**
-									 * Зануляем все лишние элементы
-									 */
-									for(uint8_t i = 0; i < (16 - (prefix % 16)); i++)
-										// Зануляем все лишние биты
-										bits.set(i, 0);
-									// Устанавливаем новое значение хекстета
-									hex = static_cast <uint16_t> (bits.to_ulong());
-									// Устанавливаем новое значение хекстета
-									::memcpy(&this->_buffer[0] + (num * 2), &hex, sizeof(hex));
+									// Собираем хекстет из двух октетов буфера в сетевом порядке
+									uint16_t hex = static_cast <uint16_t> ((this->_buffer[num * 2] << 8) | this->_buffer[(num * 2) + 1]);
+									// Оставляем старшие разряды хекстета, зануляя хостовые
+									hex &= static_cast <uint16_t> (0xFFFFU << (16 - (prefix % 16)));
+									// Записываем старший октет хекстета обратно в буфер
+									this->_buffer[num * 2] = static_cast <uint8_t> (hex >> 8);
+									// Записываем младший октет хекстета обратно в буфер
+									this->_buffer[(num * 2) + 1] = static_cast <uint8_t> (hex & 0xFF);
 									// Зануляем все остальные биты
 									::memset(&this->_buffer[0] + ((num * 2) + 2), 0, this->_buffer.size() - ((num * 2) + 2));
 								}
@@ -3176,8 +2856,10 @@ uint8_t awh::Network_Address::mask2Prefix(string_view mask, const type_t type) c
 			net_addr_t net(this->_fmk, this->_log);
 			// Выполняем парсинг маски
 			if(net.parse(mask) && (type == net.type())){
-				// Бинарный контейнер
-				bitset <8> bits;
+				// Октеты маски сети в сетевом порядке
+				array <uint8_t, 16> octets = {0};
+				// Количество октетов маски сети
+				uint8_t count = 0;
 				/**
 				 * Определяем тип IP-адреса
 				 */
@@ -3186,30 +2868,67 @@ uint8_t awh::Network_Address::mask2Prefix(string_view mask, const type_t type) c
 					case static_cast <uint8_t> (type_t::IPV4): {
 						// Получаем значение маски в виде адреса
 						const uint32_t num = net.v4();
-						/**
-						 * Выполняем перебор всего значения буфера
-						 */
-						for(uint8_t i = 0; i < 4; i++){
-							// Переводим хекстет в бинарный вид
-							bits = (reinterpret_cast <const uint8_t *> (&num))[i];
-							// Выполняем подсчёт префикса
-							result += bits.count();
-						}
+						// Выполняем копирование октетов маски сети
+						::memcpy(&octets[0], &num, 4);
+						// Устанавливаем количество октетов маски сети
+						count = 4;
 					} break;
 					// Если IP-адрес определён как IPv6
 					case static_cast <uint8_t> (type_t::IPV6): {
 						// Получаем значение маски в виде адреса
 						const array <uint8_t, 16> num = net.v6();
-						/**
-						 * Выполняем перебор всего значения буфера
-						 */
-						for(uint8_t i = 0; i < 16; i++){
-							// Переводим хекстет в бинарный вид
-							bits = reinterpret_cast <const uint8_t *> (&num[0])[i];
-							// Выполняем подсчёт префикса
-							result += bits.count();
-						}
+						// Выполняем копирование октетов маски сети
+						::memcpy(&octets[0], &num[0], 16);
+						// Устанавливаем количество октетов маски сети
+						count = 16;
 					} break;
+				}
+				/**
+				 * Маска сети обязана быть сплошной: единичные разряды идут подряд от
+				 * старшего, а за первым нулевым разрядом стоят одни нули. Прежде
+				 * разряды просто пересчитывались, и маска "255.0.255.0" давала префикс
+				 * 16 - тот же, что и правильная маска "255.255.0.0", - а для списков
+				 * доступа и таблиц маршрутов такая подмена опасна
+				 */
+				// Признак того, что нулевой разряд маски уже встречен
+				bool zeroed = false;
+				/**
+				 * Перебираем все октеты маски сети
+				 */
+				for(uint8_t i = 0; i < count; i++){
+					// Получаем очередной октет маски сети
+					const uint8_t octet = octets[i];
+					// Если нулевой разряд уже встречен, октет обязан быть нулевым
+					if(zeroed && (octet != 0))
+						// Выводим отрицательный результат
+						return 0;
+					// Если октет заполнен единицами целиком
+					if(octet == 0xFF){
+						// Считаем разряды октета
+						result += 8;
+						// Переходим к следующему октету
+						continue;
+					}
+					// Отмечаем, что нулевой разряд маски встречен
+					zeroed = true;
+					// Если октет нулевой, считать в нём нечего
+					if(octet == 0)
+						// Переходим к следующему октету
+						continue;
+					// Количество старших единичных разрядов октета
+					uint8_t ones = 0;
+					/**
+					 * Считаем старшие единичные разряды октета
+					 */
+					while((ones < 8) && ((octet & static_cast <uint8_t> (0x80U >> ones)) != 0))
+						// Считаем очередной единичный разряд
+						ones++;
+					// Если за единичными разрядами октета остались единицы, маска не сплошная
+					if((octet & static_cast <uint8_t> (0xFFU >> ones)) != 0)
+						// Выводим отрицательный результат
+						return 0;
+					// Считаем разряды октета
+					result += ones;
 				}
 			}
 		/**
@@ -3877,6 +3596,205 @@ bool awh::Network_Address::mapping(string_view network, const uint8_t prefix, co
 	return result;
 }
 /**
+ * @brief Пространство имён таблицы особых сетей
+ *
+ */
+namespace {
+	/**
+	 * @brief Структура записи особой сети
+	 *
+	 * @details Особые сети описываются одними лишь октетами, без объектов адреса:
+	 *          таблица общая на весь процесс, а объект адреса держал бы указатели на
+	 *          средства того экземпляра, что завёл таблицу первым, и пережил бы его
+	 *
+	 */
+	typedef struct Special_Network {
+		bool reserved;      // Признак того, что сеть выдана назначению, а не хостам
+		bool ranged;        // Признак того, что сеть задана диапазоном, а не префиксом
+		uint8_t prefix;     // Длина префикса сети
+		uint8_t begin[16];  // Начальный адрес сети
+		uint8_t end[16];    // Конечный адрес диапазона сети
+	} special_t;
+
+	/**
+	 * @brief Структура описания особой сети в исходном виде
+	 *
+	 */
+	typedef struct Special_Source {
+		const char * begin; // Начальный адрес сети
+		const char * end;   // Конечный адрес диапазона сети
+		uint8_t prefix;     // Длина префикса сети
+		bool reserved;      // Признак того, что сеть выдана назначению
+	} special_source_t;
+
+	/**
+	 * @brief Функция сборки таблицы особых сетей
+	 *
+	 * @param sources список описаний особых сетей
+	 * @param family  семейство адресов особых сетей
+	 * @param fmk     объект фреймворка
+	 * @param log     объект для работы с логами
+	 * @return        таблица особых сетей
+	 *
+	 */
+	std::vector <special_t> buildSpecials(const std::vector <special_source_t> & sources, const awh::net_addr_t::type_t family, const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
+		// Таблица особых сетей
+		std::vector <special_t> result;
+		// Резервируем память под таблицу особых сетей
+		result.reserve(sources.size());
+		// Объект разбора адресов особых сетей
+		awh::net_addr_t addr(fmk, log);
+		/**
+		 * @brief Функция снятия октетов разобранного адреса
+		 *
+		 * @param target приёмник октетов адреса
+		 *
+		 */
+		auto fetch = [&addr, family](uint8_t * target) noexcept -> void {
+			// Если адрес принадлежит семейству IPv4
+			if(family == awh::net_addr_t::type_t::IPV4){
+				// Снимаем адрес IPv4 в том порядке байт, в каком он лежит в буфере
+				const uint32_t value = addr.v4(awh::net_addr_t::endian_t::LITTLE);
+				// Переносим октеты адреса в приёмник
+				::memcpy(target, &value, 4);
+			// Если адрес принадлежит семейству IPv6
+			} else {
+				// Снимаем адрес IPv6 в том порядке байт, в каком он лежит в буфере
+				const std::array <uint8_t, 16> value = addr.v6(awh::net_addr_t::endian_t::LITTLE);
+				// Переносим октеты адреса в приёмник
+				::memcpy(target, &value[0], 16);
+			}
+		};
+		/**
+		 * Перебираем все описания особых сетей
+		 */
+		for(auto & source : sources){
+			// Очередная запись таблицы особых сетей
+			special_t special{};
+			// Устанавливаем длину префикса сети
+			special.prefix = source.prefix;
+			// Устанавливаем признак того, что сеть выдана назначению
+			special.reserved = source.reserved;
+			// Если разбор начального адреса сети не удался, запись пропускается
+			if(!addr.parse(source.begin, family))
+				// Переходим к следующему описанию
+				continue;
+			// Снимаем октеты начального адреса сети
+			fetch(&special.begin[0]);
+			// Устанавливаем признак того, что сеть задана диапазоном
+			special.ranged = (source.end[0] != '\0');
+			// Если сеть задана диапазоном
+			if(special.ranged){
+				// Если разбор конечного адреса диапазона не удался, запись пропускается
+				if(!addr.parse(source.end, family))
+					// Переходим к следующему описанию
+					continue;
+				// Снимаем октеты конечного адреса диапазона
+				fetch(&special.end[0]);
+			}
+			// Добавляем запись в таблицу особых сетей
+			result.push_back(special);
+		}
+		// Выводим таблицу особых сетей
+		return result;
+	}
+
+	/**
+	 * @brief Функция получения таблицы особых сетей
+	 *
+	 * @param family семейство адресов, для которого нужна таблица
+	 * @param fmk    объект фреймворка
+	 * @param log    объект для работы с логами
+	 * @return       таблица особых сетей
+	 *
+	 * @note Таблица заводится один раз на весь процесс. Прежде она была полем
+	 *       экземпляра и поднималась заново у каждого объекта: три десятка адресов
+	 *       на умных указателях - на каждое определение принадлежности адреса
+	 *
+	 */
+	const std::vector <special_t> & specials(const awh::net_addr_t::type_t family, const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
+		// Таблица особых сетей IPv4, заводится при первом обращении
+		static const std::vector <special_t> ipv4 = ::buildSpecials({
+			// Сеть 0.0.0.0/8
+			{"0.0.0.0", "", 8, true},
+			// Сеть 0.0.0.0/32
+			{"0.0.0.0", "", 32, true},
+			// Сеть 100.64.0.0/10
+			{"100.64.0.0", "", 10, true},
+			// Сеть 169.254.0.0/16
+			{"169.254.0.0", "", 16, true},
+			// Сеть 224.0.0.0/4
+			{"224.0.0.0", "", 4, true},
+			// Сеть 224.0.0.0/24
+			{"224.0.0.0", "", 24, true},
+			// Сеть 224.0.0.0/8
+			{"224.0.0.0", "", 8, true},
+			// Сеть 239.0.0.0/8
+			{"239.0.0.0", "", 8, true},
+			// Сеть 240.0.0.0/4
+			{"240.0.0.0", "", 4, true},
+			// Сеть 255.255.255.255/32
+			{"255.255.255.255", "", 32, true},
+			// Сеть 10.0.0.0/8
+			{"10.0.0.0", "", 8, false},
+			// Сеть 127.0.0.0/8
+			{"127.0.0.0", "", 8, true},
+			// Сеть 172.16.0.0/12
+			{"172.16.0.0", "", 12, false},
+			// Сеть 192.0.0.0/24
+			{"192.0.0.0", "", 24, true},
+			// Сеть 192.0.0.0/29
+			{"192.0.0.0", "", 29, true},
+			// Сеть 192.0.0.170/32
+			{"192.0.0.170", "", 32, true},
+			// Сеть 192.0.0.171/32
+			{"192.0.0.171", "", 32, true},
+			// Сеть 192.0.2.0/24
+			{"192.0.2.0", "", 24, true},
+			// Сеть 192.88.99.0/24
+			{"192.88.99.0", "", 24, true},
+			// Сеть 192.88.99.1/32
+			{"192.88.99.1", "", 32, true},
+			// Сеть 192.168.0.0/16
+			{"192.168.0.0", "", 16, false},
+			// Сеть 198.51.100.0/24
+			{"198.51.100.0", "", 24, true},
+			// Сеть 198.18.0.0/15
+			{"198.18.0.0", "", 15, true},
+			// Сеть 203.0.113.0/24
+			{"203.0.113.0", "", 24, true},
+		}, awh::net_addr_t::type_t::IPV4, fmk, log);
+		// Таблица особых сетей IPv6, заводится при первом обращении
+		static const std::vector <special_t> ipv6 = ::buildSpecials({
+			// Сеть ::/128
+			{"::", "", 128, true},
+			// Сеть ::1/128
+			{"::1", "", 128, true},
+			// Сеть 2001::/32
+			{"2001::", "", 32, true},
+			// Сеть 2001:db8::/32
+			{"2001:db8::", "", 32, true},
+			// Сеть 64:ff9b::/96
+			{"64:ff9b::", "", 96, true},
+			// Сеть 2002::/16
+			{"2002::", "", 16, true},
+			// Сеть fe80::/10, диапазон до febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+			{"fe80::", "febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff", 10, false},
+			// Сеть fec0::/10, диапазон до feff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+			{"fec0::", "feff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", 10, false},
+			// Сеть fc00::/7
+			{"fc00::", "", 7, false},
+			// Сеть ff00::/8
+			{"ff00::", "", 8, true},
+		}, awh::net_addr_t::type_t::IPV6, fmk, log);
+		// Пустая таблица, отдаётся для семейств, особых сетей не имеющих
+		static const std::vector <special_t> none;
+		// Выводим таблицу, отвечающую запрошенному семейству адресов
+		return ((family == awh::net_addr_t::type_t::IPV4) ? ipv4 : ((family == awh::net_addr_t::type_t::IPV6) ? ipv6 : none));
+	}
+};
+
+/**
  * @brief Метод определения принадлежности адреса
  *
  * @return флаг принадлежности адреса
@@ -3891,86 +3809,55 @@ awh::Network_Address::own_t awh::Network_Address::own() const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Создаём объкт для работы с адресами
-			net_addr_t net(this->_fmk, this->_log);
-			// Выполняем инициализацию списка локальных адресов
-			const_cast <net_addr_t *> (this)->initLocalNet();
-			// Выполняем группировку нужного нам вида адресов
-			auto ret = this->_localsNet.equal_range(this->_type);
+			// Количество октетов адреса
+			const size_t length = this->_buffer.size();
+			// Получаем таблицу особых сетей, отвечающую разновидности адреса
+			const auto & table = ::specials(this->_type, this->_fmk, this->_log);
 			/**
-			 * Перебираем все локальные адреса
+			 * Перебираем все особые сети
 			 */
-			for(auto i = ret.first; i != ret.second; ++i){
-				/**
-				 * Определяем тип IP-адреса
-				 */
-				switch(static_cast <uint8_t> (this->_type)){
-					// Если IP-адрес определён как IPv4
-					case static_cast <uint8_t> (type_t::IPV4): {
-						// Устанавливаем IP-адрес
-						net = this->v4();
-						// Если получен диапазон IP-адресов
-						if(i->second.end->type() == type_t::IPV4){
-							// Если адрес входит в диапазон адресов
-							if((net >= (* i->second.begin.get())) && (net <= * (i->second.end.get()))){
-								// Если адрес зарезервирован
-								if(i->second.reserved)
-									// Устанавливаем результат
-									return own_t::SYS;
-								// Иначе устанавливаем, что адрес локальный
-								else return own_t::LAN;
-							}
-						// Если диапазон адресов для этой проверки не установлен
-						} else {
-							// Устанавливаем префикс сети
-							net.impose(i->second.prefix, addr_t::NETWORK);
-							// Если проверяемые сети совпадают
-							if(net.v4() == i->second.begin->v4()){
-								// Если адрес зарезервирован
-								if(i->second.reserved)
-									// Устанавливаем результат
-									return own_t::SYS;
-								// Иначе устанавливаем, что адрес локальный
-								else return own_t::LAN;
-							}
-						}
-					} break;
-					// Если IP-адрес определён как IPv6
-					case static_cast <uint8_t> (type_t::IPV6): {
-						// Устанавливаем IP-адрес
-						net = this->v6();
-						// Если получен диапазон IP-адресов
-						if(i->second.end->type() == type_t::IPV6){
-							// Если адрес входит в диапазон адресов
-							if((net >= (* i->second.begin.get())) && (net <= (* i->second.end.get()))){
-								// Если адрес зарезервирован
-								if(i->second.reserved)
-									// Устанавливаем результат
-									return own_t::SYS;
-								// Иначе устанавливаем, что адрес локальный
-								else return own_t::LAN;
-							}
-						// Если диапазон адресов для этой проверки не установлен
-						} else {
-							// Устанавливаем префикс сети
-							net.impose(i->second.prefix, addr_t::NETWORK);
-							// Если проверяемые сети совпадают
-							if(::memcmp(&net.v6()[0], &i->second.begin->v6()[0], 16) == 0){
-								// Если адрес зарезервирован
-								if(i->second.reserved)
-									// Устанавливаем результат
-									return own_t::SYS;
-								// Иначе устанавливаем, что адрес локальный
-								else return own_t::LAN;
-							}
-						}
-					} break;
+			for(auto & special : table){
+				// Признак принадлежности адреса очередной особой сети
+				bool matched = false;
+				// Если сеть задана диапазоном адресов
+				if(special.ranged)
+					/**
+					 * Адрес лежит в диапазоне, если он не меньше начала и не больше
+					 * конца. Октеты в буфере идут в сетевом порядке, где старший
+					 * первым, - побайтное сравнение даёт числовой порядок адресов
+					 */
+					matched = (
+						(::memcmp(&this->_buffer[0], &special.begin[0], length) >= 0) &&
+						(::memcmp(&this->_buffer[0], &special.end[0], length) <= 0)
+					);
+				// Если сеть задана длиной префикса
+				else {
+					// Число полных октетов, укрытых префиксом
+					const uint8_t bytes = (special.prefix / 8);
+					// Число разрядов, оставшихся сверх полных октетов
+					const uint8_t bits = (special.prefix % 8);
+					// Полные октеты префикса обязаны совпасть с сетью
+					matched = ((bytes == 0) || (::memcmp(&this->_buffer[0], &special.begin[0], bytes) == 0));
+					// Если полные октеты совпали и префикс границе октета не отвечает
+					if(matched && (bits != 0)){
+						// Маска разрядов неполного октета
+						const uint8_t mask = static_cast <uint8_t> (0xFFU << (8 - bits));
+						// Неполный октет обязан совпасть по укрытым префиксом разрядам
+						matched = ((this->_buffer[bytes] & mask) == (special.begin[bytes] & mask));
+					}
 				}
+				// Если адрес особой сети не принадлежит, переходим к следующей
+				if(!matched)
+					// Переходим к следующей особой сети
+					continue;
+				// Выводим разряд принадлежности адреса
+				return (special.reserved ? own_t::SYS : own_t::LAN);
 			}
-			// Если результат не определён
-			if(result == own_t::NONE)
-				// Устанавливаем, что файл ялвяется глобальным
-				result = own_t::WAN;
+			/**
+			 * Ни в одну особую сеть адрес не попал, стало быть направлен во внешнюю
+			 */
+			// Устанавливаем, что адрес является внешним
+			result = own_t::WAN;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -3993,6 +3880,7 @@ awh::Network_Address::own_t awh::Network_Address::own() const noexcept {
 	// Возвращаем результат
 	return result;
 }
+
 /**
  * @brief Получение записи в формате ARPA
  *
@@ -4116,8 +4004,34 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
 							 * Определяем текущий символ
 							 */
 							if((addr[i] == '.') || (i == pos)){
+								// Длина метки, стоящей перед разделителем
+								const size_t length = (i - begin);
+								/**
+								 * Метка обязана быть непустым десятичным числом не длиннее
+								 * трёх цифр: перевод в число брался без проверок, и запись
+								 * вида "999.0.168.192.in-addr.arpa" разбиралась в мусор
+								 * молча, а нецифровая метка давала ноль
+								 */
+								if((length == 0) || (length > 3))
+									// Возвращаем ошибку
+									return false;
+								/**
+								 * Перебираем все символы метки
+								 */
+								for(size_t j = begin; j < i; j++){
+									// Если символ метки цифрой не является
+									if(!ascii::isDigit(addr[j]))
+										// Возвращаем ошибку
+										return false;
+								}
 								// Извлекаем полученное число
-								this->_buffer[index] = this->_fmk->atoi <uint8_t> (addr.data() + begin, i - begin);
+								const uint32_t octet = this->_fmk->atoi <uint32_t> (addr.data() + begin, length);
+								// Если число за пределы октета выходит
+								if(octet > 255)
+									// Возвращаем ошибку
+									return false;
+								// Устанавливаем полученный октет адреса
+								this->_buffer[index] = static_cast <uint8_t> (octet);
 								// Выполняем смещение
 								begin = (i + 1);
 								// Уменьшаем смещение индекса
@@ -4204,6 +4118,10 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
 		}
 	// Выполняем очистку буфера данных
 	} else this->_buffer.clear();
+	// Неудачный разбор оставляет объект пустым целиком, а не одним лишь буфером
+	this->_type = type_t::NONE;
+	// Выполняем очистку буфера данных
+	this->_buffer.clear();
 	// Возвращаем результат
 	return false;
 }
@@ -4268,23 +4186,12 @@ bool awh::Network_Address::parse(string_view addr) noexcept {
 					} break;
 					// Если проверяем MAC-адрес
 					case 2: {
-						// Значение последнего символа
-						int32_t last = -1;
 						// Выполняем очистку буфера данных
 						this->_buffer.clear();
 						// Выполняем инициализацию буфера
 						this->_buffer.resize(6, 0);
-						// Формируем нуль-терминированную строку (string_view может не быть завершён нулём)
-						const string str(addr);
 						// Выполняем парсинг MAC адреса
-						const int32_t pos = ::sscanf(
-							str.c_str(),
-							"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n",
-							&this->_buffer[0] + 0, &this->_buffer[0] + 1, &this->_buffer[0] + 2,
-							&this->_buffer[0] + 3, &this->_buffer[0] + 4, &this->_buffer[0] + 5, &last
-						);
-						// Если MAC адрес удано распарсен
-						if((pos == 6) && (static_cast <int32_t> (str.size()) == last)){
+						if(::mac(addr, this->_buffer.data())){
 							// Устанавливаем тип адреса
 							this->_type = type_t::MAC;
 							// Выводрим положительный результат
@@ -4314,6 +4221,16 @@ bool awh::Network_Address::parse(string_view addr) noexcept {
 		}
 	// Выполняем очистку буфера данных
 	} else this->_buffer.clear();
+	/**
+	 * Неудачный разбор оставляет объект пустым целиком, а не одним лишь буфером:
+	 * прежде разновидность адреса переживала неудачу и доставалась от прежнего
+	 * разбора - у пустого объекта type сообщал вид, которого в нём уже не было, а
+	 * own и print отвечали по этому виду
+	 */
+	// Сбрасываем разновидность адреса
+	this->_type = type_t::NONE;
+	// Выполняем очистку буфера данных
+	this->_buffer.clear();
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -4375,23 +4292,12 @@ bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 				} break;
 				// Если адрес является адресом MAC
 				case static_cast <uint8_t> (type_t::MAC): {
-					// Значение последнего символа
-					int32_t last = -1;
 					// Выполняем очистку буфера данных
 					this->_buffer.clear();
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(6, 0);
-					// Формируем нуль-терминированную строку (string_view может не быть завершён нулём)
-					const string str(addr);
 					// Выполняем парсинг MAC-адреса
-					const int32_t pos = ::sscanf(
-						str.c_str(),
-						"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n",
-						&this->_buffer[0] + 0, &this->_buffer[0] + 1, &this->_buffer[0] + 2,
-						&this->_buffer[0] + 3, &this->_buffer[0] + 4, &this->_buffer[0] + 5, &last
-					);
-					// Если MAC-адрес удано распарсен
-					if((pos == 6) && (static_cast <int32_t> (str.size()) == last)){
+					if(::mac(addr, this->_buffer.data())){
 						// Устанавливаем тип адреса
 						this->_type = type;
 						// Выводрим положительный результат
@@ -4424,6 +4330,10 @@ bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 		}
 	// Выполняем очистку буфера данных
 	} else this->_buffer.clear();
+	// Неудачный разбор оставляет объект пустым целиком, а не одним лишь буфером
+	this->_type = type_t::NONE;
+	// Выполняем очистку буфера данных
+	this->_buffer.clear();
 	// Возвращаем результат
 	return false;
 }
@@ -5813,15 +5723,20 @@ bool awh::Network_Address::operator < (const net_addr_t & addr) const noexcept {
 					// Выполняем сравнение адресов
 					result = (this->v4(endian_t::BIG) < addr.v4(endian_t::BIG));
 				break;
+				/**
+				 * Адреса IPv6 сравниваются побайтно прямо по буферу: он держит адрес в
+				 * сетевом порядке, где старший октет идёт первым, - именно в таком
+				 * порядке побайтное сравнение и даёт числовой порядок адресов.
+				 *
+				 * Прежде адреса снимались через v6 с разворотом порядка байт, но
+				 * разворачивался весь адрес целиком, а это не сетевой порядок, а его
+				 * полная противоположность: адрес ::1 оказывался больше 8000::
+				 */
 				// Если IP-адрес определён как IPv6
-				case static_cast <uint8_t> (type_t::IPV6): {
-					// Получаем данные текущего адреса IPv6
-					const auto & first = this->v6(endian_t::BIG);
-					// Получаем данные сравниваемого адреса IPv6
-					const auto & second = addr.v6(endian_t::BIG);
-					// Выполняем бинарное сравнение
-					result = this->_fmk->isGreater(&second[0], &first[0], 16);
-				} break;
+				case static_cast <uint8_t> (type_t::IPV6):
+					// Выполняем побайтное сравнение адресов в сетевом порядке
+					result = (::memcmp(&this->_buffer[0], &addr._buffer[0], 16) < 0);
+				break;
 			}
 		/**
 		 * Если возникает ошибка
@@ -5875,15 +5790,20 @@ bool awh::Network_Address::operator > (const net_addr_t & addr) const noexcept {
 					// Выполняем сравнение адресов
 					result = (this->v4(endian_t::BIG) > addr.v4(endian_t::BIG));
 				break;
+				/**
+				 * Адреса IPv6 сравниваются побайтно прямо по буферу: он держит адрес в
+				 * сетевом порядке, где старший октет идёт первым, - именно в таком
+				 * порядке побайтное сравнение и даёт числовой порядок адресов.
+				 *
+				 * Прежде адреса снимались через v6 с разворотом порядка байт, но
+				 * разворачивался весь адрес целиком, а это не сетевой порядок, а его
+				 * полная противоположность: адрес ::1 оказывался больше 8000::
+				 */
 				// Если IP-адрес определён как IPv6
-				case static_cast <uint8_t> (type_t::IPV6): {
-					// Получаем данные текущего адреса IPv6
-					const auto & first = this->v6(endian_t::BIG);
-					// Получаем данные сравниваемого адреса IPv6
-					const auto & second = addr.v6(endian_t::BIG);
-					// Выполняем бинарное сравнение
-					result = this->_fmk->isGreater(&first[0], &second[0], 16);
-				} break;
+				case static_cast <uint8_t> (type_t::IPV6):
+					// Выполняем побайтное сравнение адресов в сетевом порядке
+					result = (::memcmp(&this->_buffer[0], &addr._buffer[0], 16) > 0);
+				break;
 			}
 		/**
 		 * Если возникает ошибка
@@ -5945,19 +5865,20 @@ bool awh::Network_Address::operator <= (const net_addr_t & addr) const noexcept 
 					// Выполняем сравнение адресов
 					result = (this->v4(endian_t::BIG) <= addr.v4(endian_t::BIG));
 				break;
+				/**
+				 * Адреса IPv6 сравниваются побайтно прямо по буферу: он держит адрес в
+				 * сетевом порядке, где старший октет идёт первым, - именно в таком
+				 * порядке побайтное сравнение и даёт числовой порядок адресов.
+				 *
+				 * Прежде адреса снимались через v6 с разворотом порядка байт, но
+				 * разворачивался весь адрес целиком, а это не сетевой порядок, а его
+				 * полная противоположность: адрес ::1 оказывался больше 8000::
+				 */
 				// Если IP-адрес определён как IPv6
-				case static_cast <uint8_t> (type_t::IPV6): {
-					// Получаем данные текущего адреса IPv6
-					const auto & first = this->v6(endian_t::BIG);
-					// Получаем данные сравниваемого адреса IPv6
-					const auto & second = addr.v6(endian_t::BIG);
-					// Выполняем проверку совпадают ли адреса
-					result = (::memcmp(&first[0], &second[0], 16) == 0);
-					// Если адреса не совпадают
-					if(!result)
-						// Выполняем сравнение адресов
-						result = this->_fmk->isGreater(&second[0], &first[0], 16);
-				} break;
+				case static_cast <uint8_t> (type_t::IPV6):
+					// Выполняем побайтное сравнение адресов в сетевом порядке
+					result = (::memcmp(&this->_buffer[0], &addr._buffer[0], 16) <= 0);
+				break;
 			}
 		/**
 		 * Если возникает ошибка
@@ -6019,19 +5940,20 @@ bool awh::Network_Address::operator >= (const net_addr_t & addr) const noexcept 
 					// Выполняем сравнение адресов
 					result = (this->v4(endian_t::BIG) >= addr.v4(endian_t::BIG));
 				break;
+				/**
+				 * Адреса IPv6 сравниваются побайтно прямо по буферу: он держит адрес в
+				 * сетевом порядке, где старший октет идёт первым, - именно в таком
+				 * порядке побайтное сравнение и даёт числовой порядок адресов.
+				 *
+				 * Прежде адреса снимались через v6 с разворотом порядка байт, но
+				 * разворачивался весь адрес целиком, а это не сетевой порядок, а его
+				 * полная противоположность: адрес ::1 оказывался больше 8000::
+				 */
 				// Если IP-адрес определён как IPv6
-				case static_cast <uint8_t> (type_t::IPV6): {
-					// Получаем данные текущего адреса IPv6
-					const auto & first = this->v6(endian_t::BIG);
-					// Получаем данные сравниваемого адреса IPv6
-					const auto & second = addr.v6(endian_t::BIG);
-					// Выполняем проверку совпадают ли адреса
-					result = (::memcmp(&first[0], &second[0], 16) == 0);
-					// Если адреса не совпадают
-					if(!result)
-						// Выполняем сравнение адресов
-						result = this->_fmk->isGreater(&first[0], &second[0], 16);
-				} break;
+				case static_cast <uint8_t> (type_t::IPV6):
+					// Выполняем побайтное сравнение адресов в сетевом порядке
+					result = (::memcmp(&this->_buffer[0], &addr._buffer[0], 16) >= 0);
+				break;
 			}
 		/**
 		 * Если возникает ошибка
