@@ -2163,12 +2163,26 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 					if((this->_attr == nullptr) || (this->_attr->type != net::type_t::FS))
 						// Инициализируем атрибуты URI
 						this->_attr = make_unique <net::attr_uds_t> ();
-					// Если путь к сокету в атрибутах URI адреса не инициализирован
-					if(awh_cast <net::attr_uds_t *> (this->_attr.get())->path == nullptr)
-						// Инициализируем путь к сокету в атрибутах URI адреса
-						awh_cast <net::attr_uds_t *> (this->_attr.get())->path = make_unique <net::addr_fs_t> ();
-					// Копируем путь к сокету из атрибутов URI адреса
-					awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address = awh_cast <const net::addr_fs_t *> (awh_cast <const net::attr_uds_t *> (attr)->path.get())->address;
+					// Получаем атрибуты URI адреса
+					net::attr_uds_t * target = awh_cast <net::attr_uds_t *> (this->_attr.get());
+					/**
+					 * Путь к сокету заводится отдельно от самих атрибутов и у них может
+					 * отсутствовать вовсе: атрибуты, заведённые снаружи, приходят с
+					 * пустым указателем, и копирование по нему падало
+					 */
+					// Если копируемый путь к сокету не заведён, сбрасываем и свой
+					if(awh_cast <const net::attr_uds_t *> (attr)->path == nullptr)
+						// Сбрасываем путь к сокету в атрибутах URI адреса
+						target->path.reset(nullptr);
+					// Иначе копируем путь к сокету
+					else {
+						// Если путь к сокету в атрибутах URI адреса не инициализирован
+						if(target->path == nullptr)
+							// Инициализируем путь к сокету в атрибутах URI адреса
+							target->path = make_unique <net::addr_fs_t> ();
+						// Копируем путь к сокету из атрибутов URI адреса
+						awh_cast <net::addr_fs_t *> (target->path.get())->address = awh_cast <const net::addr_fs_t *> (awh_cast <const net::attr_uds_t *> (attr)->path.get())->address;
+					}
 				} break;
 				// Если атрибуты URI адреса являются FQDN-адресом
 				case static_cast <uint8_t> (net::type_t::FQDN): {
@@ -3447,6 +3461,19 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 		const bool guess = this->empty();
 		// Выполняем парсинг URI
 		if(uri::parse(this->_fmk, uri, scheme, userinfo, host, port, path, query, fragment, form, guess)){
+			// Номер порта URI, полученный разбором его представления
+			uint16_t number = 0;
+			/**
+			 * Негодное представление порта отменяет разбор целиком, а не снимается
+			 * с адреса молча: порт входит в опознание ресурса, и запись
+			 * "http://host:99999/" при отброшенном порте разбиралась как "http://host/"
+			 * - тот же разбор отдавал стандартный порт схемы, и переход по ссылке шёл
+			 * на другой узел. Пустое же представление порт задаёт стандартным
+			 * ("http://host:/"), и разбору оно не мешает (RFC 3986 3.2.3)
+			 */
+			if(!port.empty() && !uri::parsePort(port, number))
+				// Выводим тип URI, оставляя разобранный прежде адрес нетронутым
+				return this->_type;
 			/**
 			 * Разбор строки URI разрешает её относительно уже разобранной
 			 * (RFC 3986 5.2.2): сервер отдаёт в заголовке Location ссылку, которая
@@ -3547,10 +3574,19 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 			if(!host.empty())
 				// Устанавливаем хост URI
 				this->host(host);
-			// Номер порта URI, полученный разбором его представления
-			uint16_t number = 0;
-			// Если порт URI не пустой, является числом и не выходит за пределы диапазона портов (0-65535)
-			if(uri::parsePort(port, number)){
+			// Если порт URI представлением задан и разобран
+			if(number > 0){
+				/**
+				 * Порт принадлежит авторити, а не хосту, и записывается он в атрибуты
+				 * адреса. Пустой хост атрибутов не заводит, и установка порта уходила в
+				 * пустоту: запись "http://:8080/" собиралась как "http:///", а порт с
+				 * неё снимался нулевым. Отбор по порту - разграничение доступа, к
+				 * примеру, - на такой записи молча оказывался ни при чём
+				 */
+				// Если хост URI пустой, а атрибуты его не заведены
+				if(host.empty() && (this->_attr == nullptr))
+					// Инициализируем атрибуты URI, чтобы порту было куда записаться
+					this->_attr = make_unique <net::attr_fqdn_t> ();
 				// Устанавливаем порт URI
 				this->port(number);
 				/**
@@ -3560,7 +3596,7 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 				 * получала, и собиралась она как "https:/x" - строка эта хоста не имеет,
 				 * но выглядит уже полным адресом
 				 */
-				if((this->_type == type_t::NONE) && (this->_attr != nullptr)){
+				if((this->_type == type_t::NONE) && !host.empty() && (this->_attr != nullptr)){
 					/**
 					 * Определяем тип порта URI адреса
 					 */
@@ -5057,12 +5093,26 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 						this->_attr = make_unique <net::attr_uds_t> ();
 					// Получаем атрибуты URI адреса
 					net::attr_uds_t * attr = awh_cast <net::attr_uds_t *> (this->_attr.get());
-					// Если путь к сокету в атрибутах URI адреса не инициализирован
-					if(attr->path == nullptr)
-						// Инициализируем путь к сокету в атрибутах URI адреса
-						attr->path = make_unique <net::addr_fs_t> ();
-					// Копируем путь к сокету из атрибутов URI адреса
-					awh_cast <net::addr_fs_t *> (attr->path.get())->address = awh_cast <const net::addr_fs_t *> (awh_cast <const net::attr_uds_t *> (uri._attr.get())->path.get())->address;
+					// Извлекаем копируемые атрибуты URI адреса как адрес файловой системы
+					const net::attr_uds_t * source = awh_cast <const net::attr_uds_t *> (uri._attr.get());
+					/**
+					 * Путь к сокету заводится отдельно от самих атрибутов и у них может
+					 * отсутствовать вовсе: атрибуты, заведённые снаружи, приходят с
+					 * пустым указателем, и копирование по нему падало
+					 */
+					// Если копируемый путь к сокету не заведён, сбрасываем и свой
+					if(source->path == nullptr)
+						// Сбрасываем путь к сокету в атрибутах URI адреса
+						attr->path.reset(nullptr);
+					// Иначе копируем путь к сокету
+					else {
+						// Если путь к сокету в атрибутах URI адреса не инициализирован
+						if(attr->path == nullptr)
+							// Инициализируем путь к сокету в атрибутах URI адреса
+							attr->path = make_unique <net::addr_fs_t> ();
+						// Копируем путь к сокету из атрибутов URI адреса
+						awh_cast <net::addr_fs_t *> (attr->path.get())->address = awh_cast <const net::addr_fs_t *> (source->path.get())->address;
+					}
 				} break;
 				// Если атрибуты URI адреса являются FQDN-адресом
 				case static_cast <uint8_t> (net::type_t::FQDN): {
@@ -5310,12 +5360,26 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 						this->_attr = make_unique <net::attr_uds_t> ();
 					// Получаем атрибуты URI адреса
 					net::attr_uds_t * attr = awh_cast <net::attr_uds_t *> (this->_attr.get());
-					// Если путь к сокету в атрибутах URI адреса не инициализирован
-					if(attr->path == nullptr)
-						// Инициализируем путь к сокету в атрибутах URI адреса
-						attr->path = make_unique <net::addr_fs_t> ();
-					// Копируем путь к сокету из атрибутов URI адреса
-					awh_cast <net::addr_fs_t *> (attr->path.get())->address = awh_cast <const net::addr_fs_t *> (awh_cast <const net::attr_uds_t *> (uri._attr.get())->path.get())->address;
+					// Извлекаем копируемые атрибуты URI адреса как адрес файловой системы
+					const net::attr_uds_t * source = awh_cast <const net::attr_uds_t *> (uri._attr.get());
+					/**
+					 * Путь к сокету заводится отдельно от самих атрибутов и у них может
+					 * отсутствовать вовсе: атрибуты, заведённые снаружи, приходят с
+					 * пустым указателем, и копирование по нему падало
+					 */
+					// Если копируемый путь к сокету не заведён, сбрасываем и свой
+					if(source->path == nullptr)
+						// Сбрасываем путь к сокету в атрибутах URI адреса
+						attr->path.reset(nullptr);
+					// Иначе копируем путь к сокету
+					else {
+						// Если путь к сокету в атрибутах URI адреса не инициализирован
+						if(attr->path == nullptr)
+							// Инициализируем путь к сокету в атрибутах URI адреса
+							attr->path = make_unique <net::addr_fs_t> ();
+						// Копируем путь к сокету из атрибутов URI адреса
+						awh_cast <net::addr_fs_t *> (attr->path.get())->address = awh_cast <const net::addr_fs_t *> (source->path.get())->address;
+					}
 				} break;
 				// Если атрибуты URI адреса являются FQDN-адресом
 				case static_cast <uint8_t> (net::type_t::FQDN): {
