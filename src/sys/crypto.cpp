@@ -1171,8 +1171,18 @@ namespace driver {
 			 * Если возникает ошибка
 			 */
 			} catch(const exception & error) {
-				// Выполняем очистку блока с результатом
-				result.clear();
+				/**
+				 * Стейт сбрасывается наравне с прочими отказами потокового пути (4.6):
+				 * сбой отведения памяти мог застать поток посреди работы - с частью
+				 * порции, уже поглощённой контекстом, либо с испорченным удерживаемым
+				 * хвостом, - и следующая порция разошлась бы с шифротекстом
+				 */
+				// Затираем и очищаем блок с результатом
+				wipe(result);
+				// Если контекст потокового шифрования заведён
+				if(state.ctx != nullptr)
+					// Выполняем сброс стейта AES-шифрования
+					state.reset();
 				/**
 				 * Если включён режим отладки
 				 */
@@ -2517,6 +2527,18 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 	 */
 	} catch(const exception & error) {
 		/**
+		 * Признак работы гасится, буфер затирается, а стейт сбрасывается: признак
+		 * взводился наперёд, по одному лишь наличию контекста, и сбой посреди
+		 * завершения выдавался бы за успех - при живом контексте и открытом тексте,
+		 * подлинности не прошедшем
+		 */
+		// Снимаем признак успешно выполненной работы
+		result = false;
+		// Затираем и очищаем выходной буфер
+		driver::wipe(buffer);
+		// Выполняем сброс стейта AES-шифрования
+		this->_params.state->reset();
+		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
@@ -2906,6 +2928,11 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 			case static_cast <uint16_t> (cipher_t::BASE64): {
 				// Выполняем кодирование строки BASE64 и получаем признак успеха
 				const bool success = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::ENCODE, state, result, this->_log);
+				/**
+				 * В лог выводится размер поданных данных, а не сами данные: BASE64
+				 * ходит и по открытому тексту, и запись его в лог выносила тайну
+				 * туда, где ей не место
+				 */
 				// Если кодирование не вышло
 				if(!success){
 					/**
@@ -2913,13 +2940,13 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to encrypt \"%s\" string data into BASE64 format", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+						this->_log->debug("Unable to encrypt string data of %zu octets into BASE64 format", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING, size);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to encrypt \"%s\" string data into BASE64 format", log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+						this->_log->print("Unable to encrypt string data of %zu octets into BASE64 format", log_t::flag_t::WARNING, size);
 					#endif
 				}
 			} break;
@@ -3220,13 +3247,13 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to extract data from BASE64 encoded \"%s\" digest", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+						this->_log->debug("Unable to extract data from BASE64 encoded digest of %zu octets", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING, size);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to extract data from BASE64 encoded \"%s\" digest", log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+						this->_log->print("Unable to extract data from BASE64 encoded digest of %zu octets", log_t::flag_t::WARNING, size);
 					#endif
 				}
 			} break;
@@ -3481,8 +3508,17 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 			BIO * bio = ::BIO_new(::BIO_s_mem());
 			// Если объект BIO создан успешно
 			if(bio != nullptr){
+				/**
+				 * Итог снимается с объекта BIO только по удавшейся выписке: отказ
+				 * записи оставлял в объекте недописанную часть, и она уходила
+				 * наружу непустым итогом - как будто ключ выписан целиком
+				 */
+				// Признак удавшейся выписки ключа
+				bool exported = true;
 				// Если файл не может быть записан
 				if(::PEM_write_bio_PUBKEY(bio, key.ctx) != 1){
+					// Снимаем признак удавшейся выписки ключа
+					exported = false;
 					/**
 					 * Если включён режим отладки
 					 */
@@ -3497,14 +3533,17 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 						this->_log->print("Public key export failed", log_t::flag_t::CRITICAL);
 					#endif
 				}
-				// Получаем указатель на данные из объекта BIO
-				char * buffer = nullptr;
-				// Получаем размер данных из объекта BIO
-				const size_t size = static_cast <size_t> (::BIO_get_mem_data(bio, &buffer));
-				// Если данные получены успешно
-				if((buffer != nullptr) && (size > 0))
-					// Записываем данные в результат
-					result.assign(buffer, size);
+				// Если выписка ключа удалась
+				if(exported){
+					// Получаем указатель на данные из объекта BIO
+					char * buffer = nullptr;
+					// Получаем размер данных из объекта BIO
+					const size_t size = static_cast <size_t> (::BIO_get_mem_data(bio, &buffer));
+					// Если данные получены успешно
+					if((buffer != nullptr) && (size > 0))
+						// Записываем данные в результат
+						result.assign(buffer, size);
+				}
 				// Освобождаем объект BIO
 				::BIO_free_all(bio);
 			// Если объект BIO не создан
@@ -3768,10 +3807,19 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 				BIO * bio = ::BIO_new(::BIO_s_mem());
 				// Если объект BIO создан успешно
 				if(bio != nullptr){
+					/**
+					 * Итог снимается с объекта BIO только по удавшейся выписке: отказ
+					 * записи оставлял в объекте недописанную часть, и она уходила
+					 * наружу непустым итогом - как будто ключ выписан целиком
+					 */
+					// Признак удавшейся выписки ключа
+					bool exported = true;
 					// Если пароль защиты приватного ключа не установлен
 					if(this->_params.passwordRSA.empty()){
 						// Если файл не может быть записан
 						if(::PEM_write_bio_PrivateKey(bio, key.ctx, nullptr, nullptr, 0, nullptr, nullptr) != 1){
+							// Снимаем признак удавшейся выписки ключа
+							exported = false;
 							/**
 							 * Если включён режим отладки
 							 */
@@ -3836,6 +3884,8 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 						}
 						// Если файл не может быть записан
 						if((evp == nullptr) || (::PEM_write_bio_PKCS8PrivateKey(bio, key.ctx, evp, this->_params.passwordRSA.c_str(), static_cast <int32_t> (this->_params.passwordRSA.size()), nullptr, nullptr) != 1)){
+							// Снимаем признак удавшейся выписки ключа
+							exported = false;
 							/**
 							 * Если включён режим отладки
 							 */
@@ -3851,14 +3901,17 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 							#endif
 						}
 					}
-					// Получаем указатель на данные из объекта BIO
-					char * buffer = nullptr;
-					// Получаем размер данных из объекта BIO
-					const size_t size = static_cast <size_t> (::BIO_get_mem_data(bio, &buffer));
-					// Если данные получены успешно
-					if((buffer != nullptr) && (size > 0))
-						// Записываем данные в результат
-						result.assign(buffer, size);
+					// Если выписка ключа удалась
+					if(exported){
+						// Получаем указатель на данные из объекта BIO
+						char * buffer = nullptr;
+						// Получаем размер данных из объекта BIO
+						const size_t size = static_cast <size_t> (::BIO_get_mem_data(bio, &buffer));
+						// Если данные получены успешно
+						if((buffer != nullptr) && (size > 0))
+							// Записываем данные в результат
+							result.assign(buffer, size);
+					}
 					// Освобождаем объект BIO
 					::BIO_free_all(bio);
 				// Если объект BIO не создан
@@ -4752,12 +4805,14 @@ void awh::Crypto::encryptWithPublicKey(const vector <uint8_t> & buffer, vector <
  */
 void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept {
 	/**
-	 * Буфер результата очищается на входе: отказ, случившийся до отведения
-	 * буфера, оставлял в нём итог прежней работы - подпись прежних данных
-	 * выглядела бы подписью нынешних
+	 * Буфер результата затирается и очищается на входе: отказ, случившийся до
+	 * отведения буфера, оставлял в нём итог прежней работы - подпись прежних
+	 * данных выглядела бы подписью нынешних. Затирается он наравне с буферами
+	 * работы по симметричному ключу (4.18): очистка содержимого не гасит, а
+	 * расшифровка ключом RSA держит в нём открытый текст
 	 */
-	// Очищаем буфер результата
-	result.clear();
+	// Затираем и очищаем буфер результата
+	driver::wipe(result);
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4829,8 +4884,8 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 						// Выходим из метода
 						return;
 					}
-					// Очищаем объект результата
-					result.clear();
+					// Затираем и очищаем буфер результата
+					driver::wipe(result);
 					// Выделяем память под подпись
 					result.resize(length, 0);
 					// Получаем зашифрованные данные
@@ -4840,8 +4895,8 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 						 * и работа, судящая об удаче по его непустоте, приняла бы нули за
 						 * готовый результат
 						 */
-						// Очищаем буфер результата
-						result.clear();
+						// Затираем и очищаем буфер результата
+						driver::wipe(result);
 						// Освобождаем контекст для шифрования
 						::EVP_PKEY_CTX_free(ctx);
 						/**
@@ -4937,12 +4992,14 @@ void awh::Crypto::decryptWithPrivateKey(const vector <uint8_t> & buffer, vector 
  */
 void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept {
 	/**
-	 * Буфер результата очищается на входе: отказ, случившийся до отведения
-	 * буфера, оставлял в нём итог прежней работы - подпись прежних данных
-	 * выглядела бы подписью нынешних
+	 * Буфер результата затирается и очищается на входе: отказ, случившийся до
+	 * отведения буфера, оставлял в нём итог прежней работы - подпись прежних
+	 * данных выглядела бы подписью нынешних. Затирается он наравне с буферами
+	 * работы по симметричному ключу (4.18): очистка содержимого не гасит, а
+	 * расшифровка ключом RSA держит в нём открытый текст
 	 */
-	// Очищаем буфер результата
-	result.clear();
+	// Затираем и очищаем буфер результата
+	driver::wipe(result);
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5016,8 +5073,8 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 							// Выходим из метода
 							return;
 						}
-						// Очищаем объект результата
-						result.clear();
+						// Затираем и очищаем буфер результата
+						driver::wipe(result);
 						// Выделяем память под подпись
 						result.resize(length, 0);
 						// Получаем дешифрованные данные
@@ -5027,8 +5084,8 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 							 * и работа, судящая об удаче по его непустоте, приняла бы нули за
 							 * готовый результат
 							 */
-							// Очищаем буфер результата
-							result.clear();
+							// Затираем и очищаем буфер результата
+							driver::wipe(result);
 							// Освобождаем контекст для дешифрования
 							::EVP_PKEY_CTX_free(ctx);
 							/**
@@ -5142,12 +5199,14 @@ void awh::Crypto::signWithPrivateKey(const vector <uint8_t> & buffer, const hash
  */
 void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, const hash_t hash, vector <uint8_t> & result) const noexcept {
 	/**
-	 * Буфер результата очищается на входе: отказ, случившийся до отведения
-	 * буфера, оставлял в нём итог прежней работы - подпись прежних данных
-	 * выглядела бы подписью нынешних
+	 * Буфер результата затирается и очищается на входе: отказ, случившийся до
+	 * отведения буфера, оставлял в нём итог прежней работы - подпись прежних
+	 * данных выглядела бы подписью нынешних. Затирается он наравне с буферами
+	 * работы по симметричному ключу (4.18): очистка содержимого не гасит, а
+	 * расшифровка ключом RSA держит в нём открытый текст
 	 */
-	// Очищаем буфер результата
-	result.clear();
+	// Затираем и очищаем буфер результата
+	driver::wipe(result);
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -5301,8 +5360,8 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							// Выходим из метода
 							return;
 						}
-						// Очищаем объект результата
-						result.clear();
+						// Затираем и очищаем буфер результата
+						driver::wipe(result);
 						// Выделяем память под подпись
 						result.resize(length, 0);
 						// Получаем подпись данных
@@ -5312,8 +5371,8 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							 * и работа, судящая об удаче по его непустоте, приняла бы нули за
 							 * готовый результат
 							 */
-							// Очищаем буфер результата
-							result.clear();
+							// Затираем и очищаем буфер результата
+							driver::wipe(result);
 							// Освобождаем контекст для подписи
 							::EVP_MD_CTX_free(ctx);
 							/**

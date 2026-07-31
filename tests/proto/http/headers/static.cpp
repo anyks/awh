@@ -4960,3 +4960,35 @@ TEST_F(HeadersFixture, ConnectAbsoluteUriTargetTest){
 	// Проверяем что authority-форма разбирается по-прежнему
 	ASSERT_NE(this->_headers->print(proto_t::HTTP2).find(":authority: example.com:443\r\n"), std::string::npos);
 }
+
+/**
+ * @brief Метод проверки звёздочной формы цели запроса
+ *
+ * @details Звёздочкой метод OPTIONS обращается к серверу целиком, а не к какому-либо
+ *          его ресурсу (RFC 9112 §3.2.4). Псевдозаголовок пути в таком запросе обязан
+ *          нести именно звёздочку (RFC 9113 §8.3.1), и дополнение разделителем
+ *          превратило бы обращение к серверу в обращение к ресурсу с названием
+ *          из звёздочки. Приёмная сторона обоих бинарных протоколов эту форму
+ *          проверяет, поэтому вид [/*] она отвергает
+ *
+ */
+TEST_F(HeadersFixture, AsteriskFormTargetTest){
+	// Создаём объект запроса клиента со звёздочной формой цели
+	request_t request(version_t::HTTP2, method_t::OPTIONS, std::string("*"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что псевдозаголовок пути несёт именно звёздочку
+	ASSERT_NE(result.find(":path: *\r\n"), std::string::npos);
+	// Проверяем что звёздочка не дополнена корневым разделителем
+	ASSERT_EQ(result.find(":path: /*"), std::string::npos);
+	// Проверяем что прочие псевдозаголовки запроса сформированы
+	ASSERT_NE(result.find(":method: OPTIONS\r\n"), std::string::npos);
+	// Создаём объект запроса клиента с обычной целью того же метода
+	request_t regular(version_t::HTTP2, method_t::OPTIONS, std::string("/resource"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&regular);
+	// Проверяем что обычная цель того же метода разбирается по-прежнему
+	ASSERT_NE(this->_headers->print(proto_t::HTTP2).find(":path: /resource\r\n"), std::string::npos);
+}

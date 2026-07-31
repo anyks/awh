@@ -935,6 +935,18 @@ TEST_F(CryptoFixture, KeyCipherCryptoTest){
 	EXPECT_FALSE(this->_crypto->getPrivateKeyRSA().empty());
 	// Проверяем отказ выписывания ключа шифрованием, защите ключа не подходящим
 	EXPECT_TRUE(this->_crypto->getPrivateKeyRSA(awh::crypto_t::cipher_t::BASE64).empty());
+	/**
+	 * Итог снимается с объекта BIO только по удавшейся выписке: отказ записи
+	 * оставлял в объекте недописанную часть, и она уходила наружу непустым итогом
+	 */
+	// Получаем приватный ключ RSA после отказа выписывания
+	const std::string sealed = this->_crypto->getPrivateKeyRSA(awh::crypto_t::cipher_t::AES256);
+	// Проверяем получение приватного ключа RSA целиком
+	ASSERT_FALSE(sealed.empty());
+	// Проверяем целость полученного приватного ключа RSA
+	EXPECT_NE(sealed.find("-----END ENCRYPTED PRIVATE KEY-----"), std::string::npos);
+	// Проверяем вычитывание полученного приватного ключа RSA
+	EXPECT_TRUE(this->_crypto->setPrivateKeyRSA(sealed));
 	// Путь к файлу приватного ключа
 	const std::string path = "./cipher_private_key.pem";
 	// Проверяем отказ выписывания ключа в файл шифрованием, защите ключа не подходящим
