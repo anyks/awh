@@ -418,6 +418,15 @@ namespace driver {
 						driver::hex(digest.data(), 64, result);
 					} break;
 				}
+				/**
+				 * Промежуточные значения гасятся: шестнадцатеричная запись уже снята,
+				 * а двоичный вид суммы остался бы лежать в памяти до тех пор, покуда
+				 * её не выдадут кому-то ещё
+				 */
+				// Если буфер промежуточных значений не пуст
+				if(!digest.empty())
+					// Выполняем затирание буфера промежуточных значений
+					::OPENSSL_cleanse(digest.data(), digest.size());
 			/**
 			 * Если возникает ошибка
 			 */
@@ -448,6 +457,18 @@ namespace driver {
 	 *
 	 */
 	static void hmac(const C & key, const B & buffer, const crypto_t::hash_t hash, A & result, const log_t * log) noexcept {
+		/**
+		 * Предел разрядности довода библиотеки криптографии отвергается и здесь:
+		 * длина ключа приводится к знаковому числу, и ключ свыше двух гигаоктетов
+		 * пошёл бы в подпись по своей обрезанной части
+		 */
+		// Если длина ключа превышает предел разрядности библиотеки криптографии
+		if(key.size() > static_cast <size_t> (INT32_MAX)){
+			// Записываем ошибку в лог
+			log->print("Key size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+			// Выходим из функции
+			return;
+		}
 		// Если ключ и текст для хэширования переданы
 		if(!key.empty() && !buffer.empty()){
 			/**
@@ -476,6 +497,8 @@ namespace driver {
 							result.clear();
 						// Формируем данные MD5-хэша
 						else driver::hex(digest, 16, result);
+						// Выполняем затирание буфера промежуточных значений
+						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA1
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA1): {
@@ -493,6 +516,8 @@ namespace driver {
 							result.clear();
 						// Формируем данные SHA1-хэша
 						else driver::hex(digest, 20, result);
+						// Выполняем затирание буфера промежуточных значений
+						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA224
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA224): {
@@ -510,6 +535,8 @@ namespace driver {
 							result.clear();
 						// Формируем данные SHA224-хэша
 						else driver::hex(digest, 28, result);
+						// Выполняем затирание буфера промежуточных значений
+						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA256
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA256): {
@@ -527,6 +554,8 @@ namespace driver {
 							result.clear();
 						// Формируем данные SHA256-хэша
 						else driver::hex(digest, 32, result);
+						// Выполняем затирание буфера промежуточных значений
+						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA384
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA384): {
@@ -544,6 +573,8 @@ namespace driver {
 							result.clear();
 						// Формируем данные SHA384-хэша
 						else driver::hex(digest, 48, result);
+						// Выполняем затирание буфера промежуточных значений
+						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA512
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA512): {
@@ -561,6 +592,8 @@ namespace driver {
 							result.clear();
 						// Формируем данные SHA512-хэша
 						else driver::hex(digest, 64, result);
+						// Выполняем затирание буфера промежуточных значений
+						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
 				}
 			/**
@@ -1355,7 +1388,7 @@ namespace driver {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("Unsupported cipher type", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), log_t::flag_t::CRITICAL);
+							log->debug("Unsupported cipher type", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1363,6 +1396,15 @@ namespace driver {
 							// Записываем ошибку в лог
 							log->print("Unsupported cipher type", log_t::flag_t::CRITICAL);
 						#endif
+						/**
+						 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
+						 * уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
+						 * остались от прежнего вывода - следующий вызов с прежними метками
+						 * счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не
+						 * сообщив
+						 */
+						// Выполняем сброс стейта AES-шифрования
+						state.reset();
 						// Возвращаем результат работы функции
 						return result;
 					}
@@ -1378,7 +1420,7 @@ namespace driver {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("Block cipher mode is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), log_t::flag_t::CRITICAL);
+						log->debug("Block cipher mode is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1386,6 +1428,15 @@ namespace driver {
 						// Записываем ошибку в лог
 						log->print("Block cipher mode is not set", log_t::flag_t::CRITICAL);
 					#endif
+					/**
+					 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
+					 * уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
+					 * остались от прежнего вывода - следующий вызов с прежними метками
+					 * счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не
+					 * сообщив
+					 */
+					// Выполняем сброс стейта AES-шифрования
+					state.reset();
 					// Возвращаем результат работы функции
 					return result;
 				}
@@ -1438,7 +1489,7 @@ namespace driver {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), log_t::flag_t::CRITICAL);
+							log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1446,6 +1497,15 @@ namespace driver {
 							// Записываем ошибку в лог
 							log->print("Unsupported hash type", log_t::flag_t::CRITICAL);
 						#endif
+						/**
+						 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
+						 * уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
+						 * остались от прежнего вывода - следующий вызов с прежними метками
+						 * счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не
+						 * сообщив
+						 */
+						// Выполняем сброс стейта AES-шифрования
+						state.reset();
 						// Возвращаем результат работы функции
 						return result;
 					}
@@ -1458,6 +1518,39 @@ namespace driver {
 				 * каждое сообщение и выписывается в начало шифротекста
 				 */
 				/**
+				 * Предел разрядности довода библиотеки криптографии отвергается явно
+				 * и здесь: длины пароля и соли приводятся к знаковому 32-битному
+				 * числу, и пароль свыше двух гигаоктетов вывелся бы в ключ по своей
+				 * обрезанной части - работа думала бы, что взяла его целиком
+				 */
+				// Если длина пароля либо соли превышает предел разрядности библиотеки криптографии
+				if((pass.length() > static_cast <size_t> (INT32_MAX)) || (salt.length() > static_cast <size_t> (INT32_MAX))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						log->debug("Password or salt size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log->print("Password or salt size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+					#endif
+					/**
+					 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
+					 * уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
+					 * остались от прежнего вывода - следующий вызов с прежними метками
+					 * счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не
+					 * сообщив
+					 */
+					// Выполняем сброс стейта AES-шифрования
+					state.reset();
+					// Возвращаем результат работы функции
+					return result;
+				}
+				/**
 				 * Соль работой не требуется, но без неё вывод ключа теряет всякую
 				 * стойкость к предвычисленным таблицам: один и тот же пароль даёт
 				 * один и тот же ключ у всех, кто им пользуется
@@ -1469,7 +1562,7 @@ namespace driver {
 					 */
 					#if DEBUG_MODE
 						// Записываем предупреждение в лог
-						log->debug("Key derivation without a salt is vulnerable to precomputed tables", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), log_t::flag_t::WARNING);
+						log->debug("Key derivation without a salt is vulnerable to precomputed tables", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1489,12 +1582,14 @@ namespace driver {
 				) == 1);
 				// Если инициализация не произошла
 				if(!result){
+					// Выполняем сброс стейта AES-шифрования
+					state.reset();
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("Generate key and IV failed", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), log_t::flag_t::CRITICAL);
+						log->debug("Generate key and IV failed", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1518,11 +1613,20 @@ namespace driver {
 			 */
 			} catch(const exception & error) {
 				/**
+				 * Стейт сбрасывается целиком по тому же доводу, что и при отказе
+				 * вывода ключа: сбой мог застать работу после отведения ключа, но
+				 * до его вывода
+				 */
+				// Снимаем признак успешно выполненной работы
+				result = false;
+				// Выполняем сброс стейта AES-шифрования
+				state.reset();
+				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1637,7 +1741,7 @@ void awh::Crypto::salt(string_view salt) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(salt), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(salt.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1680,7 +1784,7 @@ void awh::Crypto::password(string_view password) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(password), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(password.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2726,9 +2830,15 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 						return result;
 					}
 				}
+				/**
+				 * Дополнение блока здесь не отключается: у шифрования оно отключено
+				 * сразу по заведении контекста, а у расшифровки контекст заводится
+				 * лишь по вычитывании вектора инициализации из начала потока - там
+				 * дополнение и отключается. Вызов на не заведённом контексте вреда
+				 * не приносил, но и смысла не имел
+				 */
 				// Помечаем ожидание вектора инициализации в начале потока
 				state.pending = true;
-				::EVP_CIPHER_CTX_set_padding(const_cast <EVP_CIPHER_CTX *> (state.ctx), 0);
 				// Запоминаем направление работы потокового шифрования
 				state.event = event;
 			}
@@ -2884,20 +2994,46 @@ template <typename T>
  *
  * @param buffer буфер данных для шифрования
  * @param size   размер данных для шифрования
+ * @param result буфер, куда следует положить результат
  * @param hash   тип хэш-суммы
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
- * @return       результат кодирования
+ * @return       признак успешно выполненной работы
  *
  */
-auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
-	// Переменная результата
-	T result;
+bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, const hash_t hash, const cipher_t cipher) const noexcept {
+	/**
+	 * Признак работы выводится наружу отдельно от буфера: пустой буфер отказом
+	 * не является - расшифровка сообщения, октетов не имеющего (4.9), даёт
+	 * пустой открытый текст, - и судить по нему об удаче нельзя
+	 */
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	// Затираем и очищаем буфер результата
+	driver::wipe(result);
 	/**
 	 * Пустое сообщение работой принимается: в режиме с проверкой подлинности
 	 * у него есть шифротекст - вектор инициализации и имитовставка, а потоковый
 	 * путь пустое сообщение принимал и прежде. Отказ по одному лишь нулевому
 	 * размеру расходил one-shot с потоком
 	 */
+	// Если буфер данных не передан, а размер его заявлен
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL, size);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Data buffer is not passed while its size is declared as %zu octets", log_t::flag_t::CRITICAL, size);
+		#endif
+		// Выходим из метода с признаком отказа
+		return outcome;
+	}
 	// Если буфер данных передан
 	if((buffer != nullptr) || (size == 0)){
 		/**
@@ -2927,14 +3063,14 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 			// Если производится работы с BASE64
 			case static_cast <uint16_t> (cipher_t::BASE64): {
 				// Выполняем кодирование строки BASE64 и получаем признак успеха
-				const bool success = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::ENCODE, state, result, this->_log);
+				outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::ENCODE, state, result, this->_log);
 				/**
 				 * В лог выводится размер поданных данных, а не сами данные: BASE64
 				 * ходит и по открытому тексту, и запись его в лог выносила тайну
 				 * туда, где ей не место
 				 */
 				// Если кодирование не вышло
-				if(!success){
+				if(!outcome){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2963,8 +3099,6 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 				 * ложными предупреждениями. Пустой выход законен и у разовой работы:
 				 * расшифровка пустого сообщения даёт пустой открытый текст
 				 */
-				// Признак успешно выполненной работы
-				bool success = false;
 				// Если пароль установлен
 				if(!this->_params.password.empty()){
 					// Если контекст шифрования не создан
@@ -2986,12 +3120,12 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 									// Записываем ошибку в лог
 									this->_log->print("Unable to initialize AES cipher for encoding data", log_t::flag_t::CRITICAL);
 								#endif
-								// Выходим из метода
-								return result;
+								// Выходим из метода с признаком отказа
+								return outcome;
 							}
 						}
 						// Выполняем шифрование данных
-						success = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::ENCODE, state, result, this->_log);
+						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::ENCODE, state, result, this->_log);
 					// Если контекст шифрования уже создан
 					} else {
 						/**
@@ -3016,15 +3150,15 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 								// Записываем ошибку в лог
 								this->_log->print("Cipher of the call does not match the one the stream was initialized with", log_t::flag_t::CRITICAL);
 							#endif
-							// Выходим из метода
-							return result;
+							// Выходим из метода с признаком отказа
+							return outcome;
 						}
 						// Выполняем шифрование данных
-						success = driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::ENCODE, state, result, this->_log);
+						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::ENCODE, state, result, this->_log);
 					}
 				}
 				// Если кодирование не вышло
-				if(!success){
+				if(!outcome){
 					// Не возвращаем открытый текст: при неудаче шифрования результат остаётся пустым
 					/**
 					 * Если включён режим отладки
@@ -3065,6 +3199,50 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 			} break;
 		}
 	}
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+ * @brief Явный специализированный шаблон метода кодирования с выводом результата в строку
+ *
+ */
+template bool awh::Crypto::encrypt(const void *, const size_t, string &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования с выводом результата в буфер
+ *
+ */
+template bool awh::Crypto::encrypt(const void *, const size_t, vector <char> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода кодирования с выводом результата в бинарный буфер
+ *
+ */
+template bool awh::Crypto::encrypt(const void *, const size_t, vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Шаблон метода кодирования
+ *
+ * @tparam T тип возвращаемого результата
+ *
+ */
+template <typename T>
+/**
+ * @brief Метод кодирования
+ *
+ * @details Работа выводит один лишь буфер: пустой буфер отказом не является, и
+ *          если удачу работы нужно различать, следует брать перегрузку с
+ *          признаком работы.
+ *
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param hash   тип хэш-суммы
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @return       результат кодирования
+ *
+ */
+auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
+	// Переменная результата
+	T result;
+	// Выполняем работу, признак её отбрасывая
+	this->encrypt <T> (buffer, size, result, hash, cipher);
 	// Возвращаем результат работы функции
 	return result;
 }
@@ -3196,20 +3374,46 @@ template <typename T>
  *
  * @param buffer буфер данных для шифрования
  * @param size   размер данных для шифрования
+ * @param result буфер, куда следует положить результат
  * @param hash   тип хэш-суммы
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
- * @return       результат кодирования
+ * @return       признак успешно выполненной работы
  *
  */
-auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
-	// Переменная результата
-	T result;
+bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, const hash_t hash, const cipher_t cipher) const noexcept {
+	/**
+	 * Признак работы выводится наружу отдельно от буфера: пустой буфер отказом
+	 * не является - расшифровка сообщения, октетов не имеющего (4.9), даёт
+	 * пустой открытый текст, - и судить по нему об удаче нельзя
+	 */
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	// Затираем и очищаем буфер результата
+	driver::wipe(result);
 	/**
 	 * Пустое сообщение работой принимается: в режиме с проверкой подлинности
 	 * у него есть шифротекст - вектор инициализации и имитовставка, а потоковый
 	 * путь пустое сообщение принимал и прежде. Отказ по одному лишь нулевому
 	 * размеру расходил one-shot с потоком
 	 */
+	// Если буфер данных не передан, а размер его заявлен
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL, size);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Data buffer is not passed while its size is declared as %zu octets", log_t::flag_t::CRITICAL, size);
+		#endif
+		// Выходим из метода с признаком отказа
+		return outcome;
+	}
 	// Если буфер данных передан
 	if((buffer != nullptr) || (size == 0)){
 		/**
@@ -3239,9 +3443,9 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 			// Если производится работы с BASE64
 			case static_cast <uint16_t> (cipher_t::BASE64): {
 				// Выполняем декодирование строки BASE64 и получаем признак успеха
-				const bool success = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::DECODE, state, result, this->_log);
+				outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::DECODE, state, result, this->_log);
 				// Если декодирование не вышло
-				if(!success){
+				if(!outcome){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -3270,8 +3474,6 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 				 * ложными предупреждениями. Пустой выход законен и у разовой работы:
 				 * расшифровка пустого сообщения даёт пустой открытый текст
 				 */
-				// Признак успешно выполненной работы
-				bool success = false;
 				// Если пароль установлен
 				if(!this->_params.password.empty()){
 					// Если контекст шифрования не создан
@@ -3293,12 +3495,12 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 									// Записываем ошибку в лог
 									this->_log->print("Unable to initialize AES cipher for encoding data", log_t::flag_t::CRITICAL);
 								#endif
-								// Выходим из метода
-								return result;
+								// Выходим из метода с признаком отказа
+								return outcome;
 							}
 						}
 						// Выполняем дешифрование данных
-						success = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::DECODE, state, result, this->_log);
+						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::DECODE, state, result, this->_log);
 					// Если контекст шифрования уже создан
 					} else {
 						/**
@@ -3323,15 +3525,15 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 								// Записываем ошибку в лог
 								this->_log->print("Cipher of the call does not match the one the stream was initialized with", log_t::flag_t::CRITICAL);
 							#endif
-							// Выходим из метода
-							return result;
+							// Выходим из метода с признаком отказа
+							return outcome;
 						}
 						// Выполняем дешифрование данных
-						success = driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::DECODE, state, result, this->_log);
+						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::DECODE, state, result, this->_log);
 					}
 				}
 				// Если дешифрование не вышло
-				if(!success){
+				if(!outcome){
 					// Не возвращаем зашифрованные данные: при неудаче дешифрования результат остаётся пустым
 					/**
 					 * Если включён режим отладки
@@ -3372,6 +3574,50 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 			} break;
 		}
 	}
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+ * @brief Явный специализированный шаблон метода декодирования с выводом результата в строку
+ *
+ */
+template bool awh::Crypto::decrypt(const void *, const size_t, string &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования с выводом результата в буфер
+ *
+ */
+template bool awh::Crypto::decrypt(const void *, const size_t, vector <char> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования с выводом результата в бинарный буфер
+ *
+ */
+template bool awh::Crypto::decrypt(const void *, const size_t, vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Шаблон метода декодирования
+ *
+ * @tparam T тип возвращаемого результата
+ *
+ */
+template <typename T>
+/**
+ * @brief Метод декодирования
+ *
+ * @details Работа выводит один лишь буфер: пустой буфер отказом не является, и
+ *          если удачу работы нужно различать, следует брать перегрузку с
+ *          признаком работы.
+ *
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param hash   тип хэш-суммы
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @return       результат декодирования
+ *
+ */
+auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t hash, const cipher_t cipher) const noexcept -> T {
+	// Переменная результата
+	T result;
+	// Выполняем работу, признак её отбрасывая
+	this->decrypt <T> (buffer, size, result, hash, cipher);
 	// Возвращаем результат работы функции
 	return result;
 }
@@ -3609,8 +3855,13 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 	// Переменная результата
 	bool result = false;
-	// Если публичный ключ передан
-	if(!key.empty()){
+	/**
+	 * Предел разрядности довода библиотеки криптографии отвергается и здесь:
+	 * длина ключа приводится к знаковому 32-битному числу, и ключ свыше двух
+	 * гигаоктетов разбирался бы по своей обрезанной части
+	 */
+	// Если публичный ключ передан и предела разрядности не превышает
+	if(!key.empty() && (key.size() <= static_cast <size_t> (INT32_MAX))){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -3701,8 +3952,13 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 	// Переменная результата
 	bool result = false;
-	// Если приватный ключ передан
-	if(!key.empty()){
+	/**
+	 * Предел разрядности довода библиотеки криптографии отвергается и здесь:
+	 * длина ключа приводится к знаковому 32-битному числу, и ключ свыше двух
+	 * гигаоктетов разбирался бы по своей обрезанной части
+	 */
+	// Если приватный ключ передан и предела разрядности не превышает
+	if(!key.empty() && (key.size() <= static_cast <size_t> (INT32_MAX))){
 		/**
 		 * Выполняем перехват ошибок
 		 */

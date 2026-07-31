@@ -195,12 +195,20 @@ static const struct ReferenceZone {
 	awh::chrono_t::zone_t zone;
 	// Название зоны в базе временных зон системы
 	const char * name;
+	// Год, с которого зона следует общему правилу перехода
+	uint16_t since;
 } REFERENCE_ZONES[] = {
-	{awh::chrono_t::zone_t::ET, "America/New_York"},
-	{awh::chrono_t::zone_t::CT, "America/Chicago"},
-	{awh::chrono_t::zone_t::MT, "America/Denver"},
-	{awh::chrono_t::zone_t::PT, "America/Los_Angeles"},
-	{awh::chrono_t::zone_t::AT, "America/Halifax"}
+	{awh::chrono_t::zone_t::ET, "America/New_York",    2007},
+	{awh::chrono_t::zone_t::CT, "America/Chicago",     2007},
+	{awh::chrono_t::zone_t::MT, "America/Denver",      2007},
+	{awh::chrono_t::zone_t::PT, "America/Los_Angeles", 2007},
+	{awh::chrono_t::zone_t::AT, "America/Halifax",     2007},
+	/**
+	 * Ньюфаундленд до 2012 года переходил на летнее время в 00:01 местного, а не в
+	 * 02:00 общего правила, которому следует модуль: 18 переходов 2007-2011 годов
+	 * расходятся с базой временных зон системы намеренно
+	 */
+	{awh::chrono_t::zone_t::NT, "America/St_Johns",    2012}
 };
 
 /**
@@ -220,7 +228,7 @@ TEST_F(ReferenceFixture, ExecutionReferenceDaylightChronoTest){
 		// Перечень проверяемых моментов времени
 		std::vector <uint64_t> dates;
 		// Выполняем перебор годов, в которые действует текущее правило перехода
-		for(uint16_t year = 2007; year <= 2035; year++){
+		for(uint16_t year = zone.since; year <= 2035; year++){
 			// Выполняем перебор месяцев, в которые происходит переход
 			for(const uint8_t month : {static_cast <uint8_t> (3), static_cast <uint8_t> (11)}){
 				// Выполняем перебор первых двух недель месяца

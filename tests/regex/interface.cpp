@@ -25,6 +25,7 @@
 #include <vector>
 #include <thread>
 #include <utility>
+#include <unordered_map>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -147,6 +148,101 @@ TEST(Regex, InterfaceNames) {
 	EXPECT_EQ(result.at(regexp.group(expression, "month")), "07");
 	// Выполняем проверку текста именованной группы дня
 	EXPECT_EQ(result.at(regexp.group(expression, "day")), "31");
+}
+
+/**
+ * @brief Проверка извлечения захваченного текста по имени группы
+ *
+ */
+TEST(Regex, InterfaceCapture) {
+	// Создаём объект работы с регулярными выражениями
+	regexp_t regexp;
+	// Выполняем сборку регулярного выражения
+	const auto expression = regexp.build("(?P<host>[\\w.]+):(?P<port>\\d+)(?<tail>/\\w+)?");
+	// Выполняем проверку выполнения сборки регулярного выражения
+	ASSERT_TRUE(static_cast <bool> (expression));
+	// Набор границ совпадения и захваченных групп
+	vector <pair <size_t, size_t>> bounds;
+	// Выполняем проверку обнаружения совпадения
+	ASSERT_TRUE(regexp.match("узел anyks.com:8080 здесь", expression, bounds));
+	// Выполняем проверку текста, захваченного именованной группой узла
+	EXPECT_EQ(regexp.capture("узел anyks.com:8080 здесь", bounds, expression, "host"), "anyks.com");
+	// Выполняем проверку текста, захваченного именованной группой порта
+	EXPECT_EQ(regexp.capture("узел anyks.com:8080 здесь", bounds, expression, "port"), "8080");
+	/**
+	 * Выполняем проверку невыполненного захвата именованной группой
+	 *
+	 * @details Невыполненный захват от захвата пустого текста отличается тем,
+	 *          что выводимый вид на текст сопоставления не ссылается.
+	 *
+	 */
+	EXPECT_EQ(regexp.capture("узел anyks.com:8080 здесь", bounds, expression, "tail").data(), nullptr);
+	// Выполняем проверку отсутствия неизвестной именованной группы
+	EXPECT_EQ(regexp.capture("узел anyks.com:8080 здесь", bounds, expression, "path").data(), nullptr);
+	// Выполняем проверку соответствия имён групп наборам их номеров
+	EXPECT_EQ(regexp.groups(expression).size(), static_cast <size_t> (3));
+}
+
+/**
+ * @brief Проверка извлечения именованных групп сопоставлением
+ *
+ */
+TEST(Regex, InterfaceNamed) {
+	// Создаём объект работы с регулярными выражениями
+	regexp_t regexp;
+	// Выполняем сборку регулярного выражения
+	const auto expression = regexp.build("(?<method>[A-Z]+) (?<path>\\S+) HTTP/(?<version>\\d\\.\\d)");
+	// Выполняем проверку выполнения сборки регулярного выражения
+	ASSERT_TRUE(static_cast <bool> (expression));
+	// Соответствие имён именованных групп захваченному тексту
+	unordered_map <string, string> result;
+	// Выполняем проверку обнаружения совпадения
+	ASSERT_TRUE(regexp.exec("GET /index.html HTTP/1.1", expression, result));
+	// Выполняем проверку количества извлечённых именованных групп
+	ASSERT_EQ(result.size(), static_cast <size_t> (3));
+	// Выполняем проверку текста именованной группы способа запроса
+	EXPECT_EQ(result.at("method"), "GET");
+	// Выполняем проверку текста именованной группы пути запроса
+	EXPECT_EQ(result.at("path"), "/index.html");
+	// Выполняем проверку текста именованной группы издания протокола
+	EXPECT_EQ(result.at("version"), "1.1");
+	// Выполняем проверку отсутствия совпадения в ином тексте
+	EXPECT_FALSE(regexp.exec("совпадения здесь нет", expression, result));
+	// Выполняем проверку очистки соответствия при отсутствии совпадения
+	EXPECT_TRUE(result.empty());
+}
+
+/**
+ * @brief Проверка одноимённых групп регулярного выражения
+ *
+ */
+TEST(Regex, InterfaceDuplicates) {
+	// Создаём объект работы с регулярными выражениями
+	regexp_t regexp;
+	// Выполняем сборку регулярного выражения с одноимёнными группами
+	const auto expression = regexp.build("(?J)(?<n>a)|(?<n>b)");
+	// Выполняем проверку выполнения сборки регулярного выражения
+	ASSERT_TRUE(static_cast <bool> (expression));
+	// Выполняем проверку количества групп, объявленных одним именем
+	ASSERT_EQ(regexp.groups(expression).at("n").size(), static_cast <size_t> (2));
+	// Набор границ совпадения и захваченных групп
+	vector <pair <size_t, size_t>> bounds;
+	// Выполняем проверку обнаружения совпадения первой ветвью
+	ASSERT_TRUE(regexp.match("a", expression, bounds));
+	/**
+	 * Выполняем проверку выбора группы, выполнившей захват
+	 *
+	 * @details Одно имя объявлено двумя группами, и захват выполняет та из них,
+	 *          что участвовала в совпадении. Так же поступает эталонная реализация.
+	 *
+	 */
+	EXPECT_EQ(regexp.capture("a", bounds, expression, "n"), "a");
+	// Выполняем проверку обнаружения совпадения второй ветвью
+	ASSERT_TRUE(regexp.match("b", expression, bounds));
+	// Выполняем проверку выбора группы, выполнившей захват
+	EXPECT_EQ(regexp.capture("b", bounds, expression, "n"), "b");
+	// Выполняем проверку отказа сборки одноимённых групп вне режима «DUPNAMES»
+	EXPECT_FALSE(static_cast <bool> (regexp.build("(?<n>a)(?<n>b)")));
 }
 
 /**

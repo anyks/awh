@@ -664,6 +664,32 @@ namespace awh {
 			auto encrypt(const void * buffer, const size_t size, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> T;
 		public:
 			/**
+			 * @brief Шаблон метода кодирования с выводом признака работы
+			 *
+			 * @tparam T тип буфера результата
+			 *
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод кодирования с выводом признака работы
+			 *
+			 * @details Признак работы выводится отдельно от буфера: пустой буфер
+			 *          отказом не является - расшифровка сообщения, октетов не
+			 *          имеющего, даёт пустой открытый текст, - и судить по нему об
+			 *          удаче нельзя. Перегрузки, выводящие один лишь буфер,
+			 *          оставлены для работ, которым различать это не нужно.
+			 *
+			 * @param buffer буфер данных для шифрования
+			 * @param size   размер данных для шифрования
+			 * @param result буфер, куда следует положить результат
+			 * @param hash   тип хэш-суммы
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @return       признак успешно выполненной работы
+			 *
+			 */
+			bool encrypt(const void * buffer, const size_t size, T & result, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept;
+		public:
+			/**
 			 * @brief Шаблон метода декодирования
 			 *
 			 * @tparam T тип возвращаемого результата
@@ -716,6 +742,32 @@ namespace awh {
 			 *
 			 */
 			auto decrypt(const void * buffer, const size_t size, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept -> T;
+		public:
+			/**
+			 * @brief Шаблон метода декодирования с выводом признака работы
+			 *
+			 * @tparam T тип буфера результата
+			 *
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод декодирования с выводом признака работы
+			 *
+			 * @details Признак работы выводится отдельно от буфера: пустой буфер
+			 *          отказом не является - расшифровка сообщения, октетов не
+			 *          имеющего, даёт пустой открытый текст, - и судить по нему об
+			 *          удаче нельзя. Перегрузки, выводящие один лишь буфер,
+			 *          оставлены для работ, которым различать это не нужно.
+			 *
+			 * @param buffer буфер данных для шифрования
+			 * @param size   размер данных для шифрования
+			 * @param result буфер, куда следует положить результат
+			 * @param hash   тип хэш-суммы
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @return       признак успешно выполненной работы
+			 *
+			 */
+			bool decrypt(const void * buffer, const size_t size, T & result, const hash_t hash = hash_t::NONE, const cipher_t cipher = cipher_t::NONE) const noexcept;
 		public:
 			/**
 			 * @brief Метод генерации приватного ключа RSA
@@ -877,6 +929,34 @@ namespace awh {
 			 *
 			 */
 			bool verifyWithPublicKey(const uint8_t * buffer, const size_t size, const vector <uint8_t> & signature, const hash_t hash) const noexcept;
+		public:
+			/**
+			 * @brief Оператор копирования
+			 *
+			 * @details Копирование запрещено: объект владеет состоянием шифрования и
+			 *          ключом RSA по указателям, и поверхностная копия освободила бы
+			 *          контекст библиотеки криптографии дважды. Тайну копия к тому же
+			 *          разносила бы вширь - пароли и выведенный ключ достались бы ей
+			 *          заодно, а гасит их лишь тот, кто их завёл.
+			 *
+			 */
+			Crypto & operator = (const Crypto &) = delete;
+			/**
+			 * @brief Оператор переноса
+			 *
+			 */
+			Crypto & operator = (Crypto &&) = delete;
+		public:
+			/**
+			 * @brief Конструктор копирования
+			 *
+			 */
+			Crypto(const Crypto &) = delete;
+			/**
+			 * @brief Конструктор переноса
+			 *
+			 */
+			Crypto(Crypto &&) = delete;
 		public:
 			/**
 			 * @brief Конструктор

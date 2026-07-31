@@ -147,7 +147,7 @@ namespace awh {
 				vector <deferred_t> _deferred;
 			private:
 				// Соответствие имён групп их номерам
-				unordered_map <string, uint32_t> _groups;
+				unordered_map <string, vector <uint32_t>> _groups;
 			public:
 				/**
 				 * @brief Метод разбора регулярного выражения
@@ -264,13 +264,13 @@ namespace awh {
 				 * @brief Метод извлечения соответствия имён групп их номерам
 				 *
 				 * @details Соответствие содержит имена всех именованных групп выражения.
-				 *          В режиме «DUPNAMES» имя сохраняет номер группы, объявленной
-				 *          с этим именем первой.
+				 *          В режиме «DUPNAMES» одно имя объявляется несколькими группами,
+				 *          поэтому имени отвечает набор их номеров в порядке объявления.
 				 *
-				 * @return соответствие имён именованных групп их номерам
+				 * @return соответствие имён именованных групп наборам их номеров
 				 *
 				 */
-				const unordered_map <string, uint32_t> & groups() const noexcept;
+				const unordered_map <string, vector <uint32_t>> & groups() const noexcept;
 				/**
 				 * @brief Метод извлечения последовательности символов узла
 				 *

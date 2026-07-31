@@ -363,8 +363,8 @@ const string & awh::regex::Parser::name(const uint32_t index) const noexcept {
  * @return соответствие имён именованных групп их номерам
  *
  */
-const unordered_map <string, uint32_t> & awh::regex::Parser::groups() const noexcept {
-	// Выводим соответствие имён именованных групп их номерам
+const unordered_map <string, vector <uint32_t>> & awh::regex::Parser::groups() const noexcept {
+	// Выводим соответствие имён именованных групп наборам их номеров
 	return this->_groups;
 }
 /**
@@ -3202,7 +3202,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 			// Выводим индекс отсутствующего узла синтаксического дерева
 			return this->fail(error_t::DUPLICATE_NAME, offset);
 		// Выполняем сохранение соответствия имени группы её номеру
-		this->_groups.emplace(this->_names.at(index), number);
+		this->_groups[this->_names.at(index)].push_back(number);
 	}
 	/**
 	 * Если превышена допустимая глубина вложенности групп
@@ -4204,19 +4204,19 @@ bool awh::regex::Parser::resolve() noexcept {
 		 */
 		if(this->_nodes.at(deferred.node).type == node_t::BACKREF)
 			// Выполняем установку номера группы ссылки
-			this->_nodes.at(deferred.node).backref.number = i->second;
+			this->_nodes.at(deferred.node).backref.number = i->second.front();
 		/**
 		 * Если разрешаемый узел является рекурсивным вызовом
 		 */
 		else if(this->_nodes.at(deferred.node).type == node_t::RECURSE)
 			// Выполняем установку номера вызываемой группы
-			this->_nodes.at(deferred.node).recurse.number = i->second;
+			this->_nodes.at(deferred.node).recurse.number = i->second.front();
 		/**
 		 * Если разрешаемый узел является условным выражением
 		 */
 		else if(this->_nodes.at(deferred.node).type == node_t::CONDITION)
 			// Выполняем установку номера проверяемой группы
-			this->_nodes.at(deferred.node).condition.number = i->second;
+			this->_nodes.at(deferred.node).condition.number = i->second.front();
 	}
 	/**
 	 * Выполняем проверку ссылок на захваченные группы по номеру

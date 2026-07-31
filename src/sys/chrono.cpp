@@ -269,7 +269,7 @@ namespace {
 		// Выводим признак принадлежности зоны к сводным
 		return ((zone == awh::Chrono::zone_t::AT) || (zone == awh::Chrono::zone_t::CT) ||
 		        (zone == awh::Chrono::zone_t::ET) || (zone == awh::Chrono::zone_t::MT) ||
-		        (zone == awh::Chrono::zone_t::PT));
+		        (zone == awh::Chrono::zone_t::NT) || (zone == awh::Chrono::zone_t::PT));
 	}
 	/**
 	 * @brief Функция приведения смещения временной зоны к земным пределам
@@ -394,6 +394,17 @@ namespace {
 	 *
 	 * @param letter проверяемый символ
 	 * @return       true если символ является строчной буквой
+	 *
+	 */
+	inline char toLowerChar(const char letter) noexcept {
+		// Заглавная латинская буква приводится к строчной сдвигом на разницу их кодов
+		return (((letter >= 'A') && (letter <= 'Z')) ? static_cast <char> (letter + ('a' - 'A')) : letter);
+	}
+	/**
+	 * @brief Функция проверки, является ли символ строчной латинской буквой ('a'-'z')
+	 *
+	 * @param letter проверяемый символ
+	 * @return       результат проверки
 	 *
 	 */
 	inline bool isLowerChar(const char letter) noexcept {
@@ -545,17 +556,23 @@ namespace {
 	 *
 	 */
 	inline bool matchName(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
-		// Название обязано начинаться с заглавной буквы (например, Jan или Monday)
-		if((pos >= length) || !isUpperChar(text[pos]))
+		/**
+		 * Регистр букв названия не ограничивается: сравнение с самим названием ведётся
+		 * без оглядки на регистр, и требование заглавной с последующими строчными
+		 * отвергало записи вида APR и apr ещё до сравнения. Посторонние слова
+		 * отсеиваются не регистром, а сверкой со словарём названий
+		 */
+		// Название обязано начинаться с латинской буквы
+		if((pos >= length) || !isAlphaChar(text[pos]))
 			// Выводим отрицательный результат проверки совпадения
 			return false;
-		// Счётчик строчных букв, идущих после заглавной
+		// Счётчик букв, идущих после первой
 		size_t count = 0;
 		/**
-		 * Жадно набираем строчные буквы вслед за заглавной, не превышая предел max
+		 * Жадно набираем буквы вслед за первой, не превышая предел max
 		 */
-		while(((pos + 1 + count) < length) && (count < max) && isLowerChar(text[pos + 1 + count]))
-			// Очередная строчная буква входит в название
+		while(((pos + 1 + count) < length) && (count < max) && isAlphaChar(text[pos + 1 + count]))
+			// Очередная буква входит в название
 			count++;
 		// Строчных букв меньше требуемого минимума — это не название нужной длины
 		if(count < min)
@@ -712,18 +729,125 @@ namespace {
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 *
 	 */
-	matches_t parseName(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
+	inline bool equalNoCase(const char * text, const size_t length, const string & value) noexcept {
+		// Названия разной длины не совпадают
+		if(value.length() != length)
+			// Выводим отрицательный результат сличения
+			return false;
+		/**
+		 * Выполняем перебор всех букв названия
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Если буквы расходятся без оглядки на регистр
+			if(toLowerChar(text[i]) != toLowerChar(value[i]))
+				// Выводим отрицательный результат сличения
+				return false;
+		}
+		// Названия совпадают
+		return true;
+	}
+	/**
+	 * @brief Функция проверки наличия названия в словаре
+	 *
+	 * @param text  анализируемый текст
+	 * @param begin начало названия в тексте
+	 * @param end   конец названия в тексте
+	 * @param names словарь названий
+	 * @return      результат проверки
+	 *
+	 */
+	inline bool knownName(const char * text, const size_t begin, const size_t end, const vector <std::pair <string, string>> * names) noexcept {
+		// Словаря нет - сверять не с чем
+		if(names == nullptr)
+			// Выводим положительный результат проверки
+			return true;
+		// Длина разобранного названия
+		const size_t length = (end - begin);
+		/**
+		 * Выполняем перебор всего словаря названий
+		 */
+		for(auto & name : (* names)){
+			/**
+			 * Сверяем и сокращённое название, и полное: обе формы разбираются одним
+			 * правилом, и какая из них попалась, известно лишь по самому тексту
+			 */
+			for(const string * value : {&name.first, &name.second}){
+				// Если название совпало
+				if(equalNoCase(text + begin, length, * value))
+					// Выводим положительный результат проверки
+					return true;
+			}
+		}
+		// Названия в словаре не нашлось
+		return false;
+	}
+	/**
+	 * @brief Функция парсера названия дня недели либо месяца
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @param min    наименьшее количество букв после первой
+	 * @param max    наибольшее количество букв после первой
+	 * @param names  словарь названий, с которым сверяется разобранное
+	 * @return       список групп совпадения
+	 *
+	 */
+	matches_t parseName(const char * text, const size_t length, const size_t min, const size_t max, const vector <std::pair <string, string>> * names = nullptr) noexcept {
 		// Итоговый список групп: остаётся пустым, если название не найдено
 		matches_t result;
 		/**
 		 * Пробуем разобрать название, начиная поочерёдно с каждой позиции текста
 		 */
 		for(size_t i = 0; i < length; i++){
+			/**
+			 * При наличии словаря название подбирается по нему, а не набирается жадно с
+			 * последующей сверкой: жадный набор захватывал слово целиком, и запись вида
+			 * "AprilFoo" словарь отвергал, тогда как strptime стандарта POSIX читает в
+			 * ней апрель. Из совпавших названий берётся наибольшее, чтобы полная форма
+			 * не проигрывала краткой
+			 */
+			if(names != nullptr){
+				// Наибольшая длина совпавшего названия
+				size_t best = 0;
+				// Предел длины названия, заданный переменной формата
+				const size_t limit = ((max == static_cast <size_t> (-1)) ? (length - i) : (max + 1));
+				/**
+				 * Выполняем перебор всего словаря названий
+				 */
+				for(auto & name : (* names)){
+					/**
+					 * Выполняем перебор обеих форм названия
+					 */
+					for(const string * value : {&name.first, &name.second}){
+						// Пропускаем названия, в пределы переменной формата не умещающиеся
+						if((value->length() < (min + 1)) || (value->length() > limit) || ((i + value->length()) > length))
+							// Переходим к следующей форме названия
+							continue;
+						// Если название совпало и оказалось длиннее прежде найденного
+						if((value->length() > best) && equalNoCase(text + i, value->length(), * value))
+							// Запоминаем длину совпавшего названия
+							best = value->length();
+					}
+				}
+				// Если название нашлось
+				if(best > 0){
+					// Отдаём его единственной группой
+					result.resize(1);
+					// Начало группы - позиция первой буквы названия
+					result[0].begin = static_cast <ssize_t> (i);
+					// Конец группы - позиция за последней буквой названия
+					result[0].end = static_cast <ssize_t> (i + best);
+					// Выводим группу с позицией найденного названия в тексте
+					return result;
+				}
+				// Переходим к следующей позиции текста
+				continue;
+			}
 			// Курсор для пробного разбора, начинающийся с текущей позиции
 			size_t pos = i;
 			// Группа, которую заполнит matchName в случае успеха
 			match_t match{};
-			// Пробуем разобрать название вида [A-Z][a-z]{min,max}
+			// Пробуем разобрать название вида [A-Za-z]{min,max}
 			if(matchName(text, length, pos, min, max, match)){
 				// Найдено первое совпадение — отдаём его единственной группой
 				result.resize(1);
@@ -862,18 +986,27 @@ namespace {
 		 * Дата asctime начинается с названия дня недели (с заглавной буквы) — ищем её
 		 */
 		for(size_t i = 0; i < length; i++){
-			// Кандидат на начало даты — только заглавная буква, остальные позиции пропускаем
-			if(!isUpperChar(text[i]))
+			// Кандидат на начало даты — только буква, остальные позиции пропускаем
+			if(!isAlphaChar(text[i]))
 				// Переходим к следующей позиции текста
 				continue;
 			// Курсор для пробного разбора, начинающийся с текущей позиции
 			size_t pos = i;
 			// Группы: [0] — всё совпадение, далее день недели, месяц, число, ЧЧ, ММ, СС и год
 			matches_t groups(8);
+			/**
+			 * Названия дня недели и месяца сверяются со словарём наравне с разбором их
+			 * по отдельности: правило захвата регистра букв не ограничивает, и без
+			 * сверки за название сходил любой трёхбуквенный набор - запись вида
+			 * "XXX YYY  6 12:37:01 2025" разбор проходила, оставляя месяц
+			 * неустановленным
+			 */
 			// Разбираем «Ddd Mmm DD HH:MM:SS YYYY» одной цепочкой: сбой любого звена прерывает разбор
 			if(matchName(text, length, pos, 2, 2, groups[1]) &&
+			   knownName(text, static_cast <size_t> (groups[1].begin), static_cast <size_t> (groups[1].end), &params.nameDays) &&
 			   matchSpaces(text, length, pos) &&
 			   matchName(text, length, pos, 2, 2, groups[2]) &&
+			   knownName(text, static_cast <size_t> (groups[2].begin), static_cast <size_t> (groups[2].end), &params.nameMonths) &&
 			   matchSpaces(text, length, pos) &&
 			   matchDigits(text, length, pos, 1, 2, groups[3]) &&
 			   matchSpaces(text, length, pos) &&
@@ -1678,6 +1811,11 @@ int32_t awh::Chrono::getTimeZone(const zone_t zone, const uint64_t date) const n
 			// Выполняем определение точного значения временной зоны на указанный момент
 			return (this->isDST(date, this->getTimeZone(zone_t::MSTNA))
 				? this->getTimeZone(zone_t::MDT) : this->getTimeZone(zone_t::MSTNA));
+		// Если временная зона установлена как (Время В Ньюфаундленде)
+		case static_cast <uint8_t> (zone_t::NT):
+			// Выполняем определение точного значения временной зоны на указанный момент
+			return (this->isDST(date, this->getTimeZone(zone_t::NST))
+				? this->getTimeZone(zone_t::NDT) : this->getTimeZone(zone_t::NST));
 		// Если временная зона установлена как (Северноамериканское Тихоокеанское Время)
 		case static_cast <uint8_t> (zone_t::PT):
 			// Выполняем определение точного значения временной зоны на указанный момент
@@ -1716,6 +1854,10 @@ string awh::Chrono::format(const zone_t zone, const uint64_t date) const noexcep
 		case static_cast <uint8_t> (zone_t::MT):
 			// Выполняем определение обозначения временной зоны на указанный момент
 			return (this->isDST(date, this->getTimeZone(zone_t::MSTNA)) ? "MDT" : "UTC-7");
+		// Если временная зона установлена как (Время В Ньюфаундленде)
+		case static_cast <uint8_t> (zone_t::NT):
+			// Выполняем определение обозначения временной зоны на указанный момент
+			return (this->isDST(date, this->getTimeZone(zone_t::NST)) ? "NDT" : "NST");
 		// Если временная зона установлена как (Северноамериканское Тихоокеанское Время)
 		case static_cast <uint8_t> (zone_t::PT):
 			// Выполняем определение обозначения временной зоны на указанный момент
@@ -2273,9 +2415,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 			// Если формат соответствует %p ([A-Za-z]{2})
 			case static_cast <uint8_t> (format_t::p): match = ::parseAlpha2(src, len); break;
 			// Если формат соответствует %a ([A-Z][a-z]{2})
-			case static_cast <uint8_t> (format_t::a): match = ::parseName(src, len, 2, 2); break;
+			case static_cast <uint8_t> (format_t::a): match = ::parseName(src, len, 2, 2, ((fmt == format_t::b) ? &params.nameMonths : &params.nameDays)); break;
 			// Если формат соответствует %A ([A-Z][a-z]{2,})
-			case static_cast <uint8_t> (format_t::A): match = ::parseName(src, len, 2, static_cast <size_t> (-1)); break;
+			case static_cast <uint8_t> (format_t::A): match = ::parseName(src, len, 2, static_cast <size_t> (-1), ((fmt == format_t::B) ? &params.nameMonths : &params.nameDays)); break;
 			// Если формат соответствует %Z ((\w+)?((\+|\-)((\d{1,2}):(\d{1,2})|(\d{1,4})))?)
 			case static_cast <uint8_t> (format_t::Z): match = ::parseZoneFull(src, len); break;
 			// Если формат соответствует %R ((\d{1,2}):(\d{1,2}))
@@ -2427,8 +2569,17 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 * Выполняем перебор всего списка дней недели
 										 */
 										for(size_t i = 0; i < params.nameDays.size(); i++){
-											// Если мы нашли нужный нам день недели
-											if(this->_fmk->compare(day, params.nameDays[i].first)){
+											/**
+											 * Сверяются обе формы названия, краткая и полная: стандарт
+											 * POSIX объявляет переменные формата %a и %A, равно как %b,
+											 * %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
+											 * свою форму. Сверка захвата со словарём при этом принимала
+											 * обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
+											 * разбор проходила, но месяц оставался неустановленным
+											 */
+											// Если мы нашли нужное нам название
+											if(this->_fmk->compare(day, params.nameDays[i].first) ||
+											   this->_fmk->compare(day, params.nameDays[i].second)){
 												// Устанавливаем день недели
 												dt.day = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -2444,8 +2595,17 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 * Выполняем перебор всего списка дней недели
 										 */
 										for(size_t i = 0; i < params.nameDays.size(); i++){
-											// Если мы нашли нужный нам день недели
-											if(this->_fmk->compare(day, params.nameDays[i].second)){
+											/**
+											 * Сверяются обе формы названия, краткая и полная: стандарт
+											 * POSIX объявляет переменные формата %a и %A, равно как %b,
+											 * %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
+											 * свою форму. Сверка захвата со словарём при этом принимала
+											 * обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
+											 * разбор проходила, но месяц оставался неустановленным
+											 */
+											// Если мы нашли нужное нам название
+											if(this->_fmk->compare(day, params.nameDays[i].first) ||
+											   this->_fmk->compare(day, params.nameDays[i].second)){
 												// Устанавливаем день недели
 												dt.day = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -2461,8 +2621,17 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 * Выполняем перебор всего списка месяцев
 										 */
 										for(size_t i = 0; i < params.nameMonths.size(); i++){
-											// Если мы нашли нужный нам месяц
-											if(this->_fmk->compare(month, params.nameMonths[i].first)){
+											/**
+											 * Сверяются обе формы названия, краткая и полная: стандарт
+											 * POSIX объявляет переменные формата %a и %A, равно как %b,
+											 * %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
+											 * свою форму. Сверка захвата со словарём при этом принимала
+											 * обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
+											 * разбор проходила, но месяц оставался неустановленным
+											 */
+											// Если мы нашли нужное нам название
+											if(this->_fmk->compare(month, params.nameMonths[i].first) ||
+											   this->_fmk->compare(month, params.nameMonths[i].second)){
 												// Устанавливаем месяц
 												dt.month = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -2478,8 +2647,17 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 * Выполняем перебор всего списка месяцев
 										 */
 										for(size_t i = 0; i < params.nameMonths.size(); i++){
-											// Если мы нашли нужный нам месяц
-											if(this->_fmk->compare(month, params.nameMonths[i].second)){
+											/**
+											 * Сверяются обе формы названия, краткая и полная: стандарт
+											 * POSIX объявляет переменные формата %a и %A, равно как %b,
+											 * %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
+											 * свою форму. Сверка захвата со словарём при этом принимала
+											 * обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
+											 * разбор проходила, но месяц оставался неустановленным
+											 */
+											// Если мы нашли нужное нам название
+											if(this->_fmk->compare(month, params.nameMonths[i].first) ||
+											   this->_fmk->compare(month, params.nameMonths[i].second)){
 												// Устанавливаем месяц
 												dt.month = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -2709,8 +2887,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									 * Выполняем перебор всего списка дней недели
 									 */
 									for(size_t i = 0; i < params.nameDays.size(); i++){
-										// Если мы нашли нужный нам день недели
-										if(this->_fmk->compare(day, params.nameDays[i].first)){
+										// Если мы нашли нужное нам название
+										if(this->_fmk->compare(day, params.nameDays[i].first) ||
+										   this->_fmk->compare(day, params.nameDays[i].second)){
 											// Устанавливаем день недели
 											dt.day = static_cast <uint8_t> (i + 1);
 											// Выходим из цикла
@@ -2725,8 +2904,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									 * Выполняем перебор всего списка месяцев
 									 */
 									for(size_t i = 0; i < params.nameMonths.size(); i++){
-										// Если мы нашли нужный нам месяц
-										if(this->_fmk->compare(month, params.nameMonths[i].first)){
+										// Если мы нашли нужное нам название
+										if(this->_fmk->compare(month, params.nameMonths[i].first) ||
+										   this->_fmk->compare(month, params.nameMonths[i].second)){
 											// Устанавливаем месяц
 											dt.month = static_cast <uint8_t> (i + 1);
 											// Выходим из цикла
@@ -8073,6 +8253,8 @@ int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
 			return -14400;
 		// Если временная зона установлена как (Время В Ньюфаундленде)
 		case static_cast <uint8_t> (zone_t::NT):
+			// Выполняем определение точного значение временной зоны
+			return this->getTimeZone(zone_t::NST, zone_t::NDT);
 		// Если временная зона установлена как (Стандартное Время В Ньюфаундленде)
 		case static_cast <uint8_t> (zone_t::NST):
 			// Формируем смещение временной зоны (UTC-3:30)
@@ -10470,9 +10652,19 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 				return "PST";
 			}
 			// Если временная зона установлена как (Время В Ньюфаундленде)
-			case static_cast <uint8_t> (zone_t::NT):
-				// Формируем временную зону
-				return "NT";
+			case static_cast <uint8_t> (zone_t::NT): {
+				/**
+				 * Ньюфаундленд переходит на летнее время наравне с прочей Северной
+				 * Америкой, и сводная зона обозначает то стандартное время, то летнее:
+				 * прежде она всегда давала NST, никогда NDT
+				 */
+				// Если время летнее
+				if(this->isDST(this->timestamp(type_t::MILLISECONDS), this->getTimeZone(zone_t::NST)))
+					// Формируем летнее время
+					return "NDT";
+				// Возвращаем результат
+				return "NST";
+			}
 			// Если временная зона установлена как (Стандартное Время На Острове Маврикий)
 			case static_cast <uint8_t> (zone_t::MUT):
 				// Формируем временную зону

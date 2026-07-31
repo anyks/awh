@@ -197,7 +197,7 @@ TEST_F(CryptoFixture, StreamRoundTripCryptoTest){
 		encoded.append(this->_crypto->encrypt <std::string> (text.data() + offset, ((text.size() - offset) < 16 ? (text.size() - offset) : 16), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
 
 	// Выполняем завершение потокового шифрования
-	this->_crypto->finalize(encoded);
+	ASSERT_TRUE(this->_crypto->finalize(encoded));
 	// Проверяем отличие зашифрованного текста от исходного
 	ASSERT_NE(encoded, text);
 	// Выполняем инициализацию контекста расшифровки
@@ -212,7 +212,7 @@ TEST_F(CryptoFixture, StreamRoundTripCryptoTest){
 		decoded.append(this->_crypto->decrypt <std::string> (encoded.data() + offset, ((encoded.size() - offset) < 16 ? (encoded.size() - offset) : 16), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
 
 	// Выполняем завершение потоковой расшифровки
-	this->_crypto->finalize(decoded);
+	ASSERT_TRUE(this->_crypto->finalize(decoded));
 	// Проверяем обратимость потокового шифрования
 	EXPECT_EQ(decoded, text);
 }
@@ -985,4 +985,104 @@ TEST_F(CryptoFixture, WipeCryptoTest){
 	EXPECT_TRUE(this->_crypto->decrypt <std::string> (tampered.data(), tampered.size(), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256).empty());
 	// Проверяем обратимость шифрования подлинного шифротекста
 	EXPECT_EQ(this->_crypto->decrypt <std::string> (encoded.data(), encoded.size(), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), text);
+}
+
+/**
+ * @brief Тест признака работы у разовой работы
+ *
+ * @details Наружу уходил один лишь буфер, а пустой буфер отказом не является:
+ *          расшифровка сообщения, октетов не имеющего, даёт пустой открытый
+ *          текст — удача и отказ выглядели одинаково
+ *
+ */
+TEST_F(CryptoFixture, OutcomeCryptoTest){
+	// Текст для шифрования
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем количество итераций вывода ключа
+	this->_crypto->roundAES(1000);
+	// Устанавливаем режим блочного шифрования с проверкой подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::GCM);
+	// Буфер шифротекста
+	std::string encoded;
+	// Проверяем признак работы при шифровании текста
+	ASSERT_TRUE(this->_crypto->encrypt <std::string> (text.data(), text.size(), encoded, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Проверяем наличие шифротекста
+	ASSERT_FALSE(encoded.empty());
+	// Буфер открытого текста
+	std::string decoded;
+	// Проверяем признак работы при расшифровке шифротекста
+	ASSERT_TRUE(this->_crypto->decrypt <std::string> (encoded.data(), encoded.size(), decoded, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Проверяем обратимость шифрования
+	EXPECT_EQ(decoded, text);
+	/**
+	 * Пустое сообщение: буфер пуст и при удаче, и при отказе, — различает их
+	 * один лишь признак работы
+	 */
+	// Буфер шифротекста сообщения, октетов не имеющего
+	std::string empty;
+	// Проверяем признак работы при шифровании сообщения, октетов не имеющего
+	ASSERT_TRUE(this->_crypto->encrypt <std::string> ("", 0, empty, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Буфер открытого текста сообщения, октетов не имеющего
+	std::string opened;
+	// Проверяем признак работы при расшифровке сообщения, октетов не имеющего
+	EXPECT_TRUE(this->_crypto->decrypt <std::string> (empty.data(), empty.size(), opened, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Проверяем пустоту открытого текста при удавшейся расшифровке
+	EXPECT_TRUE(opened.empty());
+	// Формируем поддельный шифротекст сообщения, октетов не имеющего
+	std::string tampered = empty;
+	// Выполняем подделку последнего октета имитовставки
+	tampered.back() = static_cast <char> (tampered.back() ^ 0x01);
+	// Проверяем отказ расшифровки поддельного шифротекста
+	EXPECT_FALSE(this->_crypto->decrypt <std::string> (tampered.data(), tampered.size(), opened, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Проверяем пустоту открытого текста при отказе расшифровки
+	EXPECT_TRUE(opened.empty());
+	// Проверяем отказ работы при незаданном типе шифрования
+	EXPECT_FALSE(this->_crypto->encrypt <std::string> (text.data(), text.size(), encoded, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::NONE));
+}
+
+/**
+ * @brief Тест сброса состояния при отказе вывода ключа
+ *
+ * @details Метки разрядности и хэш-суммы оставались от прежнего вывода, а ключ
+ *          к этой поре был уже отведён и заполнен нулями: следующий вызов с
+ *          прежними метками счёл бы ключ готовым и зашифровал бы нулевым ключом
+ *
+ */
+TEST_F(CryptoFixture, KeyDerivationFailureCryptoTest){
+	// Текст для шифрования
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем количество итераций вывода ключа
+	this->_crypto->roundAES(1000);
+	// Устанавливаем режим блочного шифрования с проверкой подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::GCM);
+	// Выполняем шифрование текста, выводя ключ по первой хэш-сумме
+	const std::string first = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	// Проверяем выполнение шифрования
+	ASSERT_FALSE(first.empty());
+	/**
+	 * Вызов с разбору не знакомой хэш-суммой отменяет вывод ключа уже после
+	 * отведения самого ключа — ровно то состояние, ради которого тест и написан
+	 */
+	// Выполняем шифрование текста хэш-суммой, разбору не знакомой
+	EXPECT_TRUE(this->_crypto->encrypt <std::string> (text, static_cast <awh::crypto_t::hash_t> (0xFE), awh::crypto_t::cipher_t::AES256).empty());
+	// Выполняем шифрование текста прежней хэш-суммой
+	const std::string second = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	// Проверяем выполнение шифрования
+	ASSERT_FALSE(second.empty());
+	// Проверяем обратимость шифрования, выполненного после отказа вывода ключа
+	EXPECT_EQ(this->_crypto->decrypt <std::string> (second.data(), second.size(), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), text);
+	/**
+	 * Ключ выведен заново, а не взят нулевым: шифротекст, снятый прежним ключом,
+	 * расшифровывается тем же паролем и той же солью
+	 */
+	// Проверяем обратимость шифрования, выполненного до отказа вывода ключа
+	EXPECT_EQ(this->_crypto->decrypt <std::string> (first.data(), first.size(), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), text);
 }

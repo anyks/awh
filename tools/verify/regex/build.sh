@@ -25,7 +25,7 @@ readonly GTEST="${GTEST_ROOT:-/opt/homebrew}"
 readonly FLAGS="-std=c++2a -O3 -DNDEBUG -Wall -Wextra"
 
 # Набор стендов сверки, не требующих тестового окружения
-readonly PLAIN="accepted corpus syntax automaton_verdict reverse backtrack long word classes properties grapheme grapheme_tables grapheme_rules caseless"
+readonly PLAIN="accepted corpus syntax automaton_verdict reverse backtrack long word classes properties grapheme grapheme_tables grapheme_rules caseless names byname"
 
 # Набор стендов сверки, собираемых вместе с тестовым окружением
 readonly SUITE="static matching automaton engine"
