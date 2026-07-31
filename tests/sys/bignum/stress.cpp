@@ -526,6 +526,142 @@ TEST_F(BigNumFixture, StressDivisionBigNumTest){
 }
 
 /**
+ * @brief Тест оценки очередного разряда частного на предельных значениях делителя
+ *
+ * @details Алгоритм деления уточняет оценку разряда частного по двум старшим разрядам
+ *          делителя, поэтому проверяются делители, у которых старший разряд лежит на
+ *          границе нормализации, а следующий за ним равен предельному значению: именно
+ *          такая пара даёт максимальную начальную оценку и максимальное произведение
+ *          в условии уточнения. Делимое подбирается так, чтобы его старшая часть
+ *          совпадала с делителем, что доводит оценку до предельного значения разряда.
+ *
+ */
+TEST_F(BigNumFixture, StressQuotientEstimateBigNumTest){
+	// Создаём генератор случайных чисел
+	std::mt19937_64 generator(2026);
+
+	/**
+	 * В цикле обходим предельные значения старшего разряда делителя
+	 */
+	for(const uint32_t top : std::vector <uint32_t> ({0x80000000u, 0x80000001u, 0xC0000000u, 0xFFFFFFFEu, 0xFFFFFFFFu})){
+		/**
+		 * В цикле обходим количество значащих разрядов делителя
+		 */
+		for(const size_t words : std::vector <size_t> ({2, 3, 4, 8, 16})){
+			// Определяем размер проверяемых чисел в байтах
+			const size_t size = ((words + 2) * sizeof(uint32_t));
+			// Создаём буфер делителя
+			std::vector <uint8_t> divisor(size, 0);
+			// Создаём буфер делимого
+			std::vector <uint8_t> dividend(size, 0);
+
+			// Устанавливаем старший разряд делителя на границе нормализации
+			::memcpy(&divisor[(words - 1) * sizeof(uint32_t)], &top, sizeof(top));
+
+			// Создаём предельное значение следующего разряда делителя
+			const uint32_t second = 0xFFFFFFFFu;
+
+			// Устанавливаем предельное значение следующего разряда делителя
+			::memcpy(&divisor[(words - 2) * sizeof(uint32_t)], &second, sizeof(second));
+
+			/**
+			 * В цикле заполняем младшие разряды делителя предельными значениями
+			 */
+			for(size_t i = 0; (i + 2) < words; i++)
+				// Устанавливаем предельное значение очередного разряда делителя
+				::memcpy(&divisor[i * sizeof(uint32_t)], &second, sizeof(second));
+
+			/**
+			 * В цикле формируем делимое, старшая часть которого совпадает с делителем
+			 */
+			for(size_t i = 0; i < words; i++)
+				// Копируем очередной разряд делителя в делимое со сдвигом на разряд
+				::memcpy(&dividend[(i + 1) * sizeof(uint32_t)], &divisor[i * sizeof(uint32_t)], sizeof(uint32_t));
+
+			// Устанавливаем предельное значение младшего разряда делимого
+			::memcpy(&dividend[0], &second, sizeof(second));
+
+			// Создаём единичное значение для смещения делимого
+			std::vector <uint8_t> one(size, 0);
+
+			// Устанавливаем единичное значение
+			one[0] = 1;
+
+			/**
+			 * В цикле проверяем деление на делимых вокруг предельной оценки
+			 */
+			for(int32_t offset = -3; offset <= 3; offset++){
+				// Создаём смещённое делимое
+				std::vector <uint8_t> shifted(dividend);
+
+				/**
+				 * В цикле смещаем делимое на заданное количество единиц
+				 */
+				for(int32_t i = 0; i < ((offset < 0) ? -offset : offset); i++){
+					// Если требуется уменьшить делимое
+					if(offset < 0)
+						// Уменьшаем делимое на единицу
+						awh::bignum::sub(shifted.data(), one.data(), size);
+					// Если требуется увеличить делимое
+					else awh::bignum::add(shifted.data(), one.data(), size);
+				}
+				// Создаём частное быстрого алгоритма
+				std::vector <uint8_t> quotient1(shifted);
+				// Создаём остаток быстрого алгоритма
+				std::vector <uint8_t> remainder1(size, 0);
+				// Создаём частное эталонного алгоритма
+				std::vector <uint8_t> quotient2(shifted);
+				// Создаём остаток эталонного алгоритма
+				std::vector <uint8_t> remainder2(size, 0);
+
+				// Выполняем деление быстрым алгоритмом
+				awh::bignum::divmod(quotient1.data(), divisor.data(), remainder1.data(), size);
+				// Выполняем деление эталонным алгоритмом
+				referenceDivision(quotient2.data(), divisor.data(), remainder2.data(), size);
+
+				// Проверяем совпадение частного с эталоном
+				ASSERT_EQ(quotient1, quotient2) << "quotient for top " << top << " words " << words << " offset " << offset;
+				// Проверяем совпадение остатка с эталоном
+				ASSERT_EQ(remainder1, remainder2) << "remainder for top " << top << " words " << words << " offset " << offset;
+			}
+			/**
+			 * В цикле проверяем деление на случайных делимых при том же делителе
+			 */
+			for(uint32_t i = 0; i < 2000; i++){
+				// Создаём случайное делимое
+				std::vector <uint8_t> random(size);
+
+				/**
+				 * В цикле заполняем делимое случайными байтами
+				 */
+				for(size_t j = 0; j < size; j++)
+					// Заполняем очередной байт делимого
+					random[j] = static_cast <uint8_t> (generator());
+
+				// Создаём частное быстрого алгоритма
+				std::vector <uint8_t> quotient1(random);
+				// Создаём остаток быстрого алгоритма
+				std::vector <uint8_t> remainder1(size, 0);
+				// Создаём частное эталонного алгоритма
+				std::vector <uint8_t> quotient2(random);
+				// Создаём остаток эталонного алгоритма
+				std::vector <uint8_t> remainder2(size, 0);
+
+				// Выполняем деление быстрым алгоритмом
+				awh::bignum::divmod(quotient1.data(), divisor.data(), remainder1.data(), size);
+				// Выполняем деление эталонным алгоритмом
+				referenceDivision(quotient2.data(), divisor.data(), remainder2.data(), size);
+
+				// Проверяем совпадение частного с эталоном
+				ASSERT_EQ(quotient1, quotient2) << "random quotient for top " << top << " words " << words << " at " << i;
+				// Проверяем совпадение остатка с эталоном
+				ASSERT_EQ(remainder1, remainder2) << "random remainder for top " << top << " words " << words << " at " << i;
+			}
+		}
+	}
+}
+
+/**
  * @brief Тест извлечения корня длинного числа против эталонной побитовой реализации
  *
  */

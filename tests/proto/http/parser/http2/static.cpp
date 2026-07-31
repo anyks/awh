@@ -8416,3 +8416,224 @@ TEST_F(ParserHttp2Fixture, PriorityHeaderAnnouncedTest){
 	// Заголовок, заданный приложением, обязан остаться старшим
 	ASSERT_EQ(announced(), "u=7, i");
 }
+/**
+ * @brief Проверка разбора цели запроса, заданной в абсолютной форме (RFC 9112 §3.2.2)
+ *
+ * @details Абсолютная форма цели законна в HTTP/1 и обязательна в запросе к прокси,
+ *          а провайдер запроса общий для всех протоколов. Без разбора схема
+ *          и авторитет уехали бы в псевдо-заголовок пути целиком вопреки
+ *          RFC 9113 §8.3.1.
+ *
+ *          Замкнутый обход этого не ловит: на приёме URI собирается из того же
+ *          псевдо-заголовка пути, поэтому отправка обратно даёт тот же результат.
+ *          Поэтому сверяются сами псевдо-заголовки, принятые второй стороной.
+ *
+ */
+TEST_F(ParserHttp2Fixture, AbsoluteTargetSplitTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	/**
+	 * @brief Функция поиска значения псевдо-заголовка, принятого сервером
+	 *
+	 */
+	auto field = [&](const uint32_t sid, const std::string & name) noexcept -> std::string {
+		// Найденное значение псевдо-заголовка
+		std::string result;
+		/**
+		 * Выполняем перебор всех принятых сервером заголовков
+		 */
+		for(const auto & item : serverEvents.headers){
+			// Если заголовок принадлежит искомому потоку и совпал по названию
+			if((std::get <0> (item) == sid) && (std::get <1> (item) == name))
+				// Запоминаем значение найденного псевдо-заголовка
+				result = std::get <2> (item);
+		}
+		// Выводим значение найденного псевдо-заголовка
+		return result;
+	};
+	/**
+	 * Цель в абсолютной форме с путём и строкой запроса
+	 */
+	{
+		// Выделяем идентификатор потока запроса
+		const uint32_t sid = client->nextStreamId();
+		// Формируем провайдер запроса с целью в абсолютной форме
+		auto request = std::make_unique <request_t> (version_t::HTTP2, method_t::GET, "https://origin.example.com/api?x=1");
+		// Формируем контейнер заголовков запроса
+		headers_t headers(std::move(request));
+		/**
+		 * Заголовок адресата намеренно расходится с авторитетом цели: получатель
+		 * обязан заменить сведения Host авторитетом цели (RFC 9112 §3.2.2)
+		 */
+		headers.emplace("Host", "proxy.example.com");
+		// Отправляем запрос клиента с завершением потока
+		client->sendHeaders(sid, headers, true);
+		// Схема обязана быть взята из самой цели
+		ASSERT_EQ(field(sid, ":scheme"), "https");
+		// Авторитет обязан быть взят из цели, а не из заголовка адресата
+		ASSERT_EQ(field(sid, ":authority"), "origin.example.com");
+		// Путь обязан нести только путь со строкой запроса
+		ASSERT_EQ(field(sid, ":path"), "/api?x=1");
+	}
+	/**
+	 * Цель в абсолютной форме без пути: строка запроса не должна уехать в авторитет
+	 */
+	{
+		// Выделяем идентификатор потока запроса
+		const uint32_t sid = client->nextStreamId();
+		// Формируем провайдер запроса с целью без пути
+		auto request = std::make_unique <request_t> (version_t::HTTP2, method_t::GET, "https://origin.example.com?x=1");
+		// Формируем контейнер заголовков запроса
+		headers_t headers(std::move(request));
+		// Отправляем запрос клиента с завершением потока
+		client->sendHeaders(sid, headers, true);
+		// Авторитет обязан закончиться перед строкой запроса
+		ASSERT_EQ(field(sid, ":authority"), "origin.example.com");
+		// Путь обязан быть дополнен корневым разделителем
+		ASSERT_EQ(field(sid, ":path"), "/?x=1");
+	}
+	/**
+	 * Цель в происхождённой форме: поведение обязано остаться прежним
+	 */
+	{
+		// Выделяем идентификатор потока запроса
+		const uint32_t sid = client->nextStreamId();
+		// Формируем провайдер запроса с целью в происхождённой форме
+		auto request = std::make_unique <request_t> (version_t::HTTP2, method_t::GET, "/plain");
+		// Формируем контейнер заголовков запроса
+		headers_t headers(std::move(request));
+		// Дописываем заголовок адресата запроса
+		headers.emplace("Host", "plain.example.com");
+		// Отправляем запрос клиента с завершением потока
+		client->sendHeaders(sid, headers, true);
+		// Схема обязана быть взята у вызывающей стороны
+		ASSERT_EQ(field(sid, ":scheme"), "https");
+		// Авторитет обязан быть взят из заголовка адресата
+		ASSERT_EQ(field(sid, ":authority"), "plain.example.com");
+		// Путь обязан дойти без изменений
+		ASSERT_EQ(field(sid, ":path"), "/plain");
+	}
+	// Соединение обязано остаться живым
+	ASSERT_FALSE(serverEvents.errorFired);
+}
+/**
+ * @brief Проверка регистронезависимости значения поля TE и отсева
+ *        connection-specific заголовков (RFC 9113 §8.2.2)
+ *
+ * @details Значения кодирований передачи регистр не различают (RFC 9110 §10.1.4),
+ *          поэтому [TE: Trailers] законно, и строгое сравнение отвергало бы
+ *          сообщение живого клиента целиком.
+ *
+ *          Заголовки управления соединением отсеиваются общей функцией: два
+ *          перечисления одного списка расходятся от первой же правки одного из них.
+ *
+ */
+TEST_F(ParserHttp2Fixture, TrailersValueCaseAndForbiddenFieldsTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщик событий сервера
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	/**
+	 * @brief Функция поиска значения заголовка, принятого сервером
+	 *
+	 */
+	auto field = [&](const uint32_t sid, const std::string & name) noexcept -> std::string {
+		// Найденное значение заголовка
+		std::string result;
+		/**
+		 * Выполняем перебор всех принятых сервером заголовков
+		 */
+		for(const auto & item : serverEvents.headers){
+			// Если заголовок принадлежит искомому потоку и совпал по названию
+			if((std::get <0> (item) == sid) && (std::get <1> (item) == name))
+				// Запоминаем значение найденного заголовка
+				result = std::get <2> (item);
+		}
+		// Выводим значение найденного заголовка
+		return result;
+	};
+	/**
+	 * Поле TE в ином регистре обязано пройти отправку и быть принятым
+	 */
+	{
+		// Выделяем идентификатор потока запроса
+		const uint32_t sid = client->nextStreamId();
+		// Формируем провайдер запроса клиента
+		auto request = std::make_unique <request_t> (version_t::HTTP2, method_t::GET, "/te");
+		// Формируем контейнер заголовков запроса
+		headers_t headers(std::move(request));
+		// Дописываем заголовок адресата запроса
+		headers.emplace("Host", "example.com");
+		// Дописываем поле TE в написании, отличном от канонического
+		headers.emplace("TE", "Trailers");
+		// Отправляем запрос клиента с завершением потока
+		client->sendHeaders(sid, headers, true);
+		// Поле обязано дойти до сервера, а не быть отброшенным на отправке
+		ASSERT_EQ(field(sid, "te"), "Trailers");
+		// Соединение обязано пережить приём поля
+		ASSERT_FALSE(serverEvents.errorFired);
+	}
+	/**
+	 * Заголовки управления соединением отправлены быть не должны
+	 */
+	{
+		// Выделяем идентификатор потока запроса
+		const uint32_t sid = client->nextStreamId();
+		// Формируем провайдер запроса клиента
+		auto request = std::make_unique <request_t> (version_t::HTTP2, method_t::GET, "/forbidden");
+		// Формируем контейнер заголовков запроса
+		headers_t headers(std::move(request));
+		// Дописываем заголовок адресата запроса
+		headers.emplace("Host", "example.com");
+		// Дописываем заголовок обновления протокола
+		headers.emplace("Upgrade", "h2c");
+		// Дописываем заголовок управления соединением
+		headers.emplace("Connection", "keep-alive");
+		// Дописываем заголовок удержания соединения
+		headers.emplace("Keep-Alive", "timeout=5");
+		// Дописываем заголовок управления соединением с прокси
+		headers.emplace("Proxy-Connection", "keep-alive");
+		// Дописываем допустимый заголовок для проверки того, что секция дошла
+		headers.emplace("X-Kept", "yes");
+		// Отправляем запрос клиента с завершением потока
+		client->sendHeaders(sid, headers, true);
+		// Допустимый заголовок обязан дойти до сервера
+		ASSERT_EQ(field(sid, "x-kept"), "yes");
+		// Заголовок обновления протокола дойти не должен
+		ASSERT_TRUE(field(sid, "upgrade").empty());
+		// Заголовок управления соединением дойти не должен
+		ASSERT_TRUE(field(sid, "connection").empty());
+		// Заголовок удержания соединения дойти не должен
+		ASSERT_TRUE(field(sid, "keep-alive").empty());
+		// Заголовок управления соединением с прокси дойти не должен
+		ASSERT_TRUE(field(sid, "proxy-connection").empty());
+		// Заголовок адресата обязан быть перенесён в псевдо-заголовок
+		ASSERT_TRUE(field(sid, "host").empty());
+		// Авторитет обязан быть собран из заголовка адресата
+		ASSERT_EQ(field(sid, ":authority"), "example.com");
+		// Соединение обязано остаться живым
+		ASSERT_FALSE(serverEvents.errorFired);
+	}
+}

@@ -63,6 +63,26 @@ namespace awh {
 	 */
 	namespace hashing {
 		/**
+		 * Порядок байтов процессора от старшего байта к младшему
+		 *
+		 * @details Примета порядка байтов собрана в одном месте намеренно: разойдись
+		 *          её проверки между чтением и записью, поток октетов результата
+		 *          читался бы в одном порядке, а писался в другом.
+		 *
+		 *          Примет заведено несколько, потому что общей для всех сборок нет:
+		 *          макрос __BYTE_ORDER__ заводят GCC и Clang, а MSVC не заводит вовсе.
+		 *          Отсутствие всех примет разом читается как порядок от младшего байта
+		 *          к старшему - и для MSVC это верно, целями его сборки служат
+		 *          x86, x64, ARM и ARM64, порядок байтов у которых именно таков.
+		 *
+		 *          Средство стандарта (std::endian) здесь неприменимо: оно заведено
+		 *          редакцией C++20, а библиотека собирается по редакции C++17
+		 *
+		 */
+		#if (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)) || defined(__BIG_ENDIAN__) || defined(_BIG_ENDIAN)
+			#define AWH_HASH_BIG_ENDIAN 1
+		#endif
+		/**
 		 * @brief Набор констант перемешивания
 		 *
 		 * @details Константы получены из двоичного представления дробных частей
@@ -78,16 +98,31 @@ namespace awh {
 			0x85EBCA77C2B2AE63ULL  // Четвёртая константа перемешивания
 		};
 		/**
+		 * @brief Шаблон количества разрядов циклического сдвига
+		 *
+		 * @tparam COUNT количество разрядов сдвига
+		 *
+		 */
+		template <uint8_t COUNT>
+		/**
 		 * @brief Функция циклического сдвига числа влево
 		 *
+		 * @details Количество разрядов сдвига задано на этапе сборки намеренно:
+		 *          сдвиг числа на его собственную разрядность и шире неопределён,
+		 *          а сдвиг на ноль этой же неопределённости достигает встречным
+		 *          сдвигом на все 64 разряда. Оба случая здесь отвергаются сборкой,
+		 *          и укреплять сдвиг маскированием количества разрядов не нужно:
+		 *          маскирование негодное значение приняло бы, тихо подменив его
+		 *
 		 * @param value число для сдвига
-		 * @param count количество разрядов сдвига
 		 * @return      результат сдвига числа
 		 *
 		 */
-		static inline uint64_t rotate(const uint64_t value, const uint8_t count) noexcept {
+		static inline uint64_t rotate(const uint64_t value) noexcept {
+			// Выполняем проверку количества разрядов сдвига на пригодность
+			static_assert((COUNT > 0) && (COUNT < 64), "AWH hash: the rotation count must be within the width of the number being rotated");
 			// Выводим результат циклического сдвига числа влево
-			return ((value << count) | (value >> (64 - count)));
+			return ((value << COUNT) | (value >> (64 - COUNT)));
 		}
 		/**
 		 * @brief Функция чтения 64-битного числа из буфера данных
@@ -107,7 +142,7 @@ namespace awh {
 			/**
 			 * Если порядок байтов процессора от старшего байта к младшему
 			 */
-			#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+			#ifdef AWH_HASH_BIG_ENDIAN
 				// Выполняем перестановку байтов прочитанного числа
 				result = __builtin_bswap64(result);
 			#endif
@@ -130,7 +165,7 @@ namespace awh {
 			/**
 			 * Если порядок байтов процессора от старшего байта к младшему
 			 */
-			#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+			#ifdef AWH_HASH_BIG_ENDIAN
 				// Выполняем перестановку байтов записываемого числа
 				result = __builtin_bswap64(result);
 			#endif
@@ -155,7 +190,7 @@ namespace awh {
 			/**
 			 * Если порядок байтов процессора от старшего байта к младшему
 			 */
-			#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+			#ifdef AWH_HASH_BIG_ENDIAN
 				// Выполняем перестановку байтов прочитанного числа
 				result = __builtin_bswap32(result);
 			#endif
@@ -234,7 +269,7 @@ namespace awh {
 			// Выполняем поглощение пары чисел указанным разрядом состояния
 			state[index] = mix(
 				(state[index] ^ (value1 + KEYS[index])),
-				((value2 ^ KEYS[(index + 1) & 3]) + rotate(state[index], 31))
+				((value2 ^ KEYS[(index + 1) & 3]) + rotate <31> (state[index]))
 			);
 		}
 		/**
@@ -477,10 +512,12 @@ namespace awh {
 		 */
 		static conv_t collect(const array <uint64_t, 4> & state, const uint8_t * buffer, const size_t offset, const uint64_t length, const uint64_t seed) noexcept {
 			/**
-			 * Если размер обработанных данных не превышает одного блока, а значит
-			 * все обработанные данные до сих пор находятся в буфере
+			 * Если все обработанные данные до сих пор находятся в буфере, а значит
+			 * ни одного блока в состояние движка ещё не ушло. Признаком этому служит
+			 * равенство размеров, а не размер в пределах блока: проверяется тем самым
+			 * сам рабочий довод, а не следствие из него
 			 */
-			if(length <= awh::Hash::BLOCK)
+			if(length == offset)
 				// Выводим свёртку коротких данных
 				return compact(buffer, offset, seed);
 			// Копируем состояние вычислительного движка хэширования
@@ -497,10 +534,9 @@ namespace awh {
 		 *          поэтому результат меньшей разрядности всегда является префиксом
 		 *          результата большей разрядности.
 		 *
-		 * @param value1 первое число результата свёртки
-		 * @param value2 второе число результата свёртки
-		 * @param result буфер для записи результата хэширования
-		 * @param size   размер результата хэширования в байтах
+		 * @param convolution пара чисел результата свёртки
+		 * @param result      буфер для записи результата хэширования
+		 * @param size        размер результата хэширования в байтах
 		 *
 		 */
 		static void squeeze(const conv_t & convolution, uint8_t * result, const size_t size) noexcept {
@@ -534,7 +570,7 @@ namespace awh {
 				 */
 				if(index > 0){
 					// Выполняем смещение разряда генератора потока байтов
-					generator = (rotate(generator, 23) ^ (word + KEYS[1] + index));
+					generator = (rotate <23> (generator) ^ (word + KEYS[1] + index));
 					// Выполняем формирование очередного разряда результата хэширования
 					word = avalanche(mix((value1 + (KEYS[0] * (index + 1))), generator));
 				}
@@ -658,6 +694,24 @@ uint64_t awh::hashing::avalanche(const uint64_t value) noexcept {
 	result ^= (result >> 32);
 	// Выводим результат перемешивания числа
 	return result;
+}
+/**
+ * @brief Функция сведения пары начальных значений хэширования в одно
+ *
+ * @param seed1 первое начальное значение хэширования
+ * @param seed2 второе начальное значение хэширования
+ * @return      сведённое начальное значение хэширования
+ *
+ */
+uint64_t awh::hashing::merge(const uint64_t seed1, const uint64_t seed2) noexcept {
+	/**
+	 * Выводим сведённое начальное значение хэширования
+	 *
+	 * @details Значения разводятся разными константами прежде перемешивания,
+	 *          иначе пара равных ключей сводилась бы к нулю: сложение числа с
+	 *          самим собой по модулю два обнуляет его
+	 */
+	return (avalanche(seed1 + KEYS[0]) ^ avalanche(seed2 + KEYS[3]));
 }
 /**
  * @brief Функция формирования хэша буфера данных

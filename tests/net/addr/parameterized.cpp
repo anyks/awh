@@ -433,25 +433,38 @@ TEST_P(NetPrefixParameterizedFixture, NetSuccessMappingHostPrefixTest){
 }
 
 /**
- * @brief Тесты наложения префиксов и масок на сетевой адрес с возвратом результата
+ * @brief Тест несоответствия записи сети хостовой части адреса при наложении маски
+ *
+ * @details Проверка эта была точной копией предыдущей: обе накладывали одну и ту
+ *          же запись и обе ждали успеха, хотя названа одна из них отказом.
+ *          Проверяется здесь обратное - запись сети хостовой части адреса не
+ *          отвечает, - и отвечает она лишь тогда, когда хостовая часть обнулена
+ *          префиксом целиком
  *
  */
 TEST_P(NetPrefixParameterizedFixture, NetFailedMappingHostMaskTest){
 	// Парсим тестовый адрес
 	ASSERT_TRUE(this->_addr->parse(this->_parameter.addr));
+	// Признак того, что хостовая часть адреса обнулена префиксом целиком
+	const bool zeroed = ((this->_parameter.expectedImposeHostResult == "0.0.0.0") || (this->_parameter.expectedImposeHostResult == "::"));
 	// Накладываем маску и проверяем результат
-	ASSERT_TRUE(this->_addr->mapping(this->_parameter.expectedImposeHostResult, this->_parameter.mask, awh::net_addr_t::addr_t::HOST));
+	ASSERT_EQ(zeroed, this->_addr->mapping(this->_parameter.expectedImposeNetworkResult, this->_parameter.mask, awh::net_addr_t::addr_t::HOST));
 }
 
 /**
- * @brief Тесты наложения префиксов и масок на сетевой адрес с возвратом результата
+ * @brief Тест несоответствия записи сети хостовой части адреса при наложении префикса
+ *
+ * @details Проверка эта была точной копией предыдущей: обе накладывали одну и ту
+ *          же запись и обе ждали успеха, хотя названа одна из них отказом
  *
  */
 TEST_P(NetPrefixParameterizedFixture, NetFailedMappingHostPrefixTest){
 	// Парсим тестовый адрес
 	ASSERT_TRUE(this->_addr->parse(this->_parameter.addr));
+	// Признак того, что хостовая часть адреса обнулена префиксом целиком
+	const bool zeroed = ((this->_parameter.expectedImposeHostResult == "0.0.0.0") || (this->_parameter.expectedImposeHostResult == "::"));
 	// Накладываем префикс и проверяем результат
-	ASSERT_TRUE(this->_addr->mapping(this->_parameter.expectedImposeHostResult, this->_parameter.prefix, awh::net_addr_t::addr_t::HOST));
+	ASSERT_EQ(zeroed, this->_addr->mapping(this->_parameter.expectedImposeNetworkResult, this->_parameter.prefix, awh::net_addr_t::addr_t::HOST));
 }
 
 /**

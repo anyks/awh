@@ -702,6 +702,92 @@ TEST_F(BigNumFixture, DivisionEdgeBigNumTest){
 }
 
 /**
+ * @brief Тест совмещения буферов при делении через вычислительный движок
+ *
+ * @details Частное и остаток являются двумя независимыми результатами и в одном буфере
+ *          не помещаются, поэтому совмещение их буферов обязано приводить к отказу,
+ *          а не к молчаливой записи остатка вместо частного.
+ *
+ */
+TEST_F(BigNumFixture, DivmodAliasingBigNumTest){
+	// Создаём буфер делимого числа
+	std::vector <uint8_t> dividend(awh::uint128_t::size(), 0);
+	// Создаём буфер делителя числа
+	std::vector <uint8_t> divisor(awh::uint128_t::size(), 0);
+
+	// Устанавливаем значение делимого числа
+	awh::bignum::set(dividend.data(), dividend.size(), 1000, false);
+	// Устанавливаем значение делителя числа
+	awh::bignum::set(divisor.data(), divisor.size(), 7, false);
+
+	// Создаём буфер частного от деления
+	std::vector <uint8_t> quotient(dividend);
+	// Создаём буфер остатка от деления
+	std::vector <uint8_t> remainder(dividend.size(), 0);
+
+	// Проверяем что деление с раздельными буферами выполняется
+	ASSERT_TRUE(awh::bignum::divmod(quotient.data(), divisor.data(), remainder.data(), quotient.size()));
+	// Проверяем частное от деления
+	ASSERT_EQ(awh::bignum::print(quotient.data(), quotient.size(), false, awh::bignum::format_t::DEC), "142");
+	// Проверяем остаток от деления
+	ASSERT_EQ(awh::bignum::print(remainder.data(), remainder.size(), false, awh::bignum::format_t::DEC), "6");
+
+	// Создаём буфер для проверки совмещения частного и остатка
+	std::vector <uint8_t> shared(dividend);
+
+	// Проверяем что деление с совмещёнными буферами частного и остатка не выполняется
+	ASSERT_FALSE(awh::bignum::divmod(shared.data(), divisor.data(), shared.data(), shared.size()));
+	// Проверяем что буфер остался без изменений
+	ASSERT_EQ(shared, dividend);
+
+	// Создаём буфер делителя для проверки совмещения делителя и остатка
+	std::vector <uint8_t> aliased(divisor);
+	// Создаём буфер частного для проверки совмещения делителя и остатка
+	std::vector <uint8_t> result(dividend);
+
+	// Проверяем что совмещение буферов делителя и остатка допускается
+	ASSERT_TRUE(awh::bignum::divmod(result.data(), aliased.data(), aliased.data(), result.size()));
+	// Проверяем частное от деления
+	ASSERT_EQ(awh::bignum::print(result.data(), result.size(), false, awh::bignum::format_t::DEC), "142");
+	// Проверяем остаток от деления
+	ASSERT_EQ(awh::bignum::print(aliased.data(), aliased.size(), false, awh::bignum::format_t::DEC), "6");
+
+	// Проверяем что деление без буфера остатка допускается
+	std::vector <uint8_t> single(dividend);
+	// Выполняем деление без получения остатка
+	ASSERT_TRUE(awh::bignum::divmod(single.data(), divisor.data(), nullptr, single.size()));
+	// Проверяем частное от деления
+	ASSERT_EQ(awh::bignum::print(single.data(), single.size(), false, awh::bignum::format_t::DEC), "142");
+}
+
+/**
+ * @brief Тест разрядности порядка нестандартных вещественных форматов
+ *
+ * @details Нестандартные разрядности рассчитываются по общей формуле стандарта IEEE-754
+ *          и не совпадают с одноимёнными аппаратными форматами, что закрепляется тестом,
+ *          чтобы изменение формулы не прошло незамеченным.
+ *
+ */
+TEST_F(BigNumFixture, ExponentBitsBigNumTest){
+	// Проверяем разрядность порядка формата половинной точности
+	ASSERT_EQ(awh::bignum::exponentBits(16), 5);
+	// Проверяем разрядность порядка формата одинарной точности
+	ASSERT_EQ(awh::bignum::exponentBits(32), 8);
+	// Проверяем разрядность порядка формата двойной точности
+	ASSERT_EQ(awh::bignum::exponentBits(64), 11);
+	// Проверяем разрядность порядка формата четверной точности
+	ASSERT_EQ(awh::bignum::exponentBits(128), 15);
+	/**
+	 * Расширенный формат x87, которым на архитектуре x86 представлен long double,
+	 * имеет пятнадцатиразрядный порядок, поэтому совпадения с ним быть не должно
+	 */
+	// Проверяем разрядность порядка 80-битного формата
+	ASSERT_EQ(awh::bignum::exponentBits(80), 12);
+	// Проверяем что 80-битный формат не совпадает с расширенным форматом x87
+	ASSERT_NE(awh::bignum::exponentBits(80), 15);
+}
+
+/**
  * @brief Тест краевых случаев сдвига длинного числа
  *
  */

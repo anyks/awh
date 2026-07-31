@@ -81,12 +81,12 @@ namespace {
 	 *          регрессии на порядок, а не колебания окружения
 	 *
 	 */
-	static constexpr double ADD_128_THRESHOLD = 9500000.0;
+	static constexpr double ADD_128_THRESHOLD = 12000000.0;
 	/**
 	 * @brief Порог скорости умножения 128-битных чисел в операциях в секунду
 	 *
 	 */
-	static constexpr double MUL_128_THRESHOLD = 2250000.0;
+	static constexpr double MUL_128_THRESHOLD = 4000000.0;
 	/**
 	 * @brief Порог скорости деления 128-битных чисел в операциях в секунду
 	 *
@@ -104,7 +104,7 @@ namespace {
 	 *          разрядов на 8-битные даёт шестнадцатикратное замедление
 	 *
 	 */
-	static constexpr double MUL_2048_THRESHOLD = 33000.0;
+	static constexpr double MUL_2048_THRESHOLD = 56000.0;
 	/**
 	 * @brief Порог скорости деления 2048-битных чисел в операциях в секунду
 	 *
@@ -114,7 +114,7 @@ namespace {
 	 * @brief Порог скорости извлечения корня 512-битного числа в операциях в секунду
 	 *
 	 */
-	static constexpr double SQRT_512_THRESHOLD = 36000.0;
+	static constexpr double SQRT_512_THRESHOLD = 37000.0;
 	/**
 	 * @brief Количество операций сценария округления целого числа
 	 *
@@ -128,7 +128,7 @@ namespace {
 	 *          и умножение вместе
 	 *
 	 */
-	static constexpr double ROUND_THRESHOLD = 340000.0;
+	static constexpr double ROUND_THRESHOLD = 440000.0;
 	/**
 	 * @brief Порог количества выделений памяти на одну целочисленную операцию
 	 *

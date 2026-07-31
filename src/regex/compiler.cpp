@@ -1,0 +1,1672 @@
+/**
+ * @file: compiler.cpp
+ * @date: 2026-07-31
+ * @license: LicenseRef-AWH-1.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @brief Реализация компиляции регулярных выражений — преобразование синтаксического дерева
+ *        в программу недетерминированного конечного автомата с разворачиванием кванторов
+ *        повторения и размещением инструкций захвата групп
+ *
+ * @copyright: Copyright © 2026
+ *
+ */
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <regex/compiler.hpp>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+using namespace awh;
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::regex::Compiler::Compiler() noexcept :
+ _parser(nullptr), _program(nullptr), _reverse(false), _full(false),
+ _cells(0), _atomics(0), _error(error_t::NONE) {}
+/**
+ * @brief Метод извлечения кода ошибки компиляции
+ *
+ * @return код ошибки последней операции компиляции
+ *
+ */
+awh::regex::error_t awh::regex::Compiler::error() const noexcept {
+	// Выводим код ошибки последней операции компиляции
+	return this->_error;
+}
+/**
+ * @brief Метод извлечения адреса следующей размещаемой инструкции
+ *
+ * @return адрес следующей размещаемой инструкции программы
+ *
+ */
+awh::regex::address_t awh::regex::Compiler::position() const noexcept {
+	// Выводим адрес следующей размещаемой инструкции программы
+	return static_cast <address_t> (this->_program->instructions.size());
+}
+/**
+ * @brief Метод размещения инструкции программы
+ *
+ * @param type  код операции размещаемой инструкции
+ * @param flags набор режимов компиляции инструкции
+ * @return      адрес размещённой инструкции программы
+ *
+ */
+awh::regex::address_t awh::regex::Compiler::emit(const opcode_t type, const uint32_t flags) noexcept {
+	// Получаем адрес размещаемой инструкции программы
+	const address_t result = this->position();
+	/**
+	 * Если количество инструкций программы превышает допустимое
+	 */
+	if(static_cast <size_t> (result) >= MAX_PROGRAM) {
+		/**
+		 * Если ошибка компиляции ещё не установлена
+		 */
+		if(this->_error == error_t::NONE)
+			// Выполняем установку ошибки превышения размера выражения
+			this->_error = error_t::PATTERN_TOO_LARGE;
+		// Выводим адрес отсутствующей инструкции программы
+		return INVALID_ADDRESS;
+	}
+	// Выполняем размещение инструкции программы
+	this->_program->instructions.emplace_back();
+	// Выполняем установку кода операции инструкции
+	this->_program->instructions.back().type = type;
+	// Выполняем установку набора режимов компиляции инструкции
+	this->_program->instructions.back().flags = flags;
+	// Выводим адрес размещённой инструкции программы
+	return result;
+}
+/**
+ * @brief Метод размещения класса символов в программе
+ *
+ * @param value класс символов для размещения в программе
+ * @return      индекс класса символов в хранилище классов
+ *
+ */
+uint32_t awh::regex::Compiler::store(const class_t & value) noexcept {
+	// Получаем индекс размещаемого класса символов
+	const uint32_t result = static_cast <uint32_t> (this->_program->classes.size());
+	// Выполняем размещение класса символов в хранилище классов
+	this->_program->classes.push_back(value);
+	// Выводим индекс класса символов в хранилище классов
+	return result;
+}
+/**
+ * @brief Метод компиляции узла выбора одной из ветвей
+ *
+ * @param id индекс узла выбора одной из ветвей в арене узлов
+ * @return   результат выполнения компиляции
+ *
+ */
+bool awh::regex::Compiler::compileAlternate(const node_id_t id) noexcept {
+	// Получаем узел выбора одной из ветвей
+	const node_data_t & node = this->_parser->node(id);
+	// Создаём набор адресов инструкций перехода к завершению выражения
+	vector <address_t> exits;
+	// Получаем индекс очередной ветви выражения
+	node_id_t branch = node.child;
+	/**
+	 * Выполняем компиляцию ветвей выражения
+	 */
+	while(branch != INVALID_NODE) {
+		// Получаем индекс следующей ветви выражения
+		const node_id_t next = this->_parser->node(branch).next;
+		/**
+		 * Если ветвь выражения является последней
+		 */
+		if(next == INVALID_NODE) {
+			/**
+			 * Если компиляция последней ветви выражения не выполнена
+			 */
+			if(!this->compileNode(branch))
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выходим из цикла компиляции ветвей выражения
+			break;
+		}
+		// Выполняем размещение инструкции перехода по двум ветвям
+		const address_t split = this->emit(opcode_t::SPLIT, node.flags);
+		/**
+		 * Если размещение инструкции не выполнено
+		 */
+		if(split == INVALID_ADDRESS)
+			// Выводим результат выполнения компиляции
+			return false;
+		// Выполняем установку адреса ветви с наибольшим приоритетом
+		this->_program->instructions.at(split).split.first = this->position();
+		/**
+		 * Если компиляция очередной ветви выражения не выполнена
+		 */
+		if(!this->compileNode(branch))
+			// Выводим результат выполнения компиляции
+			return false;
+		// Выполняем размещение инструкции перехода к завершению выражения
+		const address_t jump = this->emit(opcode_t::JUMP, node.flags);
+		/**
+		 * Если размещение инструкции не выполнено
+		 */
+		if(jump == INVALID_ADDRESS)
+			// Выводим результат выполнения компиляции
+			return false;
+		// Выполняем добавление адреса инструкции перехода к завершению
+		exits.push_back(jump);
+		// Выполняем установку адреса ветви с наименьшим приоритетом
+		this->_program->instructions.at(split).split.second = this->position();
+		// Переходим к следующей ветви выражения
+		branch = next;
+	}
+	/**
+	 * Выполняем установку адресов перехода к завершению выражения
+	 */
+	for(auto & jump : exits)
+		// Выполняем установку адреса инструкции перехода
+		this->_program->instructions.at(jump).jump.target = this->position();
+	// Выводим результат выполнения компиляции
+	return true;
+}
+/**
+ * @brief Метод компиляции узла повторения
+ *
+ * @param id индекс узла повторения в арене узлов
+ * @return   результат выполнения компиляции
+ *
+ */
+bool awh::regex::Compiler::compileRepeat(const node_id_t id) noexcept {
+	// Получаем узел повторения
+	const node_data_t & node = this->_parser->node(id);
+	/**
+	 * Если квантор повторения является захватывающим
+	 *
+	 * @details Захватывающий квантор запрещает возврат внутрь повторяемого элемента,
+	 *          что недостижимо исполнением без возврата.
+	 *
+	 */
+	if(node.repeat.greed == greed_t::POSSESSIVE) {
+		/**
+		 * Если выполняется компиляция регулярного подмножества
+		 */
+		if(!this->_full) {
+			// Выполняем установку ошибки неподдерживаемой конструкции
+			this->_error = error_t::UNSUPPORTED;
+			// Выводим результат выполнения компиляции
+			return false;
+		}
+		// Получаем номер ячейки отметки состояния возврата
+		const uint32_t cell = this->_atomics++;
+		// Выполняем размещение инструкции запоминания состояния возврата
+		const address_t mark = this->emit(opcode_t::MARK, node.flags);
+		/**
+		 * Если размещение инструкции не выполнено
+		 */
+		if(mark == INVALID_ADDRESS)
+			// Выводим результат выполнения компиляции
+			return false;
+		// Выполняем установку номера ячейки отметки состояния возврата
+		this->_program->instructions.at(mark).atomic.cell = cell;
+		/**
+		 * Если компиляция повторения не выполнена
+		 */
+		if(!this->compileIteration(id))
+			// Выводим результат выполнения компиляции
+			return false;
+		// Выполняем размещение инструкции отказа от точек возврата
+		const address_t cut = this->emit(opcode_t::CUT, node.flags);
+		/**
+		 * Если размещение инструкции не выполнено
+		 */
+		if(cut == INVALID_ADDRESS)
+			// Выводим результат выполнения компиляции
+			return false;
+		// Выполняем установку номера ячейки отметки состояния возврата
+		this->_program->instructions.at(cut).atomic.cell = cell;
+		// Выводим результат выполнения компиляции
+		return true;
+	}
+	// Выводим результат компиляции повторения элемента выражения
+	return this->compileIteration(id);
+}
+/**
+ * @brief Метод компиляции повторения элемента выражения
+ *
+ * @param id индекс узла повторения в арене узлов
+ * @return   результат выполнения компиляции
+ *
+ */
+bool awh::regex::Compiler::compileIteration(const node_id_t id) noexcept {
+	// Получаем узел повторения
+	const node_data_t & node = this->_parser->node(id);
+	// Получаем индекс повторяемого элемента выражения
+	const node_id_t child = node.child;
+	/**
+	 * Если неограниченно повторяется элемент, допускающий пустое сопоставление
+	 *
+	 * @details Пустое сопоставление тела прекращает повторение, что требует
+	 *          учёта продвижения по тексту в пределах одного повторения и
+	 *          недостижимо исполнением без возврата.
+	 *
+	 */
+	if(!this->_full && (node.repeat.max == UNBOUNDED) && this->_parser->nullable(child)) {
+		// Выполняем установку ошибки неподдерживаемой конструкции
+		this->_error = error_t::UNSUPPORTED;
+		// Выводим результат выполнения компиляции
+		return false;
+	}
+	/**
+	 * Определяем необходимость проверки продвижения по тексту
+	 *
+	 * @details Проверка размещается для каждого неограниченного повторения выражения,
+	 *          компилируемого целиком: пустое сопоставление тела определяется составом
+	 *          конструкций вне регулярного подмножества и выводится ненадёжно, тогда
+	 *          как для тела, продвигающегося по тексту, проверка не выполняется никогда.
+	 *
+	 */
+	const bool nullable = ((node.repeat.max == UNBOUNDED) && this->_full);
+	// Получаем наименьшее число повторений элемента выражения
+	const uint32_t least = node.repeat.min;
+	// Получаем наибольшее число повторений элемента выражения
+	const uint32_t most = node.repeat.max;
+	// Определяем приоритет ветви продолжения повторения
+	const bool greedy = (node.repeat.greed != greed_t::LAZY);
+	/**
+	 * Выполняем размещение обязательных повторений элемента выражения
+	 */
+	for(uint32_t i = 0; i < least; i++) {
+		/**
+		 * Если компиляция повторяемого элемента выражения не выполнена
+		 */
+		if(!this->compileNode(child))
+			// Выводим результат выполнения компиляции
+			return false;
+	}
+	/**
+	 * Если число повторений элемента выражения не ограничено
+	 */
+	if(most == UNBOUNDED) {
+		// Получаем адрес начала повторения элемента выражения
+		const address_t start = this->position();
+		// Выполняем размещение инструкции перехода по двум ветвям
+		const address_t split = this->emit(opcode_t::SPLIT, node.flags);
+		/**
+		 * Если размещение инструкции не выполнено
+		 */
+		if(split == INVALID_ADDRESS)
+			// Выводим результат выполнения компиляции
+			return false;
+		// Получаем адрес повторяемого элемента выражения
+		const address_t body = this->position();
+		// Адрес инструкции проверки продвижения по тексту
+		address_t guard = INVALID_ADDRESS;
+		/**
+		 * Если повторяется элемент, допускающий пустое сопоставление
+		 *
+		 * @details Позиция начала очередного повторения размещается в ячейке состояния,
+		 *          благодаря чему завершение повторения определяется отсутствием
+		 *          продвижения по тексту, а не исчерпанием сопоставлений тела.
+		 *
+		 */
+		if(nullable) {
+			// Выполняем размещение ячейки позиции начала повторения
+			const uint32_t cell = this->reserve();
+			// Выполняем размещение инструкции сохранения позиции начала повторения
+			const address_t save = this->emit(opcode_t::SAVE, node.flags);
+			/**
+			 * Если размещение инструкции не выполнено
+			 */
+			if(save == INVALID_ADDRESS)
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем установку номера ячейки позиции начала повторения
+			this->_program->instructions.at(save).save.slot = cell;
+			// Выполняем сохранение номера ячейки позиции начала повторения
+			guard = cell;
+		}
+		/**
+		 * Если компиляция повторяемого элемента выражения не выполнена
+		 */
+		if(!this->compileNode(child))
+			// Выводим результат выполнения компиляции
+			return false;
+		// Адрес инструкции проверки продвижения по тексту
+		address_t progress = INVALID_ADDRESS;
+		/**
+		 * Если повторяется элемент, допускающий пустое сопоставление
+		 */
+		if(nullable) {
+			// Выполняем размещение инструкции проверки продвижения по тексту
+			progress = this->emit(opcode_t::PROGRESS, node.flags);
+			/**
+			 * Если размещение инструкции не выполнено
+			 */
+			if(progress == INVALID_ADDRESS)
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем установку номера ячейки позиции начала повторения
+			this->_program->instructions.at(progress).progress.cell = guard;
+		}
+		// Выполняем размещение инструкции перехода к началу повторения
+		const address_t jump = this->emit(opcode_t::JUMP, node.flags);
+		/**
+		 * Если размещение инструкции не выполнено
+		 */
+		if(jump == INVALID_ADDRESS)
+			// Выводим результат выполнения компиляции
+			return false;
+		// Выполняем установку адреса перехода к началу повторения
+		this->_program->instructions.at(jump).jump.target = start;
+		/**
+		 * Если размещена инструкция проверки продвижения по тексту
+		 */
+		if(progress != INVALID_ADDRESS)
+			// Выполняем установку адреса завершения повторения
+			this->_program->instructions.at(progress).progress.target = this->position();
+		// Выполняем установку адреса ветви повторения элемента выражения
+		this->_program->instructions.at(split).split.first = (greedy ? body : this->position());
+		// Выполняем установку адреса ветви завершения повторения
+		this->_program->instructions.at(split).split.second = (greedy ? this->position() : body);
+		// Выводим результат выполнения компиляции
+		return true;
+	}
+	// Создаём набор адресов инструкций завершения необязательных повторений
+	vector <address_t> exits;
+	/**
+	 * Выполняем размещение необязательных повторений элемента выражения
+	 */
+	for(uint32_t i = least; i < most; i++) {
+		// Выполняем размещение инструкции перехода по двум ветвям
+		const address_t split = this->emit(opcode_t::SPLIT, node.flags);
+		/**
+		 * Если размещение инструкции не выполнено
+		 */
+		if(split == INVALID_ADDRESS)
+			// Выводим результат выполнения компиляции
+			return false;
+		// Выполняем установку адреса ветви повторения элемента выражения
+		this->_program->instructions.at(split).split.first = (greedy ? this->position() : INVALID_ADDRESS);
+		/**
+		 * Если компиляция повторяемого элемента выражения не выполнена
+		 */
+		if(!this->compileNode(child))
+			// Выводим результат выполнения компиляции
+			return false;
+		/**
+		 * Если квантор повторения является ленивым
+		 */
+		if(!greedy)
+			// Выполняем установку адреса ветви повторения элемента выражения
+			this->_program->instructions.at(split).split.second = (split + 1);
+		// Выполняем добавление адреса инструкции перехода по двум ветвям
+		exits.push_back(split);
+	}
+	/**
+	 * Выполняем установку адресов завершения необязательных повторений
+	 */
+	for(auto & split : exits) {
+		/**
+		 * Если квантор повторения является жадным
+		 */
+		if(greedy)
+			// Выполняем установку адреса ветви завершения повторения
+			this->_program->instructions.at(split).split.second = this->position();
+		// Выполняем установку адреса ветви завершения повторения
+		else this->_program->instructions.at(split).split.first = this->position();
+	}
+	// Выводим результат выполнения компиляции
+	return true;
+}
+/**
+ * @brief Метод компиляции узла синтаксического дерева
+ *
+ * @param id индекс узла в арене узлов
+ * @return   результат выполнения компиляции
+ *
+ */
+bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
+	/**
+	 * Если индекс узла отсутствует
+	 */
+	if(id == INVALID_NODE)
+		// Выводим результат выполнения компиляции
+		return true;
+	// Получаем узел синтаксического дерева
+	const node_data_t & node = this->_parser->node(id);
+	/**
+	 * Определяем тип узла синтаксического дерева
+	 */
+	switch(static_cast <uint8_t> (node.type)) {
+		// Выполняем компиляцию узла пустого выражения
+		case static_cast <uint8_t> (node_t::EMPTY): return true;
+		// Выполняем компиляцию узла одиночного символа
+		case static_cast <uint8_t> (node_t::LITERAL): {
+			// Выполняем размещение инструкции сопоставления одиночного символа
+			const address_t address = this->emit(opcode_t::CHAR, node.flags);
+			/**
+			 * Если размещение инструкции не выполнено
+			 */
+			if(address == INVALID_ADDRESS)
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем установку кодового значения сопоставляемого символа
+			this->_program->instructions.at(address).letter.code = node.literal.code;
+			// Выводим результат выполнения компиляции
+			return true;
+		}
+		// Выполняем компиляцию узла последовательности символов
+		case static_cast <uint8_t> (node_t::STRING): {
+			// Получаем адрес начала последовательности в хранилище разбора
+			const uint32_t * source = this->_parser->sequence(node.string.offset, node.string.length);
+			/**
+			 * Если последовательность символов отсутствует
+			 */
+			if(source == nullptr) {
+				// Выполняем установку внутренней ошибки компиляции
+				this->_error = error_t::INTERNAL;
+				// Выводим результат выполнения компиляции
+				return false;
+			}
+			/**
+			 * Выполняем размещение инструкций сопоставления символов последовательности
+			 *
+			 * @details Последовательность разворачивается в набор инструкций сопоставления
+			 *          одиночных символов, благодаря чему исполнение программы остаётся
+			 *          посимвольным и не требует отдельной обработки последовательностей.
+			 *
+			 */
+			for(uint32_t i = 0; i < node.string.length; i++) {
+				// Определяем положение сопоставляемого символа последовательности
+				const uint32_t index = (this->_reverse ? ((node.string.length - i) - 1) : i);
+				// Выполняем размещение инструкции сопоставления одиночного символа
+				const address_t address = this->emit(opcode_t::CHAR, node.flags);
+				/**
+				 * Если размещение инструкции не выполнено
+				 */
+				if(address == INVALID_ADDRESS)
+					// Выводим результат выполнения компиляции
+					return false;
+				// Выполняем установку кодового значения сопоставляемого символа
+				this->_program->instructions.at(address).letter.code = source[index];
+			}
+			// Выводим результат выполнения компиляции
+			return true;
+		}
+		// Выполняем компиляцию узла класса символов
+		case static_cast <uint8_t> (node_t::CLASS): {
+			// Получаем класс символов синтаксического дерева
+			const class_t & value = this->_parser->charClass(node.charclass.index);
+			/**
+			 * Если класс символов содержит свойства Юникода
+			 *
+			 * @details Сопоставление свойств Юникода требует таблиц свойств,
+			 *          размещаемых отдельным модулем.
+			 *
+			 */
+			if(!value.properties.empty()) {
+				// Выполняем установку ошибки неподдерживаемой конструкции
+				this->_error = error_t::UNSUPPORTED;
+				// Выводим результат выполнения компиляции
+				return false;
+			}
+			// Выполняем размещение класса символов в программе
+			const uint32_t index = this->store(value);
+			// Выполняем размещение инструкции сопоставления класса символов
+			const address_t address = this->emit(opcode_t::CLASS, node.flags);
+			/**
+			 * Если размещение инструкции не выполнено
+			 */
+			if(address == INVALID_ADDRESS)
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем установку индекса класса символов
+			this->_program->instructions.at(address).charclass.index = index;
+			// Выводим результат выполнения компиляции
+			return true;
+		}
+		// Выполняем компиляцию узла любого символа
+		case static_cast <uint8_t> (node_t::ANY):
+		// Выполняем компиляцию узла одиночной единицы кодирования
+		case static_cast <uint8_t> (node_t::CODEUNIT): {
+			/**
+			 * Если сопоставляется единица кодирования в режиме разбора UTF-8
+			 *
+			 * @details Единица кодирования сопоставляет один байт, тогда как исполнение
+			 *          без возврата продвигается по тексту посимвольно. Совмещение
+			 *          обоих шагов в режиме UTF-8 недостижимо.
+			 *
+			 */
+			if(!this->_full && (node.type == node_t::CODEUNIT) && ((this->_program->flags & static_cast <uint32_t> (flag_t::UTF)) != 0)) {
+				// Выполняем установку ошибки неподдерживаемой конструкции
+				this->_error = error_t::UNSUPPORTED;
+				// Выводим результат выполнения компиляции
+				return false;
+			}
+			// Определяем код операции размещаемой инструкции
+			const opcode_t type = ((node.type == node_t::ANY) ? opcode_t::ANY : opcode_t::CODEUNIT);
+			// Выполняем размещение инструкции сопоставления символа
+			const address_t address = this->emit(type, node.flags);
+			// Выводим результат выполнения компиляции
+			return (address != INVALID_ADDRESS);
+		}
+		// Выполняем компиляцию узла привязки к позиции в тексте
+		case static_cast <uint8_t> (node_t::ANCHOR): {
+			/**
+			 * Если привязка сбрасывает начало совпадения
+			 *
+			 * @details Сброс начала совпадения изменяет границы найденного совпадения
+			 *          и требует исполнения с возвратом.
+			 */
+			if(node.anchor.type == anchor_t::KEEP_OUT) {
+				/**
+				 * Если выполняется компиляция регулярного подмножества
+				 */
+				if(!this->_full) {
+					// Выполняем установку ошибки неподдерживаемой конструкции
+					this->_error = error_t::UNSUPPORTED;
+					// Выводим результат выполнения компиляции
+					return false;
+				}
+				// Выводим результат размещения инструкции сброса начала совпадения
+				return (this->emit(opcode_t::KEEP, node.flags) != INVALID_ADDRESS);
+			}
+			// Выполняем размещение инструкции проверки привязки
+			const address_t address = this->emit(opcode_t::ANCHOR, node.flags);
+			/**
+			 * Если размещение инструкции не выполнено
+			 */
+			if(address == INVALID_ADDRESS)
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем установку типа привязки к позиции в тексте
+			this->_program->instructions.at(address).assertion.type = node.anchor.type;
+			// Выводим результат выполнения компиляции
+			return true;
+		}
+		// Выполняем компиляцию узла последовательности элементов
+		case static_cast <uint8_t> (node_t::CONCAT): return this->compileChain(node.child);
+		// Выполняем компиляцию узла выбора одной из ветвей
+		case static_cast <uint8_t> (node_t::ALTERNATE): return this->compileAlternate(id);
+		// Выполняем компиляцию узла повторения
+		case static_cast <uint8_t> (node_t::REPEAT): return this->compileRepeat(id);
+		// Выполняем компиляцию узла группы
+		case static_cast <uint8_t> (node_t::GROUP): {
+			/**
+			 * Если группа является атомарной
+			 *
+			 * @details Атомарная группа запрещает возврат внутрь себя,
+			 *          что недостижимо исполнением без возврата.
+			 *
+			 */
+			if(node.group.type == group_t::ATOMIC) {
+				/**
+				 * Если выполняется компиляция регулярного подмножества
+				 */
+				if(!this->_full) {
+					// Выполняем установку ошибки неподдерживаемой конструкции
+					this->_error = error_t::UNSUPPORTED;
+					// Выводим результат выполнения компиляции
+					return false;
+				}
+				// Получаем номер ячейки отметки состояния возврата
+				const uint32_t cell = this->_atomics++;
+				// Выполняем размещение инструкции запоминания состояния возврата
+				const address_t mark = this->emit(opcode_t::MARK, node.flags);
+				/**
+				 * Если размещение инструкции не выполнено
+				 */
+				if(mark == INVALID_ADDRESS)
+					// Выводим результат выполнения компиляции
+					return false;
+				// Выполняем установку номера ячейки отметки состояния возврата
+				this->_program->instructions.at(mark).atomic.cell = cell;
+				/**
+				 * Если компиляция тела группы не выполнена
+				 */
+				if(!this->compileChain(node.child))
+					// Выводим результат выполнения компиляции
+					return false;
+				// Выполняем размещение инструкции отказа от точек возврата
+				const address_t cut = this->emit(opcode_t::CUT, node.flags);
+				/**
+				 * Если размещение инструкции не выполнено
+				 */
+				if(cut == INVALID_ADDRESS)
+					// Выводим результат выполнения компиляции
+					return false;
+				// Выполняем установку номера ячейки отметки состояния возврата
+				this->_program->instructions.at(cut).atomic.cell = cell;
+				// Выводим результат выполнения компиляции
+				return true;
+			}
+			/**
+			 * Если группа не выполняет захвата
+			 */
+			if(node.group.number == 0)
+				// Выводим результат компиляции тела группы
+				return this->compileChain(node.child);
+			// Выполняем размещение инструкции сохранения начала захвата
+			const address_t begin = this->emit(opcode_t::SAVE, node.flags);
+			/**
+			 * Если размещение инструкции не выполнено
+			 */
+			if(begin == INVALID_ADDRESS)
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем установку номера ячейки начала захвата
+			this->_program->instructions.at(begin).save.slot = (node.group.number * 2);
+			/**
+			 * Если компиляция тела группы не выполнена
+			 */
+			if(!this->compileChain(node.child))
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем размещение инструкции сохранения конца захвата
+			const address_t end = this->emit(opcode_t::SAVE, node.flags);
+			/**
+			 * Если размещение инструкции не выполнено
+			 */
+			if(end == INVALID_ADDRESS)
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем установку номера ячейки конца захвата
+			this->_program->instructions.at(end).save.slot = ((node.group.number * 2) + 1);
+			// Выводим результат выполнения компиляции
+			return true;
+		}
+	}
+	/**
+	 * Если выполняется компиляция выражения целиком
+	 */
+	if(this->_full) {
+		/**
+		 * Определяем тип узла синтаксического дерева
+		 */
+		switch(static_cast <uint8_t> (node.type)) {
+			/**
+			 * Выполняем компиляцию узла ссылки на захваченную группу
+			 */
+			case static_cast <uint8_t> (node_t::BACKREF): {
+				// Выполняем размещение инструкции сопоставления захваченного текста
+				const address_t address = this->emit(opcode_t::BACKREF, node.flags);
+				/**
+				 * Если размещение инструкции не выполнено
+				 */
+				if(address == INVALID_ADDRESS)
+					// Выводим результат выполнения компиляции
+					return false;
+				// Выполняем установку номера группы, захваченный текст которой сопоставляется
+				this->_program->instructions.at(address).backref.number = node.backref.number;
+				// Выводим результат выполнения компиляции
+				return true;
+			}
+			/**
+			 * Выполняем компиляцию узла рекурсивного вызова
+			 */
+			case static_cast <uint8_t> (node_t::RECURSE): {
+				// Выполняем размещение инструкции рекурсивного вызова
+				const address_t address = this->emit(opcode_t::CALL, node.flags);
+				/**
+				 * Если размещение инструкции не выполнено
+				 */
+				if(address == INVALID_ADDRESS)
+					// Выводим результат выполнения компиляции
+					return false;
+				// Выполняем установку номера вызываемой группы
+				this->_program->instructions.at(address).call.number = node.recurse.number;
+				// Выполняем установку неизвестного адреса тела вызываемой группы
+				this->_program->instructions.at(address).call.body = INVALID_ADDRESS;
+				// Выполняем добавление инструкции в набор рекурсивных вызовов
+				this->_calls.emplace_back(address, node.recurse.number);
+				// Выводим результат выполнения компиляции
+				return true;
+			}
+			/**
+			 * Выполняем компиляцию узла проверки окружения
+			 */
+			case static_cast <uint8_t> (node_t::LOOKAROUND): {
+				// Адрес размещённой инструкции проверки окружения
+				address_t address = INVALID_ADDRESS;
+				// Выводим результат компиляции узла проверки окружения
+				return this->compileLook(id, address);
+			}
+			// Выводим результат компиляции узла условного выражения
+			case static_cast <uint8_t> (node_t::CONDITION): return this->compileCondition(id);
+		}
+	}
+	/**
+	 * Выполняем компиляцию прочих узлов синтаксического дерева
+	 *
+	 * @details Графемные кластеры и свойства Юникода требуют таблиц свойств,
+	 *          размещаемых отдельным модулем.
+	 *
+	 */
+	this->_error = error_t::UNSUPPORTED;
+	// Выводим результат выполнения компиляции
+	return false;
+}
+/**
+ * @brief Метод размещения ячейки состояния исполнения
+ *
+ * @return номер ячейки состояния в наборе позиций захвата групп
+ *
+ */
+uint32_t awh::regex::Compiler::reserve() noexcept {
+	/**
+	 * Выполняем размещение ячейки состояния за ячейками захвата групп
+	 *
+	 * @details Ячейки состояния размещаются в наборе позиций захвата групп,
+	 *          благодаря чему их изменение отменяется возвратом наравне
+	 *          с изменением ячеек захвата.
+	 *
+	 */
+	return (((this->_program->captures + 1) * 2) + (this->_cells++));
+}
+/**
+ * @brief Метод сбора узлов захватывающих групп выражения
+ *
+ * @param id индекс узла, с которого начинается сбор
+ *
+ */
+void awh::regex::Compiler::collect(const node_id_t id) noexcept {
+	// Получаем индекс обходимого узла синтаксического дерева
+	node_id_t current = id;
+	/**
+	 * Выполняем обход цепочки узлов синтаксического дерева
+	 */
+	while(current != INVALID_NODE) {
+		// Получаем обходимый узел синтаксического дерева
+		const node_data_t & node = this->_parser->node(current);
+		/**
+		 * Если узел является захватывающей группой
+		 */
+		if((node.type == node_t::GROUP) && (node.group.number != 0)) {
+			/**
+			 * Если группа с таким номером ещё не обнаружена
+			 *
+			 * @details Конструкция сброса нумерации ветвей допускает несколько групп
+			 *          с одним номером, рекурсивный вызов при этом обращается к первой.
+			 *
+			 */
+			if(this->_groups.count(node.group.number) == 0)
+				// Выполняем сохранение индекса узла захватывающей группы
+				this->_groups.emplace(node.group.number, current);
+		}
+		// Выполняем сбор узлов вложенной цепочки
+		this->collect(node.child);
+		// Переходим к следующему узлу цепочки
+		current = node.next;
+	}
+}
+/**
+ * @brief Метод компиляции цепочки узлов синтаксического дерева
+ *
+ * @param id индекс первого узла цепочки в арене узлов
+ * @return   результат выполнения компиляции
+ *
+ */
+bool awh::regex::Compiler::compileChain(const node_id_t id) noexcept {
+	/**
+	 * Если выполняется компиляция развёрнутого регулярного выражения
+	 *
+	 * @details Развёрнутое выражение сопоставляет последовательность элементов
+	 *          в обратном порядке, поэтому узлы цепочки компилируются с конца.
+	 *
+	 */
+	if(this->_reverse) {
+		// Создаём набор индексов узлов цепочки
+		vector <node_id_t> items;
+		/**
+		 * Выполняем обход цепочки узлов одного уровня вложенности
+		 */
+		for(node_id_t index = id; index != INVALID_NODE; index = this->_parser->node(index).next)
+			// Выполняем добавление индекса очередного узла цепочки
+			items.push_back(index);
+		/**
+		 * Выполняем компиляцию узлов цепочки в обратном порядке
+		 */
+		for(size_t i = items.size(); i > 0; i--) {
+			/**
+			 * Если компиляция очередного узла цепочки не выполнена
+			 */
+			if(!this->compileNode(items.at(i - 1)))
+				// Выводим результат выполнения компиляции
+				return false;
+		}
+		// Выводим результат выполнения компиляции
+		return true;
+	}
+	/**
+	 * Выполняем обход цепочки узлов одного уровня вложенности
+	 */
+	for(node_id_t index = id; index != INVALID_NODE; index = this->_parser->node(index).next) {
+		/**
+		 * Если компиляция очередного узла цепочки не выполнена
+		 */
+		if(!this->compileNode(index))
+			// Выводим результат выполнения компиляции
+			return false;
+	}
+	// Выводим результат выполнения компиляции
+	return true;
+}
+/**
+ * @brief Метод извлечения литерала, сопоставляемого узлом целиком
+ *
+ * @param id индекс узла в арене узлов
+ * @return   литерал, сопоставляемый узлом целиком
+ *
+ */
+string awh::regex::Compiler::literal(const node_id_t id) const noexcept {
+	// Получаем узел синтаксического дерева
+	const node_data_t & node = this->_parser->node(id);
+	/**
+	 * Если узел сопоставляется без учёта регистра символов
+	 *
+	 * @details Литерал, сопоставляемый без учёта регистра, поиском по точному
+	 *          совпадению не отыскивается и обязательным литералом не считается.
+	 *
+	 */
+	if((node.flags & static_cast <uint32_t> (flag_t::CASELESS)) != 0)
+		// Выводим отсутствие литерала узла
+		return string();
+	/**
+	 * Если узел сопоставляет одиночный символ
+	 */
+	if(node.type == node_t::LITERAL) {
+		/**
+		 * Если символ не принадлежит набору ASCII
+		 */
+		if(node.literal.code > 0x7F)
+			// Выводим отсутствие литерала узла
+			return string();
+		// Выводим литерал одиночного символа
+		return string(1, static_cast <char> (node.literal.code));
+	}
+	/**
+	 * Если узел сопоставляет последовательность символов
+	 */
+	if(node.type == node_t::STRING) {
+		// Получаем адрес начала последовательности в хранилище разбора
+		const uint32_t * source = this->_parser->sequence(node.string.offset, node.string.length);
+		/**
+		 * Если последовательность символов отсутствует
+		 */
+		if(source == nullptr)
+			// Выводим отсутствие литерала узла
+			return string();
+		// Формируемый литерал последовательности символов
+		string result;
+		/**
+		 * Выполняем формирование литерала последовательности символов
+		 */
+		for(uint32_t i = 0; i < node.string.length; i++) {
+			/**
+			 * Если символ не принадлежит набору ASCII
+			 */
+			if(source[i] > 0x7F)
+				// Выводим отсутствие литерала узла
+				return string();
+			// Выполняем добавление символа в литерал последовательности
+			result.append(1, static_cast <char> (source[i]));
+		}
+		// Выводим литерал последовательности символов
+		return result;
+	}
+	// Выводим отсутствие литерала узла
+	return string();
+}
+/**
+ * @brief Метод извлечения обязательного литерала узла
+ *
+ * @param id индекс узла в арене узлов
+ * @return   обязательный литерал совпадения узла
+ *
+ */
+string awh::regex::Compiler::requiredNode(const node_id_t id) const noexcept {
+	/**
+	 * Если индекс узла отсутствует
+	 */
+	if(id == INVALID_NODE)
+		// Выводим отсутствие обязательного литерала
+		return string();
+	// Получаем узел синтаксического дерева
+	const node_data_t & node = this->_parser->node(id);
+	/**
+	 * Определяем тип узла синтаксического дерева
+	 */
+	switch(static_cast <uint8_t> (node.type)) {
+		// Выводим обязательный литерал тела последовательности элементов
+		case static_cast <uint8_t> (node_t::CONCAT): return this->required(node.child);
+		// Выводим обязательный литерал тела группы
+		case static_cast <uint8_t> (node_t::GROUP): return this->required(node.child);
+		/**
+		 * Выводим обязательный литерал повторяемого элемента выражения
+		 */
+		case static_cast <uint8_t> (node_t::REPEAT): {
+			/**
+			 * Если повторяемый элемент выражения может не сопоставляться ни разу
+			 */
+			if(node.repeat.min == 0)
+				// Выводим отсутствие обязательного литерала
+				return string();
+			// Выводим обязательный литерал повторяемого элемента выражения
+			return this->requiredNode(node.child);
+		}
+	}
+	// Выводим литерал, сопоставляемый узлом целиком
+	return this->literal(id);
+}
+/**
+ * @brief Метод извлечения обязательного литерала цепочки узлов
+ *
+ * @param id индекс первого узла цепочки в арене узлов
+ * @return   обязательный литерал совпадения цепочки узлов
+ *
+ */
+string awh::regex::Compiler::required(const node_id_t id) const noexcept {
+	// Наибольший обнаруженный обязательный литерал
+	string result;
+	// Литерал, накапливаемый по смежным узлам цепочки
+	string run;
+	/**
+	 * Выполняем обход цепочки узлов одного уровня вложенности
+	 */
+	for(node_id_t index = id; index != INVALID_NODE; index = this->_parser->node(index).next) {
+		// Получаем литерал, сопоставляемый очередным узлом целиком
+		const string value = this->literal(index);
+		/**
+		 * Если очередной узел сопоставляет литерал целиком
+		 *
+		 * @details Смежные узлы литералов образуют непрерывную последовательность
+		 *          символов, присутствующую в любом совпадении выражения.
+		 *
+		 */
+		if(!value.empty()) {
+			// Выполняем накопление литерала по смежным узлам
+			run.append(value);
+			// Переходим к следующему узлу цепочки
+			continue;
+		}
+		/**
+		 * Если накопленный литерал длиннее обнаруженного
+		 */
+		if(run.size() > result.size())
+			// Выполняем установку наибольшего обнаруженного литерала
+			result = run;
+		// Выполняем сброс накопленного литерала
+		run.clear();
+		// Получаем обязательный литерал очередного узла цепочки
+		const string nested = this->requiredNode(index);
+		/**
+		 * Если обязательный литерал узла длиннее обнаруженного
+		 */
+		if(nested.size() > result.size())
+			// Выполняем установку наибольшего обнаруженного литерала
+			result = nested;
+	}
+	/**
+	 * Если накопленный литерал длиннее обнаруженного
+	 */
+	if(run.size() > result.size())
+		// Выполняем установку наибольшего обнаруженного литерала
+		result = run;
+	// Выводим наибольший обнаруженный обязательный литерал
+	return result;
+}
+/**
+ * @brief Метод дополнения набора допустимых начальных байтов
+ *
+ * @param address адрес инструкции, с которой начинается обход
+ * @return        результат применимости набора допустимых байтов
+ *
+ */
+bool awh::regex::Compiler::reachable(const address_t address) noexcept {
+	// Получаем предварительный отбор позиций сопоставления
+	prefilter_t & prefilter = this->_program->prefilter;
+	// Создаём набор отметок посещения инструкций программы
+	vector <bool> visited(this->_program->instructions.size(), false);
+	// Создаём стек обхода инструкций программы
+	vector <address_t> stack;
+	// Выполняем размещение исходной инструкции в стеке обхода
+	stack.push_back(address);
+	/**
+	 * Выполняем обход инструкций, достижимых без сопоставления символов
+	 */
+	while(!stack.empty()) {
+		// Получаем адрес инструкции из вершины стека обхода
+		const address_t current = stack.back();
+		// Выполняем удаление адреса инструкции из стека обхода
+		stack.pop_back();
+		/**
+		 * Если адрес инструкции находится за пределами программы
+		 */
+		if(static_cast <size_t> (current) >= this->_program->instructions.size())
+			// Переходим к следующему адресу стека обхода
+			continue;
+		/**
+		 * Если инструкция уже была посещена
+		 */
+		if(visited.at(current))
+			// Переходим к следующему адресу стека обхода
+			continue;
+		// Выполняем отметку посещения инструкции
+		visited.at(current) = true;
+		// Получаем обходимую инструкцию программы
+		const instruction_t & instruction = this->_program->instructions.at(current);
+		/**
+		 * Определяем код операции обходимой инструкции
+		 */
+		switch(static_cast <uint8_t> (instruction.type)) {
+			/**
+			 * Выполняем обход ветвей перехода по двум ветвям
+			 */
+			case static_cast <uint8_t> (opcode_t::SPLIT): {
+				// Выполняем размещение ветви с наибольшим приоритетом в стеке
+				stack.push_back(instruction.split.first);
+				// Выполняем размещение ветви с наименьшим приоритетом в стеке
+				stack.push_back(instruction.split.second);
+			} break;
+			// Выполняем обход инструкции безусловного перехода
+			case static_cast <uint8_t> (opcode_t::JUMP): stack.push_back(instruction.jump.target); break;
+			// Выполняем обход инструкции сохранения позиции
+			case static_cast <uint8_t> (opcode_t::SAVE):
+			// Выполняем обход инструкции проверки привязки к позиции в тексте
+			case static_cast <uint8_t> (opcode_t::ANCHOR): stack.push_back(current + 1); break;
+			/**
+			 * Если достигнуто завершение сопоставления
+			 *
+			 * @details Достижение завершения сопоставления без сопоставления символов
+			 *          означает возможность совпадения нулевой длины в любой позиции,
+			 *          при котором пропуск позиций недопустим.
+			 *
+			 */
+			case static_cast <uint8_t> (opcode_t::MATCH): return false;
+			/**
+			 * Выполняем дополнение набора допустимых начальных байтов
+			 */
+			case static_cast <uint8_t> (opcode_t::CHAR): {
+				// Получаем кодовое значение сопоставляемого символа
+				const uint32_t code = instruction.letter.code;
+				/**
+				 * Если символ не принадлежит набору ASCII
+				 */
+				if(code > 0x7F) {
+					/**
+					 * Выполняем разрешение байтов начала последовательности UTF-8
+					 */
+					for(size_t i = 0x80; i < 256; i++)
+						// Выполняем разрешение очередного байта
+						prefilter.bytes[i] = true;
+					// Выходим из обработки инструкции
+					break;
+				}
+				// Выполняем разрешение байта сопоставляемого символа
+				prefilter.bytes[code] = true;
+				/**
+				 * Если установлен режим сопоставления без учёта регистра
+				 */
+				if((instruction.flags & static_cast <uint32_t> (flag_t::CASELESS)) != 0) {
+					/**
+					 * Если символ является строчной буквой набора ASCII
+					 */
+					if((code >= 0x61) && (code <= 0x7A))
+						// Выполняем разрешение байта прописной буквы
+						prefilter.bytes[code - 0x20] = true;
+					/**
+					 * Если символ является прописной буквой набора ASCII
+					 */
+					else if((code >= 0x41) && (code <= 0x5A))
+						// Выполняем разрешение байта строчной буквы
+						prefilter.bytes[code + 0x20] = true;
+				}
+			} break;
+			/**
+			 * Выполняем дополнение набора байтами класса символов
+			 */
+			case static_cast <uint8_t> (opcode_t::CLASS): {
+				// Получаем класс символов сопоставляемой инструкции
+				const class_t & value = this->_program->classes.at(instruction.charclass.index);
+				/**
+				 * Выполняем разрешение байтов, принадлежащих классу символов
+				 */
+				for(size_t i = 0; i < 256; i++) {
+					// Флаг принадлежности байта набору диапазонов класса
+					bool belongs = false;
+					// Создаём набор проверяемых кодовых значений байта
+					uint32_t codes[2] = {static_cast <uint32_t> (i), static_cast <uint32_t> (i)};
+					/**
+					 * Если установлен режим сопоставления без учёта регистра
+					 *
+					 * @details Класс символов проверяется также для символа в ином
+					 *          регистре, иначе байты, допустимые лишь в ином регистре,
+					 *          не попали бы в набор и совпадение было бы пропущено.
+					 *
+					 */
+					if((instruction.flags & static_cast <uint32_t> (flag_t::CASELESS)) != 0) {
+						/**
+						 * Если байт является строчной буквой набора ASCII
+						 */
+						if((i >= 0x61) && (i <= 0x7A))
+							// Выполняем установку кодового значения прописной буквы
+							codes[1] = static_cast <uint32_t> (i - 0x20);
+						/**
+						 * Если байт является прописной буквой набора ASCII
+						 */
+						else if((i >= 0x41) && (i <= 0x5A))
+							// Выполняем установку кодового значения строчной буквы
+							codes[1] = static_cast <uint32_t> (i + 0x20);
+					}
+					/**
+					 * Выполняем поиск проверяемых кодовых значений в диапазонах класса
+					 */
+					for(auto & code : codes) {
+						/**
+						 * Выполняем поиск кодового значения в наборе диапазонов класса
+						 */
+						for(auto & range : value.ranges) {
+							/**
+							 * Если кодовое значение принадлежит очередному диапазону класса
+							 */
+							if((code >= range.begin) && (code <= range.end)) {
+								// Выполняем установку флага принадлежности байта
+								belongs = true;
+								// Выходим из цикла поиска кодового значения
+								break;
+							}
+						}
+						/**
+						 * Если принадлежность байта набору диапазонов подтверждена
+						 */
+						if(belongs)
+							// Выходим из цикла поиска проверяемых кодовых значений
+							break;
+					}
+					/**
+					 * Если принадлежность байта классу символов подтверждена
+					 */
+					if(belongs != value.negative)
+						// Выполняем разрешение байта класса символов
+						prefilter.bytes[i] = true;
+				}
+				/**
+				 * Если класс символов задан со знаком отрицания либо охватывает символы вне ASCII
+				 *
+				 * @details Диапазоны класса заданы кодовыми значениями символов, тогда как
+				 *          отбор выполняется по байтам, поэтому символам вне набора ASCII
+				 *          соответствуют байты начала последовательности целиком.
+				 *
+				 */
+				if(this->_program->prefilter.utf) {
+					/**
+					 * Выполняем разрешение байтов начала последовательности UTF-8
+					 */
+					for(size_t i = 0x80; i < 256; i++)
+						// Выполняем разрешение очередного байта
+						prefilter.bytes[i] = true;
+				}
+			} break;
+			/**
+			 * Выполняем дополнение набора байтами любого символа
+			 */
+			case static_cast <uint8_t> (opcode_t::ANY):
+			/**
+			 * Выполняем дополнение набора байтами одиночной единицы кодирования
+			 */
+			case static_cast <uint8_t> (opcode_t::CODEUNIT): {
+				// Определяем разрешение байта перевода строки
+				const bool newline = ((instruction.type == opcode_t::CODEUNIT) ||
+				 ((instruction.flags & static_cast <uint32_t> (flag_t::DOTALL)) != 0));
+				/**
+				 * Выполняем разрешение байтов любого символа
+				 */
+				for(size_t i = 0; i < 256; i++) {
+					/**
+					 * Если байт является переводом строки и его разрешение недопустимо
+					 */
+					if((i == 0x0A) && !newline)
+						// Переходим к следующему байту
+						continue;
+					// Выполняем разрешение очередного байта
+					prefilter.bytes[i] = true;
+				}
+			} break;
+			/**
+			 * Выполняем отказ от набора допустимых начальных байтов
+			 *
+			 * @details Инструкции конструкций вне регулярного подмножества передают
+			 *          исполнение способами, не выводимыми обходом программы, поэтому
+			 *          набор байтов для них неприменим.
+			 *
+			 */
+			default: return false;
+		}
+	}
+	// Выводим результат применимости набора допустимых байтов
+	return true;
+}
+/**
+ * @brief Метод формирования предварительного отбора позиций
+ *
+ */
+void awh::regex::Compiler::analyze() noexcept {
+	// Получаем предварительный отбор позиций сопоставления
+	prefilter_t & prefilter = this->_program->prefilter;
+	// Выполняем очистку предварительного отбора позиций
+	prefilter.clear();
+	// Выполняем установку режима разбора текста как последовательности UTF-8
+	prefilter.utf = ((this->_program->flags & static_cast <uint32_t> (flag_t::UTF)) != 0);
+	// Выполняем формирование набора допустимых начальных байтов
+	prefilter.active = this->reachable(0);
+	/**
+	 * Если набор допустимых начальных байтов неприменим
+	 */
+	if(!prefilter.active)
+		// Выполняем очистку набора допустимых начальных байтов
+		prefilter.clear();
+	// Выполняем установку режима разбора текста как последовательности UTF-8
+	prefilter.utf = ((this->_program->flags & static_cast <uint32_t> (flag_t::UTF)) != 0);
+	// Выполняем определение обязательного литерала совпадения
+	prefilter.literal = this->required(this->_parser->root());
+}
+/**
+ * @brief Метод компиляции узла проверки окружения
+ *
+ * @param id      индекс узла проверки окружения в арене узлов
+ * @param address адрес размещённой инструкции проверки окружения
+ * @return        результат выполнения компиляции
+ *
+ */
+bool awh::regex::Compiler::compileLook(const node_id_t id, address_t & address) noexcept {
+	// Получаем узел проверки окружения
+	const node_data_t & node = this->_parser->node(id);
+	// Определяем направление проверки окружения
+	const bool backward = ((node.look.type == look_t::BEHIND) || (node.look.type == look_t::BEHIND_NEG));
+	// Определяем знак проверки окружения
+	const bool negative = ((node.look.type == look_t::AHEAD_NEG) || (node.look.type == look_t::BEHIND_NEG));
+	/**
+	 * Если длина ретроспективной проверки не ограничена
+	 *
+	 * @details Ретроспективная проверка сопоставляется отступом от текущей позиции
+	 *          на длину проверяемой последовательности, поэтому её неограниченная
+	 *          длина делает проверку несопоставимой.
+	 *
+	 */
+	if(backward && (node.look.max == UNBOUNDED)) {
+		// Выполняем установку ошибки недопустимой ретроспективной проверки
+		this->_error = error_t::LOOKBEHIND_INVALID;
+		// Выводим результат выполнения компиляции
+		return false;
+	}
+	// Выполняем размещение инструкции проверки окружения
+	address = this->emit(opcode_t::LOOK, node.flags);
+	/**
+	 * Если размещение инструкции не выполнено
+	 */
+	if(address == INVALID_ADDRESS)
+		// Выводим результат выполнения компиляции
+		return false;
+	// Выполняем установку знака проверки окружения
+	this->_program->instructions.at(address).look.negative = negative;
+	// Выполняем установку направления проверки окружения
+	this->_program->instructions.at(address).look.backward = backward;
+	// Выполняем установку наименьшей длины проверяемой последовательности
+	this->_program->instructions.at(address).look.least = node.look.min;
+	// Выполняем установку наибольшей длины проверяемой последовательности
+	this->_program->instructions.at(address).look.most = node.look.max;
+	// Выполняем установку отсутствия ветви невыполнения проверки
+	this->_program->instructions.at(address).look.alternate = INVALID_ADDRESS;
+	// Выполняем установку адреса тела проверки окружения
+	this->_program->instructions.at(address).look.body = this->position();
+	/**
+	 * Если компиляция тела проверки окружения не выполнена
+	 */
+	if(!this->compileChain(node.child))
+		// Выводим результат выполнения компиляции
+		return false;
+	/**
+	 * Если размещение инструкции завершения проверки не выполнено
+	 */
+	if(this->emit(opcode_t::RETURN, node.flags) == INVALID_ADDRESS)
+		// Выводим результат выполнения компиляции
+		return false;
+	// Выполняем установку адреса продолжения за проверкой окружения
+	this->_program->instructions.at(address).look.target = this->position();
+	// Выводим результат выполнения компиляции
+	return true;
+}
+/**
+ * @brief Метод компиляции узла условного выражения
+ *
+ * @param id индекс узла условного выражения в арене узлов
+ * @return   результат выполнения компиляции
+ *
+ */
+bool awh::regex::Compiler::compileCondition(const node_id_t id) noexcept {
+	// Получаем узел условного выражения
+	const node_data_t & node = this->_parser->node(id);
+	// Получаем индекс первой ветви условного выражения
+	node_id_t branch = node.child;
+	/**
+	 * Если условное выражение является блоком определения групп
+	 *
+	 * @details Ветвь блока определения не исполняется при сопоставлении и достижима
+	 *          исключительно рекурсивным вызовом, поэтому размещается за переходом,
+	 *          обходящим её целиком.
+	 *
+	 */
+	if(node.condition.type == condition_t::DEFINE) {
+		// Выполняем размещение инструкции обхода блока определения групп
+		const address_t jump = this->emit(opcode_t::JUMP, node.flags);
+		/**
+		 * Если размещение инструкции не выполнено
+		 */
+		if(jump == INVALID_ADDRESS)
+			// Выводим результат выполнения компиляции
+			return false;
+		/**
+		 * Если компиляция ветви блока определения групп не выполнена
+		 */
+		if(!this->compileNode(branch))
+			// Выводим результат выполнения компиляции
+			return false;
+		// Выполняем установку адреса обхода блока определения групп
+		this->_program->instructions.at(jump).jump.target = this->position();
+		// Выводим результат выполнения компиляции
+		return true;
+	}
+	// Адрес инструкции проверки окружения, задающей условие
+	address_t assertion = INVALID_ADDRESS;
+	// Адрес инструкции перехода по ветвям условного выражения
+	address_t condition = INVALID_ADDRESS;
+	/**
+	 * Если условие задано проверкой окружения
+	 */
+	if(node.condition.type == condition_t::ASSERTION) {
+		/**
+		 * Если компиляция проверки окружения, задающей условие, не выполнена
+		 */
+		if(!this->compileLook(branch, assertion))
+			// Выводим результат выполнения компиляции
+			return false;
+		// Переходим к ветви выполненного условия
+		branch = this->_parser->node(branch).next;
+	/**
+	 * Выполняем размещение инструкции перехода по ветвям условного выражения
+	 */
+	} else {
+		// Выполняем размещение инструкции перехода по ветвям условного выражения
+		condition = this->emit(opcode_t::CONDITION, node.flags);
+		/**
+		 * Если размещение инструкции не выполнено
+		 */
+		if(condition == INVALID_ADDRESS)
+			// Выводим результат выполнения компиляции
+			return false;
+		// Определяем тип условия условного выражения
+		const test_t type = ((node.condition.type == condition_t::RECURSING) ? test_t::RECURSING : test_t::CAPTURED);
+		// Выполняем установку типа условия условного выражения
+		this->_program->instructions.at(condition).condition.type = type;
+		// Выполняем установку номера проверяемой группы условного выражения
+		this->_program->instructions.at(condition).condition.number = node.condition.number;
+		// Выполняем установку адреса ветви выполненного условия
+		this->_program->instructions.at(condition).condition.positive = this->position();
+	}
+	/**
+	 * Если компиляция ветви выполненного условия не выполнена
+	 */
+	if(!this->compileNode(branch))
+		// Выводим результат выполнения компиляции
+		return false;
+	// Выполняем размещение инструкции перехода к завершению условного выражения
+	const address_t jump = this->emit(opcode_t::JUMP, node.flags);
+	/**
+	 * Если размещение инструкции не выполнено
+	 */
+	if(jump == INVALID_ADDRESS)
+		// Выводим результат выполнения компиляции
+		return false;
+	/**
+	 * Если условие задано проверкой окружения
+	 */
+	if(assertion != INVALID_ADDRESS)
+		// Выполняем установку адреса ветви невыполнения проверки окружения
+		this->_program->instructions.at(assertion).look.alternate = this->position();
+	// Выполняем установку адреса ветви невыполненного условия
+	else this->_program->instructions.at(condition).condition.negative = this->position();
+	/**
+	 * Если условное выражение содержит ветвь невыполненного условия
+	 */
+	if(branch != INVALID_NODE) {
+		/**
+		 * Если компиляция ветви невыполненного условия не выполнена
+		 */
+		if(!this->compileNode(this->_parser->node(branch).next))
+			// Выводим результат выполнения компиляции
+			return false;
+	}
+	// Выполняем установку адреса завершения условного выражения
+	this->_program->instructions.at(jump).jump.target = this->position();
+	// Выводим результат выполнения компиляции
+	return true;
+}
+/**
+ * @brief Метод компиляции тел рекурсивно вызываемых подвыражений
+ *
+ * @return результат выполнения компиляции
+ *
+ */
+bool awh::regex::Compiler::compileSections() noexcept {
+	// Индекс обрабатываемого рекурсивного вызова
+	size_t index = 0;
+	/**
+	 * Выполняем размещение тел рекурсивно вызываемых подвыражений
+	 *
+	 * @details Размещаемое тело способно содержать рекурсивные вызовы, поэтому
+	 *          обход набора вызовов продолжается до исчерпания добавленных
+	 *          в ходе размещения.
+	 *
+	 */
+	while(index < this->_calls.size()) {
+		// Получаем номер вызываемой рекурсивным вызовом группы
+		const uint32_t number = this->_calls.at(index++).second;
+		/**
+		 * Если тело вызываемой группы уже размещено
+		 */
+		if(this->_sections.count(number) != 0)
+			// Переходим к следующему рекурсивному вызову
+			continue;
+		// Индекс узла тела вызываемой группы
+		node_id_t node = INVALID_NODE;
+		/**
+		 * Если рекурсивно вызывается выражение целиком
+		 */
+		if(number == 0)
+			// Выполняем установку корневого узла синтаксического дерева
+			node = this->_parser->root();
+		/**
+		 * Если вызываемая группа обнаружена в синтаксическом дереве
+		 */
+		else if(this->_groups.count(number) != 0)
+			// Выполняем установку индекса узла вызываемой группы
+			node = this->_groups.at(number);
+		/**
+		 * Выполняем отказ от размещения тела отсутствующей группы
+		 */
+		else {
+			// Выполняем установку ошибки некорректного рекурсивного вызова
+			this->_error = error_t::BAD_RECURSION;
+			// Выводим результат выполнения компиляции
+			return false;
+		}
+		/**
+		 * Выполняем сохранение адреса тела вызываемой группы
+		 *
+		 * @details Адрес сохраняется до размещения тела, благодаря чему вызов
+		 *          группой самой себя обращается к уже известному адресу
+		 *          и не приводит к бесконечному размещению.
+		 *
+		 */
+		this->_sections.emplace(number, this->position());
+		/**
+		 * Если компиляция тела вызываемой группы не выполнена
+		 */
+		if(!this->compileNode(node))
+			// Выводим результат выполнения компиляции
+			return false;
+		/**
+		 * Если размещение инструкции завершения рекурсивного вызова не выполнено
+		 */
+		if(this->emit(opcode_t::RESUME, 0) == INVALID_ADDRESS)
+			// Выводим результат выполнения компиляции
+			return false;
+	}
+	/**
+	 * Выполняем установку адресов тел рекурсивно вызываемых подвыражений
+	 */
+	for(auto & call : this->_calls)
+		// Выполняем установку адреса тела вызываемой группы
+		this->_program->instructions.at(call.first).call.body = this->_sections.at(call.second);
+	// Выводим результат выполнения компиляции
+	return true;
+}
+/**
+ * @brief Метод компиляции регулярного выражения целиком
+ *
+ * @param parser  объект разбора регулярного выражения
+ * @param program компилируемая программа регулярного выражения
+ * @return        результат выполнения компиляции
+ *
+ */
+bool awh::regex::Compiler::compileFull(const Parser & parser, program_t & program) noexcept {
+	// Выполняем установку флага компиляции выражения целиком
+	this->_full = true;
+	// Выполняем компиляцию регулярного выражения целиком
+	const bool result = this->compile(parser, program);
+	// Выполняем сброс флага компиляции выражения целиком
+	this->_full = false;
+	// Выводим результат выполнения компиляции
+	return result;
+}
+/**
+ * @brief Метод компиляции развёрнутого регулярного выражения
+ *
+ * @param parser  объект разбора регулярного выражения
+ * @param program компилируемая программа регулярного выражения
+ * @return        результат выполнения компиляции
+ *
+ */
+bool awh::regex::Compiler::compileReverse(const Parser & parser, program_t & program) noexcept {
+	// Выполняем установку флага компиляции развёрнутого выражения
+	this->_reverse = true;
+	// Выполняем компиляцию развёрнутого регулярного выражения
+	const bool result = this->compile(parser, program);
+	// Выполняем сброс флага компиляции развёрнутого выражения
+	this->_reverse = false;
+	// Выводим результат выполнения компиляции
+	return result;
+}
+/**
+ * @brief Метод компиляции регулярного выражения
+ *
+ * @param parser  объект разбора регулярного выражения
+ * @param program компилируемая программа регулярного выражения
+ * @return        результат выполнения компиляции
+ *
+ */
+bool awh::regex::Compiler::compile(const Parser & parser, program_t & program) noexcept {
+	// Выполняем установку объекта разбора регулярного выражения
+	this->_parser = &parser;
+	// Выполняем установку компилируемой программы
+	this->_program = &program;
+	// Выполняем сброс кода ошибки компиляции
+	this->_error = error_t::NONE;
+	// Выполняем сброс количества размещённых ячеек состояния
+	this->_cells = 0;
+	// Выполняем сброс количества ячеек отметки состояния возврата
+	this->_atomics = 0;
+	// Выполняем очистку набора инструкций рекурсивного вызова
+	this->_calls.clear();
+	// Выполняем очистку соответствия номеров групп адресам их тел
+	this->_sections.clear();
+	// Выполняем очистку соответствия номеров групп индексам их узлов
+	this->_groups.clear();
+	// Выполняем очистку компилируемой программы
+	program.clear();
+	// Выполняем установку количества захватывающих групп
+	program.captures = parser.captures();
+	/**
+	 * Если выполняется компиляция выражения целиком
+	 */
+	if(this->_full)
+		// Выполняем сбор узлов захватывающих групп выражения
+		this->collect(parser.root());
+	// Выполняем установку набора режимов компиляции программы
+	program.flags = parser.options();
+	// Выполняем размещение инструкции сохранения начала совпадения
+	const address_t begin = this->emit(opcode_t::SAVE, 0);
+	/**
+	 * Если размещение инструкции не выполнено
+	 */
+	if(begin == INVALID_ADDRESS)
+		// Выводим результат выполнения компиляции
+		return false;
+	// Выполняем установку номера ячейки начала совпадения
+	program.instructions.at(begin).save.slot = 0;
+	/**
+	 * Если компиляция синтаксического дерева не выполнена
+	 */
+	if(!this->compileNode(parser.root())) {
+		// Выполняем очистку компилируемой программы
+		program.clear();
+		// Выводим результат выполнения компиляции
+		return false;
+	}
+	// Выполняем размещение инструкции сохранения конца совпадения
+	const address_t end = this->emit(opcode_t::SAVE, 0);
+	/**
+	 * Если размещение инструкции не выполнено
+	 */
+	if(end == INVALID_ADDRESS)
+		// Выводим результат выполнения компиляции
+		return false;
+	// Выполняем установку номера ячейки конца совпадения
+	program.instructions.at(end).save.slot = 1;
+	/**
+	 * Если размещение инструкции завершения сопоставления не выполнено
+	 */
+	if(this->emit(opcode_t::MATCH, 0) == INVALID_ADDRESS)
+		// Выводим результат выполнения компиляции
+		return false;
+	/**
+	 * Если размещение тел рекурсивно вызываемых подвыражений не выполнено
+	 */
+	if(!this->compileSections()) {
+		// Выполняем очистку компилируемой программы
+		program.clear();
+		// Выводим результат выполнения компиляции
+		return false;
+	}
+	// Выполняем установку количества ячеек состояния исполнения
+	program.cells = this->_cells;
+	/**
+	 * Если компилируется прямое регулярное выражение
+	 *
+	 * @details Предварительный отбор позиций применяется при поиске совпадения
+	 *          в прямом направлении, поэтому для развёрнутой программы не формируется.
+	 *
+	 */
+	if(!this->_reverse)
+		// Выполняем формирование предварительного отбора позиций
+		this->analyze();
+	// Выводим результат выполнения компиляции
+	return true;
+}

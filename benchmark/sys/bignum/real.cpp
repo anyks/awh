@@ -67,37 +67,37 @@ namespace {
 	 *          регрессии на порядок, а не колебания окружения
 	 *
 	 */
-	static constexpr double ADD_64_THRESHOLD = 690000.0;
+	static constexpr double ADD_64_THRESHOLD = 850000.0;
 	/**
 	 * @brief Порог скорости умножения вещественных чисел двойной точности
 	 *
 	 */
-	static constexpr double MUL_64_THRESHOLD = 500000.0;
+	static constexpr double MUL_64_THRESHOLD = 675000.0;
 	/**
 	 * @brief Порог скорости деления вещественных чисел двойной точности
 	 *
 	 */
-	static constexpr double DIV_64_THRESHOLD = 370000.0;
+	static constexpr double DIV_64_THRESHOLD = 415000.0;
 	/**
 	 * @brief Порог скорости сложения вещественных чисел четверной точности
 	 *
 	 */
-	static constexpr double ADD_128_THRESHOLD = 410000.0;
+	static constexpr double ADD_128_THRESHOLD = 505000.0;
 	/**
 	 * @brief Порог скорости умножения вещественных чисел четверной точности
 	 *
 	 */
-	static constexpr double MUL_128_THRESHOLD = 280000.0;
+	static constexpr double MUL_128_THRESHOLD = 400000.0;
 	/**
 	 * @brief Порог скорости деления вещественных чисел четверной точности
 	 *
 	 */
-	static constexpr double DIV_128_THRESHOLD = 240000.0;
+	static constexpr double DIV_128_THRESHOLD = 269000.0;
 	/**
 	 * @brief Порог скорости извлечения корня вещественного числа четверной точности
 	 *
 	 */
-	static constexpr double SQRT_128_THRESHOLD = 39000.0;
+	static constexpr double SQRT_128_THRESHOLD = 42500.0;
 	/**
 	 * @brief Количество операций сценария округления значения
 	 *
@@ -113,7 +113,7 @@ namespace {
 	 *          округление, поскольку степени десяти в двоичном формате не представимы
 	 *
 	 */
-	static constexpr double ROUND_THRESHOLD = 36000.0;
+	static constexpr double ROUND_THRESHOLD = 128000.0;
 	/**
 	 * @brief Порог количества выделений памяти на одну вещественную операцию
 	 *

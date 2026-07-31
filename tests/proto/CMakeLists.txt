@@ -105,6 +105,7 @@ if (${GTest_FOUND})
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 http/headers/headers.cpp
                 http/headers/static.cpp
+                http/headers/stress.cpp
                 http/headers/parameterized.cpp
             )
         # Если не нужно собрать тесты для подмодуля контейнера HTTP-заголовков

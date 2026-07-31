@@ -191,8 +191,20 @@ TEST_F(HashFixture, PrefixHashTest){
 		EXPECT_EQ(result16, static_cast <uint16_t> (result[0] | (result[1] << 8)));
 		// Проверяем совпадение 32-битного результата с началом потока байтов
 		EXPECT_EQ(result32, static_cast <uint32_t> (result64));
+		// Ожидаемое значение 64-битного результата хэширования
+		uint64_t expected = 0;
+		/**
+		 * Выполняем сборку ожидаемого значения из начала потока байтов
+		 *
+		 * @details Число собирается сдвигами, а не сличением представлений в памяти:
+		 *          сличение полагалось бы на порядок байтов процессора и на машине
+		 *          с обратным порядком расходилось бы с потоком октетов
+		 */
+		for(size_t i = 0; i < sizeof(expected); i++)
+			// Добавляем очередной октет потока в ожидаемое значение
+			expected |= (static_cast <uint64_t> (result[i]) << (i * 8));
 		// Проверяем совпадение 64-битного результата с началом потока байтов
-		EXPECT_EQ(::memcmp(&result64, result, sizeof(result64)), 0);
+		EXPECT_EQ(result64, expected);
 	}
 }
 
@@ -551,4 +563,120 @@ TEST_F(HashFixture, NumericHashTest){
 		// Проверяем совпадение знакового результата хэширования с потоком октетов
 		ASSERT_EQ(this->_hash->hash <int64_t> (this->_buffer.data(), size), static_cast <int64_t> (value));
 	}
+}
+
+/**
+ * @brief Тест вывода знакового результата хэширования
+ *
+ * @details Знаковое число снимается со свёртки тем же быстрым путём, что и
+ *          беззнаковое, поэтому значение его обязано совпадать с беззнаковым
+ *          результатом той же разрядности, приведённым к знаковому типу
+ *
+ */
+TEST_F(HashFixture, SignedHashTest){
+	/**
+	 * Выполняем перебор размеров данных для хэширования
+	 */
+	for(size_t size = 0; size < 200; size++){
+		// Проверяем совпадение 8-битного знакового результата с беззнаковым
+		ASSERT_EQ(this->_hash->hash <int8_t> (this->_buffer.data(), size), static_cast <int8_t> (this->_hash->hash <uint8_t> (this->_buffer.data(), size)));
+		// Проверяем совпадение 16-битного знакового результата с беззнаковым
+		ASSERT_EQ(this->_hash->hash <int16_t> (this->_buffer.data(), size), static_cast <int16_t> (this->_hash->hash <uint16_t> (this->_buffer.data(), size)));
+		// Проверяем совпадение 32-битного знакового результата с беззнаковым
+		ASSERT_EQ(this->_hash->hash <int32_t> (this->_buffer.data(), size), static_cast <int32_t> (this->_hash->hash <uint32_t> (this->_buffer.data(), size)));
+		// Проверяем совпадение 64-битного знакового результата с беззнаковым
+		ASSERT_EQ(this->_hash->hash <int64_t> (this->_buffer.data(), size), static_cast <int64_t> (this->_hash->hash <uint64_t> (this->_buffer.data(), size)));
+		// Создаём объект потокового хэширования
+		awh::hash_t hash;
+		// Выполняем добавление данных в потоковое хэширование
+		hash.update(this->_buffer.data(), size);
+		// Проверяем совпадение знакового результата потокового хэширования с одноразовым
+		ASSERT_EQ(hash.digest <int64_t> (), this->_hash->hash <int64_t> (this->_buffer.data(), size));
+	}
+}
+
+/**
+ * @brief Тест границы поглощения блока данных
+ *
+ * @details Свёртка потокового хэширования выбирает короткий путь по доводу
+ *          «ни одного блока в состояние движка ещё не ушло». Довод этот
+ *          проверяется на самой границе: данные размером ровно в блок в
+ *          состояние не уходят, а данные размером на октет больше — уходят
+ *
+ */
+TEST_F(HashFixture, BoundaryHashTest){
+	/**
+	 * Выполняем перебор размеров данных вокруг границы поглощения блока
+	 */
+	for(size_t size = (awh::hash_t::BLOCK - 2); size <= (awh::hash_t::BLOCK + 2); size++){
+		// Создаём объект потокового хэширования
+		awh::hash_t hash;
+		// Выполняем добавление данных в потоковое хэширование целиком
+		hash.update(this->_buffer.data(), size);
+		// Проверяем совпадение потокового результата с одноразовым
+		ASSERT_EQ(hash.digest(), this->_hash->hash <uint64_t> (this->_buffer.data(), size));
+		/**
+		 * Выполняем перебор размеров первой порции данных потокового хэширования
+		 */
+		for(size_t offset = 1; offset < size; offset++){
+			// Создаём объект потокового хэширования порциями
+			awh::hash_t chunked;
+			// Выполняем добавление первой порции данных
+			chunked.update(this->_buffer.data(), offset);
+			// Выполняем добавление второй порции данных
+			chunked.update(this->_buffer.data() + offset, size - offset);
+			// Проверяем совпадение результата хэширования порциями с одноразовым
+			ASSERT_EQ(chunked.digest(), this->_hash->hash <uint64_t> (this->_buffer.data(), size));
+		}
+	}
+}
+
+/**
+ * @brief Шаблон типа буфера данных для хэширования
+ *
+ * @tparam B тип буфера данных для хэширования
+ *
+ */
+template <typename B, typename = void>
+/**
+ * @brief Шаблон признака пригодности буфера данных к хэшированию
+ *
+ * @details Общий вид шаблона отбирает буферы, хэширование которых на этапе
+ *          сборки не состоялось
+ *
+ */
+struct suitable : std::false_type {};
+
+/**
+ * @brief Шаблон типа буфера данных для хэширования
+ *
+ * @tparam B тип буфера данных для хэширования
+ *
+ */
+template <typename B>
+/**
+ * @brief Специализация признака пригодности буфера данных к хэшированию
+ *
+ * @details Специализация отбирает буферы, хэширование которых на этапе сборки
+ *          состоялось
+ *
+ */
+struct suitable <B, decltype(std::declval <const awh::hash_t &> ().hash <uint64_t> (std::declval <const B &> ()), void())> : std::true_type {};
+
+/**
+ * @brief Тест отбора пригодных типов результата и буфера хэширования
+ *
+ * @details Логический тип результата и набор логических значений стандартной
+ *          библиотеки хэшированию не подлежат: разрядность первого равна одному
+ *          биту, а второй непрерывного хранилища не отдаёт. Оба обязаны
+ *          отвергаться на этапе сборки, а не давать бессмысленный результат
+ *
+ */
+TEST_F(HashFixture, SuitabilityHashTest){
+	// Проверяем пригодность набора октетов к хэшированию
+	EXPECT_TRUE(suitable <std::vector <uint8_t>>::value);
+	// Проверяем пригодность текста к хэшированию
+	EXPECT_TRUE(suitable <std::string>::value);
+	// Проверяем непригодность набора логических значений к хэшированию
+	EXPECT_FALSE(suitable <std::vector <bool>>::value);
 }

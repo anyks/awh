@@ -234,7 +234,7 @@ namespace awh {
 			 * @tparam B тип буфера данных для хэширования
 			 *
 			 */
-			template <typename A = uint64_t, typename B, typename = typename B::value_type>
+			template <typename A = uint64_t, typename B, typename = decltype(std::declval <const B &> ().data())>
 			/**
 			 * @brief Метод хэширования буфера данных
 			 *
@@ -292,7 +292,7 @@ namespace awh {
 			 * @tparam B тип буфера данных для хэширования
 			 *
 			 */
-			template <typename A = uint64_t, typename B, typename = typename B::value_type>
+			template <typename A = uint64_t, typename B, typename = decltype(std::declval <const B &> ().data())>
 			/**
 			 * @brief Метод хэширования буфера данных c ключом
 			 *
@@ -344,7 +344,7 @@ namespace awh {
 			 */
 			AWH_HASH_INLINE T hashWithSeeds(string_view text, const uint64_t seed1, const uint64_t seed2) const noexcept {
 				// Выполняем хэширование текста с ключами
-				return hashing::create <T> (text.data(), text.size(), hashing::mix(seed1, seed2));
+				return hashing::create <T> (text.data(), text.size(), hashing::merge(seed1, seed2));
 			}
 			/**
 			 * @brief Шаблон типа результата хэширования и типа буфера данных
@@ -353,7 +353,7 @@ namespace awh {
 			 * @tparam B тип буфера данных для хэширования
 			 *
 			 */
-			template <typename A = uint64_t, typename B, typename = typename B::value_type>
+			template <typename A = uint64_t, typename B, typename = decltype(std::declval <const B &> ().data())>
 			/**
 			 * @brief Метод хэширования буфера данных c несколькими ключами
 			 *
@@ -365,7 +365,7 @@ namespace awh {
 			 */
 			AWH_HASH_INLINE A hashWithSeeds(const B & text, const uint64_t seed1, const uint64_t seed2) const noexcept {
 				// Выполняем хэширование буфера данных с ключами
-				return hashing::create <A> (text.data(), text.size() * sizeof(typename B::value_type), hashing::mix(seed1, seed2));
+				return hashing::create <A> (text.data(), text.size() * sizeof(typename B::value_type), hashing::merge(seed1, seed2));
 			}
 			/**
 			 * @brief Шаблон типа результата хэширования
@@ -386,7 +386,7 @@ namespace awh {
 			 */
 			AWH_HASH_INLINE T hashWithSeeds(const void * buffer, const size_t size, const uint64_t seed1, const uint64_t seed2) const noexcept {
 				// Выполняем хэширование буфера данных с ключами
-				return hashing::create <T> (buffer, size, hashing::mix(seed1, seed2));
+				return hashing::create <T> (buffer, size, hashing::merge(seed1, seed2));
 			}
 		public:
 			/**

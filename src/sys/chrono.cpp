@@ -44,31 +44,24 @@ namespace {
 	/**
 	 * @brief Структура справочных таблиц для календарных вычислений
 	 *
-	 * @details Структура содержит справочные таблицы, необходимые для выполнения различных календарных вычислений,
-	 *          таких как определение дня недели, количества дней в каждом месяце, а также
-	 *          сокращённые и полные названия дней недели и месяцев.
+	 * @details Структура содержит справочные таблицы, необходимые для выполнения различных календарных вычислений:
+	 *          количество дней в каждом месяце, а также сокращённые и полные названия дней
+	 *          недели и месяцев. День недели таблиц не требует - он определяется количеством
+	 *          суток, прошедших с начала эпохи.
 	 *
 	 */
 	struct Params {
-		// Коды (сдвиги) месяцев для расчёта дня недели
-		vector <uint8_t> rateMonths;
 		// Количество дней в каждом месяце для невисокосного года
 		vector <uint8_t> daysInMonths;
 		// Сокращённые и полные названия дней недели (Mon/Monday ...)
 		vector <std::pair <string, string>> nameDays;
 		// Сокращённые и полные названия месяцев (Jan/January ...)
 		vector <std::pair <string, string>> nameMonths;
-		// Коды годов в 4-летнем цикле для расчёта дня недели
-		unordered_map <uint16_t, uint8_t> rateLeapYears;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Params() noexcept :
-		 rateMonths({
-			6,2,2,5,0,3,
-			5,1,4,6,2,4
-		 }),
 		 daysInMonths({
 			31,28,31,30,31,30,
 			31,31,30,31,30,31
@@ -95,10 +88,6 @@ namespace {
 			{"Oct", "October"},
 			{"Nov", "November"},
 			{"Dec", "December"}
-		 }),
-		 rateLeapYears({
-			{0,6},{1,2},{2,5},
-			{3,1},{4,4},{5,0},{6,3}
 		 }) {}
 	} params;
 };
@@ -269,6 +258,61 @@ namespace {
 	inline uint64_t clampDate(const uint64_t date) noexcept {
 		// Штамп времени за пределом представимости приводится к последнему представимому
 		return ((date > MAX_TIMESTAMP) ? MAX_TIMESTAMP : date);
+	}
+	/**
+	 * @brief Функция определения дня недели по штампу времени
+	 *
+	 * @details День недели определяется количеством суток, прошедших с начала эпохи:
+	 *          первое января 1970 года - четверг. Прежде день недели считался по
+	 *          таблице двадцативосьмилетнего цикла, а цикл этот держится лишь пока
+	 *          високосным оказывается каждый четвёртый год: правило григорианского
+	 *          календаря, по которому век високосен только при делимости на 400,
+	 *          цикл разрывает, и с 2100 года день недели уходил на сутки и дальше
+	 *
+	 * @param date штамп времени в миллисекундах
+	 * @return     номер дня недели от 1 (понедельник) до 7 (воскресенье)
+	 *
+	 */
+	/**
+	 * @brief Наибольший штамп времени, представимый в разрядности uint64_t
+	 *
+	 */
+	static constexpr uint64_t MAX_UINT64 = static_cast <uint64_t> (-1);
+	/**
+	 * @brief Функция перевода штампа времени в доли миллисекунды
+	 *
+	 * @details Штамп времени в наносекундах умещается в разрядность лишь до 21 июля
+	 *          2554 года, тогда как календарь модуля охватывает годы по 9999-й:
+	 *          произведение штампа за этой границей оборачивалось и давало дату, не
+	 *          имеющую отношения к исходной. Штамп за границей приводится к
+	 *          наибольшему представимому
+	 *
+	 * @param date штамп времени в миллисекундах
+	 * @param rate количество долей миллисекунды в одной миллисекунде
+	 * @return     штамп времени в долях миллисекунды
+	 *
+	 */
+	inline uint64_t scaleDate(const uint64_t date, const uint64_t rate) noexcept {
+		// Штамп времени за пределом представимости приводится к последнему представимому
+		return ((date > (MAX_UINT64 / rate)) ? MAX_UINT64 : (date * rate));
+	}
+	/**
+	 * @brief Функция прибавления доли миллисекунды к штампу времени
+	 *
+	 * @param date  штамп времени в долях миллисекунды
+	 * @param value количество долей миллисекунды для прибавления
+	 * @return      штамп времени в долях миллисекунды
+	 *
+	 */
+	inline uint64_t appendDate(const uint64_t date, const uint64_t value) noexcept {
+		// Сумма за пределом представимости приводится к последнему представимому
+		return ((date > (MAX_UINT64 - value)) ? MAX_UINT64 : (date + value));
+	}
+	inline uint8_t dayOfWeek(const uint64_t date) noexcept {
+		// Получаем номер дня недели, отсчитываемый от воскресенья
+		const uint8_t result = static_cast <uint8_t> ((((date / 86400000ULL) + 4ULL) % 7ULL));
+		// Воскресенье замыкает неделю, а не открывает её
+		return ((result == 0) ? 7 : result);
 	}
 	/**
 	 * @brief Структура диапазона количества цифр в одной группе
@@ -1454,8 +1498,10 @@ void awh::Chrono::clear() noexcept {
 			// Устанавливаем временную зону по умолчанию
 			::tzset();
 		#endif
-		// Выполняем очистку списка временных зон
-		this->clearTimeZones();
+		/**
+		 * Реестр временных зон здесь не затрагивается: пополняется он вызывающей
+		 * стороной и её же методом clearTimeZones очищается
+		 */
 		// Выполняем блокировку потока
 		const locker_t <> lock(this->_mtx.date);
 		// Выполняем сброс локального объекта даты и времени
@@ -1492,6 +1538,57 @@ void awh::Chrono::clear() noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
+}
+/**
+ * @brief Метод раскрытия двузначного обозначения года в полное
+ *
+ * @param value двузначное обозначение года
+ * @return      полное обозначение года
+ *
+ */
+uint16_t awh::Chrono::makeFullYear(const uint16_t value) const noexcept {
+	// Обозначение шире двух разрядов раскрывать нечего
+	if(value > 99)
+		// Выводим обозначение года как есть
+		return value;
+	// Если скользящее правило отключено
+	if(this->_yearWindow == 0)
+		// Двузначное обозначение относится к двадцать первому веку
+		return static_cast <uint16_t> (2000 + value);
+	// Получаем текущее обозначение года
+	const uint16_t current = this->year(this->timestamp(type_t::MILLISECONDS));
+	// Получаем год того же столетия, что и текущий
+	uint16_t result = static_cast <uint16_t> (((current / 100) * 100) + value);
+	/**
+	 * Обозначение, попадающее дальше в будущее, чем допускает окно, относится к
+	 * ближайшему прошедшему году с теми же двумя разрядами: так раскрывать
+	 * двузначный год требует RFC 9110 (§5.6.7)
+	 */
+	if(result > (current + this->_yearWindow))
+		// Относим обозначение к предыдущему столетию
+		result -= 100;
+	// Выводим полное обозначение года
+	return result;
+}
+/**
+ * @brief Метод получения окна двузначного года
+ *
+ * @return окно двузначного года в годах, ноль если правило отключено
+ *
+ */
+uint8_t awh::Chrono::yearWindow() const noexcept {
+	// Выводим установленное окно двузначного года
+	return this->_yearWindow;
+}
+/**
+ * @brief Метод установки окна двузначного года
+ *
+ * @param years окно двузначного года в годах, ноль отключает правило
+ *
+ */
+void awh::Chrono::yearWindow(const uint8_t years) noexcept {
+	// Устанавливаем окно двузначного года
+	this->_yearWindow = years;
 }
 /**
  * @brief Метод получения допуска отката года
@@ -1633,6 +1730,56 @@ bool awh::Chrono::isDST(const uint8_t month, const uint8_t date, const uint8_t d
 	return (hour < 2);
 }
 /**
+ * @brief Метод получения штампа времени из объекта даты с учётом временной зоны
+ *
+ * @param dt объект даты из которой необходимо получить штамп времени
+ * @return   штамп времени в миллисекундах
+ *
+ */
+uint64_t awh::Chrono::makeStamp(const dt_t & dt) const noexcept {
+	// Если смещение временной зоны не установлено
+	if(dt.offset == 0)
+		// Собираем штамп времени как есть
+		return this->makeDate(dt);
+	// Выполняем копирование объекта даты
+	dt_t result = dt;
+	/**
+	 * Сборка штампа времени смещение временной зоны вычитает, приводя запись к UTC,
+	 * и принимает его потому с обратным знаком
+	 */
+	result.offset *= -1;
+	// Собираем штамп времени из объекта даты
+	return this->makeDate(result);
+}
+/**
+ * @brief Метод перекладки объекта даты в указанную временную зону
+ *
+ * @param dt   объект даты который необходимо переложить
+ * @param zone смещение временной зоны в секундах
+ *
+ */
+void awh::Chrono::shiftDate(dt_t & dt, const int32_t zone) const noexcept {
+	// Получаем момент времени, описываемый объектом даты
+	const uint64_t stamp = this->makeStamp(dt);
+	// Получаем смещение новой временной зоны в миллисекундах
+	const int64_t offset = (static_cast <int64_t> (zone) * 1000);
+	// Момент времени, записанный в новой временной зоне
+	uint64_t result = stamp;
+	// Если временная зона отстаёт от нулевой
+	if(offset < 0)
+		/**
+		 * Начало эпохи - предел представимости календаря: записи, уходящие за него,
+		 * приводятся к нему самому
+		 */
+		result = ((static_cast <uint64_t> (-offset) > stamp) ? 0 : (stamp - static_cast <uint64_t> (-offset)));
+	// Если временная зона опережает нулевую
+	else result = (stamp + static_cast <uint64_t> (offset));
+	// Заполняем объект даты полями новой временной зоны
+	this->makeDate(result, dt);
+	// Устанавливаем смещение новой временной зоны
+	dt.offset = zone;
+}
+/**
  * @brief Метод получения штампа времени из объекта даты
  *
  * @param dt объект даты из которой необходимо получить штамп времени
@@ -1666,6 +1813,11 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		);
 		/**
 		 * Выполняем подсчёт количества дней
+		 *
+		 * Нулевой месяц переполнения не даёт: оба довода сравнения повышаются до int,
+		 * и (dt.month - 1) при нулевом месяце равно -1, а не 255, отчего перебор не
+		 * выполняется ни разу и дата оказывается началом года. Пригодность такой
+		 * записи отвергает отдельная проверка validate
 		 */
 		for(uint8_t i = 0; (i < params.daysInMonths.size()) && (i < (dt.month - 1)); i++){
 			// Если месяц февраль и год високосный
@@ -1745,8 +1897,8 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 	 * разложение таких штампов давало несуществующие даты и неопределённое поведение
 	 */
 	const uint64_t date = ::clampDate(stamp);
-	// Если дата передана
-	if(date > 0){
+	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
+	{
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -1785,18 +1937,8 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 				beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 				// Получаем начало суток указанной даты
 				beginDay = (beginMonth + (static_cast <uint64_t> (dt.date - 1) * static_cast <uint64_t> (86400000)));
-				// Получаем множитель текущего года
-				auto i = params.rateLeapYears.find(static_cast <uint16_t> ((dt.year - (dt.year % 4)) % 7));
-				// Если множитель получен
-				if(i != params.rateLeapYears.end()){
-					// Подробнее: https://habr.com/ru/articles/217389
-					// Устанавливаем день недели
-					dt.day = (((i->second + static_cast <uint8_t> (dt.year % 4) + params.rateMonths[dt.month - 1] + dt.date) - (((dt.month == 1) || (dt.month == 2)) && dt.leap ? 1 : 0)) % 7);
-					// Если воскресенье установлен как нулевой
-					if(dt.day == 0)
-						// Выполняем компенсацию
-						dt.day = 7;
-				}
+				// Устанавливаем день недели
+				dt.day = ::dayOfWeek(beginDay);
 				// Получаем количество недель прошедших с начала года
 				dt.weeks = static_cast <uint8_t> (::round((date - beginYear) / 604800000.L));
 			}
@@ -1834,8 +1976,7 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-	// Выполняем сброс значения даты
-	} else dt = dt_t();
+	}
 }
 /**
  * @brief Функция заполнения объекта даты и времени
@@ -1855,18 +1996,36 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 		// Запоминаем оригинальное значение формата
 		const format_t fmt = format;
 		/**
+		 * Переменная формата, по которой выбирается нативный разбор: часть переменных
+		 * разбирается общим правилом, и прежде подмена записывалась поверх самого
+		 * довода через const_cast, а довод объявлен константным - изменение объекта,
+		 * объявленного константным, относится к неопределённому поведению
+		 */
+		format_t rule = format;
+		/**
 		 * Определяем нужный нам формат
 		 */
 		switch(static_cast <uint8_t> (format)){
 			// Если формат получен как %w
 			case static_cast <uint8_t> (format_t::w):
 				// Выполняем подмену формата
-				const_cast <format_t &> (format) = format_t::u;
+				rule = format_t::u;
 			break;
 			// Если формат получен как %W
 			case static_cast <uint8_t> (format_t::W):
-				// Выполняем подмену формата
-				const_cast <format_t &> (format) = format_t::s;
+				/**
+				 * Номер недели в году занимает не больше двух разрядов: правило
+				 * неограниченной длины съедало разряды следующего поля записи
+				 */
+				rule = format_t::y;
+			break;
+			// Если формат получен как %C
+			case static_cast <uint8_t> (format_t::C):
+				/**
+				 * Век занимает не больше двух разрядов: календарь модуля охватывает
+				 * годы с 1970 по 9999, то есть века с 19-го по 99-й
+				 */
+				rule = format_t::y;
 			break;
 			// Если формат получен как %H
 			case static_cast <uint8_t> (format_t::H):
@@ -1881,17 +2040,17 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 			// Если формат получен как %d
 			case static_cast <uint8_t> (format_t::d):
 				// Выполняем подмену формата
-				const_cast <format_t &> (format) = format_t::y;
+				rule = format_t::y;
 			break;
 			// Если формат получен как %b
 			case static_cast <uint8_t> (format_t::b):
 				// Выполняем подмену формата
-				const_cast <format_t &> (format) = format_t::a;
+				rule = format_t::a;
 			break;
 			// Если формат получен как %B
 			case static_cast <uint8_t> (format_t::B):
 				// Выполняем подмену формата
-				const_cast <format_t &> (format) = format_t::A;
+				rule = format_t::A;
 			break;
 		}
 		// Указатель на начало анализируемого текста
@@ -1903,7 +2062,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 		/**
 		 * Выбираем нативный парсер в зависимости от формата
 		 */
-		switch(static_cast <uint8_t> (format)){
+		switch(static_cast <uint8_t> (rule)){
 			// Если формат соответствует %u (\d{1})
 			case static_cast <uint8_t> (format_t::u): match = ::parseDigits(src, len, 1, 1); break;
 			// Если формат соответствует %s (\d+)
@@ -1944,7 +2103,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 				/**
 				 * Определяем нужный нам формат
 				 */
-				switch(static_cast <uint8_t> (format)){
+				switch(static_cast <uint8_t> (rule)){
 					// Если формат получен как %u
 					case static_cast <uint8_t> (format_t::u):
 					// Если формат получен как %j
@@ -1962,7 +2121,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 					// Если формат получен как %A
 					case static_cast <uint8_t> (format_t::A):
 					// Если формат получен как %W
-					case static_cast <uint8_t> (format_t::W): {
+					case static_cast <uint8_t> (format_t::W):
+					// Если формат получен как %C
+					case static_cast <uint8_t> (format_t::C): {
 						/**
 						 * Выполняем перебор всех полученных вариантов
 						 */
@@ -1999,12 +2160,23 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										// Устанавливаем номер дня недели
 										dt.day = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									break;
+									// Если формат получен как %C
+									case static_cast <uint8_t> (format_t::C):
+										/**
+										 * Поле года принимает сам номер века, а не год: век
+										 * складывается с двузначным обозначением года уже в
+										 * разборе, поскольку порядок этих двух переменных в
+										 * записи произволен и век может встретиться первым
+										 */
+										// Устанавливаем номер века
+										dt.year = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
+									break;
 									// Если формат получен как %y
 									case static_cast <uint8_t> (format_t::y): {
 										// Получаем значение указанного года
 										const uint16_t num = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
-										// Устанавливаем год
-										dt.year = (2000 + num);
+										// Устанавливаем год, раскрыв двузначное обозначение в полное
+										dt.year = this->makeFullYear(num);
 										// Устанавливаем флаг високосного года
 										dt.leap = this->leap(dt.year);
 									} break;
@@ -2122,16 +2294,13 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									case static_cast <uint8_t> (format_t::p): {
 										// Получаем название времени суток
 										const string name(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
-										// Определяем 12-и часовой формат времени
+										/**
+										 * Час здесь не правится: метка времени суток может стоять
+										 * в записи перед часом, и тогда править ещё нечего.
+										 * Приведение к суточному счёту выполняется после разбора
+										 * всей записи целиком
+										 */
 										dt.h12 = (this->_fmk->compare("pm", name) ? h12_t::PM : h12_t::AM);
-										// Если мы получили вечернее время
-										if((dt.h12 == h12_t::PM) && (dt.hour < 12))
-											// Увеличиваем полученный час времени
-											dt.hour += 12;
-										// Если мы получили утреннее время
-										else if((dt.h12 == h12_t::AM) && (dt.hour == 12))
-											// Обнуляем полученный час времени
-											dt.hour = 0;
 									} break;
 								}
 							}
@@ -2217,8 +2386,8 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								else if(j == 3) {
 									// Получаем значение указанного года
 									const uint16_t num = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
-									// Устанавливаем год
-									dt.year = (2000 + num);
+									// Устанавливаем год, раскрыв двузначное обозначение в полное
+									dt.year = this->makeFullYear(num);
 									// Устанавливаем флаг високосного года
 									dt.leap = this->leap(dt.year);
 								}
@@ -2484,8 +2653,8 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
 	const uint64_t date = ::clampDate(stamp);
 	// Переменная результата
 	uint64_t result = 0;
-	// Если дата передана
-	if(date > 0){
+	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
+	{
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2621,8 +2790,8 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
 	const uint64_t date = ::clampDate(stamp);
 	// Переменная результата
 	uint64_t result = 0;
-	// Если дата передана
-	if(date > 0){
+	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
+	{
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2704,22 +2873,17 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
 						const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 						// Получаем начало суток указанной даты
 						const uint64_t beginDay = (beginMonth + (static_cast <uint64_t> (date - 1) * static_cast <uint64_t> (86400000)));
-						// Получаем множитель текущего года
-						auto i = params.rateLeapYears.find(static_cast <uint16_t> ((year - (year % 4)) % 7));
-						// Если множитель получен
-						if(i != params.rateLeapYears.end()){
-							// Подробнее: https://habr.com/ru/articles/217389
-							// Устанавливаем день недели
-							uint8_t day = (((i->second + static_cast <uint8_t> (year % 4) + params.rateMonths[month - 1] + date) - (((month == 1) || (month == 2)) && leap ? 1 : 0)) % 7);
-							// Если воскресенье установлен как нулевой
-							if(day == 0)
-								// Выполняем компенсацию
-								day = 6;
-							// Уменьшаем день на один
-							else day--;
-							// Получаем начало недели
-							result = (beginDay - (static_cast <uint64_t> (day) * static_cast <uint64_t> (86400000)));
-						}
+						// Получаем количество суток, прошедших с понедельника
+						const uint64_t day = static_cast <uint64_t> (::dayOfWeek(beginDay) - 1);
+						// Получаем количество миллисекунд, прошедших с начала недели
+						const uint64_t passed = (day * static_cast <uint64_t> (86400000));
+						/**
+						 * Неделя, на которую приходится начало эпохи, начинается 29 декабря
+						 * 1969 года и календарём не представима: начало такой недели
+						 * приводится к началу эпохи. Прежде вычитание уходило за ноль, и
+						 * беззнаковый оборот давал начало недели где-то в 584-миллионном году
+						 */
+						result = ((passed > beginDay) ? 0 : (beginDay - passed));
 					}
 				} break;
 				// Если нам нужно получить начало дня
@@ -2795,8 +2959,8 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 	const uint64_t date = ::clampDate(stamp);
 	// Переменная результата
 	uint64_t result = 0;
-	// Если дата передана
-	if(date > 0){
+	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
+	{
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2945,59 +3109,29 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
-									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-									// Если текущее значение даты передано в микросекундах
-									if(current == (actual + 3)){
-										// Получаем значение текущего года
-										const uint16_t year = this->year(date);
-										// Получаем штамп времени начала года в микросекундах
-										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000));
-										// Получаем количество микросекунд прошедших с начала года
-										const uint64_t microseconds = static_cast <uint64_t> (date - beginYear);
-										// Если год високосный
-										if(this->leap(year))
-											// Определяем количество оставшихся микросекунд
-											result = (static_cast <uint64_t> (31622400000000) - (microseconds + 1));
-										// Если год не високосный
-										else result = (static_cast <uint64_t> (31536000000000) - (microseconds + 1));
-									// Если текущее значение даты передано в других единицах
-									} else {
-										// Устанавливаем текущее значение актуализации
-										result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
-										// Увеличиваем размер количества миллисекунд до микросекунд
-										result *= 1000;
-									}
+									/**
+									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 * прежде единицы измерения довода угадывались по количеству разрядов с
+									 * оглядкой на текущий момент, отчего один и тот же довод со временем
+									 * давал разный ответ
+									 */
+									// Устанавливаем текущее значение актуализации
+									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
+									// Увеличиваем размер количества миллисекунд до микросекунд
+									result *= 1000;
 								} break;
 								// Если нам нужно получить количество оставшихся наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
-									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-									// Если текущее значение даты передано в наносекундах
-									if(current == (actual + 6)){
-										// Получаем значение текущего года
-										const uint16_t year = this->year(date);
-										// Получаем штамп времени начала года в наносекундах
-										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000000));
-										// Получаем количество наносекунд прошедших с начала года
-										const uint64_t nanoseconds = static_cast <uint64_t> (date - beginYear);
-										// Если год високосный
-										if(this->leap(year))
-											// Определяем количество оставшихся наносекунд
-											result = (static_cast <uint64_t> (31622400000000000) - (nanoseconds + 1));
-										// Если год не високосный
-										else result = (static_cast <uint64_t> (31536000000000000) - (nanoseconds + 1));
-									// Если текущее значение даты передано в других единицах
-									} else {
-										// Устанавливаем текущее значение актуализации
-										result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
-										// Увеличиваем размер количества миллисекунд до наносекунд
-										result *= 1000000;
-									}
+									/**
+									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 * прежде единицы измерения довода угадывались по количеству разрядов с
+									 * оглядкой на текущий момент, отчего один и тот же довод со временем
+									 * давал разный ответ
+									 */
+									// Устанавливаем текущее значение актуализации
+									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
+									// Увеличиваем размер количества миллисекунд до наносекунд
+									result *= 1000000;
 								} break;
 							}
 						} break;
@@ -3086,12 +3220,18 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										}
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
-										// Если год високосный и месяц февраль
-										if(leap && (month == 2))
-											// Получаем количество оставшихся дней в месяце
-											result = static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) - static_cast <uint8_t> (::round((date - beginMonth) / 86400000.L)));
-										// Получаем количество оставшихся дней в месяце
-										else result = static_cast <uint64_t> (params.daysInMonths[month - 1] - static_cast <uint8_t> (::round((date - beginMonth) / 86400000.L)));
+										/**
+										 * Считаются целые сутки: неполные в счёт не идут, как и всюду
+										 * в методе. Прежде счёт вёлся округлением, отчего до полудня
+										 * первого числа оставшихся суток выходило на одни больше, чем
+										 * их есть, а после полудня - верно
+										 */
+										// Получаем количество суток в месяце указанной даты
+										const uint64_t total = static_cast <uint64_t> (params.daysInMonths[month - 1] + ((leap && (month == 2)) ? 1 : 0));
+										// Получаем количество прошедших целых суток в месяце
+										const uint64_t passed = static_cast <uint64_t> (::floor((date - beginMonth) / 86400000.L));
+										// Получаем количество оставшихся целых суток в месяце
+										result = ((passed < (total - 1)) ? ((total - 1) - passed) : 0);
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся часов
@@ -3256,109 +3396,29 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
-									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-									// Если текущее значение даты передано в микросекундах
-									if(current == (actual + 3)){
-										// Получаем значение текущего года
-										const uint16_t year = this->year(date);
-										// Получаем штамп времени начала года в микросекундах
-										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000));
-										// Определяем сколько дней прошло с начала года
-										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000.L));
-										{
-											// Номер текущего месяца
-											uint8_t month = 0;
-											// Подсчитываем количество дней в предыдущих месяцах
-											uint16_t count = 0, days = 0;
-											// Устанавливаем флаг високосного года
-											const bool leap = this->leap(year);
-											/**
-											 * Выполняем перебор всех дней месяца
-											 */
-											for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-												// Увеличиваем номер месяца
-												month = (i + 1);
-												// Получаем текущее количество дней с компенсацией високосного года
-												days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-												// Если мы не дошли до предела
-												if(lastDays >= (days + count))
-													// Увеличиваем количество прошедших дней
-													count += days;
-												// Выходим из цикла
-												else break;
-											}
-											// Получаем начало месяца указанной даты
-											const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000000)));
-											// Если год високосный и месяц февраль
-											if(leap && (month == 2))
-												// Получаем количество оставшихся микросекунд в месяце
-												result = static_cast <uint64_t> (static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * 86400000000) - static_cast <uint64_t> (date - beginMonth));
-											// Получаем количество оставшихся микросекунд в месяце
-											else result = static_cast <uint64_t> (static_cast <uint64_t> (params.daysInMonths[month - 1] * 86400000000) - static_cast <uint64_t> (date - beginMonth));
-										}
-									// Если текущее значение даты передано в других единицах
-									} else {
-										// Устанавливаем текущее значение актуализации
-										result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
-										// Увеличиваем размер количества миллисекунд до микросекунд
-										result *= 1000;
-									}
+									/**
+									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 * прежде единицы измерения довода угадывались по количеству разрядов с
+									 * оглядкой на текущий момент, отчего один и тот же довод со временем
+									 * давал разный ответ
+									 */
+									// Устанавливаем текущее значение актуализации
+									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
+									// Увеличиваем размер количества миллисекунд до микросекунд
+									result *= 1000;
 								} break;
 								// Если нам нужно получить количество оставшихся наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
-									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-									// Если текущее значение даты передано в наносекундах
-									if(current == (actual + 6)){
-										// Получаем значение текущего года
-										const uint16_t year = this->year(date);
-										// Получаем штамп времени начала года в наносекундах
-										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000000));
-										// Определяем сколько дней прошло с начала года
-										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000000.L));
-										{
-											// Номер текущего месяца
-											uint8_t month = 0;
-											// Подсчитываем количество дней в предыдущих месяцах
-											uint16_t count = 0, days = 0;
-											// Устанавливаем флаг високосного года
-											const bool leap = this->leap(year);
-											/**
-											 * Выполняем перебор всех дней месяца
-											 */
-											for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-												// Увеличиваем номер месяца
-												month = (i + 1);
-												// Получаем текущее количество дней с компенсацией високосного года
-												days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-												// Если мы не дошли до предела
-												if(lastDays >= (days + count))
-													// Увеличиваем количество прошедших дней
-													count += days;
-												// Выходим из цикла
-												else break;
-											}
-											// Получаем начало месяца указанной даты
-											const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000000000)));
-											// Если год високосный и месяц февраль
-											if(leap && (month == 2))
-												// Получаем количество оставшихся наносекунд в месяце
-												result = static_cast <uint64_t> (static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * 86400000000000) - static_cast <uint64_t> (date - beginMonth));
-											// Получаем количество оставшихся наносекунд в месяце
-											else result = static_cast <uint64_t> (static_cast <uint64_t> (params.daysInMonths[month - 1] * 86400000000000) - static_cast <uint64_t> (date - beginMonth));
-										}
-									// Если текущее значение даты передано в других единицах
-									} else {
-										// Устанавливаем текущее значение актуализации
-										result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
-										// Увеличиваем размер количества миллисекунд до наносекунд
-										result *= 1000000;
-									}
+									/**
+									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 * прежде единицы измерения довода угадывались по количеству разрядов с
+									 * оглядкой на текущий момент, отчего один и тот же довод со временем
+									 * давал разный ответ
+									 */
+									// Устанавливаем текущее значение актуализации
+									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
+									// Увеличиваем размер количества миллисекунд до наносекунд
+									result *= 1000000;
 								} break;
 							}
 						} break;
@@ -3681,47 +3741,29 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								} break;
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
-									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-									// Если текущее значение даты передано в микросекундах
-									if(current == (actual + 3)){
-										// Получаем значение текущего года
-										const uint16_t year = this->year(date);
-										// Получаем штамп времени начала года в микросекундах
-										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000));
-										// Получаем количество микросекунд прошедших с начала года
-										result = static_cast <uint64_t> (date - beginYear);
-									// Если текущее значение даты передано в других единицах
-									} else {
-										// Устанавливаем текущее значение актуализации
-										result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
-										// Увеличиваем размер количества миллисекунд до микросекунд
-										result *= 1000;
-									}
+									/**
+									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 * прежде единицы измерения довода угадывались по количеству разрядов с
+									 * оглядкой на текущий момент, отчего один и тот же довод со временем
+									 * давал разный ответ
+									 */
+									// Устанавливаем текущее значение актуализации
+									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
+									// Увеличиваем размер количества миллисекунд до микросекунд
+									result *= 1000;
 								} break;
 								// Если нам нужно получить количество прошедших наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
-									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-									// Если текущее значение даты передано в наносекундах
-									if(current == (actual + 6)){
-										// Получаем значение текущего года
-										const uint16_t year = this->year(date);
-										// Получаем штамп времени начала года в наносекундах
-										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000000));
-										// Получаем количество наносекунд прошедших с начала года
-										result = static_cast <uint64_t> (date - beginYear);
-									// Если текущее значение даты передано в других единицах
-									} else {
-										// Устанавливаем текущее значение актуализации
-										result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
-										// Увеличиваем размер количества миллисекунд до наносекунд
-										result *= 1000000;
-									}
+									/**
+									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 * прежде единицы измерения довода угадывались по количеству разрядов с
+									 * оглядкой на текущий момент, отчего один и тот же довод со временем
+									 * давал разный ответ
+									 */
+									// Устанавливаем текущее значение актуализации
+									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
+									// Увеличиваем размер количества миллисекунд до наносекунд
+									result *= 1000000;
 								} break;
 							}
 						} break;
@@ -3799,8 +3841,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										}
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
-										// Получаем количество прошедших дней в месяце
-										result = static_cast <uint64_t> (::round((date - beginMonth) / 86400000.L) - 1);
+										/**
+										 * Считаются целые сутки: неполные в счёт не идут. Прежде счёт
+										 * вёлся округлением с вычитанием единицы, и в первые сутки
+										 * месяца из нуля вычиталась единица, а приведение
+										 * отрицательного вещественного к беззнаковому - неопределённое
+										 * поведение
+										 */
+										result = static_cast <uint64_t> (::floor((date - beginMonth) / 86400000.L));
 									}
 								} break;
 								// Если нам нужно получить количество прошедших часов
@@ -3949,101 +3997,29 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								} break;
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
-									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-									// Если текущее значение даты передано в микросекундах
-									if(current == (actual + 3)){
-										// Получаем значение текущего года
-										const uint16_t year = this->year(date);
-										// Получаем штамп времени начала года в микросекундах
-										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000));
-										// Определяем сколько дней прошло с начала года
-										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000.L));
-										{
-											// Номер текущего месяца
-											uint8_t month = 0;
-											// Подсчитываем количество дней в предыдущих месяцах
-											uint16_t count = 0, days = 0;
-											// Устанавливаем флаг високосного года
-											const bool leap = this->leap(year);
-											/**
-											 * Выполняем перебор всех дней месяца
-											 */
-											for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-												// Увеличиваем номер месяца
-												month = (i + 1);
-												// Получаем текущее количество дней с компенсацией високосного года
-												days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-												// Если мы не дошли до предела
-												if(lastDays >= (days + count))
-													// Увеличиваем количество прошедших дней
-													count += days;
-												// Выходим из цикла
-												else break;
-											}
-											// Получаем начало месяца указанной даты
-											const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000000)));
-											// Получаем количество прошедших микросекунд в месяце
-											result = static_cast <uint64_t> (date - beginMonth);
-										}
-									// Если текущее значение даты передано в других единицах
-									} else {
-										// Устанавливаем текущее значение актуализации
-										result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
-										// Увеличиваем размер количества миллисекунд до микросекунд
-										result *= 1000;
-									}
+									/**
+									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 * прежде единицы измерения довода угадывались по количеству разрядов с
+									 * оглядкой на текущий момент, отчего один и тот же довод со временем
+									 * давал разный ответ
+									 */
+									// Устанавливаем текущее значение актуализации
+									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
+									// Увеличиваем размер количества миллисекунд до микросекунд
+									result *= 1000;
 								} break;
 								// Если нам нужно получить количество прошедших наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
-									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-									// Если текущее значение даты передано в наносекундах
-									if(current == (actual + 6)){
-										// Получаем значение текущего года
-										const uint16_t year = this->year(date);
-										// Получаем штамп времени начала года в наносекундах
-										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000000));
-										// Определяем сколько дней прошло с начала года
-										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000000.L));
-										{
-											// Номер текущего месяца
-											uint8_t month = 0;
-											// Подсчитываем количество дней в предыдущих месяцах
-											uint16_t count = 0, days = 0;
-											// Устанавливаем флаг високосного года
-											const bool leap = this->leap(year);
-											/**
-											 * Выполняем перебор всех дней месяца
-											 */
-											for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-												// Увеличиваем номер месяца
-												month = (i + 1);
-												// Получаем текущее количество дней с компенсацией високосного года
-												days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-												// Если мы не дошли до предела
-												if(lastDays >= (days + count))
-													// Увеличиваем количество прошедших дней
-													count += days;
-												// Выходим из цикла
-												else break;
-											}
-											// Получаем начало месяца указанной даты
-											const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000000000)));
-											// Получаем количество прошедших наносекунд в месяце
-											result = static_cast <uint64_t> (date - beginMonth);
-										}
-									// Если текущее значение даты передано в других единицах
-									} else {
-										// Устанавливаем текущее значение актуализации
-										result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
-										// Увеличиваем размер количества миллисекунд до наносекунд
-										result *= 1000000;
-									}
+									/**
+									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 * прежде единицы измерения довода угадывались по количеству разрядов с
+									 * оглядкой на текущий момент, отчего один и тот же довод со временем
+									 * давал разный ответ
+									 */
+									// Устанавливаем текущее значение актуализации
+									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
+									// Увеличиваем размер количества миллисекунд до наносекунд
+									result *= 1000000;
 								} break;
 							}
 						} break;
@@ -4314,8 +4290,8 @@ uint64_t awh::Chrono::actual(const type_t value, const type_t type, const actual
 uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const type_t type, const offset_t offset) const noexcept {
 	// Переменная результата
 	uint64_t result = 0;
-	// Если дата передана
-	if(date > 0){
+	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
+	{
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -4346,6 +4322,20 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							 * Выполняем перебор всех лет
 							 */
 							for(size_t i = 0; i < static_cast <size_t> (value); i++){
+								// Получаем год, в который попадает дата после очередного шага
+								const uint64_t target = (static_cast <uint64_t> (year) + static_cast <uint64_t> (i) + 1);
+								/**
+								 * Перебор останавливается на пределе представимости календаря:
+								 * прежде он шёл по всему доводу, отчего смещение на миллиард лет
+								 * занимало миллиард шагов, обозначение года в разрядности uint16_t
+								 * оборачивалось, а штамп времени уходил за представимый предел
+								 */
+								if(target > MAX_YEAR){
+									// Приводим дату к последней представимой
+									result = MAX_TIMESTAMP;
+									// Завершаем перебор
+									break;
+								}
 								// Если год, в который попадает 29-е февраля прибавляемого интервала, високосный
 								if(this->leap(static_cast <uint16_t> (year + i + shift)))
 									// Увеличиваем текущее значение года на 366 дней
@@ -4353,6 +4343,8 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 								// Увеличиваем текущее значение года на 365 дней
 								else result += 31536000000;
 							}
+							// Приводим дату к промежутку представимости календаря
+							result = ::clampDate(result);
 						} break;
 						// Если нам нужно получить начало месяца
 						case static_cast <uint8_t> (type_t::MONTH): {
@@ -4377,74 +4369,126 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							result = this->makeDate(dt);
 						} break;
 						// Если нам нужно получить начало недели
-						case static_cast <uint8_t> (type_t::WEEK):
+						case static_cast <uint8_t> (type_t::WEEK): {
+							/**
+							 * Смещение ограничивается пределом представимости календаря: прежде
+							 * произведение довода на длительность единицы переполнялось, а сумма
+							 * уходила за предел, и дальнейший расчёт даты шёл по несуществующему
+							 * штампу времени
+							 */
+							const uint64_t count = ((date >= MAX_TIMESTAMP) ? 0 : ((MAX_TIMESTAMP - date) / static_cast <uint64_t> (604800000)));
+							// Если смещение уходит за предел представимости
+							if(value > count)
+								// Приводим дату к последней представимой
+								result = MAX_TIMESTAMP;
 							// Увеличиваем значение даты на указанное количество недель
-							result = (date + (value * static_cast <uint64_t> (604800000)));
-						break;
+							else result = (date + (value * static_cast <uint64_t> (604800000)));
+						} break;
 						// Если нам нужно получить начало дня
-						case static_cast <uint8_t> (type_t::DAY):
+						case static_cast <uint8_t> (type_t::DAY): {
+							/**
+							 * Смещение ограничивается пределом представимости календаря: прежде
+							 * произведение довода на длительность единицы переполнялось, а сумма
+							 * уходила за предел, и дальнейший расчёт даты шёл по несуществующему
+							 * штампу времени
+							 */
+							const uint64_t count = ((date >= MAX_TIMESTAMP) ? 0 : ((MAX_TIMESTAMP - date) / static_cast <uint64_t> (86400000)));
+							// Если смещение уходит за предел представимости
+							if(value > count)
+								// Приводим дату к последней представимой
+								result = MAX_TIMESTAMP;
 							// Увеличиваем значение даты на указанное количество дней
-							result = (date + (value * static_cast <uint64_t> (86400000)));
-						break;
+							else result = (date + (value * static_cast <uint64_t> (86400000)));
+						} break;
 						// Если нам нужно получить начало часа
-						case static_cast <uint8_t> (type_t::HOUR):
+						case static_cast <uint8_t> (type_t::HOUR): {
+							/**
+							 * Смещение ограничивается пределом представимости календаря: прежде
+							 * произведение довода на длительность единицы переполнялось, а сумма
+							 * уходила за предел, и дальнейший расчёт даты шёл по несуществующему
+							 * штампу времени
+							 */
+							const uint64_t count = ((date >= MAX_TIMESTAMP) ? 0 : ((MAX_TIMESTAMP - date) / static_cast <uint64_t> (3600000)));
+							// Если смещение уходит за предел представимости
+							if(value > count)
+								// Приводим дату к последней представимой
+								result = MAX_TIMESTAMP;
 							// Увеличиваем значение даты на указанное количество часов
-							result = (date + (value * static_cast <uint64_t> (3600000)));
-						break;
+							else result = (date + (value * static_cast <uint64_t> (3600000)));
+						} break;
 						// Если нам нужно получить начало минуты
-						case static_cast <uint8_t> (type_t::MINUTES):
+						case static_cast <uint8_t> (type_t::MINUTES): {
+							/**
+							 * Смещение ограничивается пределом представимости календаря: прежде
+							 * произведение довода на длительность единицы переполнялось, а сумма
+							 * уходила за предел, и дальнейший расчёт даты шёл по несуществующему
+							 * штампу времени
+							 */
+							const uint64_t count = ((date >= MAX_TIMESTAMP) ? 0 : ((MAX_TIMESTAMP - date) / static_cast <uint64_t> (60000)));
+							// Если смещение уходит за предел представимости
+							if(value > count)
+								// Приводим дату к последней представимой
+								result = MAX_TIMESTAMP;
 							// Увеличиваем значение даты на указанное количество минут
-							result = (date + (value * static_cast <uint64_t> (60000)));
-						break;
+							else result = (date + (value * static_cast <uint64_t> (60000)));
+						} break;
 						// Если нам нужно получить начало секунды
-						case static_cast <uint8_t> (type_t::SECONDS):
+						case static_cast <uint8_t> (type_t::SECONDS): {
+							/**
+							 * Смещение ограничивается пределом представимости календаря: прежде
+							 * произведение довода на длительность единицы переполнялось, а сумма
+							 * уходила за предел, и дальнейший расчёт даты шёл по несуществующему
+							 * штампу времени
+							 */
+							const uint64_t count = ((date >= MAX_TIMESTAMP) ? 0 : ((MAX_TIMESTAMP - date) / static_cast <uint64_t> (1000)));
+							// Если смещение уходит за предел представимости
+							if(value > count)
+								// Приводим дату к последней представимой
+								result = MAX_TIMESTAMP;
 							// Увеличиваем значение даты на указанное количество секунд
-							result = (date + (value * static_cast <uint64_t> (1000)));
-						break;
+							else result = (date + (value * static_cast <uint64_t> (1000)));
+						} break;
 						// Если нам нужно получить начало миллисекунды
-						case static_cast <uint8_t> (type_t::MILLISECONDS):
+						case static_cast <uint8_t> (type_t::MILLISECONDS): {
+							/**
+							 * Смещение ограничивается пределом представимости календаря: прежде
+							 * сумма уходила за предел и переполнялась
+							 */
+							const uint64_t count = ((date >= MAX_TIMESTAMP) ? 0 : (MAX_TIMESTAMP - date));
+							// Если смещение уходит за предел представимости
+							if(value > count)
+								// Приводим дату к последней представимой
+								result = MAX_TIMESTAMP;
 							// Увеличиваем значение даты на указанное количество миллисекунд
-							result = (date + value);
-						break;
+							else result = (date + value);
+						} break;
 						// Если нам нужно получить начало микросекунды
 						case static_cast <uint8_t> (type_t::MICROSECONDS): {
-							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-							// Если текущее значение даты передано в микросекундах
-							if(current == (actual + 3))
-								// Увеличиваем значение даты на указанное количество микросекунд
-								result = (date + value);
-							// Если текущее значение даты передано в других единицах
-							else {
-								// Устанавливаем текущее значение даты
-								result = date;
-								// Увеличиваем размер даты на указанное количество микросекунд
-								result *= 1000;
-								// Увеличиваем значение даты на указанное количество микросекунд
-								result += value;
-							}
+							/**
+							 * Дата принимается штампом времени в миллисекундах, как и всюду в
+							 * модуле, а перевод её в доли миллисекунды насыщается: наносекундный
+							 * штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
+							 * произведение оборачивалось, выдавая дату, не имеющую отношения к
+							 * исходной
+							 */
+							// Переводим дату в микросекунд
+							result = ::scaleDate(date, 1000);
+							// Увеличиваем значение даты на указанное количество микросекунд
+							result = ::appendDate(result, value);
 						} break;
 						// Если нам нужно получить начало наносекунды
 						case static_cast <uint8_t> (type_t::NANOSECONDS): {
-							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-							// Если текущее значение даты передано в наносекундах
-							if(current == static_cast <uint8_t> (actual + 6))
-								// Увеличиваем значение даты на указанное количество наносекунд
-								result = (date + value);
-							// Если текущее значение даты передано в других единицах
-							else {
-								// Устанавливаем текущее значение даты
-								result = date;
-								// Увеличиваем размер даты на указанное количество наносекунд
-								result *= 1000000;
-								// Увеличиваем значение даты на указанное количество наносекунд
-								result += value;
-							}
+							/**
+							 * Дата принимается штампом времени в миллисекундах, как и всюду в
+							 * модуле, а перевод её в доли миллисекунды насыщается: наносекундный
+							 * штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
+							 * произведение оборачивалось, выдавая дату, не имеющую отношения к
+							 * исходной
+							 */
+							// Переводим дату в наносекунд
+							result = ::scaleDate(date, 1000000);
+							// Увеличиваем значение даты на указанное количество наносекунд
+							result = ::appendDate(result, value);
 						} break;
 					}
 				} break;
@@ -4470,6 +4514,20 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							 * Выполняем перебор всех лет
 							 */
 							for(size_t i = 0; i < static_cast <size_t> (value); i++){
+								// Получаем год, в который попадает дата после очередного шага
+								const int64_t target = (static_cast <int64_t> (year) - static_cast <int64_t> (i) - 1);
+								/**
+								 * Перебор останавливается на начале эпохи: прежде он шёл по всему
+								 * доводу, отчего смещение на миллиард лет занимало миллиард шагов,
+								 * а обозначение года в разрядности uint16_t оборачивалось и выбор
+								 * длины года становился произвольным
+								 */
+								if(target < 1970){
+									// Приводим дату к началу эпохи
+									result = 0;
+									// Завершаем перебор
+									break;
+								}
 								// Если год, в который попадает 29-е февраля вычитаемого интервала, високосный
 								if(this->leap(static_cast <uint16_t> (year - i - shift)))
 									// Уменьшаем текущее значение года на 366 дней
@@ -4507,38 +4565,73 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						} break;
 						// Если нам нужно получить начало недели
 						case static_cast <uint8_t> (type_t::WEEK): {
-							// Определяем количество недель, не выходящее за пределы даты
-							const uint64_t count = (value < (date / 604800000) ? value : (date / 604800000));
+							/**
+							 * Начало эпохи - предел представимости календаря: смещение, уходящее
+							 * ниже него, приводит дату к нему самому. Прежде вычиталось столько
+							 * целых единиц, сколько помещалось, и от даты оставался огрызок
+							 * длиной меньше одной единицы
+							 */
+							if(value > (date / static_cast <uint64_t> (604800000)))
+								// Приводим дату к началу эпохи
+								result = 0;
 							// Уменьшаем значение даты на указанное количество недель
-							result = (date - (count * static_cast <uint64_t> (604800000)));
+							else result = (date - (value * static_cast <uint64_t> (604800000)));
 						} break;
 						// Если нам нужно получить начало дня
 						case static_cast <uint8_t> (type_t::DAY): {
-							// Определяем количество дней, не выходящее за пределы даты
-							const uint64_t count = (value < (date / 86400000) ? value : (date / 86400000));
+							/**
+							 * Начало эпохи - предел представимости календаря: смещение, уходящее
+							 * ниже него, приводит дату к нему самому. Прежде вычиталось столько
+							 * целых единиц, сколько помещалось, и от даты оставался огрызок
+							 * длиной меньше одной единицы
+							 */
+							if(value > (date / static_cast <uint64_t> (86400000)))
+								// Приводим дату к началу эпохи
+								result = 0;
 							// Уменьшаем значение даты на указанное количество дней
-							result = (date - (count * static_cast <uint64_t> (86400000)));
+							else result = (date - (value * static_cast <uint64_t> (86400000)));
 						} break;
 						// Если нам нужно получить начало часа
 						case static_cast <uint8_t> (type_t::HOUR): {
-							// Определяем количество часов, не выходящее за пределы даты
-							const uint64_t count = (value < (date / 3600000) ? value : (date / 3600000));
+							/**
+							 * Начало эпохи - предел представимости календаря: смещение, уходящее
+							 * ниже него, приводит дату к нему самому. Прежде вычиталось столько
+							 * целых единиц, сколько помещалось, и от даты оставался огрызок
+							 * длиной меньше одной единицы
+							 */
+							if(value > (date / static_cast <uint64_t> (3600000)))
+								// Приводим дату к началу эпохи
+								result = 0;
 							// Уменьшаем значение даты на указанное количество часов
-							result = (date - (count * static_cast <uint64_t> (3600000)));
+							else result = (date - (value * static_cast <uint64_t> (3600000)));
 						} break;
 						// Если нам нужно получить начало минуты
 						case static_cast <uint8_t> (type_t::MINUTES): {
-							// Определяем количество минут, не выходящее за пределы даты
-							const uint64_t count = (value < (date / 60000) ? value : (date / 60000));
+							/**
+							 * Начало эпохи - предел представимости календаря: смещение, уходящее
+							 * ниже него, приводит дату к нему самому. Прежде вычиталось столько
+							 * целых единиц, сколько помещалось, и от даты оставался огрызок
+							 * длиной меньше одной единицы
+							 */
+							if(value > (date / static_cast <uint64_t> (60000)))
+								// Приводим дату к началу эпохи
+								result = 0;
 							// Уменьшаем значение даты на указанное количество минут
-							result = (date - (count * static_cast <uint64_t> (60000)));
+							else result = (date - (value * static_cast <uint64_t> (60000)));
 						} break;
 						// Если нам нужно получить начало секунды
 						case static_cast <uint8_t> (type_t::SECONDS): {
-							// Определяем количество секунд, не выходящее за пределы даты
-							const uint64_t count = (value < (date / 1000) ? value : (date / 1000));
+							/**
+							 * Начало эпохи - предел представимости календаря: смещение, уходящее
+							 * ниже него, приводит дату к нему самому. Прежде вычиталось столько
+							 * целых единиц, сколько помещалось, и от даты оставался огрызок
+							 * длиной меньше одной единицы
+							 */
+							if(value > (date / static_cast <uint64_t> (1000)))
+								// Приводим дату к началу эпохи
+								result = 0;
 							// Уменьшаем значение даты на указанное количество секунд
-							result = (date - (count * static_cast <uint64_t> (1000)));
+							else result = (date - (value * static_cast <uint64_t> (1000)));
 						} break;
 						// Если нам нужно получить начало миллисекунды
 						case static_cast <uint8_t> (type_t::MILLISECONDS):
@@ -4547,43 +4640,31 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						break;
 						// Если нам нужно получить начало микросекунды
 						case static_cast <uint8_t> (type_t::MICROSECONDS): {
-							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-							// Если текущее значение даты передано в микросекундах
-							if(current == (actual + 3))
-								// Уменьшаем значение даты на указанное количество микросекунд
-								result = (date >= value ? (date - value) : 0);
-							// Если текущее значение даты передано в других единицах
-							else {
-								// Устанавливаем текущее значение даты
-								result = date;
-								// Увеличиваем размер даты на указанное количество микросекунд
-								result *= 1000;
-								// Уменьшаем значение даты на указанное количество микросекунд
-								result -= (result >= value ? value : 0);
-							}
+							/**
+							 * Дата принимается штампом времени в миллисекундах, как и всюду в
+							 * модуле, а перевод её в доли миллисекунды насыщается: наносекундный
+							 * штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
+							 * произведение оборачивалось, выдавая дату, не имеющую отношения к
+							 * исходной
+							 */
+							// Переводим дату в микросекунд
+							result = ::scaleDate(date, 1000);
+							// Уменьшаем значение даты на указанное количество микросекунд
+							result -= (result >= value ? value : 0);
 						} break;
 						// Если нам нужно получить начало наносекунды
 						case static_cast <uint8_t> (type_t::NANOSECONDS): {
-							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
-							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-							// Если текущее значение даты передано в наносекундах
-							if(current == (actual + 6))
-								// Уменьшаем значение даты на указанное количество наносекунд
-								result = (date >= value ? (date - value) : 0);
-							// Если текущее значение даты передано в других единицах
-							else {
-								// Устанавливаем текущее значение даты
-								result = date;
-								// Увеличиваем размер даты на указанное количество наносекунд
-								result *= 1000000;
-								// Уменьшаем значение даты на указанное количество наносекунд
-								result -= (result >= value ? value : 0);
-							}
+							/**
+							 * Дата принимается штампом времени в миллисекундах, как и всюду в
+							 * модуле, а перевод её в доли миллисекунды насыщается: наносекундный
+							 * штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
+							 * произведение оборачивалось, выдавая дату, не имеющую отношения к
+							 * исходной
+							 */
+							// Переводим дату в наносекунд
+							result = ::scaleDate(date, 1000000);
+							// Уменьшаем значение даты на указанное количество наносекунд
+							result -= (result >= value ? value : 0);
 						} break;
 					}
 				} break;
@@ -4837,8 +4918,8 @@ double awh::Chrono::seconds(string_view value) const noexcept {
  *
  */
 awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
-	// Если дата передана
-	if(date > 0){
+	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
+	{
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -4943,6 +5024,10 @@ uint16_t awh::Chrono::year(const uint64_t stamp) const noexcept {
 		 * Оценка количества суток, добавленных к этому моменту високосными годами:
 		 * високосные сутки прибавляются раз в 1464 суток, и эта оценка вычитается
 		 * из даты, чтобы остаток делился на год постоянной длительности
+		 *
+		 * Оценка эта приблизительная, и уточняется она ниже перебором, поэтому
+		 * точности long double здесь довольно: сплошная проверка всех 8029 границ
+		 * лет промежутка представимости, от 1971 до 9999, расхождений не даёт
 		 */
 		const uint64_t leapDays = (
 			static_cast <uint64_t> (
@@ -5051,8 +5136,8 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
  *
  */
 bool awh::Chrono::dst(const uint64_t date) const noexcept {
-	// Если дата передана
-	if(date > 0){
+	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
+	{
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -5142,8 +5227,8 @@ bool awh::Chrono::leap(const uint16_t year) const noexcept {
  *
  */
 bool awh::Chrono::leap(const uint64_t date) const noexcept {
-	// Если дата передана
-	if(date > 0){
+	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
+	{
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -5198,8 +5283,28 @@ template <typename T>
  *
  */
 void awh::Chrono::set(const T date, const unit_t unit) noexcept {
-	// Выполняем установку данных
-	this->set(&date, sizeof(date), unit, is_class_v <T>);
+	/**
+	 * Если данные переданы объектом
+	 */
+	if constexpr(is_class_v <T>)
+		// Выполняем установку данных в виде текста
+		this->set(&date, sizeof(date), unit, true);
+	/**
+	 * Если данные переданы числом
+	 */
+	else {
+		/**
+		 * Число приводится к единому несущему типу, а не передаётся своей шириной:
+		 * прежде приватный метод читал из буфера родную ширину поля, ничего не зная
+		 * о типе довода, и байты вещественного числа принимал за целое. Установка
+		 * значения типом float либо double давала не переданное значение, а мусор,
+		 * равно как и любой тип шире поля на машине с обратным порядком байт
+		 */
+		// Выполняем приведение переданного числа к единому несущему типу
+		const int64_t value = static_cast <int64_t> (date);
+		// Выполняем установку данных
+		this->set(&value, sizeof(value), unit, false);
+	}
 }
 /**
  * Объявляем прототипы для метода установки данных даты и времени
@@ -5281,11 +5386,26 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint8_t)){
+						if(size >= sizeof(int64_t)){
 							// Номер текущего дня недели
 							uint8_t day = 0;
 							// Выполняем получение номера текущего дня недели
-							::memcpy(&day, buffer, sizeof(day));
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									day = static_cast <uint8_t> (value);
+							}
 							// Если номер дня недели передан
 							if((day > 0) && (day < 8))
 								// Устанавливаем номер дня недели
@@ -5309,11 +5429,26 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint8_t)){
+						if(size >= sizeof(int64_t)){
 							// Дата для установки
 							uint8_t date = 0;
 							// Выполняем получение даты
-							::memcpy(&date, buffer, sizeof(date));
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									date = static_cast <uint8_t> (value);
+							}
 							// Если дата передана в нужном виде
 							if((date > 0) && (date < 32))
 								// Устанавливаем дату
@@ -5340,11 +5475,26 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint16_t)){
+						if(size >= sizeof(int64_t)){
 							// Год для установки
 							uint16_t year = 0;
 							// Выполняем получение года
-							::memcpy(&year, buffer, sizeof(year));
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint16_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint16_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									year = static_cast <uint16_t> (value);
+							}
 							// Если год передан
 							if(year > 0){
 								// Устанавливаем год
@@ -5371,11 +5521,26 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint8_t)){
+						if(size >= sizeof(int64_t)){
 							// Час времени для установки
 							uint8_t hour = 0;
 							// Выполняем получение часа
-							::memcpy(&hour, buffer, sizeof(hour));
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									hour = static_cast <uint8_t> (value);
+							}
 							// Если количество часов передано
 							if(hour < 24)
 								// Устанавливаем количество часов
@@ -5399,11 +5564,26 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint16_t)){
+						if(size >= sizeof(int64_t)){
 							// Количество прошедших дней для установки
 							uint16_t days = 0;
 							// Выполняем получение количество прошедших дней
-							::memcpy(&days, buffer, sizeof(days));
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint16_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint16_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									days = static_cast <uint16_t> (value);
+							}
 							// Если количество прошедших дней от 1 января
 							if(days < 366)
 								// Устанавливаем количество прошедших дней
@@ -5448,11 +5628,26 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint8_t)){
+						if(size >= sizeof(int64_t)){
 							// Номер месяца для установки
 							uint8_t month = 0;
 							// Выполняем получение номера месяца
-							::memcpy(&month, buffer, sizeof(month));
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									month = static_cast <uint8_t> (value);
+							}
 							// Если месяц передан
 							if((month > 0) && (month < 13))
 								// Устанавливаем месяц
@@ -5476,11 +5671,26 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint8_t)){
+						if(size >= sizeof(int64_t)){
 							// Количество недель для установки
 							uint8_t weeks = 0;
 							// Выполняем получение количества недель
-							::memcpy(&weeks, buffer, sizeof(weeks));
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									weeks = static_cast <uint8_t> (value);
+							}
 							// Если количество недель прошедших с начала года
 							if(weeks < 53)
 								// Устанавливаем количество недель прошедших с начала года
@@ -5500,11 +5710,26 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде числа
 					else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(int32_t)){
+						if(size >= sizeof(int64_t)){
 							// Смещение временной зоны в секундах относительно UTC
 							int32_t offset = 0;
 							// Выполняем получение смещения временной зоны в секундах относительно UTC
-							::memcpy(&offset, buffer, sizeof(offset));
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <int32_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <int32_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									offset = static_cast <int32_t> (value);
+							}
 							// Устанавливаем смещение временной зоны в секундах относительно UTC
 							this->_dt.offset = offset;
 						}
@@ -5526,11 +5751,26 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint8_t)){
+						if(size >= sizeof(int64_t)){
 							// Количество минут для установки
 							uint8_t minutes = 0;
 							// Выполняем получение минут
-							::memcpy(&minutes, buffer, sizeof(minutes));
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									minutes = static_cast <uint8_t> (value);
+							}
 							// Если количество минут передано
 							if(minutes < 60)
 								// Устанавливаем количество минут
@@ -5554,11 +5794,26 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint8_t)){
+						if(size >= sizeof(int64_t)){
 							// Количество секунд для установки
 							uint8_t seconds = 0;
 							// Выполняем получение секунд
-							::memcpy(&seconds, buffer, sizeof(seconds));
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									seconds = static_cast <uint8_t> (value);
+							}
 							// Если количество секунд передано
 							if(seconds < 60)
 								// Устанавливаем количество секунд
@@ -5575,34 +5830,55 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						);
-						// Получаем текущее значение размерности даты
-						const uint8_t current = static_cast <uint8_t> (this->digits(nanoseconds) - 1);
-						// Получаем размерность актуальной размерности даты
-						const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-						// Если текущее значение даты передано в наносекундах
-						if(current >= (actual + 6))
-							// Устанавливаем количество наносекунд
-							this->_dt.nanoseconds = (nanoseconds % 1000000);
-						// Устанавливаем количество наносекунд
-						else this->_dt.nanoseconds = nanoseconds;
+						/**
+						 * Поле хранит долю миллисекунды, поэтому берётся остаток: прежде
+						 * полный штамп времени отличался от доли по количеству разрядов с
+						 * оглядкой на текущий момент, отчего одно и то же значение со
+						 * временем устанавливалось по-разному
+						 */
+						this->_dt.nanoseconds = (nanoseconds % 1000000);
+						/**
+						 * Доли миллисекунды в микросекундах и наносекундах описывают одну и ту же
+						 * величину с разной подробностью и обязаны сходиться: врозь они давали
+						 * разные мгновения при чтении штампа времени в тех и других единицах
+						 */
+						this->_dt.microseconds = (this->_dt.nanoseconds / 1000);
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint64_t)){
+						if(size >= sizeof(int64_t)){
 							// Количество наносекунд для установки
 							uint64_t nanoseconds = 0;
 							// Выполняем получение наносекунд
-							::memcpy(&nanoseconds, buffer, sizeof(nanoseconds));
-							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (this->digits(nanoseconds) - 1);
-							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-							// Если текущее значение даты передано в наносекундах
-							if(current >= (actual + 6))
-								// Устанавливаем количество наносекунд
-								this->_dt.nanoseconds = (nanoseconds % 1000000);
-							// Устанавливаем количество наносекунд
-							else this->_dt.nanoseconds = nanoseconds;
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint64_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint64_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									nanoseconds = static_cast <uint64_t> (value);
+							}
+							/**
+							 * Поле хранит долю миллисекунды, поэтому берётся остаток: прежде
+							 * полный штамп времени отличался от доли по количеству разрядов с
+							 * оглядкой на текущий момент, отчего одно и то же значение со
+							 * временем устанавливалось по-разному
+							 */
+							this->_dt.nanoseconds = (nanoseconds % 1000000);
+							/**
+							 * Доли миллисекунды в микросекундах и наносекундах описывают одну и ту же
+							 * величину с разной подробностью и обязаны сходиться: врозь они давали
+							 * разные мгновения при чтении штампа времени в тех и других единицах
+							 */
+							this->_dt.microseconds = (this->_dt.nanoseconds / 1000);
 						}
 					}
 				} break;
@@ -5615,34 +5891,55 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						);
-						// Получаем текущее значение размерности даты
-						const uint8_t current = static_cast <uint8_t> (this->digits(microseconds) - 1);
-						// Получаем размерность актуальной размерности даты
-						const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-						// Если текущее значение даты передано в микросекундах
-						if(current >= (actual + 3))
-							// Устанавливаем количество микросекунд
-							this->_dt.microseconds = (microseconds % 1000);
-						// Устанавливаем количество микросекунд
-						else this->_dt.microseconds = microseconds;
+						/**
+						 * Поле хранит долю миллисекунды, поэтому берётся остаток: прежде
+						 * полный штамп времени отличался от доли по количеству разрядов с
+						 * оглядкой на текущий момент, отчего одно и то же значение со
+						 * временем устанавливалось по-разному
+						 */
+						this->_dt.microseconds = (microseconds % 1000);
+						/**
+						 * Доли миллисекунды в микросекундах и наносекундах описывают одну и ту же
+						 * величину с разной подробностью и обязаны сходиться: врозь они давали
+						 * разные мгновения при чтении штампа времени в тех и других единицах
+						 */
+						this->_dt.nanoseconds = ((this->_dt.microseconds * 1000) + (this->_dt.nanoseconds % 1000));
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint64_t)){
+						if(size >= sizeof(int64_t)){
 							// Количество микросекунд для установки
 							uint64_t microseconds = 0;
 							// Выполняем получение микросекунд
-							::memcpy(&microseconds, buffer, sizeof(microseconds));
-							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (this->digits(microseconds) - 1);
-							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
-							// Если текущее значение даты передано в микросекундах
-							if(current >= (actual + 3))
-								// Устанавливаем количество микросекунд
-								this->_dt.microseconds = (microseconds % 1000);
-							// Устанавливаем количество микросекунд
-							else this->_dt.microseconds = microseconds;
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint64_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint64_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									microseconds = static_cast <uint64_t> (value);
+							}
+							/**
+							 * Поле хранит долю миллисекунды, поэтому берётся остаток: прежде
+							 * полный штамп времени отличался от доли по количеству разрядов с
+							 * оглядкой на текущий момент, отчего одно и то же значение со
+							 * временем устанавливалось по-разному
+							 */
+							this->_dt.microseconds = (microseconds % 1000);
+							/**
+							 * Доли миллисекунды в микросекундах и наносекундах описывают одну и ту же
+							 * величину с разной подробностью и обязаны сходиться: врозь они давали
+							 * разные мгновения при чтении штампа времени в тех и других единицах
+							 */
+							this->_dt.nanoseconds = ((this->_dt.microseconds * 1000) + (this->_dt.nanoseconds % 1000));
 						}
 					}
 				} break;
@@ -5658,11 +5955,26 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде числа
 					else {
 						// Если устанавливаемые данные достаточны
-						if(size >= sizeof(uint32_t)){
+						if(size >= sizeof(int64_t)){
 							// Количество миллисекунд для установки
 							uint32_t milliseconds = 0;
 							// Выполняем получение миллисекунд
-							::memcpy(&milliseconds, buffer, sizeof(milliseconds));
+							{
+								// Значение единого несущего типа
+								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
+								/**
+								 * Сличение положительных значений ведётся в беззнаковой области, а
+								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 * представимо типом int64_t и при приведении давало минус единицу,
+								 * отчего отбрасывалось любое положительное значение
+								 */
+								// Значение, не умещающееся в разрядность поля, отбрасывается
+								if((value >= 0) ?
+								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint32_t>::max())) :
+								   (static_cast <int64_t> (numeric_limits <uint32_t>::min()) <= value))
+									// Устанавливаем полученное значение
+									milliseconds = static_cast <uint32_t> (value);
+							}
 							// Устанавливаем количество миллисекунд
 							this->_dt.milliseconds = milliseconds;
 						}
@@ -5705,19 +6017,38 @@ template <typename T>
  *
  */
 T awh::Chrono::get(const uint64_t date, const unit_t unit) const noexcept {
+	/**
+	 * Значение по умолчанию задаётся инициализацией, а не побайтовым обнулением:
+	 * обнуление писалось поверх объекта любого типа, и для типов вроде std::string
+	 * это неопределённое поведение. Спасало лишь то, что проверка типа выполнялась
+	 * во время работы, а не при сборке, и до обнуления такие типы не доходили
+	 */
 	// Переменная результата
-	T result;
-	// Если данные являются основными
-	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
-		// Буфер результата по умолчанию
-		uint8_t buffer[sizeof(T)];
-		// Заполняем нулями буфер данных
-		::memset(buffer, 0, sizeof(T));
-		// Выполняем установку результата по умолчанию
-		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	T result{};
+	/**
+	 * Если данные извлекаются объектом
+	 */
+	if constexpr(is_class_v <T>)
+		// Выполняем извлечение данных в виде текста
+		this->get(&result, sizeof(result), date, unit, true);
+	/**
+	 * Если данные извлекаются числом
+	 */
+	else {
+		/**
+		 * Число извлекается единым несущим типом и приводится к запрошенному, а не
+		 * пишется приватным методом прямо в переменную результата: прежде метод
+		 * копировал родную ширину поля, ничего не зная о типе результата. Извлечение
+		 * типом float либо double давало не значение, а его байты, принятые за
+		 * вещественное число, а тип уже поля молча давал ноль вместо усечения
+		 */
+		// Переменная единого несущего типа
+		int64_t value = 0;
+		// Выполняем извлечение данных
+		this->get(&value, sizeof(value), date, unit, false);
+		// Выполняем приведение извлечённого числа к запрошенному типу
+		result = static_cast <T> (value);
 	}
-	// Выполняем извлечение данных
-	this->get(&result, sizeof(result), date, unit, is_class_v <T>);
 	// Возвращаем результат
 	return result;
 }
@@ -5757,19 +6088,35 @@ template <typename T>
  *
  */
 T awh::Chrono::get(const unit_t unit) const noexcept {
+	/**
+	 * Значение по умолчанию задаётся инициализацией, а не побайтовым обнулением:
+	 * обнуление писалось поверх объекта любого типа, и для типов вроде std::string
+	 * это неопределённое поведение. Спасало лишь то, что проверка типа выполнялась
+	 * во время работы, а не при сборке, и до обнуления такие типы не доходили
+	 */
 	// Переменная результата
-	T result;
-	// Если данные являются основными
-	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
-		// Буфер результата по умолчанию
-		uint8_t buffer[sizeof(T)];
-		// Заполняем нулями буфер данных
-		::memset(buffer, 0, sizeof(T));
-		// Выполняем установку результата по умолчанию
-		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	T result{};
+	/**
+	 * Если данные извлекаются объектом
+	 */
+	if constexpr(is_class_v <T>)
+		// Выполняем извлечение данных в виде текста
+		this->get(&result, sizeof(result), unit, true, storage_t::GLOBAL);
+	/**
+	 * Если данные извлекаются числом
+	 */
+	else {
+		/**
+		 * Число извлекается единым несущим типом и приводится к запрошенному по тем
+		 * же основаниям, что и в перегрузке, принимающей штамп времени
+		 */
+		// Переменная единого несущего типа
+		int64_t value = 0;
+		// Выполняем извлечение данных
+		this->get(&value, sizeof(value), unit, false, storage_t::GLOBAL);
+		// Выполняем приведение извлечённого числа к запрошенному типу
+		result = static_cast <T> (value);
 	}
-	// Выполняем извлечение данных
-	this->get(&result, sizeof(result), unit, is_class_v <T>, storage_t::GLOBAL);
 	// Возвращаем результат
 	return result;
 }
@@ -5810,19 +6157,35 @@ template <typename T>
  *
  */
 T awh::Chrono::get(const unit_t unit, const storage_t storage) const noexcept {
+	/**
+	 * Значение по умолчанию задаётся инициализацией, а не побайтовым обнулением:
+	 * обнуление писалось поверх объекта любого типа, и для типов вроде std::string
+	 * это неопределённое поведение. Спасало лишь то, что проверка типа выполнялась
+	 * во время работы, а не при сборке, и до обнуления такие типы не доходили
+	 */
 	// Переменная результата
-	T result;
-	// Если данные являются основными
-	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
-		// Буфер результата по умолчанию
-		uint8_t buffer[sizeof(T)];
-		// Заполняем нулями буфер данных
-		::memset(buffer, 0, sizeof(T));
-		// Выполняем установку результата по умолчанию
-		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	T result{};
+	/**
+	 * Если данные извлекаются объектом
+	 */
+	if constexpr(is_class_v <T>)
+		// Выполняем извлечение данных в виде текста
+		this->get(&result, sizeof(result), unit, true, storage);
+	/**
+	 * Если данные извлекаются числом
+	 */
+	else {
+		/**
+		 * Число извлекается единым несущим типом и приводится к запрошенному по тем
+		 * же основаниям, что и в перегрузке, принимающей штамп времени
+		 */
+		// Переменная единого несущего типа
+		int64_t value = 0;
+		// Выполняем извлечение данных
+		this->get(&value, sizeof(value), unit, false, storage);
+		// Выполняем приведение извлечённого числа к запрошенному типу
+		result = static_cast <T> (value);
 	}
-	// Выполняем извлечение данных
-	this->get(&result, sizeof(result), unit, is_class_v <T>, storage);
 	// Возвращаем результат
 	return result;
 }
@@ -5871,7 +6234,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 				// Если требуется установить номер текущего дня недели от 1 до 7
 				case static_cast <uint8_t> (unit_t::DAY): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint8_t)){
+					if(size >= sizeof(int64_t)){
 						// Создаем структуру времени
 						dt_t dt;
 						// Заполняем объект даты из штампа времени
@@ -5883,13 +6246,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 							// Выполняем получение текущего дня недели
 							(* result) = params.nameDays[dt.day - 1].second;
 						// Выполняем копирование текущего дня недели
-						} else ::memcpy(buffer, &dt.day, sizeof(dt.day));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.day);
 					}
 				} break;
 				// Если требуется установить число месяца от 1 до 31
 				case static_cast <uint8_t> (unit_t::DATE): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint8_t)){
+					if(size >= sizeof(int64_t)){
 						// Создаем структуру времени
 						dt_t dt;
 						// Заполняем объект даты из штампа времени
@@ -5905,13 +6268,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 								// Добавляем предстоящий ноль
 								result->insert(result->begin(), 1, '0');
 						// Выполняем копирование текущего значения даты
-						} else ::memcpy(buffer, &dt.date, sizeof(dt.date));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.date);
 					}
 				} break;
 				// Если требуется установить полное обозначение года
 				case static_cast <uint8_t> (unit_t::YEAR): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint16_t)){
+					if(size >= sizeof(int64_t)){
 						// Получаем значение текущего года
 						const uint16_t year = this->year(date);
 						// Если данные переданы в виде текста
@@ -5921,13 +6284,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 							// Выполняем получение текущего значения года
 							(* result) = std::to_string(year);
 						// Выполняем копирование текущего значения года
-						} else ::memcpy(buffer, &year, sizeof(year));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (year);
 					}
 				} break;
 				// Если требуется установить количество часов от 0 до 23
 				case static_cast <uint8_t> (unit_t::HOUR): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint8_t)){
+					if(size >= sizeof(int64_t)){
 						// Создаем структуру времени
 						dt_t dt;
 						// Заполняем объект даты из штампа времени
@@ -5943,13 +6306,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 								// Добавляем предстоящий ноль
 								result->insert(result->begin(), 1, '0');
 						// Выполняем копирование количество часов от 0 до 23
-						} else ::memcpy(buffer, &dt.hour, sizeof(dt.hour));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.hour);
 					}
 				} break;
 				// Если требуется установить количество прошедших дней от 1 января
 				case static_cast <uint8_t> (unit_t::DAYS): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint16_t)){
+					if(size >= sizeof(int64_t)){
 						// Создаем структуру времени
 						dt_t dt;
 						// Заполняем объект даты из штампа времени
@@ -5965,13 +6328,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 								// Добавляем предстоящий ноль
 								result->insert(result->begin(), 1, '0');
 						// Выполняем копирование количество прошедших дней от 1 января
-						} else ::memcpy(buffer, &dt.days, sizeof(dt.days));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.days);
 					}
 				} break;
 				// Если требуется установить номер месяца от 1 до 12 (начиная с Января)
 				case static_cast <uint8_t> (unit_t::MONTH): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint8_t)){
+					if(size >= sizeof(int64_t)){
 						// Создаем структуру времени
 						dt_t dt;
 						// Заполняем объект даты из штампа времени
@@ -5983,13 +6346,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 							// Выполняем получение названия месяца
 							(* result) = params.nameMonths[dt.month - 1].second;
 						// Выполняем копирование текущего значения месяца
-						} else ::memcpy(buffer, &dt.month, sizeof(dt.month));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.month);
 					}
 				} break;
 				// Если требуется установить количество недель прошедших с начала года
 				case static_cast <uint8_t> (unit_t::WEEKS): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint8_t)){
+					if(size >= sizeof(int64_t)){
 						// Создаем структуру времени
 						dt_t dt;
 						// Заполняем объект даты из штампа времени
@@ -6001,13 +6364,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 							// Выполняем получение количество недель прошедших с начала года
 							(* result) = std::to_string(dt.weeks);
 						// Выполняем копирование количество недель прошедших с начала года
-						} else ::memcpy(buffer, &dt.weeks, sizeof(dt.weeks));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.weeks);
 					}
 				} break;
 				// Если требуется установить смещение временной зоны в секундах относительно UTC
 				case static_cast <uint8_t> (unit_t::OFFSET): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(int32_t)){
+					if(size >= sizeof(int64_t)){
 						// Создаем структуру времени
 						dt_t dt;
 						// Заполняем объект даты из штампа времени
@@ -6019,13 +6382,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 							// Выполняем получение смещения временной зоны в секундах относительно UTC
 							(* result) = std::to_string(dt.offset);
 						// Выполняем копирование смещения временной зоны в секундах относительно UTC
-						} else ::memcpy(buffer, &dt.offset, sizeof(dt.offset));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.offset);
 					}
 				} break;
 				// Если требуется установить количество минут от 0 до 59
 				case static_cast <uint8_t> (unit_t::MINUTES): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint8_t)){
+					if(size >= sizeof(int64_t)){
 						// Создаем структуру времени
 						dt_t dt;
 						// Заполняем объект даты из штампа времени
@@ -6041,13 +6404,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 								// Добавляем предстоящий ноль
 								result->insert(result->begin(), 1, '0');
 						// Выполняем получение количества минут от 0 до 59
-						} else ::memcpy(buffer, &dt.minutes, sizeof(dt.minutes));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.minutes);
 					}
 				} break;
 				// Если требуется установить количество секунд от 0 до 59
 				case static_cast <uint8_t> (unit_t::SECONDS): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint8_t)){
+					if(size >= sizeof(int64_t)){
 						// Создаем структуру времени
 						dt_t dt;
 						// Заполняем объект даты из штампа времени
@@ -6063,13 +6426,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 								// Добавляем предстоящий ноль
 								result->insert(result->begin(), 1, '0');
 						// Выполняем получение количества секунд от 0 до 59
-						} else ::memcpy(buffer, &dt.seconds, sizeof(dt.seconds));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.seconds);
 					}
 				} break;
 				// Если требуется установить количество наносекунд
 				case static_cast <uint8_t> (unit_t::NANOSECONDS): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint64_t)){
+					if(size >= sizeof(int64_t)){
 						// Количество наносекунд
 						const uint64_t nanoseconds = (date % 1000000);
 						// Если данные переданы в виде текста
@@ -6099,13 +6462,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 								// Добавляем предстоящий ноль
 								result->insert(result->begin(), 1, '0');
 						// Выполняем получение количества наносекунд
-						} else ::memcpy(buffer, &nanoseconds, sizeof(nanoseconds));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (nanoseconds);
 					}
 				} break;
 				// Если требуется установить количество микросекунд
 				case static_cast <uint8_t> (unit_t::MICROSECONDS): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint64_t)){
+					if(size >= sizeof(int64_t)){
 						// Количество микросекунд
 						const uint64_t microseconds = (date % 1000);
 						// Если данные переданы в виде текста
@@ -6123,13 +6486,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 								// Добавляем предстоящий ноль
 								result->insert(result->begin(), 1, '0');
 						// Выполняем получение количества микросекунд
-						} else ::memcpy(buffer, &microseconds, sizeof(microseconds));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (microseconds);
 					}
 				} break;
 				// Если требуется установить количество миллисекунд
 				case static_cast <uint8_t> (unit_t::MILLISECONDS): {
 					// Если размер данных умещается в буфер
-					if(size >= sizeof(uint32_t)){
+					if(size >= sizeof(int64_t)){
 						// Создаем структуру времени
 						dt_t dt;
 						// Заполняем объект даты из штампа времени
@@ -6149,7 +6512,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 								// Добавляем предстоящий ноль
 								result->insert(result->begin(), 1, '0');
 						// Выполняем получение количества миллисекунд
-						} else ::memcpy(buffer, &dt.milliseconds, sizeof(dt.milliseconds));
+						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.milliseconds);
 					}
 				} break;
 			}
@@ -6212,7 +6575,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Текущий номер дня недели
-								uint8_t day = 0;
+								int64_t day = 0;
 								// Выполняем извлечение текущего дня недели
 								this->get(&day, sizeof(day), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем получение номера текущего дня недели
@@ -6228,20 +6591,16 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.day))
+								if(size >= sizeof(int64_t))
 									// Выполняем копирование текущего дня недели
-									::memcpy(buffer, &this->_dt.day, sizeof(this->_dt.day));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.day);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint8_t)){
-									// Текущий номер дня недели
-									uint8_t day = 0;
-									// Выполняем извлечение текущего дня недели
-									this->get(&day, sizeof(day), this->timestamp(type_t::MILLISECONDS), unit, false);
+								if(size >= sizeof(int64_t)){
 									// Выполняем копирование текущего дня недели
-									::memcpy(buffer, &day, sizeof(day));
+									this->get(buffer, size, this->timestamp(type_t::MILLISECONDS), unit, false);
 								}
 							} break;
 						}
@@ -6265,7 +6624,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Число месяца от 1 до 31
-								uint8_t date = 0;
+								int64_t date = 0;
 								// Выполняем извлечение числа месяца
 								this->get(&date, sizeof(date), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем копирование текущего значения даты
@@ -6285,20 +6644,16 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.date))
+								if(size >= sizeof(int64_t))
 									// Выполняем копирование текущего значения даты
-									::memcpy(buffer, &this->_dt.date, sizeof(this->_dt.date));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.date);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint8_t)){
-									// Число месяца от 1 до 31
-									uint8_t date = 0;
-									// Выполняем извлечение числа месяца
-									this->get(&date, sizeof(date), this->timestamp(type_t::MILLISECONDS), unit, false);
+								if(size >= sizeof(int64_t)){
 									// Выполняем копирование числа месяца
-									::memcpy(buffer, &date, sizeof(date));
+									this->get(buffer, size, this->timestamp(type_t::MILLISECONDS), unit, false);
 								}
 							} break;
 						}
@@ -6322,7 +6677,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Полное обозначение года
-								uint16_t year = 0;
+								int64_t year = 0;
 								// Выполняем извлечение года
 								this->get(&year, sizeof(year), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем копирование текущего значения года
@@ -6338,20 +6693,16 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.year))
+								if(size >= sizeof(int64_t))
 									// Выполняем копирование текущего значения года
-									::memcpy(buffer, &this->_dt.year, sizeof(this->_dt.year));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.year);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint16_t)){
-									// Полное обозначение года
-									uint16_t year = 0;
-									// Выполняем извлечение года
-									this->get(&year, sizeof(year), this->timestamp(type_t::MILLISECONDS), unit, false);
+								if(size >= sizeof(int64_t)){
 									// Выполняем копирование текущего значения года
-									::memcpy(buffer, &year, sizeof(year));
+									this->get(buffer, size, this->timestamp(type_t::MILLISECONDS), unit, false);
 								}
 							} break;
 						}
@@ -6375,7 +6726,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Текущее значение часа
-								uint8_t hour = 0;
+								int64_t hour = 0;
 								// Выполняем извлечение текущее значение часа
 								this->get(&hour, sizeof(hour), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем копирование текущее значение часа
@@ -6395,20 +6746,16 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.hour))
+								if(size >= sizeof(int64_t))
 									// Выполняем копирование текущее значение часа
-									::memcpy(buffer, &this->_dt.hour, sizeof(this->_dt.hour));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.hour);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint8_t)){
-									// Текущее значение часа
-									uint8_t hour = 0;
-									// Выполняем извлечение текущее значение часа
-									this->get(&hour, sizeof(hour), this->timestamp(type_t::MILLISECONDS), unit, false);
+								if(size >= sizeof(int64_t)){
 									// Выполняем копирование текущее значение часа
-									::memcpy(buffer, &hour, sizeof(hour));
+									this->get(buffer, size, this->timestamp(type_t::MILLISECONDS), unit, false);
 								}
 							} break;
 						}
@@ -6432,7 +6779,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Количество прошедших дней от 1 января
-								uint16_t days = 0;
+								int64_t days = 0;
 								// Выполняем извлечение количества прошедших дней от 1 января
 								this->get(&days, sizeof(days), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем копирование количество прошедших дней от 1 января
@@ -6452,20 +6799,16 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.days))
+								if(size >= sizeof(int64_t))
 									// Выполняем копирование количество прошедших дней от 1 января
-									::memcpy(buffer, &this->_dt.days, sizeof(this->_dt.days));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.days);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint16_t)){
-									// Количество прошедших дней от 1 января
-									uint16_t days = 0;
-									// Выполняем извлечение количества прошедших дней от 1 января
-									this->get(&days, sizeof(days), this->timestamp(type_t::MILLISECONDS), unit, false);
+								if(size >= sizeof(int64_t)){
 									// Выполняем копирование количество прошедших дней от 1 января
-									::memcpy(buffer, &days, sizeof(days));
+									this->get(buffer, size, this->timestamp(type_t::MILLISECONDS), unit, false);
 								}
 							} break;
 						}
@@ -6489,7 +6832,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Текущее значение месяца
-								uint8_t month = 0;
+								int64_t month = 0;
 								// Выполняем извлечение текущего значения месяца
 								this->get(&month, sizeof(month), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем получение названия месяца
@@ -6505,20 +6848,16 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.month))
+								if(size >= sizeof(int64_t))
 									// Выполняем копирование текущего значения месяца
-									::memcpy(buffer, &this->_dt.month, sizeof(this->_dt.month));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.month);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint8_t)){
-									// Текущее значение месяца
-									uint8_t month = 0;
-									// Выполняем извлечение текущего значения месяца
-									this->get(&month, sizeof(month), this->timestamp(type_t::MILLISECONDS), unit, false);
+								if(size >= sizeof(int64_t)){
 									// Выполняем копирование текущего значения месяца
-									::memcpy(buffer, &month, sizeof(month));
+									this->get(buffer, size, this->timestamp(type_t::MILLISECONDS), unit, false);
 								}
 							} break;
 						}
@@ -6542,7 +6881,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Количество недель прошедших с начала года
-								uint8_t weeks = 0;
+								int64_t weeks = 0;
 								// Выполняем извлечение количества недель прошедших с начала года
 								this->get(&weeks, sizeof(weeks), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем копирование текущего количества недель прошедших с начала года
@@ -6558,20 +6897,16 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.weeks))
+								if(size >= sizeof(int64_t))
 									// Выполняем копирование текущего количества недель прошедших с начала года
-									::memcpy(buffer, &this->_dt.weeks, sizeof(this->_dt.weeks));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.weeks);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint8_t)){
-									// Количество недель прошедших с начала года
-									uint8_t weeks = 0;
-									// Выполняем извлечение количества недель прошедших с начала года
-									this->get(&weeks, sizeof(weeks), this->timestamp(type_t::MILLISECONDS), unit, false);
+								if(size >= sizeof(int64_t)){
 									// Выполняем копирование количества недель прошедших с начала года
-									::memcpy(buffer, &weeks, sizeof(weeks));
+									this->get(buffer, size, this->timestamp(type_t::MILLISECONDS), unit, false);
 								}
 							} break;
 						}
@@ -6595,7 +6930,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Смещение временной зоны в секундах относительно UTC
-								int32_t offset = 0;
+								int64_t offset = 0;
 								// Выполняем извлечение смещения временной зоны в секундах относительно UTC
 								this->get(&offset, sizeof(offset), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем копирование смещение временной зоны в секундах относительно UTC
@@ -6611,20 +6946,16 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.offset))
+								if(size >= sizeof(int64_t))
 									// Выполняем копирование смещение временной зоны в секундах относительно UTC
-									::memcpy(buffer, &this->_dt.offset, sizeof(this->_dt.offset));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.offset);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(int32_t)){
-									// Смещение временной зоны в секундах относительно UTC
-									int32_t offset = 0;
-									// Выполняем извлечение смещения временной зоны в секундах относительно UTC
-									this->get(&offset, sizeof(offset), this->timestamp(type_t::MILLISECONDS), unit, false);
+								if(size >= sizeof(int64_t)){
 									// Выполняем копирование смещение временной зоны в секундах относительно UTC
-									::memcpy(buffer, &offset, sizeof(offset));
+									this->get(buffer, size, this->timestamp(type_t::MILLISECONDS), unit, false);
 								}
 							} break;
 						}
@@ -6648,7 +6979,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Количество минут от 0 до 59
-								uint8_t minutes = 0;
+								int64_t minutes = 0;
 								// Выполняем извлечение количество минут от 0 до 59
 								this->get(&minutes, sizeof(minutes), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем копирование текущее количество минут
@@ -6668,20 +6999,16 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.minutes))
+								if(size >= sizeof(int64_t))
 									// Выполняем копирование текущее количество минут
-									::memcpy(buffer, &this->_dt.minutes, sizeof(this->_dt.minutes));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.minutes);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint8_t)){
-									// Количество минут от 0 до 59
-									uint8_t minutes = 0;
-									// Выполняем извлечение количество минут от 0 до 59
-									this->get(&minutes, sizeof(minutes), this->timestamp(type_t::MILLISECONDS), unit, false);
+								if(size >= sizeof(int64_t)){
 									// Выполняем копирование количество минут от 0 до 59
-									::memcpy(buffer, &minutes, sizeof(minutes));
+									this->get(buffer, size, this->timestamp(type_t::MILLISECONDS), unit, false);
 								}
 							} break;
 						}
@@ -6705,7 +7032,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Количество секунд от 0 до 59
-								uint8_t seconds = 0;
+								int64_t seconds = 0;
 								// Выполняем извлечение количество секунд от 0 до 59
 								this->get(&seconds, sizeof(seconds), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем копирование текущее количество секунд
@@ -6725,20 +7052,16 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.seconds))
+								if(size >= sizeof(int64_t))
 									// Выполняем копирование текущее количество секунд
-									::memcpy(buffer, &this->_dt.seconds, sizeof(this->_dt.seconds));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.seconds);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint8_t)){
-									// Количество секунд от 0 до 59
-									uint8_t seconds = 0;
-									// Выполняем извлечение количество секунд от 0 до 59
-									this->get(&seconds, sizeof(seconds), this->timestamp(type_t::MILLISECONDS), unit, false);
+								if(size >= sizeof(int64_t)){
 									// Выполняем копирование количество секунд от 0 до 59
-									::memcpy(buffer, &seconds, sizeof(seconds));
+									this->get(buffer, size, this->timestamp(type_t::MILLISECONDS), unit, false);
 								}
 							} break;
 						}
@@ -6794,18 +7117,18 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.nanoseconds))
+								if(size >= sizeof(int64_t))
 									// Выполняем копирование количество наносекунд
-									::memcpy(buffer, &this->_dt.nanoseconds, sizeof(this->_dt.nanoseconds));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.nanoseconds);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint64_t)){
+								if(size >= sizeof(int64_t)){
 									// Количество наносекунд
 									const uint64_t nanoseconds = (this->timestamp(type_t::NANOSECONDS) % 1000000);
 									// Выполняем копирование количество наносекунд
-									::memcpy(buffer, &nanoseconds, sizeof(nanoseconds));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (nanoseconds);
 								}
 							} break;
 						}
@@ -6849,18 +7172,18 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.microseconds))
+								if(size >= sizeof(int64_t))
 									// Получаем текущее количество микросекунд
-									::memcpy(buffer, &this->_dt.microseconds, sizeof(this->_dt.microseconds));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.microseconds);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint64_t)){
+								if(size >= sizeof(int64_t)){
 									// Количество микросекунд
 									const uint64_t microseconds = (this->timestamp(type_t::MICROSECONDS) % 1000);
 									// Выполняем копирование количество микросекунд
-									::memcpy(buffer, &microseconds, sizeof(microseconds));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (microseconds);
 								}
 							} break;
 						}
@@ -6884,7 +7207,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Количество миллисекунд
-								uint32_t milliseconds = 0;
+								int64_t milliseconds = 0;
 								// Выполняем извлечение количество миллисекунд
 								this->get(&milliseconds, sizeof(milliseconds), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем копирование количество миллисекунд
@@ -6908,20 +7231,16 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(this->_dt.milliseconds))
+								if(size >= sizeof(int64_t))
 									// Получаем текущее количество миллисекунд
-									::memcpy(buffer, &this->_dt.milliseconds, sizeof(this->_dt.milliseconds));
+									(* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (this->_dt.milliseconds);
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
 								// Если размер данных умещается в буфер
-								if(size >= sizeof(uint32_t)){
-									// Количество миллисекунд
-									uint32_t milliseconds = 0;
-									// Выполняем извлечение количество миллисекунд
-									this->get(&milliseconds, sizeof(milliseconds), this->timestamp(type_t::MILLISECONDS), unit, false);
+								if(size >= sizeof(int64_t)){
 									// Выполняем копирование количество миллисекунд
-									::memcpy(buffer, &milliseconds, sizeof(milliseconds));
+									this->get(buffer, size, this->timestamp(type_t::MILLISECONDS), unit, false);
 								}
 							} break;
 						}
@@ -6957,12 +7276,10 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
 	// Выполняем блокировку потока
 	const locker_t <> lock(this->_mtx.date);
-	// Устанавливаем временную зону в секундах
-	this->_dt.offset = zone;
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = zone_t::UTC;
-	// Выполняем перерасчёт локальной версии даты
-	this->makeDate(this->makeDate(this->_dt), this->_dt);
+	// Перекладываем локальный объект даты в указанную временную зону
+	this->shiftDate(this->_dt, zone);
 }
 /**
  * @brief Метод установки временной зоны
@@ -6975,10 +7292,8 @@ void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
 	const locker_t <> lock(this->_mtx.date);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = zone;
-	// Устанавливаем временную зону в секундах
-	this->_dt.offset = this->getTimeZone(zone);
-	// Выполняем перерасчёт локальной версии даты
-	this->makeDate(this->makeDate(this->_dt), this->_dt);
+	// Перекладываем локальный объект даты в указанную временную зону
+	this->shiftDate(this->_dt, this->getTimeZone(zone));
 }
 /**
  * @brief Метод установки временной зоны
@@ -6991,10 +7306,8 @@ void awh::Chrono::setTimeZone(string_view zone) noexcept {
 	const locker_t <> lock(this->_mtx.date);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = this->matchTimeZone(zone);
-	// Устанавливаем временную зону в секундах
-	this->_dt.offset = this->getTimeZone(zone);
-	// Выполняем перерасчёт локальной версии даты
-	this->makeDate(this->makeDate(this->_dt), this->_dt);
+	// Перекладываем локальный объект даты в указанную временную зону
+	this->shiftDate(this->_dt, this->getTimeZone(zone));
 }
 /**
  * @brief Метод выполнения матчинга временной зоны
@@ -7042,6 +7355,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 							{"art", zone_t::ART},
 							{"azt", zone_t::AZT},
 							{"bdt", zone_t::BDT},
+							{"bnt", zone_t::BNT},
 							{"bot", zone_t::BOT},
 							{"brt", zone_t::BRT},
 							{"btt", zone_t::BTT},
@@ -7120,6 +7434,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 							{"vut", zone_t::VUT},
 							{"wat", zone_t::WAT},
 							{"wet", zone_t::WET},
+							{"wgt", zone_t::WGST},
 							{"wft", zone_t::WFT},
 							{"wib", zone_t::WIB},
 							{"wit", zone_t::WIT},
@@ -7822,6 +8137,8 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 				if(match[1].end > match[1].begin)
 					// Получаем название временной зоны
 					name.assign(zone.data() + match[1].begin, static_cast <size_t> (match[1].end - match[1].begin));
+				// Признак того, что смещение, указанное за названием зоны, следует наложить
+				bool apply = true;
 				// Выполняем поиск временной зоны в списке временных зон
 				auto i = this->_timeZones.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
 				// Если временная зона найдена
@@ -7830,58 +8147,58 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 					offset = i->second;
 					// Обозначение задало смещение временной зоны
 					assigned = true;
-				// Если временная зона не найдена
-				} else {
-					// Признак того, что смещение, указанное за названием зоны, следует наложить
-					bool apply = true;
-					// Если название временной зоны получено
-					if(!name.empty()){
-						// Если название временной зоны является числом
-						if(this->_fmk->is(name, fmk_t::check_t::NUMBER)){
-							// Получаем количество часов смещения, заданное самим названием зоны
-							const int64_t hours = this->_fmk->atoi <int64_t> (name);
-							/**
-							 * Название зоны числом означает целое количество часов смещения, и
-							 * ограничивать его необходимо: произведение считалось в разрядности
-							 * int и переполнялось на названиях от шестисот тысяч, а название
-							 * «999» задавало смещение в тысячу часов, уводившее в разнос всякий
-							 * последующий расчёт даты
-							 */
-							if((hours >= (MIN_ZONE_OFFSET / 3600)) && (hours <= (MAX_ZONE_OFFSET / 3600))){
-								// Получаем время смещения
-								offset = static_cast <int32_t> (hours * 3600);
-								// Обозначение задало смещение временной зоны
-								assigned = true;
-								// Смещение задано самим названием зоны, накладывать его повторно не нужно
-								apply = false;
-							}
-						// Получаем смещение времени по найденной в таблице соответствия временной зоне
-						} else {
-							// Выполняем матчинг временной зоны по её названию
-							const zone_t item = this->matchTimeZone(name);
-							// Если временная зона по названию определена
-							if(item != zone_t::NONE){
-								// Получаем смещение найденной временной зоны
-								offset = this->getTimeZone(item);
-								// Обозначение задало смещение временной зоны
-								assigned = true;
-							}
-						}
-					}
-					// Если смещение следует наложить
-					if(apply && (match[3].end > match[3].begin)){
-						// Получаем разобранное смещение временной зоны
-						const int32_t value = ::readZoneOffset(zone.data(), match[3], match[4], match[5], match[6]);
+				// Если временная зона не найдена и название временной зоны получено
+				} else if(!name.empty()) {
+					// Если название временной зоны является числом
+					if(this->_fmk->is(name, fmk_t::check_t::NUMBER)){
+						// Получаем количество часов смещения, заданное самим названием зоны
+						const int64_t hours = this->_fmk->atoi <int64_t> (name);
 						/**
-						 * Обозначение зоны со смещением за промежутком земных поясов не
-						 * означает ничего: запись «-99999» давала смещение в сто часов
+						 * Название зоны числом означает целое количество часов смещения, и
+						 * ограничивать его необходимо: произведение считалось в разрядности
+						 * int и переполнялось на названиях от шестисот тысяч, а название
+						 * «999» задавало смещение в тысячу часов, уводившее в разнос всякий
+						 * последующий расчёт даты
 						 */
-						if((value >= MIN_ZONE_OFFSET) && (value <= MAX_ZONE_OFFSET)){
-							// Накладываем разобранное смещение временной зоны
-							offset += value;
+						if((hours >= (MIN_ZONE_OFFSET / 3600)) && (hours <= (MAX_ZONE_OFFSET / 3600))){
+							// Получаем время смещения
+							offset = static_cast <int32_t> (hours * 3600);
+							// Обозначение задало смещение временной зоны
+							assigned = true;
+							// Смещение задано самим названием зоны, накладывать его повторно не нужно
+							apply = false;
+						}
+					// Получаем смещение времени по найденной в таблице соответствия временной зоне
+					} else {
+						// Выполняем матчинг временной зоны по её названию
+						const zone_t item = this->matchTimeZone(name);
+						// Если временная зона по названию определена
+						if(item != zone_t::NONE){
+							// Получаем смещение найденной временной зоны
+							offset = this->getTimeZone(item);
 							// Обозначение задало смещение временной зоны
 							assigned = true;
 						}
+					}
+				}
+				/**
+				 * Смещение, указанное за названием зоны, накладывается независимо от того,
+				 * откуда взято само название: прежде наложение стояло в ветке поиска по
+				 * таблице известных зон, и своя зона из реестра хвост обозначения теряла -
+				 * «ANYKS+1» давало то же, что «ANYKS», тогда как «MSK+1» час прибавляло
+				 */
+				if(apply && (match[3].end > match[3].begin)){
+					// Получаем разобранное смещение временной зоны
+					const int32_t value = ::readZoneOffset(zone.data(), match[3], match[4], match[5], match[6]);
+					/**
+					 * Обозначение зоны со смещением за промежутком земных поясов не
+					 * означает ничего: запись «-99999» давала смещение в сто часов
+					 */
+					if((value >= MIN_ZONE_OFFSET) && (value <= MAX_ZONE_OFFSET)){
+						// Накладываем разобранное смещение временной зоны
+						offset += value;
+						// Обозначение задало смещение временной зоны
+						assigned = true;
 					}
 				}
 				// Если обозначение задало смещение временной зоны
@@ -7984,37 +8301,85 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 			break;
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
+				// Получаем текущее время с точностью до секунды
+				const time_t stamp = std::time(nullptr);
+				// Получаем значение переменной окружения, задающей временную зону
+				const char * name = ::getenv("TZ");
+				/**
+				 * Смещение временной зоны окружения меняется лишь при переходе на летнее
+				 * время либо при правке переменной окружения TZ: первое происходит на
+				 * границе секунды, второе ловится сличением самой переменной, поэтому
+				 * запомненное смещение годно ровно в пределах той секунды, в которую
+				 * снято. Спрос его у системы обходится в 255 нс, тогда как формирование
+				 * записи ISO 8601 целиком - в 719 нс
+				 */
+				if(this->_zoneCached && (this->_zoneStamp == stamp) &&
+				   (this->_zoneName.compare((name != nullptr) ? name : "") == 0))
+					// Выводим запомненное смещение временной зоны окружения
+					return this->_zoneOffset;
 				/**
 				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Устанавливаем временную зону по умолчанию
 					::_tzset();
+					/**
+					 * Признак действия летнего времени и его величина запрашиваются
+					 * отдельно: глобальная _timezone несёт стандартное смещение зоны
+					 * и о переходе на летнее время не знает
+					 */
+					int daylight = 0, offset = 0;
+					// Получаем признак действия летнего времени
+					::_get_daylight(&daylight);
+					// Получаем стандартное смещение временной зоны
+					::_get_timezone(&offset);
 					// Получаем глобальное значение временной зоны в секундах
-					result = static_cast <int32_t> (_timezone * -1);
+					result = static_cast <int32_t> (offset * -1);
+					// Если летнее время в текущей временной зоне действует
+					if(daylight != 0){
+						// Величина перевода часов на летнее время
+						int dstbias = 0;
+						// Получаем величину перевода часов на летнее время
+						::_get_dstbias(&dstbias);
+						// Создаем структуру времени
+						std::tm tm = {};
+						// Получаем значение текущего времени
+						const time_t time = std::time(nullptr);
+						// Заполняем структуру времени
+						::localtime_s(&tm, &time);
+						// Если летнее время действует прямо сейчас
+						if(tm.tm_isdst > 0)
+							// Накладываем величину перевода часов на летнее время
+							result -= static_cast <int32_t> (dstbias);
+					}
 				/**
-				 * Для операционной системы FreeBSD, NetBSD или OpenBSD
+				 * Для операционных систем, поддерживающих поле tm_gmtoff
 				 */
-				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+				#else
 					// Устанавливаем временную зону по умолчанию
 					::tzset();
 					// Создаем структуру времени
 					std::tm tm = {};
 					// Получаем значение текущего времени
 					const time_t time = std::time(nullptr);
-					// Заполняем структуру времени
-					localtime_r(&time, &tm);
+					/**
+					 * Смещение снимается с разложенного времени, а не с глобальной
+					 * переменной timezone: та несёт стандартное смещение зоны и о
+					 * переходе на летнее время не знает, отчего в зоне с переходом
+					 * всё лето смещение зоны окружения отставало на час
+					 */
+					::localtime_r(&time, &tm);
 					// Получаем смещение временной зоны в секундах
 					result = static_cast <int32_t> (tm.tm_gmtoff);
-				/**
-				 * Для всех остальных операционных систем
-				 */
-				#else
-					// Устанавливаем временную зону по умолчанию
-					::tzset();
-					// Получаем глобальное значение временной зоны в секундах
-					result = static_cast <int32_t> (timezone * -1);
 				#endif
+				// Запоминаем снятое смещение временной зоны окружения
+				this->_zoneOffset = result;
+				// Запоминаем секунду, в которую снято смещение
+				this->_zoneStamp = stamp;
+				// Запоминаем значение переменной окружения, задающей временную зону
+				this->_zoneName.assign((name != nullptr) ? name : "");
+				// Смещение временной зоны окружения снято
+				this->_zoneCached = true;
 			} break;
 		}
 	/**
@@ -8136,8 +8501,8 @@ void awh::Chrono::setTimeZones(const unordered_map <string, int32_t> & zones) no
  *
  */
 void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
-	// Если дата передана
-	if(date > 0){
+	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
+	{
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -8192,6 +8557,12 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 				case static_cast <uint8_t> (type_t::MICROSECONDS): {
 					// Устанавливаем количество микросекунд
 					this->_dt.microseconds = (date % 1000);
+					/**
+					 * Доли миллисекунды в микросекундах и наносекундах описывают одну и ту же
+					 * величину с разной подробностью и обязаны сходиться: подробности мельче
+					 * микросекунды штамп в микросекундах не несёт
+					 */
+					this->_dt.nanoseconds = (this->_dt.microseconds * 1000);
 					// Получаем текущий штамп времени
 					stamp = (date / 1000);
 				} break;
@@ -8199,14 +8570,30 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 				case static_cast <uint8_t> (type_t::NANOSECONDS): {
 					// Устанавливаем количество наносекунд
 					this->_dt.nanoseconds = (date % 1000000);
+					/**
+					 * Доли миллисекунды в микросекундах и наносекундах описывают одну и ту же
+					 * величину с разной подробностью и обязаны сходиться
+					 */
+					this->_dt.microseconds = (this->_dt.nanoseconds / 1000);
 					// Получаем текущий штамп времени
 					stamp = (date / 1000000);
 				} break;
 			}
 			// Выполняем блокировку потока
 			const locker_t <> lock(this->_mtx.date);
+			/**
+			 * Штамп времени отсчитывается от нулевой зоны, а поля объекта даты лежат
+			 * в его собственной: раскладываем штамп в нулевой зоне и перекладываем
+			 * объект обратно в свою, иначе установленный штамп читался бы обратно
+			 * сдвинутым на величину зоны
+			 */
+			const int32_t zone = this->_dt.offset;
+			// Выполняем сброс временной зоны
+			this->_dt.offset = 0;
 			// Заполняем объект даты из штампа времени
 			this->makeDate(stamp, this->_dt);
+			// Перекладываем объект даты обратно в свою временную зону
+			this->shiftDate(this->_dt, zone);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -8255,7 +8642,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 31536000000.L);
+						result = static_cast <uint64_t> (this->makeStamp(this->_dt) / 31536000000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8275,7 +8662,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 2629746000.L);
+						result = static_cast <uint64_t> (this->makeStamp(this->_dt) / 2629746000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8295,7 +8682,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 604800000.L);
+						result = static_cast <uint64_t> (this->makeStamp(this->_dt) / 604800000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8315,7 +8702,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 86400000.L);
+						result = static_cast <uint64_t> (this->makeStamp(this->_dt) / 86400000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8335,7 +8722,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 3600000.L);
+						result = static_cast <uint64_t> (this->makeStamp(this->_dt) / 3600000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8355,7 +8742,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 60000.L);
+						result = static_cast <uint64_t> (this->makeStamp(this->_dt) / 60000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8375,7 +8762,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 1000.L);
+						result = static_cast <uint64_t> (this->makeStamp(this->_dt) / 1000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8395,7 +8782,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = this->makeDate(this->_dt);
+						result = this->makeStamp(this->_dt);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8415,7 +8802,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = ((this->makeDate(this->_dt) * 1000) + this->_dt.microseconds);
+						result = ::appendDate(::scaleDate(this->makeStamp(this->_dt), 1000), this->_dt.microseconds);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8435,7 +8822,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = ((this->makeDate(this->_dt) * 1000000) + this->_dt.nanoseconds);
+						result = ::appendDate(::scaleDate(this->makeStamp(this->_dt), 1000000), this->_dt.nanoseconds);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8507,8 +8894,14 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 		bool mode = false;
 		// Текущий штамп времени, относительно которого опознаётся запись прошлого года
 		uint64_t current = 0;
+		// Смещение временной зоны, выставленной объекту до разбора
+		int32_t zone = 0;
+		// Обозначение временной зоны, выставленной объекту до разбора
+		zone_t designation = zone_t::NONE;
+		// Номер века, полученный из записи
+		uint16_t century = 0;
 		// Флаги установки параметров
-		bool flags[9] = {
+		bool flags[11] = {
 			false, // Флаг установки временной зоны
 			false, // Флаг установки года
 			false, // Флаг установки часа
@@ -8517,7 +8910,9 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 			false, // Флаг установки миллисекунд
 			false, // Флаг установки месяца
 			false, // Флаг установки числа месяца
-			false  // Флаг установки номера дня в году
+			false, // Флаг установки номера дня в году
+			false, // Флаг установки метки времени суток
+			false  // Флаг установки номера века
 		};
 		/**
 		 * Определяем хранилище значение времени
@@ -8527,16 +8922,25 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Выполняем блокировку потока
 				const locker_t <> lock(this->_mtx.date);
+				/**
+				 * Опорный момент, относительно которого опознаётся запись прошлого года,
+				 * снимается до сброса временной зоны: поля объекта лежат в своей зоне, и
+				 * сборка штампа времени после обнуления смещения сдвигала опорный момент
+				 * на её величину, отчего порог отката года смещался на столько же
+				 */
+				result = this->makeStamp(this->_dt);
+				// Запоминаем текущий штамп времени
+				current = result;
+				// Запоминаем смещение временной зоны, выставленной объекту
+				zone = this->_dt.offset;
+				// Запоминаем обозначение временной зоны, выставленной объекту
+				designation = this->_dt.zone;
 				// Выполняем сброс временной зоны
 				this->_dt.offset = 0;
 				// Выполняем сброс количества наносекунд
 				this->_dt.nanoseconds = 0;
 				// Выполняем сброс количества микросекунд
 				this->_dt.microseconds = 0;
-				// Получаем текущее значение штампа времени
-				result = this->makeDate(this->_dt);
-				// Запоминаем текущий штамп времени
-				current = result;
 			} break;
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8575,6 +8979,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				case 'Y':
 				// Если мы нашли переменную (G)
 				case 'G':
+				// Если мы нашли переменную (C)
+				case 'C':
 				// Если мы нашли переменную (b)
 				case 'b':
 				// Если мы нашли переменную (h)
@@ -8668,6 +9074,19 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 										pos = this->prepare(this->_dt, date, format_t::Y, pos);
 										// Устанавливаем флаг установки года
 										flags[1] = (pos > -1);
+									} break;
+									// Если мы нашли переменную (C)
+									case 'C': {
+										// Структура времени для разбора номера века
+										dt_t result;
+										// Выполняем обработку полученных данных
+										pos = this->prepare(result, date, format_t::C, pos);
+										// Устанавливаем флаг установки номера века
+										flags[10] = (pos > -1);
+										// Если номер века получен
+										if(flags[10])
+											// Запоминаем полученный номер века
+											century = result.year;
 									} break;
 									// Если мы нашли переменную (b)
 									case 'b':
@@ -8798,6 +9217,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 									case 'p':
 										// Выполняем обработку полученных данных
 										pos = this->prepare(this->_dt, date, format_t::p, pos);
+										// Устанавливаем флаг установки метки времени суток
+										flags[9] = (pos > -1);
 									break;
 									// Если мы нашли переменную (R)
 									case 'R': {
@@ -8896,6 +9317,19 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 										pos = this->prepare(dt, date, format_t::Y, pos);
 										// Устанавливаем флаг установки года
 										flags[1] = (pos > -1);
+									} break;
+									// Если мы нашли переменную (C)
+									case 'C': {
+										// Структура времени для разбора номера века
+										dt_t result;
+										// Выполняем обработку полученных данных
+										pos = this->prepare(result, date, format_t::C, pos);
+										// Устанавливаем флаг установки номера века
+										flags[10] = (pos > -1);
+										// Если номер века получен
+										if(flags[10])
+											// Запоминаем полученный номер века
+											century = result.year;
 									} break;
 									// Если мы нашли переменную (b)
 									case 'b':
@@ -9026,6 +9460,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 									case 'p':
 										// Выполняем обработку полученных данных
 										pos = this->prepare(dt, date, format_t::p, pos);
+										// Устанавливаем флаг установки метки времени суток
+										flags[9] = (pos > -1);
 									break;
 									// Если мы нашли переменную (R)
 									case 'R': {
@@ -9146,19 +9582,60 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Выполняем блокировку потока
 				const locker_t <> lock(this->_mtx.date);
+				/**
+				 * Метка времени суток приводит час к суточному счёту здесь, а не в момент
+				 * её разбора: в записи она может стоять перед часом
+				 */
+				/**
+				 * Век приводит год к полному счёту здесь, а не в момент его разбора: в
+				 * записи он может стоять перед двузначным обозначением года
+				 */
+				if(flags[10]){
+					// Устанавливаем полный номер года
+					this->_dt.year = static_cast <uint16_t> ((century * 100) + (flags[1] ? (this->_dt.year % 100) : 0));
+					// Устанавливаем флаг високосного года
+					this->_dt.leap = this->leap(this->_dt.year);
+				}
+				if(flags[9]){
+					// Час от полудня до полуночи записывается с меткой PM числом от 1 до 11
+					if((this->_dt.h12 == h12_t::PM) && (this->_dt.hour < 12))
+						// Переводим час в суточный счёт
+						this->_dt.hour += 12;
+					// Час после полуночи записывается с меткой AM двенадцатым
+					else if((this->_dt.h12 == h12_t::AM) && (this->_dt.hour == 12))
+						// Переводим час в суточный счёт
+						this->_dt.hour = 0;
+				}
 				// Если флаг смещения временной зоны не передан
 				if(!flags[0]){
-					// Устанавливаем идентификатор временной зоны
-					this->_dt.zone = zone_t::UTC;
-					// Устанавливаем смещение временной зоны по умолчанию
-					this->_dt.offset = this->getTimeZone();
+					/**
+					 * Запись, зоны не содержащая, читается в той временной зоне, которая
+					 * выставлена объекту методом setTimeZone, и лишь при её отсутствии -
+					 * в зоне окружения. Прежде выставленная зона разбором отбрасывалась,
+					 * и такая запись читалась в зоне окружения всегда, отчего setTimeZone
+					 * на разбор неполной записи не влиял вовсе
+					 */
+					if((zone != 0) || (designation != zone_t::NONE)){
+						// Устанавливаем идентификатор выставленной временной зоны
+						this->_dt.zone = designation;
+						// Устанавливаем смещение выставленной временной зоны
+						this->_dt.offset = zone;
+					// Если временная зона объекту не выставлена
+					} else {
+						// Устанавливаем идентификатор временной зоны
+						this->_dt.zone = zone_t::UTC;
+						// Устанавливаем смещение временной зоны по умолчанию
+						this->_dt.offset = this->getTimeZone();
+					}
 				}
-				// Получаем смещение временной зоны
+				/**
+				 * Смещение временной зоны остаётся при объекте таким, каким его записывает
+				 * сама запись даты: обращение знака, которого требует сборка штампа времени,
+				 * берёт на себя makeStamp. Прежде смещение обращалось прямо в объекте, а поля
+				 * после сборки перекладывались в нулевую зону - от такой смеси откат года и
+				 * чтение штампа времени из местного хранилища сдвигались на величину зоны
+				 */
 				const int32_t offset = this->_dt.offset;
-				// Если смещение временной зоны установлено
-				if(offset != 0)
-					// Выполняем инверсию
-					this->_dt.offset *= -1;
 				/**
 				 * Номер дня в году задаёт дату целиком, но сборка штампа времени
 				 * опирается на месяц и число месяца, поэтому раскладываем его. Если
@@ -9192,24 +9669,24 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Выполняем сброс миллисекунд
 					this->_dt.milliseconds = 0;
 				// Если признак пригодности записи запрошен
-				if(valid != nullptr)
+				if(valid != nullptr){
+					/**
+					 * Номер дня в году проверяется отдельно: сборка штампа времени опирается
+					 * на месяц и число месяца, поэтому номер за длиной года до неё не доходил
+					 * и запись «2025 999» считалась пригодной
+					 */
+					const bool days = (!flags[8] || (this->_dt.days < (this->leap(this->_dt.year) ? 366 : 365)));
 					// Запись пригодна, если разобрана каждая переменная формата и поля допустимы
 					(* valid) = (
-						(pos > -1) && ::validDate(
+						(pos > -1) && days && ::validDate(
 							this->_dt.year, this->_dt.month, this->_dt.date, this->_dt.hour,
 							this->_dt.minutes, this->_dt.seconds, this->_dt.milliseconds,
 							this->leap(this->_dt.year), offset
 						)
 					);
-				// Выполняем формирование UnixTimestamp
-				result = this->makeDate(this->_dt);
-				// Если смещение временной зоны установлено
-				if(offset != 0){
-					// Выполняем установку пересчитанной временной зоны обратно
-					this->makeDate(result, this->_dt);
-					// Возвращаем значение временной зоны обратно
-					this->_dt.offset = offset;
 				}
+				// Выполняем формирование UnixTimestamp
+				result = this->makeStamp(this->_dt);
 				/**
 				 * Запись, года не содержащая, относится к текущему году, но если она
 				 * уходит вперёд дальше допуска - к предыдущему. Нулевой допуск откат
@@ -9222,13 +9699,48 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Устанавливаем флаг високосного года
 					this->_dt.leap = this->leap(this->_dt.year);
 					// Выполняем формирование UnixTimestamp
-					result = this->makeDate(this->_dt);
-					// Выполняем установку пересчитанной временной зоны обратно
-					this->makeDate(result, this->_dt);
+					result = this->makeStamp(this->_dt);
 				}
+				/**
+				 * Поля объекта приводятся к разобранному штампу времени: запись способна
+				 * нести поля вне промежутка - нулевой либо тринадцатый месяц, девятый
+				 * день недели, - а объект обязан описывать ту же дату, что выдал разбор.
+				 * Прежде такие поля оставались в объекте сырыми, и формирование записи
+				 * читало названия месяцев и дней недели за границами своих таблиц
+				 */
+				// Выполняем сброс временной зоны
+				this->_dt.offset = 0;
+				// Заполняем объект даты полями нулевой зоны
+				this->makeDate(result, this->_dt);
+				// Перекладываем объект даты во временную зону записи
+				this->shiftDate(this->_dt, offset);
 			} break;
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
+				/**
+				 * Метка времени суток приводит час к суточному счёту здесь, а не в момент
+				 * её разбора: в записи она может стоять перед часом
+				 */
+				/**
+				 * Век приводит год к полному счёту здесь, а не в момент его разбора: в
+				 * записи он может стоять перед двузначным обозначением года
+				 */
+				if(flags[10]){
+					// Устанавливаем полный номер года
+					dt.year = static_cast <uint16_t> ((century * 100) + (flags[1] ? (dt.year % 100) : 0));
+					// Устанавливаем флаг високосного года
+					dt.leap = this->leap(dt.year);
+				}
+				if(flags[9]){
+					// Час от полудня до полуночи записывается с меткой PM числом от 1 до 11
+					if((dt.h12 == h12_t::PM) && (dt.hour < 12))
+						// Переводим час в суточный счёт
+						dt.hour += 12;
+					// Час после полуночи записывается с меткой AM двенадцатым
+					else if((dt.h12 == h12_t::AM) && (dt.hour == 12))
+						// Переводим час в суточный счёт
+						dt.hour = 0;
+				}
 				// Если флаг смещения временной зоны не передан
 				if(!flags[0]){
 					// Устанавливаем идентификатор временной зоны
@@ -9237,15 +9749,11 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					dt.offset = this->getTimeZone();
 				}
 				/**
-				 * Смещение временной зоны запоминается до инверсии: сборка штампа времени
-				 * его вычитает, приводя запись к UTC, и хранит потому с обратным знаком,
-				 * а проверка пригодности рассуждает о смещении так же, как сама запись
+				 * Смещение временной зоны остаётся при объекте таким, каким его записывает
+				 * сама запись даты: обращение знака, которого требует сборка штампа времени,
+				 * берёт на себя makeStamp
 				 */
 				const int32_t offset = dt.offset;
-				// Если смещение временной зоны установлено
-				if(dt.offset != 0)
-					// Выполняем инверсию
-					dt.offset *= -1;
 				/**
 				 * Номер дня в году задаёт дату целиком, но сборка штампа времени
 				 * опирается на месяц и число месяца, поэтому раскладываем его. Если
@@ -9279,16 +9787,23 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Выполняем сброс миллисекунд
 					dt.milliseconds = 0;
 				// Если признак пригодности записи запрошен
-				if(valid != nullptr)
+				if(valid != nullptr){
+					/**
+					 * Номер дня в году проверяется отдельно: сборка штампа времени опирается
+					 * на месяц и число месяца, поэтому номер за длиной года до неё не доходил
+					 * и запись «2025 999» считалась пригодной
+					 */
+					const bool days = (!flags[8] || (dt.days < (this->leap(dt.year) ? 366 : 365)));
 					// Запись пригодна, если разобрана каждая переменная формата и поля допустимы
 					(* valid) = (
-						(pos > -1) && ::validDate(
+						(pos > -1) && days && ::validDate(
 							dt.year, dt.month, dt.date, dt.hour,
 							dt.minutes, dt.seconds, dt.milliseconds, this->leap(dt.year), offset
 						)
 					);
+				}
 				// Выполняем формирование UnixTimestamp
-				result = this->makeDate(dt);
+				result = this->makeStamp(dt);
 				/**
 				 * Запись, года не содержащая, относится к текущему году, но если она
 				 * уходит вперёд дальше допуска - к предыдущему. Нулевой допуск откат
@@ -9301,7 +9816,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Устанавливаем флаг високосного года
 					dt.leap = this->leap(dt.year);
 					// Выполняем формирование UnixTimestamp
-					result = this->makeDate(dt);
+					result = this->makeStamp(dt);
 				}
 			} break;
 		}
@@ -10212,7 +10727,7 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 			// Если временная зона установлена как (Стандартное Время В Западной Гренландии)
 			case static_cast <uint8_t> (zone_t::WGST):
 				// Формируем временную зону
-				return "UTC-3";
+				return "WGT";
 			// Если временная зона установлена как (Якутское Время)
 			case static_cast <uint8_t> (zone_t::YAKT):
 				// Формируем временную зону
@@ -10325,10 +10840,14 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 			case static_cast <uint8_t> (zone_t::MSTMS):
 				// Если инверсия не включена
 				return "UTC+8";
-			// Если временная зона установлена как (Летнее Время В Западной Гренландии)
+			/**
+			 * Обозначения времени в Западной Гренландии однозначны и потому выводятся
+			 * названиями, а не смещением: числовую запись здесь получают лишь те зоны,
+			 * чьё обозначение занято другой зоной и обратно ведёт не туда
+			 */
 			case static_cast <uint8_t> (zone_t::WGSTST):
-				// Если инверсия не включена
-				return "UTC-2";
+				// Формируем временную зону
+				return "WGST";
 		}
 	/**
 	 * Если возникает ошибка
@@ -10399,6 +10918,12 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 				case 'Y':
 				// Если мы нашли переменную (G)
 				case 'G':
+				// Если мы нашли переменную (C)
+				case 'C':
+				// Если мы нашли переменную (n)
+				case 'n':
+				// Если мы нашли переменную (t)
+				case 't':
 				// Если мы нашли переменную (b)
 				case 'b':
 				// Если мы нашли переменную (h)
@@ -10480,6 +11005,27 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							case 'G':
 								// Выполняем формирование номера года
 								result.append(std::to_string(dt.year));
+							break;
+							// Если мы нашли переменную (C)
+							case 'C':
+								/**
+								 * Век записывается двумя разрядами по требованию POSIX: год
+								 * делится на сто с отбрасыванием остатка. Календарь модуля
+								 * охватывает годы с 1970 по 9999, поэтому век всегда
+								 * умещается в два разряда и ведущий ноль не требуется
+								 */
+								// Выполняем формирование номера века
+								result.append(std::to_string(dt.year / 100));
+							break;
+							// Если мы нашли переменную (n)
+							case 'n':
+								// Выполняем формирование перевода строки
+								result.append(1, '\n');
+							break;
+							// Если мы нашли переменную (t)
+							case 't':
+								// Выполняем формирование горизонтальной табуляции
+								result.append(1, '\t');
 							break;
 							// Если мы нашли переменную (b)
 							case 'b':
@@ -10937,15 +11483,8 @@ string awh::Chrono::format(const uint64_t date, string_view format) const noexce
 		dt_t dt;
 		// Заполняем объект даты из штампа времени
 		this->makeDate(date, dt);
-		// Устанавливаем локальную временную зону
-		dt.offset = this->getTimeZone();
-		// Если смещение выше нуля
-		if(dt.offset != 0){
-			// Выполняем замену полученной даты
-			const_cast <uint64_t &> (date) = this->makeDate(dt);
-			// Заполняем объект даты из штампа времени
-			this->makeDate(date, dt);
-		}
+		// Перекладываем объект даты во временную зону окружения
+		this->shiftDate(dt, this->getTimeZone());
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
@@ -10973,15 +11512,8 @@ string awh::Chrono::format(const uint64_t date, const int32_t zone, string_view 
 		dt_t dt;
 		// Заполняем объект даты из штампа времени
 		this->makeDate(date, dt);
-		// Выполняем установку смещения временной зоны
-		dt.offset = zone;
-		// Если смещение выше нуля
-		if(dt.offset != 0){
-			// Выполняем замену полученной даты
-			const_cast <uint64_t &> (date) = this->makeDate(dt);
-			// Заполняем объект даты из штампа времени
-			this->makeDate(date, dt);
-		}
+		// Перекладываем объект даты в указанную временную зону
+		this->shiftDate(dt, zone);
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
@@ -11011,15 +11543,8 @@ string awh::Chrono::format(const uint64_t date, const zone_t zone, string_view f
 		this->makeDate(date, dt);
 		// Устанавливаем временную зону
 		dt.zone = zone;
-		// Выполняем установку смещения временной зоны
-		dt.offset = this->getTimeZone(zone);
-		// Если смещение выше нуля
-		if(dt.offset != 0){
-			// Выполняем замену полученной даты
-			const_cast <uint64_t &> (date) = this->makeDate(dt);
-			// Заполняем объект даты из штампа времени
-			this->makeDate(date, dt);
-		}
+		// Перекладываем объект даты в указанную временную зону
+		this->shiftDate(dt, this->getTimeZone(zone));
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
@@ -11049,15 +11574,8 @@ string awh::Chrono::format(const uint64_t date, string_view zone, string_view fo
 		this->makeDate(date, dt);
 		// Устанавливаем временную зону
 		dt.zone = this->matchTimeZone(zone);
-		// Выполняем установку смещения временной зоны
-		dt.offset = this->getTimeZone(zone);
-		// Если смещение выше нуля
-		if(dt.offset != 0){
-			// Выполняем замену полученной даты
-			const_cast <uint64_t &> (date) = this->makeDate(dt);
-			// Заполняем объект даты из штампа времени
-			this->makeDate(date, dt);
-		}
+		// Перекладываем объект даты в указанную временную зону
+		this->shiftDate(dt, this->getTimeZone(zone));
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
@@ -11083,12 +11601,13 @@ string awh::Chrono::format(string_view format, const storage_t storage) const no
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Создаем структуру времени
 				dt_t dt = this->_dt;
-				// Если временная зона не установлена
+				/**
+				 * Поля объекта даты уже лежат в своей временной зоне, перекладывать
+				 * его нужно лишь тогда, когда зоны у него ещё нет
+				 */
 				if((dt.offset == 0) && (dt.zone == zone_t::NONE))
-					// Устанавливаем смещение временной зоны по умолчанию
-					dt.offset = this->getTimeZone();
-				// Заполняем объект даты из штампа времени
-				this->makeDate(this->makeDate(dt), dt);
+					// Перекладываем объект даты во временную зону окружения
+					this->shiftDate(dt, this->getTimeZone());
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -11098,12 +11617,8 @@ string awh::Chrono::format(string_view format, const storage_t storage) const no
 				dt_t dt;
 				// Заполняем объект даты из штампа времени
 				this->makeDate(this->timestamp(type_t::MILLISECONDS), dt);
-				// Устанавливаем локальную временную зону
-				dt.offset = this->getTimeZone(storage);
-				// Если смещение выше нуля
-				if(dt.offset != 0)
-					// Заполняем объект даты из штампа времени
-					this->makeDate(this->makeDate(dt), dt);
+				// Перекладываем объект даты во временную зону окружения
+				this->shiftDate(dt, this->getTimeZone(storage));
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -11132,12 +11647,8 @@ string awh::Chrono::format(const int32_t zone, string_view format, const storage
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Создаем структуру времени
 				dt_t dt = this->_dt;
-				// Выполняем установку смещения временной зоны
-				dt.offset = zone;
-				// Если смещение выше нуля
-				if(dt.offset != 0)
-					// Заполняем объект даты из штампа времени
-					this->makeDate(this->makeDate(dt), dt);
+				// Перекладываем объект даты в указанную временную зону
+				this->shiftDate(dt, zone);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -11147,12 +11658,8 @@ string awh::Chrono::format(const int32_t zone, string_view format, const storage
 				dt_t dt;
 				// Заполняем объект даты из штампа времени
 				this->makeDate(this->timestamp(type_t::MILLISECONDS), dt);
-				// Выполняем установку смещения временной зоны
-				dt.offset = zone;
-				// Если смещение выше нуля
-				if(dt.offset != 0)
-					// Заполняем объект даты из штампа времени
-					this->makeDate(this->makeDate(dt), dt);
+				// Перекладываем объект даты в указанную временную зону
+				this->shiftDate(dt, zone);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -11183,12 +11690,8 @@ string awh::Chrono::format(const zone_t zone, string_view format, const storage_
 				dt_t dt = this->_dt;
 				// Устанавливаем временную зону
 				dt.zone = zone;
-				// Выполняем установку смещения временной зоны
-				dt.offset = this->getTimeZone(zone);
-				// Если смещение выше нуля
-				if(dt.offset != 0)
-					// Заполняем объект даты из штампа времени
-					this->makeDate(this->makeDate(dt), dt);
+				// Перекладываем объект даты в указанную временную зону
+				this->shiftDate(dt, this->getTimeZone(zone));
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -11200,12 +11703,8 @@ string awh::Chrono::format(const zone_t zone, string_view format, const storage_
 				this->makeDate(this->timestamp(type_t::MILLISECONDS), dt);
 				// Устанавливаем временную зону
 				dt.zone = zone;
-				// Выполняем установку смещения временной зоны
-				dt.offset = this->getTimeZone(zone);
-				// Если смещение выше нуля
-				if(dt.offset != 0)
-					// Заполняем объект даты из штампа времени
-					this->makeDate(this->makeDate(dt), dt);
+				// Перекладываем объект даты в указанную временную зону
+				this->shiftDate(dt, this->getTimeZone(zone));
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -11236,12 +11735,8 @@ string awh::Chrono::format(string_view zone, string_view format, const storage_t
 				dt_t dt = this->_dt;
 				// Устанавливаем временную зону
 				dt.zone = this->matchTimeZone(zone);
-				// Выполняем установку смещения временной зоны
-				dt.offset = this->getTimeZone(zone);
-				// Если смещение выше нуля
-				if(dt.offset != 0)
-					// Заполняем объект даты из штампа времени
-					this->makeDate(this->makeDate(dt), dt);
+				// Перекладываем объект даты в указанную временную зону
+				this->shiftDate(dt, this->getTimeZone(zone));
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -11253,12 +11748,8 @@ string awh::Chrono::format(string_view zone, string_view format, const storage_t
 				this->makeDate(this->timestamp(type_t::MILLISECONDS), dt);
 				// Устанавливаем временную зону
 				dt.zone = this->matchTimeZone(zone);
-				// Выполняем установку смещения временной зоны
-				dt.offset = this->getTimeZone(zone);
-				// Если смещение выше нуля
-				if(dt.offset != 0)
-					// Заполняем объект даты из штампа времени
-					this->makeDate(this->makeDate(dt), dt);
+				// Перекладываем объект даты в указанную временную зону
+				this->shiftDate(dt, this->getTimeZone(zone));
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -11277,17 +11768,22 @@ string awh::Chrono::format(string_view zone, string_view format, const storage_t
  * @return        результат работы
  *
  */
-string awh::Chrono::strip(string_view date, string_view format1, string_view format2, const storage_t storage) const noexcept {
+string awh::Chrono::strip(string_view date, string_view format1, string_view format2, const storage_t storage) noexcept {
 	// Если данные переданы
 	if(!date.empty() && !format1.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем парсинг даты
-			const uint64_t stamp = const_cast <chrono_t *> (this)->parse(date, format1, storage);
-			// Если штамп времени получен
-			if(stamp > 0)
+			// Признак пригодности разобранной записи
+			bool valid = false;
+			/**
+			 * Пригодность записи запрашивается отдельно: нулевой штамп времени - это
+			 * первое января 1970 года, а не признак неудачи разбора
+			 */
+			const uint64_t stamp = this->parse(date, format1, storage, &valid);
+			// Если запись разобрана
+			if(valid)
 				// Выполняем формирование формата даты и времени
 				return this->format(stamp, this->getTimeZone(storage), format2);
 		/**
@@ -11331,9 +11827,18 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
  *
  */
 static constexpr uint32_t DEFAULT_YEAR_ROLLBACK = (26 * 3600);
+/**
+ * @brief Окно двузначного года по умолчанию
+ *
+ * @details Пятьдесят лет требует RFC 9110 (§5.6.7) для устаревшего формата даты
+ *          RFC 850, где год записывается двумя разрядами
+ *
+ */
+static constexpr uint8_t DEFAULT_YEAR_WINDOW = 50;
 
 awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept :
-	_yearRollback(DEFAULT_YEAR_ROLLBACK), _fmk(fmk), _log(log) {
+	_yearRollback(DEFAULT_YEAR_ROLLBACK), _yearWindow(DEFAULT_YEAR_WINDOW),
+	_zoneOffset(0), _zoneStamp(0), _zoneCached(false), _zoneName{""}, _fmk(fmk), _log(log) {
 	/**
 	 * Деактивируем мьютексы на время инициализации
 	 */

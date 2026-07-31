@@ -4327,3 +4327,173 @@ TEST_F(ParserHttp3Fixture, QpackHoldSurvivesMixedStreamOrder){
 	// Значение поля обязано совпасть с отправленным
 	ASSERT_EQ(output.front().value, "22222222222222222222222222222222");
 }
+/**
+ * @brief Проверка разбора цели запроса, заданной в абсолютной форме (RFC 9112 §3.2.2)
+ *
+ * @details Абсолютная форма цели законна в HTTP/1 и обязательна в запросе к прокси,
+ *          а провайдер запроса общий для всех протоколов. Без разбора схема
+ *          и авторитет уехали бы в псевдо-заголовок пути целиком вопреки
+ *          RFC 9114 §4.3.1.
+ *
+ *          Замкнутый обход этого не ловит: на приёме URI собирается из того же
+ *          псевдо-заголовка пути, поэтому отправка обратно даёт тот же результат.
+ *
+ */
+TEST_F(ParserHttp3Fixture, AbsoluteTargetSplit){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Выполняем рукопожатие соединения
+	this->handshake(client, server);
+	/**
+	 * Цель в абсолютной форме с путём и строкой запроса
+	 */
+	{
+		// Формируем провайдер запроса с целью в абсолютной форме
+		auto request = std::make_unique <request_t> (version_t::HTTP3, method_t::GET, "https://origin.example.com/api?x=1");
+		// Формируем контейнер полей запроса
+		headers_t headers(std::move(request));
+		/**
+		 * Поле адресата намеренно расходится с авторитетом цели: получатель
+		 * обязан заменить сведения Host авторитетом цели (RFC 9112 §3.2.2)
+		 */
+		headers.emplace("Host", "proxy.example.com");
+		// Отправляем секцию полей запроса с завершением потока
+		client.parser->sendHeaders(0, headers, true);
+		// Выполняем прокачку очередей исходящих данных
+		this->pump(client, server);
+		// Схема обязана быть взята из самой цели
+		ASSERT_EQ(this->field(server.events, 0, ":scheme"), "https");
+		// Авторитет обязан быть взят из цели, а не из поля адресата
+		ASSERT_EQ(this->field(server.events, 0, ":authority"), "origin.example.com");
+		// Путь обязан нести только путь со строкой запроса
+		ASSERT_EQ(this->field(server.events, 0, ":path"), "/api?x=1");
+	}
+	/**
+	 * Цель в абсолютной форме без пути: строка запроса не должна уехать в авторитет
+	 */
+	{
+		// Формируем провайдер запроса с целью без пути
+		auto request = std::make_unique <request_t> (version_t::HTTP3, method_t::GET, "https://origin.example.com?x=1");
+		// Формируем контейнер полей запроса
+		headers_t headers(std::move(request));
+		// Отправляем секцию полей запроса с завершением потока
+		client.parser->sendHeaders(4, headers, true);
+		// Выполняем прокачку очередей исходящих данных
+		this->pump(client, server);
+		// Авторитет обязан закончиться перед строкой запроса
+		ASSERT_EQ(this->field(server.events, 4, ":authority"), "origin.example.com");
+		// Путь обязан быть дополнен корневым разделителем
+		ASSERT_EQ(this->field(server.events, 4, ":path"), "/?x=1");
+	}
+	/**
+	 * Цель в происхождённой форме: поведение обязано остаться прежним
+	 */
+	{
+		// Формируем провайдер запроса с целью в происхождённой форме
+		auto request = std::make_unique <request_t> (version_t::HTTP3, method_t::GET, "/plain");
+		// Формируем контейнер полей запроса
+		headers_t headers(std::move(request));
+		// Дописываем поле адресата запроса
+		headers.emplace("Host", "plain.example.com");
+		// Отправляем секцию полей запроса с завершением потока
+		client.parser->sendHeaders(8, headers, true);
+		// Выполняем прокачку очередей исходящих данных
+		this->pump(client, server);
+		// Схема обязана быть взята у вызывающей стороны
+		ASSERT_EQ(this->field(server.events, 8, ":scheme"), "https");
+		// Авторитет обязан быть взят из поля адресата
+		ASSERT_EQ(this->field(server.events, 8, ":authority"), "plain.example.com");
+		// Путь обязан дойти без изменений
+		ASSERT_EQ(this->field(server.events, 8, ":path"), "/plain");
+	}
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(server.events.errors.empty());
+}
+/**
+ * @brief Проверка регистронезависимости значения поля TE на приёме (RFC 9110 §10.1.4)
+ *
+ * @details Значения кодирований передачи регистр не различают, поэтому [TE: Trailers]
+ *          законно. Строгое сравнение объявляло секцию некорректной и отвергало
+ *          сообщение живого клиента целиком, тогда как HTTP/2 на том же месте
+ *          такое сообщение принимал: два модуля расходились на одном запросе.
+ *
+ *          Секция подаётся списком полей напрямую, а не через контейнер: так
+ *          поле уходит на провод в исходном написании независимо от отбора
+ *          на стороне отправки, то есть проверяется именно приём.
+ *
+ */
+TEST_F(ParserHttp3Fixture, TrailersValueCaseInsensitive){
+	/**
+	 * Проверяем написания значения поля, различающиеся регистром
+	 */
+	for(const std::string & sample : {std::string("trailers"), std::string("Trailers"), std::string("TRAILERS")}){
+		// Стороны соединения
+		endpoint_t client, server;
+		// Подготавливаем сторону клиента
+		this->setup(client, direct_t::RESPONSE);
+		// Подготавливаем сторону сервера
+		this->setup(server, direct_t::REQUEST);
+		// Выполняем рукопожатие соединения
+		this->handshake(client, server);
+		// Формируем секцию полей запроса
+		std::vector <awh::http::h3::qpack::field_t> fields;
+		// Дописываем псевдо-поле метода запроса
+		fields.emplace_back(":method", "GET");
+		// Дописываем псевдо-поле схемы запроса
+		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-поле адресата запроса
+		fields.emplace_back(":authority", "example.com");
+		// Дописываем псевдо-поле пути запроса
+		fields.emplace_back(":path", "/te");
+		// Дописываем поле проверяемого написания
+		fields.emplace_back("te", sample);
+		// Отправляем секцию полей запроса с завершением потока
+		client.parser->sendHeaders(0, fields, true);
+		// Выполняем прокачку очередей исходящих данных
+		this->pump(client, server);
+		// Поле обязано дойти до приложения в исходном написании
+		ASSERT_EQ(this->field(server.events, 0, "te"), sample) << "значение: " << sample;
+		// Поток обрываться не должен
+		ASSERT_TRUE(server.events.aborts.empty()) << "значение: " << sample;
+		// Соединение обязано остаться живым
+		ASSERT_TRUE(server.events.errors.empty()) << "значение: " << sample;
+	}
+	/**
+	 * Значение, отличное от [trailers], обязано остаться отвергнутым
+	 */
+	{
+		// Стороны соединения
+		endpoint_t client, server;
+		// Подготавливаем сторону клиента
+		this->setup(client, direct_t::RESPONSE);
+		// Подготавливаем сторону сервера
+		this->setup(server, direct_t::REQUEST);
+		// Выполняем рукопожатие соединения
+		this->handshake(client, server);
+		// Формируем секцию полей запроса
+		std::vector <awh::http::h3::qpack::field_t> fields;
+		// Дописываем псевдо-поле метода запроса
+		fields.emplace_back(":method", "GET");
+		// Дописываем псевдо-поле схемы запроса
+		fields.emplace_back(":scheme", "https");
+		// Дописываем псевдо-поле адресата запроса
+		fields.emplace_back(":authority", "example.com");
+		// Дописываем псевдо-поле пути запроса
+		fields.emplace_back(":path", "/te");
+		/**
+		 * Перечисление кодирований передачи §4.2 запрещает: допустимо одно лишь
+		 * значение [trailers], а сообщение с иным объявляется некорректным
+		 */
+		fields.emplace_back("te", "trailers, deflate");
+		// Отправляем секцию полей запроса с завершением потока
+		client.parser->sendHeaders(0, fields, true);
+		// Выполняем прокачку очередей исходящих данных
+		this->pump(client, server);
+		// Поток обязан быть оборван
+		ASSERT_FALSE(server.events.aborts.empty());
+	}
+}

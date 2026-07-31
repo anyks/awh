@@ -82,6 +82,16 @@ namespace awh {
 		crypto_t::hash_t hash;
 		// Тип шифрования
 		crypto_t::cipher_t cipher;
+		/**
+		 * Направление работы потокового шифрования
+		 *
+		 * @details Направление задаётся при заведении контекста и им же
+		 *          определяется: контекст, заведённый на шифрование, расшифровать
+		 *          не может. Прежде оно нигде не хранилось, и вызов расшифровки
+		 *          поверх контекста шифрования молча шифровал ещё раз
+		 *
+		 */
+		crypto_t::event_t event;
 		// Ключ шифрования
 		vector <uint8_t> key;
 		// Вектор инициализации
@@ -91,13 +101,66 @@ namespace awh {
 		// Контекст шифрования
 		const EVP_CIPHER_CTX * ctx;
 		/**
+		 * @brief Метод сброса стейта AES-шифрования
+		 *
+		 * @details Стейт сбрасывался присвоением заново созданного объекта, а
+		 *          контекст шифрования принадлежит библиотеке криптографии и
+		 *          присвоением не освобождается: смена пароля, соли либо числа
+		 *          итераций после начала потокового шифрования теряла контекст
+		 *          безвозвратно.
+		 *
+		 *          Ключ и вектор инициализации затираются, а не просто
+		 *          освобождаются: выведенный из пароля ключ остаётся в памяти
+		 *          после освобождения набора и достаётся тому, кому эта память
+		 *          выдана следующей
+		 *
+		 */
+		void reset() noexcept {
+			// Если контекст шифрования заведён
+			if(this->ctx != nullptr){
+				// Освобождаем контекст шифрования
+				::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (this->ctx));
+				// Зануляем контекст шифрования
+				this->ctx = nullptr;
+			}
+			// Если ключ шифрования выведен
+			if(!this->key.empty())
+				// Выполняем затирание ключа шифрования
+				::OPENSSL_cleanse(this->key.data(), this->key.size());
+			// Если вектор инициализации выведен
+			if(!this->ivec.empty())
+				// Выполняем затирание вектора инициализации
+				::OPENSSL_cleanse(this->ivec.data(), this->ivec.size());
+			// Освобождаем ключ шифрования
+			this->key.clear();
+			// Освобождаем вектор инициализации
+			this->ivec.clear();
+			// Сбрасываем контекст выбранного шифра
+			this->evp = nullptr;
+			// Сбрасываем тип хэш-суммы
+			this->hash = crypto_t::hash_t::NONE;
+			// Сбрасываем тип шифрования
+			this->cipher = crypto_t::cipher_t::NONE;
+			// Сбрасываем направление работы потокового шифрования
+			this->event = crypto_t::event_t::NONE;
+		}
+		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit state_t() noexcept :
 		 hash(crypto_t::hash_t::NONE),
 		 cipher(crypto_t::cipher_t::NONE),
+		 event(crypto_t::event_t::NONE),
 		 evp(nullptr), ctx(nullptr) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~state_t() noexcept {
+			// Выполняем сброс стейта AES-шифрования
+			this->reset();
+		}
 	};
 };
 
@@ -424,9 +487,9 @@ namespace driver {
 				/**
 				 * Определяем тип шифрования
 				 */
-				switch(static_cast <uint8_t> (cipher)){
+				switch(static_cast <uint16_t> (cipher)){
 					// Если производится работы с BASE64
-					case static_cast <uint8_t> (crypto_t::cipher_t::BASE64): {
+					case static_cast <uint16_t> (crypto_t::cipher_t::BASE64): {
 						// Инициализируем объект BASE64
 						BIO * b64 = ::BIO_new(::BIO_f_base64());
 						// Если объект BASE64 инициализирован
@@ -506,11 +569,11 @@ namespace driver {
 						}
 					} break;
 					// Если производится работы с AES128
-					case static_cast <uint8_t> (crypto_t::cipher_t::AES128):
+					case static_cast <uint16_t> (crypto_t::cipher_t::AES128):
 					// Если производится работы с AES192
-					case static_cast <uint8_t> (crypto_t::cipher_t::AES192):
+					case static_cast <uint16_t> (crypto_t::cipher_t::AES192):
 					// Если производится работы с AES256
-					case static_cast <uint8_t> (crypto_t::cipher_t::AES256): {
+					case static_cast <uint16_t> (crypto_t::cipher_t::AES256): {
 						// Если контекст шифрования не создан
 						if(state.ctx == nullptr){
 							// Создаем контекст шифрования
@@ -646,6 +709,31 @@ namespace driver {
 						} else {
 							// Очищаем выходной буфер
 							result.clear();
+							/**
+							 * Направление работы сверяется с тем, на которое заведён
+							 * контекст: контекст, заведённый на шифрование, расшифровать
+							 * не может, а довод направления в потоковом режиме прежде не
+							 * читался вовсе - расшифровка поверх контекста шифрования
+							 * молча шифровала ещё раз, и работа получала мусор
+							 */
+							// Если направление работы не совпадает с направлением контекста
+							if(state.event != event){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									log->debug("Direction of the stream cipher does not match the one it was initialized with", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log->print("Direction of the stream cipher does not match the one it was initialized with", log_t::flag_t::CRITICAL);
+								#endif
+								// Выходим из функции
+								return;
+							}
 							// Буфер для выходных данных (на 1 блок больше — стандартная практика)
 							result.resize(AES_BLOCK_SIZE + size, 0);
 							// Обрабатываем весь входной буфер за один вызов (рекомендуется)
@@ -673,6 +761,28 @@ namespace driver {
 							// Изменяем размер результата на фактический размер данных
 							result.resize(static_cast <size_t> (length));
 						}
+					} break;
+					// Если тип шифрования не установлен либо разбору не знаком
+					default: {
+						/**
+						 * Тип шифрования, разбору не знакомый, отвергается явно: прежде
+						 * отбор шёл по младшему октету значения, а разрядность AES256 в него
+						 * не умещается - его метка совпадала с меткой незаданного шифрования,
+						 * и работа без шифрования уходила в ветвь AES
+						 */
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							log->debug("Cipher type is not set", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							log->print("Cipher type is not set", log_t::flag_t::WARNING);
+						#endif
 					} break;
 				}
 			/**
@@ -923,7 +1033,7 @@ void awh::Crypto::roundAES(const uint32_t round) noexcept {
 		// Устанавливаем количество раундов шифрования
 		this->_params.rounds = round;
 		// Сбрасываем стейт шифрования
-		(* this->_params.state) = state_t();
+		this->_params.state->reset();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -959,7 +1069,7 @@ void awh::Crypto::salt(string_view salt) noexcept {
 		// Устанавливаем соль для шифрования
 		this->_params.salt = salt;
 		// Сбрасываем стейт шифрования
-		(* this->_params.state) = state_t();
+		this->_params.state->reset();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -995,7 +1105,7 @@ void awh::Crypto::password(string_view password) noexcept {
 		// Устанавливаем пароль шифрования
 		this->_params.password = password;
 		// Сбрасываем стейт шифрования
-		* this->_params.state = state_t();
+		this->_params.state->reset();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1672,10 +1782,16 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 		if(!this->_params.password.empty()){
 			// Получаем состояние объекта
 			state_t & state = (* this->_params.state);
-			// Если контекст шифрования не создан
-			if(state.ctx == nullptr){
+			{
 				// Выполняем блокировку потоков
 				const locker_t <> lock(this->_mtx);
+				/**
+				 * Заведённый прежде контекст шифрования сбрасывается, а не отменяет
+				 * работу: повторная инициализация иначе всегда отвечала отказом, и
+				 * сменить направление либо шифр после первого раза было нечем
+				 */
+				// Выполняем сброс стейта AES-шифрования
+				state.reset();
 				// Если инициализация ключей не выполнена
 				if(!driver::cipher(cipher, hash, this->_params.password, this->_params.salt, this->_params.rounds, state, this->_log)){
 					/**
@@ -1768,10 +1884,55 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 							return result;
 						}
 					break;
+					// Если направление работы не задано
+					default: {
+						/**
+						 * Направление, разбору не знакомое, отменяет инициализацию, а
+						 * контекст при этом освобождается: прежде он оставался заведённым
+						 * и неинициализированным, и всякая следующая попытка видела его
+						 * заведённым и отвечала отказом безвозвратно
+						 */
+						// Выполняем сброс стейта AES-шифрования
+						state.reset();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("Direction of the stream cipher is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("Direction of the stream cipher is not set", log_t::flag_t::CRITICAL);
+						#endif
+						// Выходим из метода
+						return result;
+					}
 				}
 				// Отключаем padding (обязательно для CFB)
 				::EVP_CIPHER_CTX_set_padding(const_cast <EVP_CIPHER_CTX *> (state.ctx), 0);
+				// Запоминаем направление работы потокового шифрования
+				state.event = event;
 			}
+		/**
+		 * Если пароль шифрования не установлен
+		 */
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Password of the stream cipher is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Password of the stream cipher is not set", log_t::flag_t::CRITICAL);
+			#endif
 		}
 	/**
 	 * Если возникает ошибка
@@ -1918,17 +2079,30 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
 		/**
+		 * Тип шифрования и тип хэш-суммы берутся у заведённого контекста, когда
+		 * самим вызовом они не заданы: потоковый режим держался на том, что метка
+		 * незаданного шифрования совпадала с меткой AES256 по младшему октету, и
+		 * работа после инициализации попадала в ветвь AES по совпадению значений.
+		 * Теперь она попадает туда по существу - потому что контекст заведён
+		 */
+		// Признак работы поверх заведённого контекста потокового шифрования
+		const bool stream = ((cipher == cipher_t::NONE) && (this->_params.state->ctx != nullptr));
+		// Тип шифрования, которым выполняется работа
+		const cipher_t actual = (stream ? this->_params.state->cipher : cipher);
+		// Тип хэш-суммы, которым выводится ключ шифрования
+		const hash_t digest = (stream ? this->_params.state->hash : hash);
+		/**
 		 * Определяем тип шифрования
 		 */
-		switch(static_cast <uint8_t> (cipher)){
+		switch(static_cast <uint16_t> (actual)){
 			// Если производится работы с BASE64
-			case static_cast <uint8_t> (cipher_t::BASE64): {
+			case static_cast <uint16_t> (cipher_t::BASE64): {
 				// Выполняем блокировку потоков
 				const locker_t <> lock(this->_mtx);
 				// Получаем состояние объекта
 				const state_t & state = (* this->_params.state);
 				// Выполняем кодирование строки BASE64
-				driver::hash(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
+				driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
 				// Если кодирование не вышло
 				if(result.empty()){
 					/**
@@ -1936,7 +2110,7 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to encrypt \"%s\" string data into BASE64 format", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+						this->_log->debug("Unable to encrypt \"%s\" string data into BASE64 format", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1947,11 +2121,11 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 				}
 			} break;
 			// Если производится работы с AES128
-			case static_cast <uint8_t> (cipher_t::AES128):
+			case static_cast <uint16_t> (cipher_t::AES128):
 			// Если производится работы с AES192
-			case static_cast <uint8_t> (cipher_t::AES192):
+			case static_cast <uint16_t> (cipher_t::AES192):
 			// Если производится работы с AES256
-			case static_cast <uint8_t> (cipher_t::AES256): {
+			case static_cast <uint16_t> (cipher_t::AES256): {
 				// Если пароль установлен
 				if(!this->_params.password.empty()){
 					// Выполняем блокировку потоков на всю критическую секцию (исключаем гонку проверки и инициализации)
@@ -1961,28 +2135,28 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 					// Если контекст шифрования не создан
 					if(state.ctx == nullptr){
 						// Проверяем текущее состояние
-						if((state.hash != hash) || (state.cipher != cipher)){
+						if((state.hash != digest) || (state.cipher != actual)){
 							// Если инициализация ключей не выполнена
-							if(!driver::cipher(cipher, hash, this->_params.password, this->_params.salt, this->_params.rounds, const_cast <state_t &> (state), this->_log)){
+							if(!driver::cipher(actual, digest, this->_params.password, this->_params.salt, this->_params.rounds, const_cast <state_t &> (state), this->_log)){
 								/**
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+									this->_log->debug("Unable to initialize AES actual for encoding data", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Unable to initialize AES cipher for encoding data", log_t::flag_t::CRITICAL);
+									this->_log->print("Unable to initialize AES actual for encoding data", log_t::flag_t::CRITICAL);
 								#endif
 								// Выходим из метода
 								return result;
 							}
 						}
 						// Выполняем шифрование данных
-						driver::hash(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
+						driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
 					// Если контекст шифрования уже создан
 					} else
 						// Выполняем шифрование данных
@@ -1996,7 +2170,7 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to encrypt data into AES", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
+						this->_log->debug("Unable to encrypt data into AES", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2005,6 +2179,28 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 						this->_log->print("Unable to encrypt data into AES", log_t::flag_t::WARNING);
 					#endif
 				}
+			} break;
+			// Если тип шифрования не установлен либо разбору не знаком
+			default: {
+				/**
+				 * Тип шифрования, разбору не знакомый, отвергается явно: прежде
+				 * отбор шёл по младшему октету значения, а разрядность AES256 в него
+				 * не умещается - его метка совпадала с меткой незаданного шифрования,
+				 * и работа без шифрования уходила в ветвь AES
+				 */
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("Unable to encrypt data, actual type is not set", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("Unable to encrypt data, actual type is not set", log_t::flag_t::WARNING);
+				#endif
 			} break;
 		}
 	}
@@ -2150,17 +2346,30 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
 		/**
+		 * Тип шифрования и тип хэш-суммы берутся у заведённого контекста, когда
+		 * самим вызовом они не заданы: потоковый режим держался на том, что метка
+		 * незаданного шифрования совпадала с меткой AES256 по младшему октету, и
+		 * работа после инициализации попадала в ветвь AES по совпадению значений.
+		 * Теперь она попадает туда по существу - потому что контекст заведён
+		 */
+		// Признак работы поверх заведённого контекста потокового шифрования
+		const bool stream = ((cipher == cipher_t::NONE) && (this->_params.state->ctx != nullptr));
+		// Тип шифрования, которым выполняется работа
+		const cipher_t actual = (stream ? this->_params.state->cipher : cipher);
+		// Тип хэш-суммы, которым выводится ключ шифрования
+		const hash_t digest = (stream ? this->_params.state->hash : hash);
+		/**
 		 * Определяем тип шифрования
 		 */
-		switch(static_cast <uint8_t> (cipher)){
+		switch(static_cast <uint16_t> (actual)){
 			// Если производится работы с BASE64
-			case static_cast <uint8_t> (cipher_t::BASE64): {
+			case static_cast <uint16_t> (cipher_t::BASE64): {
 				// Выполняем блокировку потоков
 				const locker_t <> lock(this->_mtx);
 				// Получаем состояние объекта
 				const state_t & state = (* this->_params.state);
 				// Выполняем декодирование строки BASE64
-				driver::hash(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
+				driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
 				// Если декодирование не вышло
 				if(result.empty()){
 					/**
@@ -2168,22 +2377,22 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to extract data from BASE64 encoded \"%s\" hash", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+						this->_log->debug("Unable to extract data from BASE64 encoded \"%s\" digest", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to extract data from BASE64 encoded \"%s\" hash", log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+						this->_log->print("Unable to extract data from BASE64 encoded \"%s\" digest", log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
 					#endif
 				}
 			} break;
 			// Если производится работы с AES128
-			case static_cast <uint8_t> (cipher_t::AES128):
+			case static_cast <uint16_t> (cipher_t::AES128):
 			// Если производится работы с AES192
-			case static_cast <uint8_t> (cipher_t::AES192):
+			case static_cast <uint16_t> (cipher_t::AES192):
 			// Если производится работы с AES256
-			case static_cast <uint8_t> (cipher_t::AES256): {
+			case static_cast <uint16_t> (cipher_t::AES256): {
 				// Если пароль установлен
 				if(!this->_params.password.empty()){
 					// Выполняем блокировку потоков на всю критическую секцию (исключаем гонку проверки и инициализации)
@@ -2193,28 +2402,28 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 					// Если контекст шифрования не создан
 					if(state.ctx == nullptr){
 						// Проверяем текущее состояние
-						if((state.hash != hash) || (state.cipher != cipher)){
+						if((state.hash != digest) || (state.cipher != actual)){
 							// Если инициализация ключей не выполнена
-							if(!driver::cipher(cipher, hash, this->_params.password, this->_params.salt, this->_params.rounds, const_cast <state_t &> (state), this->_log)){
+							if(!driver::cipher(actual, digest, this->_params.password, this->_params.salt, this->_params.rounds, const_cast <state_t &> (state), this->_log)){
 								/**
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+									this->_log->debug("Unable to initialize AES actual for encoding data", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Unable to initialize AES cipher for encoding data", log_t::flag_t::CRITICAL);
+									this->_log->print("Unable to initialize AES actual for encoding data", log_t::flag_t::CRITICAL);
 								#endif
 								// Выходим из метода
 								return result;
 							}
 						}
 						// Выполняем дешифрование данных
-						driver::hash(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
+						driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
 					// Если контекст шифрования уже создан
 					} else
 						// Выполняем дешифрование данных
@@ -2228,7 +2437,7 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to decrypt data from AES", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
+						this->_log->debug("Unable to decrypt data from AES", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2237,6 +2446,28 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 						this->_log->print("Unable to decrypt data from AES", log_t::flag_t::WARNING);
 					#endif
 				}
+			} break;
+			// Если тип шифрования не установлен либо разбору не знаком
+			default: {
+				/**
+				 * Тип шифрования, разбору не знакомый, отвергается явно: прежде
+				 * отбор шёл по младшему октету значения, а разрядность AES256 в него
+				 * не умещается - его метка совпадала с меткой незаданного шифрования,
+				 * и работа без шифрования уходила в ветвь AES
+				 */
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("Unable to decrypt data, actual type is not set", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("Unable to decrypt data, actual type is not set", log_t::flag_t::WARNING);
+				#endif
 			} break;
 		}
 	}
@@ -2296,6 +2527,15 @@ bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
 		const locker_t <> lock(this->_mtx);
 		// Получаем ссылку на объект ключа RSA
 		key_rsa_t & key = (* this->_params.key);
+		/**
+		 * Прежде заведённый ключ освобождается: запись нового поверх старого
+		 * теряла его безвозвратно, тогда как установка ключа извне и загрузка
+		 * его из файла освобождение выполняют
+		 */
+		// Если ключ RSA уже был заведён
+		if(key.ctx != nullptr)
+			// Освобождаем память выделенную под прежний ключ
+			::EVP_PKEY_free(key.ctx);
 		// Устанавливаем тип ключа
 		key.type = key_type_t::PRIVATE;
 		// Запоминаем приватный ключ
@@ -3972,6 +4212,8 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							break;
 							// Если ничего не выбрано
 							default: {
+								// Освобождаем контекст для подписи
+								::EVP_MD_CTX_free(ctx);
 								/**
 								 * Если включён режим отладки
 								 */
@@ -4242,6 +4484,8 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 						break;
 						// Если ничего не выбрано
 						default: {
+							// Освобождаем контекст для верификации
+							::EVP_MD_CTX_free(ctx);
 							/**
 							 * Если включён режим отладки
 							 */
@@ -4346,17 +4590,12 @@ awh::Crypto::~Crypto() noexcept {
 	if(key.ctx != nullptr)
 		// Освобождаем память выделенную под ключ
 		::EVP_PKEY_free(key.ctx);
-	// Получаем ссылку на стейт AES-шифрования
-	state_t & state = (* this->_params.state);
-	// Если контекст потокового AES-шифрования не был финализирован
-	if(state.ctx != nullptr){
-		// Освобождаем контекст шифрования
-		::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (state.ctx));
-		// Зануляем контекст шифрования
-		state.ctx = nullptr;
-	}
 	// Освобождаем память контекста ключа RSA
 	delete this->_params.key;
+	/**
+	 * Стейт AES-шифрования освобождает свой контекст и затирает ключ
+	 * собственным деструктором, поэтому делать это здесь не требуется
+	 */
 	// Освобождаем память контекста стейта AES-шифрования
 	delete this->_params.state;
 }

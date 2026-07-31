@@ -693,12 +693,12 @@ TEST_F(ChronoFixture, GetSetChronoTest){
 	// Устанавливаем 864 миллисекунды
 	this->_chrono->set(static_cast <uint32_t> (864), awh::chrono_t::unit_t::MILLISECONDS);
 	ASSERT_EQ(this->_chrono->get <uint32_t> (awh::chrono_t::unit_t::MILLISECONDS, awh::chrono_t::storage_t::LOCAL), 864);
-	// Устанавливаем 1392891 микросекунды
+	// Устанавливаем 891 микросекунду: поле хранит долю миллисекунды, поэтому берётся остаток
 	this->_chrono->set(static_cast <uint64_t> (1392891), awh::chrono_t::unit_t::MICROSECONDS);
-	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::chrono_t::unit_t::MICROSECONDS, awh::chrono_t::storage_t::LOCAL), 1392891);
-	// Устанавливаем 7892341839 наносекунды
+	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::chrono_t::unit_t::MICROSECONDS, awh::chrono_t::storage_t::LOCAL), 891);
+	// Устанавливаем 341839 наносекунд: поле хранит долю миллисекунды, поэтому берётся остаток
 	this->_chrono->set(static_cast <uint64_t> (7892341839), awh::chrono_t::unit_t::NANOSECONDS);
-	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::chrono_t::unit_t::NANOSECONDS, awh::chrono_t::storage_t::LOCAL), 7892341839);
+	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::chrono_t::unit_t::NANOSECONDS, awh::chrono_t::storage_t::LOCAL), 341839);
 	// Очищаем объект
 	this->_chrono->clear();
 	ASSERT_NE(this->_chrono->get <uint32_t> (awh::chrono_t::unit_t::MILLISECONDS, awh::chrono_t::storage_t::LOCAL), 864);
@@ -806,7 +806,11 @@ TEST_F(ChronoFixture, AddTimeZoneChronoTest){
 	ASSERT_EQ(this->_chrono->getTimeZone("ANYKS"), 9839);
 	// Очищаем объект
 	this->_chrono->clear();
-	// Проверяем смещение своей временной зоны ANYKS после очистки
+	// Очистка локальных данных реестр временных зон не затрагивает
+	ASSERT_EQ(this->_chrono->getTimeZone("ANYKS"), 9839);
+	// Очищаем реестр временных зон
+	this->_chrono->clearTimeZones();
+	// Проверяем смещение своей временной зоны ANYKS после очистки реестра
 	ASSERT_EQ(this->_chrono->getTimeZone("ANYKS"), 0);
 }
 
@@ -826,9 +830,15 @@ TEST_F(ChronoFixture, SetTimeZonesChronoTest){
 	ASSERT_EQ(this->_chrono->getTimeZone("Testing"), 3820);
 	// Очищаем объект
 	this->_chrono->clear();
-	// Проверяем смещение своей временной зоны ANYKS после очистки
+	// Очистка локальных данных реестр временных зон не затрагивает
+	ASSERT_EQ(this->_chrono->getTimeZone("ANYKS"), 9839);
+	// Очистка локальных данных реестр временных зон не затрагивает
+	ASSERT_EQ(this->_chrono->getTimeZone("Testing"), 3820);
+	// Очищаем реестр временных зон
+	this->_chrono->clearTimeZones();
+	// Проверяем смещение своей временной зоны ANYKS после очистки реестра
 	ASSERT_EQ(this->_chrono->getTimeZone("ANYKS"), 0);
-	// Проверяем смещение своей временной зоны Testing после очистки
+	// Проверяем смещение своей временной зоны Testing после очистки реестра
 	ASSERT_EQ(this->_chrono->getTimeZone("Testing"), 0);
 }
 

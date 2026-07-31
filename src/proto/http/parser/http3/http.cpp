@@ -3695,9 +3695,19 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 			return false;
 		/**
 		 * Единственное допустимое значение поля [te] - trailers: остальные
-		 * описывают кодирование передачи, которого в HTTP/3 нет
+		 * описывают кодирование передачи, которого в HTTP/3 нет (RFC 9114 §4.2).
+		 *
+		 * Сравнение регистронезависимое: значения кодирований передачи регистр
+		 * не различают (RFC 9110 §10.1.4), поэтому [TE: Trailers] законно, и строгое
+		 * сравнение отвергало бы сообщение живого клиента целиком. HTTP/2 на том же
+		 * месте сравнивает без учёта регистра, и расходиться двум модулям на одном
+		 * и том же законном запросе нельзя.
+		 *
+		 * Перечисление вида [te: trailers, deflate] отвергается вместе с сообщением
+		 * намеренно: §4.2 запрещает в поле любое значение, кроме одного лишь
+		 * [trailers], а сообщение с запрещённым значением объявляет некорректным
 		 */
-		if((field.name == header::TE) && (field.value != value::TRAILERS))
+		if((field.name == header::TE) && !this->_fmk->compare(value::TRAILERS, field.value))
 			// Выводим отрицательный результат
 			return false;
 		// Если поле недопустимо в секции трейлеров (RFC 9110 §6.5.1)
@@ -4871,12 +4881,36 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const headers_t & 
 				}
 				// Дописываем псевдо-заголовок метода запроса
 				fields.emplace_back(string(header::METHOD), string(awh::http::methodName(request)));
+				// Составляющие цели запроса, заданной в абсолютной форме
+				string_view uriScheme{}, uriAuthority{}, uriPath{};
+				/**
+				 * Разбираем цель запроса: абсолютная форма законна в HTTP/1
+				 * и обязательна в запросе к прокси (RFC 9112 §3.2.2), а провайдер
+				 * запроса общий для всех протоколов. Без разбора схема и авторитет
+				 * уехали бы в псевдо-заголовок пути целиком вопреки RFC 9114 §4.3.1.
+				 *
+				 * Целью классического CONNECT служит [host:port] - разделителя схемы
+				 * там нет, и разбор её не трогает
+				 */
+				const bool absolute = awh::http::splitTarget(request->uri, uriScheme, uriAuthority, uriPath);
 				// Если псевдо-заголовки схемы и пути допустимы для этого запроса
 				if((request->method != method_t::CONNECT) || extended)
-					// Дописываем псевдо-заголовок схемы запроса
-					fields.emplace_back(string(header::SCHEME), string(scheme));
+					/**
+					 * Схема из самой цели старше переданной вызывающей стороной:
+					 * та задаёт схему соединения, а цель адресована приложением явно
+					 */
+					fields.emplace_back(string(header::SCHEME), string((absolute && !uriScheme.empty()) ? uriScheme : scheme));
+				/**
+				 * Авторитет из абсолютной цели старше заголовка адресата: получатель
+				 * такого запроса обязан заменить сведения Host авторитетом цели
+				 * (RFC 9112 §3.2.2), и отправить взамен Host значило бы адресовать
+				 * запрос не туда
+				 */
+				if(absolute && !uriAuthority.empty())
+					// Дописываем псевдо-заголовок адресата
+					fields.emplace_back(string(header::AUTHORITY), string(uriAuthority));
 				// Если контейнер содержит заголовок адресата HTTP/1.1
-				if(headers.has("host"))
+				else if(headers.has("host"))
 					// Дописываем псевдо-заголовок адресата
 					fields.emplace_back(string(header::AUTHORITY), headers.at("host"));
 				/**
@@ -4887,9 +4921,12 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const headers_t & 
 					// Дописываем псевдо-заголовок адресата
 					fields.emplace_back(string(header::AUTHORITY), request->uri);
 				// Если псевдо-заголовки схемы и пути допустимы для этого запроса
-				if((request->method != method_t::CONNECT) || extended)
-					// Дописываем псевдо-заголовок пути запроса
-					fields.emplace_back(string(header::PATH), (request->uri.empty() ? string("/") : request->uri));
+				if((request->method != method_t::CONNECT) || extended){
+					// Буфер под путь цели запроса, требующий дополнения
+					string target = "";
+					// Дописываем псевдо-заголовок пути запроса (пустой путь запрещён)
+					fields.emplace_back(string(header::PATH), string(awh::http::targetPath((absolute ? uriPath : string_view(request->uri)), target)));
+				}
 				// Если запрос поднимает туннель расширенным методом CONNECT
 				if(extended)
 					// Дописываем псевдо-заголовок протокола туннеля
@@ -4933,8 +4970,13 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const headers_t & 
 			if(::isForbidden(buffer) || (buffer == header::HOST))
 				// Переходим к следующему заголовку
 				continue;
-			// Единственное допустимое значение поля [te] - trailers
-			if((buffer == header::TE) && (item.value != value::TRAILERS))
+			/**
+			 * Единственное допустимое значение поля [te] - trailers (RFC 9114 §4.2).
+			 * Сравнение регистронезависимое: значения кодирований передачи регистр
+			 * не различают (RFC 9110 §10.1.4), и строгое сравнение отбрасывало бы
+			 * законное [TE: Trailers], которое пир обязан принять
+			 */
+			if((buffer == header::TE) && !this->_fmk->compare(value::TRAILERS, item.value))
 				// Переходим к следующему заголовку
 				continue;
 			// Дописываем поле в список секции

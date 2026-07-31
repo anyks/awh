@@ -131,6 +131,8 @@ namespace {
 		static constexpr string_view HEAD = "HEAD";
 		// Метод, которому допустима звёздочка вместо пути (RFC 9110 §7.1)
 		static constexpr string_view OPTIONS = "OPTIONS";
+		// Единственное допустимое значение поля [te] (RFC 9113 §8.2.2)
+		static constexpr string_view TRAILERS = "trailers";
 		// Коды состояния, при которых тело ответа отсутствует
 		static constexpr string_view SWITCHING = "101";
 		static constexpr string_view NO_CONTENT = "204";
@@ -711,7 +713,7 @@ namespace {
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 				// Заголовок [te] допускает только значение [trailers] (RFC 9113 §8.2.2)
-				if((name == header::TE) && !fmk->compare("trailers", field.value))
+				if((name == header::TE) && !fmk->compare(value::TRAILERS, field.value))
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 				// Если получен заголовок [host] - запоминаем его для сверки с [:authority]
@@ -6015,7 +6017,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 			 * Connection-specific заголовки в HTTP/2 запрещены (RFC 9113 §8.2.2) и делают
 			 * сообщение малформированным на приёмной стороне - пропускаем их
 			 */
-			if(::isConnectionSpecific(field.name) || ((field.name == header::TE) && !this->_fmk->compare("trailers", field.value))){
+			if(::isConnectionSpecific(field.name) || ((field.name == header::TE) && !this->_fmk->compare(value::TRAILERS, field.value))){
 				// Записываем сообщение об ошибке в лог
 				this->_log->print("HTTP/2 connection-specific header [%s] is not allowed and skipped", log_t::flag_t::WARNING, field.name.c_str());
 				// Переходим к следующему заголовку
@@ -6149,7 +6151,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 					// Переходим к следующему заголовку
 					continue;
 				// Заголовок TE допустим только со значением "trailers" (RFC 9113 §8.2.2)
-				if((name == header::TE) && !this->_fmk->compare("trailers", header.value))
+				if((name == header::TE) && !this->_fmk->compare(value::TRAILERS, header.value))
 					// Переходим к следующему заголовку
 					continue;
 				// Дописываем заголовок в список секции трейлеров
@@ -6222,12 +6224,35 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 					 * тогда как классический CONNECT их запрещает (RFC 9113 §8.5)
 					 */
 					const bool extended = (!request->protocol.empty() && (request->method == method_t::CONNECT));
+					// Составляющие цели запроса, заданной в абсолютной форме
+					string_view uriScheme{}, uriAuthority{}, uriPath{};
+					/**
+					 * Разбираем цель запроса: абсолютная форма законна в HTTP/1
+					 * и обязательна в запросе к прокси (RFC 9112 §3.2.2), а провайдер
+					 * запроса общий для всех протоколов. Без разбора схема и авторитет
+					 * уехали бы в [:path] целиком вопреки RFC 9113 §8.3.1.
+					 *
+					 * Целью классического CONNECT служит [host:port] - разделителя схемы
+					 * там нет, и разбор её не трогает
+					 */
+					const bool absolute = awh::http::splitTarget(request->uri, uriScheme, uriAuthority, uriPath);
 					// Если псевдо-заголовки схемы и пути допустимы для этого запроса
 					if((request->method != method_t::CONNECT) || extended)
-						// Кодируем псевдо-заголовок [:scheme]
-						this->_encoder.encode(":scheme", scheme, block);
+						/**
+						 * Схема из самой цели старше переданной вызывающей стороной:
+						 * та задаёт схему соединения, а цель адресована приложением явно
+						 */
+						this->_encoder.encode(":scheme", ((absolute && !uriScheme.empty()) ? uriScheme : scheme), block);
+					/**
+					 * Авторитет из абсолютной цели старше заголовка Host: получатель такого
+					 * запроса обязан заменить сведения Host авторитетом цели (RFC 9112 §3.2.2),
+					 * и отправить взамен Host значило бы адресовать запрос не туда
+					 */
+					if(absolute && !uriAuthority.empty())
+						// Кодируем псевдо-заголовок [:authority]
+						this->_encoder.encode(":authority", uriAuthority, block);
 					// Если контейнер содержит заголовок Host - конвертируем его в псевдо-заголовок [:authority]
-					if(headers.has("host"))
+					else if(headers.has("host"))
 						// Кодируем псевдо-заголовок [:authority]
 						this->_encoder.encode(":authority", headers.at("host"), block);
 					/**
@@ -6238,9 +6263,12 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 						// Кодируем псевдо-заголовок [:authority]
 						this->_encoder.encode(":authority", request->uri, block);
 					// Если псевдо-заголовки схемы и пути допустимы для этого запроса
-					if((request->method != method_t::CONNECT) || extended)
+					if((request->method != method_t::CONNECT) || extended){
+						// Буфер под путь цели запроса, требующий дополнения
+						string target = "";
 						// Кодируем псевдо-заголовок [:path] (пустой путь запрещён - подставляем "/")
-						this->_encoder.encode(":path", (request->uri.empty() ? "/" : request->uri), block);
+						this->_encoder.encode(":path", awh::http::targetPath((absolute ? uriPath : string_view(request->uri)), target), block);
+					}
 					// Если запрос поднимает туннель расширенным методом CONNECT
 					if(extended)
 						// Кодируем псевдо-заголовок [:protocol] (RFC 8441 §4)
@@ -6265,13 +6293,21 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 		for(const headers_t::header_t & header : headers){
 			// Приводим название заголовка к нижнему регистру (RFC 9113 §8.2.1)
 			const string_view name = ::lowerName(header.name, buffer);
-			// Пропускаем Host (конвертирован в [:authority]) и запрещённые connection-specific заголовки (RFC 9113 §8.2.2)
-			if((name == "host") || (name == "connection") || (name == "keep-alive") ||
-			   (name == "proxy-connection") || (name == "transfer-encoding") || (name == "upgrade"))
+			/**
+			 * Пропускаем Host (конвертирован в [:authority]) и запрещённые
+			 * connection-specific заголовки (RFC 9113 §8.2.2). Список берётся
+			 * общей функцией, а не перечисляется здесь заново: два перечисления
+			 * одного списка расходятся от первой же правки одного из них
+			 */
+			if(::isConnectionSpecific(name) || (name == header::HOST))
 				// Переходим к следующему заголовку
 				continue;
-			// Заголовок TE допустим только со значением "trailers" (RFC 9113 §8.2.2)
-			if((name == "te") && (header.value != "trailers"))
+			/**
+			 * Заголовок TE допустим только со значением [trailers] (RFC 9113 §8.2.2).
+			 * Значения кодирований передачи регистронезависимы (RFC 9110 §10.1.4),
+			 * поэтому строгое сравнение отбрасывало бы законное [TE: Trailers]
+			 */
+			if((name == header::TE) && !this->_fmk->compare(value::TRAILERS, header.value))
 				// Переходим к следующему заголовку
 				continue;
 			// Кодируем заголовок напрямую из контейнера (без копий)

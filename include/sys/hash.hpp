@@ -31,6 +31,7 @@
 #include <vector>
 #include <limits>
 #include <cstring>
+#include <utility>
 #include <cstdint>
 #include <cstddef>
 #include <string_view>
@@ -107,6 +108,26 @@ namespace awh {
 		 */
 		__AWH_SHARED_EXPORT__ uint64_t avalanche(const uint64_t value) noexcept;
 		/**
+		 * @brief Функция сведения пары начальных значений хэширования в одно
+		 *
+		 * @details Свести пару ключей перемешиванием нельзя: перемешивание
+		 *          мультипликативно, и нулевой ключ обнуляет его целиком - пара
+		 *          (999, 0) давала тот же результат, что и пара (7, 0), то есть
+		 *          второй ключ терялся молча, а первый вместе с ним.
+		 *
+		 *          Здесь каждый ключ проходит окончательное перемешивание
+		 *          самостоятельно, а сводятся они сложением по модулю два. Каждое из
+		 *          двух перемешиваний взаимно однозначно, поэтому обнулить результат
+		 *          одним лишь нулевым ключом невозможно, и оба ключа значимы при
+		 *          любом своём значении
+		 *
+		 * @param seed1 первое начальное значение хэширования
+		 * @param seed2 второе начальное значение хэширования
+		 * @return      сведённое начальное значение хэширования
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ uint64_t merge(const uint64_t seed1, const uint64_t seed2) noexcept;
+		/**
 		 * @brief Функция формирования хэша буфера данных
 		 *
 		 * @details Функция формирует хэш указанной длины за один вызов. Результат
@@ -155,6 +176,30 @@ namespace awh {
 	 *
 	 */
 	namespace hashing {
+		/**
+		 * @brief Шаблон типа результата хэширования
+		 *
+		 * @tparam T тип результата хэширования
+		 *
+		 */
+		template <typename T>
+		/**
+		 * @brief Признак результата хэширования, выводимого числом напрямую
+		 *
+		 * @details Целое число, умещающееся в разрядность вычислительного движка,
+		 *          снимается со свёртки напрямую и потока октетов не заводит. Знак
+		 *          этому не помеха: приведение беззнакового числа к знаковому типу
+		 *          той же разрядности отбрасывает старшие разряды по остатку - задано
+		 *          это редакцией C++20, а прежде было определено самой сборкой и на
+		 *          всех целевых сборках библиотеки делалось именно так, - то есть даёт
+		 *          ровно то же значение, что и сборка знакового числа из потока
+		 *          октетов сдвигами.
+		 *
+		 *          Признак логического типа сюда не входит: разрядность его равна
+		 *          одному биту, и хэша он не несёт вовсе
+		 *
+		 */
+		constexpr bool numeric = (is_integral <T>::value && !is_same <T, bool>::value && (sizeof(T) <= sizeof(uint64_t)));
 		/**
 		 * @brief Шаблон типа результата хэширования
 		 *
@@ -293,7 +338,7 @@ namespace awh {
 			/**
 			 * Если результатом хэширования является вещественное длинное число
 			 */
-			if(TYPE == bignum::type_t::REAL)
+			if constexpr(TYPE == bignum::type_t::REAL)
 				// Выполняем приведение результата хэширования к конечному значению
 				hashing::finite(result.data(), BYTES);
 		}
@@ -318,11 +363,13 @@ namespace awh {
 		 *
 		 */
 		AWH_HASH_INLINE T create(const void * buffer, const size_t size, const uint64_t seed = 0) noexcept {
+			// Выполняем проверку типа результата хэширования на пригодность
+			static_assert(!std::is_same_v <T, bool>, "AWH hash: the result of hashing does not fit in a boolean type, use an integer type of the required width");
 			/**
-			 * Если результатом хэширования является беззнаковое целое число,
-			 * умещающееся в разрядность вычислительного движка хэширования
+			 * Если результатом хэширования является целое число, умещающееся
+			 * в разрядность вычислительного движка хэширования
 			 */
-			if constexpr(std::is_integral_v <T> && std::is_unsigned_v <T> && (sizeof(T) <= sizeof(uint64_t)))
+			if constexpr(hashing::numeric <T>)
 				// Выводим младшие разряды сформированного хэша
 				return static_cast <T> (hashing::generate(buffer, size, seed));
 			/**
@@ -475,11 +522,13 @@ namespace awh {
 			 *
 			 */
 			AWH_HASH_INLINE T digest() const noexcept {
+				// Выполняем проверку типа результата хэширования на пригодность
+				static_assert(!std::is_same_v <T, bool>, "AWH hash: the result of hashing does not fit in a boolean type, use an integer type of the required width");
 				/**
-				 * Если результатом хэширования является беззнаковое целое число,
-				 * умещающееся в разрядность вычислительного движка хэширования
+				 * Если результатом хэширования является целое число, умещающееся
+				 * в разрядность вычислительного движка хэширования
 				 */
-				if constexpr(std::is_integral_v <T> && std::is_unsigned_v <T> && (sizeof(T) <= sizeof(uint64_t)))
+				if constexpr(hashing::numeric <T>)
 					// Выводим младшие разряды сформированного хэша
 					return static_cast <T> (this->digest());
 				/**
@@ -543,9 +592,15 @@ namespace awh {
 			 * @tparam B тип буфера данных для хэширования
 			 *
 			 */
-			template <typename A = uint64_t, typename B, typename = typename B::value_type>
+			template <typename A = uint64_t, typename B, typename = decltype(std::declval <const B &> ().data())>
 			/**
 			 * @brief Метод формирования хэша буфера данных
+			 *
+			 * @details Отбором служит наличие у буфера непрерывного хранилища, а не
+			 *          одного лишь типа хранимого значения: набор логических значений
+			 *          стандартной библиотеки тип хранимого значения объявляет, но
+			 *          хранит его упакованным по битам и хранилища не отдаёт, - и
+			 *          отбор по типу значения приводил его сюда, обрывая сборку
 			 *
 			 * @param buffer буфер данных для хэширования
 			 * @return       результат хэширования
@@ -572,9 +627,12 @@ namespace awh {
 			 * @tparam B тип буфера данных для хэширования
 			 *
 			 */
-			template <typename B, typename = typename B::value_type>
+			template <typename B, typename = decltype(std::declval <const B &> ().data())>
 			/**
 			 * @brief Метод добавления данных в потоковое хэширование
+			 *
+			 * @details Отбором служит наличие у буфера непрерывного хранилища —
+			 *          по тому же доводу, что и у формирования хэша буфера данных
 			 *
 			 * @param buffer буфер данных для хэширования
 			 *

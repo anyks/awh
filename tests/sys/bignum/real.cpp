@@ -22,6 +22,7 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <limits>
 #include <cstring>
 #include <cstdint>
 
@@ -470,6 +471,43 @@ TEST_F(BigNumFixture, RealConvertSaturationBigNumTest){
 	ASSERT_EQ(awh::uint128_t(awh::real64_t(3.7)).print(), "3");
 
 	/**
+	 * Присваивание нативного вещественного значения обязано насыщать так же,
+	 * как и явное преобразование из длинного вещественного числа
+	 */
+	// Создаём знаковое число присваиванием нативного вещественного значения
+	awh::int128_t number1 = 1e40;
+	// Проверяем насыщение верхним пределом разрядной сетки
+	ASSERT_EQ(number1.print(), awh::int128_t::maximum().print());
+
+	// Создаём знаковое число присваиванием отрицательного нативного значения
+	awh::int128_t number2 = -1e40;
+	// Проверяем насыщение нижним пределом разрядной сетки
+	ASSERT_EQ(number2.print(), awh::int128_t::minimum().print());
+
+	// Создаём беззнаковое число присваиванием отрицательного нативного значения
+	awh::uint128_t number3 = -5.0;
+	// Проверяем насыщение нижним пределом разрядной сетки
+	ASSERT_EQ(number3.print(), "0");
+
+	// Создаём беззнаковое число присваиванием нативного значения сверх разрядной сетки
+	awh::uint128_t number4 = 1e40;
+	// Проверяем насыщение верхним пределом разрядной сетки
+	ASSERT_EQ(number4.print(), awh::uint128_t::maximum().print());
+
+	// Создаём знаковое число присваиванием бесконечности
+	awh::int128_t number5 = std::numeric_limits <double>::infinity();
+	// Проверяем насыщение верхним пределом разрядной сетки
+	ASSERT_EQ(number5.print(), awh::int128_t::maximum().print());
+
+	// Создаём знаковое число присваиванием значения не являющегося числом
+	awh::int128_t number6 = std::numeric_limits <double>::quiet_NaN();
+	// Проверяем что значение не являющееся числом даёт нуль
+	ASSERT_EQ(number6.print(), "0");
+
+	// Проверяем что представимое нативное значение присваивается точно
+	ASSERT_EQ(awh::int128_t(-3.7).print(), "-3");
+
+	/**
 	 * В цикле проверяем насыщение приёмника на всех степенях двойки в пределах разрядности
 	 */
 	for(int32_t i = 0; i < 1024; i++){
@@ -489,6 +527,201 @@ TEST_F(BigNumFixture, RealConvertSaturationBigNumTest){
 			ASSERT_EQ(awh::int128_t(number).print(), (awh::int128_t(1) << static_cast <uint32_t> (i)).print()) << "2^" << i;
 		// Если очередная степень двойки не помещается в разрядную сетку знакового приёмника
 		else ASSERT_EQ(awh::int128_t(number).print(), awh::int128_t::maximum().print()) << "2^" << i;
+	}
+}
+
+/**
+ * @brief Тест чётности вещественного числа
+ *
+ * @details Чётность вещественного числа определяется по его целой части, поэтому проверка
+ *          сверяется с чётностью значения, полученного отбрасыванием дробной части.
+ *
+ */
+TEST_F(BigNumFixture, RealParityBigNumTest){
+	/**
+	 * В цикле сверяем чётность с чётностью целой части значения
+	 */
+	for(const double sample : std::vector <double> ({
+		0.0, -0.0, 0.5, -0.5, 1.0, 1.9999, 2.0, 2.0001, 2.5, 3.0, 3.5, -3.5,
+		4.0, 5.0, 1e15, 1e18, 4611686018427387904.0
+	})){
+		// Создаём вещественное длинное число
+		awh::real64_t number = sample;
+		// Получаем целую часть эталонного значения
+		const double integer = ::trunc(sample);
+		// Определяем чётность целой части эталонного значения
+		const bool odd = (::fmod(::fabs(integer), 2.0) == 1.0);
+
+		// Проверяем что нечётность определена по целой части значения
+		ASSERT_EQ(number.odd(), odd) << "value = " << sample;
+		// Проверяем что чётность является отрицанием нечётности
+		ASSERT_EQ(number.even(), !odd) << "value = " << sample;
+	}
+	/**
+	 * В цикле проверяем что значения без целой части чётностью не обладают
+	 */
+	for(const double sample : std::vector <double> ({
+		std::numeric_limits <double>::quiet_NaN(),
+		std::numeric_limits <double>::infinity(),
+		-std::numeric_limits <double>::infinity(),
+		std::numeric_limits <double>::denorm_min()
+	})){
+		// Создаём вещественное длинное число
+		awh::real64_t number = sample;
+
+		// Проверяем что значение нечётным не считается
+		ASSERT_FALSE(number.odd()) << "value = " << sample;
+		// Проверяем что значение считается чётным как отрицание нечётности
+		ASSERT_TRUE(number.even()) << "value = " << sample;
+	}
+}
+
+/**
+ * @brief Тест возведения вещественного числа в степень
+ *
+ * @details Возведение выполняется бинарным методом, поэтому проверяются показатели с
+ *          различным расположением установленных разрядов, а также показатели выводящие
+ *          результат за пределы разрядной сетки и обнуляющие его.
+ *
+ */
+TEST_F(BigNumFixture, RealPowBigNumTest){
+	/**
+	 * В цикле сверяем возведение в степень с аппаратным вычислением
+	 */
+	for(const double base : std::vector <double> ({1.5, 2.0, -2.0, 0.5, -0.5, 1.0, -1.0, 3.0, 10.0})){
+		/**
+		 * Выполняем перебор показателей степени с различным расположением разрядов
+		 */
+		for(const uint64_t exponent : std::vector <uint64_t> ({0, 1, 2, 3, 4, 5, 7, 8, 15, 16, 31, 32, 63, 100})){
+			// Создаём вещественное длинное число
+			awh::real64_t number = base;
+			// Получаем эталонное значение возведения в степень
+			const double expected = ::pow(base, static_cast <double> (exponent));
+			// Выполняем возведение числа в степень
+			const double result = static_cast <double> (number.pow(exponent));
+
+			// Если эталонное значение вышло за пределы разрядной сетки
+			if(::isinf(expected) || (expected == 0.0))
+				// Проверяем совпадение вида результата с эталонным значением
+				ASSERT_EQ(::isinf(result), ::isinf(expected)) << base << " ^ " << exponent;
+			/**
+			 * Если эталонное значение представимо разрядной сеткой
+			 */
+			else {
+				// Определяем допустимое отклонение результата возведения в степень
+				const double epsilon = (::fabs(expected) * 1e-12);
+
+				// Проверяем совпадение результата с эталонным значением
+				ASSERT_NEAR(result, expected, epsilon) << base << " ^ " << exponent;
+			}
+		}
+	}
+	// Проверяем что нулевой показатель степени даёт единицу для любого основания
+	ASSERT_EQ(awh::real64_t(std::numeric_limits <double>::quiet_NaN()).pow(0).print(), "1");
+	// Проверяем что возведение в степень выводящую за пределы разрядной сетки даёт бесконечность
+	ASSERT_EQ(awh::real64_t(10.0).pow(400).print(), "inf");
+	// Проверяем что возведение в степень уводящую ниже разрядной сетки обнуляет число
+	ASSERT_EQ(awh::real64_t(0.1).pow(400).print(), "0");
+	// Проверяем что знак результата определён чётностью показателя степени
+	ASSERT_EQ(awh::real64_t(-2.0).pow(3).print(), "-8");
+}
+
+/**
+ * @brief Тест остатка от деления вещественных чисел при большой разнице порядков
+ *
+ * @details Остаток вычисляется приведением мантиссы делимого по модулю мантиссы делителя,
+ *          поэтому проверяются пары с предельной разницей показателей степени, а также
+ *          денормализованные значения и величины у верхней границы разрядности.
+ *
+ */
+TEST_F(BigNumFixture, RealModRangeBigNumTest){
+	// Список делимых значений для проверки остатка
+	const std::vector <double> first = {
+		1e300, 1e300, 1e300, -1e-10, 1e308, -1e308, 1.7976931348623157e308,
+		4.9406564584124654e-324, 2.2250738585072014e-308, 1e-300, 1e200
+	};
+	// Список делителей для проверки остатка
+	const std::vector <double> second = {
+		3.0, 3.141592653589793, 1e-300, 1e300, 3.0, 7.0, 1.4142135623730951,
+		1.0, 1e-320, 1e300, 1e-200
+	};
+
+	/**
+	 * В цикле сверяем остаток от деления с аппаратным типом
+	 */
+	for(size_t i = 0; i < first.size(); i++){
+		// Создаём делимое в виде длинного числа
+		awh::real64_t number1 = first.at(i);
+		// Создаём делитель в виде длинного числа
+		awh::real64_t number2 = second.at(i);
+
+		// Проверяем побитовое совпадение остатка с аппаратным типом
+		ASSERT_TRUE(this->identical(number1 % number2, ::fmod(first.at(i), second.at(i))))
+			<< "value = " << first.at(i) << ", divisor = " << second.at(i);
+	}
+	// Проверяем что остаток от деления на нуль не является числом
+	ASSERT_TRUE((awh::real64_t(1.0) % awh::real64_t(0.0)).category() == awh::bignum::class_t::UNDEFINED);
+	// Проверяем что остаток от деления бесконечности не является числом
+	ASSERT_TRUE((awh::real64_t::unlimited() % awh::real64_t(3.0)).category() == awh::bignum::class_t::UNDEFINED);
+	// Проверяем что остаток от деления на бесконечность сохраняет делимое
+	ASSERT_TRUE(this->identical(awh::real64_t(3.0) % awh::real64_t::unlimited(), ::fmod(3.0, HUGE_VAL)));
+}
+
+/**
+ * @brief Тест наложения буферов в операциях вычислительного движка
+ *
+ * @details Операции движка выполняются над буфером приёмника, поэтому передача одного и
+ *          того же буфера в качестве обоих операндов обязана давать корректный результат.
+ *
+ */
+TEST_F(BigNumFixture, RealAliasingBigNumTest){
+	/**
+	 * В цикле проверяем наложение буферов операндов на разных значениях
+	 */
+	for(const double sample : std::vector <double> ({3.25, -3.25, 0.1, 1e300, 1e-300, 0.0})){
+		// Создаём буфер операнда
+		std::vector <uint8_t> buffer(sizeof(double));
+		// Создаём переменную результата операции
+		double result = 0.0;
+
+		// Копируем значение операнда в буфер
+		::memcpy(buffer.data(), &sample, sizeof(sample));
+		// Выполняем сложение буфера с самим собой
+		awh::bignum::realAdd(buffer.data(), buffer.data(), buffer.size());
+		// Извлекаем результат сложения
+		::memcpy(&result, buffer.data(), sizeof(result));
+		// Проверяем результат сложения при наложении буферов
+		ASSERT_EQ(result, (sample + sample)) << "add " << sample;
+
+		// Копируем значение операнда в буфер
+		::memcpy(buffer.data(), &sample, sizeof(sample));
+		// Выполняем вычитание буфера из самого себя
+		awh::bignum::realSub(buffer.data(), buffer.data(), buffer.size());
+		// Извлекаем результат вычитания
+		::memcpy(&result, buffer.data(), sizeof(result));
+		// Проверяем результат вычитания при наложении буферов
+		ASSERT_EQ(result, (sample - sample)) << "sub " << sample;
+
+		// Копируем значение операнда в буфер
+		::memcpy(buffer.data(), &sample, sizeof(sample));
+		// Выполняем умножение буфера на самого себя
+		awh::bignum::realMul(buffer.data(), buffer.data(), buffer.size());
+		// Извлекаем результат умножения
+		::memcpy(&result, buffer.data(), sizeof(result));
+		// Проверяем результат умножения при наложении буферов
+		ASSERT_EQ(result, (sample * sample)) << "mul " << sample;
+
+		// Если значение операнда не является нулевым
+		if(sample != 0.0){
+			// Копируем значение операнда в буфер
+			::memcpy(buffer.data(), &sample, sizeof(sample));
+			// Выполняем деление буфера на самого себя
+			awh::bignum::realDiv(buffer.data(), buffer.data(), buffer.size());
+			// Извлекаем результат деления
+			::memcpy(&result, buffer.data(), sizeof(result));
+			// Проверяем результат деления при наложении буферов
+			ASSERT_EQ(result, (sample / sample)) << "div " << sample;
+		}
 	}
 }
 

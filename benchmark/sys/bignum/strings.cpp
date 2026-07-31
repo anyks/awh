@@ -61,12 +61,12 @@ namespace {
 	 *          регрессии на порядок, а не колебания окружения
 	 *
 	 */
-	static constexpr double PRINT_DEC_THRESHOLD = 295000.0;
+	static constexpr double PRINT_DEC_THRESHOLD = 435000.0;
 	/**
 	 * @brief Порог скорости разбора десятичной записи 128-битного числа
 	 *
 	 */
-	static constexpr double PARSE_DEC_THRESHOLD = 540000.0;
+	static constexpr double PARSE_DEC_THRESHOLD = 560000.0;
 	/**
 	 * @brief Порог скорости формирования шестнадцатеричной записи 128-битного числа
 	 *
@@ -83,12 +83,12 @@ namespace {
 	 *          обратных сборок числа
 	 *
 	 */
-	static constexpr double PRINT_REAL_THRESHOLD = 23000.0;
+	static constexpr double PRINT_REAL_THRESHOLD = 46000.0;
 	/**
 	 * @brief Порог скорости разбора десятичной записи вещественного числа
 	 *
 	 */
-	static constexpr double PARSE_REAL_THRESHOLD = 195000.0;
+	static constexpr double PARSE_REAL_THRESHOLD = 205000.0;
 	/**
 	 * @brief Порог количества выделений памяти на формирование записи числа
 	 *

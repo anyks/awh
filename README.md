@@ -258,6 +258,21 @@ $ cmake \
 ```
 
 #### Running unittest, benchmark and coverage statistic on Linux
+
+> **Unit tests must be started from the `build` directory.** Several network
+> tests open certificates, keys and payload samples by paths relative to the
+> current directory: there is no way to pass those paths into the tests so that
+> they resolve from any working directory. Started from anywhere else, such a
+> test hangs waiting for a file it will never open — this is the launch
+> directory, not a defect in the test.
+
+> The `${DEPEND_LIBRARY}` dependency is linked **only in the debug build**. The
+> release build repacks `libawh.a` so that it statically contains the whole
+> content of that library, and nothing but `libawh.a` is needed to link against
+> a release build. The repacker is single-threaded and slow by design: it has to
+> unpack and repack a large number of object files without letting them
+> overwrite each other.
+
 ```bash
 # Assume we in build folder
 $ lcov --capture --initial --directory . --output-file awh_base.info

@@ -140,11 +140,37 @@ TEST_P(HeadersParameterizedFixture, HeadersFillPrintTest){
 	// Формируем текстовое представление заголовков
 	std::string output = this->_headers->print(this->_parameter.proto);
 	/**
+	 * @brief Функция проверки, запрещён ли заголовок в протоколах семейства HTTP/2
+	 *
+	 * @param name название проверяемого заголовка
+	 * @return     результат проверки
+	 *
+	 */
+	auto forbidden = [this](const std::string & name) noexcept -> bool {
+		// Если протокол к семейству HTTP/2 не относится - запрета нет
+		if((this->_parameter.proto != proto_t::HTTP2) && (this->_parameter.proto != proto_t::HTTP3))
+			// Выводим отрицательный результат проверки
+			return false;
+		// Выводим результат проверки по списку заголовков управления соединением
+		return (
+			(name == "Upgrade") || (name == "Keep-Alive") || (name == "Connection") ||
+			(name == "Proxy-Connection") || (name == "Transfer-Encoding")
+		);
+	};
+	/**
 	 * Проверяем что каждый добавленный заголовок присутствует в выводе
 	 */
 	for(auto & item : this->_parameter.items){
+		/**
+		 * Заголовки управления соединением в HTTP/2 и HTTP/3 запрещены (RFC 9113 §8.2.2),
+		 * поэтому в выводе для этих протоколов их быть не должно, хотя в контейнере
+		 * они остаются: отсев выполняется печатью, а не добавлением
+		 */
+		if(forbidden(item.first))
+			// Проверяем что запрещённый заголовок в вывод не попал
+			ASSERT_EQ(output.find(item.second), std::string::npos);
 		// Проверяем что значение заголовка присутствует в выводе
-		ASSERT_NE(output.find(item.second), std::string::npos);
+		else ASSERT_NE(output.find(item.second), std::string::npos);
 		// Проверяем что заголовок доступен по названию
 		ASSERT_TRUE(this->_headers->has(item.first));
 	}

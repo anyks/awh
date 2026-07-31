@@ -191,10 +191,10 @@ TEST_F(HashCryptoFixture, SeedsCryptoHashTest){
 	EXPECT_EQ(this->_crypto->hashWithSeeds <uint64_t> (buffer, seed1, seed2), result);
 	// Проверяем совпадение хэширования сырых данных с ключами
 	EXPECT_EQ(this->_crypto->hashWithSeeds <uint64_t> (text.data(), text.size(), seed1, seed2), result);
-	// Проверяем совпадение хэширования с ключами со свёрткой ключей
+	// Проверяем совпадение хэширования с ключами со сведением ключей
 	{
-		// Создаём объект хэширования со свёрткой ключей
-		const awh::hash_t hash(awh::hashing::mix(seed1, seed2));
+		// Создаём объект хэширования со сведённым начальным значением
+		const awh::hash_t hash(awh::hashing::merge(seed1, seed2));
 		// Проверяем совпадение результата хэширования
 		EXPECT_EQ(hash.hash <uint64_t> (text), result);
 	}
@@ -228,4 +228,44 @@ TEST_F(HashCryptoFixture, Hash128to64CryptoHashTest){
 
 	// Проверяем отсутствие коллизий преобразования
 	EXPECT_EQ(results.size(), static_cast <size_t> (20000));
+}
+
+/**
+ * @brief Тест значимости каждого из пары ключей хэширования
+ *
+ * @details Пара ключей сводится в одно начальное значение, и свести её
+ *          перемешиванием нельзя: перемешивание мультипликативно, и нулевой
+ *          ключ обнулял его целиком - пары (999, 0) и (7, 0) давали одно и то
+ *          же значение, совпадающее к тому же с хэшированием по нулевому ключу.
+ *          Тест закрепляет значимость обоих ключей при любом их значении
+ *
+ */
+TEST_F(HashCryptoFixture, ZeroSeedsCryptoHashTest){
+	// Текст для хэширования
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Проверяем значимость первого ключа при нулевом втором
+	EXPECT_NE(this->_crypto->hashWithSeeds <uint64_t> (text, 7, 0), this->_crypto->hashWithSeeds <uint64_t> (text, 999, 0));
+	// Проверяем значимость второго ключа при нулевом первом
+	EXPECT_NE(this->_crypto->hashWithSeeds <uint64_t> (text, 0, 7), this->_crypto->hashWithSeeds <uint64_t> (text, 0, 999));
+	// Проверяем отличие хэширования по паре нулевых ключей от хэширования по одному нулевому
+	EXPECT_NE(this->_crypto->hashWithSeeds <uint64_t> (text, 0, 0), this->_crypto->hashWithSeed <uint64_t> (text, 0));
+	// Проверяем отличие хэширования по паре равных ключей от хэширования по паре нулевых
+	EXPECT_NE(this->_crypto->hashWithSeeds <uint64_t> (text, 42, 42), this->_crypto->hashWithSeeds <uint64_t> (text, 0, 0));
+	// Проверяем значимость порядка ключей в паре
+	EXPECT_NE(this->_crypto->hashWithSeeds <uint64_t> (text, 7, 999), this->_crypto->hashWithSeeds <uint64_t> (text, 999, 7));
+	// Набор сформированных результатов хэширования
+	std::unordered_set <uint64_t> results;
+	/**
+	 * Выполняем перебор значений первого ключа хэширования
+	 */
+	for(uint64_t seed1 = 0; seed1 < 150; seed1++){
+		/**
+		 * Выполняем перебор значений второго ключа хэширования
+		 */
+		for(uint64_t seed2 = 0; seed2 < 150; seed2++)
+			// Добавляем результат хэширования по очередной паре ключей
+			results.emplace(this->_crypto->hashWithSeeds <uint64_t> (text, seed1, seed2));
+	}
+	// Проверяем отсутствие совпадений результата хэширования по разным парам ключей
+	EXPECT_EQ(results.size(), static_cast <size_t> (150 * 150));
 }

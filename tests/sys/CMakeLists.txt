@@ -211,8 +211,11 @@ if(${GTest_FOUND})
                 chrono/substitution.cpp
                 chrono/validate.cpp
                 chrono/limits.cpp
+                chrono/semantics.cpp
                 chrono/duration.cpp
                 chrono/calendar.cpp
+                chrono/overloads.cpp
+                chrono/reference.cpp
                 chrono/parameterized.cpp
             )
         # Если не нужно собрать тесты для работы с датой и временем
@@ -259,6 +262,7 @@ if(${GTest_FOUND})
             # Дополняем список источников тестами для модуля работы с криптографией
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 crypto/crypto.cpp
+                crypto/static.cpp
                 crypto/parameterized.cpp
             )
         # Если не нужно собрать тесты для работы с криптографией
