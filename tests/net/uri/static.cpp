@@ -343,6 +343,16 @@ TEST_F(UriFixture, HostKindMatchesFullScanTest){
 		if(sample.find_first_of(std::string("\t\n\r\v\f", 5)) != std::string::npos)
 			// Переходим к следующему образцу
 			continue;
+		/**
+		 * Пропускаем строку с пробелом: имени пробел не положен (RFC 3986 3.2.2), а
+		 * собранный полным видом адрес подставляется в строку запроса, и пробел её
+		 * обрывает (RFC 9112 3.1). Пути файловой системы это не касается - пробел в
+		 * нём законен, и такой образец проверяется наравне с прочими
+		 */
+		if((reference.host(sample) != awh::net_addr_t::type_t::FS) &&
+		   (sample.find(' ') != std::string::npos))
+			// Переходим к следующему образцу
+			continue;
 		// Выполняем полный разбор образца как сетевого адреса
 		const bool address = reference.parse(sample);
 		// Извлекаем разновидность разобранного сетевого адреса
@@ -1468,6 +1478,62 @@ TEST_F(UriFixture, CallbackAppliesWithoutOwnQueryTest){
 	ASSERT_NO_THROW(this->_uri->print(awh::uri_t::item_t::URI));
 	// Подпись обязана попасть в строку адреса
 	ASSERT_NE(std::string::npos, this->_uri->print(awh::uri_t::item_t::URI).find("&sign="));
+}
+
+/**
+ * @brief Тест отказа разрешения при отвергнутом хосте
+ *
+ * @details Хост, установщиком отвергнутый - несущий управляющий символ либо
+ *          пробел, - атрибутов не заводит, и адрес оставался полусобранным:
+ *          схема с путём уже применены, а хоста нет, и выходило "http:///x".
+ *          Разрешение при этом сообщало о согласии, и переход шёл по обрубку
+ *
+ */
+TEST_F(UriFixture, RefusedHostRejectsRecordTest){
+	// Записи с хостом, установщику негодным
+	const std::vector <std::string> samples = {
+		std::string("http://ev\til.com/x"),
+		std::string("http://ev\ril.com/x"),
+		std::string("http://ev\nil.com/x"),
+		std::string("http://evil example.com/x")
+	};
+	/**
+	 * Перебираем все записи при самостоятельном разборе
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Запись с негодным хостом обязана быть отвергнута
+		ASSERT_FALSE(this->_uri->resolve(sample)) << "запись: " << sample;
+		// Полусобранным адрес остаться не должен
+		ASSERT_TRUE(this->_uri->empty()) << "запись: " << sample;
+		// Строка отвергнутого адреса обязана быть пустой
+		ASSERT_TRUE(this->_uri->print(awh::uri_t::item_t::URI).empty()) << "запись: " << sample;
+	}
+	/**
+	 * Перебираем все записи при разрешении относительно основы
+	 */
+	for(auto & sample : samples){
+		// Выполняем очистку объекта работы с URI
+		this->_uri->clear();
+		// Выполняем разбор основы
+		this->_uri->parse("http://example.com/a");
+		// Ссылка с негодным хостом обязана быть отвергнута
+		ASSERT_FALSE(this->_uri->resolve(sample.substr(sample.find("//")))) << "запись: " << sample;
+		// Прежний адрес обязан остаться нетронутым
+		ASSERT_EQ("http://example.com/a", this->_uri->print(awh::uri_t::item_t::URI)) << "запись: " << sample;
+		// Хост прежнего адреса обязан остаться нетронутым
+		ASSERT_EQ("example.com", this->_uri->host()) << "запись: " << sample;
+	}
+	/**
+	 * Пробел в пути доменного сокета законен, и его проверка эта не касается
+	 */
+	// Выполняем очистку объекта работы с URI
+	this->_uri->clear();
+	// Путь доменного сокета с пробелом обязан быть принят
+	ASSERT_TRUE(this->_uri->resolve("unix:///var/run/my sock.sock"));
+	// Путь обязан сохраниться целиком
+	ASSERT_EQ("/var/run/my sock.sock", this->_uri->host());
 }
 
 /**
