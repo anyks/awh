@@ -51,6 +51,11 @@ int32_t main(int32_t argc, char * argv[]){
 	const string data = "Hello World, Hello World, Hello World, Hello World, Hello World, Hello World!!!!!!!!!!!!!!!!?";
 	// Печатаем заголовок в отладочный вывод компрессии AES256
 	cout << " ======== AES256 ======== " << endl;
+	/**
+	 * Количество итераций вывода ключа занижено ради скорости примера: в работе
+	 * его занижать нельзя - на нём и стоит стойкость пароля к перебору. По
+	 * умолчанию их сто тысяч, и трогать это без нужды не следует
+	 */
 	// Устанавливаем количество раундов шифрования
 	crypto.roundAES(10);
 	// Устанавливаем соль шифрования
@@ -83,10 +88,19 @@ int32_t main(int32_t argc, char * argv[]){
 	string tampered = encoded;
 	// Выполняем изменение октета шифротекста
 	tampered[tampered.size() / 2] = static_cast <char> (tampered[tampered.size() / 2] ^ 0x01);
+	/**
+	 * Об удаче работы судят по её признаку, а не по пустоте буфера: пустой
+	 * открытый текст - законный итог расшифровки пустого сообщения, и от отказа
+	 * его отличает только признак
+	 */
+	// Буфер открытого текста
+	string decoded;
 	// Возвращаем результат обнаружения подделки шифротекста
-	cout << "Tampered ciphertext rejected: " << crypto.decrypt <string> (tampered, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256).empty() << endl << flush;
-	// Выполняем декомпрессию данных
-	string decoded = crypto.decrypt <string> (encoded, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256);
+	cout << "Tampered ciphertext rejected: " << !crypto.decrypt <string> (tampered.data(), tampered.size(), decoded, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256) << endl << flush;
+	// Выполняем расшифровку подлинного шифротекста
+	if(!crypto.decrypt <string> (encoded.data(), encoded.size(), decoded, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256))
+		// Выводим сообщение об отказе расшифровки
+		cout << "Decryption could not be performed" << endl << flush;
 	// Возвращаем результат хэширования
 	cout << "Decoded1 data AES256: " << decoded << ", SIZE=" << decoded.size() << endl << flush;
 	// Инициализируем объект криптографии для другого типа хэша
@@ -95,8 +109,15 @@ int32_t main(int32_t argc, char * argv[]){
 	encoded = crypto.encrypt <string> (data);
 	// Добавляем ещё один слой шифрования
 	encoded.append(crypto.encrypt <string> (data));
+	/**
+	 * Завершение потока обязательно и его признак обязателен к проверке: без
+	 * завершения шифротекст остаётся без имитовставки, а её отказ означает
+	 * подделку данных
+	 */
 	// Завершаем процесс шифрования
-	crypto.finalize(encoded);
+	if(!crypto.finalize(encoded))
+		// Выводим сообщение об отказе завершения потока
+		cout << "Stream encryption could not be finalized" << endl << flush;
 	// Возвращаем результат хэширования
 	cout << "Encoded2 data AES192: " << crypto.encrypt <string> (encoded.data(), encoded.size(), crypto_t::hash_t::SHA256, crypto_t::cipher_t::BASE64) << ", SIZE=" << encoded.size() << endl << flush;
 	// Инициализируем объект криптографии для другого типа хэша
@@ -104,7 +125,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем декомпрессию данных
 	decoded = crypto.decrypt <string> (encoded);
 	// Завершаем процесс дешифрования
-	crypto.finalize(decoded);
+	if(!crypto.finalize(decoded))
+		// Выводим сообщение об отказе завершения потока
+		cout << "Stream decryption could not be finalized, the ciphertext may be tampered with" << endl << flush;
 	// Возвращаем результат хэширования
 	cout << "Decoded2 data AES192: " << decoded << ", SIZE=" << decoded.size() << endl << flush;
 	// Возвращаем пустую строку

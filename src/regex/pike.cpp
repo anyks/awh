@@ -20,6 +20,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cstring>
 #include <algorithm>
 
 /**
@@ -50,23 +51,21 @@ uint32_t awh::regex::Pike::acquire() noexcept {
 	 * Если освобождённые наборы позиций захвата групп отсутствуют
 	 */
 	if(this->_vacant.empty()) {
-		// Выполняем создание нового набора позиций захвата групп
-		this->_storage.emplace_back();
+		// Получаем номер создаваемого набора позиций захвата групп
+		const uint32_t result = static_cast <uint32_t> (this->_refs.size());
+		// Выполняем размещение отрезка создаваемого набора позиций захвата групп
+		this->_storage.resize(this->_storage.size() + this->_width);
 		// Выполняем удержание созданного набора позиций захвата групп
-		this->_storage.back().refs = 1;
-		// Выполняем установку размера набора позиций захвата групп
-		this->_storage.back().data.resize(this->_width);
+		this->_refs.push_back(1);
 		// Выводим номер выделенного набора позиций захвата групп
-		return static_cast <uint32_t> (this->_storage.size() - 1);
+		return result;
 	}
 	// Получаем номер освобождённого набора позиций захвата групп
 	const uint32_t result = this->_vacant.back();
 	// Выполняем удаление номера набора из числа освобождённых
 	this->_vacant.pop_back();
 	// Выполняем удержание выделенного набора позиций захвата групп
-	this->_storage.at(result).refs = 1;
-	// Выполняем установку размера набора позиций захвата групп
-	this->_storage.at(result).data.resize(this->_width);
+	this->_refs[result] = 1;
 	// Выводим номер выделенного набора позиций захвата групп
 	return result;
 }
@@ -82,7 +81,7 @@ void awh::regex::Pike::retain(const uint32_t index) noexcept {
 	 */
 	if(index != NO_SLOTS)
 		// Увеличиваем количество состояний, удерживающих набор
-		this->_storage.at(index).refs++;
+		this->_refs[index]++;
 }
 /**
  * @brief Метод освобождения набора позиций захвата групп
@@ -97,18 +96,18 @@ void awh::regex::Pike::release(const uint32_t index) noexcept {
 	if(index == NO_SLOTS)
 		// Выходим из метода освобождения набора
 		return;
-	// Получаем освобождаемый набор позиций захвата групп
-	slots_t & slots = this->_storage.at(index);
+	// Получаем количество состояний, удерживающих освобождаемый набор
+	uint32_t & refs = this->_refs[index];
 	/**
 	 * Если набор позиций захвата групп удерживается состояниями
 	 */
-	if(slots.refs > 0) {
+	if(refs > 0) {
 		// Уменьшаем количество состояний, удерживающих набор
-		slots.refs--;
+		refs--;
 		/**
 		 * Если набор позиций захвата групп более не удерживается
 		 */
-		if(slots.refs == 0)
+		if(refs == 0)
 			// Выполняем возврат набора в хранилище для повторной выдачи
 			this->_vacant.push_back(index);
 	}
@@ -133,20 +132,29 @@ uint32_t awh::regex::Pike::assign(const uint32_t index, const uint32_t slot, con
 	 *          ссылкой, изменяется на месте, что избавляет от копирования.
 	 *
 	 */
-	if(this->_storage.at(index).refs > 1) {
+	if(this->_refs[index] > 1) {
 		// Выполняем выделение набора позиций захвата групп
 		result = this->acquire();
-		// Выполняем копирование позиций захвата групп в выделенный набор
-		this->_storage.at(result).data = this->_storage.at(index).data;
+		/**
+		 * Выполняем копирование позиций захвата групп в выделенный набор
+		 *
+		 * @details Копирование выполняется отрезком хранилища, поскольку выделение
+		 *          набора размещает отрезок, но не изменяет его содержимого.
+		 *          Копирование обходом взамен вызова пробовалось и отличий
+		 *          от вызова не дало: отрезок занимает единицы позиций.
+		 *
+		 */
+		::memcpy(&this->_storage[static_cast <size_t> (result) * this->_width],
+		 &this->_storage[static_cast <size_t> (index) * this->_width], (this->_width * sizeof(size_t)));
 		// Выполняем освобождение разделяемого набора позиций захвата групп
 		this->release(index);
 	}
 	/**
 	 * Если номер ячейки захвата находится в пределах набора
 	 */
-	if(static_cast <size_t> (slot) < this->_storage.at(result).data.size())
+	if(static_cast <size_t> (slot) < this->_width)
 		// Выполняем сохранение позиции в ячейке захвата
-		this->_storage.at(result).data.at(slot) = pos;
+		this->_storage[(static_cast <size_t> (result) * this->_width) + static_cast <size_t> (slot)] = pos;
 	// Выводим номер набора позиций захвата групп с сохранённой позицией
 	return result;
 }
@@ -362,29 +370,61 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	 *          размера набора либо наличие неосвобождённых наборов требуют его сброса.
 	 *
 	 */
-	if((this->_width != count) || (this->_vacant.size() != this->_storage.size())) {
+	if((this->_width != count) || (this->_vacant.size() != this->_refs.size())) {
 		// Выполняем установку количества позиций захвата групп в наборе
 		this->_width = count;
 		// Выполняем очистку хранилища наборов позиций захвата групп
 		this->_storage.clear();
+		// Выполняем очистку набора количеств удерживающих состояний
+		this->_refs.clear();
 		// Выполняем очистку набора номеров освобождённых наборов
 		this->_vacant.clear();
 	}
-	// Выполняем установку набора отметок посещения текущей позиции
-	this->_marks.assign(program.instructions.size(), 0);
-	// Выполняем установку набора отметок посещения следующей позиции
-	this->_pending.assign(program.instructions.size(), 0);
+	// Получаем наибольший применённый номер поколения отметок посещения
+	const uint32_t reached = ((this->_generation > this->_upcoming) ? this->_generation : this->_upcoming);
 	/**
-	 * Выполняем установку начального номера поколения отметок посещения
+	 * Если наборы отметок посещения не пригодны к повторному применению
 	 *
-	 * @details Отметки посещения размещаются нулевым значением, поэтому нумерация
-	 *          поколений начинается с единицы, иначе непосещённые инструкции
-	 *          считались бы посещёнными.
+	 * @details Отметка посещения хранит номер поколения, при котором инструкция
+	 *          посещена, поэтому нумерация поколений продолжается между вызовами,
+	 *          а наборы отметок размещаются лишь при смене размера программы либо
+	 *          при исчерпании нумерации. Размещение наборов при каждом вызове
+	 *          обходилось соразмерно размеру программы и на коротком тексте
+	 *          составляло основную долю его стоимости.
 	 *
 	 */
-	this->_generation = 1;
-	// Выполняем установку начального номера поколения отметок следующей позиции
-	this->_upcoming = 1;
+	if((this->_marks.size() != program.instructions.size()) || (reached > (0xFFFFFFFF - 4))) {
+		// Выполняем установку набора отметок посещения текущей позиции
+		this->_marks.assign(program.instructions.size(), 0);
+		// Выполняем установку набора отметок посещения следующей позиции
+		this->_pending.assign(program.instructions.size(), 0);
+		/**
+		 * Выполняем установку начального номера поколения отметок посещения
+		 *
+		 * @details Отметки посещения размещаются нулевым значением, поэтому нумерация
+		 *          поколений начинается с единицы, иначе непосещённые инструкции
+		 *          считались бы посещёнными.
+		 *
+		 */
+		this->_generation = 1;
+		// Выполняем установку начального номера поколения отметок следующей позиции
+		this->_upcoming = 1;
+	/**
+	 * Если наборы отметок посещения пригодны к повторному применению
+	 */
+	} else {
+		/**
+		 * Выполняем продолжение нумерации поколений отметок посещения
+		 *
+		 * @details Номер поколения превышает наибольший применённый ранее, поэтому
+		 *          отметки, оставшиеся от предшествующего вызова, посещёнными
+		 *          не считаются.
+		 *
+		 */
+		this->_generation = (reached + 1);
+		// Выполняем установку номера поколения отметок следующей позиции
+		this->_upcoming = (reached + 1);
+	}
 	// Выполняем очистку набора состояний текущей позиции
 	this->discard(this->_current);
 	// Выполняем очистку набора состояний следующей позиции
@@ -425,8 +465,14 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 		return false;
 	// Выполняем выделение исходного набора позиций захвата групп
 	const uint32_t initial = this->acquire();
-	// Выполняем размещение исходного набора позиций захвата групп
-	this->_storage.at(initial).data.assign(count, string_view::npos);
+	/**
+	 * Выполняем сброс исходного набора позиций захвата групп
+	 *
+	 * @details Набор выдаётся хранилищем с содержимым предшествующего сопоставления,
+	 *          поэтому сбрасывается: незахваченная группа обязана остаться без границ.
+	 *
+	 */
+	std::fill_n(this->_storage.begin() + static_cast <ptrdiff_t> (static_cast <size_t> (initial) * this->_width), this->_width, string_view::npos);
 	/**
 	 * Выполняем обход позиций текста сопоставления
 	 */
@@ -622,7 +668,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 		// Выводим результат поиска совпадения
 		return false;
 	// Получаем набор позиций захвата групп найденного совпадения
-	const vector <size_t> & slots = this->_storage.at(found).data;
+	const size_t * slots = &this->_storage[static_cast <size_t> (found) * this->_width];
 	// Выполняем размещение границ совпадения и захваченных групп
 	captures.resize(static_cast <size_t> (program.captures) + 1);
 	/**
@@ -630,9 +676,9 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	 */
 	for(size_t i = 0; i < captures.size(); i++) {
 		// Выполняем установку начальной границы захвата
-		captures.at(i).first = slots.at(i * 2);
+		captures.at(i).first = slots[i * 2];
 		// Выполняем установку конечной границы захвата
-		captures.at(i).second = slots.at((i * 2) + 1);
+		captures.at(i).second = slots[(i * 2) + 1];
 	}
 	// Выполняем освобождение набора позиций захвата найденного совпадения
 	this->release(found);

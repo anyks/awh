@@ -216,12 +216,13 @@ namespace driver {
 	 *
 	 * @param buffer буфер данных для компрессии
 	 * @param size   размер данных для компрессии
+	 * @param level  пресет компрессии (0 - 9)
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void lzma(const void * buffer, const size_t size, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void lzma(const void * buffer, const size_t size, const uint32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -237,13 +238,30 @@ namespace driver {
 					// Если необходимо выполнить компрессию данных
 					case static_cast <uint8_t> (compressor::event_t::ENCODE): {
 						// Инициализируем опции компрессора LZma
-						static const lzma_options_lzma options = {
-							1u << 20u, nullptr, 0, LZMA_LC_DEFAULT, LZMA_LP_DEFAULT,
-							LZMA_PB_DEFAULT, LZMA_MODE_FAST, 128, LZMA_MF_HC3, 4
-						};
+						lzma_options_lzma options{};
+						// Выполняем нормализацию переданного пресета компрессии
+						const uint32_t preset = ((level <= 9) ? level : static_cast <uint32_t> (LZMA_PRESET_DEFAULT));
+						// Если применить пресет компрессии не удалось
+						if(::lzma_lzma_preset(&options, preset)){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог в лог
+								log->print("LZMA: %s", log_t::flag_t::WARNING, "Error during data compression");
+							#endif
+							// Выходим из функции
+							return;
+						}
 						// Инициализируем фильтры компрессора LZma
-						static const lzma_filter filters[] = {
-							{LZMA_FILTER_LZMA2, const_cast <lzma_options_lzma *> (&options)},
+						const lzma_filter filters[] = {
+							{LZMA_FILTER_LZMA2, &options},
 							{LZMA_VLI_UNKNOWN, nullptr}
 						};
 						// Актуальный размер сжатых данных
@@ -263,7 +281,7 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -335,7 +353,7 @@ namespace driver {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+							log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -358,7 +376,7 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -381,12 +399,13 @@ namespace driver {
 	 *
 	 * @param buffer буфер данных для компрессии
 	 * @param size   размер данных для компрессии
+	 * @param level  размер рабочего блока в единицах по 100 килобайт (1 - 9)
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void bzip2(const void * buffer, const size_t size, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void bzip2(const void * buffer, const size_t size, const uint32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -407,14 +426,16 @@ namespace driver {
 				switch(static_cast <uint8_t> (event)){
 					// Если необходимо выполнить компрессию данных
 					case static_cast <uint8_t> (compressor::event_t::ENCODE): {
+						// Выполняем нормализацию размера рабочего блока
+						const int32_t block = (((level >= 1) && (level <= 9)) ? static_cast <int32_t> (level) : 9);
 						// Выполняем инициализацию потока
-						if(::BZ2_bzCompressInit(&stream, 5, 0, 0) != BZ_OK){
+						if(::BZ2_bzCompressInit(&stream, block, 0, 0) != BZ_OK){
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -478,7 +499,7 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+									log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -505,7 +526,7 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+								log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -554,7 +575,7 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -574,7 +595,7 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Truncated or corrupted data");
+									log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Truncated or corrupted data");
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -604,7 +625,7 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -627,12 +648,13 @@ namespace driver {
 	 *
 	 * @param buffer буфер данных для компрессии
 	 * @param size   размер данных для компрессии
+	 * @param level  качество компрессии (0 - 11)
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
 	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void brotli(const void * buffer, const size_t size, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void brotli(const void * buffer, const size_t size, const uint32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -662,7 +684,7 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -678,6 +700,10 @@ namespace driver {
 							// Выполняем освобождение энкодера
 							::BrotliEncoderDestroyInstance(encoder);
 						});
+						// Устанавливаем качество компрессии (если оно укладывается в допустимый диапазон)
+						if((level > BROTLI_MIN_QUALITY) && (level <= BROTLI_MAX_QUALITY))
+							// Выполняем установку качества компрессии
+							::BrotliEncoderSetParameter(encoder, BROTLI_PARAM_QUALITY, level);
 						// Резервируем память под результат для снижения числа реаллокаций
 						result.reserve(size);
 						/**
@@ -697,7 +723,7 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+									log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -734,7 +760,7 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+								log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -769,7 +795,7 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -797,7 +823,7 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+								log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -821,7 +847,7 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1135,8 +1161,12 @@ namespace driver {
 					} break;
 					// Если необходимо выполнить декомпрессию данных
 					case static_cast <uint8_t> (compressor::event_t::DECODE): {
-						// Верхний предел размера выходного буфера (защита от повреждённых данных)
-						constexpr size_t MAX_OUTPUT_SIZE = (1ULL << 30);
+						/**
+						 * Верхний предел размера выходного буфера (защита от повреждённых данных).
+						 * Формат допускает расширение не более чем в 255 раз, поэтому на битых
+						 * данных удвоение буфера прекращается сразу за этой границей, а не на 1 GiB
+						 */
+						const size_t MAX_OUTPUT_SIZE = ::min <size_t> ((1ULL << 30), (size * 255));
 						// Начальный размер выходного буфера
 						size_t capacity = (size * 2);
 						/**
@@ -1306,8 +1336,12 @@ namespace driver {
 					} break;
 					// Если необходимо выполнить декомпрессию данных
 					case static_cast <uint8_t> (compressor::event_t::DECODE): {
-						// Верхний предел размера выходного буфера (защита от повреждённых данных)
-						constexpr size_t MAX_OUTPUT_SIZE = (1ULL << 30);
+						/**
+						 * Верхний предел размера выходного буфера (защита от повреждённых данных).
+						 * Формат допускает расширение не более чем в 255 раз, поэтому на битых
+						 * данных удвоение буфера прекращается сразу за этой границей, а не на 1 GiB
+						 */
+						const size_t MAX_OUTPUT_SIZE = ::min <size_t> ((1ULL << 30), (size * 255));
 						// Начальный размер выходного буфера
 						size_t capacity = (size * 2);
 						/**
@@ -1744,8 +1778,6 @@ namespace driver {
 							zs.next_out = reinterpret_cast <Bytef *> (&result[0]);
 							// Выполняем сжатие данных
 							const int32_t ret = ::deflate(&zs, Z_FINISH);
-							// Завершаем сжатие
-							::deflateEnd(&zs);
 							// Если мы успешно завершили сжатие
 							if(ret == Z_STREAM_END)
 								// Корректируем размер результирующего буфера
@@ -1952,8 +1984,6 @@ namespace driver {
 							zs.next_out = reinterpret_cast <Bytef *> (&result[0]);
 							// Выполняем компрессию данных
 							const int32_t ret = ::deflate(&zs, Z_FINISH);
-							// Завершаем работу потока
-							::deflateEnd(&zs);
 							// Если компрессия данных выполнена
 							if(ret == Z_STREAM_END)
 								// Устанавливаем реальный размер результирующего буфера
@@ -2057,8 +2087,6 @@ namespace driver {
 							 * Пока нет конца потока и есть входные данные
 							 */
 							} while((ret == Z_OK) && (zs.avail_in > 0));
-							// Завершаем работу потока
-							::inflateEnd(&zs);
 						/**
 						 * Если инициализация не удалась
 						 */
@@ -2207,10 +2235,6 @@ namespace driver {
 							ret = ::deflate(zs, Z_NO_FLUSH);
 							// Если возникает ошибка
 							if(ret != Z_OK){
-								// Если не используется streaming
-								if(!streaming)
-									// Завершаем работу локального потока
-									::deflateEnd(&local);
 								// Выполняем очистку блока с результатом
 								result.clear();
 								/**
@@ -2252,10 +2276,6 @@ namespace driver {
 							ret = ::deflate(zs, Z_SYNC_FLUSH);
 							// Если возникает ошибка
 							if(ret != Z_OK){
-								// Если не используется streaming
-								if(!streaming)
-									// Завершаем работу локального потока
-									::deflateEnd(&local);
 								// Выполняем очистку блока с результатом
 								result.clear();
 								/**
@@ -2288,10 +2308,6 @@ namespace driver {
 						 * Пока выходной буфер полностью заполнен
 						 */
 						} while(zs->avail_out == 0);
-						// Если не используется streaming
-						if(!streaming)
-							// Завершаем работу локального потока
-							::deflateEnd(&local);
 					} break;
 					// Если необходимо выполнить декомпрессию данных
 					case static_cast <uint8_t> (compressor::event_t::DECODE): {
@@ -2349,10 +2365,6 @@ namespace driver {
 							ret = ::inflate(zs, Z_NO_FLUSH);
 							// Если возникает ошибка
 							if((ret != Z_OK) && (ret != Z_STREAM_END)){
-								// Если не используется streaming
-								if(!streaming)
-									// Завершаем работу локального потока
-									::inflateEnd(&local);
 								// Выполняем очистку блока с результатом
 								result.clear();
 								/**
@@ -2385,10 +2397,6 @@ namespace driver {
 						 * Пока нет конца потока и есть входные данные
 						 */
 						} while((ret == Z_OK) && (zs->avail_in > 0));
-						// Если не используется streaming
-						if(!streaming)
-							// Завершаем работу локального потока
-							::inflateEnd(&local);
 					} break;
 				}
 			/**
@@ -2454,42 +2462,60 @@ void awh::compressor::Block::level(const level_t level) noexcept {
 	switch(static_cast <uint8_t> (level)){
 		// Выполняем установку максимального уровня компрессии
 		case static_cast <uint8_t> (level_t::BEST): {
-			// Выполняем установку уровня максимальной компрессии Lz4
-			this->_level[0] = 0;
+			// Выполняем установку минимального ускорения Lz4 (максимальная степень сжатия)
+			this->_level[0] = 1;
 			// Выполняем установку уровня компрессии GZip
 			this->_level[1] = Z_BEST_COMPRESSION;
 			// Выполняем установку уровня максимальной компрессии Zstandard
-			this->_level[2] = 100;
+			this->_level[2] = static_cast <uint32_t> (::ZSTD_maxCLevel());
 			// Выполняем установку уровня компрессии Lizard
 			this->_level[3] = LIZARD_MAX_CLEVEL;
-			// Выполняем установку уровня компрессии Cheetah (Density)
-			this->_level[4] = DENSITY_ALGORITHM_CHEETAH;
+			// Выполняем установку уровня компрессии Lion (Density) — самый сильный алгоритм
+			this->_level[4] = DENSITY_ALGORITHM_LION;
+			// Выполняем установку качества компрессии Brotli
+			this->_level[5] = BROTLI_MAX_QUALITY;
+			// Выполняем установку пресета компрессии LZMA
+			this->_level[6] = 9;
+			// Выполняем установку размера рабочего блока BZip2
+			this->_level[7] = 9;
 		} break;
 		// Выполняем установку уровня компрессии на максимальную производительность
 		case static_cast <uint8_t> (level_t::SPEED): {
-			// Выполняем установку уровня максимальной компрессии Lz4
+			// Выполняем установку максимального ускорения Lz4 (минимальная степень сжатия)
 			this->_level[0] = 3;
 			// Выполняем установку уровня компрессии GZip
 			this->_level[1] = Z_BEST_SPEED;
-			// Выполняем установку уровня максимальной компрессии Zstandard
-			this->_level[2] = ZSTD_CLEVEL_DEFAULT;
+			// Выполняем установку уровня минимальной компрессии Zstandard
+			this->_level[2] = 1;
 			// Выполняем установку уровня компрессии Lizard
 			this->_level[3] = LIZARD_MIN_CLEVEL;
-			// Выполняем установку уровня компрессии LION (Density)
-			this->_level[4] = DENSITY_ALGORITHM_LION;
+			// Выполняем установку уровня компрессии Chameleon (Density) — самый быстрый алгоритм
+			this->_level[4] = DENSITY_ALGORITHM_CHAMELEON;
+			// Выполняем установку качества компрессии Brotli
+			this->_level[5] = 1;
+			// Выполняем установку пресета компрессии LZMA
+			this->_level[6] = 1;
+			// Выполняем установку размера рабочего блока BZip2
+			this->_level[7] = 1;
 		} break;
 		// Выполняем установку нормального уровня компрессии
 		case static_cast <uint8_t> (level_t::NORMAL): {
-			// Выполняем установку уровня максимальной компрессии Lz4
+			// Выполняем установку ускорения Lz4 по умолчанию
 			this->_level[0] = 1;
 			// Выполняем установку уровня компрессии GZip
 			this->_level[1] = Z_DEFAULT_COMPRESSION;
-			// Выполняем установку уровня максимальной компрессии Zstandard
-			this->_level[2] = 22;
+			// Выполняем установку уровня компрессии Zstandard по умолчанию
+			this->_level[2] = ZSTD_CLEVEL_DEFAULT;
 			// Выполняем установку уровня компрессии Lizard
 			this->_level[3] = LIZARD_DEFAULT_CLEVEL;
-			// Выполняем установку уровня компрессии Chameleon (Density)
-			this->_level[4] = DENSITY_ALGORITHM_CHAMELEON;
+			// Выполняем установку уровня компрессии Cheetah (Density) — сбалансированный алгоритм
+			this->_level[4] = DENSITY_ALGORITHM_CHEETAH;
+			// Выполняем установку качества компрессии Brotli
+			this->_level[5] = 5;
+			// Выполняем установку пресета компрессии LZMA
+			this->_level[6] = LZMA_PRESET_DEFAULT;
+			// Выполняем установку размера рабочего блока BZip2
+			this->_level[7] = 5;
 		} break;
 	}
 }
@@ -2576,6 +2602,8 @@ bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) 
 							// Записываем ошибку в лог
 							this->_log->print("Deflate stream is not create", log_t::flag_t::CRITICAL);
 						#endif
+						// Сбрасываем флаг переиспользования контекста, так как рабочего потока больше нет
+						this->_gzip.takeover.compress.store(false, std::memory_order_release);
 						// Выходим из функции
 						return result;
 					}
@@ -2617,6 +2645,8 @@ bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) 
 							// Записываем ошибку в лог
 							this->_log->print("Inflate stream is not create", log_t::flag_t::CRITICAL);
 						#endif
+						// Сбрасываем флаг переиспользования контекста, так как рабочего потока больше нет
+						this->_gzip.takeover.decompress.store(false, std::memory_order_release);
 						// Выходим из функции
 						return result;
 					}
@@ -2729,13 +2759,18 @@ awh::compressor::stream_t awh::compressor::Block::stream(const method_t method, 
 		break;
 		// Для LZMA
 		case static_cast <uint8_t> (method_t::LZMA):
-			// Устанавливаем пресет компрессии по умолчанию
-			params.level = 6;
+			// Устанавливаем пресет компрессии
+			params.level = static_cast <int32_t> (this->_level[6].load(std::memory_order_acquire));
 		break;
 		// Для BZip2
 		case static_cast <uint8_t> (method_t::BZIP2):
-			// Устанавливаем размер блока (900k)
-			params.level = 9;
+			// Устанавливаем размер рабочего блока в единицах по 100 килобайт
+			params.level = static_cast <int32_t> (this->_level[7].load(std::memory_order_acquire));
+		break;
+		// Для Brotli
+		case static_cast <uint8_t> (method_t::BROTLI):
+			// Устанавливаем качество компрессии
+			params.level = static_cast <int32_t> (this->_level[5].load(std::memory_order_acquire));
 		break;
 	}
 	// Создаём и возвращаем потоковую сессию
@@ -2940,7 +2975,7 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 			// Если метод компрессии установлен LZMA
 			case static_cast <uint8_t> (method_t::LZMA): {
 				// Выполняем компрессию данных методом LZMA
-				driver::lzma(buffer, size, event_t::ENCODE, result, this->_log);
+				driver::lzma(buffer, size, this->_level[6], event_t::ENCODE, result, this->_log);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -3003,7 +3038,7 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 			// Если метод компрессии установлен Bzip2
 			case static_cast <uint8_t> (method_t::BZIP2): {
 				// Выполняем компрессию данных методом Bzip2
-				driver::bzip2(buffer, size, event_t::ENCODE, result, this->_log);
+				driver::bzip2(buffer, size, this->_level[7], event_t::ENCODE, result, this->_log);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -3087,7 +3122,7 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 			// Если метод компрессии установлен Brotli
 			case static_cast <uint8_t> (method_t::BROTLI): {
 				// Выполняем компрессию данных методом Brotli
-				driver::brotli(buffer, size, event_t::ENCODE, result, this->_log);
+				driver::brotli(buffer, size, this->_level[5], event_t::ENCODE, result, this->_log);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -3369,7 +3404,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен LZMA
 			case static_cast <uint8_t> (method_t::LZMA): {
 				// Выполняем декомпрессию данных методом LZMA
-				driver::lzma(buffer, size, event_t::DECODE, result, this->_log);
+				driver::lzma(buffer, size, this->_level[6], event_t::DECODE, result, this->_log);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -3432,7 +3467,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен Bzip2
 			case static_cast <uint8_t> (method_t::BZIP2): {
 				// Выполняем декомпрессию данных методом Bzip2
-				driver::bzip2(buffer, size, event_t::DECODE, result, this->_log);
+				driver::bzip2(buffer, size, this->_level[7], event_t::DECODE, result, this->_log);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -3516,7 +3551,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен Brotli
 			case static_cast <uint8_t> (method_t::BROTLI): {
 				// Выполняем декомпрессию данных методом Brotli
-				driver::brotli(buffer, size, event_t::DECODE, result, this->_log);
+				driver::brotli(buffer, size, this->_level[5], event_t::DECODE, result, this->_log);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -3611,7 +3646,10 @@ awh::compressor::Block::Block(const log_t * log) noexcept :
 	Z_DEFAULT_COMPRESSION,
 	ZSTD_CLEVEL_DEFAULT,
 	LIZARD_DEFAULT_CLEVEL,
-	DENSITY_ALGORITHM_LION
+	DENSITY_ALGORITHM_LION,
+	5,
+	LZMA_PRESET_DEFAULT,
+	5
 }, _log(log) {
 	// Выделяем память под контекст буфера GZip компрессии
 	this->_gzip.buffer.compress = new gzip_stream_t();

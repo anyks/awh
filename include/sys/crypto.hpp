@@ -857,36 +857,40 @@ namespace awh {
 			 *
 			 * @param buffer буфер данных для шифрования
 			 * @param result буфер куда следует положить результат
+			 * @return       признак успешно выполненной работы
 			 *
 			 */
-			void encryptWithPublicKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept;
+			bool encryptWithPublicKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept;
 			/**
 			 * @brief Метод шифрования данных публичным ключом RSA
 			 *
 			 * @param buffer буфер данных для шифрования
 			 * @param size   размер данных для шифрования
 			 * @param result буфер куда следует положить результат
+			 * @return       признак успешно выполненной работы
 			 *
 			 */
-			void encryptWithPublicKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept;
+			bool encryptWithPublicKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept;
 		public:
 			/**
 			 * @brief Метод дешифрования данных приватным ключом RSA
 			 *
 			 * @param buffer буфер данных для дешифрования
 			 * @param result буфер куда следует положить результат
+			 * @return       признак успешно выполненной работы
 			 *
 			 */
-			void decryptWithPrivateKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept;
+			bool decryptWithPrivateKey(const vector <uint8_t> & buffer, vector <uint8_t> & result) const noexcept;
 			/**
 			 * @brief Метод дешифрования данных приватным ключом RSA
 			 *
 			 * @param buffer буфер данных для дешифрования
 			 * @param size   размер данных для дешифрования
 			 * @param result буфер куда следует положить результат
+			 * @return       признак успешно выполненной работы
 			 *
 			 */
-			void decryptWithPrivateKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept;
+			bool decryptWithPrivateKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept;
 		public:
 			/**
 			 * @brief Метод подписания данных приватным ключом RSA
@@ -894,9 +898,10 @@ namespace awh {
 			 * @param buffer буфер данных для подписи
 			 * @param hash   тип хэш-суммы
 			 * @param result буфер куда следует положить результат
+			 * @return       признак успешно выполненной работы
 			 *
 			 */
-			void signWithPrivateKey(const vector <uint8_t> & buffer, const hash_t hash, vector <uint8_t> & result) const noexcept;
+			bool signWithPrivateKey(const vector <uint8_t> & buffer, const hash_t hash, vector <uint8_t> & result) const noexcept;
 			/**
 			 * @brief Метод подписания данных приватным ключом RSA
 			 *
@@ -904,9 +909,10 @@ namespace awh {
 			 * @param size   размер данных для подписи
 			 * @param hash   тип хэш-суммы
 			 * @param result буфер куда следует положить результат
+			 * @return       признак успешно выполненной работы
 			 *
 			 */
-			void signWithPrivateKey(const uint8_t * buffer, const size_t size, const hash_t hash, vector <uint8_t> & result) const noexcept;
+			bool signWithPrivateKey(const uint8_t * buffer, const size_t size, const hash_t hash, vector <uint8_t> & result) const noexcept;
 		public:
 			/**
 			 * @brief Метод верификации данных публичным ключом RSA

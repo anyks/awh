@@ -33,7 +33,17 @@ using namespace awh;
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _steps(0), _current(string_view::npos), _error(error_t::NONE) {}
+ _program(nullptr), _start(0), _steps(0), _budget(MAX_STEPS), _limit(MAX_STEPS), _current(string_view::npos), _error(error_t::NONE) {}
+/**
+ * @brief Метод установки допустимого объёма работы сопоставления
+ *
+ * @param budget допустимое количество шагов сопоставления
+ *
+ */
+void awh::regex::Backtrack::budget(const size_t budget) noexcept {
+	// Выполняем установку допустимого объёма работы сопоставления
+	this->_budget = ((budget < MAX_STEPS) ? budget : MAX_STEPS);
+}
 /**
  * @brief Метод извлечения кода ошибки последней операции
  *
@@ -233,6 +243,15 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 	// Позиция сопоставления в тексте
 	size_t current = pos;
 	/**
+	 * Получаем действующий объём работы сопоставления
+	 *
+	 * @details Объём при исполнении не изменяется, поэтому извлекается однажды:
+	 *          обращение к нему через объект на каждом шаге обходилось дороже
+	 *          самой проверки и замером давало потерю до семи сотых.
+	 *
+	 */
+	const size_t limit = this->_limit;
+	/**
 	 * Выполняем исполнение программы регулярного выражения
 	 */
 	while(true) {
@@ -241,7 +260,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 		/**
 		 * Если допустимый объём работы сопоставления исчерпан
 		 */
-		if(++this->_steps > MAX_STEPS) {
+		if(++this->_steps > limit) {
 			// Выполняем установку ошибки превышения допустимого объёма работы
 			this->_error = error_t::BUDGET_EXCEEDED;
 			// Выводим результат исполнения программы
@@ -917,6 +936,16 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	this->_start = start;
 	// Выполняем сброс количества выполненных шагов сопоставления
 	this->_steps = 0;
+	/**
+	 * Выполняем установку действующего объёма работы сопоставления
+	 *
+	 * @details Установленный вызывающей стороной объём действует на одно
+	 *          сопоставление, поэтому по его принятии восстанавливается предельный.
+	 *
+	 */
+	this->_limit = this->_budget;
+	// Выполняем восстановление предельного объёма работы сопоставления
+	this->_budget = MAX_STEPS;
 	// Выполняем сброс кода ошибки последней операции
 	this->_error = error_t::NONE;
 	// Выполняем очистку набора границ совпадения и захваченных групп

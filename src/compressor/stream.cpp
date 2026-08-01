@@ -241,9 +241,9 @@ namespace {
 								// Добавляем данные в результат
 								out.insert(out.end(), reinterpret_cast <char *> (work), reinterpret_cast <char *> (work) + produced);
 						/**
-						 * Пока выходной буфер полностью заполнен
+						 * Пока выходной буфер полностью заполнен либо финализация ещё не дошла до конца потока
 						 */
-						} while(this->_zs.avail_out == 0);
+						} while((this->_zs.avail_out == 0) || ((zflush == Z_FINISH) && (ret == Z_OK)));
 						// Устанавливаем флаг завершённости потока (если был вызван flush=FINISH и достигнут конец потока)
 						this->_done = ((zflush == Z_FINISH) && (ret == Z_STREAM_END));
 					} break;
@@ -683,17 +683,21 @@ namespace {
 			 * @param params параметры инициализации
 			 *
 			 */
-			explicit brotli_coder_t(const event_t event, [[maybe_unused]] const params_t & params) noexcept :
+			explicit brotli_coder_t(const event_t event, const params_t & params) noexcept :
 			 _done(false), _event(event), _enc(nullptr), _dec(nullptr) {
 				/**
 				 * Определяем направление операции
 				 */
 				switch(static_cast <uint8_t> (this->_event)){
 					// Для компрессии
-					case static_cast <uint8_t> (event_t::ENCODE):
+					case static_cast <uint8_t> (event_t::ENCODE): {
 						// Создаём контекст энкодера
 						this->_enc = ::BrotliEncoderCreateInstance(nullptr, nullptr, nullptr);
-					break;
+						// Если контекст энкодера создан и качество компрессии укладывается в допустимый диапазон
+						if((this->_enc != nullptr) && (params.level > BROTLI_MIN_QUALITY) && (params.level <= BROTLI_MAX_QUALITY))
+							// Выполняем установку качества компрессии
+							::BrotliEncoderSetParameter(this->_enc, BROTLI_PARAM_QUALITY, static_cast <uint32_t> (params.level));
+					} break;
 					// Для декомпрессии
 					case static_cast <uint8_t> (event_t::DECODE):
 						// Создаём контекст декодера
@@ -1718,21 +1722,39 @@ void awh::compressor::Stream::push(const void * buffer, const size_t size, T & r
 	if(this->_coder == nullptr)
 		// Выходим из функции
 		return;
-	// Буфер готового выхода
-	vector <char> out;
-	// Выполняем обработку порции данных
-	if(!this->_coder->code(buffer, size, flush, out)){
-		// Освобождаем контекст (поток становится невалидным)
-		this->_coder.reset();
-		// Очищаем результат
-		result.clear();
-		// Выходим
-		return;
+	/**
+	 * Если результат уже требуемого типа, кодер пишет прямо в него — без промежуточной копии
+	 */
+	if constexpr(is_same <T, vector <char>>::value){
+		// Выполняем обработку порции данных
+		if(!this->_coder->code(buffer, size, flush, result)){
+			// Освобождаем контекст (поток становится невалидным)
+			this->_coder.reset();
+			// Очищаем результат
+			result.clear();
+			// Выходим
+			return;
+		}
+	/**
+	 * Для остальных типов контейнера используем промежуточный буфер
+	 */
+	} else {
+		// Буфер готового выхода
+		vector <char> out;
+		// Выполняем обработку порции данных
+		if(!this->_coder->code(buffer, size, flush, out)){
+			// Освобождаем контекст (поток становится невалидным)
+			this->_coder.reset();
+			// Очищаем результат
+			result.clear();
+			// Выходим
+			return;
+		}
+		// Если данные получены, формируем результат
+		if(!out.empty())
+			// Формируем результат
+			result.assign(out.begin(), out.end());
 	}
-	// Если данные получены, формируем результат
-	if(!out.empty())
-		// Формируем результат
-		result.assign(out.begin(), out.end());
 }
 /**
  * @brief Явные специализации шаблона метода подачи порции данных
@@ -1773,7 +1795,12 @@ awh::compressor::Stream & awh::compressor::Stream::operator = (stream_t && strea
  */
 awh::compressor::Stream::Stream(stream_t && stream) noexcept :
  _event(stream._event), _method(stream._method),
- _coder(::move(stream._coder)), _log(stream._log) {}
+ _coder(::move(stream._coder)), _log(stream._log) {
+	// Сбрасываем направление операции у источника
+	stream._event = event_t::NONE;
+	// Сбрасываем метод компрессии у источника
+	stream._method = method_t::NONE;
+}
 /**
  * @brief Конструктор пустого (невалидного) потока
  *

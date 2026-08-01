@@ -772,6 +772,18 @@ TEST_F(CryptoFixture, RoundsCryptoTest){
 	this->_crypto->roundAES(0);
 	// Проверяем, что прежде установленное количество итераций сохранено
 	EXPECT_EQ(this->_crypto->decrypt <std::string> (encoded.data(), encoded.size(), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), text);
+	/**
+	 * Количество итераций приводится к знаковому 32-битному числу, и большее
+	 * обращалось бы в отрицательное — работа задала бы перебору не цену, а отказ
+	 */
+	// Устанавливаем количество итераций, предел разрядности превышающее
+	this->_crypto->roundAES(static_cast <uint32_t> (INT32_MAX) + 1);
+	// Проверяем, что прежде установленное количество итераций сохранено
+	EXPECT_EQ(this->_crypto->decrypt <std::string> (encoded.data(), encoded.size(), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), text);
+	/**
+	 * Наибольшее пригодное количество итераций испытанием не проверяется: оно
+	 * честно отработало бы два миллиарда итераций, а это две минуты на прогон
+	 */
 }
 
 /**
@@ -1085,4 +1097,213 @@ TEST_F(CryptoFixture, KeyDerivationFailureCryptoTest){
 	 */
 	// Проверяем обратимость шифрования, выполненного до отказа вывода ключа
 	EXPECT_EQ(this->_crypto->decrypt <std::string> (first.data(), first.size(), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), text);
+}
+
+/**
+ * @brief Тест признака работы у работ с ключом RSA
+ *
+ * @details Работы выводили пустоту и при удаче, и при отказе: пустой открытый
+ *          текст после расшифровки ключом RSA от отказа было не отличить
+ *
+ */
+TEST_F(CryptoFixture, KeyOutcomeCryptoTest){
+	// Буфер данных для работы
+	const std::vector <uint8_t> data = {0x41, 0x4E, 0x59, 0x4B, 0x53};
+	// Буфер шифротекста
+	std::vector <uint8_t> sealed;
+	// Проверяем отказ работы при незаведённом ключе RSA
+	EXPECT_FALSE(this->_crypto->encryptWithPublicKey(data, sealed));
+	// Выполняем генерацию приватного ключа RSA
+	ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
+	// Проверяем признак работы при шифровании ключом RSA
+	ASSERT_TRUE(this->_crypto->encryptWithPublicKey(data, sealed));
+	// Проверяем наличие шифротекста
+	ASSERT_FALSE(sealed.empty());
+	// Буфер открытого текста
+	std::vector <uint8_t> opened;
+	// Проверяем признак работы при расшифровке ключом RSA
+	ASSERT_TRUE(this->_crypto->decryptWithPrivateKey(sealed, opened));
+	// Проверяем обратимость шифрования ключом RSA
+	EXPECT_EQ(opened, data);
+	// Формируем поддельный шифротекст
+	std::vector <uint8_t> tampered = sealed;
+	// Выполняем подделку октета шифротекста
+	tampered[tampered.size() / 2] = static_cast <uint8_t> (tampered[tampered.size() / 2] ^ 0x01);
+	// Проверяем отказ расшифровки поддельного шифротекста
+	EXPECT_FALSE(this->_crypto->decryptWithPrivateKey(tampered, opened));
+	// Проверяем пустоту открытого текста при отказе расшифровки
+	EXPECT_TRUE(opened.empty());
+	// Буфер подписи
+	std::vector <uint8_t> signature;
+	// Проверяем признак работы при подписи данных
+	ASSERT_TRUE(this->_crypto->signWithPrivateKey(data, awh::crypto_t::hash_t::SHA256, signature));
+	// Проверяем проверку подписи
+	EXPECT_TRUE(this->_crypto->verifyWithPublicKey(data, signature, awh::crypto_t::hash_t::SHA256));
+	// Проверяем отказ подписи хэш-суммой, разбору не знакомой
+	EXPECT_FALSE(this->_crypto->signWithPrivateKey(data, static_cast <awh::crypto_t::hash_t> (0xFE), signature));
+	// Проверяем пустоту подписи при отказе работы
+	EXPECT_TRUE(signature.empty());
+	/**
+	 * Сообщение, октетов не имеющее, работой принимается наравне с работой по
+	 * симметричному ключу (4.9): пустота сообщения — не отсутствие сообщения
+	 */
+	// Буфер сообщения, октетов не имеющего
+	const std::vector <uint8_t> empty;
+	// Буфер шифротекста сообщения, октетов не имеющего
+	std::vector <uint8_t> sealedEmpty;
+	// Проверяем шифрование сообщения, октетов не имеющего
+	ASSERT_TRUE(this->_crypto->encryptWithPublicKey(empty, sealedEmpty));
+	// Проверяем наличие шифротекста
+	ASSERT_FALSE(sealedEmpty.empty());
+	// Буфер открытого текста сообщения, октетов не имеющего
+	std::vector <uint8_t> openedEmpty;
+	// Проверяем расшифровку сообщения, октетов не имеющего
+	EXPECT_TRUE(this->_crypto->decryptWithPrivateKey(sealedEmpty, openedEmpty));
+	// Проверяем пустоту открытого текста при удавшейся расшифровке
+	EXPECT_TRUE(openedEmpty.empty());
+	// Буфер подписи сообщения, октетов не имеющего
+	std::vector <uint8_t> signatureEmpty;
+	// Проверяем подпись сообщения, октетов не имеющего
+	ASSERT_TRUE(this->_crypto->signWithPrivateKey(empty, awh::crypto_t::hash_t::SHA256, signatureEmpty));
+	// Проверяем проверку подписи сообщения, октетов не имеющего
+	EXPECT_TRUE(this->_crypto->verifyWithPublicKey(empty, signatureEmpty, awh::crypto_t::hash_t::SHA256));
+	// Проверяем отказ работы при отсутствующем буфере с заявленным размером
+	EXPECT_FALSE(this->_crypto->encryptWithPublicKey(nullptr, 16, sealedEmpty));
+	/**
+	 * Дополнение OAEP отводит под себя две хэш-суммы и ещё два октета: у ключа
+	 * в две тысячи сорок восемь разрядов под сообщение остаётся 190 октетов
+	 */
+	// Сообщение наибольшего пригодного размера
+	const std::vector <uint8_t> largest(190, 0x41);
+	// Буфер шифротекста сообщения наибольшего пригодного размера
+	std::vector <uint8_t> sealedLargest;
+	// Проверяем шифрование сообщения наибольшего пригодного размера
+	EXPECT_TRUE(this->_crypto->encryptWithPublicKey(largest, sealedLargest));
+	// Сообщение, предел шифрования ключом RSA превышающее
+	const std::vector <uint8_t> oversized(191, 0x41);
+	// Буфер шифротекста сообщения, предел превышающего
+	std::vector <uint8_t> sealedOversized;
+	// Проверяем отказ шифрования сообщения, предел превышающего
+	EXPECT_FALSE(this->_crypto->encryptWithPublicKey(oversized, sealedOversized));
+	// Проверяем пустоту шифротекста при отказе работы
+	EXPECT_TRUE(sealedOversized.empty());
+}
+
+/**
+ * @brief Тест завершения потока поверх непустого буфера
+ *
+ * @details Вектор инициализации вставлялся в начало поданного буфера, а хвост
+ *          завершения дописывался за прежним его содержимым — шифротекст
+ *          выходил с разорванной серединой
+ *
+ */
+TEST_F(CryptoFixture, StreamAppendCryptoTest){
+	// Содержимое, лежащее в буфере до работы завершения
+	const std::string header = "AWH";
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем количество итераций вывода ключа
+	this->_crypto->roundAES(1000);
+	/**
+	 * Выполняем перебор режимов блочного шифрования
+	 */
+	for(const awh::crypto_t::mode_t mode : {awh::crypto_t::mode_t::GCM, awh::crypto_t::mode_t::CFB}){
+		// Устанавливаем режим блочного шифрования
+		this->_crypto->mode(mode);
+		// Буфер, в котором уже лежит содержимое вызывающего
+		std::string encoded = header;
+		// Выполняем инициализацию контекста шифрования
+		ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+		// Выполняем завершение потокового шифрования, порций не подавая
+		ASSERT_TRUE(this->_crypto->finalize(encoded));
+		// Проверяем сохранность прежнего содержимого буфера в его начале
+		ASSERT_EQ(encoded.compare(0, header.size(), header), 0);
+		// Снимаем шифротекст, прежнее содержимое буфера отбрасывая
+		const std::string sealed = encoded.substr(header.size());
+		// Проверяем наличие шифротекста
+		ASSERT_FALSE(sealed.empty());
+		// Расшифрованный текст
+		std::string decoded;
+		// Выполняем инициализацию контекста расшифровки
+		ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::DECODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+		// Выполняем расшифровку шифротекста
+		decoded = this->_crypto->decrypt <std::string> (sealed);
+		// Проверяем обратимость потокового шифрования поверх непустого буфера
+		ASSERT_TRUE(this->_crypto->finalize(decoded));
+		// Проверяем пустоту расшифрованного сообщения
+		EXPECT_TRUE(decoded.empty());
+	}
+}
+
+/**
+ * @brief Тест независимости работы с BASE64 от заведённого потока
+ *
+ * @details Перехват ошибок сбрасывал состояние по всякому пути, а работа с
+ *          BASE64 состояния не касается вовсе — сбой её сносил бы заведённый
+ *          поток заодно
+ *
+ */
+TEST_F(CryptoFixture, Base64OverStreamCryptoTest){
+	// Текст для шифрования
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем количество итераций вывода ключа
+	this->_crypto->roundAES(1000);
+	// Устанавливаем режим блочного шифрования с проверкой подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::GCM);
+	// Выполняем инициализацию контекста шифрования
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Выполняем шифрование первой порции потока
+	std::string encoded = this->_crypto->encrypt <std::string> (text);
+	// Выполняем работу с BASE64 поверх заведённого потока
+	const std::string digest = this->_crypto->encrypt <std::string> (std::string("Anyks"), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::BASE64);
+	// Проверяем выполнение работы с BASE64
+	ASSERT_FALSE(digest.empty());
+	// Проверяем обратимость работы с BASE64
+	EXPECT_EQ(this->_crypto->decrypt <std::string> (digest, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::BASE64), "Anyks");
+	// Выполняем шифрование второй порции потока
+	encoded.append(this->_crypto->encrypt <std::string> (text));
+	// Проверяем, что заведённый поток работой с BASE64 не снесён
+	ASSERT_TRUE(this->_crypto->finalize(encoded));
+	// Расшифрованный текст
+	std::string decoded;
+	// Выполняем инициализацию контекста расшифровки
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::DECODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Выполняем расшифровку шифротекста
+	decoded = this->_crypto->decrypt <std::string> (encoded);
+	// Проверяем завершение потоковой расшифровки
+	ASSERT_TRUE(this->_crypto->finalize(decoded));
+	// Проверяем обратимость потокового шифрования
+	EXPECT_EQ(decoded, (text + text));
+}
+
+/**
+ * @brief Тест отказа хэширования при незаданном типе хэш-суммы
+ *
+ * @details Работа выводила пустоту молча, и отличить её от пустого итога было
+ *          нечем: подпись ключом тот же случай называла прямо, хэширование нет
+ *
+ */
+TEST_F(CryptoFixture, UnknownHashCryptoTest){
+	// Текст для хэширования
+	const std::string text = "Anyks Framework";
+	// Ключ подписи
+	const std::string key = "secret";
+	// Проверяем хэширование известным типом хэш-суммы
+	EXPECT_FALSE(this->_crypto->hash <std::string> (text, awh::crypto_t::hash_t::SHA256).empty());
+	// Проверяем подпись известным типом хэш-суммы
+	EXPECT_FALSE(this->_crypto->hmac <std::string> (key, text, awh::crypto_t::hash_t::SHA256).empty());
+	// Проверяем отказ хэширования при незаданном типе хэш-суммы
+	EXPECT_TRUE(this->_crypto->hash <std::string> (text, awh::crypto_t::hash_t::NONE).empty());
+	// Проверяем отказ подписи при незаданном типе хэш-суммы
+	EXPECT_TRUE(this->_crypto->hmac <std::string> (key, text, awh::crypto_t::hash_t::NONE).empty());
+	// Проверяем отказ хэширования типом хэш-суммы, разбору не знакомым
+	EXPECT_TRUE(this->_crypto->hash <std::string> (text, static_cast <awh::crypto_t::hash_t> (0xFE)).empty());
+	// Проверяем отказ подписи типом хэш-суммы, разбору не знакомым
+	EXPECT_TRUE(this->_crypto->hmac <std::string> (key, text, static_cast <awh::crypto_t::hash_t> (0xFE)).empty());
 }

@@ -260,6 +260,7 @@ if(${GTest_FOUND})
             # Дополняем список источников тестами для модуля работы с компрессором
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 compressor/compressor.cpp
+                compressor/static.cpp
                 compressor/parameterized.cpp
                 compressor/stream.cpp
             )

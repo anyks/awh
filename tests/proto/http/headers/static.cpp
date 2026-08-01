@@ -5037,3 +5037,477 @@ TEST_F(HeadersFixture, AliasedArgumentsTest){
 	// Проверяем что набор уплотнён до двух записей
 	ASSERT_EQ(this->_headers->size(), 2u);
 }
+
+/**
+ * @brief Метод проверки псевдозаголовка авторитета, положенного в набор при провайдере
+ *
+ * @details Провайдер собирает авторитет только из цели запроса, заданной абсолютной
+ *          формой. Для протоколов, работающих псевдозаголовками, обычен запрос,
+ *          где авторитет положен полем, а заголовка адресата нет вовсе (RFC 9113 §8.3.1).
+ *          Отсев псевдозаголовков набора по одному лишь наличию провайдера терял бы
+ *          такой авторитет молча
+ *
+ */
+TEST_F(HeadersFixture, StoredAuthorityWithProviderTest){
+	// Создаём объект запроса клиента с целью в происхождённой форме
+	request_t request(version_t::HTTP2, method_t::GET, std::string("/index.html"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Кладём авторитет полем набора, не добавляя заголовка адресата
+	this->_headers->emplace(":authority", "example.com");
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что положенный в набор авторитет попал в сообщение
+	ASSERT_NE(result.find(":authority: example.com\r\n"), std::string::npos);
+	// Проверяем что псевдозаголовки провайдера сформированы наравне с ним
+	ASSERT_NE(result.find(":method: GET\r\n"), std::string::npos);
+	// Проверяем что путь взят из цели запроса
+	ASSERT_NE(result.find(":path: /index.html\r\n"), std::string::npos);
+	// Добавляем заголовок адресата с иным значением
+	this->_headers->emplace("Host", "other.example");
+	// Получаем вид сообщения повторно
+	const std::string mixed = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что победил уже заданный авторитет, а не перенос заголовка адресата
+	ASSERT_NE(mixed.find(":authority: example.com\r\n"), std::string::npos);
+	// Проверяем что второго псевдозаголовка авторитета не появилось
+	ASSERT_EQ(mixed.find(":authority: other.example"), std::string::npos);
+	// Проверяем что псевдозаголовок пути от провайдера не задвоился
+	ASSERT_EQ(mixed.find(":path: /index.html\r\n:path"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки допуска псевдозаголовков по методу запроса
+ *
+ * @details Набор псевдозаголовков запроса закрыт методом: классический туннель несёт
+ *          только [:method] и [:authority] (RFC 9113 §8.5), расширенный - вдобавок
+ *          схему, путь и протокол туннеля (RFC 8441 §4), обычный запрос протокола
+ *          туннеля не несёт вовсе. Псевдозаголовок, методу не положенный, обязывает
+ *          принимающую сторону отвергнуть сообщение целиком
+ *
+ */
+TEST_F(HeadersFixture, PseudoHeadersAllowedByMethodTest){
+	// Создаём объект запроса клиента с классическим методом туннеля
+	request_t tunnel(version_t::HTTP2, method_t::CONNECT, std::string("example.com:443"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&tunnel);
+	// Кладём в набор псевдозаголовки, классическому туннелю не положенные
+	this->_headers->emplace(":path", "/");
+	// Кладём в набор псевдозаголовок схемы
+	this->_headers->emplace(":scheme", "https");
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что путь в вид сообщения классического туннеля не попал
+	ASSERT_EQ(result.find(":path"), std::string::npos);
+	// Проверяем что схема в вид сообщения классического туннеля не попала
+	ASSERT_EQ(result.find(":scheme"), std::string::npos);
+	// Проверяем что авторитет туннеля на месте
+	ASSERT_NE(result.find(":authority: example.com:443\r\n"), std::string::npos);
+	// Создаём объект запроса клиента с расширенным методом туннеля
+	request_t extended(version_t::HTTP2, method_t::CONNECT, std::string("https://example.com/chat"));
+	// Устанавливаем протокол туннеля, делающий метод расширенным
+	extended.protocol = "websocket";
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&extended);
+	// Проверяем что расширенному туннелю схема положена
+	ASSERT_NE(this->_headers->print(proto_t::HTTP2).find(":scheme: https\r\n"), std::string::npos);
+	// Создаём объект обычного запроса клиента
+	request_t regular(version_t::HTTP2, method_t::GET, std::string("/index.html"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&regular);
+	// Кладём в набор протокол туннеля, обычному запросу не положенный
+	this->_headers->emplace(":protocol", "websocket");
+	// Проверяем что протокол туннеля в вид сообщения обычного запроса не попал
+	ASSERT_EQ(this->_headers->print(proto_t::HTTP2).find(":protocol"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки приведения псевдозаголовков, положенных в набор
+ *
+ * @details Значение приводится теми же правилами, что и собранное из провайдера:
+ *          иначе один и тот же узел, заданный заголовком адресата и псевдозаголовком,
+ *          давал бы на проводе разное, а сведения о пользователе уехали бы туда,
+ *          откуда их убирают (RFC 9110 §5.5, RFC 3986 §3.1, RFC 9112 §3.2.1)
+ *
+ */
+TEST_F(HeadersFixture, StoredPseudoHeadersNormalizedTest){
+	// Создаём объект запроса клиента с целью в происхождённой форме
+	request_t request(version_t::HTTP2, method_t::GET, std::string("/index.html"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Кладём авторитет со сведениями о пользователе и окружающими отступами
+	this->_headers->emplace(":authority", "  user:pass@example.com  ");
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что авторитет очищен так же, как при переносе заголовка адресата
+	ASSERT_NE(result.find(":authority: example.com\r\n"), std::string::npos);
+	// Проверяем что сведения о пользователе на провод не уехали
+	ASSERT_EQ(result.find("pass"), std::string::npos);
+	/**
+	 * Присваиваем набор полей: провайдер при этом сбрасывается, и схему с путём
+	 * кладёт сам набор. С провайдером запроса они собираются из него и приведению
+	 * из набора взяться неоткуда - положенное набором отброшено бы как дубликат
+	 */
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":method", "GET"),
+		headers_t::header_t{}.from(":scheme", "HtTpS"),
+		headers_t::header_t{}.from(":path", "/page#section")
+	};
+	// Получаем вид сообщения повторно
+	const std::string mixed = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что схема приведена к нижнему регистру
+	ASSERT_NE(mixed.find(":scheme: https\r\n"), std::string::npos);
+	// Проверяем что якорь из пути снят
+	ASSERT_NE(mixed.find(":path: /page\r\n"), std::string::npos);
+	// Проверяем что якорь на провод не ушёл
+	ASSERT_EQ(mixed.find("section"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки авторитета, опустевшего после очистки
+ *
+ * @details Пустой авторитет псевдозаголовком не передаётся: он не указывает ни на какой
+ *          узел, а принимающая сторона обязана считать такое сообщение некорректным
+ *          (RFC 9113 §8.3.1). Опустеть после очистки значение может, если несло одни
+ *          лишь сведения о пользователе. Занявшим место такой авторитет не считается,
+ *          иначе перенос заголовка адресата отменялся бы, и сообщение оставалось
+ *          вовсе без сведений об узле
+ *
+ */
+TEST_F(HeadersFixture, EmptiedAuthorityFallsBackToHostTest){
+	// Создаём объект запроса клиента с целью в происхождённой форме
+	request_t request(version_t::HTTP2, method_t::GET, std::string("/index.html"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Кладём в набор авторитет из одних сведений о пользователе
+	this->_headers->emplace(":authority", "user:pass@");
+	// Кладём заголовок адресата, несущий подлинный узел
+	this->_headers->emplace("Host", "example.com");
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что авторитет взят из заголовка адресата
+	ASSERT_NE(result.find(":authority: example.com\r\n"), std::string::npos);
+	// Проверяем что сведения о пользователе на провод не уехали
+	ASSERT_EQ(result.find("pass"), std::string::npos);
+	// Проверяем что пустого псевдозаголовка авторитета в сообщении нет
+	ASSERT_EQ(result.find(":authority: \r\n"), std::string::npos);
+	// Создаём объект запроса клиента с целью туннеля из одних сведений о пользователе
+	request_t tunnel(version_t::HTTP2, method_t::CONNECT, std::string("user:pass@"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&tunnel);
+	// Получаем вид сообщения туннеля
+	const std::string empty = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что пустой псевдозаголовок авторитета туннелю не сформирован
+	ASSERT_EQ(empty.find(":authority: \r\n"), std::string::npos);
+	// Проверяем что сведения о пользователе на провод не уехали и здесь
+	ASSERT_EQ(empty.find("pass"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки снятия отступов у псевдозаголовков из набора
+ *
+ * @details Окружающие отступы к значению поля не относятся (RFC 9110 §5.5), поэтому
+ *          снимаются у всех приводимых псевдозаголовков одинаково: у авторитета,
+ *          у схемы и у пути
+ *
+ */
+TEST_F(HeadersFixture, StoredPseudoHeadersTrimmedTest){
+	// Присваиваем набор полей, где схема и путь несут окружающие отступы
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":method", "GET"),
+		headers_t::header_t{}.from(":scheme", "  HTTPS  "),
+		headers_t::header_t{}.from(":path", "  /page  ")
+	};
+	// Устанавливаем протокол контейнера
+	this->_headers->proto(proto_t::HTTP2);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что отступы у схемы сняты, а регистр приведён
+	ASSERT_NE(result.find(":scheme: https\r\n"), std::string::npos);
+	// Проверяем что отступы у пути сняты
+	ASSERT_NE(result.find(":path: /page\r\n"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки приведения всех псевдозаголовков набора без изъятия
+ *
+ * @details Окружающие отступы к значению поля не относятся (RFC 9110 §5.5), и снимать
+ *          их у одних псевдозаголовков, оставляя у других, значило бы обещать одно,
+ *          а делать другое. Пустое значение псевдозаголовком не передаётся вовсе:
+ *          оно не указывает ни на что, а принимающая сторона обязана считать такое
+ *          сообщение некорректным (RFC 9113 §8.3.1)
+ *
+ */
+TEST_F(HeadersFixture, EveryStoredPseudoHeaderNormalizedTest){
+	// Присваиваем набор полей запроса, где отступы несут метод и путь
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":method", "  GET  "),
+		headers_t::header_t{}.from(":scheme", "  https  "),
+		headers_t::header_t{}.from(":path", "  /page  ")
+	};
+	// Устанавливаем протокол контейнера
+	this->_headers->proto(proto_t::HTTP2);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что отступы сняты и у метода запроса
+	ASSERT_NE(result.find(":method: GET\r\n"), std::string::npos);
+	// Проверяем что отступы сняты у схемы
+	ASSERT_NE(result.find(":scheme: https\r\n"), std::string::npos);
+	// Проверяем что отступы сняты у пути
+	ASSERT_NE(result.find(":path: /page\r\n"), std::string::npos);
+	// Присваиваем набор полей ответа, где отступы несёт код ответа
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":status", "  200  ")
+	};
+	// Проверяем что отступы сняты и у кода ответа
+	ASSERT_NE(this->_headers->print(proto_t::HTTP2).find(":status: 200\r\n"), std::string::npos);
+	// Присваиваем набор полей, где схема несёт одни отступы
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":method", "GET"),
+		headers_t::header_t{}.from(":scheme", "   "),
+		headers_t::header_t{}.from(":path", "/")
+	};
+	// Проверяем что опустевшая схема псевдозаголовком не передана
+	ASSERT_EQ(this->_headers->print(proto_t::HTTP2).find(":scheme"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки разновидности туннеля, определяемой без провайдера
+ *
+ * @details Расширенным туннель делает не наличие псевдозаголовка протокола, а его
+ *          значение: пустой протокол ничего не поднимает поверх туннеля (RFC 8441 §4),
+ *          и признать по нему туннель расширенным значило бы пропустить в сообщение
+ *          схему и путь, которых классический туннель не несёт вовсе (RFC 9113 §8.5).
+ *          Название метода при сравнении также берётся без окружающих отступов
+ *
+ */
+TEST_F(HeadersFixture, StoredConnectKindByValueTest){
+	// Присваиваем набор полей туннеля, где протокол пуст, а метод несёт отступы
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":method", "  CONNECT  "),
+		headers_t::header_t{}.from(":authority", "example.com:443"),
+		headers_t::header_t{}.from(":protocol", "   "),
+		headers_t::header_t{}.from(":scheme", "https"),
+		headers_t::header_t{}.from(":path", "/chat")
+	};
+	// Устанавливаем протокол контейнера
+	this->_headers->proto(proto_t::HTTP2);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что метод с отступами распознан как туннель, и схема отсеяна
+	ASSERT_EQ(result.find(":scheme"), std::string::npos);
+	// Проверяем что путь классическому туннелю также не передан
+	ASSERT_EQ(result.find(":path"), std::string::npos);
+	// Проверяем что пустой протокол туннеля на провод не ушёл
+	ASSERT_EQ(result.find(":protocol"), std::string::npos);
+	// Проверяем что авторитет туннеля на месте
+	ASSERT_NE(result.find(":authority: example.com:443\r\n"), std::string::npos);
+	// Присваиваем набор полей расширенного туннеля с непустым протоколом
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":method", "CONNECT"),
+		headers_t::header_t{}.from(":authority", "example.com:443"),
+		headers_t::header_t{}.from(":protocol", "websocket"),
+		headers_t::header_t{}.from(":scheme", "https")
+	};
+	// Проверяем что расширенному туннелю схема положена
+	ASSERT_NE(this->_headers->print(proto_t::HTTP2).find(":scheme: https\r\n"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки занятости авторитета по всем его вхождениям
+ *
+ * @details Набор принимает одноимённые поля, и опустевшее после очистки первое
+ *          вхождение не отменяет годного второго. Считать авторитет свободным
+ *          по одному лишь первому значило бы перенести заголовок адресата рядом
+ *          с уже годным авторитетом - и дать два псевдозаголовка авторитета,
+ *          сообщение с которыми принимающая сторона обязана отвергнуть
+ *
+ */
+TEST_F(HeadersFixture, AuthorityOccupiedByAnyOccurrenceTest){
+	// Присваиваем набор полей, где первый авторитет опустевает после очистки
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":method", "GET"),
+		headers_t::header_t{}.from(":path", "/"),
+		headers_t::header_t{}.from(":authority", "user:pass@"),
+		headers_t::header_t{}.from(":authority", "example.com"),
+		headers_t::header_t{}.from("Host", "other.example")
+	};
+	// Устанавливаем протокол контейнера
+	this->_headers->proto(proto_t::HTTP2);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что годный авторитет из набора на месте
+	ASSERT_NE(result.find(":authority: example.com\r\n"), std::string::npos);
+	// Проверяем что заголовок адресата рядом с ним в авторитет не перенесён
+	ASSERT_EQ(result.find(":authority: other.example"), std::string::npos);
+	// Проверяем что сведения о пользователе на провод не уехали
+	ASSERT_EQ(result.find("pass"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки переноса адресата по всем его вхождениям
+ *
+ * @details Из вида сообщения запроса снимаются все вхождения заголовка адресата разом,
+ *          а переносится в псевдозаголовок одно. Опустевшее после очистки первое
+ *          вхождение отменяло бы годное второе, и сообщение осталось бы вовсе
+ *          без сведений об узле - при том, что сами заголовки адресата из него
+ *          уже сняты (RFC 9113 §8.3.1)
+ *
+ */
+TEST_F(HeadersFixture, HostTransferByAnyOccurrenceTest){
+	// Создаём объект запроса клиента с целью в происхождённой форме
+	request_t request(version_t::HTTP2, method_t::GET, std::string("/index.html"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Кладём первый заголовок адресата из одних сведений о пользователе
+	this->_headers->emplace("Host", "user:pass@", headers_t::mode_t::APPEND);
+	// Кладём второй заголовок адресата, несущий подлинный узел
+	this->_headers->emplace("Host", "example.com", headers_t::mode_t::APPEND);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что авторитет перенесён из годного вхождения
+	ASSERT_NE(result.find(":authority: example.com\r\n"), std::string::npos);
+	// Проверяем что сведения о пользователе на провод не уехали
+	ASSERT_EQ(result.find("pass"), std::string::npos);
+	// Проверяем что сами заголовки адресата из вида сообщения запроса сняты
+	ASSERT_EQ(result.find("host:"), std::string::npos);
+	// Количество псевдозаголовков авторитета в виде сообщения
+	size_t authorities = 0;
+	/**
+	 * Считаем вхождения псевдозаголовка авторитета: искать второе от места первого
+	 * нельзя - поиск попал бы внутрь того же самого названия
+	 */
+	for(size_t i = result.find(":authority"); i != std::string::npos; i = result.find(":authority", i + 10))
+		// Увеличиваем количество найденных псевдозаголовков авторитета
+		authorities++;
+	// Проверяем что авторитет передан единственным псевдозаголовком
+	ASSERT_EQ(authorities, 1u);
+}
+
+/**
+ * @brief Метод проверки вида туннеля, определяемого по первому непустому значению
+ *
+ * @details Набор принимает одноимённые поля, и пустое первое вхождение метода отменяло бы
+ *          годное второе: сообщение уходило бы туннелем, а признаки оставались бы
+ *          от обычного запроса, и в вид сообщения проскочили бы схема с путём,
+ *          которых классический туннель не несёт вовсе (RFC 9113 §8.5)
+ *
+ */
+TEST_F(HeadersFixture, ConnectKindByAnyOccurrenceTest){
+	// Присваиваем набор полей, где первое вхождение метода несёт одни отступы
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":method", "   "),
+		headers_t::header_t{}.from(":method", "CONNECT"),
+		headers_t::header_t{}.from(":authority", "example.com:443"),
+		headers_t::header_t{}.from(":scheme", "https"),
+		headers_t::header_t{}.from(":path", "/chat")
+	};
+	// Устанавливаем протокол контейнера
+	this->_headers->proto(proto_t::HTTP2);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что запрос распознан туннелем и схема отсеяна
+	ASSERT_EQ(result.find(":scheme"), std::string::npos);
+	// Проверяем что путь классическому туннелю также не передан
+	ASSERT_EQ(result.find(":path"), std::string::npos);
+	// Проверяем что авторитет туннеля на месте
+	ASSERT_NE(result.find(":authority: example.com:443\r\n"), std::string::npos);
+	// Присваиваем набор полей туннеля, где первое вхождение протокола пусто
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":method", "CONNECT"),
+		headers_t::header_t{}.from(":authority", "example.com:443"),
+		headers_t::header_t{}.from(":protocol", "   "),
+		headers_t::header_t{}.from(":protocol", "websocket"),
+		headers_t::header_t{}.from(":scheme", "https")
+	};
+	// Проверяем что туннель признан расширенным по годному вхождению протокола
+	ASSERT_NE(this->_headers->print(proto_t::HTTP2).find(":scheme: https\r\n"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки приведения авторитета и протокола на пути провайдера
+ *
+ * @details Авторитет приходит четырьмя путями - из цели обычного запроса, из цели
+ *          туннеля, из заголовка адресата и из псевдозаголовка набора, - и приводиться
+ *          обязан одинаково на всех. Разновидность туннеля тем же порядком определяется
+ *          по значению протокола, а не по его наличию: протокол из одних отступов
+ *          ничего поверх туннеля не поднимает (RFC 8441 §4)
+ *
+ */
+TEST_F(HeadersFixture, ProviderPathNormalizationTest){
+	// Создаём объект запроса клиента с целью, где авторитет несёт отступы и сведения о пользователе
+	request_t request(version_t::HTTP2, method_t::GET, std::string("https://  user:pass@example.com  /index.html"));
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что авторитет очищен от отступов и сведений о пользователе
+	ASSERT_NE(result.find(":authority: example.com\r\n"), std::string::npos);
+	// Проверяем что сведения о пользователе на провод не уехали
+	ASSERT_EQ(result.find("pass"), std::string::npos);
+	// Создаём объект запроса клиента с целью туннеля и протоколом из одних отступов
+	request_t tunnel(version_t::HTTP2, method_t::CONNECT, std::string("https://example.com:443/chat"));
+	// Устанавливаем протокол туннеля из одних отступов
+	tunnel.protocol = "   ";
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&tunnel);
+	// Получаем вид сообщения туннеля
+	const std::string classic = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что туннель признан классическим и схема не собрана
+	ASSERT_EQ(classic.find(":scheme"), std::string::npos);
+	// Проверяем что путь классическому туннелю также не собран
+	ASSERT_EQ(classic.find(":path"), std::string::npos);
+	// Проверяем что протокол туннеля из одних отступов на провод не ушёл
+	ASSERT_EQ(classic.find(":protocol"), std::string::npos);
+	// Проверяем что авторитет туннеля собран из цели запроса
+	ASSERT_NE(classic.find(":authority: example.com:443\r\n"), std::string::npos);
+	// Устанавливаем протокол туннеля с окружающими отступами
+	tunnel.protocol = "  websocket  ";
+	// Устанавливаем провайдер запроса заново
+	this->_headers->provider(&tunnel);
+	// Получаем вид сообщения расширенного туннеля
+	const std::string extended = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что протокол туннеля передан без окружающих отступов
+	ASSERT_NE(extended.find(":protocol: websocket\r\n"), std::string::npos);
+	// Проверяем что расширенному туннелю схема положена
+	ASSERT_NE(extended.find(":scheme: https\r\n"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки направления сообщения, определяемого по значению кода ответа
+ *
+ * @details Без провайдера направление берётся из псевдозаголовка кода ответа, и брать
+ *          его по наличию поля нельзя: код из одних отступов в вид сообщения не попадёт,
+ *          а набор уже будет сочтён ответом. Тогда заголовок адресата в авторитет
+ *          не перенесётся и останется полем, и сообщение уйдёт вовсе без псевдозаголовков -
+ *          недопустимое ни в одном направлении (RFC 9113 §8.3)
+ *
+ */
+TEST_F(HeadersFixture, DirectionByStatusValueTest){
+	// Присваиваем набор полей, где код ответа несёт одни отступы
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":status", "   "),
+		headers_t::header_t{}.from("Host", "example.com"),
+		headers_t::header_t{}.from("Server", "awh")
+	};
+	// Устанавливаем протокол контейнера
+	this->_headers->proto(proto_t::HTTP2);
+	// Получаем вид сообщения под протокол HTTP/2
+	const std::string result = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что набор сочтён запросом и адресат перенесён в авторитет
+	ASSERT_NE(result.find(":authority: example.com\r\n"), std::string::npos);
+	// Проверяем что заголовок адресата из вида сообщения запроса снят
+	ASSERT_EQ(result.find("host:"), std::string::npos);
+	// Проверяем что опустевший код ответа в вид сообщения не попал
+	ASSERT_EQ(result.find(":status"), std::string::npos);
+	// Присваиваем набор полей с годным кодом ответа
+	(* this->_headers) = headers_t::fields_t {
+		headers_t::header_t{}.from(":status", "200"),
+		headers_t::header_t{}.from("Host", "example.com")
+	};
+	// Получаем вид сообщения ответа
+	const std::string response = this->_headers->print(proto_t::HTTP2);
+	// Проверяем что набор с годным кодом сочтён ответом и авторитет не сформирован
+	ASSERT_EQ(response.find(":authority"), std::string::npos);
+	// Проверяем что заголовок адресата в ответе сохранён
+	ASSERT_NE(response.find("host: example.com\r\n"), std::string::npos);
+}

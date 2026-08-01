@@ -50,6 +50,16 @@ namespace {
 	static constexpr double ACTUAL_THRESHOLD = 14500000.0;
 	static constexpr double OFFSET_THRESHOLD = 3700000.0;
 	static constexpr double ABBREVIATION_THRESHOLD = 47000000.0;
+	static constexpr double SET_THRESHOLD = 900000.0;
+	/**
+	 * @brief Количество оборотов прогона сценария установки календарной единицы
+	 *
+	 * @details Установка на порядок дороже прочих единиц календарной арифметики, и
+	 *          общее число оборотов уменьшено, чтобы прогон набора укладывался в
+	 *          прежнее время
+	 *
+	 */
+	static constexpr size_t SET_ROUNDS = 100000;
 	/**
 	 * @brief Пороги количества выделений памяти на одну операцию
 	 *
@@ -230,6 +240,41 @@ namespace {
 	}
 
 	/**
+	 * @brief Функция прогона сценария установки календарной единицы в сводной зоне
+	 *
+	 * @details Установка номера месяца - самый тяжёлый из путей записи: единица
+	 *          меняет саму дату, а значит требует согласования полей объекта
+	 *          пересборкой его из штампа времени и разрешения смещения зоны по новой
+	 *          дате. Замер идёт в сводной зоне нарочно: смещение прочих зон от
+	 *          момента не зависит, и разрешение на них вырождается в согласование
+	 *          выводных признаков, тогда как сводная зона проходит весь путь -
+	 *          опорный штамп по стандартному времени, определение летнего времени и
+	 *          сличение разрешённого смещения со стандартным
+	 *
+	 * @return итоги прогона сценария
+	 *
+	 */
+	static outcome_t setting() noexcept {
+		// Объект работы с датой и временем
+		awh::chrono_t chrono(framework(), logger());
+		// Устанавливаем сводную временную зону Северной Америки
+		chrono.setTimeZone(awh::chrono_t::zone_t::ET);
+		// Накопитель установленных номеров месяца
+		uint64_t summary = 0;
+		// Выполняем прогон измеряемой операции
+		const outcome_t result = measure(SET_ROUNDS, [&](const size_t index) noexcept {
+			// Выполняем установку номера месяца, перебирая весь их промежуток
+			chrono.set <uint8_t> (static_cast <uint8_t> ((index % 12) + 1), awh::chrono_t::unit_t::MONTH);
+			// Накапливаем установленный номер месяца
+			summary += chrono.get <uint8_t> (awh::chrono_t::unit_t::MONTH, awh::chrono_t::storage_t::LOCAL);
+		});
+		// Накапливаем контрольную сумму прогона
+		checksum() += summary;
+		// Выводим итоги прогона сценария
+		return result;
+	}
+
+	/**
 	 * @brief Функция получения итогов прогона сценария получения штампа времени
 	 *
 	 * @return итоги прогона сценария
@@ -302,8 +347,23 @@ namespace {
 		return result;
 	}
 
+	/**
+	 * @brief Функция получения итогов прогона сценария установки календарной единицы
+	 *
+	 * @return итоги прогона сценария
+	 *
+	 */
+	static const outcome_t & settled() noexcept {
+		// Итоги прогона сценария установки календарной единицы
+		static const outcome_t result = ::setting();
+		// Выводим итоги прогона сценария
+		return result;
+	}
+
 	// Объявляем сценарии получения штампа времени
 	AWH_CHRONO_SCENARIO(Timestamp, ::stamped)
+	// Объявляем сценарии установки календарной единицы
+	AWH_CHRONO_SCENARIO(Set, ::settled)
 	// Объявляем сценарии извлечения составляющей даты
 	AWH_CHRONO_SCENARIO(Unit, ::extracted)
 	// Объявляем сценарии получения границы суток
@@ -324,6 +384,16 @@ namespace {
 	static const bool gMemoryTimestamp = awh::benchmark::add(
 		"chrono/units/timestamp/allocations", "выделений", CALENDAR_ALLOCATIONS,
 		awh::benchmark::bound_t::MAXIMUM, &::memoryTimestamp
+	);
+	// Регистрируем сценарий скорости установки календарной единицы
+	static const bool gSet = awh::benchmark::add(
+		"chrono/units/set", "установок/с", SET_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, &::speedSet
+	);
+	// Регистрируем сценарий выделений памяти на установку календарной единицы
+	static const bool gMemorySet = awh::benchmark::add(
+		"chrono/units/set/allocations", "выделений", CALENDAR_ALLOCATIONS,
+		awh::benchmark::bound_t::MAXIMUM, &::memorySet
 	);
 	// Регистрируем сценарий скорости извлечения составляющей даты
 	static const bool gUnit = awh::benchmark::add(

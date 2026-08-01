@@ -354,6 +354,30 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	if(!this->_dfa.search(expression.forward, text, start, finish))
 		// Выводим результат поиска совпадения
 		return false;
+	// Получаем длину участка текста, занятого поиском совпадения
+	const size_t span = (finish - start);
+	/**
+	 * Если границы совпадения устанавливаются исполнением с возвратом
+	 *
+	 * @details Исполнение с возвратом ведёт единственный набор границ, изменяя его
+	 *          на месте, тогда как исполнение без возврата ведёт набор при каждом
+	 *          состоянии и замещает его копией при каждом захвате. На коротком участке
+	 *          текста это даёт исполнению с возвратом превосходство до пяти раз,
+	 *          но время его растёт с длиной текста показательно, поэтому объём работы
+	 *          ограничивается соразмерно участку и размеру программы, а исчерпание
+	 *          объёма возвращает сопоставление исполнению без возврата.
+	 *
+	 */
+	if(span <= MAX_BACKTRACK) {
+		// Выполняем установку допустимого объёма работы исполнения с возвратом
+		this->_backtrack.budget((span + 1) * expression.forward.instructions.size() * BACKTRACK_RATIO);
+		/**
+		 * Если сопоставление исполнением с возвратом выполнено
+		 */
+		if(this->_backtrack.exec(expression.forward, text, start, captures))
+			// Выводим результат поиска совпадения
+			return true;
+	}
 	/**
 	 * Если поиск позиции начала совпадения применим
 	 */
@@ -384,6 +408,23 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 			 */
 			if(this->_reverse.reverse(expression.backward, text, text.size(), begin)) {
 				/**
+				 * Выполняем установку допустимого объёма работы исполнения с возвратом
+				 *
+				 * @details Известная позиция начала совпадения избавляет исполнение
+				 *          с возвратом от повторения попытки в каждой позиции текста,
+				 *          которое и делает его непригодным на длинном тексте. Одной
+				 *          попытке с известной позиции показательный рост времени
+				 *          всё же доступен, поэтому объём работы ограничивается.
+				 *
+				 */
+				this->_backtrack.budget((finish - begin + 1) * expression.forward.instructions.size() * BACKTRACK_RATIO);
+				/**
+				 * Если исполнение с возвратом с позиции начала совпадения выполнено
+				 */
+				if(this->_backtrack.exec(expression.forward, text, begin, captures, mode_t::ANCHORED))
+					// Выводим результат поиска совпадения
+					return true;
+				/**
 				 * Если исполнение без возврата с позиции начала совпадения выполнено
 				 */
 				if(this->_pike.exec(expression.forward, text, begin, captures, mode_t::ANCHORED))
@@ -392,6 +433,13 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 			}
 		}
 	}
-	// Выводим результат сопоставления исполнением без возврата
-	return this->_pike.exec(expression.forward, text, start, captures);
+	/**
+	 * Выводим результат сопоставления исполнением без возврата
+	 *
+	 * @details Наличие совпадения установлено детерминированным исполнением выше,
+	 *          поэтому исполнение без возврата извещается об этом: иначе оно
+	 *          устанавливало бы наличие совпадения само, проходя текст вторично.
+	 *
+	 */
+	return this->_pike.exec(expression.forward, text, start, captures, mode_t::VERIFIED);
 }
