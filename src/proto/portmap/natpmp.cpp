@@ -158,7 +158,7 @@ awh::proto::portmap::NAT_PMP::Request::Request() noexcept :
  * @return       размер собранного сообщения
  *
  */
-size_t awh::proto::portmap::NAT_PMP::address(void * buffer, const size_t size, error_t & error) noexcept {
+size_t awh::proto::portmap::NAT_PMP::address(void * buffer, const size_t size, error_t & error) const noexcept {
 	// Выполняем сброс кода причины отказа
 	error = error_t::NONE;
 	/**
@@ -167,6 +167,19 @@ size_t awh::proto::portmap::NAT_PMP::address(void * buffer, const size_t size, e
 	if((buffer == nullptr) || (size < REQUEST_ADDRESS_SIZE)){
 		// Запоминаем код причины отказа
 		error = error_t::BUFFER_TOO_SMALL;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+		#endif
 		// Выводим нулевой размер собранного сообщения
 		return 0;
 	}
@@ -189,7 +202,7 @@ size_t awh::proto::portmap::NAT_PMP::address(void * buffer, const size_t size, e
  * @return        размер собранного сообщения
  *
  */
-size_t awh::proto::portmap::NAT_PMP::mapping(void * buffer, const size_t size, const request_t & request, error_t & error) noexcept {
+size_t awh::proto::portmap::NAT_PMP::mapping(void * buffer, const size_t size, const request_t & request, error_t & error) const noexcept {
 	// Выполняем сброс кода причины отказа
 	error = error_t::NONE;
 	/**
@@ -198,6 +211,19 @@ size_t awh::proto::portmap::NAT_PMP::mapping(void * buffer, const size_t size, c
 	if((buffer == nullptr) || (size < REQUEST_MAPPING_SIZE)){
 		// Запоминаем код причины отказа
 		error = error_t::BUFFER_TOO_SMALL;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+		#endif
 		// Выводим нулевой размер собранного сообщения
 		return 0;
 	}
@@ -210,6 +236,19 @@ size_t awh::proto::portmap::NAT_PMP::mapping(void * buffer, const size_t size, c
 	if(request.proto == proto_t::NONE){
 		// Запоминаем код причины отказа
 		error = error_t::INVALID_OPCODE;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(request.internalPort, request.externalPort, request.lifeTime), log_t::flag_t::WARNING, message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+		#endif
 		// Выводим нулевой размер собранного сообщения
 		return 0;
 	}
@@ -240,7 +279,7 @@ size_t awh::proto::portmap::NAT_PMP::mapping(void * buffer, const size_t size, c
  * @return       признак успешного разбора
  *
  */
-bool awh::proto::portmap::NAT_PMP::parse(const void * buffer, const size_t size, answer_t & answer, error_t & error) noexcept {
+bool awh::proto::portmap::NAT_PMP::parse(const void * buffer, const size_t size, answer_t & answer, error_t & error) const noexcept {
 	// Выполняем сброс кода причины отказа
 	error = error_t::NONE;
 	// Выполняем сброс разобранного ответа
@@ -251,6 +290,18 @@ bool awh::proto::portmap::NAT_PMP::parse(const void * buffer, const size_t size,
 	if((buffer == nullptr) || (size < 4)){
 		// Запоминаем код причины отказа
 		error = error_t::TRUNCATED;
+		/**
+		 * Если включён режим отладки
+		 *
+		 * @note Отказ разбора записывается лишь при отладке намеренно: сообщения,
+		 *       разбору не поддающиеся, приходят на открытый порт постоянно, и
+		 *       запись о каждом из них засоряла бы журнал, а при обстреле снаружи
+		 *       ещё и служила бы средством нападения
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, message(error));
+		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -262,6 +313,18 @@ bool awh::proto::portmap::NAT_PMP::parse(const void * buffer, const size_t size,
 	if(data[0] != VERSION){
 		// Запоминаем код причины отказа
 		error = error_t::INVALID_VERSION;
+		/**
+		 * Если включён режим отладки
+		 *
+		 * @note Отказ разбора записывается лишь при отладке намеренно: сообщения,
+		 *       разбору не поддающиеся, приходят на открытый порт постоянно, и
+		 *       запись о каждом из них засоряла бы журнал, а при обстреле снаружи
+		 *       ещё и служила бы средством нападения
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(data[0]), log_t::flag_t::WARNING, message(error));
+		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -274,6 +337,18 @@ bool awh::proto::portmap::NAT_PMP::parse(const void * buffer, const size_t size,
 	if((data[1] & RESPONSE_FLAG) == 0){
 		// Запоминаем код причины отказа
 		error = error_t::NOT_A_RESPONSE;
+		/**
+		 * Если включён режим отладки
+		 *
+		 * @note Отказ разбора записывается лишь при отладке намеренно: сообщения,
+		 *       разбору не поддающиеся, приходят на открытый порт постоянно, и
+		 *       запись о каждом из них засоряла бы журнал, а при обстреле снаружи
+		 *       ещё и служила бы средством нападения
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(data[1]), log_t::flag_t::WARNING, message(error));
+		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -304,6 +379,13 @@ bool awh::proto::portmap::NAT_PMP::parse(const void * buffer, const size_t size,
 			if(size < RESPONSE_ADDRESS_SIZE){
 				// Запоминаем код причины отказа
 				error = error_t::TRUNCATED;
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, message(error));
+				#endif
 				// Выводим признак неудачного разбора
 				return false;
 			}
@@ -328,6 +410,13 @@ bool awh::proto::portmap::NAT_PMP::parse(const void * buffer, const size_t size,
 			if(size < RESPONSE_MAPPING_SIZE){
 				// Запоминаем код причины отказа
 				error = error_t::TRUNCATED;
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, message(error));
+				#endif
 				// Выводим признак неудачного разбора
 				return false;
 			}
@@ -350,6 +439,13 @@ bool awh::proto::portmap::NAT_PMP::parse(const void * buffer, const size_t size,
 		default: {
 			// Запоминаем код причины отказа
 			error = error_t::INVALID_OPCODE;
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(opcode), log_t::flag_t::WARNING, message(error));
+			#endif
 			// Выводим признак неудачного разбора
 			return false;
 		}

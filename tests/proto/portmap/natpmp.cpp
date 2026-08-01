@@ -32,6 +32,24 @@
 using namespace awh::proto::portmap;
 
 /**
+ * @brief Объект фреймворка тестового окружения
+ *
+ */
+static const awh::fmk_t __fmk;
+
+/**
+ * @brief Объект работы с логами тестового окружения
+ *
+ */
+static const awh::log_t __log(&__fmk);
+
+/**
+ * @brief Кодек договора NAT-PMP тестового окружения
+ *
+ */
+static const natpmp_t __natpmp(&__fmk, &__log);
+
+/**
  * @brief Проверка сборки запроса внешнего адреса маршрутизатора
  *
  * @details Запрос внешнего адреса договором задан двумя октетами: изданием договора
@@ -44,7 +62,7 @@ TEST(ProtoPortmapNatPmp, RequestAddress) {
 	// Код причины отказа кодека
 	natpmp_t::error_t error = natpmp_t::error_t::NONE;
 	// Выполняем сборку запроса внешнего адреса маршрутизатора
-	ASSERT_EQ(natpmp_t::address(buffer, sizeof(buffer), error), static_cast <size_t> (2));
+	ASSERT_EQ(__natpmp.address(buffer, sizeof(buffer), error), static_cast <size_t> (2));
 	// Выполняем проверку кода причины отказа кодека
 	ASSERT_EQ(error, natpmp_t::error_t::NONE);
 	// Выполняем проверку издания договора
@@ -58,7 +76,7 @@ TEST(ProtoPortmapNatPmp, RequestAddress) {
 		// Место под собираемое сообщение
 		uint8_t small[1] = {0};
 		// Выполняем сборку запроса в недостаточное место
-		ASSERT_EQ(natpmp_t::address(small, sizeof(small), error), static_cast <size_t> (0));
+		ASSERT_EQ(__natpmp.address(small, sizeof(small), error), static_cast <size_t> (0));
 		// Выполняем проверку кода причины отказа кодека
 		ASSERT_EQ(error, natpmp_t::error_t::BUFFER_TOO_SMALL);
 	}
@@ -83,7 +101,7 @@ TEST(ProtoPortmapNatPmp, RequestMapping) {
 	// Устанавливаем запрашиваемый срок жизни перенаправления
 	request.lifeTime = 3600;
 	// Выполняем сборку просьбы о перенаправлении порта
-	ASSERT_EQ(natpmp_t::mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (12));
+	ASSERT_EQ(__natpmp.mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (12));
 	// Выполняем проверку кода причины отказа кодека
 	ASSERT_EQ(error, natpmp_t::error_t::NONE);
 	// Выполняем проверку издания договора
@@ -124,7 +142,7 @@ TEST(ProtoPortmapNatPmp, RequestMapping) {
 		// Обнуляем запрашиваемый срок жизни перенаправления
 		request.lifeTime = 0;
 		// Выполняем сборку просьбы об удалении перенаправления
-		ASSERT_EQ(natpmp_t::mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (12));
+		ASSERT_EQ(__natpmp.mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (12));
 		// Выполняем проверку кода действия, отвечающего договору UDP
 		ASSERT_EQ(buffer[1], 1);
 		// Выполняем проверку обнулённого внешнего порта перенаправления
@@ -141,7 +159,7 @@ TEST(ProtoPortmapNatPmp, RequestMapping) {
 		// Сбрасываем договор перенаправления порта
 		request.proto = natpmp_t::proto_t::NONE;
 		// Выполняем сборку просьбы с неопределённым договором
-		ASSERT_EQ(natpmp_t::mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (0));
+		ASSERT_EQ(__natpmp.mapping(buffer, sizeof(buffer), request, error), static_cast <size_t> (0));
 		// Выполняем проверку кода причины отказа кодека
 		ASSERT_EQ(error, natpmp_t::error_t::INVALID_OPCODE);
 	}
@@ -162,7 +180,7 @@ TEST(ProtoPortmapNatPmp, ResponseAddress) {
 	// Код причины отказа кодека
 	natpmp_t::error_t error = natpmp_t::error_t::NONE;
 	// Выполняем разбор ответа маршрутизатора
-	ASSERT_TRUE(natpmp_t::parse(data, sizeof(data), answer, error)) << message(error);
+	ASSERT_TRUE(__natpmp.parse(data, sizeof(data), answer, error)) << message(error);
 	// Выполняем проверку вида полученного сообщения
 	ASSERT_EQ(answer.kind, natpmp_t::kind_t::ADDRESS);
 	// Выполняем проверку кода итога, выданного маршрутизатором
@@ -189,7 +207,7 @@ TEST(ProtoPortmapNatPmp, ResponseMapping) {
 	// Код причины отказа кодека
 	natpmp_t::error_t error = natpmp_t::error_t::NONE;
 	// Выполняем разбор ответа маршрутизатора
-	ASSERT_TRUE(natpmp_t::parse(data, sizeof(data), answer, error)) << message(error);
+	ASSERT_TRUE(__natpmp.parse(data, sizeof(data), answer, error)) << message(error);
 	// Выполняем проверку вида полученного сообщения
 	ASSERT_EQ(answer.kind, natpmp_t::kind_t::MAPPING);
 	// Выполняем проверку договора перенаправления порта
@@ -230,7 +248,7 @@ TEST(ProtoPortmapNatPmp, ResponseRefused) {
 	// Код причины отказа кодека
 	natpmp_t::error_t error = natpmp_t::error_t::NONE;
 	// Выполняем разбор ответа маршрутизатора
-	ASSERT_TRUE(natpmp_t::parse(data, sizeof(data), answer, error)) << message(error);
+	ASSERT_TRUE(__natpmp.parse(data, sizeof(data), answer, error)) << message(error);
 	// Выполняем проверку отсутствия отказа кодека
 	ASSERT_EQ(error, natpmp_t::error_t::NONE);
 	// Выполняем проверку кода итога, выданного маршрутизатором
@@ -251,7 +269,7 @@ TEST(ProtoPortmapNatPmp, ResponseRefused) {
 		// Устанавливаем код итога, кодеку неизвестный
 		unknown[3] = 0x63;
 		// Выполняем разбор ответа маршрутизатора
-		ASSERT_TRUE(natpmp_t::parse(unknown, sizeof(unknown), answer, error)) << message(error);
+		ASSERT_TRUE(__natpmp.parse(unknown, sizeof(unknown), answer, error)) << message(error);
 		// Выполняем проверку сохранения кода итога, кодеку неизвестного
 		ASSERT_EQ(static_cast <uint16_t> (answer.result), static_cast <uint16_t> (0x63));
 	}
@@ -272,7 +290,7 @@ TEST(ProtoPortmapNatPmp, Malformed) {
 		// Сообщение короче заголовка ответа
 		const uint8_t data[3] = {0x00, 0x80, 0x00};
 		// Выполняем разбор сообщения короче заголовка
-		ASSERT_FALSE(natpmp_t::parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(__natpmp.parse(data, sizeof(data), answer, error));
 		// Выполняем проверку кода причины отказа кодека
 		ASSERT_EQ(error, natpmp_t::error_t::TRUNCATED);
 	}
@@ -283,7 +301,7 @@ TEST(ProtoPortmapNatPmp, Malformed) {
 		// Ответ с внешним адресом короче положенного
 		const uint8_t data[8] = {0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x12, 0x34};
 		// Выполняем разбор ответа короче положенного
-		ASSERT_FALSE(natpmp_t::parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(__natpmp.parse(data, sizeof(data), answer, error));
 		// Выполняем проверку кода причины отказа кодека
 		ASSERT_EQ(error, natpmp_t::error_t::TRUNCATED);
 	}
@@ -294,7 +312,7 @@ TEST(ProtoPortmapNatPmp, Malformed) {
 		// Ответ о перенаправлении короче положенного
 		const uint8_t data[12] = {0x00, 0x82, 0x00, 0x00, 0x00, 0x00, 0x12, 0x34, 0x1F, 0x90, 0x30, 0x39};
 		// Выполняем разбор ответа короче положенного
-		ASSERT_FALSE(natpmp_t::parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(__natpmp.parse(data, sizeof(data), answer, error));
 		// Выполняем проверку кода причины отказа кодека
 		ASSERT_EQ(error, natpmp_t::error_t::TRUNCATED);
 	}
@@ -305,7 +323,7 @@ TEST(ProtoPortmapNatPmp, Malformed) {
 		// Ответ с неизвестным изданием договора
 		const uint8_t data[12] = {0x01, 0x80, 0x00, 0x00, 0x00, 0x00, 0x12, 0x34, 0xCB, 0x00, 0x71, 0x07};
 		// Выполняем разбор ответа с неизвестным изданием договора
-		ASSERT_FALSE(natpmp_t::parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(__natpmp.parse(data, sizeof(data), answer, error));
 		// Выполняем проверку кода причины отказа кодека
 		ASSERT_EQ(error, natpmp_t::error_t::INVALID_VERSION);
 	}
@@ -319,7 +337,7 @@ TEST(ProtoPortmapNatPmp, Malformed) {
 		// Запрос, ответом не являющийся
 		const uint8_t data[12] = {0x00, 0x02, 0x00, 0x00, 0x1F, 0x90, 0x1F, 0x90, 0x00, 0x00, 0x0E, 0x10};
 		// Выполняем разбор сообщения, ответом не являющегося
-		ASSERT_FALSE(natpmp_t::parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(__natpmp.parse(data, sizeof(data), answer, error));
 		// Выполняем проверку кода причины отказа кодека
 		ASSERT_EQ(error, natpmp_t::error_t::NOT_A_RESPONSE);
 	}
@@ -330,7 +348,7 @@ TEST(ProtoPortmapNatPmp, Malformed) {
 		// Ответ с неизвестным кодом действия
 		const uint8_t data[16] = {0x00, 0x87, 0x00, 0x00, 0x00, 0x00, 0x12, 0x34, 0x1F, 0x90, 0x30, 0x39, 0x00, 0x00, 0x0E, 0x10};
 		// Выполняем разбор ответа с неизвестным кодом действия
-		ASSERT_FALSE(natpmp_t::parse(data, sizeof(data), answer, error));
+		ASSERT_FALSE(__natpmp.parse(data, sizeof(data), answer, error));
 		// Выполняем проверку кода причины отказа кодека
 		ASSERT_EQ(error, natpmp_t::error_t::INVALID_OPCODE);
 	}

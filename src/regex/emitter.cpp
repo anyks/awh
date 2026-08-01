@@ -522,7 +522,7 @@ bool awh::regex::Emitter::resolve() noexcept {
 		 *          следующей за нею: так устроен набор команд ARM64.
 		 *
 		 */
-		const int64_t delta = ((static_cast <int64_t> (target) - static_cast <int64_t> (fixup.position)) - 1);
+		const int64_t delta = (static_cast <int64_t> (target) - static_cast <int64_t> (fixup.position));
 		/**
 		 * Если смещение перехода за пределы поля команды выходит
 		 */

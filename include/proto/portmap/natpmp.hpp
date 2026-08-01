@@ -31,7 +31,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/global.hpp"
+#include "../../sys/fmk.hpp"
+#include "../../sys/log.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -222,6 +223,11 @@ namespace awh {
 						 */
 						Request() noexcept;
 					} request_t;
+				private:
+					// Объект фреймворка
+					const fmk_t * _fmk;
+					// Объект работы с логами
+					const log_t * _log;
 				public:
 					/**
 					 * @brief Метод сборки запроса внешнего адреса маршрутизатора
@@ -232,7 +238,7 @@ namespace awh {
 					 * @return       размер собранного сообщения
 					 *
 					 */
-					static size_t address(void * buffer, const size_t size, error_t & error) noexcept;
+					size_t address(void * buffer, const size_t size, error_t & error) const noexcept;
 					/**
 					 * @brief Метод сборки просьбы о перенаправлении порта
 					 *
@@ -243,7 +249,7 @@ namespace awh {
 					 * @return        размер собранного сообщения
 					 *
 					 */
-					static size_t mapping(void * buffer, const size_t size, const request_t & request, error_t & error) noexcept;
+					size_t mapping(void * buffer, const size_t size, const request_t & request, error_t & error) const noexcept;
 				public:
 					/**
 					 * @brief Метод разбора ответа маршрутизатора
@@ -261,7 +267,7 @@ namespace awh {
 					 * @return       признак успешного разбора
 					 *
 					 */
-					static bool parse(const void * buffer, const size_t size, answer_t & answer, error_t & error) noexcept;
+					bool parse(const void * buffer, const size_t size, answer_t & answer, error_t & error) const noexcept;
 				public:
 					/**
 					 * @brief Метод получения срока ожидания ответа на очередную попытку
@@ -275,6 +281,15 @@ namespace awh {
 					 *
 					 */
 					static uint32_t timeout(const uint8_t attempt) noexcept;
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param fmk объект фреймворка
+					 * @param log объект работы с логами
+					 *
+					 */
+					NAT_PMP(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 			} natpmp_t;
 
 			/**
