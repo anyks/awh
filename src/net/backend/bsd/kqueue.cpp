@@ -8910,9 +8910,17 @@ namespace io {
 									// Если нет лимита для чтения данных из сокета
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
-										if(::bandwidth::read > 0)
-											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-											::io::postpone(peer, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+										if(::bandwidth::read > 0){
+												// Списываем объём чтения данных из общего ведра токенов
+												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+												if(delay > 0){
+													// Откладываем узел до пополнения общего ведра токенов
+													::io::postpone(peer, event::limiting_t::INGRESS, delay, log);
+													// Выходим из цикла
+													break;
+												}
+											}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -9053,9 +9061,17 @@ namespace io {
 								// Формируем отрицательный результат
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
-							if(::bandwidth::read > 0)
-								// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-								::io::postpone(peer, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+							if(::bandwidth::read > 0){
+									// Списываем объём чтения данных из общего ведра токенов
+									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+									if(delay > 0){
+										// Откладываем узел до пополнения общего ведра токенов
+										::io::postpone(peer, event::limiting_t::INGRESS, delay, log);
+										// Выходим из цикла
+										break;
+									}
+								}
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем удаление узла
@@ -9205,9 +9221,17 @@ namespace io {
 									// Если нет лимита для чтения данных из сокета
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
-										if(::bandwidth::read > 0)
-											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-											::io::postpone(peer, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+										if(::bandwidth::read > 0){
+												// Списываем объём чтения данных из общего ведра токенов
+												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+												if(delay > 0){
+													// Откладываем узел до пополнения общего ведра токенов
+													::io::postpone(peer, event::limiting_t::INGRESS, delay, log);
+													// Выходим из цикла
+													break;
+												}
+											}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -9308,9 +9332,17 @@ namespace io {
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
-								if(::bandwidth::read > 0)
-									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-									::io::postpone(peer, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+								if(::bandwidth::read > 0){
+										// Списываем объём чтения данных из общего ведра токенов
+										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+										if(delay > 0){
+											// Откладываем узел до пополнения общего ведра токенов
+											::io::postpone(peer, event::limiting_t::INGRESS, delay, log);
+											// Выходим из цикла
+											break;
+										}
+									}
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -10781,9 +10813,17 @@ namespace io {
 									// Если нет лимита для чтения данных из сокета
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
-										if(::bandwidth::read > 0)
-											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-											::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+										if(::bandwidth::read > 0){
+												// Списываем объём чтения данных из общего ведра токенов
+												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+												if(delay > 0){
+													// Откладываем узел до пополнения общего ведра токенов
+													::io::postpone(client, event::limiting_t::INGRESS, delay, log);
+													// Выходим из цикла
+													break;
+												}
+											}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -10924,9 +10964,17 @@ namespace io {
 								// Формируем отрицательный результат
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
-							if(::bandwidth::read > 0)
-								// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-								::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+							if(::bandwidth::read > 0){
+									// Списываем объём чтения данных из общего ведра токенов
+									const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+									// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+									if(delay > 0){
+										// Откладываем узел до пополнения общего ведра токенов
+										::io::postpone(client, event::limiting_t::INGRESS, delay, log);
+										// Выходим из цикла
+										break;
+									}
+								}
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем удаление узла
@@ -11185,9 +11233,17 @@ namespace io {
 									// Если нет лимита для чтения данных из сокета
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
-										if(::bandwidth::read > 0)
-											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-											::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+										if(::bandwidth::read > 0){
+												// Списываем объём чтения данных из общего ведра токенов
+												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+												if(delay > 0){
+													// Откладываем узел до пополнения общего ведра токенов
+													::io::postpone(client, event::limiting_t::INGRESS, delay, log);
+													// Выходим из цикла
+													break;
+												}
+											}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -11403,9 +11459,17 @@ namespace io {
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
-								if(::bandwidth::read > 0)
-									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-									::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+								if(::bandwidth::read > 0){
+										// Списываем объём чтения данных из общего ведра токенов
+										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+										if(delay > 0){
+											// Откладываем узел до пополнения общего ведра токенов
+											::io::postpone(client, event::limiting_t::INGRESS, delay, log);
+											// Выходим из цикла
+											break;
+										}
+									}
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -11672,9 +11736,17 @@ namespace io {
 									// Если нет лимита для чтения данных из сокета
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
-										if(::bandwidth::read > 0)
-											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-											::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+										if(::bandwidth::read > 0){
+												// Списываем объём чтения данных из общего ведра токенов
+												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+												if(delay > 0){
+													// Откладываем узел до пополнения общего ведра токенов
+													::io::postpone(client, event::limiting_t::INGRESS, delay, log);
+													// Выходим из цикла
+													break;
+												}
+											}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -11903,9 +11975,17 @@ namespace io {
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
-								if(::bandwidth::read > 0)
-									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-									::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+								if(::bandwidth::read > 0){
+										// Списываем объём чтения данных из общего ведра токенов
+										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+										if(delay > 0){
+											// Откладываем узел до пополнения общего ведра токенов
+											::io::postpone(client, event::limiting_t::INGRESS, delay, log);
+											// Выходим из цикла
+											break;
+										}
+									}
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -12072,9 +12152,17 @@ namespace io {
 									// Если нет лимита для чтения данных из сокета
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
-										if(::bandwidth::read > 0)
-											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-											::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+										if(::bandwidth::read > 0){
+												// Списываем объём чтения данных из общего ведра токенов
+												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+												if(delay > 0){
+													// Откладываем узел до пополнения общего ведра токенов
+													::io::postpone(client, event::limiting_t::INGRESS, delay, log);
+													// Выходим из цикла
+													break;
+												}
+											}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -12193,9 +12281,17 @@ namespace io {
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
-								if(::bandwidth::read > 0)
-									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-									::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+								if(::bandwidth::read > 0){
+										// Списываем объём чтения данных из общего ведра токенов
+										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+										if(delay > 0){
+											// Откладываем узел до пополнения общего ведра токенов
+											::io::postpone(client, event::limiting_t::INGRESS, delay, log);
+											// Выходим из цикла
+											break;
+										}
+									}
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -12371,9 +12467,17 @@ namespace io {
 									// Если нет лимита для чтения данных из сокета
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
-										if(::bandwidth::read > 0)
-											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-											::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+										if(::bandwidth::read > 0){
+												// Списываем объём чтения данных из общего ведра токенов
+												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+												if(delay > 0){
+													// Откладываем узел до пополнения общего ведра токенов
+													::io::postpone(client, event::limiting_t::INGRESS, delay, log);
+													// Выходим из цикла
+													break;
+												}
+											}
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -12505,9 +12609,17 @@ namespace io {
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
-								if(::bandwidth::read > 0)
-									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-									::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+								if(::bandwidth::read > 0){
+										// Списываем объём чтения данных из общего ведра токенов
+										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+										if(delay > 0){
+											// Откладываем узел до пополнения общего ведра токенов
+											::io::postpone(client, event::limiting_t::INGRESS, delay, log);
+											// Выходим из цикла
+											break;
+										}
+									}
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -12887,9 +12999,17 @@ namespace io {
 									// Если нет лимита для чтения данных из сокета
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
-										if(::bandwidth::read > 0)
-											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-											::io::postpone(server, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+										if(::bandwidth::read > 0){
+												// Списываем объём чтения данных из общего ведра токенов
+												const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+												// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+												if(delay > 0){
+													// Откладываем узел до пополнения общего ведра токенов
+													::io::postpone(server, event::limiting_t::INGRESS, delay, log);
+													// Выходим из цикла
+													break;
+												}
+											}
 									}
 									/**
 									 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
@@ -13144,9 +13264,17 @@ namespace io {
 								// Выполняем обработку полученных данных
 								result = ::io::origin(server, ::__awh_buffer__, bytes, io, eth, addr, fmk, log);
 								// Если установлено ограничение пропускной способности на чтение данных
-								if(::bandwidth::read > 0)
-									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
-									::io::postpone(server, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+								if(::bandwidth::read > 0){
+										// Списываем объём чтения данных из общего ведра токенов
+										const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+										// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+										if(delay > 0){
+											// Откладываем узел до пополнения общего ведра токенов
+											::io::postpone(server, event::limiting_t::INGRESS, delay, log);
+											// Выходим из цикла
+											break;
+										}
+									}
 							// Если произошёл дисконнект
 							} else {
 								// Идентификатор полученной ошибки
@@ -16500,9 +16628,17 @@ namespace io {
 										}
 									}
 									// Если установлено ограничение пропускной способности на запись данных
-									if(::bandwidth::write > 0)
-										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
-										::io::postpone(origin, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
+									if(::bandwidth::write > 0){
+											// Списываем объём отправки данных из общего ведра токенов
+											const uint32_t delay = ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE);
+											// Если общее ведро ушло в долг, откладываем узел и прекращаем оборот
+											if(delay > 0){
+												// Откладываем узел до пополнения общего ведра токенов
+												::io::postpone(origin, event::limiting_t::EGRESS, delay, log);
+												// Выходим из цикла
+												break;
+											}
+										}
 								// Если данные не отправлены
 								} else {
 									// Идентификатор полученной ошибки
