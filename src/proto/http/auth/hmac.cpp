@@ -338,8 +338,15 @@ string awh::http::Hmac::sign(const string & base, const string & key) const noex
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			/**
+			 * Имитовставка запрашивается двоичным видом: по умолчанию модуль
+			 * криптографии выдаёт шестнадцатеричную запись, и кодирование её
+			 * давало подпись «BASE64 от записи имитовставки» вместо «BASE64 от
+			 * самой имитовставки», предписанной RFC 9421. Чужие работы такую
+			 * подпись не принимают, а наши не принимали бы чужой
+			 */
 			// Рассчитываем HMAC над канонической базой (в виде сырых байт)
-			const vector <uint8_t> & digest = this->_crypto->hmac <vector <uint8_t>> (key, base, this->_params.hash);
+			const vector <uint8_t> & digest = this->_crypto->hmac <vector <uint8_t>> (key, base, this->_params.hash, crypto_t::format_t::RAW);
 			// Если подпись рассчитана
 			if(!digest.empty()){
 				// Формируем строковый буфер из сырых байт подписи

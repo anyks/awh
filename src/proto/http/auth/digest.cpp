@@ -585,7 +585,7 @@ bool awh::http::Digest::parse(const string_view header) noexcept {
 				// Сообщаем о неудачном разборе
 				return result;
 			// Разбираем параметры Digest с учётом кавычек и запятых внутри значений
-			const unordered_map <string, string> params = this->_fmk->kv(digest, ",", "=");
+			const unordered_multimap <string, string> params = this->_fmk->kv(digest, ",", "=");
 			// Если список параметров получен
 			if((result = !params.empty())){
 				// Флаг несовпадения realm с настроенным значением сервера

@@ -1,0 +1,329 @@
+/**
+ * @file: document.cpp
+ * @date: 2026-08-01
+ * @license: LicenseRef-AWH-1.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @brief Автоматические тесты дерева разметки — сборка дерева из событий чтения, обход узлами,
+ *        поиск по имени с учётом пространства имён и обращение к атрибутам
+ *
+ * @copyright: Copyright © 2026
+ *
+ */
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <string>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <codec/xml/document.hpp>
+
+/**
+ * Подключаем заголовочные файлы тестового окружения
+ */
+#include "../../main.hpp"
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+using namespace awh::codec;
+
+/**
+ * @brief Ответ по договору SOAP, как его отдаёт устройство по договору UPnP
+ *
+ */
+static constexpr const char * SOAP =
+	"<?xml version=\"1.0\"?>\n"
+	"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\""
+	" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\n"
+	"  <s:Body>\n"
+	"    <u:GetExternalIPAddressResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\">\n"
+	"      <NewExternalIPAddress>203.0.113.7</NewExternalIPAddress>\n"
+	"    </u:GetExternalIPAddressResponse>\n"
+	"  </s:Body>\n"
+	"</s:Envelope>";
+
+/**
+ * @brief Проверка разбора ответа по договору SOAP
+ *
+ */
+TEST(CodecXmlDocument, Soap) {
+	// Объект дерева разметки
+	xml::document_t document;
+	// Выполняем разбор ответа по договору SOAP
+	ASSERT_TRUE(document.parse(SOAP)) << xml::message(document.error());
+	// Получаем корневой узел разметки
+	const xml::node_t root = document.element();
+	// Выполняем проверку пригодности корневого узла
+	ASSERT_TRUE(root.valid());
+	// Выполняем проверку имени корневого узла
+	ASSERT_TRUE(root.name().is("http://schemas.xmlsoap.org/soap/envelope/", "Envelope"));
+	// Выполняем поиск узла вглубь дерева
+	const xml::node_t address = root.find("NewExternalIPAddress");
+	// Выполняем проверку обнаружения узла
+	ASSERT_TRUE(address.valid());
+	// Выполняем проверку содержимого обнаруженного узла
+	ASSERT_EQ(address.text(), "203.0.113.7");
+	// Выполняем поиск узла среди непосредственно вложенных
+	const xml::node_t body = root.child("Body", "http://schemas.xmlsoap.org/soap/envelope/");
+	// Выполняем проверку обнаружения узла
+	ASSERT_TRUE(body.valid());
+	// Выполняем проверку того, что поиск учитывает пространство имён
+	ASSERT_FALSE(root.child("Body").valid());
+	// Выполняем проверку значения атрибута с префиксом
+	ASSERT_EQ(root.attribute("encodingStyle", "http://schemas.xmlsoap.org/soap/envelope/"), "http://schemas.xmlsoap.org/soap/encoding/");
+	// Выполняем проверку обхода дерева вверх
+	ASSERT_TRUE(address.parent().parent() == body);
+}
+/**
+ * @brief Проверка сборки содержимого узла со всей глубины поддерева
+ *
+ */
+TEST(CodecXmlDocument, Text) {
+	// Объект дерева разметки
+	xml::document_t document;
+	// Выполняем разбор смешанного содержимого
+	ASSERT_TRUE(document.parse("<a>раз<b>два</b>три<![CDATA[четыре]]></a>")) << xml::message(document.error());
+	// Выполняем проверку сборки содержимого со всей глубины
+	ASSERT_EQ(document.element().text(), "раздватричетыре");
+}
+/**
+ * @brief Проверка перечня одноимённых вложенных узлов
+ *
+ */
+TEST(CodecXmlDocument, Children) {
+	// Объект дерева разметки
+	xml::document_t document;
+	// Выполняем разбор текста разметки
+	ASSERT_TRUE(document.parse("<r><i>1</i><i>2</i><x/><i>3</i></r>")) << xml::message(document.error());
+	// Получаем перечень одноимённых вложенных узлов
+	const vector <xml::node_t> items = document.element().children("i");
+	// Выполняем проверку количества обнаруженных узлов
+	ASSERT_EQ(items.size(), static_cast <size_t> (3));
+	// Собираемое содержимое обнаруженных узлов
+	string joined;
+	/**
+	 * Выполняем перебор всех обнаруженных узлов
+	 */
+	for(const xml::node_t & item : items)
+		// Выполняем добавление содержимого очередного узла
+		joined.append(item.text());
+	// Выполняем проверку содержимого обнаруженных узлов
+	ASSERT_EQ(joined, "123");
+}
+/**
+ * @brief Проверка того, что ошибочный текст оставляет дерево пустым
+ *
+ */
+TEST(CodecXmlDocument, Malformed) {
+	// Объект дерева разметки
+	xml::document_t document;
+	// Выполняем разбор неправильно построенного текста
+	ASSERT_FALSE(document.parse("<a><b></a>"));
+	// Выполняем проверку пустоты дерева разметки
+	ASSERT_TRUE(document.empty());
+	// Выполняем проверку кода ошибки разбора
+	ASSERT_EQ(document.error(), xml::error_t::MISMATCHED_TAG);
+}
+/**
+ * @brief Проверка обращения к непригодному узлу дерева
+ *
+ * @details Обход дерева нередко приводит к непригодному узлу - скажем, при поиске
+ *          того, чего в дереве нет. Обращение к такому узлу обязано выдавать пустые
+ *          значения, а не приводить к обвалу
+ *
+ */
+TEST(CodecXmlDocument, Invalid) {
+	// Непригодный узел дерева разметки
+	const xml::node_t node;
+	// Выполняем проверку непригодности узла
+	ASSERT_FALSE(node.valid());
+	// Выполняем проверку вида непригодного узла
+	ASSERT_EQ(node.kind(), xml::kind_t::NONE);
+	// Выполняем проверку содержимого непригодного узла
+	ASSERT_TRUE(node.text().empty());
+	// Выполняем проверку обхода от непригодного узла
+	ASSERT_FALSE(node.parent().valid());
+	// Выполняем проверку поиска от непригодного узла
+	ASSERT_FALSE(node.find("x").valid());
+	// Выполняем проверку обращения к атрибутам непригодного узла
+	ASSERT_TRUE(node.attribute("x").empty());
+}
+/**
+ * @brief Проверка сборки дерева большого текста разметки
+ *
+ */
+TEST(CodecXmlDocument, Huge) {
+	// Собираемый текст разметки
+	string text = "<r>";
+	/**
+	 * Выполняем сборку текста разметки
+	 */
+	for(uint32_t i = 0; i < 20000; i++)
+		// Выполняем добавление очередного узла разметки
+		text.append("<i n='").append(to_string(i)).append("'>значение</i>");
+	// Выполняем завершение текста разметки
+	text.append("</r>");
+	// Объект дерева разметки
+	xml::document_t document;
+	// Выполняем разбор собранного текста разметки
+	ASSERT_TRUE(document.parse(text)) << xml::message(document.error());
+	// Выполняем проверку количества узлов дерева
+	ASSERT_EQ(document.size(), static_cast <size_t> ((20000 * 2) + 2));
+	// Выполняем проверку значения атрибута последнего узла
+	ASSERT_EQ(document.element().last().attribute("n"), "19999");
+}
+/**
+ * @brief Проверка получения содержимого и атрибутов узлов числом
+ *
+ * @details Разбор чисел ведётся по правилам местности «C» без выделения памяти и
+ *          без выбрасывания исключений. Признаком успеха служит выданное значение,
+ *          а не разобранное число: содержимое, числом не являющееся, обязано
+ *          отличаться от содержимого с числом нуль
+ *
+ */
+TEST(CodecXmlDocument, Numeric) {
+	// Объект дерева разметки
+	xml::document_t document;
+	// Выполняем разбор текста разметки с числовым содержимым
+	ASSERT_TRUE(document.parse(
+		"<r>"
+		"<port id='255'>52</port>"
+		"<rate>54.33</rate>"
+		"<pad>  128  </pad>"
+		"<sign>-42</sign>"
+		"<exp>1.5e3</exp>"
+		"<yes>true</yes>"
+		"<no>0</no>"
+		"<text>abc</text>"
+		"<zero>0</zero>"
+		"<tail>52abc</tail>"
+		"<huge>70000</huge>"
+		"<inner>5 2</inner>"
+		"<empty></empty>"
+		"</r>"
+	)) << xml::message(document.error());
+	// Получаем корневой узел дерева разметки
+	const xml::node_t root = document.element();
+	// Значение разбираемого целого числа
+	uint16_t port = 0;
+	// Выполняем разбор содержимого узла целым числом
+	ASSERT_TRUE(root.child("port").value(port));
+	// Выполняем проверку разобранного целого числа
+	ASSERT_EQ(port, 52);
+	// Выполняем разбор значения атрибута узла целым числом
+	ASSERT_TRUE(root.child("port").value(port, "id"));
+	// Выполняем проверку разобранного целого числа
+	ASSERT_EQ(port, 255);
+	// Значение разбираемого числа с плавающей точкой
+	double rate = 0.;
+	// Выполняем разбор содержимого узла числом с плавающей точкой
+	ASSERT_TRUE(root.child("rate").value(rate));
+	// Выполняем проверку разобранного числа с плавающей точкой
+	ASSERT_DOUBLE_EQ(rate, 54.33);
+	/**
+	 * Выполняем разбор содержимого узла с пробельной обвязкой
+	 *
+	 * @note Обвязка появляется сама собой при записи с отступами, поэтому
+	 *       отбрасывать её обязательно
+	 */
+	ASSERT_TRUE(root.child("pad").value(port));
+	// Выполняем проверку разобранного целого числа
+	ASSERT_EQ(port, 128);
+	// Значение разбираемого целого числа со знаком
+	int32_t sign = 0;
+	// Выполняем разбор содержимого узла целым числом со знаком
+	ASSERT_TRUE(root.child("sign").value(sign));
+	// Выполняем проверку разобранного целого числа со знаком
+	ASSERT_EQ(sign, -42);
+	// Выполняем разбор содержимого узла в показательной записи
+	ASSERT_TRUE(root.child("exp").value(rate));
+	// Выполняем проверку разобранного числа с плавающей точкой
+	ASSERT_DOUBLE_EQ(rate, 1500.);
+	// Значение разбираемого логического значения
+	bool flag = false;
+	// Выполняем разбор содержимого узла логическим значением
+	ASSERT_TRUE(root.child("yes").value(flag));
+	// Выполняем проверку разобранного логического значения
+	ASSERT_TRUE(flag);
+	// Выполняем разбор содержимого узла логическим значением
+	ASSERT_TRUE(root.child("no").value(flag));
+	// Выполняем проверку разобранного логического значения
+	ASSERT_FALSE(flag);
+	/**
+	 * Выполняем проверку отличия отказа от разобранного нуля
+	 */
+	{
+		// Значение разбираемого целого числа
+		int32_t value = -1;
+		// Выполняем проверку отклонения содержимого, числом не являющегося
+		ASSERT_FALSE(root.child("text").value(value));
+		// Выполняем проверку сохранения значения при отказе разбора
+		ASSERT_EQ(value, -1);
+		// Выполняем проверку разбора содержимого с числом нуль
+		ASSERT_TRUE(root.child("zero").value(value));
+		// Выполняем проверку разобранного целого числа
+		ASSERT_EQ(value, 0);
+	}
+	/**
+	 * Выполняем проверку отклонения неправильно построенного содержимого
+	 */
+	{
+		// Значение разбираемого целого числа
+		int32_t value = 0;
+		// Выполняем проверку отклонения остатка за числом
+		ASSERT_FALSE(root.child("tail").value(value));
+		// Выполняем проверку отклонения пробельного знака внутри числа
+		ASSERT_FALSE(root.child("inner").value(value));
+		// Выполняем проверку отклонения пустого содержимого
+		ASSERT_FALSE(root.child("empty").value(value));
+		// Выполняем проверку отклонения отсутствующего узла
+		ASSERT_FALSE(root.child("missing").value(value));
+		// Выполняем проверку отклонения отсутствующего атрибута
+		ASSERT_FALSE(root.child("port").value(value, "missing"));
+		// Выполняем проверку отклонения логического значения в чужой записи
+		ASSERT_FALSE(root.child("text").value(flag));
+	}
+	/**
+	 * Выполняем проверку отклонения выхода за пределы запрошенного типа
+	 *
+	 * @note Усечение здесь недопустимо: число, в тип не помещающееся, обязано
+	 *       быть отвергнуто, а не приведено к остатку от деления
+	 */
+	{
+		// Выполняем проверку отклонения числа, в тип не помещающегося
+		ASSERT_FALSE(root.child("huge").value(port));
+		// Значение разбираемого целого числа большей разрядности
+		uint32_t value = 0;
+		// Выполняем проверку разбора того же числа в тип большей разрядности
+		ASSERT_TRUE(root.child("huge").value(value));
+		// Выполняем проверку разобранного целого числа
+		ASSERT_EQ(value, static_cast <uint32_t> (70000));
+		// Выполняем проверку отклонения числа со знаком в тип без знака
+		ASSERT_FALSE(root.child("sign").value(value));
+	}
+	/**
+	 * Выполняем проверку разбора со значением по умолчанию
+	 */
+	{
+		// Выполняем проверку выдачи разобранного числа
+		ASSERT_EQ(root.child("port").number <uint16_t> (0), 52);
+		// Выполняем проверку выдачи значения по умолчанию при отказе разбора
+		ASSERT_EQ(root.child("text").number <uint16_t> (7), 7);
+		// Выполняем проверку выдачи значения по умолчанию для отсутствующего узла
+		ASSERT_EQ(root.child("missing").number <uint16_t> (7), 7);
+		// Выполняем проверку выдачи разобранного значения атрибута
+		ASSERT_EQ(root.child("port").number <uint16_t> ("id", 0), 255);
+		// Выполняем проверку выдачи значения по умолчанию для отсутствующего атрибута
+		ASSERT_EQ(root.child("port").number <uint16_t> ("missing", 9), 9);
+	}
+}

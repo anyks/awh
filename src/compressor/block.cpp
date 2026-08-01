@@ -205,6 +205,59 @@ namespace driver {
 		return scope_exit_t <F> (std::move(fn));
 	}
 	/**
+	 * @brief Шаблон функции проверки распакованных данных на превышение допустимого предела
+	 *
+	 * @tparam T тип контейнера результата
+	 *
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция проверки распакованных данных на превышение допустимого предела
+	 *
+	 * @details Ограждает от недоверенного кадра, разворачивающегося в гигабайты: без
+	 *          предела память отводилась бы по указанию отправляющей стороны. Договор
+	 *          общий с потоковым режимом, где ту же работу делает coder_t::overflowed
+	 *
+	 * @param result контейнер с распакованными данными
+	 * @param tag    название движка для записи в лог
+	 * @param log    объект для работы с логами
+	 * @return       результат проверки
+	 *
+	 */
+	static bool overflowed(const T & result, const char * tag, const log_t * log) noexcept {
+		// Если объём распакованных данных допустимого предела не превышает
+		if(static_cast <uint64_t> (result.size()) <= static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))
+			// Выводим отрицательный результат
+			return false;
+		// Записываем ошибку в лог
+		log->print("%s: %s", log_t::flag_t::WARNING, tag, "Decompressed data exceeds the allowed limit");
+		// Выводим положительный результат
+		return true;
+	}
+	/**
+	 * @brief Функция проверки объёма распакованных данных на превышение допустимого предела
+	 *
+	 * @details Заведена для движков, отводящих буфер наперёд: у них длина контейнера
+	 *          есть отведённое место, а не собранные данные, и сверять предел следует
+	 *          с объёмом, движком выданным
+	 *
+	 * @param produced объём распакованных данных
+	 * @param tag      название движка для записи в лог
+	 * @param log      объект для работы с логами
+	 * @return         результат проверки
+	 *
+	 */
+	static bool overflowed(const size_t produced, const char * tag, const log_t * log) noexcept {
+		// Если объём распакованных данных допустимого предела не превышает
+		if(static_cast <uint64_t> (produced) <= static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))
+			// Выводим отрицательный результат
+			return false;
+		// Записываем ошибку в лог
+		log->print("%s: %s", log_t::flag_t::WARNING, tag, "Decompressed data exceeds the allowed limit");
+		// Выводим положительный результат
+		return true;
+	}
+	/**
 	 * @brief Шаблон функции работы с компрессором LZma
 	 *
 	 * @tparam T сигнатура функции
@@ -302,7 +355,7 @@ namespace driver {
 						// Индекс потока LZma компрессора
 						lzma_index * index = nullptr;
 						// Лимит доступной памяти
-						uint64_t memlimit = 0x8000000;
+						uint64_t memlimit = AWH_COMPRESSOR_LZMA_MEMLIMIT;
 						// Позиции в буферах и актуальный размер данных результата
 						size_t inpos = 0, outpos = 0, actual = 0;
 						/**
@@ -337,11 +390,15 @@ namespace driver {
 						// Сбрасываем позицию во входящем буфере
 						inpos = 0;
 						// Сбрасываем лимит доступной памяти
-						memlimit = 0x8000000;
+						memlimit = AWH_COMPRESSOR_LZMA_MEMLIMIT;
 						// Получаем размер результирующего буфера данных
 						actual = ::lzma_index_uncompressed_size(index);
-						// Если размер некорректен или превышает допустимый предел (защита от подделанного подвала)
-						if((actual == 0) || (actual > (1ULL << 30)))
+						/**
+						 * Отвергаем нулевой размер и размер свыше допустимого предела: и то,
+						 * и другое означает подделанный подвал. Нулевой распакованный размер
+						 * законным контейнером не бывает — пустой вход модуль до движка не доводит
+						 */
+						if((actual == 0) || (actual > static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT)))
 							// Переходим к выводу ошибки
 							goto Error;
 						// Выделяем буфер памяти нужного нам размера
@@ -571,8 +628,15 @@ namespace driver {
 						stream.next_in = const_cast <char *> (reinterpret_cast <const char *> (buffer));
 						// Указываем размер входного буфера
 						stream.avail_in = static_cast <uint32_t> (size);
+						/**
+						 * Начальный размер буфера — эвристика, и предел ей не указ: буфер
+						 * есть отведённое место, а не собранные данные, и отвергать по нему
+						 * значило бы отвергать законный кадр, до предела не доходящий.
+						 * Само отведение всё же ограничивается сверху пределом, чтобы
+						 * догадка не забрала памяти больше, чем работе позволено выдать
+						 */
 						// Начальный размер буфера — эвристика
-						const size_t capacity = ::max <size_t> (1024, size * 2);
+						const size_t capacity = static_cast <size_t> (::min <uint64_t> (::max <uint64_t> (1024, static_cast <uint64_t> (size) * 2), static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT)));
 						// Выделяем память на результирующий буфер
 						result.resize(capacity, 0);
 						// Результат выполнения компрессии
@@ -584,9 +648,36 @@ namespace driver {
 							// Получаем собранный движком объём данных
 							const size_t collected = static_cast <size_t> (driver::produced(stream));
 							// Убедимся, что есть место для записи
-							if(collected >= result.size())
-								// Увеличиваем буфер в два раза
-								result.resize(result.size() * 2);
+							if(collected >= result.size()){
+								/**
+								 * Предел сверяется с объёмом, движком выданным, а не с длиной
+								 * буфера: буфер растёт удвоением и предел перешагивает, его не
+								 * достигнув, - сверка по нему отвергала бы законный кадр, до
+								 * предела не дошедший
+								 */
+								// Если распакованные данные превысили допустимый предел
+								if(driver::overflowed(collected, "Bzip2", log)){
+									// Выполняем очистку результата
+									result.clear();
+									// Выходим из функции
+									return;
+								}
+								/**
+								 * Удвоение предел перешагивает, не достигнув его: прежде чем счесть
+								 * данные повреждёнными, отводим буфер ровно по пределу и пробуем ещё раз
+								 */
+								// Увеличиваем буфер в два раза, не выходя за допустимый предел
+								result.resize(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (result.size()) * 2, static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))));
+								// Если места под запись не прибавилось, предел исчерпан
+								if(collected >= result.size()){
+									// Записываем ошибку в лог
+									log->print("%s: %s", log_t::flag_t::WARNING, "Bzip2", "Decompressed data exceeds the allowed limit");
+									// Выполняем очистку результата
+									result.clear();
+									// Выходим из функции
+									return;
+								}
+							}
 							// Устанавливаем буфер для получения результата
 							stream.next_out = reinterpret_cast <char *> (&result[0] + collected);
 							// Устанавливаем максимальный размер буфера, не выходя за разрядность движка
@@ -841,6 +932,13 @@ namespace driver {
 								const char * chunk = reinterpret_cast <const char *> (&data[0]);
 								// Формируем результирующий буфер бинарных данных
 								result.insert(result.end(), chunk, chunk + produced);
+								// Если распакованные данные превысили допустимый предел
+								if(driver::overflowed(result, "Brotli", log)){
+									// Выполняем очистку результата
+									result.clear();
+									// Выходим из функции
+									return;
+								}
 							}
 						}
 						// Если декомпрессия данных выполнена не удачно (в т.ч. усечённый вход — NEEDS_MORE_INPUT)
@@ -911,6 +1009,28 @@ namespace driver {
 			try {
 				// Выполняем очистку блока с результатом
 				result.clear();
+				/**
+				 * Распакованный размер записан в самом кадре, и движок отводит по нему память
+				 * прежде, чем разбирать данные: без сверки крошечный кадр недоверенной стороны
+				 * заставил бы отвести гигабайты. Прочие движки о том же событии узнают по ходу
+				 * накопления, здесь же оно известно наперёд - тем и пользуемся
+				 */
+				// Если производится декомпрессия данных
+				if(event == compressor::event_t::DECODE){
+					// Распакованный размер, записанный в кадре
+					size_t expected = 0;
+					// Если распакованный размер из кадра не извлекается, кадр повреждён
+					if(!snappy::GetUncompressedLength(reinterpret_cast <const char *> (buffer), size, &expected)){
+						// Записываем ошибку в лог
+						log->print("%s: %s", log_t::flag_t::WARNING, "Snappy", "Error during data decompression");
+						// Выходим из функции
+						return;
+					}
+					// Если распакованные данные превысят допустимый предел
+					if(driver::overflowed(expected, "Snappy", log))
+						// Выходим из функции
+						return;
+				}
 				// Результат выполнения операции
 				bool ok = false;
 				/**
@@ -1025,7 +1145,7 @@ namespace driver {
 				// Выполняем очистку блока с результатом
 				result.clear();
 				// Максимальный размер выходного буфера
-				constexpr uint64_t MAX_OUTPUT_SIZE = 1ULL << 30; // 1 GiB — разумный лимит
+				constexpr uint64_t MAX_OUTPUT_SIZE = AWH_COMPRESSOR_MAX_OUTPUT;
 				/**
 				 * Определяем событие выполнения операции
 				 */
@@ -1034,8 +1154,13 @@ namespace driver {
 					case static_cast <uint8_t> (compressor::event_t::ENCODE): {
 						// Выполняем получение размер результирующего буфера
 						const uint_fast64_t actual = ::density_compress_safe_size(size);
+						/**
+						 * Предел выхода здесь не сторожит: он заведён от усиления недоверенного
+						 * входа, а на сжатии выход ограничен входом, который подала сама
+						 * вызывающая сторона - отказ был бы ложным
+						 */
 						// Если размер выделен
-						if((actual == 0) || (actual > MAX_OUTPUT_SIZE)){
+						if(actual == 0){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -1207,8 +1332,13 @@ namespace driver {
 					case static_cast <uint8_t> (compressor::event_t::ENCODE): {
 						// Выполняем получение размер результирующего буфера
 						int32_t actual = ::Lizard_compressBound(static_cast <int32_t> (size));
+						/**
+						 * Предел выхода здесь не сторожит: он заведён от усиления недоверенного
+						 * входа, а на сжатии выход ограничен входом, который подала сама
+						 * вызывающая сторона - отказ был бы ложным
+						 */
 						// Если размер выделен
-						if((actual <= 0) || (static_cast <size_t> (actual) > (1ULL << 30))){
+						if(actual <= 0){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -1260,7 +1390,7 @@ namespace driver {
 						 * степень сжатия ничем сверху не ограничена, и кратный предел отвергал бы
 						 * законный сильно сжатый кадр
 						 */
-						constexpr size_t MAX_OUTPUT_SIZE = (1ULL << 30);
+						constexpr size_t MAX_OUTPUT_SIZE = AWH_COMPRESSOR_MAX_OUTPUT;
 						// Начальный размер выходного буфера
 						size_t capacity = (size * 2);
 						// Признак попытки на всём допустимом пределе
@@ -1457,7 +1587,7 @@ namespace driver {
 						 * степень сжатия ничем сверху не ограничена, и кратный предел отвергал бы
 						 * законный сильно сжатый кадр
 						 */
-						constexpr size_t MAX_OUTPUT_SIZE = (1ULL << 30);
+						constexpr size_t MAX_OUTPUT_SIZE = AWH_COMPRESSOR_MAX_OUTPUT;
 						// Начальный размер выходного буфера
 						size_t capacity = (size * 2);
 						// Признак попытки на всём допустимом пределе
@@ -1828,9 +1958,66 @@ namespace driver {
 								}
 								// Выполняем формирование полученных данных
 								result.insert(result.end(), data.get(), data.get() + output.pos);
+								// Если распакованные данные превысили допустимый предел
+								if(driver::overflowed(result, "Zstandard", log)){
+									// Выполняем очистку результата
+									result.clear();
+									// Выходим из функции
+									return;
+								}
 							}
 							// Увеличиваем смещение в исходном буфере необработанных данных
 							offset += actual;
+						}
+						/**
+						 * Вход исчерпан, но накопленное движком могло не уместиться в выходной
+						 * буфер: дожимаем пустой подачей, пока движок продолжает выдавать.
+						 * Без этого полный кадр, чей хвост остался при движке, был бы сочтён усечённым
+						 */
+						if(status != 0){
+							// Выполняем создание пустого буфера входящих данных
+							ZSTD_inBuffer input = {reinterpret_cast <const char *> (buffer), 0, 0};
+							/**
+							 * Дожимаем накопленное движком
+							 */
+							do {
+								// Сбрасываем позицию буфера
+								output.pos = 0;
+								// Выполняем декомпрессию накопленных данных
+								status = ::ZSTD_decompressStream(ctx, &output, &input);
+								// Если мы получили ошибку декомпрессии
+								if(::ZSTD_isError(status)){
+									// Выполняем очистку результата
+									result.clear();
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Записываем ошибку в лог
+										log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог в лог
+										log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+									#endif
+									// Выходим из функции
+									return;
+								}
+								// Выполняем формирование полученных данных
+								result.insert(result.end(), data.get(), data.get() + output.pos);
+								// Если распакованные данные превысили допустимый предел
+								if(driver::overflowed(result, "Zstandard", log)){
+									// Выполняем очистку результата
+									result.clear();
+									// Выходим из функции
+									return;
+								}
+							/**
+							 * Пока кадр не завершён и движок продолжает выдавать накопленное
+							 */
+							} while((status != 0) && (output.pos > 0));
 						}
 						/**
 						 * Ненулевой ответ движка означает, что кадр не завершён: движок ждёт
@@ -2050,9 +2237,17 @@ namespace driver {
 								// Вычисляем количество извлечённых данных
 								produced = (output.size() - static_cast <size_t> (zs.avail_out));
 								// Если данные извлечены, формируем результирующий буфер
-								if(produced > 0)
+								if(produced > 0){
 									// Формируем результирующий буфер бинарных данных
 									result.insert(result.end(), &output[0], &output[0] + produced);
+									// Если распакованные данные превысили допустимый предел
+									if(driver::overflowed(result, "GZip", log)){
+										// Выполняем очистку результата
+										result.clear();
+										// Выходим из функции
+										return;
+									}
+								}
 							/**
 							 * Если данные ещё не извлечены
 							 */
@@ -2299,6 +2494,13 @@ namespace driver {
 									const char * chunk = reinterpret_cast <const char *> (&data[0]);
 									// Добавляем декомпрессированные данные в результат
 									result.insert(result.end(), chunk, chunk + produced);
+									// Если распакованные данные превысили допустимый предел
+									if(driver::overflowed(result, "Zlib", log)){
+										// Выполняем очистку результата
+										result.clear();
+										// Выходим из функции
+										return;
+									}
 								}
 							/**
 							 * Пока нет конца потока
@@ -2648,9 +2850,17 @@ namespace driver {
 							// Вычисляем количество декомпрессированных данных
 							produced = (output.size() - static_cast <size_t> (zs->avail_out));
 							// Если декомпрессировано хоть что-то
-							if(produced > 0)
+							if(produced > 0){
 								// Добавляем декомпрессированные данные в результат
 								result.insert(result.end(), &output[0], &output[0] + produced);
+								// Если распакованные данные превысили допустимый предел
+								if(driver::overflowed(result, "Deflate", log)){
+									// Выполняем очистку результата
+									result.clear();
+									// Выходим из функции
+									return;
+								}
+							}
 							// Если выходной буфер заполнен, увеличиваем его размер
 							if(zs->avail_out == 0)
 								// Увеличиваем размер выходного буфера

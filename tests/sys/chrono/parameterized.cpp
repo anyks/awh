@@ -328,14 +328,27 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, ActualParameterizedFixture,
 		ActualChronoTestParameter({1743943021520, 388042, awh::chrono_t::type_t::MINUTES, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::LEFT}),
 		// Сколько осталось секунд в году, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
 		ActualChronoTestParameter({1743943021520, 23282578, awh::chrono_t::type_t::SECONDS, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::LEFT}),
+		/**
+		 * Остаток равен разности длины периода и прошедшей его части, без поправки на
+		 * единицу: отрезок задан полуинтервалом [begin, end), и сумма прошедшего с
+		 * оставшимся равна его длине. Год единицу вычитал, и та же операция над сутками,
+		 * неделей и месяцем давала иной ответ, чем над ним - прежние ожидания это
+		 * расхождение и закрепляли
+		 */
 		// Сколько осталось миллисекунд в году, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
-		ActualChronoTestParameter({1743943021520, 23282578479, awh::chrono_t::type_t::MILLISECONDS, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::LEFT}),
+		ActualChronoTestParameter({1743943021520, 23282578480, awh::chrono_t::type_t::MILLISECONDS, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::LEFT}),
 		// Сколько осталось микросекунд в году, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
-		ActualChronoTestParameter({1743943021520, 23282578479000, awh::chrono_t::type_t::MICROSECONDS, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::LEFT}),
+		ActualChronoTestParameter({1743943021520, 23282578480000, awh::chrono_t::type_t::MICROSECONDS, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::LEFT}),
 		// Сколько осталось наносекунд в году, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
-		ActualChronoTestParameter({1743943021520, 23282578479000000, awh::chrono_t::type_t::NANOSECONDS, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::LEFT}),
+		ActualChronoTestParameter({1743943021520, 23282578480000000, awh::chrono_t::type_t::NANOSECONDS, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::LEFT}),
+		/**
+		 * Остаток равен количеству целых единиц, до конца периода оставшихся: неделя
+		 * считалась округлением к ближайшей, тогда как сутки, час, минута и секунда -
+		 * целыми оставшимися, и одна и та же дата давала по разным единицам ответы,
+		 * между собой не сходящиеся. Прежнее ожидание это расхождение и закрепляло
+		 */
 		// Сколько осталось недель в месяце, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
-		ActualChronoTestParameter({1743943021520, 4, awh::chrono_t::type_t::WEEK, awh::chrono_t::type_t::MONTH, awh::chrono_t::actual_t::LEFT}),
+		ActualChronoTestParameter({1743943021520, 3, awh::chrono_t::type_t::WEEK, awh::chrono_t::type_t::MONTH, awh::chrono_t::actual_t::LEFT}),
 		// Сколько осталось дней в месяце, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
 		ActualChronoTestParameter({1743943021520, 24, awh::chrono_t::type_t::DAY, awh::chrono_t::type_t::MONTH, awh::chrono_t::actual_t::LEFT}),
 		// Сколько осталось часов в месяце, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
@@ -403,7 +416,12 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, ActualParameterizedFixture,
 		// Сколько прошло месяцев в году, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
 		ActualChronoTestParameter({1743943021520, 3, awh::chrono_t::type_t::MONTH, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::PASSED}),
 		// Сколько прошло недель в году, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
-		ActualChronoTestParameter({1743943021520, 14, awh::chrono_t::type_t::WEEK, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::PASSED}),
+		/**
+		 * Считаются целые недели, с начала периода прошедшие: счёт вёлся округлением к
+		 * ближайшей, и на четвёртые сутки выходило, что неделя уже прошла, тогда как
+		 * прочие единицы считаются целыми. Прежние ожидания это округление и закрепляли
+		 */
+		ActualChronoTestParameter({1743943021520, 13, awh::chrono_t::type_t::WEEK, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::PASSED}),
 		// Сколько прошло дней в году, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
 		ActualChronoTestParameter({1743943021520, 95, awh::chrono_t::type_t::DAY, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::PASSED}),
 		// Сколько прошло часов в году, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
@@ -419,7 +437,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, ActualParameterizedFixture,
 		// Сколько прошло наносекунд в году, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
 		ActualChronoTestParameter({1743943021520, 8253421520000000, awh::chrono_t::type_t::NANOSECONDS, awh::chrono_t::type_t::YEAR, awh::chrono_t::actual_t::PASSED}),
 		// Сколько прошло недель в месяце, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
-		ActualChronoTestParameter({1743943021520, 1, awh::chrono_t::type_t::WEEK, awh::chrono_t::type_t::MONTH, awh::chrono_t::actual_t::PASSED}),
+		ActualChronoTestParameter({1743943021520, 0, awh::chrono_t::type_t::WEEK, awh::chrono_t::type_t::MONTH, awh::chrono_t::actual_t::PASSED}),
 		// Сколько прошло дней в месяце, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)
 		ActualChronoTestParameter({1743943021520, 5, awh::chrono_t::type_t::DAY, awh::chrono_t::type_t::MONTH, awh::chrono_t::actual_t::PASSED}),
 		// Сколько прошло часов в месяце, относительно даты (Sun, 06 Apr 2025 15:37:01 UTC+3)

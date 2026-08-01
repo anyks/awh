@@ -189,6 +189,8 @@ namespace {
 awh::regex::Dfa::Dfa() noexcept : _program(nullptr), _identity(0), _start(0), _backward(false), _stride(2), _count(1) {
 	// Выполняем сброс соответствия значений байтов классам эквивалентности
 	::memset(this->_classes, 0, sizeof(this->_classes));
+	// Выполняем сброс соответствия признаков положения исходным состояниям
+	::memset(this->_entries, 0xFF, sizeof(this->_entries));
 }
 /**
  * @brief Метод сброса кэша состояний автомата
@@ -203,6 +205,8 @@ void awh::regex::Dfa::reset() noexcept {
 	this->_table.clear();
 	// Выполняем очистку соответствия наборов состояний их индексам
 	this->_cache.clear();
+	// Выполняем сброс соответствия признаков положения исходным состояниям
+	::memset(this->_entries, 0xFF, sizeof(this->_entries));
 }
 /**
  * @brief Метод дробления классов эквивалентности байтов
@@ -826,10 +830,21 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 	const char * source = text.data();
 	// Получаем позицию начала прохода по тексту
 	size_t pos = ((from > size) ? size : from);
-	// Создаём набор адресов инструкций исходного состояния
-	const vector <address_t> list(1, 0);
+	// Получаем набор признаков положения исходного состояния
+	const uint32_t context = this->initial(text, pos);
+	/**
+	 * Если исходное состояние прохода при таких признаках положения не заведено
+	 *
+	 * @details Исходное состояние заводится единожды на каждый набор признаков
+	 *          положения и далее извлекается по нему напрямую, минуя размещение
+	 *          набора адресов и построение ключа кэша состояний.
+	 *
+	 */
+	if(this->_entries[context & 0x1F] == UNKNOWN)
+		// Выполняем создание исходного состояния прохода по тексту
+		this->_entries[context & 0x1F] = this->state(vector <address_t> (1, 0), context);
 	// Получаем индекс исходного состояния автомата
-	uint32_t current = this->state(list, this->initial(text, pos));
+	uint32_t current = this->_entries[context & 0x1F];
 	// Флаг обнаружения совпадения при проходе по тексту
 	bool found = false;
 	/**
@@ -866,7 +881,16 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 	 *          построения переходов в каждой их позиции.
 	 *
 	 */
-	const bool skipping = (!backward && prefilter.active);
+	/**
+	 * Получаем признак привязки выражения к позиции начала поиска
+	 *
+	 * @details Привязка означает невозможность совпадения, начинающегося правее
+	 *          позиции начала поиска, поэтому проход прекращается, как только
+	 *          сопоставление, начатое в этой позиции, прервано.
+	 *
+	 */
+	const bool halting = (!backward && this->_program->anchored);
+	const bool skipping = (!backward && (prefilter.active || halting));
 	/**
 	 * Получаем позицию, до которой сопоставляемый байт не является последним
 	 *
@@ -991,6 +1015,19 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 			}
 		}
 		/**
+		 * Если сопоставление, начатое в позиции начала поиска, прервано
+		 *
+		 * @details Выражение, привязанное к позиции начала поиска, совпадения правее
+		 *          неё не образует, а отсутствие начатых сопоставлений означает, что
+		 *          все пути, начатые в ней, прерваны. Проход текста до конца при этом
+		 *          излишен: замером на выражении «^[A-Za-z0-9-]+: .+$» получено
+		 *          превосходство более чем в двадцать раз.
+		 *
+		 */
+		if(halting && (pos > from) && ((this->_marks[current] & SPARSE) != 0))
+			// Выводим результат прохода по тексту
+			return found;
+		/**
 		 * Если из текущего состояния допустим пропуск позиций
 		 *
 		 * @details Отсутствие начатых сопоставлений позволяет пропустить позиции,
@@ -1030,8 +1067,14 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 				if(previous == 0x0A)
 					// Выполняем установку признака пройденного перевода строки
 					context |= static_cast <uint32_t> (context_t::NEWLINE);
+				/**
+				 * Если исходное состояние при таких признаках положения не заведено
+				 */
+				if(this->_entries[context & 0x1F] == UNKNOWN)
+					// Выполняем создание исходного состояния прохода по тексту
+					this->_entries[context & 0x1F] = this->state(vector <address_t> (1, 0), context);
 				// Выполняем переход к состоянию, соответствующему достигнутой позиции
-				current = this->state(list, context);
+				current = this->_entries[context & 0x1F];
 			}
 		}
 		// Определяем достижение края текста, завершающего проход

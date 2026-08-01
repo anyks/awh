@@ -204,20 +204,25 @@ namespace awh {
 				// Зануляем контекст шифрования
 				this->ctx = nullptr;
 			}
-			// Если ключ шифрования выведен
-			if(!this->key.empty())
+			/**
+			 * Гасится вся отведённая ёмкость, а не длина: укорочение набора
+			 * содержимое его не трогает, и хвост прежнего значения оставался
+			 * бы лежать за длиной
+			 */
+			// Если под ключ шифрования отведена память
+			if(this->key.capacity() > 0)
 				// Выполняем затирание ключа шифрования
-				::OPENSSL_cleanse(this->key.data(), this->key.size());
-			// Если вектор инициализации выведен
-			if(!this->ivec.empty())
+				::OPENSSL_cleanse(this->key.data(), this->key.capacity());
+			// Если под вектор инициализации отведена память
+			if(this->ivec.capacity() > 0)
 				// Выполняем затирание вектора инициализации
-				::OPENSSL_cleanse(this->ivec.data(), this->ivec.size());
+				::OPENSSL_cleanse(this->ivec.data(), this->ivec.capacity());
 			// Освобождаем ключ шифрования
 			this->key.clear();
-			// Если удерживаемый хвост потока не пуст
-			if(!this->tail.empty())
+			// Если под удерживаемый хвост потока отведена память
+			if(this->tail.capacity() > 0)
 				// Выполняем затирание удерживаемого хвоста потока
-				::OPENSSL_cleanse(this->tail.data(), this->tail.size());
+				::OPENSSL_cleanse(this->tail.data(), this->tail.capacity());
 			// Освобождаем вектор инициализации
 			this->ivec.clear();
 			// Освобождаем удерживаемый хвост потока
@@ -261,14 +266,14 @@ namespace awh {
 			 * Вектор инициализации затирается, но длины своей не теряет: она взята у
 			 * шифра, а шифр здесь тот же самый
 			 */
-			// Если вектор инициализации выведен
-			if(!this->ivec.empty())
+			// Если под вектор инициализации отведена память
+			if(this->ivec.capacity() > 0)
 				// Выполняем затирание вектора инициализации
-				::OPENSSL_cleanse(this->ivec.data(), this->ivec.size());
-			// Если удерживаемый хвост потока не пуст
-			if(!this->tail.empty())
+				::OPENSSL_cleanse(this->ivec.data(), this->ivec.capacity());
+			// Если под удерживаемый хвост потока отведена память
+			if(this->tail.capacity() > 0)
 				// Выполняем затирание удерживаемого хвоста потока
-				::OPENSSL_cleanse(this->tail.data(), this->tail.size());
+				::OPENSSL_cleanse(this->tail.data(), this->tail.capacity());
 			// Освобождаем удерживаемый хвост потока
 			this->tail.clear();
 			// Сбрасываем признак ожидания вектора инициализации
@@ -361,10 +366,16 @@ namespace driver {
 	 *
 	 */
 	static void wipe(T & result) noexcept {
-		// Если буфер результата не пуст
-		if(!result.empty())
+		/**
+		 * Затирание идёт по ёмкости буфера, а не по его длине: работа отводит буфер с
+		 * запасом в один блок шифра и укорачивает его до настоящей длины выхода, а
+		 * укорочение содержимого не гасит - открытый текст оставался лежать в хвосте
+		 * буфера за его длиной. Ёмкость же отведена работой и потому ей принадлежит
+		 */
+		// Если буфер результата отведён
+		if(result.capacity() > 0)
 			// Выполняем затирание буфера результата
-			::OPENSSL_cleanse(result.data(), result.size());
+			::OPENSSL_cleanse(result.data(), result.capacity());
 		// Выполняем очистку буфера результата
 		result.clear();
 	}
@@ -431,6 +442,50 @@ namespace driver {
 		}
 	}
 	/**
+	 * @brief Функция получения длины записи выработанной хэш-суммы
+	 *
+	 * @param length размер двоичного вида хэш-суммы в октетах
+	 * @param format вид записи выработанной хэш-суммы
+	 * @return       длина записи хэш-суммы в октетах
+	 *
+	 */
+	static size_t width(const size_t length, const crypto_t::format_t format) noexcept {
+		// Выводим длину записи: шестнадцатеричная вдвое длиннее двоичного вида
+		return ((format == crypto_t::format_t::HEX) ? (length * 2) : length);
+	}
+	/**
+	 * @brief Шаблон функции выписывания выработанной хэш-суммы
+	 *
+	 * @tparam T тип результирующего буфера
+	 *
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция выписывания выработанной хэш-суммы
+	 *
+	 * @details Вид записи выбирается вызывающим: шестнадцатеричная запись нужна
+	 *          проверке подлинности Digest, двоичный вид - подписи сообщений,
+	 *          кодирующей BASE64 саму имитовставку, а не её запись
+	 *
+	 * @param digest двоичный вид выработанной хэш-суммы
+	 * @param length размер двоичного вида хэш-суммы в октетах
+	 * @param format вид записи выработанной хэш-суммы
+	 * @param result результирующий буфер, отведённый под длину записи
+	 *
+	 */
+	static void emit(const uint8_t * digest, const size_t length, const crypto_t::format_t format, T & result) noexcept {
+		// Если запись выполняется шестнадцатеричным видом
+		if(format == crypto_t::format_t::HEX)
+			// Выполняем формирование шестнадцатеричной записи
+			driver::hex(digest, length, result);
+		/**
+		 * Выполняем перебор всех октетов двоичного вида
+		 */
+		else for(size_t i = 0; i < length; i++)
+			// Выписываем октет двоичного вида как он есть
+			result[i] = static_cast <typename T::value_type> (digest[i]);
+	}
+	/**
 	 * @brief Шаблон функции хэширования текста
 	 *
 	 * @tparam A тип возвращаемого результата
@@ -443,11 +498,12 @@ namespace driver {
 	 *
 	 * @param buffer буфер для хэширования
 	 * @param hash   тип хэш-суммы
+	 * @param format вид записи выработанной хэш-суммы
 	 * @param result результат хэширования
 	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void hash(const B & buffer, const crypto_t::hash_t hash, A & result, const log_t * log) noexcept {
+	static void hash(const B & buffer, const crypto_t::hash_t hash, const crypto_t::format_t format, A & result, const log_t * log) noexcept {
 		// Если буфер для хэширования передан
 		if(!buffer.empty()){
 			/**
@@ -471,7 +527,7 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(16, 0);
 						// Выделяем память для буфера данных
-						result.resize(32, 0);
+						result.resize(driver::width(16, format), 0);
 						/**
 						 * Коды возврата проверяются: отказ оставлял в буфере нули, и
 						 * наружу уходила их шестнадцатеричная запись, от настоящей
@@ -482,7 +538,7 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные MD5-хэша
-						else driver::hex(digest.data(), 16, result);
+						else driver::emit(digest.data(), 16, format, result);
 					} break;
 					// Если тип хэш-суммы указан как SHA1
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA1): {
@@ -493,7 +549,7 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(20, 0);
 						// Выделяем память для буфера данных
-						result.resize(40, 0);
+						result.resize(driver::width(20, format), 0);
 						/**
 						 * Коды возврата проверяются: отказ оставлял в буфере нули, и
 						 * наружу уходила их шестнадцатеричная запись, от настоящей
@@ -504,7 +560,7 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные SHA1-хэша
-						else driver::hex(digest.data(), 20, result);
+						else driver::emit(digest.data(), 20, format, result);
 					} break;
 					// Если тип хэш-суммы указан как SHA224
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA224): {
@@ -515,7 +571,7 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(28, 0);
 						// Выделяем память для буфера данных
-						result.resize(56, 0);
+						result.resize(driver::width(28, format), 0);
 						/**
 						 * Коды возврата проверяются: отказ оставлял в буфере нули, и
 						 * наружу уходила их шестнадцатеричная запись, от настоящей
@@ -526,7 +582,7 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные SHA224-хэша
-						else driver::hex(digest.data(), 28, result);
+						else driver::emit(digest.data(), 28, format, result);
 					} break;
 					// Если тип хэш-суммы указан как SHA256
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA256): {
@@ -537,7 +593,7 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(32, 0);
 						// Выделяем память для буфера данных
-						result.resize(64, 0);
+						result.resize(driver::width(32, format), 0);
 						/**
 						 * Коды возврата проверяются: отказ оставлял в буфере нули, и
 						 * наружу уходила их шестнадцатеричная запись, от настоящей
@@ -548,7 +604,7 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные SHA256-хэша
-						else driver::hex(digest.data(), 32, result);
+						else driver::emit(digest.data(), 32, format, result);
 					} break;
 					// Если тип хэш-суммы указан как SHA384
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA384): {
@@ -559,7 +615,7 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(48, 0);
 						// Выделяем память для буфера данных
-						result.resize(96, 0);
+						result.resize(driver::width(48, format), 0);
 						/**
 						 * Коды возврата проверяются: отказ оставлял в буфере нули, и
 						 * наружу уходила их шестнадцатеричная запись, от настоящей
@@ -570,7 +626,7 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные SHA384-хэша
-						else driver::hex(digest.data(), 48, result);
+						else driver::emit(digest.data(), 48, format, result);
 					} break;
 					// Если тип хэш-суммы указан как SHA512
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA512): {
@@ -581,7 +637,7 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(64, 0);
 						// Выделяем память для буфера данных
-						result.resize(128, 0);
+						result.resize(driver::width(64, format), 0);
 						/**
 						 * Коды возврата проверяются: отказ оставлял в буфере нули, и
 						 * наружу уходила их шестнадцатеричная запись, от настоящей
@@ -592,7 +648,7 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные SHA512-хэша
-						else driver::hex(digest.data(), 64, result);
+						else driver::emit(digest.data(), 64, format, result);
 					} break;
 					/**
 					 * Незаданный либо разбору не знакомый тип хэш-суммы отвергается
@@ -623,10 +679,10 @@ namespace driver {
 				 * а двоичный вид суммы остался бы лежать в памяти до тех пор, покуда
 				 * её не выдадут кому-то ещё
 				 */
-				// Если буфер промежуточных значений не пуст
-				if(!digest.empty())
+				// Если под буфер промежуточных значений отведена память
+				if(digest.capacity() > 0)
 					// Выполняем затирание буфера промежуточных значений
-					::OPENSSL_cleanse(digest.data(), digest.size());
+					::OPENSSL_cleanse(digest.data(), digest.capacity());
 			/**
 			 * Если возникает ошибка
 			 */
@@ -652,11 +708,12 @@ namespace driver {
 	 * @param key    ключ для подписи
 	 * @param buffer буфер для хэширования
 	 * @param hash   тип хэш-суммы
+	 * @param format вид записи выработанной хэш-суммы
 	 * @param result результат хэширования
 	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void hmac(const C & key, const B & buffer, const crypto_t::hash_t hash, A & result, const log_t * log) noexcept {
+	static void hmac(const C & key, const B & buffer, const crypto_t::hash_t hash, const crypto_t::format_t format, A & result, const log_t * log) noexcept {
 		/**
 		 * Предел разрядности довода библиотеки криптографии отвергается и здесь:
 		 * длина ключа приводится к знаковому числу, и ключ свыше двух гигаоктетов
@@ -666,6 +723,19 @@ namespace driver {
 		if(key.size() > static_cast <size_t> (INT32_MAX)){
 			// Записываем ошибку в лог
 			log->print("Key size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+			// Выходим из функции
+			return;
+		}
+		/**
+		 * Незаданный ключ называется причиной: подпись без ключа выдавала пустоту,
+		 * от отказа выработки неотличимую, и вызывающий видел лишь общую запись о
+		 * невыполненной работе. Сообщение, октетов не имеющее, причиной не
+		 * называется: отказ его - договор всего фреймворка, оглашённый особо (7.3)
+		 */
+		// Если ключ подписи не задан
+		if(key.empty() && !buffer.empty()){
+			// Записываем ошибку в лог
+			log->print("Key of the signature is not set", log_t::flag_t::CRITICAL);
 			// Выходим из функции
 			return;
 		}
@@ -684,7 +754,7 @@ namespace driver {
 					// Если тип хэш-суммы указан как HMAC_MD5
 					case static_cast <uint8_t> (crypto_t::hash_t::MD5): {
 						// Выделяем память для буфера данных
-						result.resize(32, 0);
+						result.resize(driver::width(16, format), 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						/**
@@ -696,14 +766,14 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные MD5-хэша
-						else driver::hex(digest, 16, result);
+						else driver::emit(digest, 16, format, result);
 						// Выполняем затирание буфера промежуточных значений
 						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA1
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA1): {
 						// Выделяем память для буфера данных
-						result.resize(40, 0);
+						result.resize(driver::width(20, format), 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						/**
@@ -715,14 +785,14 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные SHA1-хэша
-						else driver::hex(digest, 20, result);
+						else driver::emit(digest, 20, format, result);
 						// Выполняем затирание буфера промежуточных значений
 						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA224
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA224): {
 						// Выделяем память для буфера данных
-						result.resize(56, 0);
+						result.resize(driver::width(28, format), 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						/**
@@ -734,14 +804,14 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные SHA224-хэша
-						else driver::hex(digest, 28, result);
+						else driver::emit(digest, 28, format, result);
 						// Выполняем затирание буфера промежуточных значений
 						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA256
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA256): {
 						// Выделяем память для буфера данных
-						result.resize(64, 0);
+						result.resize(driver::width(32, format), 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						/**
@@ -753,14 +823,14 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные SHA256-хэша
-						else driver::hex(digest, 32, result);
+						else driver::emit(digest, 32, format, result);
 						// Выполняем затирание буфера промежуточных значений
 						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA384
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA384): {
 						// Выделяем память для буфера данных
-						result.resize(96, 0);
+						result.resize(driver::width(48, format), 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						/**
@@ -772,14 +842,14 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные SHA384-хэша
-						else driver::hex(digest, 48, result);
+						else driver::emit(digest, 48, format, result);
 						// Выполняем затирание буфера промежуточных значений
 						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA512
 					case static_cast <uint8_t> (crypto_t::hash_t::SHA512): {
 						// Выделяем память для буфера данных
-						result.resize(128, 0);
+						result.resize(driver::width(64, format), 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						/**
@@ -791,7 +861,7 @@ namespace driver {
 							// Выполняем очистку блока с результатом
 							result.clear();
 						// Формируем данные SHA512-хэша
-						else driver::hex(digest, 64, result);
+						else driver::emit(digest, 64, format, result);
 						// Выполняем затирание буфера промежуточных значений
 						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
@@ -933,8 +1003,14 @@ namespace driver {
 										length = ::BIO_write(b64, buffer, size);
 										// Выполняем очистку объекта
 										BIO_flush(b64);
-										// Если запись выполнена
-										if(length > 0){
+										/**
+										 * Записанное сличается с поданным: договор объектов
+										 * ввода-вывода полноты записи не обещает, и запись
+										 * части буфера дала бы запись BASE64 части данных,
+										 * выданную за запись всех
+										 */
+										// Если запись выполнена целиком и не пуста
+										if((size > 0) && (length == static_cast <ssize_t> (size))){
 											// Выделяем память под запрошенный результат
 											result.resize((4 * ((length + 2) / 3)) + 1, 0);
 											// Выполняем чтение полученного результата
@@ -947,8 +1023,13 @@ namespace driver {
 										length = ::BIO_write(bio, buffer, size);
 										// Выполняем очистку объекта
 										BIO_flush(bio);
-										// Если запись выполнена
-										if(length > 0){
+										/**
+										 * Записанное сличается с поданным по тому же доводу,
+										 * что и при кодировании: разбор части записи выдал бы
+										 * часть данных за все
+										 */
+										// Если запись выполнена целиком и не пуста
+										if((size > 0) && (length == static_cast <ssize_t> (size))){
 											// Выделяем память под запрошенный результат
 											result.resize((3 * length / 4) + 1, 0);
 											// Выполняем чтение полученного результата
@@ -971,7 +1052,7 @@ namespace driver {
 									// Запоминаем признак успешно выполненной работы
 									success = true;
 								// Если получение хэша не удалось
-								// Выполняем сброс результата, отказ записывается в лог единожды ниже
+								// Выполняем сброс результата, отказ записывается в лог единожды обёрткой
 								else result.clear();
 							}
 							/**
@@ -983,24 +1064,18 @@ namespace driver {
 							// Снимаем указатель освобождённого объекта
 							b64 = nullptr;
 						}
+						/**
+						 * Отказ здесь в лог не пишется: причины у работы BASE64 своей
+						 * нет - цепочка объектов ввода-вывода отказывает без разбора, -
+						 * и запись эта к записи обёртки ничего не добавляла бы, тогда
+						 * как обёртка называет направление работы и размер поданного
+						 * (4.12). У шифрования AES иначе: там причина есть, и записей
+						 * двое намеренно (7.4)
+						 */
 						// Если работа не выполнена
-						if(!success){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								log->debug("Error during BASE64 processing", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::WARNING);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log->print("Error during BASE64 processing", log_t::flag_t::WARNING);
-							#endif
+						if(!success)
 							// Выходим из функции с признаком отказа
 							return false;
-						}
 					} break;
 					// Если производится работы с AES128
 					case static_cast <uint16_t> (crypto_t::cipher_t::AES128):
@@ -1653,16 +1728,19 @@ namespace driver {
 			try {
 				/**
 				 * Прежние ключ и вектор затираются перед выводом новых: освобождение
-				 * набора содержимое не гасит, и прежний ключ оставался лежать в памяти
+				 * набора содержимое не гасит, и прежний ключ оставался лежать в памяти.
+				 * Гасится вся отведённая ёмкость, а не длина: укорочение набора
+				 * содержимое его не трогает, и хвост прежнего значения оставался бы
+				 * лежать за длиной
 				 */
-				// Если прежний ключ шифрования выведен
-				if(!state.key.empty())
+				// Если под прежний ключ шифрования отведена память
+				if(state.key.capacity() > 0)
 					// Выполняем затирание прежнего ключа шифрования
-					::OPENSSL_cleanse(state.key.data(), state.key.size());
-				// Если прежний вектор инициализации заведён
-				if(!state.ivec.empty())
+					::OPENSSL_cleanse(state.key.data(), state.key.capacity());
+				// Если под прежний вектор инициализации отведена память
+				if(state.ivec.capacity() > 0)
 					// Выполняем затирание прежнего вектора инициализации
-					::OPENSSL_cleanse(state.ivec.data(), state.ivec.size());
+					::OPENSSL_cleanse(state.ivec.data(), state.ivec.capacity());
 				// Обнуляем массив ключа
 				state.key.clear();
 				// Обнуляем массив IVEC
@@ -1724,22 +1802,27 @@ namespace driver {
 				}
 				/**
 				 * Режим блочного шифрования отвергается, если он не задан: прежде
-				 * режим был один и в доводах не значился вовсе
+				 * режим был один и в доводах не значился вовсе. Отвергается и всякий
+				 * иной, разбору не знакомый: отбор шифра ведётся сличением с одним
+				 * лишь счётчиком Галуа, и значение, ни одному из режимов не отвечающее,
+				 * молча ушло бы в гаммирование - в работу без проверки подлинности,
+				 * которой вызывающий не просил. Шифр к этой поре ещё не в деле:
+				 * длина вектора инициализации берётся у него ниже
 				 */
-				// Если режим блочного шифрования не задан
-				if(mode == crypto_t::mode_t::NONE){
+				// Если режим блочного шифрования не задан либо разбору не знаком
+				if((mode != crypto_t::mode_t::GCM) && (mode != crypto_t::mode_t::CFB)){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("Block cipher mode is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
+						log->debug("Block cipher mode is not set or is unsupported", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log->print("Block cipher mode is not set", log_t::flag_t::CRITICAL);
+						log->print("Block cipher mode is not set or is unsupported", log_t::flag_t::CRITICAL);
 					#endif
 					/**
 					 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
@@ -2101,18 +2184,35 @@ void awh::Crypto::salt(string_view salt) noexcept {
 			return;
 		}
 		/**
-		 * Прежняя соль затирается наравне с паролями: строка стандартной библиотеки
-		 * при записи поверх содержимое не гасит, и прежняя соль оставалась лежать
-		 * в памяти до тех пор, покуда её не выдадут кому-то ещё
+		 * Новое значение собирается прежде правки объекта, а не поверх затёртого:
+		 * присвоение отводит память и потому способно отказать, а к поре отказа
+		 * прежнее значение было уже погашено и стейт ещё не сброшен. Объект оставался
+		 * с нулями в поле и с прежним выведенным ключом в стейте, и следующий вывод
+		 * ключа пошёл бы от нулей, никому о том не сообщив
 		 */
-		// Если соль вывода ключа уже установлена
-		if(!this->_params.salt.empty())
-			// Выполняем затирание прежней соли вывода ключа
-			::OPENSSL_cleanse(&this->_params.salt.front(), this->_params.salt.size());
-		// Устанавливаем соль для шифрования
-		this->_params.salt = salt;
+		// Собираем новое значение прежде правки объекта
+		string value(salt);
 		// Сбрасываем стейт шифрования
 		this->_params.state->reset();
+		/**
+		 * Прежняя соль вывода ключа затирается: строка стандартной библиотеки при записи
+		 * поверх содержимое не гасит, и прежнее значение оставалось лежать в памяти
+		 * до тех пор, покуда её не выдадут кому-то ещё. Гасится вся ёмкость, а не
+		 * длина: короткое значение поверх длинного оставило бы хвост прежнего
+		 */
+		// Выполняем затирание прежнего значения
+		::OPENSSL_cleanse(const_cast <char *> (this->_params.salt.data()), this->_params.salt.capacity());
+		/**
+		 * Перенос отведения памяти не требует и отказать не может, поэтому объект
+		 * правится им одним. Собранное значение затирается следом по всей его ёмкости,
+		 * а не по длине: короткие строки лежат внутри самого объекта строки, и перенос
+		 * оттуда их не убирает, а длину при этом обнуляет - затирание по длине не
+		 * тронуло бы ничего
+		 */
+		// Переносим собранное значение
+		this->_params.salt = ::move(value);
+		// Выполняем затирание собранного значения
+		::OPENSSL_cleanse(const_cast <char *> (value.data()), value.capacity());
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2174,18 +2274,35 @@ void awh::Crypto::password(string_view password) noexcept {
 			return;
 		}
 		/**
-		 * Прежний пароль затирается: строка стандартной библиотеки при записи
-		 * поверх содержимое не гасит, и прежний пароль оставался лежать в памяти
-		 * до тех пор, покуда её не выдадут кому-то ещё
+		 * Новое значение собирается прежде правки объекта, а не поверх затёртого:
+		 * присвоение отводит память и потому способно отказать, а к поре отказа
+		 * прежнее значение было уже погашено и стейт ещё не сброшен. Объект оставался
+		 * с нулями в поле и с прежним выведенным ключом в стейте, и следующий вывод
+		 * ключа пошёл бы от нулей, никому о том не сообщив
 		 */
-		// Если прежний пароль шифрования установлен
-		if(!this->_params.password.empty())
-			// Выполняем затирание прежнего пароля шифрования
-			::OPENSSL_cleanse(&this->_params.password.front(), this->_params.password.size());
-		// Устанавливаем пароль шифрования
-		this->_params.password = password;
+		// Собираем новое значение прежде правки объекта
+		string value(password);
 		// Сбрасываем стейт шифрования
 		this->_params.state->reset();
+		/**
+		 * Прежний пароль шифрования затирается: строка стандартной библиотеки при записи
+		 * поверх содержимое не гасит, и прежнее значение оставалось лежать в памяти
+		 * до тех пор, покуда её не выдадут кому-то ещё. Гасится вся ёмкость, а не
+		 * длина: короткое значение поверх длинного оставило бы хвост прежнего
+		 */
+		// Выполняем затирание прежнего значения
+		::OPENSSL_cleanse(const_cast <char *> (this->_params.password.data()), this->_params.password.capacity());
+		/**
+		 * Перенос отведения памяти не требует и отказать не может, поэтому объект
+		 * правится им одним. Собранное значение затирается следом по всей его ёмкости,
+		 * а не по длине: короткие строки лежат внутри самого объекта строки, и перенос
+		 * оттуда их не убирает, а длину при этом обнуляет - затирание по длине не
+		 * тронуло бы ничего
+		 */
+		// Переносим собранное значение
+		this->_params.password = ::move(value);
+		// Выполняем затирание собранного значения
+		::OPENSSL_cleanse(const_cast <char *> (value.data()), value.capacity());
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2319,16 +2436,34 @@ void awh::Crypto::passwordRSA(string_view password) noexcept {
 			return;
 		}
 		/**
-		 * Прежний пароль затирается: строка стандартной библиотеки при записи
-		 * поверх содержимое не гасит, и прежний пароль оставался лежать в памяти
-		 * до тех пор, покуда её не выдадут кому-то ещё
+		 * Новое значение собирается прежде правки объекта, а не поверх затёртого:
+		 * присвоение отводит память и потому способно отказать, а к поре отказа
+		 * прежнее значение было уже погашено. Объект оставался с нулями в поле, и
+		 * следующая выдача ключа защитила бы его нулевым паролем, никому о том не
+		 * сообщив. Стейт AES этот пароль не трогает вовсе и сбрасывать его незачем -
+		 * тем и отличается порядок здесь от порядка у пароля шифрования данных (3.9)
 		 */
-		// Если прежний пароль защиты приватного ключа установлен
-		if(!this->_params.passwordRSA.empty())
-			// Выполняем затирание прежнего пароля защиты приватного ключа
-			::OPENSSL_cleanse(&this->_params.passwordRSA.front(), this->_params.passwordRSA.size());
-		// Устанавливаем пароль защиты приватного ключа RSA
-		this->_params.passwordRSA = password;
+		// Собираем новое значение прежде правки объекта
+		string value(password);
+		/**
+		 * Прежний пароль защиты приватного ключа затирается: строка стандартной библиотеки при записи
+		 * поверх содержимое не гасит, и прежнее значение оставалось лежать в памяти
+		 * до тех пор, покуда её не выдадут кому-то ещё. Гасится вся ёмкость, а не
+		 * длина: короткое значение поверх длинного оставило бы хвост прежнего
+		 */
+		// Выполняем затирание прежнего значения
+		::OPENSSL_cleanse(const_cast <char *> (this->_params.passwordRSA.data()), this->_params.passwordRSA.capacity());
+		/**
+		 * Перенос отведения памяти не требует и отказать не может, поэтому объект
+		 * правится им одним. Собранное значение затирается следом по всей его ёмкости,
+		 * а не по длине: короткие строки лежат внутри самого объекта строки, и перенос
+		 * оттуда их не убирает, а длину при этом обнуляет - затирание по длине не
+		 * тронуло бы ничего
+		 */
+		// Переносим собранное значение
+		this->_params.passwordRSA = ::move(value);
+		// Выполняем затирание собранного значения
+		::OPENSSL_cleanse(const_cast <char *> (value.data()), value.capacity());
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2379,10 +2514,11 @@ template <typename T>
  *
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
+ * @param format вид записи выработанной хэш-суммы
  * @return       результат хэширования
  *
  */
-auto awh::Crypto::hash(string_view buffer, const hash_t hash) const noexcept -> T {
+auto awh::Crypto::hash(string_view buffer, const hash_t hash, const format_t format) const noexcept -> T {
 	// Охранник очереди ошибок библиотеки криптографии
 	const driver::purge_t purge;
 	// Переменная результата
@@ -2390,7 +2526,7 @@ auto awh::Crypto::hash(string_view buffer, const hash_t hash) const noexcept -> 
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hash(buffer, hash, result, this->_log);
+		driver::hash(buffer, hash, format, result, this->_log);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -2426,17 +2562,17 @@ auto awh::Crypto::hash(string_view buffer, const hash_t hash) const noexcept -> 
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в строку
  *
  */
-template string awh::Crypto::hash <string> (string_view, const hash_t) const noexcept;
+template string awh::Crypto::hash <string> (string_view, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hash <vector <char>> (string_view, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hash <vector <char>> (string_view, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (string_view, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (string_view, const hash_t, const format_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста
  *
@@ -2450,10 +2586,11 @@ template <typename A, typename B>
  *
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
+ * @param format вид записи выработанной хэш-суммы
  * @return       результат хэширования
  *
  */
-auto awh::Crypto::hash(const B & buffer, const hash_t hash) const noexcept -> A {
+auto awh::Crypto::hash(const B & buffer, const hash_t hash, const format_t format) const noexcept -> A {
 	// Охранник очереди ошибок библиотеки криптографии
 	const driver::purge_t purge;
 	// Переменная результата
@@ -2461,7 +2598,7 @@ auto awh::Crypto::hash(const B & buffer, const hash_t hash) const noexcept -> A 
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hash(buffer, hash, result, this->_log);
+		driver::hash(buffer, hash, format, result, this->_log);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -2497,47 +2634,47 @@ auto awh::Crypto::hash(const B & buffer, const hash_t hash) const noexcept -> A 
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в строку
  *
  */
-template string awh::Crypto::hash <string> (const string &, const hash_t) const noexcept;
+template string awh::Crypto::hash <string> (const string &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в строку
  *
  */
-template string awh::Crypto::hash <string> (const vector <char> &, const hash_t) const noexcept;
+template string awh::Crypto::hash <string> (const vector <char> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в строку
  *
  */
-template string awh::Crypto::hash <string> (const vector <uint8_t> &, const hash_t) const noexcept;
+template string awh::Crypto::hash <string> (const vector <uint8_t> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hash <vector <char>> (const string &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hash <vector <char>> (const string &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hash <vector <char>> (const vector <char> &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hash <vector <char>> (const vector <char> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hash <vector <char>> (const vector <uint8_t> &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hash <vector <char>> (const vector <uint8_t> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (const string &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (const string &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (const vector <char> &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (const vector <char> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (const vector <uint8_t> &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hash <vector <uint8_t>> (const vector <uint8_t> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста с ключом
  *
@@ -2551,10 +2688,11 @@ template <typename T>
  * @param key    ключ для подписи
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
+ * @param format вид записи выработанной хэш-суммы
  * @return       результат хэширования
  *
  */
-auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash) const noexcept -> T {
+auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash, const format_t format) const noexcept -> T {
 	// Охранник очереди ошибок библиотеки криптографии
 	const driver::purge_t purge;
 	// Переменная результата
@@ -2562,7 +2700,7 @@ auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash) c
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hmac(key, buffer, hash, result, this->_log);
+		driver::hmac(key, buffer, hash, format, result, this->_log);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -2601,17 +2739,17 @@ auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash) c
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в строку
  *
  */
-template string awh::Crypto::hmac(string_view, string_view, const hash_t) const noexcept;
+template string awh::Crypto::hmac(string_view, string_view, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hmac(string_view, string_view, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hmac(string_view, string_view, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hmac(string_view, string_view, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hmac(string_view, string_view, const hash_t, const format_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста с ключом
  *
@@ -2625,10 +2763,11 @@ template <typename T>
  * @param key    ключ для подписи
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
+ * @param format вид записи выработанной хэш-суммы
  * @return       результат хэширования
  *
  */
-auto awh::Crypto::hmac(const string & key, string_view buffer, const hash_t hash) const noexcept -> T {
+auto awh::Crypto::hmac(const string & key, string_view buffer, const hash_t hash, const format_t format) const noexcept -> T {
 	// Охранник очереди ошибок библиотеки криптографии
 	const driver::purge_t purge;
 	// Переменная результата
@@ -2636,7 +2775,7 @@ auto awh::Crypto::hmac(const string & key, string_view buffer, const hash_t hash
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hmac(key, buffer, hash, result, this->_log);
+		driver::hmac(key, buffer, hash, format, result, this->_log);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -2675,17 +2814,17 @@ auto awh::Crypto::hmac(const string & key, string_view buffer, const hash_t hash
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в строку
  *
  */
-template string awh::Crypto::hmac(const string &, string_view, const hash_t) const noexcept;
+template string awh::Crypto::hmac(const string &, string_view, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hmac(const string &, string_view, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hmac(const string &, string_view, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hmac(const string &, string_view, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hmac(const string &, string_view, const hash_t, const format_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста с ключом
  *
@@ -2700,10 +2839,11 @@ template <typename A, typename B>
  * @param key    ключ для подписи
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
+ * @param format вид записи выработанной хэш-суммы
  * @return       результат хэширования
  *
  */
-auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash) const noexcept -> A {
+auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash, const format_t format) const noexcept -> A {
 	// Охранник очереди ошибок библиотеки криптографии
 	const driver::purge_t purge;
 	// Переменная результата
@@ -2711,7 +2851,7 @@ auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash) con
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hmac(key, buffer, hash, result, this->_log);
+		driver::hmac(key, buffer, hash, format, result, this->_log);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -2750,47 +2890,47 @@ auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash) con
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в строку
  *
  */
-template string awh::Crypto::hmac(string_view, const string &, const hash_t) const noexcept;
+template string awh::Crypto::hmac(string_view, const string &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с ключом и выводом результата в строку
  *
  */
-template string awh::Crypto::hmac(string_view, const vector <char> &, const hash_t) const noexcept;
+template string awh::Crypto::hmac(string_view, const vector <char> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с ключом и выводом результата в строку
  *
  */
-template string awh::Crypto::hmac(string_view, const vector <uint8_t> &, const hash_t) const noexcept;
+template string awh::Crypto::hmac(string_view, const vector <uint8_t> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hmac(string_view, const string &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hmac(string_view, const string &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с ключом и выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hmac(string_view, const vector <char> &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hmac(string_view, const vector <char> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с ключом и выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hmac(string_view, const vector <uint8_t> &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hmac(string_view, const vector <uint8_t> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hmac(string_view, const string &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hmac(string_view, const string &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с ключом и выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hmac(string_view, const vector <char> &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hmac(string_view, const vector <char> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с ключом и выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hmac(string_view, const vector <uint8_t> &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hmac(string_view, const vector <uint8_t> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Шаблон метода хэширования текста с ключом
  *
@@ -2805,10 +2945,11 @@ template <typename A, typename B>
  * @param key    ключ для подписи
  * @param buffer буфер данных для хэширования
  * @param hash   тип хэш-суммы
+ * @param format вид записи выработанной хэш-суммы
  * @return       результат хэширования
  *
  */
-auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash) const noexcept -> A {
+auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash, const format_t format) const noexcept -> A {
 	// Охранник очереди ошибок библиотеки криптографии
 	const driver::purge_t purge;
 	// Переменная результата
@@ -2816,7 +2957,7 @@ auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash) 
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hmac(key, buffer, hash, result, this->_log);
+		driver::hmac(key, buffer, hash, format, result, this->_log);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -2855,47 +2996,47 @@ auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash) 
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в строку
  *
  */
-template string awh::Crypto::hmac(const string &, const string &, const hash_t) const noexcept;
+template string awh::Crypto::hmac(const string &, const string &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с ключом и выводом результата в строку
  *
  */
-template string awh::Crypto::hmac(const string &, const vector <char> &, const hash_t) const noexcept;
+template string awh::Crypto::hmac(const string &, const vector <char> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с ключом и выводом результата в строку
  *
  */
-template string awh::Crypto::hmac(const string &, const vector <uint8_t> &, const hash_t) const noexcept;
+template string awh::Crypto::hmac(const string &, const vector <uint8_t> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hmac(const string &, const string &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hmac(const string &, const string &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с ключом и выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hmac(const string &, const vector <char> &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hmac(const string &, const vector <char> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с ключом и выводом результата в буфер
  *
  */
-template vector <char> awh::Crypto::hmac(const string &, const vector <uint8_t> &, const hash_t) const noexcept;
+template vector <char> awh::Crypto::hmac(const string &, const vector <uint8_t> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования текста с ключом и выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hmac(const string &, const string &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hmac(const string &, const string &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования буфера данных с ключом и выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hmac(const string &, const vector <char> &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hmac(const string &, const vector <char> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода хэширования бинарного буфера данных с ключом и выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::Crypto::hmac(const string &, const vector <uint8_t> &, const hash_t) const noexcept;
+template vector <uint8_t> awh::Crypto::hmac(const string &, const vector <uint8_t> &, const hash_t, const format_t) const noexcept;
 /**
  * @brief Шаблон метода кодирования
  *
@@ -3113,6 +3254,26 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 			 */
 			// Выполняем сброс примет одного лишь потока
 			state.renew();
+		/**
+		 * Завершение потока, не заведённого вовсе, называет свою причину: прежде оно
+		 * отказывало молча, а отказ этот от прочих отличить нечем - буфер завершение
+		 * не трогает, и признак остаётся единственной приметой
+		 */
+		// Если контекст потокового шифрования не заведён
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Stream is not initialized", __PRETTY_FUNCTION__, make_tuple(buffer.size()), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Stream is not initialized", log_t::flag_t::WARNING);
+			#endif
 		}
 	/**
 	 * Если возникает ошибка
@@ -3180,6 +3341,32 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
+	/**
+	 * Кодирование BASE64 потоком не выполняется и отвергается здесь по имени, а не
+	 * в глубине заведения ключа: там оно попадало в отбор разрядности шифра, своей
+	 * разрядности среди них не находило и отвергалось как шифрование неизвестного
+	 * вида. Потоком оно не выполняется потому, что записью BASE64 три октета входа
+	 * дают четыре знака выхода: разрежь поток не по трём октетам - и стыки порций
+	 * дадут запись, которую обратно не разобрать
+	 */
+	// Если работа заводится кодированием BASE64
+	if(cipher == cipher_t::BASE64){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("BASE64 encoding is performed by a single call and has no stream", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("BASE64 encoding is performed by a single call and has no stream", log_t::flag_t::CRITICAL);
+		#endif
+		// Выходим из метода
+		return result;
+	}
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -6507,8 +6694,13 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 						// Инициализируем подпись данных
 						// Контекст ключа подписи для установки схемы дополнения
 						EVP_PKEY_CTX * pctx = nullptr;
-						if((::EVP_DigestSignInit(ctx, &pctx, md, nullptr, key.ctx) != 1) ||
-						   !driver::padding(pctx, key.ctx, md, this->_params.padding, this->_log)){
+						/**
+						 * Ступени заведения разнесены порознь тем же порядком, что и у
+						 * проверки подписи (5.25): у схемы дополнения своя запись, и
+						 * общая подменяла бы названную ею причину
+						 */
+						// Если заведение контекста подписи не удалось
+						if(::EVP_DigestSignInit(ctx, &pctx, md, nullptr, key.ctx) != 1){
 							// Освобождаем контекст для подписи
 							::EVP_MD_CTX_free(ctx);
 							// Снимаем указатель освобождённого контекста
@@ -6526,6 +6718,14 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 								// Записываем ошибку в лог
 								this->_log->print("Digest signature init failed", log_t::flag_t::CRITICAL);
 							#endif
+							// Выходим из метода с признаком отказа
+							return outcome;
+						// Если установка схемы дополнения подписи не удалась, причину называет она сама
+						} else if(!driver::padding(pctx, key.ctx, md, this->_params.padding, this->_log)){
+							// Освобождаем контекст для подписи
+							::EVP_MD_CTX_free(ctx);
+							// Снимаем указатель освобождённого контекста
+							ctx = nullptr;
 							// Выходим из метода с признаком отказа
 							return outcome;
 						}
@@ -7010,22 +7210,22 @@ awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), 
  *
  */
 awh::Crypto::~Crypto() noexcept {
-	// Если пароль шифрования установлен
-	if(!this->_params.password.empty())
-		// Выполняем затирание пароля шифрования
-		::OPENSSL_cleanse(&this->_params.password.front(), this->_params.password.size());
-	// Если пароль защиты приватного ключа RSA установлен
-	if(!this->_params.passwordRSA.empty())
-		// Выполняем затирание пароля защиты приватного ключа RSA
-		::OPENSSL_cleanse(&this->_params.passwordRSA.front(), this->_params.passwordRSA.size());
+	/**
+	 * Затирание идёт по ёмкости строки, а не по её длине: короткое значение,
+	 * записанное поверх длинного, длину укорачивает, а хвост прежнего оставляет
+	 * лежать за ней. Ёмкость же строке принадлежит целиком - тем же порядком
+	 * гасится и собранное значение в установках (3.9)
+	 */
+	// Выполняем затирание пароля шифрования
+	::OPENSSL_cleanse(const_cast <char *> (this->_params.password.data()), this->_params.password.capacity());
+	// Выполняем затирание пароля защиты приватного ключа RSA
+	::OPENSSL_cleanse(const_cast <char *> (this->_params.passwordRSA.data()), this->_params.passwordRSA.capacity());
 	/**
 	 * Соль затирается наравне с паролями: сама по себе она тайной не является,
 	 * но вместе с паролем она составляет всё, из чего выводится ключ
 	 */
-	// Если соль вывода ключа установлена
-	if(!this->_params.salt.empty())
-		// Выполняем затирание соли вывода ключа
-		::OPENSSL_cleanse(&this->_params.salt.front(), this->_params.salt.size());
+	// Выполняем затирание соли вывода ключа
+	::OPENSSL_cleanse(const_cast <char *> (this->_params.salt.data()), this->_params.salt.capacity());
 	/**
 	 * Ключевые данные освобождают свой ключ RSA собственным деструктором, поэтому
 	 * делать это здесь не требуется. Проверка указателя не нужна: сбой отведения

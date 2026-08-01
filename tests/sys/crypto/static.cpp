@@ -399,6 +399,15 @@ TEST_F(CryptoFixture, CiphertextLengthCryptoTest){
 	this->_crypto->mode(awh::crypto_t::mode_t::NONE);
 	// Проверяем отказ шифрования при незаданном режиме блочного шифрования
 	EXPECT_TRUE(this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256).empty());
+	/**
+	 * Отбор шифра сличается с одним лишь счётчиком Галуа, и значение, ни одному
+	 * из режимов не отвечающее, молча уходило в гаммирование - в работу без
+	 * проверки подлинности, которой вызывающий не просил
+	 */
+	// Устанавливаем режим блочного шифрования, разбору не знакомый
+	this->_crypto->mode(static_cast <awh::crypto_t::mode_t> (0xFE));
+	// Проверяем отказ шифрования при режиме блочного шифрования, разбору не знакомом
+	EXPECT_TRUE(this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256).empty());
 }
 
 /**
@@ -807,6 +816,36 @@ TEST_F(CryptoFixture, Base64FailureCryptoTest){
 	EXPECT_TRUE(this->_crypto->decrypt <std::string> ("", 0, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::BASE64).empty());
 	// Проверяем отказ разбора записи, алфавиту BASE64 не принадлежащей
 	EXPECT_TRUE(this->_crypto->decrypt <std::string> (std::string("!!!!"), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::BASE64).empty());
+}
+
+/**
+ * @brief Тест единственности записи отказа BASE64 в лог
+ *
+ * @details Причину отказа писал разбор цепочки объектов ввода-вывода, а обёртка
+ *          добавляла свою запись: отказ BASE64 попадал в лог дважды, тогда как
+ *          решение 4.12 обещает единственную запись. У шифрования AES записей
+ *          двое намеренно (7.4): там первая называет причину
+ *
+ */
+TEST_F(CryptoFixture, Base64SingleRecordCryptoTest){
+	// Количество записей отказа, полученных из лога
+	size_t records = 0;
+	// Подписываемся на получение логов
+	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+		// Снимаем предупреждения о неиспользуемых параметрах
+		(void) flag;
+		(void) text;
+		// Наращиваем количество полученных записей
+		records++;
+	});
+	// Устанавливаем отложенный режим логов, консоль набора не засоряя
+	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	// Проверяем отказ разбора записи, алфавиту BASE64 не принадлежащей
+	EXPECT_TRUE(this->_crypto->decrypt <std::string> (std::string("!!!!"), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::BASE64).empty());
+	// Проверяем, что отказ записан в лог единожды
+	EXPECT_EQ(records, static_cast <size_t> (1));
+	// Снимаем режимы логов
+	this->_log->mode({awh::log_t::mode_t::NONE});
 }
 
 /**
@@ -1314,6 +1353,87 @@ TEST_F(CryptoFixture, UnknownHashCryptoTest){
 }
 
 /**
+ * @brief Тест единственности записи отказа схемы дополнения подписи
+ *
+ * @details Проверка подписи ступени заведения разносит порознь (5.25), а выработка
+ *          сводила их в одно условие: отказ схемы дополнения писал свою причину и
+ *          общую «Digest signature init failed» следом, подменяя названное
+ *
+ */
+TEST_F(CryptoFixture, SignPaddingRecordCryptoTest){
+	// Сообщение подписи
+	const std::vector <uint8_t> text = {0x41, 0x4E, 0x59, 0x4B, 0x53};
+	// Выполняем генерацию приватного ключа RSA
+	ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
+	// Устанавливаем схему дополнения подписи незаданной
+	this->_crypto->padding(awh::crypto_t::padding_t::NONE);
+	// Количество записей отказа, полученных из лога
+	size_t records = 0;
+	// Подписываемся на получение логов
+	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+		// Снимаем предупреждения о неиспользуемых параметрах
+		(void) flag;
+		(void) text;
+		// Наращиваем количество полученных записей
+		records++;
+	});
+	// Устанавливаем отложенный режим логов, консоль набора не засоряя
+	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	// Буфер подписи
+	std::vector <uint8_t> signature;
+	// Проверяем отказ выработки подписи при незаданной схеме дополнения
+	EXPECT_FALSE(this->_crypto->signWithPrivateKey(text, awh::crypto_t::hash_t::SHA256, signature));
+	// Проверяем, что отказ записан в лог единожды
+	EXPECT_EQ(records, static_cast <size_t> (1));
+	// Снимаем режимы логов
+	this->_log->mode({awh::log_t::mode_t::NONE});
+}
+
+/**
+ * @brief Тест выдачи хэш-суммы и имитовставки двоичным видом
+ *
+ * @details Вид записи выбора не имел: итог всегда выписывался шестнадцатеричной
+ *          записью, и двоичный буфер получал не саму сумму, а её запись знаками
+ *          ASCII. Подпись сообщений по RFC 9421 кодирует BASE64 саму имитовставку,
+ *          и подпись выходила чужим работам не принимаемой. Сличается с эталоном
+ *          RFC 4231 - имитовставкой SHA-256 на ключе «key» и известном сообщении
+ *
+ */
+TEST_F(CryptoFixture, RawFormatCryptoTest){
+	// Сообщение эталона
+	const std::string text = "The quick brown fox jumps over the lazy dog";
+	// Ключ подписи эталона
+	const std::string key = "key";
+	// Шестнадцатеричная запись эталонной имитовставки
+	const std::string expected = "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8";
+	// Проверяем, что по умолчанию выдаётся шестнадцатеричная запись эталона
+	EXPECT_EQ(this->_crypto->hmac <std::string> (key, text, awh::crypto_t::hash_t::SHA256), expected);
+	// Получаем имитовставку двоичным видом
+	const std::vector <uint8_t> digest = this->_crypto->hmac <std::vector <uint8_t>> (key, text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::format_t::RAW);
+	// Проверяем, что двоичный вид вдвое короче шестнадцатеричной записи
+	ASSERT_EQ(digest.size(), static_cast <size_t> (32));
+	// Буфер шестнадцатеричной записи полученного двоичного вида
+	std::string actual = "";
+	/**
+	 * Выполняем перебор всех октетов двоичного вида
+	 */
+	for(size_t i = 0; i < digest.size(); i++){
+		// Буфер записи одного октета
+		char octet[3] = {0};
+		// Формируем шестнадцатеричную запись октета
+		::snprintf(octet, sizeof(octet), "%02x", digest.at(i));
+		// Дописываем запись октета в буфер
+		actual.append(octet);
+	}
+	// Проверяем, что двоичный вид отвечает эталону
+	EXPECT_EQ(actual, expected);
+	// Проверяем, что двоичным видом выдаётся и хэш-сумма без ключа
+	EXPECT_EQ(this->_crypto->hash <std::vector <uint8_t>> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::format_t::RAW).size(), static_cast <size_t> (32));
+	// Проверяем, что по умолчанию хэш-сумма выдаётся шестнадцатеричной записью
+	EXPECT_EQ(this->_crypto->hash <std::vector <uint8_t>> (text, awh::crypto_t::hash_t::SHA256).size(), static_cast <size_t> (64));
+}
+
+/**
  * @brief Тест отказа шифрования ключом RSA, под дополнение слишком коротким
  *
  * @details Ввод ключа со стороны разрядность его не проверяет - в отличие от генерации,
@@ -1635,4 +1755,164 @@ TEST_F(CryptoFixture, StreamPartialMismatchCryptoTest){
 	 */
 	// Проверяем отказ работы при расходящейся хэш-сумме и незаданном шифре
 	EXPECT_TRUE(attempt(awh::crypto_t::hash_t::SHA512, awh::crypto_t::cipher_t::NONE).empty());
+}
+
+/**
+ * @brief Тест порядка действий при смене пароля и соли вывода ключа
+ *
+ * @details Новое значение собирается прежде правки объекта: присвоение отводит память и
+ *          потому способно отказать, а прежний порядок к поре отказа уже гасил прежнее
+ *          значение и стейта не сбрасывал - объект оставался с нулями в поле и с прежним
+ *          выведенным ключом в стейте. Тест закрепляет, что переставленный порядок работы
+ *          не изменил: смена всякой приметы вывода ключ перевыводит, а шифротексты
+ *          сходятся лишь при тех же приметах
+ *
+ */
+TEST_F(CryptoFixture, PasswordOrderCryptoTest){
+	// Текст для шифрования
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Устанавливаем режим блочного шифрования гаммированием
+	this->_crypto->mode(awh::crypto_t::mode_t::CFB);
+	// Устанавливаем количество итераций вывода ключа
+	this->_crypto->roundAES(1000);
+	/**
+	 * @brief Замыкание прогона шифрования на заданных приметах вывода ключа
+	 *
+	 * @param password пароль шифрования
+	 * @param salt     соль вывода ключа
+	 * @return         шифротекст прогона
+	 *
+	 */
+	auto seal = [&](const std::string & password, const std::string & salt) -> std::string {
+		// Устанавливаем пароль шифрования
+		this->_crypto->password(password);
+		// Устанавливаем соль вывода ключа
+		this->_crypto->salt(salt);
+		// Выводим шифротекст прогона
+		return this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	};
+	/**
+	 * @brief Замыкание расшифровки на заданных приметах вывода ключа
+	 *
+	 * @param sealed   шифротекст для расшифровки
+	 * @param password пароль шифрования
+	 * @param salt     соль вывода ключа
+	 * @return         открытый текст расшифровки
+	 *
+	 */
+	auto open = [&](const std::string & sealed, const std::string & password, const std::string & salt) -> std::string {
+		// Устанавливаем пароль шифрования
+		this->_crypto->password(password);
+		// Устанавливаем соль вывода ключа
+		this->_crypto->salt(salt);
+		// Выводим открытый текст расшифровки
+		return this->_crypto->decrypt <std::string> (sealed, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	};
+	/**
+	 * Короткое значение лежит внутри самого объекта строки, длинное - в отведённой
+	 * памяти: порядок действий обязан держаться на обоих
+	 */
+	// Перечень примет вывода ключа обеих длин
+	const struct {
+		const char * password;
+		const char * salt;
+	} records[] = {
+		{"short", "salt"},
+		{"a password long enough to leave the string object itself", "a salt long enough to leave the string object itself"}
+	};
+	// Выполняем перебор всех примет вывода ключа
+	for(auto & item : records){
+		// Выполняем шифрование на заданных приметах вывода ключа
+		const std::string sealed = seal(item.password, item.salt);
+		// Проверяем наличие шифротекста
+		ASSERT_FALSE(sealed.empty()) << item.password;
+		/**
+		 * Смена приметы и возврат её обратно ключ перевыводят дважды, и обратимость
+		 * от этого страдать не должна
+		 */
+		// Выполняем смену пароля шифрования
+		ASSERT_FALSE(seal("other password", item.salt).empty()) << item.password;
+		// Выполняем смену соли вывода ключа
+		ASSERT_FALSE(seal(item.password, "other salt").empty()) << item.password;
+		// Проверяем обратимость шифрования после возврата прежних примет
+		ASSERT_EQ(open(sealed, item.password, item.salt), text) << item.password;
+		// Проверяем расхождение открытого текста при чужом пароле
+		EXPECT_NE(open(sealed, "other password", item.salt), text) << item.password;
+		/**
+		 * Соль меняется в одиночку, без правки пароля: установка пароля стейт сбрасывает
+		 * сама, и смена обеих примет разом не показала бы, сбрасывает ли его установка соли
+		 */
+		// Выполняем возврат прежних примет вывода ключа
+		ASSERT_EQ(open(sealed, item.password, item.salt), text) << item.password;
+		// Выполняем смену одной лишь соли вывода ключа
+		this->_crypto->salt("other salt");
+		// Проверяем расхождение открытого текста при чужой соли
+		EXPECT_NE(this->_crypto->decrypt <std::string> (sealed, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), text) << item.password;
+		/**
+		 * Пароль меняется в одиночку по той же причине - установка соли стейт сбрасывает сама
+		 */
+		// Выполняем возврат прежних примет вывода ключа
+		ASSERT_EQ(open(sealed, item.password, item.salt), text) << item.password;
+		// Выполняем смену одного лишь пароля шифрования
+		this->_crypto->password("other password");
+		// Проверяем расхождение открытого текста при чужом пароле
+		EXPECT_NE(this->_crypto->decrypt <std::string> (sealed, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), text) << item.password;
+	}
+}
+
+/**
+ * @brief Тест отказов, называющих свою причину
+ *
+ * @details Завершение потока, не заведённого вовсе, и заведение потока кодированием
+ *          BASE64 отвергаются с записью причины в лог: буфер завершение не трогает, и
+ *          признак остаётся единственной приметой отказа, а кодирование BASE64 прежде
+ *          отвергалось в глубине заведения ключа как шифрование неизвестного вида. Тест
+ *          закрепляет сами отказы и целость объекта после них
+ *
+ */
+TEST_F(CryptoFixture, RefusalReasonCryptoTest){
+	// Текст для шифрования
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль вывода ключа
+	this->_crypto->salt("salt");
+	// Устанавливаем режим блочного шифрования с проверкой подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::GCM);
+	/**
+	 * Завершение потока, не заведённого вовсе, буфер не трогает
+	 */
+	// Буфер завершения потока
+	std::string buffer = "prefix";
+	// Проверяем отказ завершения потока, не заведённого вовсе
+	EXPECT_FALSE(this->_crypto->finalize(buffer));
+	// Проверяем неизменность буфера при отказе завершения
+	EXPECT_EQ(buffer, "prefix");
+	/**
+	 * Кодирование BASE64 потоком не выполняется
+	 */
+	// Проверяем отказ заведения потока кодированием BASE64
+	EXPECT_FALSE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::NONE, awh::crypto_t::cipher_t::BASE64));
+	// Проверяем отказ завершения потока после отказа заведения
+	EXPECT_FALSE(this->_crypto->finalize(buffer));
+	/**
+	 * Разовое кодирование BASE64 отказом заведения потока не задето
+	 */
+	// Выполняем разовое кодирование BASE64
+	const std::string encoded = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::NONE, awh::crypto_t::cipher_t::BASE64);
+	// Проверяем наличие записи BASE64
+	ASSERT_FALSE(encoded.empty());
+	// Проверяем обратимость разового кодирования BASE64
+	EXPECT_EQ(this->_crypto->decrypt <std::string> (encoded, awh::crypto_t::hash_t::NONE, awh::crypto_t::cipher_t::BASE64), text);
+	/**
+	 * Заведение потока шифрованием отказами не задето
+	 */
+	// Проверяем заведение потока шифрования
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Зашифрованный текст
+	std::string sealed = this->_crypto->encrypt <std::string> (text.data(), text.size());
+	// Проверяем завершение заведённого потока
+	ASSERT_TRUE(this->_crypto->finalize(sealed));
+	// Проверяем наличие шифротекста
+	EXPECT_FALSE(sealed.empty());
 }

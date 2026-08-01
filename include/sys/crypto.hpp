@@ -155,6 +155,21 @@ namespace awh {
 				SHA384 = 0x05, // Хэш SHA384
 				SHA512 = 0x06  // Хэш SHA512
 			};
+			/**
+			 * @brief Вид записи выработанной хэш-суммы
+			 *
+			 * @details Вид задаёт, в каком виде хэш-сумма и имитовставка выдаются
+			 *          наружу. Шестнадцатеричная запись взята по умолчанию ради
+			 *          согласия с работами, её ожидающими - проверка подлинности
+			 *          Digest по RFC 7616 сличает именно её, - но подписи сообщений
+			 *          по RFC 9421 кодируют BASE64 двоичный вид, и шестнадцатеричная
+			 *          запись дала бы подпись, чужими работами не принимаемую
+			 *
+			 */
+			enum class format_t : uint8_t {
+				HEX = 0x01, // Шестнадцатеричная запись, вдвое длиннее двоичного вида
+				RAW = 0x02  // Двоичный вид, как его выдаёт библиотека криптографии
+			};
 		private:
 			/**
 			 * @brief Структура параметров RSA
@@ -507,10 +522,11 @@ namespace awh {
 			 *
 			 * @param buffer буфер данных для хэширования
 			 * @param hash   тип хэш-суммы
+			 * @param format вид записи выработанной хэш-суммы
 			 * @return       результат хэширования
 			 *
 			 */
-			auto hash(string_view buffer, const hash_t hash) const noexcept -> T;
+			auto hash(string_view buffer, const hash_t hash, const format_t format = format_t::HEX) const noexcept -> T;
 			/**
 			 * @brief Шаблон метода хэширования текста
 			 *
@@ -524,10 +540,11 @@ namespace awh {
 			 *
 			 * @param buffer буфер данных для хэширования
 			 * @param hash   тип хэш-суммы
+			 * @param format вид записи выработанной хэш-суммы
 			 * @return       результат хэширования
 			 *
 			 */
-			auto hash(const B & buffer, const hash_t hash) const noexcept -> A;
+			auto hash(const B & buffer, const hash_t hash, const format_t format = format_t::HEX) const noexcept -> A;
 		public:
 			/**
 			 * @brief Шаблон метода хэширования текста с ключом
@@ -542,10 +559,11 @@ namespace awh {
 			 * @param key    ключ для подписи
 			 * @param buffer буфер данных для хэширования
 			 * @param hash   тип хэш-суммы
+			 * @param format вид записи выработанной хэш-суммы
 			 * @return       результат хэширования
 			 *
 			 */
-			auto hmac(string_view key, string_view buffer, const hash_t hash) const noexcept -> T;
+			auto hmac(string_view key, string_view buffer, const hash_t hash, const format_t format = format_t::HEX) const noexcept -> T;
 			/**
 			 * @brief Шаблон метода хэширования текста с ключом
 			 *
@@ -559,10 +577,11 @@ namespace awh {
 			 * @param key    ключ для подписи
 			 * @param buffer буфер данных для хэширования
 			 * @param hash   тип хэш-суммы
+			 * @param format вид записи выработанной хэш-суммы
 			 * @return       результат хэширования
 			 *
 			 */
-			auto hmac(const string & key, string_view buffer, const hash_t hash) const noexcept -> T;
+			auto hmac(const string & key, string_view buffer, const hash_t hash, const format_t format = format_t::HEX) const noexcept -> T;
 			/**
 			 * @brief Шаблон метода хэширования текста с ключом
 			 *
@@ -577,10 +596,11 @@ namespace awh {
 			 * @param key    ключ для подписи
 			 * @param buffer буфер данных для хэширования
 			 * @param hash   тип хэш-суммы
+			 * @param format вид записи выработанной хэш-суммы
 			 * @return       результат хэширования
 			 *
 			 */
-			auto hmac(string_view key, const B & buffer, const hash_t hash) const noexcept -> A;
+			auto hmac(string_view key, const B & buffer, const hash_t hash, const format_t format = format_t::HEX) const noexcept -> A;
 			/**
 			 * @brief Шаблон метода хэширования текста с ключом
 			 *
@@ -595,10 +615,11 @@ namespace awh {
 			 * @param key    ключ для подписи
 			 * @param buffer буфер данных для хэширования
 			 * @param hash   тип хэш-суммы
+			 * @param format вид записи выработанной хэш-суммы
 			 * @return       результат хэширования
 			 *
 			 */
-			auto hmac(const string & key, const B & buffer, const hash_t hash) const noexcept -> A;
+			auto hmac(const string & key, const B & buffer, const hash_t hash, const format_t format = format_t::HEX) const noexcept -> A;
 		public:
 			/**
 			 * @brief Шаблон метода кодирования

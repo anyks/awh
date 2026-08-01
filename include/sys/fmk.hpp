@@ -34,6 +34,7 @@
 #include <cwctype>
 #include <cstdarg>
 #include <cstdlib>
+#include <functional>
 #include <type_traits>
 #include <unordered_set>
 #include <unordered_map>
@@ -1190,18 +1191,45 @@ namespace awh {
 			 *
 			 */
 			const wstring & replace(const wstring & text, const wstring & word, const wstring & alt = L"") const noexcept;
+		private:
+			/**
+			 * @brief Метод извлечения списка символов экранирования по умолчанию
+			 *
+			 * @return список символов экранирования по умолчанию
+			 *
+			 */
+			static const vector <string> & escapingText() noexcept;
+			/**
+			 * @brief Метод извлечения списка символов экранирования по умолчанию
+			 *
+			 * @return список символов экранирования по умолчанию
+			 *
+			 */
+			static const vector <wstring> & escapingWide() noexcept;
 		public:
 			/**
-			 * @brief Метод извлечения ключей и значений из текста
+			 * @brief Намеренные решения разбора записей ключ-значение
 			 *
-			 * @param text      текст из которого извлекаются записи
-			 * @param delim     разделитель записей
-			 * @param separator разделитель ключа и значения
-			 * @param escaping  символы экранирования
-			 * @return          список найденных элементов
+			 * @details Разбор рассчитан на форматы вида CEF, где значение записи не отделено от следующего ключа
+			 *          ничем, кроме разделителя записей, поэтому приняты следующие решения:
+			 *
+			 *          1. Значение может состоять из нескольких слов и содержать разделитель записей: концом
+			 *             значения считается последний разделитель, встреченный перед разделителем ключа и
+			 *             значения следующей записи (rt=Feb 17 2023 23:30:15.734 YEKT smac=...).
+			 *          2. Если следующей записи нет, значение занимает весь остаток текста, а не обрывается на
+			 *             первом разделителе, иначе последняя запись вела бы себя иначе, чем все остальные.
+			 *          3. Пустое значение является полноценной записью и возвращается с пустой строкой: в CEF
+			 *             запись вида cs3= осмысленна и образует пару с cs3Label=CVEID.
+			 *          4. Разделители записей в начале текста и между записями пропускаются.
+			 *          5. Символ считается экранированным при нечётном количестве предшествующих обратных слэшей,
+			 *             что позволяет разбирать значения вида originsicname=CN\=chr-cpsg-01,O\=stal.
+			 *          6. Повторяющиеся ключи сохраняются полностью, поэтому результатом является multimap:
+			 *             в реальных журналах ключ повторяется (ad.prog-id, deviceExternalId в auditd).
+			 *          7. Относительный порядок одинаковых ключей в контейнере зависит от реализации: если важен
+			 *             порядок следования записей в исходном тексте, следует использовать потоковый разбор,
+			 *             который отдаёт записи строго в порядке их появления.
 			 *
 			 */
-			unordered_map <string, string> kv(string_view text, string_view delim, string_view separator = "=", const vector <string> & escaping = {string{"\""}}) const noexcept;
 			/**
 			 * @brief Метод извлечения ключей и значений из текста
 			 *
@@ -1212,7 +1240,43 @@ namespace awh {
 			 * @return          список найденных элементов
 			 *
 			 */
-			unordered_map <wstring, wstring> kv(wstring_view text, wstring_view delim, wstring_view separator = L"=", const vector <wstring> & escaping = {wstring{L"\""}}) const noexcept;
+			unordered_multimap <string, string> kv(string_view text, string_view delim, string_view separator = "=", const vector <string> & escaping = escapingText()) const noexcept;
+			/**
+			 * @brief Метод извлечения ключей и значений из текста
+			 *
+			 * @param text      текст из которого извлекаются записи
+			 * @param delim     разделитель записей
+			 * @param separator разделитель ключа и значения
+			 * @param escaping  символы экранирования
+			 * @return          список найденных элементов
+			 *
+			 */
+			unordered_multimap <wstring, wstring> kv(wstring_view text, wstring_view delim, wstring_view separator = L"=", const vector <wstring> & escaping = escapingWide()) const noexcept;
+		public:
+			/**
+			 * @brief Метод потокового извлечения ключей и значений из текста
+			 *
+			 * @param sid       идентификатор потока разбора
+			 * @param text      текст из которого извлекаются записи
+			 * @param delim     разделитель записей
+			 * @param callback  функция обратного вызова для каждой найденной записи
+			 * @param separator разделитель ключа и значения
+			 * @param escaping  символы экранирования
+			 *
+			 */
+			void kv(const uint64_t sid, string_view text, string_view delim, function <void (const uint64_t, const string_view, const string_view)> callback, string_view separator = "=", const vector <string> & escaping = escapingText()) const noexcept;
+			/**
+			 * @brief Метод потокового извлечения ключей и значений из текста
+			 *
+			 * @param sid       идентификатор потока разбора
+			 * @param text      текст из которого извлекаются записи
+			 * @param delim     разделитель записей
+			 * @param callback  функция обратного вызова для каждой найденной записи
+			 * @param separator разделитель ключа и значения
+			 * @param escaping  символы экранирования
+			 *
+			 */
+			void kv(const uint64_t sid, wstring_view text, wstring_view delim, function <void (const uint64_t, const wstring_view, const wstring_view)> callback, wstring_view separator = L"=", const vector <wstring> & escaping = escapingWide()) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки пользовательской зоны

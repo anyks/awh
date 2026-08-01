@@ -1464,9 +1464,9 @@ struct FmkKVTestParameter {
 	// Разделитель ключ-значение (широкая строка)
 	std::wstring delim2 = L" ";
 	// Альтернативный результат разбора
-	std::unordered_map <std::string, std::string> result1;
+	std::unordered_multimap <std::string, std::string> result1;
 	// Альтернативный результат разбора (широкая строка)
-	std::unordered_map <std::wstring, std::wstring> result2;
+	std::unordered_multimap <std::wstring, std::wstring> result2;
 };
 
 /**
@@ -1485,17 +1485,49 @@ class FmkKVParameterizedFixture : public FmkFixture, public ::testing::WithParam
 TEST_P(FmkKVParameterizedFixture, FmkKVTest){
 	// Если текстовые параметры для замены заданы и не пустые
 	if(!this->_parameter.text1.empty() && !this->_parameter.delim1.empty()){
-		// Выполняем парсинг строки ключ-значение
-		const auto & result = this->_fmk->kv(this->_parameter.text1, this->_parameter.delim1);
-		// Проверяем, что количество разобранных ключ-значение совпадает с ожидаемым
-		ASSERT_EQ(this->_parameter.result1.size(), result.size());
-		/**
-		 * Выполняем проверку каждого ключ-значение
-		 */
-		for(const auto & [key, value] : this->_parameter.result1)
-			ASSERT_EQ(value, result.at(key));
+		// Проверяем результат разбора ключ-значение
+		ASSERT_EQ(this->_parameter.result1, this->_fmk->kv(this->_parameter.text1, this->_parameter.delim1));
 	// Если широкие текстовые параметры для замены заданы и не пустые, то проверяем результат разбора ключ-значение (широкая строка)
 	} else ASSERT_EQ(this->_parameter.result2, this->_fmk->kv(this->_parameter.text2, this->_parameter.delim2));
+}
+
+/**
+ * @brief Метод тестирования потокового разбора ключ-значение
+ *
+ * @details Потоковый разбор обязан выдавать те же самые записи, что и разбор с формированием контейнера,
+ *          а также пробрасывать в функцию обратного вызова переданный идентификатор потока разбора
+ *
+ */
+TEST_P(FmkKVParameterizedFixture, FmkKVCallbackTest){
+	// Идентификатор потока разбора
+	const uint64_t sid = 0x1234567890ABCDEF;
+	// Если текстовые параметры для замены заданы и не пустые
+	if(!this->_parameter.text1.empty() && !this->_parameter.delim1.empty()){
+		// Результат потокового разбора
+		std::unordered_multimap <std::string, std::string> result;
+		// Выполняем потоковый разбор строки ключ-значение
+		this->_fmk->kv(sid, this->_parameter.text1, this->_parameter.delim1, [&result, sid](const uint64_t id, const std::string_view key, const std::string_view value) noexcept -> void {
+			// Проверяем, что идентификатор потока разбора проброшен без изменений
+			ASSERT_EQ(sid, id);
+			// Выполняем формирование записи результата
+			result.emplace(key, value);
+		});
+		// Проверяем результат потокового разбора
+		ASSERT_EQ(this->_parameter.result1, result);
+	// Если широкие текстовые параметры для замены заданы и не пустые
+	} else {
+		// Результат потокового разбора (широкая строка)
+		std::unordered_multimap <std::wstring, std::wstring> result;
+		// Выполняем потоковый разбор строки ключ-значение (широкая строка)
+		this->_fmk->kv(sid, this->_parameter.text2, this->_parameter.delim2, [&result, sid](const uint64_t id, const std::wstring_view key, const std::wstring_view value) noexcept -> void {
+			// Проверяем, что идентификатор потока разбора проброшен без изменений
+			ASSERT_EQ(sid, id);
+			// Выполняем формирование записи результата
+			result.emplace(key, value);
+		});
+		// Проверяем результат потокового разбора
+		ASSERT_EQ(this->_parameter.result2, result);
+	}
 }
 
 /**
@@ -1519,6 +1551,84 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkKVParameterizedFixture,
 				{L"http_retcode", L"200"},
 				{L"msg", L"HTTPS post request from 188.43.251.186:59420 to 10.77.194.51:80"},
 				{L"data", L"abc:\\\" deas\\\""}
+			}
+		}),
+		/**
+		 * Разбор расширения CEF: пустые значения, значение из нескольких слов и разделитель записей в начале текста
+		 */
+		FmkKVTestParameter({
+			" cs3= cs3Label=CVEID rt=Feb 17 2023 23:30:15.734 YEKT src=172.16.0.4 user=test",
+			L"",
+			" ",
+			L"",
+			{
+				{"cs3", ""},
+				{"cs3Label", "CVEID"},
+				{"rt", "Feb 17 2023 23:30:15.734 YEKT"},
+				{"src", "172.16.0.4"},
+				{"user", "test"}
+			},{}
+		}),
+		/**
+		 * Разбор расширения CEF: экранированный разделитель ключа и значения внутри значения,
+		 * а также значение последней записи, занимающее весь остаток текста
+		 */
+		FmkKVTestParameter({
+			"origin=10.120.63.36 originsicname=CN\\=chr-cpsg-01,O\\=stal sequencenum=446 action_reason=Early Drop: blocking the connection",
+			L"",
+			" ",
+			L"",
+			{
+				{"origin", "10.120.63.36"},
+				{"originsicname", "CN\\=chr-cpsg-01,O\\=stal"},
+				{"sequencenum", "446"},
+				{"action_reason", "Early Drop: blocking the connection"}
+			},{}
+		}),
+		/**
+		 * Разбор записей с разделителем записей состоящим из нескольких символов
+		 */
+		FmkKVTestParameter({
+			"a=\"x\"; b=\"y\"; c=1",
+			L"",
+			"; ",
+			L"",
+			{
+				{"a", "x"},
+				{"b", "y"},
+				{"c", "1"}
+			},{}
+		}),
+		/**
+		 * Разбор расширения CEF с повторяющимися ключами: все вхождения должны сохраняться
+		 */
+		FmkKVTestParameter({
+			"ad.prog-id=128394 deviceExternalId=1330334083 ad.prog-id=128394 ad.gid=0 deviceExternalId=1330334083 ad.prog-id=128394",
+			L"",
+			" ",
+			L"",
+			{
+				{"ad.prog-id", "128394"},
+				{"ad.prog-id", "128394"},
+				{"ad.prog-id", "128394"},
+				{"deviceExternalId", "1330334083"},
+				{"deviceExternalId", "1330334083"},
+				{"ad.gid", "0"}
+			},{}
+		}),
+		/**
+		 * Разбор записей широкой строкой: значение из нескольких слов и пустое значение
+		 */
+		FmkKVTestParameter({
+			"",
+			L"cs3= cs3Label=CVEID rt=Feb 17 2023 YEKT src=172.16.0.4",
+			"",
+			L" ",
+			{},{
+				{L"cs3", L""},
+				{L"cs3Label", L"CVEID"},
+				{L"rt", L"Feb 17 2023 YEKT"},
+				{L"src", L"172.16.0.4"}
 			}
 		})
 	)

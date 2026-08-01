@@ -176,7 +176,7 @@ if (CMAKE_CRYPTO_AES_ROUNDS)
     message(STATUS "Build with crypto AES rounds: ${CMAKE_CRYPTO_AES_ROUNDS}\n")
 endif (CMAKE_CRYPTO_AES_ROUNDS)
 
-# Если активирован флаг установки размера блока для потокового сжатия (по умолчанию: 65536 = 64 КБ)
+# Если активирован флаг установки размера блока для потокового сжатия (по умолчанию: 16384 = 16 КБ)
 if (CMAKE_COMPRESSOR_STREAM_CHUNK)
     add_compile_definitions(AWH_COMPRESSOR_STREAM_CHUNK=${CMAKE_COMPRESSOR_STREAM_CHUNK})
     message(STATUS "Build with compressor stream chunk: ${CMAKE_COMPRESSOR_STREAM_CHUNK}\n")
@@ -609,11 +609,15 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/regex/pike.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/dfa.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/backtrack.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/assembly.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/emitter.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/engine.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/regex.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/xml/common.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/xml/encoding.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/xml/reader.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/xml/document.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/xml/writer.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
@@ -939,6 +943,17 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(QUIC_PROXY_SERVER_APP_PROTO_NAME server-quic-proxy)
     # Указываем что нужно собрать приложения работы с протоколом QUIC
     option(CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE "Build QUIC Protocol app sample" ON)
+
+    # Устанавливаем имя приложения потокового чтения текста разметки
+    SET(CODEC_APP_XML_READER_NAME codec-xml-reader)
+    # Устанавливаем имя приложения работы с деревом разметки
+    SET(CODEC_APP_XML_DOCUMENT_NAME codec-xml-document)
+    # Устанавливаем имя приложения записи текста разметки
+    SET(CODEC_APP_XML_WRITER_NAME codec-xml-writer)
+    # Устанавливаем имя приложения получения содержимого разметки числами
+    SET(CODEC_APP_XML_NUMERIC_NAME codec-xml-numeric)
+    # Указываем что нужно собрать приложение работы с контейнером XML
+    option(CMAKE_BUILD_CODEC_XML_APP_SAMPLE "Build XML codec app sample" ON)
 
     # Устанавливаем имя приложения блочной компрессии данных
     SET(COMPRESSOR_APP_BLOCK_NAME compressor-block)
@@ -1507,6 +1522,24 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample QUIC Protocol: No\n")
     endif (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с компрессией данных
+    if (${CMAKE_BUILD_CODEC_XML_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample XML Codec: Yes\n")
+        # Выполняем создание приложения потокового чтения текста разметки
+        add_sample(${CODEC_APP_XML_READER_NAME} sample/codec/reader.cpp codec)
+        # Выполняем создание приложения работы с деревом разметки
+        add_sample(${CODEC_APP_XML_DOCUMENT_NAME} sample/codec/document.cpp codec)
+        # Выполняем создание приложения записи текста разметки
+        add_sample(${CODEC_APP_XML_WRITER_NAME} sample/codec/writer.cpp codec)
+        # Выполняем создание приложения получения содержимого разметки числами
+        add_sample(${CODEC_APP_XML_NUMERIC_NAME} sample/codec/numeric.cpp codec)
+    # Если не нужно собирать семплы для работы с контейнером XML
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample XML Codec: No\n")
+    endif (${CMAKE_BUILD_CODEC_XML_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -2371,6 +2404,38 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером XML
+        if (${CMAKE_BUILD_CODEC_XML_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения текста разметки
+            target_link_libraries(
+                ${CODEC_APP_XML_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом разметки
+            target_link_libraries(
+                ${CODEC_APP_XML_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения записи текста разметки
+            target_link_libraries(
+                ${CODEC_APP_XML_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения получения содержимого разметки числами
+            target_link_libraries(
+                ${CODEC_APP_XML_NUMERIC_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_XML_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -3389,6 +3454,42 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером XML
+        if (${CMAKE_BUILD_CODEC_XML_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения текста разметки
+            target_link_libraries(
+                ${CODEC_APP_XML_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом разметки
+            target_link_libraries(
+                ${CODEC_APP_XML_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения записи текста разметки
+            target_link_libraries(
+                ${CODEC_APP_XML_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения получения содержимого разметки числами
+            target_link_libraries(
+                ${CODEC_APP_XML_NUMERIC_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_XML_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})

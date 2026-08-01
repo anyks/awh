@@ -20,6 +20,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/ascii.hpp>
+#include <lexical/lexical.hpp>
 #include <codec/xml/common.hpp>
 
 /**
@@ -69,6 +70,37 @@ namespace {
 		}
 		// Выводим положительный результат сличения
 		return true;
+	}
+	/**
+	 * @brief Метод отбрасывания пробельной обвязки содержимого разметки
+	 *
+	 * @details Пробельными считаются знаки, признанные таковыми договором XML: пробел,
+	 * знак табуляции, возврат каретки и перевод строки. Обвязка в содержимом появляется
+	 * сама собой при записи с отступами, и отбрасывать её приходится всегда
+	 *
+	 * @param text обрабатываемое содержимое
+	 * @return     содержимое без пробельной обвязки по краям
+	 *
+	 */
+	string_view trim(const string_view text) noexcept {
+		// Начало значащей части содержимого
+		size_t begin = 0;
+		// Конец значащей части содержимого
+		size_t end = text.length();
+		/**
+		 * Выполняем отбрасывание пробельных знаков в начале содержимого
+		 */
+		while((begin < end) && ((text[begin] == ' ') || (text[begin] == '\t') || (text[begin] == '\r') || (text[begin] == '\n')))
+			// Выполняем переход к следующему знаку содержимого
+			begin++;
+		/**
+		 * Выполняем отбрасывание пробельных знаков в конце содержимого
+		 */
+		while((end > begin) && ((text[end - 1] == ' ') || (text[end - 1] == '\t') || (text[end - 1] == '\r') || (text[end - 1] == '\n')))
+			// Выполняем переход к предыдущему знаку содержимого
+			end--;
+		// Выводим содержимое без пробельной обвязки
+		return text.substr(begin, end - begin);
 	}
 };
 
@@ -378,4 +410,120 @@ awh::codec::xml::encoding_t awh::codec::xml::encoding(const string_view text) no
 		return encoding_t::ASCII;
 	// Выводим неопределённую кодировку
 	return encoding_t::NONE;
+}
+/**
+ * @brief Метод разбора целого числа со знаком из содержимого разметки
+ *
+ * @param text   разбираемое содержимое
+ * @param result ссылка на результат разбора
+ * @return       признак успешного разбора
+ *
+ */
+bool awh::codec::xml::integer(const string_view text, int64_t & result) noexcept {
+	// Получаем содержимое без пробельной обвязки
+	const string_view value = ::trim(text);
+	/**
+	 * Если разбирать нечего
+	 */
+	if(value.empty())
+		// Выводим признак неудачного разбора
+		return false;
+	// Выполняем разбор целого числа со знаком
+	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
+	/**
+	 * Выводим признак успешного разбора, если число разобрано целиком
+	 *
+	 * @note Остаток за числом отвергается намеренно: «52abc» числом не является,
+	 *       и приведение такого содержимого к 52 скрыло бы ошибку в исходном тексте
+	 */
+	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
+}
+/**
+ * @brief Метод разбора целого числа без знака из содержимого разметки
+ *
+ * @param text   разбираемое содержимое
+ * @param result ссылка на результат разбора
+ * @return       признак успешного разбора
+ *
+ */
+bool awh::codec::xml::integer(const string_view text, uint64_t & result) noexcept {
+	// Получаем содержимое без пробельной обвязки
+	const string_view value = ::trim(text);
+	/**
+	 * Если разбирать нечего
+	 */
+	if(value.empty())
+		// Выводим признак неудачного разбора
+		return false;
+	/**
+	 * Если содержимое записано со знаком числа
+	 *
+	 * @note Число со знаком в тип без знака не приводится даже тогда, когда знак
+	 *       положительный: запрошенный тип и есть указание на ожидаемую запись
+	 */
+	if((value.front() == '-') || (value.front() == '+'))
+		// Выводим признак неудачного разбора
+		return false;
+	// Выполняем разбор целого числа без знака
+	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
+	// Выводим признак успешного разбора, если число разобрано целиком
+	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
+}
+/**
+ * @brief Метод разбора числа с плавающей точкой из содержимого разметки
+ *
+ * @param text   разбираемое содержимое
+ * @param result ссылка на результат разбора
+ * @return       признак успешного разбора
+ *
+ */
+bool awh::codec::xml::real(const string_view text, double & result) noexcept {
+	// Получаем содержимое без пробельной обвязки
+	const string_view value = ::trim(text);
+	/**
+	 * Если разбирать нечего
+	 */
+	if(value.empty())
+		// Выводим признак неудачного разбора
+		return false;
+	// Выполняем разбор числа с плавающей точкой
+	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
+	// Выводим признак успешного разбора, если число разобрано целиком
+	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
+}
+/**
+ * @brief Метод разбора логического значения из содержимого разметки
+ *
+ * @param text   разбираемое содержимое
+ * @param result ссылка на результат разбора
+ * @return       признак успешного разбора
+ *
+ */
+bool awh::codec::xml::boolean(const string_view text, bool & result) noexcept {
+	// Получаем содержимое без пробельной обвязки
+	const string_view value = ::trim(text);
+	/**
+	 * Если содержимым является истина
+	 *
+	 * @note Регистр записи учитывается намеренно: договор XSD иных написаний
+	 *       логического значения не допускает, а «True» из чужого ответа лучше
+	 *       отвергнуть явно, чем принять за истину и разойтись с отправителем
+	 */
+	if((value.compare("true") == 0) || (value.compare("1") == 0)){
+		// Запоминаем разобранное логическое значение
+		result = true;
+		// Выводим признак успешного разбора
+		return true;
+	}
+	/**
+	 * Если содержимым является ложь
+	 */
+	if((value.compare("false") == 0) || (value.compare("0") == 0)){
+		// Запоминаем разобранное логическое значение
+		result = false;
+		// Выводим признак успешного разбора
+		return true;
+	}
+	// Выводим признак неудачного разбора
+	return false;
 }

@@ -581,6 +581,53 @@ TEST_F(AuthFixture, HmacRoundTripTest){
 }
 
 /**
+ * @brief Метод проверки кодирования подписи HMAC двоичным видом имитовставки
+ *
+ * @details Модуль криптографии по умолчанию выдаёт хэш-сумму шестнадцатеричной
+ *          записью, и подпись выходила кодированием BASE64 не самой имитовставки,
+ *          а её записи знаками ASCII: вдвое длиннее предписанной RFC 9421 и чужими
+ *          работами не принимаемой. Сличением обеих сторон это не ловилось - обе
+ *          считали подпись одинаково неверно, - и потому проверяется длина
+ *
+ */
+TEST_F(AuthFixture, HmacSignatureRawLengthTest){
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	// Устанавливаем схему подписи HMAC с алгоритмом SHA-256
+	client->type(type_t::HMAC, hash_t::SHA256);
+	// Устанавливаем секретный ключ подписи
+	client->key("shared-secret-key");
+	// Устанавливаем идентификатор ключа подписи
+	client->keyId("test-key");
+	// Добавляем покрываемый подписью компонент метода запроса
+	client->component("@method", "POST");
+	// Контейнер для набора заголовков подписи
+	std::vector <std::pair <std::string, std::string>> headers;
+	// Формируем набор заголовков подписи
+	client->headers(headers);
+	// Проверяем что сформированы оба заголовка подписи
+	ASSERT_EQ(headers.size(), 2u);
+	// Получаем значение заголовка подписи
+	const std::string & value = headers.at(1).second;
+	// Выполняем поиск начала значения подписи
+	const size_t begin = value.find(":");
+	// Проверяем что начало значения подписи найдено
+	ASSERT_NE(begin, std::string::npos);
+	// Выполняем поиск конца значения подписи
+	const size_t end = value.find(":", begin + 1);
+	// Проверяем что конец значения подписи найден
+	ASSERT_NE(end, std::string::npos);
+	// Получаем значение подписи, записанное BASE64
+	const std::string signature = value.substr(begin + 1, end - (begin + 1));
+	// Создаём объект криптографии для разбора записи BASE64
+	awh::crypto_t crypto(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор записи BASE64
+	const std::string & digest = crypto.decrypt <std::string> (signature, awh::crypto_t::hash_t::NONE, awh::crypto_t::cipher_t::BASE64);
+	// Проверяем что кодирована сама имитовставка, а не её шестнадцатеричная запись
+	EXPECT_EQ(digest.size(), static_cast <size_t> (32));
+}
+
+/**
  * @brief Метод проверки отклонения подписи HMAC при неверном ключе
  *
  */

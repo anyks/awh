@@ -1046,3 +1046,317 @@ TEST_F(CompressorFixture, BitFlippedFrameTest){
 		}
 	}
 }
+
+/**
+ * @brief Тест единого предела памяти распаковки LZMA у обоих режимов
+ *
+ * @details Закрепляет одинаковую политику блочного и потокового режимов: контейнер,
+ *          принятый одним, обязан быть принят и другим — разъезд предела означал бы,
+ *          что одни и те же данные разбираются не везде
+ *
+ */
+TEST_F(CompressorFixture, LzmaMemoryLimitParityTest){
+	// Формируем крупный буфер данных
+	std::string text;
+	// Резервируем память под буфер данных
+	text.reserve(4 * 1024 * 1024);
+	// Состояние генератора псевдослучайной последовательности
+	uint64_t state = 0x9e3779b97f4a7c15ull;
+	/**
+	 * Наполняем буфер повторяющимися порциями с переменной частью
+	 */
+	while(text.size() < (4 * 1024 * 1024)){
+		// Продвигаем состояние генератора
+		state ^= (state << 13);
+		state ^= (state >> 7);
+		state ^= (state << 17);
+		// Добавляем очередную порцию данных
+		text.append("Anyks Framework lzma memory limit payload ");
+		// Добавляем переменную часть порции данных
+		text.append(std::to_string(state & 0xFFFF));
+	}
+	// Устанавливаем максимальный уровень компрессии — он берёт наибольший словарь
+	this->_compressor->level(awh::compressor::level_t::BEST);
+	// Выполняем блочную компрессию данных
+	const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::LZMA);
+	// Проверяем что результат компрессии не пустой
+	ASSERT_FALSE(compressed.empty());
+	// Проверяем что блочный режим разбирает свой же контейнер
+	ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, awh::compressor::method_t::LZMA));
+	// Создаём потоковую сессию декомпрессии
+	awh::compressor::stream_t decoder = this->_compressor->stream(awh::compressor::method_t::LZMA, awh::compressor::event_t::DECODE);
+	// Проверяем что потоковая сессия создана
+	ASSERT_TRUE(decoder.valid());
+	// Буфер выхода порции
+	std::string part;
+	// Результат потоковой декомпрессии
+	std::string restored;
+	// Подаём блочно сжатые данные в потоковую сессию
+	decoder.push <std::string> (compressed.data(), compressed.size(), part, awh::compressor::flush_t::FINISH);
+	// Дописываем полученный выход в результат декомпрессии
+	restored.append(part);
+	// Проверяем что потоковый режим разобрал тот же контейнер
+	ASSERT_EQ(text, restored);
+	// Проверяем что потоковая сессия объявила поток завершённым
+	ASSERT_TRUE(decoder.done());
+}
+
+/**
+ * @brief Тест потокового цикла на сильно сжимаемых данных одной порцией
+ *
+ * @details Закрепляет дожатие накопленного движком: кадр здесь во много раз меньше
+ *          распакованного, поэтому вход исчерпывается задолго до того, как движок
+ *          выдаст всё, — и разбор, идущий только по наличию входа, терял бы хвост
+ *
+ */
+TEST_F(CompressorFixture, StreamHighRatioSinglePushTest){
+	// Формируем сильно сжимаемый буфер данных
+	const std::string text(1024 * 1024, 'A');
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LZMA,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::LIZARD,
+		awh::compressor::method_t::DEFLATE
+	};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		// Буфер выхода порции
+		std::string part;
+		// Результат потоковой компрессии
+		std::string compressed;
+		// Создаём потоковую сессию компрессии
+		awh::compressor::stream_t encoder = this->_compressor->stream(method, awh::compressor::event_t::ENCODE);
+		// Проверяем что потоковая сессия создана
+		ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method);
+		// Подаём все данные одной порцией
+		encoder.push <std::string> (text.data(), text.size(), part);
+		// Дописываем полученный выход в результат компрессии
+		compressed.append(part);
+		// Финализируем поток компрессии
+		encoder.finish(part);
+		// Дописываем хвост в результат компрессии
+		compressed.append(part);
+		// Проверяем что кадр во много раз меньше исходных данных
+		ASSERT_LT(compressed.size(), (text.size() / 64)) << "method = " << static_cast <uint16_t> (method);
+		// Результат потоковой декомпрессии
+		std::string restored;
+		// Создаём потоковую сессию декомпрессии
+		awh::compressor::stream_t decoder = this->_compressor->stream(method, awh::compressor::event_t::DECODE);
+		// Проверяем что потоковая сессия создана
+		ASSERT_TRUE(decoder.valid()) << "method = " << static_cast <uint16_t> (method);
+		// Подаём весь кадр одной порцией
+		decoder.push <std::string> (compressed.data(), compressed.size(), part);
+		// Дописываем полученный выход в результат декомпрессии
+		restored.append(part);
+		// Финализируем поток декомпрессии
+		decoder.finish(part);
+		// Дописываем хвост в результат декомпрессии
+		restored.append(part);
+		// Проверяем что поток остался валидным
+		ASSERT_TRUE(decoder.valid()) << "method = " << static_cast <uint16_t> (method);
+		// Проверяем что восстановленные данные совпадают с исходными
+		ASSERT_EQ(text, restored) << "method = " << static_cast <uint16_t> (method);
+	}
+}
+
+/**
+ * @brief Тест потоковой компрессии мелкими порциями с финализацией
+ *
+ * @details Закрепляет доведение сброса до конца: движок вправе ответить обычным успехом,
+ *          ещё не выписав эпилог кадра, и разбор, выходящий по одному лишь исчерпанию
+ *          входа, оставил бы кадр незакрытым
+ *
+ */
+TEST_F(CompressorFixture, StreamSmallChunkFinishTest){
+	// Формируем крупный буфер данных
+	std::string text;
+	// Резервируем память под буфер данных
+	text.reserve(512 * 1024);
+	/**
+	 * Наполняем буфер данными переменной повторяемости
+	 */
+	for(uint32_t i = 0; text.size() < (512 * 1024); i++){
+		// Добавляем очередную порцию данных
+		text.append("Anyks Framework small chunk finish payload ");
+		// Добавляем переменную часть порции данных
+		text.append(std::to_string(i * 2654435761u));
+	}
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LZMA,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::LIZARD,
+		awh::compressor::method_t::DEFLATE
+	};
+	// Набор размеров порций подачи
+	const size_t chunks[] = {1024, 2048, 4096};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		/**
+		 * Выполняем перебор размеров порций подачи
+		 */
+		for(auto & chunk : chunks){
+			// Буфер выхода порции
+			std::string part;
+			// Результат потоковой компрессии
+			std::string compressed;
+			// Создаём потоковую сессию компрессии
+			awh::compressor::stream_t encoder = this->_compressor->stream(method, awh::compressor::event_t::ENCODE);
+			// Проверяем что потоковая сессия создана
+			ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", chunk = " << chunk;
+			/**
+			 * Подаём данные мелкими порциями
+			 */
+			for(size_t offset = 0; offset < text.size(); offset += chunk){
+				// Определяем размер очередной порции
+				const size_t actual = ((text.size() - offset) > chunk ? chunk : (text.size() - offset));
+				// Подаём очередную порцию в поток компрессии
+				encoder.push <std::string> (text.data() + offset, actual, part);
+				// Дописываем полученный выход в результат компрессии
+				compressed.append(part);
+			}
+			// Финализируем поток компрессии
+			encoder.finish(part);
+			// Дописываем хвост в результат компрессии
+			compressed.append(part);
+			// Проверяем что поток объявлен завершённым
+			ASSERT_TRUE(encoder.done()) << "method = " << static_cast <uint16_t> (method) << ", chunk = " << chunk;
+			// Результат потоковой декомпрессии
+			std::string restored;
+			// Создаём потоковую сессию декомпрессии
+			awh::compressor::stream_t decoder = this->_compressor->stream(method, awh::compressor::event_t::DECODE);
+			// Проверяем что потоковая сессия создана
+			ASSERT_TRUE(decoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", chunk = " << chunk;
+			/**
+			 * Подаём кадр мелкими порциями
+			 */
+			for(size_t offset = 0; offset < compressed.size(); offset += chunk){
+				// Определяем размер очередной порции
+				const size_t actual = ((compressed.size() - offset) > chunk ? chunk : (compressed.size() - offset));
+				// Подаём очередную порцию в поток декомпрессии
+				decoder.push <std::string> (compressed.data() + offset, actual, part);
+				// Дописываем полученный выход в результат декомпрессии
+				restored.append(part);
+			}
+			// Финализируем поток декомпрессии
+			decoder.finish(part);
+			// Дописываем хвост в результат декомпрессии
+			restored.append(part);
+			// Проверяем что восстановленные данные совпадают с исходными
+			ASSERT_EQ(text, restored) << "method = " << static_cast <uint16_t> (method) << ", chunk = " << chunk;
+		}
+	}
+}
+
+/**
+ * @brief Проверка разбора кадра с хвостом посторонних октетов
+ *
+ * @details Кадр, дошедший до конца, разбор прекращает: движок, объявленный
+ *          завершённым, вход больше не берёт, и хвост, оставшийся за кадром,
+ *          крутил бы цикл вечно — выхода он не производит, входа не убавляет.
+ *          Тест сторожит именно незавершаемость подачи, а не судьбу хвоста:
+ *          распорядиться им — дело вызывающей стороны, разбирающей кадры
+ *
+ */
+TEST_F(CompressorFixture, StreamTrailingBytesTest){
+	// Формируем буфер исходных данных
+	const std::string text = "Anyks Framework trailing bytes payload for the streaming decoder";
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LZMA,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::LIZARD
+	};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		// Буфер выхода порции
+		std::string part;
+		// Результат потоковой компрессии
+		std::string compressed;
+		// Создаём потоковую сессию компрессии
+		awh::compressor::stream_t encoder = this->_compressor->stream(method, awh::compressor::event_t::ENCODE);
+		// Проверяем что потоковая сессия создана
+		ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method);
+		// Подаём данные в поток компрессии
+		encoder.push <std::string> (text.data(), text.size(), part);
+		// Дописываем полученный выход в результат компрессии
+		compressed.append(part);
+		// Финализируем поток компрессии
+		encoder.finish(part);
+		// Дописываем хвост в результат компрессии
+		compressed.append(part);
+		// Дописываем к готовому кадру хвост посторонних октетов
+		compressed.append(64, '\x5a');
+		// Результат потоковой декомпрессии
+		std::string restored;
+		// Создаём потоковую сессию декомпрессии
+		awh::compressor::stream_t decoder = this->_compressor->stream(method, awh::compressor::event_t::DECODE);
+		// Проверяем что потоковая сессия создана
+		ASSERT_TRUE(decoder.valid()) << "method = " << static_cast <uint16_t> (method);
+		// Подаём кадр с хвостом одной порцией — работа обязана завершиться
+		decoder.push <std::string> (compressed.data(), compressed.size(), restored);
+		// Буфер остатка потока декомпрессии
+		std::string tail;
+		// Финализируем поток декомпрессии
+		decoder.finish(tail);
+		// Дописываем остаток в результат декомпрессии
+		restored.append(tail);
+		/**
+		 * Хвост движок либо отбрасывает, либо считает порчей и отказывает: и то,
+		 * и другое законно. Требуется одно — исходные данные не потеряны, если
+		 * поток отказом не завершился
+		 */
+		// Если поток отказом не завершился
+		if(decoder.valid())
+			// Проверяем что исходные данные разобраны
+			ASSERT_EQ(text, restored.substr(0, std::min(restored.size(), text.size()))) << "method = " << static_cast <uint16_t> (method);
+	}
+}
+
+/**
+ * @brief Проверка отказа Snappy на кадре с завышенным распакованным размером
+ *
+ * @details Распакованный размер записан в самом кадре, и движок отводит по нему
+ *          память прежде, чем разбирать данные. Проверка сторожит сам отказ;
+ *          отведения памяти, которого правка избегает, она увидеть не может —
+ *          итог у обоих случаев один
+ *
+ */
+TEST_F(CompressorFixture, SnappyOversizedLengthTest){
+	// Собираем подвал кадра с распакованным размером в два гигабайта
+	std::string frame;
+	// Записываем размер переменной длины по устройству формата
+	for(uint64_t length = (2ull * 1024ull * 1024ull * 1024ull); length > 0; length >>= 7)
+		// Добавляем очередной октет размера
+		frame.push_back(static_cast <char> ((length & 0x7f) | ((length >> 7) > 0 ? 0x80 : 0x00)));
+	// Дописываем к подвалу немного данных
+	frame.append(16, '\x00');
+	// Результат декомпрессии
+	std::string result = "Anyks";
+	// Выполняем декомпрессию подделанного кадра
+	this->_compressor->decompress(frame.data(), frame.size(), awh::compressor::method_t::SNAPPY, result);
+	// Проверяем что кадр отвергнут
+	ASSERT_TRUE(result.empty());
+}

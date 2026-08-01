@@ -44,15 +44,13 @@ namespace {
 	/**
 	 * @brief Структура справочных таблиц для календарных вычислений
 	 *
-	 * @details Структура содержит справочные таблицы, необходимые для выполнения различных календарных вычислений:
-	 *          количество дней в каждом месяце, а также сокращённые и полные названия дней
-	 *          недели и месяцев. День недели таблиц не требует - он определяется количеством
-	 *          суток, прошедших с начала эпохи.
+	 * @details Структура содержит сокращённые и полные названия дней недели и месяцев.
+	 *          День недели таблиц не требует - он определяется количеством суток,
+	 *          прошедших с начала эпохи, а длительность месяцев задана накопительными
+	 *          суммами daysBeforeMonths, которым построения во время выполнения не нужно.
 	 *
 	 */
 	struct Params {
-		// Количество дней в каждом месяце для невисокосного года
-		vector <uint8_t> daysInMonths;
 		// Сокращённые и полные названия дней недели (Mon/Monday ...)
 		vector <std::pair <string, string>> nameDays;
 		// Сокращённые и полные названия месяцев (Jan/January ...)
@@ -62,10 +60,6 @@ namespace {
 		 *
 		 */
 		explicit Params() noexcept :
-		 daysInMonths({
-			31,28,31,30,31,30,
-			31,31,30,31,30,31
-		 }),
 		 nameDays({
 			{"Mon", "Monday"},
 			{"Tue", "Tuesday"},
@@ -1484,6 +1478,93 @@ namespace {
 		return (::round(value * 100.) / 100.);
 	}
 	/**
+	 * @brief Накопительные суммы суток, прошедших до начала каждого месяца
+	 *
+	 * @details Суммы даны для невисокосного года: високосность правится одной
+	 *          поправкой на месяцы, следующие за февралём. Тринадцатый член
+	 *          отвечает концу декабря и равен длительности года
+	 *
+	 */
+	static constexpr uint16_t daysBeforeMonths[13] = {
+		0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365
+	};
+	/**
+	 * @brief Функция получения количества суток в году
+	 *
+	 * @param leap признак високосного года
+	 * @return     количество суток в году
+	 *
+	 */
+	inline uint16_t daysOfYear(const bool leap) noexcept {
+		// Выводим количество суток в году с поправкой на високосность
+		return static_cast <uint16_t> (leap ? 366 : 365);
+	}
+	/**
+	 * @brief Функция получения количества суток, прошедших до начала месяца
+	 *
+	 * @details Счёт ведётся накопительными суммами, а не перебором месяцев: суммы
+	 *          от года не зависят, високосность правит их одной поправкой, и месяц
+	 *          определяется без обхода таблицы
+	 *
+	 * @param month номер месяца, отсчитываемый от единицы
+	 * @param leap  признак високосного года
+	 * @return      количество суток, прошедших с начала года до начала месяца
+	 *
+	 */
+	inline uint16_t daysBeforeMonth(const uint8_t month, const bool leap) noexcept {
+		// Месяц ранее января суток за собой не оставляет
+		if(month <= 1)
+			// Выводим пустое количество суток
+			return 0;
+		// Месяц позднее декабря отвечает концу года
+		if(month > 12)
+			// Выводим количество суток в году
+			return ::daysOfYear(leap);
+		// Выводим накопленную сумму с поправкой на високосность февраля
+		return static_cast <uint16_t> (daysBeforeMonths[month - 1] + ((leap && (month > 2)) ? 1 : 0));
+	}
+	/**
+	 * @brief Функция получения количества суток в месяце
+	 *
+	 * @param month номер месяца, отсчитываемый от единицы
+	 * @param leap  признак високосного года
+	 * @return      количество суток в указанном месяце
+	 *
+	 */
+	inline uint8_t daysOfMonth(const uint8_t month, const bool leap) noexcept {
+		// Месяц за пределами года суток за собой не имеет
+		if((month < 1) || (month > 12))
+			// Выводим пустое количество суток
+			return 0;
+		// Выводим разность накопленных сумм соседних месяцев
+		return static_cast <uint8_t> (::daysBeforeMonth(month + 1, leap) - ::daysBeforeMonth(month, leap));
+	}
+	/**
+	 * @brief Функция определения месяца, на который приходится день года
+	 *
+	 * @details Номер дня, вышедший за пределы года, относится к декабрю: раскладка
+	 *          обязана вывести месяц календаря при любом доводе, а пригодность самой
+	 *          записи судит отдельная проверка validate
+	 *
+	 * @param days номер дня в году, отсчитываемый от нуля
+	 * @param leap признак високосного года
+	 * @return     номер месяца, отсчитываемый от единицы
+	 *
+	 */
+	inline uint8_t monthOfYear(const uint16_t days, const bool leap) noexcept {
+		/**
+		 * Отыскиваем месяц, за начало которого номер дня не выходит
+		 */
+		for(uint8_t month = 1; month < 12; month++){
+			// Если номер дня не достаёт до начала следующего месяца
+			if(days < ::daysBeforeMonth(month + 1, leap))
+				// Выводим номер найденного месяца
+				return month;
+		}
+		// Выводим декабрь, которым год заканчивается
+		return 12;
+	}
+	/**
 	 * @brief Функция раскладки номера дня в году на месяц и число месяца
 	 *
 	 * @details Номер дня в году задаётся переменной формата %j, но сборка штампа
@@ -1498,29 +1579,14 @@ namespace {
 	 *
 	 */
 	inline void dateFromDays(const uint16_t days, const bool leap, uint8_t & month, uint8_t & date) noexcept {
-		// Остаток дней, ещё не отнесённых ни к одному месяцу
-		uint16_t remain = days;
-		/**
-		 * Вычитаем длительность месяцев, пока остаток не уместится в очередном
-		 */
-		for(uint8_t i = 0; i < static_cast <uint8_t> (params.daysInMonths.size()); i++){
-			// Получаем количество суток в очередном месяце с учётом високосности года
-			const uint16_t count = (params.daysInMonths[i] + (((i == 1) && leap) ? 1 : 0));
-			// Если остаток умещается в очередном месяце
-			if(remain < count){
-				// Устанавливаем номер найденного месяца
-				month = static_cast <uint8_t> (i + 1);
-				// Устанавливаем число месяца, отсчитываемое от единицы
-				date = static_cast <uint8_t> (remain + 1);
-				// Раскладка выполнена
-				return;
-			}
-			// Переходим к следующему месяцу
-			remain -= count;
-		}
-		// Номер дня вышел за пределы года - оставляем последний день декабря
-		month = 12;
-		date = 31;
+		// Определяем месяц, на который приходится номер дня
+		month = ::monthOfYear(days, leap);
+		// Если номер дня вышел за пределы года - оставляем последний день декабря
+		if(days >= ::daysOfYear(leap))
+			// Устанавливаем последнее число декабря
+			date = 31;
+		// Устанавливаем число месяца, отсчитываемое от единицы
+		else date = static_cast <uint8_t> ((days - ::daysBeforeMonth(month, leap)) + 1);
 	}
 	/**
 	 * @brief Функция проверки допустимости составляющих даты
@@ -1576,7 +1642,7 @@ namespace {
 			// Составляющие даты недопустимы
 			return false;
 		// Получаем количество суток в указанном месяце
-		const uint8_t days = (params.daysInMonths[month - 1] + (((month == 2) && leap) ? 1 : 0));
+		const uint8_t days = ::daysOfMonth(month, leap);
 		// Число месяца лежит в пределах от первого до последнего дня месяца
 		if((date < 1) || (date > days))
 			// Составляющие даты недопустимы
@@ -2144,7 +2210,7 @@ void awh::Chrono::clampDay(dt_t & dt) const noexcept {
 	// Если месяц объекта задан
 	if((dt.month > 0) && (dt.month < 13)){
 		// Получаем количество дней в месяце с учётом високосного года
-		const uint8_t days = static_cast <uint8_t> (static_cast <uint16_t> (params.daysInMonths[dt.month - 1]) + (((dt.month == 2) && this->leap(dt.year)) ? 1 : 0));
+		const uint8_t days = ::daysOfMonth(dt.month, this->leap(dt.year));
 		// Если число месяца в нём отсутствует
 		if(dt.date > days)
 			// Ограничиваем число последним днём месяца
@@ -2365,19 +2431,11 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		/**
 		 * Выполняем подсчёт количества дней
 		 *
-		 * Нулевой месяц переполнения не даёт: оба довода сравнения повышаются до int,
-		 * и (dt.month - 1) при нулевом месяце равно -1, а не 255, отчего перебор не
-		 * выполняется ни разу и дата оказывается началом года. Пригодность такой
-		 * записи отвергает отдельная проверка validate
+		 * Нулевой месяц суток за собой не оставляет, а месяц за пределами года
+		 * отвечает его концу: раскладка обязана вывести штамп времени при любой
+		 * записи, а пригодность самой записи отвергает отдельная проверка validate
 		 */
-		for(uint8_t i = 0; (i < params.daysInMonths.size()) && (i < (dt.month - 1)); i++){
-			// Если месяц февраль и год високосный
-			if((i == 1) && leap)
-				// Увеличиваем результат на один день
-				result += static_cast <uint64_t> (86400000);
-			// Увеличиваем смещение времени до указанного месяца
-			result += (static_cast <uint64_t> (params.daysInMonths[i]) * static_cast <uint64_t> (86400000));
-		}
+		result += (static_cast <uint64_t> (::daysBeforeMonth(dt.month, leap)) * static_cast <uint64_t> (86400000));
 		// Получаем число месяца с компенсацией нулевого значения
 		const uint8_t date = (dt.date == 0 ? 1 : dt.date);
 		// Увеличиваем на количество прошедших дней
@@ -2468,25 +2526,14 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 			// Начало месяца и начало суток
 			uint64_t beginMonth = 0, beginDay = 0;
 			// Определяем сколько дней прошло с начала года
-			dt.days = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+			dt.days = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 			{
-				// Подсчитываем количество дней в предыдущих месяцах
-				uint16_t count = 0, days = 0;
-				/**
-				 * Выполняем перебор всех дней месяца
-				 */
-				for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-					// Увеличиваем номер месяца
-					dt.month = (i + 1);
-					// Получаем текущее количество дней с компенсацией високосного года
-					days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && dt.leap ? 1 : 0));
-					// Если мы не дошли до предела
-					if(dt.days >= (days + count))
-						// Увеличиваем количество прошедших дней
-						count += days;
-					// Выходим из цикла
-					else break;
-				}
+				// Определяем месяц, на который приходится прошедший день года
+				dt.month = ::monthOfYear(dt.days, dt.leap);
+				// Подсчитываем количество суток, прошедших в предыдущих месяцах
+				const uint16_t count = ::daysBeforeMonth(dt.month, dt.leap);
+				// Получаем количество суток в найденном месяце
+				const uint16_t days = ::daysOfMonth(dt.month, dt.leap);
 				// Устанавливаем текущее значение даты
 				dt.date = static_cast <uint8_t> ((dt.days - count) + 1);
 				// Получаем начало месяца указанной даты
@@ -2501,11 +2548,11 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 			// Получаем количество миллисекунд
 			dt.milliseconds = static_cast <uint32_t> (date % 1000);
 			// Получаем количество часов
-			dt.hour = static_cast <uint8_t> (::floor((date - beginDay) / 3600000.L));
+			dt.hour = static_cast <uint8_t> ((date - beginDay) / static_cast <uint64_t> (3600000));
 			// Получаем количество минут
-			dt.minutes = static_cast <uint8_t> (::floor(((date - beginDay) % 3600000) / 60000.));
+			dt.minutes = static_cast <uint8_t> (((date - beginDay) % 3600000) / 60000);
 			// Получаем количество секунд
-			dt.seconds = static_cast <uint8_t> (::floor((((date - beginDay) % 3600000) % 60000) / 1000.));
+			dt.seconds = static_cast <uint8_t> ((((date - beginDay) % 3600000) % 60000) / 1000);
 			// Выполняем согласование выводных признаков объекта даты
 			this->syncFlags(dt);
 		/**
@@ -3269,16 +3316,8 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
 					const uint16_t year = this->year(date);
 					// Получаем штамп времени начала года
 					result = this->beginOfYear(year);
-					/**
-					 * Выполняем перебор всех месяцев в году
-					 */
-					for(size_t i = 0; i < params.daysInMonths.size(); i++)
-						// Увеличиваем количество дней в месяце
-						result += (static_cast <uint64_t> (params.daysInMonths[i]) * static_cast <uint64_t> (86400000));
-					// Если год високосный
-					if(this->leap(year))
-						// Добавляем ещё один день
-						result += 86400000;
+					// Увеличиваем результат на количество суток в году
+					result += (static_cast <uint64_t> (::daysOfYear(this->leap(year))) * static_cast <uint64_t> (86400000));
 				} break;
 				// Если нам нужно получить конец месяца
 				case static_cast <uint8_t> (type_t::MONTH): {
@@ -3287,25 +3326,14 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
 					// Получаем штамп времени начала года
 					const uint64_t beginYear = this->beginOfYear(year);
 					// Определяем сколько дней прошло с начала года
-					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+					const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 					{
-						// Подсчитываем количество дней в предыдущих месяцах
-						uint16_t count = 0, days = 0;
 						// Устанавливаем флаг високосного года
 						const bool leap = this->leap(year);
-						/**
-						 * Выполняем перебор всех дней месяца
-						 */
-						for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-							// Получаем текущее количество дней с компенсацией високосного года
-							days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-							// Если мы не дошли до предела
-							if(lastDays >= (days + count))
-								// Увеличиваем количество прошедших дней
-								count += days;
-							// Выходим из цикла
-							else break;
-						}
+						// Подсчитываем количество суток, прошедших в предыдущих месяцах
+						const uint16_t count = ::daysBeforeMonth(::monthOfYear(lastDays, leap), leap);
+						// Получаем количество суток в найденном месяце
+						const uint16_t days = ::daysOfMonth(::monthOfYear(lastDays, leap), leap);
 						// Получаем начало месяца указанной даты
 						result = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 						// Увеличиваем количество дней до конца месяца
@@ -3314,10 +3342,21 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
 				} break;
 				// Если нам нужно получить конец недели
 				case static_cast <uint8_t> (type_t::WEEK): {
-					// Получаем количество миллисекунд с начала текущей недели
-					result = this->begin(date, type);
-					// Увеличиваем количество дней до конца недели
-					result += (static_cast <uint64_t> (7) * static_cast <uint64_t> (86400000));
+					/**
+					 * Конец недели отсчитывается от её же дня недели, а не от начала: неделя,
+					 * на которую приходится начало эпохи, начинается 29 декабря 1969 года и
+					 * календарём не представима, отчего её начало приводится к началу эпохи.
+					 * Прибавление семи суток к приведённому началу выносило конец первой
+					 * недели на восьмое января, и трое суток - с пятого по седьмое - попадали
+					 * разом в неё и в следующую неделю, чего полуинтервал [begin, end)
+					 * допускать не должен
+					 */
+					// Получаем начало суток указанной даты
+					const uint64_t beginDay = this->begin(date, type_t::DAY);
+					// Получаем количество суток, оставшихся до конца недели
+					const uint64_t left = static_cast <uint64_t> (8 - ::dayOfWeek(beginDay));
+					// Получаем конец недели указанной даты
+					result = ::clampDate(beginDay + (left * static_cast <uint64_t> (86400000)));
 				} break;
 				// Если нам нужно получить конец дня
 				case static_cast <uint8_t> (type_t::DAY):
@@ -3435,77 +3474,35 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
 					// Получаем штамп времени начала года
 					const uint64_t beginYear = this->beginOfYear(year);
 					// Определяем сколько дней прошло с начала года
-					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+					const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 					{
-						// Подсчитываем количество дней в предыдущих месяцах
-						uint16_t count = 0, days = 0;
 						// Устанавливаем флаг високосного года
 						const bool leap = this->leap(year);
-						/**
-						 * Выполняем перебор всех дней месяца
-						 */
-						for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-							// Получаем текущее количество дней с компенсацией високосного года
-							days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-							// Если мы не дошли до предела
-							if(lastDays >= (days + count))
-								// Увеличиваем количество прошедших дней
-								count += days;
-							// Выходим из цикла
-							else break;
-						}
+						// Подсчитываем количество суток, прошедших в предыдущих месяцах
+						const uint16_t count = ::daysBeforeMonth(::monthOfYear(lastDays, leap), leap);
 						// Получаем начало месяца указанной даты
 						result = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 					}
 				} break;
 				// Если нам нужно получить начало недели
 				case static_cast <uint8_t> (type_t::WEEK): {
-					// Получаем значение текущего года
-					const uint16_t year = this->year(date);
-					// Получаем штамп времени начала года
-					const uint64_t beginYear = this->beginOfYear(year);
-					// Определяем сколько дней прошло с начала года
-					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
-					{
-						// Номер текущего месяца
-						uint8_t month = 0;
-						// Подсчитываем количество дней в предыдущих месяцах
-						uint16_t count = 0, days = 0;
-						// Устанавливаем флаг високосного года
-						const bool leap = this->leap(year);
-						/**
-						 * Выполняем перебор всех дней месяца
-						 */
-						for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-							// Увеличиваем номер месяца
-							month = (i + 1);
-							// Получаем текущее количество дней с компенсацией високосного года
-							days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-							// Если мы не дошли до предела
-							if(lastDays >= (days + count))
-								// Увеличиваем количество прошедших дней
-								count += days;
-							// Выходим из цикла
-							else break;
-						}
-						// Устанавливаем текущее значение даты
-						const uint8_t date = static_cast <uint8_t> ((lastDays - count) + 1);
-						// Получаем начало месяца указанной даты
-						const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
-						// Получаем начало суток указанной даты
-						const uint64_t beginDay = (beginMonth + (static_cast <uint64_t> (date - 1) * static_cast <uint64_t> (86400000)));
-						// Получаем количество суток, прошедших с понедельника
-						const uint64_t day = static_cast <uint64_t> (::dayOfWeek(beginDay) - 1);
-						// Получаем количество миллисекунд, прошедших с начала недели
-						const uint64_t passed = (day * static_cast <uint64_t> (86400000));
-						/**
-						 * Неделя, на которую приходится начало эпохи, начинается 29 декабря
-						 * 1969 года и календарём не представима: начало такой недели
-						 * приводится к началу эпохи. Прежде вычитание уходило за ноль, и
-						 * беззнаковый оборот давал начало недели где-то в 584-миллионном году
-						 */
-						result = ((passed > beginDay) ? 0 : (beginDay - passed));
-					}
+					/**
+					 * Начало недели отсчитывается от начала суток, а не восстановлением
+					 * месяца и числа месяца обходом года: календарные составляющие для
+					 * этого не нужны, а день недели определяется количеством суток,
+					 * прошедших с начала эпохи
+					 */
+					// Получаем начало суток указанной даты
+					const uint64_t beginDay = this->begin(date, type_t::DAY);
+					// Получаем количество миллисекунд, прошедших с понедельника
+					const uint64_t passed = (static_cast <uint64_t> (::dayOfWeek(beginDay) - 1) * static_cast <uint64_t> (86400000));
+					/**
+					 * Неделя, на которую приходится начало эпохи, начинается 29 декабря
+					 * 1969 года и календарём не представима: начало такой недели
+					 * приводится к началу эпохи. Прежде вычитание уходило за ноль, и
+					 * беззнаковый оборот давал начало недели где-то в 584-миллионном году
+					 */
+					result = ((passed > beginDay) ? 0 : (beginDay - passed));
 				} break;
 				// Если нам нужно получить начало дня
 				case static_cast <uint8_t> (type_t::DAY):
@@ -3624,29 +3621,12 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Определяем месяц, на который приходится прошедший день года
+										const uint8_t month = ::monthOfYear(lastDays, leap);
 										// Формируем полученный результат
 										result = static_cast <uint64_t> (12 - month);
 									}
@@ -3657,23 +3637,18 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									const uint16_t year = this->year(date);
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
-									// Количество недель в году
-									uint8_t weeks = 0;
-									// Если год високосный
-									if(this->leap(year))
-										// Получаем количество недель в году
-										weeks = static_cast <uint8_t> (::round(31622400000 / 604800000.L));
-									// Если год не високосный
-									else weeks = static_cast <uint8_t> (::round(31536000000 / 604800000.L));
-									// Получаем количество недель прошедших с начала года
-									const uint64_t passed = static_cast <uint64_t> (::round((date - beginYear) / 604800000.L));
 									/**
-									 * Вычитание насыщается нулём: количество прошедших недель считается
-									 * округлением и вплотную к концу периода в него упирается, а разность
-									 * велась в разрядности числа недель и при обгоне обернулась бы
+									 * Считаются целые недели, до конца года оставшиеся: счёт вёлся
+									 * округлением к ближайшей, тогда как сутки, час, минута и секунда
+									 * считаются целыми, и одна и та же дата давала по разным единицам
+									 * ответы, между собой не сходящиеся
 									 */
-									// Получаем количество недель оставшихся в году
-									result = ((passed >= weeks) ? 0 : (static_cast <uint64_t> (weeks) - passed));
+									// Получаем длину года в миллисекундах
+									const uint64_t length = static_cast <uint64_t> (this->leap(year) ? 31622400000 : 31536000000);
+									// Получаем количество прошедших миллисекунд в году
+									const uint64_t passed = static_cast <uint64_t> (date - beginYear);
+									// Получаем количество недель оставшихся в году, насыщая разность нулём
+									result = ((passed >= length) ? 0 : ((length - passed) / static_cast <uint64_t> (604800000)));
 								} break;
 								// Если нам нужно получить количество оставшихся дней
 								case static_cast <uint8_t> (type_t::DAY): {
@@ -3681,14 +3656,19 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									const uint16_t year = this->year(date);
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
-									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
-									// Если год високосный
-									if(this->leap(year))
-										// Определяем сколько осталось дней в году
-										result = static_cast <uint64_t> (366 - (lastDays + 1));
-									// Если год не високосный
-									else result = static_cast <uint64_t> (365 - (lastDays + 1));
+									/**
+									 * Считаются целые сутки, до конца года оставшиеся: неполные в счёт не
+									 * идут, как и всюду в методе, и потому остаток отсчитывается от конца
+									 * периода. Вычитание единицы из числа прошедших суток отбрасывало ещё
+									 * одни на самой их границе, и сутки расходились с часом, минутой и
+									 * секундой, которые считают от конца
+									 */
+									// Получаем длину года в миллисекундах
+									const uint64_t length = static_cast <uint64_t> (this->leap(year) ? 31622400000 : 31536000000);
+									// Получаем количество прошедших миллисекунд в году
+									const uint64_t passed = static_cast <uint64_t> (date - beginYear);
+									// Определяем сколько осталось целых суток в году, насыщая разность нулём
+									result = ((passed >= length) ? 0 : ((length - passed) / static_cast <uint64_t> (86400000)));
 								} break;
 								// Если нам нужно получить количество оставшихся часов
 								case static_cast <uint8_t> (type_t::HOUR): {
@@ -3698,12 +3678,15 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество часов прошедших с начала года
 									const uint64_t hours = static_cast <uint64_t> (::ceil((date - beginYear) / 3600000.L));
-									// Если год високосный
-									if(this->leap(year))
-										// Определяем количество оставшихся часов
-										result = (static_cast <uint64_t> (31622400000 / 3600000) - hours);
-									// Если год не високосный
-									else result = (static_cast <uint64_t> (31536000000 / 3600000) - hours);
+									/**
+									 * Вычитание насыщается нулём: количество прошедших единиц считается
+									 * округлением вверх и вплотную к концу года в его длину упирается, а
+									 * разность при обгоне обернулась бы
+									 */
+									// Получаем длину года в запрошенных единицах
+									const uint64_t length = static_cast <uint64_t> ((this->leap(year) ? 31622400000 : 31536000000) / 3600000);
+									// Определяем количество оставшихся часов
+									result = ((hours >= length) ? 0 : (length - hours));
 								} break;
 								// Если нам нужно получить количество оставшихся минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
@@ -3713,12 +3696,15 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество минут прошедших с начала года
 									const uint64_t minutes = static_cast <uint64_t> (::ceil((date - beginYear) / 60000.));
-									// Если год високосный
-									if(this->leap(year))
-										// Определяем количество оставшихся минут
-										result = (static_cast <uint64_t> (31622400000 / 60000) - minutes);
-									// Если год не високосный
-									else result = (static_cast <uint64_t> (31536000000 / 60000) - minutes);
+									/**
+									 * Вычитание насыщается нулём: количество прошедших единиц считается
+									 * округлением вверх и вплотную к концу года в его длину упирается, а
+									 * разность при обгоне обернулась бы
+									 */
+									// Получаем длину года в запрошенных единицах
+									const uint64_t length = static_cast <uint64_t> ((this->leap(year) ? 31622400000 : 31536000000) / 60000);
+									// Определяем количество оставшихся минут
+									result = ((minutes >= length) ? 0 : (length - minutes));
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
@@ -3728,12 +3714,15 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество секунд прошедших с начала года
 									const uint64_t seconds = static_cast <uint64_t> (::ceil((date - beginYear) / 1000.));
-									// Если год високосный
-									if(this->leap(year))
-										// Определяем количество оставшихся секунд
-										result = (static_cast <uint64_t> (31622400000 / 1000) - seconds);
-									// Если год не високосный
-									else result = (static_cast <uint64_t> (31536000000 / 1000) - seconds);
+									/**
+									 * Вычитание насыщается нулём: количество прошедших единиц считается
+									 * округлением вверх и вплотную к концу года в его длину упирается, а
+									 * разность при обгоне обернулась бы
+									 */
+									// Получаем длину года в запрошенных единицах
+									const uint64_t length = static_cast <uint64_t> ((this->leap(year) ? 31622400000 : 31536000000) / 1000);
+									// Определяем количество оставшихся секунд
+									result = ((seconds >= length) ? 0 : (length - seconds));
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -3743,12 +3732,16 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество миллисекунд прошедших с начала года
 									const uint64_t milliseconds = static_cast <uint64_t> (date - beginYear);
-									// Если год високосный
-									if(this->leap(year))
-										// Определяем количество оставшихся миллисекунд
-										result = (static_cast <uint64_t> (31622400000) - (milliseconds + 1));
-									// Если год не високосный
-									else result = (static_cast <uint64_t> (31536000000) - (milliseconds + 1));
+									/**
+									 * Остаток считается разностью длины периода и прошедшей его части, без
+									 * поправки на единицу: отрезок задан полуинтервалом [begin, end), и сумма
+									 * прошедшего с оставшимся равна его длине. Год единицу вычитал, и та же
+									 * операция над сутками, неделей и месяцем давала иной ответ, чем над ним
+									 */
+									// Получаем длину года в миллисекундах
+									const uint64_t length = static_cast <uint64_t> (this->leap(year) ? 31622400000 : 31536000000);
+									// Определяем количество оставшихся миллисекунд, насыщая разность нулём
+									result = ((milliseconds >= length) ? 0 : (length - milliseconds));
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
@@ -3791,48 +3784,22 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Определяем месяц, на который приходится прошедший день года
+										const uint8_t month = ::monthOfYear(lastDays, leap);
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
-										// Если год високосный и месяц февраль
-										if(leap && (month == 2)){
-											// Получаем количество недель в месяце
-											const uint8_t weeks = static_cast <uint8_t> (::ceil((params.daysInMonths[month - 1] + 1) / 7.));
-											// Получаем количество недель прошедших с начала месяца
-											const uint64_t passed = static_cast <uint64_t> (::round((date - beginMonth) / 604800000.L));
-											// Получаем количество оставшихся недель в месяце, насыщая разность нулём
-											result = ((passed >= weeks) ? 0 : (static_cast <uint64_t> (weeks) - passed));
-										// Если год не високосный или месяц не февраль
-										} else {
-											// Получаем количество недель в месяце
-											const uint8_t weeks = static_cast <uint8_t> (::ceil(params.daysInMonths[month - 1] / 7.));
-											// Получаем количество недель прошедших с начала месяца
-											const uint64_t passed = static_cast <uint64_t> (::round((date - beginMonth) / 604800000.L));
-											// Получаем количество оставшихся недель в месяце, насыщая разность нулём
-											result = ((passed >= weeks) ? 0 : (static_cast <uint64_t> (weeks) - passed));
-										}
+										// Получаем длину месяца указанной даты в миллисекундах
+										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										// Получаем количество прошедших миллисекунд в месяце
+										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
+										// Получаем количество оставшихся целых недель в месяце, насыщая разность нулём
+										result = ((passed >= length) ? 0 : ((length - passed) / static_cast <uint64_t> (604800000)));
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся дней
@@ -3842,29 +3809,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Определяем месяц, на который приходится прошедший день года
+										const uint8_t month = ::monthOfYear(lastDays, leap);
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										/**
@@ -3873,12 +3825,12 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										 * первого числа оставшихся суток выходило на одни больше, чем
 										 * их есть, а после полудня - верно
 										 */
-										// Получаем количество суток в месяце указанной даты
-										const uint64_t total = static_cast <uint64_t> (params.daysInMonths[month - 1] + ((leap && (month == 2)) ? 1 : 0));
-										// Получаем количество прошедших целых суток в месяце
-										const uint64_t passed = static_cast <uint64_t> (::floor((date - beginMonth) / 86400000.L));
+										// Получаем длину месяца указанной даты в миллисекундах
+										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										// Получаем количество прошедших миллисекунд в месяце
+										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
 										// Получаем количество оставшихся целых суток в месяце
-										result = ((passed < (total - 1)) ? ((total - 1) - passed) : 0);
+										result = ((passed >= length) ? 0 : ((length - passed) / static_cast <uint64_t> (86400000)));
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся часов
@@ -3888,37 +3840,22 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Определяем месяц, на который приходится прошедший день года
+										const uint8_t month = ::monthOfYear(lastDays, leap);
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
-										// Если год високосный и месяц февраль
-										if(leap && (month == 2))
-											// Получаем количество оставшихся часов в месяце
-											result = static_cast <uint64_t> ((static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 3600000);
-										// Получаем количество оставшихся часов в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint64_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 3600000);
+										// Получаем длину месяца указанной даты в миллисекундах
+										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										// Получаем количество прошедших миллисекунд в месяце
+										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
+										// Получаем количество оставшихся часов в месяце, насыщая разность нулём
+										result = ((passed >= length) ? 0 : ((length - passed) / 3600000));
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся минут
@@ -3928,37 +3865,22 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Определяем месяц, на который приходится прошедший день года
+										const uint8_t month = ::monthOfYear(lastDays, leap);
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
-										// Если год високосный и месяц февраль
-										if(leap && (month == 2))
-											// Получаем количество оставшихся минут в месяце
-											result = static_cast <uint64_t> ((static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 60000);
-										// Получаем количество оставшихся минут в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint64_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 60000);
+										// Получаем длину месяца указанной даты в миллисекундах
+										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										// Получаем количество прошедших миллисекунд в месяце
+										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
+										// Получаем количество оставшихся минут в месяце, насыщая разность нулём
+										result = ((passed >= length) ? 0 : ((length - passed) / 60000));
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
@@ -3968,37 +3890,22 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Определяем месяц, на который приходится прошедший день года
+										const uint8_t month = ::monthOfYear(lastDays, leap);
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
-										// Если год високосный и месяц февраль
-										if(leap && (month == 2))
-											// Получаем количество оставшихся секунд в месяце
-											result = static_cast <uint64_t> ((static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 1000);
-										// Получаем количество оставшихся секунд в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint64_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 1000);
+										// Получаем длину месяца указанной даты в миллисекундах
+										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										// Получаем количество прошедших миллисекунд в месяце
+										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
+										// Получаем количество оставшихся секунд в месяце, насыщая разность нулём
+										result = ((passed >= length) ? 0 : ((length - passed) / 1000));
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
@@ -4008,37 +3915,22 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Определяем месяц, на который приходится прошедший день года
+										const uint8_t month = ::monthOfYear(lastDays, leap);
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
-										// Если год високосный и месяц февраль
-										if(leap && (month == 2))
-											// Получаем количество оставшихся миллисекунд в месяце
-											result = static_cast <uint64_t> (static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth));
-										// Получаем количество оставшихся миллисекунд в месяце
-										else result = static_cast <uint64_t> (static_cast <uint64_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth));
+										// Получаем длину месяца указанной даты в миллисекундах
+										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										// Получаем количество прошедших миллисекунд в месяце
+										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
+										// Получаем количество оставшихся миллисекунд в месяце, насыщая разность нулём
+										result = ((passed >= length) ? 0 : (length - passed));
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
@@ -4080,35 +3972,35 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся дней
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)))) / 86400000.L);
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - (date - begin)) / 86400000.L);
 								} break;
 								// Если нам нужно получить количество оставшихся часов
 								case static_cast <uint8_t> (type_t::HOUR): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся часов
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)))) / 3600000.L);
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - (date - begin)) / 3600000.L);
 								} break;
 								// Если нам нужно получить количество оставшихся минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся минут
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)))) / 60000.);
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - (date - begin)) / 60000.);
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся секунд
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)))) / 1000.);
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - (date - begin)) / 1000.);
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся миллисекунд
-									result = static_cast <uint64_t> (static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin))));
+									result = static_cast <uint64_t> (static_cast <uint64_t> (604800000) - (date - begin));
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
@@ -4137,28 +4029,28 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся часов
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)))) / 3600000.L);
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - (date - begin)) / 3600000.L);
 								} break;
 								// Если нам нужно получить количество оставшихся минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся минут
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)))) / 60000.);
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - (date - begin)) / 60000.);
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся секунд
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)))) / 1000.);
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - (date - begin)) / 1000.);
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся миллисекунд
-									result = static_cast <uint64_t> (static_cast <uint64_t> (86400000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin))));
+									result = static_cast <uint64_t> (static_cast <uint64_t> (86400000) - (date - begin));
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
@@ -4187,21 +4079,21 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся минут
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (3600000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)))) / 60000.);
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (3600000) - (date - begin)) / 60000.);
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся секунд
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (3600000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)))) / 1000.);
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (3600000) - (date - begin)) / 1000.);
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся миллисекунд
-									result = static_cast <uint64_t> (static_cast <uint64_t> (3600000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin))));
+									result = static_cast <uint64_t> (static_cast <uint64_t> (3600000) - (date - begin));
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
@@ -4230,14 +4122,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся секунд
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (60000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)))) / 1000.);
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (60000) - (date - begin)) / 1000.);
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся миллисекунд
-									result = static_cast <uint64_t> (static_cast <uint64_t> (60000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin))));
+									result = static_cast <uint64_t> (static_cast <uint64_t> (60000) - (date - begin));
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
@@ -4266,7 +4158,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество оставшихся миллисекунд
-									result = static_cast <uint64_t> (static_cast <uint64_t> (1000) - static_cast <uint64_t> (::floor(static_cast <long double> (date - begin))));
+									result = static_cast <uint64_t> (static_cast <uint64_t> (1000) - (date - begin));
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
@@ -4305,29 +4197,12 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Определяем месяц, на который приходится прошедший день года
+										const uint8_t month = ::monthOfYear(lastDays, leap);
 										// Формируем полученный результат
 										result = static_cast <uint64_t> (month - 1);
 									}
@@ -4339,7 +4214,12 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество недель прошедших в году
-									result = static_cast <uint64_t> (::round((date - beginYear) / 604800000.L));
+									/**
+									 * Считаются целые недели, с начала года прошедшие: счёт вёлся
+									 * округлением к ближайшей, и на четвёртые сутки года выходило, что
+									 * неделя уже прошла, тогда как прочие единицы считаются целыми
+									 */
+									result = (static_cast <uint64_t> (date - beginYear) / static_cast <uint64_t> (604800000));
 								} break;
 								// Если нам нужно получить количество прошедших дней
 								case static_cast <uint8_t> (type_t::DAY): {
@@ -4348,7 +4228,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									result = static_cast <uint64_t> (::floor((date - beginYear) / 86400000.L));
+									result = ((date - beginYear) / static_cast <uint64_t> (86400000));
 								} break;
 								// Если нам нужно получить количество прошедших часов
 								case static_cast <uint8_t> (type_t::HOUR): {
@@ -4357,7 +4237,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество часов прошедших с начала года
-									result = static_cast <uint64_t> (::floor((date - beginYear) / 3600000.L));
+									result = ((date - beginYear) / static_cast <uint64_t> (3600000));
 								} break;
 								// Если нам нужно получить количество прошедших минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
@@ -4366,7 +4246,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество минут прошедших с начала года
-									result = static_cast <uint64_t> (::floor((date - beginYear) / 60000.));
+									result = ((date - beginYear) / static_cast <uint64_t> (60000));
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
@@ -4375,7 +4255,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество секунд прошедших с начала года
-									result = static_cast <uint64_t> (::floor((date - beginYear) / 1000.));
+									result = ((date - beginYear) / static_cast <uint64_t> (1000));
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -4427,33 +4307,17 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(::monthOfYear(lastDays, leap), leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших недель в месяце
-										result = static_cast <uint64_t> (::round((date - beginMonth) / 604800000.L));
+										// Считаются целые недели, с начала месяца прошедшие
+										result = (static_cast <uint64_t> (date - beginMonth) / static_cast <uint64_t> (604800000));
 									}
 								} break;
 								// Если нам нужно получить количество прошедших дней
@@ -4463,29 +4327,12 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(::monthOfYear(lastDays, leap), leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										/**
@@ -4495,7 +4342,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										 * отрицательного вещественного к беззнаковому - неопределённое
 										 * поведение
 										 */
-										result = static_cast <uint64_t> (::floor((date - beginMonth) / 86400000.L));
+										result = ((date - beginMonth) / static_cast <uint64_t> (86400000));
 									}
 								} break;
 								// Если нам нужно получить количество прошедших часов
@@ -4505,29 +4352,12 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(::monthOfYear(lastDays, leap), leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших часов в месяце
@@ -4541,29 +4371,12 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(::monthOfYear(lastDays, leap), leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших минут в месяце
@@ -4577,29 +4390,12 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(::monthOfYear(lastDays, leap), leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших секунд в месяце
@@ -4613,29 +4409,12 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
+									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 									{
-										// Номер текущего месяца
-										uint8_t month = 0;
-										// Подсчитываем количество дней в предыдущих месяцах
-										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										/**
-										 * Выполняем перебор всех дней месяца
-										 */
-										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-											// Увеличиваем номер месяца
-											month = (i + 1);
-											// Получаем текущее количество дней с компенсацией високосного года
-											days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-											// Если мы не дошли до предела
-											if(lastDays >= (days + count))
-												// Увеличиваем количество прошедших дней
-												count += days;
-											// Выходим из цикла
-											else break;
-										}
+										// Подсчитываем количество суток, прошедших в предыдущих месяцах
+										const uint16_t count = ::daysBeforeMonth(::monthOfYear(lastDays, leap), leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших миллисекунд в месяце
@@ -4681,35 +4460,35 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших дней
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 86400000.L);
+									result = ((date - begin) / static_cast <uint64_t> (86400000));
 								} break;
 								// Если нам нужно получить количество прошедших часов
 								case static_cast <uint8_t> (type_t::HOUR): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших часов
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 3600000.L);
+									result = ((date - begin) / static_cast <uint64_t> (3600000));
 								} break;
 								// Если нам нужно получить количество прошедших минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 60000.);
+									result = ((date - begin) / static_cast <uint64_t> (60000));
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 1000.);
+									result = ((date - begin) / static_cast <uint64_t> (1000));
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших миллисекунд
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)));
+									result = (date - begin);
 								} break;
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
@@ -4738,28 +4517,28 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших часов
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 3600000.L);
+									result = ((date - begin) / static_cast <uint64_t> (3600000));
 								} break;
 								// Если нам нужно получить количество прошедших минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 60000.);
+									result = ((date - begin) / static_cast <uint64_t> (60000));
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 1000.);
+									result = ((date - begin) / static_cast <uint64_t> (1000));
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших миллисекунд
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)));
+									result = (date - begin);
 								} break;
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
@@ -4788,21 +4567,21 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 60000.);
+									result = ((date - begin) / static_cast <uint64_t> (60000));
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 1000.);
+									result = ((date - begin) / static_cast <uint64_t> (1000));
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших миллисекунд
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)));
+									result = (date - begin);
 								} break;
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
@@ -4831,14 +4610,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 1000.);
+									result = ((date - begin) / static_cast <uint64_t> (1000));
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших миллисекунд
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)));
+									result = (date - begin);
 								} break;
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
@@ -4867,7 +4646,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем начало текущего периода
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших миллисекунд
-									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)));
+									result = (date - begin);
 								} break;
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
@@ -4905,6 +4684,54 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
+		}
+	}
+	/**
+	 * Остаток периода приводится к его же концу: конец последнего периода календаря
+	 * насыщается пределом представимости и оттого короче полной своей длины, а остаток
+	 * считался по длине - на последней миллисекунде 9999 года выходило, что впереди
+	 * ещё миллисекунда, тогда как граница периода уже достигнута. Приведение заодно
+	 * закрывает и обратный оборот: разность, за длину периода вышедшая, даёт здесь нуль
+	 */
+	/**
+	 * Приведение делается лишь у самых пределов календаря: границы приводятся к ним
+	 * только в первой неделе эпохи, чьё начало приходится на 1969 год, и в последнем
+	 * периоде 9999 года, чей конец за предел представимости выходит. На прочих датах
+	 * остаток с границей и так сходится, а спрос конца периода на каждом вызове
+	 * обходился в шестую часть скорости актуализации
+	 */
+	// Если запрошен остаток периода у одного из пределов календаря
+	if((actual == actual_t::LEFT) &&
+	   ((date < 604800000) || (date > (MAX_TIMESTAMP - 31622400000)))){
+		// Длина одной единицы в миллисекундах
+		uint64_t length = 0;
+		/**
+		 * Определяем тип определяемых единиц измерений
+		 */
+		switch(static_cast <uint8_t> (value)){
+			// Если единицей измерения выбрана неделя
+			case static_cast <uint8_t> (type_t::WEEK): length = 604800000; break;
+			// Если единицей измерения выбраны сутки
+			case static_cast <uint8_t> (type_t::DAY): length = 86400000; break;
+			// Если единицей измерения выбран час
+			case static_cast <uint8_t> (type_t::HOUR): length = 3600000; break;
+			// Если единицей измерения выбрана минута
+			case static_cast <uint8_t> (type_t::MINUTES): length = 60000; break;
+			// Если единицей измерения выбрана секунда
+			case static_cast <uint8_t> (type_t::SECONDS): length = 1000; break;
+			// Если единицей измерения выбрана миллисекунда
+			case static_cast <uint8_t> (type_t::MILLISECONDS): length = 1; break;
+		}
+		// Если единица измерения имеет постоянную длину
+		if(length > 0){
+			// Получаем конец периода, в который попадает дата
+			const uint64_t end = this->end(date, type);
+			// Получаем количество целых единиц, оставшихся до конца периода
+			const uint64_t rest = ((end > date) ? ((end - date) / length) : 0);
+			// Приводим остаток периода к его концу
+			if(result > rest)
+				// Устанавливаем количество единиц, оставшихся до конца периода
+				result = rest;
 		}
 	}
 	// Возвращаем результат
@@ -4997,7 +4824,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							// Обновляем флаг високосного года
 							dt.leap = this->leap(dt.year);
 							// Получаем количество дней в месяце с учётом високосного года
-							const uint8_t days = static_cast <uint8_t> (static_cast <uint16_t> (params.daysInMonths[dt.month - 1]) + (((dt.month == 2) && dt.leap) ? 1 : 0));
+							const uint8_t days = ::daysOfMonth(dt.month, dt.leap);
 							// Если число месяца отсутствует в нём, ограничиваем его последним днём
 							if(dt.date > days)
 								// Ограничиваем число последним днём месяца
@@ -5031,7 +4858,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							// Обновляем флаг високосного года
 							dt.leap = this->leap(dt.year);
 							// Получаем количество дней в новом месяце с учётом високосного года
-							const uint8_t days = static_cast <uint8_t> (static_cast <uint16_t> (params.daysInMonths[dt.month - 1]) + (((dt.month == 2) && dt.leap) ? 1 : 0));
+							const uint8_t days = ::daysOfMonth(dt.month, dt.leap);
 							// Если число месяца отсутствует в новом месяце, ограничиваем его последним днём
 							if(dt.date > days)
 								// Ограничиваем число последним днём месяца
@@ -5190,7 +5017,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 								// Обновляем флаг високосного года
 								dt.leap = this->leap(dt.year);
 								// Получаем количество дней в месяце с учётом високосного года
-								const uint8_t days = static_cast <uint8_t> (static_cast <uint16_t> (params.daysInMonths[dt.month - 1]) + (((dt.month == 2) && dt.leap) ? 1 : 0));
+								const uint8_t days = ::daysOfMonth(dt.month, dt.leap);
 								// Если число месяца отсутствует в нём, ограничиваем его последним днём
 								if(dt.date > days)
 									// Ограничиваем число последним днём месяца
@@ -5223,7 +5050,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 								// Обновляем флаг високосного года
 								dt.leap = this->leap(dt.year);
 								// Получаем количество дней в новом месяце с учётом високосного года
-								const uint8_t days = static_cast <uint8_t> (static_cast <uint16_t> (params.daysInMonths[dt.month - 1]) + (((dt.month == 2) && dt.leap) ? 1 : 0));
+								const uint8_t days = ::daysOfMonth(dt.month, dt.leap);
 								// Если число месяца отсутствует в новом месяце, ограничиваем его последним днём
 								if(dt.date > days)
 									// Ограничиваем число последним днём месяца
@@ -5391,8 +5218,15 @@ uint64_t awh::Chrono::offset(const uint64_t value, const type_t type, const offs
 	 * месяц - запись 2025-01-31T01:00+0300 лежит тридцатым января в нулевой зоне, и
 	 * прибавление месяца к ней давало первое марта вместо двадцать восьмого февраля
 	 */
-	// Если запрошено местное хранилище с ненулевым смещением зоны
-	if((storage == storage_t::LOCAL) && (this->_dt.offset != 0)){
+	/**
+	 * В зону объекта переводится год и месяц, и только они: длина прочих единиц от даты
+	 * не зависит, перевод для них сокращается сам, а доли миллисекунды меняют самую
+	 * размерность счёта - смещение на микросекунду выдаёт число микросекунд, и вычитать
+	 * из него миллисекундную зону нельзя
+	 */
+	// Если запрошено местное хранилище со сводным смещением зоны для календарной единицы
+	if((storage == storage_t::LOCAL) && (this->_dt.offset != 0) &&
+	   ((type == type_t::YEAR) || (type == type_t::MONTH))){
 		// Получаем смещение временной зоны объекта в миллисекундах
 		const int64_t shift = (static_cast <int64_t> (this->_dt.offset) * 1000);
 		// Выводим смещённый момент, найденный в зоне объекта, обратно в нулевую зону
@@ -5752,7 +5586,7 @@ uint16_t awh::Chrono::year(const uint64_t stamp, uint64_t & begin) const noexcep
 		 */
 		// Выполняем извлечение значения года из даты
 		result = static_cast <uint16_t> (
-			::floor(((date > leapDays) ? (date - leapDays) : 0) / 31536000000.L)
+			(((date > leapDays) ? (date - leapDays) : 0) / static_cast <uint64_t> (31536000000))
 		);
 		// Определяем количество прошедших високосных лет
 		const uint16_t leaps = this->leapYears(result);

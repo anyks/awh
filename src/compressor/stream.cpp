@@ -126,6 +126,49 @@ namespace awh {
 				 *
 				 */
 				virtual bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept = 0;
+			protected:
+				// Объект работы с логами (устанавливается владеющим потоком)
+				const log_t * _log = nullptr;
+			public:
+				/**
+				 * @brief Метод установки объекта работы с логами
+				 *
+				 * @param log объект для работы с логами
+				 *
+				 */
+				void log(const log_t * log) noexcept {
+					// Запоминаем объект работы с логами
+					this->_log = log;
+				}
+			protected:
+				/**
+				 * @brief Метод проверки выхода на превышение допустимого предела
+				 *
+				 * @details Ограждает от недоверенного входа, у которого крошечный кадр
+				 *          разворачивается в гигабайты: движок отводил бы память по указанию
+				 *          отправляющей стороны. Предел действует на одну подачу.
+				 *          Причина отказа пишется здесь же: наружу подача выходит одним лишь
+				 *          признаком, и отличить исчерпание предела от отказа движка вызывающему
+				 *          было бы нечем - блочный режим о том же событии в лог пишет
+				 *
+				 * @param out буфер готового выхода
+				 * @param tag название движка для записи в лог
+				 * @return    результат проверки
+				 *
+				 */
+				bool overflowed(const vector <char> & out, const char * tag) const noexcept {
+					// Если объём готового выхода допустимого предела не превышает
+					if(static_cast <uint64_t> (out.size()) <= static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))
+						// Выводим отрицательный результат
+						return false;
+					// Если объект работы с логами установлен
+					if(this->_log != nullptr)
+						// Записываем ошибку в лог
+						this->_log->print("%s: %s", log_t::flag_t::WARNING, tag, "Decompressed data exceeds the allowed limit");
+					// Выводим положительный результат
+					return true;
+				}
+			public:
 				/**
 				 * @brief Деструктор
 				 *
@@ -271,9 +314,14 @@ namespace {
 							// Вычисляем количество произведённых данных
 							const size_t produced = (AWH_COMPRESSOR_STREAM_CHUNK - this->_zs.avail_out);
 							// Добавляем данные в результат
-							if(produced > 0)
+							if(produced > 0){
 								// Добавляем данные в результат
 								out.insert(out.end(), reinterpret_cast <char *> (work), reinterpret_cast <char *> (work) + produced);
+								// Если выход превысил допустимый предел, работу продолжать нельзя
+								if(this->overflowed(out, "Zlib"))
+									// Выводим отрицательный результат
+									return false;
+							}
 							// Если поток завершён
 							if((this->_done = (ret == Z_STREAM_END)))
 								// Выходим из цикла
@@ -476,10 +524,16 @@ namespace {
 						if(this->_dctx == nullptr)
 							// Выводим отрицательный результат
 							return false;
+						// Размер выданных движком данных за последний заход
+						size_t produced = 0;
 						/**
-						 * Выполняем распаковку пока есть входные данные
+						 * Разбираем, пока есть входные данные либо движок продолжает выдавать
+						 * накопленное: без второго условия финализация с пустой подачей не
+						 * заходила бы в цикл вовсе, а хвост оставался бы при движке
 						 */
-						while(input.pos < input.size){
+						do {
+							// Запоминаем положение разбора до захода
+							const size_t consumed = input.pos;
 							// Формируем выходной буфер
 							ZSTD_outBuffer output = {work, AWH_COMPRESSOR_STREAM_CHUNK, 0};
 							// Выполняем распаковку
@@ -488,17 +542,37 @@ namespace {
 							if(::ZSTD_isError(ret))
 								// Выводим отрицательный результат
 								return false;
+							// Запоминаем размер выданных движком данных
+							produced = output.pos;
 							// Добавляем данные в результат
-							if(output.pos > 0)
+							if(produced > 0){
 								// Добавляем данные в результат
-								out.insert(out.end(), work, work + output.pos);
-							// Устанавливаем флаг завершённости потока
-							this->_done = (ret == 0);
-							// Если данных больше нет и ничего не произведено, выходим
-							if((output.pos == 0) && (input.pos == input.size))
+								out.insert(out.end(), work, work + produced);
+								// Если выход превысил допустимый предел, работу продолжать нельзя
+								if(this->overflowed(out, "Zstandard"))
+									// Выводим отрицательный результат
+									return false;
+							}
+							// Если кадр полностью декодирован
+							if((this->_done = (ret == 0)))
 								// Выходим из цикла
 								break;
-						}
+							/**
+							 * Заход, оставивший неразобранный вход нетронутым и не выдавший
+							 * ни октета выхода, не разберёт его и впредь: доводы захода те же
+							 * самые. Отказ здесь ограждает от вечного цикла на входе, движком
+							 * не разбираемом, - тот же страж стоит у LZ4 и Lizard.
+							 * Неразобранного входа отсутствие в счёт не идёт: заход с пустой
+							 * подачей выдаёт накопленное движком и застоем не является
+							 */
+							// Если неразобранный вход остался, а движок продвижения не сделал
+							if((input.pos < input.size) && (input.pos == consumed) && (produced == 0))
+								// Выводим отрицательный результат
+								return false;
+						/**
+						 * Пока есть входные данные либо движок выдаёт накопленное
+						 */
+						} while((input.pos < input.size) || (produced > 0));
 					} break;
 				}
 				// Выводим результат операции
@@ -678,6 +752,8 @@ namespace {
 						 * Выполняем распаковку
 						 */
 						do {
+							// Запоминаем остаток неразобранного входа до захода
+							const size_t remaining = availIn;
 							// Получаем выходной буфер
 							uint8_t * nextOut = work;
 							// Получаем размер выходного буфера
@@ -687,17 +763,40 @@ namespace {
 							// Вычисляем количество произведённых данных
 							const size_t produced = (AWH_COMPRESSOR_STREAM_CHUNK - availOut);
 							// Добавляем данные в результат
-							if(produced > 0)
+							if(produced > 0){
 								// Добавляем данные в результат
 								out.insert(out.end(), reinterpret_cast <char *> (work), reinterpret_cast <char *> (work) + produced);
+								// Если выход превысил допустимый предел, работу продолжать нельзя
+								if(this->overflowed(out, "Brotli"))
+									// Выводим отрицательный результат
+									return false;
+							}
 							// Если возникла ошибка
 							if(ret == BROTLI_DECODER_RESULT_ERROR)
 								// Выводим отрицательный результат
 								return false;
+							/**
+							 * Кадр, дошедший до конца, разбор прекращает: движок объявленный
+							 * завершённым вход больше не берёт, и хвост, оставшийся за кадром,
+							 * крутил бы цикл вечно - выхода он не производит, входа не убавляет
+							 */
+							// Если кадр полностью декодирован
+							if(ret == BROTLI_DECODER_RESULT_SUCCESS)
+								// Выходим из цикла
+								break;
+							/**
+							 * Заход, оставивший неразобранный вход нетронутым и не выдавший ни
+							 * октета выхода, не разберёт его и впредь: доводы захода те же самые.
+							 * Тот же страж стоит у Zstandard, LZ4 и Lizard
+							 */
+							// Если неразобранный вход остался, а движок продвижения не сделал
+							if((availIn > 0) && (availIn == remaining) && (produced == 0))
+								// Выводим отрицательный результат
+								return false;
 						/**
-						 * Пока требуется место в выходном буфере
+						 * Пока требуется место в выходном буфере либо остался неразобранный вход
 						 */
-						} while(ret == BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT);
+						} while((ret == BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT) || ((availIn > 0) && (ret != BROTLI_DECODER_RESULT_ERROR)));
 						// Устанавливаем флаг завершённости потока
 						this->_done = (ret == BROTLI_DECODER_RESULT_SUCCESS);
 					} break;
@@ -837,9 +936,19 @@ namespace {
 					// Вычисляем количество произведённых данных
 					const size_t produced = (AWH_COMPRESSOR_STREAM_CHUNK - this->_strm.avail_out);
 					// Добавляем данные в результат
-					if(produced > 0)
+					if(produced > 0){
 						// Добавляем данные в результат
 						out.insert(out.end(), reinterpret_cast <char *> (work), reinterpret_cast <char *> (work) + produced);
+						/**
+						 * Цикл здесь общий на оба направления, а предел действует на одну лишь
+						 * распаковку: на сжатии выход ограничен входом, который подала сама
+						 * вызывающая сторона, и страж давал бы ложный отказ на крупной подаче
+						 */
+						// Если производится декомпрессия и выход превысил допустимый предел
+						if((this->_event == event_t::DECODE) && this->overflowed(out, "LZma"))
+							// Выводим отрицательный результат
+							return false;
+					}
 					// Если движок сигнализировал о завершении
 					if(ret == LZMA_STREAM_END){
 						/**
@@ -855,9 +964,11 @@ namespace {
 						break;
 					}
 				/**
-				 * Пока есть входные данные или выходной буфер полностью заполнен
+				 * Пока есть входные данные, заполнен выходной буфер либо начатый сброс
+				 * не доведён до конца: движок вправе ответить обычным успехом, ещё не
+				 * выписав эпилог, и выход по одному лишь исчерпанию входа оставил бы кадр незакрытым
 				 */
-				} while((this->_strm.avail_in > 0) || (this->_strm.avail_out == 0));
+				} while((this->_strm.avail_in > 0) || (this->_strm.avail_out == 0) || ((action != LZMA_RUN) && (ret == LZMA_OK)));
 				// Выводим результат операции
 				return true;
 			}
@@ -891,7 +1002,7 @@ namespace {
 					// Для декомпрессии
 					case static_cast <uint8_t> (event_t::DECODE):
 						// Инициализируем декодер
-						ret = ::lzma_stream_decoder(&this->_strm, UINT64_MAX, 0);
+						ret = ::lzma_stream_decoder(&this->_strm, AWH_COMPRESSOR_LZMA_MEMLIMIT, 0);
 					break;
 				}
 				// Запоминаем результат инициализации
@@ -1040,9 +1151,14 @@ namespace {
 							// Вычисляем количество произведённых данных
 							const size_t produced = (AWH_COMPRESSOR_STREAM_CHUNK - this->_strm.avail_out);
 							// Добавляем данные в результат
-							if(produced > 0)
+							if(produced > 0){
 								// Добавляем данные в результат
 								out.insert(out.end(), work, work + produced);
+								// Если выход превысил допустимый предел, работу продолжать нельзя
+								if(this->overflowed(out, "Bzip2"))
+									// Выводим отрицательный результат
+									return false;
+							}
 							// Если поток завершён
 							if((this->_done = (ret == BZ_STREAM_END)))
 								// Выходим из цикла
@@ -1259,14 +1375,17 @@ namespace {
 						char work[AWH_COMPRESSOR_STREAM_CHUNK];
 						// Формируем указатели на входные данные
 						const char * src = reinterpret_cast <const char *> (buffer);
+						// Размер выданных движком данных за последний заход
+						size_t dstSize = 0;
 						/**
-						 * Выполняем распаковку пока есть входные данные
+						 * Выполняем распаковку, пока есть входные данные либо движок
+						 * продолжает выдавать накопленное
 						 */
 						do {
-							// Устанавливаем размер потребляемых и производимых данных
+							// Устанавливаем размер потребляемых данных
 							size_t srcSize = remaining;
 							// Устанавливаем размер выходного буфера
-							size_t dstSize = AWH_COMPRESSOR_STREAM_CHUNK;
+							dstSize = AWH_COMPRESSOR_STREAM_CHUNK;
 							// Выполняем распаковку
 							const size_t ret = ::LZ4F_decompress(this->_dctx, work, &dstSize, src, &srcSize, nullptr);
 							// Если возникла ошибка
@@ -1274,9 +1393,14 @@ namespace {
 								// Выводим отрицательный результат
 								return false;
 							// Добавляем данные в результат
-							if(dstSize > 0)
+							if(dstSize > 0){
 								// Добавляем данные в результат
 								out.insert(out.end(), &work[0], &work[0] + dstSize);
+								// Если выход превысил допустимый предел, работу продолжать нельзя
+								if(this->overflowed(out, "LZ4"))
+									// Выводим отрицательный результат
+									return false;
+							}
 							// Смещаем указатель входных данных
 							src += srcSize;
 							// Уменьшаем остаток входных данных
@@ -1285,14 +1409,22 @@ namespace {
 							if((this->_done = (ret == 0)))
 								// Выходим из цикла
 								break;
-							// Если данные не потребляются и не производятся, выходим
-							if((srcSize == 0) && (dstSize == 0))
-								// Выходим из цикла
+							// Если движок не продвигается
+							if((srcSize == 0) && (dstSize == 0)){
+								/**
+								 * Непрочитанный хвост порции наружу вернуть нечем, а бросить его
+								 * молча значило бы потерять данные: такое положение — отказ сессии
+								 */
+								if(remaining > 0)
+									// Выводим отрицательный результат
+									return false;
+								// Дожимать больше нечего, выходим из цикла
 								break;
+							}
 						/**
-						 * Пока есть входные данные
+						 * Пока есть входные данные либо движок выдаёт накопленное
 						 */
-						} while(remaining > 0);
+						} while((remaining > 0) || (dstSize > 0));
 					} break;
 				}
 				// Выводим результат операции
@@ -1491,14 +1623,17 @@ namespace {
 						char work[AWH_COMPRESSOR_STREAM_CHUNK];
 						// Формируем указатель на входные данные
 						const char * src = reinterpret_cast <const char *> (buffer);
+						// Размер выданных движком данных за последний заход
+						size_t dstSize = 0;
 						/**
-						 * Выполняем распаковку пока есть входные данные
+						 * Выполняем распаковку, пока есть входные данные либо движок
+						 * продолжает выдавать накопленное
 						 */
 						do {
 							// Устанавливаем входной размер данных
 							size_t srcSize = remaining;
 							// Устанавливаем размер выходного буфера
-							size_t dstSize = AWH_COMPRESSOR_STREAM_CHUNK;
+							dstSize = AWH_COMPRESSOR_STREAM_CHUNK;
 							// Выполняем распаковку
 							const size_t ret = ::LizardF_decompress(this->_dctx, work, &dstSize, src, &srcSize, nullptr);
 							// Если возникла ошибка
@@ -1506,9 +1641,14 @@ namespace {
 								// Выводим отрицательный результат
 								return false;
 							// Добавляем данные в результат
-							if(dstSize > 0)
+							if(dstSize > 0){
 								// Добавляем данные в результат
 								out.insert(out.end(), work, work + dstSize);
+								// Если выход превысил допустимый предел, работу продолжать нельзя
+								if(this->overflowed(out, "Lizard"))
+									// Выводим отрицательный результат
+									return false;
+							}
 							// Смещаем указатель входных данных
 							src += srcSize;
 							// Уменьшаем остаток входных данных
@@ -1517,14 +1657,22 @@ namespace {
 							if((this->_done = (ret == 0)))
 								// Выходим из цикла
 								break;
-							// Если данные не потребляются и не производятся, выходим
-							if((srcSize == 0) && (dstSize == 0))
-								// Выходим из цикла
+							// Если движок не продвигается
+							if((srcSize == 0) && (dstSize == 0)){
+								/**
+								 * Непрочитанный хвост порции наружу вернуть нечем, а бросить его
+								 * молча значило бы потерять данные: такое положение — отказ сессии
+								 */
+								if(remaining > 0)
+									// Выводим отрицательный результат
+									return false;
+								// Дожимать больше нечего, выходим из цикла
 								break;
+							}
 						/**
-						 * Пока есть входные данные
+						 * Пока есть входные данные либо движок выдаёт накопленное
 						 */
-						} while(remaining > 0);
+						} while((remaining > 0) || (dstSize > 0));
 					} break;
 				}
 				// Выводим результат операции
@@ -1914,6 +2062,10 @@ awh::compressor::Stream::Stream(const method_t method, const event_t event, cons
  _event(event), _method(method), _coder(nullptr), _log(log) {
 	// Создаём бэкенд для указанного метода
 	this->_coder = makeCoder(method, event, params);
+	// Если бэкенд создан
+	if(this->_coder != nullptr)
+		// Передаём бэкенду объект работы с логами
+		this->_coder->log(log);
 	// Если бэкенд создан, но контекст не инициализирован — сбрасываем
 	if((this->_coder != nullptr) && !this->_coder->valid())
 		// Сбрасываем бэкенд (поток становится невалидным)

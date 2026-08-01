@@ -70,7 +70,10 @@ if (${GTest_FOUND})
             static.cpp
             matching.cpp
             automaton.cpp
+            assembly.cpp
+            emitter.cpp
             engine.cpp
+            reference.cpp
             interface.cpp
         )
 

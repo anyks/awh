@@ -357,8 +357,14 @@ TEST_F(ChronoFixture, ExecutionEpochWeekChronoTest){
 		const uint64_t date = (day * 86400000);
 		// Начало недели приводится к началу эпохи
 		ASSERT_EQ(this->_chrono->begin(date, awh::chrono_t::type_t::WEEK), static_cast <uint64_t> (0)) << day;
-		// Конец недели отстоит от её начала ровно на неделю
-		ASSERT_EQ(this->_chrono->end(date, awh::chrono_t::type_t::WEEK), static_cast <uint64_t> (604800000)) << day;
+		/**
+		 * Конец недели отсчитывается от её дня недели, а не от приведённого начала:
+		 * прибавление семи суток к началу эпохи выносило конец первой недели на восьмое
+		 * января, и трое суток - с пятого по седьмое - попадали разом в неё и в неделю
+		 * первого понедельника, чего полуинтервал [begin, end) допускать не должен
+		 */
+		// Конец недели приходится на первый понедельник эпохи
+		ASSERT_EQ(this->_chrono->end(date, awh::chrono_t::type_t::WEEK), static_cast <uint64_t> (4 * 86400000)) << day;
 	}
 	// Первый понедельник эпохи - 5 января 1970 года
 	ASSERT_EQ(this->_chrono->format(static_cast <uint64_t> (4 * 86400000), "%Y-%m-%d %a"), "1970-01-05 Mon");
@@ -891,8 +897,14 @@ TEST_F(ChronoFixture, ExecutionDaysInMonthChronoTest){
 		const uint64_t passed = this->_chrono->actual(value, awh::chrono_t::type_t::DAY, awh::chrono_t::type_t::MONTH, awh::chrono_t::actual_t::PASSED);
 		// Получаем количество оставшихся целых суток месяца
 		const uint64_t left = this->_chrono->actual(value, awh::chrono_t::type_t::DAY, awh::chrono_t::type_t::MONTH, awh::chrono_t::actual_t::LEFT);
-		// В апреле тридцать суток, поэтому целых суток вокруг любого момента двадцать девять
-		ASSERT_EQ((passed + left), static_cast <uint64_t> (29)) << date;
+		/**
+		 * Неполные сутки в счёт не идут ни с одной стороны: внутри суток их двадцать
+		 * девять, а на самой границе суток неполных нет вовсе и все тридцать целые
+		 */
+		// Получаем количество миллисекунд, прошедших с начала суток
+		const uint64_t inside = (value % 86400000);
+		// В апреле тридцать суток, и неполные из них в счёт не идут
+		ASSERT_EQ((passed + left), static_cast <uint64_t> ((inside > 0) ? 29 : 30)) << date;
 		// Количество прошедших суток совпадает с числом месяца без единицы
 		ASSERT_EQ(passed, static_cast <uint64_t> (this->_chrono->get <uint8_t> (value, awh::chrono_t::unit_t::DATE) - 1)) << date;
 	}
@@ -900,9 +912,14 @@ TEST_F(ChronoFixture, ExecutionDaysInMonthChronoTest){
 	{
 		// Получаем штамп времени первого февраля високосного года
 		const uint64_t value = this->_chrono->parse("2024-02-01T00:00:00", "%Y-%m-%dT%H:%M:%S");
-		// Целых суток вокруг первого числа двадцать восемь
+		// На самой границе суток неполных нет вовсе, и целыми остаются все двадцать девять
 		ASSERT_EQ(
 			this->_chrono->actual(value, awh::chrono_t::type_t::DAY, awh::chrono_t::type_t::MONTH, awh::chrono_t::actual_t::LEFT),
+			static_cast <uint64_t> (29)
+		);
+		// В полдень первого числа сутки уже неполные, и целыми остаются двадцать восемь
+		ASSERT_EQ(
+			this->_chrono->actual((value + 43200000ULL), awh::chrono_t::type_t::DAY, awh::chrono_t::type_t::MONTH, awh::chrono_t::actual_t::LEFT),
 			static_cast <uint64_t> (28)
 		);
 	}
@@ -2395,11 +2412,15 @@ TEST_F(ChronoFixture, ExecutionActualWeeksLeftChronoTest){
 	 */
 	// Выполняем разбор записи начала февраля високосного года
 	const uint64_t leap = this->_chrono->parse("2024-02-01T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z");
+	/**
+	 * Остаток равен количеству целых недель, до конца месяца оставшихся: в феврале
+	 * високосного года двадцать девять суток, и целых недель в них четыре
+	 */
 	// Выполняем проверку остатка недель в феврале високосного года
-	ASSERT_EQ(this->_chrono->actual(leap, awh::Chrono::type_t::WEEK, awh::Chrono::type_t::MONTH, awh::Chrono::actual_t::LEFT), 5ULL);
+	ASSERT_EQ(this->_chrono->actual(leap, awh::Chrono::type_t::WEEK, awh::Chrono::type_t::MONTH, awh::Chrono::actual_t::LEFT), 4ULL);
 	// Выполняем проверку остатка недель на последнем мгновении февраля високосного года
 	ASSERT_EQ(this->_chrono->actual(this->_chrono->end(leap, awh::Chrono::type_t::MONTH) - 1,
-		awh::Chrono::type_t::WEEK, awh::Chrono::type_t::MONTH, awh::Chrono::actual_t::LEFT), 1ULL);
+		awh::Chrono::type_t::WEEK, awh::Chrono::type_t::MONTH, awh::Chrono::actual_t::LEFT), 0ULL);
 }
 
 /**
@@ -2428,4 +2449,215 @@ TEST_F(ChronoFixture, ExecutionAbbreviationModelChronoTest){
 	this->_chrono->timestamp(1, awh::Chrono::type_t::YEAR);
 	// Выполняем проверку года календарного счёта длиной в триста шестьдесят пять суток
 	ASSERT_EQ(this->_chrono->format("%Y-%m-%dT%H:%M:%S", awh::Chrono::storage_t::LOCAL), "1971-01-01T00:00:00");
+}
+
+/**
+ * @brief Тест смещения долей миллисекунды в местном хранилище
+ *
+ * @details В зону объекта переводится год и месяц, и только они: длина прочих единиц от
+ *          даты не зависит, перевод для них сокращается сам, а доли миллисекунды меняют
+ *          самую размерность счёта - смещение на микросекунду выдаёт число микросекунд,
+ *          и вычитать из него миллисекундную зону нельзя
+ *
+ */
+TEST_F(ChronoFixture, ExecutionLocalOffsetFractionChronoTest){
+	// Выполняем разбор записи в зоне, от нулевой отстоящей
+	this->_chrono->parse("2025-01-15T12:00:00+0300", "%Y-%m-%dT%H:%M:%S%z", awh::Chrono::storage_t::LOCAL);
+	// Получаем момент времени объекта
+	const uint64_t date = this->_chrono->timestamp(awh::Chrono::type_t::MILLISECONDS, awh::Chrono::storage_t::LOCAL);
+	// Перечень единиц, длина которых от даты не зависит
+	const awh::Chrono::type_t types[] = {
+		awh::Chrono::type_t::WEEK,    awh::Chrono::type_t::DAY,          awh::Chrono::type_t::HOUR,
+		awh::Chrono::type_t::MINUTES, awh::Chrono::type_t::SECONDS,      awh::Chrono::type_t::MILLISECONDS,
+		awh::Chrono::type_t::MICROSECONDS, awh::Chrono::type_t::NANOSECONDS
+	};
+	// Выполняем перебор всех единиц постоянной длины
+	for(auto type : types){
+		// Выполняем проверку совпадения смещения местного хранилища со смещением по штампу
+		ASSERT_EQ(this->_chrono->offset(1, type, awh::Chrono::offset_t::INCREMENT, awh::Chrono::storage_t::LOCAL),
+			this->_chrono->offset(date, 1, type, awh::Chrono::offset_t::INCREMENT)) << static_cast <uint16_t> (type);
+	}
+	/**
+	 * Доли миллисекунды меняют размерность счёта, и ответ выдаётся в них самих
+	 */
+	// Выполняем проверку смещения на одну микросекунду
+	ASSERT_EQ(this->_chrono->offset(1, awh::Chrono::type_t::MICROSECONDS, awh::Chrono::offset_t::INCREMENT, awh::Chrono::storage_t::LOCAL),
+		((date * 1000ULL) + 1ULL));
+	// Выполняем проверку смещения на одну наносекунду
+	ASSERT_EQ(this->_chrono->offset(1, awh::Chrono::type_t::NANOSECONDS, awh::Chrono::offset_t::INCREMENT, awh::Chrono::storage_t::LOCAL),
+		((date * 1000000ULL) + 1ULL));
+	/**
+	 * Год и месяц от зоны объекта зависят и переводятся в неё по-прежнему
+	 */
+	// Выполняем разбор записи последнего дня января
+	this->_chrono->parse("2025-01-31T01:00:00+0300", "%Y-%m-%dT%H:%M:%S%z", awh::Chrono::storage_t::LOCAL);
+	// Выполняем проверку смещения записи на месяц в зоне объекта
+	ASSERT_EQ(this->_chrono->format(
+		this->_chrono->offset(1, awh::Chrono::type_t::MONTH, awh::Chrono::offset_t::INCREMENT, awh::Chrono::storage_t::LOCAL),
+		10800, "%Y-%m-%dT%H:%M:%S%z"), "2025-02-28T01:00:00+0300");
+}
+
+/**
+ * @brief Тест насыщения остатка периода
+ *
+ * @details Количество прошедших единиц считается округлением вверх и вплотную к концу
+ *          периода в его длину упирается, а разность велась голым вычитанием: обгон дал
+ *          бы беззнаковый оборот вместо нуля
+ *
+ */
+TEST_F(ChronoFixture, ExecutionActualLeftBoundsChronoTest){
+	// Перечень единиц измерения с их наибольшим остатком в году и месяце
+	const struct {
+		awh::Chrono::type_t type;
+		uint64_t year;
+		uint64_t month;
+	} units[] = {
+		{awh::Chrono::type_t::WEEK,         53ULL,          6ULL},
+		{awh::Chrono::type_t::DAY,          366ULL,         31ULL},
+		{awh::Chrono::type_t::HOUR,         8784ULL,        744ULL},
+		{awh::Chrono::type_t::MINUTES,      527040ULL,      44640ULL},
+		{awh::Chrono::type_t::SECONDS,      31622400ULL,    2678400ULL},
+		{awh::Chrono::type_t::MILLISECONDS, 31622400000ULL, 2678400000ULL}
+	};
+	// Перечень лет, на которых проверяются пределы остатка
+	const uint16_t years[] = {1970, 2024, 2025, 9999};
+	// Выполняем перебор всех лет
+	for(uint16_t year : years){
+		// Выполняем перебор всех месяцев года
+		for(uint8_t month = 1; month < 13; month++){
+			// Формируем запись первого мгновения месяца
+			char record[64];
+			// Выполняем формирование записи первого мгновения месяца
+			::snprintf(record, sizeof(record), "%04u-%02u-01T00:00:00+0000",
+				static_cast <uint16_t> (year), static_cast <uint16_t> (month));
+			// Выполняем разбор записи первого мгновения месяца
+			const uint64_t begin = this->_chrono->parse(record, "%Y-%m-%dT%H:%M:%S%z");
+			// Выполняем перебор всех единиц измерения
+			for(auto & unit : units){
+				// Выполняем проверку остатка на первом мгновении месяца
+				ASSERT_LE(this->_chrono->actual(begin, unit.type, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::LEFT), unit.year) << record;
+				// Выполняем проверку остатка на последнем мгновении месяца
+				ASSERT_LE(this->_chrono->actual(this->_chrono->end(begin, awh::Chrono::type_t::MONTH) - 1,
+					unit.type, awh::Chrono::type_t::MONTH, awh::Chrono::actual_t::LEFT), unit.month) << record;
+				// Выполняем проверку остатка на последнем мгновении года
+				ASSERT_LE(this->_chrono->actual(this->_chrono->end(begin, awh::Chrono::type_t::YEAR) - 1,
+					unit.type, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::LEFT), unit.year) << record;
+			}
+		}
+	}
+}
+
+/**
+ * @brief Тест согласия прошедшей и оставшейся части периода
+ *
+ * @details Остаток равен разности длины периода и прошедшей его части, без поправки на
+ *          единицу: отрезок задан полуинтервалом [begin, end), и сумма прошедшего с
+ *          оставшимся равна его длине. Год единицу вычитал, и та же операция над
+ *          сутками, неделей и месяцем давала иной ответ, чем над ним
+ *
+ */
+TEST_F(ChronoFixture, ExecutionActualWholeChronoTest){
+	// Перечень периодов, длина которых выражается целым числом миллисекунд
+	const awh::Chrono::type_t periods[] = {
+		awh::Chrono::type_t::YEAR, awh::Chrono::type_t::MONTH,
+		awh::Chrono::type_t::WEEK, awh::Chrono::type_t::DAY, awh::Chrono::type_t::HOUR
+	};
+	// Перечень записей, на которых проверяется согласие частей периода
+	const char * records[] = {
+		"2025-01-01T00:00:00+0000", "2025-04-06T12:37:01+0000",
+		"2024-02-29T23:59:59+0000", "2024-12-31T23:59:59+0000"
+	};
+	// Выполняем перебор всех записей
+	for(const char * record : records){
+		// Выполняем разбор записи
+		const uint64_t date = this->_chrono->parse(record, "%Y-%m-%dT%H:%M:%S%z");
+		// Выполняем перебор всех периодов
+		for(auto period : periods){
+			// Получаем длину периода в миллисекундах
+			const uint64_t length = (this->_chrono->end(date, period) - this->_chrono->begin(date, period));
+			// Получаем количество прошедших миллисекунд периода
+			const uint64_t passed = this->_chrono->actual(date, awh::Chrono::type_t::MILLISECONDS, period, awh::Chrono::actual_t::PASSED);
+			// Получаем количество оставшихся миллисекунд периода
+			const uint64_t left = this->_chrono->actual(date, awh::Chrono::type_t::MILLISECONDS, period, awh::Chrono::actual_t::LEFT);
+			// Выполняем проверку согласия частей периода с его длиной
+			ASSERT_EQ(passed + left, length) << record << " " << static_cast <uint16_t> (period);
+		}
+		// Выполняем перебор всех периодов для проверки границ
+		for(auto period : periods){
+			// Получаем длину периода в миллисекундах
+			const uint64_t length = (this->_chrono->end(date, period) - this->_chrono->begin(date, period));
+			// Выполняем проверку остатка на первом мгновении периода
+			ASSERT_EQ(this->_chrono->actual(this->_chrono->begin(date, period),
+				awh::Chrono::type_t::MILLISECONDS, period, awh::Chrono::actual_t::LEFT), length) << record;
+			// Выполняем проверку остатка на последнем мгновении периода
+			ASSERT_EQ(this->_chrono->actual(this->_chrono->end(date, period) - 1,
+				awh::Chrono::type_t::MILLISECONDS, period, awh::Chrono::actual_t::LEFT), 1ULL) << record;
+		}
+	}
+}
+
+/**
+ * @brief Тест согласия остатка периода с его границей
+ *
+ * @details Остаток равен количеству целых единиц, до конца периода оставшихся, и потому
+ *          обязан сходиться с самой границей. Конец последнего периода календаря
+ *          насыщается пределом представимости и оттого короче полной своей длины, а
+ *          остаток считался по длине: на последней миллисекунде 9999 года выходило, что
+ *          впереди ещё миллисекунда, тогда как граница уже достигнута
+ *
+ */
+TEST_F(ChronoFixture, ExecutionActualBoundChronoTest){
+	// Перечень единиц измерения с их длиной в миллисекундах
+	const struct {
+		awh::Chrono::type_t type;
+		uint64_t length;
+	} units[] = {
+		{awh::Chrono::type_t::WEEK,    604800000ULL},
+		{awh::Chrono::type_t::DAY,     86400000ULL},
+		{awh::Chrono::type_t::HOUR,    3600000ULL},
+		{awh::Chrono::type_t::MINUTES, 60000ULL},
+		{awh::Chrono::type_t::SECONDS, 1000ULL},
+		{awh::Chrono::type_t::MILLISECONDS, 1ULL}
+	};
+	// Перечень периодов, в которых считается остаток
+	const awh::Chrono::type_t periods[] = {
+		awh::Chrono::type_t::YEAR, awh::Chrono::type_t::MONTH,
+		awh::Chrono::type_t::WEEK, awh::Chrono::type_t::DAY
+	};
+	// Перечень записей, на которых проверяется согласие остатка с границей
+	const char * records[] = {
+		"1970-01-01T00:00:00+0000", "2025-04-06T12:37:01+0000",
+		"2024-02-29T23:59:59+0000", "9999-12-31T23:59:59+0000"
+	};
+	// Выполняем перебор всех записей
+	for(const char * record : records){
+		// Выполняем разбор записи
+		const uint64_t date = this->_chrono->parse(record, "%Y-%m-%dT%H:%M:%S%z");
+		// Выполняем перебор всех периодов
+		for(auto period : periods){
+			// Получаем конец периода, в который попадает дата
+			const uint64_t end = this->_chrono->end(date, period);
+			// Выполняем перебор всех единиц измерения
+			for(auto & unit : units){
+				/**
+				 * Остаток не может превышать расстояния до конца периода: единица неполная
+				 * в счёт не идёт, поэтому целых единиц впереди столько же либо меньше
+				 */
+				// Получаем количество целых единиц, оставшихся до конца периода
+				const uint64_t rest = ((end > date) ? ((end - date) / unit.length) : 0);
+				// Выполняем проверку согласия остатка с границей периода
+				ASSERT_LE(this->_chrono->actual(date, unit.type, period, awh::Chrono::actual_t::LEFT), rest)
+					<< record << " " << static_cast <uint16_t> (period) << " " << static_cast <uint16_t> (unit.type);
+			}
+		}
+	}
+	/**
+	 * На последней миллисекунде последнего периода календаря впереди не остаётся ничего
+	 */
+	// Выполняем разбор записи последнего представимого мгновения
+	const uint64_t last = (this->_chrono->parse("9999-12-31T23:59:59+0000", "%Y-%m-%dT%H:%M:%S%z") + 999ULL);
+	// Выполняем проверку отсутствия остатка на последнем представимом мгновении
+	ASSERT_EQ(this->_chrono->actual(last, awh::Chrono::type_t::MILLISECONDS, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::LEFT), 0ULL);
+	// Выполняем проверку совпадения остатка с расстоянием до границы периода
+	ASSERT_EQ(this->_chrono->end(last, awh::Chrono::type_t::YEAR) - last, 0ULL);
 }
