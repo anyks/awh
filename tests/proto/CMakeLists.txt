@@ -76,6 +76,8 @@ if (${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER2_TEST "Build unit HTTP/2 parser test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля парсера HTTP/3
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER3_TEST "Build unit HTTP/3 parser test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для подмодуля договоров перенаправления портов
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_PORTMAP_TEST "Build unit port mapping protocols test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля протокола SOCKS5
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_SOCKS5_TEST "Build unit SOCKS5 protocol test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля протокола QUIC
@@ -178,6 +180,20 @@ if (${GTest_FOUND})
             # Выводим сообщение о сборке тестов для подмодуля парсера HTTP/3
             message(STATUS "Build tests HTTP/3 parser submodule: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER3_TEST})
+
+        # Если нужно собрать тесты для подмодуля договоров перенаправления портов
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_PORTMAP_TEST})
+            # Выводим сообщение о сборке тестов для подмодуля договоров перенаправления портов
+            message(STATUS "Build tests port mapping protocols submodule: Yes\n")
+            # Дополняем список источников тестами для подмодуля договоров перенаправления портов
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                portmap/natpmp.cpp
+            )
+        # Если не нужно собрать тесты для подмодуля договоров перенаправления портов
+        else()
+            # Выводим сообщение о сборке тестов для подмодуля договоров перенаправления портов
+            message(STATUS "Build tests port mapping protocols submodule: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_PORTMAP_TEST})
 
         # Если нужно собрать тесты для подмодуля протокола SOCKS5
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_SOCKS5_TEST})
