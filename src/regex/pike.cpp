@@ -535,7 +535,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 		 *          и обязаны переходить к одной и той же следующей позиции.
 		 *
 		 */
-		const uint32_t code = decode(this->_text, pos, program.flags, width);
+		const uint32_t code = letter(this->_text, pos, program.flags, width);
 		/**
 		 * Выполняем исполнение состояний текущей позиции
 		 */

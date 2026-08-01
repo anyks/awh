@@ -22,6 +22,11 @@
 #include "crypto.hpp"
 
 /**
+ * Заголовочный файл очереди ошибок библиотеки криптографии
+ */
+#include <openssl/err.h>
+
+/**
  * @brief Тест создания объекта шифрования
  *
  */
@@ -1306,4 +1311,328 @@ TEST_F(CryptoFixture, UnknownHashCryptoTest){
 	EXPECT_TRUE(this->_crypto->hash <std::string> (text, static_cast <awh::crypto_t::hash_t> (0xFE)).empty());
 	// Проверяем отказ подписи типом хэш-суммы, разбору не знакомым
 	EXPECT_TRUE(this->_crypto->hmac <std::string> (key, text, static_cast <awh::crypto_t::hash_t> (0xFE)).empty());
+}
+
+/**
+ * @brief Тест отказа шифрования ключом RSA, под дополнение слишком коротким
+ *
+ * @details Ввод ключа со стороны разрядность его не проверяет - в отличие от генерации,
+ *          отвергающей ключ короче двух тысяч разрядов. Предел сообщения считается
+ *          вычитанием дополнения из длины ключа, и у ключа короче шестидесяти шести
+ *          октетов разность, считаемая беззнаковой, обращалась в число огромное: предел
+ *          переставал отвергать что бы то ни было, и отказ приходил из глубины
+ *          библиотеки. Тест закрепляет отказ на коротком ключе и работоспособность
+ *          объекта после него
+ *
+ */
+TEST_F(CryptoFixture, KeyShortCryptoTest){
+	// Буфер данных для работы
+	const std::vector <uint8_t> data = {0x41, 0x4E, 0x59, 0x4B, 0x53};
+	// Буфер шифротекста
+	std::vector <uint8_t> sealed;
+	// Открытый ключ RSA разрядностью в пятьсот двенадцать разрядов
+	const std::string key =
+		"-----BEGIN PUBLIC KEY-----\n"
+		"MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAMk9wBK+qvVfzPAltyHTRHEA6wTTSdr0\n"
+		"qFG+d9RE7cFSql5IEG0uAaDoROuEOasosU4lnCOztIG00lEXltpY48MCAwEAAQ==\n"
+		"-----END PUBLIC KEY-----\n";
+	// Проверяем принятие ключа RSA, разрядность которого не проверяется
+	ASSERT_TRUE(this->_crypto->setPublicKeyRSA(key));
+	// Проверяем отказ шифрования ключом RSA, под дополнение слишком коротким
+	EXPECT_FALSE(this->_crypto->encryptWithPublicKey(data, sealed));
+	// Проверяем пустоту шифротекста при отказе шифрования
+	EXPECT_TRUE(sealed.empty());
+	/**
+	 * Отказ объект не портит: ключ годной разрядности принимается следом и работает
+	 */
+	// Выполняем генерацию приватного ключа RSA
+	ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
+	// Проверяем признак работы при шифровании ключом RSA годной разрядности
+	ASSERT_TRUE(this->_crypto->encryptWithPublicKey(data, sealed));
+	// Проверяем наличие шифротекста
+	EXPECT_FALSE(sealed.empty());
+}
+
+/**
+ * @brief Тест зависимости шифротекста от количества итераций вывода ключа
+ *
+ * @details Ключ выводится из пароля и соли за заданное число итераций, и от него
+ *          зависит наравне с ними. Число итераций хранится в стейте и входит в условие
+ *          перевывода ключа, чтобы условие судило обо всех приметах вывода, а не о части
+ *          из них. Тест закрепляет, что смена числа итераций шифротекст меняет
+ *
+ */
+TEST_F(CryptoFixture, RoundsRederiveCryptoTest){
+	// Буфер данных для работы
+	const std::string data = "ANYKS";
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем режим блочного шифрования без проверки подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::CFB);
+	// Устанавливаем количество итераций вывода ключа
+	this->_crypto->roundAES(1000);
+	// Выполняем шифрование данных на первом количестве итераций
+	const std::string first = this->_crypto->encrypt <std::string> (data, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	// Проверяем наличие шифротекста
+	ASSERT_FALSE(first.empty());
+	// Проверяем обратимость шифрования на первом количестве итераций
+	ASSERT_EQ(this->_crypto->decrypt <std::string> (first, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), data);
+	// Устанавливаем другое количество итераций вывода ключа
+	this->_crypto->roundAES(2000);
+	// Выполняем шифрование данных на втором количестве итераций
+	const std::string second = this->_crypto->encrypt <std::string> (data, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	// Проверяем наличие шифротекста
+	ASSERT_FALSE(second.empty());
+	// Проверяем обратимость шифрования на втором количестве итераций
+	ASSERT_EQ(this->_crypto->decrypt <std::string> (second, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), data);
+	/**
+	 * Вектор инициализации у каждого сообщения свой, и сличать шифротексты напрямую
+	 * нельзя: разойдутся они и при одном ключе. Судить о перевыводе ключа приходится
+	 * расшифровкой чужим числом итераций - она обязана дать не тот открытый текст
+	 */
+	// Возвращаем первое количество итераций вывода ключа
+	this->_crypto->roundAES(1000);
+	// Проверяем расхождение открытого текста при чужом количестве итераций
+	EXPECT_NE(this->_crypto->decrypt <std::string> (second, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), data);
+}
+
+/**
+ * @brief Тест снятия очереди ошибок библиотеки криптографии
+ *
+ * @details Библиотека криптографии складывает причины отказов в очередь, принадлежащую
+ *          потоку, и сама её не опорожняет. Модуль очередь не читал вовсе, и оставленные
+ *          им причины доставались соседнему коду - работа с защищённым соединением
+ *          очередь как раз вычитывает и выдаёт в лог. Тест закрепляет, что после всякого
+ *          отказа очередь остаётся пустой
+ *
+ */
+TEST_F(CryptoFixture, ErrorQueueCryptoTest){
+	// Буфер данных для работы
+	const std::vector <uint8_t> data = {0x41, 0x4E, 0x59, 0x4B, 0x53};
+	/**
+	 * Отказ шифрования ключом RSA, под дополнение слишком коротким
+	 */
+	{
+		// Открытый ключ RSA разрядностью в пятьсот двенадцать разрядов
+		const std::string key =
+			"-----BEGIN PUBLIC KEY-----\n"
+			"MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAMk9wBK+qvVfzPAltyHTRHEA6wTTSdr0\n"
+			"qFG+d9RE7cFSql5IEG0uAaDoROuEOasosU4lnCOztIG00lEXltpY48MCAwEAAQ==\n"
+			"-----END PUBLIC KEY-----\n";
+		// Буфер шифротекста
+		std::vector <uint8_t> sealed;
+		// Выполняем ввод ключа RSA негодной разрядности
+		ASSERT_TRUE(this->_crypto->setPublicKeyRSA(key));
+		// Проверяем отказ шифрования ключом RSA
+		ASSERT_FALSE(this->_crypto->encryptWithPublicKey(data, sealed));
+		// Проверяем пустоту очереди ошибок после отказа
+		EXPECT_EQ(::ERR_get_error(), 0UL);
+	}
+	/**
+	 * Отказ ввода ключа RSA, записью PEM не являющегося
+	 */
+	{
+		// Проверяем отказ ввода ключа RSA
+		ASSERT_FALSE(this->_crypto->setPublicKeyRSA("это не ключ вовсе"));
+		// Проверяем пустоту очереди ошибок после отказа
+		EXPECT_EQ(::ERR_get_error(), 0UL);
+	}
+	/**
+	 * Отказ расшифровки поддельного шифротекста
+	 */
+	{
+		// Выполняем генерацию приватного ключа RSA
+		ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
+		// Буфер шифротекста
+		std::vector <uint8_t> sealed;
+		// Выполняем шифрование данных ключом RSA
+		ASSERT_TRUE(this->_crypto->encryptWithPublicKey(data, sealed));
+		// Выполняем подделку октета шифротекста
+		sealed[sealed.size() / 2] = static_cast <uint8_t> (sealed[sealed.size() / 2] ^ 0x01);
+		// Буфер открытого текста
+		std::vector <uint8_t> opened;
+		// Проверяем отказ расшифровки поддельного шифротекста
+		ASSERT_FALSE(this->_crypto->decryptWithPrivateKey(sealed, opened));
+		// Проверяем пустоту очереди ошибок после отказа
+		EXPECT_EQ(::ERR_get_error(), 0UL);
+	}
+	/**
+	 * Отказ расшифровки поддельного шифротекста режима с проверкой подлинности
+	 */
+	{
+		// Устанавливаем пароль шифрования
+		this->_crypto->password("password");
+		// Устанавливаем соль шифрования
+		this->_crypto->salt("salt");
+		// Устанавливаем режим блочного шифрования с проверкой подлинности
+		this->_crypto->mode(awh::crypto_t::mode_t::GCM);
+		// Выполняем шифрование текста
+		std::string sealed = this->_crypto->encrypt <std::string> (std::string("ANYKS"), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+		// Проверяем наличие шифротекста
+		ASSERT_FALSE(sealed.empty());
+		// Выполняем подделку октета шифротекста
+		sealed[sealed.size() / 2] = static_cast <char> (sealed[sealed.size() / 2] ^ 0x01);
+		// Проверяем отказ расшифровки поддельного шифротекста
+		ASSERT_TRUE(this->_crypto->decrypt <std::string> (sealed, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256).empty());
+		// Проверяем пустоту очереди ошибок после отказа
+		EXPECT_EQ(::ERR_get_error(), 0UL);
+	}
+}
+
+/**
+ * @brief Тест удержания выведенного ключа при повторном заведении потока
+ *
+ * @details Заведение потока сбрасывало стейт целиком и выводило ключ заново, а вывод
+ *          ключа стоит ста тысяч итераций - на замере 6.4 мс против сотых долей у
+ *          самого шифрования. Теперь ключ, выведенный теми же приметами, удерживается,
+ *          и сбрасываются приметы одного лишь потока. Тест закрепляет, что удержание
+ *          работы не портит: каждый поток обратим, вектор инициализации у каждого свой,
+ *          а смена приметы вывода ключ выводит заново
+ *
+ */
+TEST_F(CryptoFixture, StreamKeyReuseCryptoTest){
+	// Текст для шифрования
+	const std::string text = "Anyks Framework, Hello World!!! Anyks Framework, Hello World!!!";
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем режим блочного шифрования с проверкой подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::GCM);
+	/**
+	 * @brief Замыкание прогона потока шифрования и расшифровки
+	 *
+	 * @param hash тип хэш-суммы вывода ключа
+	 * @return     шифротекст прогона
+	 *
+	 */
+	auto stream = [&](const awh::crypto_t::hash_t hash) -> std::string {
+		// Зашифрованный текст
+		std::string encoded;
+		// Выполняем инициализацию контекста шифрования
+		EXPECT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, hash, awh::crypto_t::cipher_t::AES256));
+		/**
+		 * Выполняем передачу текста в потоковое шифрование порциями
+		 */
+		for(size_t offset = 0; offset < text.size(); offset += 16)
+			// Выполняем шифрование очередной порции текста
+			encoded.append(this->_crypto->encrypt <std::string> (text.data() + offset, ((text.size() - offset) < 16 ? (text.size() - offset) : 16), hash, awh::crypto_t::cipher_t::AES256));
+		// Выполняем завершение потокового шифрования
+		EXPECT_TRUE(this->_crypto->finalize(encoded));
+		// Расшифрованный текст
+		std::string decoded;
+		// Выполняем инициализацию контекста расшифровки
+		EXPECT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::DECODE, hash, awh::crypto_t::cipher_t::AES256));
+		/**
+		 * Выполняем передачу зашифрованного текста в потоковую расшифровку порциями
+		 */
+		for(size_t offset = 0; offset < encoded.size(); offset += 16)
+			// Выполняем расшифровку очередной порции текста
+			decoded.append(this->_crypto->decrypt <std::string> (encoded.data() + offset, ((encoded.size() - offset) < 16 ? (encoded.size() - offset) : 16), hash, awh::crypto_t::cipher_t::AES256));
+		// Выполняем завершение потоковой расшифровки
+		EXPECT_TRUE(this->_crypto->finalize(decoded));
+		// Проверяем обратимость потокового шифрования
+		EXPECT_EQ(decoded, text);
+		// Выводим шифротекст прогона
+		return encoded;
+	};
+	// Набор шифротекстов прогонов на удержанном ключе
+	std::unordered_set <std::string> results;
+	/**
+	 * Выполняем перебор прогонов потока на одних и тех же приметах вывода ключа
+	 */
+	for(uint32_t i = 0; i < 16; i++){
+		// Выполняем прогон потока
+		const std::string encoded = stream(awh::crypto_t::hash_t::SHA256);
+		// Проверяем наличие шифротекста
+		ASSERT_FALSE(encoded.empty());
+		/**
+		 * Вектор инициализации берётся случайным на каждый поток, и удержание ключа
+		 * этого менять не должно: одинаковый шифротекст означал бы, что вектор достался
+		 * потоку от предыдущего
+		 */
+		// Проверяем неповторимость шифротекста прогона
+		ASSERT_TRUE(results.emplace(encoded).second) << i;
+	}
+	/**
+	 * Смена приметы вывода ключ выводит заново, и работа от этого не страдает
+	 */
+	// Выполняем прогон потока на другой хэш-сумме вывода ключа
+	ASSERT_FALSE(stream(awh::crypto_t::hash_t::SHA512).empty());
+	// Выполняем прогон потока на прежней хэш-сумме вывода ключа
+	ASSERT_FALSE(stream(awh::crypto_t::hash_t::SHA256).empty());
+}
+
+/**
+ * @brief Тест сверки частично заданных доводов вызова с заведённым потоком
+ *
+ * @details Незаданные доводы вызова берутся из потока, а заданные с ним сверяются (4.4).
+ *          Прежде сверка велась лишь тогда, когда задан был тип шифрования: вызов с иной
+ *          хэш-суммой и незаданным шифром признавался работой поверх потока, и хэш-сумма
+ *          его молча отбрасывалась - работа думала, что вывела ключ одной хэш-суммой, а
+ *          вывела другой. Тест закрепляет отказ на всяком заданном доводе, с потоком
+ *          расходящемся
+ *
+ */
+TEST_F(CryptoFixture, StreamPartialMismatchCryptoTest){
+	// Текст для шифрования
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем режим блочного шифрования с проверкой подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::GCM);
+	/**
+	 * @brief Замыкание прогона вызова поверх заведённого потока
+	 *
+	 * @param hash   тип хэш-суммы довода вызова
+	 * @param cipher тип шифрования довода вызова
+	 * @return       шифротекст прогона
+	 *
+	 */
+	auto attempt = [&](const awh::crypto_t::hash_t hash, const awh::crypto_t::cipher_t cipher) -> std::string {
+		// Выполняем инициализацию контекста шифрования
+		EXPECT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+		// Выводим шифротекст прогона
+		return this->_crypto->encrypt <std::string> (text.data(), text.size(), hash, cipher);
+	};
+	/**
+	 * Оба довода незаданы - работа идёт приметами потока
+	 */
+	// Проверяем работу поверх потока при незаданных доводах
+	EXPECT_FALSE(attempt(awh::crypto_t::hash_t::NONE, awh::crypto_t::cipher_t::NONE).empty());
+	/**
+	 * Оба довода заданы и с потоком сходятся - работа идёт
+	 */
+	// Проверяем работу поверх потока при сходящихся доводах
+	EXPECT_FALSE(attempt(awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256).empty());
+	/**
+	 * Задан один лишь тип шифрования, и он с потоком сходится
+	 */
+	// Проверяем работу поверх потока при сходящемся типе шифрования
+	EXPECT_FALSE(attempt(awh::crypto_t::hash_t::NONE, awh::crypto_t::cipher_t::AES256).empty());
+	/**
+	 * Задана одна лишь хэш-сумма, и она с потоком сходится
+	 */
+	// Проверяем работу поверх потока при сходящейся хэш-сумме
+	EXPECT_FALSE(attempt(awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::NONE).empty());
+	/**
+	 * Оба довода заданы, и хэш-сумма с потоком расходится
+	 */
+	// Проверяем отказ работы при расходящейся хэш-сумме и заданном шифре
+	EXPECT_TRUE(attempt(awh::crypto_t::hash_t::SHA512, awh::crypto_t::cipher_t::AES256).empty());
+	/**
+	 * Задан один лишь тип шифрования, и он с потоком расходится
+	 */
+	// Проверяем отказ работы при расходящемся типе шифрования
+	EXPECT_TRUE(attempt(awh::crypto_t::hash_t::NONE, awh::crypto_t::cipher_t::AES128).empty());
+	/**
+	 * Задана одна лишь хэш-сумма, и она с потоком расходится: прежде этот вызов
+	 * молча работал прежней хэш-суммой
+	 */
+	// Проверяем отказ работы при расходящейся хэш-сумме и незаданном шифре
+	EXPECT_TRUE(attempt(awh::crypto_t::hash_t::SHA512, awh::crypto_t::cipher_t::NONE).empty());
 }

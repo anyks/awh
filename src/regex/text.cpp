@@ -37,10 +37,7 @@ using namespace awh;
  * @return      результат проверки установки режима компиляции
  *
  */
-bool awh::regex::hasFlag(const uint32_t flags, const flag_t value) noexcept {
-	// Выполняем проверку установки режима компиляции
-	return ((flags & static_cast <uint32_t> (value)) != 0);
-}
+
 /**
  * @brief Функция приведения кодового значения символа к нижнему регистру
  *

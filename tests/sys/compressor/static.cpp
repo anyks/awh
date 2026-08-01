@@ -130,6 +130,7 @@ TEST_F(CompressorFixture, LevelAffectsRatioTest){
 		text.append("Anyks Framework compression level payload ");
 	// Список методов, у которых уровень компрессии влияет на степень сжатия
 	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::LZ4,
 		awh::compressor::method_t::ZSTD,
 		awh::compressor::method_t::GZIP,
 		awh::compressor::method_t::ZLIB,
@@ -237,6 +238,29 @@ TEST_F(CompressorFixture, BlockAndStreamFormatContractTest){
 		// Проверяем что потоковая сессия разобрала блочный результат
 		ASSERT_EQ(text, result) << "method = " << static_cast <uint16_t> (method);
 	}
+	/**
+	 * Выполняем перебор методов с совместимыми форматами режимов в обратную сторону
+	 */
+	for(auto & method : compatible){
+		// Создаём потоковую сессию компрессии
+		awh::compressor::stream_t stream = this->_compressor->stream(method, awh::compressor::event_t::ENCODE);
+		// Проверяем что потоковая сессия создана
+		ASSERT_TRUE(stream.valid()) << "method = " << static_cast <uint16_t> (method);
+		// Буфер выхода порции
+		std::string part;
+		// Результат потоковой компрессии
+		std::string compressed;
+		// Подаём данные в поток компрессии
+		stream.push <std::string> (text.data(), text.size(), part);
+		// Дописываем полученный выход в результат компрессии
+		compressed.append(part);
+		// Финализируем поток компрессии
+		stream.finish(part);
+		// Дописываем хвост в результат компрессии
+		compressed.append(part);
+		// Проверяем что блочный режим разобрал потоковый результат
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, method)) << "method = " << static_cast <uint16_t> (method);
+	}
 	// Список методов, у которых форматы режимов несовместимы
 	const awh::compressor::method_t incompatible[] = {
 		awh::compressor::method_t::LZ4,
@@ -292,11 +316,10 @@ TEST_F(CompressorFixture, StreamMoveResetsSourceTest){
 }
 
 /**
- * @brief Тест переиспользования контекста компрессии после неудачной пересборки
+ * @brief Тест переиспользования контекста компрессии после отвергнутой пересборки
  *
- * @details Закрепляет восстановление после отказа инициализации: флаг переиспользования
- *          контекста сбрасывается вместе с разрушенным потоком, поэтому после возврата
- *          корректного размера скользящего окна компрессор снова работоспособен
+ * @details Закрепляет восстановление после отвергнутого размера скользящего окна:
+ *          прежнее значение сохраняется, контексты остаются работоспособными
  *
  */
 TEST_F(CompressorFixture, TakeoverAfterFailedReinitTest){
@@ -318,4 +341,708 @@ TEST_F(CompressorFixture, TakeoverAfterFailedReinitTest){
 	ASSERT_FALSE(compressed.empty());
 	// Проверяем что результат декомпрессии совпадает с исходным текстом
 	ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, awh::compressor::method_t::DEFLATE));
+}
+
+/**
+ * @brief Тест обработки усечённого потока данных
+ *
+ * @details Закрепляет отказ на кадре, потерявшем хвост: движки с самоописательным
+ *          форматом обязаны требовать конца потока, а не довольствоваться исчерпанием входа
+ *
+ */
+TEST_F(CompressorFixture, TruncatedStreamTest){
+	// Формируем текст для компрессии
+	const std::string text(512, 'A');
+	// Список методов, формат которых несёт признак конца потока
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::LZMA
+	};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		// Выполняем компрессию данных
+		const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, method);
+		// Проверяем что результат компрессии не пустой
+		ASSERT_GT(compressed.size(), 4u) << "method = " << static_cast <uint16_t> (method);
+		/**
+		 * Выполняем перебор количества отрезанных от кадра октетов
+		 */
+		for(size_t cut = 1; cut <= 3; cut++){
+			// Формируем усечённый кадр данных
+			const std::vector <uint8_t> truncated(compressed.begin(), compressed.end() - cut);
+			// Проверяем что декомпрессия усечённого кадра даёт пустой результат
+			ASSERT_TRUE(this->_compressor->decompress <std::string> (truncated, method).empty()) << "method = " << static_cast <uint16_t> (method) << ", cut = " << cut;
+		}
+	}
+}
+
+/**
+ * @brief Тест блочного цикла компрессии/декомпрессии на крупном буфере данных
+ *
+ * @details Закрепляет работу за пределами одной внутренней порции: буфер заведомо больше
+ *          чанка, которым драйверы обмениваются с движками, поэтому проверяются наращивание
+ *          выходного буфера и склейка порций
+ *
+ */
+TEST_F(CompressorFixture, LargeBufferRoundTripTest){
+	// Формируем крупный буфер данных
+	std::string text;
+	// Резервируем память под буфер данных
+	text.reserve(512 * 1024);
+	/**
+	 * Наполняем буфер данными переменной повторяемости, чтобы он не сжимался вырожденно
+	 */
+	for(uint32_t i = 0; text.size() < (512 * 1024); i++){
+		// Добавляем очередную порцию данных
+		text.append("Anyks Framework large payload block ");
+		// Добавляем переменную часть порции данных
+		text.append(std::to_string(i * 2654435761u));
+	}
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LZMA,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::LIZARD,
+		awh::compressor::method_t::SNAPPY,
+		awh::compressor::method_t::DEFLATE,
+		awh::compressor::method_t::DENSITY
+	};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		// Выполняем компрессию данных
+		const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, method);
+		// Проверяем что результат компрессии не пустой
+		ASSERT_FALSE(compressed.empty()) << "method = " << static_cast <uint16_t> (method);
+		// Проверяем что результат декомпрессии совпадает с исходным текстом
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, method)) << "method = " << static_cast <uint16_t> (method);
+	}
+}
+
+/**
+ * @brief Тест влияния уровня компрессии на потоковый режим
+ *
+ * @details Закрепляет направление уровня в потоковом режиме отдельно от блочного: у LZ4
+ *          кадровый формат трактует уровень компрессией, а блочный — ускорением, и общее
+ *          на оба режима значение переворачивало бы смысл максимальной производительности
+ *
+ */
+TEST_F(CompressorFixture, StreamLevelAffectsRatioTest){
+	// Формируем текст для компрессии
+	std::string text;
+	// Наполняем текст повторяющимися данными, чтобы разница уровней была заметна
+	for(uint16_t i = 0; i < 1024; i++)
+		// Добавляем очередную порцию данных
+		text.append("Anyks Framework stream compression level payload ");
+	// Список методов, у которых уровень компрессии влияет на степень сжатия
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::LIZARD
+	};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		// Размеры результатов компрессии на разных уровнях
+		size_t size[2] = {0, 0};
+		// Список проверяемых уровней компрессии
+		const awh::compressor::level_t levels[2] = {awh::compressor::level_t::BEST, awh::compressor::level_t::SPEED};
+		/**
+		 * Выполняем перебор проверяемых уровней компрессии
+		 */
+		for(uint8_t i = 0; i < 2; i++){
+			// Устанавливаем уровень компрессии
+			this->_compressor->level(levels[i]);
+			// Создаём потоковую сессию компрессии
+			awh::compressor::stream_t encoder = this->_compressor->stream(method, awh::compressor::event_t::ENCODE);
+			// Проверяем что потоковая сессия создана
+			ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method);
+			// Буфер выхода порции
+			std::string part;
+			// Подаём данные в поток компрессии
+			encoder.push <std::string> (text.data(), text.size(), part);
+			// Учитываем полученный выход
+			size[i] += part.size();
+			// Финализируем поток компрессии
+			encoder.finish(part);
+			// Учитываем хвост потока
+			size[i] += part.size();
+		}
+		// Проверяем что результат компрессии получен
+		ASSERT_GT(size[0], 0u) << "method = " << static_cast <uint16_t> (method);
+		// Проверяем что максимальный уровень компрессии не хуже уровня максимальной производительности
+		ASSERT_LE(size[0], size[1]) << "method = " << static_cast <uint16_t> (method);
+	}
+}
+
+/**
+ * @brief Тест обработки усечённого кадра на крупном слабосжимаемом буфере
+ *
+ * @details Дополняет TruncatedStreamTest: там кадр короткий и хорошо сжимаемый, и срез
+ *          отрезает лишь хвост. Здесь кадр состоит из нескольких блоков, а срез приходится
+ *          на его середину — движок при этом успевает выдать часть данных, и модуль обязан
+ *          отличить это от успешного завершения
+ *
+ */
+TEST_F(CompressorFixture, TruncatedLargeFrameTest){
+	// Формируем крупный слабосжимаемый буфер данных
+	std::string text;
+	// Резервируем память под буфер данных
+	text.reserve(256 * 1024);
+	// Состояние генератора псевдослучайной последовательности
+	uint64_t state = 0x9e3779b97f4a7c15ull;
+	/**
+	 * Наполняем буфер псевдослучайными октетами
+	 */
+	while(text.size() < (256 * 1024)){
+		// Продвигаем состояние генератора
+		state ^= (state << 13);
+		state ^= (state >> 7);
+		state ^= (state << 17);
+		// Добавляем очередной октет
+		text.push_back(static_cast <char> (state & 0xFF));
+	}
+	// Список методов, формат которых несёт признак конца потока
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::LZMA
+	};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		// Выполняем компрессию данных
+		const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, method);
+		// Проверяем что результат компрессии не пустой
+		ASSERT_GT(compressed.size(), 16u) << "method = " << static_cast <uint16_t> (method);
+		// Доли кадра, на которых выполняется срез
+		const size_t parts[] = {4, 2, 8};
+		/**
+		 * Выполняем перебор долей кадра
+		 */
+		for(auto & part : parts){
+			// Формируем усечённый кадр данных
+			const std::vector <uint8_t> truncated(compressed.begin(), compressed.begin() + ((compressed.size() * (part - 1)) / part));
+			// Проверяем что декомпрессия усечённого кадра даёт пустой результат
+			ASSERT_TRUE(this->_compressor->decompress <std::string> (truncated, method).empty()) << "method = " << static_cast <uint16_t> (method) << ", part = " << part;
+		}
+		// Проверяем что нетронутый кадр по-прежнему разбирается
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, method)) << "method = " << static_cast <uint16_t> (method);
+	}
+}
+
+/**
+ * @brief Тест обработки входа короче служебной части формата
+ *
+ * @details Закрепляет отказ на буфере, который короче подвала контейнера LZMA:
+ *          вычисление смещения подвала на таком входе уходило бы за границы буфера
+ *
+ */
+TEST_F(CompressorFixture, ShortInputTest){
+	/**
+	 * Выполняем перебор размеров заведомо короткого входа
+	 */
+	for(size_t size = 1; size <= 16; size++){
+		// Формируем заведомо короткий буфер данных
+		const std::string data(size, '\x01');
+		// Проверяем что декомпрессия короткого входа даёт пустой результат
+		ASSERT_TRUE(this->_compressor->decompress <std::string> (data, awh::compressor::method_t::LZMA).empty()) << "size = " << size;
+		// Проверяем что декомпрессия короткого входа даёт пустой результат
+		ASSERT_TRUE(this->_compressor->decompress <std::string> (data, awh::compressor::method_t::GZIP).empty()) << "size = " << size;
+		// Проверяем что декомпрессия короткого входа даёт пустой результат
+		ASSERT_TRUE(this->_compressor->decompress <std::string> (data, awh::compressor::method_t::ZLIB).empty()) << "size = " << size;
+		// Проверяем что декомпрессия короткого входа даёт пустой результат
+		ASSERT_TRUE(this->_compressor->decompress <std::string> (data, awh::compressor::method_t::BZIP2).empty()) << "size = " << size;
+		// Проверяем что декомпрессия короткого входа даёт пустой результат
+		ASSERT_TRUE(this->_compressor->decompress <std::string> (data, awh::compressor::method_t::ZSTD).empty()) << "size = " << size;
+	}
+}
+
+/**
+ * @brief Тест применения уровня компрессии к живому переиспользуемому контексту
+ *
+ * @details Закрепляет согласование таблицы уровней с контекстом, заведённым заранее:
+ *          уровень задаётся контексту при его создании, и смена таблицы обязана
+ *          доходить до живого контекста, а не ждать его пересоздания
+ *
+ */
+TEST_F(CompressorFixture, LevelAppliesToLiveTakeoverTest){
+	// Формируем текст для компрессии
+	std::string text;
+	// Наполняем текст повторяющимися данными, чтобы разница уровней была заметна
+	for(uint16_t i = 0; i < 512; i++)
+		// Добавляем очередную порцию данных
+		text.append("Anyks Framework takeover level payload ");
+	// Устанавливаем размер скользящего окна GZip
+	ASSERT_TRUE(this->_compressor->wbitsGZip(15));
+	// Устанавливаем максимальный уровень компрессии
+	this->_compressor->level(awh::compressor::level_t::BEST);
+	// Включаем флаг переиспользования контекста компрессии
+	ASSERT_TRUE(this->_compressor->takeoverGZip(awh::compressor::event_t::ENCODE, true));
+	// Выполняем компрессию данных на максимальном уровне компрессии
+	const size_t best = this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::DEFLATE).size();
+	// Проверяем что результат компрессии получен
+	ASSERT_GT(best, 0u);
+	// Устанавливаем уровень максимальной производительности поверх живого контекста
+	this->_compressor->level(awh::compressor::level_t::SPEED);
+	// Выполняем компрессию данных на уровне максимальной производительности
+	const size_t speed = this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::DEFLATE).size();
+	// Проверяем что результат компрессии получен
+	ASSERT_GT(speed, 0u);
+	// Проверяем что смена уровня дошла до живого контекста
+	ASSERT_GT(speed, best);
+}
+
+/**
+ * @brief Тест очистки результата у перегрузок с выходным параметром
+ *
+ * @details Закрепляет договор пустого входа для перегрузок, отдающих результат
+ *          через параметр: прежнее содержимое контейнера наружу уйти не должно
+ *          ни на пустом входе, ни на значении метода вне перечисления
+ *
+ */
+TEST_F(CompressorFixture, OutParameterIsClearedTest){
+	// Заведомо постороннее содержимое выходного контейнера
+	const std::string stale = "Anyks Framework stale payload";
+	// Выходной контейнер результата
+	std::string result;
+	// Наполняем выходной контейнер посторонним содержимым
+	result = stale;
+	// Выполняем компрессию пустого буфера данных
+	this->_compressor->compress(nullptr, 0, awh::compressor::method_t::GZIP, result);
+	// Проверяем что прежнее содержимое не ушло наружу
+	ASSERT_TRUE(result.empty());
+	// Наполняем выходной контейнер посторонним содержимым
+	result = stale;
+	// Выполняем компрессию буфера нулевого размера
+	this->_compressor->compress(stale.data(), 0, awh::compressor::method_t::GZIP, result);
+	// Проверяем что прежнее содержимое не ушло наружу
+	ASSERT_TRUE(result.empty());
+	// Наполняем выходной контейнер посторонним содержимым
+	result = stale;
+	// Выполняем декомпрессию пустого буфера данных
+	this->_compressor->decompress(nullptr, 0, awh::compressor::method_t::GZIP, result);
+	// Проверяем что прежнее содержимое не ушло наружу
+	ASSERT_TRUE(result.empty());
+	// Наполняем выходной контейнер посторонним содержимым
+	result = stale;
+	// Выполняем компрессию с методом, лежащим вне перечисления
+	this->_compressor->compress(stale.data(), stale.size(), static_cast <awh::compressor::method_t> (0xFE), result);
+	// Проверяем что прежнее содержимое не ушло наружу
+	ASSERT_TRUE(result.empty());
+	// Наполняем выходной контейнер посторонним содержимым
+	result = stale;
+	// Выполняем декомпрессию с методом, лежащим вне перечисления
+	this->_compressor->decompress(stale.data(), stale.size(), static_cast <awh::compressor::method_t> (0xFE), result);
+	// Проверяем что прежнее содержимое не ушло наружу
+	ASSERT_TRUE(result.empty());
+}
+
+/**
+ * @brief Тест сквозного прохода при незаданном методе компрессии
+ *
+ * @details Закрепляет намеренное решение: незаданный метод отдаёт буфер как есть,
+ *          а не считается отказом — это законное значение перечисления
+ *
+ */
+TEST_F(CompressorFixture, NoneMethodPassesThroughTest){
+	// Формируем текст для проверки
+	const std::string text = "Anyks Framework pass-through payload";
+	// Выполняем компрессию с незаданным методом
+	ASSERT_EQ(text, this->_compressor->compress <std::string> (text, awh::compressor::method_t::NONE));
+	// Выполняем декомпрессию с незаданным методом
+	ASSERT_EQ(text, this->_compressor->decompress <std::string> (text, awh::compressor::method_t::NONE));
+}
+
+/**
+ * @brief Тест подачи данных в поток после его финализации
+ *
+ * @details Закрепляет единый договор кодеров: подача после finish ничего не делает
+ *          и поток не рвёт — иначе лишний вызов выглядел бы обрывом сессии
+ *
+ */
+TEST_F(CompressorFixture, PushAfterFinishTest){
+	// Формируем текст для компрессии
+	const std::string text = "Anyks Framework push after finish payload!!!!!!!!!!!!!!!!?";
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LZMA,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::LIZARD,
+		awh::compressor::method_t::DEFLATE
+	};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		// Создаём потоковую сессию компрессии
+		awh::compressor::stream_t encoder = this->_compressor->stream(method, awh::compressor::event_t::ENCODE);
+		// Проверяем что потоковая сессия создана
+		ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method);
+		// Буфер выхода порции
+		std::string part;
+		// Подаём данные в поток компрессии
+		encoder.push <std::string> (text.data(), text.size(), part);
+		// Финализируем поток компрессии
+		encoder.finish(part);
+		// Проверяем что поток объявлен завершённым
+		ASSERT_TRUE(encoder.done()) << "method = " << static_cast <uint16_t> (method);
+		// Выполняем лишнюю подачу данных поверх завершённого потока
+		encoder.push <std::string> (text.data(), text.size(), part);
+		// Проверяем что поток остался валидным
+		ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method);
+		// Проверяем что лишняя подача ничего не выдала
+		ASSERT_TRUE(part.empty()) << "method = " << static_cast <uint16_t> (method);
+		// Выполняем лишнюю финализацию завершённого потока
+		encoder.finish(part);
+		// Проверяем что поток остался валидным
+		ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method);
+	}
+}
+
+/**
+ * @brief Тест проверки размера скользящего окна установщиками
+ *
+ * @details Закрепляет отказ до записи: значение вне допустимого промежутка не
+ *          принимается, прежнее сохраняется, и работоспособность не теряется
+ *
+ */
+TEST_F(CompressorFixture, WindowBitsRangeTest){
+	// Формируем текст для компрессии
+	const std::string text = "Anyks Framework window bits payload!!!!!!!!!!!!!!!!?";
+	// Устанавливаем допустимый размер скользящего окна GZip
+	ASSERT_TRUE(this->_compressor->wbitsGZip(15));
+	// Устанавливаем допустимый размер скользящего окна Zlib
+	this->_compressor->wbitsZlib(15);
+	// Список значений, лежащих вне допустимого промежутка
+	const int16_t invalid[] = {-1, 0, 2, 7, 16, 32, 255};
+	/**
+	 * Выполняем перебор значений вне допустимого промежутка
+	 */
+	for(auto & wbits : invalid){
+		// Проверяем что установщик GZip отвергает значение
+		ASSERT_FALSE(this->_compressor->wbitsGZip(wbits)) << "wbits = " << wbits;
+		// Выполняем установку значения для Zlib
+		this->_compressor->wbitsZlib(wbits);
+		// Проверяем что прежний размер окна GZip сохранён и компрессия работает
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::GZIP), awh::compressor::method_t::GZIP)) << "wbits = " << wbits;
+		// Проверяем что прежний размер окна Zlib сохранён и компрессия работает
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::ZLIB), awh::compressor::method_t::ZLIB)) << "wbits = " << wbits;
+	}
+	/**
+	 * Выполняем перебор значений внутри допустимого промежутка
+	 */
+	for(int16_t wbits = 9; wbits <= 15; wbits++)
+		// Проверяем что установщик GZip принимает значение
+		ASSERT_TRUE(this->_compressor->wbitsGZip(wbits)) << "wbits = " << wbits;
+}
+
+/**
+ * @brief Тест восстановления переиспользуемого контекста после неудачного сообщения
+ *
+ * @details Закрепляет снятие недоведённого сообщения с живого контекста: после отказа
+ *          на испорченных данных следующий полный цикл обязан пройти как обычно,
+ *          а не продолжить брошенный поток с середины
+ *
+ */
+TEST_F(CompressorFixture, TakeoverRecoversAfterFailedFrameTest){
+	// Формируем текст для компрессии
+	const std::string text = "Anyks Framework takeover recovery payload, Anyks Framework takeover recovery payload!!!!!!!!?";
+	// Устанавливаем размер скользящего окна GZip
+	ASSERT_TRUE(this->_compressor->wbitsGZip(15));
+	// Включаем флаг переиспользования контекста декомпрессии
+	ASSERT_TRUE(this->_compressor->takeoverGZip(awh::compressor::event_t::DECODE, true));
+	// Выполняем компрессию данных
+	const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::DEFLATE);
+	// Проверяем что результат компрессии не пустой
+	ASSERT_FALSE(compressed.empty());
+	// Формируем заведомо испорченный кадр данных
+	const std::string corrupted(64, '\x7f');
+	// Выполняем декомпрессию испорченного кадра поверх живого контекста
+	ASSERT_TRUE(this->_compressor->decompress <std::string> (corrupted, awh::compressor::method_t::DEFLATE).empty());
+	// Проверяем что следующий полный цикл проходит как обычно
+	ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, awh::compressor::method_t::DEFLATE));
+	// Проверяем что и повторный цикл проходит как обычно
+	ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, awh::compressor::method_t::DEFLATE));
+}
+
+/**
+ * @brief Тест проверки размера буфера на пригодность движку
+ *
+ * @details Закрепляет границы разрядности, общие для блочного и потокового режимов:
+ *          буфер такого размера в проверке не завести, поэтому сторожится сама функция
+ *
+ */
+TEST_F(CompressorFixture, SizeLimitsTest){
+	// Предел движков, принимающих размер разрядностью 32 бита
+	const uint64_t limit32 = static_cast <uint64_t> (UINT32_MAX);
+	// Предел движков, принимающих размер знаковой разрядностью
+	const uint64_t limit31 = static_cast <uint64_t> (INT32_MAX);
+	// Список методов, принимающих размер разрядностью 32 бита
+	const awh::compressor::method_t unsigned32[] = {
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::DEFLATE,
+		awh::compressor::method_t::BZIP2
+	};
+	// Список методов, принимающих размер знаковой разрядностью
+	const awh::compressor::method_t signed32[] = {
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LIZARD
+	};
+	// Список методов, работающих размером разрядностью платформы
+	const awh::compressor::method_t native[] = {
+		awh::compressor::method_t::LZMA,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::SNAPPY,
+		awh::compressor::method_t::DENSITY
+	};
+	/**
+	 * На платформе с разрядностью размера в 32 бита предел движка недостижим
+	 */
+	if(sizeof(size_t) > 4){
+		/**
+		 * Выполняем перебор методов, принимающих размер разрядностью 32 бита
+		 */
+		for(auto & method : unsigned32){
+			// Проверяем что размер на пределе принимается
+			ASSERT_TRUE(awh::compressor::fits(static_cast <size_t> (limit32), method)) << "method = " << static_cast <uint16_t> (method);
+			// Проверяем что размер за пределом отвергается
+			ASSERT_FALSE(awh::compressor::fits(static_cast <size_t> (limit32 + 1), method)) << "method = " << static_cast <uint16_t> (method);
+		}
+		/**
+		 * Выполняем перебор методов, принимающих размер знаковой разрядностью
+		 */
+		for(auto & method : signed32){
+			// Проверяем что размер на пределе принимается
+			ASSERT_TRUE(awh::compressor::fits(static_cast <size_t> (limit31), method)) << "method = " << static_cast <uint16_t> (method);
+			// Проверяем что размер за пределом отвергается
+			ASSERT_FALSE(awh::compressor::fits(static_cast <size_t> (limit31 + 1), method)) << "method = " << static_cast <uint16_t> (method);
+		}
+		/**
+		 * Выполняем перебор методов, работающих размером разрядностью платформы
+		 */
+		for(auto & method : native)
+			// Проверяем что размер за пределом 32 бит принимается
+			ASSERT_TRUE(awh::compressor::fits(static_cast <size_t> (limit32 + 1), method)) << "method = " << static_cast <uint16_t> (method);
+	}
+	/**
+	 * Выполняем перебор всех перечисленных методов на обычном размере
+	 */
+	for(auto & method : unsigned32)
+		// Проверяем что обычный размер принимается
+		ASSERT_TRUE(awh::compressor::fits(65536, method)) << "method = " << static_cast <uint16_t> (method);
+	// Проверяем что обычный размер принимается незаданным методом
+	ASSERT_TRUE(awh::compressor::fits(65536, awh::compressor::method_t::NONE));
+}
+
+/**
+ * @brief Тест подачи в поток без буфера данных
+ *
+ * @details Закрепляет отказ на подаче без буфера при ненулевом размере: движок пошёл бы
+ *          читать по пустому указателю. Пустая подача при этом законна — ею работают
+ *          выдавливание и финализация
+ *
+ */
+TEST_F(CompressorFixture, StreamRejectsNullBufferTest){
+	// Формируем текст для компрессии
+	const std::string text = "Anyks Framework null buffer payload!!!!!!!!!!!!!!!!?";
+	// Создаём потоковую сессию компрессии
+	awh::compressor::stream_t encoder = this->_compressor->stream(awh::compressor::method_t::GZIP, awh::compressor::event_t::ENCODE);
+	// Проверяем что потоковая сессия создана
+	ASSERT_TRUE(encoder.valid());
+	// Буфер выхода порции
+	std::string part = "Anyks Framework stale payload";
+	// Выполняем подачу без буфера при ненулевом размере
+	encoder.push <std::string> (nullptr, 64, part);
+	// Проверяем что прежнее содержимое не ушло наружу
+	ASSERT_TRUE(part.empty());
+	// Проверяем что поток остался валидным
+	ASSERT_TRUE(encoder.valid());
+	// Результат компрессии данных
+	std::string compressed;
+	// Подаём данные в поток компрессии
+	encoder.push <std::string> (text.data(), text.size(), part);
+	// Дописываем полученный выход в результат компрессии
+	compressed.append(part);
+	// Финализируем поток компрессии
+	encoder.finish(part);
+	// Дописываем хвост в результат компрессии
+	compressed.append(part);
+	// Проверяем что поток отработал как обычно
+	ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, awh::compressor::method_t::GZIP));
+}
+
+/**
+ * @brief Тест блочного цикла на сильно сжимаемых данных
+ *
+ * @details Закрепляет работу драйверов там, где распакованное во много раз больше
+ *          сжатого: выходной буфер при этом заполняется вплотную и наращивается
+ *          многократно, а движок упирается в место как раз на исчерпании входа
+ *
+ */
+TEST_F(CompressorFixture, HighRatioRoundTripTest){
+	// Формируем сильно сжимаемый буфер данных
+	const std::string text(1024 * 1024, 'A');
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::DEFLATE,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::LZMA,
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LIZARD
+	};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		// Выполняем компрессию данных
+		const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, method);
+		// Проверяем что результат компрессии не пустой
+		ASSERT_FALSE(compressed.empty()) << "method = " << static_cast <uint16_t> (method);
+		// Проверяем что результат компрессии много меньше исходного
+		ASSERT_LT(compressed.size(), (text.size() / 8)) << "method = " << static_cast <uint16_t> (method);
+		// Проверяем что результат декомпрессии совпадает с исходным текстом
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, method)) << "method = " << static_cast <uint16_t> (method);
+	}
+	// Устанавливаем размер скользящего окна GZip
+	ASSERT_TRUE(this->_compressor->wbitsGZip(15));
+	// Включаем флаг переиспользования контекста компрессии
+	ASSERT_TRUE(this->_compressor->takeoverGZip(awh::compressor::event_t::ENCODE, true));
+	// Включаем флаг переиспользования контекста декомпрессии
+	ASSERT_TRUE(this->_compressor->takeoverGZip(awh::compressor::event_t::DECODE, true));
+	/**
+	 * Выполняем несколько сообщений подряд на переиспользуемом контексте
+	 */
+	for(uint8_t i = 0; i < 3; i++){
+		// Выполняем компрессию данных
+		const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::DEFLATE);
+		// Проверяем что результат компрессии не пустой
+		ASSERT_FALSE(compressed.empty()) << "message = " << static_cast <uint16_t> (i);
+		// Проверяем что результат декомпрессии совпадает с исходным текстом
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, awh::compressor::method_t::DEFLATE)) << "message = " << static_cast <uint16_t> (i);
+	}
+}
+
+/**
+ * @brief Тест устойчивости к порче отдельных октетов кадра
+ *
+ * @details Закрепляет отсутствие отказа и разбора за границами буфера на кадре
+ *          с перевёрнутыми октетами: служебные поля форматов при этом уводят
+ *          разбор по путям, до которых обычные данные не доходят
+ *
+ */
+TEST_F(CompressorFixture, BitFlippedFrameTest){
+	// Формируем текст для компрессии
+	const std::string text = "Anyks Framework bit flipped frame payload, Anyks Framework bit flipped frame payload!!!!!!!!?";
+	/**
+	 * Список методов, формат которых несёт контрольную сумму: у них порча октета
+	 * обязана быть замечена, и разбор либо отказывает, либо отдаёт исходные данные
+	 */
+	const awh::compressor::method_t checked[] = {
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::LZMA
+	};
+	/**
+	 * Список методов, формат которых целостность не сверяет: испорченный кадр для них
+	 * остаётся допустимым входом, и от разбора требуется лишь не выйти за границы буфера
+	 */
+	const awh::compressor::method_t unchecked[] = {
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LIZARD,
+		awh::compressor::method_t::SNAPPY,
+		awh::compressor::method_t::DENSITY
+	};
+	/**
+	 * Выполняем перебор методов, сверяющих целостность
+	 */
+	for(auto & method : checked){
+		// Выполняем компрессию данных
+		const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, method);
+		// Проверяем что результат компрессии не пустой
+		ASSERT_FALSE(compressed.empty()) << "method = " << static_cast <uint16_t> (method);
+		/**
+		 * Выполняем перебор позиций перевёрнутого октета
+		 */
+		for(size_t offset = 0; offset < compressed.size(); offset++){
+			/**
+			 * Выполняем перебор перевёрнутых разрядов
+			 */
+			for(uint8_t bit = 0; bit < 8; bit += 3){
+				// Формируем испорченный кадр данных
+				std::vector <uint8_t> damaged = compressed;
+				// Переворачиваем очередной разряд
+				damaged[offset] ^= static_cast <uint8_t> (1u << bit);
+				// Выполняем декомпрессию испорченного кадра
+				const std::string restored = this->_compressor->decompress <std::string> (damaged, method);
+				// Проверяем что разбор либо отказал, либо восстановил исходные данные в точности
+				ASSERT_TRUE(restored.empty() || (restored == text)) << "method = " << static_cast <uint16_t> (method) << ", offset = " << offset << ", bit = " << static_cast <uint16_t> (bit);
+			}
+		}
+	}
+	/**
+	 * Выполняем перебор методов, целостность не сверяющих
+	 */
+	for(auto & method : unchecked){
+		// Выполняем компрессию данных
+		const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, method);
+		// Проверяем что результат компрессии не пустой
+		ASSERT_FALSE(compressed.empty()) << "method = " << static_cast <uint16_t> (method);
+		/**
+		 * Выполняем перебор позиций перевёрнутого октета
+		 */
+		for(size_t offset = 0; offset < compressed.size(); offset++){
+			/**
+			 * Выполняем перебор перевёрнутых разрядов
+			 */
+			for(uint8_t bit = 0; bit < 8; bit += 3){
+				// Формируем испорченный кадр данных
+				std::vector <uint8_t> damaged = compressed;
+				// Переворачиваем очередной разряд
+				damaged[offset] ^= static_cast <uint8_t> (1u << bit);
+				/**
+				 * Выполняем декомпрессию испорченного кадра. Проверяется сам факт возврата:
+				 * разбор обязан завершиться, не выйдя за границы буфера и не отказав работе.
+				 * Что именно он вернёт — свойство формата, а не модуля
+				 */
+				const std::string restored = this->_compressor->decompress <std::string> (damaged, method);
+				// Проверяем что размер результата не превышает допустимого предела
+				ASSERT_LE(restored.size(), static_cast <size_t> (1ULL << 30)) << "method = " << static_cast <uint16_t> (method) << ", offset = " << offset << ", bit = " << static_cast <uint16_t> (bit);
+			}
+		}
+	}
 }

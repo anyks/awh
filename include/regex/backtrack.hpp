@@ -263,6 +263,21 @@ namespace awh {
 				 *
 				 */
 				bool exec(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept;
+			private:
+				/**
+				 * @brief Метод сопоставления символа одиночной инструкцией
+				 *
+				 * @details Метод применяется при проходе ряда подходящих символов
+				 *          и сопоставляет лишь инструкции, продвигающиеся по тексту
+				 *          независимо от состояния исполнения.
+				 *
+				 * @param instruction сопоставляющая инструкция программы
+				 * @param pos         позиция сопоставления в тексте
+				 * @param width       длина сопоставленного символа в байтах
+				 * @return            результат сопоставления символа инструкцией
+				 *
+				 */
+				bool single(const instruction_t & instruction, const size_t pos, size_t & width) const noexcept;
 			public:
 				/**
 				 * @brief Метод установки допустимого объёма работы сопоставления

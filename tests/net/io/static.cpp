@@ -16308,19 +16308,29 @@ TEST_F(IoFixture, IoBandwidthGlobalSharedTest){
 	const double limit = ::limitBytes(this->_fmk.get(), "8Mbps");
 	// Суммарная достигнутая скорость всех потребителей нагрузки
 	double total = 0.0;
+	// Роспись объёмов по узлам для сообщения об отказе
+	std::string sign = "";
+	/**
+	 * Собираем роспись объёмов, принятых каждым узлом
+	 */
+	for(size_t i = 0; i < consumers.size(); i++)
+		// Добавляем объём очередного узла в роспись
+		sign.append(" узел " + std::to_string(i) + ": " + std::to_string(consumers[i].received) + " октет;");
 	/**
 	 * Проверяем каждого потребителя нагрузки в отдельности
 	 */
-	for(const auto & consumer : consumers){
+	for(size_t i = 0; i < consumers.size(); i++){
+		// Получаем очередного потребителя нагрузки
+		const auto & consumer = consumers[i];
 		// Проверяем что передача состоялась
-		ASSERT_GT(consumer.received, 0u);
+		ASSERT_GT(consumer.received, 0u) << "узел: " << i << ", роспись:" << sign;
 		// Проверяем что принятое совпадает с образцом передачи
-		ASSERT_FALSE(consumer.corrupted);
+		ASSERT_FALSE(consumer.corrupted) << "узел: " << i;
 		// Проверяем что весь поставленный в очередь объём принят до октета
-		ASSERT_EQ(consumer.received, consumer.queued);
+		ASSERT_EQ(consumer.received, consumer.queued) << "узел: " << i;
 		// Накапливаем суммарную достигнутую скорость
 		total += consumer.rate;
 	}
 	// Проверяем что суммарная скорость всех узлов уложилась в общий предел
-	ASSERT_LT(total, (limit * 1.35));
+	ASSERT_LT(total, (limit * 1.35)) << "роспись:" << sign;
 }

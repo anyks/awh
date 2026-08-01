@@ -3201,6 +3201,43 @@ namespace bandwidth {
 	 *
 	 */
 	static uint64_t write = 0;
+	/**
+	 * @brief Токены общего ведра на получение и передачу данных
+	 *
+	 * @details Общий предел раздаётся тем же ведром токенов, что и поузловой, но
+	 *          ведро на весь движок одно: списывают из него все узлы разом, а
+	 *          ушедший в долг узел откладывается своим таймером до пополнения.
+	 *
+	 *          Прежде общий предел выдерживался сном потока после каждой передачи.
+	 *          Спал при этом не узел, а поток цикла событий: пока он спал, движок
+	 *          не обслуживал никого - ни другие подключения, ни таймеры, ни приём
+	 *          новых соединений. Один постоянный потребитель тем самым не давал
+	 *          работать всем остальным: замер показывал, что два узла из трёх
+	 *          выбирали весь бюджет, а третий за целую секунду не получал ни
+	 *          одного октета
+	 *
+	 * @note Ведро уходит в отрицательные значения намеренно: узел, передавший
+	 *       больше, чем было в ведре, отдаёт долг ожиданием, а не отказом в
+	 *       передаче уже принятого к отправке объёма
+	 *
+	 * @warning Ведро **намеренно не закрыто примитивами синхронизации** - как и
+	 *          сами пределы рядом с ним. Цикл событий у движка один и общий на
+	 *          всех потребителей приложения, и в этом его замысел: закрывать
+	 *          внутренности замками ради многопоточности, которой в движке нет,
+	 *          значит завести взаимные блокировки, отлаживать которые в движке
+	 *          такой сложности придётся годами. Кому нужен вызов движка из
+	 *          нескольких потоков, тот закрывает замками вызовы его методов у
+	 *          себя - там, где известен порядок захвата и где отладить это
+	 *          возможно. Предложение «закрыть гонку мьютексом здесь» разбору
+	 *          не подлежит
+	 *
+	 */
+	static double tokensRead = 0., tokensWrite = 0.;
+	/**
+	 * @brief Время последнего пополнения общего ведра в наносекундах
+	 *
+	 */
+	static uint64_t timeRead = 0, timeWrite = 0;
 };
 
 /**
@@ -3506,6 +3543,72 @@ namespace local {
 		const double slice = (static_cast <double> (limit) * AWH_BANDWIDTH_BURST_WINDOW);
 		// Возвращаем больший из объёма окна и размера кадра
 		return ((slice > static_cast <double> (mtu)) ? slice : static_cast <double> (mtu));
+	}
+	/**
+	 * @brief Функция списания переданного объёма из общего ведра токенов
+	 *
+	 * @details Ведро пополняется по прошедшему времени, как и поузловое, и
+	 *          ограничивается сверху окном всплеска. Списание уводит ведро в долг,
+	 *          и величина долга переводится во время, которое узлу следует
+	 *          переждать, - оно и возвращается вызывающей стороне
+	 *
+	 * @param limiting режим ограничения пропускной способности (egress или ingress)
+	 * @param bytes    переданный объём данных в октетах
+	 * @param mtu      размер кадра, задающий нижнюю границу окна всплеска
+	 * @param reserve  запас, ниже которого ведро считается исчерпанным
+	 * @return         время ожидания в миллисекундах, ноль - ожидание не требуется
+	 *
+	 */
+	static uint32_t budget(const awh::event::limiting_t limiting, const size_t bytes, const size_t mtu, const double reserve = 0.) noexcept {
+		// Определяем, к какому направлению относится списание
+		const bool egress = (limiting == awh::event::limiting_t::EGRESS);
+		// Получаем предел выбранного направления
+		const uint64_t limit = (egress ? ::bandwidth::write : ::bandwidth::read);
+		// Если предел не установлен, списывать неоткуда
+		if(limit == 0)
+			// Сообщаем, что ожидание не требуется
+			return 0;
+		// Получаем токены выбранного направления
+		double & tokens = (egress ? ::bandwidth::tokensWrite : ::bandwidth::tokensRead);
+		// Получаем время последнего пополнения выбранного направления
+		uint64_t & time = (egress ? ::bandwidth::timeWrite : ::bandwidth::timeRead);
+		// Получаем текущее значение даты в наносекундах
+		const uint64_t date = nanostamp();
+		/**
+		 * Если ведро ещё не заводилось, заполняем его кадром и запоминаем время
+		 */
+		if(time == 0){
+			// Устанавливаем время последнего пополнения ведра
+			time = date;
+			// Заполняем ведро одним кадром
+			tokens = static_cast <double> (mtu);
+		// Если ведро уже заводилось, пополняем его по прошедшему времени
+		} else if(date > time) {
+			// Пополняем ведро на объём, выданный пределом за прошедшее время
+			tokens += (static_cast <double> (limit) * (static_cast <double> (date - time) / 1e9));
+			// Получаем предел накопления ведра
+			const double ceiling = burst(limit, mtu);
+			// Если ведро накопило больше окна всплеска, срезаем накопленное
+			if(tokens > ceiling)
+				// Устанавливаем количество токенов равным окну всплеска
+				tokens = ceiling;
+			// Устанавливаем время последнего пополнения ведра
+			time = date;
+		}
+		// Списываем переданный объём из ведра
+		tokens -= static_cast <double> (bytes);
+		/**
+		 * Запас нужен заслонке, стоящей до передачи: узел, начавший передачу с
+		 * пустым ведром, забирает целый кадр сверх остатка, и перебор этот
+		 * накапливается. Требование кадра в запасе сводит его к одному кадру
+		 */
+		if(tokens >= reserve)
+			// Сообщаем, что ожидание не требуется
+			return 0;
+		// Переводим недостачу во время её восполнения
+		const double delay = (((reserve - tokens) / static_cast <double> (limit)) * 1000.);
+		// Возвращаем время ожидания, не короче одной миллисекунды
+		return ((delay > 1.) ? static_cast <uint32_t> (delay) : 1);
 	}
 	/**
 	 * @brief Прототип функции получения максимального значения из трёх аргументов
@@ -4623,6 +4726,16 @@ namespace io {
 	 *
 	 */
 	static bool tokens(::io::node_t *, const event::limiting_t, const log_t *) noexcept;
+	/**
+	 * @brief Прототип функции отсрочки узла до пополнения общего ведра токенов
+	 *
+	 * @param  узел, подлежащий отсрочке
+	 * @param  режим ограничения пропускной способности (egress или ingress)
+	 * @param  время отсрочки в миллисекундах
+	 * @param  объект работы с логами
+	 *
+	 */
+	static void postpone(::io::node_t *, const event::limiting_t, const uint32_t, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события изменения файла или каталога
 	 *
@@ -8554,6 +8667,25 @@ namespace io {
 	 *
 	 */
 	static bool read(::io::peer_t * peer, const int64_t volume, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
+		/**
+		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
+		 *
+		 * @details Запрет ставится до получения данных, а не после: списание
+		 *          постфактум долг лишь учитывает, а следующий оборот цикла
+		 *          передавал бы снова, не глядя на него. Цикл событий при этом
+		 *          продолжает работу и обслуживает все прочие узлы
+		 */
+		if(::bandwidth::read > 0){
+			// Получаем время отдачи долга общего ведра токенов
+			const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, 0, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+			// Если общее ведро токенов в долгу
+			if(delay > 0){
+				// Откладываем узел до пополнения общего ведра токенов
+				::io::postpone(peer, event::limiting_t::INGRESS, delay, log);
+				// Сообщаем, что обработка отложена
+				return false;
+			}
+		}
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -8779,8 +8911,8 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
-											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(peer, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -8922,8 +9054,8 @@ namespace io {
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
 							if(::bandwidth::read > 0)
-								// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+								// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+								::io::postpone(peer, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем удаление узла
@@ -9074,8 +9206,8 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
-											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(peer, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -9177,8 +9309,8 @@ namespace io {
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
-									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(peer, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -10406,6 +10538,25 @@ namespace io {
 	 *
 	 */
 	static bool read(::io::client_t * client, const int64_t volume, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
+		/**
+		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
+		 *
+		 * @details Запрет ставится до получения данных, а не после: списание
+		 *          постфактум долг лишь учитывает, а следующий оборот цикла
+		 *          передавал бы снова, не глядя на него. Цикл событий при этом
+		 *          продолжает работу и обслуживает все прочие узлы
+		 */
+		if(::bandwidth::read > 0){
+			// Получаем время отдачи долга общего ведра токенов
+			const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, 0, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+			// Если общее ведро токенов в долгу
+			if(delay > 0){
+				// Откладываем узел до пополнения общего ведра токенов
+				::io::postpone(client, event::limiting_t::INGRESS, delay, log);
+				// Сообщаем, что обработка отложена
+				return false;
+			}
+		}
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -10631,8 +10782,8 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
-											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -10774,8 +10925,8 @@ namespace io {
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
 							if(::bandwidth::read > 0)
-								// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+								// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+								::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 						// Если произошёл дисконнект
 						} else {
 							// Выполняем удаление узла
@@ -11035,8 +11186,8 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
-											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -11253,8 +11404,8 @@ namespace io {
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
-									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -11522,8 +11673,8 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
-											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -11753,8 +11904,8 @@ namespace io {
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
-									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -11922,8 +12073,8 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
-											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -12043,8 +12194,8 @@ namespace io {
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
-									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -12221,8 +12372,8 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
-											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									}
 								// Если произошёл дисконнект
 								} else {
@@ -12355,8 +12506,8 @@ namespace io {
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
-									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(client, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если произошёл дисконнект
 							} else {
 								// Выполняем удаление узла
@@ -12453,6 +12604,25 @@ namespace io {
 	 *
 	 */
 	static bool read(::io::server_t * server, const int64_t volume, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
+		/**
+		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
+		 *
+		 * @details Запрет ставится до получения данных, а не после: списание
+		 *          постфактум долг лишь учитывает, а следующий оборот цикла
+		 *          передавал бы снова, не глядя на него. Цикл событий при этом
+		 *          продолжает работу и обслуживает все прочие узлы
+		 */
+		if(::bandwidth::read > 0){
+			// Получаем время отдачи долга общего ведра токенов
+			const uint32_t delay = ::local::budget(event::limiting_t::INGRESS, 0, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+			// Если общее ведро токенов в долгу
+			if(delay > 0){
+				// Откладываем узел до пополнения общего ведра токенов
+				::io::postpone(server, event::limiting_t::INGRESS, delay, log);
+				// Сообщаем, что обработка отложена
+				return false;
+			}
+		}
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -12718,8 +12888,8 @@ namespace io {
 									} else {
 										// Если установлено ограничение пропускной способности на чтение данных
 										if(::bandwidth::read > 0)
-											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+											// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(server, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									}
 									/**
 									 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
@@ -12975,8 +13145,8 @@ namespace io {
 								result = ::io::origin(server, ::__awh_buffer__, bytes, io, eth, addr, fmk, log);
 								// Если установлено ограничение пропускной способности на чтение данных
 								if(::bandwidth::read > 0)
-									// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000.0)));
+									// Списываем объём чтения данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(server, event::limiting_t::INGRESS, ::local::budget(event::limiting_t::INGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если произошёл дисконнект
 							} else {
 								// Идентификатор полученной ошибки
@@ -13579,6 +13749,25 @@ namespace io {
 	 *
 	 */
 	static bool write(::io::peer_t * peer, const eth_t * eth, const log_t * log) noexcept {
+		/**
+		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
+		 *
+		 * @details Запрет ставится до передачи данных, а не после: списание
+		 *          постфактум долг лишь учитывает, а следующий оборот цикла
+		 *          передавал бы снова, не глядя на него. Цикл событий при этом
+		 *          продолжает работу и обслуживает все прочие узлы
+		 */
+		if(::bandwidth::write > 0){
+			// Получаем время отдачи долга общего ведра токенов
+			const uint32_t delay = ::local::budget(event::limiting_t::EGRESS, 0, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+			// Если общее ведро токенов в долгу
+			if(delay > 0){
+				// Откладываем узел до пополнения общего ведра токенов
+				::io::postpone(peer, event::limiting_t::EGRESS, delay, log);
+				// Сообщаем, что обработка отложена
+				return false;
+			}
+		}
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -13963,8 +14152,8 @@ namespace io {
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
-										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+										::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							}
 						}
@@ -14311,8 +14500,8 @@ namespace io {
 										}
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
-											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									}
 								}
 							}
@@ -14351,6 +14540,25 @@ namespace io {
 	 *
 	 */
 	static bool write(::io::origin_t * origin, const eth_t * eth, const log_t * log) noexcept {
+		/**
+		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
+		 *
+		 * @details Запрет ставится до передачи данных, а не после: списание
+		 *          постфактум долг лишь учитывает, а следующий оборот цикла
+		 *          передавал бы снова, не глядя на него. Цикл событий при этом
+		 *          продолжает работу и обслуживает все прочие узлы
+		 */
+		if(::bandwidth::write > 0){
+			// Получаем время отдачи долга общего ведра токенов
+			const uint32_t delay = ::local::budget(event::limiting_t::EGRESS, 0, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+			// Если общее ведро токенов в долгу
+			if(delay > 0){
+				// Откладываем узел до пополнения общего ведра токенов
+				::io::postpone(origin, event::limiting_t::EGRESS, delay, log);
+				// Сообщаем, что обработка отложена
+				return false;
+			}
+		}
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -14702,8 +14910,8 @@ namespace io {
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
-										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+										::io::postpone(origin, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							}
 						}
@@ -14917,6 +15125,25 @@ namespace io {
 	 *
 	 */
 	static bool write(::io::client_t * client, const eth_t * eth, const log_t * log) noexcept {
+		/**
+		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
+		 *
+		 * @details Запрет ставится до передачи данных, а не после: списание
+		 *          постфактум долг лишь учитывает, а следующий оборот цикла
+		 *          передавал бы снова, не глядя на него. Цикл событий при этом
+		 *          продолжает работу и обслуживает все прочие узлы
+		 */
+		if(::bandwidth::write > 0){
+			// Получаем время отдачи долга общего ведра токенов
+			const uint32_t delay = ::local::budget(event::limiting_t::EGRESS, 0, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+			// Если общее ведро токенов в долгу
+			if(delay > 0){
+				// Откладываем узел до пополнения общего ведра токенов
+				::io::postpone(client, event::limiting_t::EGRESS, delay, log);
+				// Сообщаем, что обработка отложена
+				return false;
+			}
+		}
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -15301,8 +15528,8 @@ namespace io {
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
-										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+										::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							}
 						}
@@ -15646,8 +15873,8 @@ namespace io {
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
-										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+										::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							}
 						}
@@ -16046,8 +16273,8 @@ namespace io {
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
-										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+										::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							}
 						}
@@ -16085,6 +16312,25 @@ namespace io {
 	 *
 	 */
 	static bool write(::io::server_t * server, const eth_t * eth, const log_t * log) noexcept {
+		/**
+		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
+		 *
+		 * @details Запрет ставится до передачи данных, а не после: списание
+		 *          постфактум долг лишь учитывает, а следующий оборот цикла
+		 *          передавал бы снова, не глядя на него. Цикл событий при этом
+		 *          продолжает работу и обслуживает все прочие узлы
+		 */
+		if(::bandwidth::write > 0){
+			// Получаем время отдачи долга общего ведра токенов
+			const uint32_t delay = ::local::budget(event::limiting_t::EGRESS, 0, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE, static_cast <double> (AWH_MTU_TCP_IPV4_PAYLOAD_SIZE));
+			// Если общее ведро токенов в долгу
+			if(delay > 0){
+				// Откладываем узел до пополнения общего ведра токенов
+				::io::postpone(server, event::limiting_t::EGRESS, delay, log);
+				// Сообщаем, что обработка отложена
+				return false;
+			}
+		}
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -16255,8 +16501,8 @@ namespace io {
 									}
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
-										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+										::io::postpone(origin, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								// Если данные не отправлены
 								} else {
 									// Идентификатор полученной ошибки
@@ -17583,8 +17829,8 @@ namespace io {
 								if(peer->bandwidth().write.limit == 0){
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
-										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+										::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							// Если данные не отправлены и нужно подождать
 							} else if(errno == EAGAIN) {
@@ -17996,8 +18242,8 @@ namespace io {
 										peer->callbacks.write(peer->id, result);
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
-										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+										::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								// Если данные не отправлены и нужно подождать
 								} else if(errno == EAGAIN) {
 									// Сохраняем оставшиеся данные для последующей отправки
@@ -18079,8 +18325,8 @@ namespace io {
 								peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 							// Если установлено ограничение пропускной способности на запись данных
 							if(::bandwidth::write > 0)
-								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+								// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+								::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 						// Если данные не отправлены
 						} else {
 							// Если функция обратного вызова для вывода записанных данных установлена
@@ -18403,8 +18649,8 @@ namespace io {
 											peer->callbacks.write(peer->id, result);
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
-											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
 									} else if(errno == EAGAIN) {
 										// Сохраняем оставшиеся данные для последующей отправки
@@ -18754,8 +19000,8 @@ namespace io {
 												peer->callbacks.write(peer->id, result);
 											// Если установлено ограничение пропускной способности на запись данных
 											if(::bandwidth::write > 0)
-												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+												::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
 										} else if(errno == EAGAIN) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -18849,8 +19095,8 @@ namespace io {
 									peer->callbacks.write(peer->id, static_cast <size_t> (bytes));
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
-									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+									// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -19241,8 +19487,8 @@ namespace io {
 										origin->callbacks.write(origin->id, result);
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
-										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+										::io::postpone(origin, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							}
 						// Если очередь передачи данных не пуста
@@ -19546,8 +19792,8 @@ namespace io {
 											origin->callbacks.write(origin->id, result);
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
-											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(origin, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									}
 								}
 							}
@@ -19592,8 +19838,8 @@ namespace io {
 								origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
 							// Если установлено ограничение пропускной способности на запись данных
 							if(::bandwidth::write > 0)
-								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+								// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+								::io::postpone(origin, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -21138,8 +21384,8 @@ namespace io {
 								if(client->bandwidth().write.limit == 0){
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
-										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+										::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							// Если данные не отправлены и нужно подождать
 							} else if(errno == EAGAIN) {
@@ -21551,8 +21797,8 @@ namespace io {
 										client->callbacks.write(client->id, result);
 									// Если установлено ограничение пропускной способности на запись данных
 									if(::bandwidth::write > 0)
-										// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-										this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+										::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								// Если данные не отправлены и нужно подождать
 								} else if(errno == EAGAIN) {
 									// Сохраняем оставшиеся данные для последующей отправки
@@ -21634,8 +21880,8 @@ namespace io {
 								client->callbacks.write(client->id, static_cast <size_t> (bytes));
 							// Если установлено ограничение пропускной способности на запись данных
 							if(::bandwidth::write > 0)
-								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+								// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+								::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 						// Если данные не отправлены
 						} else {
 							// Если функция обратного вызова для вывода записанных данных установлена
@@ -21944,8 +22190,8 @@ namespace io {
 											client->callbacks.write(client->id, result);
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
-											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
 									} else if(errno == EAGAIN) {
 										// Сохраняем оставшиеся данные для последующей отправки
@@ -22281,8 +22527,8 @@ namespace io {
 												client->callbacks.write(client->id, result);
 											// Если установлено ограничение пропускной способности на запись данных
 											if(::bandwidth::write > 0)
-												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
 										} else if(errno == EAGAIN) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -22362,8 +22608,8 @@ namespace io {
 									client->callbacks.write(client->id, static_cast <size_t> (bytes));
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
-									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+									// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -22693,8 +22939,8 @@ namespace io {
 											client->callbacks.write(client->id, result);
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
-											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
 									} else if(errno == EAGAIN) {
 										// Сохраняем оставшиеся данные для последующей отправки
@@ -23030,8 +23276,8 @@ namespace io {
 												client->callbacks.write(client->id, result);
 											// Если установлено ограничение пропускной способности на запись данных
 											if(::bandwidth::write > 0)
-												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
 										} else if(errno == EAGAIN) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -23111,8 +23357,8 @@ namespace io {
 									client->callbacks.write(client->id, static_cast <size_t> (bytes));
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
-									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+									// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -23501,8 +23747,8 @@ namespace io {
 											client->callbacks.write(client->id, result);
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
-											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
 									} else if(errno == EAGAIN) {
 										// Сохраняем оставшиеся данные для последующей отправки
@@ -23865,8 +24111,8 @@ namespace io {
 												client->callbacks.write(client->id, result);
 											// Если установлено ограничение пропускной способности на запись данных
 											if(::bandwidth::write > 0)
-												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
 										} else if(errno == EAGAIN) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -23973,8 +24219,8 @@ namespace io {
 									client->callbacks.write(client->id, static_cast <size_t> (bytes));
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
-									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+									// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -24331,8 +24577,8 @@ namespace io {
 											client->callbacks.write(client->id, result);
 										// Если установлено ограничение пропускной способности на запись данных
 										if(::bandwidth::write > 0)
-											// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
 									} else if(errno == EAGAIN) {
 										// Сохраняем оставшиеся данные для последующей отправки
@@ -24695,8 +24941,8 @@ namespace io {
 												client->callbacks.write(client->id, result);
 											// Если установлено ограничение пропускной способности на запись данных
 											if(::bandwidth::write > 0)
-												// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-												this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (result) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
 										} else if(errno == EAGAIN) {
 											// Сохраняем оставшиеся данные для последующей отправки
@@ -24803,8 +25049,8 @@ namespace io {
 									client->callbacks.write(client->id, static_cast <size_t> (bytes));
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
-									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+									// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -24975,8 +25221,8 @@ namespace io {
 								server->callbacks.write(server->id, static_cast <size_t> (bytes));
 							// Если установлено ограничение пропускной способности на запись данных
 							if(::bandwidth::write > 0)
-								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+								// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+								::io::postpone(server, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -25071,8 +25317,8 @@ namespace io {
 									server->callbacks.write(server->id, static_cast <size_t> (bytes));
 								// Если установлено ограничение пропускной способности на запись данных
 								if(::bandwidth::write > 0)
-									// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-									this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+									// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+									::io::postpone(server, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -25166,8 +25412,8 @@ namespace io {
 								server->callbacks.write(server->id, static_cast <size_t> (bytes));
 							// Если установлено ограничение пропускной способности на запись данных
 							if(::bandwidth::write > 0)
-								// Устанавливаем фриз на время, необходимое для отправки данных, с учётом установленного ограничения пропускной способности
-								this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> ((static_cast <double> (bytes) / static_cast <double> (::bandwidth::write)) * 1000000000.0)));
+								// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
+								::io::postpone(server, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 						// Если данные не отправлены
 						} else {
 							// Идентификатор полученной ошибки
@@ -26490,6 +26736,102 @@ namespace io {
 	 * @return         результат выполнения обработки
 	 *
 	 */
+	/**
+	 * @brief Функция отсрочки узла до пополнения общего ведра токенов
+	 *
+	 * @details Узел, списавший из общего ведра больше, чем в нём было, откладывается
+	 *          своим таймером на время отдачи долга. Цикл событий при этом продолжает
+	 *          работу и обслуживает все прочие узлы: в этом и состоит отличие от
+	 *          прежнего сна, останавливавшего движок целиком
+	 *
+	 * @param node     узел, подлежащий отсрочке
+	 * @param limiting режим ограничения пропускной способности (egress или ingress)
+	 * @param delay    время отсрочки в миллисекундах
+	 * @param log      объект работы с логами
+	 *
+	 */
+	static void postpone(::io::node_t * node, const event::limiting_t limiting, const uint32_t delay, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если узел не передан либо отсрочка не требуется, откладывать нечего
+			if((node == nullptr) || (delay == 0))
+				// Выходим из функции
+				return;
+			// Определяем, к какому направлению относится отсрочка
+			const bool egress = (limiting == event::limiting_t::EGRESS);
+			// Таймаут, которым узел откладывается
+			::io::timeout_t * timeout = nullptr;
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (node->state.node)){
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+					// Получаем таймаут выбранного направления
+					timeout = &(egress ? peer->bandwidthUse().write.timeout : peer->bandwidthUse().read.timeout);
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (node);
+					// Получаем таймаут выбранного направления
+					timeout = &(egress ? client->bandwidthUse().write.timeout : client->bandwidthUse().read.timeout);
+				} break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN):
+					// Получаем таймаут пропускной способности источника
+					timeout = &(awh_cast <::io::origin_t *> (node)->wrate.timeout);
+				break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Получаем таймаут пропускной способности сервера
+					timeout = &(awh_cast <::io::server_t *> (node)->wrate.timeout);
+				break;
+			}
+			// Если таймаут узла получить не удалось, откладывать нечем
+			if(timeout == nullptr)
+				// Выходим из функции
+				return;
+			// Устанавливаем время отсрочки узла
+			timeout->delay = delay;
+			/**
+			 * Определяем тип таймера для событий сетевого движка
+			 */
+			switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+				// Если тип таймера для событий сетевого движка является простым
+				case static_cast <uint8_t> (event::timer_t::SIMPLE):
+					// Обновляем таймаут отсрочки узла
+					::timer::simple::set({::timer::flag_t::FORCED, * timeout}, node->id, event::rate_t::DEFERRED, log);
+				break;
+				// Если тип таймера для событий сетевого движка является сложным
+				case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+					// Обновляем таймаут отсрочки узла
+					::timer::difficult::set({::timer::flag_t::FORCED, * timeout}, node->id, event::rate_t::DEFERRED, log);
+				break;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, static_cast <uint16_t> (limiting), delay), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
 	static bool tokens(::io::node_t * node, const event::limiting_t limiting, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок

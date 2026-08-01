@@ -314,10 +314,79 @@ namespace {
 		return ((zone < MIN_ZONE_OFFSET) ? MIN_ZONE_OFFSET : ((zone > MAX_ZONE_OFFSET) ? MAX_ZONE_OFFSET : zone));
 	}
 	/**
-	 * @brief Функция приведения штампа времени к пределу представимости
+	 * @brief Функция сдвига штампа времени на смещение временной зоны
+	 *
+	 * @details Сдвиг насыщается обоими пределами представимости календаря: за его
+	 *          границами разрядность uint64_t от самого календаря неотличима
+	 *
+	 * @param date   штамп времени в миллисекундах
+	 * @param offset смещение в миллисекундах, на которое сдвигается штамп времени
+	 * @return       сдвинутый штамп времени в миллисекундах
+	 *
+	 */
+	inline uint64_t shiftStamp(const uint64_t date, const int64_t offset) noexcept {
+		// Сдвиг за начало эпохи приводится к её началу, за конец - к последнему мгновению
+		return ((offset < 0)
+			? ((static_cast <uint64_t> (-offset) > date) ? 0 : (date - static_cast <uint64_t> (-offset)))
+			: ((date + static_cast <uint64_t> (offset)) > MAX_TIMESTAMP ? MAX_TIMESTAMP : (date + static_cast <uint64_t> (offset))));
+	}
+	/**
+	 * @brief Функция получения названия дня недели по его номеру
+	 *
+	 * @details Номер дня недели выводится из даты и в промежутке от первого до седьмого
+	 *          лежит всегда, но индексация таблицы этим не защищена, а номер попадает в
+	 *          объект и напрямую - переменными формата \%u и \%w. Номер вне промежутка
+	 *          выдаёт пустое название, а не читает память за таблицей
+	 *
+	 * @param day номер дня недели от 1 до 7
+	 * @return    пара из краткого и полного названия дня недели
+	 *
+	 */
+	inline const std::pair <string, string> & nameOfDay(const uint8_t day) noexcept {
+		// Пустое название, выдаваемое для номера вне промежутка
+		static const std::pair <string, string> empty;
+		// Выводим название дня недели по его номеру
+		return (((day >= 1) && (day <= 7)) ? params.nameDays[day - 1] : empty);
+	}
+	/**
+	 * @brief Функция получения названия месяца по его номеру
+	 *
+	 * @details Номер месяца задаёт дату наравне с годом и числом, и разбор записи
+	 *          принимает его любым: приведение к календарю идёт сборкой штампа времени,
+	 *          а до неё в объекте лежит номер записи. Номер вне промежутка выдаёт пустое
+	 *          название, а не читает память за таблицей
+	 *
+	 * @param month номер месяца от 1 до 12
+	 * @return      пара из краткого и полного названия месяца
+	 *
+	 */
+	inline const std::pair <string, string> & nameOfMonth(const uint8_t month) noexcept {
+		// Пустое название, выдаваемое для номера вне промежутка
+		static const std::pair <string, string> empty;
+		// Выводим название месяца по его номеру
+		return (((month >= 1) && (month <= 12)) ? params.nameMonths[month - 1] : empty);
+	}
+	/**
+	 * @brief Функция перевода количества единиц времени в штамп времени
+	 *
+	 * @details Перевод насыщается пределом представимости календаря: произведение
+	 *          количества единиц на их длину разрядность uint64_t переполняло и давало
+	 *          дату случайную вместо края календаря
+	 *
+	 * @param value  количество единиц времени
+	 * @param length длина одной единицы в миллисекундах
+	 * @return       штамп времени в миллисекундах
+	 *
+	 */
+	inline uint64_t scaleStamp(const uint64_t value, const uint64_t length) noexcept {
+		// Количество единиц, за предел представимости выводящее, приводится к нему самому
+		return ((value > (MAX_TIMESTAMP / length)) ? MAX_TIMESTAMP : (value * length));
+	}
+	/**
+	 * @brief Функция приведения штампа времени к пределу представимости календаря
 	 *
 	 * @param date штамп времени в миллисекундах
-	 * @return     штамп времени, не выходящий за предел представимости
+	 * @return     штамп времени, приведённый к пределу представимости
 	 *
 	 */
 	inline uint64_t clampDate(const uint64_t date) noexcept {
@@ -1484,7 +1553,16 @@ namespace {
 	 */
 	inline bool validDate(const uint16_t year, const uint8_t month, const uint8_t date, const uint8_t hour,
 	                      const uint8_t minutes, const uint8_t seconds, const uint32_t milliseconds,
-	                      const bool leap, const int32_t offset) noexcept {
+	                      const bool leap, const int32_t offset, const uint8_t day) noexcept {
+		/**
+		 * Номер дня недели переменные формата %u и %w задают напрямую, и запись «9»
+		 * разбор проходила: сам он день недели выводит из даты заново и потому значения
+		 * не замечает, а проверка записи его не смотрела вовсе
+		 */
+		// Номер дня недели лежит в пределах от первого до седьмого
+		if((day < 1) || (day > 7))
+			// Составляющие даты недопустимы
+			return false;
 		// Год лежит в пределах представимости календаря модуля
 		if((year < 1970) || (year > MAX_YEAR))
 			// Составляющие даты недопустимы
@@ -2066,7 +2144,7 @@ void awh::Chrono::clampDay(dt_t & dt) const noexcept {
 	// Если месяц объекта задан
 	if((dt.month > 0) && (dt.month < 13)){
 		// Получаем количество дней в месяце с учётом високосного года
-		const uint8_t days = static_cast <uint8_t> (static_cast <uint16_t> (params.daysInMonths[dt.month - 1]) + (((dt.month == 2) && dt.leap) ? 1 : 0));
+		const uint8_t days = static_cast <uint8_t> (static_cast <uint16_t> (params.daysInMonths[dt.month - 1]) + (((dt.month == 2) && this->leap(dt.year)) ? 1 : 0));
 		// Если число месяца в нём отсутствует
 		if(dt.date > days)
 			// Ограничиваем число последним днём месяца
@@ -2271,6 +2349,14 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		const uint16_t lastYears = (dt.year - 1970);
 		// Определяем количество прошедших високосных лет
 		const uint16_t leapCount = (lastYears > 0 ? this->leapYears(lastYears) : 0);
+		/**
+		 * Високосность считается от самого года, а не берётся из поля объекта: поле
+		 * выводное, и сборка штампа времени - единственное место, где расхождение его с
+		 * годом сдвинуло бы дату на сутки. Опираться здесь на выводное поле значит
+		 * зависеть от того, обновил ли его тот, кто год менял
+		 */
+		// Определяем високосность года записи
+		const bool leap = this->leap(dt.year);
 		// Получаем штамп времени начала года
 		result = (
 			(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
@@ -2286,7 +2372,7 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		 */
 		for(uint8_t i = 0; (i < params.daysInMonths.size()) && (i < (dt.month - 1)); i++){
 			// Если месяц февраль и год високосный
-			if((i == 1) && dt.leap)
+			if((i == 1) && leap)
 				// Увеличиваем результат на один день
 				result += static_cast <uint64_t> (86400000);
 			// Увеличиваем смещение времени до указанного месяца
@@ -2602,12 +2688,18 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								switch(static_cast <uint8_t> (fmt)){
 									// Если мы определяем номер дня недели %w
 									case static_cast <uint8_t> (format_t::w): {
+										// Получаем номер дня недели, записью заданный
+										const uint8_t day = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
+										/**
+										 * Переменная %w счёт ведёт от нуля до шести, воскресенье обозначая
+										 * нулём: седьмой день недели ей не принадлежит, и запись «7»
+										 * прежде читалась воскресеньем наравне с нулём - после перевода
+										 * нуля в семёрку сырое значение от переведённого отличить было
+										 * нельзя. Значение вне промежутка поле обнуляет, и проверка записи
+										 * такую отвергает
+										 */
 										// Устанавливаем номер дня недели
-										dt.day = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
-										// Если день установлен как нулевой
-										if(dt.day == 0)
-											// Устанавливаем номер дня недели
-											dt.day = 7;
+										dt.day = ((day < 7) ? ((day == 0) ? 7 : day) : 0);
 									} break;
 									// Если мы определяем номер недели в году %W
 									case static_cast <uint8_t> (format_t::W):
@@ -3285,8 +3377,23 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
  *
  */
 uint64_t awh::Chrono::end(const type_t type, const storage_t storage) const noexcept {
+	// Получаем момент времени указанного хранилища
+	const uint64_t date = this->timestamp(type_t::MILLISECONDS, storage);
+	/**
+	 * Границы местного хранилища отсчитываются в зоне объекта, а не в нулевой: местное
+	 * хранилище означает зону объекта всюду - и в формировании записи, и в чтении
+	 * единиц, и в признаке летнего времени, - а границы отсчитывались от нулевой, отчего
+	 * конец суток записи, лежащей в зоне UTC+3, приходился на три часа утра
+	 */
+	// Если запрошено местное хранилище с ненулевым смещением зоны
+	if((storage == storage_t::LOCAL) && (this->_dt.offset != 0)){
+		// Получаем смещение временной зоны объекта в миллисекундах
+		const int64_t offset = (static_cast <int64_t> (this->_dt.offset) * 1000);
+		// Выводим границу, найденную в зоне объекта, обратно в нулевую зону
+		return ::shiftStamp(this->end(::shiftStamp(date, offset), type), -offset);
+	}
 	// Выполняем получение конца позиции текущей даты
-	return this->end(this->timestamp(type_t::MILLISECONDS, storage), type);
+	return this->end(date, type);
 }
 /**
  * @brief Метод получения начала позиции указанной даты
@@ -3452,8 +3559,23 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
  *
  */
 uint64_t awh::Chrono::begin(const type_t type, const storage_t storage) const noexcept {
+	// Получаем момент времени указанного хранилища
+	const uint64_t date = this->timestamp(type_t::MILLISECONDS, storage);
+	/**
+	 * Границы местного хранилища отсчитываются в зоне объекта, а не в нулевой: местное
+	 * хранилище означает зону объекта всюду - и в формировании записи, и в чтении
+	 * единиц, и в признаке летнего времени, - а границы отсчитывались от нулевой, отчего
+	 * начало суток записи, лежащей в зоне UTC+3, приходилось на три часа утра
+	 */
+	// Если запрошено местное хранилище с ненулевым смещением зоны
+	if((storage == storage_t::LOCAL) && (this->_dt.offset != 0)){
+		// Получаем смещение временной зоны объекта в миллисекундах
+		const int64_t offset = (static_cast <int64_t> (this->_dt.offset) * 1000);
+		// Выводим границу, найденную в зоне объекта, обратно в нулевую зону
+		return ::shiftStamp(this->begin(::shiftStamp(date, offset), type), -offset);
+	}
 	// Выполняем получение начала позиции текущей даты
-	return this->begin(this->timestamp(type_t::MILLISECONDS, storage), type);
+	return this->begin(date, type);
 }
 /**
  * @brief Метод актуализации прошедшего и оставшегося времени
@@ -3543,8 +3665,15 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										weeks = static_cast <uint8_t> (::round(31622400000 / 604800000.L));
 									// Если год не високосный
 									else weeks = static_cast <uint8_t> (::round(31536000000 / 604800000.L));
+									// Получаем количество недель прошедших с начала года
+									const uint64_t passed = static_cast <uint64_t> (::round((date - beginYear) / 604800000.L));
+									/**
+									 * Вычитание насыщается нулём: количество прошедших недель считается
+									 * округлением и вплотную к концу периода в него упирается, а разность
+									 * велась в разрядности числа недель и при обгоне обернулась бы
+									 */
 									// Получаем количество недель оставшихся в году
-									result = static_cast <uint64_t> (weeks - static_cast <uint8_t> (::round((date - beginYear) / 604800000.L)));
+									result = ((passed >= weeks) ? 0 : (static_cast <uint64_t> (weeks) - passed));
 								} break;
 								// Если нам нужно получить количество оставшихся дней
 								case static_cast <uint8_t> (type_t::DAY): {
@@ -3568,13 +3697,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество часов прошедших с начала года
-									const uint32_t hours = static_cast <uint32_t> (::ceil((date - beginYear) / 3600000.L));
+									const uint64_t hours = static_cast <uint64_t> (::ceil((date - beginYear) / 3600000.L));
 									// Если год високосный
 									if(this->leap(year))
 										// Определяем количество оставшихся часов
-										result = static_cast <uint64_t> (static_cast <uint32_t> (31622400000 / 3600000) - hours);
+										result = (static_cast <uint64_t> (31622400000 / 3600000) - hours);
 									// Если год не високосный
-									else result = static_cast <uint64_t> (static_cast <uint32_t> (31536000000 / 3600000) - hours);
+									else result = (static_cast <uint64_t> (31536000000 / 3600000) - hours);
 								} break;
 								// Если нам нужно получить количество оставшихся минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
@@ -3691,14 +3820,18 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										if(leap && (month == 2)){
 											// Получаем количество недель в месяце
 											const uint8_t weeks = static_cast <uint8_t> (::ceil((params.daysInMonths[month - 1] + 1) / 7.));
-											// Получаем количество оставшихся недель в месяце
-											result = static_cast <uint64_t> (weeks - static_cast <uint8_t> (::round((date - beginMonth) / 604800000.L)));
+											// Получаем количество недель прошедших с начала месяца
+											const uint64_t passed = static_cast <uint64_t> (::round((date - beginMonth) / 604800000.L));
+											// Получаем количество оставшихся недель в месяце, насыщая разность нулём
+											result = ((passed >= weeks) ? 0 : (static_cast <uint64_t> (weeks) - passed));
 										// Если год не високосный или месяц не февраль
 										} else {
 											// Получаем количество недель в месяце
 											const uint8_t weeks = static_cast <uint8_t> (::ceil(params.daysInMonths[month - 1] / 7.));
-											// Получаем количество оставшихся недель в месяце
-											result = static_cast <uint64_t> (weeks - static_cast <uint8_t> (::round((date - beginMonth) / 604800000.L)));
+											// Получаем количество недель прошедших с начала месяца
+											const uint64_t passed = static_cast <uint64_t> (::round((date - beginMonth) / 604800000.L));
+											// Получаем количество оставшихся недель в месяце, насыщая разность нулём
+											result = ((passed >= weeks) ? 0 : (static_cast <uint64_t> (weeks) - passed));
 										}
 									}
 								} break;
@@ -3783,9 +3916,9 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся часов в месяце
-											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 3600000);
+											result = static_cast <uint64_t> ((static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 3600000);
 										// Получаем количество оставшихся часов в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 3600000);
+										else result = static_cast <uint64_t> ((static_cast <uint64_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 3600000);
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся минут
@@ -3823,9 +3956,9 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся минут в месяце
-											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 60000);
+											result = static_cast <uint64_t> ((static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 60000);
 										// Получаем количество оставшихся минут в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 60000);
+										else result = static_cast <uint64_t> ((static_cast <uint64_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 60000);
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
@@ -3863,9 +3996,9 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся секунд в месяце
-											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 1000);
+											result = static_cast <uint64_t> ((static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 1000);
 										// Получаем количество оставшихся секунд в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 1000);
+										else result = static_cast <uint64_t> ((static_cast <uint64_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth)) / 1000);
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
@@ -3903,9 +4036,9 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся миллисекунд в месяце
-											result = static_cast <uint64_t> (static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth));
+											result = static_cast <uint64_t> (static_cast <uint64_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth));
 										// Получаем количество оставшихся миллисекунд в месяце
-										else result = static_cast <uint64_t> (static_cast <uint32_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth));
+										else result = static_cast <uint64_t> (static_cast <uint64_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint64_t> (date - beginMonth));
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
@@ -4398,7 +4531,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших часов в месяце
-										result = static_cast <uint64_t> (static_cast <uint32_t> (date - beginMonth) / 3600000);
+										result = static_cast <uint64_t> (static_cast <uint64_t> (date - beginMonth) / 3600000);
 									}
 								} break;
 								// Если нам нужно получить количество прошедших минут
@@ -4434,7 +4567,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших минут в месяце
-										result = static_cast <uint64_t> (static_cast <uint32_t> (date - beginMonth) / 60000);
+										result = static_cast <uint64_t> (static_cast <uint64_t> (date - beginMonth) / 60000);
 									}
 								} break;
 								// Если нам нужно получить количество прошедших секунд
@@ -4470,7 +4603,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших секунд в месяце
-										result = static_cast <uint64_t> (static_cast <uint32_t> (date - beginMonth) / 1000);
+										result = static_cast <uint64_t> (static_cast <uint64_t> (date - beginMonth) / 1000);
 									}
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
@@ -4788,8 +4921,23 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
  *
  */
 uint64_t awh::Chrono::actual(const type_t value, const type_t type, const actual_t actual, const storage_t storage) const noexcept {
+	// Получаем момент времени указанного хранилища
+	const uint64_t date = this->timestamp(type_t::MILLISECONDS, storage);
+	/**
+	 * Отрезок местного хранилища отсчитывается в зоне объекта наравне с его границами:
+	 * актуализация опирается на те же начало и конец периода, и счёт от нулевой зоны
+	 * сдвигал бы отрезок на величину зоны. Возвращается при этом количество единиц, а
+	 * не момент времени, и обратного перевода оно не требует
+	 */
+	// Если запрошено местное хранилище с ненулевым смещением зоны
+	if((storage == storage_t::LOCAL) && (this->_dt.offset != 0)){
+		// Получаем смещение временной зоны объекта в миллисекундах
+		const int64_t offset = (static_cast <int64_t> (this->_dt.offset) * 1000);
+		// Выполняем актуализацию в зоне объекта
+		return this->actual(::shiftStamp(date, offset), value, type, actual);
+	}
 	// Выполняем актуализацию текущей даты на указанное количество единиц времени
-	return this->actual(this->timestamp(type_t::MILLISECONDS, storage), value, type, actual);
+	return this->actual(date, value, type, actual);
 }
 /**
  * @brief Метод смещения на указанное количество единиц времени
@@ -5235,8 +5383,23 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
  *
  */
 uint64_t awh::Chrono::offset(const uint64_t value, const type_t type, const offset_t offset, const storage_t storage) const noexcept {
+	// Получаем момент времени указанного хранилища
+	const uint64_t date = this->timestamp(type_t::MILLISECONDS, storage);
+	/**
+	 * Смещение местного хранилища считается в зоне объекта наравне с границами периода:
+	 * длина года и месяца от самой даты зависит, и счёт от нулевой зоны брал не тот
+	 * месяц - запись 2025-01-31T01:00+0300 лежит тридцатым января в нулевой зоне, и
+	 * прибавление месяца к ней давало первое марта вместо двадцать восьмого февраля
+	 */
+	// Если запрошено местное хранилище с ненулевым смещением зоны
+	if((storage == storage_t::LOCAL) && (this->_dt.offset != 0)){
+		// Получаем смещение временной зоны объекта в миллисекундах
+		const int64_t shift = (static_cast <int64_t> (this->_dt.offset) * 1000);
+		// Выводим смещённый момент, найденный в зоне объекта, обратно в нулевую зону
+		return ::shiftStamp(this->offset(::shiftStamp(date, shift), value, type, offset), -shift);
+	}
 	// Выполняем смещение текущей даты на указанное количество единиц времени
-	return this->offset(this->timestamp(type_t::MILLISECONDS, storage), value, type, offset);
+	return this->offset(date, value, type, offset);
 }
 /**
  * @brief Метод получения текстового значения времени
@@ -7042,7 +7205,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 							// Получаем результирующий буфер для получения результата
 							string * result = reinterpret_cast <string *> (buffer);
 							// Выполняем получение текущего дня недели
-							(* result) = params.nameDays[dt.day - 1].second;
+							(* result) = ::nameOfDay(dt.day).second;
 						// Выполняем копирование текущего дня недели
 						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.day);
 					}
@@ -7142,7 +7305,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 							// Получаем результирующий буфер для получения результата
 							string * result = reinterpret_cast <string *> (buffer);
 							// Выполняем получение названия месяца
-							(* result) = params.nameMonths[dt.month - 1].second;
+							(* result) = ::nameOfMonth(dt.month).second;
 						// Выполняем копирование текущего значения месяца
 						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.month);
 					}
@@ -7368,7 +7531,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
 								// Выполняем получение номера текущего дня недели
-								(* result) = params.nameDays[this->_dt.day - 1].second;
+								(* result) = ::nameOfDay(this->_dt.day).second;
 							break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -7377,7 +7540,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 								// Выполняем извлечение текущего дня недели
 								this->get(&day, sizeof(day), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем получение номера текущего дня недели
-								(* result) = params.nameDays[day - 1].second;
+								(* result) = ::nameOfDay(static_cast <uint8_t> (day)).second;
 							} break;
 						}
 					// Если данные переданы в виде числа
@@ -7625,7 +7788,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
 								// Выполняем получение названия месяца
-								(* result) = params.nameMonths[this->_dt.month - 1].second;
+								(* result) = ::nameOfMonth(this->_dt.month).second;
 							break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -7634,7 +7797,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 								// Выполняем извлечение текущего значения месяца
 								this->get(&month, sizeof(month), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем получение названия месяца
-								(* result) = params.nameMonths[month - 1].second;
+								(* result) = ::nameOfMonth(static_cast <uint8_t> (month)).second;
 							} break;
 						}
 					// Если данные переданы в виде числа
@@ -9145,9 +9308,8 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 				 * эта общая для всего процесса и свойством объекта не является, а поля
 				 * объявлялись изменяемыми и писались без блокировки, отчего обращение к
 				 * одному объекту из нескольких потоков было состязанием за них. Память
-				 * потока снимает состязание вовсе, не требуя блокировки в горячем пути,
-				 * и обойти её нельзя: getTimeZone зовётся из разбора записи, уже
-				 * державшего мютекс объекта, а тот не рекурсивный
+				 * потока снимает состязание вовсе и никакой блокировки не требует - их у
+				 * модуля нет вовсе, согласование доступа оставлено вызывающей стороне
 				 */
 				// Смещение временной зоны окружения, снятое в последний раз
 				static thread_local int32_t cachedOffset = 0;
@@ -9366,37 +9528,37 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 				// Если единицы измерения штампа времени требуется установить в годах
 				case static_cast <uint8_t> (type_t::YEAR):
 					// Получаем текущий штамп времени
-					stamp = static_cast <uint64_t> (date * 31536000000);
+					stamp = ::scaleStamp(date, 31536000000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в месяцах
 				case static_cast <uint8_t> (type_t::MONTH):
 					// Получаем текущий штамп времени
-					stamp = static_cast <uint64_t> (date * 2629746000);
+					stamp = ::scaleStamp(date, 2629746000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в неделях
 				case static_cast <uint8_t> (type_t::WEEK):
 					// Получаем текущий штамп времени
-					stamp = static_cast <uint64_t> (date * 604800000);
+					stamp = ::scaleStamp(date, 604800000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в днях
 				case static_cast <uint8_t> (type_t::DAY):
 					// Получаем текущий штамп времени
-					stamp = static_cast <uint64_t> (date * 86400000);
+					stamp = ::scaleStamp(date, 86400000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в часах
 				case static_cast <uint8_t> (type_t::HOUR):
 					// Получаем текущий штамп времени
-					stamp = static_cast <uint64_t> (date * 3600000);
+					stamp = ::scaleStamp(date, 3600000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в минутах
 				case static_cast <uint8_t> (type_t::MINUTES):
 					// Получаем текущий штамп времени
-					stamp = static_cast <uint64_t> (date * 60000);
+					stamp = ::scaleStamp(date, 60000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в секундах
 				case static_cast <uint8_t> (type_t::SECONDS):
 					// Получаем текущий штамп времени
-					stamp = static_cast <uint64_t> (date * 1000);
+					stamp = ::scaleStamp(date, 1000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в миллисекундах
 				case static_cast <uint8_t> (type_t::MILLISECONDS):
@@ -10548,7 +10710,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 						(pos > -1) && days && ::validDate(
 							this->_dt.year, this->_dt.month, this->_dt.date, this->_dt.hour,
 							this->_dt.minutes, this->_dt.seconds, this->_dt.milliseconds,
-							this->leap(this->_dt.year), offset
+							this->leap(this->_dt.year), offset, this->_dt.day
 						)
 					);
 				}
@@ -10701,7 +10863,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					(* valid) = (
 						(pos > -1) && days && ::validDate(
 							dt.year, dt.month, dt.date, dt.hour,
-							dt.minutes, dt.seconds, dt.milliseconds, this->leap(dt.year), offset
+							dt.minutes, dt.seconds, dt.milliseconds, this->leap(dt.year), offset, dt.day
 						)
 					);
 				}
@@ -11965,12 +12127,12 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							// Если мы нашли переменную (h)
 							case 'h':
 								// Выполняем формирование названия месяца
-								result.append(params.nameMonths[dt.month - 1].first);
+								result.append(::nameOfMonth(dt.month).first);
 							break;
 							// Если мы нашли переменную (B)
 							case 'B':
 								// Выполняем формирование названия месяца
-								result.append(params.nameMonths[dt.month - 1].second);
+								result.append(::nameOfMonth(dt.month).second);
 							break;
 							// Если мы нашли переменную (m)
 							case 'm': {
@@ -12012,12 +12174,12 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							// Если мы нашли переменную (a)
 							case 'a':
 								// Выполняем формирование названия дня недели
-								result.append(params.nameDays[dt.day - 1].first);
+								result.append(::nameOfDay(dt.day).first);
 							break;
 							// Если мы нашли переменную (A)
 							case 'A':
 								// Выполняем формирование названия дня недели
-								result.append(params.nameDays[dt.day - 1].second);
+								result.append(::nameOfDay(dt.day).second);
 							break;
 							// Если мы нашли переменную (u)
 							case 'u':
@@ -12289,11 +12451,11 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							// Если мы нашли переменную (c)
 							case 'c': {
 								// Выполняем формирование названия дня недели
-								result.append(params.nameDays[dt.day - 1].first);
+								result.append(::nameOfDay(dt.day).first);
 								// Добавляем разделитель
 								result.append(1, ' ');
 								// Выполняем формирование названия месяца
-								result.append(params.nameMonths[dt.month - 1].first);
+								result.append(::nameOfMonth(dt.month).first);
 								// Добавляем разделитель
 								result.append(1, ' ');
 								// Добавляем полученный результат

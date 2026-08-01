@@ -84,6 +84,27 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks Chrono submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_CHRONO_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для подмодуля криптографии
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_CRYPTO_BENCHMARK "Build Crypto benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для подмодуля криптографии
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_CRYPTO_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для подмодуля криптографии
+        message(STATUS "Build benchmarks Crypto submodule: Yes\n")
+        # Дополняем список источников бенчмарками для подмодуля криптографии
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            crypto/crypto.cpp
+            crypto/oneshot.cpp
+            crypto/stream.cpp
+            crypto/digest.cpp
+            crypto/keys.cpp
+        )
+    # Если не нужно собрать бенчмарки для подмодуля криптографии
+    else()
+        # Выводим сообщение о сборке бенчмарков для подмодуля криптографии
+        message(STATUS "Build benchmarks Crypto submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_CRYPTO_BENCHMARK})
+
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 

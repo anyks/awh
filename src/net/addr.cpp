@@ -109,9 +109,22 @@ namespace {
 	 * @tparam T размер буфера данных
 	 *
 	 */
-	template <size_t T = 4>
+	template <size_t T = 16>
 	/**
 	 * @brief Вспомогательная функция конвертации IPv6-адреса в нужный порядок байт
+	 *
+	 * @details Это единственное место модуля, где примета порядка байт машины
+	 *          осталась, и устранить её нельзя по смыслу: набор из шестнадцати
+	 *          октетов ни в какое целое число не укладывается, а «числовым» его
+	 *          видом считается тот, в каком число такой ширины лежало бы в памяти
+	 *          машины. На машине с обратным порядком это набор задом наперёд, на
+	 *          машине с прямым - он же сам. Адрес IPv4 такой приметы больше не
+	 *          требует: он умещается в целое число и собирается сдвигами
+	 *          (`readNumber` и `writeNumber`)
+	 *
+	 * @warning Ветвь машины с прямым порядком байт не исполняется ни на одной
+	 *          доступной машине. Держать в ней что-либо сложнее выбора между
+	 *          перестановкой и копированием нельзя: проверить это будет нечем
 	 *
 	 * @param src исходный IPv6-адрес
 	 * @param dst результирующий IPv6-адрес
@@ -131,6 +144,49 @@ namespace {
 			// На big-endian: ничего не делаем
 			::memcpy(dst, src, T);
 		#endif
+	}
+	/**
+	 * @brief Вспомогательная функция чтения адреса IPv4 числом
+	 *
+	 * @details Буфер держит адрес в сетевом порядке, где старший октет идёт первым,
+	 *          и число собирается из октетов сдвигами - порядок байт машины при
+	 *          такой сборке роли не играет. Прежде здесь перекладывались байты
+	 *          с приметой порядка, отчего одна из двух ветвей никогда не
+	 *          исполнялась и проверить её было нечем
+	 *
+	 * @param buffer буфер адреса для чтения
+	 * @return       собранное из октетов число
+	 *
+	 */
+	uint32_t readNumber(const uint8_t * buffer) noexcept {
+		// Выводим собранное из октетов буфера число
+		return (
+			(static_cast <uint32_t> (buffer[0]) << 24) |
+			(static_cast <uint32_t> (buffer[1]) << 16) |
+			(static_cast <uint32_t> (buffer[2]) <<  8) |
+			 static_cast <uint32_t> (buffer[3])
+		);
+	}
+	/**
+	 * @brief Вспомогательная функция записи адреса IPv4 числом
+	 *
+	 * @details Число разбирается на октеты сдвигами, старший октет ложится в буфер
+	 *          первым - порядок байт машины при такой записи роли не играет.
+	 *          Довод к отсутствию приметы порядка приведён у чтения (`readNumber`)
+	 *
+	 * @param buffer буфер адреса для записи
+	 * @param value  число для записи в буфер адреса
+	 *
+	 */
+	void writeNumber(uint8_t * buffer, const uint32_t value) noexcept {
+		// Записываем старший октет числа
+		buffer[0] = static_cast <uint8_t> (value >> 24);
+		// Записываем второй октет числа
+		buffer[1] = static_cast <uint8_t> (value >> 16);
+		// Записываем третий октет числа
+		buffer[2] = static_cast <uint8_t> (value >>  8);
+		// Записываем младший октет числа
+		buffer[3] = static_cast <uint8_t> (value);
 	}
 	/**
 	 * @brief Вспомогательная функция наложения префикса сети на байты адреса
@@ -2139,8 +2195,8 @@ uint32_t awh::Network_Address::v4(const endian_t endian) const noexcept {
 			switch(static_cast <uint8_t> (endian)){
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG):
-					// Получаем буфер данных IP-адреса
-					::convertEndian(&this->_buffer[0], reinterpret_cast <uint8_t *> (&result));
+					// Получаем адрес IPv4 числом, собранным из октетов буфера
+					result = ::readNumber(&this->_buffer[0]);
 				break;
 				// Если установлен порядок следования байт от младшего к старшему
 				case static_cast <uint8_t> (endian_t::LITTLE):
@@ -2196,8 +2252,8 @@ void awh::Network_Address::v4(const uint32_t addr, const endian_t endian) noexce
 		switch(static_cast <uint8_t> (endian)){
 			// Если установлен порядок следования байт от старшего к младшему
 			case static_cast <uint8_t> (endian_t::BIG):
-				// Устанавливаем буфер данных IP-адреса
-				::convertEndian(reinterpret_cast <const uint8_t *> (&addr), &this->_buffer[0]);
+				// Устанавливаем буфер данных IP-адреса октетами числа
+				::writeNumber(&this->_buffer[0], addr);
 			break;
 			// Если установлен порядок следования байт от младшего к старшему
 			case static_cast <uint8_t> (endian_t::LITTLE):
@@ -2386,8 +2442,8 @@ unique_ptr <awh::net::addr_t> awh::Network_Address::source(const endian_t endian
 				switch(static_cast <uint8_t> (endian)){
 					// Если установлен порядок следования байт от старшего к младшему
 					case static_cast <uint8_t> (endian_t::BIG):
-						// Получаем буфер данных IP-адреса
-						::convertEndian(&this->_buffer[0], reinterpret_cast <uint8_t *> (&awh_cast <net::addr_net_ipv4_t *> (result.get())->address));
+						// Получаем адрес IPv4 числом, собранным из октетов буфера
+						awh_cast <net::addr_net_ipv4_t *> (result.get())->address = ::readNumber(&this->_buffer[0]);
 					break;
 					// Если установлен порядок следования байт от младшего к старшему
 					case static_cast <uint8_t> (endian_t::LITTLE):
@@ -2489,8 +2545,8 @@ void awh::Network_Address::source(const net::addr_t * value, const endian_t endi
 				switch(static_cast <uint8_t> (endian)){
 					// Если установлен порядок следования байт от старшего к младшему
 					case static_cast <uint8_t> (endian_t::BIG):
-						// Устанавливаем буфер данных IP-адреса
-						::convertEndian(reinterpret_cast <const uint8_t *> (&awh_cast <const net::addr_net_ipv4_t *> (value)->address), &this->_buffer[0]);
+						// Устанавливаем буфер данных IP-адреса октетами числа
+						::writeNumber(&this->_buffer[0], awh_cast <const net::addr_net_ipv4_t *> (value)->address);
 					break;
 					// Если установлен порядок следования байт от младшего к старшему
 					case static_cast <uint8_t> (endian_t::LITTLE):

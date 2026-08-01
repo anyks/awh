@@ -101,6 +101,24 @@ namespace awh {
 		 */
 		explicit key_rsa_t() noexcept :
 		 ctx(nullptr), type(crypto_t::key_type_t::NONE) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 * @details Ключ освобождается здесь, а не разрушением объекта работы: владеет
+		 *          им эта структура, и освобождение, вынесенное наружу, держалось на
+		 *          том, что наружное место о нём не забудет. Стейт шифрования свой
+		 *          контекст освобождает сам, ключевые же данные не освобождали
+		 *
+		 */
+		~key_rsa_t() noexcept {
+			// Если ключ RSA заведён
+			if(this->ctx != nullptr){
+				// Освобождаем память выделенную под ключ
+				::EVP_PKEY_free(this->ctx);
+				// Снимаем указатель освобождённого ключа
+				this->ctx = nullptr;
+			}
+		}
 	};
 	/**
 	 * @brief Полное определение непрозрачного контекста стейта AES-шифрования
@@ -115,6 +133,15 @@ namespace awh {
 		crypto_t::cipher_t cipher;
 		// Режим блочного шифрования
 		crypto_t::mode_t mode;
+		/**
+		 * Количество итераций вывода ключа
+		 *
+		 * @details Ключ выводится из пароля и соли за это число итераций, и от него
+		 *          зависит наравне с ними. Хранится здесь затем, чтобы условие
+		 *          перевывода судило обо всех приметах вывода, а не о части из них
+		 *
+		 */
+		uint32_t rounds;
 		/**
 		 * Направление работы потокового шифрования
 		 *
@@ -205,6 +232,47 @@ namespace awh {
 			this->cipher = crypto_t::cipher_t::NONE;
 			// Сбрасываем режим блочного шифрования
 			this->mode = crypto_t::mode_t::NONE;
+			// Сбрасываем количество итераций вывода ключа
+			this->rounds = 0;
+			// Сбрасываем направление работы потокового шифрования
+			this->event = crypto_t::event_t::NONE;
+		}
+		/**
+		 * @brief Метод сброса примет потока при сохранении выведенного ключа
+		 *
+		 * @details Заведение потока сбрасывало стейт целиком и выводило ключ заново,
+		 *          а вывод ключа стоит ста тысяч итераций - на замере 6.69 мс против
+		 *          сотых долей у самого шифрования. Пароль, соль и число итераций
+		 *          своими установками стейт сбрасывают, и уцелевший ключ означает,
+		 *          что выведен он из них же: сбрасывать довольно приметы одного лишь
+		 *          потока - контекст, вектор инициализации, удерживаемый хвост и
+		 *          направление работы
+		 *
+		 */
+		void renew() noexcept {
+			// Если контекст шифрования заведён
+			if(this->ctx != nullptr){
+				// Освобождаем контекст шифрования
+				::EVP_CIPHER_CTX_free(this->ctx);
+				// Зануляем контекст шифрования
+				this->ctx = nullptr;
+			}
+			/**
+			 * Вектор инициализации затирается, но длины своей не теряет: она взята у
+			 * шифра, а шифр здесь тот же самый
+			 */
+			// Если вектор инициализации выведен
+			if(!this->ivec.empty())
+				// Выполняем затирание вектора инициализации
+				::OPENSSL_cleanse(this->ivec.data(), this->ivec.size());
+			// Если удерживаемый хвост потока не пуст
+			if(!this->tail.empty())
+				// Выполняем затирание удерживаемого хвоста потока
+				::OPENSSL_cleanse(this->tail.data(), this->tail.size());
+			// Освобождаем удерживаемый хвост потока
+			this->tail.clear();
+			// Сбрасываем признак ожидания вектора инициализации
+			this->pending = true;
 			// Сбрасываем направление работы потокового шифрования
 			this->event = crypto_t::event_t::NONE;
 		}
@@ -215,7 +283,7 @@ namespace awh {
 		explicit state_t() noexcept :
 		 hash(crypto_t::hash_t::NONE),
 		 cipher(crypto_t::cipher_t::NONE),
-		 mode(crypto_t::mode_t::NONE),
+		 mode(crypto_t::mode_t::NONE), rounds(0),
 		 event(crypto_t::event_t::NONE), pending(true),
 		 evp(nullptr), ctx(nullptr) {}
 		/**
@@ -238,6 +306,41 @@ namespace driver {
 	 * Подписываемся на пространства имён AWH
 	 */
 	using namespace awh;
+
+	/**
+	 * @brief Охранник очереди ошибок библиотеки криптографии
+	 *
+	 * @details Библиотека криптографии складывает причины отказов в очередь,
+	 *          принадлежащую потоку, а не вызову, и сама её не опорожняет. Модуль
+	 *          очередь не читал вовсе, и оставленные им причины доставались
+	 *          соседнему коду: работа с защищённым соединением очередь как раз
+	 *          вычитывает и выдаёт в лог, отчего отказ рукопожатия сопровождался
+	 *          чужими причинами - от шифрования, случившегося до него.
+	 *
+	 *          Очередь снимается и на входе, и на выходе: на входе - чтобы модуль
+	 *          не принял чужую причину за свою, на выходе - чтобы своей не оставил
+	 *          никому. Снятие на выходе идёт разрушением охранника и потому
+	 *          происходит на всяком пути возврата, включая выход по исключению
+	 *
+	 */
+	struct purge_t {
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit purge_t() noexcept {
+			// Снимаем очередь ошибок библиотеки криптографии
+			::ERR_clear_error();
+		}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~purge_t() noexcept {
+			// Снимаем очередь ошибок библиотеки криптографии
+			::ERR_clear_error();
+		}
+	};
 
 	/**
 	 * @brief Шаблон функции затирания и очистки буфера результата
@@ -1481,14 +1584,47 @@ namespace driver {
 		 * Если схема дополнения подписи вероятностная
 		 */
 		if(padding == crypto_t::padding_t::PSS){
+			/**
+			 * Отказ этих установок записывается наравне с отказом самой схемы
+			 * дополнения: прежде он оставался молчаливым, и вероятностная подпись
+			 * отказывала без единого следа о том, что именно не задалось
+			 */
 			// Выполняем установку функции хэширования маски
-			if(::EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, md) <= 0)
+			if(::EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, md) <= 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					log->debug("Error during signature mask generation function setup", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log->print("Error during signature mask generation function setup", log_t::flag_t::CRITICAL);
+				#endif
 				// Выводим отказ установки схемы дополнения
 				return false;
+			}
 			// Выполняем установку длины соли подписи
-			if(::EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, RSA_PSS_SALTLEN_DIGEST) <= 0)
+			if(::EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, RSA_PSS_SALTLEN_DIGEST) <= 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					log->debug("Error during signature salt length setup", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log->print("Error during signature salt length setup", log_t::flag_t::CRITICAL);
+				#endif
 				// Выводим отказ установки схемы дополнения
 				return false;
+			}
 		}
 		// Выводим успех установки схемы дополнения
 		return true;
@@ -1784,6 +1920,8 @@ namespace driver {
 					state.cipher = cipher;
 					// Устанавливаем режим блочного шифрования в стейт
 					state.mode = mode;
+					// Устанавливаем количество итераций вывода ключа в стейт
+					state.rounds = rounds;
 				}
 			/**
 			 * Если возникает ошибка
@@ -1830,12 +1968,45 @@ awh::Crypto::Params_RSA::Params_RSA() noexcept :
  state(nullptr), key(nullptr) {}
 
 /**
+ * @brief Метод проверки готовности объекта к работе
+ *
+ * @return результат проверки готовности
+ *
+ */
+bool awh::Crypto::ready() const noexcept {
+	// Если стейт шифрования и ключевые данные отведены
+	if((this->_params.state != nullptr) && (this->_params.key != nullptr))
+		// Выводим готовность объекта к работе
+		return true;
+	/**
+	 * Если включён режим отладки
+	 */
+	#if DEBUG_MODE
+		// Записываем ошибку в лог
+		this->_log->debug("Object is not constructed, memory allocation has failed", __PRETTY_FUNCTION__, make_tuple(), log_t::flag_t::CRITICAL);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		this->_log->print("Object is not constructed, memory allocation has failed", log_t::flag_t::CRITICAL);
+	#endif
+	// Выводим неготовность объекта к работе
+	return false;
+}
+/**
  * @brief Метод установки количества итераций PBKDF2 для вывода ключа AES
  *
  * @param round количество итераций PBKDF2
  *
  */
 void awh::Crypto::roundAES(const uint32_t round) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1895,6 +2066,12 @@ void awh::Crypto::roundAES(const uint32_t round) noexcept {
  *
  */
 void awh::Crypto::salt(string_view salt) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1962,6 +2139,12 @@ void awh::Crypto::salt(string_view salt) noexcept {
  *
  */
 void awh::Crypto::password(string_view password) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2029,6 +2212,12 @@ void awh::Crypto::password(string_view password) noexcept {
  *
  */
 void awh::Crypto::mode(const mode_t mode) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2073,6 +2262,10 @@ awh::Crypto::mode_t awh::Crypto::mode() const noexcept {
  *
  */
 void awh::Crypto::padding(const padding_t padding) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return;
 	// Устанавливаем схему дополнения подписи RSA
 	this->_params.padding = padding;
 }
@@ -2093,6 +2286,10 @@ awh::Crypto::padding_t awh::Crypto::padding() const noexcept {
  *
  */
 void awh::Crypto::passwordRSA(string_view password) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2186,6 +2383,8 @@ template <typename T>
  *
  */
 auto awh::Crypto::hash(string_view buffer, const hash_t hash) const noexcept -> T {
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	T result;
 	// Если текст передан
@@ -2255,6 +2454,8 @@ template <typename A, typename B>
  *
  */
 auto awh::Crypto::hash(const B & buffer, const hash_t hash) const noexcept -> A {
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	A result;
 	// Если текст передан
@@ -2354,6 +2555,8 @@ template <typename T>
  *
  */
 auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash) const noexcept -> T {
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	T result;
 	// Если текст передан
@@ -2426,6 +2629,8 @@ template <typename T>
  *
  */
 auto awh::Crypto::hmac(const string & key, string_view buffer, const hash_t hash) const noexcept -> T {
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	T result;
 	// Если текст передан
@@ -2499,6 +2704,8 @@ template <typename A, typename B>
  *
  */
 auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash) const noexcept -> A {
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	A result;
 	// Если текст передан
@@ -2602,6 +2809,8 @@ template <typename A, typename B>
  *
  */
 auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash) const noexcept -> A {
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	A result;
 	// Если текст передан
@@ -2702,6 +2911,12 @@ template <typename T>
  *
  */
 bool awh::Crypto::finalize(T & buffer) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -2888,8 +3103,16 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 				buffer.resize(length + static_cast <size_t> (offset) + tagsize);
 			// Изменяем размер результата на фактический размер данных
 			} else buffer.resize(length + static_cast <size_t> (offset));
-			// Выполняем сброс стейта AES-шифрования
-			state.reset();
+			/**
+			 * Успешно завершённый поток снимает приметы одного лишь потока, а ключ
+			 * удерживает: без этого всякий новый поток выводил бы его заново - сто
+			 * тысяч итераций, 6.4 мс на замере, - тогда как разовое шифрование ключ
+			 * удерживало всегда. Продолжить завершённый поток нечем: контекст
+			 * освобождён, вектор инициализации затёрт, хвост снят, направление работы
+			 * сброшено. Отказы же сбрасывают стейт целиком - см. 4.26
+			 */
+			// Выполняем сброс примет одного лишь потока
+			state.renew();
 		}
 	/**
 	 * Если возникает ошибка
@@ -2949,6 +3172,12 @@ template bool awh::Crypto::finalize(vector <uint8_t> &) noexcept;
  *
  */
 bool awh::Crypto::initialize(const event_t event, const hash_t hash, const cipher_t cipher) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -2965,10 +3194,26 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 				 * работу: повторная инициализация иначе всегда отвечала отказом, и
 				 * сменить направление либо шифр после первого раза было нечем
 				 */
+				/**
+				 * Ключ, выведенный теми же приметами, выводится не заново, а удерживается:
+				 * вывод его стоит ста тысяч итераций, и всякий новый поток платил их сполна.
+				 * Разовое шифрование ключ удерживало и прежде, поток же - нет, и та же самая
+				 * работа обходилась ему в тысячи раз дороже. Пароль, соль и число итераций
+				 * своими установками стейт сбрасывают, и уцелевший ключ означает, что выведен
+				 * он из них же (5.21)
+				 */
+				// Определяем, выведен ли ключ теми же приметами
+				const bool derived = (!state.key.empty() && (state.hash == hash) &&
+				                      (state.cipher == cipher) && (state.mode == this->_params.mode) &&
+				                      (state.rounds == this->_params.rounds));
+				// Если ключ выведен теми же приметами
+				if(derived)
+					// Выполняем сброс примет одного лишь потока
+					state.renew();
 				// Выполняем сброс стейта AES-шифрования
-				state.reset();
+				else state.reset();
 				// Если инициализация ключей не выполнена
-				if(!driver::cipher(cipher, this->_params.mode, hash, this->_params.password, this->_params.salt, this->_params.rounds, state, this->_log)){
+				if(!derived && !driver::cipher(cipher, this->_params.mode, hash, this->_params.password, this->_params.salt, this->_params.rounds, state, this->_log)){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -3282,6 +3527,12 @@ template <typename T>
  *
  */
 bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, const hash_t hash, const cipher_t cipher) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	/**
 	 * Признак работы выводится наружу отдельно от буфера: пустой буфер отказом
 	 * не является - расшифровка сообщения, октетов не имеющего (4.9), даёт
@@ -3332,11 +3583,19 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 		 * Теперь она попадает туда по существу - потому что контекст заведён
 		 */
 		// Признак работы поверх заведённого контекста потокового шифрования
-		const bool stream = ((cipher == cipher_t::NONE) && (state.ctx != nullptr));
+		const bool stream = (state.ctx != nullptr);
+		/**
+		 * Доводы разбираются порознь, а не разом: незаданный берётся у потока,
+		 * заданный с потоком сверяется (4.4). Прежде признаком потока служило
+		 * незадание одного лишь типа шифрования, отчего правило применялось неровно -
+		 * вызов с иной хэш-суммой и незаданным шифром признавался работой по потоку
+		 * и хэш-сумму молча отбрасывал, а вызов со сходящимся шифром и незаданной
+		 * хэш-суммой отвергался, хотя брать её у потока и следовало
+		 */
 		// Тип шифрования, которым выполняется работа
-		const cipher_t actual = (stream ? state.cipher : cipher);
+		const cipher_t actual = ((stream && (cipher == cipher_t::NONE)) ? state.cipher : cipher);
 		// Тип хэш-суммы, которым выводится ключ шифрования
-		const hash_t digest = (stream ? state.hash : hash);
+		const hash_t digest = ((stream && (hash == hash_t::NONE)) ? state.hash : hash);
 		/**
 		 * Определяем тип шифрования
 		 */
@@ -3392,7 +3651,7 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 						 * то, что установщик режима сбрасывает состояние сам, значит
 						 * держать правильность на связи двух работ вместо одной
 						 */
-						if((state.hash != digest) || (state.cipher != actual) || (state.mode != this->_params.mode)){
+						if((state.hash != digest) || (state.cipher != actual) || (state.mode != this->_params.mode) || (state.rounds != this->_params.rounds)){
 							// Если инициализация ключей не выполнена
 							if(!driver::cipher(actual, this->_params.mode, digest, this->_params.password, this->_params.salt, this->_params.rounds, state, this->_log)){
 								/**
@@ -3423,8 +3682,19 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 						 * доводы вызова здесь молча отбрасывались - работа думала, что
 						 * шифрует одной разрядностью, а шифровала другой
 						 */
+						/**
+						 * Довод, заданный вызывающей стороной, сверяется с контекстом и тогда,
+						 * когда задан он один: вызов с иной хэш-суммой и незаданным шифром
+						 * признавался работой поверх потока, и хэш-сумма его молча отбрасывалась -
+						 * работа думала, что вывела ключ одной хэш-суммой, а вывела другой.
+						 * Незаданные доводы берутся из потока по-прежнему (4.4)
+						 */
+						// Признак расхождения доводов вызова с заведённым контекстом
+						const bool mismatch = (stream &&
+						                       (((cipher != cipher_t::NONE) && (cipher != state.cipher)) ||
+						                        ((hash != hash_t::NONE) && (hash != state.hash))));
 						// Если доводы вызова расходятся с заведённым контекстом
-						if(!stream && ((state.cipher != actual) || (state.hash != digest))){
+						if(mismatch){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -3691,6 +3961,12 @@ template <typename T>
  *
  */
 bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, const hash_t hash, const cipher_t cipher) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	/**
 	 * Признак работы выводится наружу отдельно от буфера: пустой буфер отказом
 	 * не является - расшифровка сообщения, октетов не имеющего (4.9), даёт
@@ -3741,11 +4017,19 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 		 * Теперь она попадает туда по существу - потому что контекст заведён
 		 */
 		// Признак работы поверх заведённого контекста потокового шифрования
-		const bool stream = ((cipher == cipher_t::NONE) && (state.ctx != nullptr));
+		const bool stream = (state.ctx != nullptr);
+		/**
+		 * Доводы разбираются порознь, а не разом: незаданный берётся у потока,
+		 * заданный с потоком сверяется (4.4). Прежде признаком потока служило
+		 * незадание одного лишь типа шифрования, отчего правило применялось неровно -
+		 * вызов с иной хэш-суммой и незаданным шифром признавался работой по потоку
+		 * и хэш-сумму молча отбрасывал, а вызов со сходящимся шифром и незаданной
+		 * хэш-суммой отвергался, хотя брать её у потока и следовало
+		 */
 		// Тип шифрования, которым выполняется работа
-		const cipher_t actual = (stream ? state.cipher : cipher);
+		const cipher_t actual = ((stream && (cipher == cipher_t::NONE)) ? state.cipher : cipher);
 		// Тип хэш-суммы, которым выводится ключ шифрования
-		const hash_t digest = (stream ? state.hash : hash);
+		const hash_t digest = ((stream && (hash == hash_t::NONE)) ? state.hash : hash);
 		/**
 		 * Определяем тип шифрования
 		 */
@@ -3796,7 +4080,7 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 						 * то, что установщик режима сбрасывает состояние сам, значит
 						 * держать правильность на связи двух работ вместо одной
 						 */
-						if((state.hash != digest) || (state.cipher != actual) || (state.mode != this->_params.mode)){
+						if((state.hash != digest) || (state.cipher != actual) || (state.mode != this->_params.mode) || (state.rounds != this->_params.rounds)){
 							// Если инициализация ключей не выполнена
 							if(!driver::cipher(actual, this->_params.mode, digest, this->_params.password, this->_params.salt, this->_params.rounds, state, this->_log)){
 								/**
@@ -3827,8 +4111,19 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 						 * доводы вызова здесь молча отбрасывались - работа думала, что
 						 * расшифровывает одной разрядностью, а расшифровывала другой
 						 */
+						/**
+						 * Довод, заданный вызывающей стороной, сверяется с контекстом и тогда,
+						 * когда задан он один: вызов с иной хэш-суммой и незаданным шифром
+						 * признавался работой поверх потока, и хэш-сумма его молча отбрасывалась -
+						 * работа думала, что вывела ключ одной хэш-суммой, а вывела другой.
+						 * Незаданные доводы берутся из потока по-прежнему (4.4)
+						 */
+						// Признак расхождения доводов вызова с заведённым контекстом
+						const bool mismatch = (stream &&
+						                       (((cipher != cipher_t::NONE) && (cipher != state.cipher)) ||
+						                        ((hash != hash_t::NONE) && (hash != state.hash))));
 						// Если доводы вызова расходятся с заведённым контекстом
-						if(!stream && ((state.cipher != actual) || (state.hash != digest))){
+						if(mismatch){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -3983,6 +4278,12 @@ template vector <uint8_t> awh::Crypto::decrypt(const void *, const size_t, const
  *
  */
 bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -4079,6 +4380,12 @@ bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
  *
  */
 string awh::Crypto::getPublicKeyRSA() const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return "";
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	string result = "";
 	/**
@@ -4192,6 +4499,12 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
  *
  */
 bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -4277,6 +4590,21 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
+	// Если ключ пуст либо предел разрядности превышает
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Public key is empty or its size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, make_tuple(key.size()), log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Public key is empty or its size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+		#endif
 	}
 	// Возвращаем результат
 	return result;
@@ -4289,6 +4617,12 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
  *
  */
 bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -4374,6 +4708,21 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
+	// Если ключ пуст либо предел разрядности превышает
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Private key is empty or its size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, make_tuple(key.size()), log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Private key is empty or its size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+		#endif
 	}
 	// Возвращаем результат
 	return result;
@@ -4386,6 +4735,12 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
  *
  */
 string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return "";
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	string result = "";
 	/**
@@ -4586,6 +4941,12 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
  *
  */
 bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -4763,6 +5124,12 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
  *
  */
 bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -4940,6 +5307,12 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
  *
  */
 bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -5088,6 +5461,12 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
  *
  */
 bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -5399,6 +5778,12 @@ bool awh::Crypto::encryptWithPublicKey(const vector <uint8_t> & buffer, vector <
  *
  */
 bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	/**
 	 * Буфер результата затирается и очищается на входе: отказ, случившийся до
 	 * отведения буфера, оставлял в нём итог прежней работы - подпись прежних
@@ -5503,8 +5888,36 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 					 * этот отвергается здесь, а не в глубине библиотеки: оттуда пришёл
 					 * бы отказ без указания на настоящую причину и без самого предела
 					 */
+					// Определяем размер ключа RSA в октетах
+					const size_t width = static_cast <size_t> (::EVP_PKEY_size(key.ctx));
+					/**
+					 * Ключ, под одно дополнение слишком короткий, отвергается до вычитания:
+					 * разность считается беззнаковой, и у ключа короче 66 октетов - а такой
+					 * приходит вводом со стороны, где разрядность не проверяется, - она
+					 * обращалась в число огромное. Предел переставал отвергать что бы то ни
+					 * было, и отказ приходил из глубины библиотеки без внятной причины
+					 */
+					// Если размер ключа RSA под одно дополнение OAEP недостаточен
+					if(width <= ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 2)){
+						// Освобождаем контекст для шифрования
+						::EVP_PKEY_CTX_free(ctx);
+						// Снимаем указатель освобождённого контекста
+						ctx = nullptr;
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("RSA key of %zu octets is too short for OAEP padding, at least %zu octets are required", __PRETTY_FUNCTION__, make_tuple(width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3)), log_t::flag_t::CRITICAL, width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3));
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("RSA key of %zu octets is too short for OAEP padding, at least %zu octets are required", log_t::flag_t::CRITICAL, width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3));
+						#endif
+						// Выходим из метода с признаком отказа
+						return outcome;
+					}
 					// Определяем наибольший размер сообщения, ключом RSA шифруемого
-					const size_t limit = (static_cast <size_t> (::EVP_PKEY_size(key.ctx)) - (2 * AWH_CRYPTO_OAEP_HASH_SIZE) - 2);
+					const size_t limit = (width - (2 * AWH_CRYPTO_OAEP_HASH_SIZE) - 2);
 					// Если размер сообщения предел шифрования ключом RSA превышает
 					if(size > limit){
 						// Освобождаем контекст для шифрования
@@ -5676,6 +6089,12 @@ bool awh::Crypto::decryptWithPrivateKey(const vector <uint8_t> & buffer, vector 
  *
  */
 bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	/**
 	 * Буфер результата затирается и очищается на входе: отказ, случившийся до
 	 * отведения буфера, оставлял в нём итог прежней работы - подпись прежних
@@ -5943,6 +6362,12 @@ bool awh::Crypto::signWithPrivateKey(const vector <uint8_t> & buffer, const hash
  *
  */
 bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, const hash_t hash, vector <uint8_t> & result) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	/**
 	 * Буфер результата затирается и очищается на входе: отказ, случившийся до
 	 * отведения буфера, оставлял в нём итог прежней работы - подпись прежних
@@ -6296,6 +6721,12 @@ bool awh::Crypto::verifyWithPublicKey(const vector <uint8_t> & buffer, const vec
  *
  */
 bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size, const vector <uint8_t> & signature, const hash_t hash) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -6419,9 +6850,54 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 					// Инициализируем верификацию данных
 					// Контекст ключа подписи для установки схемы дополнения
 					EVP_PKEY_CTX * pctx = nullptr;
-					if((::EVP_DigestVerifyInit(ctx, &pctx, md, nullptr, key.ctx) == 1) &&
-					   driver::padding(pctx, key.ctx, md, this->_params.padding, this->_log) &&
-					   (::EVP_DigestVerifyUpdate(ctx, buffer, size) == 1))
+					/**
+					 * Отказы проверки подписи разделены по существу: несовпадение подписи - это
+					 * законный ответ работы, и записывать его в лог незачем, а сбой заведения
+					 * ответом не является вовсе. Прежде оба давали молчаливый отказ, и
+					 * неисправность выглядела в точности как подделка.
+					 *
+					 * Ступени заведения разнесены порознь: прежде всякая из них записывалась как
+					 * сбой заведения контекста, тогда как подача данных к заведению уже не
+					 * относится. Отказ схемы дополнения своей записи здесь не получает - её
+					 * пишет сама установка схемы, и вторая запись была бы лишь шумом
+					 */
+					// Если контекст проверки подписи не заведён
+					if(::EVP_DigestVerifyInit(ctx, &pctx, md, nullptr, key.ctx) != 1){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("Error during signature verification context setup", __PRETTY_FUNCTION__, make_tuple(size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("Error during signature verification context setup", log_t::flag_t::CRITICAL);
+						#endif
+					// Если схема дополнения подписи не установлена
+					} else if(!driver::padding(pctx, key.ctx, md, this->_params.padding, this->_log)){
+						/**
+						 * Причину отказа записала сама установка схемы дополнения
+						 */
+					// Если данные к проверке подписи не поданы
+					} else if(::EVP_DigestVerifyUpdate(ctx, buffer, size) != 1){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("Error during signature verification data update", __PRETTY_FUNCTION__, make_tuple(size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("Error during signature verification data update", log_t::flag_t::CRITICAL);
+						#endif
+					// Если контекст проверки подписи заведён
+					} else
 						// Выполняем верификацию данных
 						result = (::EVP_DigestVerifyFinal(ctx, signature.data(), signature.size()) == 1);
 					// Освобождаем контекст для верификации
@@ -6534,19 +7010,6 @@ awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), 
  *
  */
 awh::Crypto::~Crypto() noexcept {
-	/**
-	 * Наличие ключевых данных проверяется: сбой отведения памяти в конструкторе
-	 * оставляет их незаведёнными, а разрушение объекта происходит и в этом случае
-	 */
-	// Если ключевые данные отведены
-	if(this->_params.key != nullptr){
-		// Получаем ссылку на объект ключа RSA
-		key_rsa_t & key = (* this->_params.key);
-		// Если ключ уже установлен
-		if(key.ctx != nullptr)
-			// Освобождаем память выделенную под ключ
-			::EVP_PKEY_free(key.ctx);
-	}
 	// Если пароль шифрования установлен
 	if(!this->_params.password.empty())
 		// Выполняем затирание пароля шифрования
@@ -6563,6 +7026,12 @@ awh::Crypto::~Crypto() noexcept {
 	if(!this->_params.salt.empty())
 		// Выполняем затирание соли вывода ключа
 		::OPENSSL_cleanse(&this->_params.salt.front(), this->_params.salt.size());
+	/**
+	 * Ключевые данные освобождают свой ключ RSA собственным деструктором, поэтому
+	 * делать это здесь не требуется. Проверка указателя не нужна: сбой отведения
+	 * памяти в конструкторе оставляет его пустым, а разрушение пустого указателя
+	 * законно и ничего не делает
+	 */
 	// Освобождаем память контекста ключа RSA
 	delete this->_params.key;
 	/**

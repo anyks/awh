@@ -47,5 +47,29 @@ $ROOT/submodule.sh add cityhash https://github.com/google/cityhash.git
 $ROOT/submodule.sh remove pcre2
 $ROOT/submodule.sh add pcre2 https://github.com/PCRE2Project/pcre2.git
 
+# Выполняем пересборку сабмодуля rapidxml
+$ROOT/submodule.sh remove rapidxml
+$ROOT/submodule.sh add rapidxml https://github.com/dwd/rapidxml.git
+
+# Выполняем пересборку сабмодуля pugixml
+$ROOT/submodule.sh remove pugixml
+$ROOT/submodule.sh add pugixml https://github.com/zeux/pugixml.git
+
+# Выполняем пересборку сабмодуля xerces
+$ROOT/submodule.sh remove xerces
+$ROOT/submodule.sh add xerces https://github.com/AaronNGray/xerces.git
+
+# Выполняем пересборку сабмодуля libexpat
+$ROOT/submodule.sh remove libexpat
+$ROOT/submodule.sh add libexpat https://github.com/libexpat/libexpat.git
+
+# Выполняем пересборку сабмодуля libxml2
+$ROOT/submodule.sh remove libxml2
+$ROOT/submodule.sh add libxml2 https://gitlab.gnome.org/GNOME/libxml2.git
+
+# Выполняем пересборку сабмодуля tinyxml2
+$ROOT/submodule.sh remove tinyxml2
+$ROOT/submodule.sh add tinyxml2 https://github.com/leethomason/tinyxml2.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

@@ -55,3 +55,21 @@
 [submodule "submodules/pcre2"]
 	path = submodules/pcre2
 	url = https://github.com/PCRE2Project/pcre2.git
+[submodule "submodules/rapidxml"]
+	path = submodules/rapidxml
+	url = https://github.com/dwd/rapidxml.git
+[submodule "submodules/pugixml"]
+	path = submodules/pugixml
+	url = https://github.com/zeux/pugixml.git
+[submodule "submodules/xerces"]
+	path = submodules/xerces
+	url = https://github.com/AaronNGray/xerces.git
+[submodule "submodules/libexpat"]
+	path = submodules/libexpat
+	url = https://github.com/libexpat/libexpat.git
+[submodule "submodules/libxml2"]
+	path = submodules/libxml2
+	url = https://gitlab.gnome.org/GNOME/libxml2.git
+[submodule "submodules/tinyxml2"]
+	path = submodules/tinyxml2
+	url = https://github.com/leethomason/tinyxml2.git

@@ -67,6 +67,7 @@
  * Заголовочный файл для работы с Lizard (потоковый Frame-формат)
  */
 #include "lizard_frame.h"
+#include "lizard_compress.h"
 
 /**
  * Стандартные заголовочные файлы
@@ -230,8 +231,12 @@ namespace {
 							this->_zs.avail_out = static_cast <uInt> (AWH_COMPRESSOR_STREAM_CHUNK);
 							// Выполняем сжатие
 							ret = ::deflate(&this->_zs, zflush);
-							// Если возникла критическая ошибка
-							if(ret == Z_STREAM_ERROR)
+							/**
+							 * Отвергаем всякий нештатный код, а не одну лишь порчу потока:
+							 * Z_MEM_ERROR и прочие означают, что выход собран не целиком.
+							 * Z_BUF_ERROR же означает лишь отсутствие продвижения и разрывом сессии не является
+							 */
+							if((ret != Z_OK) && (ret != Z_STREAM_END) && (ret != Z_BUF_ERROR))
 								// Выводим отрицательный результат
 								return false;
 							// Вычисляем количество произведённых данных
@@ -418,6 +423,10 @@ namespace {
 			 *
 			 */
 			bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept override {
+				// Если поток уже завершён
+				if(this->_done)
+					// Выводим положительный результат (ничего не делаем)
+					return true;
 				// Рабочий буфер
 				char work[AWH_COMPRESSOR_STREAM_CHUNK];
 				// Формируем входной буфер
@@ -513,19 +522,35 @@ namespace {
 					case static_cast <uint8_t> (event_t::ENCODE): {
 						// Создаём контекст компрессии
 						this->_cctx = ::ZSTD_createCStream();
-						// Инициализируем контекст уровнем компрессии
-						if(this->_cctx != nullptr)
+						// Если контекст компрессии создан
+						if(this->_cctx != nullptr){
 							// Инициализируем контекст уровнем компрессии
-							::ZSTD_initCStream(this->_cctx, params.level);
+							const size_t status = ::ZSTD_initCStream(this->_cctx, ((params.level != -1) ? params.level : ZSTD_CLEVEL_DEFAULT));
+							// Если инициализация не удалась, освобождаем контекст — поток станет невалидным
+							if(::ZSTD_isError(status)){
+								// Освобождаем контекст компрессии
+								::ZSTD_freeCStream(this->_cctx);
+								// Сбрасываем контекст компрессии
+								this->_cctx = nullptr;
+							}
+						}
 					} break;
 					// Для декомпрессии
 					case static_cast <uint8_t> (event_t::DECODE): {
 						// Создаём контекст декомпрессии
 						this->_dctx = ::ZSTD_createDStream();
-						// Инициализируем контекст
-						if(this->_dctx != nullptr)
+						// Если контекст декомпрессии создан
+						if(this->_dctx != nullptr){
 							// Инициализируем контекст
-							::ZSTD_initDStream(this->_dctx);
+							const size_t status = ::ZSTD_initDStream(this->_dctx);
+							// Если инициализация не удалась, освобождаем контекст — поток станет невалидным
+							if(::ZSTD_isError(status)){
+								// Освобождаем контекст декомпрессии
+								::ZSTD_freeDStream(this->_dctx);
+								// Сбрасываем контекст декомпрессии
+								this->_dctx = nullptr;
+							}
+						}
 					} break;
 				}
 			}
@@ -593,6 +618,10 @@ namespace {
 			 *
 			 */
 			bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept override {
+				// Если поток уже завершён
+				if(this->_done)
+					// Выводим положительный результат (ничего не делаем)
+					return true;
 				// Размер входных данных
 				size_t availIn = size;
 				// Рабочий буфер
@@ -630,9 +659,10 @@ namespace {
 								// Добавляем данные в результат
 								out.insert(out.end(), reinterpret_cast <char *> (work), reinterpret_cast <char *> (work) + produced);
 						/**
-						 * Пока есть входные данные или готовый выход
+						 * Пока есть входные данные либо готовый выход, а при финализации —
+						 * пока движок не объявит поток завершённым: опустевший выход концом кадра не является
 						 */
-						} while((availIn > 0) || ::BrotliEncoderHasMoreOutput(this->_enc));
+						} while((availIn > 0) || ::BrotliEncoderHasMoreOutput(this->_enc) || ((op == BROTLI_OPERATION_FINISH) && !::BrotliEncoderIsFinished(this->_enc)));
 						// Устанавливаем флаг завершённости потока
 						this->_done = ((op == BROTLI_OPERATION_FINISH) && ::BrotliEncoderIsFinished(this->_enc));
 					} break;
@@ -694,7 +724,7 @@ namespace {
 						// Создаём контекст энкодера
 						this->_enc = ::BrotliEncoderCreateInstance(nullptr, nullptr, nullptr);
 						// Если контекст энкодера создан и качество компрессии укладывается в допустимый диапазон
-						if((this->_enc != nullptr) && (params.level > BROTLI_MIN_QUALITY) && (params.level <= BROTLI_MAX_QUALITY))
+						if((this->_enc != nullptr) && (params.level >= BROTLI_MIN_QUALITY) && (params.level <= BROTLI_MAX_QUALITY))
 							// Выполняем установку качества компрессии
 							::BrotliEncoderSetParameter(this->_enc, BROTLI_PARAM_QUALITY, static_cast <uint32_t> (params.level));
 					} break;
@@ -1107,6 +1137,9 @@ namespace {
 		private:
 			// Параметры компрессии
 			LZ4F_preferences_t _prefs;
+		private:
+			// Переиспользуемый рабочий буфер, растущий по мере надобности
+			vector <char> _work;
 		public:
 			/**
 			 * @brief Метод проверки успешной инициализации контекста
@@ -1155,9 +1188,13 @@ namespace {
 					// Для компрессии
 					case static_cast <uint8_t> (event_t::ENCODE): {
 						// Вычисляем максимально возможный размер выходных данных
-						const size_t bound = ::LZ4F_compressBound(size, &this->_prefs);
-						// Рабочий буфер (с запасом на заголовок и завершение кадра)
-						vector <char> work(bound + LZ4F_HEADER_SIZE_MAX + 8, 0);
+						const size_t bound = (::LZ4F_compressBound(size, &this->_prefs) + LZ4F_HEADER_SIZE_MAX + 8);
+						// Наращиваем рабочий буфер, если прежнего размера не хватает
+						if(this->_work.size() < bound)
+							// Наращиваем рабочий буфер
+							this->_work.resize(bound, 0);
+						// Получаем рабочий буфер
+						vector <char> & work = this->_work;
 						// Если заголовок кадра ещё не записан
 						if(!this->_begun){
 							// Записываем заголовок кадра
@@ -1274,7 +1311,7 @@ namespace {
 				// Обнуляем параметры
 				::memset(&this->_prefs, 0, sizeof(this->_prefs));
 				// Устанавливаем уровень компрессии
-				this->_prefs.compressionLevel = params.level;
+				this->_prefs.compressionLevel = ((params.level == -1) ? 0 : params.level);
 				/**
 				 * Определяем направление операции
 				 */
@@ -1328,6 +1365,9 @@ namespace {
 			// Параметры компрессии
 			LizardF_preferences_t _prefs;
 		private:
+			// Переиспользуемый рабочий буфер, растущий по мере надобности
+			vector <char> _work;
+		private:
 			// Контекст компрессии
 			LizardF_compressionContext_t _cctx;
 			// Контекст декомпрессии
@@ -1380,9 +1420,13 @@ namespace {
 					// Для компрессии
 					case static_cast <uint8_t> (event_t::ENCODE): {
 						// Вычисляем максимально возможный размер выходных данных
-						const size_t bound = ::LizardF_compressBound(size, &this->_prefs);
-						// Рабочий буфер (с запасом на заголовок и завершение кадра)
-						vector <char> work(bound + 32, 0);
+						const size_t bound = (::LizardF_compressBound(size, &this->_prefs) + 32);
+						// Наращиваем рабочий буфер, если прежнего размера не хватает
+						if(this->_work.size() < bound)
+							// Наращиваем рабочий буфер
+							this->_work.resize(bound, 0);
+						// Получаем рабочий буфер
+						vector <char> & work = this->_work;
 						// Если заголовок кадра ещё не записан
 						if(!this->_begun){
 							// Записываем заголовок кадра
@@ -1499,7 +1543,7 @@ namespace {
 				// Обнуляем параметры
 				::memset(&this->_prefs, 0, sizeof(this->_prefs));
 				// Устанавливаем уровень компрессии
-				this->_prefs.compressionLevel = params.level;
+				this->_prefs.compressionLevel = (((params.level >= LIZARD_MIN_CLEVEL) && (params.level <= LIZARD_MAX_CLEVEL)) ? params.level : LIZARD_DEFAULT_CLEVEL);
 				/**
 				 * Определяем направление операции
 				 */
@@ -1723,9 +1767,54 @@ void awh::compressor::Stream::push(const void * buffer, const size_t size, T & r
 		// Выходим из функции
 		return;
 	/**
+	 * Подача без буфера при ненулевом размере — ошибка вызывающей стороны: движок
+	 * пошёл бы читать по пустому указателю. Пустая же подача законна, ею работают
+	 * выдавливание и финализация
+	 */
+	if((buffer == nullptr) && (size > 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (flush)), log_t::flag_t::WARNING, "Buffer is not passed");
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Buffer is not passed");
+		#endif
+		// Выходим из функции
+		return;
+	}
+	/**
+	 * Договор о разрядности у обоих режимов один: порция, не умещающаяся в
+	 * разрядность движка, была бы обработана частично и без признака отказа
+	 */
+	if(!compressor::fits(size, this->_method)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (flush)), log_t::flag_t::WARNING, "Input chunk is too large for the selected method");
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Input chunk is too large for the selected method");
+		#endif
+		// Выходим из функции
+		return;
+	}
+	/**
 	 * Если результат уже требуемого типа, кодер пишет прямо в него — без промежуточной копии
 	 */
 	if constexpr(is_same <T, vector <char>>::value){
+		// Резервируем память под выход порции, снижая число реаллокаций внутри кодера
+		result.reserve(result.size() + size);
 		// Выполняем обработку порции данных
 		if(!this->_coder->code(buffer, size, flush, result)){
 			// Освобождаем контекст (поток становится невалидным)
@@ -1736,13 +1825,15 @@ void awh::compressor::Stream::push(const void * buffer, const size_t size, T & r
 			return;
 		}
 	/**
-	 * Для остальных типов контейнера используем промежуточный буфер
+	 * Для остальных типов контейнера пишем в переиспользуемый буфер, а не в новый
 	 */
 	} else {
-		// Буфер готового выхода
-		vector <char> out;
+		// Выполняем очистку переиспользуемого буфера, сохраняя выделенную под него память
+		this->_out.clear();
+		// Резервируем память под выход порции, снижая число реаллокаций внутри кодера
+		this->_out.reserve(size);
 		// Выполняем обработку порции данных
-		if(!this->_coder->code(buffer, size, flush, out)){
+		if(!this->_coder->code(buffer, size, flush, this->_out)){
 			// Освобождаем контекст (поток становится невалидным)
 			this->_coder.reset();
 			// Очищаем результат
@@ -1751,9 +1842,9 @@ void awh::compressor::Stream::push(const void * buffer, const size_t size, T & r
 			return;
 		}
 		// Если данные получены, формируем результат
-		if(!out.empty())
+		if(!this->_out.empty())
 			// Формируем результат
-			result.assign(out.begin(), out.end());
+			result.assign(this->_out.begin(), this->_out.end());
 	}
 }
 /**
@@ -1781,6 +1872,8 @@ awh::compressor::Stream & awh::compressor::Stream::operator = (stream_t && strea
 		this->_method = stream._method;
 		// Перемещаем данные
 		this->_coder = ::move(stream._coder);
+		// Перемещаем переиспользуемый буфер готового выхода
+		this->_out = ::move(stream._out);
 		// Сбрасываем направление операции
 		stream._event = event_t::NONE;
 		// Сбрасываем метод компрессии
@@ -1795,7 +1888,7 @@ awh::compressor::Stream & awh::compressor::Stream::operator = (stream_t && strea
  */
 awh::compressor::Stream::Stream(stream_t && stream) noexcept :
  _event(stream._event), _method(stream._method),
- _coder(::move(stream._coder)), _log(stream._log) {
+ _coder(::move(stream._coder)), _out(::move(stream._out)), _log(stream._log) {
 	// Сбрасываем направление операции у источника
 	stream._event = event_t::NONE;
 	// Сбрасываем метод компрессии у источника

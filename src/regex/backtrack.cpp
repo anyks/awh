@@ -97,6 +97,73 @@ void awh::regex::Backtrack::restore(const size_t mark) noexcept {
 	}
 }
 /**
+ * @brief Метод сопоставления символа одиночной инструкцией
+ *
+ * @param instruction сопоставляющая инструкция программы
+ * @param pos         позиция сопоставления в тексте
+ * @param width       длина сопоставленного символа в байтах
+ * @return            результат сопоставления символа инструкцией
+ *
+ */
+bool awh::regex::Backtrack::single(const instruction_t & instruction, const size_t pos, size_t & width) const noexcept {
+	// Выполняем установку длины сопоставленного символа
+	width = 1;
+	/**
+	 * Если позиция сопоставления находится в конце текста
+	 */
+	if(pos >= this->_text.size())
+		// Выводим результат сопоставления символа инструкцией
+		return false;
+	// Получаем кодовое значение сопоставляемого символа
+	const uint32_t code = letter(this->_text, pos, this->_program->flags, width);
+	/**
+	 * Определяем код операции сопоставляющей инструкции
+	 */
+	switch(static_cast <uint8_t> (instruction.type)) {
+		/**
+		 * Выполняем сопоставление одиночного символа
+		 */
+		case static_cast <uint8_t> (opcode_t::CHAR): {
+			/**
+			 * Если установлен режим сопоставления без учёта регистра
+			 */
+			if(hasFlag(instruction.flags, flag_t::CASELESS))
+				// Выполняем сопоставление символов без учёта регистра
+				return (fold(code, instruction.flags) == fold(instruction.letter.code, instruction.flags));
+			// Выполняем сопоставление символов с учётом регистра
+			return (code == instruction.letter.code);
+		}
+		// Выполняем сопоставление символа из класса символов
+		case static_cast <uint8_t> (opcode_t::CLASS):
+			// Выводим результат принадлежности символа классу символов
+			return belongs(this->_program->classes.at(instruction.charclass.index), code, instruction.flags);
+		/**
+		 * Выполняем сопоставление любого символа
+		 */
+		case static_cast <uint8_t> (opcode_t::ANY): {
+			/**
+			 * Если установлен режим соответствия точки переводу строки
+			 */
+			if(hasFlag(instruction.flags, flag_t::DOTALL))
+				// Выводим результат сопоставления любого символа
+				return true;
+			// Выводим результат несоответствия символа переводу строки
+			return (code != 0x0A);
+		}
+		/**
+		 * Выполняем сопоставление одиночной единицы кодирования
+		 */
+		case static_cast <uint8_t> (opcode_t::CODEUNIT): {
+			// Выполняем установку длины единицы кодирования
+			width = 1;
+			// Выводим результат сопоставления единицы кодирования
+			return true;
+		}
+	}
+	// Выводим результат сопоставления символа инструкцией
+	return false;
+}
+/**
  * @brief Метод выполнения попытки сопоставления с заданной позиции
  *
  * @param pos позиция начала попытки сопоставления
@@ -234,6 +301,18 @@ bool awh::regex::Backtrack::matches(const uint32_t number, const uint32_t flags,
 bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const size_t base, const size_t bound, size_t & end) noexcept {
 	// Получаем набор инструкций исполняемой программы
 	const vector <instruction_t> & instructions = this->_program->instructions;
+	/**
+	 * Получаем адреса набора инструкций и набора помеченных повторений
+	 *
+	 * @details Обращение к инструкции выполняется на каждом шаге сопоставления,
+	 *          а положение обращения проверено размером набора выше, поэтому
+	 *          проверка границ выполнялась бы вторично: она обходится дороже
+	 *          самого обращения.
+	 *
+	 */
+	const instruction_t * program = instructions.data();
+	// Получаем набор адресов тел повторений одиночного символа
+	const address_t * runs = this->_program->runs.data();
 	// Получаем размер текста сопоставления
 	const size_t size = this->_text.size();
 	// Получаем размер журнала изменений на входе в исполнение
@@ -291,7 +370,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 		 */
 		else {
 			// Получаем исполняемую инструкцию программы
-			const instruction_t & instruction = instructions.at(pc);
+			const instruction_t & instruction = program[pc];
 			/**
 			 * Определяем код операции исполняемой инструкции
 			 */
@@ -331,6 +410,78 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 				 * Выполняем переход по двум ветвям в порядке убывания приоритета
 				 */
 				case static_cast <uint8_t> (opcode_t::SPLIT): {
+					// Получаем адрес тела повторения одиночного символа
+					const address_t body = runs[pc];
+					/**
+					 * Если переход возглавляет повторение одиночного символа
+					 *
+					 * @details Ряд подходящих символов проходится одним ходом взамен
+					 *          исполнения перехода по двум ветвям, тела повторения
+					 *          и перехода к началу повторения на каждый символ.
+					 *          Точки возврата размещаются в том же порядке, в каком
+					 *          их разместило бы исполнение по инструкциям, отчего
+					 *          порядок перебора длин повторения не изменяется.
+					 *
+					 */
+					if(body != INVALID_ADDRESS) {
+						// Получаем инструкцию тела повторения одиночного символа
+						const instruction_t & repeated = program[body];
+						// Получаем адрес ветви завершения повторения
+						const address_t exit = instruction.split.second;
+						// Получаем размер журнала изменений ячеек захвата
+						const size_t journal = this->_journal.size();
+						// Позиция прохода ряда подходящих символов
+						size_t passed = current;
+						// Количество пройденных символов ряда
+						size_t count = 0;
+						/**
+						 * Выполняем проход ряда подходящих символов
+						 */
+						while(true) {
+							// Длина сопоставленного символа в байтах
+							size_t width = 1;
+							/**
+							 * Если очередной символ телом повторения не сопоставлен
+							 */
+							if(!this->single(repeated, passed, width))
+								// Выходим из цикла прохода ряда символов
+								break;
+							// Выполняем размещение точки возврата к ветви завершения повторения
+							this->_points.emplace_back();
+							// Выполняем установку адреса ветви завершения повторения
+							this->_points.back().pc = exit;
+							// Выполняем установку позиции сопоставления в тексте
+							this->_points.back().pos = passed;
+							// Выполняем установку размера журнала изменений ячеек захвата
+							this->_points.back().journal = journal;
+							// Переходим к следующей позиции текста сопоставления
+							passed += width;
+							// Увеличиваем количество пройденных символов ряда
+							count++;
+							/**
+							 * Если допустимое количество точек возврата исчерпано
+							 */
+							if(this->_points.size() > MAX_POINTS)
+								// Выходим из цикла прохода ряда символов
+								break;
+						}
+						/**
+						 * Учитываем пройденные символы ряда в объёме работы сопоставления
+						 *
+						 * @details Объём работы обязан отражать проделанное независимо
+						 *          от того, исполнением инструкций оно проделано либо
+						 *          проходом ряда, иначе ограничение объёма перестало бы
+						 *          ограничивать время сопоставления.
+						 *
+						 */
+						this->_steps += count;
+						// Переходим к позиции, достигнутой проходом ряда
+						current = passed;
+						// Переходим к ветви завершения повторения
+						pc = exit;
+						// Продолжаем исполнение программы регулярного выражения
+						continue;
+					}
 					// Выполняем размещение точки возврата к ветви с наименьшим приоритетом
 					this->_points.emplace_back();
 					// Выполняем установку адреса ветви с наименьшим приоритетом
@@ -761,7 +912,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						// Длина сопоставляемого символа в байтах
 						size_t width = 1;
 						// Получаем кодовое значение сопоставляемого символа
-						const uint32_t code = decode(this->_text, current, this->_program->flags, width);
+						const uint32_t code = letter(this->_text, current, this->_program->flags, width);
 						// Флаг сопоставления символа инструкцией
 						bool matched = false;
 						/**
