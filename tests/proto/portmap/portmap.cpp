@@ -88,3 +88,13 @@ std::unique_ptr <awh::proto::portmap::soap_t> PortmapFixture::makeSoap() const n
 	// Создаём и возвращаем объект кодека договора SOAP
 	return std::make_unique <awh::proto::portmap::soap_t> (this->_fmk.get(), this->_log.get());
 }
+/**
+ * @brief Фабричный метод создания кодека действий службы перенаправления UPnP
+ *
+ * @return сформированный объект кодека действий службы перенаправления UPnP
+ *
+ */
+std::unique_ptr <awh::proto::portmap::upnp_t> PortmapFixture::makeUpnp() const noexcept {
+	// Создаём и возвращаем объект кодека действий службы перенаправления UPnP
+	return std::make_unique <awh::proto::portmap::upnp_t> (this->_fmk.get(), this->_log.get());
+}

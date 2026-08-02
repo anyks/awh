@@ -2475,6 +2475,10 @@ namespace verify {
 			const size_t pos3 = host.find('.');
 			// Если хост не найден
 			if((pos2 != string::npos) && (pos3 != string::npos)){
+				// Если шаблон начинается со звёздочки, то проверка пройдена
+				if(fqdn.front() == '*')
+					// Выполняем проверку эквивалентности доменных имён без учёта начальных сабдоменов
+					return ((pos3 > 0) && ::verify::equal(fqdn.substr(2, pos2 - 2), host.substr(pos3 + 1, host.size() - pos3 - 1)));
 				// Выполняем сравнение
 				if(!::verify::equal(fqdn.substr(0, pos2), host.substr(0, pos3)))
 					// Выходим из функции
@@ -5284,10 +5288,12 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+						// Устанавливаем хост для уровня защищённых сокетов
+						member->host.name = sni;
 						// Если узел является клиентом
 						if(member->node == event::node_t::CLIENT){
 							// Устанавливаем имя хоста для SNI расширения
-							::SSL_set_tlsext_host_name(member->ssl, sni.data());
+							::SSL_set_tlsext_host_name(member->ssl, member->host.name.c_str());
 							/**
 							 * Устанавливаем имя хоста для проверки: SSL_set1_host сам
 							 * вызывает X509_VERIFY_PARAM_set1_host с корректным strlen(host).
@@ -5296,7 +5302,9 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 							 * приводит к X509_V_ERR_INVALID_CALL при верификации, поэтому
 							 * результат проверяется по возврату SSL_set1_host
 							 */
-							if(::SSL_set1_host(member->ssl, sni.data()) != 1){
+							if(::SSL_set1_host(member->ssl, member->host.name.c_str()) != 1){
+								// Очищаем установленное ранее название хоста
+								member->host.name.clear();
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
@@ -5327,8 +5335,6 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 								return;
 							}
 						}
-						// Устанавливаем хост для уровня защищённых сокетов
-						member->host.name = sni;
 					} break;
 				}
 			}

@@ -165,17 +165,26 @@ namespace awh {
 				 *
 				 */
 				typedef struct Fixup {
-					// Положение команды перехода в последовательности
+					/**
+					 * @brief Вид команды, смещение к метке несущей
+					 *
+					 */
+					enum class kind_t : uint8_t {
+						JUMP    = 0x00, // Безусловный переход
+						BRANCH  = 0x01, // Переход по условию
+						ADDRESS = 0x02  // Вычисление адреса метки
+					};
+					// Положение команды в последовательности
 					size_t position;
 					// Номер метки, к какой выполняется переход
 					size_t label;
-					// Флаг перехода, выполняемого по условию
-					bool conditional;
+					// Вид команды, смещение к метке несущей
+					kind_t kind;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					Fixup() noexcept : position(0), label(0), conditional(false) {}
+					Fixup() noexcept : position(0), label(0), kind(kind_t::JUMP) {}
 				} fixup_t;
 			private:
 				// Набор отложенных переходов, подлежащих разрешению
@@ -349,6 +358,25 @@ namespace awh {
 				 *
 				 */
 				void call(const reg_t reg) noexcept;
+				/**
+				 * @brief Метод размещения вычисления адреса метки
+				 *
+				 * @details Адрес вычисляется прибавлением смещения к положению самой
+				 *          команды, отчего перемещаемость порождённого кода сохраняется:
+				 *          запомненный адрес перемещается вместе с кодом.
+				 *
+				 * @param target регистр вычисленного адреса
+				 * @param label  номер метки, адрес какой вычисляется
+				 *
+				 */
+				void address(const reg_t target, const size_t label) noexcept;
+				/**
+				 * @brief Метод размещения перехода по адресу в регистре
+				 *
+				 * @param reg регистр адреса выполняемого перехода
+				 *
+				 */
+				void proceed(const reg_t reg) noexcept;
 				/**
 				 * @brief Метод размещения завершения вызова
 				 *

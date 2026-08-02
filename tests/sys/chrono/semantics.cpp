@@ -268,14 +268,20 @@ TEST_F(ChronoFixture, ExecutionFractionChronoTest){
  *
  */
 TEST_F(ChronoFixture, ExecutionDecisionsChronoTest){
-	// Переменные %G и %g обозначают календарный год, а не год недельной нумерации ISO 8601
-	for(const char * date : {"2010-01-01", "2019-12-30", "2025-04-06"}){
+	// Переменные %G и %g обозначают год недельного счёта ISO 8601, а не календарный
+	for(const auto & item : {
+		std::make_tuple("2010-01-01", "2009", "09", "53"),
+		std::make_tuple("2019-12-30", "2020", "20", "01"),
+		std::make_tuple("2025-04-06", "2025", "25", "14")
+	}){
 		// Выполняем разбор проверяемой записи
-		const uint64_t value = this->_chrono->parse(date, "%Y-%m-%d");
-		// Год недельной нумерации дал бы здесь 2009 и 2020 соответственно
-		ASSERT_EQ(this->_chrono->format(value, "%G"), this->_chrono->format(value, "%Y")) << date;
-		// Двузначное обозначение года ведёт себя так же
-		ASSERT_EQ(this->_chrono->format(value, "%g"), this->_chrono->format(value, "%y")) << date;
+		const uint64_t value = this->_chrono->parse(std::get <0> (item), "%Y-%m-%d");
+		// Год недельного счёта с календарным на границах лет не совпадает
+		ASSERT_EQ(this->_chrono->format(value, "%G"), std::get <1> (item)) << std::get <0> (item);
+		// Двузначное обозначение года недельного счёта ведёт себя так же
+		ASSERT_EQ(this->_chrono->format(value, "%g"), std::get <2> (item)) << std::get <0> (item);
+		// Номер недели по ISO 8601 отсчитывается от первого четверга года
+		ASSERT_EQ(this->_chrono->format(value, "%V"), std::get <3> (item)) << std::get <0> (item);
 	}
 	// Переменные %U и %W при разборе дают одинаковый результат, как того требует POSIX
 	ASSERT_EQ(this->_chrono->parse("2025 10", "%Y %U"), this->_chrono->parse("2025 10", "%Y %W"));
@@ -2751,4 +2757,430 @@ TEST_F(ChronoFixture, ExecutionDaysAgainstYearDayChronoTest){
 	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::Chrono::unit_t::DAYS, awh::Chrono::storage_t::LOCAL), static_cast <uint64_t> (0));
 	// Первого января номер дня в году равен единице
 	ASSERT_EQ(this->_chrono->format("%j", awh::Chrono::storage_t::LOCAL), "001");
+}
+/**
+ * @brief Тест разбора нулевого порядкового номера дня в году
+ *
+ * @details Номер дня в году отсчитывается от единицы, а поле объекта - от нуля:
+ *          вычитание единицы из нуля обращало беззнаковое поле в 65535, и запись
+ *          «000» опиралась на оборот разрядности. Значение вне промежутка
+ *          выносится за длину года, и проверка записи такую отвергает
+ *
+ */
+TEST_F(ChronoFixture, ExecutionZeroYearDayChronoTest){
+	// Запись с нулевым номером дня в году пригодной не является
+	ASSERT_FALSE(this->_chrono->validate("2025 000", "%Y %j"));
+	// Запись с первым днём года пригодна
+	ASSERT_TRUE(this->_chrono->validate("2025 001", "%Y %j"));
+	// Запись с последним днём невисокосного года пригодна
+	ASSERT_TRUE(this->_chrono->validate("2025 365", "%Y %j"));
+	// Запись с номером дня за длиной невисокосного года пригодной не является
+	ASSERT_FALSE(this->_chrono->validate("2025 366", "%Y %j"));
+	// Запись с последним днём високосного года пригодна
+	ASSERT_TRUE(this->_chrono->validate("2024 366", "%Y %j"));
+	// Выполняем разбор записи с нулевым номером дня в году
+	this->_chrono->parse("2025 000", "%Y %j", awh::Chrono::storage_t::LOCAL);
+	// Мягкий разбор приводит номер вне промежутка к последнему дню декабря
+	ASSERT_EQ(this->_chrono->format("%m-%d", awh::Chrono::storage_t::LOCAL), "12-31");
+}
+/**
+ * @brief Тест целого счёта остатка года в часах, минутах и секундах
+ *
+ * @details Остаток года в часах, минутах и секундах считался разностью длины
+ *          года с округлённым вверх количеством прошедших единиц, и счёт этот
+ *          зависел от разрядности вещественного типа платформы. Величины равны,
+ *          поскольку год делится на каждую из единиц нацело, и сумма прошедшего
+ *          с оставшимся даёт на единицу меньше длины года всюду, кроме её границ
+ *
+ */
+TEST_F(ChronoFixture, ExecutionYearLeftIntegerChronoTest){
+	// Выполняем разбор записи начала года
+	this->_chrono->parse("2025-01-01T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z", awh::Chrono::storage_t::LOCAL);
+	// Получаем штамп времени начала года
+	const uint64_t begin = this->_chrono->timestamp(awh::Chrono::type_t::MILLISECONDS, awh::Chrono::storage_t::LOCAL);
+	/**
+	 * Выполняем перебор единиц, на которые год делится нацело
+	 */
+	for(const auto & unit : {
+		std::make_pair(awh::Chrono::type_t::HOUR, static_cast <uint64_t> (8760)),
+		std::make_pair(awh::Chrono::type_t::MINUTES, static_cast <uint64_t> (525600)),
+		std::make_pair(awh::Chrono::type_t::SECONDS, static_cast <uint64_t> (31536000))
+	}){
+		// На самой границе года прошедших единиц нет, а остались все
+		ASSERT_EQ(this->_chrono->actual(begin, unit.first, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::PASSED), static_cast <uint64_t> (0));
+		// Выполняем проверку количества оставшихся единиц на границе года
+		ASSERT_EQ(this->_chrono->actual(begin, unit.first, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::LEFT), unit.second);
+		// Внутри единицы она не прошла и не осталась
+		ASSERT_EQ(
+			this->_chrono->actual(begin + static_cast <uint64_t> (1), unit.first, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::PASSED) +
+			this->_chrono->actual(begin + static_cast <uint64_t> (1), unit.first, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::LEFT),
+			unit.second - static_cast <uint64_t> (1)
+		);
+	}
+	// На последнем мгновении года целых единиц не остаётся
+	ASSERT_EQ(this->_chrono->actual(begin + static_cast <uint64_t> (31535999999), awh::Chrono::type_t::SECONDS, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::LEFT), static_cast <uint64_t> (0));
+}
+/**
+ * @brief Тест счёта целых месяцев года на границе месяца
+ *
+ * @details Месяц, на начало которого дата и приходится, целым остаётся и в счёт
+ *          идёт: счёт вёлся одним лишь номером месяца, и текущий не шёл в счёт
+ *          даже будучи целым, отчего первого января оставалось одиннадцать
+ *          месяцев вместо двенадцати, тогда как сутки, недели и часы на той же
+ *          границе считались целыми
+ *
+ */
+TEST_F(ChronoFixture, ExecutionMonthsLeftBoundaryChronoTest){
+	// Выполняем разбор записи начала года
+	this->_chrono->parse("2025-01-01T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z", awh::Chrono::storage_t::LOCAL);
+	// Получаем штамп времени начала года
+	const uint64_t begin = this->_chrono->timestamp(awh::Chrono::type_t::MILLISECONDS, awh::Chrono::storage_t::LOCAL);
+	// На границе года целыми остаются все двенадцать месяцев
+	ASSERT_EQ(this->_chrono->actual(begin, awh::Chrono::type_t::MONTH, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::LEFT), static_cast <uint64_t> (12));
+	// На границе года месяцев не прошло
+	ASSERT_EQ(this->_chrono->actual(begin, awh::Chrono::type_t::MONTH, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::PASSED), static_cast <uint64_t> (0));
+	// Внутри января он не прошёл и не остался
+	ASSERT_EQ(this->_chrono->actual(begin + static_cast <uint64_t> (1), awh::Chrono::type_t::MONTH, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::LEFT), static_cast <uint64_t> (11));
+	// Выполняем разбор записи начала февраля
+	this->_chrono->parse("2025-02-01T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z", awh::Chrono::storage_t::LOCAL);
+	// Получаем штамп времени начала февраля
+	const uint64_t february = this->_chrono->timestamp(awh::Chrono::type_t::MILLISECONDS, awh::Chrono::storage_t::LOCAL);
+	// На границе февраля прошёл один месяц, а целыми осталось одиннадцать
+	ASSERT_EQ(this->_chrono->actual(february, awh::Chrono::type_t::MONTH, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::PASSED), static_cast <uint64_t> (1));
+	// Выполняем проверку сходимости суммы с числом месяцев года на границе месяца
+	ASSERT_EQ(this->_chrono->actual(february, awh::Chrono::type_t::MONTH, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::LEFT), static_cast <uint64_t> (11));
+	// На последнем мгновении года целых месяцев не остаётся
+	ASSERT_EQ(this->_chrono->actual(begin + static_cast <uint64_t> (31535999999), awh::Chrono::type_t::MONTH, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::LEFT), static_cast <uint64_t> (0));
+}
+/**
+ * @brief Тест преимущества месяца и числа месяца над номером дня в году
+ *
+ * @details Переменные формата %m и %d задают дату напрямую, а %j - через
+ *          раскладку номера дня, и при совместном задании раскладка не
+ *          выполняется. Сличения их между собой нет, как и у strptime
+ *
+ */
+TEST_F(ChronoFixture, ExecutionYearDayPrecedenceChronoTest){
+	// Выполняем разбор записи, где номер дня в году противоречит числу месяца
+	this->_chrono->parse("2025-01-15 200", "%Y-%m-%d %j", awh::Chrono::storage_t::LOCAL);
+	// Дата берётся у месяца и числа месяца
+	ASSERT_EQ(this->_chrono->format("%m-%d", awh::Chrono::storage_t::LOCAL), "01-15");
+	// Противоречивая запись пригодной остаётся, коль скоро пригодно каждое поле
+	ASSERT_TRUE(this->_chrono->validate("2025-01-15 200", "%Y-%m-%d %j"));
+	// Выполняем разбор записи с одним лишь номером дня в году
+	this->_chrono->parse("2025 200", "%Y %j", awh::Chrono::storage_t::LOCAL);
+	// Дата раскладывается из номера дня в году
+	ASSERT_EQ(this->_chrono->format("%m-%d", awh::Chrono::storage_t::LOCAL), "07-19");
+}
+/**
+ * @brief Тест трёх счётов номера недели
+ *
+ * @details Поле WEEKS - количество недель с начала года с округлением к
+ *          ближайшей, %U и %W - номера недель по стандарту от первого
+ *          воскресенья и первого понедельника, а счёт actual даёт целые
+ *          прошедшие недели: сводить их к одному нельзя
+ *
+ */
+TEST_F(ChronoFixture, ExecutionWeekCountsDivergeChronoTest){
+	// Выполняем разбор записи четвёртого января
+	this->_chrono->parse("2025-01-04T12:00:00+0000", "%Y-%m-%dT%H:%M:%S%z", awh::Chrono::storage_t::LOCAL);
+	// Получаем штамп времени указанной даты
+	const uint64_t stamp = this->_chrono->timestamp(awh::Chrono::type_t::MILLISECONDS, awh::Chrono::storage_t::LOCAL);
+	// Поле недель округляет долю года к ближайшей неделе
+	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::Chrono::unit_t::WEEKS, awh::Chrono::storage_t::LOCAL), static_cast <uint64_t> (1));
+	// Номер недели от первого воскресенья года ещё нулевой
+	ASSERT_EQ(this->_chrono->format("%U", awh::Chrono::storage_t::LOCAL), "00");
+	// Номер недели от первого понедельника года ещё нулевой
+	ASSERT_EQ(this->_chrono->format("%W", awh::Chrono::storage_t::LOCAL), "00");
+	// Целых недель с начала года не прошло
+	ASSERT_EQ(this->_chrono->actual(stamp, awh::Chrono::type_t::WEEK, awh::Chrono::type_t::YEAR, awh::Chrono::actual_t::PASSED), static_cast <uint64_t> (0));
+}
+/**
+ * @brief Тест недельного счёта ISO 8601
+ *
+ * @details Переменные формата %G, %g и %V отвечают году и номеру недели по ISO 8601,
+ *          где недели начинаются с понедельника, а первой считается та, на которую
+ *          приходится первый четверг года: прежде %G и %g выдавались за %Y и %y,
+ *          отчего тридцатое декабря 2024 года записывалось годом 2024 вместо 2025,
+ *          а %V не поддерживалась вовсе и печаталась своей же буквой
+ *
+ */
+TEST_F(ChronoFixture, ExecutionIsoWeekChronoTest){
+	// Выполняем перебор дат, на которых недельный счёт расходится с календарным
+	for(const auto & item : {
+		std::make_tuple("2024-12-29", "2024", "24", "52"),
+		std::make_tuple("2024-12-30", "2025", "25", "01"),
+		std::make_tuple("2024-12-31", "2025", "25", "01"),
+		std::make_tuple("2025-01-01", "2025", "25", "01"),
+		std::make_tuple("2026-12-31", "2026", "26", "53"),
+		std::make_tuple("2027-01-01", "2026", "26", "53"),
+		std::make_tuple("1970-01-01", "1970", "70", "01"),
+		std::make_tuple("2405-01-01", "2404", "04", "53")
+	}){
+		// Выполняем разбор записи даты
+		const uint64_t date = this->_chrono->parse(std::string(std::get <0> (item)) + "T12:00:00+0000", "%Y-%m-%dT%H:%M:%S%z");
+		// Выполняем проверку года недельного счёта
+		ASSERT_EQ(this->_chrono->format(date, "%G"), std::get <1> (item)) << std::get <0> (item);
+		// Выполняем проверку двух последних разрядов года недельного счёта
+		ASSERT_EQ(this->_chrono->format(date, "%g"), std::get <2> (item)) << std::get <0> (item);
+		// Выполняем проверку номера недели по ISO 8601
+		ASSERT_EQ(this->_chrono->format(date, "%V"), std::get <3> (item)) << std::get <0> (item);
+	}
+	/**
+	 * Разбор недельные переменные читает и пропускает, дату беря у календарных
+	 */
+	// Выполняем разбор записи, где недельный счёт задан вместе с календарным
+	ASSERT_EQ(this->_chrono->format(this->_chrono->parse("2025-06-15 2025 25", "%Y-%m-%d %G %V"), "%Y-%m-%d"), "2025-06-15");
+	// Запись с недельными переменными остаётся пригодной
+	ASSERT_TRUE(this->_chrono->validate("2025-06-15 2025 25", "%Y-%m-%d %G %V"));
+}
+/**
+ * @brief Тест выравнивания числа месяца в записи asctime
+ *
+ * @details Запись asctime отводит числу месяца два знака и однозначное дополняет
+ *          пробелом, как это делает переменная формата %e: прежде запись выходила
+ *          короче эталонной - «Thu Jan 1» вместо «Thu Jan  1»
+ *
+ */
+TEST_F(ChronoFixture, ExecutionAsctimePaddingChronoTest){
+	// Начало эпохи приходится на первое число, записываемое одним знаком
+	ASSERT_EQ(this->_chrono->format(static_cast <uint64_t> (0), "%c"), "Thu Jan  1 00:00:00 1970");
+	// Двузначное число месяца пробелом не дополняется
+	ASSERT_EQ(this->_chrono->format(this->_chrono->parse("2025-04-16T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z"), "%c"), "Wed Apr 16 00:00:00 2025");
+	// Обратный ход записи asctime сохраняет момент времени
+	ASSERT_EQ(this->_chrono->parse(this->_chrono->format(static_cast <uint64_t> (0), "%c"), "%c"), static_cast <uint64_t> (0));
+}
+/**
+ * @brief Тест пределов пользовательского реестра временных зон
+ *
+ * @details Смещение приводится к земным пределам наравне с установкой смещения
+ *          объекту: реестр принимал любое значение разрядности, и зона «+99 часов»
+ *          уводила момент на четверо суток, тогда как проверка записи такое
+ *          смещение отвергает. Повторное добавление зоны её переустанавливает
+ *
+ */
+TEST_F(ChronoFixture, ExecutionTimeZoneRegistryChronoTest){
+	// Выполняем добавление временной зоны со смещением за земными пределами
+	this->_chrono->addTimeZone("BAD", 99 * 3600);
+	// Смещение приводится к наибольшему земному
+	ASSERT_EQ(this->_chrono->getTimeZone("BAD"), 14 * 3600);
+	// Выполняем добавление временной зоны со смещением ниже земных пределов
+	this->_chrono->addTimeZone("WORSE", -99 * 3600);
+	// Смещение приводится к наименьшему земному
+	ASSERT_EQ(this->_chrono->getTimeZone("WORSE"), -12 * 3600);
+	// Выполняем добавление временной зоны
+	this->_chrono->addTimeZone("XYZ", 3 * 3600);
+	// Выполняем проверку добавленной временной зоны
+	ASSERT_EQ(this->_chrono->getTimeZone("XYZ"), 3 * 3600);
+	// Выполняем переустановку той же временной зоны
+	this->_chrono->addTimeZone("XYZ", 5 * 3600);
+	// Повторное добавление зоны её переустанавливает
+	ASSERT_EQ(this->_chrono->getTimeZone("XYZ"), 5 * 3600);
+	// Запись, зоной этой заданная, проверку записи проходит
+	this->_chrono->setTimeZone("BAD");
+	// Выполняем проверку пригодности записи, сформированной приведённой зоной
+	ASSERT_TRUE(this->_chrono->validate(this->_chrono->format(static_cast <uint64_t> (1743943021000), this->_chrono->getTimeZone("BAD"), "%Y-%m-%dT%H:%M:%S%z"), "%Y-%m-%dT%H:%M:%S%z"));
+	// Выполняем очистку пользовательского реестра временных зон
+	this->_chrono->clearTimeZones();
+	// Выполняем возврат объекта к нулевой временной зоне
+	this->_chrono->setTimeZone(0);
+}
+/**
+ * @brief Тест пропуска недельных переменных при разборе записи
+ *
+ * @details Год недельного счёта и номер недели по ISO 8601 календарную дату задают
+ *          лишь все вместе, а порознь ни одного поля не определяют: разбор их
+ *          читает и пропускает наравне с %U и %W, как это делает strptime, и дату
+ *          берёт у переменных календарных
+ *
+ */
+TEST_F(ChronoFixture, ExecutionIsoWeekParseChronoTest){
+	// Выполняем разбор записи с недельным годом вместо календарного
+	this->_chrono->parse("2025-04-06 12:37:01", "%G-%m-%d %H:%M:%S", awh::Chrono::storage_t::LOCAL);
+	// Год записью не задан, и календарное поле его не получает
+	ASSERT_NE(this->_chrono->format("%Y-%m-%d", awh::Chrono::storage_t::LOCAL), "2025-04-06");
+	// Месяц и число месяца записью заданы и разобраны
+	ASSERT_EQ(this->_chrono->format("%m-%d %H:%M:%S", awh::Chrono::storage_t::LOCAL), "04-06 12:37:01");
+	// Запись с недельным годом остаётся пригодной
+	ASSERT_TRUE(this->_chrono->validate("2025-04-06 12:37:01", "%G-%m-%d %H:%M:%S"));
+	// Календарные переменные, заданные вместе с недельными, дату определяют полностью
+	ASSERT_EQ(this->_chrono->parse("2025-04-06 2025 14 12:37:01", "%Y-%m-%d %G %V %H:%M:%S"), static_cast <uint64_t> (1743943021000));
+}
+/**
+ * @brief Тест проверки обозначений зон реестра
+ *
+ * @details Проверка пригодности знает и встроенные зоны, и добавленные в реестр,
+ *          и запись одним лишь смещением, тогда как сопоставление переводит
+ *          обозначение в элемент перечисления и зоны реестра ему неизвестны:
+ *          проверять обозначение из недоверенного источника следует первой
+ *
+ */
+TEST_F(ChronoFixture, ExecutionTimeZoneValidationChronoTest){
+	// Выполняем добавление временной зоны в реестр
+	this->_chrono->addTimeZone("AAA", 5 * 3600);
+	// Зона реестра проверку пригодности проходит
+	ASSERT_TRUE(this->_chrono->validateTimeZone("AAA"));
+	// Сопоставление зону реестра элементом перечисления не выдаёт
+	ASSERT_EQ(this->_chrono->matchTimeZone("AAA"), awh::Chrono::zone_t::NONE);
+	// Встроенная зона проходит и проверку, и сопоставление
+	ASSERT_TRUE(this->_chrono->validateTimeZone("MSK"));
+	// Выполняем проверку сопоставления встроенной зоны
+	ASSERT_EQ(this->_chrono->matchTimeZone("MSK"), awh::Chrono::zone_t::MSK);
+	// Запись одним лишь смещением проверку проходит
+	ASSERT_TRUE(this->_chrono->validateTimeZone("+05:30"));
+	// Неизвестное обозначение проверку не проходит
+	ASSERT_FALSE(this->_chrono->validateTimeZone("XXXX"));
+	// Выполняем очистку пользовательского реестра временных зон
+	this->_chrono->clearTimeZones();
+	// После очистки зона реестра проверку не проходит
+	ASSERT_FALSE(this->_chrono->validateTimeZone("AAA"));
+}
+/**
+ * @brief Тест правил раскрытия двузначного года
+ *
+ * @details Единого правила стандарты не дают: RFC 9110 задаёт скользящее окно от
+ *          текущего года, POSIX для strptime - неподвижный рубеж между 68 и 69
+ *          годами. Оба доступны, и выбор оставлен вызывающему
+ *
+ */
+TEST_F(ChronoFixture, ExecutionCenturyRuleChronoTest){
+	// По умолчанию действует скользящее окно RFC 9110
+	ASSERT_EQ(this->_chrono->century(), awh::Chrono::century_t::WINDOW);
+	// Выполняем установку правила неподвижного рубежа
+	this->_chrono->century(awh::Chrono::century_t::POSIX);
+	// Выполняем проверку установленного правила
+	ASSERT_EQ(this->_chrono->century(), awh::Chrono::century_t::POSIX);
+	/**
+	 * Рубеж POSIX относит разряды от 69 до 99 к двадцатому веку
+	 */
+	// Выполняем проверку года, скользящим окном не выражаемого
+	ASSERT_EQ(this->_chrono->format(this->_chrono->parse("70-06-15", "%y-%m-%d"), "%Y-%m-%d"), "1970-06-15");
+	// Выполняем проверку последнего года двадцатого века
+	ASSERT_EQ(this->_chrono->format(this->_chrono->parse("99-06-15", "%y-%m-%d"), "%Y-%m-%d"), "1999-06-15");
+	// Выполняем проверку первого года двадцать первого века по рубежу
+	ASSERT_EQ(this->_chrono->format(this->_chrono->parse("00-06-15", "%y-%m-%d"), "%Y-%m-%d"), "2000-06-15");
+	// Выполняем проверку последнего года, к двадцать первому веку относимого
+	ASSERT_EQ(this->_chrono->format(this->_chrono->parse("68-06-15", "%y-%m-%d"), "%Y-%m-%d"), "2068-06-15");
+	// Год 1969 календарём модуля не представим и приводится к началу эпохи
+	ASSERT_EQ(this->_chrono->format(this->_chrono->parse("69-06-15", "%y-%m-%d"), "%Y-%m-%d"), "1970-01-01");
+	// Запись года, календарём не представимого, проверку не проходит
+	ASSERT_FALSE(this->_chrono->validate("69-06-15", "%y-%m-%d"));
+	// Величина окна при неподвижном рубеже не используется
+	this->_chrono->yearWindow(0);
+	// Выполняем проверку независимости рубежа от величины окна
+	ASSERT_EQ(this->_chrono->format(this->_chrono->parse("70-06-15", "%y-%m-%d"), "%Y-%m-%d"), "1970-06-15");
+	/**
+	 * Скользящее окно с нулевой величиной относит запись к двадцать первому веку
+	 */
+	// Выполняем возврат правила скользящего окна
+	this->_chrono->century(awh::Chrono::century_t::WINDOW);
+	// Нулевое окно отключает правило целиком
+	ASSERT_EQ(this->_chrono->format(this->_chrono->parse("70-06-15", "%y-%m-%d"), "%Y-%m-%d"), "2070-06-15");
+	// Выполняем возврат окна к величине по умолчанию
+	this->_chrono->yearWindow(50);
+	// Скользящее окно относит те же разряды к ближайшему году внутри окна
+	ASSERT_EQ(this->_chrono->format(this->_chrono->parse("99-06-15", "%y-%m-%d"), "%Y-%m-%d"), "1999-06-15");
+}
+/**
+ * @brief Тест именованных записей стандартов
+ *
+ * @details Обозначение стандарта избавляет от переписывания образца и от ошибок в
+ *          его мелочах, а разбор принимает все разновидности записи, стандартом
+ *          допускаемые, а не одну
+ *
+ */
+TEST_F(ChronoFixture, ExecutionStandardFormatChronoTest){
+	// Эталонный момент времени
+	const uint64_t date = static_cast <uint64_t> (1743943021520);
+	/**
+	 * Выполняем перебор всех стандартов вместе с записями, ими предписанными
+	 */
+	for(const auto & item : {
+		std::make_pair(awh::Chrono::standard_t::CLF, "06/Apr/2025:12:37:01 +0000"),
+		std::make_pair(awh::Chrono::standard_t::RFC850, "Sunday, 06-Apr-25 12:37:01 GMT"),
+		std::make_pair(awh::Chrono::standard_t::RFC1123, "Sun, 06 Apr 2025 12:37:01 GMT"),
+		std::make_pair(awh::Chrono::standard_t::RFC3164, "Apr  6 12:37:01"),
+		std::make_pair(awh::Chrono::standard_t::RFC3339, "2025-04-06T12:37:01.520Z"),
+		std::make_pair(awh::Chrono::standard_t::RFC5322, "Sun, 06 Apr 2025 12:37:01 +0000"),
+		std::make_pair(awh::Chrono::standard_t::ISO8601, "20250406T123701Z"),
+		std::make_pair(awh::Chrono::standard_t::ASCTIME, "Sun Apr  6 12:37:01 2025")
+	}){
+		// Выполняем проверку записи, стандартом предписанной
+		ASSERT_EQ(this->_chrono->format(date, item.first), item.second);
+		// Запись, стандартом предписанная, им же и проверяется
+		ASSERT_TRUE(this->_chrono->validate(item.second, item.first)) << item.second;
+	}
+	/**
+	 * Разбор принимает все разновидности записи, стандартом допускаемые
+	 */
+	// Доля секунды записи RFC 3339 необязательна
+	ASSERT_EQ(this->_chrono->parse("2025-04-06T12:37:01Z", awh::Chrono::standard_t::RFC3339), static_cast <uint64_t> (1743943021000));
+	// Смещение зоны записи RFC 3339 приводится к нулевой зоне
+	ASSERT_EQ(this->_chrono->parse("2025-04-06T15:37:01+03:00", awh::Chrono::standard_t::RFC3339), static_cast <uint64_t> (1743943021000));
+	// День недели записи RFC 5322 необязателен
+	ASSERT_EQ(this->_chrono->parse("06 Apr 2025 12:37:01 +0000", awh::Chrono::standard_t::RFC5322), static_cast <uint64_t> (1743943021000));
+	// Расширенная форма записи ISO 8601 принимается наравне с основной
+	ASSERT_EQ(this->_chrono->parse("2025-04-06T12:37:01Z", awh::Chrono::standard_t::ISO8601), static_cast <uint64_t> (1743943021000));
+	/**
+	 * Образец выбирается по разделителям записи, а не по одной лишь пригодности полей
+	 */
+	// Запись без доли секунды образцом с долей не разбирается
+	ASSERT_TRUE(this->_chrono->validate("2025-04-06T15:37:01+03:00", awh::Chrono::standard_t::RFC3339));
+	// Запись, ни одному образцу стандарта не отвечающая, даёт ноль
+	ASSERT_EQ(this->_chrono->parse("мусор", awh::Chrono::standard_t::RFC3339), static_cast <uint64_t> (0));
+	// Запись, ни одному образцу стандарта не отвечающая, пригодной не является
+	ASSERT_FALSE(this->_chrono->validate("мусор", awh::Chrono::standard_t::RFC3339));
+	// Запись одного стандарта не выдаётся за запись другого
+	ASSERT_FALSE(this->_chrono->validate("06/Apr/2025:12:37:01 +0000", awh::Chrono::standard_t::RFC1123));
+	// Записи HTTP предписана нулевая зона независимо от указанной
+	ASSERT_EQ(this->_chrono->format(date, 3 * 3600, awh::Chrono::standard_t::RFC1123), "Sun, 06 Apr 2025 12:37:01 GMT");
+	// Прочие записи формируются в указанной зоне
+	ASSERT_EQ(this->_chrono->format(date, 3 * 3600, awh::Chrono::standard_t::RFC3339), "2025-04-06T15:37:01.520+03:00");
+}
+/**
+ * @brief Тест обозначения смещения зоны в написании GNU
+ *
+ * @details Смещение временной зоны с двоеточием переменной формата POSIX не
+ *          выражается: расширения завели и GNU, и этот модуль, но написания у них
+ *          разные. Чужое написание принимается наравне со своим
+ *
+ */
+TEST_F(ChronoFixture, ExecutionColonZoneChronoTest){
+	// Эталонный момент времени
+	const uint64_t date = static_cast <uint64_t> (1743943021000);
+	// Обозначение GNU формирует запись наравне с обозначением модуля
+	ASSERT_EQ(this->_chrono->format(date, 5 * 3600 + 1800, "%Y-%m-%dT%H:%M:%S%:z"),
+		this->_chrono->format(date, 5 * 3600 + 1800, "%Y-%m-%dT%H:%M:%S%o"));
+	// Выполняем проверку записи смещения зоны с двоеточием
+	ASSERT_EQ(this->_chrono->format(date, 5 * 3600 + 1800, "%Y-%m-%dT%H:%M:%S%:z"), "2025-04-06T18:07:01+05:30");
+	// Обозначение GNU разбирает запись наравне с обозначением модуля
+	ASSERT_EQ(this->_chrono->parse("2025-04-06T18:07:01+05:30", "%Y-%m-%dT%H:%M:%S%:z"), date);
+	// Удвоенный знак процента обозначением не является
+	ASSERT_EQ(this->_chrono->format(date, "100%%:z"), "100%:z");
+}
+/**
+ * @brief Тест приёма секунды координации
+ *
+ * @details Секунду координации разрешают RFC 3339 вместе с ISO 8601, а часть
+ *          разборщиков отвергает наравне с ошибкой записи: приём её задаётся
+ *          признаком, а не зашит
+ *
+ */
+TEST_F(ChronoFixture, ExecutionLeapSecondModeChronoTest){
+	// По умолчанию секунда координации принимается
+	ASSERT_TRUE(this->_chrono->leapSecond());
+	// Выполняем проверку приёма секунды координации
+	ASSERT_TRUE(this->_chrono->validate("2016-12-31T23:59:60Z", "%Y-%m-%dT%H:%M:%S%i"));
+	// Выполняем отказ от приёма секунды координации
+	this->_chrono->leapSecond(false);
+	// Выполняем проверку установленного признака
+	ASSERT_FALSE(this->_chrono->leapSecond());
+	// Секунда координации при отказе пригодной не считается
+	ASSERT_FALSE(this->_chrono->validate("2016-12-31T23:59:60Z", "%Y-%m-%dT%H:%M:%S%i"));
+	// Обычная секунда пригодной остаётся
+	ASSERT_TRUE(this->_chrono->validate("2016-12-31T23:59:59Z", "%Y-%m-%dT%H:%M:%S%i"));
+	// Разбор секунду координации принимает всегда и переносит на следующую минуту
+	ASSERT_EQ(this->_chrono->format(this->_chrono->parse("2016-12-31T23:59:60Z", "%Y-%m-%dT%H:%M:%S%i"), "%Y-%m-%dT%H:%M:%S"), "2017-01-01T00:00:00");
+	// Выполняем возврат приёма секунды координации
+	this->_chrono->leapSecond(true);
 }

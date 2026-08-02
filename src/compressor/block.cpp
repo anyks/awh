@@ -358,6 +358,8 @@ namespace driver {
 						uint64_t memlimit = AWH_COMPRESSOR_LZMA_MEMLIMIT;
 						// Позиции в буферах и актуальный размер данных результата
 						size_t inpos = 0, outpos = 0, actual = 0;
+						// Размер распакованных данных в разрядности движка
+						uint64_t expected = 0;
 						/**
 						 * Подвал контейнера занимает 12 октетов, и на входе короче него
 						 * вычитание ушло бы за ноль беззнаковой разрядностью, уводя указатель за буфер
@@ -391,16 +393,23 @@ namespace driver {
 						inpos = 0;
 						// Сбрасываем лимит доступной памяти
 						memlimit = AWH_COMPRESSOR_LZMA_MEMLIMIT;
+						/**
+						 * Размер снимается в разрядность движка, а не в разрядность памяти:
+						 * приведение к размеру памяти на 32-разрядной сборке обрезало бы
+						 * старшую половину, и подделанный подвал прошёл бы стража с обрезком
+						 */
 						// Получаем размер результирующего буфера данных
-						actual = ::lzma_index_uncompressed_size(index);
+						expected = ::lzma_index_uncompressed_size(index);
 						/**
 						 * Отвергаем нулевой размер и размер свыше допустимого предела: и то,
 						 * и другое означает подделанный подвал. Нулевой распакованный размер
 						 * законным контейнером не бывает — пустой вход модуль до движка не доводит
 						 */
-						if((actual == 0) || (actual > static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT)))
+						if((expected == 0) || (expected > static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT)) || (expected > static_cast <uint64_t> (SIZE_MAX)))
 							// Переходим к выводу ошибки
 							goto Error;
+						// Снимаем размер в разрядность памяти сборки
+						actual = static_cast <size_t> (expected);
 						// Выделяем буфер памяти нужного нам размера
 						result.resize(actual, 0);
 						// Выполняем декомпрессию буфера бинарных данных
@@ -537,13 +546,25 @@ namespace driver {
 						 * Начальный размер выходного буфера: bzip2 может увеличить данные!
 						 * Согласно документации: worst case = input + 1% + 600 bytes
 						 */
-						size_t capacity = (size + (size / 100) + 600);
+						uint64_t capacity = (static_cast <uint64_t> (size) + (static_cast <uint64_t> (size) / 100) + 600);
 						// Минимальный размер буфера должен быть не менее 1024 байт
 						if(capacity < 1024)
 							// Устанавливаем минимальный размер буфера
 							capacity = 1024;
+						/**
+						 * Разрядность указателя ниже разрядности расчёта: на 32-разрядной сборке
+						 * оценка худшего случая за размер памяти выйти может, и приведение её
+						 * обрезало бы величину, а не отвергло. Отвергаем прямо
+						 */
+						// Если оценка выходит за разрядность памяти сборки
+						if(capacity > static_cast <uint64_t> (SIZE_MAX)){
+							// Записываем ошибку в лог
+							log->print("Bzip2: %s", log_t::flag_t::WARNING, "Invalid compression size");
+							// Выходим из функции
+							return;
+						}
 						// Выделяем память на результирующий буфер
-						result.resize(capacity, 0);
+						result.resize(static_cast <size_t> (capacity), 0);
 						// Заполняем входные данные буфера
 						stream.next_in = const_cast <char *> (reinterpret_cast <const char *> (buffer));
 						// Указываем размер входного буфера
@@ -560,14 +581,49 @@ namespace driver {
 						 * Выполняем компрессию до завершения данных
 						 */
 						do {
+							// Запоминаем остаток непринятого входа до захода
+							const uint32_t remaining = stream.avail_in;
+							// Запоминаем собранный движком объём до захода
+							const uint64_t collected = driver::produced(stream);
 							// Выполняем компрессию ещё одной порции данных
 							ret = ::BZ2_bzCompress(&stream, BZ_FINISH);
+							/**
+							 * Заход, ничего не взявший и ничего не выдавший при незаполненном
+							 * выходе, не возьмёт и не выдаст их и впредь: доводы захода те же
+							 * самые. Заполненный выход застоем не является - там движку и правда
+							 * недостаёт места, и работа его добавляет
+							 */
+							if((ret == BZ_FINISH_OK) && (stream.avail_out > 0) && (stream.avail_in == remaining) && (driver::produced(stream) == collected)){
+								// Выполняем очистку буфера данных
+								result.clear();
+								// Записываем ошибку в лог
+								log->print("Bzip2: %s", log_t::flag_t::WARNING, "Error during data compression");
+								// Выходим из функции
+								return;
+							}
 							// Если нужно больше места для данных
 							if(ret == BZ_FINISH_OK){
 								// Нужно больше места — расширяем буфер
 								produced = static_cast <size_t> (driver::produced(stream));
+								/**
+								 * Удвоение считается с запасом по разрядности и режется по размеру
+								 * памяти сборки: обрезанная величина дала бы буфер меньше собранного,
+								 * а разность длины и собранного ушла бы в переполнение - движок
+								 * получил бы окно записи за концом буфера
+								 */
+								// Вычисляем новую длину буфера, не выходя за разрядность памяти
+								const uint64_t enlarged = ::min <uint64_t> (static_cast <uint64_t> (result.size()) * 2, static_cast <uint64_t> (SIZE_MAX));
+								// Если места под запись не прибавилось, работу продолжать нельзя
+								if(enlarged <= static_cast <uint64_t> (produced)){
+									// Выполняем очистку результата
+									result.clear();
+									// Записываем ошибку в лог
+									log->print("Bzip2: %s", log_t::flag_t::WARNING, "Error during data compression");
+									// Выходим из функции
+									return;
+								}
 								// Увеличиваем буфер в два раза
-								result.resize(result.size() * 2);
+								result.resize(static_cast <size_t> (enlarged));
 								// Устанавливаем максимальный размер буфера, не выходя за разрядность движка
 								stream.avail_out = static_cast <uint32_t> (::min <uint64_t> (static_cast <uint64_t> (result.size() - produced), static_cast <uint64_t> (UINT32_MAX)));
 								// Устанавливаем буфер для получения результата
@@ -647,6 +703,8 @@ namespace driver {
 						do {
 							// Получаем собранный движком объём данных
 							const size_t collected = static_cast <size_t> (driver::produced(stream));
+							// Запоминаем остаток неразобранного входа до захода
+							const uint32_t remaining = stream.avail_in;
 							// Убедимся, что есть место для записи
 							if(collected >= result.size()){
 								/**
@@ -720,6 +778,30 @@ namespace driver {
 								#else
 									// Записываем ошибку в лог в лог
 									log->print("Bzip2: %s", log_t::flag_t::WARNING, "Truncated or corrupted data");
+								#endif
+								// Выходим из функции
+								return;
+							}
+							/**
+							 * Заход, оставивший неразобранный вход нетронутым и не выдавший ни
+							 * октета выхода, не разберёт его и впредь: доводы захода те же самые.
+							 * Тот же страж стоит у потокового кодека
+							 */
+							if((ret != BZ_STREAM_END) && (stream.avail_in > 0) && (stream.avail_in == remaining) && (static_cast <size_t> (driver::produced(stream)) == collected)){
+								// Выполняем очистку буфера данных
+								result.clear();
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log->print("Bzip2: %s", log_t::flag_t::WARNING, "Error during data decompression");
 								#endif
 								// Выходим из функции
 								return;
@@ -828,6 +910,8 @@ namespace driver {
 						 * Выполняем сжатие данных
 						 */
 						while(!::BrotliEncoderIsFinished(encoder)){
+							// Запоминаем остаток неразобранного входа до захода
+							const size_t remaining = sizeInput;
 							// Получаем размер буфера закодированных бинарных данных
 							size_t sizeOutput = data.size();
 							// Получаем буфер закодированных бинарных данных
@@ -860,6 +944,19 @@ namespace driver {
 								const char * chunk = reinterpret_cast <const char *> (&data[0]);
 								// Формируем результирующий буфер бинарных данных
 								result.insert(result.end(), chunk, chunk + produced);
+							}
+							/**
+							 * Заход, ничего не взявший и ничего не выдавший, не возьмёт и не
+							 * выдаст их и впредь: доводы захода те же самые. Заход, выставивший
+							 * признак завершённости, под стража не идёт - работа на нём и кончается
+							 */
+							if(!::BrotliEncoderIsFinished(encoder) && !::BrotliEncoderHasMoreOutput(encoder) && (sizeInput == remaining) && (produced == 0)){
+								// Выполняем очистку результата
+								result.clear();
+								// Записываем ошибку в лог
+								log->print("Brotli: %s", log_t::flag_t::WARNING, "Error during data compression");
+								// Выходим из функции
+								return;
 							}
 						}
 					} break;
@@ -900,6 +997,8 @@ namespace driver {
 						 * Если декодеру есть с чем работать
 						 */
 						while(ret == BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT){
+							// Запоминаем остаток неразобранного входа до захода
+							const size_t remaining = sizeInput;
 							// Получаем размер буфера декодированных бинарных данных
 							size_t sizeOutput = data.size();
 							// Получаем буфер декодированных бинарных данных
@@ -939,6 +1038,29 @@ namespace driver {
 									// Выходим из функции
 									return;
 								}
+							}
+							/**
+							 * Движок просит места под выход, но выхода не даёт и входа не убавляет:
+							 * доводы следующего захода те же самые, и просьба эта не кончится
+							 */
+							if((sizeInput == remaining) && (produced == 0)){
+								// Выполняем очистку результата
+								result.clear();
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log->print("Brotli: %s", log_t::flag_t::WARNING, "Error during data decompression");
+								#endif
+								// Выходим из функции
+								return;
 							}
 						}
 						// Если декомпрессия данных выполнена не удачно (в т.ч. усечённый вход — NEEDS_MORE_INPUT)
@@ -1405,8 +1527,14 @@ namespace driver {
 						 * законный сильно сжатый кадр
 						 */
 						constexpr size_t MAX_OUTPUT_SIZE = AWH_COMPRESSOR_MAX_OUTPUT;
+						/**
+						 * Начальная догадка взята с запасом: движок отвечает одним отрицательным
+						 * числом и на нехватку места, и на порчу, поэтому каждая недостача стоит
+						 * полной распаковки заново. Догадка вдвое от входа не покрывает даже
+						 * обычной степени сжатия, и честный кадр платил бы несколькими заходами
+						 */
 						// Начальный размер выходного буфера
-						size_t capacity = (size * 2);
+						size_t capacity = static_cast <size_t> (::min <uint64_t> (::max <uint64_t> (static_cast <uint64_t> (size) * 4, 0x10000), static_cast <uint64_t> (MAX_OUTPUT_SIZE)));
 						// Признак попытки на всём допустимом пределе
 						bool clamped = false;
 						/**
@@ -1602,8 +1730,14 @@ namespace driver {
 						 * законный сильно сжатый кадр
 						 */
 						constexpr size_t MAX_OUTPUT_SIZE = AWH_COMPRESSOR_MAX_OUTPUT;
+						/**
+						 * Начальная догадка взята с запасом: движок отвечает одним отрицательным
+						 * числом и на нехватку места, и на порчу, поэтому каждая недостача стоит
+						 * полной распаковки заново. Догадка вдвое от входа не покрывает даже
+						 * обычной степени сжатия, и честный кадр платил бы несколькими заходами
+						 */
 						// Начальный размер выходного буфера
-						size_t capacity = (size * 2);
+						size_t capacity = static_cast <size_t> (::min <uint64_t> (::max <uint64_t> (static_cast <uint64_t> (size) * 4, 0x10000), static_cast <uint64_t> (MAX_OUTPUT_SIZE)));
 						// Признак попытки на всём допустимом пределе
 						bool clamped = false;
 						/**
@@ -1803,6 +1937,8 @@ namespace driver {
 							 * Выполняем обработку до тех пор пока все не обработаем
 							 */
 							while(input.pos < input.size){
+								// Запоминаем положение разбора до захода
+								const size_t consumed = input.pos;
 								// Сбрасываем позицию буфера
 								output.pos = 0;
 								// Выполняем компрессию полученных данных
@@ -1829,6 +1965,29 @@ namespace driver {
 								}
 								// Выполняем формирование полученных данных
 								result.insert(result.end(), data.get(), data.get() + output.pos);
+								/**
+								 * Заход, не взявший ни октета входа и не выдавший ни октета выхода,
+								 * не возьмёт и не выдаст их и впредь: доводы захода те же самые
+								 */
+								if((input.pos == consumed) && (output.pos == 0)){
+									// Выполняем очистку результата
+									result.clear();
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Записываем ошибку в лог
+										log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог
+										log->print("Zstandard: %s", log_t::flag_t::WARNING, "Error during data compression");
+									#endif
+									// Выходим из функции
+									return;
+								}
 							}
 							// Увеличиваем смещение в исходном буфере необработанных данных
 							offset += actual;
@@ -1848,6 +2007,33 @@ namespace driver {
 								break;
 							// Выполняем формирование полученных данных
 							result.insert(result.end(), data.get(), data.get() + output.pos);
+							/**
+							 * Заход, не выдавший ни октета выхода, не выдаст их и впредь: буфер
+							 * выхода отведён движком по его же мерке и пуст к началу всякого
+							 * захода, а доводы захода те же самые. Тот же страж стоит у самого
+							 * сжатия выше - здесь его недоставало, и движок, объявивший остаток
+							 * к записи, но его не пишущий, вращал бы цикл без конца
+							 */
+							// Если движок продвижения не сделал
+							if((status > 0) && (output.pos == 0)){
+								// Выполняем очистку результата
+								result.clear();
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during stream finalization");
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log->print("Zstandard: %s", log_t::flag_t::WARNING, "Error during stream finalization");
+								#endif
+								// Выходим из функции
+								return;
+							}
 						/**
 						 * Пока эпилог кадра не выписан целиком
 						 */
@@ -1946,6 +2132,8 @@ namespace driver {
 							 * Выполняем обработку до тех пор пока все не обработаем
 							 */
 							while(input.pos < input.size){
+								// Запоминаем положение разбора до захода
+								const size_t consumed = input.pos;
 								// Сбрасываем позицию буфера
 								output.pos = 0;
 								// Выполняем декомпрессию полученных данных
@@ -1976,6 +2164,30 @@ namespace driver {
 								if(driver::overflowed(result, "Zstandard", log)){
 									// Выполняем очистку результата
 									result.clear();
+									// Выходим из функции
+									return;
+								}
+								/**
+								 * Заход, не взявший ни октета входа и не выдавший ни октета выхода,
+								 * не возьмёт и не выдаст их и впредь: доводы захода те же самые.
+								 * Тот же страж стоит у потокового кодека
+								 */
+								if((input.pos == consumed) && (output.pos == 0)){
+									// Выполняем очистку результата
+									result.clear();
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Записываем ошибку в лог
+										log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог в лог
+										log->print("Zstandard: %s", log_t::flag_t::WARNING, "Error during data decompression");
+									#endif
 									// Выходим из функции
 									return;
 								}
@@ -2228,6 +2440,15 @@ namespace driver {
 								zs.avail_out = static_cast <uInt> (output.size());
 								// Выполняем декомпрессию данных
 								ret = ::inflate(&zs, Z_NO_FLUSH);
+								/**
+								 * Исчерпание входа без конца потока движок объявляет отсутствием
+								 * продвижения на следующем заходе, и звать это порчей нельзя:
+								 * кадр недополучен, а не испорчен. Выходим из цикла, чтобы имя
+								 * случаю дала проверка конца потока, стоящая ниже
+								 */
+								if((ret == Z_BUF_ERROR) && (zs.avail_in == 0))
+									// Выходим из цикла
+									break;
 								// Если произошла ошибка декомпрессии
 								if((ret != Z_OK) && (ret != Z_STREAM_END)){
 									// Выполняем очистку буфера данных
@@ -2480,6 +2701,15 @@ namespace driver {
 								zs.next_out = &data[0];
 								// Выполняем декомпрессию данных
 								ret = ::inflate(&zs, Z_NO_FLUSH);
+								/**
+								 * Исчерпание входа без конца потока движок объявляет отсутствием
+								 * продвижения на следующем заходе, и звать это порчей нельзя:
+								 * кадр недополучен, а не испорчен. Выходим из цикла, чтобы имя
+								 * случаю дала проверка конца потока, стоящая ниже
+								 */
+								if((ret == Z_BUF_ERROR) && (zs.avail_in == 0))
+									// Выходим из цикла
+									break;
 								// Если возникает ошибка
 								if((ret != Z_OK) && (ret != Z_STREAM_END)){
 									// Выполняем очистку результата
@@ -2728,9 +2958,26 @@ namespace driver {
 								// Добавляем сжатые данные в результат
 								result.insert(result.end(), &output[0], &output[0] + produced);
 							// Если выходной буфер заполнен, увеличиваем его размер
-							if(zs->avail_out == 0)
+							if(zs->avail_out == 0){
+								/**
+								 * Удвоение считается с запасом по разрядности и режется по размеру
+								 * памяти сборки: обрезанная величина дала бы буфер меньше прежнего,
+								 * и работа пошла бы по кругу на сжимающемся окне записи
+								 */
+								// Вычисляем новую длину рабочего буфера, не выходя за разрядность памяти
+								const uint64_t enlarged = ::min <uint64_t> (static_cast <uint64_t> (output.size()) * 2, static_cast <uint64_t> (SIZE_MAX));
+								// Если места под запись не прибавилось, работу продолжать нельзя
+								if(enlarged <= static_cast <uint64_t> (output.size())){
+									// Выполняем очистку блока с результатом
+									result.clear();
+									// Записываем ошибку в лог
+									log->print("Deflate: %s", log_t::flag_t::WARNING, "Working buffer cannot be enlarged");
+									// Выходим из функции
+									return;
+								}
 								// Увеличиваем размер выходного буфера
-								output.resize(output.size() * 2);
+								output.resize(static_cast <size_t> (enlarged));
+							}
 						}
 						/**
 						 * Завершение сообщения: один Z_SYNC_FLUSH
@@ -2769,9 +3016,26 @@ namespace driver {
 								// Добавляем сжатые данные в результат
 								result.insert(result.end(), &output[0], &output[0] + produced);
 							// Если выходной буфер заполнен, увеличиваем его размер
-							if(zs->avail_out == 0)
+							if(zs->avail_out == 0){
+								/**
+								 * Удвоение считается с запасом по разрядности и режется по размеру
+								 * памяти сборки: обрезанная величина дала бы буфер меньше прежнего,
+								 * и работа пошла бы по кругу на сжимающемся окне записи
+								 */
+								// Вычисляем новую длину рабочего буфера, не выходя за разрядность памяти
+								const uint64_t enlarged = ::min <uint64_t> (static_cast <uint64_t> (output.size()) * 2, static_cast <uint64_t> (SIZE_MAX));
+								// Если места под запись не прибавилось, работу продолжать нельзя
+								if(enlarged <= static_cast <uint64_t> (output.size())){
+									// Выполняем очистку блока с результатом
+									result.clear();
+									// Записываем ошибку в лог
+									log->print("Deflate: %s", log_t::flag_t::WARNING, "Working buffer cannot be enlarged");
+									// Выходим из функции
+									return;
+								}
 								// Увеличиваем размер выходного буфера
-								output.resize(output.size() * 2);
+								output.resize(static_cast <size_t> (enlarged));
+							}
 						/**
 						 * Пока выходной буфер полностью заполнен
 						 */
@@ -2888,9 +3152,26 @@ namespace driver {
 								}
 							}
 							// Если выходной буфер заполнен, увеличиваем его размер
-							if(zs->avail_out == 0)
+							if(zs->avail_out == 0){
+								/**
+								 * Удвоение считается с запасом по разрядности и режется по размеру
+								 * памяти сборки: обрезанная величина дала бы буфер меньше прежнего,
+								 * и работа пошла бы по кругу на сжимающемся окне записи
+								 */
+								// Вычисляем новую длину рабочего буфера, не выходя за разрядность памяти
+								const uint64_t enlarged = ::min <uint64_t> (static_cast <uint64_t> (output.size()) * 2, static_cast <uint64_t> (SIZE_MAX));
+								// Если места под запись не прибавилось, работу продолжать нельзя
+								if(enlarged <= static_cast <uint64_t> (output.size())){
+									// Выполняем очистку блока с результатом
+									result.clear();
+									// Записываем ошибку в лог
+									log->print("Deflate: %s", log_t::flag_t::WARNING, "Working buffer cannot be enlarged");
+									// Выходим из функции
+									return;
+								}
 								// Увеличиваем размер выходного буфера
-								output.resize(output.size() * 2);
+								output.resize(static_cast <size_t> (enlarged));
+							}
 						/**
 						 * Пока нет конца потока и есть входные данные
 						 */

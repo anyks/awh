@@ -1442,6 +1442,133 @@ TEST_F(CryptoFixture, ImportKeyStrengthCryptoTest){
 }
 
 /**
+ * @brief Тест сохранности прежнего файла ключа при отказе выписывания
+ *
+ * @details Разбор типа шифрования шёл после открытия файла, а открытие усекает
+ *          прежний файл сразу: вызов с негодным типом уничтожал годный ключ,
+ *          на диске лежавший, и работы при этом не начинал. Ключ выписывается
+ *          теперь в отдельный файл и ставится на место переименованием
+ *
+ */
+TEST_F(CryptoFixture, KeyFileSurvivesFailureCryptoTest){
+	// Путь к файлу приватного ключа
+	const std::string path = "./survives_private_key.pem";
+	// Путь к файлу открытого ключа
+	const std::string publicPath = "./survives_public_key.pem";
+	// Выполняем генерацию приватного ключа RSA
+	ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
+	// Устанавливаем пароль защиты приватного ключа RSA
+	this->_crypto->passwordRSA("key-password");
+	// Выполняем выписывание годного приватного ключа RSA в файл
+	ASSERT_TRUE(this->_crypto->savePrivateKeyRSA(path, awh::crypto_t::cipher_t::AES256));
+	// Открываем файл годного приватного ключа на чтение
+	std::ifstream source(path, std::ios::binary);
+	// Проверяем что файл открыт
+	ASSERT_TRUE(source.is_open());
+	// Вычитываем содержимое файла годного приватного ключа
+	const std::string original((std::istreambuf_iterator <char> (source)), std::istreambuf_iterator <char> ());
+	// Закрываем файл годного приватного ключа
+	source.close();
+	// Проверяем что годный приватный ключ выписан целиком
+	ASSERT_NE(original.find("-----END ENCRYPTED PRIVATE KEY-----"), std::string::npos);
+	// Проверяем отказ выписывания ключа шифрованием, защите ключа не подходящим
+	EXPECT_FALSE(this->_crypto->savePrivateKeyRSA(path, awh::crypto_t::cipher_t::BASE64));
+	// Открываем файл приватного ключа на чтение после отказа
+	std::ifstream target(path, std::ios::binary);
+	// Проверяем что прежний файл на месте
+	ASSERT_TRUE(target.is_open());
+	// Вычитываем содержимое файла приватного ключа после отказа
+	const std::string survived((std::istreambuf_iterator <char> (target)), std::istreambuf_iterator <char> ());
+	// Закрываем файл приватного ключа
+	target.close();
+	// Проверяем что прежний ключ отказом не тронут
+	EXPECT_EQ(survived, original);
+	/**
+	 * Отдельный файл после работы остаться не должен ни при удаче, ни при отказе
+	 */
+	// Приметы отдельного файла выписывания
+	struct stat attributes;
+	// Проверяем что отдельного файла выписывания не осталось
+	EXPECT_NE(::stat((path + ".tmp").c_str(), &attributes), 0);
+	// Выполняем выписывание открытого ключа RSA в файл
+	EXPECT_TRUE(this->_crypto->savePublicKeyRSA(publicPath));
+	// Проверяем что отдельного файла выписывания открытого ключа не осталось
+	EXPECT_NE(::stat((publicPath + ".tmp").c_str(), &attributes), 0);
+	// Удаляем файл открытого ключа
+	::remove(publicPath.c_str());
+	// Удаляем файл приватного ключа
+	::remove(path.c_str());
+}
+
+/**
+ * @brief Тест пароля защиты ключа RSA, нулевой октет содержащего
+ *
+ * @details Выписка ключа берёт пароль с указанием длины, а вычитывание шло с
+ *          умолчательным разбором, берущим пароль до первого нулевого октета:
+ *          пароль «a\0b» уходил в файл целиком, а обратно подавался как «a», и
+ *          ключ, только что выписанный, тем же объектом не открывался
+ *
+ */
+TEST_F(CryptoFixture, KeyPasswordZeroCryptoTest){
+	// Путь к файлу приватного ключа
+	const std::string path = "./zeroed_private_key.pem";
+	// Пароль защиты ключа, нулевой октет содержащий
+	const std::string password("a\0b", 3);
+	// Выполняем генерацию приватного ключа RSA
+	ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
+	// Устанавливаем пароль защиты приватного ключа RSA
+	this->_crypto->passwordRSA(password);
+	// Выполняем выписывание приватного ключа RSA в файл
+	ASSERT_TRUE(this->_crypto->savePrivateKeyRSA(path));
+	// Проверяем вычитывание приватного ключа RSA из файла
+	EXPECT_TRUE(this->_crypto->loadPrivateKeyRSA(path));
+	// Получаем запись приватного ключа RSA под защитой того же пароля
+	const std::string sealed = this->_crypto->getPrivateKeyRSA();
+	// Проверяем что запись ключа получена
+	ASSERT_FALSE(sealed.empty());
+	// Проверяем ввод записи приватного ключа RSA под тем же паролем
+	EXPECT_TRUE(this->_crypto->setPrivateKeyRSA(sealed));
+	// Удаляем файл приватного ключа
+	::remove(path.c_str());
+}
+
+/**
+ * @brief Тест пароля защиты ключа RSA, предел разбора превышающего
+ *
+ * @details Выписка ключа берёт пароль с указанием длины, а буфер выдачи пароля
+ *          при вычитывании отведён библиотекой по своей мерке: пароль длиннее
+ *          выдавался обрезанным, и ключ, только что выписанный, тем же объектом
+ *          не открывался
+ *
+ */
+TEST_F(CryptoFixture, KeyPasswordLongCryptoTest){
+	// Путь к файлу приватного ключа
+	const std::string path = "./long_private_key.pem";
+	// Пароль защиты ключа предельной длины
+	const std::string bounded(1024, 'a');
+	// Пароль защиты ключа, предел выдачи превышающий
+	const std::string oversized(1025, 'b');
+	// Выполняем генерацию приватного ключа RSA
+	ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
+	// Устанавливаем пароль защиты приватного ключа RSA предельной длины
+	this->_crypto->passwordRSA(bounded);
+	// Выполняем выписывание приватного ключа RSA в файл
+	ASSERT_TRUE(this->_crypto->savePrivateKeyRSA(path));
+	// Проверяем вычитывание приватного ключа RSA под паролем предельной длины
+	EXPECT_TRUE(this->_crypto->loadPrivateKeyRSA(path));
+	/**
+	 * Пароль длиннее предела выдачи отвергается установкой: объект остаётся с
+	 * прежним паролем, и ключ, им защищённый, открывается по-прежнему
+	 */
+	// Устанавливаем пароль защиты приватного ключа, предел выдачи превышающий
+	this->_crypto->passwordRSA(oversized);
+	// Проверяем вычитывание приватного ключа RSA прежним паролем
+	EXPECT_TRUE(this->_crypto->loadPrivateKeyRSA(path));
+	// Удаляем файл приватного ключа
+	::remove(path.c_str());
+}
+
+/**
  * @brief Тест прав файла приватного ключа RSA
  *
  * @details Файл заводился обычным открытием, и права его брались у маски создания:
@@ -1460,6 +1587,28 @@ TEST_F(CryptoFixture, KeyFileRightsCryptoTest){
 	// Проверяем что приметы файла сняты
 	ASSERT_EQ(::stat(path.c_str(), &attributes), 0);
 	// Проверяем что права файла даны одному лишь владельцу
+	EXPECT_EQ(static_cast <uint32_t> (attributes.st_mode & 0777), static_cast <uint32_t> (0600));
+	// Удаляем файл приватного ключа
+	::remove(path.c_str());
+	/**
+	 * Права, поданные открытию, берутся им лишь при заведении нового файла:
+	 * перезапись прежнего усекает содержимое, а права оставляет как есть
+	 */
+	// Открываем файл на запись прежде выписывания ключа
+	std::ofstream file(path, std::ios::binary);
+	// Проверяем что файл открыт
+	ASSERT_TRUE(file.is_open());
+	// Выписываем в файл нечто, ключом не являющееся
+	file << "anyks";
+	// Закрываем файл
+	file.close();
+	// Даём файлу права на чтение всякому в системе
+	ASSERT_EQ(::chmod(path.c_str(), 0644), 0);
+	// Выполняем выписывание приватного ключа RSA поверх прежнего файла
+	ASSERT_TRUE(this->_crypto->savePrivateKeyRSA(path));
+	// Проверяем что приметы перезаписанного файла сняты
+	ASSERT_EQ(::stat(path.c_str(), &attributes), 0);
+	// Проверяем что права перезаписанного файла даны одному лишь владельцу
 	EXPECT_EQ(static_cast <uint32_t> (attributes.st_mode & 0777), static_cast <uint32_t> (0600));
 	// Удаляем файл приватного ключа
 	::remove(path.c_str());
@@ -1544,6 +1693,14 @@ TEST_F(CryptoFixture, RawFormatCryptoTest){
 	EXPECT_EQ(this->_crypto->hash <std::vector <uint8_t>> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::format_t::RAW).size(), static_cast <size_t> (32));
 	// Проверяем, что по умолчанию хэш-сумма выдаётся шестнадцатеричной записью
 	EXPECT_EQ(this->_crypto->hash <std::vector <uint8_t>> (text, awh::crypto_t::hash_t::SHA256).size(), static_cast <size_t> (64));
+	/**
+	 * Выбор вида записи шёл сличением с одной лишь шестнадцатеричной, и значение,
+	 * ни одному из видов не отвечающее, молча выдавалось бы двоичным
+	 */
+	// Проверяем отказ хэширования видом записи, разбору не знакомым
+	EXPECT_TRUE(this->_crypto->hash <std::string> (text, awh::crypto_t::hash_t::SHA256, static_cast <awh::crypto_t::format_t> (0xFE)).empty());
+	// Проверяем отказ выработки имитовставки видом записи, разбору не знакомым
+	EXPECT_TRUE(this->_crypto->hmac <std::string> (key, text, awh::crypto_t::hash_t::SHA256, static_cast <awh::crypto_t::format_t> (0xFE)).empty());
 }
 
 /**

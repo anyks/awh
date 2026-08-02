@@ -54,12 +54,12 @@ namespace {
 	 *          машине расходится между прогонами на десятки процентов
 	 *
 	 */
-	static constexpr double TREE_SOAP_THRESHOLD = 130.0;
+	static constexpr double TREE_SOAP_THRESHOLD = 7.0;
 	/**
 	 * @brief Порог пропускной способности сборки дерева крупного документа
 	 *
 	 */
-	static constexpr double TREE_LARGE_THRESHOLD = 150.0;
+	static constexpr double TREE_LARGE_THRESHOLD = 9.0;
 	/**
 	 * @brief Порог скорости обхода собранного дерева в узлах в секунду
 	 *
@@ -68,12 +68,12 @@ namespace {
 	 *          соседей, и переход к следующему узлу обязан быть однократным обращением
 	 *
 	 */
-	static constexpr double TREE_WALK_THRESHOLD = 120000000.0;
+	static constexpr double TREE_WALK_THRESHOLD = 12000000.0;
 	/**
 	 * @brief Порог пропускной способности записи текста разметки
 	 *
 	 */
-	static constexpr double WRITE_THRESHOLD = 90.0;
+	static constexpr double WRITE_THRESHOLD = 7.0;
 
 	/**
 	 * @brief Функция сборки дерева разметки

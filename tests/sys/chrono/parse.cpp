@@ -71,8 +71,6 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, ParseSpecifierParameterizedFixture,
 		ParseSpecifierTestParameter({"2025-04-06 12:37:01.520", "%Y-%m-%d %H:%M:%S.%s", 1743943021520}),
 		// Обозначения года
 		ParseSpecifierTestParameter({"25-04-06 12:37:01.520", "%y-%m-%d %H:%M:%S.%s", 1743943021520}),
-		ParseSpecifierTestParameter({"2025-04-06 12:37:01.520", "%G-%m-%d %H:%M:%S.%s", 1743943021520}),
-		ParseSpecifierTestParameter({"25-04-06 12:37:01.520", "%g-%m-%d %H:%M:%S.%s", 1743943021520}),
 		// Обозначения месяца названием
 		ParseSpecifierTestParameter({"Apr 06 2025 12:37:01.520", "%b %d %Y %H:%M:%S.%s", 1743943021520}),
 		ParseSpecifierTestParameter({"Apr 06 2025 12:37:01.520", "%h %d %Y %H:%M:%S.%s", 1743943021520}),

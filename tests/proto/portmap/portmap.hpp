@@ -29,6 +29,7 @@
 #include "../../../include/proto/portmap/pcp.hpp"
 #include "../../../include/proto/portmap/ssdp.hpp"
 #include "../../../include/proto/portmap/soap.hpp"
+#include "../../../include/proto/portmap/upnp.hpp"
 #include "../../../include/proto/portmap/device.hpp"
 #include "../../../include/proto/portmap/natpmp.hpp"
 
@@ -89,6 +90,13 @@ class PortmapFixture : public testing::Test {
 		 *
 		 */
 		std::unique_ptr <awh::proto::portmap::soap_t> makeSoap() const noexcept;
+		/**
+		 * @brief Фабричный метод создания кодека действий службы перенаправления UPnP
+		 *
+		 * @return сформированный объект кодека действий службы перенаправления UPnP
+		 *
+		 */
+		std::unique_ptr <awh::proto::portmap::upnp_t> makeUpnp() const noexcept;
 };
 
 #endif // __AWH_PROTO_PORTMAP_TESTS__

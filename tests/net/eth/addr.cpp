@@ -629,6 +629,37 @@ TEST_F(EthFixture, AddressFillSourceServerTest){
 }
 
 /**
+ * @brief Тест намеренного отказа от подбора устройства при пустом источнике
+ *
+ * @details Нулевые адрес и MAC-адрес разом означают INADDR_ANY, то есть согласие
+ *          отдать выбор устройства ядру, а не сбой определения. Подбор в этом
+ *          случае намеренно не ведётся, и источник обязан остаться нетронутым
+ *
+ */
+TEST_F(EthFixture, AddressFillSourceAnyIsDeliberateTest){
+	// Временный объект источника без единой приметы для подбора устройства
+	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
+	// Выполняем извлечение сетевых параметров для узла клиента
+	this->_eth->addr.fillSource(awh::event::node_t::CLIENT, source);
+	// Устройство подбираться не должно
+	ASSERT_TRUE(source.iface.empty());
+	// Адрес обязан остаться нулевым
+	ASSERT_EQ(0u, static_cast <awh::net::addr_net_ipv4_t *> (source.ip.get())->address);
+	// Временный объект источника IPv6 без единой приметы для подбора устройства
+	awh::net::src_t source6(std::make_unique <awh::net::addr_net_ipv6_t> ());
+	// Выполняем извлечение сетевых параметров для узла сервера
+	this->_eth->addr.fillSource(awh::event::node_t::SERVER, source6);
+	// Устройство подбираться не должно
+	ASSERT_TRUE(source6.iface.empty());
+	/**
+	 * Перебираем все октеты адреса IPv6
+	 */
+	for(uint8_t i = 0; i < 16; i++)
+		// Адрес обязан остаться нулевым
+		ASSERT_EQ(0u, static_cast <awh::net::addr_net_ipv6_t *> (source6.ip.get())->address[i]);
+}
+
+/**
  * @brief Тест заполнения источника сетевых адресов для однорангового узла
  *
  */

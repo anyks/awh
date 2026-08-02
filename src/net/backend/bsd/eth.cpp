@@ -262,6 +262,11 @@ namespace options {
 	 addr(fmk, log), iface(fmk, log), sctp(fmk, log), socket(fmk, log),
 	 gateway(fmk, log), portmap(fmk, log), _fmk(fmk), _log(log) {
 		/**
+		 * Связываем объект работы с адресами с объектом управления шлюзами: исходящий
+		 * адрес определяется подбором маршрута, а подбор ведёт объект шлюзов
+		 */
+		this->addr.gateway(&this->gateway);
+		/**
 		 * Выполняем настройку сетевых параметров
 		 */
 		::options::netboost(fmk, log);
@@ -280,6 +285,11 @@ namespace options {
 	awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept :
 	 addr(fmk, log), iface(fmk, log), socket(fmk, log),
 	 gateway(fmk, log), portmap(fmk, log), _fmk(fmk), _log(log) {
+		/**
+		 * Связываем объект работы с адресами с объектом управления шлюзами: исходящий
+		 * адрес определяется подбором маршрута, а подбор ведёт объект шлюзов
+		 */
+		this->addr.gateway(&this->gateway);
 		/**
 		 * Выполняем настройку сетевых параметров
 		 */

@@ -96,7 +96,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatSpecifierParameterizedFixture,
 		FormatSpecifierTestParameter({1743943021520, "%T", "12:37:01"}),
 		FormatSpecifierTestParameter({1743943021520, "%X", "12:37:01"}),
 		FormatSpecifierTestParameter({1743943021520, "%r", "12:37:01 PM"}),
-		FormatSpecifierTestParameter({1743943021520, "%c", "Sun Apr 6 12:37:01 2025"}),
+		FormatSpecifierTestParameter({1743943021520, "%c", "Sun Apr  6 12:37:01 2025"}),
 		// начало високосного года, полночь, понедельник (2024-01-01T00:00:00.000Z)
 		FormatSpecifierTestParameter({1704067200000, "%y", "24"}),
 		FormatSpecifierTestParameter({1704067200000, "%Y", "2024"}),
@@ -128,7 +128,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatSpecifierParameterizedFixture,
 		FormatSpecifierTestParameter({1704067200000, "%T", "00:00:00"}),
 		FormatSpecifierTestParameter({1704067200000, "%X", "00:00:00"}),
 		FormatSpecifierTestParameter({1704067200000, "%r", "12:00:00 AM"}),
-		FormatSpecifierTestParameter({1704067200000, "%c", "Mon Jan 1 00:00:00 2024"}),
+		FormatSpecifierTestParameter({1704067200000, "%c", "Mon Jan  1 00:00:00 2024"}),
 		// 29 февраля високосного года, полдень (2024-02-29T12:00:00.000Z)
 		FormatSpecifierTestParameter({1709208000000, "%y", "24"}),
 		FormatSpecifierTestParameter({1709208000000, "%Y", "2024"}),
@@ -164,8 +164,8 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatSpecifierParameterizedFixture,
 		// последняя миллисекунда високосного года (2024-12-31T23:59:59.999Z)
 		FormatSpecifierTestParameter({1735689599999, "%y", "24"}),
 		FormatSpecifierTestParameter({1735689599999, "%Y", "2024"}),
-		FormatSpecifierTestParameter({1735689599999, "%g", "24"}),
-		FormatSpecifierTestParameter({1735689599999, "%G", "2024"}),
+		FormatSpecifierTestParameter({1735689599999, "%g", "25"}),
+		FormatSpecifierTestParameter({1735689599999, "%G", "2025"}),
 		FormatSpecifierTestParameter({1735689599999, "%b", "Dec"}),
 		FormatSpecifierTestParameter({1735689599999, "%h", "Dec"}),
 		FormatSpecifierTestParameter({1735689599999, "%B", "December"}),
@@ -288,7 +288,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatSpecifierParameterizedFixture,
 		FormatSpecifierTestParameter({86400000, "%T", "00:00:00"}),
 		FormatSpecifierTestParameter({86400000, "%X", "00:00:00"}),
 		FormatSpecifierTestParameter({86400000, "%r", "12:00:00 AM"}),
-		FormatSpecifierTestParameter({86400000, "%c", "Fri Jan 2 00:00:00 1970"}),
+		FormatSpecifierTestParameter({86400000, "%c", "Fri Jan  2 00:00:00 1970"}),
 		// первое воскресенье ноября - граница летнего времени США (2025-11-02T12:00:00.000Z)
 		FormatSpecifierTestParameter({1762084800000, "%y", "25"}),
 		FormatSpecifierTestParameter({1762084800000, "%Y", "2025"}),
@@ -320,7 +320,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FormatSpecifierParameterizedFixture,
 		FormatSpecifierTestParameter({1762084800000, "%T", "12:00:00"}),
 		FormatSpecifierTestParameter({1762084800000, "%X", "12:00:00"}),
 		FormatSpecifierTestParameter({1762084800000, "%r", "12:00:00 PM"}),
-		FormatSpecifierTestParameter({1762084800000, "%c", "Sun Nov 2 12:00:00 2025"})
+		FormatSpecifierTestParameter({1762084800000, "%c", "Sun Nov  2 12:00:00 2025"})
 	)
 );
 

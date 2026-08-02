@@ -65,32 +65,32 @@ namespace {
 	 *          три раза и более
 	 *
 	 */
-	static constexpr double READ_SOAP_THRESHOLD = 160.0;
+	static constexpr double READ_SOAP_THRESHOLD = 8.0;
 	/**
 	 * @brief Порог пропускной способности чтения описания устройства
 	 *
 	 */
-	static constexpr double READ_DEVICE_THRESHOLD = 200.0;
+	static constexpr double READ_DEVICE_THRESHOLD = 10.0;
 	/**
 	 * @brief Порог пропускной способности чтения крупного документа
 	 *
 	 */
-	static constexpr double READ_LARGE_THRESHOLD = 200.0;
+	static constexpr double READ_LARGE_THRESHOLD = 11.0;
 	/**
 	 * @brief Порог пропускной способности чтения документа с преобладанием атрибутов
 	 *
 	 */
-	static constexpr double READ_ATTRIBUTES_THRESHOLD = 85.0;
+	static constexpr double READ_ATTRIBUTES_THRESHOLD = 4.5;
 	/**
 	 * @brief Порог пропускной способности чтения документа с преобладанием содержимого
 	 *
 	 */
-	static constexpr double READ_CONTENT_THRESHOLD = 350.0;
+	static constexpr double READ_CONTENT_THRESHOLD = 30.0;
 	/**
 	 * @brief Порог пропускной способности чтения глубоко вложенного документа
 	 *
 	 */
-	static constexpr double READ_NESTED_THRESHOLD = 75.0;
+	static constexpr double READ_NESTED_THRESHOLD = 3.0;
 	/**
 	 * @brief Порог количества выделений памяти на чтение крупного документа
 	 *

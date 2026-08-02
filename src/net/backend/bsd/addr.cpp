@@ -16,37 +16,7 @@
  *
  */
 
-/**
- * Если стандартные DNS-серверы IPv4 не установлены
- */
-#ifndef AWH_IPV4_NS
-	/**
-	 * Устанавливаем стандартные DNS-серверы IPv4
-	 */
-	#define AWH_IPV4_NS \
-		"8.8.8.8", \
-		"8.8.4.4", \
-		"1.1.1.1", \
-		"1.0.0.1", \
-		"77.88.8.8", \
-		"77.88.8.1"
-#endif
 
-/**
- * Если стандартные DNS-серверы IPv6 не установлены
- */
-#ifndef AWH_IPV6_NS
-	/**
-	 * Устанавливаем стандартные DNS-серверы IPv6
-	 */
-	#define AWH_IPV6_NS \
-		"2001:4860:4860::8888", \
-		"2001:4860:4860::8844", \
-		"2606:4700:4700::1111", \
-		"2606:4700:4700::1001", \
-		"2A02:6B8::FEED:0FF", \
-		"2A02:6B8:0:1::FEED:0FF"
-#endif
 
 /**
  * Единица выравнивания адресов в сообщениях маршрутизации
@@ -117,6 +87,7 @@
  */
 #include <sys/locker.hpp>
 #include <net/eth/addr.hpp>
+#include <net/eth/gateway.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -298,6 +269,39 @@ namespace {
 		outward.deadline = (::nanostamp() + __awh_outward_lifetime__);
 		// Отмечаем запись заполненной
 		outward.filled = true;
+	}
+
+	/**
+	 * @brief Функция проверки источника на отсутствие примет для подбора устройства
+	 *
+	 * @param source объект источника сетевых адресов
+	 * @return       результат проверки
+	 *
+	 * @details Источник считается лишённым примет, когда нулевые разом и адрес, и
+	 *          аппаратный адрес. Запись эта означает не сбой определения, а согласие
+	 *          отдать выбор устройства ядру: INADDR_ANY либо IN6ADDR_ANY
+	 *
+	 */
+	bool zero(const net::src_t & source) noexcept {
+		// Если адрес либо аппаратный адрес не заданы, примет для подбора нет
+		if((source.ip == nullptr) || (source.mac == nullptr))
+			// Выводим результат проверки
+			return true;
+		// Если аппаратный адрес задан, примета для подбора устройства есть
+		if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], __awh_zero_mac__, 6) != 0)
+			// Выводим результат проверки
+			return false;
+		/**
+		 * Определяем тип адреса
+		 */
+		switch(source.ip->size){
+			// Если адрес является IPv4
+			case 4: return (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address == 0);
+			// Если адрес является IPv6
+			case 16: return (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) == 0);
+		}
+		// Выводим результат проверки
+		return true;
 	}
 
 	/**
@@ -770,95 +774,63 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 				switch(source.ip->size){
 					// Если адрес является IPv4
 					case 4: {
-						// Создаем структуру подключения сервера
-						struct sockaddr_in serv{0};
-						// Указываем тип сетевого подключения IPv4
-						serv.sin_family = AF_INET;
-						// Устанавливаем порт DNS-сервера
-						serv.sin_port = htons(53);
-						// Создаём массив стандартных DNS-серверов IPv4
-						const array <string_view, 6> resolvers = {AWH_IPV4_NS};
-						// Указываем адреса IPv4 DNS-сервера
-						::inet_pton(AF_INET, resolvers[::__awh_randev__() % resolvers.size()].data(), &serv.sin_addr);
-						// Создаем сокет для проверки подключения
-						const net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-						// Если сокет создать не удалось, выходим
-						if(sock == net::invalid_socket_t)
-							// Выходим из функции
-							return;
-						// Выполняем подключение к серверу
-						int32_t conn = ::connect(sock, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
-						// Если подключение удачное
-						if(conn > -1){
-							// Создаем структуру имени
-							struct sockaddr_in name{0};
-							// Размер структуры
-							socklen_t size = sizeof(name);
-							// Запрашиваем имя сокета
-							conn = ::getsockname(sock, reinterpret_cast <sockaddr *> (&name), &size);
-							// Если ошибки нет
-							if(conn > -1){
-								// Устанавливаем хост сети
-								awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = name.sin_addr.s_addr;
-								// Устанавливаем название сетевого интерфейса
-								source.iface = this->_iface.name(source.ip.get());
-								// Если название сетевого интерфейса получено
-								if(!source.iface.empty()){
-									// Получаем MAC-адрес сетевого интерфейса
-									this->fillSource(source);
-									// Запоминаем определённый адрес до устаревания записи
-									::remember(source);
-								}
-							}
+						/**
+						 * Исходящий адрес определяется подбором маршрута по умолчанию:
+						 * у ядра спрашивается устройство, которым машина ходит наружу,
+						 * и берётся его адрес
+						 *
+						 * @details Прежде адрес добывался подключением UDP-сокета к
+						 *          случайно выбранному из шести зашитых серверов имён и
+						 *          запросом имени сокета. Приём этот работал, пока путь
+						 *          наружу один: на машине с раздельным туннелем все шесть
+						 *          адресов уходили в туннель, и своим объявлялся адрес
+						 *          туннеля, отчего отправка соседу по своей же сети
+						 *          отвечала отказом в маршруте. Сверх того определение
+						 *          своего адреса требовало выхода в интернет и зависело
+						 *          от случая при выборе сервера
+						 */
+						// Объект маршрута для подбора устройства
+						gateway_t::route_t route{};
+						// Выполняем инициализацию адреса шлюза маршрута
+						route.gateway = ::make_unique <net::addr_net_ipv4_t> ();
+						// Выполняем инициализацию адреса назначения маршрута
+						route.destination = ::make_unique <net::addr_net_ipv4_t> ();
+						// Если объект управления шлюзами задан и маршрут по умолчанию получен
+						if((this->_gateway != nullptr) && this->_gateway->get(route) && !route.ifname.empty()){
+							// Устанавливаем название сетевого интерфейса
+							source.iface = ::move(route.ifname);
+							// Получаем адрес и MAC-адрес сетевого интерфейса
+							this->fillSource(source);
+							// Если адрес сетевого интерфейса получен
+							if(awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0)
+								// Запоминаем определённый адрес до устаревания записи
+								::remember(source);
 						}
-						// Закрываем сокет
-						::close(sock);
 					} break;
 					// Если адрес является IPv6
 					case 16: {
-						// Создаем структуру подключения сервера
-						struct sockaddr_in6 serv{0};
-						// Указываем тип сетевого подключения IPv6
-						serv.sin6_family = AF_INET6;
-						// Устанавливаем порт DNS сервера
-						serv.sin6_port = htons(53);
-						// Создаём массив стандартных DNS-серверов IPv6
-						const array <string_view, 6> resolvers = {AWH_IPV6_NS};
-						// Указываем адреса IPv6 DNS-сервера
-						::inet_pton(AF_INET6, resolvers[::__awh_randev__() % resolvers.size()].data(), &serv.sin6_addr);
-						// Создаем сокет для проверки подключения
-						const net::socket_t sock = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_IP);
-						// Если сокет создать не удалось, выходим
-						if(sock == net::invalid_socket_t)
-							// Выходим из функции
-							return;
-						// Выполняем подключение к серверу
-						int32_t conn = ::connect(sock, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
-						// Если подключение удачное
-						if(conn > -1){
-							// Создаем структуру имени
-							struct sockaddr_in6 name{0};
-							// Размер структуры
-							socklen_t size = sizeof(name);
-							// Запрашиваем имя сокета
-							conn = ::getsockname(sock, reinterpret_cast <sockaddr *> (&name), &size);
-							// Если ошибки нет
-							if(conn > -1){
-								// Хост: просто копируем найденный адрес
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], name.sin6_addr.s6_addr, sizeof(name.sin6_addr.s6_addr));
-								// Устанавливаем название сетевого интерфейса
-								source.iface = this->_iface.name(source.ip.get());
-								// Если название сетевого интерфейса получено
-								if(!source.iface.empty()){
-									// Получаем MAC-адрес сетевого интерфейса
-									this->fillSource(source);
-									// Запоминаем определённый адрес до устаревания записи
-									::remember(source);
-								}
-							}
+						/**
+						 * Исходящий адрес IPv6 определяется тем же подбором маршрута по
+						 * умолчанию, что и адрес IPv4. Довод к отказу от подключения к
+						 * серверам имён приведён у ветви IPv4
+						 */
+						// Объект маршрута для подбора устройства
+						gateway_t::route_t route{};
+						// Выполняем инициализацию адреса шлюза маршрута
+						route.gateway = ::make_unique <net::addr_net_ipv6_t> ();
+						// Выполняем инициализацию адреса назначения маршрута
+						route.destination = ::make_unique <net::addr_net_ipv6_t> ();
+						// Если объект управления шлюзами задан и маршрут по умолчанию получен
+						if((this->_gateway != nullptr) && this->_gateway->get(route) && !route.ifname.empty()){
+							// Устанавливаем название сетевого интерфейса
+							source.iface = ::move(route.ifname);
+							// Получаем адрес и MAC-адрес сетевого интерфейса
+							this->fillSource(source);
+							// Если адрес сетевого интерфейса получен
+							if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) != 0)
+								// Запоминаем определённый адрес до устаревания записи
+								::remember(source);
 						}
-						// Закрываем сокет
-						::close(sock);
 					} break;
 				}
 			} break;
@@ -1144,6 +1116,21 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 			case static_cast <uint8_t> (event::node_t::CLIENT):
 			// Если узел является сервером
 			case static_cast <uint8_t> (event::node_t::SERVER): {
+				/**
+				 * Подбор устройства ведётся либо по адресу, либо по аппаратному адресу:
+				 * заданный адрес ищется среди адресов устройств, а при нулевом адресе
+				 * устройство отбирается совпадением MAC-адреса
+				 *
+				 * @note Нулевые адрес и MAC-адрес разом означают не «устройство не
+				 *       найдено», а осознанный отказ от выбора: запись читается как
+				 *       INADDR_ANY либо IN6ADDR_ANY, устройство отбирает ядро при
+				 *       привязке сокета. Искать тут нечего, и обход списка устройств
+				 *       завершился бы ничем, поэтому он не начинается
+				 *
+				 */
+				if(::zero(source))
+					// Выходим из функции, оставляя выбор устройства ядру
+					return;
 				/**
 				 * Определяем тип адреса
 				 */
@@ -1662,8 +1649,25 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
  * @param log объект работы с логами
  *
  */
+/**
+ * @brief Метод установки объекта управления шлюзами
+ *
+ * @param gateway объект управления шлюзами для установки
+ *
+ */
+void awh::eth::Network_Address::gateway(const Gateway * gateway) noexcept {
+	// Выполняем установку объекта управления шлюзами
+	this->_gateway = gateway;
+}
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект работы с логами
+ *
+ */
 awh::eth::Network_Address::Network_Address(const fmk_t * fmk, const log_t * log) noexcept :
- _iface(fmk, log), _fmk(fmk), _log(log) {
+ _iface(fmk, log), _gateway(nullptr), _fmk(fmk), _log(log) {
 	/**
 	 * Выполняем одноразовую настройку блокировки для всех экземпляров класса
 	 */

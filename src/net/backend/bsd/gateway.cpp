@@ -324,7 +324,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 * @return    результат совпадения и заполнения маршрута
 					 *
 					 */
-					auto process = [&](struct rt_msghdr * rtm) -> bool {
+					auto process = [&](struct rt_msghdr * rtm, const bool direct = false) -> bool {
 						// Разбираем адреса сообщения маршрута
 						const ::gw::addrs_t addrs = ::gw::parse(rtm);
 						// Объект адреса шлюза маршрута
@@ -357,7 +357,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 								// Накапливаем результат совпадения по адресу шлюза
 								match = match && ((gw != nullptr ? gw->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address);
 							// Если задан destination, он должен совпадать
-							if(awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address != 0)
+							if(!direct && (awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address != 0))
 								// Накапливаем результат совпадения по адресу назначения
 								match = match && ((dst != nullptr ? dst->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address);
 							// Если задан интерфейс
@@ -377,12 +377,19 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = gw->sin_addr.s_addr;
 						// Иначе зануляем адрес шлюза
 						else awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = 0;
-						// Если задан адрес назначения
-						if(dst != nullptr)
-							// Устанавливаем адрес назначения
-							awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = dst->sin_addr.s_addr;
-						// Иначе зануляем адрес назначения
-						else awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = 0;
+						/**
+						 * Адрес назначения, заданный спрашивающим, ответом ядра не затирается:
+						 * ядро отвечает сетью подобранного маршрута, и подмена ею запрошенного
+						 * адреса возвращала бы спрашивающему не то, о чём он спрашивал
+						 */
+						if(!direct){
+							// Если задан адрес назначения
+							if(dst != nullptr)
+								// Устанавливаем адрес назначения
+								awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = dst->sin_addr.s_addr;
+							// Иначе зануляем адрес назначения
+							else awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = 0;
+						}
 						// Вычисляем префикс
 						route.prefix = 0;
 						// Если задана маска подсети
@@ -406,22 +413,39 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						return true;
 					};
 					/**
-					 * Быстрый путь: при незаданном адресе назначения запрашиваем маршрут напрямую через RTM_GET.
-					 * Для конкретного адреса назначения используется полный дамп (точное совпадение).
+					 * Спрашиваем маршрут у ядра запросом RTM_GET - тем же самым, каким
+					 * его спрашивает `route -n get`
+					 *
+					 * @details Ядро отвечает подбором по наидлиннейшей приставке и само
+					 *          учитывает привязку маршрута к устройству, раздельный
+					 *          туннель и записи, порождаемые по требованию. Прежде
+					 *          так спрашивался только маршрут по умолчанию, а для
+					 *          заданного адреса шёл полный дамп таблицы с **точным**
+					 *          сличением поля назначения. Это не подбор маршрута:
+					 *          адрес своей же сети, у которого нет отдельной записи,
+					 *          объявлялся недостижимым, а адрес, покрытый более
+					 *          широкой записью, - тоже
+					 *
+					 * @note Запрос идёт только тогда, когда спрашивают именно маршрут:
+					 *       при заданном шлюзе либо устройстве спрашивают не «куда
+					 *       пойдёт пакет», а «есть ли такая запись», и для этого
+					 *       по-прежнему обходится вся таблица
 					 */
-					if(awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address == 0){
-						// Структура адреса назначения для запроса (0 — маршрут по умолчанию)
+					if((awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address == 0) && (searchIfIndex == 0)){
+						// Структура адреса назначения для запроса (ноль - маршрут по умолчанию)
 						struct sockaddr_in qdst{0};
 						// Устанавливаем длину структуры
 						qdst.sin_len = sizeof(struct sockaddr_in);
 						// Устанавливаем семейство адресов
 						qdst.sin_family = AF_INET;
+						// Устанавливаем адрес назначения, о котором спрашиваем
+						qdst.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address;
 						// Буфер для приёма ответа маршрута
 						uint8_t reply[2048];
 						// Объект полученного маршрута
 						struct rt_msghdr * rtm = nullptr;
 						// Выполняем запрос маршрута и обрабатываем ответ
-						if(::gw::query(reinterpret_cast <struct sockaddr *> (&qdst), reply, sizeof(reply), &rtm) && process(rtm))
+						if(::gw::query(reinterpret_cast <struct sockaddr *> (&qdst), reply, sizeof(reply), &rtm) && process(rtm, true))
 							// Устанавливаем флаг успешного поиска маршрута
 							result = true;
 					}

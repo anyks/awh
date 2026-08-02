@@ -73,6 +73,15 @@ namespace {
 	constexpr uint32_t MAX_INDEX = 0xFFF;
 
 	/**
+	 * @brief Наибольшее смещение вычисления адреса метки в командах
+	 *
+	 * @details Вычисление адреса несёт двадцать один разряд смещения со знаком
+	 *          в байтах, отчего в командах достижимо на два разряда меньше.
+	 *
+	 */
+	constexpr int64_t MAX_ADDRESS = 0x3FFFF;
+
+	/**
 	 * @brief Функция сборки команды сравнения значений регистров
 	 *
 	 * @param first  номер регистра уменьшаемого значения
@@ -294,8 +303,8 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 	this->_fixups.back().position = this->_code.size();
 	// Выполняем установку номера метки перехода
 	this->_fixups.back().label = label;
-	// Выполняем установку признака безусловного перехода
-	this->_fixups.back().conditional = false;
+	// Выполняем установку вида размещаемой команды
+	this->_fixups.back().kind = fixup_t::kind_t::JUMP;
 	// Выполняем размещение команды перехода, смещения ещё не несущей
 	this->_code.push_back(0x14000000u);
 }
@@ -322,8 +331,8 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	this->_fixups.back().position = this->_code.size();
 	// Выполняем установку номера метки перехода
 	this->_fixups.back().label = label;
-	// Выполняем установку признака перехода по условию
-	this->_fixups.back().conditional = true;
+	// Выполняем установку вида размещаемой команды
+	this->_fixups.back().kind = fixup_t::kind_t::BRANCH;
 	// Выполняем размещение команды перехода, смещения ещё не несущей
 	this->_code.push_back(0x54000000u | static_cast <uint32_t> (cond));
 }
@@ -547,6 +556,44 @@ void awh::regex::Emitter::call(const reg_t reg) noexcept {
 	this->_code.push_back(0xD63F0000u | (static_cast <uint32_t> (reg) << 5));
 }
 /**
+ * @brief Метод размещения вычисления адреса метки
+ *
+ * @param target регистр вычисленного адреса
+ * @param label  номер метки, адрес какой вычисляется
+ *
+ */
+void awh::regex::Emitter::address(const reg_t target, const size_t label) noexcept {
+	/**
+	 * Если метка перехода не заведена
+	 */
+	if(label >= this->_labels.size()) {
+		// Выполняем установку флага отказа порождения машинного кода
+		this->_failed = true;
+		// Выходим из метода размещения вычисления адреса метки
+		return;
+	}
+	// Выполняем размещение отложенного вычисления адреса
+	this->_fixups.emplace_back();
+	// Выполняем установку положения команды вычисления адреса
+	this->_fixups.back().position = this->_code.size();
+	// Выполняем установку номера метки вычисляемого адреса
+	this->_fixups.back().label = label;
+	// Выполняем установку вида размещаемой команды
+	this->_fixups.back().kind = fixup_t::kind_t::ADDRESS;
+	// Выполняем размещение команды «adr xtarget, label», смещения ещё не несущей
+	this->_code.push_back(0x10000000u | static_cast <uint32_t> (target));
+}
+/**
+ * @brief Метод размещения перехода по адресу в регистре
+ *
+ * @param reg регистр адреса выполняемого перехода
+ *
+ */
+void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
+	// Выполняем размещение команды «br xreg»
+	this->_code.push_back(0xD61F0000u | (static_cast <uint32_t> (reg) << 5));
+}
+/**
  * @brief Метод размещения завершения вызова
  *
  */
@@ -593,22 +640,48 @@ bool awh::regex::Emitter::resolve() noexcept {
 		/**
 		 * Если смещение перехода за пределы поля команды выходит
 		 */
-		if(fixup.conditional ? ((delta > MAX_BRANCH) || (delta < -MAX_BRANCH)) : ((delta > MAX_JUMP) || (delta < -MAX_JUMP))) {
+		// Получаем наибольшее смещение, полем размещённой команды несомое
+		const int64_t limit = ((fixup.kind == fixup_t::kind_t::BRANCH) ? MAX_BRANCH :
+		 ((fixup.kind == fixup_t::kind_t::ADDRESS) ? MAX_ADDRESS : MAX_JUMP));
+		/**
+		 * Если смещение перехода за пределы поля команды выходит
+		 */
+		if((delta > limit) || (delta < -limit)) {
 			// Выполняем установку флага отказа порождения машинного кода
 			this->_failed = true;
 			// Выводим результат разрешения отложенных переходов
 			return false;
 		}
 		/**
-		 * Если переход выполняется по условию
+		 * Определяем вид команды, смещение к метке несущей
 		 */
-		if(fixup.conditional)
-			// Выполняем вписывание смещения в команду перехода по условию
-			this->_code.at(fixup.position) |= ((static_cast <uint32_t> (delta) & 0x7FFFFu) << 5);
-		/**
-		 * Если переход выполняется безусловно
-		 */
-		else this->_code.at(fixup.position) |= (static_cast <uint32_t> (delta) & 0x3FFFFFFu);
+		switch(static_cast <uint8_t> (fixup.kind)) {
+			/**
+			 * Если команда выполняет переход по условию
+			 */
+			case static_cast <uint8_t> (fixup_t::kind_t::BRANCH):
+				// Выполняем вписывание смещения в команду перехода по условию
+				this->_code.at(fixup.position) |= ((static_cast <uint32_t> (delta) & 0x7FFFFu) << 5);
+			break;
+			/**
+			 * Если команда выполняет вычисление адреса метки
+			 *
+			 * @details Смещение вычисления адреса задаётся в байтах, а не в командах,
+			 *          и разнесено по двум полям: младшие два разряда его размещены
+			 *          отдельно от старших.
+			 *
+			 */
+			case static_cast <uint8_t> (fixup_t::kind_t::ADDRESS): {
+				// Получаем смещение вычисления адреса метки в байтах
+				const uint32_t offset = static_cast <uint32_t> (delta * 4);
+				// Выполняем вписывание смещения в команду вычисления адреса
+				this->_code.at(fixup.position) |= (((offset & 0x3u) << 29) | (((offset >> 2) & 0x7FFFFu) << 5));
+			} break;
+			/**
+			 * Если команда выполняет безусловный переход
+			 */
+			default: this->_code.at(fixup.position) |= (static_cast <uint32_t> (delta) & 0x3FFFFFFu);
+		}
 	}
 	// Выполняем очистку набора разрешённых переходов
 	this->_fixups.clear();

@@ -1330,14 +1330,14 @@ TEST_F(CompressorFixture, StreamTrailingBytesTest){
 		// Дописываем остаток в результат декомпрессии
 		restored.append(tail);
 		/**
-		 * Хвост движок либо отбрасывает, либо считает порчей и отказывает: и то,
-		 * и другое законно. Требуется одно — исходные данные не потеряны, если
-		 * поток отказом не завершился
+		 * Хвост движок либо отбрасывает, либо считает порчей и рвёт сессию: и то,
+		 * и другое законно. Середины между ними нет — выдать часть данных работа
+		 * не вправе, поэтому у живой сессии сличается весь результат
 		 */
 		// Если поток отказом не завершился
 		if(decoder.valid())
-			// Проверяем что исходные данные разобраны
-			ASSERT_EQ(text, restored.substr(0, std::min(restored.size(), text.size()))) << "method = " << static_cast <uint16_t> (method);
+			// Проверяем что исходные данные разобраны целиком
+			ASSERT_EQ(text, restored) << "method = " << static_cast <uint16_t> (method);
 	}
 }
 
@@ -1431,5 +1431,191 @@ TEST_F(CompressorFixture, ExactBufferFillTest){
 				ASSERT_EQ(text, restored) << "method = " << static_cast <uint16_t> (method) << ", size = " << size << ", kind = " << kind;
 			}
 		}
+	}
+}
+
+/**
+ * @brief Проверка смены размера скользящего окна при живом переиспользуемом контексте
+ *
+ * @details У живого контекста размер окна сменить нельзя, поэтому установщик
+ *          пересобирает обе половины разом. Проверка закрепляет, что после
+ *          пересборки переиспользование остаётся включённым и обмен сообщениями
+ *          продолжается, а не рвётся посередине
+ *
+ */
+TEST_F(CompressorFixture, WbitsChangeOnLiveTakeoverTest){
+	// Формируем текст для компрессии
+	const std::string text = "Anyks Framework live window resize payload, Anyks Framework live window resize payload!!!!!!!!?";
+	// Устанавливаем размер скользящего окна Deflate
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
+	// Включаем переиспользование контекста компрессии
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::ENCODE, true));
+	// Включаем переиспользование контекста декомпрессии
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::DECODE, true));
+	/**
+	 * Выполняем перебор размеров скользящего окна на живом контексте
+	 */
+	for(int16_t wbits = 15; wbits >= 9; wbits--){
+		// Выполняем пересборку контекстов под новый размер окна
+		ASSERT_TRUE(this->_compressor->wbitsDeflate(wbits)) << "wbits = " << wbits;
+		/**
+		 * Обмениваемся парой сообщений: контекст переиспользуется, и второе
+		 * сообщение опирается на словарь, набранный первым
+		 */
+		for(uint16_t i = 0; i < 2; i++){
+			// Выполняем компрессию данных
+			const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::DEFLATE);
+			// Проверяем что результат компрессии не пустой
+			ASSERT_FALSE(compressed.empty()) << "wbits = " << wbits << ", message = " << i;
+			// Проверяем что результат декомпрессии совпадает с исходным текстом
+			ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, awh::compressor::method_t::DEFLATE)) << "wbits = " << wbits << ", message = " << i;
+		}
+	}
+}
+
+/**
+ * @brief Проверка разбора блочного кадра с хвостом посторонних октетов
+ *
+ * @details Блочная работа получает длину буфера от вызывающей стороны, и хвост
+ *          за концом кадра для неё — те же поданные данные. Требуется одно:
+ *          работа завершается и либо отвергает кадр, либо выдаёт исходные данные,
+ *          а не крутится на неразбираемом остатке
+ *
+ */
+TEST_F(CompressorFixture, BlockTrailingBytesTest){
+	// Формируем текст для компрессии
+	const std::string text = "Anyks Framework block trailing bytes payload for the one-shot codec";
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::LZMA,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI
+	};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		// Выполняем компрессию исходных данных
+		std::string compressed;
+		// Выполняем компрессию данных
+		this->_compressor->compress(text.data(), text.size(), method, compressed);
+		// Проверяем что компрессия выполнена
+		ASSERT_FALSE(compressed.empty()) << "method = " << static_cast <uint16_t> (method);
+		// Дописываем к готовому кадру хвост посторонних октетов
+		compressed.append(64, '\x5a');
+		// Результат декомпрессии
+		std::string restored;
+		// Выполняем декомпрессию кадра с хвостом — работа обязана завершиться
+		this->_compressor->decompress(compressed.data(), compressed.size(), method, restored);
+		/**
+		 * Хвост движок либо отбрасывает, либо считает порчей и отвергает кадр:
+		 * и то, и другое законно. Середины между ними нет — выдать часть данных
+		 * работа не вправе, поэтому сличается весь результат, а не его начало
+		 */
+		// Если кадр не отвергнут
+		if(!restored.empty())
+			// Проверяем что исходные данные разобраны целиком
+			ASSERT_EQ(text, restored) << "method = " << static_cast <uint16_t> (method);
+	}
+}
+
+/**
+ * @brief Проверка живучести сессии на подаче, работы не несущей
+ *
+ * @details Пустая подача без сброса и повторный сброс без накопленного — вызовы
+ *          законные и работы движку не дают. Сессию они рвать не должны: отказ
+ *          здесь означал бы, что вызывающая сторона обязана считать за движок,
+ *          осталось ли ему что выдавать
+ *
+ */
+TEST_F(CompressorFixture, IdlePushKeepsSessionTest){
+	// Формируем текст для компрессии
+	const std::string text = "Anyks Framework idle push payload, Anyks Framework idle push payload!!!!!!!!?";
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LZMA,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::LIZARD,
+		awh::compressor::method_t::DEFLATE
+	};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		// Буфер выхода порции
+		std::string part;
+		// Результат потоковой компрессии
+		std::string compressed;
+		// Создаём потоковую сессию компрессии
+		awh::compressor::stream_t encoder = this->_compressor->stream(method, awh::compressor::event_t::ENCODE);
+		// Проверяем что потоковая сессия создана
+		ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method);
+		// Выполняем пустую подачу без сброса на свежей сессии
+		encoder.push <std::string> (text.data(), 0, part);
+		// Проверяем что сессия жива
+		ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", empty push on fresh stream";
+		// Дописываем полученный выход в результат компрессии
+		compressed.append(part);
+		/**
+		 * Выполняем два выдавливания подряд на свежей сессии: выдавливать нечего
+		 * ни первому, ни второму, и оба обязаны выйти успехом
+		 */
+		for(uint16_t i = 0; i < 2; i++){
+			// Выполняем принудительное выдавливание накопленного
+			encoder.flush(part);
+			// Проверяем что сессия жива
+			ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", flush on fresh stream = " << i;
+			// Дописываем полученный выход в результат компрессии
+			compressed.append(part);
+		}
+		// Подаём данные в поток компрессии
+		encoder.push <std::string> (text.data(), text.size(), part);
+		// Дописываем полученный выход в результат компрессии
+		compressed.append(part);
+		// Выполняем пустую подачу без сброса после данных
+		encoder.push <std::string> (text.data(), 0, part);
+		// Проверяем что сессия жива
+		ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", empty push after data";
+		// Дописываем полученный выход в результат компрессии
+		compressed.append(part);
+		/**
+		 * Выполняем два выдавливания подряд: второму выдавливать уже нечего
+		 */
+		for(uint16_t i = 0; i < 2; i++){
+			// Выполняем принудительное выдавливание накопленного
+			encoder.flush(part);
+			// Проверяем что сессия жива
+			ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", flush = " << i;
+			// Дописываем полученный выход в результат компрессии
+			compressed.append(part);
+		}
+		// Финализируем поток компрессии
+		encoder.finish(part);
+		// Проверяем что поток объявлен завершённым
+		ASSERT_TRUE(encoder.done()) << "method = " << static_cast <uint16_t> (method);
+		// Дописываем хвост в результат компрессии
+		compressed.append(part);
+		// Результат потоковой декомпрессии
+		std::string restored;
+		// Создаём потоковую сессию декомпрессии
+		awh::compressor::stream_t decoder = this->_compressor->stream(method, awh::compressor::event_t::DECODE);
+		// Подаём кадр в поток декомпрессии
+		decoder.push <std::string> (compressed.data(), compressed.size(), restored);
+		// Буфер остатка потока декомпрессии
+		std::string tail;
+		// Финализируем поток декомпрессии
+		decoder.finish(tail);
+		// Дописываем остаток в результат декомпрессии
+		restored.append(tail);
+		// Проверяем что восстановленные данные совпадают с исходными
+		ASSERT_EQ(text, restored) << "method = " << static_cast <uint16_t> (method);
 	}
 }

@@ -26886,6 +26886,168 @@ namespace io {
 	 * @param log      объект работы с логами
 	 *
 	 */
+	/**
+	 * @brief Функция проверки согласия источника с получателем
+	 *
+	 * @details Источник и получатель могут лежать в разных сетях, и обе сети при этом
+	 *          существуют - технически верно, а по сути бессмысленно: привязавшись к
+	 *          адресу туннеля, к соседу по своей сети не подключиться. Ядро отвечает
+	 *          на такую привязку отказом в маршруте уже при отправке, и разбираться
+	 *          в нём приходится по одному лишь `EHOSTUNREACH`
+	 *
+	 *          Согласие проверяется устройством: спрашивается маршрут до получателя,
+	 *          и адрес источника обязан принадлежать тому устройству, которым этот
+	 *          маршрут идёт
+	 *
+	 * @note Проверка **не запрещает** там, где судить не по чему: при пустом
+	 *       источнике либо получателе, при нулевом адресе источника (он означает
+	 *       все адреса, и выбор ядро делает само), при неизвестном маршруте и при
+	 *       неопределимом устройстве источника. Запрет ставится только тогда, когда
+	 *       оба устройства известны и различны
+	 *
+	 * @param client объект клиента для проверки
+	 * @param eth    объект работы с сетевыми параметрами
+	 * @param log    объект работы с логами
+	 * @return       результат проверки согласия
+	 *
+	 */
+	static bool coherent(::io::client_t * client, const awh::eth_t * network, const log_t * log) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем объект источника сетевого адреса
+			net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
+			// Получаем объект целевой машины
+			net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
+			// Если источник либо получатель не заданы, сверять нечего
+			if((source == nullptr) || (source->ip == nullptr) || (target == nullptr) || (target->ip == nullptr))
+				// Сообщаем, что согласие не нарушено
+				return true;
+			// Если источник и получатель разных семейств, сверять нечего
+			if(source->ip->size != target->ip->size)
+				// Сообщаем, что согласие не нарушено
+				return true;
+			// Название устройства, которым идёт маршрут до получателя
+			string device = "";
+			// Временный объект для извлечения устройства источника
+			net::src_t src(nullptr);
+			/**
+			 * Определяем разновидность адреса
+			 */
+			switch(source->ip->size){
+				// Если адрес является IPv4
+				case 4: {
+					// Получаем адрес источника
+					const uint32_t addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
+					// Нулевой адрес означает все адреса, и выбор ядро делает само
+					if(addr == 0)
+						// Сообщаем, что согласие не нарушено
+						return true;
+					// Объект маршрута до получателя
+					awh::eth::gateway_t::route_t route{};
+					// Выполняем инициализацию адреса шлюза маршрута
+					route.gateway = make_unique <net::addr_net_ipv4_t> ();
+					// Выполняем инициализацию адреса назначения маршрута
+					route.destination = make_unique <net::addr_net_ipv4_t> ();
+					// Устанавливаем адрес получателя, до которого спрашивается маршрут
+					awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
+					// Если маршрут до получателя неизвестен, судить не по чему
+					if(!network->gateway.get(route) || route.ifname.empty())
+						// Сообщаем, что согласие не нарушено
+						return true;
+					// Запоминаем устройство маршрута
+					device = ::move(route.ifname);
+					// Заводим временный объект адреса источника
+					src.ip = make_unique <net::addr_net_ipv4_t> ();
+					// Устанавливаем адрес источника во временный объект
+					awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = addr;
+				} break;
+				// Если адрес является IPv6
+				case 16: {
+					// Получаем адрес источника
+					const uint8_t * addr = &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0];
+					// Нулевой адрес означает все адреса, и выбор ядро делает само
+					if(::memcmp(addr, ::__awh_zero_ipv6__, 16) == 0)
+						// Сообщаем, что согласие не нарушено
+						return true;
+					// Объект маршрута до получателя
+					awh::eth::gateway_t::route_t route{};
+					// Выполняем инициализацию адреса шлюза маршрута
+					route.gateway = make_unique <net::addr_net_ipv6_t> ();
+					// Выполняем инициализацию адреса назначения маршрута
+					route.destination = make_unique <net::addr_net_ipv6_t> ();
+					// Устанавливаем адрес получателя, до которого спрашивается маршрут
+					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+					// Если маршрут до получателя неизвестен, судить не по чему
+					if(!network->gateway.get(route) || route.ifname.empty())
+						// Сообщаем, что согласие не нарушено
+						return true;
+					// Запоминаем устройство маршрута
+					device = ::move(route.ifname);
+					// Заводим временный объект адреса источника
+					src.ip = make_unique <net::addr_net_ipv6_t> ();
+					// Устанавливаем адрес источника во временный объект
+					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], addr, 16);
+				} break;
+				// Для прочих разновидностей адреса сверять нечего
+				default: return true;
+			}
+			// Выполняем извлечение устройства, которому принадлежит адрес источника
+			network->addr.fillSource(event::node_t::CLIENT, src);
+			// Если устройство источника определить не удалось, судить не по чему
+			if(src.iface.empty())
+				// Сообщаем, что согласие не нарушено
+				return true;
+			// Если устройство источника совпадает с устройством маршрута
+			if(src.iface.compare(device) == 0)
+				// Сообщаем, что согласие не нарушено
+				return true;
+			/**
+			 * Устройства разошлись: привязка к такому источнику даст отказ в маршруте
+			 * при первой же отправке. Отвечаем тем же кодом, каким ответило бы ядро,
+			 * чтобы сообщение об ошибке читалось так же, как и всякое иное
+			 */
+			errno = EHOSTUNREACH;
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				log->debug(
+					"Source address belongs to device \"%s\" while route to target goes through \"%s\"",
+					__PRETTY_FUNCTION__, make_tuple(src.iface, device), log_t::flag_t::CRITICAL, src.iface.c_str(), device.c_str()
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log->print("Source address belongs to device \"%s\" while route to target goes through \"%s\"", log_t::flag_t::CRITICAL, src.iface.c_str(), device.c_str());
+			#endif
+			// Сообщаем, что источник с получателем не согласуются
+			return false;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Сообщаем, что согласие не нарушено
+		return true;
+	}
 	static void postpone(::io::node_t * node, const event::limiting_t limiting, const uint32_t delay, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
@@ -35726,10 +35888,18 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 														// Обнуляем серверную структуру
 														::memset(&(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero));
-														// Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
-														const bool isLoopback = ((source->port == 0) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
+														/**
+														 * Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
+														 *
+														 * @note Отсутствие источника равносильно нулевому порту: ветвь
+														 *       выше при пустом источнике выставляет и порт, и адрес
+														 *       нулями. Прежде источник здесь разыменовывался
+														 *       безусловно, хотя проверялся на пустоту двадцатью
+														 *       строками выше
+														 */
+														const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
 														// Выполняем бинд сокета клиента на адрес целевой машины
-														if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+														if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -35957,9 +36127,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Обнуляем серверную структуру
 																		::memset(&(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero));
 																		// Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
-																		const bool isLoopback = ((source->port == 0) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
+																		const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
 																		// Выполняем бинд сокета клиента на адрес целевой машины
-																		if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+																		if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																			// Если установлена функция обратного вызова
 																			if(client->callbacks.status != nullptr)
 																				// Вызываем функцию обратного вызова об ошибке отказа
@@ -36080,9 +36250,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Обнуляем серверную структуру
 																::memset(&(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero));
 																// Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
-																const bool isLoopback = ((source->port == 0) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
+																const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
 																// Выполняем бинд сокета клиента на адрес целевой машины
-																if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+																if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -36302,9 +36472,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Устанавливаем адрес для удаленного подключения
 														::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 														// Определяем, является ли адрес клиента адресом обратной петли (::1)
-														const bool isLoopback = ((source->port == 0) && IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
+														const bool isLoopback = (((source == nullptr) || (source->port == 0)) && IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
 														// Выполняем бинд сокета клиента на адрес целевой машины
-														if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+														if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -36530,9 +36700,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Устанавливаем адрес для удаленного подключения целевой машины
 																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 																		// Определяем, является ли адрес клиента адресом обратной петли (::1)
-																		const bool isLoopback = ((source->port == 0) && IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
+																		const bool isLoopback = (((source == nullptr) || (source->port == 0)) && IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
 																		// Выполняем бинд сокета клиента на адрес целевой машины
-																		if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+																		if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																			// Если установлена функция обратного вызова
 																			if(client->callbacks.status != nullptr)
 																				// Вызываем функцию обратного вызова об ошибке отказа
@@ -36650,7 +36820,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Определяем, является ли адрес клиента адресом обратной петли (::1)
 																const bool isLoopback = IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr);
 																// Выполняем бинд сокета клиента на адрес целевой машины
-																if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+																if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа

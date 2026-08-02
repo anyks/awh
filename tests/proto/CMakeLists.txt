@@ -193,6 +193,7 @@ if (${GTest_FOUND})
                 portmap/ssdp.cpp
                 portmap/device.cpp
                 portmap/soap.cpp
+                portmap/upnp.cpp
             )
         # Если не нужно собрать тесты для подмодуля договоров перенаправления портов
         else()

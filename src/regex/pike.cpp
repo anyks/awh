@@ -553,6 +553,19 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 			 *
 			 */
 			if(instruction.type == opcode_t::MATCH) {
+				/**
+				 * Если пустое совпадение совпадением не считается
+				 *
+				 * @details Состояние, давшее пустое совпадение, отбрасывается,
+				 *          а состояния с меньшим приоритетом исполняются далее:
+				 *          выражение вида «(?:|a)» при этом даёт совпадение
+				 *          непустой своей ветвью, а не отказ.
+				 *
+				 */
+				if(hasFlag(program.flags, flag_t::NOTEMPTY) &&
+				 (this->_storage[(static_cast <size_t> (thread.slots) * this->_width)] == pos))
+					// Переходим к следующему состоянию текущей позиции
+					continue;
 				// Выполняем освобождение набора позиций захвата прежнего совпадения
 				this->release(found);
 				// Выполняем сохранение позиций захвата найденного совпадения
