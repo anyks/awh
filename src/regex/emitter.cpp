@@ -93,8 +93,16 @@ namespace {
 	 *
 	 */
 	inline uint32_t compare(const uint32_t reg, const uint32_t value, const bool) noexcept {
-		// Выводим собранную команду «subs wzr, reg, #value»
-		return (0x71000000u | (value << 10) | (reg << 5) | 31u);
+		/**
+		 * Выводим собранную команду «subs xzr, xreg, #value»
+		 *
+		 * @details Сравнение выполняется над всеми разрядами регистра, а не над
+		 *          младшими тридцатью двумя: регистры соглашения о вызове несут
+		 *          положения в тексте, длина какого тридцатью двумя разрядами
+		 *          не ограничена.
+		 *
+		 */
+		return (0xF1000000u | (value << 10) | (reg << 5) | 31u);
 	}
 	/**
 	 * @brief Функция сборки команды сложения значения регистра с числом
@@ -119,8 +127,15 @@ namespace {
 	 *
 	 */
 	inline uint32_t sub(const uint32_t target, const uint32_t source, const uint32_t value) noexcept {
-		// Выводим собранную команду «sub wtarget, wsource, #value»
-		return (0x51000000u | (value << 10) | (source << 5) | target);
+		/**
+		 * Выводим собранную команду «sub xtarget, xsource, #value»
+		 *
+		 * @details Вычитание выполняется над всеми разрядами регистра: над младшими
+		 *          тридцатью двумя оно обнуляло бы старшие, а вычитание из указателя
+		 *          стека сделало бы его непригодным вовсе.
+		 *
+		 */
+		return (0xD1000000u | (value << 10) | (source << 5) | target);
 	}
 	/**
 	 * @brief Функция сборки команды переноса значения регистра
@@ -189,6 +204,27 @@ namespace {
 	}
 };
 
+/**
+ * @brief Метод проверки поддержки порождения машинного кода сборкой
+ *
+ * @return результат проверки поддержки порождения машинного кода
+ *
+ */
+bool awh::regex::Emitter::available() noexcept {
+	/**
+	 * Если сборка выполняется для процессора с набором команд ARM64
+	 */
+	#if defined(__aarch64__) || defined(_M_ARM64)
+		// Выводим поддержку порождения машинного кода сборкой
+		return true;
+	/**
+	 * Если сборка выполняется для прочих наборов команд
+	 */
+	#else
+		// Выводим отсутствие поддержки порождения машинного кода сборкой
+		return false;
+	#endif
+}
 /**
  * @brief Метод очистки порождаемой последовательности команд
  *
@@ -457,6 +493,27 @@ void awh::regex::Emitter::context(const reg_t target, const uint32_t index) noex
 	}
 	// Выполняем размещение команды чтения значения обстановки исполнения
 	this->_code.push_back(::fetch(static_cast <uint32_t> (target), static_cast <uint32_t> (reg_t::CONTEXT), index));
+}
+/**
+ * @brief Метод размещения чтения значения из памяти
+ *
+ * @param target регистр прочитанного значения
+ * @param base   регистр адреса начала области чтения
+ * @param index  номер читаемого значения в области
+ *
+ */
+void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint32_t index) noexcept {
+	/**
+	 * Если номер значения в поле команды не помещается
+	 */
+	if(index > MAX_INDEX) {
+		// Выполняем установку флага отказа порождения машинного кода
+		this->_failed = true;
+		// Выходим из метода размещения чтения
+		return;
+	}
+	// Выполняем размещение команды чтения значения из памяти
+	this->_code.push_back(::fetch(static_cast <uint32_t> (target), static_cast <uint32_t> (base), index));
 }
 /**
  * @brief Метод размещения записи значения регистра в память

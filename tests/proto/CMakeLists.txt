@@ -187,7 +187,9 @@ if (${GTest_FOUND})
             message(STATUS "Build tests port mapping protocols submodule: Yes\n")
             # Дополняем список источников тестами для подмодуля договоров перенаправления портов
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                portmap/portmap.cpp
                 portmap/natpmp.cpp
+                portmap/pcp.cpp
             )
         # Если не нужно собрать тесты для подмодуля договоров перенаправления портов
         else()
