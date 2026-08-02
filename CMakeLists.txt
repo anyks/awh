@@ -649,6 +649,8 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/compressor/stream.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/portmap/natpmp.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/portmap/pcp.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/portmap/ssdp.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/portmap/device.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/server.cpp"

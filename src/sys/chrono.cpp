@@ -2496,6 +2496,14 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 /**
  * @brief Метод заполнения объекта даты из штампа времени
  *
+ * @details Доли миллисекунды - микросекунды и наносекунды - метод намеренно не
+ *          трогает: штамп времени задан миллисекундами и доли в себе не несёт,
+ *          а установщики их знают. И update, и установка штампа в микросекундах
+ *          либо наносекундах выставляют доли до вызова метода и рассчитывают на
+ *          то, что разложение календаря их сохранит. Сброс долей внутри метода
+ *          обесценил бы обе установки, поэтому за их чистоту отвечает вызывающий:
+ *          установка штампа в единицах крупнее микросекунды доли обнуляет сама
+ *
  * @param date дата из которой необходимо заполнить объект
  * @param dt   объект даты который необходимо заполнить
  *
@@ -2532,8 +2540,6 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 				dt.month = ::monthOfYear(dt.days, dt.leap);
 				// Подсчитываем количество суток, прошедших в предыдущих месяцах
 				const uint16_t count = ::daysBeforeMonth(dt.month, dt.leap);
-				// Получаем количество суток в найденном месяце
-				const uint16_t days = ::daysOfMonth(dt.month, dt.leap);
 				// Устанавливаем текущее значение даты
 				dt.date = static_cast <uint8_t> ((dt.days - count) + 1);
 				// Получаем начало месяца указанной даты
@@ -2542,8 +2548,14 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 				beginDay = (beginMonth + (static_cast <uint64_t> (dt.date - 1) * static_cast <uint64_t> (86400000)));
 				// Устанавливаем день недели
 				dt.day = ::dayOfWeek(beginDay);
+				/**
+				 * Номер недели округляется к ближайшей, но целочисленно: прибавление
+				 * половины недели с последующим делением нацело даёт то же самое, что
+				 * округление вещественного частного, и не зависит от разрядности
+				 * вещественного типа целевой платформы
+				 */
 				// Получаем количество недель прошедших с начала года
-				dt.weeks = static_cast <uint8_t> (::round((date - beginYear) / 604800000.L));
+				dt.weeks = static_cast <uint8_t> (((date - beginYear) + static_cast <uint64_t> (302400000)) / static_cast <uint64_t> (604800000));
 			}
 			// Получаем количество миллисекунд
 			dt.milliseconds = static_cast <uint32_t> (date % 1000);
@@ -7228,60 +7240,34 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 				case static_cast <uint8_t> (unit_t::NANOSECONDS): {
 					// Если размер данных умещается в буфер
 					if(size >= sizeof(int64_t)){
-						// Количество наносекунд
-						const uint64_t nanoseconds = (date % 1000000);
+						/**
+						 * Штамп времени задан миллисекундами, и доли миллисекунды в нём нет:
+						 * прежде доля бралась остатком от самого штампа, отчего в наносекундах
+						 * выводились секунды с миллисекундами, а в микросекундах - миллисекунды.
+						 * Разрядность довода менять нельзя: остальные единицы читают тот же
+						 * штамп как миллисекунды, и доля миллисекунды у него всегда пуста
+						 */
 						// Если данные переданы в виде текста
-						if(text){
-							// Получаем результирующий буфер для получения результата
-							string * result = reinterpret_cast <string *> (buffer);
-							// Выполняем получение количества наносекунд
-							(* result) = std::to_string(nanoseconds);
-							// Если первого нуля нет
-							if(result->length() == 1)
-								// Добавляем предстоящий ноль
-								result->insert(result->begin(), 5, '0');
-							// Если первого нуля нет
-							else if(result->length() == 2)
-								// Добавляем предстоящий ноль
-								result->insert(result->begin(), 4, '0');
-							// Если первого нуля нет
-							else if(result->length() == 3)
-								// Добавляем предстоящий ноль
-								result->insert(result->begin(), 3, '0');
-							// Если первого нуля нет
-							else if(result->length() == 4)
-								// Добавляем предстоящий ноль
-								result->insert(result->begin(), 2, '0');
-							// Если первого нуля нет
-							else if(result->length() == 5)
-								// Добавляем предстоящий ноль
-								result->insert(result->begin(), 1, '0');
-						// Выполняем получение количества наносекунд
-						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (nanoseconds);
+						if(text)
+							// Выполняем получение пустого количества наносекунд
+							(* reinterpret_cast <string *> (buffer)) = "000000";
+						// Выполняем получение пустого количества наносекунд
+						else (* reinterpret_cast <int64_t *> (buffer)) = 0;
 					}
 				} break;
 				// Если требуется установить количество микросекунд
 				case static_cast <uint8_t> (unit_t::MICROSECONDS): {
 					// Если размер данных умещается в буфер
 					if(size >= sizeof(int64_t)){
-						// Количество микросекунд
-						const uint64_t microseconds = (date % 1000);
+						/**
+						 * Доли миллисекунды штамп времени не несёт наравне с наносекундами
+						 */
 						// Если данные переданы в виде текста
-						if(text){
-							// Получаем результирующий буфер для получения результата
-							string * result = reinterpret_cast <string *> (buffer);
-							// Выполняем получение количества микросекунд
-							(* result) = std::to_string(microseconds);
-							// Если первого нуля нет
-							if(result->length() == 1)
-								// Добавляем предстоящий ноль
-								result->insert(result->begin(), 2, '0');
-							// Если первого нуля нет
-							else if(result->length() == 2)
-								// Добавляем предстоящий ноль
-								result->insert(result->begin(), 1, '0');
-						// Выполняем получение количества микросекунд
-						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (microseconds);
+						if(text)
+							// Выполняем получение пустого количества микросекунд
+							(* reinterpret_cast <string *> (buffer)) = "000";
+						// Выполняем получение пустого количества микросекунд
+						else (* reinterpret_cast <int64_t *> (buffer)) = 0;
 					}
 				} break;
 				// Если требуется установить количество миллисекунд

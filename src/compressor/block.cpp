@@ -85,12 +85,12 @@
 using namespace std;
 
 /**
- * @brief Полное определение непрозрачного контекста потока GZip
+ * @brief Полное определение непрозрачного контекста потока Deflate
  *
  * @details Обёртка над потоком zlib, скрывающая прямую зависимость от zlib в публичном заголовке
  *
  */
-struct awh::compressor::gzip_stream_t {
+struct awh::compressor::deflate_stream_t {
 	// Поток zlib
 	z_stream stream;
 };
@@ -1212,12 +1212,26 @@ namespace driver {
 						 * наращивается, пока движку хватает места
 						 */
 						uint_fast64_t expected = (static_cast <uint_fast64_t> (size) * 4);
+						// Признак попытки на всём допустимом пределе
+						bool clamped = false;
 						/**
 						 * Выполняем извлечение данных пока не извлечём
 						 */
 						for(;;){
 							// Выполняем получение размера результирующего буфера
-							const uint_fast64_t actual = ::density_decompress_safe_size(expected);
+							uint_fast64_t actual = ::density_decompress_safe_size(expected);
+							/**
+							 * Удвоение предположения предел перешагивает, не достигнув его: прежде
+							 * чем счесть данные повреждёнными, отводим буфер ровно по пределу и
+							 * пробуем ещё раз - тот же порядок у LZ4 и Lizard
+							 */
+							// Если предположение предел перешагнуло, а попытки на нём ещё не было
+							if((actual > MAX_OUTPUT_SIZE) && !clamped){
+								// Отводим буфер ровно по допустимому пределу
+								actual = MAX_OUTPUT_SIZE;
+								// Отмечаем попытку на всём допустимом пределе
+								clamped = true;
+							}
 							// Если размер выделить не удалось либо он превышает допустимый предел
 							if((actual == 0) || (actual > MAX_OUTPUT_SIZE)){
 								// Выполняем очистку блока с результатом
@@ -2827,8 +2841,16 @@ namespace driver {
 							zs->avail_out = static_cast <uInt> (output.size());
 							// inflate игнорирует flush — всегда Z_NO_FLUSH
 							ret = ::inflate(zs, Z_NO_FLUSH);
+							/**
+							 * Заполнение выходного буфера ровно по краю уводит работу на ещё один
+							 * заход: вход к тому времени съеден, и движок отвечает Z_BUF_ERROR -
+							 * продвижения нет, потому что и делать больше нечего. Отказом это не
+							 * является, и у потокового кодека тот же код уже допущен. Кадр raw
+							 * DEFLATE конца потока не несёт вовсе (RFC 7692), так что выход по
+							 * исчерпании работы здесь законен
+							 */
 							// Если возникает ошибка
-							if((ret != Z_OK) && (ret != Z_STREAM_END)){
+							if((ret != Z_OK) && (ret != Z_STREAM_END) && (ret != Z_BUF_ERROR)){
 								// Выполняем очистку блока с результатом
 								result.clear();
 								/**
@@ -2905,7 +2927,7 @@ namespace driver {
  * @brief Конструктор
  *
  */
-awh::compressor::Block::BufferGZip::BufferGZip() noexcept :
+awh::compressor::Block::BufferDeflate::BufferDeflate() noexcept :
  compress(nullptr), decompress(nullptr) {}
 
 /**
@@ -2919,13 +2941,13 @@ awh::compressor::Block::Takeover::Takeover() noexcept :
  * @brief Конструктор
  *
  */
-awh::compressor::Block::Zlib::Zlib() noexcept : wbits(0) {}
+awh::compressor::Block::Window::Window() noexcept : wbits(0) {}
 
 /**
  * @brief Конструктор
  *
  */
-awh::compressor::Block::GZip::GZip() noexcept : wbits(0) {}
+awh::compressor::Block::Deflate::Deflate() noexcept : wbits(0) {}
 
 /**
  * @brief Метод установки уровня компрессии
@@ -3002,9 +3024,9 @@ void awh::compressor::Block::level(const level_t level) noexcept {
 	 * умеет подменять параметры на живом потоке — новый уровень вступит в силу со
 	 * следующего сообщения, а накопленное к этому времени выдавливается движком
 	 */
-	if(this->_gzip.takeover.compress.load(std::memory_order_acquire)){
+	if(this->_deflate.takeover.compress.load(std::memory_order_acquire)){
 		// Выполняем подмену параметров живого контекста компрессии
-		const int32_t ret = ::deflateParams(&this->_gzip.buffer.compress->stream, this->_level[1].load(std::memory_order_acquire), Z_DEFAULT_STRATEGY);
+		const int32_t ret = ::deflateParams(&this->_deflate.buffer.compress->stream, this->_level[1].load(std::memory_order_acquire), Z_DEFAULT_STRATEGY);
 		// Если подменить параметры не удалось
 		if(ret != Z_OK){
 			/**
@@ -3052,20 +3074,13 @@ void awh::compressor::Block::wbitsZlib(const int16_t wbits) noexcept {
 	this->_zlib.wbits = wbits;
 }
 /**
- * @brief Метод установки размера скользящего окна
+ * @brief Метод установки размера скользящего окна GZip
  *
  * @param wbits размер скользящего окна
- * @return      результат установки размера
  *
  */
-bool awh::compressor::Block::wbitsGZip(const int16_t wbits) noexcept {
-	// Переменная результата
-	bool result = false;
-	/**
-	 * Значение вне допустимого промежутка отвергается до записи: иначе отказ
-	 * обнаруживался бы лишь при работе, да и то не всегда — при выключенном
-	 * переиспользовании контекста установщик отвечал бы успехом
-	 */
+void awh::compressor::Block::wbitsGZip(const int16_t wbits) noexcept {
+	// Если размер скользящего окна лежит вне допустимого промежутка
 	if((wbits < 8) || (wbits > MAX_WBITS)){
 		/**
 		 * Если включён режим отладки
@@ -3081,14 +3096,49 @@ bool awh::compressor::Block::wbitsGZip(const int16_t wbits) noexcept {
 			this->_log->print("GZip window bits are out of range", log_t::flag_t::WARNING);
 		#endif
 		// Выходим из функции, оставляя прежнее значение
+		return;
+	}
+	// Устанавливаем размер скользящего окна GZip
+	this->_gzip.wbits = wbits;
+}
+/**
+ * @brief Метод установки размера скользящего окна Deflate
+ *
+ * @param wbits размер скользящего окна
+ * @return      результат установки размера
+ *
+ */
+bool awh::compressor::Block::wbitsDeflate(const int16_t wbits) noexcept {
+	// Переменная результата
+	bool result = false;
+	/**
+	 * Значение вне допустимого промежутка отвергается до записи: иначе отказ
+	 * обнаруживался бы лишь при работе, да и то не всегда — при выключенном
+	 * переиспользовании контекста установщик отвечал бы успехом
+	 */
+	if((wbits < 8) || (wbits > MAX_WBITS)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Deflate window bits are out of range", __PRETTY_FUNCTION__, make_tuple(wbits), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Deflate window bits are out of range", log_t::flag_t::WARNING);
+		#endif
+		// Выходим из функции, оставляя прежнее значение
 		return result;
 	}
-	// Устанавливаем размер скользящего окна
-	this->_gzip.wbits = wbits;
+	// Устанавливаем размер скользящего окна Deflate
+	this->_deflate.wbits = wbits;
 	// Выполняем пересборку контекстов LZ77 для компрессии
-	result = this->takeoverGZip(event_t::ENCODE, this->_gzip.takeover.compress.load(std::memory_order_acquire));
+	result = this->takeoverDeflate(event_t::ENCODE, this->_deflate.takeover.compress.load(std::memory_order_acquire));
 	// Выполняем пересборку контекстов LZ77 для декомпрессии
-	result = (this->takeoverGZip(event_t::DECODE, this->_gzip.takeover.decompress.load(std::memory_order_acquire)) && result);
+	result = (this->takeoverDeflate(event_t::DECODE, this->_deflate.takeover.decompress.load(std::memory_order_acquire)) && result);
 	/**
 	 * Пересборка идёт двумя половинами, и удавшаяся половина при отказе второй
 	 * оставила бы объект наполовину переиспользующим контекст: снимаем обе разом,
@@ -3096,22 +3146,22 @@ bool awh::compressor::Block::wbitsGZip(const int16_t wbits) noexcept {
 	 */
 	if(!result){
 		// Снимаем флаг переиспользования контекста компрессии
-		this->takeoverGZip(event_t::ENCODE, false);
+		this->takeoverDeflate(event_t::ENCODE, false);
 		// Снимаем флаг переиспользования контекста декомпрессии
-		this->takeoverGZip(event_t::DECODE, false);
+		this->takeoverDeflate(event_t::DECODE, false);
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод включения/отключения флага переиспользования контекста компрессии/декомпрессии
+ * @brief Метод включения/отключения переиспользования контекста Deflate
  *
  * @param event событие выполнения операции
  * @param flag  флаг переиспользования контекста компрессии/декомпрессии
  * @return      результат установки флага
  *
  */
-bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) noexcept {
+bool awh::compressor::Block::takeoverDeflate(const event_t event, const bool flag) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -3125,9 +3175,9 @@ bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) 
 			// Выполняем установку флага переиспользования контекста компрессии
 			case static_cast <uint8_t> (event_t::ENCODE): {
 				// Извлекаем буфер GZip
-				z_stream & buffer = this->_gzip.buffer.compress->stream;
+				z_stream & buffer = this->_deflate.buffer.compress->stream;
 				// Если уже выделена память для компрессора
-				if(this->_gzip.takeover.compress.load(std::memory_order_acquire))
+				if(this->_deflate.takeover.compress.load(std::memory_order_acquire))
 					// Очищаем выделенную память для компрессора
 					::deflateEnd(&buffer);
 				// Если флаг установлен
@@ -3139,7 +3189,7 @@ bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) 
 					buffer.zfree  = Z_NULL;
 					buffer.opaque = Z_NULL;
 					// Если поток инициализировать не удалось, выходим
-					if(!(result = (::deflateInit2(&buffer, this->_level[1], Z_DEFLATED, static_cast <int32_t> (-1 * this->_gzip.wbits), MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) == Z_OK))){
+					if(!(result = (::deflateInit2(&buffer, this->_level[1], Z_DEFLATED, static_cast <int32_t> (-1 * this->_deflate.wbits), MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) == Z_OK))){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -3154,20 +3204,20 @@ bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) 
 							this->_log->print("Deflate stream is not create", log_t::flag_t::CRITICAL);
 						#endif
 						// Сбрасываем флаг переиспользования контекста, так как рабочего потока больше нет
-						this->_gzip.takeover.compress.store(false, std::memory_order_release);
+						this->_deflate.takeover.compress.store(false, std::memory_order_release);
 						// Выходим из функции
 						return result;
 					}
 				}
 				// Устанавливаем переданный флаг
-				this->_gzip.takeover.compress.store(flag, std::memory_order_release);
+				this->_deflate.takeover.compress.store(flag, std::memory_order_release);
 			} break;
 			// Выполняем установку флага переиспользования контекста декомпрессии
 			case static_cast <uint8_t> (event_t::DECODE): {
 				// Извлекаем буфер GZip
-				z_stream & buffer = this->_gzip.buffer.decompress->stream;
+				z_stream & buffer = this->_deflate.buffer.decompress->stream;
 				// Если уже выделена память для декомпрессора
-				if(this->_gzip.takeover.decompress.load(std::memory_order_acquire))
+				if(this->_deflate.takeover.decompress.load(std::memory_order_acquire))
 					// Очищаем выделенную память для декомпрессора
 					::inflateEnd(&buffer);
 				// Если флаг установлен
@@ -3182,7 +3232,7 @@ bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) 
 					buffer.opaque  = Z_NULL;
 					buffer.next_in = Z_NULL;
 					// Если поток инициализировать не удалось, выходим
-					if(!(result = (::inflateInit2(&buffer, static_cast <int32_t> (-1 * this->_gzip.wbits)) == Z_OK))){
+					if(!(result = (::inflateInit2(&buffer, static_cast <int32_t> (-1 * this->_deflate.wbits)) == Z_OK))){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -3197,13 +3247,13 @@ bool awh::compressor::Block::takeoverGZip(const event_t event, const bool flag) 
 							this->_log->print("Inflate stream is not create", log_t::flag_t::CRITICAL);
 						#endif
 						// Сбрасываем флаг переиспользования контекста, так как рабочего потока больше нет
-						this->_gzip.takeover.decompress.store(false, std::memory_order_release);
+						this->_deflate.takeover.decompress.store(false, std::memory_order_release);
 						// Выходим из функции
 						return result;
 					}
 				}
 				// Устанавливаем переданный флаг
-				this->_gzip.takeover.decompress.store(flag, std::memory_order_release);
+				this->_deflate.takeover.decompress.store(flag, std::memory_order_release);
 			} break;
 		}
 	/**
@@ -3278,11 +3328,17 @@ awh::compressor::stream_t awh::compressor::Block::stream(const method_t method, 
 	 * Определяем метод компрессии для выбора параметров
 	 */
 	switch(static_cast <uint8_t> (method)){
-		// Для GZip и Deflate
-		case static_cast <uint8_t> (method_t::GZIP):
-		case static_cast <uint8_t> (method_t::DEFLATE): {
+		// Для GZip (RFC 1952)
+		case static_cast <uint8_t> (method_t::GZIP): {
 			// Устанавливаем размер окна
 			params.wbits = this->_gzip.wbits.load(std::memory_order_acquire);
+			// Устанавливаем уровень компрессии
+			params.level = this->_level[1].load(std::memory_order_acquire);
+		} break;
+		// Для Deflate (RFC 1951)
+		case static_cast <uint8_t> (method_t::DEFLATE): {
+			// Устанавливаем размер окна
+			params.wbits = this->_deflate.wbits.load(std::memory_order_acquire);
 			// Устанавливаем уровень компрессии
 			params.level = this->_level[1].load(std::memory_order_acquire);
 		} break;
@@ -3717,7 +3773,7 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 			// Если метод компрессии установлен Deflate
 			case static_cast <uint8_t> (method_t::DEFLATE): {
 				// Выполняем компрессию данных методом Deflate
-				driver::deflate(buffer, size, this->_level[1], this->_gzip.wbits, this->_gzip.takeover.compress.load(std::memory_order_acquire), this->_gzip.buffer.compress->stream, event_t::ENCODE, result, this->_log);
+				driver::deflate(buffer, size, this->_level[1], this->_deflate.wbits, this->_deflate.takeover.compress.load(std::memory_order_acquire), this->_deflate.buffer.compress->stream, event_t::ENCODE, result, this->_log);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4188,7 +4244,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен Deflate
 			case static_cast <uint8_t> (method_t::DEFLATE): {
 				// Выполняем декомпрессию данных методом Deflate
-				driver::deflate(buffer, size, this->_level[1], this->_gzip.wbits, this->_gzip.takeover.decompress.load(std::memory_order_acquire), this->_gzip.buffer.decompress->stream, event_t::DECODE, result, this->_log);
+				driver::deflate(buffer, size, this->_level[1], this->_deflate.wbits, this->_deflate.takeover.decompress.load(std::memory_order_acquire), this->_deflate.buffer.decompress->stream, event_t::DECODE, result, this->_log);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4287,11 +4343,13 @@ awh::compressor::Block::Block(const log_t * log) noexcept :
 	5
 }, _log(log) {
 	// Выделяем память под контекст буфера GZip компрессии
-	this->_gzip.buffer.compress = new gzip_stream_t();
+	this->_deflate.buffer.compress = new deflate_stream_t();
 	// Выделяем память под контекст буфера GZip декомпрессии
-	this->_gzip.buffer.decompress = new gzip_stream_t();
+	this->_deflate.buffer.decompress = new deflate_stream_t();
 	// Устанавливаем размер скользящего окна GZip по умолчанию
 	this->_gzip.wbits = static_cast <int16_t> (MAX_WBITS);
+	// Устанавливаем размер скользящего окна Deflate по умолчанию
+	this->_deflate.wbits = static_cast <int16_t> (MAX_WBITS);
 	// Устанавливаем размер скользящего окна Zlib по умолчанию
 	this->_zlib.wbits = static_cast <int16_t> (MAX_WBITS);
 }
@@ -4301,15 +4359,15 @@ awh::compressor::Block::Block(const log_t * log) noexcept :
  */
 awh::compressor::Block::~Block() noexcept {
 	// Если выделена память для компрессора
-	if(this->_gzip.takeover.compress.load(std::memory_order_acquire))
+	if(this->_deflate.takeover.compress.load(std::memory_order_acquire))
 		// Завершаем работу компрессора GZip
-		::deflateEnd(&this->_gzip.buffer.compress->stream);
+		::deflateEnd(&this->_deflate.buffer.compress->stream);
 	// Если выделена память для декомпрессора
-	if(this->_gzip.takeover.decompress.load(std::memory_order_acquire))
+	if(this->_deflate.takeover.decompress.load(std::memory_order_acquire))
 		// Завершаем работу декомпрессора GZip
-		::inflateEnd(&this->_gzip.buffer.decompress->stream);
+		::inflateEnd(&this->_deflate.buffer.decompress->stream);
 	// Освобождаем память контекста буфера GZip компрессии
-	delete this->_gzip.buffer.compress;
+	delete this->_deflate.buffer.compress;
 	// Освобождаем память контекста буфера GZip декомпрессии
-	delete this->_gzip.buffer.decompress;
+	delete this->_deflate.buffer.decompress;
 }

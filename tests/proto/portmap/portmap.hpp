@@ -27,6 +27,8 @@
  */
 #include "../../main.hpp"
 #include "../../../include/proto/portmap/pcp.hpp"
+#include "../../../include/proto/portmap/ssdp.hpp"
+#include "../../../include/proto/portmap/device.hpp"
 #include "../../../include/proto/portmap/natpmp.hpp"
 
 /**
@@ -65,6 +67,20 @@ class PortmapFixture : public testing::Test {
 		 *
 		 */
 		std::unique_ptr <awh::proto::portmap::pcp_t> makePcp() const noexcept;
+		/**
+		 * @brief Фабричный метод создания кодека договора SSDP
+		 *
+		 * @return сформированный объект кодека договора SSDP
+		 *
+		 */
+		std::unique_ptr <awh::proto::portmap::ssdp_t> makeSsdp() const noexcept;
+		/**
+		 * @brief Фабричный метод создания кодека описания устройства UPnP
+		 *
+		 * @return сформированный объект кодека описания устройства UPnP
+		 *
+		 */
+		std::unique_ptr <awh::proto::portmap::device_t> makeDevice() const noexcept;
 };
 
 #endif // __AWH_PROTO_PORTMAP_TESTS__

@@ -53,8 +53,10 @@ class CompressorTestParameterizedFixture : public CompressorFixture, public ::te
 TEST_P(CompressorTestParameterizedFixture, CompressorTest){
 	// Устанавливаем уровень компрессии
 	this->_compressor->level(this->_parameter.level);
-	// Устанавливаем размер скользящего окна GZip
+	// Устанавливаем размер скользящего окна движкам семейства Zlib
 	this->_compressor->wbitsGZip(this->_parameter.wbits);
+	this->_compressor->wbitsZlib(this->_parameter.wbits);
+	this->_compressor->wbitsDeflate(this->_parameter.wbits);
 	// Выполняем компрессию данных
 	std::vector <uint8_t> compressed = std::move(this->_compressor->compress <std::vector <uint8_t>> (this->_parameter.text, this->_parameter.method));
 	// Проверяем что результат компрессии не пустой
@@ -162,11 +164,11 @@ class CompressorTakeoverTestParameterizedFixture : public CompressorFixture, pub
 TEST_P(CompressorTakeoverTestParameterizedFixture, CompressorTakeoverTest){
 	// Устанавливаем уровень компрессии
 	this->_compressor->level(this->_parameter.level);
-	// Устанавливаем размер скользящего окна GZip
-	this->_compressor->wbitsGZip(this->_parameter.wbits);
+	// Устанавливаем размер скользящего окна Deflate
+	this->_compressor->wbitsDeflate(this->_parameter.wbits);
 	// Включаем флаг переиспользования контекста компрессии/декомпрессии
-	this->_compressor->takeoverGZip(awh::compressor::event_t::ENCODE, true);
-	this->_compressor->takeoverGZip(awh::compressor::event_t::DECODE, true);
+	this->_compressor->takeoverDeflate(awh::compressor::event_t::ENCODE, true);
+	this->_compressor->takeoverDeflate(awh::compressor::event_t::DECODE, true);
 	// Выполняем компрессию данных
 	std::vector <uint8_t> compressed = std::move(this->_compressor->compress <std::vector <uint8_t>> (this->_parameter.text, awh::compressor::method_t::DEFLATE));
 	// Проверяем что результат компрессии не пустой

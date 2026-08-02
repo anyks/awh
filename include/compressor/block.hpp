@@ -51,13 +51,13 @@ namespace awh {
 	 */
 	namespace compressor {
 		/**
-		 * @brief Предварительное объявление непрозрачного контекста потока GZip
+		 * @brief Предварительное объявление непрозрачного контекста потока Deflate
 		 *
 		 * @details Полное определение скрыто в модуле реализации,
 		 *          что позволяет не подключать заголовочные файлы стороннего компрессора (zlib) в публичный интерфейс.
 		 *
 		 */
-		struct gzip_stream_t;
+		struct deflate_stream_t;
 		/**
 		 * @brief Класс блочной (one-shot) компрессии/декомпрессии данных
 		 *
@@ -74,6 +74,19 @@ namespace awh {
 		 *          2. Пустой вход (nullptr либо нулевой размер) не является ошибкой — результатом
 		 *             будет пустой буфер. Признаком ошибки служит пустой результат при непустом входе.
 		 *
+		 *          3. Настройки движков семейства Zlib раздельны: у GZip, Zlib и Deflate по
+		 *             своему размеру скользящего окна (wbitsGZip, wbitsZlib, wbitsDeflate), а
+		 *             переиспользование контекста между сообщениями (takeoverDeflate) заведено
+		 *             для одного лишь Deflate. Окно Deflate согласуется с узлом отдельно
+		 *             (RFC 7692), и общее поле означало бы, что согласование с чужим узлом молча
+		 *             меняет сжатие, к WebSocket не относящееся.
+		 *
+		 *          4. Метод DEFLATE завершает сообщение Z_SYNC_FLUSH, а не Z_FINISH, и потому
+		 *             оставляет в конце результата четыре октета 00 00 FF FF. Так требует RFC 7692
+		 *             (permessage-deflate): контекст переиспользуется между сообщениями, и Z_FINISH
+		 *             закрыл бы поток. Снятие хвоста — дело вызывающей стороны, знающей, отдаёт ли
+		 *             она сообщение в кадр WebSocket или хранит его целиком.
+		 *
 		 *          Полный перечень намеренных решений, реестр отклонённых находок и список
 		 *          открытых вопросов — в src/compressor/README.md. Разбор модуля следует
 		 *          начинать с него: там записано то, что уже вносилось в отчёты и проверялось.
@@ -82,22 +95,22 @@ namespace awh {
 		typedef class __AWH_SHARED_EXPORT__ Block {
 			private:
 				/**
-				 * @brief Структура буфера GZip
+				 * @brief Структура буфера контекстов Deflate
 				 *
 				 * @note Владеющие указатели на непрозрачный контекст (управление временем жизни в конструкторе/деструкторе Block)
 				 *
 				 */
-				typedef struct __AWH_SHARED_EXPORT__ BufferGZip {
-					// Поток GZip для компрессии
-					gzip_stream_t * compress;
-					// Поток GZip для декомпрессии
-					gzip_stream_t * decompress;
+				typedef struct __AWH_SHARED_EXPORT__ BufferDeflate {
+					// Поток Deflate для компрессии
+					deflate_stream_t * compress;
+					// Поток Deflate для декомпрессии
+					deflate_stream_t * decompress;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit BufferGZip() noexcept;
-				} buffer_gzip_t;
+					explicit BufferDeflate() noexcept;
+				} buffer_deflate_t;
 				/**
 				 * @brief Структура переиспользования контекста компрессии/декомпрессии
 				 *
@@ -114,35 +127,42 @@ namespace awh {
 					explicit Takeover() noexcept;
 				} takeover_t;
 				/**
-				 * @brief Структура Zlib
+				 * @brief Структура параметров движка со скользящим окном
+				 *
+				 * @details Заведена для GZip и Zlib: у обоих из настроек только окно,
+				 *          и контекст между сообщениями они не переиспользуют
 				 *
 				 */
-				typedef struct __AWH_SHARED_EXPORT__ Zlib {
+				typedef struct __AWH_SHARED_EXPORT__ Window {
 					// Размер скользящего окна (атомарный для потокобезопасного доступа)
 					atomic_int16_t wbits;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Zlib() noexcept;
-				} zlib_t;
+					explicit Window() noexcept;
+				} window_t;
 				/**
-				 * @brief Структура GZip
+				 * @brief Структура параметров движка Deflate
+				 *
+				 * @details Переиспользование контекста между сообщениями (RFC 7692) заведено
+				 *          для одного лишь Deflate, поэтому контексты и флаги живут здесь,
+				 *          а не в общей структуре семейства
 				 *
 				 */
-				typedef struct __AWH_SHARED_EXPORT__ GZip {
+				typedef struct __AWH_SHARED_EXPORT__ Deflate {
 					// Флаги переиспользования контекста компрессии/декомпрессии
 					takeover_t takeover;
-					// Буфер GZip
-					buffer_gzip_t buffer;
+					// Буфер переиспользуемых контекстов
+					buffer_deflate_t buffer;
 					// Размер скользящего окна (атомарный для потокобезопасного доступа)
 					atomic_int16_t wbits;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit GZip() noexcept;
-				} gzip_t;
+					explicit Deflate() noexcept;
+				} deflate_t;
 			private:
 				/**
 				 * Уровни компрессии (атомарные для потокобезопасного доступа)
@@ -161,10 +181,12 @@ namespace awh {
 				 */
 				atomic_int32_t _level[8];
 			private:
-				// Структура Zlib
-				mutable zlib_t _zlib;
-				// Структура GZip
-				mutable gzip_t _gzip;
+				// Параметры движка GZip
+				mutable window_t _gzip;
+				// Параметры движка Zlib
+				mutable window_t _zlib;
+				// Параметры движка Deflate
+				mutable deflate_t _deflate;
 			private:
 				// Объект работы с логами
 				const log_t * _log;
@@ -178,6 +200,17 @@ namespace awh {
 				void level(const level_t level) noexcept;
 			public:
 				/**
+				 * @brief Метод установки размера скользящего окна GZip
+				 *
+				 * @details Окно каждого движка семейства задаётся своим методом: делить его
+				 *          на всех нельзя, потому что размер окна Deflate согласуется с узлом
+				 *          отдельно (RFC 7692), а окно GZip и Zlib к этому согласованию отношения не имеет
+				 *
+				 * @param wbits размер скользящего окна
+				 *
+				 */
+				void wbitsGZip(const int16_t wbits) noexcept;
+				/**
 				 * @brief Метод установки размера скользящего окна Zlib
 				 *
 				 * @param wbits размер скользящего окна
@@ -185,22 +218,31 @@ namespace awh {
 				 */
 				void wbitsZlib(const int16_t wbits) noexcept;
 				/**
-				 * @brief Метод установки размера скользящего окна GZip/Deflate
+				 * @brief Метод установки размера скользящего окна Deflate
+				 *
+				 * @details Смена размера окна пересобирает переиспользуемые контексты обеими
+				 *          половинами разом: у живого контекста размер окна сменить нельзя,
+				 *          и отказ пересборки гасит переиспользование, а не оставляет его наполовину
 				 *
 				 * @param wbits размер скользящего окна
 				 * @return      результат установки размера
 				 *
 				 */
-				bool wbitsGZip(const int16_t wbits) noexcept;
+				bool wbitsDeflate(const int16_t wbits) noexcept;
 				/**
-				 * @brief Метод включения/отключения флага переиспользования контекста компрессии/декомпрессии
+				 * @brief Метод включения/отключения переиспользования контекста Deflate
+				 *
+				 * @details Переиспользование контекста между сообщениями (RFC 7692) заведено
+				 *          для одного лишь Deflate: у прочих движков семейства сообщение
+				 *          самостоятельно, и держать контекст между вызовами им незачем.
+				 *          Направления взводятся раздельно — RFC согласует их порознь
 				 *
 				 * @param event событие выполнения операции
 				 * @param flag  флаг переиспользования контекста компрессии/декомпрессии
 				 * @return      результат установки флага
 				 *
 				 */
-				bool takeoverGZip(const event_t event, const bool flag) noexcept;
+				bool takeoverDeflate(const event_t event, const bool flag) noexcept;
 			public:
 				/**
 				 * @brief Метод проверки поддержки потокового режима методом компрессии

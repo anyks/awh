@@ -55,6 +55,131 @@ namespace {
 	constexpr size_t SLOTS = 2;
 
 	/**
+	 * @brief Количество мест кадра вызова, сохраняющих регистры на время вызова
+	 *
+	 * @details Соглашение о вызове подпрограмм сохранности младших регистров
+	 *          не обещает, поэтому в кадре вызова сохраняется всё, чем сопоставление
+	 *          живёт: адрес текста, размер текста, адрес набора границ, адрес
+	 *          обстановки исполнения, позиция начала попытки и адрес возврата.
+	 *          Позиция сопоставления сохранения не требует - она устанавливается
+	 *          позицией начала попытки заново.
+	 *
+	 */
+	constexpr size_t SPILLS = 6;
+
+	/**
+	 * @brief Наибольшее количество символов, заменяемых продвижением позиции
+	 *
+	 * @details Продвижение позиции размещается одной командой сложения с числом,
+	 *          а число это несёт двенадцать разрядов.
+	 *
+	 */
+	constexpr size_t MAX_ELISION = 0xFFF;
+
+	/**
+	 * @brief Номер места обстановки, несущего адрес предварительного отбора позиций
+	 *
+	 */
+	constexpr size_t SLOT_PREFILTER = 0;
+
+	/**
+	 * @brief Номер места обстановки, несущего адрес подпрограммы отбора позиций
+	 *
+	 */
+	constexpr size_t SLOT_SEEKING = 1;
+
+	/**
+	 * @brief Номер места обстановки, несущего адрес подпрограммы проверки возможности
+	 *
+	 */
+	constexpr size_t SLOT_FEASIBLE = 2;
+
+	/**
+	 * @brief Количество мест обстановки, отведённых прежде таблиц принадлежности
+	 *
+	 */
+	constexpr size_t SLOT_TABLES = 3;
+
+	/**
+	 * @brief Функция поиска ближайшей позиции возможного начала совпадения
+	 *
+	 * @details Функция вызывается порождённым кодом по адресу, прочитанному
+	 *          из обстановки исполнения, и потому несёт соглашение о вызове,
+	 *          порождённым кодом соблюдаемое.
+	 *
+	 * @param text      адрес начала текста сопоставления
+	 * @param size      размер текста сопоставления в байтах
+	 * @param pos       позиция начала поиска
+	 * @param prefilter адрес предварительного отбора позиций
+	 * @return          позиция возможного начала совпадения
+	 *
+	 */
+	size_t seeking(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
+		// Выводим позицию возможного начала совпадения
+		return reinterpret_cast <const awh::regex::prefilter_t *> (prefilter)->search(std::string_view(text, size), pos);
+	}
+	/**
+	 * @brief Функция проверки возможности совпадения в оставшемся тексте
+	 *
+	 * @param text      адрес начала текста сопоставления
+	 * @param size      размер текста сопоставления в байтах
+	 * @param pos       позиция начала проверяемого участка текста
+	 * @param prefilter адрес предварительного отбора позиций
+	 * @return          результат проверки возможности совпадения
+	 *
+	 */
+	size_t feasible(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
+		// Выводим результат проверки возможности совпадения
+		return (reinterpret_cast <const awh::regex::prefilter_t *> (prefilter)->possible(std::string_view(text, size), pos) ? 1 : 0);
+	}
+	/**
+	 * @brief Функция порождения вызова подпрограммы обстановки исполнения
+	 *
+	 * @details Порождается сохранение затираемых вызовом регистров в кадре,
+	 *          передача доводов, вызов и восстановление сохранённых регистров.
+	 *          Итог вызова остаётся в регистре промежуточного значения,
+	 *          восстановлением не затрагиваемом.
+	 *
+	 * @param emitter объект порождения машинного кода
+	 * @param slot    номер места обстановки, несущего адрес подпрограммы
+	 * @param spill   номер первого места кадра, сохраняющего регистры
+	 * @param pos     регистр позиции, передаваемой подпрограмме доводом
+	 *
+	 */
+	void invoke(awh::regex::Emitter & emitter, const size_t slot, const size_t spill, const awh::regex::Emitter::reg_t pos) noexcept {
+		// Подписываемся на перечисление регистров соглашения о вызове
+		using reg_t = awh::regex::Emitter::reg_t;
+		/**
+		 * Выполняем сохранение затираемых вызовом регистров в кадре вызова
+		 */
+		emitter.store(reg_t::TEXT, reg_t::STACK, static_cast <uint32_t> (spill + 0));
+		emitter.store(reg_t::SIZE, reg_t::STACK, static_cast <uint32_t> (spill + 1));
+		emitter.store(reg_t::BOUNDS, reg_t::STACK, static_cast <uint32_t> (spill + 2));
+		emitter.store(reg_t::CONTEXT, reg_t::STACK, static_cast <uint32_t> (spill + 3));
+		emitter.store(reg_t::LINK, reg_t::STACK, static_cast <uint32_t> (spill + 4));
+		emitter.store(reg_t::KEEPER, reg_t::STACK, static_cast <uint32_t> (spill + 5));
+		// Выполняем чтение адреса вызываемой подпрограммы из обстановки исполнения
+		emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (slot));
+		// Выполняем передачу адреса предварительного отбора четвёртым доводом
+		emitter.context(reg_t::BOUNDS, static_cast <uint32_t> (SLOT_PREFILTER));
+		// Выполняем передачу позиции третьим доводом вызова
+		emitter.move(reg_t::START, pos);
+		// Выполняем размещение вызова подпрограммы обстановки исполнения
+		emitter.call(reg_t::SCRATCH);
+		// Выполняем перенос итога вызова в регистр промежуточного значения
+		emitter.move(reg_t::SCRATCH, reg_t::RESULT);
+		/**
+		 * Выполняем восстановление затёртых вызовом регистров из кадра вызова
+		 */
+		emitter.fetch(reg_t::TEXT, reg_t::STACK, static_cast <uint32_t> (spill + 0));
+		emitter.fetch(reg_t::SIZE, reg_t::STACK, static_cast <uint32_t> (spill + 1));
+		emitter.fetch(reg_t::BOUNDS, reg_t::STACK, static_cast <uint32_t> (spill + 2));
+		emitter.fetch(reg_t::CONTEXT, reg_t::STACK, static_cast <uint32_t> (spill + 3));
+		emitter.fetch(reg_t::LINK, reg_t::STACK, static_cast <uint32_t> (spill + 4));
+		emitter.fetch(reg_t::KEEPER, reg_t::STACK, static_cast <uint32_t> (spill + 5));
+	}
+
+	/**
 	 * @brief Функция проверки принадлежности инструкции сопоставляющим одиночный символ
 	 *
 	 * @param type код операции проверяемой инструкции
@@ -227,7 +352,7 @@ size_t awh::regex::Codegen::table(const instruction_t & instruction, const progr
 	// Выполняем размещение таблицы принадлежности значений байта
 	this->_members.resize(this->_members.size() + TABLE, 0);
 	// Получаем адрес размещённой таблицы принадлежности байтов
-	uint8_t * members = (this->_members.data() + (result * TABLE));
+	uint8_t * members = (this->_members.data() + ((result - SLOT_TABLES) * TABLE));
 	/**
 	 * Выполняем обход пространства значений байта
 	 */
@@ -321,15 +446,34 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	using cond_t = Emitter::cond_t;
 	// Создаём объект порождения машинного кода
 	Emitter emitter;
+	// Выполняем заведение мест обстановки, отведённых прежде таблиц
+	this->_context.assign(SLOT_TABLES, nullptr);
+	// Выполняем перенос предварительного отбора позиций из программы
+	this->_prefilter = program.prefilter;
+	/**
+	 * Получаем признак порождения отбора позиций начала попытки
+	 *
+	 * @details Отбор порождается лишь там, где он пропускает участки текста
+	 *          целиком, - при ведущем литерале совпадения либо единственном
+	 *          допустимом начальном байте. Перебор набора допустимых байтов
+	 *          проходит текст побайтно, как и сама попытка сопоставления,
+	 *          отчего вызов подпрограммы взамен попытки был бы чистым расходом.
+	 *
+	 */
+	const bool seek = (this->_prefilter.active && (this->_prefilter.unique || (this->_prefilter.leading.size() > 1)));
+	// Получаем признак порождения проверки возможности совпадения
+	const bool possible = !this->_prefilter.literal.empty();
+	// Получаем номер первого места кадра, сохраняющего регистры на время вызова
+	const size_t spill = (runs * SLOTS);
 	/**
 	 * Получаем размер кадра вызова порождаемого сопоставителя
 	 *
 	 * @details Кадр отводится под положения отступления рядов повторения
-	 *          и выравнивается по шестнадцати байтам, как того требует
-	 *          соглашение о вызове ARM64.
+	 *          и места сохранения регистров, вызовом затираемых, а выравнивается
+	 *          по шестнадцати байтам, как того требует соглашение о вызове ARM64.
 	 *
 	 */
-	const uint32_t frame = static_cast <uint32_t> ((((runs * SLOTS * sizeof(size_t)) + 15) / 16) * 16);
+	const uint32_t frame = static_cast <uint32_t> (((((spill + ((seek || possible) ? SPILLS : 0)) * sizeof(size_t)) + 15) / 16) * 16);
 	// Заводим метку начала очередной попытки сопоставления
 	const size_t attempt = emitter.label();
 	// Заводим метку перехода к следующей позиции начала попытки
@@ -338,6 +482,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	const size_t found = emitter.label();
 	// Заводим метку отсутствия совпадения в тексте
 	const size_t none = emitter.label();
+	// Заводим метку отбора позиции начала очередной попытки сопоставления
+	const size_t seeker = emitter.label();
 	// Создаём набор меток отступления рядов повторения
 	vector <size_t> retries;
 	/**
@@ -354,12 +500,65 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		emitter.sub(reg_t::STACK, reg_t::STACK, frame);
 	// Выполняем установку позиции начала попытки сопоставления
 	emitter.move(reg_t::KEEPER, reg_t::START);
+	/**
+	 * Если проверка возможности совпадения в тексте порождается
+	 *
+	 * @details Проверка выполняется единожды: обязательный литерал совпадения
+	 *          отсутствует в оставшемся тексте целиком, а не в отдельной
+	 *          позиции начала попытки.
+	 *
+	 */
+	if(possible) {
+		// Выполняем вызов подпрограммы проверки возможности совпадения
+		invoke(emitter, SLOT_FEASIBLE, spill, reg_t::KEEPER);
+		// Выполняем сравнение итога проверки возможности совпадения с нулём
+		emitter.compare(reg_t::SCRATCH, static_cast <uint32_t> (0));
+		// Выполняем переход к отсутствию совпадения при невозможности его
+		emitter.branch(cond_t::EQUAL, none);
+	}
+	/**
+	 * Если отбор позиции начала попытки сопоставления порождается
+	 */
+	if(seek) {
+		// Выполняем расстановку метки отбора позиции начала попытки
+		emitter.place(seeker);
+		// Выполняем вызов подпрограммы отбора позиции начала попытки
+		invoke(emitter, SLOT_SEEKING, spill, reg_t::KEEPER);
+		// Выполняем установку отобранной позиции начала попытки
+		emitter.move(reg_t::KEEPER, reg_t::SCRATCH);
+		// Выполняем сравнение позиции начала попытки с размером текста
+		emitter.compare(reg_t::KEEPER, reg_t::SIZE);
+		/**
+		 * Выполняем переход к отсутствию совпадения по исчерпании текста
+		 *
+		 * @details Отбор выдаёт размер текста, позиции возможного начала совпадения
+		 *          не обнаружив, а совпадение в позиции конца текста при действующем
+		 *          отборе невозможно: отбор ведётся по байту, совпадением
+		 *          сопоставляемому, отчего пустое совпадение его не имеет.
+		 *
+		 */
+		emitter.branch(cond_t::ABOVE, none);
+	}
 	// Выполняем расстановку метки начала очередной попытки сопоставления
 	emitter.place(attempt);
 	// Выполняем установку позиции сопоставления в позицию начала попытки
 	emitter.move(reg_t::CURSOR, reg_t::KEEPER);
 	// Номер порождаемого ряда повторения одиночного символа
 	size_t index = 0;
+	/**
+	 * Получаем количество символов, сопоставление каких отбором уже выполнено
+	 *
+	 * @details Отбор позиции начала попытки ищет в тексте ведущий литерал
+	 *          совпадения, отчего сопоставление символов этого литерала
+	 *          порождённым кодом повторяло бы уже выполненное. Сопоставление
+	 *          их заменяется продвижением позиции, а совпадение символов
+	 *          литерала с инструкциями программы проверяется порождением:
+	 *          несовпадение прекращает замену, а не порождает неверный код.
+	 *
+	 */
+	size_t verified = (seek ? this->_prefilter.leading.size() : 0);
+	// Количество символов, сопоставление каких заменено продвижением позиции
+	size_t elided = 0;
 	/**
 	 * Получаем метку отказа сопоставления, действующую в начале программы
 	 *
@@ -376,6 +575,45 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	while(true) {
 		// Получаем исполняемую инструкцию программы
 		const instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+		/**
+		 * Если инструкция сохраняет позицию в ячейке захвата
+		 *
+		 * @details Сохранение кода не порождает и замену сопоставления
+		 *          продвижением позиции не прерывает.
+		 *
+		 */
+		if(instruction.type == opcode_t::SAVE) {
+			// Переходим к следующей инструкции программы
+			pc++;
+			// Продолжаем обход инструкций программы
+			continue;
+		}
+		/**
+		 * Если сопоставление символа выполнено отбором позиции начала попытки
+		 */
+		if((verified > 0) && (elided < MAX_ELISION) && (instruction.type == opcode_t::CHAR) &&
+		 !hasFlag(instruction.flags, flag_t::CASELESS) &&
+		 (instruction.letter.code == static_cast <uint32_t> (static_cast <uint8_t> (this->_prefilter.leading.at(elided))))) {
+			// Увеличиваем количество символов, заменённых продвижением позиции
+			elided++;
+			// Уменьшаем количество символов, сопоставление каких выполнено отбором
+			verified--;
+			// Переходим к следующей инструкции программы
+			pc++;
+			// Продолжаем обход инструкций программы
+			continue;
+		}
+		// Выполняем прекращение замены сопоставления продвижением позиции
+		verified = 0;
+		/**
+		 * Если сопоставление символов заменено продвижением позиции
+		 */
+		if(elided > 0) {
+			// Выполняем продвижение позиции сопоставления на заменённые символы
+			emitter.add(reg_t::CURSOR, reg_t::CURSOR, static_cast <uint32_t> (elided));
+			// Выполняем сброс количества заменённых символов
+			elided = 0;
+		}
 		/**
 		 * Если инструкция сопоставляет одиночный символ
 		 */
@@ -398,15 +636,6 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			emitter.branch(cond_t::EQUAL, failure);
 			// Переходим к следующей позиции текста сопоставления
 			emitter.add(reg_t::CURSOR, reg_t::CURSOR, 1);
-			// Переходим к следующей инструкции программы
-			pc++;
-			// Продолжаем обход инструкций программы
-			continue;
-		}
-		/**
-		 * Если инструкция сохраняет позицию в ячейке захвата
-		 */
-		if(instruction.type == opcode_t::SAVE) {
 			// Переходим к следующей инструкции программы
 			pc++;
 			// Продолжаем обход инструкций программы
@@ -508,8 +737,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	emitter.branch(cond_t::ABOVE, none);
 	// Переходим к следующей позиции начала попытки сопоставления
 	emitter.add(reg_t::KEEPER, reg_t::KEEPER, 1);
-	// Выполняем переход к началу очередной попытки сопоставления
-	emitter.jump(attempt);
+	// Выполняем переход к отбору позиции начала очередной попытки сопоставления
+	emitter.jump(seek ? seeker : attempt);
 	// Выполняем расстановку метки обнаружения совпадения в тексте
 	emitter.place(found);
 	// Выполняем запись начальной границы обнаруженного совпадения
@@ -554,9 +783,15 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          перемещает их в памяти, отчего адрес, взятый прежде, обесценивается.
 	 *
 	 */
-	for(size_t i = 0; i < this->_context.size(); i++)
+	for(size_t i = SLOT_TABLES; i < this->_context.size(); i++)
 		// Выполняем установку адреса таблицы принадлежности байтов
-		this->_context.at(i) = (this->_members.data() + (i * TABLE));
+		this->_context.at(i) = (this->_members.data() + ((i - SLOT_TABLES) * TABLE));
+	// Выполняем установку адреса предварительного отбора позиций
+	this->_context.at(SLOT_PREFILTER) = &this->_prefilter;
+	// Выполняем установку адреса подпрограммы отбора позиций
+	this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (&seeking);
+	// Выполняем установку адреса подпрограммы проверки возможности совпадения
+	this->_context.at(SLOT_FEASIBLE) = reinterpret_cast <const void *> (&feasible);
 	/**
 	 * Если размещение порождённого машинного кода не выполнено
 	 */
@@ -582,6 +817,8 @@ void awh::regex::Codegen::clear() noexcept {
 	this->_assembly.release();
 	// Выполняем очистку таблиц принадлежности значений байта
 	this->_members.clear();
+	// Выполняем очистку предварительного отбора позиций
+	this->_prefilter.clear();
 	// Выполняем очистку набора адресов обстановки исполнения
 	this->_context.clear();
 	// Выполняем сброс опознания программы порождённого сопоставителя

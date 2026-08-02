@@ -537,6 +537,16 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	this->_code.push_back(::store(static_cast <uint32_t> (source), static_cast <uint32_t> (base), index));
 }
 /**
+ * @brief Метод размещения вызова подпрограммы по адресу в регистре
+ *
+ * @param reg регистр адреса вызываемой подпрограммы
+ *
+ */
+void awh::regex::Emitter::call(const reg_t reg) noexcept {
+	// Выполняем размещение команды «blr xreg»
+	this->_code.push_back(0xD63F0000u | (static_cast <uint32_t> (reg) << 5));
+}
+/**
  * @brief Метод размещения завершения вызова
  *
  */

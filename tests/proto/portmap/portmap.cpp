@@ -58,3 +58,23 @@ std::unique_ptr <awh::proto::portmap::pcp_t> PortmapFixture::makePcp() const noe
 	// Создаём и возвращаем объект кодека договора PCP
 	return std::make_unique <awh::proto::portmap::pcp_t> (this->_fmk.get(), this->_log.get());
 }
+/**
+ * @brief Фабричный метод создания кодека договора SSDP
+ *
+ * @return сформированный объект кодека договора SSDP
+ *
+ */
+std::unique_ptr <awh::proto::portmap::ssdp_t> PortmapFixture::makeSsdp() const noexcept {
+	// Создаём и возвращаем объект кодека договора SSDP
+	return std::make_unique <awh::proto::portmap::ssdp_t> (this->_fmk.get(), this->_log.get());
+}
+/**
+ * @brief Фабричный метод создания кодека описания устройства UPnP
+ *
+ * @return сформированный объект кодека описания устройства UPnP
+ *
+ */
+std::unique_ptr <awh::proto::portmap::device_t> PortmapFixture::makeDevice() const noexcept {
+	// Создаём и возвращаем объект кодека описания устройства UPnP
+	return std::make_unique <awh::proto::portmap::device_t> (this->_fmk.get(), this->_log.get());
+}

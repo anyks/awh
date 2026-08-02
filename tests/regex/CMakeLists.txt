@@ -72,6 +72,7 @@ if (${GTest_FOUND})
             automaton.cpp
             assembly.cpp
             emitter.cpp
+            codegen.cpp
             engine.cpp
             reference.cpp
             interface.cpp

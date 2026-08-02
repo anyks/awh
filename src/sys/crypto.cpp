@@ -1594,6 +1594,69 @@ namespace driver {
 		return false;
 	}
 	/**
+	 * @brief Функция проверки разрядности ввозимого ключа RSA
+	 *
+	 * @details Выработка ключа отвергает разрядность ниже двух тысяч, а ввод
+	 *          принимал всякую: слабый ключ из файла доходил до шифрования и
+	 *          подписи, никем не остановленный. Разбор разный по роду ключа.
+	 *
+	 *          Приватный ключ - свой: слабость его есть недосмотр той же
+	 *          стороны, что и выработку заказывает, и потому отвергается наравне
+	 *          с выработкой. Открытый ключ - чужой: разрядность его выбрал тот,
+	 *          с кем идёт работа, и отказ здесь означал бы не стойкость, а
+	 *          невозможность работать вовсе. Он оглашается предупреждением, а
+	 *          решение оставлено вызывающему.
+	 *
+	 *          Порог задан меткой сборки и потому переменен
+	 *
+	 * @param key  ввозимый ключ RSA
+	 * @param type род ввозимого ключа
+	 * @param log  объект для работы с логами
+	 * @return     признак пригодности ключа к работе
+	 *
+	 */
+	static bool strength(EVP_PKEY * key, const crypto_t::key_type_t type, const log_t * log) noexcept {
+		// Получаем разрядность ввозимого ключа
+		const size_t bits = static_cast <size_t> (::EVP_PKEY_bits(key));
+		// Если разрядность ключа порога достигает
+		if(bits >= static_cast <size_t> (AWH_CRYPTO_RSA_BITS))
+			// Выводим признак пригодности ключа
+			return true;
+		// Если ввозится приватный ключ
+		if(type == crypto_t::key_type_t::PRIVATE){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				log->debug("Private key size %zu bits is below the limit", __PRETTY_FUNCTION__, make_tuple(bits), log_t::flag_t::CRITICAL, bits);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log->print("Private key size %zu bits is below the limit", log_t::flag_t::CRITICAL, bits);
+			#endif
+			// Выводим признак непригодности ключа
+			return false;
+		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем предупреждение в лог
+			log->debug("Public key size %zu bits is below the recommended limit", __PRETTY_FUNCTION__, make_tuple(bits), log_t::flag_t::WARNING, bits);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем предупреждение в лог
+			log->print("Public key size %zu bits is below the recommended limit", log_t::flag_t::WARNING, bits);
+		#endif
+		// Выводим признак пригодности ключа: разрядность его выбрана чужой стороной
+		return true;
+	}
+	/**
 	 * @brief Функция установки схемы дополнения подписи RSA
 	 *
 	 * @details Схема применяется к ключам RSA и только к ним: у ключей иного
@@ -4713,6 +4776,13 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 				EVP_PKEY * pkey = ::PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
 				// Освобождаем объект BIO
 				::BIO_free(bio);
+				// Если публичный ключ получен, но разрядности его недостаточно
+				if((pkey != nullptr) && !driver::strength(pkey, key_type_t::PUBLIC, this->_log)){
+					// Освобождаем ввезённый ключ, прежний остаётся нетронутым
+					::EVP_PKEY_free(pkey);
+					// Снимаем указатель освобождённого ключа
+					pkey = nullptr;
+				}
 				// Если публичный ключ получен
 				if(pkey != nullptr){
 					// Получаем ссылку на объект ключа RSA
@@ -4831,6 +4901,13 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 				EVP_PKEY * pkey = ::PEM_read_bio_PrivateKey(bio, nullptr, nullptr, this->_params.passwordRSA.empty() ? nullptr : reinterpret_cast <void *> (&this->_params.passwordRSA.front()));
 				// Освобождаем объект BIO
 				::BIO_free(bio);
+				// Если приватный ключ получен, но разрядности его недостаточно
+				if((pkey != nullptr) && !driver::strength(pkey, key_type_t::PRIVATE, this->_log)){
+					// Освобождаем ввезённый ключ, прежний остаётся нетронутым
+					::EVP_PKEY_free(pkey);
+					// Снимаем указатель освобождённого ключа
+					pkey = nullptr;
+				}
 				// Если приватный ключ получен
 				if(pkey != nullptr){
 					// Получаем ссылку на объект ключа RSA
@@ -5154,6 +5231,13 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 					EVP_PKEY * pkey = ::PEM_read_PUBKEY(file, nullptr, nullptr, nullptr);
 					// Закрываем файл
 					::fclose(file);
+					// Если публичный ключ получен, но разрядности его недостаточно
+					if((pkey != nullptr) && !driver::strength(pkey, key_type_t::PUBLIC, this->_log)){
+						// Освобождаем ввезённый ключ, прежний остаётся нетронутым
+						::EVP_PKEY_free(pkey);
+						// Снимаем указатель освобождённого ключа
+						pkey = nullptr;
+					}
 					// Если публичный ключ получен
 					if(pkey != nullptr){
 						// Получаем ссылку на объект ключа RSA
@@ -5219,6 +5303,13 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 					EVP_PKEY * pkey = ::PEM_read_PUBKEY(file, nullptr, nullptr, nullptr);
 					// Закрываем файл
 					::fclose(file);
+					// Если публичный ключ получен, но разрядности его недостаточно
+					if((pkey != nullptr) && !driver::strength(pkey, key_type_t::PUBLIC, this->_log)){
+						// Освобождаем ввезённый ключ, прежний остаётся нетронутым
+						::EVP_PKEY_free(pkey);
+						// Снимаем указатель освобождённого ключа
+						pkey = nullptr;
+					}
 					// Если публичный ключ получен
 					if(pkey != nullptr){
 						// Получаем ссылку на объект ключа RSA
@@ -5337,6 +5428,13 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 					EVP_PKEY * pkey = ::PEM_read_PrivateKey(file, nullptr, nullptr, this->_params.passwordRSA.empty() ? nullptr : reinterpret_cast <void *> (&this->_params.passwordRSA.front()));
 					// Закрываем файл
 					::fclose(file);
+					// Если приватный ключ получен, но разрядности его недостаточно
+					if((pkey != nullptr) && !driver::strength(pkey, key_type_t::PRIVATE, this->_log)){
+						// Освобождаем ввезённый ключ, прежний остаётся нетронутым
+						::EVP_PKEY_free(pkey);
+						// Снимаем указатель освобождённого ключа
+						pkey = nullptr;
+					}
 					// Если приватный ключ получен
 					if(pkey != nullptr){
 						// Получаем ссылку на объект ключа RSA
@@ -5402,6 +5500,13 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 					EVP_PKEY * pkey = ::PEM_read_PrivateKey(file, nullptr, nullptr, this->_params.passwordRSA.empty() ? nullptr : reinterpret_cast <void *> (&this->_params.passwordRSA.front()));
 					// Закрываем файл
 					::fclose(file);
+					// Если приватный ключ получен, но разрядности его недостаточно
+					if((pkey != nullptr) && !driver::strength(pkey, key_type_t::PRIVATE, this->_log)){
+						// Освобождаем ввезённый ключ, прежний остаётся нетронутым
+						::EVP_PKEY_free(pkey);
+						// Снимаем указатель освобождённого ключа
+						pkey = nullptr;
+					}
 					// Если приватный ключ получен
 					if(pkey != nullptr){
 						// Получаем ссылку на объект ключа RSA

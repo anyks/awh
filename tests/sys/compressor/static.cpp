@@ -325,16 +325,16 @@ TEST_F(CompressorFixture, StreamMoveResetsSourceTest){
 TEST_F(CompressorFixture, TakeoverAfterFailedReinitTest){
 	// Формируем текст для компрессии
 	const std::string text = "Anyks Framework takeover reinit payload, Anyks Framework takeover reinit payload!!!!!!!!?";
-	// Устанавливаем размер скользящего окна GZip
-	ASSERT_TRUE(this->_compressor->wbitsGZip(15));
+	// Устанавливаем размер скользящего окна Deflate
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
 	// Включаем флаг переиспользования контекста компрессии
-	ASSERT_TRUE(this->_compressor->takeoverGZip(awh::compressor::event_t::ENCODE, true));
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::ENCODE, true));
 	// Включаем флаг переиспользования контекста декомпрессии
-	ASSERT_TRUE(this->_compressor->takeoverGZip(awh::compressor::event_t::DECODE, true));
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::DECODE, true));
 	// Выполняем пересборку контекстов с заведомо некорректным размером скользящего окна
-	ASSERT_FALSE(this->_compressor->wbitsGZip(2));
+	ASSERT_FALSE(this->_compressor->wbitsDeflate(2));
 	// Возвращаем корректный размер скользящего окна
-	ASSERT_TRUE(this->_compressor->wbitsGZip(15));
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
 	// Выполняем компрессию данных
 	const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::DEFLATE);
 	// Проверяем что результат компрессии не пустой
@@ -593,12 +593,12 @@ TEST_F(CompressorFixture, LevelAppliesToLiveTakeoverTest){
 	for(uint16_t i = 0; i < 512; i++)
 		// Добавляем очередную порцию данных
 		text.append("Anyks Framework takeover level payload ");
-	// Устанавливаем размер скользящего окна GZip
-	ASSERT_TRUE(this->_compressor->wbitsGZip(15));
+	// Устанавливаем размер скользящего окна Deflate
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
 	// Устанавливаем максимальный уровень компрессии
 	this->_compressor->level(awh::compressor::level_t::BEST);
 	// Включаем флаг переиспользования контекста компрессии
-	ASSERT_TRUE(this->_compressor->takeoverGZip(awh::compressor::event_t::ENCODE, true));
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::ENCODE, true));
 	// Выполняем компрессию данных на максимальном уровне компрессии
 	const size_t best = this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::DEFLATE).size();
 	// Проверяем что результат компрессии получен
@@ -736,30 +736,36 @@ TEST_F(CompressorFixture, WindowBitsRangeTest){
 	// Формируем текст для компрессии
 	const std::string text = "Anyks Framework window bits payload!!!!!!!!!!!!!!!!?";
 	// Устанавливаем допустимый размер скользящего окна GZip
-	ASSERT_TRUE(this->_compressor->wbitsGZip(15));
+	this->_compressor->wbitsGZip(15);
 	// Устанавливаем допустимый размер скользящего окна Zlib
 	this->_compressor->wbitsZlib(15);
+	// Устанавливаем допустимый размер скользящего окна Deflate
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
 	// Список значений, лежащих вне допустимого промежутка
 	const int16_t invalid[] = {-1, 0, 2, 7, 16, 32, 255};
 	/**
 	 * Выполняем перебор значений вне допустимого промежутка
 	 */
 	for(auto & wbits : invalid){
-		// Проверяем что установщик GZip отвергает значение
-		ASSERT_FALSE(this->_compressor->wbitsGZip(wbits)) << "wbits = " << wbits;
+		// Выполняем установку значения для GZip
+		this->_compressor->wbitsGZip(wbits);
 		// Выполняем установку значения для Zlib
 		this->_compressor->wbitsZlib(wbits);
+		// Проверяем что установщик Deflate отвергает значение
+		ASSERT_FALSE(this->_compressor->wbitsDeflate(wbits)) << "wbits = " << wbits;
 		// Проверяем что прежний размер окна GZip сохранён и компрессия работает
 		ASSERT_EQ(text, this->_compressor->decompress <std::string> (this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::GZIP), awh::compressor::method_t::GZIP)) << "wbits = " << wbits;
 		// Проверяем что прежний размер окна Zlib сохранён и компрессия работает
 		ASSERT_EQ(text, this->_compressor->decompress <std::string> (this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::ZLIB), awh::compressor::method_t::ZLIB)) << "wbits = " << wbits;
+		// Проверяем что прежний размер окна Deflate сохранён и компрессия работает
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::DEFLATE), awh::compressor::method_t::DEFLATE)) << "wbits = " << wbits;
 	}
 	/**
 	 * Выполняем перебор значений внутри допустимого промежутка
 	 */
 	for(int16_t wbits = 9; wbits <= 15; wbits++)
-		// Проверяем что установщик GZip принимает значение
-		ASSERT_TRUE(this->_compressor->wbitsGZip(wbits)) << "wbits = " << wbits;
+		// Проверяем что установщик Deflate принимает значение
+		ASSERT_TRUE(this->_compressor->wbitsDeflate(wbits)) << "wbits = " << wbits;
 }
 
 /**
@@ -773,10 +779,10 @@ TEST_F(CompressorFixture, WindowBitsRangeTest){
 TEST_F(CompressorFixture, TakeoverRecoversAfterFailedFrameTest){
 	// Формируем текст для компрессии
 	const std::string text = "Anyks Framework takeover recovery payload, Anyks Framework takeover recovery payload!!!!!!!!?";
-	// Устанавливаем размер скользящего окна GZip
-	ASSERT_TRUE(this->_compressor->wbitsGZip(15));
+	// Устанавливаем размер скользящего окна Deflate
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
 	// Включаем флаг переиспользования контекста декомпрессии
-	ASSERT_TRUE(this->_compressor->takeoverGZip(awh::compressor::event_t::DECODE, true));
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::DECODE, true));
 	// Выполняем компрессию данных
 	const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::DEFLATE);
 	// Проверяем что результат компрессии не пустой
@@ -935,12 +941,12 @@ TEST_F(CompressorFixture, HighRatioRoundTripTest){
 		// Проверяем что результат декомпрессии совпадает с исходным текстом
 		ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, method)) << "method = " << static_cast <uint16_t> (method);
 	}
-	// Устанавливаем размер скользящего окна GZip
-	ASSERT_TRUE(this->_compressor->wbitsGZip(15));
+	// Устанавливаем размер скользящего окна Deflate
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
 	// Включаем флаг переиспользования контекста компрессии
-	ASSERT_TRUE(this->_compressor->takeoverGZip(awh::compressor::event_t::ENCODE, true));
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::ENCODE, true));
 	// Включаем флаг переиспользования контекста декомпрессии
-	ASSERT_TRUE(this->_compressor->takeoverGZip(awh::compressor::event_t::DECODE, true));
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::DECODE, true));
 	/**
 	 * Выполняем несколько сообщений подряд на переиспользуемом контексте
 	 */
@@ -1359,4 +1365,67 @@ TEST_F(CompressorFixture, SnappyOversizedLengthTest){
 	this->_compressor->decompress(frame.data(), frame.size(), awh::compressor::method_t::SNAPPY, result);
 	// Проверяем что кадр отвергнут
 	ASSERT_TRUE(result.empty());
+}
+
+/**
+ * @brief Проверка распаковки, заполняющей рабочий буфер ровно по краю
+ *
+ * @details Начальный рабочий буфер распаковки семейства Zlib равен 255 октетам,
+ *          и дальше растёт удвоением. Данные, чья длина ложится на эту цепочку
+ *          ровно, уводят работу на ещё один заход с уже съеденным входом: движок
+ *          отвечает Z_BUF_ERROR, и принять этот код за отказ значит отвергнуть
+ *          законный кадр
+ *
+ */
+TEST_F(CompressorFixture, ExactBufferFillTest){
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::DEFLATE
+	};
+	// Список проверяемых длин, ложащихся на цепочку удвоения рабочего буфера
+	const size_t sizes[] = {255, 510, 1020, 2040, 4080};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		/**
+		 * Выполняем перебор проверяемых длин
+		 */
+		for(auto & size : sizes){
+			/**
+			 * Выполняем перебор наполнений буфера: нули, возрастающая
+			 * последовательность и слабо сжимаемая псевдослучайная величина
+			 */
+			for(uint16_t kind = 0; kind < 3; kind++){
+				// Буфер исходных данных
+				std::string text(size, '\0');
+				/**
+				 * Наполняем буфер данными выбранного вида
+				 */
+				for(size_t i = 0; i < size; i++){
+					// Определяем вид наполнения буфера
+					switch(kind){
+						// Возрастающая последовательность
+						case 1: text[i] = static_cast <char> (i & 0xff); break;
+						// Псевдослучайная величина
+						case 2: text[i] = static_cast <char> ((i * 2654435761u) >> 13); break;
+					}
+				}
+				// Результат компрессии
+				std::string compressed;
+				// Выполняем компрессию исходных данных
+				this->_compressor->compress(text.data(), text.size(), method, compressed);
+				// Проверяем что компрессия выполнена
+				ASSERT_FALSE(compressed.empty()) << "method = " << static_cast <uint16_t> (method) << ", size = " << size << ", kind = " << kind;
+				// Результат декомпрессии
+				std::string restored;
+				// Выполняем декомпрессию полученного кадра
+				this->_compressor->decompress(compressed.data(), compressed.size(), method, restored);
+				// Проверяем что восстановленные данные совпадают с исходными
+				ASSERT_EQ(text, restored) << "method = " << static_cast <uint16_t> (method) << ", size = " << size << ", kind = " << kind;
+			}
+		}
+	}
 }

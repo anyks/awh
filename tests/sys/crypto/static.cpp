@@ -27,6 +27,11 @@
 #include <openssl/err.h>
 
 /**
+ * Стандартный заголовочный файл работы с файлами
+ */
+#include <fstream>
+
+/**
  * @brief Тест создания объекта шифрования
  *
  */
@@ -1350,6 +1355,77 @@ TEST_F(CryptoFixture, UnknownHashCryptoTest){
 	EXPECT_TRUE(this->_crypto->hash <std::string> (text, static_cast <awh::crypto_t::hash_t> (0xFE)).empty());
 	// Проверяем отказ подписи типом хэш-суммы, разбору не знакомым
 	EXPECT_TRUE(this->_crypto->hmac <std::string> (key, text, static_cast <awh::crypto_t::hash_t> (0xFE)).empty());
+}
+
+/**
+ * @brief Тест разрядности ввозимого ключа RSA
+ *
+ * @details Выработка ключа отвергает разрядность ниже двух тысяч, а ввод принимал
+ *          всякую: слабый ключ из файла доходил до шифрования и подписи. Приватный
+ *          ключ - свой, и отвергается наравне с выработкой; открытый - чужой, и
+ *          его разрядность оглашается предупреждением, а решение оставлено
+ *          вызывающему
+ *
+ */
+TEST_F(CryptoFixture, ImportKeyStrengthCryptoTest){
+	// Приватный ключ RSA разрядностью в тысячу двадцать четыре
+	const std::string privateKey =
+		"-----BEGIN PRIVATE KEY-----\n"
+		"MIICeQIBADANBgkqhkiG9w0BAQEFAASCAmMwggJfAgEAAoGBAMNRiIIFp4wi7mkq\n"
+		"+hU5LqNNPRSDDaY6OpUJdyPycauoW7QLV0cCoii8pv3OEAhj5ru4TYXIWiHMex2L\n"
+		"EvOY7s4CeM4/iWqL/eYwyjeqdfP1xIopFK6eAmcuVnKXSnx8WoAsNw0q4SivbCtQ\n"
+		"57+ESZsuTWhC40lfmsHZW6k9BNshAgMBAAECgYEAlKsO2MktCwHbrrlDubvYv/we\n"
+		"repDDW/s/1xBD1+PHjX790Nan3Zlr9RI149trLU9/0z91QL3eBqI66fcOQcDXP1n\n"
+		"8rSZE7CLA72aPyHuA5BSjKBtRbOgtNyO2GWsUlWouCVgXFUYBCopFvAaysD8Mmye\n"
+		"MJtOFONWlRW5S5xA6nECQQD3VyMMLk44UePSBdUfKAjsXpV9U8UARk7C5QNU9+T0\n"
+		"SSEgkFERM7/Dm/KYyfBPGa1QnVENds6gCNnVpAInVfpfAkEAyigiZtcd1mtDgEyP\n"
+		"uXxSyrdyDxO1x38Arus9mZ93w96jZEl4EHVsr+ME7ABbre+jwc7ldmvCkTNlG7j1\n"
+		"qBAafwJBAMniuPu3TCdSSCdklVmx/t6YMWKznogj2yPfdAHFuX7ftgdzZIgq+ip6\n"
+		"vuCRa/HUno+/aKoZwHwF3XAxR4S9+/cCQQDFVeQvC3I+6robtaDe6bNP2z7l5NGf\n"
+		"iiQ6m7uoCHi6pMxOi0E+n8GW+D7HuZnE8paiC7sGnC5z2v2p0CVNB1s1AkEAlRyc\n"
+		"FOLMKEguotYBC6GK33KrXfpyzzvJUmHfZWkGDktVcLygz9WqXEFYoeJL/SxG4DSB\n"
+		"in18lhsNIWYfXpED0A==\n"
+		"-----END PRIVATE KEY-----";
+	// Открытый ключ RSA той же разрядности
+	const std::string publicKey =
+		"-----BEGIN PUBLIC KEY-----\n"
+		"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDDUYiCBaeMIu5pKvoVOS6jTT0U\n"
+		"gw2mOjqVCXcj8nGrqFu0C1dHAqIovKb9zhAIY+a7uE2FyFohzHsdixLzmO7OAnjO\n"
+		"P4lqi/3mMMo3qnXz9cSKKRSungJnLlZyl0p8fFqALDcNKuEor2wrUOe/hEmbLk1o\n"
+		"QuNJX5rB2VupPQTbIQIDAQAB\n"
+		"-----END PUBLIC KEY-----";
+	// Проверяем отказ ввода приватного ключа недостаточной разрядности
+	EXPECT_FALSE(this->_crypto->setPrivateKeyRSA(privateKey));
+	// Проверяем приём открытого ключа недостаточной разрядности
+	EXPECT_TRUE(this->_crypto->setPublicKeyRSA(publicKey));
+	// Выполняем генерацию приватного ключа RSA годной разрядности
+	ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
+	/**
+	 * Отвергнутый ключ прежнего не трогает: ввозимый освобождается прежде того,
+	 * как объект его перенимает
+	 */
+	// Проверяем отказ ввода приватного ключа недостаточной разрядности
+	EXPECT_FALSE(this->_crypto->setPrivateKeyRSA(privateKey));
+	// Буфер подписи
+	std::vector <uint8_t> signature;
+	// Сообщение подписи
+	const std::vector <uint8_t> text = {0x41, 0x4E, 0x59, 0x4B, 0x53};
+	// Проверяем, что прежний ключ работать не перестал
+	EXPECT_TRUE(this->_crypto->signWithPrivateKey(text, awh::crypto_t::hash_t::SHA256, signature));
+	// Путь к файлу приватного ключа недостаточной разрядности
+	const std::string path = "./short_private_key.pem";
+	// Открываем файл приватного ключа на запись
+	std::ofstream file(path, std::ios::binary);
+	// Проверяем что файл открыт
+	ASSERT_TRUE(file.is_open());
+	// Выписываем приватный ключ в файл
+	file << privateKey;
+	// Закрываем файл приватного ключа
+	file.close();
+	// Проверяем отказ вычитывания приватного ключа недостаточной разрядности
+	EXPECT_FALSE(this->_crypto->loadPrivateKeyRSA(path));
+	// Удаляем файл приватного ключа
+	::remove(path.c_str());
 }
 
 /**

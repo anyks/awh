@@ -2661,3 +2661,64 @@ TEST_F(ChronoFixture, ExecutionActualBoundChronoTest){
 	// Выполняем проверку совпадения остатка с расстоянием до границы периода
 	ASSERT_EQ(this->_chrono->end(last, awh::Chrono::type_t::YEAR) - last, 0ULL);
 }
+/**
+ * @brief Тест отсутствия доли миллисекунды у штампа времени
+ *
+ * @details Штамп времени задан миллисекундами, и доли миллисекунды в нём нет:
+ *          извлечение микросекунд и наносекунд по штампу брало остаток от него
+ *          самого, отчего в микросекундах выводились миллисекунды, а в
+ *          наносекундах - секунды с миллисекундами
+ *
+ */
+TEST_F(ChronoFixture, ExecutionStampFractionChronoTest){
+	// Штамп времени с ненулевой долей секунды
+	const uint64_t date = static_cast <uint64_t> (1743943021520);
+	// Выполняем проверку количества миллисекунд штампа времени
+	ASSERT_EQ(this->_chrono->get <uint64_t> (date, awh::Chrono::unit_t::MILLISECONDS), static_cast <uint64_t> (520));
+	// Выполняем проверку отсутствия микросекунд у штампа времени
+	ASSERT_EQ(this->_chrono->get <uint64_t> (date, awh::Chrono::unit_t::MICROSECONDS), static_cast <uint64_t> (0));
+	// Выполняем проверку отсутствия наносекунд у штампа времени
+	ASSERT_EQ(this->_chrono->get <uint64_t> (date, awh::Chrono::unit_t::NANOSECONDS), static_cast <uint64_t> (0));
+	// Выполняем проверку ширины поля микросекунд при выводе текстом
+	ASSERT_EQ(this->_chrono->get <std::string> (date, awh::Chrono::unit_t::MICROSECONDS), "000");
+	// Выполняем проверку ширины поля наносекунд при выводе текстом
+	ASSERT_EQ(this->_chrono->get <std::string> (date, awh::Chrono::unit_t::NANOSECONDS), "000000");
+	/**
+	 * Доли объекта даты штампом времени не подменяются: их знают установщики
+	 */
+	// Выполняем установку штампа времени в наносекундах
+	this->_chrono->timestamp((date * static_cast <uint64_t> (1000000)) + static_cast <uint64_t> (123456), awh::Chrono::type_t::NANOSECONDS);
+	// Выполняем проверку сохранения доли миллисекунды в микросекундах
+	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::Chrono::unit_t::MICROSECONDS, awh::Chrono::storage_t::LOCAL), static_cast <uint64_t> (123));
+	// Выполняем проверку сохранения доли миллисекунды в наносекундах
+	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::Chrono::unit_t::NANOSECONDS, awh::Chrono::storage_t::LOCAL), static_cast <uint64_t> (123456));
+	// Выполняем установку штампа времени в миллисекундах
+	this->_chrono->timestamp(date, awh::Chrono::type_t::MILLISECONDS);
+	// Выполняем проверку сброса чужой доли миллисекунды в микросекундах
+	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::Chrono::unit_t::MICROSECONDS, awh::Chrono::storage_t::LOCAL), static_cast <uint64_t> (0));
+	// Выполняем проверку сброса чужой доли миллисекунды в наносекундах
+	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::Chrono::unit_t::NANOSECONDS, awh::Chrono::storage_t::LOCAL), static_cast <uint64_t> (0));
+}
+/**
+ * @brief Тест целочисленного счёта номера недели года
+ *
+ * @details Номер недели округляется к ближайшей: счёт вёлся округлением
+ *          вещественного частного и зависел от разрядности вещественного типа
+ *          платформы, тогда как прибавление половины недели с делением нацело
+ *          даёт то же самое на любой из них
+ *
+ */
+TEST_F(ChronoFixture, ExecutionWeekNumberRoundingChronoTest){
+	// Выполняем разбор записи середины третьих суток года
+	this->_chrono->parse("2025-01-03T12:00:00+0000", "%Y-%m-%dT%H:%M:%S%z", awh::Chrono::storage_t::LOCAL);
+	// Двое с половиной суток от начала года ближе к нулевой неделе
+	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::Chrono::unit_t::WEEKS, awh::Chrono::storage_t::LOCAL), static_cast <uint64_t> (0));
+	// Выполняем разбор записи середины четвёртых суток года
+	this->_chrono->parse("2025-01-04T13:00:00+0000", "%Y-%m-%dT%H:%M:%S%z", awh::Chrono::storage_t::LOCAL);
+	// Трое с половиной суток от начала года ближе к первой неделе
+	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::Chrono::unit_t::WEEKS, awh::Chrono::storage_t::LOCAL), static_cast <uint64_t> (1));
+	// Выполняем разбор записи последних суток года
+	this->_chrono->parse("2025-12-31T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z", awh::Chrono::storage_t::LOCAL);
+	// Триста шестьдесят четверо суток от начала года ближе к пятьдесят второй неделе
+	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::Chrono::unit_t::WEEKS, awh::Chrono::storage_t::LOCAL), static_cast <uint64_t> (52));
+}
