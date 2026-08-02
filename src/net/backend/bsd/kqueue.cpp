@@ -5630,7 +5630,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void __set__(::io::timeout_t & tm, const event::id_t eid, const ::timer::flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
+		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -5642,7 +5642,7 @@ namespace timer {
 				 */
 				switch(static_cast <uint8_t> (flag)){
 					// Если установлен флаг SIMPLE, таймер устанавливается если ранее не был установлен для данного события
-					case static_cast <uint8_t> (::timer::flag_t::SIMPLE): {
+					case static_cast <uint8_t> (flag_t::SIMPLE): {
 						// Если время задержки таймаута установлено
 						if(tm.delay > 0){
 							/**
@@ -5682,7 +5682,7 @@ namespace timer {
 						}
 					} break;
 					// Если установлен флаг FORCED, таймер устанавливается принудительно, даже если ранее был установлен для данного события
-					case static_cast <uint8_t> (::timer::flag_t::FORCED): {
+					case static_cast <uint8_t> (flag_t::FORCED): {
 						// Если время задержки таймаута не установлено
 						if(tm.delay == 0)
 							// Устанавливаем время задержки таймаута по умолчанию в 1 миллисекунду
@@ -5744,9 +5744,9 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static inline void set(::io::timeout_t & tm, const event::id_t eid, const ::timer::flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
+		static inline void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
-			if((flag == ::timer::flag_t::SIMPLE) && (tm.delay == 0))
+			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
 				return;
 			// Выполняем постановку дедлайна
@@ -5762,7 +5762,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
 			set(rec.tm, eid, rec.flag, rate, log);
 			/**
@@ -5786,7 +5786,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec1, ::timer::record_t rec2, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -5813,7 +5813,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -5843,7 +5843,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -5876,7 +5876,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, ::timer::record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -5912,7 +5912,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, ::timer::record_t rec5, ::timer::record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -6024,7 +6024,7 @@ namespace timer {
 										 */
 										else if(node->state.status == event::status_t::PENDING)
 											// Ставим таймер на следующий период
-											set(node->timeout, node->id, ::timer::flag_t::FORCED, rate, log);
+											set(node->timeout, node->id, flag_t::FORCED, rate, log);
 									}
 								}
 							} break;
@@ -6310,8 +6310,8 @@ namespace timer {
 														if(client->timeouts.reconnect.delay == 0)
 															// Устанавливаем задержку таймаута на значение в 5 секунд
 															client->timeouts.reconnect.delay = 0x1388;
-														// Добавляем таймаут на переподключение
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+														// Добавляем таймаут на ожидание переподключения к серверу
+														set({flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
 													}
 												}
 											}
@@ -7234,7 +7234,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void __set__(::io::timeout_t & tm, const event::id_t eid, const ::timer::flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
+		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -7246,7 +7246,7 @@ namespace timer {
 				 */
 				switch(static_cast <uint8_t> (flag)){
 					// Если установлен флаг SIMPLE, таймер устанавливается если ранее не был установлен для данного события
-					case static_cast <uint8_t> (::timer::flag_t::SIMPLE): {
+					case static_cast <uint8_t> (flag_t::SIMPLE): {
 						// Если время задержки таймаута установлено
 						if(tm.delay > 0){
 							/**
@@ -7305,7 +7305,7 @@ namespace timer {
 						}
 					} break;
 					// Если установлен флаг FORCED, таймер устанавливается принудительно, даже если ранее был установлен для данного события
-					case static_cast <uint8_t> (::timer::flag_t::FORCED): {
+					case static_cast <uint8_t> (flag_t::FORCED): {
 						// Если время задержки таймаута не установлено
 						if(tm.delay == 0)
 							// Устанавливаем время задержки таймаута по умолчанию в 1 миллисекунду
@@ -7393,9 +7393,9 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static inline void set(::io::timeout_t & tm, const event::id_t eid, const ::timer::flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
+		static inline void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
-			if((flag == ::timer::flag_t::SIMPLE) && (tm.delay == 0))
+			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
 				return;
 			// Выполняем постановку дедлайна
@@ -7411,7 +7411,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
 			set(rec.tm, eid, rec.flag, rate, log);
 			/**
@@ -7435,7 +7435,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec1, ::timer::record_t rec2, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -7462,7 +7462,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -7492,7 +7492,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -7525,7 +7525,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, ::timer::record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -7561,7 +7561,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(::timer::record_t rec1, ::timer::record_t rec2, ::timer::record_t rec3, ::timer::record_t rec4, ::timer::record_t rec5, ::timer::record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -7704,7 +7704,7 @@ namespace timer {
 										 */
 										else if(node->state.status == event::status_t::PENDING)
 											// Ставим таймер на следующий период
-											set(node->timeout, node->id, ::timer::flag_t::FORCED, rate, log);
+											set(node->timeout, node->id, flag_t::FORCED, rate, log);
 									}
 								}
 							} break;
@@ -7990,8 +7990,8 @@ namespace timer {
 														if(client->timeouts.reconnect.delay == 0)
 															// Устанавливаем задержку таймаута на значение в 5 секунд
 															client->timeouts.reconnect.delay = 0x1388;
-														// Добавляем таймаут на переподключение
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+														// Добавляем таймаут на ожидание переподключения к серверу
+														set({flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
 													}
 												}
 											}
@@ -28198,8 +28198,21 @@ namespace io {
 						if(client->timeouts.reconnect.delay == 0)
 							// Устанавливаем задержку таймаута на значение в 5 секунд
 							client->timeouts.reconnect.delay = 0x1388;
-						// Добавляем таймаут на переподключение
-						::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+						/**
+						 * Определяем тип таймера для событий сетевого движка
+						 */
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+							// Если тип таймера для событий сетевого движка является простым
+							case static_cast <uint8_t> (event::timer_t::SIMPLE):
+								// Добавляем таймаут на ожидание переподключения к серверу
+								::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+							break;
+							// Если тип таймера для событий сетевого движка является сложным
+							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+								// Добавляем таймаут на ожидание переподключения к серверу
+								::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+							break;
+						}
 					}
 				}
 			}
