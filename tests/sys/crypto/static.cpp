@@ -32,6 +32,11 @@
 #include <fstream>
 
 /**
+ * Стандартный заголовочный файл примет файла
+ */
+#include <sys/stat.h>
+
+/**
  * @brief Тест создания объекта шифрования
  *
  */
@@ -1394,36 +1399,68 @@ TEST_F(CryptoFixture, ImportKeyStrengthCryptoTest){
 		"P4lqi/3mMMo3qnXz9cSKKRSungJnLlZyl0p8fFqALDcNKuEor2wrUOe/hEmbLk1o\n"
 		"QuNJX5rB2VupPQTbIQIDAQAB\n"
 		"-----END PUBLIC KEY-----";
-	// Проверяем отказ ввода приватного ключа недостаточной разрядности
-	EXPECT_FALSE(this->_crypto->setPrivateKeyRSA(privateKey));
-	// Проверяем приём открытого ключа недостаточной разрядности
-	EXPECT_TRUE(this->_crypto->setPublicKeyRSA(publicKey));
-	// Выполняем генерацию приватного ключа RSA годной разрядности
-	ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
+	// Количество предупреждений, полученных из лога
+	size_t records = 0;
+	// Подписываемся на получение логов
+	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+		// Снимаем предупреждение о неиспользуемом параметре
+		(void) text;
+		// Если получено предупреждение
+		if(flag == awh::log_t::flag_t::WARNING)
+			// Наращиваем количество полученных предупреждений
+			records++;
+	});
+	// Устанавливаем отложенный режим логов, консоль набора не засоряя
+	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	// Проверяем приём приватного ключа недостаточной разрядности
+	EXPECT_TRUE(this->_crypto->setPrivateKeyRSA(privateKey));
+	// Проверяем, что разрядность приватного ключа оглашена
+	EXPECT_EQ(records, static_cast <size_t> (1));
 	/**
-	 * Отвергнутый ключ прежнего не трогает: ввозимый освобождается прежде того,
-	 * как объект его перенимает
+	 * Ключ недостаточной разрядности работать обязан: им расшифровывают старые
+	 * данные и проверяют давние подписи, и отказ на вводе лишил бы вызывающего
+	 * работы, которую тот в состоянии выполнить (5.20)
 	 */
-	// Проверяем отказ ввода приватного ключа недостаточной разрядности
-	EXPECT_FALSE(this->_crypto->setPrivateKeyRSA(privateKey));
-	// Буфер подписи
-	std::vector <uint8_t> signature;
 	// Сообщение подписи
 	const std::vector <uint8_t> text = {0x41, 0x4E, 0x59, 0x4B, 0x53};
-	// Проверяем, что прежний ключ работать не перестал
+	// Буфер подписи
+	std::vector <uint8_t> signature;
+	// Проверяем, что ввезённый ключ работает
 	EXPECT_TRUE(this->_crypto->signWithPrivateKey(text, awh::crypto_t::hash_t::SHA256, signature));
-	// Путь к файлу приватного ключа недостаточной разрядности
-	const std::string path = "./short_private_key.pem";
-	// Открываем файл приватного ключа на запись
-	std::ofstream file(path, std::ios::binary);
-	// Проверяем что файл открыт
-	ASSERT_TRUE(file.is_open());
-	// Выписываем приватный ключ в файл
-	file << privateKey;
-	// Закрываем файл приватного ключа
-	file.close();
-	// Проверяем отказ вычитывания приватного ключа недостаточной разрядности
-	EXPECT_FALSE(this->_crypto->loadPrivateKeyRSA(path));
+	// Проверяем приём открытого ключа недостаточной разрядности
+	EXPECT_TRUE(this->_crypto->setPublicKeyRSA(publicKey));
+	// Проверяем, что разрядность открытого ключа оглашена
+	EXPECT_EQ(records, static_cast <size_t> (2));
+	// Проверяем, что ввезённым открытым ключом подпись проверяется
+	EXPECT_TRUE(this->_crypto->verifyWithPublicKey(text, signature, awh::crypto_t::hash_t::SHA256));
+	// Выполняем генерацию приватного ключа RSA годной разрядности
+	ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
+	// Проверяем, что разрядность годного ключа не оглашается
+	EXPECT_EQ(records, static_cast <size_t> (2));
+	// Снимаем режимы логов
+	this->_log->mode({awh::log_t::mode_t::NONE});
+}
+
+/**
+ * @brief Тест прав файла приватного ключа RSA
+ *
+ * @details Файл заводился обычным открытием, и права его брались у маски создания:
+ *          приватный ключ ложился на диск доступным для чтения всякому в системе
+ *
+ */
+TEST_F(CryptoFixture, KeyFileRightsCryptoTest){
+	// Путь к файлу приватного ключа
+	const std::string path = "./rights_private_key.pem";
+	// Выполняем генерацию приватного ключа RSA
+	ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
+	// Выполняем выписывание приватного ключа RSA в файл
+	ASSERT_TRUE(this->_crypto->savePrivateKeyRSA(path));
+	// Приметы файла приватного ключа
+	struct stat attributes;
+	// Проверяем что приметы файла сняты
+	ASSERT_EQ(::stat(path.c_str(), &attributes), 0);
+	// Проверяем что права файла даны одному лишь владельцу
+	EXPECT_EQ(static_cast <uint32_t> (attributes.st_mode & 0777), static_cast <uint32_t> (0600));
 	// Удаляем файл приватного ключа
 	::remove(path.c_str());
 }

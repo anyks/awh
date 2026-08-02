@@ -2722,3 +2722,33 @@ TEST_F(ChronoFixture, ExecutionWeekNumberRoundingChronoTest){
 	// Триста шестьдесят четверо суток от начала года ближе к пятьдесят второй неделе
 	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::Chrono::unit_t::WEEKS, awh::Chrono::storage_t::LOCAL), static_cast <uint64_t> (52));
 }
+/**
+ * @brief Тест отсчёта количества суток года и номера дня года
+ *
+ * @details Единица DAYS - это количество суток, с начала года прошедших, и
+ *          отсчитывается она от нуля, тогда как переменная формата %j задана
+ *          стандартом как номер дня в году и отсчитывается от единицы: %j всегда
+ *          на единицу больше DAYS, и приводить их к общему отсчёту нельзя
+ *
+ */
+TEST_F(ChronoFixture, ExecutionDaysAgainstYearDayChronoTest){
+	/**
+	 * Выполняем перебор дат, на которых отсчёты расходились бы заметнее всего
+	 */
+	for(const auto & date : {"2025-01-01", "2025-02-28", "2024-02-29", "2024-12-31", "2025-12-31"}){
+		// Выполняем разбор записи даты
+		this->_chrono->parse(std::string(date) + "T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z", awh::Chrono::storage_t::LOCAL);
+		// Получаем количество суток, прошедших с начала года
+		const uint64_t days = this->_chrono->get <uint64_t> (awh::Chrono::unit_t::DAYS, awh::Chrono::storage_t::LOCAL);
+		// Получаем номер дня в году в виде числа
+		const uint64_t number = static_cast <uint64_t> (std::stoull(this->_chrono->format("%j", awh::Chrono::storage_t::LOCAL)));
+		// Выполняем проверку опережения номера дня года на единицу
+		ASSERT_EQ(number, days + static_cast <uint64_t> (1));
+	}
+	// Выполняем разбор записи первого января
+	this->_chrono->parse("2025-01-01T00:00:00+0000", "%Y-%m-%dT%H:%M:%S%z", awh::Chrono::storage_t::LOCAL);
+	// Первого января суток с начала года не прошло
+	ASSERT_EQ(this->_chrono->get <uint64_t> (awh::Chrono::unit_t::DAYS, awh::Chrono::storage_t::LOCAL), static_cast <uint64_t> (0));
+	// Первого января номер дня в году равен единице
+	ASSERT_EQ(this->_chrono->format("%j", awh::Chrono::storage_t::LOCAL), "001");
+}

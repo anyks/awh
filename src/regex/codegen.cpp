@@ -461,8 +461,17 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *
 	 */
 	const bool seek = (this->_prefilter.active && (this->_prefilter.unique || (this->_prefilter.leading.size() > 1)));
-	// Получаем признак порождения проверки возможности совпадения
-	const bool possible = !this->_prefilter.literal.empty();
+	/**
+	 * Получаем признак порождения проверки возможности совпадения
+	 *
+	 * @details Проверка ищет в тексте обязательный литерал совпадения, а отбор
+	 *          позиции начала попытки ищет ведущий: поиск обязательного литерала
+	 *          проходом текста повторял бы уже выполненное, если обязательный
+	 *          литерал ведущим и содержится.
+	 *
+	 */
+	const bool possible = (!this->_prefilter.literal.empty() &&
+	 !(seek && (this->_prefilter.leading.find(this->_prefilter.literal) != string::npos)));
 	// Получаем номер первого места кадра, сохраняющего регистры на время вызова
 	const size_t spill = (runs * SLOTS);
 	/**

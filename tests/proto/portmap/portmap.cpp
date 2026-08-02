@@ -78,3 +78,13 @@ std::unique_ptr <awh::proto::portmap::device_t> PortmapFixture::makeDevice() con
 	// Создаём и возвращаем объект кодека описания устройства UPnP
 	return std::make_unique <awh::proto::portmap::device_t> (this->_fmk.get(), this->_log.get());
 }
+/**
+ * @brief Фабричный метод создания кодека договора SOAP
+ *
+ * @return сформированный объект кодека договора SOAP
+ *
+ */
+std::unique_ptr <awh::proto::portmap::soap_t> PortmapFixture::makeSoap() const noexcept {
+	// Создаём и возвращаем объект кодека договора SOAP
+	return std::make_unique <awh::proto::portmap::soap_t> (this->_fmk.get(), this->_log.get());
+}

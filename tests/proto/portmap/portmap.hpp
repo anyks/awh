@@ -28,6 +28,7 @@
 #include "../../main.hpp"
 #include "../../../include/proto/portmap/pcp.hpp"
 #include "../../../include/proto/portmap/ssdp.hpp"
+#include "../../../include/proto/portmap/soap.hpp"
 #include "../../../include/proto/portmap/device.hpp"
 #include "../../../include/proto/portmap/natpmp.hpp"
 
@@ -81,6 +82,13 @@ class PortmapFixture : public testing::Test {
 		 *
 		 */
 		std::unique_ptr <awh::proto::portmap::device_t> makeDevice() const noexcept;
+		/**
+		 * @brief Фабричный метод создания кодека договора SOAP
+		 *
+		 * @return сформированный объект кодека договора SOAP
+		 *
+		 */
+		std::unique_ptr <awh::proto::portmap::soap_t> makeSoap() const noexcept;
 };
 
 #endif // __AWH_PROTO_PORTMAP_TESTS__
