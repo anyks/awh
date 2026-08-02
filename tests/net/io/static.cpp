@@ -16343,19 +16343,23 @@ TEST_F(IoFixture, IoBandwidthGlobalSharedTest){
  *          сколько нужно для истечения срока. Блоки, отведённые под примеры, для
  *          этого не годятся - сеть с туннелем перехватывает их и отвечает согласием
  *
- * @note Адрес складывается из номера процесса, и это существенно. Ядро запоминает
- *       неудачную запись соседа и после неё отвечает на подключение отказом
- *       **немедленно**, а не ожиданием - повторный прогон по тому же адресу проверял
- *       бы уже не то. Свежий адрес на каждый прогон эту память обходит
+ * @note Адрес складывается из номера процесса и счётчика обращений, и это
+ *       существенно. Ядро запоминает неудачную запись соседа и после неё отвечает на
+ *       подключение отказом **немедленно**, а не ожиданием, - проверка по такому
+ *       адресу проверяла бы уже не то. Номер процесса разводит прогоны между собой,
+ *       счётчик - проверки внутри одного прогона: цикл событий у них общий, он один
+ *       на весь процесс, и общим оказался бы и адрес
  *
  * @return глухой адрес канального блока
  *
  */
 static std::string deafAddress() noexcept {
+	// Счётчик обращений за глухим адресом
+	static uint32_t count = 0;
 	// Получаем номер текущего процесса
 	const uint32_t pid = static_cast <uint32_t> (::getpid());
-	// Складываем адрес канального блока из номера процесса
-	return std::string("169.254.") + std::to_string(((pid >> 8) & 0xFF) | 0x01) + "." + std::to_string((pid & 0xFF) | 0x01);
+	// Складываем адрес канального блока из номера процесса и счётчика обращений
+	return std::string("169.254.") + std::to_string(((pid >> 8) & 0xFF) | 0x01) + "." + std::to_string(((pid + (++count)) & 0xFF) | 0x01);
 }
 
 /**
@@ -16412,8 +16416,15 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
 	const auto start = std::chrono::steady_clock::now();
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll());
 	const std::string sign = std::string("сроков=") + std::to_string(expirations) + " отказов=" + std::to_string(failures) + " удач=" + std::to_string(successes);
-	ASSERT_EQ(1, expirations) << sign;
-	ASSERT_EQ(1, failures) << sign;
+	/**
+	 * Срок ожидания срабатывает по меньшей мере однажды. Больше - если новая попытка,
+	 * начатая движком после отказа вызывающего, снова успела уйти в ожидание; ровно
+	 * один, если ядро отвергло её сразу, придержав неудачную запись соседа. Оба исхода
+	 * законны, и утверждать точное число значило бы утверждать поведение ядра
+	 */
+	ASSERT_GE(expirations, 1) << sign;
+	ASSERT_GE(failures, 1) << sign;
+	// Удачного подключения к глухому адресу быть не может ни разу
 	ASSERT_EQ(0, successes) << sign;
 	ASSERT_TRUE(this->_io->deinitialize());
 }
@@ -16488,7 +16499,6 @@ TEST_F(IoFixture, IoRebuildRevivesClientTest){
 	ASSERT_TRUE(relaunched) << sign;
 	// Перестроенное событие обязано подключиться заново
 	ASSERT_EQ(2, successes) << sign;
-	::close(listener);
 	this->_io->destroy(eid);
 	this->_io->destroy(tick);
 	ASSERT_TRUE(this->_io->deinitialize());
@@ -16547,8 +16557,13 @@ TEST_F(IoFixture, IoAutoReconnectAfterConnectTimeoutTest){
 			if(action == awh::event::action_t::CONNECT){
 				// Считаем срабатывание срока ожидания подключения
 				expirations++;
-				// Отказываемся от уничтожения события
-				return false;
+				/**
+				 * Соглашаемся на уничтожение события: опция самостоятельного
+				 * переподключения развернёт его в подъём. Отказ увёл бы в иной путь -
+				 * безотлагательную новую попытку силами движка, где переподключение
+				 * не участвует
+				 */
+				return true;
 			}
 			// Считаем срабатывание срока переподключения
 			reconnects++;
@@ -16699,6 +16714,91 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	ASSERT_EQ(2, successes) << sign;
 	::close(listener);
 	this->_io->setOption(eid, awh::event::options::AUTO_RECONNECT, false);
+	this->_io->destroy(eid);
+	this->_io->destroy(tick);
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
+ * @brief Тест годности потокового события к работе после обрыва по сроку ожидания
+ *
+ * @details Обрыв ожидающего подключения закрывает дескриптор - начатое рукопожатие
+ *          иначе не прекратить. Но событие, которое вызывающий отказался уничтожать,
+ *          обязано остаться годным к работе: движок возвращает ему годность
+ *          перестройкой, и следующее подключение начинается простым `connect()` с
+ *          `launch()`, без забот о пересоздании дескриптора
+ *
+ *          Тем самым потоковое событие после обрыва оказывается в том же положении,
+ *          что и датаграммное, у которого дескриптор и вовсе не закрывается
+ *
+ * @note Подключение и запуск движок за вызывающего **не делает**: они взвели бы тот
+ *       же срок ожидания и замкнули бы круг без пауз. Кому нужен такой ход, ставит
+ *       `AUTO_RECONNECT`
+ *
+ *       Проверка не пустая: со снятой перестройкой тест отвечает `буфер=0` - читать
+ *       размер буфера не с чего, дескриптора нет
+ *
+ */
+TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
+	uint8_t failures = 0, successes = 0, expirations = 0;
+	// Заводим событие клиента и тикающий интервал
+	const awh::event::id_t eid = this->_io->event(
+		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+	);
+	ASSERT_GT(eid, 0u);
+	const awh::event::id_t tick = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	ASSERT_GT(tick, 0u);
+	ASSERT_TRUE(this->_io->initialize());
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
+	// Первое подключение ведётся к глухому адресу, чтобы истёк срок ожидания
+	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress()));
+	ASSERT_TRUE(this->_io->setTargetPort(eid, 8080));
+	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 500);
+	this->_io->setTimeout(tick, awh::event::action_t::NONE, 100);
+	this->_io->on(eid, static_cast <awh::engine::callback::connect_t> (
+		[&failures, &successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+			if(ok) successes++; else failures++;
+		}
+	));
+	this->_io->on(eid, static_cast <awh::engine::callback::timeout_t> (
+		[&expirations]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept -> bool {
+			// Считаем срабатывание срока ожидания подключения
+			if(action == awh::event::action_t::CONNECT) expirations++;
+			/**
+			 * Отказ от уничтожения даётся лишь однажды. Отказ означает «продолжаем», и
+			 * движок тут же начинает новую попытку; отвечай проверка отказом всякий
+			 * раз, попытки шли бы без конца, и прогон не завершился бы
+			 */
+			return (expirations > 1);
+		}
+	));
+	ASSERT_TRUE(this->_io->commit(eid));
+	ASSERT_TRUE(this->_io->commit(tick));
+	ASSERT_TRUE(this->_io->connect(eid));
+	ASSERT_TRUE(this->_io->launch(eid));
+	ASSERT_TRUE(this->_io->launch(tick));
+	// Дожидаемся истечения срока ожидания подключения
+	auto start = std::chrono::steady_clock::now();
+	while((expirations < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll());
+	ASSERT_GE(expirations, 1);
+	ASSERT_EQ(0, successes);
+	/**
+	 * Годность проверяется по живому дескриптору: размер буфера приёма читается с
+	 * него, и у события с закрытым дескриптором обращение это ничего не даёт
+	 *
+	 * @note Проверять вторым подключением нельзя. Получателя после обрыва не сменить -
+	 *       фиксация уже переиграна перестройкой, а после неё настройки событие не
+	 *       принимает; подключаться же снова к глухому адресу бессмысленно: ядро
+	 *       держит неудачную запись соседа и отвечает отказом немедленно, так что
+	 *       проверялось бы его поведение, а не годность события
+	 */
+	const size_t buffer = this->_io->getBufferSize(eid, awh::event::action_t::READ);
+	const std::string sign = std::string("сроков=") + std::to_string(expirations) +
+		" удач=" + std::to_string(successes) + " отказов=" + std::to_string(failures) +
+		" буфер=" + std::to_string(buffer);
+	// Дескриптор события обязан быть живым: движок вернул годность перестройкой
+	ASSERT_GT(buffer, 0u) << sign;
 	this->_io->destroy(eid);
 	this->_io->destroy(tick);
 	ASSERT_TRUE(this->_io->deinitialize());
