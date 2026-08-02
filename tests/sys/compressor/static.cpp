@@ -285,6 +285,57 @@ TEST_F(CompressorFixture, BlockAndStreamFormatContractTest){
 		// Проверяем что потоковая сессия не разобрала блочный результат
 		ASSERT_NE(text, result) << "method = " << static_cast <uint16_t> (method);
 	}
+	/**
+	 * DEFLATE вынесен из общего перебора: форматы режимов у него совместимы, а вот
+	 * признак завершённости расходится. Блочное сообщение завершается Z_SYNC_FLUSH
+	 * по RFC 7692 и конца потока не несёт вовсе, поэтому потоковая сессия данные
+	 * разбирает, но завершённой себя не объявляет — и это верно, движку конца
+	 * потока никто не показывал
+	 */
+	{
+		// Выполняем блочную компрессию данных
+		const std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (text, awh::compressor::method_t::DEFLATE);
+		// Проверяем что результат компрессии не пустой
+		ASSERT_FALSE(compressed.empty());
+		// Создаём потоковую сессию декомпрессии
+		awh::compressor::stream_t stream = this->_compressor->stream(awh::compressor::method_t::DEFLATE, awh::compressor::event_t::DECODE);
+		// Проверяем что потоковая сессия создана
+		ASSERT_TRUE(stream.valid());
+		// Буфер результата декомпрессии
+		std::string result;
+		// Выполняем подачу блочно сжатых данных в потоковую сессию
+		stream.push <std::string> (compressed.data(), compressed.size(), result, awh::compressor::flush_t::FINISH);
+		// Проверяем что потоковая сессия разобрала блочный результат
+		ASSERT_EQ(text, result);
+		// Проверяем что сессия жива
+		ASSERT_TRUE(stream.valid());
+		// Проверяем что завершённой сессия себя не объявила: конца потока в кадре нет
+		ASSERT_FALSE(stream.done());
+	}
+	/**
+	 * В обратную сторону расхождения нет: потоковое сжатие доводит кадр до конца
+	 * потока, а блочная распаковка DEFLATE конца потока не требует и им не смущается
+	 */
+	{
+		// Создаём потоковую сессию компрессии
+		awh::compressor::stream_t stream = this->_compressor->stream(awh::compressor::method_t::DEFLATE, awh::compressor::event_t::ENCODE);
+		// Проверяем что потоковая сессия создана
+		ASSERT_TRUE(stream.valid());
+		// Буфер выхода порции
+		std::string part;
+		// Результат потоковой компрессии
+		std::string compressed;
+		// Подаём данные в поток компрессии
+		stream.push <std::string> (text.data(), text.size(), part);
+		// Дописываем полученный выход в результат компрессии
+		compressed.append(part);
+		// Финализируем поток компрессии
+		stream.finish(part);
+		// Дописываем хвост в результат компрессии
+		compressed.append(part);
+		// Проверяем что блочный режим разобрал потоковый результат
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, awh::compressor::method_t::DEFLATE));
+	}
 }
 
 /**
@@ -741,8 +792,14 @@ TEST_F(CompressorFixture, WindowBitsRangeTest){
 	this->_compressor->wbitsZlib(15);
 	// Устанавливаем допустимый размер скользящего окна Deflate
 	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
+	/**
+	 * Восьмёрка лежит здесь же: окно в восемь разрядов движок не заводит ни «сырым»
+	 * потоком, ни потоком с заголовком gzip, а у формата zlib заводит сжатие, но
+	 * поднимает окно до девяти молча — и разбор тем же значением получившийся поток
+	 * уже не берёт. Работает она, словом, нигде
+	 */
 	// Список значений, лежащих вне допустимого промежутка
-	const int16_t invalid[] = {-1, 0, 2, 7, 16, 32, 255};
+	const int16_t invalid[] = {-1, 0, 2, 7, 8, 16, 32, 255};
 	/**
 	 * Выполняем перебор значений вне допустимого промежутка
 	 */
@@ -766,6 +823,7 @@ TEST_F(CompressorFixture, WindowBitsRangeTest){
 	for(int16_t wbits = 9; wbits <= 15; wbits++)
 		// Проверяем что установщик Deflate принимает значение
 		ASSERT_TRUE(this->_compressor->wbitsDeflate(wbits)) << "wbits = " << wbits;
+
 }
 
 /**
@@ -1617,5 +1675,57 @@ TEST_F(CompressorFixture, IdlePushKeepsSessionTest){
 		restored.append(tail);
 		// Проверяем что восстановленные данные совпадают с исходными
 		ASSERT_EQ(text, restored) << "method = " << static_cast <uint16_t> (method);
+	}
+}
+
+/**
+ * @brief Проверка отказа блочного режима на подаче без буфера
+ *
+ * @details Подача без буфера при ненулевом размере — ошибка вызывающей стороны,
+ *          а не пустой вход: работа получила указание разобрать данные, которых
+ *          ей не дали. Договор здесь общий с потоковым режимом
+ *
+ */
+TEST_F(CompressorFixture, BlockRejectsNullBufferTest){
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LZMA,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::SNAPPY,
+		awh::compressor::method_t::DENSITY,
+		awh::compressor::method_t::LIZARD,
+		awh::compressor::method_t::DEFLATE
+	};
+	/**
+	 * Выполняем перебор всех методов компрессии
+	 */
+	for(auto & method : methods){
+		// Результат работы
+		std::string result = "Anyks";
+		// Выполняем компрессию несуществующего буфера
+		this->_compressor->compress(nullptr, 64, method, result);
+		// Проверяем что подача отвергнута
+		ASSERT_TRUE(result.empty()) << "method = " << static_cast <uint16_t> (method) << ", compress";
+		// Восстанавливаем содержимое результата
+		result = "Anyks";
+		// Выполняем декомпрессию несуществующего буфера
+		this->_compressor->decompress(nullptr, 64, method, result);
+		// Проверяем что подача отвергнута
+		ASSERT_TRUE(result.empty()) << "method = " << static_cast <uint16_t> (method) << ", decompress";
+		/**
+		 * Пустая подача при этом отказом не является: сжимать нечего — это законное
+		 * положение дел, и работа выдаёт пустой результат молча
+		 */
+		// Восстанавливаем содержимое результата
+		result = "Anyks";
+		// Выполняем компрессию пустого буфера
+		this->_compressor->compress(nullptr, 0, method, result);
+		// Проверяем что результат пуст
+		ASSERT_TRUE(result.empty()) << "method = " << static_cast <uint16_t> (method) << ", empty";
 	}
 }

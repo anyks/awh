@@ -3136,6 +3136,35 @@ TEST_F(ChronoFixture, ExecutionStandardFormatChronoTest){
 	ASSERT_EQ(this->_chrono->format(date, 3 * 3600, awh::Chrono::standard_t::RFC1123), "Sun, 06 Apr 2025 12:37:01 GMT");
 	// Прочие записи формируются в указанной зоне
 	ASSERT_EQ(this->_chrono->format(date, 3 * 3600, awh::Chrono::standard_t::RFC3339), "2025-04-06T15:37:01.520+03:00");
+	/**
+	 * Запись, стандартом сформированная, им же и читается обратно: слово GMT записей
+	 * HTTP разбор прежде принимал за литерал, зону оставлял незаданной и выдавал
+	 * время по Гринвичу за местное - момент уезжал на смещение зоны окружения
+	 */
+	for(const auto standard : {awh::Chrono::standard_t::CLF, awh::Chrono::standard_t::RFC1123,
+	                           awh::Chrono::standard_t::RFC3339, awh::Chrono::standard_t::RFC5322,
+	                           awh::Chrono::standard_t::ISO8601}){
+		// Формируем запись даты по очередному стандарту
+		const std::string text = this->_chrono->format(date, standard);
+		// Доля секунды хранится записью RFC 3339, прочие хранят одни лишь секунды
+		const uint64_t expected = ((standard == awh::Chrono::standard_t::RFC3339) ? date : (date - (date % 1000)));
+		// Запись обязана читаться обратно тем же моментом времени
+		ASSERT_EQ(this->_chrono->parse(text, standard), expected) << text;
+	}
+	// Запись HTTP со смещением вместо слова GMT читается наравне с ним
+	ASSERT_EQ(this->_chrono->parse("Sun, 06 Apr 2025 12:37:01 +0000", awh::Chrono::standard_t::RFC1123), static_cast <uint64_t> (1743943021000));
+	// Устаревшая запись HTTP читается тем же моментом времени
+	ASSERT_EQ(this->_chrono->parse("Sunday, 06-Apr-25 12:37:01 GMT", awh::Chrono::standard_t::RFC850), static_cast <uint64_t> (1743943021000));
+	/**
+	 * Формы записи ISO 8601 смешивать стандарт запрещает: при основной форме даты
+	 * смещение зоны записывается четырьмя разрядами без двоеточия, а расширенное
+	 * «+03:00» рядом с «20250406T153701» стандарту не отвечает
+	 */
+	ASSERT_EQ(this->_chrono->format(date, 3 * 3600, awh::Chrono::standard_t::ISO8601), "20250406T153701+0300");
+	// Нулевое смещение обозначается буквой Z в обеих формах записи
+	ASSERT_EQ(this->_chrono->format(date, 0, awh::Chrono::standard_t::ISO8601), "20250406T123701Z");
+	// Смещение, некратное часу, записывается в той же форме
+	ASSERT_EQ(this->_chrono->format(date, 5 * 3600 + 1800, awh::Chrono::standard_t::ISO8601), "20250406T180701+0530");
 }
 /**
  * @brief Тест обозначения смещения зоны в написании GNU

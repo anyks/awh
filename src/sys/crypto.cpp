@@ -1094,7 +1094,14 @@ namespace driver {
 											result.resize((4 * ((length + 2) / 3)) + 1, 0);
 											// Выполняем чтение полученного результата
 											length = ::BIO_read(bio, result.data(), result.size());
-										}
+										/**
+										 * Отказ выражается длиной, а не пропуском чтения: длина
+										 * неполной записи осталась бы положительной, и работа
+										 * сочла бы её длиной выхода - обрезала бы по ней пустой
+										 * буфер и объявила успех
+										 */
+										// Если запись выполнена не целиком
+										} else length = -1;
 									} break;
 									// Если производится декодирование данных
 									case static_cast <uint8_t> (crypto_t::event_t::DECODE): {
@@ -1113,11 +1120,22 @@ namespace driver {
 											result.resize((3 * length / 4) + 1, 0);
 											// Выполняем чтение полученного результата
 											length = ::BIO_read(b64, result.data(), result.size());
-										}
+										/**
+										 * Отказ выражается длиной по тому же доводу, что и при
+										 * кодировании: длина неполной записи осталась бы
+										 * положительной и была бы принята за длину выхода
+										 */
+										// Если запись выполнена не целиком
+										} else length = -1;
 									} break;
 								}
+								/**
+								 * Длина выхода сличается с отведённым: чтение больше буфера
+								 * выдать не может, но обрезка по величине, буфером не покрытой,
+								 * увела бы работу за его конец
+								 */
 								// Если получение хэша произведено успешно
-								if(length > 0){
+								if((length > 0) && (static_cast <size_t> (length) <= result.size())){
 									// Удаляем все лишние символы
 									result.erase(result.begin() + length, result.end());
 									// Запоминаем признак успешно выполненной работы
@@ -1847,21 +1865,26 @@ namespace driver {
 			// Выводим успех: дополнения у такого ключа нет вовсе
 			return true;
 		/**
-		 * Если схема дополнения подписи не задана
+		 * Схема, разбору не знакомая, отвергается наравне с незаданной: отбор её
+		 * вёлся сличением с одной лишь вероятностной схемой, и всякое иное значение
+		 * молча уходило дополнением PKCS#1 - схемой, доказанной стойкости не
+		 * имеющей и выбираемой лишь явно (5.1). Тот же довод стоит у режима
+		 * блочного шифрования (5.27) и у вида записи хэш-суммы (5.31)
 		 */
-		if(padding == crypto_t::padding_t::NONE){
+		// Если схема дополнения подписи не задана либо разбору не знакома
+		if((padding != crypto_t::padding_t::PSS) && (padding != crypto_t::padding_t::PKCS1)){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				log->debug("Signature padding scheme is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				log->debug("Signature padding scheme is not set or is unsupported", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				log->print("Signature padding scheme is not set", log_t::flag_t::CRITICAL);
+				log->print("Signature padding scheme is not set or is unsupported", log_t::flag_t::CRITICAL);
 			#endif
 			// Выводим отказ установки схемы дополнения
 			return false;

@@ -2114,10 +2114,10 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														} else {
 															// Получаем опции события для идентификатора события клиента
 															uint16_t options = this->_client.getOptions(i->second.eid);
-															// Если опция KEEPALIVE установлена
-															if(options & event::options::KEEPALIVE){
-																// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
-																options &= ~event::options::KEEPALIVE;
+															// Если опция AUTO_RECONNECT установлена
+															if(options & event::options::AUTO_RECONNECT){
+																// Сбрасываем опцию AUTO_RECONNECT для идентификатора события клиента
+																options &= ~event::options::AUTO_RECONNECT;
 																// Устанавливаем опции события для идентификатора события клиента
 																this->_client.setOptions(i->second.eid, options);
 															}
@@ -2493,10 +2493,10 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																		} else {
 																			// Получаем опции события для идентификатора события клиента
 																			uint16_t options = this->_client.getOptions(i->second.eid);
-																			// Если опция KEEPALIVE установлена
-																			if(options & event::options::KEEPALIVE){
-																				// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
-																				options &= ~event::options::KEEPALIVE;
+																			// Если опция AUTO_RECONNECT установлена
+																			if(options & event::options::AUTO_RECONNECT){
+																				// Сбрасываем опцию AUTO_RECONNECT для идентификатора события клиента
+																				options &= ~event::options::AUTO_RECONNECT;
 																				// Устанавливаем опции события для идентификатора события клиента
 																				this->_client.setOptions(i->second.eid, options);
 																			}
@@ -3210,10 +3210,10 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 								} else {
 									// Получаем опции события для идентификатора события клиента
 									uint16_t options = this->_client.getOptions(cid);
-									// Если опция KEEPALIVE установлена
-									if(options & event::options::KEEPALIVE){
-										// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
-										options &= ~event::options::KEEPALIVE;
+									// Если опция AUTO_RECONNECT установлена
+									if(options & event::options::AUTO_RECONNECT){
+										// Сбрасываем опцию AUTO_RECONNECT для идентификатора события клиента
+										options &= ~event::options::AUTO_RECONNECT;
 										// Устанавливаем опции события для идентификатора события клиента
 										this->_client.setOptions(cid, options);
 									}
@@ -3304,10 +3304,10 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 											} else {
 												// Получаем опции события для идентификатора события клиента
 												uint16_t options = this->_client.getOptions(j->second.eid);
-												// Если опция KEEPALIVE установлена
-												if(options & event::options::KEEPALIVE){
-													// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
-													options &= ~event::options::KEEPALIVE;
+												// Если опция AUTO_RECONNECT установлена
+												if(options & event::options::AUTO_RECONNECT){
+													// Сбрасываем опцию AUTO_RECONNECT для идентификатора события клиента
+													options &= ~event::options::AUTO_RECONNECT;
 													// Устанавливаем опции события для идентификатора события клиента
 													this->_client.setOptions(j->second.eid, options);
 												}
@@ -3809,10 +3809,10 @@ bool awh::server::Socks5::setOptions(const event::id_t eid, const uint16_t optio
 			auto i = this->_peers.find(eid);
 			// Если идентификатор события подключённого пира найден
 			if(i != this->_peers.end()){
-				// Если опция KEEPALIVE установлена
-				if(options & event::options::KEEPALIVE)
-					// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
-					const_cast<uint16_t &> (options) &= ~event::options::KEEPALIVE;
+				// Если опция AUTO_RECONNECT установлена
+				if(options & event::options::AUTO_RECONNECT)
+					// Сбрасываем опцию AUTO_RECONNECT для идентификатора события клиента
+					const_cast<uint16_t &> (options) &= ~event::options::AUTO_RECONNECT;
 				// Устанавливаем опции для события клиента, принадлежащего подключённому пиру
 				return this->_client.setOptions(i->second.eid, options);
 			}
@@ -3858,9 +3858,9 @@ bool awh::server::Socks5::setOption(const event::id_t eid, const uint16_t option
 			return this->_unit->server.setOption(this->_id.eid, option, mode);
 		// Если идентификатор принадлежит пиру, подключённому к серверу
 		else {
-			// Если опция KEEPALIVE установлена
-			if(option == event::options::KEEPALIVE)
-				// Возвращаем значение по умолчанию, так как опция KEEPALIVE не может быть установлена для клиента
+			// Если опция AUTO_RECONNECT установлена
+			if(option == event::options::AUTO_RECONNECT)
+				// Возвращаем значение по умолчанию, так как опция AUTO_RECONNECT не может быть установлена для клиента
 				return false;
 			// Выполняем поиск идентификатор события подключённого пира
 			auto i = this->_peers.find(eid);

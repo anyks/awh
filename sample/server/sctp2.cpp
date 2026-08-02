@@ -135,7 +135,7 @@ class Executor {
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Connection established: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
 			// Устананавливаем опции события
-			if(server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE)){
+			if(server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::AUTO_RECONNECT)){
 				// Получаем информацию о сообщении SCTP-сокета
 				const net::sctp::minfo_t & minfo = sctp->messageInfo(cid);
 				// Записываем в лог информацию о сообщении SCTP-сокета

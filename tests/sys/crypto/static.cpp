@@ -678,6 +678,8 @@ TEST_F(CryptoFixture, PaddingCryptoTest){
 	EXPECT_EQ(results.size(), static_cast <size_t> (1));
 	// Проверяем проверку подписи схемой PKCS#1 v1.5
 	EXPECT_TRUE(this->_crypto->verifyWithPublicKey(buffer, result, awh::crypto_t::hash_t::SHA256));
+	// Запоминаем годную подпись схемой PKCS#1 v1.5
+	const std::vector <uint8_t> signature = result;
 	// Устанавливаем схему дополнения подписи вероятностную
 	this->_crypto->padding(awh::crypto_t::padding_t::PSS);
 	// Проверяем отказ проверки подписи, сделанной иной схемой дополнения
@@ -688,6 +690,19 @@ TEST_F(CryptoFixture, PaddingCryptoTest){
 	this->_crypto->signWithPrivateKey(buffer, awh::crypto_t::hash_t::SHA256, result);
 	// Проверяем отказ подписи при незаданной схеме дополнения
 	EXPECT_TRUE(result.empty());
+	/**
+	 * Отбор схемы вёлся сличением с одной лишь вероятностной, и всякое иное
+	 * значение молча уходило дополнением PKCS#1 - схемой, доказанной стойкости
+	 * не имеющей и выбираемой лишь явно
+	 */
+	// Устанавливаем схему дополнения подписи, разбору не знакомую
+	this->_crypto->padding(static_cast <awh::crypto_t::padding_t> (0xFE));
+	// Выполняем подпись данных схемой дополнения, разбору не знакомой
+	this->_crypto->signWithPrivateKey(buffer, awh::crypto_t::hash_t::SHA256, result);
+	// Проверяем отказ подписи схемой дополнения, разбору не знакомой
+	EXPECT_TRUE(result.empty());
+	// Проверяем отказ проверки подписи схемой дополнения, разбору не знакомой
+	EXPECT_FALSE(this->_crypto->verifyWithPublicKey(buffer, signature, awh::crypto_t::hash_t::SHA256));
 }
 
 /**

@@ -1817,6 +1817,8 @@ void awh::regex::Compiler::mark() noexcept {
 	vector <instruction_t> & instructions = this->_program->instructions;
 	// Выполняем размещение набора адресов тел повторений одиночного символа
 	this->_program->runs.assign(instructions.size(), INVALID_ADDRESS);
+	// Выполняем размещение набора адресов тел ленивых повторений одиночного символа
+	this->_program->lazy.assign(instructions.size(), INVALID_ADDRESS);
 	/**
 	 * Выполняем обход инструкций программы регулярного выражения
 	 */
@@ -1827,8 +1829,17 @@ void awh::regex::Compiler::mark() noexcept {
 		if(instructions.at(i).type != opcode_t::SPLIT)
 			// Переходим к следующей инструкции программы
 			continue;
+		/**
+		 * Получаем признак ленивого повторения элемента выражения
+		 *
+		 * @details Ленивое повторение отличается порядком ветвей перехода:
+		 *          телом повторения ведает ветвь вторая, а первая продолжает
+		 *          сопоставление за повторением.
+		 *
+		 */
+		const bool lazy = (static_cast <size_t> (instructions.at(i).split.second) == (i + 1));
 		// Получаем адрес ветви повторения элемента выражения
-		const address_t body = instructions.at(i).split.first;
+		const address_t body = (lazy ? instructions.at(i).split.second : instructions.at(i).split.first);
 		/**
 		 * Если тело повторения и переход к началу повторения выходят за пределы программы
 		 */
@@ -1875,11 +1886,17 @@ void awh::regex::Compiler::mark() noexcept {
 		 *          исполнение с инструкции, следующей за переходом к началу.
 		 *
 		 */
-		if(instructions.at(i).split.second != static_cast <address_t> (body + 2))
+		if((lazy ? instructions.at(i).split.first : instructions.at(i).split.second) != static_cast <address_t> (body + 2))
 			// Переходим к следующей инструкции программы
 			continue;
+		/**
+		 * Если повторение элемента выражения является ленивым
+		 */
+		if(lazy)
+			// Выполняем пометку перехода адресом тела ленивого повторения
+			this->_program->lazy.at(i) = body;
 		// Выполняем пометку перехода адресом тела повторения
-		this->_program->runs.at(i) = body;
+		else this->_program->runs.at(i) = body;
 	}
 }
 /**

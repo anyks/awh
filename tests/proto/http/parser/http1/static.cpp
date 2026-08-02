@@ -24,6 +24,7 @@
 #include <utility>
 #include <cstdint>
 #include <cstdio>
+#include <algorithm>
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -1117,4 +1118,49 @@ TEST_F(ParserFixture, StrictLimitsPresetTest){
 	parser->parse(message.data(), message.size());
 	// Проверяем что зафиксирована ошибка разбора
 	ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
+}
+
+/**
+ * @brief Метод проверки различимости усечённого сообщения по фазе и части
+ *
+ * @details Фаза END относится к части, названной рядом идущим значением part_t, а не
+ *          к сообщению. Усечённый ответ, у которого принят лишь блок заголовков, выдаёт
+ *          END точно так же, как дочитанный до конца, - разница целиком в части.
+ *          Признак завершённости, собранный по одной лишь фазе, объявил бы принятым
+ *          сообщение, у которого не хватает тела, и потребитель начал бы разбор
+ *          неполных данных. Тест закрепляет обе приметы, по которым усечение
+ *          отличается от дочитанного сообщения: отсутствие END вместе с NONE
+ *          и статус PARTIAL
+ *
+ */
+TEST_F(ParserFixture, TruncatedBodyIsNotCompleteTest){
+	// Создаём объект парсера ответов сервера
+	auto parser = this->make(direct_t::RESPONSE);
+	// Создаём объект сборщика событий парсера
+	events_t events;
+	// Подписываем сборщик событий на все функции обратного вызова парсера
+	this->attach(* parser, events);
+	// Формируем блок заголовков ответа с объявленной длиной тела
+	const std::string head = "HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\nContent-Length: 64\r\n\r\n";
+	// Выполняем разбор блока заголовков и половины объявленного тела
+	parser->parse((head + std::string(32, 'x')).data(), head.size() + 32);
+	// Проверяем что конец блока заголовков объявлен
+	ASSERT_NE(std::find(events.phases.begin(), events.phases.end(),
+		std::make_pair(parser_t::phase_t::END, parser_t::part_t::HEADERS)), events.phases.end());
+	// Проверяем что конец самого сообщения не объявлен
+	ASSERT_EQ(std::find(events.phases.begin(), events.phases.end(),
+		std::make_pair(parser_t::phase_t::END, parser_t::part_t::NONE)), events.phases.end());
+	// Проверяем что сообщение считается незавершённым
+	ASSERT_EQ(parser->status(), parser_t::status_t::PARTIAL);
+	// Проверяем что ошибка при этом не зафиксирована - данных просто не хватает
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::NONE);
+	// Выполняем разбор оставшейся половины объявленного тела
+	parser->parse(std::string(32, 'x').data(), 32);
+	// Проверяем что конец самого сообщения объявлен
+	ASSERT_NE(std::find(events.phases.begin(), events.phases.end(),
+		std::make_pair(parser_t::phase_t::END, parser_t::part_t::NONE)), events.phases.end());
+	// Проверяем что сообщение полностью разобрано
+	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+	// Проверяем что тело сообщения собрано целиком
+	ASSERT_EQ(events.body, std::string(64, 'x'));
 }

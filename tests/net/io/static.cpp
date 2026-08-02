@@ -998,7 +998,7 @@ TEST_F(IoFixture, IoTCPTest){
 			// Записываем в лог сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 			// Записываем в лог сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем функцию обратного вызова на запись в событие
@@ -3046,7 +3046,7 @@ TEST_F(IoFixture, IoUDSTest){
 			// Записываем в лог сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s", awh::log_t::flag_t::INFO, sid, cid, this->_io->getAddress(cid, awh::event::address_t::UDS).c_str());
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 			// Записываем в лог сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем функцию обратного вызова на чтение из события
@@ -5559,7 +5559,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 				// Выполняем фиксацию события файла
 				ASSERT_TRUE(this->_io->commit(fid));
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::AUTO_RECONNECT));
 			}
 		}));
 		// Устанавливаем функцию обратного вызова на общее событие
@@ -6255,7 +6255,7 @@ TEST_F(IoFixture, IoFsTest){
 		// Выполняем фиксацию настроек события файла
 		ASSERT_TRUE(this->_io->commit(fid));
 		// Устанавливаем опции события
-		ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::KEEPALIVE));
+		ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::AUTO_RECONNECT));
 		// Запускаем событие файла
 		ASSERT_TRUE(this->_io->launch(fid));
 	}
@@ -8239,7 +8239,7 @@ TEST_F(IoFixture, IoTLSTest){
 				}
 			});
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 			// Записываем в лог сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
@@ -9080,7 +9080,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 				}
 			});
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 			// Записываем в лог сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
@@ -10750,7 +10750,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Записываем в лог сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
@@ -11564,7 +11564,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Записываем в лог сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
@@ -12426,7 +12426,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Записываем в лог сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
@@ -13398,7 +13398,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Регистрируем функцию обратного вызова на чтение данных DTLS
 				this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 					/**
@@ -14452,7 +14452,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::KEEPALIVE));
+				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Регистрируем функцию обратного вызова на чтение данных DTLS
 				this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 					/**
@@ -16333,4 +16333,373 @@ TEST_F(IoFixture, IoBandwidthGlobalSharedTest){
 	}
 	// Проверяем что суммарная скорость всех узлов уложилась в общий предел
 	ASSERT_LT(total, (limit * 1.35)) << "роспись:" << sign;
+}
+
+/**
+ * @brief Функция подбора глухого адреса для проверок срока ожидания подключения
+ *
+ * @details Адрес берётся из канального блока (RFC 3927): он никуда не
+ *          маршрутизируется, и подключение к нему остаётся ожидающим ровно столько,
+ *          сколько нужно для истечения срока. Блоки, отведённые под примеры, для
+ *          этого не годятся - сеть с туннелем перехватывает их и отвечает согласием
+ *
+ * @note Адрес складывается из номера процесса, и это существенно. Ядро запоминает
+ *       неудачную запись соседа и после неё отвечает на подключение отказом
+ *       **немедленно**, а не ожиданием - повторный прогон по тому же адресу проверял
+ *       бы уже не то. Свежий адрес на каждый прогон эту память обходит
+ *
+ * @return глухой адрес канального блока
+ *
+ */
+static std::string deafAddress() noexcept {
+	// Получаем номер текущего процесса
+	const uint32_t pid = static_cast <uint32_t> (::getpid());
+	// Складываем адрес канального блока из номера процесса
+	return std::string("169.254.") + std::to_string(((pid >> 8) & 0xFF) | 0x01) + "." + std::to_string((pid & 0xFF) | 0x01);
+}
+
+/**
+ * @brief Тест прерывания ожидающего подключения по истечении срока ожидания
+ *
+ * @details Срок ожидания подключения истёк - подключение не состоялось, и попытку
+ *          нужно прервать. Узел при этом вправе остаться жить: вызывающий отвечает
+ *          на срок ожидания отказом от уничтожения, чтобы событие можно было
+ *          использовать под следующий запрос, не создавая нового
+ *
+ *          Прежде ожидающее подключение в этом случае доводилось до конца уже после
+ *          объявленного отказа, и вызывающий получал `ok=true` следом за `ok=false`
+ *
+ * @note Получатель взят из канального блока (RFC 3927): такой адрес никуда не
+ *       маршрутизируется, и подключение к нему остаётся ожидающим ровно столько,
+ *       сколько нужно для истечения срока. Блоки, отведённые под примеры, для этого
+ *       не годятся: сеть с туннелем перехватывает их и отвечает согласием
+ *
+ *       Окружение, где такой адрес отвечает отказом сразу, для проверки не годится
+ *       вовсе, и тест в нём пропускается: ожидающего подключения там не возникает
+ *
+ */
+TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
+	uint8_t failures = 0, successes = 0, expirations = 0;
+	const awh::event::id_t eid = this->_io->event(
+		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+	);
+	ASSERT_GT(eid, 0u);
+	const awh::event::id_t tick = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	ASSERT_GT(tick, 0u);
+	ASSERT_TRUE(this->_io->initialize());
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
+	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress()));
+	ASSERT_TRUE(this->_io->setTargetPort(eid, 8080));
+	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 500);
+	this->_io->setTimeout(tick, awh::event::action_t::NONE, 200);
+	this->_io->on(eid, static_cast <awh::engine::callback::connect_t> (
+		[&failures, &successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+			if(ok) successes++; else failures++;
+		}
+	));
+	this->_io->on(eid, static_cast <awh::engine::callback::timeout_t> (
+		[&expirations]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept -> bool {
+			if(action == awh::event::action_t::CONNECT) expirations++;
+			return false;
+		}
+	));
+	ASSERT_TRUE(this->_io->commit(eid));
+	ASSERT_TRUE(this->_io->commit(tick));
+	ASSERT_TRUE(this->_io->connect(eid));
+	ASSERT_TRUE(this->_io->launch(eid));
+	ASSERT_TRUE(this->_io->launch(tick));
+	const auto start = std::chrono::steady_clock::now();
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll());
+	const std::string sign = std::string("сроков=") + std::to_string(expirations) + " отказов=" + std::to_string(failures) + " удач=" + std::to_string(successes);
+	ASSERT_EQ(1, expirations) << sign;
+	ASSERT_EQ(1, failures) << sign;
+	ASSERT_EQ(0, successes) << sign;
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
+ * @brief Тест возврата потокового события в работу перестройкой
+ *
+ * @details Перестройка сохраняет идентификатор события со всеми внесёнными в него
+ *          настройками и пересоздаёт нижележащий дескриптор, переигрывая одну лишь
+ *          фиксацию. Подключение и запуск остаются за вызывающим, и порядок возврата
+ *          таков: `rebuild()` -> `connect()` -> `launch()`
+ *
+ * @note Проверка ведётся на живом получателе - слушающем сокете на петле, заведённом
+ *       прямо здесь. Глухой адрес для этого не годится: ядро запоминает неудачную
+ *       запись соседа, и второе подключение к нему отвергается немедленно, отчего
+ *       проверялось бы поведение ядра, а не оживление события
+ *
+ */
+TEST_F(IoFixture, IoRebuildRevivesClientTest){
+	uint8_t failures = 0, successes = 0;
+	// Заводим слушающий сокет на петле
+	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
+	ASSERT_GT(listener, 0);
+	struct sockaddr_in host{};
+	host.sin_len = sizeof(host);
+	host.sin_family = AF_INET;
+	host.sin_port = 0;
+	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
+	socklen_t length = sizeof(host);
+	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
+	ASSERT_EQ(0, ::listen(listener, 16));
+	// Заводим событие клиента и тикающий интервал
+	const awh::event::id_t eid = this->_io->event(
+		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+	);
+	ASSERT_GT(eid, 0u);
+	const awh::event::id_t tick = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	ASSERT_GT(tick, 0u);
+	ASSERT_TRUE(this->_io->initialize());
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
+	ASSERT_TRUE(this->_io->setTarget(eid, "127.0.0.1"));
+	ASSERT_TRUE(this->_io->setTargetPort(eid, ntohs(host.sin_port)));
+	this->_io->setTimeout(tick, awh::event::action_t::NONE, 100);
+	this->_io->on(eid, static_cast <awh::engine::callback::connect_t> (
+		[&failures, &successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+			if(ok) successes++; else failures++;
+		}
+	));
+	ASSERT_TRUE(this->_io->commit(eid));
+	ASSERT_TRUE(this->_io->commit(tick));
+	ASSERT_TRUE(this->_io->connect(eid));
+	ASSERT_TRUE(this->_io->launch(eid));
+	ASSERT_TRUE(this->_io->launch(tick));
+	// Дожидаемся первого подключения
+	auto start = std::chrono::steady_clock::now();
+	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
+	ASSERT_EQ(1, successes);
+	// Возвращаем событие в работу перестройкой
+	const bool rebuilt = this->_io->rebuild(eid);
+	const bool reconnected = (rebuilt && this->_io->connect(eid));
+	const bool relaunched = (reconnected && this->_io->launch(eid));
+	// Дожидаемся второго подключения
+	start = std::chrono::steady_clock::now();
+	while((successes < 2) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
+	const std::string sign = std::string("перестройка=") + (rebuilt ? "да" : "нет") +
+		" подключение=" + (reconnected ? "да" : "нет") + " запуск=" + (relaunched ? "да" : "нет") +
+		" удач=" + std::to_string(successes) + " отказов=" + std::to_string(failures);
+	ASSERT_TRUE(rebuilt) << sign;
+	ASSERT_TRUE(reconnected) << sign;
+	ASSERT_TRUE(relaunched) << sign;
+	// Перестроенное событие обязано подключиться заново
+	ASSERT_EQ(2, successes) << sign;
+	::close(listener);
+	this->_io->destroy(eid);
+	this->_io->destroy(tick);
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
+ * @brief Тест подъёма события с самостоятельным переподключением после обрыва по сроку ожидания
+ *
+ * @details Обрыв ожидающего подключения закрывает дескриптор напрямую, минуя
+ *          уничтожение. Событию с `AUTO_RECONNECT` это было гибелью: ход
+ *          переподключения заводится именно уничтожением, и такое событие
+ *          обрывалось, не поднимаясь уже никогда - хотя ради подъёма опция и
+ *          ставится. Опыт до починки давал `сроков=1 переподключений=0`
+ *
+ * @note Ответ на срок переподключения читается **наоборот** ответу на прочие сроки:
+ *       отказ отменяет переподключение, а не сохраняет событие
+ *
+ * @note Попытка подъёма срывается двояко, и обе развязки череду продолжают. Либо
+ *       подключение уходит в ожидание и истекает по сроку, либо ядро отвечает отказом
+ *       немедленно - так бывает, когда оно уже держит неудачную запись соседа. Прежде
+ *       второй случай был для события смертью: подъём обрывался навсегда, хотя опция
+ *       ставится ровно ради того, чтобы пробовать снова
+ *
+ *       Роспись состояний в таком прогоне читается как
+ *       `INITIAL -> PENDING -> RECONNECTED -> INITIAL -> REBIRTHED -> FAILURE`, и за
+ *       последним отказом теперь следует новая попытка
+ *
+ */
+TEST_F(IoFixture, IoAutoReconnectAfterConnectTimeoutTest){
+	uint8_t failures = 0, successes = 0, expirations = 0, reconnects = 0;
+	std::string trace = "";
+	const awh::event::id_t eid = this->_io->event(
+		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+	);
+	ASSERT_GT(eid, 0u);
+	const awh::event::id_t tick = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	ASSERT_GT(tick, 0u);
+	ASSERT_TRUE(this->_io->initialize());
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress()));
+	ASSERT_TRUE(this->_io->setTargetPort(eid, 8080));
+	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 500);
+	this->_io->setTimeout(eid, awh::event::action_t::RECONNECT, 500);
+	this->_io->setTimeout(tick, awh::event::action_t::NONE, 200);
+	this->_io->on(eid, [&trace]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		trace.append(std::to_string(static_cast <uint16_t> (status))).append(" ");
+	});
+	this->_io->on(eid, static_cast <awh::engine::callback::connect_t> (
+		[&failures, &successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+			if(ok) successes++; else failures++;
+		}
+	));
+	this->_io->on(eid, static_cast <awh::engine::callback::timeout_t> (
+		[&expirations, &reconnects]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept -> bool {
+			if(action == awh::event::action_t::CONNECT){
+				// Считаем срабатывание срока ожидания подключения
+				expirations++;
+				// Отказываемся от уничтожения события
+				return false;
+			}
+			// Считаем срабатывание срока переподключения
+			reconnects++;
+			/**
+			 * Для переподключения ответ читается наоборот: отказ его отменяет.
+			 * Отвечаем согласием, чтобы событие поднималось
+			 */
+			return true;
+		}
+	));
+	ASSERT_TRUE(this->_io->commit(eid));
+	ASSERT_TRUE(this->_io->commit(tick));
+	ASSERT_TRUE(this->_io->connect(eid));
+	ASSERT_TRUE(this->_io->launch(eid));
+	ASSERT_TRUE(this->_io->launch(tick));
+	const auto start = std::chrono::steady_clock::now();
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 4000) && this->_io->poll());
+	const std::string sign = std::string("сроков=") + std::to_string(expirations) +
+		" переподключений=" + std::to_string(reconnects) + " отказов=" + std::to_string(failures) +
+		" удач=" + std::to_string(successes) + " состояния: " + trace;
+	/**
+	 * Событие с самостоятельным переподключением обязано подниматься **безостановочно**:
+	 * за четыре секунды при задержке в полсекунды попыток набирается несколько, и ни
+	 * одна из них - ни сорвавшаяся немедленным отказом, ни истёкшая по сроку - череду
+	 * не прекращает
+	 */
+	ASSERT_GE(reconnects, 3) << sign;
+	// Удачных подключений к глухому адресу быть не может
+	ASSERT_EQ(0, successes) << sign;
+	/**
+	 * Событие снимается с самостоятельного переподключения до уничтожения: иначе оно
+	 * поднимается вновь и вновь и достаётся следующему тесту, которому цикл событий
+	 * достаётся общий - он один на весь процесс
+	 */
+	this->_io->setOption(eid, awh::event::options::AUTO_RECONNECT, false);
+	// Уничтожаем заведённые события
+	this->_io->destroy(eid);
+	this->_io->destroy(tick);
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
+ * @brief Тест перестройки события с самостоятельным переподключением
+ *
+ * @details Проверяются два опасных совпадения разом. Первое - у события выставлена
+ *          опция `AUTO_RECONNECT`, и перестройка не должна её ломать: событие обязано
+ *          остаться работоспособным. Второе, худшее, - перестройку вызывают **в разгар
+ *          переподключения**, когда очередной подъём уже назначен сроком
+ *
+ *          Не сними перестройка назначенный срок, он выстрелил бы следом и повёл
+ *          второй подъём поверх того, что ведёт вызывающий: два подключения на одно
+ *          событие, каждое со своим дескриптором
+ *
+ * @note Признаком сдвоенного подъёма служит счёт удачных подключений. Их обязано быть
+ *       ровно два - первое и то, что после перестройки. Третье означает, что
+ *       назначенное переподключение сработало вдобавок к перестройке
+ *
+ *       Проверка не пустая: со снятой правкой тест отвечает `удач=3`, то есть ловит
+ *       ровно то, ради чего заведён
+ *
+ */
+TEST_F(IoFixture, IoRebuildDuringReconnectTest){
+	uint8_t failures = 0, successes = 0;
+	// Заводим слушающий сокет на петле
+	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
+	ASSERT_GT(listener, 0);
+	struct sockaddr_in host{};
+	host.sin_len = sizeof(host);
+	host.sin_family = AF_INET;
+	host.sin_port = 0;
+	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
+	socklen_t length = sizeof(host);
+	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
+	ASSERT_EQ(0, ::listen(listener, 16));
+	// Заводим событие клиента и тикающий интервал
+	const awh::event::id_t eid = this->_io->event(
+		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+	);
+	ASSERT_GT(eid, 0u);
+	const awh::event::id_t tick = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	ASSERT_GT(tick, 0u);
+	ASSERT_TRUE(this->_io->initialize());
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+	ASSERT_TRUE(this->_io->setTarget(eid, "127.0.0.1"));
+	ASSERT_TRUE(this->_io->setTargetPort(eid, ntohs(host.sin_port)));
+	/**
+	 * Задержка переподключения выбрана заведомо большей, чем время до перестройки:
+	 * подъём успевает быть назначенным, но не успевает произойти - именно то
+	 * совпадение, которое проверяется
+	 */
+	this->_io->setTimeout(eid, awh::event::action_t::RECONNECT, 1000);
+	this->_io->setTimeout(tick, awh::event::action_t::NONE, 100);
+	this->_io->on(eid, static_cast <awh::engine::callback::connect_t> (
+		[&failures, &successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+			if(ok) successes++; else failures++;
+		}
+	));
+	this->_io->on(eid, static_cast <awh::engine::callback::timeout_t> (
+		[]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept -> bool {
+			// Соглашаемся на любое действие срока
+			return true;
+		}
+	));
+	ASSERT_TRUE(this->_io->commit(eid));
+	ASSERT_TRUE(this->_io->commit(tick));
+	ASSERT_TRUE(this->_io->connect(eid));
+	ASSERT_TRUE(this->_io->launch(eid));
+	ASSERT_TRUE(this->_io->launch(tick));
+	// Дожидаемся первого подключения
+	auto start = std::chrono::steady_clock::now();
+	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
+	ASSERT_EQ(1, successes);
+	/**
+	 * Рвём связь со стороны получателя: принимаем подключение и закрываем принятый
+	 * сокет. Обрыв доходит до события концом файла, а у события с опцией
+	 * самостоятельного переподключения обрыв назначает подъём сроком - именно на него
+	 * и придётся перестройка
+	 *
+	 * @note Отключением `disconnect()` такого положения не создать: оно переводит
+	 *       событие в отмену, не проходя уничтожением, а подъём назначает именно
+	 *       уничтожение. Проверка на отключении оказалась бы пустой
+	 */
+	const int32_t peer = ::accept(listener, nullptr, nullptr);
+	ASSERT_GT(peer, 0);
+	ASSERT_EQ(0, ::close(peer));
+	// Даём обрыву дойти и назначению состояться, не дожидаясь самого подъёма
+	start = std::chrono::steady_clock::now();
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 400) && this->_io->poll());
+	// Возвращаем событие в работу перестройкой поверх назначенного переподключения
+	const bool rebuilt = this->_io->rebuild(eid);
+	const bool reconnected = (rebuilt && this->_io->connect(eid));
+	const bool relaunched = (reconnected && this->_io->launch(eid));
+	/**
+	 * Опрос ведётся заведомо дольше задержки переподключения: сдвоенный подъём
+	 * проявился бы именно после её истечения
+	 */
+	start = std::chrono::steady_clock::now();
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2500) && this->_io->poll());
+	const std::string sign = std::string("перестройка=") + (rebuilt ? "да" : "нет") +
+		" подключение=" + (reconnected ? "да" : "нет") + " запуск=" + (relaunched ? "да" : "нет") +
+		" удач=" + std::to_string(successes) + " отказов=" + std::to_string(failures);
+	ASSERT_TRUE(rebuilt) << sign;
+	ASSERT_TRUE(reconnected) << sign;
+	ASSERT_TRUE(relaunched) << sign;
+	// Подключений обязано быть ровно два: сдвоенного подъёма быть не должно
+	ASSERT_EQ(2, successes) << sign;
+	::close(listener);
+	this->_io->setOption(eid, awh::event::options::AUTO_RECONNECT, false);
+	this->_io->destroy(eid);
+	this->_io->destroy(tick);
+	ASSERT_TRUE(this->_io->deinitialize());
 }

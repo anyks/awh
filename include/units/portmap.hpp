@@ -27,8 +27,9 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "unit.hpp"
-#include "../net/eth/iface.hpp"
+#include "../net/uri.hpp"
 #include "../net/eth/gateway.hpp"
+#include "../proto/http/parser/http1/http.hpp"
 #include "../proto/portmap/pcp.hpp"
 #include "../proto/portmap/ssdp.hpp"
 #include "../proto/portmap/soap.hpp"
@@ -179,6 +180,21 @@ namespace awh {
 					Exchange() noexcept;
 				} exchange_t;
 			private:
+				/**
+				 * @brief Шаги обмена по договору UPnP
+				 *
+				 * @details Договор UPnP одним обменом не обходится: сперва устройство
+				 * отыскивается рассылкой SSDP, затем у него читается описание, и лишь потом
+				 * вызывается действие его службы. Каждый шаг опирается на добытое предыдущим
+				 *
+				 */
+				enum class stage_t : uint8_t {
+					NONE        = 0x00, // Обмен не ведётся
+					SEARCH      = 0x01, // Отыскание устройства рассылкой SSDP
+					DESCRIPTION = 0x02, // Чтение описания отысканного устройства
+					CONTROL     = 0x03  // Вызов действия службы устройства
+				};
+			private:
 				// Вид опроса маршрутизатора
 				type_t _type;
 				// Просьба, с которой ведётся текущее обращение
@@ -194,27 +210,45 @@ namespace awh {
 			private:
 				// Обмен по договору PCP
 				exchange_t _exchangePCP;
+				// Обмен по договору UPnP
+				exchange_t _exchangeUPNP;
 				// Обмен по договору NAT-PMP
 				exchange_t _exchangeNATPMP;
+			private:
+				// Шаг обмена по договору UPnP
+				stage_t _stage;
+				// Идентификатор потокового события обмена с устройством UPnP
+				event::id_t _stream;
+			private:
+				// Порт устройства UPnP, с которым ведётся потоковый обмен
+				uint16_t _port;
+				// Адрес устройства UPnP, с которым ведётся потоковый обмен
+				string _host;
+			private:
+				// Адрес описания отысканного устройства UPnP
+				string _location;
+				// Адрес управления службой отысканного устройства UPnP
+				string _control;
+				// Обозначение вида службы отысканного устройства UPnP
+				string _service;
+			private:
+				// Собираемый текст запроса к устройству UPnP
+				string _request;
+				// Собираемое тело ответа устройства UPnP
+				string _payload;
+				// Признак того, что ответ устройства UPnP прочитан до конца
+				bool _complete;
+			private:
+				// Объект работы с адресами ресурсов
+				uri_t _uri;
 			private:
 				// Адрес маршрутизатора, заданный настройкой
 				string _router;
 				// Адрес маршрутизатора, отысканный по таблице маршрутов
 				unique_ptr <net::addr_t> _address;
-				/**
-				 * Адрес устройства, которым машина достаёт маршрутизатор
-				 *
-				 * @note Обмен ведётся с привязкой именно к этому адресу, а не ко всем сразу:
-				 * машина с несколькими путями во внешнюю сеть - обычное дело, и привязка ко
-				 * всем адресам уводит дейтаграмму не тем устройством, откуда маршрутизатор
-				 * недостижим
-				 */
-				unique_ptr <net::addr_t> _source;
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
-				// Объект работы с сетевыми устройствами
-				eth::iface_t _iface;
 				// Объект получения маршрута до внешней сети
 				eth::gateway_t _gateway;
 			private:
@@ -271,19 +305,6 @@ namespace awh {
 				 *
 				 */
 				bool discover() noexcept;
-				/**
-				 * @brief Метод отыскания устройства, на чьей сети лежит указанный адрес
-				 *
-				 * @details Устройство отыскивается принадлежностью адреса его сети, а не
-				 * запросом маршрута до этого адреса: маршрутизатор почти всегда лежит на
-				 * одной сети с машиной, а на такую сеть отдельного маршрута со шлюзом нет
-				 * вовсе, и запрос маршрута до него отвечает отказом
-				 *
-				 * @param address отыскиваемый адрес в порядке октетов, принятом хранилищем адресов
-				 * @return        адрес отысканного устройства
-				 *
-				 */
-				unique_ptr <net::addr_t> locate(const uint32_t address) noexcept;
 			private:
 				/**
 				 * @brief Метод заведения события обмена по дейтаграммному договору
@@ -317,6 +338,14 @@ namespace awh {
 				 *
 				 */
 				type_t belongs(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод получения записи обмена по договору перенаправления
+				 *
+				 * @param type договор перенаправления, по которому ведётся обмен
+				 * @return     запись обмена по указанному договору
+				 *
+				 */
+				exchange_t & exchange(const type_t type) noexcept;
 			private:
 				/**
 				 * @brief Метод приведения кода итога договора PCP к коду причины отказа
@@ -334,6 +363,14 @@ namespace awh {
 				 *
 				 */
 				error_t reason(const proto::portmap::natpmp_t::result_t result) const noexcept;
+				/**
+				 * @brief Метод приведения кода итога службы UPnP к коду причины отказа
+				 *
+				 * @param result код итога, выданный службой устройства
+				 * @return       код причины отказа перенаправления
+				 *
+				 */
+				error_t reason(const proto::portmap::upnp_t::result_t result) const noexcept;
 			private:
 				/**
 				 * @brief Метод извлечения внешнего адреса маршрутизатора из записи договора PCP
@@ -359,6 +396,73 @@ namespace awh {
 				 *
 				 */
 				bool client(const event::id_t eid, uint8_t * address) noexcept;
+			private:
+				/**
+				 * @brief Метод отыскания устройства UPnP рассылкой SSDP
+				 *
+				 * @details Просьба рассылается на групповой адрес: устройство отвечает не
+				 * сразу, а спустя случайное время в пределах отведённого срока, поэтому
+				 * ответ приходит обычным чтением события, а не следом за отправкой
+				 *
+				 * @return результат начала отыскания устройства
+				 *
+				 */
+				bool search() noexcept;
+				/**
+				 * @brief Метод чтения описания отысканного устройства UPnP
+				 *
+				 * @return результат начала чтения описания устройства
+				 *
+				 */
+				bool describe() noexcept;
+				/**
+				 * @brief Метод вызова действия службы отысканного устройства UPnP
+				 *
+				 * @return результат начала вызова действия службы
+				 *
+				 */
+				bool control() noexcept;
+			private:
+				/**
+				 * @brief Метод заведения потокового события обмена с устройством UPnP
+				 *
+				 * @param address адрес устройства, с которым ведётся обмен
+				 * @param port    порт устройства, с которым ведётся обмен
+				 * @return        результат заведения потокового события обмена
+				 *
+				 */
+				bool stream(string_view address, const uint16_t port) noexcept;
+				/**
+				 * @brief Метод обработки подключения к устройству UPnP
+				 *
+				 * @note Запрос отправляется по подключении, а не раньше: до него отправлять
+				 * потоковому событию нечего
+				 *
+				 * @param eid идентификатор потокового события обмена
+				 * @param ok  результат подключения к устройству
+				 *
+				 */
+				void connected(const event::id_t eid, const bool ok) noexcept;
+				/**
+				 * @brief Метод обработки данных, полученных от устройства UPnP
+				 *
+				 * @param eid  идентификатор потокового события обмена
+				 * @param data данные, полученные от устройства
+				 * @param size размер полученных данных
+				 *
+				 */
+				void incoming(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+			private:
+				/**
+				 * @brief Метод разбора прочитанного описания устройства UPnP
+				 *
+				 */
+				void described() noexcept;
+				/**
+				 * @brief Метод разбора ответа службы устройства UPnP
+				 *
+				 */
+				void controlled() noexcept;
 			private:
 				/**
 				 * @brief Метод начала обращения к маршрутизатору

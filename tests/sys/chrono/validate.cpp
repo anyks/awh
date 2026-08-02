@@ -224,7 +224,18 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, ValidateSecondsParameterizedFixture,
 		ValidateSecondsTestParameter({"1.2.3h", false}),
 		ValidateSecondsTestParameter({"", false}),
 		ValidateSecondsTestParameter({"мусор", false}),
-		ValidateSecondsTestParameter({"h", false})
+		ValidateSecondsTestParameter({"h", false}),
+		/**
+		 * Составная запись обозначением не является: прежде проверка её одобряла, хотя
+		 * перевод брал у неё один лишь хвост, отбрасывая начало молча
+		 */
+		ValidateSecondsTestParameter({"1h30m", false}),
+		ValidateSecondsTestParameter({"1w2d3h15m30s", false}),
+		// Обозначение занимает запись целиком, посторонних символов перед ним нет
+		ValidateSecondsTestParameter({"timeout=90m", false}),
+		ValidateSecondsTestParameter({" 90m", false}),
+		// Пробел между числом и единицей размерности допускается
+		ValidateSecondsTestParameter({"90 m", true})
 	)
 );
 

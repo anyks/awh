@@ -176,6 +176,10 @@ namespace awh {
 					{"request-absent",     "^(GET|POST) (\\S+) HTTP/(\\d)\\.(\\d)$",  kind_t::SHORT, false, 5300000.0},
 					{"address-short",      "(?m)^Host: (\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\r?$", kind_t::SHORT, true, 1800000.0},
 					{"address-absent",     "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})$", kind_t::SHORT, false, 9300000.0},
+					// Ленивые повторения
+					{"lazy-short",         "\\w+?@\\w+?\\.",                        kind_t::SHORT, true, 75000.0},
+					{"lazy-long",          "\\w+?@\\w+?\\.",                        kind_t::LONG,  true, 270.0},
+					{"lazy-dotstar",       ".*?needle",                               kind_t::LONG,  true, 80.0},
 					// Исполнение с возвратом
 					{"backref-heavy",      "(\\w+) \\1",                              kind_t::HEAVY, true, 100000.0},
 					{"lookahead-heavy",    "\\w+(?=@)",                               kind_t::HEAVY, true, 44000.0},

@@ -106,7 +106,19 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, DurationParseParameterizedFixture,
 		// Дробная часть через запятую не принимается, в отличие от записи даты
 		DurationParseTestParameter({"1,5h", 0.}),
 		// Размерность миллисекунд не предусмотрена
-		DurationParseTestParameter({"1000ms", 0.})
+		DurationParseTestParameter({"1000ms", 0.}),
+		/**
+		 * Обозначение занимает запись целиком: число обязано стоять в её начале, а
+		 * единица размерности - в её конце. Составные записи не предусмотрены, и
+		 * прежде разбор брал у них один лишь хвост, отбрасывая начало молча
+		 */
+		DurationParseTestParameter({"1h30m", 0.}),
+		DurationParseTestParameter({"1w2d3h15m30s", 0.}),
+		DurationParseTestParameter({"timeout=90m", 0.}),
+		DurationParseTestParameter({" 90m", 0.}),
+		DurationParseTestParameter({"x1h", 0.}),
+		// Пробел между числом и единицей размерности допускается
+		DurationParseTestParameter({"90 m", 5400.})
 	)
 );
 

@@ -963,6 +963,35 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Получаем глубину исполняемого рекурсивного вызова
 					const size_t depth = ((this->_current < this->_frames.size()) ? this->_frames.at(this->_current).depth : 0);
 					/**
+					 * Выполняем поиск вызова той же группы в той же позиции текста
+					 *
+					 * @details Вызов, вошедший заново в позиции той же, повторяет уже
+					 *          выполняемое: продвижения по тексту он не даёт, отчего
+					 *          и завершиться не может. Распознаётся он обходом цепочки
+					 *          кадров вызывающих, а не исчерпанием глубины: исчерпание
+					 *          обошлось бы в тысячи ходов и назвало бы причиной объём
+					 *          работы взамен устройства выражения.
+					 *
+					 */
+					for(size_t frame = this->_current; frame < this->_frames.size(); frame = this->_frames.at(frame).parent) {
+						/**
+						 * Если вызов той же группы в той же позиции уже исполняется
+						 */
+						if((this->_frames.at(frame).number == instruction.call.number) &&
+						 (this->_frames.at(frame).pos == current)) {
+							// Выполняем установку ошибки повторного рекурсивного вызова
+							this->_error = error_t::NESTED_RECURSION;
+							// Выводим результат исполнения программы
+							return false;
+						}
+						/**
+						 * Если цепочка кадров вызывающих пройдена целиком
+						 */
+						if(this->_frames.at(frame).parent == frame)
+							// Выходим из обхода цепочки кадров вызывающих
+							break;
+					}
+					/**
 					 * Если допустимая глубина рекурсивных вызовов превышена
 					 */
 					if(depth >= MAX_RECURSION) {
@@ -998,6 +1027,8 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					this->_frames.back().parent = this->_current;
 					// Выполняем установку глубины рекурсивного вызова
 					this->_frames.back().depth = (depth + 1);
+					// Выполняем установку позиции текста, в какой вызов начат
+					this->_frames.back().pos = current;
 					// Выполняем установку номера кадра исполняемого вызова
 					this->_current = (this->_frames.size() - 1);
 					// Переходим к телу вызываемого подвыражения
