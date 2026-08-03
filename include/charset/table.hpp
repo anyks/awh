@@ -51,7 +51,7 @@ namespace awh {
 		/**
 		 * Таблицы кодировок, порождаемые средством «tools/charset/generate.py»
 		 */
-		extern __AWH_SHARED_EXPORT__ const codepage_t CODEPAGES[];
+		extern __AWH_SHARED_EXPORT__ const table_t CODEPAGES[];
 		extern __AWH_SHARED_EXPORT__ const size_t CODEPAGES_COUNT;
 		extern __AWH_SHARED_EXPORT__ const labeling_t LABELS[];
 		extern __AWH_SHARED_EXPORT__ const size_t LABELS_COUNT;

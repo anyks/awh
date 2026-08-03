@@ -3287,7 +3287,7 @@ static const awh::charset::mapping_t MAC_CYRILLIC_MAPPINGS[] = {
  * @brief Набор таблиц соответствия однобайтовых кодировок Юникоду
  *
  */
-const awh::charset::codepage_t awh::charset::CODEPAGES[] = {
+const awh::charset::table_t awh::charset::CODEPAGES[] = {
 	{encoding_t::ISO8859_1, "iso-8859-1", ISO8859_1_UNICODE, ISO8859_1_MAPPINGS, (sizeof(ISO8859_1_MAPPINGS) / sizeof(ISO8859_1_MAPPINGS[0]))},
 	{encoding_t::ISO8859_2, "iso-8859-2", ISO8859_2_UNICODE, ISO8859_2_MAPPINGS, (sizeof(ISO8859_2_MAPPINGS) / sizeof(ISO8859_2_MAPPINGS[0]))},
 	{encoding_t::ISO8859_3, "iso-8859-3", ISO8859_3_UNICODE, ISO8859_3_MAPPINGS, (sizeof(ISO8859_3_MAPPINGS) / sizeof(ISO8859_3_MAPPINGS[0]))},

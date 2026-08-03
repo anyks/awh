@@ -160,9 +160,9 @@ awh::net::Tunnel_Info::Tunnel_Info() noexcept :
 awh::net::Interface::Interface() noexcept : name{""}, mtu(0), flags{} {}
 
 /**
- * Для операционной системы Linux или FreeBSD
+ * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
  */
-#if __linux__ || __FreeBSD__
+#if __linux__ || __FreeBSD__ || __sun
 	/**
 	 * @brief Конструктор
 	 *

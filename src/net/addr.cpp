@@ -2876,7 +2876,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 								// Если запись длины префикса длиннее допустимого
 								return false;
 							// Получаем префикс сети
-							if(this->_fmk->atoi <uint32_t> (suffix.data(), suffix.length()) > 32)
+							if(this->_fmk->atoi <uint32_t> (string_view{suffix.data(), suffix.length()}) > 32)
 								// Если префикс сети больше допустимого значения
 								return false;
 						// Если суффикс не является числом
@@ -2939,7 +2939,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 								// Если запись длины префикса длиннее допустимого
 								return false;
 							// Получаем префикс сети
-							if(this->_fmk->atoi <uint32_t> (suffix.data(), suffix.length()) > 128)
+							if(this->_fmk->atoi <uint32_t> (string_view{suffix.data(), suffix.length()}) > 128)
 								// Если префикс сети больше допустимого значения
 								return false;
 						// Если суффикс не является числом
@@ -4376,7 +4376,7 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
 										return fail();
 								}
 								// Извлекаем полученное число
-								const uint32_t octet = this->_fmk->atoi <uint32_t> (addr.data() + begin, length);
+								const uint32_t octet = this->_fmk->atoi <uint32_t> (string_view{addr.data() + begin, length});
 								// Если число за пределы октета выходит
 								if(octet > 255)
 									// Возвращаем ошибку

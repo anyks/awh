@@ -72,6 +72,18 @@ namespace {
 			case static_cast <uint8_t> (awh::proto::portmap::upnp_t::action_t::STATUS):
 				// Выводим название действия службы
 				return "GetStatusInfo";
+			// Если действием является проделывание пробоя заслона IPv6
+			case static_cast <uint8_t> (awh::proto::portmap::upnp_t::action_t::PINHOLE):
+				// Выводим название действия службы
+				return "AddPinhole";
+			// Если действием является заделывание пробоя заслона IPv6
+			case static_cast <uint8_t> (awh::proto::portmap::upnp_t::action_t::UNPINHOLE):
+				// Выводим название действия службы
+				return "DeletePinhole";
+			// Если действием является чтение состояния заслона IPv6
+			case static_cast <uint8_t> (awh::proto::portmap::upnp_t::action_t::FIREWALL):
+				// Выводим название действия службы
+				return "GetFirewallStatus";
 		}
 		// Выводим пустое название действия службы
 		return "";
@@ -331,6 +343,229 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::status(const str
 	result.body = this->_soap.request(service, result.action);
 	// Выводим собранный вызов действия службы
 	return result;
+}
+/**
+ * @brief Метод сборки вызова проделывания пробоя заслона IPv6
+ *
+ * @warning Проверить вызов на живом устройстве не удалось: маршрутизатор, на котором
+ * отлаживался модуль, службы заслона IPv6 не выдаёт. Собрано по договору UPnP IGD:2
+ *
+ * @param service обозначение вида службы заслона IPv6
+ * @param pinhole параметры проделываемого пробоя заслона
+ * @return        собранный вызов действия службы
+ *
+ */
+awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const string_view service, const pinhole_t & pinhole) const noexcept {
+	// Собираемый вызов действия службы
+	request_t result;
+	/**
+	 * Если договор пробоя не задан либо внутренний порт не задан
+	 *
+	 * @note Пустой договор и пустой внутренний порт договором отведены под особый
+	 *       смысл, и устройство вправе отвергнуть такую просьбу целиком
+	 */
+	if((pinhole.proto == proto_t::NONE) || (pinhole.internalPort == 0)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				make_tuple(pinhole.remotePort, pinhole.internalPort),
+				log_t::flag_t::WARNING, "firewall pinhole parameters are incomplete"
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::WARNING, "firewall pinhole parameters are incomplete");
+		#endif
+		// Выводим пустой вызов действия службы
+		return result;
+	}
+	/**
+	 * Если внутренний адрес машины не задан
+	 *
+	 * @note Без внутреннего адреса маршрутизатору некому пропускать подключения:
+	 *       преобразования адресов в сети IPv6 нет, и подставить его он не может
+	 */
+	if(pinhole.internalClient.empty()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				make_tuple(pinhole.remotePort, pinhole.internalPort),
+				log_t::flag_t::WARNING, "internal client address is missing"
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::WARNING, "internal client address is missing");
+		#endif
+		// Выводим пустой вызов действия службы
+		return result;
+	}
+	/**
+	 * Если срок жизни пробоя не задан
+	 *
+	 * @note Бессрочных пробоев договор не заводит вовсе, и нулевой срок означал бы
+	 *       просьбу, которую устройство отвергнет
+	 */
+	if(pinhole.lifeTime == 0){
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::WARNING, "firewall pinhole lease time is missing");
+		// Выводим пустой вызов действия службы
+		return result;
+	}
+	/**
+	 * Собираемый перечень доводов вызова действия
+	 *
+	 * @note Договор пробоя передаётся числом договора по описи IANA, а не названием:
+	 *       здесь это отличается от заведения перенаправления, где то же поле несёт
+	 *       название договора
+	 */
+	const vector <soap_t::argument_t> arguments = {
+		soap_t::argument_t("RemoteHost", pinhole.remoteHost),
+		soap_t::argument_t("RemotePort", ::std::to_string(pinhole.remotePort)),
+		soap_t::argument_t("Protocol", ::std::to_string((pinhole.proto == proto_t::TCP) ? 6 : 17)),
+		soap_t::argument_t("InternalPort", ::std::to_string(pinhole.internalPort)),
+		soap_t::argument_t("InternalClient", pinhole.internalClient),
+		soap_t::argument_t("LeaseTime", ::std::to_string(pinhole.lifeTime))
+	};
+	// Запоминаем название вызываемого действия службы
+	result.action.assign(::name(action_t::PINHOLE));
+	// Выполняем сборку обозначения вызываемого действия службы
+	result.header = this->_soap.action(service, result.action);
+	// Выполняем сборку текста вызова действия службы
+	result.body = this->_soap.request(service, result.action, arguments);
+	// Выводим собранный вызов действия службы
+	return result;
+}
+/**
+ * @brief Метод сборки вызова заделывания пробоя заслона IPv6
+ *
+ * @warning Проверить вызов на живом устройстве не удалось - см. замечание к сборке
+ * вызова проделывания пробоя
+ *
+ * @param service обозначение вида службы заслона IPv6
+ * @param unique  опознаватель заделываемого пробоя заслона
+ * @return        собранный вызов действия службы
+ *
+ */
+awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::unpinhole(const string_view service, const uint16_t unique) const noexcept {
+	// Собираемый вызов действия службы
+	request_t result;
+	// Собираемый перечень доводов вызова действия
+	const vector <soap_t::argument_t> arguments = {
+		soap_t::argument_t("UniqueID", ::std::to_string(unique))
+	};
+	// Запоминаем название вызываемого действия службы
+	result.action.assign(::name(action_t::UNPINHOLE));
+	// Выполняем сборку обозначения вызываемого действия службы
+	result.header = this->_soap.action(service, result.action);
+	// Выполняем сборку текста вызова действия службы
+	result.body = this->_soap.request(service, result.action, arguments);
+	// Выводим собранный вызов действия службы
+	return result;
+}
+/**
+ * @brief Метод сборки вызова чтения состояния заслона IPv6
+ *
+ * @warning Проверить вызов на живом устройстве не удалось - см. замечание к сборке
+ * вызова проделывания пробоя
+ *
+ * @param service обозначение вида службы заслона IPv6
+ * @return        собранный вызов действия службы
+ *
+ */
+awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::firewall(const string_view service) const noexcept {
+	// Собираемый вызов действия службы
+	request_t result;
+	// Запоминаем название вызываемого действия службы
+	result.action.assign(::name(action_t::FIREWALL));
+	// Выполняем сборку обозначения вызываемого действия службы
+	result.header = this->_soap.action(service, result.action);
+	// Выполняем сборку текста вызова действия службы
+	result.body = this->_soap.request(service, result.action);
+	// Выводим собранный вызов действия службы
+	return result;
+}
+/**
+ * @brief Метод извлечения опознавателя пробоя из ответа службы
+ *
+ * @warning Проверить извлечение на живом устройстве не удалось - см. замечание к
+ * сборке вызова проделывания пробоя
+ *
+ * @param answer разобранный ответ службы
+ * @param unique ссылка на извлечённый опознаватель пробоя заслона
+ * @return       признак успешного извлечения
+ *
+ */
+bool awh::proto::portmap::UPnP::unique(const soap_t::answer_t & answer, uint16_t & unique) const noexcept {
+	/**
+	 * Если служба ответила отказом
+	 */
+	if(answer.fault)
+		// Выводим признак неудачного извлечения
+		return false;
+	// Получаем опознаватель проделанного пробоя из ответа службы
+	const string_view result = this->_soap.value(answer, "UniqueID");
+	/**
+	 * Если опознавателя в ответе службы нет
+	 *
+	 * @note Без опознавателя пробой заделать нечем: признаки его для этого не годятся,
+	 *       и принимать такой ответ за успех недопустимо
+	 */
+	if(result.empty())
+		// Выводим признак неудачного извлечения
+		return false;
+	// Запоминаем извлечённый опознаватель пробоя заслона
+	unique = this->_fmk->atoi <uint16_t> (result);
+	// Выводим признак успешного извлечения
+	return true;
+}
+/**
+ * @brief Метод извлечения состояния заслона IPv6 из ответа службы
+ *
+ * @warning Проверить извлечение на живом устройстве не удалось - см. замечание к
+ * сборке вызова проделывания пробоя
+ *
+ * @param answer  разобранный ответ службы
+ * @param enabled ссылка на признак того, что заслон включён
+ * @param allowed ссылка на признак того, что пробои заслона разрешены
+ * @return        признак успешного извлечения
+ *
+ */
+bool awh::proto::portmap::UPnP::firewall(const soap_t::answer_t & answer, bool & enabled, bool & allowed) const noexcept {
+	/**
+	 * Если служба ответила отказом
+	 */
+	if(answer.fault)
+		// Выводим признак неудачного извлечения
+		return false;
+	// Получаем признак того, что заслон IPv6 включён
+	const string_view active = this->_soap.value(answer, "FirewallEnabled");
+	// Получаем признак того, что пробои заслона IPv6 разрешены
+	const string_view inbound = this->_soap.value(answer, "InboundPinholeAllowed");
+	/**
+	 * Если признаков в ответе службы нет
+	 */
+	if(active.empty() || inbound.empty())
+		// Выводим признак неудачного извлечения
+		return false;
+	// Запоминаем признак того, что заслон IPv6 включён
+	enabled = ((active.front() == '1') || (active.front() == 't') || (active.front() == 'T'));
+	// Запоминаем признак того, что пробои заслона IPv6 разрешены
+	allowed = ((inbound.front() == '1') || (inbound.front() == 't') || (inbound.front() == 'T'));
+	// Выводим признак успешного извлечения
+	return true;
 }
 /**
  * @brief Метод извлечения внешнего адреса маршрутизатора из ответа службы

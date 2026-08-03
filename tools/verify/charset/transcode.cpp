@@ -92,7 +92,7 @@ int main(){
 			}
 		}
 		// Сверяем запись каждого представимого кодового значения обратно в байт
-		const charset::codepage_t * page = charset::codepage(item.encoding);
+		const charset::table_t * page = charset::table(item.encoding);
 		for(size_t i = 0; i < page->count; i++){
 			char buffer[awh::utf8::MAX_LENGTH];
 			const size_t length = awh::utf8::encode(page->mappings[i].code, buffer);

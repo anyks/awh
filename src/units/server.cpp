@@ -220,9 +220,9 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const event::status_t)> ("server_status", status);
 			/**
-			 * Для операционной системы Linux или FreeBSD
+			 * Для систем, где ядро само разводит подключения между процессами кластера
 			 */
-			#elif __linux__ || __FreeBSD__
+			#elif __AWH_CLUSTER_BALANCE__
 				// Если кластер в работе не используется или если процесс является дочерним
 				if((this->_clusterParams.mode == event::mode_t::DISABLED) || !this->_cluster->master())
 					// Выполняем функцию обратного вызова
@@ -471,9 +471,9 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 		// Если событие представляет из себя запуск процесса
 		case static_cast <uint8_t> (unit::cluster_t::event_t::START): {
 			/**
-			 * Для операционной системы Linux или FreeBSD
+			 * Для систем, где ядро само разводит подключения между процессами кластера
 			 */
-			#if __linux__ || __FreeBSD__
+			#if __AWH_CLUSTER_BALANCE__
 				// Если работа юнита ещё не запущена
 				if(!this->working()){
 					// Выполняем получение идентификатора функции обратного вызова
@@ -500,9 +500,9 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 		// Если событие представляет из себя остановку процесса
 		case static_cast <uint8_t> (unit::cluster_t::event_t::STOP): {
 			/**
-			 * Для операционной системы Linux или FreeBSD
+			 * Для систем, где ядро само разводит подключения между процессами кластера
 			 */
-			#if __linux__ || __FreeBSD__
+			#if __AWH_CLUSTER_BALANCE__
 				// Если работа юнита запущена
 				if(this->working())
 					// Останавливаем работу основного юнита
@@ -778,9 +778,9 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 		// Если событие сервера является актуальным
 		if(this->isActual(eid)){
 			/**
-			 * Для операционной системы Linux или FreeBSD
+			 * Для систем, где ядро само разводит подключения между процессами кластера
 			 */
-			#if __linux__ || __FreeBSD__
+			#if __AWH_CLUSTER_BALANCE__
 				// Если кластер активен, значит нам необходимо проверить опции сервера
 				if(this->_clusterParams.mode == event::mode_t::ENABLED){
 					// Если не установлена опция переиспользования портов
@@ -1674,9 +1674,9 @@ void awh::unit::Server::stop() noexcept {
 			// Выполняем остановку работы основного юнита
 			unit_t::stop();
 		/**
-		 * Для операционной системы Linux или FreeBSD
+		 * Для систем, где ядро само разводит подключения между процессами кластера
 		 */
-		#elif __linux__ || __FreeBSD__
+		#elif __AWH_CLUSTER_BALANCE__
 			/**
 			 * Определяем режим запуска сервера
 			 */
@@ -1744,9 +1744,9 @@ void awh::unit::Server::start() noexcept {
 			// Выполняем запуск работы основного юнита
 			unit_t::start();
 		/**
-		 * Для операционной системы Linux или FreeBSD
+		 * Для систем, где ядро само разводит подключения между процессами кластера
 		 */
-		#elif __linux__ || __FreeBSD__
+		#elif __AWH_CLUSTER_BALANCE__
 			/**
 			 * Определяем режим запуска сервера
 			 */

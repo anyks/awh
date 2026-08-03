@@ -30,9 +30,9 @@
 #include "../../sys/log.hpp"
 
 /**
- * Для операционной системы Linux или FreeBSD
+ * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
  */
-#if __linux__ || __FreeBSD__
+#if __linux__ || __FreeBSD__ || __sun
 	/**
 	 * Подключаем заголовочный модуль SCTP протокола
 	 */
@@ -87,9 +87,9 @@ namespace awh {
 			// Объект управления сетевым интерфейсом
 			eth::iface_t iface;
 			/**
-			 * Для операционной системы Linux или FreeBSD
+			 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 			 */
-			#if __linux__ || __FreeBSD__
+			#if __linux__ || __FreeBSD__ || __sun
 				// Объект управления протоколом передачи с управлением потоком
 				eth::sctp_t sctp;
 			#endif

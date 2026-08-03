@@ -44,9 +44,9 @@ namespace awh {
 		using namespace std;
 
 		/**
-		 * Для операционной системы Linux или FreeBSD
+		 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 		 */
-		#if __linux__ || __FreeBSD__
+		#if __linux__ || __FreeBSD__ || __sun
 			/**
 			 * @brief Класс управления протоколом передачи с управлением потоком
 			 *
@@ -78,12 +78,13 @@ namespace awh {
 			 *          - **аутентификация по RFC 4895** - `authenticateKey()`,
 			 *            `authenticateChunks()`, `authenticateSupportAlgorithms()`.
 			 *
-			 * @note    Класс объявлен для Linux и FreeBSD, но **отлажен и работает
-			 *          только под FreeBSD**. У macOS, NetBSD и OpenBSD SCTP в ядре
-			 *          нет вовсе, и класс там не существует - обращения к нему не
-			 *          соберутся, а не откажут во время работы. Прикладной код,
-			 *          рассчитанный на переносимость, обязан заворачивать обращения в
-			 *          ту же проверку `#if __linux__ || __FreeBSD__`.
+			 * @note    Класс объявлен для Linux, FreeBSD, Solaris и illumos, но
+			 *          **отлажен и работает только под FreeBSD**. У macOS и OpenBSD
+			 *          SCTP в ядре нет вовсе, а NetBSD держит заголовок без поддержки
+			 *          в ядре; класс там не существует - обращения к нему не соберутся,
+			 *          а не откажут во время работы. Прикладной код, рассчитанный на
+			 *          переносимость, обязан заворачивать обращения в ту же проверку
+			 *          `#if __linux__ || __FreeBSD__ || __sun`.
 			 *
 			 * @note    Рабочие примеры лежат в [`sample/net/sctp/`](../../sample/net/sctp):
 			 *          потоковый и последовательно-пакетный режимы, поверх TLS и
@@ -106,7 +107,7 @@ namespace awh {
 			 *
 			 * @par Пример: SCTP-клиент с несколькими потоками в ассоциации
 			 * @code{.cpp}
-			 * #if __linux__ || __FreeBSD__
+			 * #if __linux__ || __FreeBSD__ || __sun
 			 *     awh::engine::io_t io(&fmk, &log);
 			 *     awh::engine::sctp_t sctp(&fmk, &log);
 			 *     // Заводим событие SCTP-сокета обычным порядком движка

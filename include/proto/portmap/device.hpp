@@ -100,6 +100,18 @@ namespace awh {
 					 *
 					 */
 					static constexpr const char * SERVICE_WAN_PPP = "urn:schemas-upnp-org:service:WANPPPConnection:1";
+					/**
+					 * @brief Обозначение вида службы заслона IPv6
+					 *
+					 * @details Служба эта заведована пробоями заслона IPv6, а не
+					 * перенаправлениями: преобразования адресов в сети IPv6 нет, и
+					 * подключения сквозь заслон разрешает она
+					 *
+					 * @note Служба необязательна, и выдаёт её далеко не всякое устройство:
+					 * договором UPnP IGD она заведена лишь во второй его редакции
+					 *
+					 */
+					static constexpr const char * SERVICE_WAN_IPV6 = "urn:schemas-upnp-org:service:WANIPv6FirewallControl:1";
 				public:
 					/**
 					 * @brief Коды причины отказа кодека

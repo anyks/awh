@@ -236,7 +236,7 @@ def emit():
 	lines.append(' * @brief Набор таблиц соответствия однобайтовых кодировок Юникоду')
 	lines.append(' *')
 	lines.append(' */')
-	lines.append('const awh::charset::codepage_t awh::charset::CODEPAGES[] = {')
+	lines.append('const awh::charset::table_t awh::charset::CODEPAGES[] = {')
 	for name, source, canonical, names in CHARSETS:
 		lines.append('\t{encoding_t::%s, "%s", %s_UNICODE, %s_MAPPINGS, (sizeof(%s_MAPPINGS) / sizeof(%s_MAPPINGS[0]))},' % (
 			name, canonical, name, name, name, name))

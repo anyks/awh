@@ -105,7 +105,7 @@ namespace awh {
 		 * @return         таблица соответствия либо пустой указатель
 		 *
 		 */
-		__AWH_SHARED_EXPORT__ const codepage_t * codepage(const encoding_t encoding) noexcept;
+		__AWH_SHARED_EXPORT__ const table_t * table(const encoding_t encoding) noexcept;
 		/**
 		 * @brief Функция перекодировки текста из одной кодировки в другую
 		 *

@@ -43,9 +43,9 @@ class IoFixture : public testing::Test {
 		// Объект транспортного уровня безопасности
 		std::unique_ptr <awh::tls::coder_t> _coder;
 		/**
-		 * Для операционной системы Linux или FreeBSD
+		 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 		 */
-		#if __linux__ || __FreeBSD__
+		#if __linux__ || __FreeBSD__ || __sun
 			// Объект управления SCTP протоколом
 			std::unique_ptr <awh::engine::sctp_t> _sctp;
 		#endif

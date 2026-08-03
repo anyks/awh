@@ -2107,7 +2107,7 @@ void awh::unit::QuicServer::cluster(const pid_t pid, const unit::cluster_t::even
 							 *       случай единственного порта диапазона - он достаётся всем
 							 *
 							 */
-							#if __linux__ || __FreeBSD__
+							#if __AWH_CLUSTER_BALANCE__
 								// Отправляем дочернему процессу последний порт диапазона
 								this->sendPort(worker, ports.back());
 							/**

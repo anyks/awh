@@ -400,11 +400,11 @@ TEST_P(FmkIconvParameterizedFixture, FmkIconvTest){
 	 *          операционных системах одинаково.
 	 */
 	// Конвертируем из UTF-8 в CP1251
-	const auto & result1 = this->_fmk->transcode(this->_parameter.text, awh::fmk_t::codepage_t::UTF8_CP1251);
+	const auto & result1 = this->_fmk->transcode(this->_parameter.text, awh::fmk_t::codepage_t::UTF8, awh::fmk_t::codepage_t::CP1251);
 	// Проверяем что результат не в UTF-8
 	ASSERT_FALSE(this->_fmk->is(result1, awh::fmk_t::check_t::UTF8));
 	// Конвертируем из CP1251 в UTF-8
-	const auto & result2 = this->_fmk->transcode(result1, awh::fmk_t::codepage_t::CP1251_UTF8);
+	const auto & result2 = this->_fmk->transcode(result1, awh::fmk_t::codepage_t::CP1251, awh::fmk_t::codepage_t::UTF8);
 	// Проверяем что результат в UTF-8
 	ASSERT_TRUE(this->_fmk->is(result2, awh::fmk_t::check_t::UTF8));
 	// Сравниваем что исходный текст и результат совпадают

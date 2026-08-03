@@ -51,7 +51,7 @@ namespace {
 	 * @return         длина разобранной записи либо нулевое значение при отказе
 	 *
 	 */
-	inline size_t extract(string_view text, const size_t pos, const awh::charset::codepage_t * codepage, const awh::charset::encoding_t encoding, uint32_t & code) noexcept {
+	inline size_t extract(string_view text, const size_t pos, const awh::charset::table_t * codepage, const awh::charset::encoding_t encoding, uint32_t & code) noexcept {
 		// Выполняем сброс кодового значения разобранного символа
 		code = 0;
 		/**
@@ -112,7 +112,7 @@ namespace {
 	 * @return         результат выполнения записи символа
 	 *
 	 */
-	inline bool insert(const uint32_t code, const awh::charset::codepage_t * codepage, const awh::charset::encoding_t encoding, string & result) noexcept {
+	inline bool insert(const uint32_t code, const awh::charset::table_t * codepage, const awh::charset::encoding_t encoding, string & result) noexcept {
 		/**
 		 * Если текст записывается в кодировке UTF-8
 		 */
@@ -266,13 +266,13 @@ string_view awh::charset::label(const encoding_t encoding) noexcept {
 		case static_cast <uint8_t> (encoding_t::ASCII): return "US-ASCII";
 	}
 	// Выполняем извлечение таблицы соответствия кодировки Юникоду
-	const codepage_t * table = codepage(encoding);
+	const table_t * item = table(encoding);
 	/**
 	 * Если таблица соответствия кодировки обнаружена
 	 */
-	if(table != nullptr)
+	if(item != nullptr)
 		// Выводим каноническое имя кодировки
-		return table->name;
+		return item->name;
 	// Выводим отсутствие имени у неустановленной кодировки
 	return "";
 }
@@ -283,7 +283,7 @@ string_view awh::charset::label(const encoding_t encoding) noexcept {
  * @return         таблица соответствия либо пустой указатель
  *
  */
-const awh::charset::codepage_t * awh::charset::codepage(const encoding_t encoding) noexcept {
+const awh::charset::table_t * awh::charset::table(const encoding_t encoding) noexcept {
 	/**
 	 * Выполняем обход набора таблиц соответствия кодировок
 	 */
@@ -325,9 +325,9 @@ bool awh::charset::transcode(string_view text, const encoding_t from, const enco
 		// Выводим результат выполнения перекодировки текста
 		return true;
 	// Выполняем извлечение таблицы соответствия кодировки текста
-	const codepage_t * source = codepage(from);
+	const table_t * source = table(from);
 	// Выполняем извлечение таблицы соответствия кодировки результата
-	const codepage_t * target = codepage(to);
+	const table_t * target = table(to);
 	/**
 	 * Если кодировка текста задана таблицей соответствия, которая не обнаружена
 	 */

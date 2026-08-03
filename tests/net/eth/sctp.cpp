@@ -22,9 +22,9 @@
 #include "eth.hpp"
 
 /**
- * Модуль SCTP доступен только для операционных систем Linux и FreeBSD
+ * Модуль SCTP доступен на системах с поддержкой протокола: Linux, FreeBSD, Solaris и illumos
  */
-#if __linux__ || __FreeBSD__
+#if __linux__ || __FreeBSD__ || __sun
 
 /**
  * Подключаем стандартные заголовочные файлы
@@ -445,4 +445,4 @@ TEST_F(EthFixture, SctpStatusUnconnected){
 		ASSERT_LE(static_cast <uint8_t> (status.state), static_cast <uint8_t> (awh::net::sctp::state_status_t::SHUTDOWN_ACK_SENT));
 }
 
-#endif // __linux__ || __FreeBSD__
+#endif // __linux__ || __FreeBSD__ || __sun

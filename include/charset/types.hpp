@@ -124,7 +124,7 @@ namespace awh {
 		 * @brief Таблица соответствия однобайтовой кодировки Юникоду
 		 *
 		 */
-		typedef struct __AWH_SHARED_EXPORT__ Codepage {
+		typedef struct __AWH_SHARED_EXPORT__ Table {
 			// Обозначение кодировки текста
 			encoding_t encoding;
 			// Каноническое имя кодировки
@@ -135,7 +135,7 @@ namespace awh {
 			const mapping_t * mappings;
 			// Количество записей обратного соответствия
 			size_t count;
-		} codepage_t;
+		} table_t;
 
 		/**
 		 * @brief Соответствие имени кодировки её обозначению

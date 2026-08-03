@@ -33,6 +33,12 @@ using namespace awh::proto::portmap;
 static constexpr const char * WAN_SERVICE = "urn:schemas-upnp-org:service:WANIPConnection:1";
 
 /**
+ * @brief Обозначение вида службы заслона IPv6
+ *
+ */
+static constexpr const char * WAN_SERVICE6 = "urn:schemas-upnp-org:service:WANIPv6FirewallControl:1";
+
+/**
  * @brief Проверка сборки вызова заведения перенаправления порта
  *
  */
@@ -393,5 +399,212 @@ TEST_F(PortmapFixture, UpnpResult) {
 		ASSERT_EQ(upnp->result(answer), upnp_t::result_t::SUCCESS);
 		// Выполняем проверку названия действия, на которое получен ответ
 		ASSERT_EQ(answer.action, "AddPortMapping");
+	}
+}
+
+/**
+ * @brief Проверка сборки вызова проделывания пробоя заслона IPv6
+ *
+ * @details Пробой - это не перенаправление: преобразования адресов в сети IPv6 нет,
+ *          и просьба означает разрешение подключений сквозь заслон маршрутизатора.
+ *          Внешнего порта у пробоя нет, а договор передаётся числом по описи IANA
+ *
+ * @warning Проверить вызов на живом устройстве не удалось: маршрутизатор, на котором
+ *          отлаживался модуль, службы заслона IPv6 не выдаёт. Проверка сличает
+ *          собранное с разметкой договора UPnP IGD:2, а не с ответом устройства
+ *
+ */
+TEST_F(PortmapFixture, UpnpPinhole) {
+	// Создаём объект кодека действий службы перенаправления
+	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
+	// Параметры проделываемого пробоя заслона
+	upnp_t::pinhole_t pinhole;
+	// Устанавливаем договор пробоя заслона
+	pinhole.proto = upnp_t::proto_t::TCP;
+	// Устанавливаем внутренний порт машины, которой отдаются подключения
+	pinhole.internalPort = 8080;
+	// Устанавливаем внутренний адрес машины, которой отдаются подключения
+	pinhole.internalClient = "2001:db8::42";
+	// Устанавливаем срок жизни пробоя заслона
+	pinhole.lifeTime = 3600;
+	// Выполняем сборку вызова проделывания пробоя заслона
+	const upnp_t::request_t request = upnp->pinhole(WAN_SERVICE6, pinhole);
+	// Выполняем проверку пригодности собранного вызова
+	ASSERT_TRUE(request.valid());
+	// Выполняем проверку названия вызываемого действия службы
+	ASSERT_EQ(request.action, "AddPinhole");
+	// Выполняем проверку обозначения вызываемого действия службы
+	ASSERT_EQ(request.header, "\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1#AddPinhole\"");
+	/**
+	 * Выполняем проверку наличия договора пробоя числом по описи IANA
+	 *
+	 * @note Здесь это отличается от заведения перенаправления, где то же поле несёт
+	 *       название договора: договор пробоя передаётся числом
+	 */
+	ASSERT_NE(request.body.find("<Protocol>6</Protocol>"), std::string::npos);
+	// Выполняем проверку наличия внутреннего порта машины
+	ASSERT_NE(request.body.find("<InternalPort>8080</InternalPort>"), std::string::npos);
+	// Выполняем проверку наличия внутреннего адреса машины
+	ASSERT_NE(request.body.find("<InternalClient>2001:db8::42</InternalClient>"), std::string::npos);
+	// Выполняем проверку наличия срока жизни пробоя заслона
+	ASSERT_NE(request.body.find("<LeaseTime>3600</LeaseTime>"), std::string::npos);
+	/**
+	 * Выполняем проверку наличия пустого порта узла, с которого пропускаются подключения
+	 *
+	 * @note Нулевой порт означает «с любого порта»
+	 */
+	ASSERT_NE(request.body.find("<RemotePort>0</RemotePort>"), std::string::npos);
+	/**
+	 * Выполняем проверку записи договора UDP числом по описи IANA
+	 */
+	{
+		// Устанавливаем договор пробоя заслона
+		pinhole.proto = upnp_t::proto_t::UDP;
+		// Выполняем проверку наличия договора пробоя числом по описи IANA
+		ASSERT_NE(upnp->pinhole(WAN_SERVICE6, pinhole).body.find("<Protocol>17</Protocol>"), std::string::npos);
+		// Восстанавливаем договор пробоя заслона
+		pinhole.proto = upnp_t::proto_t::TCP;
+	}
+	/**
+	 * Выполняем проверку отклонения неполных параметров пробоя заслона
+	 */
+	{
+		// Сбрасываем внутренний адрес машины
+		pinhole.internalClient.clear();
+		// Выполняем проверку отклонения сборки без внутреннего адреса машины
+		ASSERT_FALSE(upnp->pinhole(WAN_SERVICE6, pinhole).valid());
+		// Восстанавливаем внутренний адрес машины
+		pinhole.internalClient = "2001:db8::42";
+		// Сбрасываем срок жизни пробоя заслона
+		pinhole.lifeTime = 0;
+		/**
+		 * Выполняем проверку отклонения сборки без срока жизни пробоя
+		 *
+		 * @note Бессрочных пробоев договор не заводит вовсе, и нулевой срок означал бы
+		 *       просьбу, которую устройство отвергнет
+		 */
+		ASSERT_FALSE(upnp->pinhole(WAN_SERVICE6, pinhole).valid());
+		// Восстанавливаем срок жизни пробоя заслона
+		pinhole.lifeTime = 3600;
+		// Сбрасываем договор пробоя заслона
+		pinhole.proto = upnp_t::proto_t::NONE;
+		// Выполняем проверку отклонения сборки без договора пробоя
+		ASSERT_FALSE(upnp->pinhole(WAN_SERVICE6, pinhole).valid());
+	}
+}
+/**
+ * @brief Проверка сборки вызова заделывания пробоя заслона IPv6
+ *
+ * @warning Проверить вызов на живом устройстве не удалось - см. замечание к проверке
+ *          сборки вызова проделывания пробоя
+ *
+ */
+TEST_F(PortmapFixture, UpnpUnpinhole) {
+	// Создаём объект кодека действий службы перенаправления
+	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
+	// Выполняем сборку вызова заделывания пробоя заслона
+	const upnp_t::request_t request = upnp->unpinhole(WAN_SERVICE6, 42);
+	// Выполняем проверку пригодности собранного вызова
+	ASSERT_TRUE(request.valid());
+	// Выполняем проверку названия вызываемого действия службы
+	ASSERT_EQ(request.action, "DeletePinhole");
+	// Выполняем проверку обозначения вызываемого действия службы
+	ASSERT_EQ(request.header, "\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1#DeletePinhole\"");
+	// Выполняем проверку наличия опознавателя заделываемого пробоя
+	ASSERT_NE(request.body.find("<UniqueID>42</UniqueID>"), std::string::npos);
+}
+/**
+ * @brief Проверка разбора ответов службы заслона IPv6
+ *
+ * @warning Проверить разбор на живом устройстве не удалось - см. замечание к проверке
+ *          сборки вызова проделывания пробоя. Разбираемые ответы собраны по разметке
+ *          договора UPnP IGD:2, а не сняты с устройства
+ *
+ */
+TEST_F(PortmapFixture, UpnpFirewall) {
+	// Создаём объект кодека действий службы перенаправления
+	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
+	// Создаём объект кодека договора SOAP
+	const std::unique_ptr <soap_t> soap = this->makeSoap();
+	// Выполняем сборку вызова чтения состояния заслона IPv6
+	const upnp_t::request_t request = upnp->firewall(WAN_SERVICE6);
+	// Выполняем проверку пригодности собранного вызова
+	ASSERT_TRUE(request.valid());
+	// Выполняем проверку названия вызываемого действия службы
+	ASSERT_EQ(request.action, "GetFirewallStatus");
+	// Код причины отказа кодека
+	soap_t::error_t error = soap_t::error_t::NONE;
+	/**
+	 * Выполняем проверку извлечения состояния заслона IPv6
+	 */
+	{
+		// Разбираемый ответ службы заслона IPv6
+		const std::string text =
+			"<?xml version=\"1.0\"?>"
+			"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+			"<s:Body><u:GetFirewallStatusResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\">"
+			"<FirewallEnabled>1</FirewallEnabled>"
+			"<InboundPinholeAllowed>1</InboundPinholeAllowed>"
+			"</u:GetFirewallStatusResponse></s:Body></s:Envelope>";
+		// Разобранный ответ службы устройства
+		soap_t::answer_t answer;
+		// Выполняем разбор ответа службы устройства
+		ASSERT_TRUE(soap->parse(text, answer, error));
+		// Признак того, что заслон IPv6 включён
+		bool enabled = false;
+		// Признак того, что пробои заслона IPv6 разрешены
+		bool allowed = false;
+		// Выполняем извлечение состояния заслона IPv6
+		ASSERT_TRUE(upnp->firewall(answer, enabled, allowed));
+		// Выполняем проверку того, что заслон IPv6 включён
+		ASSERT_TRUE(enabled);
+		// Выполняем проверку того, что пробои заслона IPv6 разрешены
+		ASSERT_TRUE(allowed);
+	}
+	/**
+	 * Выполняем проверку извлечения опознавателя проделанного пробоя
+	 */
+	{
+		// Разбираемый ответ службы заслона IPv6
+		const std::string text =
+			"<?xml version=\"1.0\"?>"
+			"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+			"<s:Body><u:AddPinholeResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\">"
+			"<UniqueID>65000</UniqueID>"
+			"</u:AddPinholeResponse></s:Body></s:Envelope>";
+		// Разобранный ответ службы устройства
+		soap_t::answer_t answer;
+		// Выполняем разбор ответа службы устройства
+		ASSERT_TRUE(soap->parse(text, answer, error));
+		// Извлекаемый опознаватель пробоя заслона
+		uint16_t unique = 0;
+		// Выполняем извлечение опознавателя пробоя заслона
+		ASSERT_TRUE(upnp->unique(answer, unique));
+		// Выполняем проверку извлечённого опознавателя пробоя заслона
+		ASSERT_EQ(unique, 65000);
+	}
+	/**
+	 * Выполняем проверку отклонения извлечения из ответа без опознавателя
+	 */
+	{
+		// Разбираемый ответ службы заслона IPv6
+		const std::string text =
+			"<?xml version=\"1.0\"?>"
+			"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+			"<s:Body><u:AddPinholeResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\">"
+			"</u:AddPinholeResponse></s:Body></s:Envelope>";
+		// Разобранный ответ службы устройства
+		soap_t::answer_t answer;
+		// Выполняем разбор ответа службы устройства
+		ASSERT_TRUE(soap->parse(text, answer, error));
+		// Извлекаемый опознаватель пробоя заслона
+		uint16_t unique = 0;
+		/**
+		 * Выполняем проверку отклонения извлечения опознавателя пробоя
+		 *
+		 * @note Без опознавателя пробой заделать нечем, и принимать такой ответ за
+		 *       успех недопустимо
+		 */
+		ASSERT_FALSE(upnp->unique(answer, unique));
 	}
 }

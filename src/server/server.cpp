@@ -90,9 +90,9 @@ bool awh::Server::active() const noexcept {
  */
 bool awh::Server::commitUnit() noexcept {
 	/**
-	 * Для операционной системы Linux или FreeBSD
+	 * Для систем, где ядро само разводит подключения между процессами кластера
 	 */
-	#if __linux__ || __FreeBSD__
+	#if __AWH_CLUSTER_BALANCE__
 		/**
 		 * В дочернем процессе кластера обычного сервера перед привязкой пересоздаём
 		 * унаследованный слушающий сокет: на Linux/FreeBSD SO_REUSEPORT требует

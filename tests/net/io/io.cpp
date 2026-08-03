@@ -35,9 +35,9 @@ void IoFixture::SetUp(){
 	// Создаём объект транспортного уровня безопасности
 	this->_coder = std::make_unique <awh::tls::coder_t> (this->_fmk.get(), this->_log.get());
 	/**
-	 * Для операционной системы Linux или FreeBSD
+	 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 	 */
-	#if __linux__ || __FreeBSD__
+	#if __linux__ || __FreeBSD__ || __sun
 		// Объект управления SCTP протоколом
 		this->_sctp = std::make_unique <awh::engine::sctp_t> (this->_fmk.get(), this->_log.get());
 	#endif

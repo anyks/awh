@@ -77,6 +77,15 @@ namespace {
 	constexpr uint8_t DEFAULT_ATTEMPTS = 0x03;
 
 	/**
+	 * @brief Срок жизни пробоя заслона IPv6 по умолчанию в секундах
+	 *
+	 * @note Бессрочных пробоев договор UPnP не заводит вовсе: срок обязателен, и при
+	 *       незаданном берётся этот
+	 *
+	 */
+	constexpr uint32_t DEFAULT_LIFETIME = 0xE10;
+
+	/**
 	 * @brief Метод заполнения отличительной метки перенаправления случайными байтами
 	 *
 	 * @param nonce место под отличительную метку перенаправления
@@ -103,7 +112,7 @@ namespace {
  */
 awh::unit::Portmap::Mapping::Mapping() noexcept :
  proto(proto_t::NONE), internalPort(0), externalPort(0), lifeTime(0), description{""},
- enabled(true), remoteHost{""}, internalClient{""} {}
+ pinhole(0), enabled(true), remoteHost{""}, internalClient{""} {}
 
 /**
  * @brief Конструктор
@@ -454,6 +463,24 @@ bool awh::unit::Portmap::timeout(const event::id_t eid, [[maybe_unused]] const e
 		 */
 		return false;
 	/**
+	 * Если срок ожидания истёк у рассылки обнаружения устройства UPnP
+	 *
+	 * @note Повторяется здесь рассылка, а не просьба маршрутизатору: просьбы собирает
+	 *       кодек договора, а у UPnP на этом шаге просьбы нет вовсе - есть рассылка,
+	 *       и заводит её отдельный метод. Повтор ей нужен не меньше прочих: рассылка
+	 *       эта дейтаграммная и групповая, а такую потерять проще всего
+	 */
+	if(type == type_t::UPNP){
+		/**
+		 * Если разослать просьбу обнаружения повторно не удалось
+		 */
+		if(!this->search())
+			// Выполняем завершение обмена отказом
+			this->failure(type, error_t::NO_RESPONSE);
+		// Запрещаем завершение события после истечения срока ожидания
+		return false;
+	}
+	/**
 	 * Если отправить просьбу повторно не удалось
 	 */
 	if(!this->submit(type))
@@ -643,6 +670,32 @@ awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::upn
 		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::INVALID_ARGS):
 			// Выводим отказ по ошибочно построенному запросу
 			return error_t::MALFORMED;
+		// Если у маршрутизатора не осталось места под пробои заслона IPv6
+		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::PINHOLE_EXHAUSTED):
+			// Выводим отказ по исчерпанию места под перенаправления
+			return error_t::OUT_OF_RESOURCES;
+		/**
+		 * Если заслон IPv6 отключён либо пробои его запрещены
+		 *
+		 * @note Отказ этот означает не ошибку просьбы, а отключённое устройством
+		 *       средство: просить его снова тем же способом бесполезно
+		 */
+		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::FIREWALL_DISABLED):
+		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::PINHOLE_NOT_ALLOWED):
+			// Выводим отказ по неподдерживаемому договору
+			return error_t::NOT_SUPPORTED;
+		// Если договор пробоя маршрутизатором не поддерживается
+		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::PROTO_NOT_SUPPORTED):
+			// Выводим отказ по неподдерживаемому договору
+			return error_t::NOT_SUPPORTED;
+		/**
+		 * Если пустые признаки пробоя заслона IPv6 не допускаются
+		 */
+		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::INT_PORT_NOT_WILDCARD):
+		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::PROTO_NOT_WILDCARD):
+		case static_cast <uint32_t> (proto::portmap::upnp_t::result_t::SRC_NOT_WILDCARD):
+			// Выводим отказ по ошибочно построенному запросу
+			return error_t::MALFORMED;
 	}
 	// Выводим отказ по иной причине
 	return error_t::REFUSED;
@@ -796,16 +849,23 @@ bool awh::unit::Portmap::membership(const string & group, const bool six) noexce
 		return this->_io->membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, group, "0.0.0.0");
 	// Получаем сетевое устройство, которым ведётся обмен
 	const string & iface = this->iface();
-	// Если сетевое устройство обмена неизвестно
+	/**
+	 * Если сетевое устройство обмена неизвестно
+	 *
+	 * @note Выбор устройства подписки оставляется системе: с исправно заведённой сетью
+	 *       IPv6 она справляется с этим сама
+	 */
 	if(iface.empty())
-		// Выводим отрицательный результат вступления в группу обнаружения
-		return false;
+		// Выполняем вступление в группу обнаружения устройств
+		return this->_io->membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, group, "::");
 	/**
 	 * Получаем адрес сетевого устройства, которым ведётся обмен
 	 *
-	 * @note Устройство подписки в сети IPv6 неопределённым адресом не задаётся:
-	 *       групповой адрес там принадлежит связи, и какой именно - система выводит
-	 *       из адреса устройства, с которого ведётся подписка
+	 * @note Устройство подписки задаётся тем же, которым уходит рассылка, а не
+	 *       выбирается системой: групповой адрес в сети IPv6 принадлежит связи, и
+	 *       подписка на чужой связи оставила бы рассылку без ответа. Неопределённый
+	 *       адрес система принимает и сама, когда путь IPv6 у неё есть, но
+	 *       полагаться на её выбор здесь незачем - устройство уже назначено
 	 */
 	const unique_ptr <net::addr_t> address = this->_ifaces.getAddress(iface, event::family_t::IPV6);
 	// Если адрес сетевого устройства получить не удалось
@@ -904,23 +964,16 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		 */
 		string target(group.begin(), group.end());
 		/**
-		 * Если обмен ведётся сетью IPv6
+		 * Если обмен ведётся сетью IPv6 и сетевое устройство обмена известно
+		 *
+		 * @note Неизвестное устройство рассылку не отменяет: систему с исправно
+		 *       заведённой сетью IPv6 зона не заботит - она выбирает устройство сама
+		 *       по таблице маршрутов. Отменять рассылку значило бы отказывать там, где
+		 *       она прошла бы
 		 */
-		if(six){
-			// Получаем сетевое устройство, которым ведётся обмен
-			const string & iface = this->iface();
-			/**
-			 * Если сетевое устройство обмена неизвестно
-			 */
-			if(iface.empty()){
-				// Записываем в лог сообщение о неизвестном устройстве обмена
-				this->_log->print("Network interface for IPv6 discovery is unknown, set it explicitly", log_t::flag_t::WARNING);
-				// Выводим отрицательный результат начала отыскания устройства
-				return false;
-			}
+		if(six && !this->iface().empty())
 			// Выполняем дописывание зоны группового адреса
-			target.append(1, '%').append(iface);
-		}
+			target.append(1, '%').append(this->iface());
 		// Если событие обмена уже заведено
 		if(this->_exchangeUPNP.eid > 0)
 			// Выполняем удаление события обмена
@@ -1488,7 +1541,46 @@ void awh::unit::Portmap::described() noexcept {
 		return;
 	}
 	/**
-	 * Выполняем перебор всех видов службы перенаправления портов
+	 * Определяем, проделывается ли или заделывается пробой заслона IPv6
+	 *
+	 * @note Перенаправлений в сети IPv6 служба соединения не заводит: преобразования
+	 *       адресов там нет, и подключения сквозь заслон разрешает отдельная служба.
+	 *       Внешний адрес и перечень служба соединения выдаёт и по связи IPv6, и они
+	 *       ведутся ею же
+	 */
+	const bool pinhole = ((this->_family == family_t::IPV6) && ((this->_action == action_t::OPEN) || (this->_action == action_t::CLOSE)));
+	/**
+	 * Если проделывается либо заделывается пробой заслона IPv6
+	 */
+	if(pinhole){
+		// Выполняем отыскание службы заслона IPv6
+		const proto::portmap::device_t::service_t * service = this->_device.service(description, proto::portmap::device_t::SERVICE_WAN_IPV6);
+		/**
+		 * Если служба заслона IPv6 устройством не выдаётся
+		 */
+		if(service == nullptr){
+			// Записываем в лог сообщение об отсутствии службы заслона IPv6
+			this->_log->print("Device does not provide the IPv6 firewall service", log_t::flag_t::WARNING);
+			// Выполняем завершение обмена отказом
+			this->failure(type_t::UPNP, error_t::NOT_SUPPORTED);
+			// Завершаем разбор описания устройства
+			return;
+		}
+		// Запоминаем обозначение вида отысканной службы
+		this->_service = service->type;
+		// Выполняем сборку полного адреса управления отысканной службой
+		this->_control = this->_device.address(description, this->_location, service->control);
+		/**
+		 * Если вызов действия службы начать не удалось
+		 */
+		if(!this->control())
+			// Выполняем завершение обмена отказом
+			this->failure(type_t::UPNP, error_t::NO_RESPONSE);
+		// Завершаем разбор описания устройства
+		return;
+	}
+	/**
+	 * Выполняем перебор всех видов службы соединения
 	 *
 	 * @note Служба соединения бывает двух видов, и какой из них несёт устройство,
 	 *       заранее неизвестно: соединение по адресу IP встречается чаще, но на
@@ -1559,6 +1651,41 @@ bool awh::unit::Portmap::control() noexcept {
 		break;
 		// Если заводится перенаправление порта
 		case static_cast <uint8_t> (action_t::OPEN): {
+			/**
+			 * Если проделывается пробой заслона IPv6
+			 */
+			if(this->_family == family_t::IPV6){
+				// Собираемый пробой заслона IPv6
+				proto::portmap::upnp_t::pinhole_t pinhole;
+				// Запоминаем договор пробоя заслона
+				pinhole.proto = ((this->_mapping.proto == proto_t::TCP) ? proto::portmap::upnp_t::proto_t::TCP : proto::portmap::upnp_t::proto_t::UDP);
+				// Запоминаем внутренний порт машины, которой отдаются подключения
+				pinhole.internalPort = this->_mapping.internalPort;
+				/**
+				 * Запоминаем запрашиваемый срок жизни пробоя заслона
+				 *
+				 * @note Бессрочных пробоев договор не заводит, и нулевой срок здесь
+				 *       заменяется отведённым по умолчанию
+				 */
+				pinhole.lifeTime = (this->_mapping.lifeTime > 0 ? this->_mapping.lifeTime : ::DEFAULT_LIFETIME);
+				// Запоминаем внешний узел, подключения с которого пропускаются
+				pinhole.remoteHost = this->_mapping.remoteHost;
+				/**
+				 * Получаем внутренний адрес машины, которой отдаются подключения
+				 *
+				 * @note Преобразования адресов в сети IPv6 нет, и подставить адрес
+				 *       маршрутизатор не может: указывать его обязан просящий
+				 */
+				pinhole.internalClient = this->_io->getAddress(this->_stream, event::address_t::IPV6);
+				// Если внутренний адрес машины получить не удалось
+				if(pinhole.internalClient.empty())
+					// Выводим отрицательный результат начала вызова действия службы
+					return false;
+				// Выполняем сборку вызова проделывания пробоя заслона IPv6
+				request = this->_upnp.pinhole(this->_service, pinhole);
+				// Выходим из определения просьбы
+				break;
+			}
 			// Собираемое перенаправление порта
 			proto::portmap::upnp_t::mapping_t mapping;
 			// Запоминаем договор перенаправляемого порта
@@ -1590,6 +1717,28 @@ bool awh::unit::Portmap::control() noexcept {
 		} break;
 		// Если убирается заведённое перенаправление порта
 		case static_cast <uint8_t> (action_t::CLOSE):
+			/**
+			 * Если заделывается пробой заслона IPv6
+			 *
+			 * @note Пробой заделывается по опознавателю, выданному при его проделывании:
+			 *       одним и тем же признакам отвечает несколько пробоев, и снимать их
+			 *       следует поимённо
+			 */
+			if(this->_family == family_t::IPV6){
+				/**
+				 * Если опознаватель заделываемого пробоя не задан
+				 */
+				if(this->_mapping.pinhole == 0){
+					// Записываем в лог сообщение о незаданном опознавателе пробоя
+					this->_log->print("Firewall pinhole identifier is missing", log_t::flag_t::WARNING);
+					// Выводим отрицательный результат начала вызова действия службы
+					return false;
+				}
+				// Выполняем сборку вызова заделывания пробоя заслона IPv6
+				request = this->_upnp.unpinhole(this->_service, this->_mapping.pinhole);
+				// Выходим из определения просьбы
+				break;
+			}
 			// Выполняем сборку вызова удаления перенаправления порта
 			request = this->_upnp.remove(
 				this->_service,
@@ -1792,6 +1941,36 @@ void awh::unit::Portmap::controlled() noexcept {
 		this->_callback.call <void (const string &, const type_t)> ("external", address, type_t::UPNP);
 		// Завершаем разбор ответа службы устройства
 		return;
+	}
+	/**
+	 * Если проделывался пробой заслона IPv6
+	 *
+	 * @note Опознаватель проделанного пробоя запоминается в перенаправлении и выдаётся
+	 *       вместе с ним: заделать пробой без опознавателя нечем
+	 */
+	if((this->_family == family_t::IPV6) && (this->_action == action_t::OPEN)){
+		// Извлекаемый опознаватель пробоя заслона IPv6
+		uint16_t unique = 0;
+		/**
+		 * Если опознаватель пробоя заслона извлечь не удалось
+		 */
+		if(!this->_upnp.unique(answer, unique)){
+			// Выполняем завершение обмена отказом
+			this->failure(type_t::UPNP, error_t::MALFORMED);
+			// Завершаем разбор ответа службы устройства
+			return;
+		}
+		// Запоминаем опознаватель проделанного пробоя заслона
+		this->_mapping.pinhole = unique;
+		/**
+		 * Запоминаем назначенный срок жизни пробоя заслона
+		 *
+		 * @note Назначенного срока служба в ответе не выдаёт, и остаётся запрошенный:
+		 *       устройство вправе отвести и меньший, но узнать его негде
+		 */
+		if(this->_mapping.lifeTime == 0)
+			// Запоминаем срок жизни пробоя, отведённый по умолчанию
+			this->_mapping.lifeTime = ::DEFAULT_LIFETIME;
 	}
 	// Сохраняем просьбу, с которой велось обращение
 	const action_t action = this->_action;
@@ -2134,22 +2313,12 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 		// Выполняем отправку просьбы по договору PCP
 		result = (this->submit(type_t::PCP) || result);
 	/**
-	 * Определяем, заводится ли или снимается перенаправление в сети IPv6
-	 *
-	 * @note Перенаправлений в сети IPv6 служба соединения не заводит: преобразования
-	 *       адресов там нет, и подключения сквозь заслон маршрутизатора разрешает
-	 *       отдельная служба заслона IPv6, которую устройство выдаёт не всякое.
-	 *       Внешний адрес и перечень служба соединения выдаёт и по связи IPv6, и они
-	 *       здесь не отсекаются
-	 */
-	const bool pinhole = ((this->_family == family_t::IPV6) && ((action == action_t::OPEN) || (action == action_t::CLOSE)));
-	/**
 	 * Если обмен ведётся договором UPnP
 	 *
 	 * @note Отыскание маршрутизатора договору UPnP не нужно: устройство отыскивается
 	 *       рассылкой SSDP, и заданный настройкой адрес маршрутизатора здесь ни при чём
 	 */
-	if(!pinhole && ((this->_type == type_t::UPNP) || (this->_type == type_t::AUTO)))
+	if((this->_type == type_t::UPNP) || (this->_type == type_t::AUTO))
 		// Выполняем отыскание устройства рассылкой SSDP
 		result = (this->search() || result);
 	/**
@@ -2492,19 +2661,6 @@ bool awh::unit::Portmap::open(const mapping_t & mapping) noexcept {
 		// Выводим отрицательный результат отправки просьбы
 		return false;
 	}
-	/**
-	 * Если перенаправление заводится договором UPnP в сети IPv6
-	 *
-	 * @note Перенаправлений в сети IPv6 служба соединения не заводит: разрешает
-	 *       подключения там отдельная служба заслона IPv6, которую выдаёт не всякое
-	 *       устройство. Заводит перенаправления в такой сети договор PCP
-	 */
-	if((this->_family == family_t::IPV6) && (this->_type == type_t::UPNP)){
-		// Выполняем завершение обмена отказом
-		this->failure(this->_type, error_t::NOT_SUPPORTED);
-		// Выводим отрицательный результат отправки просьбы
-		return false;
-	}
 	// Выполняем начало обращения к маршрутизатору
 	return this->perform(action_t::OPEN, mapping);
 }
@@ -2522,19 +2678,6 @@ bool awh::unit::Portmap::close(const mapping_t & mapping) noexcept {
 	if((mapping.proto == proto_t::NONE) || (mapping.internalPort == 0)){
 		// Выполняем завершение обмена отказом
 		this->failure(this->_type, error_t::MALFORMED);
-		// Выводим отрицательный результат отправки просьбы
-		return false;
-	}
-	/**
-	 * Если перенаправление заводится договором UPnP в сети IPv6
-	 *
-	 * @note Перенаправлений в сети IPv6 служба соединения не заводит: разрешает
-	 *       подключения там отдельная служба заслона IPv6, которую выдаёт не всякое
-	 *       устройство. Заводит перенаправления в такой сети договор PCP
-	 */
-	if((this->_family == family_t::IPV6) && (this->_type == type_t::UPNP)){
-		// Выполняем завершение обмена отказом
-		this->failure(this->_type, error_t::NOT_SUPPORTED);
 		// Выводим отрицательный результат отправки просьбы
 		return false;
 	}
