@@ -2978,16 +2978,28 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 				if(this->_transfer.packets.front().alive > this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
 					// Получаем указатель на заголовок DNS
 					::dns::head_t * queuedHeader = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
-					// Добавляем пакет в контейнер активных пакетов
-					auto ret = this->_transfer.waiting.emplace(ntohs(queuedHeader->id), ::move(this->_transfer.packets.front()));
-					// Меняем идентификатор DNS-запроса
-					j->second = ret.first->first;
-					// Удаляем пакет из очереди на отправку
-					this->_transfer.packets.pop();
-					// Отправляем DNS-запрос
-					this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
-					// Выходим из функции
-					return;
+					/**
+					 * Если номер очередного вопроса на учёте ещё не занят
+					 *
+					 * @warning Сличать следует **до** переноса пакета: номера вопросов
+					 *          выдаются случайными, и совпасть двум ожидающим ничто не
+					 *          мешает. Перенеси пакет вслепую, и вставка молча не
+					 *          состоялась бы, пакет остался бы выпотрошенным, а
+					 *          отправился бы вместо него вопрос чужой, уже ожидающий
+					 *          ответа. Прежде здесь так и было
+					 */
+					if(this->_transfer.waiting.find(ntohs(queuedHeader->id)) == this->_transfer.waiting.end()){
+						// Добавляем пакет в контейнер активных пакетов
+						auto ret = this->_transfer.waiting.emplace(ntohs(queuedHeader->id), ::move(this->_transfer.packets.front()));
+						// Меняем идентификатор DNS-запроса
+						j->second = ret.first->first;
+						// Удаляем пакет из очереди на отправку
+						this->_transfer.packets.pop();
+						// Отправляем DNS-запрос
+						this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
+						// Выходим из функции
+						return;
+					}
 				// Удаляем пакет из очереди на отправку
 				} else this->_transfer.packets.pop();
 			}
@@ -3106,16 +3118,25 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 							if(this->_transfer.packets.front().alive > this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
 								// Получаем указатель на заголовок DNS
 								::dns::head_t * header = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
-								// Добавляем пакет в контейнер активных пакетов
-								auto ret = this->_transfer.waiting.emplace(ntohs(header->id), ::move(this->_transfer.packets.front()));
-								// Меняем идентификатор DNS-запроса
-								i->second = ret.first->first;
-								// Удаляем пакет из очереди на отправку
-								this->_transfer.packets.pop();
-								// Отправляем DNS-запрос
-								this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
-								// Продолжаем ожидание ответа
-								return false;
+								/**
+								 * Если номер очередного вопроса на учёте ещё не занят
+								 *
+								 * @note Сличается он до переноса пакета по той же причине,
+								 *       что и при разборе ответа: занятый номер обратил бы
+								 *       перенос в потерю вопроса и повторную отправку чужого
+								 */
+								if(this->_transfer.waiting.find(ntohs(header->id)) == this->_transfer.waiting.end()){
+									// Добавляем пакет в контейнер активных пакетов
+									auto ret = this->_transfer.waiting.emplace(ntohs(header->id), ::move(this->_transfer.packets.front()));
+									// Меняем идентификатор DNS-запроса
+									i->second = ret.first->first;
+									// Удаляем пакет из очереди на отправку
+									this->_transfer.packets.pop();
+									// Отправляем DNS-запрос
+									this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
+									// Продолжаем ожидание ответа
+									return false;
+								}
 							// Удаляем пакет из очереди на отправку
 							} else this->_transfer.packets.pop();
 						}
@@ -5666,10 +5687,57 @@ uint16_t awh::unit::DNS::getTargetPort() const noexcept {
  *
  */
 void awh::unit::DNS::setTargetPort(const uint16_t port) noexcept {
-	// Если порт для установки передан
-	if(port > 0)
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если порт для установки не передан, менять нечего
+		if(port == 0)
+			// Выходим из функции
+			return;
 		// Устанавливаем порт события
 		this->_resolver.port = port;
+		/**
+		 * Переносим новый порт на уже заведённые события резолвера
+		 *
+		 * @warning Без переноса метод оставался ловушкой: события заводятся ещё
+		 *          конструктором, порт им достаётся пятьдесят третий, и заданный
+		 *          позднее оседал в настройках, ни на что не влияя. Вопросы при
+		 *          этом уходили на порт прежний - молча, без единой жалобы, - и
+		 *          распознать это можно было лишь перехватом движения. Соседний
+		 *          `setTimeout()` свои события обновляет, и расхождение между ними
+		 *          ничем оговорено не было
+		 *
+		 * @note Перенос ведётся пересозданием событий, а не выставлением порта им:
+		 *       дейтаграммный клиент к серверу **подключается**, и порт назначения
+		 *       закреплён за сокетом самим подключением. Выставление порта уже
+		 *       подключённому сокету настройку меняет, а движение - нет
+		 */
+		if(!this->_resolver.idv4.empty())
+			// Переинициализируем DNS-резолвер для семейства IPv4
+			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+		// Если DNS-резолверы IPv6 уже инициализированы
+		if(!this->_resolver.idv6.empty())
+			// Переинициализируем DNS-резолвер для семейства IPv6
+			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод установки адреса DNS-сервера

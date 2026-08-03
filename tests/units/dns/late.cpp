@@ -73,6 +73,12 @@ static constexpr const char * SILENT_DOMAIN = "silent.test";
 static constexpr const char * FOREIGN_DOMAIN = "foreign.test";
 
 /**
+ * @brief Доменное имя, по которому ведётся проверка переноса порта
+ *
+ */
+static constexpr const char * PORTED_DOMAIN = "ported.test";
+
+/**
  * @brief Адрес, которым подставной сервер отвечает на всякий вопрос
  *
  */
@@ -463,4 +469,91 @@ TEST_F(DNSUnitFixture, DnsForeignAnswerKeepsWaiting) {
 	 *       ожидание продолжается остатком, и чужой ответ отодвинуть отказ не вправе
 	 */
 	ASSERT_LT(spent, static_cast <int64_t> (TEST_DELAY * 3));
+}
+
+/**
+ * @brief Проверка того, что порт сервера переносится на заведённые события
+ *
+ * @details Резолвер заводит события обмена уже в конструкторе, и порт им достаётся
+ *          отведённый договором - пятьдесят третий. Заданный позднее обязан
+ *          перенестись на них, а не осесть в настройках без последствий
+ *
+ * @note Проверка ставит порт **последним**, уже после серверов: прежде метод
+ *       работал лишь тем, что порт подхватывал `setServers()`, пересоздающий
+ *       события, и заданный следом за ним пропадал молча. Вопросы тогда уходили на
+ *       порт пятьдесят третий, где их никто не ждал, а распознать это можно было
+ *       лишь перехватом движения
+ *
+ */
+TEST_F(DNSUnitFixture, DnsTargetPortAppliesAfterServers) {
+	// Создаём подставной сервер имён
+	DNSStubServer server;
+	// Выполняем запуск подставного сервера имён, отвечающего сразу
+	ASSERT_TRUE(server.start(0, false));
+	// Создаём объект DNS-резолвера
+	awh::unit::dns_t dns(awh::event::family_t::IPV4, this->_fmk.get(), this->_log.get());
+	// Устанавливаем срок ожидания ответа сервера имён
+	dns.setTimeout(TEST_DELAY);
+	// Устанавливаем число попыток обращения к серверу имён
+	dns.setAttempts(1);
+	// Устанавливаем адрес подставного сервера имён
+	dns.setServers(awh::event::family_t::IPV4, {"127.0.0.1"});
+	// Устанавливаем порт подставного сервера имён последним
+	dns.setTargetPort(server.port());
+	// Выполняем проверку того, что порт сервером получен
+	ASSERT_GT(server.port(), static_cast <uint16_t> (0));
+	// Собираемый итог разрешения доменного имени
+	outcome_t result;
+	/**
+	 * Устанавливаем функцию обратного вызова на получение адреса
+	 */
+	dns.on <void (const awh::unit::dns_t::id_t, const awh::event::family_t, const std::string &, const awh::net::addr_t *)> (
+		"address", [&dns, &result](const awh::unit::dns_t::id_t, const awh::event::family_t, const std::string & domain, const awh::net::addr_t *) noexcept -> void {
+			// Запоминаем, что адрес получен
+			result.resolved = true;
+			// Запоминаем доменное имя, по которому получен итог
+			result.domain = domain;
+			// Выполняем остановку работы резолвера
+			dns.stop();
+		}, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4
+	);
+	/**
+	 * Устанавливаем функцию обратного вызова на отказ разрешения
+	 */
+	dns.on <void (const awh::unit::dns_t::id_t, const awh::unit::dns_t::record_t, const std::string &)> (
+		"failure", [&dns, &result](const awh::unit::dns_t::id_t, const awh::unit::dns_t::record_t, const std::string & domain) noexcept -> void {
+			// Запоминаем, что разрешение завершилось отказом
+			result.failed = true;
+			// Запоминаем доменное имя, по которому получен итог
+			result.domain = domain;
+			// Выполняем остановку работы резолвера
+			dns.stop();
+		}, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3
+	);
+	/**
+	 * Устанавливаем функцию обратного вызова на событие резолвера
+	 */
+	dns.on <void (const awh::event::status_t)> (
+		"status", [&dns](const awh::event::status_t status) noexcept -> void {
+			// Если резолвер запущен
+			if(status == awh::event::status_t::LAUNCHED)
+				// Выполняем разрешение доменного имени
+				dns.resolve(dns.issue(), awh::event::family_t::IPV4, PORTED_DOMAIN);
+		}, std::placeholders::_1
+	);
+	// Выполняем запуск работы резолвера
+	dns.start();
+	// Выполняем остановку подставного сервера имён
+	server.stop();
+	/**
+	 * Выполняем проверку того, что вопрос дошёл до подставного сервера
+	 *
+	 * @note Именно это и есть суть проверки: не дойди порт до событий, вопрос ушёл
+	 *       бы на пятьдесят третий, и сервер не увидел бы ничего
+	 */
+	ASSERT_GE(server.received(), static_cast <uint32_t> (1));
+	// Выполняем проверку того, что адрес получен
+	ASSERT_TRUE(result.resolved);
+	// Выполняем проверку того, что разрешение отказом не завершилось
+	ASSERT_FALSE(result.failed);
 }
