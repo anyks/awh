@@ -166,7 +166,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	 *          и кодогенерации не получают.
 	 *
 	 */
-	if(((flags & static_cast <uint32_t> (flag_t::MACHINE)) != 0) &&
+	if(((flags & static_cast <uint32_t> (flag_t::JIT)) != 0) &&
 	 ((flags & (static_cast <uint32_t> (flag_t::ANCHORED) | static_cast <uint32_t> (flag_t::NOTEMPTY))) == 0) &&
 	 !expression.backtracking && !expression.forward.plain) {
 		// Создаём сопоставитель выражения в виде порождённого машинного кода

@@ -781,7 +781,7 @@ TEST(Regex, CodegenEngine) {
 		// Выполняем сборку выражения без порождения машинного кода
 		ASSERT_TRUE(plain.build(pattern, 0, first)) << pattern;
 		// Выполняем сборку выражения с порождением машинного кода
-		ASSERT_TRUE(machine.build(pattern, static_cast <uint32_t> (regex::flag_t::MACHINE), second)) << pattern;
+		ASSERT_TRUE(machine.build(pattern, static_cast <uint32_t> (regex::flag_t::JIT), second)) << pattern;
 		/**
 		 * Если выражение порождённый код получило
 		 */
@@ -832,7 +832,7 @@ TEST(Regex, CodegenEngine) {
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку выражения с сопоставлением лишь с начала текста
-		ASSERT_TRUE(engine.build("[0-9]+", (static_cast <uint32_t> (regex::flag_t::MACHINE) |
+		ASSERT_TRUE(engine.build("[0-9]+", (static_cast <uint32_t> (regex::flag_t::JIT) |
 		 static_cast <uint32_t> (regex::flag_t::ANCHORED)), expression));
 		// Выполняем проверку отмены порождения машинного кода
 		EXPECT_FALSE(static_cast <bool> (expression.machine));
@@ -846,7 +846,7 @@ TEST(Regex, CodegenEngine) {
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку выражения с отказом от пустого совпадения
-		ASSERT_TRUE(engine.build("a*", (static_cast <uint32_t> (regex::flag_t::MACHINE) |
+		ASSERT_TRUE(engine.build("a*", (static_cast <uint32_t> (regex::flag_t::JIT) |
 		 static_cast <uint32_t> (regex::flag_t::NOTEMPTY)), expression));
 		/**
 		 * Выполняем проверку отмены порождения машинного кода
