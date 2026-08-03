@@ -16634,6 +16634,117 @@ TEST_F(IoFixture, IoAutoReconnectAfterConnectTimeoutTest){
 }
 
 /**
+ * @brief Тест подъёма события с самостоятельным переподключением при отказе от уничтожения
+ *
+ * @details Опция `AUTO_RECONNECT` означает, что подключение движок ведёт сам, покуда оно
+ *          не встанет. Ответ вызывающего на срок ожидания подключения на этом ничего не
+ *          меняет: и согласие, и отказ приводят к одному - сокет пересоздаётся и
+ *          начинается новая попытка. Разнятся лишь пути, которыми движок туда приходит,
+ *          а исход у них общий, и вызывающему разница не видна
+ *
+ * @note Согласие проверяется соседним тестом
+ *       (`IoAutoReconnectAfterConnectTimeoutTest`), здесь же проверяется **отказ** - тот
+ *       самый случай, где событие прежде замирало насовсем: срок ожидания срабатывал
+ *       единожды, и дальше не приходило ни возрождения, ни новой попытки
+ *
+ *       Признак подъёма берётся двойной - возрождение события по росписи состояний и
+ *       счёт объявленных отказов подключения. Одного счёта сроков мало: новая попытка
+ *       вправе сорваться и немедленным отказом ядра, не дожив до своего срока
+ *
+ */
+TEST_F(IoFixture, IoAutoReconnectOnTimeoutRefusalTest){
+	uint8_t failures = 0, successes = 0, expirations = 0, rebirths = 0;
+	const awh::event::id_t eid = this->_io->event(
+		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+	);
+	ASSERT_GT(eid, 0u);
+	const awh::event::id_t tick = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	ASSERT_GT(tick, 0u);
+	ASSERT_TRUE(this->_io->initialize());
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress()));
+	ASSERT_TRUE(this->_io->setTargetPort(eid, 8080));
+	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 500);
+	this->_io->setTimeout(eid, awh::event::action_t::RECONNECT, 500);
+	this->_io->setTimeout(tick, awh::event::action_t::NONE, 200);
+	this->_io->on(eid, [&rebirths]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Считаем возрождения события, которыми движок объявляет о новой попытке
+		if(status == awh::event::status_t::REBIRTHED) rebirths++;
+	});
+	this->_io->on(eid, static_cast <awh::engine::callback::connect_t> (
+		[&failures, &successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+			if(ok) successes++; else failures++;
+		}
+	));
+	this->_io->on(eid, static_cast <awh::engine::callback::timeout_t> (
+		[&expirations]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept -> bool {
+			// Срок переподключения читается наоборот прочим: отказ отменил бы череду подъёмов
+			if(action != awh::event::action_t::CONNECT) return true;
+			// Считаем срабатывание срока ожидания подключения
+			expirations++;
+			/**
+			 * Отвечаем **отказом** от уничтожения события: вызывающий ведёт счёт попыток
+			 * сам и уничтожит событие своей волей, когда сочтёт нужным. Опция при этом
+			 * остаётся в силе, и движок обязан продолжать поднимать событие
+			 */
+			return false;
+		}
+	));
+	ASSERT_TRUE(this->_io->commit(eid));
+	ASSERT_TRUE(this->_io->commit(tick));
+	/**
+	 * Подключение к глухому адресу должно уйти в **ожидание** - только тогда истечёт
+	 * срок. Если ядро отвергает его сразу, значит, оно уже держит неудачную запись
+	 * соседа по этому адресу, и опыт поставить не на чем: окружение для него не
+	 * годится, и проверка пропускается
+	 */
+	if(!this->_io->connect(eid)){
+		// Уничтожаем заведённые события
+		this->_io->destroy(eid);
+		this->_io->destroy(tick);
+		// Завершаем работу движка
+		this->_io->deinitialize();
+		// Пропускаем проверку
+		GTEST_SKIP() << "ядро отвергает подключение к глухому адресу немедленно";
+	}
+	ASSERT_TRUE(this->_io->launch(eid));
+	ASSERT_TRUE(this->_io->launch(tick));
+	const auto start = std::chrono::steady_clock::now();
+	uint32_t slowest = 0;
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 4000)){
+		const auto tock = std::chrono::steady_clock::now();
+		const bool ok = this->_io->poll();
+		const uint32_t spent = static_cast <uint32_t> (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - tock).count());
+		if(spent > slowest) slowest = spent;
+		if(!ok) break;
+	}
+	const uint32_t looped = static_cast <uint32_t> (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count());
+	const std::string sign = std::string("сроков=") + std::to_string(expirations) +
+		" возрождений=" + std::to_string(rebirths) + " отказов=" + std::to_string(failures) +
+		" удач=" + std::to_string(successes) + " цикл=" + std::to_string(looped) + "мс дольший опрос=" + std::to_string(slowest) + "мс";
+	// Ни один опрос цикла событий не вправе задерживаться дольше отведённого сроку ожидания
+	ASSERT_LT(slowest, 2000u) << sign;
+	ASSERT_LT(looped, 6000u) << sign;
+	// Событие обязано возродиться и повести новую попытку, а не замереть после первой же неудачи
+	ASSERT_GE(rebirths, 1) << sign;
+	// Отказов набирается по меньшей мере два: за первой попыткой обязана последовать вторая
+	ASSERT_GE(failures, 2) << sign;
+	// Удачных подключений к глухому адресу быть не может
+	ASSERT_EQ(0, successes) << sign;
+	/**
+	 * Событие снимается с самостоятельного переподключения до уничтожения: иначе оно
+	 * поднимается вновь и вновь и достаётся следующему тесту, которому цикл событий
+	 * достаётся общий - он один на весь процесс
+	 */
+	this->_io->setOption(eid, awh::event::options::AUTO_RECONNECT, false);
+	// Уничтожаем заведённые события
+	this->_io->destroy(eid);
+	this->_io->destroy(tick);
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
  * @brief Тест перестройки события с самостоятельным переподключением
  *
  * @details Проверяются два опасных совпадения разом. Первое - у события выставлена
