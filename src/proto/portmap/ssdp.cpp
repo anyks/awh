@@ -70,7 +70,7 @@ awh::proto::portmap::SSDP::Answer::Answer() noexcept :
  * @return       собранный текст запроса
  *
  */
-string awh::proto::portmap::SSDP::search(const string_view target, const uint8_t delay, const bool six) const noexcept {
+string awh::proto::portmap::SSDP::search(const string_view target, const uint8_t delay, const string_view group) const noexcept {
 	// Собираемый текст запроса
 	string result;
 	/**
@@ -82,7 +82,7 @@ string awh::proto::portmap::SSDP::search(const string_view target, const uint8_t
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (delay), six), log_t::flag_t::WARNING, message(error_t::MISSING_TARGET));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (delay), group), log_t::flag_t::WARNING, message(error_t::MISSING_TARGET));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -105,16 +105,23 @@ string awh::proto::portmap::SSDP::search(const string_view target, const uint8_t
 	 */
 	result.append("HOST: ");
 	/**
+	 * Отсекаем зону группового адреса
+	 *
+	 * @note Зона принадлежит машине отправителя, а не сети: для устройства она смысла
+	 *       не имеет, а записанная в поле сделала бы адрес несовпадающим
+	 */
+	const string_view address = group.substr(0, group.find('%'));
+	/**
 	 * Если запрос собирается для сети IPv6
 	 *
-	 * @note Адрес IPv6 в поле обязан быть заключён в угловые скобки: без них
+	 * @note Адрес IPv6 в поле обязан быть заключён в квадратные скобки: без них
 	 *       двоеточия адреса не отличить от разделителя порта
 	 */
-	if(six)
+	if(address.find(':') != string_view::npos)
 		// Записываем групповой адрес сети IPv6
-		result.append("[").append(MULTICAST_ADDRESS6).append("]");
+		result.append("[").append(address).append("]");
 	// Записываем групповой адрес сети IPv4
-	else result.append(MULTICAST_ADDRESS);
+	else result.append(address);
 	// Записываем порт обнаружения устройств
 	result.append(":").append(std::to_string(PORT)).append(::BREAK);
 	/**

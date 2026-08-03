@@ -294,7 +294,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					this->failure(type, error_t::NO_RESPONSE);
 				// Завершаем обработку ответа
 				return;
-			}
+			} break;
 			/**
 			 * Если ответ получен по договору NAT-PMP
 			 */
@@ -1077,7 +1077,7 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 			return false;
 		}
 		// Выполняем сборку просьбы обнаружения устройства доступа в сеть
-		const string & message = this->_ssdp.search(proto::portmap::ssdp_t::TARGET_GATEWAY, proto::portmap::ssdp_t::DEFAULT_DELAY, six);
+		const string & message = this->_ssdp.search(proto::portmap::ssdp_t::TARGET_GATEWAY, proto::portmap::ssdp_t::DEFAULT_DELAY, group);
 		/**
 		 * Если просьбу разослать не удалось
 		 */
@@ -2089,6 +2089,25 @@ bool awh::unit::Portmap::datagram(const type_t type) noexcept {
 	return result;
 }
 /**
+ * @brief Метод прекращения заведённого события обмена
+ *
+ * @param type договор перенаправления, по которому ведётся обмен
+ *
+ */
+void awh::unit::Portmap::discard(const type_t type) noexcept {
+	// Получаем обмен, событие которого прекращается
+	exchange_t & exchange = this->exchange(type);
+	/**
+	 * Если событие обмена заведено
+	 */
+	if(exchange.eid > 0){
+		// Выполняем удаление события обмена
+		this->_io->destroy(exchange.eid);
+		// Сбрасываем идентификатор события обмена
+		exchange.eid = 0;
+	}
+}
+/**
  * @brief Метод отправки просьбы маршрутизатору по дейтаграммному договору
  *
  * @param type договор перенаправления, по которому ведётся обмен
@@ -2157,9 +2176,12 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 				 * @note Договор предписывает указывать в просьбе адрес обращающейся машины,
 				 *       и маршрутизатор сличает его с адресом отправителя дейтаграммы
 				 */
-				if(!this->client(exchange.eid, &request.client[0]))
+				if(!this->client(exchange.eid, &request.client[0])){
+					// Выполняем прекращение заведённого события обмена
+					this->discard(type);
 					// Выводим отрицательный результат отправки просьбы
 					return false;
+				}
 				// Выполняем сборку просьбы маршрутизатору
 				size = this->_pcp.request(&buffer[0], sizeof(buffer), request, error);
 			} break;
@@ -2199,14 +2221,24 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 				}
 			} break;
 		}
-		// Если просьбу собрать не удалось
-		if(size == 0)
+		/**
+		 * Если просьбу собрать не удалось
+		 */
+		if(size == 0){
+			// Выполняем прекращение заведённого события обмена
+			this->discard(type);
 			// Выводим отрицательный результат отправки просьбы
 			return false;
-		// Если просьбу отправить не удалось
-		if(this->_io->send(exchange.eid, &buffer[0], size) == 0)
+		}
+		/**
+		 * Если просьбу отправить не удалось
+		 */
+		if(this->_io->send(exchange.eid, &buffer[0], size) == 0){
+			// Выполняем прекращение заведённого события обмена
+			this->discard(type);
 			// Выводим отрицательный результат отправки просьбы
 			return false;
+		}
 		// Запоминаем, что ответ маршрутизатора ожидается
 		exchange.waiting = true;
 		// Выводим положительный результат отправки просьбы
@@ -2313,12 +2345,21 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 		// Выполняем отправку просьбы по договору PCP
 		result = (this->submit(type_t::PCP) || result);
 	/**
+	 * Определяем, заделывается ли пробой заслона IPv6 без опознавателя
+	 *
+	 * @note Пробой заделывается по опознавателю, выданному при его проделывании, и без
+	 *       него служба заслона отказала бы наверняка. Опрашивать её впустую незачем:
+	 *       под видом опроса AUTO пробой в такой сети заделывает договор PCP, и её
+	 *       отказ лишь затянул бы обмен и запутал бы вызывающего
+	 */
+	const bool unnamed = ((this->_family == family_t::IPV6) && (action == action_t::CLOSE) && (mapping.pinhole == 0));
+	/**
 	 * Если обмен ведётся договором UPnP
 	 *
 	 * @note Отыскание маршрутизатора договору UPnP не нужно: устройство отыскивается
 	 *       рассылкой SSDP, и заданный настройкой адрес маршрутизатора здесь ни при чём
 	 */
-	if((this->_type == type_t::UPNP) || (this->_type == type_t::AUTO))
+	if(!unnamed && ((this->_type == type_t::UPNP) || (this->_type == type_t::AUTO)))
 		// Выполняем отыскание устройства рассылкой SSDP
 		result = (this->search() || result);
 	/**

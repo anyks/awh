@@ -208,13 +208,21 @@ namespace awh {
 					 * @details Запрос рассылается на групповой адрес, и отвечает на него
 					 * всякое устройство, чья служба обозначению отвечает
 					 *
+					 * @warning Групповой адрес передаётся тот же, на который запрос и
+					 * рассылается: договор велит устройству сличать его с полем `HOST`,
+					 * отвергая запрос с чужим адресом. Групп в сети IPv6 две, и признаком
+					 * разновидности они не различаются
+					 *
+					 * @note Зона адреса в поле не записывается: она принадлежит машине
+					 * отправителя, а не сети, и для устройства смысла не имеет
+					 *
 					 * @param target обозначение искомой службы
 					 * @param delay  отведённый устройству срок на ответ в секундах
-					 * @param six    признак сборки запроса для сети IPv6
+					 * @param group  групповой адрес, на который рассылается запрос
 					 * @return       собранный текст запроса
 					 *
 					 */
-					string search(const string_view target, const uint8_t delay = DEFAULT_DELAY, const bool six = false) const noexcept;
+					string search(const string_view target, const uint8_t delay = DEFAULT_DELAY, const string_view group = MULTICAST_ADDRESS) const noexcept;
 				public:
 					/**
 					 * @brief Метод разбора сообщения договора
