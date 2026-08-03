@@ -48,6 +48,7 @@
 #include <atomic>
 #include <string>
 #include <cstdint>
+#include <sstream>
 #include <functional>
 
 /**

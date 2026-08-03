@@ -20,7 +20,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <sstream>
 #include <fstream>
 #include <cstring>
 #include <cstdarg>

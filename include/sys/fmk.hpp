@@ -44,6 +44,7 @@
  */
 #include "lib.hpp"
 #include "../net/nwt.hpp"
+#include "../charset/charset.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -372,12 +373,76 @@ namespace awh {
 			/**
 			 * @brief Метод конвертирования строки кодировки
 			 *
+			 * @details Метод задан парой кодировок «UTF-8» и «CP1251» и оставлен ради
+			 *          прежних потребителей. Конвертирование между прочими кодировками
+			 *          выполняется одноимёнными методами, принимающими кодировки
+			 *          обозначением либо именем.
+			 *
 			 * @param text     текст для конвертирования
 			 * @param codepage кодировка в которую необходимо сконвертировать текст
 			 * @return         сконвертированный текст в требуемой кодировке
 			 *
 			 */
 			string transcode(string_view text, const codepage_t codepage = codepage_t::AUTO) const noexcept;
+			/**
+			 * @brief Метод конвертирования строки из одной кодировки в другую
+			 *
+			 * @details Отказ конвертирования выводится пустым текстом и записывается
+			 *          в лог. Набор кодировок задан модулем перекодировки.
+			 *
+			 * @param text    текст для конвертирования
+			 * @param from    кодировка, в которой записан текст
+			 * @param to      кодировка, в которую требуется сконвертировать текст
+			 * @param replace порядок обращения с символами, кодировке не представимыми
+			 * @return        сконвертированный текст в требуемой кодировке
+			 *
+			 */
+			string transcode(string_view text, const charset::encoding_t from, const charset::encoding_t to, const charset::replace_t replace = charset::replace_t::STRICT) const noexcept;
+			/**
+			 * @brief Метод конвертирования строки из одной кодировки в другую
+			 *
+			 * @details Кодировки задаются именами, которыми они обозначаются в заголовках
+			 *          сетевых протоколов. Имя, распознать которое не вышло, отклоняется
+			 *          наравне с отказом конвертирования.
+			 *
+			 * @param text    текст для конвертирования
+			 * @param from    имя кодировки, в которой записан текст
+			 * @param to      имя кодировки, в которую требуется сконвертировать текст
+			 * @param replace порядок обращения с символами, кодировке не представимыми
+			 * @return        сконвертированный текст в требуемой кодировке
+			 *
+			 */
+			string transcode(string_view text, string_view from, string_view to, const charset::replace_t replace = charset::replace_t::STRICT) const noexcept;
+		public:
+			/**
+			 * @brief Метод разбора имени кодировки
+			 *
+			 * @param name имя кодировки, заданное заголовком протокола
+			 * @return     обозначение кодировки либо признак нераспознанного имени
+			 *
+			 */
+			charset::encoding_t encoding(string_view name) const noexcept;
+			/**
+			 * @brief Метод извлечения имени кодировки по её обозначению
+			 *
+			 * @param encoding обозначение кодировки текста
+			 * @return         каноническое имя кодировки
+			 *
+			 */
+			string encoding(const charset::encoding_t encoding) const noexcept;
+			/**
+			 * @brief Метод определения кодировки текста
+			 *
+			 * @details Определение выполняется проверкой правильности записи текста
+			 *          в кодировке UTF-8: текст, ей отвечающий, признаётся записанным
+			 *          в UTF-8, а не отвечающий — записанным в заданной кодировке.
+			 *
+			 * @param text     текст, кодировку которого требуется определить
+			 * @param fallback кодировка, предполагаемая для текста, записью UTF-8 не являющегося
+			 * @return         обозначение определённой кодировки текста
+			 *
+			 */
+			charset::encoding_t detect(string_view text, const charset::encoding_t fallback = charset::encoding_t::CP1251) const noexcept;
 		public:
 			/**
 			 * @brief Метод трансформации одного символа

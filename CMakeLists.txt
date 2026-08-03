@@ -58,6 +58,21 @@ if (APPLE)
 endif()
 
 
+# Приведение доменных имён модулем awh::idna вместо средств операционной системы
+#
+# Средствами операционной системы доменные имена приводятся лишь на MS Windows,
+# где приведение задано прежним изданием стандарта и с приложением по обработке
+# доменных имён сходится не во всём. Признак переводит приведение на модуль,
+# чем поведение на всех операционных системах делается одинаковым. На прочих
+# операционных системах приведение выполняется модулем всегда.
+if (CMAKE_BUILD_IDNA)
+    add_compile_definitions(AWH_IDNA)
+    message(STATUS "Build with own IDNA processing: YES\n")
+# Приведение доменных имён средствами операционной системы
+else (CMAKE_BUILD_IDNA)
+    message(STATUS "Build with own IDNA processing: NO\n")
+endif (CMAKE_BUILD_IDNA)
+
 # Если активирован флаг оптимизации операционной системы
 if (CMAKE_BOOSTING_NET)
     add_compile_definitions(AWH_BOOSTING_NET)

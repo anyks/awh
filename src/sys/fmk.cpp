@@ -43,6 +43,7 @@
 #include <sys/log.hpp>
 #include <sys/ascii.hpp>
 #include <charset/charset.hpp>
+#include <unicode/utf8.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1691,77 +1692,9 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 					} else result = symbols.isLetter(text.front());
 				} break;
 				// Если установлен флаг проверки на соответствие кодировки UTF-8
-				case static_cast <uint8_t> (check_t::UTF8): {
-					// Символ для сравнения
-					uint32_t cp = 0;
-					// Номер позиции для сравнения
-					uint8_t num = 0;
-					// Получаем байты для сравнения
-					const u_char * bytes = reinterpret_cast <const u_char *> (text.data());
-					// Получаем границу буфера данных (представление может не иметь завершающего нуля)
-					const u_char * end = (bytes + text.size());
-					/**
-					 * Выполняем перебор всех символов
-					 */
-					while(bytes < end){
-						// Выполняем проверку первой позиции
-						if(((* bytes) & 0x80) == 0x00){
-							// U+0000 to U+007F
-							// Получаем значение первой части байт
-							cp = ((* bytes) & 0x7F);
-							// Устанавливаем номер позиции
-							num = 1;
-						// Выполняем проверку второй позиции
-						} else if(((* bytes) & 0xE0) == 0xC0) {
-							// U+0080 to U+07FF
-							// Получаем значение второй части байт
-							cp = ((* bytes) & 0x1F);
-							// Устанавливаем номер позиции
-							num = 2;
-						// Выполняем проверку третей позиции
-						} else if(((* bytes) & 0xF0) == 0xE0) {
-							// U+0800 to U+FFFF
-							// Получаем значение третей части байт
-							cp = ((* bytes) & 0x0F);
-							// Устанавливаем номер позиции
-							num = 3;
-						// Выполняем проверку четвёртой позиции
-						} else if(((* bytes) & 0xF8) == 0xF0) {
-							// U+10000 to U+10FFFF
-							// Получаем значение четвёртой части байт
-							cp = ((* bytes) & 0x07);
-							// Устанавливаем номер позиции
-							num = 4;
-						// Выходим из функции
-						} else return false;
-						// Увеличиваем смещение байт
-						bytes++;
-						/**
-						 * Выполняем перебор всех позиций
-						 */
-						for(uint8_t i = 1; i < num; ++i){
-							// Если мы вышли за границу буфера или байты нельзя сопоставить
-							if((bytes >= end) || (((* bytes) & 0xC0) != 0x80))
-								// Возвращаем результат проверки
-								return false;
-							// Выполняем смещение в позиции
-							cp = (cp << 6) | ((* bytes) & 0x3F);
-							// Увеличиваем смещение байт
-							bytes++;
-						}
-						// Выполняем проверку смещения
-						if((cp > 0x10FFFF) ||
-						  ((cp <= 0x007F) && (num != 1)) ||
-						  ((cp >= 0xD800) && (cp <= 0xDFFF)) ||
-						  ((cp >= 0x0080) && (cp <= 0x07FF)  && (num != 2)) ||
-						  ((cp >= 0x0800) && (cp <= 0xFFFF)  && (num != 3)) ||
-						  ((cp >= 0x10000)&& (cp <= 0x1FFFFF) && (num != 4)))
-							// Возвращаем результат проверки
-							return false;
-					}
-					// Возвращаем результат
-					return true;
-				}
+				case static_cast <uint8_t> (check_t::UTF8):
+					// Выводим результат проверки правильности записи текста в кодировке UTF-8
+					return utf8::valid(text);
 				// Если установлен флаг проверки на число
 				case static_cast <uint8_t> (check_t::NUMBER): {
 					// Если длина слова больше 1-го символа
@@ -2073,77 +2006,38 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 					// Если символ принадлежит к латинскому алфавиту
 					} else result = symbols.isLetter(text.front());
 				} break;
-				// Если установлен флаг проверки на соответствие кодировки UTF-8
+				/**
+				 * Если установлен флаг проверки на соответствие кодировки UTF-8
+				 *
+				 * @details Текст широких символов проверяется по кодовым значениям его
+				 *          символов, взятым байтами записи: так проверка выполнялась и
+				 *          прежде. Разрядность широкого символа при этом роли не играет,
+				 *          тогда как прежняя проверка читала кодовые значения как байты
+				 *          и на разной разрядности вела себя по-разному.
+				 *
+				 */
 				case static_cast <uint8_t> (check_t::UTF8): {
-					// Символ для сравнения
-					uint32_t cp = 0;
-					// Номер позиции для сравнения
-					uint8_t num = 0;
-					// Получаем байты для сравнения
-					const wchar_t * bytes = reinterpret_cast <const wchar_t *> (text.data());
-					// Получаем границу буфера данных (представление может не иметь завершающего нуля)
-					const wchar_t * end = (bytes + text.size());
+					// Запись текста байтами кодовых значений его символов
+					string bytes = "";
+					// Выполняем предварительное выделение памяти под запись текста
+					bytes.reserve(text.size());
 					/**
-					 * Выполняем перебор всех символов
+					 * Выполняем обход символов проверяемого текста
 					 */
-					while(bytes < end){
-						// Выполняем проверку первой позиции
-						if(((* bytes) & 0x80) == 0x00){
-							// U+0000 to U+007F
-							// Получаем значение первой части байт
-							cp = ((* bytes) & 0x7F);
-							// Устанавливаем номер позиции
-							num = 1;
-						// Выполняем проверку второй позиции
-						} else if(((* bytes) & 0xE0) == 0xC0) {
-							// U+0080 to U+07FF
-							// Получаем значение второй части байт
-							cp = ((* bytes) & 0x1F);
-							// Устанавливаем номер позиции
-							num = 2;
-						// Выполняем проверку третей позиции
-						} else if(((* bytes) & 0xF0) == 0xE0) {
-							// U+0800 to U+FFFF
-							// Получаем значение третей части байт
-							cp = ((* bytes) & 0x0F);
-							// Устанавливаем номер позиции
-							num = 3;
-						// Выполняем проверку четвёртой позиции
-						} else if(((* bytes) & 0xF8) == 0xF0) {
-							// U+10000 to U+10FFFF
-							// Получаем значение четвёртой части байт
-							cp = ((* bytes) & 0x07);
-							// Устанавливаем номер позиции
-							num = 4;
-						// Выходим из функции
-						} else return false;
-						// Увеличиваем смещение байт
-						bytes++;
+					for(auto & letter : text) {
+						// Получаем кодовое значение очередного символа текста
+						const uint32_t code = static_cast <uint32_t> (letter);
 						/**
-						 * Выполняем перебор всех позиций
+						 * Если кодовое значение символа за пределы байта выходит
 						 */
-						for(uint8_t i = 1; i < num; ++i){
-							// Если мы вышли за границу буфера или байты нельзя сопоставить
-							if((bytes >= end) || (((* bytes) & 0xC0) != 0x80))
-								// Возвращаем результат проверки
-								return false;
-							// Выполняем смещение в позиции
-							cp = (cp << 6) | ((* bytes) & 0x3F);
-							// Увеличиваем смещение байт
-							bytes++;
-						}
-						// Выполняем проверку смещения
-						if((cp > 0x10FFFF) ||
-						  ((cp <= 0x007F) && (num != 1)) ||
-						  ((cp >= 0xD800) && (cp <= 0xDFFF)) ||
-						  ((cp >= 0x0080) && (cp <= 0x07FF)  && (num != 2)) ||
-						  ((cp >= 0x0800) && (cp <= 0xFFFF)  && (num != 3)) ||
-						  ((cp >= 0x10000)&& (cp <= 0x1FFFFF) && (num != 4)))
-							// Возвращаем результат проверки
+						if(code > 0xFF)
+							// Выводим результат проверки правильности записи текста
 							return false;
+						// Выполняем добавление байта кодового значения символа
+						bytes.append(1, static_cast <char> (code));
 					}
-					// Возвращаем результат
-					return true;
+					// Выводим результат проверки правильности записи текста в кодировке UTF-8
+					return utf8::valid(bytes);
 				}
 				// Если установлен флаг проверки на число
 				case static_cast <uint8_t> (check_t::NUMBER): {
@@ -2796,6 +2690,151 @@ string awh::Framework::transcode(string_view text, const codepage_t codepage) co
 	}
 	// Возвращаем результат
 	return result;
+}
+/**
+ * @brief Метод конвертирования строки из одной кодировки в другую
+ *
+ * @param text    текст для конвертирования
+ * @param from    кодировка, в которой записан текст
+ * @param to      кодировка, в которую требуется сконвертировать текст
+ * @param replace порядок обращения с символами, кодировке не представимыми
+ * @return        сконвертированный текст в требуемой кодировке
+ *
+ */
+string awh::Framework::transcode(string_view text, const charset::encoding_t from, const charset::encoding_t to, const charset::replace_t replace) const noexcept {
+	// Переменная результата
+	string result = "";
+	// Если текст передан
+	if(!text.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			/**
+			 * Если выполнить конвертирование текста не вышло
+			 */
+			if(!charset::transcode(text, from, to, result, replace)){
+				// Выполняем очистку результата конвертирования
+				result.clear();
+				// Выполняем формирование текста ошибки
+				string message = "Unable to convert text from ";
+				// Выполняем добавление имени кодировки, в которой записан текст
+				message.append(charset::label(from));
+				// Выполняем добавление разделителя имён кодировок
+				message.append(" to ");
+				// Выполняем добавление имени кодировки, в которую выполнялось конвертирование
+				message.append(charset::label(to));
+				// Выполняем генерацию ошибки
+				throw ::logic_error(message);
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Если объект логирования установлен
+			if(this->_log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, static_cast <uint16_t> (from), static_cast <uint16_t> (to)), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			// Если объект логирования не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					::fprintf(stderr, "ERROR! %s\n\n", error.what());
+				#endif
+			}
+		}
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод конвертирования строки из одной кодировки в другую
+ *
+ * @param text    текст для конвертирования
+ * @param from    имя кодировки, в которой записан текст
+ * @param to      имя кодировки, в которую требуется сконвертировать текст
+ * @param replace порядок обращения с символами, кодировке не представимыми
+ * @return        сконвертированный текст в требуемой кодировке
+ *
+ */
+string awh::Framework::transcode(string_view text, string_view from, string_view to, const charset::replace_t replace) const noexcept {
+	// Выполняем разбор имени кодировки, в которой записан текст
+	const charset::encoding_t source = charset::encoding(from);
+	// Выполняем разбор имени кодировки, в которую выполняется конвертирование
+	const charset::encoding_t target = charset::encoding(to);
+	/**
+	 * Если хотя бы одно из имён кодировок распознать не вышло
+	 */
+	if((source == charset::encoding_t::NONE) || (target == charset::encoding_t::NONE)){
+		// Выполняем формирование текста ошибки
+		string message = "Unknown character set name: ";
+		// Выполняем добавление нераспознанного имени кодировки
+		message.append((source == charset::encoding_t::NONE) ? from : to);
+		// Если объект логирования установлен
+		if(this->_log != nullptr)
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, message.c_str());
+		// Если объект логирования не установлен
+		else ::fprintf(stderr, "ERROR! %s\n\n", message.c_str());
+		// Выводим пустой результат конвертирования
+		return "";
+	}
+	// Выполняем конвертирование текста из одной кодировки в другую
+	return this->transcode(text, source, target, replace);
+}
+/**
+ * @brief Метод разбора имени кодировки
+ *
+ * @param name имя кодировки, заданное заголовком протокола
+ * @return     обозначение кодировки либо признак нераспознанного имени
+ *
+ */
+awh::charset::encoding_t awh::Framework::encoding(string_view name) const noexcept {
+	// Выводим результат разбора имени кодировки
+	return charset::encoding(name);
+}
+/**
+ * @brief Метод извлечения имени кодировки по её обозначению
+ *
+ * @param encoding обозначение кодировки текста
+ * @return         каноническое имя кодировки
+ *
+ */
+string awh::Framework::encoding(const charset::encoding_t encoding) const noexcept {
+	// Выводим каноническое имя кодировки
+	return string{charset::label(encoding)};
+}
+/**
+ * @brief Метод определения кодировки текста
+ *
+ * @param text     текст, кодировку которого требуется определить
+ * @param fallback кодировка, предполагаемая для текста, записью UTF-8 не являющегося
+ * @return         обозначение определённой кодировки текста
+ *
+ */
+awh::charset::encoding_t awh::Framework::detect(string_view text, const charset::encoding_t fallback) const noexcept {
+	// Выводим обозначение определённой кодировки текста
+	return charset::detect(text, fallback);
 }
 /**
  * @brief Метод трансформации одного символа
