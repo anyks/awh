@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @brief Реализация свойств Юникода модуля регулярных выражений — поиск значения свойства
+ * @brief Реализация модуля Юникода — поиск значения свойства
  *        символа двоичным поиском по таблицам диапазонов, разбор имён свойств и простое
  *        приведение регистра с наборами символов, приводимых к одному значению
  *
@@ -25,7 +25,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <regex/unicode.hpp>
+#include <unicode/unicode.hpp>
 #include <sys/ascii.hpp>
 
 /**
@@ -50,7 +50,7 @@ namespace {
 	 * @return       индекс обнаруженного диапазона либо количество диапазонов
 	 *
 	 */
-	inline size_t search(const awh::regex::interval_t * table, const size_t count, const uint32_t code, const size_t begin, const size_t length) noexcept {
+	inline size_t search(const awh::unicode::interval_t * table, const size_t count, const uint32_t code, const size_t begin, const size_t length) noexcept {
 		// Получаем наименьший индекс просматриваемого участка таблицы
 		size_t lower = begin;
 		// Получаем наибольший индекс просматриваемого участка таблицы
@@ -93,40 +93,40 @@ namespace {
 		 */
 		switch(group) {
 			// Выполняем проверку принадлежности группе прочих символов
-			case static_cast <uint16_t> (awh::regex::property_id_t::C):
-				return ((category >= static_cast <uint16_t> (awh::regex::property_id_t::Cc)) &&
-				 (category <= static_cast <uint16_t> (awh::regex::property_id_t::Cs)));
+			case static_cast <uint16_t> (awh::unicode::property_id_t::C):
+				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Cc)) &&
+				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::Cs)));
 			// Выполняем проверку принадлежности группе букв
-			case static_cast <uint16_t> (awh::regex::property_id_t::L):
-				return ((category >= static_cast <uint16_t> (awh::regex::property_id_t::Ll)) &&
-				 (category <= static_cast <uint16_t> (awh::regex::property_id_t::Lu)));
+			case static_cast <uint16_t> (awh::unicode::property_id_t::L):
+				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Ll)) &&
+				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::Lu)));
 			/**
 			 * Выполняем проверку принадлежности группе букв, изменяющих регистр
 			 */
-			case static_cast <uint16_t> (awh::regex::property_id_t::L_AMP):
-				return ((category == static_cast <uint16_t> (awh::regex::property_id_t::Ll)) ||
-				 (category == static_cast <uint16_t> (awh::regex::property_id_t::Lt)) ||
-				 (category == static_cast <uint16_t> (awh::regex::property_id_t::Lu)));
+			case static_cast <uint16_t> (awh::unicode::property_id_t::L_AMP):
+				return ((category == static_cast <uint16_t> (awh::unicode::property_id_t::Ll)) ||
+				 (category == static_cast <uint16_t> (awh::unicode::property_id_t::Lt)) ||
+				 (category == static_cast <uint16_t> (awh::unicode::property_id_t::Lu)));
 			// Выполняем проверку принадлежности группе знаков
-			case static_cast <uint16_t> (awh::regex::property_id_t::M):
-				return ((category >= static_cast <uint16_t> (awh::regex::property_id_t::Mc)) &&
-				 (category <= static_cast <uint16_t> (awh::regex::property_id_t::Mn)));
+			case static_cast <uint16_t> (awh::unicode::property_id_t::M):
+				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Mc)) &&
+				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::Mn)));
 			// Выполняем проверку принадлежности группе чисел
-			case static_cast <uint16_t> (awh::regex::property_id_t::N):
-				return ((category >= static_cast <uint16_t> (awh::regex::property_id_t::Nd)) &&
-				 (category <= static_cast <uint16_t> (awh::regex::property_id_t::No)));
+			case static_cast <uint16_t> (awh::unicode::property_id_t::N):
+				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Nd)) &&
+				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::No)));
 			// Выполняем проверку принадлежности группе знаков пунктуации
-			case static_cast <uint16_t> (awh::regex::property_id_t::P):
-				return ((category >= static_cast <uint16_t> (awh::regex::property_id_t::Pc)) &&
-				 (category <= static_cast <uint16_t> (awh::regex::property_id_t::Ps)));
+			case static_cast <uint16_t> (awh::unicode::property_id_t::P):
+				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Pc)) &&
+				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::Ps)));
 			// Выполняем проверку принадлежности группе символов
-			case static_cast <uint16_t> (awh::regex::property_id_t::S):
-				return ((category >= static_cast <uint16_t> (awh::regex::property_id_t::Sc)) &&
-				 (category <= static_cast <uint16_t> (awh::regex::property_id_t::So)));
+			case static_cast <uint16_t> (awh::unicode::property_id_t::S):
+				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Sc)) &&
+				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::So)));
 			// Выполняем проверку принадлежности группе разделителей
-			case static_cast <uint16_t> (awh::regex::property_id_t::Z):
-				return ((category >= static_cast <uint16_t> (awh::regex::property_id_t::Zl)) &&
-				 (category <= static_cast <uint16_t> (awh::regex::property_id_t::Zs)));
+			case static_cast <uint16_t> (awh::unicode::property_id_t::Z):
+				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Zl)) &&
+				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::Zs)));
 		}
 		// Выводим результат проверки совпадения категории с проверяемой
 		return (category == group);
@@ -140,7 +140,7 @@ namespace {
  * @return     идентификатор общей категории символа
  *
  */
-uint16_t awh::regex::general(const uint32_t code) noexcept {
+uint16_t awh::unicode::general(const uint32_t code) noexcept {
 	// Выполняем поиск диапазона, содержащего кодовое значение символа
 	const size_t index = search(CATEGORIES, CATEGORIES_COUNT, code, 0, CATEGORIES_COUNT);
 	/**
@@ -159,7 +159,7 @@ uint16_t awh::regex::general(const uint32_t code) noexcept {
  * @return     идентификатор свойства либо признак нераспознанного имени
  *
  */
-uint16_t awh::regex::property(string_view name) noexcept {
+uint16_t awh::unicode::property(string_view name) noexcept {
 	// Приведённое к нормальному виду имя свойства Юникода
 	string key;
 	/**
@@ -213,7 +213,7 @@ uint16_t awh::regex::property(string_view name) noexcept {
  * @return     результат проверки обладания символом свойством
  *
  */
-bool awh::regex::holds(const uint32_t code, const uint16_t id) noexcept {
+bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 	/**
 	 * Если проверяется класс двунаправленности символа
 	 */
@@ -435,7 +435,7 @@ bool awh::regex::holds(const uint32_t code, const uint16_t id) noexcept {
  * @return     приведённое кодовое значение символа
  *
  */
-uint32_t awh::regex::casefold(const uint32_t code) noexcept {
+uint32_t awh::unicode::casefold(const uint32_t code) noexcept {
 	// Получаем наименьший индекс просматриваемого участка таблицы
 	size_t lower = 0;
 	// Получаем наибольший индекс просматриваемого участка таблицы
@@ -474,7 +474,7 @@ uint32_t awh::regex::casefold(const uint32_t code) noexcept {
  * @return       результат наличия набора приведения регистра
  *
  */
-bool awh::regex::variants(const uint32_t code, vector <uint32_t> & result) noexcept {
+bool awh::unicode::variants(const uint32_t code, vector <uint32_t> & result) noexcept {
 	// Выполняем очистку набора символов, приводимых к одному значению
 	result.clear();
 	// Выполняем поиск размещения набора приведения регистра символа
@@ -501,7 +501,7 @@ bool awh::regex::variants(const uint32_t code, vector <uint32_t> & result) noexc
  * @return     класс разбиения текста на графемные кластеры
  *
  */
-awh::regex::cluster_t awh::regex::cluster(const uint32_t code) noexcept {
+awh::unicode::cluster_t awh::unicode::cluster(const uint32_t code) noexcept {
 	// Выполняем поиск диапазона, содержащего кодовое значение символа
 	const size_t index = search(CLUSTERS, CLUSTERS_COUNT, code, 0, CLUSTERS_COUNT);
 	/**
@@ -520,7 +520,7 @@ awh::regex::cluster_t awh::regex::cluster(const uint32_t code) noexcept {
  * @return     положение символа в сочетании индийских письменностей
  *
  */
-awh::regex::indic_t awh::regex::indic(const uint32_t code) noexcept {
+awh::unicode::indic_t awh::unicode::indic(const uint32_t code) noexcept {
 	// Выполняем поиск диапазона, содержащего кодовое значение символа
 	const size_t index = search(INDIC, INDIC_COUNT, code, 0, INDIC_COUNT);
 	/**

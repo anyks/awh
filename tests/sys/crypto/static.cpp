@@ -1584,6 +1584,239 @@ TEST_F(CryptoFixture, KeyPasswordLongCryptoTest){
 }
 
 /**
+ * @brief Тест неповторимости вектора инициализации при удержании ключа
+ *
+ * @details Ключ удерживается между потоками и между разовыми работами, а вектор
+ *          инициализации обязан быть новым на всякое сообщение: в режиме с
+ *          проверкой подлинности повтор вектора на одном ключе выдаёт открытый
+ *          текст обоих сообщений
+ *
+ */
+TEST_F(CryptoFixture, VectorUniquenessCryptoTest){
+	// Текст для шифрования
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем количество итераций вывода ключа
+	this->_crypto->roundAES(1000);
+	// Устанавливаем режим блочного шифрования с проверкой подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::GCM);
+	// Набор собранных векторов инициализации
+	std::unordered_set <std::string> vectors;
+	/**
+	 * Выполняем перебор оборотов потокового шифрования на удержанном ключе
+	 */
+	for(uint16_t i = 0; i < 16; i++){
+		// Выполняем инициализацию контекста шифрования
+		ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+		// Выполняем шифрование порции потока
+		std::string encoded = this->_crypto->encrypt <std::string> (text);
+		// Выполняем завершение потока шифрования
+		ASSERT_TRUE(this->_crypto->finalize(encoded));
+		// Проверяем что шифротекст вектор инициализации несёт
+		ASSERT_GE(encoded.size(), static_cast <size_t> (12));
+		// Собираем вектор инициализации из начала шифротекста
+		vectors.emplace(encoded.substr(0, 12));
+	}
+	// Проверяем неповторимость векторов инициализации потоков
+	EXPECT_EQ(vectors.size(), static_cast <size_t> (16));
+	// Очищаем набор собранных векторов инициализации
+	vectors.clear();
+	/**
+	 * Выполняем перебор разовых работ на удержанном ключе
+	 */
+	for(uint16_t i = 0; i < 16; i++){
+		// Выполняем разовое шифрование сообщения
+		const std::string encoded = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+		// Проверяем что шифротекст вектор инициализации несёт
+		ASSERT_GE(encoded.size(), static_cast <size_t> (12));
+		// Собираем вектор инициализации из начала шифротекста
+		vectors.emplace(encoded.substr(0, 12));
+	}
+	// Проверяем неповторимость векторов инициализации разовых работ
+	EXPECT_EQ(vectors.size(), static_cast <size_t> (16));
+}
+
+/**
+ * @brief Тест потоковой работы порциями по одному октету
+ *
+ * @details Вектор инициализации и имитовставка приходят разорванными по порциям,
+ *          и накопитель обязан собрать их из разрозненных октетов
+ *
+ */
+TEST_F(CryptoFixture, ByteChunkStreamCryptoTest){
+	// Текст для шифрования
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем количество итераций вывода ключа
+	this->_crypto->roundAES(1000);
+	/**
+	 * Выполняем перебор режимов блочного шифрования
+	 */
+	for(auto & mode : {awh::crypto_t::mode_t::GCM, awh::crypto_t::mode_t::CFB}){
+		// Устанавливаем режим блочного шифрования
+		this->_crypto->mode(mode);
+		// Выполняем инициализацию контекста шифрования
+		ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256)) << "mode = " << static_cast <uint16_t> (mode);
+		// Результат потокового шифрования
+		std::string encoded;
+		/**
+		 * Выполняем подачу текста по одному октету
+		 */
+		for(size_t i = 0; i < text.size(); i++){
+			// Буфер выхода порции
+			std::string part;
+			// Выполняем шифрование порции в один октет
+			ASSERT_TRUE(this->_crypto->encrypt <std::string> (text.data() + i, 1, part)) << "mode = " << static_cast <uint16_t> (mode);
+			// Дописываем выход порции в результат
+			encoded.append(part);
+		}
+		// Выполняем завершение потока шифрования
+		ASSERT_TRUE(this->_crypto->finalize(encoded)) << "mode = " << static_cast <uint16_t> (mode);
+		// Выполняем инициализацию контекста расшифровки
+		ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::DECODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256)) << "mode = " << static_cast <uint16_t> (mode);
+		// Результат потоковой расшифровки
+		std::string decoded;
+		/**
+		 * Выполняем подачу шифротекста по одному октету
+		 */
+		for(size_t i = 0; i < encoded.size(); i++){
+			// Буфер выхода порции
+			std::string part;
+			// Выполняем расшифровку порции в один октет
+			ASSERT_TRUE(this->_crypto->decrypt <std::string> (encoded.data() + i, 1, part)) << "mode = " << static_cast <uint16_t> (mode);
+			// Дописываем выход порции в результат
+			decoded.append(part);
+		}
+		// Выполняем завершение потока расшифровки
+		ASSERT_TRUE(this->_crypto->finalize(decoded)) << "mode = " << static_cast <uint16_t> (mode);
+		// Проверяем обратимость потоковой работы порциями по одному октету
+		EXPECT_EQ(decoded, text) << "mode = " << static_cast <uint16_t> (mode);
+	}
+}
+
+/**
+ * @brief Тест согласия видов шифротекста разовой работы и потока
+ *
+ * @details Шифротекст, собранный разовой работой, обязан разбираться потоком, и
+ *          наоборот: устройство его одно - вектор инициализации в начале,
+ *          имитовставка в конце
+ *
+ */
+TEST_F(CryptoFixture, FormatContractCryptoTest){
+	// Текст для шифрования
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем количество итераций вывода ключа
+	this->_crypto->roundAES(1000);
+	/**
+	 * Выполняем перебор режимов блочного шифрования
+	 */
+	for(auto & mode : {awh::crypto_t::mode_t::GCM, awh::crypto_t::mode_t::CFB}){
+		// Устанавливаем режим блочного шифрования
+		this->_crypto->mode(mode);
+		// Выполняем разовое шифрование сообщения
+		const std::string oneshot = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+		// Проверяем выполнение разового шифрования
+		ASSERT_FALSE(oneshot.empty()) << "mode = " << static_cast <uint16_t> (mode);
+		// Выполняем инициализацию контекста расшифровки
+		ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::DECODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+		// Результат потоковой расшифровки
+		std::string streamed;
+		// Выполняем расшифровку шифротекста разовой работы потоком
+		ASSERT_TRUE(this->_crypto->decrypt <std::string> (oneshot.data(), oneshot.size(), streamed)) << "mode = " << static_cast <uint16_t> (mode);
+		// Выполняем завершение потока расшифровки
+		ASSERT_TRUE(this->_crypto->finalize(streamed)) << "mode = " << static_cast <uint16_t> (mode);
+		// Проверяем разбор потоком шифротекста разовой работы
+		EXPECT_EQ(streamed, text) << "mode = " << static_cast <uint16_t> (mode);
+		// Выполняем инициализацию контекста шифрования
+		ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+		// Результат потокового шифрования
+		std::string encoded = this->_crypto->encrypt <std::string> (text);
+		// Выполняем завершение потока шифрования
+		ASSERT_TRUE(this->_crypto->finalize(encoded)) << "mode = " << static_cast <uint16_t> (mode);
+		// Проверяем разбор разовой работой шифротекста потока
+		EXPECT_EQ(this->_crypto->decrypt <std::string> (encoded, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), text) << "mode = " << static_cast <uint16_t> (mode);
+	}
+}
+
+/**
+ * @brief Тест обратимости на размерах вокруг границ блока шифра
+ *
+ * @details Размеры, кратные блоку шифра и соседние с ними, ловят ошибки отведения
+ *          выходного буфера и укорочения его до настоящей длины выхода. Перебор
+ *          идёт по обоим режимам, всем разрядностям и обоим путям - разовому и
+ *          потоковому
+ *
+ */
+TEST_F(CryptoFixture, BoundarySizesCryptoTest){
+	// Набор проверяемых размеров сообщения
+	const size_t sizes[] = {0, 1, 2, 3, 15, 16, 17, 31, 32, 33, 63, 64, 65, 4095, 4096, 4097};
+	// Набор проверяемых разрядностей шифрования
+	const awh::crypto_t::cipher_t ciphers[] = {
+		awh::crypto_t::cipher_t::AES128,
+		awh::crypto_t::cipher_t::AES192,
+		awh::crypto_t::cipher_t::AES256
+	};
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем количество итераций вывода ключа
+	this->_crypto->roundAES(1000);
+	/**
+	 * Выполняем перебор режимов блочного шифрования
+	 */
+	for(auto & mode : {awh::crypto_t::mode_t::GCM, awh::crypto_t::mode_t::CFB}){
+		// Устанавливаем режим блочного шифрования
+		this->_crypto->mode(mode);
+		/**
+		 * Выполняем перебор разрядностей шифрования
+		 */
+		for(auto & cipher : ciphers){
+			/**
+			 * Выполняем перебор размеров сообщения
+			 */
+			for(auto & size : sizes){
+				// Собираем сообщение проверяемого размера
+				const std::string text(size, 'A');
+				// Выполняем разовое шифрование сообщения
+				const std::string oneshot = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, cipher);
+				// Проверяем обратимость разовой работы
+				EXPECT_EQ(this->_crypto->decrypt <std::string> (oneshot, awh::crypto_t::hash_t::SHA256, cipher), text)
+					<< "mode = " << static_cast <uint16_t> (mode) << ", cipher = " << static_cast <uint16_t> (cipher) << ", size = " << size;
+				// Выполняем инициализацию контекста шифрования
+				ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, cipher));
+				// Результат потокового шифрования
+				std::string encoded = this->_crypto->encrypt <std::string> (text);
+				// Выполняем завершение потока шифрования
+				ASSERT_TRUE(this->_crypto->finalize(encoded));
+				// Выполняем инициализацию контекста расшифровки
+				ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::DECODE, awh::crypto_t::hash_t::SHA256, cipher));
+				// Результат потоковой расшифровки
+				std::string decoded = this->_crypto->decrypt <std::string> (encoded);
+				// Выполняем завершение потока расшифровки
+				ASSERT_TRUE(this->_crypto->finalize(decoded));
+				// Проверяем обратимость потоковой работы
+				EXPECT_EQ(decoded, text)
+					<< "mode = " << static_cast <uint16_t> (mode) << ", cipher = " << static_cast <uint16_t> (cipher) << ", size = " << size;
+				// Проверяем разбор разовой работой шифротекста потока
+				EXPECT_EQ(this->_crypto->decrypt <std::string> (encoded, awh::crypto_t::hash_t::SHA256, cipher), text)
+					<< "mode = " << static_cast <uint16_t> (mode) << ", cipher = " << static_cast <uint16_t> (cipher) << ", size = " << size;
+			}
+		}
+	}
+}
+
+/**
  * @brief Тест прав файла приватного ключа RSA
  *
  * @details Файл заводился обычным открытием, и права его брались у маски создания:

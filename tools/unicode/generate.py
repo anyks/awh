@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-@file: generate_unicode.py
+@file: generate.py
 @date: 2026-07-31
 @license: LicenseRef-AWH-1.0
 
@@ -10,7 +10,7 @@
 @email: forman@anyks.com
 @site: https://anyks.com
 
-@brief Порождение таблиц свойств Юникода модуля регулярных выражений по файлам
+@brief Порождение таблиц базы данных символов Юникода по файлам
        базы данных символов Юникода (UCD). Порождаются таблицы общих категорий,
        письменностей, их расширений, двоичных свойств, классов двунаправленности,
        простого приведения регистра и разбиения на графемные кластеры.
@@ -24,7 +24,7 @@ import sys
 # Путь к каталогу файлов базы данных символов Юникода
 TABLES = os.path.join(
 	os.path.dirname(os.path.abspath(__file__)),
-	'..', 'submodules', 'pcre2', 'maint', 'Unicode.tables'
+	'..', '..', 'submodules', 'pcre2', 'maint', 'Unicode.tables'
 )
 
 # Наибольшее кодовое значение символа Юникода
@@ -259,7 +259,7 @@ BIDI_BASE = 0x1800
 
 def supported():
 	"""Набор имён свойств, принимаемых эталонной реализацией"""
-	path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'unicode.accepted')
+	path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'sh', 'unicode.accepted')
 	result = set()
 	for line in open(path, encoding='utf-8'):
 		line = line.strip()
@@ -277,12 +277,12 @@ def supported():
 def table(name, items):
 	"""Порождение таблицы диапазонов значений свойства"""
 	lines = ['/**', ' * @brief Таблица диапазонов кодовых значений: %s' % name, ' *', ' */']
-	lines.append('const awh::regex::interval_t awh::regex::%s[] = {' % name)
+	lines.append('const awh::unicode::interval_t awh::unicode::%s[] = {' % name)
 	for begin, end, value in items:
 		lines.append('\t{0x%X, 0x%X, %d},' % (begin, end, value))
 	lines.append('};')
 	lines += ['/**', ' * @brief Количество диапазонов таблицы: %s' % name, ' *', ' */']
-	lines.append('const size_t awh::regex::%s_COUNT = %d;' % (name, len(items)))
+	lines.append('const size_t awh::unicode::%s_COUNT = %d;' % (name, len(items)))
 	return lines
 
 
@@ -397,7 +397,7 @@ def emit(tables, sets, spans, names, order):
 	"""Выпуск исходного файла таблиц свойств Юникода"""
 	lines = []
 	lines.append('/**')
-	lines.append(' * @file: tables.cpp')
+	lines.append(' * @file: table.cpp')
 	lines.append(' * @date: 2026-07-31')
 	lines.append(' * @license: LicenseRef-AWH-1.0')
 	lines.append(' *')
@@ -407,9 +407,9 @@ def emit(tables, sets, spans, names, order):
 	lines.append(' * @email: forman@anyks.com')
 	lines.append(' * @site: https://anyks.com')
 	lines.append(' *')
-	lines.append(' * @brief Таблицы свойств Юникода модуля регулярных выражений')
+	lines.append(' * @brief Таблицы базы данных символов Юникода')
 	lines.append(' *')
-	lines.append(' * @warning Файл порождён средством «sh/generate_unicode.py» по файлам базы')
+	lines.append(' * @warning Файл порождён средством «tools/unicode/generate.py» по файлам базы')
 	lines.append(' *          данных символов Юникода. Правки, внесённые в файл вручную,')
 	lines.append(' *          теряются при очередном порождении.')
 	lines.append(' *')
@@ -420,7 +420,7 @@ def emit(tables, sets, spans, names, order):
 	lines.append('/**')
 	lines.append(' * Подключаем заголовочные файлы проекта')
 	lines.append(' */')
-	lines.append('#include <regex/unicode.hpp>')
+	lines.append('#include <unicode/unicode.hpp>')
 	lines.append('')
 	lines.append('/**')
 	lines.append(' * Используем стандартное пространство имён')
@@ -432,7 +432,7 @@ def emit(tables, sets, spans, names, order):
 		lines += table(name, tables[name])
 	# Наборы расширений письменностей
 	lines += ['/**', ' * @brief Наборы письменностей расширений, завершаемые признаком конца', ' *', ' */']
-	lines.append('const uint16_t awh::regex::EXTENSION_SETS[] = {')
+	lines.append('const uint16_t awh::unicode::EXTENSION_SETS[] = {')
 	offsets = []
 	flat = []
 	for members in sets:
@@ -441,26 +441,26 @@ def emit(tables, sets, spans, names, order):
 	lines.append('\t' + ', '.join('0x%X' % value for value in flat))
 	lines.append('};')
 	lines += ['/**', ' * @brief Смещения наборов письменностей расширений', ' *', ' */']
-	lines.append('const uint32_t awh::regex::EXTENSION_OFFSETS[] = {')
+	lines.append('const uint32_t awh::unicode::EXTENSION_OFFSETS[] = {')
 	lines.append('\t' + ', '.join(str(value) for value in offsets))
 	lines.append('};')
 	# Размещение диапазонов двоичных свойств
 	lines += ['/**', ' * @brief Размещение диапазонов двоичных свойств: смещение и количество', ' *', ' */']
-	lines.append('const uint32_t awh::regex::BINARY_SPANS[] = {')
+	lines.append('const uint32_t awh::unicode::BINARY_SPANS[] = {')
 	lines.append('\t' + ', '.join('%d, %d' % span for span in spans))
 	lines.append('};')
 	lines += ['/**', ' * @brief Количество двоичных свойств', ' *', ' */']
-	lines.append('const size_t awh::regex::BINARY_COUNT = %d;' % len(order))
+	lines.append('const size_t awh::unicode::BINARY_COUNT = %d;' % len(order))
 	# Соответствие имён свойств их идентификаторам
 	lines += ['/**', ' * @brief Соответствие имён свойств их идентификаторам', ' *', ' */']
-	lines.append('const awh::regex::naming_t awh::regex::NAMES[] = {')
+	lines.append('const awh::unicode::naming_t awh::unicode::NAMES[] = {')
 	for name in sorted(names):
 		lines.append('\t{"%s", 0x%X},' % (name, names[name]))
 	lines.append('};')
 	lines += ['/**', ' * @brief Количество имён свойств', ' *', ' */']
-	lines.append('const size_t awh::regex::NAMES_COUNT = %d;' % len(names))
+	lines.append('const size_t awh::unicode::NAMES_COUNT = %d;' % len(names))
 	lines += ['/**', ' * @brief Номер письменности неназначенных символов', ' *', ' */']
-	lines.append('const size_t awh::regex::SCRIPTS_UNKNOWN = %d;' % (
+	lines.append('const size_t awh::unicode::SCRIPTS_UNKNOWN = %d;' % (
 		max(item[2] for item in tables['SCRIPTS']) + 1))
 	return '\n'.join(lines) + '\n'
 
@@ -487,21 +487,21 @@ def casing():
 		flat += members + [0]
 	index = sorted(index)
 	lines = ['/**', ' * @brief Таблица простого приведения регистра: смещение приведённого значения', ' *', ' */']
-	lines.append('const awh::regex::folding_t awh::regex::FOLDING[] = {')
+	lines.append('const awh::unicode::folding_t awh::unicode::FOLDING[] = {')
 	for begin, end, delta in merged:
 		lines.append('\t{0x%X, 0x%X, %d},' % (begin, end, delta))
 	lines.append('};')
 	lines += ['/**', ' * @brief Количество диапазонов таблицы приведения регистра', ' *', ' */']
-	lines.append('const size_t awh::regex::FOLDING_COUNT = %d;' % len(merged))
+	lines.append('const size_t awh::unicode::FOLDING_COUNT = %d;' % len(merged))
 	lines += ['/**', ' * @brief Размещение наборов символов, приводимых к одному значению', ' *', ' */']
-	lines.append('const awh::regex::interval_t awh::regex::ORBITS[] = {')
+	lines.append('const awh::unicode::interval_t awh::unicode::ORBITS[] = {')
 	for begin, end, offset in index:
 		lines.append('\t{0x%X, 0x%X, %d},' % (begin, end, offset))
 	lines.append('};')
 	lines += ['/**', ' * @brief Количество размещений наборов приведения регистра', ' *', ' */']
-	lines.append('const size_t awh::regex::ORBITS_COUNT = %d;' % len(index))
+	lines.append('const size_t awh::unicode::ORBITS_COUNT = %d;' % len(index))
 	lines += ['/**', ' * @brief Наборы символов, приводимых к одному значению, завершаемые нулём', ' *', ' */']
-	lines.append('const uint32_t awh::regex::ORBIT_SETS[] = {')
+	lines.append('const uint32_t awh::unicode::ORBIT_SETS[] = {')
 	lines.append('\t' + ', '.join('0x%X' % value for value in flat))
 	lines.append('};')
 	return '\n'.join(lines) + '\n'
@@ -514,7 +514,7 @@ def main():
 		return 1
 	tables, sets, spans, names, order = build()
 	source = emit(tables, sets, spans, names, order) + casing()
-	path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'regex', 'tables.cpp')
+	path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'unicode', 'table.cpp')
 	open(path, 'w', encoding='utf-8').write(source)
 	sys.stdout.write('выпущен файл: %s\n' % os.path.normpath(path))
 	sys.stdout.write('имён свойств: %d, письменностей: %d, двоичных свойств: %d\n' % (

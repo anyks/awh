@@ -22,9 +22,6 @@
 [submodule "submodules/snappy"]
 	path = submodules/snappy
 	url = https://gitflic.ru/project/third_party/snappy.git
-[submodule "submodules/miniupnpc"]
-	path = submodules/miniupnpc
-	url = https://gitflic.ru/project/third_party/miniupnp.git
 [submodule "submodules/brotli"]
 	path = submodules/brotli
 	url = https://gitflic.ru/project/third_party/brotli.git

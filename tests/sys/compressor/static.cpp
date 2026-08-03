@@ -1729,3 +1729,200 @@ TEST_F(CompressorFixture, BlockRejectsNullBufferTest){
 		ASSERT_TRUE(result.empty()) << "method = " << static_cast <uint16_t> (method) << ", empty";
 	}
 }
+
+/**
+ * @brief Проверка размера скользящего окна у напрямую заведённой сессии
+ *
+ * @details Установщики `Block` промежуток сторожат, а конструктор `Stream` открыт
+ *          наружу и параметры принимает как есть. Окно ниже девяти разрядов
+ *          негодно и здесь: сессия обязана выйти невалидной, а не завести
+ *          сжатие, разобрать которое тем же значением нельзя
+ *
+ */
+TEST_F(CompressorFixture, StreamWindowBitsRangeTest){
+	// Формируем параметры инициализации сессии
+	awh::compressor::params_t params;
+	// Список методов семейства Zlib
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::DEFLATE
+	};
+	// Список значений, лежащих вне допустимого промежутка
+	const int16_t invalid[] = {-1, 0, 2, 7, 8, 16, 32, 255};
+	/**
+	 * Выполняем перебор методов семейства Zlib
+	 */
+	for(auto & method : methods){
+		/**
+		 * Выполняем перебор значений вне допустимого промежутка
+		 */
+		for(auto & wbits : invalid){
+			// Устанавливаем размер скользящего окна
+			params.wbits = wbits;
+			// Создаём потоковую сессию компрессии
+			awh::compressor::stream_t encoder(method, awh::compressor::event_t::ENCODE, params, this->_log.get());
+			// Проверяем что сессия не заведена
+			ASSERT_FALSE(encoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", wbits = " << wbits << ", encode";
+			// Создаём потоковую сессию декомпрессии
+			awh::compressor::stream_t decoder(method, awh::compressor::event_t::DECODE, params, this->_log.get());
+			// Проверяем что сессия не заведена
+			ASSERT_FALSE(decoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", wbits = " << wbits << ", decode";
+		}
+		/**
+		 * Выполняем перебор значений внутри допустимого промежутка
+		 */
+		for(int16_t wbits = 9; wbits <= 15; wbits++){
+			// Устанавливаем размер скользящего окна
+			params.wbits = wbits;
+			// Создаём потоковую сессию компрессии
+			awh::compressor::stream_t encoder(method, awh::compressor::event_t::ENCODE, params, this->_log.get());
+			// Проверяем что сессия заведена
+			ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", wbits = " << wbits;
+		}
+	}
+}
+
+/**
+ * @brief Проверка завершающих октетов блочного сообщения Deflate
+ *
+ * @details Сообщение завершается Z_SYNC_FLUSH, а не Z_FINISH, и потому оканчивается
+ *          четырьмя октетами 00 00 FF FF (RFC 7692). Договор этот несут заголовок
+ *          класса и README, а сторожа у него не было: смена сброса на Z_FINISH
+ *          прошла бы мимо обратимости — блочная распаковка конца потока не требует, —
+ *          и разошлась бы лишь с чужим узлом
+ *
+ */
+TEST_F(CompressorFixture, DeflateSyncFlushTailTest){
+	// Формируем текст для компрессии
+	const std::string text = "Anyks Framework permessage-deflate tail payload, Anyks Framework permessage-deflate tail payload!!!!?";
+	/**
+	 * Выполняем перебор обоих способов работы: на своём контексте и на переиспользуемом
+	 */
+	for(uint16_t takeover = 0; takeover < 2; takeover++){
+		// Включаем либо отключаем переиспользование контекста компрессии
+		ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::ENCODE, takeover > 0));
+		/**
+		 * Отправляем пару сообщений: у переиспользуемого контекста второе сообщение
+		 * опирается на словарь первого, и хвост обязан стоять у обоих
+		 */
+		for(uint16_t i = 0; i < 2; i++){
+			// Выполняем компрессию данных
+			const std::string compressed = this->_compressor->compress <std::string> (text, awh::compressor::method_t::DEFLATE);
+			// Проверяем что результат компрессии не пустой
+			ASSERT_GT(compressed.size(), 4u) << "takeover = " << takeover << ", message = " << i;
+			// Проверяем что сообщение оканчивается четырьмя октетами 00 00 FF FF
+			ASSERT_EQ(std::string("\x00\x00\xFF\xFF", 4), compressed.substr(compressed.size() - 4)) << "takeover = " << takeover << ", message = " << i;
+		}
+	}
+	// Снимаем переиспользование контекста компрессии
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::ENCODE, false));
+}
+
+/**
+ * @brief Тест раздельности размера скользящего окна у движков семейства Zlib
+ *
+ * @details Закрепляет то, ради чего настройки семейства и были разведены по именам:
+ *          у GZip, Zlib и Deflate свой размер окна, и каждый движок обязан читать
+ *          именно свой. Все прежние проверки задавали трём установщикам одно и то
+ *          же значение, поэтому подмена поля одного движка полем другого прошла бы
+ *          мимо них незамеченной. Наблюдаемым признаком служит размер сжатого:
+ *          повтор стоит дальше, чем достаёт малое окно, и сжатие с ним выходит
+ *          крупнее. Меняем окно одному движку, двум другим оставляем большое —
+ *          и размер обязан вырасти у того движка, которому его меняли
+ *
+ */
+TEST_F(CompressorFixture, WindowBitsAreSeparatePerEngineTest){
+	// Формируем блок данных, повтор которого малому окну не достать
+	std::string block;
+	/**
+	 * Наполняем блок неповторяющимся содержимым, чтобы сжатие опиралось
+	 * на повтор блока целиком, а не на совпадения внутри него самого
+	 */
+	for(uint16_t i = 0; i < 2048; i++)
+		// Добавляем очередной октет блока
+		block.append(1, static_cast <char> ((i * 37) % 251));
+	// Формируем текст для компрессии из двух одинаковых блоков
+	const std::string text = (block + block);
+	// Список методов семейства с их установщиками размера окна
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::DEFLATE
+	};
+	/**
+	 * Выполняем перебор движков семейства
+	 */
+	for(auto & method : methods){
+		// Устанавливаем большое окно всем трём движкам
+		this->_compressor->wbitsGZip(15);
+		// Устанавливаем большое окно движку Zlib
+		this->_compressor->wbitsZlib(15);
+		// Устанавливаем большое окно движку Deflate
+		ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
+		// Выполняем компрессию данных на большом окне
+		const std::string wide = this->_compressor->compress <std::string> (text, method);
+		// Проверяем что компрессия на большом окне выполнена
+		ASSERT_FALSE(wide.empty()) << "method = " << static_cast <uint16_t> (method);
+		/**
+		 * Обратимость большого окна проверяется до его уменьшения: разбор ведётся
+		 * тем же размером окна, каким шло сжатие, и малым окном крупный поток не берётся
+		 */
+		// Проверяем что данные на большом окне обратимы
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (wide, method)) << "method = " << static_cast <uint16_t> (method);
+		/**
+		 * Уменьшаем окно одному лишь разбираемому движку: два других остаются
+		 * с большим окном, и подмена поля тут же выдала бы себя неизменным размером
+		 */
+		switch(static_cast <uint8_t> (method)){
+			// Уменьшаем окно движку GZip
+			case static_cast <uint8_t> (awh::compressor::method_t::GZIP):
+				// Выполняем установку малого окна
+				this->_compressor->wbitsGZip(9);
+			break;
+			// Уменьшаем окно движку Zlib
+			case static_cast <uint8_t> (awh::compressor::method_t::ZLIB):
+				// Выполняем установку малого окна
+				this->_compressor->wbitsZlib(9);
+			break;
+			// Уменьшаем окно движку Deflate
+			case static_cast <uint8_t> (awh::compressor::method_t::DEFLATE):
+				// Выполняем установку малого окна
+				ASSERT_TRUE(this->_compressor->wbitsDeflate(9));
+			break;
+		}
+		// Выполняем компрессию данных на малом окне
+		const std::string narrow = this->_compressor->compress <std::string> (text, method);
+		// Проверяем что компрессия на малом окне выполнена
+		ASSERT_FALSE(narrow.empty()) << "method = " << static_cast <uint16_t> (method);
+		// Проверяем что уменьшение окна сказалось именно на этом движке
+		ASSERT_GT(narrow.size(), wide.size()) << "method = " << static_cast <uint16_t> (method);
+		// Проверяем что данные на малом окне обратимы
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (narrow, method)) << "method = " << static_cast <uint16_t> (method);
+		/**
+		 * Потоковая сессия разбирает настройки семейства своим отдельным местом,
+		 * и подмена поля там прошла бы мимо проверки блочного режима: сессия,
+		 * заведённая при малом окне, обязана сжимать так же крупно
+		 */
+		// Буфер выхода очередной порции потоковой сессии
+		std::string part;
+		// Результат компрессии данных потоковой сессией
+		std::string streamed;
+		// Создаём потоковую сессию компрессии
+		awh::compressor::stream_t encoder = this->_compressor->stream(method, awh::compressor::event_t::ENCODE);
+		// Проверяем что потоковая сессия заведена
+		ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method);
+		// Выполняем подачу всех данных одной порцией с завершением кадра
+		encoder.push(text.data(), text.size(), part, awh::compressor::flush_t::FINISH);
+		// Добавляем полученную порцию к результату
+		streamed.append(part);
+		// Проверяем что сессия при малом окне сжала так же крупно, как блочный режим
+		ASSERT_GT(streamed.size(), wide.size()) << "method = " << static_cast <uint16_t> (method);
+	}
+	// Возвращаем большое окно движку GZip
+	this->_compressor->wbitsGZip(15);
+	// Возвращаем большое окно движку Zlib
+	this->_compressor->wbitsZlib(15);
+	// Возвращаем большое окно движку Deflate
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
+}

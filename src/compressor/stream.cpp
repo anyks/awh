@@ -2182,6 +2182,30 @@ awh::compressor::Stream::Stream() noexcept :
  */
 awh::compressor::Stream::Stream(const method_t method, const event_t event, const params_t & params, const log_t * log) noexcept :
  _event(event), _method(method), _coder(nullptr), _log(log) {
+	/**
+	 * Размер скользящего окна сторожится и здесь, а не одними лишь установщиками
+	 * блочного режима: конструктор открыт наружу, и параметры приходят к нему как
+	 * есть. Величина вне промежутка сессию не просто ломает - она у части значений
+	 * молча меняет формат: у GZip окно складывается с шестнадцатью, и отрицательное
+	 * значение даёт поток zlib вместо gzip, а у Deflate знак переворачивается, и
+	 * поток выходит с заголовком там, где ожидался «сырой»
+	 */
+	switch(static_cast <uint8_t> (method)){
+		// Для движков семейства Zlib
+		case static_cast <uint8_t> (method_t::GZIP):
+		case static_cast <uint8_t> (method_t::ZLIB):
+		case static_cast <uint8_t> (method_t::DEFLATE): {
+			// Если размер скользящего окна лежит вне допустимого промежутка
+			if((params.wbits < 9) || (params.wbits > MAX_WBITS)){
+				// Если объект работы с логами установлен
+				if(log != nullptr)
+					// Записываем ошибку в лог
+					log->print("Compressor: %s", log_t::flag_t::WARNING, "Window bits are out of range");
+				// Выходим из функции, оставляя поток невалидным
+				return;
+			}
+		} break;
+	}
 	// Создаём бэкенд для указанного метода
 	this->_coder = makeCoder(method, event, params);
 	// Если бэкенд создан

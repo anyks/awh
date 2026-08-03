@@ -35,10 +35,6 @@ $ROOT/submodule.sh add density https://gitflic.ru/project/third_party/density.gi
 $ROOT/submodule.sh remove snappy
 $ROOT/submodule.sh add snappy https://gitflic.ru/project/third_party/snappy.git
 
-# Выполняем пересборку сабмодуля miniupnpc
-$ROOT/submodule.sh remove miniupnpc
-$ROOT/submodule.sh add miniupnpc https://gitflic.ru/project/third_party/miniupnp.git
-
 # Выполняем пересборку сабмодуля brotli
 $ROOT/submodule.sh remove brotli
 $ROOT/submodule.sh add brotli https://gitflic.ru/project/third_party/brotli.git

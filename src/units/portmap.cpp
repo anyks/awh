@@ -99,7 +99,8 @@ namespace {
  *
  */
 awh::unit::Portmap::Mapping::Mapping() noexcept :
- proto(proto_t::NONE), internalPort(0), externalPort(0), lifeTime(0), description{""} {}
+ proto(proto_t::NONE), internalPort(0), externalPort(0), lifeTime(0), description{""},
+ enabled(true), remoteHost{""}, internalClient{""} {}
 
 /**
  * @brief Конструктор
@@ -186,6 +187,17 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					return;
 				}
 				/**
+				 * Если отличительная метка ответа просьбе не отвечает
+				 *
+				 * @note Ответ приходит на общий порт договора, и прийти он может на чужую
+				 *       просьбу: метка для того и заведена, чтобы свой ответ отличить от
+				 *       постороннего. Отказом это не считается - ждём своего ответа
+				 */
+				if((this->_nonce.size() != proto::portmap::pcp_t::NONCE_SIZE) ||
+				   (::memcmp(&answer.nonce[0], this->_nonce.data(), proto::portmap::pcp_t::NONCE_SIZE) != 0))
+					// Ожидаем ответа на свою просьбу
+					return;
+				/**
 				 * Если маршрутизатор ответил отказом
 				 */
 				if(answer.result != proto::portmap::pcp_t::result_t::SUCCESS){
@@ -207,6 +219,13 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					this->_mapping.externalPort = answer.externalPort;
 					// Запоминаем назначенный маршрутизатором срок жизни перенаправления
 					this->_mapping.lifeTime = answer.lifeTime;
+					/**
+					 * Запоминаем отличительную метку заведённого перенаправления
+					 *
+					 * @note Метка выдаётся вызывающему затем, что снять заведённое без неё
+					 *       нельзя: маршрутизатор опознаёт перенаправление именно по ней
+					 */
+					this->_mapping.nonce = this->_nonce;
 				}
 				/**
 				 * Если запрашивался внешний адрес маршрутизатора
@@ -440,11 +459,6 @@ bool awh::unit::Portmap::timeout(const event::id_t eid, [[maybe_unused]] const e
 	/**
 	 * Если срок ожидания истёк у потокового события обмена с устройством UPnP
 	 *
-	 * @note Потоковое событие после обрыва попытки в работу не возвращается: движок
-	 *       перестраивает дескриптор, но поднимать событие обязан вызывающий, а
-	 *       надёжный путь для потокового сокета - завести событие заново. Оттого
-	 *       старое событие и отдаётся движку на уничтожение утвердительным ответом:
-	 *       новое к этому времени уже заведено
 	 */
 	if((this->_stream > 0) && (eid == this->_stream))
 		/**
@@ -779,30 +793,50 @@ bool awh::unit::Portmap::search() noexcept {
 		/**
 		 * Если групповой режим события установить не удалось
 		 */
-		if(!this->_io->setDelivery(this->_exchangeUPNP.eid, event::delivery_mode_t::MULTICAST))
+		if(!this->_io->setDelivery(this->_exchangeUPNP.eid, event::delivery_mode_t::MULTICAST)){
+			// Выполняем удаление события рассылки
+			this->_io->destroy(this->_exchangeUPNP.eid);
+			// Сбрасываем идентификатор события рассылки
+			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
 			return false;
+		}
 		/**
 		 * Если предел числа переходов рассылки установить не удалось
 		 *
 		 * @note Рассылка обнаружения дальше своей сети не уходит: устройство доступа в
 		 *       сеть лежит на ней же, а разослать просьбу шире значило бы беспокоить чужие
 		 */
-		if(!this->_io->setHops(this->_exchangeUPNP.eid, event::hops_t::NETWORK))
+		if(!this->_io->setHops(this->_exchangeUPNP.eid, event::hops_t::NETWORK)){
+			// Выполняем удаление события рассылки
+			this->_io->destroy(this->_exchangeUPNP.eid);
+			// Сбрасываем идентификатор события рассылки
+			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
 			return false;
+		}
 		/**
 		 * Если порт обнаружения устройств установить не удалось
 		 */
-		if(!this->_io->setTargetPort(this->_exchangeUPNP.eid, proto::portmap::ssdp_t::PORT))
+		if(!this->_io->setTargetPort(this->_exchangeUPNP.eid, proto::portmap::ssdp_t::PORT)){
+			// Выполняем удаление события рассылки
+			this->_io->destroy(this->_exchangeUPNP.eid);
+			// Сбрасываем идентификатор события рассылки
+			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
 			return false;
+		}
 		/**
 		 * Если групповой адрес обнаружения устройств установить не удалось
 		 */
-		if(!this->_io->setTarget(this->_exchangeUPNP.eid, proto::portmap::ssdp_t::MULTICAST_ADDRESS))
+		if(!this->_io->setTarget(this->_exchangeUPNP.eid, proto::portmap::ssdp_t::MULTICAST_ADDRESS)){
+			// Выполняем удаление события рассылки
+			this->_io->destroy(this->_exchangeUPNP.eid);
+			// Сбрасываем идентификатор события рассылки
+			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
 			return false;
+		}
 		// Устанавливаем срок ожидания ответа устройства
 		this->_io->setTimeout(this->_exchangeUPNP.eid, event::action_t::READ, this->_delay);
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
@@ -817,6 +851,8 @@ bool awh::unit::Portmap::search() noexcept {
 		if(!this->_io->setOptions(this->_exchangeUPNP.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::MULTICAST_LOOPBACK)){
 			// Выполняем удаление события рассылки
 			this->_io->destroy(this->_exchangeUPNP.eid);
+			// Сбрасываем идентификатор события рассылки
+			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
 			return false;
 		}
@@ -826,6 +862,8 @@ bool awh::unit::Portmap::search() noexcept {
 		if(!this->_io->membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, proto::portmap::ssdp_t::MULTICAST_ADDRESS, "0.0.0.0")){
 			// Выполняем удаление события рассылки
 			this->_io->destroy(this->_exchangeUPNP.eid);
+			// Сбрасываем идентификатор события рассылки
+			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
 			return false;
 		}
@@ -835,6 +873,8 @@ bool awh::unit::Portmap::search() noexcept {
 		if(!(this->_io->commit(this->_exchangeUPNP.eid) && this->_io->launch(this->_exchangeUPNP.eid))){
 			// Выполняем удаление события рассылки
 			this->_io->destroy(this->_exchangeUPNP.eid);
+			// Сбрасываем идентификатор события рассылки
+			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
 			return false;
 		}
@@ -846,6 +886,8 @@ bool awh::unit::Portmap::search() noexcept {
 		if(this->_io->send(this->_exchangeUPNP.eid, message.data(), message.length()) == 0){
 			// Выполняем удаление события рассылки
 			this->_io->destroy(this->_exchangeUPNP.eid);
+			// Сбрасываем идентификатор события рассылки
+			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
 			return false;
 		}
@@ -893,24 +935,34 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		if(this->_stream > 0)
 			// Выполняем удаление потокового события обмена
 			this->_io->destroy(this->_stream);
-		// Выполняем очистку собираемого тела ответа устройства
-		this->_payload.clear();
-		// Снимаем признак того, что ответ устройства прочитан до конца
-		this->_complete = false;
+		// Выполняем подготовку объекта разбора к чтению ответа устройства
+		this->prepare();
+		// Снимаем признак того, что потоковое событие подключено
+		this->_connected = false;
 		// Выполняем заведение потокового события обмена
 		this->_stream = this->_io->event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 		/**
 		 * Если порт устройства установить не удалось
 		 */
-		if(!this->_io->setTargetPort(this->_stream, port))
+		if(!this->_io->setTargetPort(this->_stream, port)){
+			// Выполняем удаление потокового события обмена
+			this->_io->destroy(this->_stream);
+			// Сбрасываем идентификатор потокового события обмена
+			this->_stream = 0;
 			// Выводим отрицательный результат заведения потокового события обмена
 			return false;
+		}
 		/**
 		 * Если адрес устройства установить не удалось
 		 */
-		if(!this->_io->setTarget(this->_stream, address))
+		if(!this->_io->setTarget(this->_stream, address)){
+			// Выполняем удаление потокового события обмена
+			this->_io->destroy(this->_stream);
+			// Сбрасываем идентификатор потокового события обмена
+			this->_stream = 0;
 			// Выводим отрицательный результат заведения потокового события обмена
 			return false;
+		}
 		// Устанавливаем срок ожидания ответа устройства
 		this->_io->setTimeout(this->_stream, event::action_t::READ, this->_delay);
 		/**
@@ -949,6 +1001,8 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		if(!this->_io->setOptions(this->_stream, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::AUTO_RECONNECT)){
 			// Выполняем удаление потокового события обмена
 			this->_io->destroy(this->_stream);
+			// Сбрасываем идентификатор потокового события обмена
+			this->_stream = 0;
 			// Выводим отрицательный результат заведения потокового события обмена
 			return false;
 		}
@@ -958,6 +1012,8 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		if(!(this->_io->commit(this->_stream) && this->_io->connect(this->_stream) && this->_io->launch(this->_stream))){
 			// Выполняем удаление потокового события обмена
 			this->_io->destroy(this->_stream);
+			// Сбрасываем идентификатор потокового события обмена
+			this->_stream = 0;
 			// Выводим отрицательный результат заведения потокового события обмена
 			return false;
 		}
@@ -985,6 +1041,34 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 	return false;
 }
 /**
+ * @brief Метод подготовки объекта разбора к чтению ответа устройства UPnP
+ *
+ * @details Объект разбора живёт весь обмен и переиспользуется: сбрасывать его перед
+ *          каждым ответом обязательно, иначе следующий ответ разбирался бы поверх
+ *          состояния предыдущего
+ *
+ */
+void awh::unit::Portmap::prepare() noexcept {
+	// Выполняем очистку собираемого тела ответа устройства
+	this->_payload.clear();
+	// Снимаем признак того, что ответ устройства прочитан до конца
+	this->_complete = false;
+	// Выполняем сброс объекта разбора ответа устройства
+	this->_parser.clear();
+	/**
+	 * Устанавливаем функцию обратного вызова на получение тела ответа
+	 *
+	 * @note Тело копится подпиской, а не берётся у объекта разбора по завершении: ответ
+	 *       приходит кусками, и собрать его иначе неоткуда
+	 */
+	this->_parser.on(http::parser_http_t::data_callback_t([this](const uint32_t, const void * data, const size_t size, const bool) noexcept -> bool {
+		// Выполняем накопление полученного тела ответа
+		this->_payload.append(reinterpret_cast <const char *> (data), size);
+		// Разрешаем продолжение разбора
+		return true;
+	}));
+}
+/**
  * @brief Метод обработки подключения к устройству UPnP
  *
  * @note Запрос отправляется по подключении, а не раньше: до него отправлять
@@ -1009,6 +1093,8 @@ void awh::unit::Portmap::connected(const event::id_t eid, const bool ok) noexcep
 	if(!ok)
 		// Завершаем обработку подключения
 		return;
+	// Запоминаем, что потоковое событие к устройству подключено
+	this->_connected = true;
 	/**
 	 * Если запрос отправить не удалось
 	 */
@@ -1058,27 +1144,16 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 			// Завершаем обработку полученных данных
 			return;
 		}
-		// Выполняем накопление полученных данных
-		this->_payload.append(reinterpret_cast <const char *> (data), size);
-		// Объект разбора ответа устройства
-		http::parser_http_t parser(http::direct_t::RESPONSE, this->_fmk, this->_log);
-		// Собираемое тело ответа устройства
-		string body;
-		// Устанавливаем функцию обратного вызова на получение тела ответа
-		parser.on(http::parser_http_t::data_callback_t([&body](const uint32_t, const void * data, const size_t size, const bool) noexcept -> bool {
-			// Выполняем накопление полученного тела ответа
-			body.append(reinterpret_cast <const char *> (data), size);
-			// Разрешаем продолжение разбора
-			return true;
-		}));
 		/**
-		 * Выполняем разбор накопленного ответа устройства
+		 * Выполняем разбор полученных данных
 		 *
-		 * @note Разбор ведётся по накопленному целиком, а не по мере поступления: объект
-		 *       разбора заводится на каждое чтение заново, и своего состояния между
-		 *       чтениями не держит
+		 * @note Парсеру подаётся лишь пришедший кусок: своё состояние он держит между
+		 *       чтениями сам, а тело ответа копится подпиской, выставленной при заведении
+		 *       потокового события обмена. Подавать ему заново весь накопленный ответ на
+		 *       каждый пришедший кусок значило бы разбирать ответ столько раз, сколько
+		 *       кусков пришло
 		 */
-		parser.parse(this->_payload.data(), this->_payload.length());
+		this->_parser.parse(data, size);
 		/**
 		 * Если ответ устройства прочитан не до конца
 		 *
@@ -1086,34 +1161,48 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 		 *       END: стадия объявляется и на конце блока заголовков, и лишь состояние
 		 *       COMPLETE говорит о том, что сообщение прочитано целиком
 		 */
-		if(parser.status() != http::parser_http_t::status_t::COMPLETE)
+		if(this->_parser.status() != http::parser_http_t::status_t::COMPLETE)
 			// Ожидаем поступления остатка ответа
 			return;
 		// Запоминаем, что ответ устройства прочитан до конца
 		this->_complete = true;
 		/**
+		 * Запоминаем, держит ли устройство соединение открытым
+		 *
+		 * @note Решает это устройство, а не мы: просьбу `keep-alive` оно вправе не
+		 *       принять, и часть устройств соединение закрывает всегда. Дальше идти по
+		 *       живому соединению можно лишь с его согласия, а без него событие
+		 *       заводится заново
+		 */
+		this->_connected = this->_parser.message().flags.keepAlive;
+		/**
+		 * Сбрасываем счёт выполненных попыток обращения к устройству
+		 *
+		 * @note Счёт ведётся на попытки подряд, а не на весь обмен: чтение перечня
+		 *       требует обращения на каждое перенаправление, и накопленные за весь
+		 *       обход неудачи обрывали бы его тем скорее, чем перечень длиннее
+		 */
+		this->exchange(type_t::UPNP).attempt = 0;
+		/**
 		 * Если разбор ответа устройства завершился отказом
 		 */
-		if(parser.error() != http::parser_http_t::error_t::NONE){
+		if(this->_parser.error() != http::parser_http_t::error_t::NONE){
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::MALFORMED);
 			// Завершаем обработку полученных данных
 			return;
 		}
 		/**
-		 * Если устройство ответило отказом
-		 */
-		/**
 		 * Если ответ устройства заголовка не содержит
 		 */
-		if(parser.message().provider == nullptr){
+		if(this->_parser.message().provider == nullptr){
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::MALFORMED);
 			// Завершаем обработку полученных данных
 			return;
 		}
 		// Получаем код ответа устройства
-		const uint32_t code = static_cast <const http::response_t *> (parser.message().provider.get())->code;
+		const uint32_t code = static_cast <const http::response_t *> (this->_parser.message().provider.get())->code;
 		/**
 		 * Если устройство ответило отказом
 		 *
@@ -1127,8 +1216,6 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 			// Завершаем обработку полученных данных
 			return;
 		}
-		// Запоминаем тело ответа устройства
-		this->_payload = ::move(body);
 		/**
 		 * Определяем шаг обмена по договору UPnP
 		 */
@@ -1186,6 +1273,25 @@ bool awh::unit::Portmap::describe() noexcept {
 	if(host.empty())
 		// Выводим отрицательный результат начала чтения описания устройства
 		return false;
+	/**
+	 * Если адрес описания устройства локальной сети не принадлежит
+	 *
+	 * @details Адрес этот назван тем, кто ответил на рассылку, а ответить в неё вправе
+	 *          кто угодно в сети: устройство доступа в сеть лежит на ней же, и увести
+	 *          обращение за её пределы такой ответ не должен. Проверка отсекает увод
+	 *          наружу - на узел, которому предназначалось бы описание вместе со всеми
+	 *          последующими просьбами
+	 *
+	 * @note Полная проверка требовала бы сличения с адресом отправителя ответа, но
+	 *       чтение датаграммного события его не выдаёт: договор `read_t` несёт лишь
+	 *       данные. Оттого проверяется происхождение адреса, а не его совпадение
+	 */
+	if(!this->_addr.parse(host, net_addr_t::type_t::IPV4) || (this->_addr.own() != net_addr_t::own_t::LAN)){
+		// Записываем в лог сообщение о непригодном адресе описания устройства
+		this->_log->print("Device description address \"%s\" does not belong to the local network", log_t::flag_t::WARNING, host.c_str());
+		// Выводим отрицательный результат начала чтения описания устройства
+		return false;
+	}
 	// Получаем порт устройства, у которого читается описание
 	const uint16_t port = (this->_uri.port() > 0 ? this->_uri.port() : 80);
 	// Выполняем сборку пути запроса описания устройства
@@ -1198,7 +1304,7 @@ bool awh::unit::Portmap::describe() noexcept {
 	this->_request = this->_fmk->format(
 		"GET %s HTTP/1.1\r\n"
 		"Host: %s:%u\r\n"
-		"Connection: close\r\n"
+		"Connection: keep-alive\r\n"
 		"User-Agent: %s\r\n"
 		"Accept: text/xml\r\n"
 		"\r\n",
@@ -1286,6 +1392,17 @@ bool awh::unit::Portmap::control() noexcept {
 			// Выполняем сборку вызова запроса внешнего адреса
 			request = this->_upnp.external(this->_service);
 		break;
+		/**
+		 * Если читается перечень заведённых перенаправлений
+		 *
+		 * @note Перечня служба разом не выдаёт: перенаправления читаются по одному,
+		 *       наращивая порядковый номер, пока служба не ответит отказом о выходе за
+		 *       перечень
+		 */
+		case static_cast <uint8_t> (action_t::LIST):
+			// Выполняем сборку вызова чтения перенаправления по порядковому номеру
+			request = this->_upnp.entry(this->_service, this->_index);
+		break;
 		// Если заводится перенаправление порта
 		case static_cast <uint8_t> (action_t::OPEN): {
 			// Собираемое перенаправление порта
@@ -1356,7 +1473,7 @@ bool awh::unit::Portmap::control() noexcept {
 	this->_request = this->_fmk->format(
 		"POST %s HTTP/1.1\r\n"
 		"Host: %s:%u\r\n"
-		"Connection: close\r\n"
+		"Connection: keep-alive\r\n"
 		"User-Agent: %s\r\n"
 		"Content-Type: text/xml; charset=\"utf-8\"\r\n"
 		"SOAPAction: %s\r\n"
@@ -1367,6 +1484,29 @@ bool awh::unit::Portmap::control() noexcept {
 	);
 	// Запоминаем шаг обмена по договору UPnP
 	this->_stage = stage_t::CONTROL;
+	/**
+	 * Если потоковое событие обмена уже подключено
+	 *
+	 * @details Соединение переиспользуется, а не заводится заново: обращения к службе
+	 *          идут к тому же устройству, что и чтение описания, и рукопожатие ради
+	 *          каждого из них - лишняя трата и лишний случай его потерять. При чтении
+	 *          перечня обращений столько же, сколько перенаправлений, и разница
+	 *          выходит уже не в накладных расходах, а в надёжности
+	 *
+	 * @note Запрос отправляется с полем `Connection: keep-alive`, и устройство
+	 *       соединение держит. Закрыть его оно всё же вправе, и тогда отправка
+	 *       отказывает - событие в этом случае заводится заново
+	 */
+	if(this->_connected && (this->_stream > 0)){
+		// Выполняем подготовку объекта разбора к чтению ответа устройства
+		this->prepare();
+		// Если запрос устройству отправить удалось
+		if(this->_io->send(this->_stream, this->_request.data(), this->_request.length()) > 0)
+			// Выводим положительный результат начала вызова действия службы
+			return true;
+		// Снимаем признак того, что потоковое событие подключено
+		this->_connected = false;
+	}
 	// Выполняем заведение потокового события обмена с устройством
 	return this->stream(host, port);
 }
@@ -1392,8 +1532,88 @@ void awh::unit::Portmap::controlled() noexcept {
 	 * Если служба устройства ответила отказом
 	 */
 	if(answer.fault){
+		// Получаем код итога, выданный службой устройства
+		const proto::portmap::upnp_t::result_t result = this->_upnp.result(answer);
+		/**
+		 * Если перечень заведённых перенаправлений прочитан до конца
+		 *
+		 * @note Конца перечня служба иначе не объявляет: отказ о выходе за перечень и
+		 *       есть признак того, что перенаправления кончились. Отказом обмена он
+		 *       поэтому не считается - перечень прочитан, пусть даже пустой
+		 */
+		if((this->_action == action_t::LIST) && (result == proto::portmap::upnp_t::result_t::INDEX_INVALID)){
+			// Выполняем завершение обмена по этому договору
+			this->complete(type_t::UPNP);
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const vector <mapping_t> &, const type_t)> ("mappings", this->_mappings, type_t::UPNP);
+			// Завершаем разбор ответа службы устройства
+			return;
+		}
 		// Выполняем завершение обмена отказом
-		this->failure(type_t::UPNP, this->reason(this->_upnp.result(answer)));
+		this->failure(type_t::UPNP, this->reason(result));
+		// Завершаем разбор ответа службы устройства
+		return;
+	}
+	/**
+	 * Если читается перечень заведённых перенаправлений
+	 */
+	if(this->_action == action_t::LIST){
+		// Извлекаемое перенаправление порта
+		proto::portmap::upnp_t::mapping_t entry;
+		/**
+		 * Если перенаправление порта извлечь не удалось
+		 */
+		if(!this->_upnp.mapping(answer, entry)){
+			// Выполняем завершение обмена отказом
+			this->failure(type_t::UPNP, error_t::MALFORMED);
+			// Завершаем разбор ответа службы устройства
+			return;
+		}
+		// Собираемое перенаправление порта для перечня
+		mapping_t mapping;
+		// Запоминаем договор перенаправляемого порта
+		mapping.proto = ((entry.proto == proto::portmap::upnp_t::proto_t::TCP) ? proto_t::TCP : proto_t::UDP);
+		// Запоминаем внешний порт перенаправления
+		mapping.externalPort = entry.externalPort;
+		// Запоминаем внутренний порт перенаправления
+		mapping.internalPort = entry.internalPort;
+		// Запоминаем срок жизни перенаправления
+		mapping.lifeTime = entry.lifeTime;
+		// Запоминаем описание перенаправления
+		mapping.description = ::move(entry.description);
+		// Запоминаем признак того, что перенаправление подключения пропускает
+		mapping.enabled = entry.enabled;
+		// Запоминаем внешний узел, подключения с которого пропускаются
+		mapping.remoteHost = ::move(entry.remoteHost);
+		// Запоминаем внутренний адрес машины, которой отдаются подключения
+		mapping.internalClient = ::move(entry.internalClient);
+		// Выполняем добавление прочитанного перенаправления в перечень
+		this->_mappings.push_back(::move(mapping));
+		// Выполняем переход к следующему перенаправлению перечня
+		this->_index++;
+		/**
+		 * Если перечень достиг предельной длины
+		 *
+		 * @note Конец перечня служба объявляет отказом о выходе за него, и устройство,
+		 *       отвечающее успехом без конца, обход тем самым не завершает. Прочитанное
+		 *       при этом не пропадает: перечень выдаётся тем, что успели собрать
+		 */
+		if(this->_index >= MAX_MAPPINGS){
+			// Записываем в лог сообщение о превышении предельной длины перечня
+			this->_log->print("Port mappings list exceeded the limit of %u entries", log_t::flag_t::WARNING, MAX_MAPPINGS);
+			// Выполняем завершение обмена по этому договору
+			this->complete(type_t::UPNP);
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const vector <mapping_t> &, const type_t)> ("mappings", this->_mappings, type_t::UPNP);
+			// Завершаем разбор ответа службы устройства
+			return;
+		}
+		/**
+		 * Если чтение следующего перенаправления начать не удалось
+		 */
+		if(!this->control())
+			// Выполняем завершение обмена отказом
+			this->failure(type_t::UPNP, error_t::NO_RESPONSE);
 		// Завершаем разбор ответа службы устройства
 		return;
 	}
@@ -1467,15 +1687,25 @@ bool awh::unit::Portmap::datagram(const type_t type) noexcept {
 		/**
 		 * Если порт маршрутизатора установить не удалось
 		 */
-		if(!this->_io->setTargetPort(exchange.eid, ((type == type_t::PCP) ? proto::portmap::pcp_t::PORT : proto::portmap::natpmp_t::PORT)))
+		if(!this->_io->setTargetPort(exchange.eid, ((type == type_t::PCP) ? proto::portmap::pcp_t::PORT : proto::portmap::natpmp_t::PORT))){
+			// Выполняем удаление события обмена
+			this->_io->destroy(exchange.eid);
+			// Сбрасываем идентификатор события обмена
+			exchange.eid = 0;
 			// Выводим отрицательный результат заведения события обмена
 			return false;
+		}
 		/**
 		 * Если адрес маршрутизатора установить не удалось
 		 */
-		if(!this->_io->setTarget(exchange.eid, this->_address.get()))
+		if(!this->_io->setTarget(exchange.eid, this->_address.get())){
+			// Выполняем удаление события обмена
+			this->_io->destroy(exchange.eid);
+			// Сбрасываем идентификатор события обмена
+			exchange.eid = 0;
 			// Выводим отрицательный результат заведения события обмена
 			return false;
+		}
 		// Устанавливаем срок ожидания ответа маршрутизатора
 		this->_io->setTimeout(exchange.eid, event::action_t::READ, this->_delay);
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
@@ -1490,15 +1720,20 @@ bool awh::unit::Portmap::datagram(const type_t type) noexcept {
 		if(!this->_io->setOptions(exchange.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 			// Выполняем удаление события обмена
 			this->_io->destroy(exchange.eid);
+			// Сбрасываем идентификатор события обмена
+			exchange.eid = 0;
 			// Выводим отрицательный результат заведения события обмена
 			return false;
 		}
 		/**
 		 * Если запустить событие обмена не удалось
 		 */
-		if(!(result = (this->_io->commit(exchange.eid) && this->_io->launch(exchange.eid))))
+		if(!(result = (this->_io->commit(exchange.eid) && this->_io->launch(exchange.eid)))){
 			// Выполняем удаление события обмена
 			this->_io->destroy(exchange.eid);
+			// Сбрасываем идентификатор события обмена
+			exchange.eid = 0;
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1569,8 +1804,13 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 				request.externalPort = this->_mapping.externalPort;
 				// Запоминаем запрашиваемый срок жизни перенаправления
 				request.lifeTime = ((this->_action == action_t::CLOSE) ? 0 : this->_mapping.lifeTime);
-				// Выполняем заполнение отличительной метки перенаправления
-				::nonce(&request.nonce[0], proto::portmap::pcp_t::NONCE_SIZE);
+				/**
+				 * Выполняем размещение отличительной метки перенаправления
+				 *
+				 * @note Метка берётся у обмена, а не собирается здесь: повтор просьбы с
+				 *       другой меткой договор счёл бы просьбой о другом перенаправлении
+				 */
+				::memcpy(&request.nonce[0], this->_nonce.data(), proto::portmap::pcp_t::NONCE_SIZE);
 				/**
 				 * Если внутренний адрес машины получить не удалось
 				 *
@@ -1671,20 +1911,60 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	// Запоминаем перенаправление, о котором ведётся обращение
 	this->_mapping = mapping;
 	/**
-	 * Если маршрутизатор отыскать не удалось
+	 * Выполняем отыскание маршрутизатора
+	 *
+	 * @note Отказ отыскания обращение не прерывает: адрес маршрутизатора нужен лишь
+	 *       дейтаграммным договорам, а UPnP отыскивает устройство рассылкой SSDP и
+	 *       обходится без него. Сеть, где таблица маршрутов шлюза не выдаёт, для UPnP
+	 *       поэтому не помеха, и закрывать ему дорогу отказом прочих неверно
 	 */
-	if(!this->discover()){
+	const bool routed = this->discover();
+	/**
+	 * Если маршрутизатор отыскать не удалось и обмен ведётся лишь дейтаграммным договором
+	 */
+	if(!routed && (this->_type != type_t::UPNP) && (this->_type != type_t::AUTO)){
 		// Выполняем завершение обмена отказом
 		this->failure(this->_type, error_t::NO_GATEWAY);
 		// Выводим отрицательный результат начала обращения
 		return false;
 	}
+	/**
+	 * Готовим отличительную метку перенаправления для договора PCP
+	 *
+	 * @note Метка собирается один раз на обращение, а не на каждую попытку: договор
+	 *       предписывает одну и ту же метку для просьбы и всех её повторов. Метка,
+	 *       переданная вызывающим, имеет старшинство - ею снимается перенаправление,
+	 *       заведённое в прошлый запуск
+	 */
+	if(mapping.nonce.size() == proto::portmap::pcp_t::NONCE_SIZE)
+		// Запоминаем метку, переданную вызывающим
+		this->_nonce = mapping.nonce;
+	/**
+	 * Если метка вызывающим не передана
+	 */
+	else {
+		// Выделяем место под отличительную метку перенаправления
+		this->_nonce.resize(proto::portmap::pcp_t::NONCE_SIZE, 0);
+		// Выполняем заполнение отличительной метки перенаправления
+		::nonce(this->_nonce.data(), this->_nonce.size());
+	}
 	// Признак того, что обмен начат хотя бы по одному договору
 	bool result = false;
+	// Сбрасываем порядковый номер читаемого перенаправления
+	this->_index = 0;
+	// Выполняем очистку прочитанного перечня перенаправлений
+	this->_mappings.clear();
+	/**
+	 * Определяем, читается ли перечень заведённых перенаправлений
+	 *
+	 * @note Перечень выдаёт лишь договор UPnP, и опрашивать прочие бессмысленно: их
+	 *       молчание обмен только затянет, а ответить им нечего
+	 */
+	const bool listing = (action == action_t::LIST);
 	/**
 	 * Если обмен ведётся договором PCP
 	 */
-	if((this->_type == type_t::PCP) || (this->_type == type_t::AUTO))
+	if(routed && !listing && ((this->_type == type_t::PCP) || (this->_type == type_t::AUTO)))
 		// Выполняем отправку просьбы по договору PCP
 		result = (this->submit(type_t::PCP) || result);
 	/**
@@ -1699,7 +1979,7 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	/**
 	 * Если обмен ведётся договором NAT-PMP
 	 */
-	if((this->_type == type_t::NAT_PMP) || (this->_type == type_t::AUTO))
+	if(routed && !listing && ((this->_type == type_t::NAT_PMP) || (this->_type == type_t::AUTO)))
 		// Выполняем отправку просьбы по договору NAT-PMP
 		result = (this->submit(type_t::NAT_PMP) || result);
 	/**
@@ -1707,7 +1987,7 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	 */
 	if(!result)
 		// Выполняем завершение обмена отказом
-		this->failure(this->_type, error_t::NO_RESPONSE);
+		this->failure(this->_type, (routed ? error_t::NO_RESPONSE : error_t::NO_GATEWAY));
 	// Выводим результат начала обращения
 	return result;
 }
@@ -1720,9 +2000,18 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
  */
 void awh::unit::Portmap::failure(const type_t type, const error_t error) noexcept {
 	/**
+	 * Если отказ обмену одного договора не принадлежит
+	 *
+	 * @note Отказом под видом опроса AUTO завершается всё обращение: договор здесь не
+	 *       назван, а значит не начат ни один из них - прекращать следует все разом
+	 */
+	if((type == type_t::AUTO) || (type == type_t::NONE))
+		// Выполняем прекращение всех ведущихся обменов
+		this->cancel();
+	/**
 	 * Если обмен вёлся по одному из договоров перенаправления
 	 */
-	if((type == type_t::PCP) || (type == type_t::UPNP) || (type == type_t::NAT_PMP)){
+	else if((type == type_t::PCP) || (type == type_t::UPNP) || (type == type_t::NAT_PMP)){
 		// Получаем обмен, по которому вёлся обмен
 		exchange_t & exchange = this->exchange(type);
 		// Снимаем признак ожидания ответа маршрутизатора
@@ -1838,6 +2127,8 @@ void awh::unit::Portmap::cancel() noexcept {
 		// Сбрасываем идентификатор потокового события обмена
 		this->_stream = 0;
 	}
+	// Снимаем признак того, что потоковое событие подключено
+	this->_connected = false;
 	// Сбрасываем шаг обмена по договору UPnP
 	this->_stage = stage_t::NONE;
 }
@@ -1856,6 +2147,8 @@ void awh::unit::Portmap::callback(const callback_t & callback) noexcept {
 	this->_callback.set("unmapped", callback);
 	// Выполняем установку функции обратного вызова для внешнего адреса маршрутизатора
 	this->_callback.set("external", callback);
+	// Выполняем установку функции обратного вызова для перечня заведённых перенаправлений
+	this->_callback.set("mappings", callback);
 	// Выполняем установку функции обратного вызова для отказа перенаправления
 	this->_callback.set("failure", callback);
 }
@@ -1925,6 +2218,29 @@ bool awh::unit::Portmap::external() noexcept {
 	return this->perform(action_t::EXTERNAL, mapping_t());
 }
 /**
+ * @brief Метод получения перечня заведённых перенаправлений портов
+ *
+ * @return результат отправки просьбы
+ *
+ */
+bool awh::unit::Portmap::list() noexcept {
+	/**
+	 * Если опрос ведётся не договором UPnP
+	 *
+	 * @note Перечень заведённых перенаправлений выдаёт лишь этот договор: у NAT-PMP и
+	 *       PCP чтения заведённого нет вовсе, и опрос AUTO тут ничего не спасает -
+	 *       спрашивать нечего у двух договоров из трёх
+	 */
+	if((this->_type != type_t::UPNP) && (this->_type != type_t::AUTO)){
+		// Выполняем завершение обмена отказом
+		this->failure(this->_type, error_t::NOT_SUPPORTED);
+		// Выводим отрицательный результат отправки просьбы
+		return false;
+	}
+	// Выполняем начало обращения к маршрутизатору
+	return this->perform(action_t::LIST, mapping_t());
+}
+/**
  * @brief Метод заведения перенаправления порта
  *
  * @param mapping перенаправление порта для заведения
@@ -1974,8 +2290,8 @@ bool awh::unit::Portmap::close(const mapping_t & mapping) noexcept {
 awh::unit::Portmap::Portmap(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _type(type_t::AUTO), _action(action_t::NONE),
  _attempts(::DEFAULT_ATTEMPTS), _delay(::DEFAULT_DELAY),
- _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
- _request{""}, _payload{""}, _complete(false), _uri(fmk, log), _router{""},
+ _index(0), _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
+ _parser(http::direct_t::RESPONSE, fmk, log), _request{""}, _payload{""}, _complete(false), _connected(false), _uri(fmk, log), _router{""},
  _address(nullptr), _addr(fmk, log), _gateway(fmk, log), _pcp(fmk, log),
  _ssdp(fmk, log), _soap(fmk, log), _upnp(fmk, log), _device(fmk, log), _natpmp(fmk, log) {}
 /**

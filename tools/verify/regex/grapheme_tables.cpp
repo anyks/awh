@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
-#include <regex/unicode.hpp>
+#include <unicode/unicode.hpp>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 using namespace std;
@@ -17,21 +17,21 @@ static size_t encode(uint32_t code, char * out){
 // Порядок классов разбиения, принятый эталоном
 enum { CR = 0, LF, CTL, EXT, PRE, SPM, HL, HV, HT, HLV, HLVT, RI, OTH, ZWJ, EPI };
 static int classify(const uint32_t code){
-	switch((int) regex::cluster(code)){
-		case (int) regex::cluster_t::CARRIAGE:    return CR;
-		case (int) regex::cluster_t::LINEFEED:    return LF;
-		case (int) regex::cluster_t::CONTROL:     return CTL;
-		case (int) regex::cluster_t::EXTEND:      return EXT;
-		case (int) regex::cluster_t::PREPEND:     return PRE;
-		case (int) regex::cluster_t::SPACING:     return SPM;
-		case (int) regex::cluster_t::HANGUL_L:    return HL;
-		case (int) regex::cluster_t::HANGUL_V:    return HV;
-		case (int) regex::cluster_t::HANGUL_T:    return HT;
-		case (int) regex::cluster_t::HANGUL_LV:   return HLV;
-		case (int) regex::cluster_t::HANGUL_LVT:  return HLVT;
-		case (int) regex::cluster_t::REGIONAL:    return RI;
-		case (int) regex::cluster_t::JOINER:      return ZWJ;
-		case (int) regex::cluster_t::PICTORIAL:   return EPI;
+	switch((int) unicode::cluster(code)){
+		case (int) unicode::cluster_t::CARRIAGE:    return CR;
+		case (int) unicode::cluster_t::LINEFEED:    return LF;
+		case (int) unicode::cluster_t::CONTROL:     return CTL;
+		case (int) unicode::cluster_t::EXTEND:      return EXT;
+		case (int) unicode::cluster_t::PREPEND:     return PRE;
+		case (int) unicode::cluster_t::SPACING:     return SPM;
+		case (int) unicode::cluster_t::HANGUL_L:    return HL;
+		case (int) unicode::cluster_t::HANGUL_V:    return HV;
+		case (int) unicode::cluster_t::HANGUL_T:    return HT;
+		case (int) unicode::cluster_t::HANGUL_LV:   return HLV;
+		case (int) unicode::cluster_t::HANGUL_LVT:  return HLVT;
+		case (int) unicode::cluster_t::REGIONAL:    return RI;
+		case (int) unicode::cluster_t::JOINER:      return ZWJ;
+		case (int) unicode::cluster_t::PICTORIAL:   return EPI;
 	}
 	return OTH;
 }

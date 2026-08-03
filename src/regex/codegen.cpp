@@ -474,7 +474,7 @@ namespace {
 	 * @return     результат проверки принадлежности инструкции
 	 *
 	 */
-	inline bool single(const awh::regex::opcode_t type) noexcept {
+	inline bool singular(const awh::regex::opcode_t type) noexcept {
 		// Выводим результат проверки принадлежности инструкции
 		return ((type == awh::regex::opcode_t::CHAR) || (type == awh::regex::opcode_t::CLASS) || (type == awh::regex::opcode_t::ANY));
 	}
@@ -568,7 +568,7 @@ namespace {
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 */
-			if(single(instruction.type)) {
+			if(singular(instruction.type)) {
 				// Переходим к следующей инструкции программы
 				pc++;
 				// Продолжаем обход инструкций программы
@@ -673,7 +673,7 @@ namespace {
 					/**
 					 * Если тело повторения одиночного символа не сопоставляет
 					 */
-					if((static_cast <size_t> (body) >= program.instructions.size()) || !single(program.instructions.at(static_cast <size_t> (body)).type))
+					if((static_cast <size_t> (body) >= program.instructions.size()) || !singular(program.instructions.at(static_cast <size_t> (body)).type))
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					/**
@@ -1477,7 +1477,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если инструкция сопоставляет одиночный символ
 		 */
-		if(single(instruction.type)) {
+		if(singular(instruction.type)) {
 			// Выполняем заведение таблицы принадлежности байтов сопоставления
 			const size_t number = this->table(instruction, program);
 			// Выполняем сравнение позиции сопоставления с размером текста

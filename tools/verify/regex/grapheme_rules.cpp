@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
-#include <regex/unicode.hpp>
+#include <unicode/unicode.hpp>
 #include <regex/parser.hpp>
 #include <regex/compiler.hpp>
 #include <regex/backtrack.hpp>
@@ -20,21 +20,21 @@ static size_t encode(uint32_t code, char * out){
 // Порядок классов разбиения, принятый эталоном
 enum { CR = 0, LF, CTL, EXT, PRE, SPM, HL, HV, HT, HLV, HLVT, RI, OTH, ZWJ, EPI };
 static int classify(const uint32_t code){
-	switch((int) regex::cluster(code)){
-		case (int) regex::cluster_t::CARRIAGE:    return CR;
-		case (int) regex::cluster_t::LINEFEED:    return LF;
-		case (int) regex::cluster_t::CONTROL:     return CTL;
-		case (int) regex::cluster_t::EXTEND:      return EXT;
-		case (int) regex::cluster_t::PREPEND:     return PRE;
-		case (int) regex::cluster_t::SPACING:     return SPM;
-		case (int) regex::cluster_t::HANGUL_L:    return HL;
-		case (int) regex::cluster_t::HANGUL_V:    return HV;
-		case (int) regex::cluster_t::HANGUL_T:    return HT;
-		case (int) regex::cluster_t::HANGUL_LV:   return HLV;
-		case (int) regex::cluster_t::HANGUL_LVT:  return HLVT;
-		case (int) regex::cluster_t::REGIONAL:    return RI;
-		case (int) regex::cluster_t::JOINER:      return ZWJ;
-		case (int) regex::cluster_t::PICTORIAL:   return EPI;
+	switch((int) unicode::cluster(code)){
+		case (int) unicode::cluster_t::CARRIAGE:    return CR;
+		case (int) unicode::cluster_t::LINEFEED:    return LF;
+		case (int) unicode::cluster_t::CONTROL:     return CTL;
+		case (int) unicode::cluster_t::EXTEND:      return EXT;
+		case (int) unicode::cluster_t::PREPEND:     return PRE;
+		case (int) unicode::cluster_t::SPACING:     return SPM;
+		case (int) unicode::cluster_t::HANGUL_L:    return HL;
+		case (int) unicode::cluster_t::HANGUL_V:    return HV;
+		case (int) unicode::cluster_t::HANGUL_T:    return HT;
+		case (int) unicode::cluster_t::HANGUL_LV:   return HLV;
+		case (int) unicode::cluster_t::HANGUL_LVT:  return HLVT;
+		case (int) unicode::cluster_t::REGIONAL:    return RI;
+		case (int) unicode::cluster_t::JOINER:      return ZWJ;
+		case (int) unicode::cluster_t::PICTORIAL:   return EPI;
 	}
 	return OTH;
 }
@@ -53,13 +53,13 @@ static size_t reference(const vector <uint32_t> & codes){
 	size_t count = 1, ricount = 0;
 	while(count < codes.size()){
 		const int right = classify(codes.at(count));
-		if((right == OTH) && (regex::indic(codes.at(count)) == regex::indic_t::CONSONANT)){
+		if((right == OTH) && (unicode::indic(codes.at(count)) == unicode::indic_t::CONSONANT)){
 			bool linked = false, chain = false;
 			for(size_t i = count; i > 0; i--){
-				const regex::indic_t kind = regex::indic(codes.at(i - 1));
-				if(kind == regex::indic_t::LINKER){ linked = true; continue; }
-				if(kind == regex::indic_t::EXTEND) continue;
-				chain = (linked && (kind == regex::indic_t::CONSONANT));
+				const unicode::indic_t kind = unicode::indic(codes.at(i - 1));
+				if(kind == unicode::indic_t::LINKER){ linked = true; continue; }
+				if(kind == unicode::indic_t::EXTEND) continue;
+				chain = (linked && (kind == unicode::indic_t::CONSONANT));
 				break;
 			}
 			if(chain){ left = right; count++; continue; }

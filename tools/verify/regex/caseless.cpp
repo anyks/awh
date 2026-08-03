@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <regex/engine.hpp>
-#include <regex/unicode.hpp>
+#include <unicode/unicode.hpp>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 using namespace std; using namespace awh;
@@ -31,7 +31,7 @@ int main(){
 		// Проверяем сам символ и все символы, приводимые к тому же значению
 		vector <uint32_t> members;
 		members.push_back(cp);
-		regex::variants(cp, members);
+		unicode::variants(cp, members);
 		for(const uint32_t other : members){
 			char buf[8]; const size_t len = encode(other, buf);
 			const bool theirs = (pcre2_match(re, (PCRE2_SPTR) buf, len, 0, 0, d, nullptr) > 0);

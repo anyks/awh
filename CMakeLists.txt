@@ -498,7 +498,6 @@ if (Dependence_FOUND)
     message(STATUS "Density include dir found: " ${DENSITY_INCLUDE_DIR})
     message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
     message(STATUS "BoringSSL include dir found: " ${BORINGSSL_INCLUDE_DIR})
-    message(STATUS "MiniUPnPc include dir found: " ${MINIUPNPC_INCLUDE_DIR})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
 
     # Если операцинная система не относится к MS Windows
@@ -570,7 +569,6 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Fre
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/kqueue.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/socket.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/gateway.cpp"
-        "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/portmap.cpp"
     )
 
     # Если операционной системой является FreeBSD
@@ -601,8 +599,8 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/version.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"
     "${CMAKE_SOURCE_DIR}/src/lexical/table.cpp"
-    "${CMAKE_SOURCE_DIR}/src/regex/tables.cpp"
-    "${CMAKE_SOURCE_DIR}/src/regex/unicode.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unicode/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unicode/unicode.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/text.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/parser.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/compiler.cpp"
@@ -851,6 +849,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(UNIT_APP_NTP_NAME unit-ntp)
     # Указываем что нужно собрать приложение работы с юнитом синхронизации времени NTP
     option(CMAKE_BUILD_UNIT_NTP_APP_SAMPLE "Build Unit NTP app sample" ON)
+
+    # Устанавливаем имя приложения работы с юнитом перенаправления портов
+    SET(UNIT_APP_PORTMAP_NAME unit-portmap)
+    # Указываем что нужно собрать приложение работы с юнитом перенаправления портов
+    option(CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE "Build Unit Portmap app sample" ON)
 
     # Устанавливаем имя приложения работы с юнитом ICMP-клиентом
     SET(UNIT_APP_ICMP_NAME unit-ping)
@@ -1332,6 +1335,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT NTP: No\n")
     endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с юнитом перенаправления портов
+    if (${CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT PORTMAP: Yes\n")
+        # Выполняем создание приложения работы с юнитом перенаправления портов
+        add_sample(${UNIT_APP_PORTMAP_NAME} sample/units/portmap.cpp units)
+    # Если не нужно собирать семплы для работы с юнитом перенаправления портов
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT PORTMAP: No\n")
+    endif (${CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
     if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
@@ -2182,6 +2197,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом перенаправления портов
+        if (${CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом перенаправления портов
+            target_link_libraries(
+                ${UNIT_APP_PORTMAP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
         if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
@@ -3210,6 +3236,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом перенаправления портов
+        if (${CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом перенаправления портов
+            target_link_libraries(
+                ${UNIT_APP_PORTMAP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
         if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})

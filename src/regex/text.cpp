@@ -21,7 +21,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <regex/text.hpp>
-#include <regex/unicode.hpp>
+#include <unicode/unicode.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -74,7 +74,7 @@ uint32_t awh::regex::fold(const uint32_t code, const uint32_t flags) noexcept {
 	 */
 	if(hasFlag(flags, flag_t::UTF) || hasFlag(flags, flag_t::UCP))
 		// Выводим приведённое по таблицам стандарта Юникода значение символа
-		return casefold(code);
+		return unicode::casefold(code);
 	// Выводим приведённое значение символа набора ASCII
 	return fold(code);
 }
@@ -262,7 +262,7 @@ namespace {
 		 */
 		if(awh::regex::hasFlag(flags, awh::regex::flag_t::UCP))
 			// Выводим результат проверки обладания символом свойством символов слова
-			return awh::regex::holds(code, static_cast <uint16_t> (awh::regex::property_id_t::UCP_WORD));
+			return awh::unicode::holds(code, static_cast <uint16_t> (awh::regex::property_id_t::UCP_WORD));
 		// Выводим результат проверки принадлежности символа символам слова
 		return awh::regex::isWord(code);
 	}
@@ -435,7 +435,7 @@ bool awh::regex::belongs(const class_t & value, const uint32_t code, const uint3
 			/**
 			 * Если символ образует набор приведения регистра
 			 */
-			if(!variants(code, members))
+			if(!unicode::variants(code, members))
 				// Выполняем размещение проверяемого символа в наборе
 				members.assign(1, code);
 		/**
@@ -490,7 +490,7 @@ bool awh::regex::belongs(const class_t & value, const uint32_t code, const uint3
 			/**
 			 * Если обладание символом свойством соответствует знаку свойства
 			 */
-			if(holds(code, property.id) != property.negative) {
+			if(unicode::holds(code, property.id) != property.negative) {
 				// Выполняем установку флага принадлежности символа
 				result = true;
 				// Выходим из цикла проверки свойств Юникода
@@ -528,19 +528,19 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 	// Длина разбираемого символа в байтах
 	size_t width = 0;
 	// Получаем класс разбиения первого символа кластера
-	cluster_t before = cluster(decode(text, pos, flags, width));
+	unicode::cluster_t before = unicode::cluster(decode(text, pos, flags, width));
 	// Получаем положение первого символа в сочетании индийских письменностей
-	indic_t position = indic(decode(text, pos, flags, width));
+	unicode::indic_t position = unicode::indic(decode(text, pos, flags, width));
 	// Получаем позицию за первым символом кластера
 	size_t current = (pos + width);
 	// Количество подряд идущих указателей области
-	size_t regional = ((before == cluster_t::REGIONAL) ? 1 : 0);
+	size_t regional = ((before == unicode::cluster_t::REGIONAL) ? 1 : 0);
 	// Флаг обнаружения изобразительного символа с продолжающими символами
-	bool pictorial = (before == cluster_t::PICTORIAL);
+	bool pictorial = (before == unicode::cluster_t::PICTORIAL);
 	// Флаг обнаружения соединителя за изобразительным символом
 	bool joined = false;
 	// Флаг обнаружения согласного символа сочетания индийских письменностей
-	bool consonant = (position == indic_t::CONSONANT);
+	bool consonant = (position == unicode::indic_t::CONSONANT);
 	// Флаг обнаружения соединяющего символа сочетания индийских письменностей
 	bool linked = false;
 	/**
@@ -550,72 +550,72 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 		// Получаем кодовое значение очередного символа текста
 		const uint32_t code = decode(text, current, flags, width);
 		// Получаем класс разбиения очередного символа
-		const cluster_t after = cluster(code);
+		const unicode::cluster_t after = unicode::cluster(code);
 		// Получаем положение очередного символа в сочетании индийских письменностей
-		const indic_t following = indic(code);
+		const unicode::indic_t following = unicode::indic(code);
 		// Флаг разрыва графемного кластера перед очередным символом
 		bool broken = true;
 		/**
 		 * Если возврат каретки предшествует переводу строки
 		 */
-		if((before == cluster_t::CARRIAGE) && (after == cluster_t::LINEFEED))
+		if((before == unicode::cluster_t::CARRIAGE) && (after == unicode::cluster_t::LINEFEED))
 			// Выполняем сброс флага разрыва графемного кластера
 			broken = false;
 		/**
 		 * Если один из символов является управляющим
 		 */
-		else if((before == cluster_t::CONTROL) || (before == cluster_t::CARRIAGE) || (before == cluster_t::LINEFEED) ||
-		 (after == cluster_t::CONTROL) || (after == cluster_t::CARRIAGE) || (after == cluster_t::LINEFEED))
+		else if((before == unicode::cluster_t::CONTROL) || (before == unicode::cluster_t::CARRIAGE) || (before == unicode::cluster_t::LINEFEED) ||
+		 (after == unicode::cluster_t::CONTROL) || (after == unicode::cluster_t::CARRIAGE) || (after == unicode::cluster_t::LINEFEED))
 			// Выполняем установку флага разрыва графемного кластера
 			broken = true;
 		/**
 		 * Если начальная часть слога хангыля предшествует его продолжению
 		 */
-		else if((before == cluster_t::HANGUL_L) && ((after == cluster_t::HANGUL_L) || (after == cluster_t::HANGUL_V) ||
-		 (after == cluster_t::HANGUL_LV) || (after == cluster_t::HANGUL_LVT)))
+		else if((before == unicode::cluster_t::HANGUL_L) && ((after == unicode::cluster_t::HANGUL_L) || (after == unicode::cluster_t::HANGUL_V) ||
+		 (after == unicode::cluster_t::HANGUL_LV) || (after == unicode::cluster_t::HANGUL_LVT)))
 			// Выполняем сброс флага разрыва графемного кластера
 			broken = false;
 		/**
 		 * Если гласная часть слога хангыля предшествует его продолжению
 		 */
-		else if(((before == cluster_t::HANGUL_LV) || (before == cluster_t::HANGUL_V)) &&
-		 ((after == cluster_t::HANGUL_V) || (after == cluster_t::HANGUL_T)))
+		else if(((before == unicode::cluster_t::HANGUL_LV) || (before == unicode::cluster_t::HANGUL_V)) &&
+		 ((after == unicode::cluster_t::HANGUL_V) || (after == unicode::cluster_t::HANGUL_T)))
 			// Выполняем сброс флага разрыва графемного кластера
 			broken = false;
 		/**
 		 * Если конечная часть слога хангыля предшествует его продолжению
 		 */
-		else if(((before == cluster_t::HANGUL_LVT) || (before == cluster_t::HANGUL_T)) && (after == cluster_t::HANGUL_T))
+		else if(((before == unicode::cluster_t::HANGUL_LVT) || (before == unicode::cluster_t::HANGUL_T)) && (after == unicode::cluster_t::HANGUL_T))
 			// Выполняем сброс флага разрыва графемного кластера
 			broken = false;
 		/**
 		 * Если очередной символ является продолжающим, соединителем либо отступающим знаком
 		 */
-		else if((after == cluster_t::EXTEND) || (after == cluster_t::JOINER) || (after == cluster_t::SPACING))
+		else if((after == unicode::cluster_t::EXTEND) || (after == unicode::cluster_t::JOINER) || (after == unicode::cluster_t::SPACING))
 			// Выполняем сброс флага разрыва графемного кластера
 			broken = false;
 		/**
 		 * Если предшествующий символ является предшествующим знаком
 		 */
-		else if(before == cluster_t::PREPEND)
+		else if(before == unicode::cluster_t::PREPEND)
 			// Выполняем сброс флага разрыва графемного кластера
 			broken = false;
 		/**
 		 * Если согласные символы сочетания индийских письменностей соединены
 		 */
-		else if(consonant && linked && (following == indic_t::CONSONANT))
+		else if(consonant && linked && (following == unicode::indic_t::CONSONANT))
 			// Выполняем сброс флага разрыва графемного кластера
 			broken = false;
 		/**
 		 * Если изобразительные символы соединены соединителем нулевой ширины
 		 */
-		else if(joined && (after == cluster_t::PICTORIAL))
+		else if(joined && (after == unicode::cluster_t::PICTORIAL))
 			// Выполняем сброс флага разрыва графемного кластера
 			broken = false;
 		/**
 		 * Если указатели области образуют пару
 		 */
-		else if((before == cluster_t::REGIONAL) && (after == cluster_t::REGIONAL) && ((regional % 2) == 1))
+		else if((before == unicode::cluster_t::REGIONAL) && (after == unicode::cluster_t::REGIONAL) && ((regional % 2) == 1))
 			// Выполняем сброс флага разрыва графемного кластера
 			broken = false;
 		/**
@@ -627,7 +627,7 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 		/**
 		 * Если очередной символ является указателем области
 		 */
-		if(after == cluster_t::REGIONAL)
+		if(after == unicode::cluster_t::REGIONAL)
 			// Увеличиваем количество подряд идущих указателей области
 			regional++;
 		// Выполняем сброс количества подряд идущих указателей области
@@ -635,7 +635,7 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 		/**
 		 * Если очередной символ является изобразительным
 		 */
-		if(after == cluster_t::PICTORIAL) {
+		if(after == unicode::cluster_t::PICTORIAL) {
 			// Выполняем установку флага обнаружения изобразительного символа
 			pictorial = true;
 			// Выполняем сброс флага обнаружения соединителя
@@ -643,7 +643,7 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 		/**
 		 * Если очередной символ продолжает изобразительный символ
 		 */
-		} else if(pictorial && (after == cluster_t::EXTEND)) {
+		} else if(pictorial && (after == unicode::cluster_t::EXTEND)) {
 			// Сохраняем флаг обнаружения изобразительного символа
 			pictorial = true;
 			/**
@@ -658,7 +658,7 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 		/**
 		 * Если очередной символ соединяет изобразительные символы
 		 */
-		} else if(pictorial && (after == cluster_t::JOINER)) {
+		} else if(pictorial && (after == unicode::cluster_t::JOINER)) {
 			// Выполняем установку флага обнаружения соединителя
 			joined = true;
 			/**
@@ -682,7 +682,7 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 		/**
 		 * Если очередной символ является согласным сочетания индийских письменностей
 		 */
-		if(following == indic_t::CONSONANT) {
+		if(following == unicode::indic_t::CONSONANT) {
 			// Выполняем установку флага обнаружения согласного символа
 			consonant = true;
 			// Выполняем сброс флага обнаружения соединяющего символа
@@ -690,13 +690,13 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 		/**
 		 * Если очередной символ соединяет согласные символы сочетания
 		 */
-		} else if(consonant && (following == indic_t::LINKER)) {
+		} else if(consonant && (following == unicode::indic_t::LINKER)) {
 			// Выполняем установку флага обнаружения соединяющего символа
 			linked = true;
 		/**
 		 * Если очередной символ продолжением сочетания не является
 		 */
-		} else if(following != indic_t::EXTEND) {
+		} else if(following != unicode::indic_t::EXTEND) {
 			// Выполняем сброс флага обнаружения согласного символа
 			consonant = false;
 			// Выполняем сброс флага обнаружения соединяющего символа

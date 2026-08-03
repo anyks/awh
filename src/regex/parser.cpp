@@ -26,7 +26,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <regex/parser.hpp>
-#include <regex/unicode.hpp>
+#include <unicode/unicode.hpp>
 #include <sys/ascii.hpp>
 
 /**
@@ -1414,7 +1414,7 @@ bool awh::regex::Parser::parseProperty(const bool negative, class_t & result) no
 		name.erase(0, 1);
 	}
 	// Выполняем извлечение идентификатора свойства Юникода по его имени
-	const uint16_t id = awh::regex::property(name);
+	const uint16_t id = awh::unicode::property(name);
 	/**
 	 * Если имя свойства Юникода не распознано
 	 */

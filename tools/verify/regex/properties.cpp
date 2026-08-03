@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
-#include <regex/unicode.hpp>
+#include <unicode/unicode.hpp>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 using namespace std;
@@ -33,9 +33,9 @@ int main(int argc, char ** argv){
 		if(re == nullptr) continue;
 		// Разбираем имя свойства нашим модулем
 		string key = name;
-		const uint16_t id = regex::property(key);
+		const uint16_t id = unicode::property(key);
 		properties++;
-		if(id == (uint16_t) regex::property_id_t::UNKNOWN){
+		if(id == (uint16_t) unicode::property_id_t::UNKNOWN){
 			printf("нераспознано имя: %s\n", name.c_str());
 			pcre2_code_free(re); diverged++; continue;
 		}
@@ -45,7 +45,7 @@ int main(int argc, char ** argv){
 			char buffer[8]; const size_t length = encode(cp, buffer);
 			const int32_t n = pcre2_match(re, (PCRE2_SPTR) buffer, length, 0, 0, data, nullptr);
 			const bool theirs = (n > 0);
-			const bool ours = regex::holds(cp, id);
+			const bool ours = unicode::holds(cp, id);
 			checked++;
 			if(ours != theirs){
 				diverged++;

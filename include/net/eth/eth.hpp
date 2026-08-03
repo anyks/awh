@@ -46,7 +46,6 @@
 #include "iface.hpp"
 #include "socket.hpp"
 #include "gateway.hpp"
-#include "portmap.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -98,8 +97,6 @@ namespace awh {
 			eth::socket_t socket;
 			// Объект управления шлюзами
 			eth::gateway_t gateway;
-			// Объект управления пробросом портов
-			eth::portmap_t portmap;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;

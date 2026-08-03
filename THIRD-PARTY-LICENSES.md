@@ -28,8 +28,6 @@ license texts of the components you actually linked in.
 | Lizard | [github.com/inikep/lizard](https://github.com/inikep/lizard) | `BSD-2-Clause` | Compression. Only the `lib` directory is used; the `programs`/`examples` directories are GPL-2.0 and are neither built nor shipped. |
 | LZ4 | [lz4.org](https://lz4.org) | `BSD-2-Clause` | Compression. Only the `lib` directory is used; the `programs`/`tests`/`examples` directories are GPL-2.0-or-later and are neither built nor shipped. |
 | liblzma (XZ Utils) | [tukaani.org/xz](https://tukaani.org/xz/) | public domain | Compression. `liblzma` itself is in the public domain. The GPL-licensed parts of XZ Utils are build-system and command-line-tool files that do not end up in the binaries. |
-| miniupnpc | [miniupnp.free.fr](http://miniupnp.free.fr) | `BSD-3-Clause` | UPnP port mapping. |
-| PCRE2 | [pcre.org](https://www.pcre.org) | `BSD-3-Clause WITH PCRE2-exception` | Regular expressions. The exemption permits binary redistribution without reproducing the licence text in the documentation, provided the terms are otherwise met. |
 | Snappy | [github.com/google/snappy](https://github.com/google/snappy) | `BSD-3-Clause` | Compression. |
 | zlib | [zlib.net](http://www.zlib.net) | `Zlib` | Compression (DEFLATE / GZIP). |
 | Zstandard | [github.com/facebook/zstd](https://github.com/facebook/zstd) | `BSD-3-Clause OR GPL-2.0-only` | Compression. Dual-licensed; AWH relies on the **BSD-3-Clause** branch. |
@@ -71,11 +69,11 @@ The full text of each license ships with the corresponding component:
 ```
 submodules/boringssl/LICENSE       submodules/lz4/LICENSE
 submodules/brotli/LICENSE          submodules/lzma/COPYING
-submodules/bz2/COPYING             submodules/miniupnpc/LICENSE
-submodules/density/LICENSE.md      submodules/pcre2/LICENCE.md
-submodules/gperftools/COPYING      submodules/snappy/COPYING
-submodules/libiconv/COPYING.LIB    submodules/zlib/LICENSE
-submodules/libidn2/COPYING         submodules/zstd/LICENSE
+submodules/bz2/COPYING             submodules/snappy/COPYING
+submodules/density/LICENSE.md      submodules/zlib/LICENSE
+submodules/gperftools/COPYING      submodules/zstd/LICENSE
+submodules/libiconv/COPYING.LIB
+submodules/libidn2/COPYING
 submodules/lizard/lib/LICENSE
 ```
 
