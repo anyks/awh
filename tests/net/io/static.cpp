@@ -16457,6 +16457,89 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
  *       проверялось бы поведение ядра, а не оживление события
  *
  */
+/**
+ * @brief Тест уничтожения события с самостоятельным переподключением по воле вызывающего
+ *
+ * @details Обрыв связи у события с опцией `AUTO_RECONNECT` разворачивается в подъём, и
+ *          разворачивает его само уничтожение - тем и жива круглосуточная связь. Но у
+ *          уничтожения, затребованного вызывающим напрямую, смысл обратный: событие
+ *          просят убрать, а не поднять
+ *
+ *          Прежде убрать его было нечем вовсе: обращение к уничтожению возрождало
+ *          событие вместо того, чтобы его снять, и так на каждое обращение. Череда
+ *          подъёмов при этом бесконечна намеренно - числа попыток движок не ведёт, - и
+ *          ручное уничтожение остаётся единственным способом её прекратить
+ *
+ * @note Признаком служит подъём после уничтожения: без починки взведённый срок
+ *       переподключения выстреливает и приводит событие обратно, объявляя возрождение и
+ *       новое подключение. Проверка ведётся на живом получателе - слушающем сокете на
+ *       петле, - чтобы связь встала наверняка, а обрыв случился по нашей воле
+ *
+ */
+TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
+	uint8_t successes = 0, rebirths = 0;
+	// Заводим слушающий сокет на петле
+	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
+	ASSERT_GT(listener, 0);
+	struct sockaddr_in host{};
+	host.sin_len = sizeof(host);
+	host.sin_family = AF_INET;
+	host.sin_port = 0;
+	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
+	socklen_t length = sizeof(host);
+	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
+	ASSERT_EQ(0, ::listen(listener, 16));
+	// Заводим событие клиента и тикающий интервал
+	const awh::event::id_t eid = this->_io->event(
+		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+	);
+	ASSERT_GT(eid, 0u);
+	const awh::event::id_t tick = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	ASSERT_GT(tick, 0u);
+	ASSERT_TRUE(this->_io->initialize());
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+	ASSERT_TRUE(this->_io->setTarget(eid, "127.0.0.1"));
+	ASSERT_TRUE(this->_io->setTargetPort(eid, ntohs(host.sin_port)));
+	this->_io->setTimeout(eid, awh::event::action_t::RECONNECT, 200);
+	this->_io->setTimeout(tick, awh::event::action_t::NONE, 100);
+	this->_io->on(eid, [&rebirths]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Считаем возрождения события, которыми движок объявляет о подъёме
+		if(status == awh::event::status_t::REBIRTHED) rebirths++;
+	});
+	this->_io->on(eid, static_cast <awh::engine::callback::connect_t> (
+		[&successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+			if(ok) successes++;
+		}
+	));
+	ASSERT_TRUE(this->_io->commit(eid));
+	ASSERT_TRUE(this->_io->commit(tick));
+	ASSERT_TRUE(this->_io->connect(eid));
+	ASSERT_TRUE(this->_io->launch(eid));
+	ASSERT_TRUE(this->_io->launch(tick));
+	// Дожидаемся подключения
+	auto start = std::chrono::steady_clock::now();
+	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
+	ASSERT_EQ(1, successes);
+	// Уничтожаем событие по своей воле, не снимая опции самостоятельного переподключения
+	this->_io->destroy(eid);
+	// Запоминаем счёт подъёмов на миг уничтожения
+	const uint8_t reborn = rebirths, connected = successes;
+	// Крутим цикл заведомо дольше срока переподключения, давая подъёму случиться
+	start = std::chrono::steady_clock::now();
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 1500) && this->_io->poll());
+	const std::string sign = std::string("возрождений=") + std::to_string(rebirths - reborn) +
+		" подключений=" + std::to_string(successes - connected);
+	// Уничтоженное по воле вызывающего событие не вправе подняться ни разу
+	ASSERT_EQ(reborn, rebirths) << sign;
+	ASSERT_EQ(connected, successes) << sign;
+	// Закрываем слушающий сокет
+	::close(listener);
+	this->_io->destroy(tick);
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
 TEST_F(IoFixture, IoRebuildRevivesClientTest){
 	uint8_t failures = 0, successes = 0;
 	// Заводим слушающий сокет на петле

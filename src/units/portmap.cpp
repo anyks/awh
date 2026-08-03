@@ -43,6 +43,15 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Пауза перед повторной попыткой подключения к устройству UPnP (мсек)
+	 *
+	 * @note Неудачей здесь оборачивается потерянное рукопожатие, а не занятость
+	 *       устройства: ждать долго незачем, новая попытка обходится дешевле
+	 *
+	 */
+	constexpr uint32_t RECONNECT_DELAY = 100;
+
+	/**
 	 * @brief Источник случайных чисел для отличительных меток перенаправлений
 	 *
 	 */
@@ -437,18 +446,15 @@ bool awh::unit::Portmap::timeout(const event::id_t eid, [[maybe_unused]] const e
 	 *       старое событие и отдаётся движку на уничтожение утвердительным ответом:
 	 *       новое к этому времени уже заведено
 	 */
-	if((this->_stream > 0) && (eid == this->_stream)){
-		// Сбрасываем идентификатор прежнего потокового события обмена
-		this->_stream = 0;
+	if((this->_stream > 0) && (eid == this->_stream))
 		/**
-		 * Если повторное подключение к устройству начать не удалось
+		 * Запрещаем завершение потокового события после истечения срока ожидания
+		 *
+		 * @note Новую попытку подключения событие заводит само: ему выставлена опция
+		 *       самостоятельного переподключения. Счёт попыток при этом ведёт модуль,
+		 *       и, исчерпав их, он событие уничтожает - тем череда и прекращается
 		 */
-		if(!this->stream(this->_host, this->_port))
-			// Выполняем завершение обмена отказом
-			this->failure(type, error_t::NO_RESPONSE);
-		// Разрешаем завершение прежнего события после истечения срока ожидания
-		return true;
-	}
+		return false;
 	/**
 	 * Если отправить просьбу повторно не удалось
 	 */
@@ -887,10 +893,6 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		if(this->_stream > 0)
 			// Выполняем удаление потокового события обмена
 			this->_io->destroy(this->_stream);
-		// Запоминаем адрес устройства, с которым ведётся обмен
-		this->_host = address;
-		// Запоминаем порт устройства, с которым ведётся обмен
-		this->_port = port;
 		// Выполняем очистку собираемого тела ответа устройства
 		this->_payload.clear();
 		// Снимаем признак того, что ответ устройства прочитан до конца
@@ -918,6 +920,21 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		 *       система, и обмен молчит вместо того, чтобы завершиться отказом
 		 */
 		this->_io->setTimeout(this->_stream, event::action_t::CONNECT, this->_delay);
+		/**
+		 * Разрешаем событию самостоятельное переподключение
+		 *
+		 * @note Опции `AUTO_RECONNECT` мало: движок ведёт переподключение, только
+		 *       когда оно событию ещё и разрешено действием
+		 */
+		this->_io->setAction(this->_stream, event::action_t::RECONNECT, event::mode_t::ENABLED);
+		/**
+		 * Устанавливаем паузу перед повторной попыткой подключения
+		 *
+		 * @note Без неё берётся пять секунд, а ждать столько незачем: неудачей здесь
+		 *       оборачивается потерянное рукопожатие, и лечится она новой попыткой, а
+		 *       не терпением
+		 */
+		this->_io->setTimeout(this->_stream, event::action_t::RECONNECT, RECONNECT_DELAY);
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
 		this->_io->on(this->_stream, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие подключения к устройству
@@ -929,7 +946,7 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		/**
 		 * Если опции потокового события обмена установить не удалось
 		 */
-		if(!this->_io->setOptions(this->_stream, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+		if(!this->_io->setOptions(this->_stream, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::AUTO_RECONNECT)){
 			// Выполняем удаление потокового события обмена
 			this->_io->destroy(this->_stream);
 			// Выводим отрицательный результат заведения потокового события обмена
@@ -1957,7 +1974,7 @@ bool awh::unit::Portmap::close(const mapping_t & mapping) noexcept {
 awh::unit::Portmap::Portmap(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _type(type_t::AUTO), _action(action_t::NONE),
  _attempts(::DEFAULT_ATTEMPTS), _delay(::DEFAULT_DELAY),
- _stage(stage_t::NONE), _stream(0), _port(0), _host{""}, _location{""}, _control{""}, _service{""},
+ _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
  _request{""}, _payload{""}, _complete(false), _uri(fmk, log), _router{""},
  _address(nullptr), _addr(fmk, log), _gateway(fmk, log), _pcp(fmk, log),
  _ssdp(fmk, log), _soap(fmk, log), _upnp(fmk, log), _device(fmk, log), _natpmp(fmk, log) {}
