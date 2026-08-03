@@ -604,6 +604,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/charset/charset.cpp"
     "${CMAKE_SOURCE_DIR}/src/unicode/table.cpp"
     "${CMAKE_SOURCE_DIR}/src/unicode/unicode.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unicode/normalize.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/text.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/parser.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/compiler.cpp"
