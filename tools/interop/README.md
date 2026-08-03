@@ -199,7 +199,7 @@ cmake --build build-nghttp2 -j 8
 
 ```sh
 ROOT=$(pwd)
-FLAGS="-DAWH_IDN -DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
+FLAGS="-DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
 	-I$ROOT/third_party/include/pcre2 -I$ROOT/include -I/opt/homebrew/include \
 	-pthread -std=gnu++17 -O1 -g -fsanitize=address,undefined"
 
@@ -212,7 +212,7 @@ for NAME in hpack random server client negative extensions; do
 	c++ -fsanitize=address,undefined -o /tmp/interop-$NAME /tmp/interop-$NAME.o \
 		/tmp/h2-http.o /tmp/h2-hpack.o /tmp/h2-frame.o /tmp/h2-h2.o \
 		$ROOT/build/libawh.a $ROOT/third_party/lib/libdependence.a \
-		$ROOT/third_party/lib/libcommon.a /opt/homebrew/lib/libnghttp2.a -lz -liconv
+		$ROOT/third_party/lib/libcommon.a /opt/homebrew/lib/libnghttp2.a -lz
 	/tmp/interop-$NAME
 done
 ```
@@ -316,7 +316,7 @@ c++ $FLAGS -c -o /tmp/h2spec-server.o $ROOT/tools/interop/h2spec-server.cpp
 c++ -fsanitize=address,undefined -o /tmp/h2spec-server /tmp/h2spec-server.o \
 	/tmp/h2-http.o /tmp/h2-hpack.o /tmp/h2-frame.o /tmp/h2-h2.o \
 	$ROOT/build/libawh.a $ROOT/third_party/lib/libdependence.a \
-	$ROOT/third_party/lib/libcommon.a -lz -liconv
+	$ROOT/third_party/lib/libcommon.a -lz
 
 /tmp/h2spec-server 8080 &
 h2spec -h 127.0.0.1 -p 8080 -o 3      # штатный набор
@@ -382,7 +382,7 @@ cmake --build build-nghttp3 -j 8
 
 ```sh
 ROOT=$(pwd)
-FLAGS="-DAWH_IDN -DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
+FLAGS="-DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
 	-I$ROOT/third_party/include/pcre2 -I$ROOT/include \
 	-I$ROOT/submodules/nghttp3/lib/includes -I$ROOT/build-nghttp3/lib/includes \
 	-pthread -std=gnu++17 -O1 -g -fsanitize=address,undefined"
@@ -396,7 +396,7 @@ for NAME in qpack session negative; do
 	c++ -fsanitize=address,undefined -o /tmp/interop3-$NAME /tmp/interop3-$NAME.o \
 		/tmp/h3-http.o /tmp/h3-qpack.o /tmp/h3-frame.o /tmp/h3-h3.o \
 		$ROOT/build/libawh.a $ROOT/third_party/lib/libdependence.a \
-		$ROOT/third_party/lib/libcommon.a $ROOT/build-nghttp3/lib/libnghttp3.a -lz -liconv
+		$ROOT/third_party/lib/libcommon.a $ROOT/build-nghttp3/lib/libnghttp3.a -lz
 	/tmp/interop3-$NAME
 done
 ```

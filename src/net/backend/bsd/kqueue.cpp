@@ -3094,6 +3094,11 @@ namespace {
 							addr.sin6_len = sizeof(struct sockaddr_in6);
 							// Устанавливаем адрес для хоста целевой машины
 							::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address[0], 16);
+							/**
+							 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+							 * связи неоднозначны - система не знает, которым устройством их достигать
+							 */
+							addr.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->zone;
 							// Формируем идентификатор источника
 							sid.from(addr);
 						} break;
@@ -9935,6 +9940,11 @@ namespace io {
 										origin_id_t sid;
 										// Устанавливаем полученный IP-адрес назначения
 										::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+										/**
+										 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+										 * связи неоднозначны - система не знает, которым устройством их достигать
+										 */
+										::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 										// Формируем идентификатор источника
 										sid.from(::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client));
 										// Ищем сессию по идентификатору источника
@@ -10465,6 +10475,11 @@ namespace io {
 									origin_id_t sid;
 									// Устанавливаем полученный IP-адрес назначения
 									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+									/**
+									 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+									 * связи неоднозначны - система не знает, которым устройством их достигать
+									 */
+									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 									// Формируем идентификатор источника
 									sid.from(::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client));
 									// Ищем сессию по идентификатору источника
@@ -20572,6 +20587,11 @@ namespace io {
 										sin.sin6_family = AF_INET6;
 										// Устанавливаем полученный IP-адрес источника
 										::memcpy(&sin.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+										/**
+										 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+										 * связи неоднозначны - система не знает, которым устройством их достигать
+										 */
+										sin.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
 										// Формируем идентификатор источника
 										sid.from(sin);
 										// Ищем сессию по идентификатору источника
@@ -20906,6 +20926,11 @@ namespace io {
 										sin.sin6_family = AF_INET6;
 										// Устанавливаем полученный IP-адрес источника
 										::memcpy(&sin.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+										/**
+										 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+										 * связи неоднозначны - система не знает, которым устройством их достигать
+										 */
+										sin.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
 										// Формируем идентификатор источника
 										sid.from(sin);
 										// Ищем сессию по идентификатору источника
@@ -21224,6 +21249,11 @@ namespace io {
 									sin.sin6_family = AF_INET6;
 									// Устанавливаем полученный IP-адрес источника
 									::memcpy(&sin.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+									/**
+									 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+									 * связи неоднозначны - система не знает, которым устройством их достигать
+									 */
+									sin.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
 									// Формируем идентификатор источника
 									sid.from(sin);
 									// Ищем сессию по идентификатору источника
@@ -35513,8 +35543,22 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_port = htons(0);
 									// Устанавливаем адрес для удаленного подключения целевой машины
 									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], 16);
+									/**
+									 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+									 * связи неоднозначны - система не знает, которым устройством их достигать,
+									 * и отвечает отказом в маршруте
+									 */
+									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->zone;
 									// Устанавливаем адрес IPv6 для клиента
+									{
 									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], 16);
+									/**
+									 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+									 * связи неоднозначны - система не знает, которым устройством их достигать,
+									 * и отвечает отказом в маршруте
+									 */
+									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->zone;
+									}
 									// Если адрес для удаленного подключения установлен
 									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], ::__awh_zero_ipv6__, 16) != 0)
 										// Устанавливаем адрес IPv6 для клиента
@@ -35608,6 +35652,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									addr.sin6_len = sizeof(struct sockaddr_in6);
 									// Устанавливаем адрес для хоста целевой машины
 									::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address[0], 16);
+									/**
+									 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+									 * связи неоднозначны - система не знает, которым устройством их достигать
+									 */
+									addr.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->zone;
 									// Формируем идентификатор источника
 									sid.from(addr);
 								} break;
@@ -35768,12 +35817,26 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
 												// Устанавливаем адрес для удаленного подключения целевой машины
 												::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+												/**
+												 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+												 * связи неоднозначны - система не знает, которым устройством их достигать,
+												 * и отвечает отказом в маршруте
+												 */
+												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 												// Получаем объект источника сетевого адреса
 												net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 												// Если источник сетевого адреса установлен
 												if(source != nullptr)
 													// Устанавливаем адрес IPv6 для клиента
+													{
 													::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+													/**
+													 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+													 * связи неоднозначны - система не знает, которым устройством их достигать,
+													 * и отвечает отказом в маршруте
+													 */
+													::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
+													}
 												// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
 												else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
 												// Создаём объект события для Kqueue
@@ -36803,7 +36866,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Устанавливаем произвольный порт для локального подключения
 															::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(source->port);
 															// Устанавливаем адрес IPv6 для клиента
+															{
 															::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+															/**
+															 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+															 * связи неоднозначны - система не знает, которым устройством их достигать,
+															 * и отвечает отказом в маршруте
+															 */
+															::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
+															}
 														// Если источник сетевого адреса не установлен
 														} else {
 															// Устанавливаем произвольный порт для локального подключения
@@ -36819,6 +36890,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
 														// Устанавливаем адрес для удаленного подключения
 														::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+														/**
+														 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+														 * связи неоднозначны - система не знает, которым устройством их достигать,
+														 * и отвечает отказом в маршруте
+														 */
+														::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 														// Определяем, является ли адрес клиента адресом обратной петли (::1)
 														const bool isLoopback = (((source == nullptr) || (source->port == 0)) && IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
 														// Выполняем бинд сокета клиента на адрес целевой машины
@@ -36895,6 +36972,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 																		// Устанавливаем адрес для удаленного подключения целевой машины
 																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address[0], 16);
+																		/**
+																		 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+																		 * связи неоднозначны - система не знает, которым устройством их достигать
+																		 */
+																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->zone;
 																		// Создаём объект события для Kqueue
 																		struct kevent event{};
 																		// Устанавливаем событие на чтение но отключаем его
@@ -36992,6 +37074,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 																		// Устанавливаем адрес для удаленного подключения
 																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address[0], 16);
+																		/**
+																		 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+																		 * связи неоднозначны - система не знает, которым устройством их достигать
+																		 */
+																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->zone;
 																		// Создаём объект события для Kqueue
 																		struct kevent event{};
 																		// Устанавливаем событие на чтение но отключаем его
@@ -37037,7 +37124,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			// Устанавливаем произвольный порт для локального подключения
 																			::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(source->port);
 																			// Устанавливаем адрес IPv6 для клиента
+																			{
 																			::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+																			/**
+																			 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+																			 * связи неоднозначны - система не знает, которым устройством их достигать,
+																			 * и отвечает отказом в маршруте
+																			 */
+																			::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
+																			}
 																		// Если источник сетевого адреса не установлен
 																		} else {
 																			// Устанавливаем произвольный порт для локального подключения
@@ -37047,6 +37142,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		}
 																		// Устанавливаем адрес для удаленного подключения целевой машины
 																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+																		/**
+																		 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+																		 * связи неоднозначны - система не знает, которым устройством их достигать,
+																		 * и отвечает отказом в маршруте
+																		 */
+																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 																		// Определяем, является ли адрес клиента адресом обратной петли (::1)
 																		const bool isLoopback = (((source == nullptr) || (source->port == 0)) && IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
 																		// Выполняем бинд сокета клиента на адрес целевой машины
@@ -37158,13 +37259,27 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Если источник сетевого адреса установлен
 																if(source != nullptr)
 																	// Устанавливаем адрес IPv6 для клиента
+																	{
 																	::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+																	/**
+																	 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+																	 * связи неоднозначны - система не знает, которым устройством их достигать,
+																	 * и отвечает отказом в маршруте
+																	 */
+																	::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
+																	}
 																// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
 																else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
 																// Получаем объект целевой машины
 																net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 																// Устанавливаем адрес для удаленного подключения целевой машины
 																::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+																/**
+																 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+																 * связи неоднозначны - система не знает, которым устройством их достигать,
+																 * и отвечает отказом в маршруте
+																 */
+																::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 																// Определяем, является ли адрес клиента адресом обратной петли (::1)
 																const bool isLoopback = IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr);
 																// Выполняем бинд сокета клиента на адрес целевой машины
@@ -37496,6 +37611,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_port = htons(host->port);
 												// Устанавливаем адрес для удаленного подключения целевой машины
 												::memcpy(&::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
+												/**
+												 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+												 * связи неоднозначны - система не знает, которым устройством их достигать,
+												 * и отвечает отказом в маршруте
+												 */
+												::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->zone;
 												// Создаём объект события для Kqueue
 												struct kevent event{};
 												// Устанавливаем событие на чтение но отключаем его
@@ -38029,6 +38150,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_port = htons(host->port);
 														// Устанавливаем адрес для удаленного подключения целевой машины
 														::memcpy(&::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
+														/**
+														 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+														 * связи неоднозначны - система не знает, которым устройством их достигать,
+														 * и отвечает отказом в маршруте
+														 */
+														::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->zone;
 														// Выполняем бинд события
 														if(!(result = (::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
 															// Если установлена функция обратного вызова
@@ -50577,6 +50704,12 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										endpoint.sin6_len = sizeof(struct sockaddr_in6);
 										// Устанавливаем адрес для локального подключения
 										::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
+										/**
+										 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+										 * связи неоднозначны - система не знает, которым устройством их достигать,
+										 * и отвечает отказом в маршруте
+										 */
+										endpoint.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source.get())->zone;
 										// Выполняем бинд события
 										if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
 											// Если установлена функция обратного вызова
@@ -50851,6 +50984,12 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										} else endpoint.sin6_port = htons(port);
 										// Устанавливаем адрес для локального подключения
 										::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.get())->address[0], 16);
+										/**
+										 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+										 * связи неоднозначны - система не знает, которым устройством их достигать,
+										 * и отвечает отказом в маршруте
+										 */
+										endpoint.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source.get())->zone;
 										// Выполняем бинд события
 										if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
 											// Если установлена функция обратного вызова
@@ -51146,6 +51285,12 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								endpoint.sin6_len = sizeof(struct sockaddr_in6);
 								// Устанавливаем адрес для локального подключения
 								::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], 16);
+								/**
+								 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+								 * связи неоднозначны - система не знает, которым устройством их достигать,
+								 * и отвечает отказом в маршруте
+								 */
+								endpoint.sin6_scope_id = awh_cast <const net::addr_net_ipv6_t *> (source)->zone;
 								// Выполняем бинд события
 								if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
 									// Если установлена функция обратного вызова
@@ -51288,6 +51433,12 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								} else endpoint.sin6_port = htons(port);
 								// Устанавливаем адрес для локального подключения
 								::memcpy(&endpoint.sin6_addr.s6_addr, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], 16);
+								/**
+								 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
+								 * связи неоднозначны - система не знает, которым устройством их достигать,
+								 * и отвечает отказом в маршруте
+								 */
+								endpoint.sin6_scope_id = awh_cast <const net::addr_net_ipv6_t *> (source)->zone;
 								// Выполняем бинд события
 								if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
 									// Если установлена функция обратного вызова

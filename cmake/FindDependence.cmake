@@ -19,59 +19,14 @@ find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${CMAKE_SOURCE_DIR}/thi
 find_path(LIZARD_INCLUDE_DIR NAMES lizard_compress.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/lizard NO_DEFAULT_PATH)
 find_path(BORINGSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
 
-# Сборка модуля AWH_IDN, если операционной системой не является Windows
-if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-    find_path(IDN2_INCLUDE_DIR NAMES idn2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/idn2 NO_DEFAULT_PATH)
-    find_path(ICONV_INCLUDE_DIR NAMES iconv.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/iconv NO_DEFAULT_PATH)
-endif()
-
 # Поиск библиотеки Dependence
 find_library(DEPEND_LIBRARY NAMES dependence PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 
 # Подключаем 'FindPackageHandle' для использования модуля поиска (find_package(<PackageName>))
 include(FindPackageHandleStandardArgs)
 
-# Сборка модуля AWH_IDN, если операционной системой не является Windows
-if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-    # Выполняем проверку на существование зависимостей
-    find_package_handle_standard_args(Dependence REQUIRED_VARS
-        DEPEND_LIBRARY
-        LZ4_INCLUDE_DIR
-        BZ2_INCLUDE_DIR
-        ZSTD_INCLUDE_DIR
-        LZMA_INCLUDE_DIR
-        ZLIB_INCLUDE_DIR
-        SNAPPY_INCLUDE_DIR
-        LIZARD_INCLUDE_DIR
-        DENSITY_INCLUDE_DIR
-        BROTLI_INCLUDE_ENCODE_DIR
-        BROTLI_INCLUDE_DECODE_DIR
-        BORINGSSL_INCLUDE_DIR
-        IDN2_INCLUDE_DIR
-        ICONV_INCLUDE_DIR
-
-        FAIL_MESSAGE "Missing Dependence. Run ./build_third_party.sh first"
-    )
-    # Формируем список заголовочных файлов
-    SET(DEPEND_INCLUDE_DIRS
-        ${LZ4_INCLUDE_DIR}
-        ${BZ2_INCLUDE_DIR}
-        ${ZSTD_INCLUDE_DIR}
-        ${LZMA_INCLUDE_DIR}
-        ${ZLIB_INCLUDE_DIR}
-        ${SNAPPY_INCLUDE_DIR}
-        ${LIZARD_INCLUDE_DIR}
-        ${DENSITY_INCLUDE_DIR}
-        ${BROTLI_INCLUDE_ENCODE_DIR}
-        ${BORINGSSL_INCLUDE_DIR}
-        ${IDN2_INCLUDE_DIR}
-        ${ICONV_INCLUDE_DIR}
-    )
-    # Выполняем установку указанного списка заголовочных файлов зависимостей
-    install(DIRECTORY "${IDN2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-    install(DIRECTORY "${ICONV_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 # Если операцинная система относится к MS Windows
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Выполняем проверку на существование зависимостей
     find_package_handle_standard_args(Dependence REQUIRED_VARS
         DEPEND_LIBRARY

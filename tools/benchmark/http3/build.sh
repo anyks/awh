@@ -100,12 +100,12 @@ fi
 #
 if [ -f "$RELEASE/libawh.a" ]; then
 	echo "Build \"awh\""
-	c++ -std=gnu++17 $FLAGS -pthread -DAWH_STATICLIB -DAWH_IDN \
+	c++ -std=gnu++17 $FLAGS -pthread -DAWH_STATICLIB \
 		-Wno-reserved-user-defined-literal -o "$OUTPUT/awh" "$STANDS/awh.cpp" \
 		-I"$ROOT/contrib/include" -I"$ROOT/third_party/include/pcre2" \
 		-I"$ROOT/third_party/include" -isystem "$ROOT/include" $NGHTTP3_INCLUDE \
 		"$RELEASE/libawh.a" "$ROOT/third_party/lib/libdependence.a" \
-		"$ROOT/third_party/lib/libcommon.a" "$NGHTTP3_LIBRARY" -lz -liconv \
+		"$ROOT/third_party/lib/libcommon.a" "$NGHTTP3_LIBRARY" -lz \
 		$(if [ "$OS" = "Darwin" ]; then echo "-framework Foundation -framework CoreFoundation -framework Security"; fi) 2> /dev/null || exit 1
 else
 	# Выводим сообщение об отсутствии сборки библиотеки с оптимизацией

@@ -28,6 +28,11 @@
 #include <arpa/inet.h>
 
 /**
+ * Подключаем системный перевод названия устройства зоны адреса в его номер
+ */
+#include <net/if.h>
+
+/**
  * @brief Метод инициализации тестовой среды
  *
  */
@@ -2731,4 +2736,51 @@ TEST_F(NetFixture, NetImposeSplitsIPv6ByPrefixTest){
 	ASSERT_TRUE(this->_addr->parse("2001:1234:abcd:5678:9877:3322:5541:aabb"));
 	this->_addr->impose("FFFF:FFFF:FFFF:F800::", awh::net_addr_t::addr_t::HOST);
 	ASSERT_EQ("::678:9877:3322:5541:AABB", this->_addr->print());
+}
+
+/**
+ * @brief Тест переноса зоны адреса IPv6 в структуру и обратно
+ *
+ * @details Зона нужна адресам канальной связи и групповым адресам связи: без неё такой
+ *          адрес неоднозначен - машина не знает, которым устройством его достигать, и
+ *          отвечает отказом в маршруте. Прежде структура адреса зоны не хранила, и до
+ *          системы зона не доходила вовсе
+ *
+ * @note Зона хранится **номером** устройства, а не названием: именно номер требуется
+ *       системе в поле `sin6_scope_id`, и перевод выполняется однажды при сборке
+ *       структуры. Обратный ход возвращает название, чтобы запись адреса выходила полной
+ *
+ */
+TEST_F(NetFixture, NetZoneSurvivesConversionTest){
+	/**
+	 * Устройство петли берётся оттого, что есть на любой машине, где идёт проверка.
+	 * Название его, однако, разнится: под MS Windows это строка вида `{GUID}`, и
+	 * проверять там нечего - зону записывают самим номером
+	 */
+	if(::if_nametoindex("lo0") == 0) GTEST_SKIP() << "устройства петли под названием lo0 в системе нет";
+	// Получаем номер устройства петли
+	const uint32_t index = ::if_nametoindex("lo0");
+	// Разбор обязан принять запись адреса с зоной
+	ASSERT_TRUE(this->_addr->parse("FF02::C%lo0"));
+	// Зона обязана сохраниться в самом объекте записи
+	ASSERT_EQ("lo0", this->_addr->zone());
+	// Собираем структуру адреса из разобранной записи
+	std::unique_ptr <awh::net::addr_t> value = this->_addr->source(awh::net_addr_t::endian_t::LITTLE);
+	ASSERT_NE(nullptr, value);
+	// Зона обязана перенестись в структуру номером устройства
+	ASSERT_EQ(index, awh_cast <awh::net::addr_net_ipv6_t *> (value.get())->zone);
+	// Собираем запись адреса обратно из структуры
+	awh::net_addr_t back(this->_fmk.get(), this->_log.get());
+	back.source(value.get(), awh::net_addr_t::endian_t::LITTLE);
+	// Зона обязана вернуться названием устройства
+	ASSERT_EQ("lo0", back.zone());
+	// Запись адреса обязана выйти полной, вместе с зоной
+	ASSERT_EQ("FF02::C%lo0", back.print());
+	/**
+	 * Адресу без зоны она не нужна, и поле обязано остаться нулевым: иначе к записи
+	 * дописывалась бы зона, которой у неё нет
+	 */
+	ASSERT_TRUE(this->_addr->parse("2001:db8::1"));
+	value = this->_addr->source(awh::net_addr_t::endian_t::LITTLE);
+	ASSERT_EQ(0u, awh_cast <awh::net::addr_net_ipv6_t *> (value.get())->zone);
 }

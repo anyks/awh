@@ -16,8 +16,6 @@
  *
  */
 
-
-
 /**
  * Единица выравнивания адресов в сообщениях маршрутизации
  *
@@ -72,8 +70,8 @@
 #include <sys/sysctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <net/if_dl.h>
 #include <net/if.h>
+#include <net/if_dl.h>
 #include <net/if_var.h>
 #include <net/if_types.h>
 #include <netinet/in.h> 
@@ -207,6 +205,43 @@ namespace {
 	}
 
 	/**
+	 * @brief Функция проставления зоны адресу IPv6, которому она нужна
+	 *
+	 * @details Зона нужна адресам канальной связи (`FE80::/10`) и групповым адресам
+	 *          связи (`FF02::/16`): без неё такой адрес неоднозначен - машина держит их
+	 *          по одному на каждом устройстве разом, и без указания устройства не знает,
+	 *          которым его достигать. Прочим адресам зона не нужна, и у них поле
+	 *          остаётся нулевым
+	 *
+	 * @note Зона берётся из названия устройства, которым адрес и был получен: иного
+	 *       источника у неё нет, а само по себе значение адреса устройства не называет
+	 *
+	 * @warning Обратная сторона переноса зоны в сторону системы. Там зона уходит в поле
+	 *          `sin6_scope_id`, здесь же приходит от устройства, у которого адрес взят.
+	 *          Пропусти её здесь - и адрес канальной связи, добытый движком, окажется
+	 *          негодным к обмену, хотя система его выдала полным
+	 *
+	 * @param source объект источника сетевых адресов
+	 *
+	 */
+	void scope(net::src_t & source) noexcept {
+		// Если источник хранит адрес не того семейства либо устройство неизвестно
+		if((source.ip == nullptr) || (source.ip->size != 16) || source.iface.empty())
+			// Выходим из функции, так-как проставлять зону нечему либо неоткуда
+			return;
+		// Получаем адрес источника обмена
+		struct in6_addr addr{};
+		// Выполняем копирование адреса источника обмена
+		::memcpy(&addr, &awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], sizeof(addr));
+		// Если адрес в зоне не нуждается, оставляем поле нулевым
+		if(!IN6_IS_ADDR_LINKLOCAL(&addr) && !IN6_IS_ADDR_MC_LINKLOCAL(&addr))
+			// Выходим из функции, так-как зона такому адресу не нужна
+			return;
+		// Устанавливаем зону адреса номером устройства, которым адрес получен
+		awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->zone = ::if_nametoindex(source.iface.c_str());
+	}
+
+	/**
 	 * @brief Функция восстановления адреса из запомненной записи
 	 *
 	 * @param source объект сетевых адресов текущей машины
@@ -234,6 +269,8 @@ namespace {
 			::memcpy(&awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address, &outward.address[0], 4);
 		// Если адрес является IPv6
 		else ::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &outward.address[0], 16);
+		// Проставляем зону адресу, которому она нужна
+		::scope(source);
 		// Устанавливаем MAC-адрес сетевого интерфейса
 		::memcpy(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], &outward.mac[0], 6);
 		// Сообщаем, что адрес восстановлен
@@ -343,6 +380,8 @@ namespace {
 				continue;
 			// Копируем найденный адрес в источник обмена
 			::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &addr->sin6_addr, sizeof(addr->sin6_addr));
+			// Проставляем зону адресу, которому она нужна
+			::scope(source);
 			// Запоминаем устройство, которому принадлежит найденный адрес
 			if(ifa->ifa_name != nullptr)
 				// Устанавливаем название сетевого интерфейса
@@ -623,6 +662,8 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 								}
 								// Копируем IP-адрес в результат
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &addr->sin6_addr, sizeof(in6_addr));
+								// Проставляем зону адресу, которому она нужна
+								::scope(source);
 								// Выходим из цикла
 								break;
 							}
@@ -631,6 +672,8 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 						if((linked != nullptr) && (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) == 0))
 							// Копируем канальный адрес устройства в результат
 							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &linked->sin6_addr, sizeof(in6_addr));
+							// Проставляем зону адресу, которому она нужна
+							::scope(source);
 						// Освобождаем память списка сетевых интерфейсов
 						::freeifaddrs(ptr);
 					}
@@ -1275,6 +1318,8 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 										if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) == 0)
 											// Копируем IP-адрес в результат
 											::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &sin->sin6_addr, sizeof(in6_addr));
+											// Проставляем зону адресу, которому она нужна
+											::scope(source);
 										// Выходим из цикла
 										break;
 									}
@@ -1494,6 +1539,8 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) == 0)
 										// Копируем IP-адрес в результат
 										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &sin->sin6_addr, sizeof(in6_addr));
+										// Проставляем зону адресу, которому она нужна
+										::scope(source);
 									// Выходим из цикла
 									break;
 								}

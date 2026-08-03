@@ -34,7 +34,7 @@ SETTINGS первым кадром, HEADERS с настоящим HPACK-блок
 
 ```sh
 ROOT=$(pwd)
-FLAGS="-DAWH_IDN -DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
+FLAGS="-DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
 	-I$ROOT/third_party/include/pcre2 -isystem $ROOT/include -pthread -std=gnu++17 \
 	-O1 -g -fsanitize=address,undefined"
 
@@ -45,7 +45,7 @@ c++ $FLAGS -c -o /tmp/h2-fuzz.o $ROOT/tools/fuzz/http2.cpp
 c++ -fsanitize=address,undefined -o /tmp/h2-fuzz /tmp/h2-fuzz.o \
 	/tmp/h2-http.o /tmp/h2-hpack.o /tmp/h2-frame.o /tmp/h2-h2.o \
 	$ROOT/build/libawh.a $ROOT/third_party/lib/libdependence.a \
-	$ROOT/third_party/lib/libcommon.a -lz -liconv
+	$ROOT/third_party/lib/libcommon.a -lz
 
 /tmp/h2-fuzz 4000
 ```
@@ -114,7 +114,7 @@ QPACK несут настоящие инструкции кодера, секц�
 
 ```sh
 ROOT=$(pwd)
-FLAGS="-DAWH_IDN -DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
+FLAGS="-DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
 	-I$ROOT/third_party/include/pcre2 -isystem $ROOT/include -pthread -std=gnu++17 \
 	-O1 -g -fsanitize=address,undefined"
 
@@ -125,7 +125,7 @@ c++ $FLAGS -c -o /tmp/h3-fuzz.o $ROOT/tools/fuzz/http3.cpp
 c++ -fsanitize=address,undefined -o /tmp/h3-fuzz /tmp/h3-fuzz.o \
 	/tmp/h3-http.o /tmp/h3-qpack.o /tmp/h3-frame.o /tmp/h3-h3.o \
 	$ROOT/build/libawh.a $ROOT/third_party/lib/libdependence.a \
-	$ROOT/third_party/lib/libcommon.a -lz -liconv
+	$ROOT/third_party/lib/libcommon.a -lz
 
 /tmp/h3-fuzz 4000
 ```
@@ -335,7 +335,7 @@ pull-источник выдаёт тело своими порциями, ра�
 
 ```sh
 ROOT=$(pwd)
-FLAGS="-DAWH_IDN -DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
+FLAGS="-DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
 	-I$ROOT/third_party/include/pcre2 -isystem $ROOT/include -pthread -std=gnu++17 \
 	-O1 -g -fsanitize=address,undefined"
 
@@ -343,7 +343,7 @@ c++ $FLAGS -c -o /tmp/h1-parser.o $ROOT/src/proto/http/parser/http1/http.cpp
 c++ $FLAGS -c -o /tmp/h1-fuzz.o $ROOT/tools/fuzz/http1.cpp
 c++ -fsanitize=address,undefined -o /tmp/h1-fuzz /tmp/h1-fuzz.o /tmp/h1-parser.o \
 	$ROOT/build/libawh.a $ROOT/third_party/lib/libdependence.a \
-	$ROOT/third_party/lib/libcommon.a -lz -liconv
+	$ROOT/third_party/lib/libcommon.a -lz
 
 /tmp/h1-fuzz 300000
 ```

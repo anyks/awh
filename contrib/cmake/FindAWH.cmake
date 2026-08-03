@@ -89,11 +89,6 @@ find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${AWH_HEADERS_PATH}/bro
 find_path(OPENSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${AWH_HEADERS_PATH} NO_DEFAULT_PATH)
 find_path(TCMALLOC_INCLUDE_DIR NAMES gperftools/malloc_extension.h PATHS ${AWH_HEADERS_PATH}/tcmalloc NO_DEFAULT_PATH)
 
-# Сборка модуля AWH_IDN, если операционной системой не является Windows
-if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-    find_path(IDN2_INCLUDE_DIR NAMES idn2.h PATHS ${AWH_HEADERS_PATH}/idn2 NO_DEFAULT_PATH)
-    find_path(ICONV_INCLUDE_DIR NAMES iconv.h PATHS ${AWH_HEADERS_PATH}/iconv NO_DEFAULT_PATH)
-endif()
 
 # Если операцинная система относится к MS Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
@@ -145,70 +140,8 @@ endif()
 # Подключаем 'FindPackageHandle' для использования модуля поиска (find_package(<PackageName>))
 include(FindPackageHandleStandardArgs)
 
-# Сборка модуля AWH_IDN, если операционной системой не является Windows
-if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-    # Если активирован режим отладки
-    if (CMAKE_AWH_BUILD_DEBUG)
-        # Выполняем проверку на существование зависимостей
-        find_package_handle_standard_args(AWH REQUIRED_VARS
-            DEPEND_LIBRARY
-            AWH_LIBRARY
-            LZ4_INCLUDE_DIR
-            BZ2_INCLUDE_DIR
-            ZSTD_INCLUDE_DIR
-            LZMA_INCLUDE_DIR
-            ZLIB_INCLUDE_DIR
-            BROTLI_INCLUDE_ENCODE_DIR
-            BROTLI_INCLUDE_DECODE_DIR
-            AWH_INCLUDE_DIR
-            OPENSSL_INCLUDE_DIR
-            IDN2_INCLUDE_DIR
-            ICONV_INCLUDE_DIR
-
-            FAIL_MESSAGE "AWH library is not found"
-        )
-        # Формируем список библиотек
-        SET(AWH_LIBRARIES ${DEPEND_LIBRARY} ${AWH_LIBRARY})
-    # Если режим отладки не активирован
-    else()
-        # Выполняем проверку на существование зависимостей
-        find_package_handle_standard_args(AWH REQUIRED_VARS
-            AWH_LIBRARY
-            LZ4_INCLUDE_DIR
-            BZ2_INCLUDE_DIR
-            ZSTD_INCLUDE_DIR
-            LZMA_INCLUDE_DIR
-            ZLIB_INCLUDE_DIR
-            BROTLI_INCLUDE_ENCODE_DIR
-            BROTLI_INCLUDE_DECODE_DIR
-            AWH_INCLUDE_DIR
-            OPENSSL_INCLUDE_DIR
-            IDN2_INCLUDE_DIR
-            ICONV_INCLUDE_DIR
-
-            FAIL_MESSAGE "AWH library is not found"
-        )
-        # Формируем список библиотек
-        SET(AWH_LIBRARIES ${AWH_LIBRARY})
-    endif()
-    # Формируем список заголовочных файлов
-    SET(AWH_INCLUDE_DIRS
-        ${LZ4_INCLUDE_DIR}
-        ${BZ2_INCLUDE_DIR}
-        ${ZSTD_INCLUDE_DIR}
-        ${LZMA_INCLUDE_DIR}
-        ${ZLIB_INCLUDE_DIR}
-        ${BROTLI_INCLUDE_ENCODE_DIR}
-        ${AWH_INCLUDE_DIR}
-        ${OPENSSL_INCLUDE_DIR}
-        ${IDN2_INCLUDE_DIR}
-        ${ICONV_INCLUDE_DIR}
-    )
-    # Выполняем установку указанного списка заголовочных файлов зависимостей
-    install(DIRECTORY "${IDN2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-    install(DIRECTORY "${ICONV_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 # Если операцинная система относится к MS Windows
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Если активирован режим отладки
     if (CMAKE_AWH_BUILD_DEBUG)
         # Выполняем проверку на существование зависимостей

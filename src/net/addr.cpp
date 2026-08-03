@@ -35,7 +35,7 @@
  * порядок байтов машины. Проверка их наличием давала обратный порядок на машине
  * с прямым - на этом уже попался модуль хэширования
  */
-#elif defined(_BYTE_ORDER) && defined(_LITTLE_ENDIAN) && (_BYTE_ORDER == _LITTLE_ENDIAN)
+#elif _BYTE_ORDER && _LITTLE_ENDIAN && (_BYTE_ORDER == _LITTLE_ENDIAN)
 	/**
 	 * Включаем макрос поддержки Little Endian
 	 */
@@ -43,7 +43,7 @@
 /**
  * Если мы используем порядок байтов Big Endian
  */
-#elif (defined(_BYTE_ORDER) && defined(_BIG_ENDIAN) && (_BYTE_ORDER == _BIG_ENDIAN)) || (defined(__BIG_ENDIAN__) && !defined(__LITTLE_ENDIAN__))
+#elif (_BYTE_ORDER && _BIG_ENDIAN && (_BYTE_ORDER == _BIG_ENDIAN)) || (__BIG_ENDIAN__ && !__LITTLE_ENDIAN__)
 	/**
 	 * Отключаем макрос поддержки Little Endian
 	 */
@@ -74,6 +74,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <cstdlib>
 #include <algorithm>
 
 /**
@@ -81,6 +82,44 @@
  */
 #include <net/addr.hpp>
 #include <sys/ascii.hpp>
+
+/**
+ * Системные заголовочные файлы для перевода зоны адреса IPv6
+ *
+ * @details Система требует зону номером устройства, а запись адреса несёт название,
+ *          и перевод в обе стороны выполняют `if_nametoindex` с `if_indextoname`.
+ *          Подключаются они после заголовков проекта: под MS Windows объявлены они в
+ *          составе `iphlpapi`, а тому требуется, чтобы `winsock2` был подключён
+ *          прежде, - его и подключает заголовок сетевых структур
+ *
+ * @note Под MS Windows названием устройства служит не привычное `en0`, а строка вида
+ *       `{GUID}`, и записывают зону там обыкновенно самим номером. Разбор это
+ *       учитывает: не распознав названия, он читает зону числом
+ *
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Подключаем заголовочный файл для перевода названия устройства в его номер
+	 */
+	#include <iphlpapi.h>
+	/**
+	 * Если размер буфера названия устройства не объявлен системой
+	 */
+	#ifndef IF_NAMESIZE
+		/**
+		 * Макрос размера буфера названия устройства
+		 */
+		#define IF_NAMESIZE 256
+	#endif
+/**
+ * Если мы используем систему Unix-подобную
+ */
+#else
+	/**
+	 * Подключаем заголовочный файл для перевода названия устройства в его номер
+	 */
+	#include <net/if.h>
+#endif
 
 /**
  * Используем стандартное пространство имён
@@ -2550,6 +2589,30 @@ unique_ptr <awh::net::addr_t> awh::Network_Address::source(const endian_t endian
 						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (result.get())->address[0], &this->_buffer[0], this->_buffer.size());
 					break;
 				}
+				/**
+				 * Зона адреса переносится в структуру номером устройства
+				 *
+				 * @details Это единственное место, где запись адреса обращается в
+				 *          структуру, и потому единственное, где зону следует
+				 *          переносить: все прочие получают её отсюда даром. Система
+				 *          требует зону номером устройства, и перевод названия в номер
+				 *          выполняется здесь однажды, а не при каждой отправке
+				 *
+				 * @note Зона может быть записана и самим номером - тогда он берётся как
+				 *       есть. Название неизвестного устройства даёт ноль, что равносильно
+				 *       отсутствию зоны: выдумывать номер неоткуда
+				 *
+				 */
+				if(!this->_zone.empty()){
+					// Выполняем перевод названия устройства зоны в его номер
+					uint32_t zone = ::if_nametoindex(this->_zone.c_str());
+					// Если название устройства не распознано, пробуем прочесть зону номером
+					if(zone == 0)
+						// Выполняем чтение зоны адреса записанной номером устройства
+						zone = static_cast <uint32_t> (::strtoul(this->_zone.c_str(), nullptr, 10));
+					// Устанавливаем номер устройства зоны адреса
+					awh_cast <net::addr_net_ipv6_t *> (result.get())->zone = zone;
+				}
 			} break;
 		}
 	/**
@@ -2655,6 +2718,29 @@ void awh::Network_Address::source(const net::addr_t * value, const endian_t endi
 						::memcpy(&this->_buffer[0], &awh_cast <const net::addr_net_ipv6_t *> (value)->address[0], 16);
 					break;
 				}
+			/**
+			 * Зона адреса восстанавливается из номера устройства названием
+			 *
+			 * @details Обратный ход к переносу зоны в структуру: без него запись адреса,
+			 *          собранная из структуры, лишалась бы зоны, хотя структура её несёт.
+			 *          Печать такого адреса выходила бы неполной, а разбор её обратно -
+			 *          неоднозначным
+			 *
+			 * @note Устройство с таким номером могло исчезнуть из системы, покуда адрес
+			 *       лежал в структуре. Тогда зона записывается самим номером: он всё ещё
+			 *       говорит больше, чем ничего
+			 *
+			 */
+			if(awh_cast <const net::addr_net_ipv6_t *> (value)->zone > 0){
+				// Буфер названия устройства зоны адреса
+				char zone[IF_NAMESIZE];
+				// Выполняем перевод номера устройства зоны в его название
+				if(::if_indextoname(awh_cast <const net::addr_net_ipv6_t *> (value)->zone, zone) != nullptr)
+					// Устанавливаем название устройства зоны адреса
+					this->_zone = zone;
+				// Если устройства с таким номером в системе больше нет, записываем зону номером
+				else this->_zone = ::to_string(awh_cast <const net::addr_net_ipv6_t *> (value)->zone);
+			}
 			} break;
 		}
 	/**
@@ -3830,9 +3916,9 @@ namespace {
 	 * @return        таблица особых сетей
 	 *
 	 */
-	std::vector <special_t> buildSpecials(const std::vector <special_source_t> & sources, const awh::net_addr_t::type_t family, const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
+	vector <special_t> buildSpecials(const vector <special_source_t> & sources, const awh::net_addr_t::type_t family, const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
 		// Таблица особых сетей
-		std::vector <special_t> result;
+		vector <special_t> result;
 		// Резервируем память под таблицу особых сетей
 		result.reserve(sources.size());
 		// Объект разбора адресов особых сетей
@@ -3853,7 +3939,7 @@ namespace {
 			// Если адрес принадлежит семейству IPv6
 			} else {
 				// Снимаем адрес IPv6 в том порядке байт, в каком он лежит в буфере
-				const std::array <uint8_t, 16> value = addr.v6(awh::net_addr_t::endian_t::LITTLE);
+				const array <uint8_t, 16> value = addr.v6(awh::net_addr_t::endian_t::LITTLE);
 				// Переносим октеты адреса в приёмник
 				::memcpy(target, &value[0], 16);
 			}
@@ -3905,9 +3991,9 @@ namespace {
 	 *       на умных указателях - на каждое определение принадлежности адреса
 	 *
 	 */
-	const std::vector <special_t> & specials(const awh::net_addr_t::type_t family, const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
+	const vector <special_t> & specials(const awh::net_addr_t::type_t family, const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
 		// Таблица особых сетей IPv4, заводится при первом обращении
-		static const std::vector <special_t> ipv4 = ::buildSpecials({
+		static const vector <special_t> ipv4 = ::buildSpecials({
 			// Сеть 0.0.0.0/8
 			{"0.0.0.0", "", 8, true},
 			// Сеть 0.0.0.0/32
@@ -3964,7 +4050,7 @@ namespace {
 			{"203.0.113.0", "", 24, true},
 		}, awh::net_addr_t::type_t::IPV4, fmk, log);
 		// Таблица особых сетей IPv6, заводится при первом обращении
-		static const std::vector <special_t> ipv6 = ::buildSpecials({
+		static const vector <special_t> ipv6 = ::buildSpecials({
 			// Сеть ::/128
 			{"::", "", 128, true},
 			// Сеть ::1/128
@@ -3987,7 +4073,7 @@ namespace {
 			{"ff00::", "", 8, true},
 		}, awh::net_addr_t::type_t::IPV6, fmk, log);
 		// Пустая таблица, отдаётся для семейств, особых сетей не имеющих
-		static const std::vector <special_t> none;
+		static const vector <special_t> none;
 		// Выводим таблицу, отвечающую запрошенному семейству адресов
 		return ((family == awh::net_addr_t::type_t::IPV4) ? ipv4 : ((family == awh::net_addr_t::type_t::IPV6) ? ipv6 : none));
 	}

@@ -57,14 +57,6 @@ if (APPLE)
     endif()
 endif()
 
-# Сборка модуля AWH_IDN
-if (CMAKE_BUILD_IDN)
-    add_compile_definitions(AWH_IDN)
-    message(STATUS "Build with IDN: YES\n")
-# Сборка модуля AWH_IDN не требуется
-else (CMAKE_BUILD_IDN)
-    message(STATUS "Build with IDN: NO\n")
-endif (CMAKE_BUILD_IDN)
 
 # Если активирован флаг оптимизации операционной системы
 if (CMAKE_BOOSTING_NET)
@@ -500,14 +492,6 @@ if (Dependence_FOUND)
     message(STATUS "BoringSSL include dir found: " ${BORINGSSL_INCLUDE_DIR})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
 
-    # Если операцинная система не относится к MS Windows
-    if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        # Сборка модуля AWH_IDN
-        if (CMAKE_BUILD_IDN)
-            message(STATUS "IDN2 include dir found: " ${IDN2_INCLUDE_DIR})
-            message(STATUS "ICONV include dir found: " ${ICONV_INCLUDE_DIR})
-        endif()
-    endif()
 else (Dependence_FOUND)
     message(FATAL_ERROR "Dependence not found")
 endif (Dependence_FOUND)
@@ -605,6 +589,10 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/unicode/table.cpp"
     "${CMAKE_SOURCE_DIR}/src/unicode/unicode.cpp"
     "${CMAKE_SOURCE_DIR}/src/unicode/normalize.cpp"
+    "${CMAKE_SOURCE_DIR}/src/idna/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/idna/punycode.cpp"
+    "${CMAKE_SOURCE_DIR}/src/idna/context.cpp"
+    "${CMAKE_SOURCE_DIR}/src/idna/idna.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/text.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/parser.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/compiler.cpp"

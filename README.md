@@ -129,7 +129,6 @@ $ mkdir ./build
 $ cd ./build
 
 $ cmake \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SHARED_BUILD_LIB=YES \
  ..
@@ -144,7 +143,6 @@ $ mkdir ./build
 $ cd ./build
 
 $ cmake \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TESTS=YES \
  -DCMAKE_BUILD_TYPE=Release \
  ..
@@ -329,7 +327,6 @@ $ cd ./build
 
 $ cmake \
  -G "MSYS Makefiles" \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SYSTEM_NAME=Windows \
  -DCMAKE_SHARED_BUILD_LIB=YES \
@@ -442,7 +439,6 @@ $ mkdir ./build
 $ cd ./build
 
 $ cmake \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SHARED_LIB_AWH=YES \
  ..
@@ -458,7 +454,6 @@ $ cd ./build
 
 $ cmake \
  -G "MSYS Makefiles" \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SYSTEM_NAME=Windows \
  -DCMAKE_SHARED_LIB_AWH=YES \

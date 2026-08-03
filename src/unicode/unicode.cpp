@@ -429,6 +429,25 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 	return grouped(general(code), id);
 }
 /**
+ * @brief Функция извлечения класса двунаправленности символа
+ *
+ * @param code кодовое значение символа
+ * @return     идентификатор класса двунаправленности символа
+ *
+ */
+uint16_t awh::unicode::bidirectional(const uint32_t code) noexcept {
+	// Выполняем поиск диапазона, содержащего кодовое значение символа
+	const size_t index = search(BIDIRECTIONAL, BIDIRECTIONAL_COUNT, code, 0, BIDIRECTIONAL_COUNT);
+	/**
+	 * Если диапазон, содержащий кодовое значение, обнаружен
+	 */
+	if(index < BIDIRECTIONAL_COUNT)
+		// Выводим идентификатор класса двунаправленности символа
+		return static_cast <uint16_t> (BIDI_BASE + BIDIRECTIONAL[index].value);
+	// Выводим отсутствие класса двунаправленности символа
+	return static_cast <uint16_t> (property_id_t::UNKNOWN);
+}
+/**
  * @brief Функция простого приведения регистра символа
  *
  * @param code кодовое значение приводимого символа

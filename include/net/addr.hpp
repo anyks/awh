@@ -31,7 +31,6 @@
 #include <memory>
 #include <cstdint>
 #include <iostream>
-#include <unordered_map>
 
 /**
  * Подключаем заголовочные файлы проекта

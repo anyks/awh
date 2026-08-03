@@ -37,7 +37,6 @@ cd $BUILD_DIR || exit 1
 
 # Выполняем сборку приложения
 cmake \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SHARED_BUILD_LIB=YES \
  .. || exit 1
@@ -55,7 +54,6 @@ rm -rf $BUILD_DIR/*
 
 # Выполняем сборку приложения
 cmake \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  .. || exit 1
 

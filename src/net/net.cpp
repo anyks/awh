@@ -63,7 +63,7 @@ awh::net::Address_Network_IPv4::Address_Network_IPv4() noexcept :
  *
  */
 awh::net::Address_Network_IPv6::Address_Network_IPv6() noexcept :
- addr_net_t(128, 16), address{0} {}
+ addr_net_t(128, 16), zone(0), address{0} {}
 
 /**
  * @brief Конструктор

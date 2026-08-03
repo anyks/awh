@@ -39,16 +39,7 @@
  */
 #include <sys/ascii.hpp>
 #include <units/dns.hpp>
-
-/**
- * Если используется модуль IDN и операционная система не MS Windows
- */
-#if AWH_IDN && !_WIN32 && !_WIN64
-	/**
-	 * Заголовочный файл для работы с IDN
-	 */
-	#include <idn2.h>
-#endif
+#include <idna/idna.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -3255,63 +3246,28 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 	try {
 		// Если доменное имя передано
 		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
+			// Код ошибки приведения доменного имени
+			idna::error_t error = idna::error_t::NONE;
 			/**
-			 * Для операционной системы MS Windows
+			 * Если привести доменное имя к записи из символов набора ASCII не вышло
 			 */
-			#if _WIN32 || _WIN64
-				// Результирующий буфер данных
-				wchar_t buffer[0xFF];
-				// Выполняем кодирование доменного имени
-				if(::IdnToAscii(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0){
-					// Создаём буфер сообщения ошибки
-					wchar_t message[0xFF] = {0};
-					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::convert(message).c_str());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
-					#endif
-				// Получаем результат кодирования
-				} else result = this->_fmk->convert(wstring{buffer});
-			/**
-			 * Для операционной системы не являющейся MS Windows
-			 */
-			#elif AWH_IDN
-				// Результирующий буфер данных
-				char * buffer = nullptr;
-				// Выполняем кодирования доменного имени
-				const int32_t rc = ::idn2_to_ascii_8z(domain.data(), &buffer, IDN2_NONTRANSITIONAL);
-				// Если кодирование не выполнено
-				if(rc != IDNA_SUCCESS){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
-					#endif
-				// Получаем результат кодирования
-				} else result = buffer;
-				// Если память была выделена
-				if(buffer != nullptr)
-					// Очищаем буфер данных
-					::free(buffer);
-			#endif
+			if(!idna::toAscii(domain, result, error)){
+				// Выполняем очистку результата приведения
+				result.clear();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, string{idna::message(error)}.c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::CRITICAL, string{idna::message(error)}.c_str());
+				#endif
+			}
 		}
 	/**
 	 * Если возникает ошибка
@@ -3350,63 +3306,28 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 	try {
 		// Если доменное имя передано
 		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
+			// Код ошибки приведения доменного имени
+			idna::error_t error = idna::error_t::NONE;
 			/**
-			 * Для операционной системы MS Windows
+			 * Если привести доменное имя к записи Юникода не вышло
 			 */
-			#if _WIN32 || _WIN64
-				// Результирующий буфер данных
-				wchar_t buffer[0xFF];
-				// Выполняем кодирования доменного имени
-				if(::IdnToUnicode(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0){
-					// Создаём буфер сообщения ошибки
-					wchar_t message[0xFF] = {0};
-					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::convert(message).c_str());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
-					#endif
-				// Получаем результат кодирования
-				} else result = this->_fmk->convert(wstring{buffer});
-			/**
-			 * Для операционной системы не являющейся MS Windows
-			 */
-			#elif AWH_IDN
-				// Результирующий буфер данных
-				char * buffer = nullptr;
-				// Выполняем декодирование доменного имени
-				const int32_t rc = ::idn2_to_unicode_8z8z(domain.data(), &buffer, 0);
-				// Если кодирование не выполнено
-				if(rc != IDNA_SUCCESS){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
-					#endif
-				// Получаем результат декодирования
-				} else result = buffer;
-				// Если память была выделена
-				if(buffer != nullptr)
-					// Очищаем буфер данных
-					::free(buffer);
-			#endif
+			if(!idna::toUnicode(domain, result, error)){
+				// Выполняем очистку результата приведения
+				result.clear();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, string{idna::message(error)}.c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::CRITICAL, string{idna::message(error)}.c_str());
+				#endif
+			}
 		}
 	/**
 	 * Если возникает ошибка

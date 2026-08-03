@@ -84,7 +84,7 @@ else
 fi
 
 # Флаги сборки стендов с санитайзерами
-readonly FLAGS="-DAWH_IDN -DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
+readonly FLAGS="-DAWH_STATICLIB -I$ROOT/contrib/include -I$ROOT/third_party/include \
 	-I$ROOT/third_party/include/pcre2 -I$ROOT/include $NGHTTP3_INCLUDE \
 	-pthread -std=gnu++17 -O1 -g -fsanitize=address,undefined -Wno-reserved-user-defined-literal"
 
@@ -96,7 +96,7 @@ else
 fi
 
 # Библиотеки для сборки стендов
-readonly LIBS="$ROOT/third_party/lib/libdependence.a $ROOT/third_party/lib/libcommon.a -lz -liconv $SYSTEM"
+readonly LIBS="$ROOT/third_party/lib/libdependence.a $ROOT/third_party/lib/libcommon.a -lz $SYSTEM"
 
 # Объектные файлы модуля, собранные с санитайзерами
 readonly OBJECTS="$WORK/h3-http.o $WORK/h3-qpack.o $WORK/h3-frame.o $WORK/h3-h3.o"
