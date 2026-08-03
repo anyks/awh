@@ -322,7 +322,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем адреса событий файловой системы
 	if(fs.setAddress(did, "../tmp") && fs.setAddress(fid, "../README2.md")){
 		// Устананавливаем опции события
-		if(fs.setOptions(fid, event::options::AUTO_RECONNECT))
+		if(fs.setOptions(fid, event::options::AUTO_FOLLOW))
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Записываем ошибку в лог установки опций события

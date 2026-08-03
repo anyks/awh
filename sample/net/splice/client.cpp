@@ -1548,7 +1548,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Выполняем фиксацию настроек события сервера
 					if(io.commit(fid)){
 						// Устананавливаем опции события
-						if(io.setOptions(fid, event::options::AUTO_RECONNECT))
+						if(io.setOptions(fid, event::options::AUTO_FOLLOW))
 							// Записываем в лог сообщение об успешной установке опций события
 							cout << " Успешно установлены опции события!" << endl;
 						// Записываем ошибку в лог установки опций события

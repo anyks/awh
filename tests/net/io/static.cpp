@@ -5559,7 +5559,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 				// Выполняем фиксацию события файла
 				ASSERT_TRUE(this->_io->commit(fid));
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::AUTO_RECONNECT));
+				ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::AUTO_FOLLOW));
 			}
 		}));
 		// Устанавливаем функцию обратного вызова на общее событие
@@ -6255,7 +6255,7 @@ TEST_F(IoFixture, IoFsTest){
 		// Выполняем фиксацию настроек события файла
 		ASSERT_TRUE(this->_io->commit(fid));
 		// Устанавливаем опции события
-		ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::AUTO_RECONNECT));
+		ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::AUTO_FOLLOW));
 		// Запускаем событие файла
 		ASSERT_TRUE(this->_io->launch(fid));
 	}
