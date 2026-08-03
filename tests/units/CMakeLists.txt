@@ -94,6 +94,7 @@ if (${GTest_FOUND})
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 dns/dns.cpp
                 dns/late.cpp
+                dns/ntp.cpp
             )
         # Если не нужно собрать тесты для модуля DNS-резолвера
         else()

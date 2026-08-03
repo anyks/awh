@@ -545,6 +545,20 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const even
  * @param size размер данных события чтения ICMP-ответа
  *
  */
+/**
+ * @brief Метод продолжения ожидания своего ответа
+ *
+ * @param eid идентификатор события чтения ICMP-ответа
+ *
+ */
+void awh::unit::ICMP::keepWaiting(const event::id_t eid) noexcept {
+	// Если ответ удалённого сервера не ожидается, продолжать нечего
+	if(!this->_transfer.waiting)
+		// Выходим из функции
+		return;
+	// Выполняем продолжение прерванного чужим пакетом ожидания
+	this->_io->rearmTimeout(eid, event::action_t::READ);
+}
 void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size) noexcept {
 	/**
 	 * Выполняем перехват ошибок
@@ -569,8 +583,8 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 				case 4: {
 					// Если размер данных меньше размера заголовка IP
 					if(size < sizeof(struct ip))
-						// Выходим из функции
-						return;
+						// Ответ не наш - продолжаем ожидание своего
+						return this->keepWaiting(eid);
 					// Приводим данные к структуре IP-заголовка
 					const struct ip * iph = reinterpret_cast <const struct ip *> (data);
 					// Извлекаем длину IP-заголовка
@@ -613,8 +627,8 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 					#pragma pack(pop)
 					// Если размер данных меньше размера заголовка IP
 					if(size < 40)
-						// Выходим из функции
-						return;
+						// Ответ не наш - продолжаем ожидание своего
+						return this->keepWaiting(eid);
 					// Приводим данные к структуре IP-заголовка
 					const struct ip6_hdr_min * ip6h = reinterpret_cast <const struct ip6_hdr_min *> (data);
 					// Начальная длина IPv6-заголовка
@@ -645,16 +659,16 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 							case IPPROTO_DSTOPTS: {
 								// Проверяем, что в буфере есть минимум поле Next Header и Hdr Ext Len
 								if(size < (length + 2))
-									// Выходим из функции
-									return;
+									// Ответ не наш - продолжаем ожидание своего
+									return this->keepWaiting(eid);
 								// Извлекаем длину extension header из поля Hdr Ext Len
 								const uint8_t hdrLen = data[length + 1];
 								// Рассчитываем фактическую длину extension header в байтах
 								const size_t extLen = (static_cast <size_t> (hdrLen) + 1) * 8;
 								// Проверяем корректность длины и границы буфера
 								if((extLen < 8) || (size < (length + extLen)))
-									// Выходим из функции
-									return;
+									// Ответ не наш - продолжаем ожидание своего
+									return this->keepWaiting(eid);
 								// Переходим к следующему заголовку в цепочке
 								next = data[length];
 								// Увеличиваем длину на размер текущего extension header
@@ -664,8 +678,8 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 							case IPPROTO_FRAGMENT: {
 								// Проверяем, что в буфере помещается весь Fragment Header
 								if(size < (length + 8))
-									// Выходим из функции
-									return;
+									// Ответ не наш - продолжаем ожидание своего
+									return this->keepWaiting(eid);
 								// Переходим к следующему заголовку в цепочке
 								next = data[length];
 								// Увеличиваем длину на размер Fragment Header
@@ -675,16 +689,16 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 							case IPPROTO_AH: {
 								// Проверяем, что в буфере есть минимум поле Next Header и Payload Len
 								if(size < (length + 2))
-									// Выходим из функции
-									return;
+									// Ответ не наш - продолжаем ожидание своего
+									return this->keepWaiting(eid);
 								// Извлекаем длину AH из поля Payload Len
 								const uint8_t hdrLen = data[length + 1];
 								// Рассчитываем фактическую длину AH в байтах
 								const size_t extLen = (static_cast <size_t> (hdrLen) + 2) * 4;
 								// Проверяем корректность длины и границы буфера
 								if((extLen < 8) || (size < (length + extLen)))
-									// Выходим из функции
-									return;
+									// Ответ не наш - продолжаем ожидание своего
+									return this->keepWaiting(eid);
 								// Переходим к следующему заголовку в цепочке
 								next = data[length];
 								// Увеличиваем длину на размер AH
@@ -692,8 +706,8 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 							} break;
 							// Неподдерживаемый заголовок в цепочке
 							default:
-								// Выходим из функции
-								return;
+								// Ответ не наш - продолжаем ожидание своего
+								return this->keepWaiting(eid);
 						}
 						// Если ICMPv6-заголовок найден, прекращаем разбор extension headers
 						if(hasIcmpv6)
@@ -702,8 +716,8 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 					}
 					// Если ICMPv6-заголовок не найден или буфер слишком мал, завершаем обработку
 					if(!hasIcmpv6 || (size < (length + 8)))
-						// Выходим из функции
-						return;
+						// Ответ не наш - продолжаем ожидание своего
+						return this->keepWaiting(eid);
 					// Приводим данные к структуре ICMP-заголовка
 					icmp = reinterpret_cast <const header_t *> (data + length);
 					// Выполняем инициализацию объекта IP-адреса
@@ -722,33 +736,33 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 						// Извлекаем TTL/Hop Limit последнего принятого пакета
 						timeToLive = static_cast <uint32_t> (this->_io->getCountHops(eid));
 					// Если размер данных меньше размера заголовка ICMP
-					} else return;
+					} else return this->keepWaiting(eid);
 				}
 			}
 			// Если ICMP-заголовок не найден
 			if(icmp == nullptr)
-				// Выходим из функции
-				return;
+				// Ответ не наш - продолжаем ожидание своего
+				return this->keepWaiting(eid);
 			// Получаем семейство IP-адресов текущего события ICMP-клиента
 			const event::family_t family = this->_io->family(eid);
 			// Ожидаемый тип ICMP Echo Reply
 			const uint8_t replyType = (static_cast <uint8_t> (family) == static_cast <uint8_t> (event::family_t::IPV6) ? 129 : 0);
 			// Если ответ пришёл вне активной ICMP-сессии
 			if(!this->_transfer.waiting)
-				// Выходим из функции
-				return;
+				// Ответ не наш - продолжаем ожидание своего
+				return this->keepWaiting(eid);
 			// Если пакет не является корректным ICMP Echo Reply
 			if((icmp->type != replyType) || (icmp->code != 0))
-				// Выходим из функции
-				return;
+				// Ответ не наш - продолжаем ожидание своего
+				return this->keepWaiting(eid);
 			// Извлекаем идентификатор запроса
 			const id_t id = ntohs(icmp->meta.echo.identifier);
 			// Извлекаем номер последовательности запроса
 			const uint16_t sequence = ntohs(icmp->meta.echo.sequence);
 			// Если идентификатор или последовательность не совпадают с активным запросом
 			if((id != this->_transfer.id) || (sequence != this->_transfer.sequence))
-				// Выходим из функции
-				return;
+				// Ответ не наш - продолжаем ожидание своего
+				return this->keepWaiting(eid);
 			// Получаем метаданные последнего принятого дейтаграммного пакета
 			const net::dgram_info_t & info = this->_io->getTrafficInfo(eid);
 			// Если TTL/Hop Limit не удалось извлечь из IP-заголовка

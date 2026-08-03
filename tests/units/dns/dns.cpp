@@ -48,6 +48,24 @@ static constexpr uint8_t STUB_ADDRESS[4] = {192, 0, 2, 77};
 static constexpr size_t DNS_HEADER_SIZE = 12;
 
 /**
+ * @brief Размер сообщения NTP в октетах
+ *
+ */
+static constexpr size_t NTP_PACKET_SIZE = 48;
+
+/**
+ * @brief Смещение исходной метки времени в сообщении NTP
+ *
+ */
+static constexpr size_t NTP_ORIGINATE_OFFSET = 24;
+
+/**
+ * @brief Смещение метки отправки в сообщении NTP
+ *
+ */
+static constexpr size_t NTP_TRANSMIT_OFFSET = 40;
+
+/**
  * @brief Конструктор
  *
  */
@@ -321,4 +339,184 @@ void DNSUnitFixture::setup(awh::unit::dns_t & dns, const DNSStubServer & server,
 	dns.setServers(awh::event::family_t::IPV4, {"127.0.0.1"});
 	// Устанавливаем число попыток обращения к серверу имён
 	dns.setAttempts(count);
+}
+
+/**
+ * @brief Конструктор
+ *
+ */
+NTPStubServer::NTPStubServer() noexcept :
+ _fd(-1), _port(0), _foreign(false), _running(false), _received(0) {}
+
+/**
+ * @brief Деструктор
+ *
+ */
+NTPStubServer::~NTPStubServer() noexcept {
+	// Выполняем остановку сервера
+	this->stop();
+}
+
+/**
+ * @brief Метод получения порта, на котором сервер принимает вопросы
+ *
+ * @return порт сервера
+ *
+ */
+uint16_t NTPStubServer::port() const noexcept {
+	// Выводим порт сервера
+	return this->_port;
+}
+
+/**
+ * @brief Метод получения числа принятых сервером вопросов
+ *
+ * @return число принятых вопросов
+ *
+ */
+uint32_t NTPStubServer::received() const noexcept {
+	// Выводим число принятых вопросов
+	return this->_received.load();
+}
+
+/**
+ * @brief Метод запуска сервера
+ *
+ * @param foreign признак того, что метку вопроса в ответ переписывать не следует
+ * @return        результат запуска сервера
+ *
+ */
+bool NTPStubServer::start(const bool foreign) noexcept {
+	// Запоминаем признак того, что метку переписывать не следует
+	this->_foreign = foreign;
+	// Выполняем создание дейтаграммного сокета
+	this->_fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+	// Если сокет создать не удалось
+	if(this->_fd < 0)
+		// Выводим отрицательный результат запуска сервера
+		return false;
+	// Адрес, на котором сервер принимает вопросы
+	struct sockaddr_in addr{};
+	// Устанавливаем семейство адреса
+	addr.sin_family = AF_INET;
+	// Устанавливаем адрес устройства петли
+	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	// Порт выбирается системой
+	addr.sin_port = 0;
+	// Выполняем привязку сокета к адресу
+	if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&addr), sizeof(addr)) < 0){
+		// Выполняем закрытие сокета
+		::close(this->_fd);
+		// Сбрасываем дескриптор сокета
+		this->_fd = -1;
+		// Выводим отрицательный результат запуска сервера
+		return false;
+	}
+	// Размер адреса, на котором сервер принимает вопросы
+	socklen_t length = sizeof(addr);
+	// Выполняем получение выбранного системой порта
+	if(::getsockname(this->_fd, reinterpret_cast <struct sockaddr *> (&addr), &length) < 0){
+		// Выполняем закрытие сокета
+		::close(this->_fd);
+		// Сбрасываем дескриптор сокета
+		this->_fd = -1;
+		// Выводим отрицательный результат запуска сервера
+		return false;
+	}
+	// Запоминаем выбранный системой порт
+	this->_port = ntohs(addr.sin_port);
+	// Выставляем признак работы нити сервера
+	this->_running.store(true);
+	// Выполняем запуск нити приёма вопросов
+	this->_thread = std::thread(&NTPStubServer::run, this);
+	// Выводим положительный результат запуска сервера
+	return true;
+}
+
+/**
+ * @brief Метод остановки сервера
+ *
+ */
+void NTPStubServer::stop() noexcept {
+	// Если сервер уже остановлен, выходим
+	if(!this->_running.load() && !this->_thread.joinable())
+		// Выходим из функции
+		return;
+	// Снимаем признак работы нити сервера
+	this->_running.store(false);
+	// Если сокет заведён, выполняем его закрытие
+	if(this->_fd >= 0){
+		// Выполняем закрытие сокета
+		::close(this->_fd);
+		// Сбрасываем дескриптор сокета
+		this->_fd = -1;
+	}
+	// Если нить сервера ещё работает
+	if(this->_thread.joinable())
+		// Выполняем ожидание завершения нити сервера
+		this->_thread.join();
+}
+
+/**
+ * @brief Метод приёма вопросов и выдачи ответов
+ *
+ */
+void NTPStubServer::run() noexcept {
+	// Принимаемое сообщение
+	uint8_t buffer[128];
+	// Адрес, с которого пришёл вопрос
+	struct sockaddr_in from{};
+	/**
+	 * Выполняем приём вопросов, пока сервер работает
+	 */
+	while(this->_running.load()){
+		// Размер адреса, с которого пришёл вопрос
+		socklen_t length = sizeof(from);
+		// Выполняем приём вопроса
+		const ssize_t size = ::recvfrom(this->_fd, buffer, sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&from), &length);
+		// Если принято меньше целого сообщения, продолжаем работу
+		if(size < static_cast <ssize_t> (NTP_PACKET_SIZE))
+			// Переходим к следующему кругу приёма
+			continue;
+		// Выполняем подсчёт принятых вопросов
+		this->_received.fetch_add(1);
+		// Собираемый ответ
+		uint8_t answer[NTP_PACKET_SIZE] = {0};
+		/**
+		 * Выставляем признаки ответа
+		 *
+		 * @note Старшие разряды несут версию протокола, младшие - режим, и режим
+		 *       серверного ответа договором задан четвёртым
+		 */
+		answer[0] = 0x24;
+		// Выставляем уровень страты часов сервера
+		answer[1] = 0x02;
+		/**
+		 * Переписываем в ответ метку отправки из вопроса
+		 *
+		 * @note Метка эта и есть примета своего ответа: клиент сличает её с той, что
+		 *       ставил в вопрос. Не перепиши её сервер, и ответ клиенту чужой
+		 */
+		if(!this->_foreign){
+			/**
+			 * Выполняем перенос метки отправки вопроса в исходную метку ответа
+			 */
+			for(size_t i = 0; i < 8; i++)
+				// Переносим очередной октет метки
+				answer[NTP_ORIGINATE_OFFSET + i] = buffer[NTP_TRANSMIT_OFFSET + i];
+		}
+		/**
+		 * Выставляем метку отправки ответа
+		 *
+		 * @note Отсчёт времени договором ведётся от тысяча девятисотого года, и
+		 *       клиент отвергает метки, лежащие раньше эпохи Unix. Берётся заведомо
+		 *       большее значение: проверяется не само время, а обхождение с ответом
+		 */
+		answer[NTP_TRANSMIT_OFFSET + 0] = 0xE8;
+		answer[NTP_TRANSMIT_OFFSET + 1] = 0x00;
+		answer[NTP_TRANSMIT_OFFSET + 2] = 0x00;
+		answer[NTP_TRANSMIT_OFFSET + 3] = 0x00;
+		// Выполняем отправку ответа
+		::sendto(this->_fd, answer, sizeof(answer), 0, reinterpret_cast <struct sockaddr *> (&from), length);
+	}
 }

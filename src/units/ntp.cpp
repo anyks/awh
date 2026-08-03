@@ -377,17 +377,20 @@ namespace ntp {
 	}
 
 	/**
-	 * @brief Функция проверки корректности NTP-ответа
+	 * @brief Функция проверки принадлежности NTP-ответа заданному вопросу
+	 *
+	 * @details Проверяется здесь одно: наш ли это ответ. Отказ отсюда означает, что
+	 *          пакет пришёл не по нашему вопросу, а значит ожидание не кончилось и
+	 *          обмен обрывать нельзя. Годность самого ответа проверяется отдельно
 	 *
 	 * @param packet   объект пакета NTP-ответа
 	 * @param size     размер полученных данных
-	 * @param version  версия протокола NTP запроса
 	 * @param xmitSec  метка transmit из запроса (сетевой порядок байтов)
 	 * @param xmitFrac дробная часть метки transmit из запроса (сетевой порядок байтов)
 	 * @return         результат проверки
 	 *
 	 */
-	static bool validate(const packet_t * packet, const size_t size, const unit::NTP::version_t version, const uint32_t xmitSec, const uint32_t xmitFrac) noexcept {
+	static bool owned(const packet_t * packet, const size_t size, const uint32_t xmitSec, const uint32_t xmitFrac) noexcept {
 		// Если пакет или его размер некорректны
 		if((packet == nullptr) || (size < sizeof(packet_t)))
 			// Возвращаем отрицательный результат
@@ -396,16 +399,39 @@ namespace ntp {
 		if((packet->mode & 0x07) != 4)
 			// Возвращаем отрицательный результат
 			return false;
+		/**
+		 * Если метка originate ответа не совпадает с меткой transmit запроса
+		 *
+		 * @note Метка эта и есть примета своего ответа: сервер возвращает в ней ту
+		 *       самую метку, что стояла в вопросе, и совпасть у чужого ответа ей
+		 *       неоткуда
+		 */
+		if((packet->origTimeStampSec != xmitSec) || (packet->origTimeStampSecFrac != xmitFrac))
+			// Возвращаем отрицательный результат
+			return false;
+		// Возвращаем положительный результат
+		return true;
+	}
+
+	/**
+	 * @brief Функция проверки годности своего ответа NTP-сервера
+	 *
+	 * @details Проверяется здесь ответ, чья принадлежность уже установлена: годен ли
+	 *          он к употреблению. Отказ отсюда - настоящий отказ обмена, а не повод
+	 *          ждать дальше: ответ пришёл, и ждать больше нечего
+	 *
+	 * @param packet  пакет ответа NTP-сервера
+	 * @param version запрошенная версия протокола
+	 * @return        результат проверки
+	 *
+	 */
+	static bool validate(const packet_t * packet, const unit::NTP::version_t version) noexcept {
 		// Если сервер вернул Kiss-o'-Death
 		if(packet->stratum == 0)
 			// Возвращаем отрицательный результат
 			return false;
 		// Если версия протокола в ответе ниже запрошенной
 		if(((packet->mode >> 3) & 0x07) < static_cast <uint8_t> (version))
-			// Возвращаем отрицательный результат
-			return false;
-		// Если метка originate ответа не совпадает с меткой transmit запроса
-		if((packet->origTimeStampSec != xmitSec) || (packet->origTimeStampSecFrac != xmitFrac))
 			// Возвращаем отрицательный результат
 			return false;
 		// Если время ответа от NTP-сервера меньше эпохи Unix (1970)
@@ -648,7 +674,21 @@ void awh::unit::NTP::error(const event::id_t eid, const event::error_t error, co
  * @param size размер полученных данных
  *
  */
-void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
+/**
+ * @brief Метод продолжения ожидания своего ответа
+ *
+ * @param eid идентификатор события чтения
+ *
+ */
+void awh::unit::NTP::keepWaiting(const event::id_t eid) noexcept {
+	// Если ответ NTP-сервера не ожидается, продолжать нечего
+	if(!this->_transfer.waiting)
+		// Выходим из функции
+		return;
+	// Выполняем продолжение прерванного чужим пакетом ожидания
+	this->_io->rearmTimeout(eid, event::action_t::READ);
+}
+void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -657,6 +697,20 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
 		if(!this->_transfer.waiting)
 			// Завершаем обработку
 			return;
+		/**
+		 * Если данные ответа получены, но ответ этот не наш
+		 *
+		 * @note Признак ожидания при этом **не снимается**: вопрос остаётся заданным, а
+		 *       ожидание продолжается остатком прерванного срока. Сними его здесь, и
+		 *       всякий чужой пакет обрывал бы обмен отказом по вопросу, ответ на который
+		 *       был ещё в пути
+		 */
+		if((data != nullptr) && !::ntp::owned(reinterpret_cast <const ::ntp::packet_t *> (data), size, this->_transfer.origSec, this->_transfer.origFrac)){
+			// Выполняем продолжение прерванного ожидания своего ответа
+			this->keepWaiting(eid);
+			// Завершаем обработку
+			return;
+		}
 		// Снимаем флаг ожидания ответа от NTP-сервера
 		this->_transfer.waiting = false;
 		// Выполняем получение идентификатора функции обратного вызова
@@ -676,7 +730,7 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
 				// Получаем объект пакета ответа
 				const ::ntp::packet_t * packet = reinterpret_cast <const ::ntp::packet_t *> (data);
 				// Если NTP-ответ корректен
-				if(::ntp::validate(packet, size, this->_transfer.version, this->_transfer.origSec, this->_transfer.origFrac))
+				if(::ntp::validate(packet, this->_transfer.version))
 					// Выполняем функцию обратного вызова
 					this->_callback.call <void (const uint64_t)> (fid, ::ntp::timestamp(packet));
 				// Если NTP-ответ некорректен
