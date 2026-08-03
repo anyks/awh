@@ -16458,6 +16458,58 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
  *
  */
 /**
+ * @brief Тест согласия перегрузок запроса адреса на нулевом источнике
+ *
+ * @details Клиент, которому источник явно не задавали, держит нулевой адрес, и означает
+ *          он не устройство, а согласие отдать выбор ядру. Строковая перегрузка это
+ *          понимает и выводит адрес устройства по умолчанию; вторая, отдающая адрес
+ *          готовой строением, копировала источник как есть и возвращала голый ноль
+ *
+ *          Отличить такой ответ от настоящего адреса вызывающему нечем: перегрузка
+ *          отвечает согласием и размером в четыре октета. Договор `PCP` требует класть
+ *          свой адрес внутрь пакета, маршрутизатор сверяет его с адресом отправителя, и
+ *          на нуле любая просьба получала отказ несовпадением адресов
+ *
+ * @note Проверяется именно **согласие** двух перегрузок, а не само значение: какой адрес
+ *       у устройства по умолчанию, знает лишь машина, где идёт проверка, и утверждать
+ *       его наперёд значило бы проверять стенд, а не движок
+ *
+ */
+TEST_F(IoFixture, IoAddressOverloadsAgreeOnUnsetSourceTest){
+	const awh::event::id_t eid = this->_io->event(
+		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+	);
+	ASSERT_GT(eid, 0u);
+	ASSERT_TRUE(this->_io->initialize());
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setTarget(eid, "127.0.0.1"));
+	ASSERT_TRUE(this->_io->setTargetPort(eid, 8080));
+	ASSERT_TRUE(this->_io->commit(eid));
+	// Запрашиваем адрес строкой
+	const std::string text = this->_io->getAddress(eid, awh::event::address_t::IPV4);
+	// Запрашиваем тот же адрес строением
+	std::unique_ptr <awh::net::addr_t> value = nullptr;
+	const bool taken = this->_io->getAddress(eid, awh::event::address_t::IPV4, value);
+	const std::string sign = std::string("строкой=[") + text + "] строением=" + (taken ? "да" : "нет");
+	ASSERT_TRUE(taken) << sign;
+	ASSERT_NE(nullptr, value) << sign;
+	ASSERT_EQ(4u, value->size) << sign;
+	/**
+	 * Источник события не задавали, значит обе перегрузки обязаны вывести адрес
+	 * устройства по умолчанию. Голый ноль означал бы, что вторая перегрузка отдала
+	 * согласие ядру вместо адреса
+	 */
+	ASSERT_NE(0u, awh_cast <awh::net::addr_net_ipv4_t *> (value.get())->address) << sign;
+	// Сличаем ответы обеих перегрузок между собой
+	awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
+	addr.source(value.get(), awh::net_addr_t::endian_t::LITTLE);
+	ASSERT_EQ(text, static_cast <std::string> (addr)) << sign;
+	this->_io->destroy(eid);
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
  * @brief Тест уничтожения события с самостоятельным переподключением по воле вызывающего
  *
  * @details Обрыв связи у события с опцией `AUTO_RECONNECT` разворачивается в подъём, и

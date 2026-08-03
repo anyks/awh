@@ -98,3 +98,44 @@ std::unique_ptr <awh::proto::portmap::upnp_t> PortmapFixture::makeUpnp() const n
 	// Создаём и возвращаем объект кодека действий службы перенаправления UPnP
 	return std::make_unique <awh::proto::portmap::upnp_t> (this->_fmk.get(), this->_log.get());
 }
+/**
+ * @brief Метод записи адреса записью IPv6, отведённой договором PCP
+ *
+ * @param address место под записываемый адрес размером ADDRESS_SIZE
+ * @param value   записываемый адрес видом обычной записи
+ *
+ */
+void PortmapFixture::encodeAddress(uint8_t * address, const std::string & value) const noexcept {
+	// Создаём объект работы с адресами
+	awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
+	// Выполняем разбор записываемого адреса
+	if(!addr.parse(value))
+		// Выходим из записи адреса
+		return;
+	// Получаем адрес записью IPv6, предписанной договором
+	const auto & result = addr.v6(awh::net_addr_t::endian_t::LITTLE);
+	// Выполняем копирование полученного адреса
+	::memcpy(address, result.data(), result.size());
+}
+/**
+ * @brief Метод извлечения адреса IPv4 из записи, отведённой договором PCP
+ *
+ * @param address извлекаемый адрес размером ADDRESS_SIZE
+ * @param value   ссылка на извлечённый адрес IPv4 в порядке октетов машины
+ * @return        признак того, что адрес принадлежит IPv4
+ *
+ */
+bool PortmapFixture::decodeAddress(const uint8_t * address, uint32_t & value) const noexcept {
+	// Извлекаемый адрес
+	std::array <uint8_t, 16> buffer;
+	// Выполняем копирование извлекаемого адреса
+	::memcpy(buffer.data(), address, buffer.size());
+	// Создаём объект работы с адресами
+	awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
+	// Выполняем размещение извлекаемого адреса
+	addr.v6(buffer, awh::net_addr_t::endian_t::LITTLE);
+	// Запоминаем извлечённый адрес IPv4
+	value = addr.v4(awh::net_addr_t::endian_t::BIG);
+	// Выводим признак того, что адрес принадлежит IPv4
+	return (value > 0);
+}

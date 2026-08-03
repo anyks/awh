@@ -2504,6 +2504,61 @@ TEST_F(ParserHttp3Fixture, AnnouncedFieldSectionSizeUnlimited){
 }
 
 /**
+ * @brief Проверка соблюдения объявленного предела секции полей на приёме
+ *
+ * @details Предел задаётся двумя источниками сразу, и ноль в любом из них значит
+ *          "без предела": опора на один лишь maxHeadersTotal оставляла бы нас
+ *          без границы вовсе, стоит потребителю положиться на протокольный предел
+ *
+ */
+TEST_F(ParserHttp3Fixture, AnnouncedFieldSectionSizeEnforced){
+	// Стороны соединения
+	endpoint_t client, server;
+	// Подготавливаем сторону клиента
+	this->setup(client, direct_t::RESPONSE);
+	// Подготавливаем сторону сервера
+	this->setup(server, direct_t::REQUEST);
+	// Получаем лимиты безопасности парсера сервера
+	awh::http::parser_http3_t::limits_t limits = server.parser->limits();
+	// Снимаем настроечный предел, полагаясь на предел протокольный
+	limits.maxHeadersTotal = 0;
+	// Устанавливаем лимиты безопасности парсера сервера
+	server.parser->limits(limits);
+	// Получаем параметры соединения сервера
+	parser_http3_t::settings_t settings = server.parser->settings();
+	// Объявляем предел секции полей заведомо малым
+	settings.maxFieldSectionSize = 512;
+	// Применяем параметры соединения сервера
+	server.parser->settings(settings);
+	// Отправляем параметры соединения со стороны сервера
+	server.parser->sendSettings();
+	/**
+	 * Параметры сервера до клиента не доводятся намеренно: соблюдение предела
+	 * отправителем проверяется отдельно, а здесь проверяется приём. Клиент,
+	 * объявление соблюдающий, до разбираемого кода попросту не дошёл бы
+	 */
+	server.queue.clear();
+	// Отправляем параметры соединения со стороны клиента
+	client.parser->sendSettings();
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Собираем набор полей запроса клиента
+	std::vector <qpack::field_t> fields = this->request("GET", "/");
+	// Добавляем чувствительное поле, чьё значение остаётся в секции целиком
+	fields.emplace_back("authorization", std::string(1024, 'a'));
+	// Отправляем секцию полей запроса
+	client.parser->sendHeaders(0, fields, true);
+	// Выполняем прокачку очередей исходящих данных
+	this->pump(client, server);
+	// Соединение обязано остаться живым
+	ASSERT_TRUE(server.events.errors.empty());
+	// Поток обязан быть оборван
+	ASSERT_FALSE(server.events.aborts.empty());
+	// Код обрыва потока обязан указывать на чрезмерную нагрузку
+	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_EXCESSIVE_LOAD);
+}
+
+/**
  * @brief Проверка сохранности списка обходимых потоков при вложенном разборе
  *
  * @details Обход карты потоков выходит в пользовательские функции обратного

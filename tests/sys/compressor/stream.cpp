@@ -430,6 +430,251 @@ TEST_P(CompressorStreamParameterizedFixture, StreamExplicitFlushTest){
 }
 
 /**
+ * @brief Тест параметризованной проверки существа принудительного выдавливания
+ *
+ * @details Все прежние проверки сброса смотрели лишь на обратимость всего обмена целиком,
+ *          а её обеспечивает финализация: кодер, обративший `flush_t::SYNC` в холостой ход,
+ *          прошёл бы их все до единой. Между тем сброс затем и заведён, чтобы поданное
+ *          дошло до принимающей стороны не дожидаясь конца потока — на том стоит всякий
+ *          обмен сообщениями. Закрепляем именно это: подаём половину данных, выдавливаем
+ *          накопленное и требуем, чтобы распаковка выдала эту половину целиком ещё до
+ *          того, как поток будет завершён
+ *
+ */
+TEST_P(CompressorStreamParameterizedFixture, StreamFlushDeliversBeforeFinishTest){
+	// Формируем тестовые данные
+	const std::string data = makeStreamPayload();
+	// Определяем размер первой половины данных
+	const size_t half = (data.size() / 2);
+	// Буфер выхода порции
+	std::string part = "";
+	// Результат компрессии данных
+	std::string compressed = "";
+	// Создаём потоковую сессию компрессии
+	awh::compressor::stream_t encoder = this->_compressor->stream(this->_parameter.method, awh::compressor::event_t::ENCODE);
+	// Проверяем что поток компрессии валиден
+	ASSERT_TRUE(encoder.valid()) << "Method: " << this->_parameter.name;
+	// Подаём первую половину данных в поток компрессии
+	encoder.push(data.data(), half, part);
+	// Дописываем полученный выход в результат компрессии
+	compressed.append(part);
+	// Принудительно выдавливаем накопленное движком
+	encoder.flush(part);
+	// Дописываем выдавленные данные в результат компрессии
+	compressed.append(part);
+	// Проверяем что выдавливание что-то выдало наружу
+	ASSERT_FALSE(compressed.empty()) << "Method: " << this->_parameter.name;
+	// Результат декомпрессии данных
+	std::string restored = "";
+	// Создаём потоковую сессию декомпрессии
+	awh::compressor::stream_t decoder = this->_compressor->stream(this->_parameter.method, awh::compressor::event_t::DECODE);
+	// Проверяем что поток декомпрессии валиден
+	ASSERT_TRUE(decoder.valid()) << "Method: " << this->_parameter.name;
+	/**
+	 * Подаём распаковке всё выдавленное и ничего сверх того: поток намеренно
+	 * не завершается, ведь проверяется именно доставка до конца потока
+	 */
+	decoder.push(compressed.data(), compressed.size(), part);
+	// Дописываем полученный выход в результат декомпрессии
+	restored.append(part);
+	/**
+	 * BZip2 стоит здесь особняком, и это свойство самой библиотеки, а не модуля:
+	 * сжатие по `BZ_FLUSH` выдавленное отдаёт, а вот `BZ2_bzDecompress` его целиком
+	 * принимает и не выдаёт наружу ни октета, дожидаясь конца потока. Проверено
+	 * отдельным опытом на голом libbz2, мимо модуля. Обходить это своими силами
+	 * нечем, поэтому расхождение закрепляется как есть: изменись оно у библиотеки
+	 * либо у модуля — проверка о том сообщит
+	 */
+	if(this->_parameter.method == awh::compressor::method_t::BZIP2){
+		// Проверяем что BZip2 до конца потока наружу ничего не отдаёт
+		ASSERT_TRUE(restored.empty()) << "Method: " << this->_parameter.name;
+		// Проверяем что поток распаковки при этом остался живым
+		ASSERT_TRUE(decoder.valid()) << "Method: " << this->_parameter.name;
+		// Дальнейшая проверка доставки к BZip2 неприменима
+		return;
+	}
+	// Проверяем что первая половина данных дошла до принимающей стороны целиком
+	ASSERT_EQ(data.substr(0, half), restored) << "Method: " << this->_parameter.name;
+	// Проверяем что поток распаковки завершённым себя не объявил
+	ASSERT_FALSE(decoder.done()) << "Method: " << this->_parameter.name;
+	// Проверяем что поток распаковки остался живым
+	ASSERT_TRUE(decoder.valid()) << "Method: " << this->_parameter.name;
+}
+
+/**
+ * @brief Тест параметризованной проверки уровня компрессии за границами допустимого
+ *
+ * @details Конструктор потоковой сессии открыт наружу, и уровень приходит к нему
+ *          произвольным целым — ровно так же, как приходил размер скользящего окна.
+ *          Окно сторожится самим конструктором, уровень же отдан на попечение кодеров,
+ *          и обходятся они с ним по-разному: часть подменяет негодное значение своим
+ *          умолчанием, часть отдаёт движку и тот отвечает отказом. Оба исхода законны,
+ *          недопустим лишь третий — работа, принявшая негодный уровень и выдавшая
+ *          необратимые данные либо упавшая. Его и закрепляем: сессия либо не заводится
+ *          вовсе, либо ведёт полный оборот без потерь
+ *
+ */
+TEST_P(CompressorStreamParameterizedFixture, StreamLevelOutOfRangeTest){
+	// Формируем тестовые данные
+	const std::string data = makeStreamPayload();
+	// Список уровней, лежащих вне допустимого промежутка у всех движков разом
+	const int32_t levels[] = {INT32_MIN, -1000, -2, 100, 1000, INT32_MAX};
+	/**
+	 * Выполняем перебор негодных значений уровня компрессии
+	 */
+	for(auto & level : levels){
+		// Формируем параметры инициализации потоковой сессии
+		awh::compressor::params_t params;
+		// Устанавливаем допустимый размер скользящего окна
+		params.wbits = 15;
+		// Устанавливаем негодный уровень компрессии
+		params.level = level;
+		// Создаём потоковую сессию компрессии
+		awh::compressor::stream_t encoder(this->_parameter.method, awh::compressor::event_t::ENCODE, params, nullptr);
+		/**
+		 * Отказ в заведении сессии — исход законный: движок негодное значение отверг
+		 */
+		if(!encoder.valid())
+			// Переходим к следующему значению
+			continue;
+		// Буфер выхода порции
+		std::string part = "";
+		// Результат компрессии данных
+		std::string compressed = "";
+		// Выполняем подачу всех данных одной порцией с завершением кадра
+		encoder.push(data.data(), data.size(), part, awh::compressor::flush_t::FINISH);
+		// Дописываем полученный выход в результат компрессии
+		compressed.append(part);
+		// Проверяем что сессия компрессии подачу пережила
+		ASSERT_TRUE(encoder.valid()) << "Method: " << this->_parameter.name << ", level = " << level;
+		// Проверяем что компрессия что-то выдала
+		ASSERT_FALSE(compressed.empty()) << "Method: " << this->_parameter.name << ", level = " << level;
+		// Создаём потоковую сессию декомпрессии на умолчаниях
+		awh::compressor::stream_t decoder = this->_compressor->stream(this->_parameter.method, awh::compressor::event_t::DECODE);
+		// Проверяем что поток декомпрессии валиден
+		ASSERT_TRUE(decoder.valid()) << "Method: " << this->_parameter.name << ", level = " << level;
+		// Результат декомпрессии данных
+		std::string restored = "";
+		// Подаём весь сжатый буфер в поток декомпрессии
+		decoder.push(compressed.data(), compressed.size(), part, awh::compressor::flush_t::FINISH);
+		// Дописываем полученный выход в результат декомпрессии
+		restored.append(part);
+		// Проверяем что данные восстановлены без потерь
+		ASSERT_EQ(data, restored) << "Method: " << this->_parameter.name << ", level = " << level;
+	}
+}
+
+/**
+ * @brief Тест параметризованной проверки подачи по одному октету
+ *
+ * @details Мельчайшая из возможных подач: у части кодеров рабочий буфер и признаки
+ *          завершения считаются от размера принятого, и подача в один октет проходит
+ *          по тем ветвям, куда порция покрупнее не заходит
+ *
+ */
+TEST_P(CompressorStreamParameterizedFixture, StreamSingleOctetChunkTest){
+	// Формируем тестовые данные небольшого объёма
+	const std::string data = makeStreamPayload().substr(0, 4096);
+	// Буфер выхода порции
+	std::string part = "";
+	// Результат компрессии данных
+	std::string compressed = "";
+	// Создаём потоковую сессию компрессии
+	awh::compressor::stream_t encoder = this->_compressor->stream(this->_parameter.method, awh::compressor::event_t::ENCODE);
+	// Проверяем что поток компрессии валиден
+	ASSERT_TRUE(encoder.valid()) << "Method: " << this->_parameter.name;
+	/**
+	 * Подаём данные по одному октету
+	 */
+	for(size_t i = 0; i < data.size(); i++){
+		// Подаём очередной октет в поток компрессии
+		encoder.push(data.data() + i, 1, part);
+		// Дописываем полученный выход в результат компрессии
+		compressed.append(part);
+	}
+	// Финализируем поток компрессии
+	encoder.finish(part);
+	// Дописываем хвост в результат компрессии
+	compressed.append(part);
+	// Проверяем что поток компрессии подачу пережил
+	ASSERT_TRUE(encoder.valid()) << "Method: " << this->_parameter.name;
+	// Результат декомпрессии данных
+	std::string restored = "";
+	// Создаём потоковую сессию декомпрессии
+	awh::compressor::stream_t decoder = this->_compressor->stream(this->_parameter.method, awh::compressor::event_t::DECODE);
+	// Проверяем что поток декомпрессии валиден
+	ASSERT_TRUE(decoder.valid()) << "Method: " << this->_parameter.name;
+	/**
+	 * Подаём сжатые данные распаковке тоже по одному октету
+	 */
+	for(size_t i = 0; i < compressed.size(); i++){
+		// Подаём очередной октет в поток декомпрессии
+		decoder.push(compressed.data() + i, 1, part);
+		// Дописываем полученный выход в результат декомпрессии
+		restored.append(part);
+	}
+	// Финализируем поток декомпрессии
+	decoder.finish(part);
+	// Дописываем остаток в результат декомпрессии
+	restored.append(part);
+	// Проверяем что восстановленные данные совпадают с исходными
+	ASSERT_EQ(data, restored) << "Method: " << this->_parameter.name;
+}
+
+/**
+ * @brief Тест параметризованной проверки подачи порцией крупнее рабочего буфера
+ *
+ * @details Рабочий буфер кодеров равен `AWH_COMPRESSOR_STREAM_CHUNK`, и подача крупнее
+ *          его заставляет движок выдавать выход в несколько заходов — по той самой
+ *          ветви, где выходной буфер заполняется целиком и цикл идёт на новый круг.
+ *          Все прежние потоковые проверки подавали порциями заведомо мельче рабочего
+ *          буфера, и эта ветвь у семи кодеров оставалась непройденной
+ *
+ */
+TEST_P(CompressorStreamParameterizedFixture, StreamChunkLargerThanWorkBufferTest){
+	// Формируем данные, заведомо крупнее рабочего буфера кодеров
+	std::string data = "";
+	// Резервируем память под буфер данных
+	data.reserve(1024 * 1024);
+	/**
+	 * Наполняем буфер данными переменной повторяемости, чтобы выход не ужался
+	 * до величины меньше рабочего буфера и ветвь была вправду пройдена
+	 */
+	for(uint32_t i = 0; data.size() < (1024 * 1024); i++){
+		// Добавляем очередную порцию данных
+		data.append("Anyks Framework large single push payload ");
+		// Добавляем переменную часть порции данных
+		data.append(std::to_string(i * 2654435761u));
+	}
+	// Буфер выхода порции
+	std::string part = "";
+	// Результат компрессии данных
+	std::string compressed = "";
+	// Создаём потоковую сессию компрессии
+	awh::compressor::stream_t encoder = this->_compressor->stream(this->_parameter.method, awh::compressor::event_t::ENCODE);
+	// Проверяем что поток компрессии валиден
+	ASSERT_TRUE(encoder.valid()) << "Method: " << this->_parameter.name;
+	// Подаём весь буфер одной порцией с завершением кадра
+	encoder.push(data.data(), data.size(), part, awh::compressor::flush_t::FINISH);
+	// Дописываем полученный выход в результат компрессии
+	compressed.append(part);
+	// Проверяем что компрессия что-то выдала
+	ASSERT_FALSE(compressed.empty()) << "Method: " << this->_parameter.name;
+	// Результат декомпрессии данных
+	std::string restored = "";
+	// Создаём потоковую сессию декомпрессии
+	awh::compressor::stream_t decoder = this->_compressor->stream(this->_parameter.method, awh::compressor::event_t::DECODE);
+	// Проверяем что поток декомпрессии валиден
+	ASSERT_TRUE(decoder.valid()) << "Method: " << this->_parameter.name;
+	// Подаём весь сжатый буфер одной порцией с завершением кадра
+	decoder.push(compressed.data(), compressed.size(), part, awh::compressor::flush_t::FINISH);
+	// Дописываем полученный выход в результат декомпрессии
+	restored.append(part);
+	// Проверяем что восстановленные данные совпадают с исходными
+	ASSERT_EQ(data, restored) << "Method: " << this->_parameter.name;
+}
+
+/**
  * @brief Инициализация параметров теста потоковой компрессии/декомпрессии
  *
  */

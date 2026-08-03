@@ -76,6 +76,13 @@ namespace awh {
 		extern __AWH_SHARED_EXPORT__ const size_t CLUSTERS_COUNT;
 		extern __AWH_SHARED_EXPORT__ const interval_t INDIC[];
 		extern __AWH_SHARED_EXPORT__ const size_t INDIC_COUNT;
+		extern __AWH_SHARED_EXPORT__ const interval_t COMBINING[];
+		extern __AWH_SHARED_EXPORT__ const size_t COMBINING_COUNT;
+		extern __AWH_SHARED_EXPORT__ const decomposition_t DECOMPOSITIONS[];
+		extern __AWH_SHARED_EXPORT__ const size_t DECOMPOSITIONS_COUNT;
+		extern __AWH_SHARED_EXPORT__ const uint32_t DECOMPOSITION_SETS[];
+		extern __AWH_SHARED_EXPORT__ const composition_t COMPOSITIONS[];
+		extern __AWH_SHARED_EXPORT__ const size_t COMPOSITIONS_COUNT;
 	};
 };
 

@@ -395,26 +395,20 @@ class FmkIconvParameterizedFixture : public FmkFixture, public ::testing::WithPa
  */
 TEST_P(FmkIconvParameterizedFixture, FmkIconvTest){
 	/**
-	 * Для операционной системы MS Windows
+	 * @details Перекодировка выполняется модулем перекодировки Framework и от состава
+	 *          операционной системы не зависит, поэтому проверка выполняется на всех
+	 *          операционных системах одинаково.
 	 */
-	#if _WIN32 || _WIN64 || AWH_IDN
-		// Конвертируем из UTF-8 в CP1251
-		const auto & result1 = this->_fmk->transcode(this->_parameter.text, awh::fmk_t::codepage_t::UTF8_CP1251);
-		// Проверяем что результат не в UTF-8
-		ASSERT_FALSE(this->_fmk->is(result1, awh::fmk_t::check_t::UTF8));
-		// Конвертируем из CP1251 в UTF-8
-		const auto & result2 = this->_fmk->transcode(result1, awh::fmk_t::codepage_t::CP1251_UTF8);
-		// Проверяем что результат в UTF-8
-		ASSERT_TRUE(this->_fmk->is(result2, awh::fmk_t::check_t::UTF8));
-		// Сравниваем что исходный текст и результат совпадают
-		ASSERT_EQ(this->_parameter.text, result2);
-	/**
-	 * Для операционной системы не являющейся MS Windows
-	 */
-	#else
-		// Заглушка для остальных ОС
-		ASSERT_TRUE(true);
-	#endif
+	// Конвертируем из UTF-8 в CP1251
+	const auto & result1 = this->_fmk->transcode(this->_parameter.text, awh::fmk_t::codepage_t::UTF8_CP1251);
+	// Проверяем что результат не в UTF-8
+	ASSERT_FALSE(this->_fmk->is(result1, awh::fmk_t::check_t::UTF8));
+	// Конвертируем из CP1251 в UTF-8
+	const auto & result2 = this->_fmk->transcode(result1, awh::fmk_t::codepage_t::CP1251_UTF8);
+	// Проверяем что результат в UTF-8
+	ASSERT_TRUE(this->_fmk->is(result2, awh::fmk_t::check_t::UTF8));
+	// Сравниваем что исходный текст и результат совпадают
+	ASSERT_EQ(this->_parameter.text, result2);
 }
 
 /**

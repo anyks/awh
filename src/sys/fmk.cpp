@@ -42,21 +42,7 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/ascii.hpp>
-
-/**
- * Для операционной системы не являющейся MS Windows
- */
-#if !_WIN32 && !_WIN64
-	/**
-	 * Если используется модуль IDN
-	 */
-	#if AWH_IDN
-		/**
-		 * Модуль iconv
-		 */
-		#include <iconv/iconv.h>
-	#endif
-#endif
+#include <charset/charset.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -531,112 +517,6 @@ namespace {
 		// Выводим полученную запись числа
 		return result;
 	}
-
-	/**
-	 * Для операционной системы не являющейся MS Windows
-	 */
-	#if !_WIN32 && !_WIN64
-		/**
-		 * Если используется модуль IDN
-		 */
-		#if AWH_IDN
-			/**
-			 * @brief Функция конвертирования из одной кодировки в другую
-			 *
-			 * @param data данные для конвертирования
-			 * @param from название кодировки из которой необходимо выполнить конвертирование
-			 * @param to   название кодировки в которую необходимо выпоолнить конвертацию
-			 * @param log  объект работы с логами
-			 * @return     получившееся в результате значение
-			 *
-			 */
-			static string convertEncoding(string_view data, string_view from, string_view to, const awh::log_t * log){
-				// Переменная результата
-				string result = "";
-				// Если данные переданы на вход правильно
-				if(!data.empty() && !from.empty() && !to.empty()){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Выполняем инициализацию конвертера
-						iconv_t convert = ::iconv_open(string{to}.c_str(), string{from}.c_str());
-						// Если инициализировать конвертер не вышло
-						if(convert == (iconv_t)(-1))
-							// Выполняем генерацию ошибки
-							throw ::logic_error("Unable to create convertion descriptor");
-						// Получаем размер входящей строки
-						size_t size = data.size();
-						// Выполняем получение указатель на входящую строку
-						char * ptr = const_cast <char *> (data.data());
-						// Выполняем создание буфера для получения результата
-						result.resize(6 * data.size(), 0);
-						// Выполняем получения указателя на результирующий буфер
-						char * output = result.data();
-						// Получаем длину результирующего буфера
-						size_t length = result.size();
-						// Выполняем конвертацию текста из одной кодировки в другую
-						const size_t status = ::iconv(convert, &ptr, &size, &output, &length);
-						// Выполняем закрытие конвертера
-						::iconv_close(convert);
-						// Если конвертация не выполнена
-						if(status == static_cast <size_t> (-1)){
-							// Выполняем очистку полученного результата
-							result.clear();
-							// Выполняем формирование ответа
-							result.append("Unable to convert ");
-							result.append(data);
-							result.append(" from ");
-							result.append(from);
-							result.append(" to ");
-							result.append(to);
-							// Выполняем генерацию ошибки
-							throw ::logic_error(result);
-						}
-						// Выполняем коррекцию полученной длины строки
-						result.resize(result.size() - length);
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const exception & error) {
-						// Если объект логирования установлен
-						if(log != nullptr){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(data, from, to), awh::log_t::flag_t::CRITICAL, error.what());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
-							#endif
-						// Если объект логирования не установлен
-						} else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								::fprintf(stderr, "ERROR! %s\n\n", error.what());
-							#endif
-						}
-					}
-				}
-				// Возвращаем результат
-				return result;
-			}
-		#endif
-	#endif
 
 	/**
 	 * @brief Шаблон функции разделения строк на составляющие
@@ -2848,119 +2728,35 @@ string awh::Framework::transcode(string_view text, const codepage_t codepage) co
 		 */
 		try {
 			/**
-			 * Для операционной системы MS Windows
+			 * Определяем кодировку в которую нам нужно сконвертировать текст
 			 */
-			#if _WIN32 || _WIN64
-				/**
-				 * Определяем кодировку в которую нам нужно сконвертировать текст
-				 */
-				switch(static_cast <uint8_t> (codepage)){
-					// Если требуется выполнить кодировку в автоматическом режиме
-					case static_cast <uint8_t> (codepage_t::AUTO): {
-						// Если текст передан в кодировке UTF-8
-						if(this->is(text, check_t::UTF8))
-							// Выполняем перекодирование в CP1251
-							return this->transcode(text, codepage_t::UTF8_CP1251);
-						// Выполняем перекодирование в UTF-8
-						else return this->transcode(text, codepage_t::CP1251_UTF8);
-					} break;
-					// Если требуется выполнить кодировку в UTF-8
-					case static_cast <uint8_t> (codepage_t::CP1251_UTF8): {
-						// Выполняем получение размера буфера данных
-						int32_t size = ::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0);
-						// Если размер буфера данных получен
-						if(size > 0){
-							// Создаём буфер данных
-							vector <wchar_t> buffer(static_cast <size_t> (size), 0);
-							// Если конвертация в CP1251 выполнена удачно
-							if(::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
-								// Получаем размер результирующего буфера данных в кодировке UTF-8
-								size = ::WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
-								// Если размер буфера данных получен
-								if(size > 0){
-									// Выделяем данные для результирующего буфера данных
-									result.resize(static_cast <size_t> (size), 0);
-									// Если конвертация буфера текстовых данных в UTF-8 не выполнена
-									if(!::WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), result.data(), static_cast <int32_t> (result.size()), 0, 0)){
-										// Выполняем удаление результирующего буфера данных
-										result.clear();
-										// Выполняем удаление выделенной памяти
-										string().swap(result);
-									}
-								}
-							}
-						}
-					} break;
-					// Если требуется выполнить кодировку в CP1251
-					case static_cast <uint8_t> (codepage_t::UTF8_CP1251): {
-						// Выполняем получение размера буфера данных
-						int32_t size = ::MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0);
-						// Если размер буфера данных получен
-						if(size > 0){
-							// Создаём буфер данных
-							vector <wchar_t> buffer(static_cast <size_t> (size), 0);
-							// Если конвертация в UTF-8 выполнена удачно
-							if(::MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
-								// Получаем размер результирующего буфера данных в кодировке CP1251
-								size = ::WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
-								// Если размер буфера данных получен
-								if(size > 0){
-									// Выделяем данные для результирующего буфера данных
-									result.resize(static_cast <size_t> (size), 0);
-									// Если конвертация буфера текстовых данных в CP1251 не выполнена
-									if(!::WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int32_t> (buffer.size()), result.data(), static_cast <int32_t> (result.size()), 0, 0)){
-										// Выполняем удаление результирующего буфера данных
-										result.clear();
-										// Выполняем удаление выделенной памяти
-										string().swap(result);
-									}
-								}
-							}
-						}
-					} break;
-					// Если кодировка не установлена
-					default: return string{text};
-				}
-			/**
-			 * Для операционной системы не являющейся MS Windows
-			 */
-			#else
-				/**
-				 * Если используется модуль IDN
-				 */
-				#if AWH_IDN
-					/**
-					 * Определяем кодировку в которую нам нужно сконвертировать текст
-					 */
-					switch(static_cast <uint8_t> (codepage)){
-						// Если требуется выполнить кодировку в автоматическом режиме
-						case static_cast <uint8_t> (codepage_t::AUTO): {
-							// Если текст передан в кодировке UTF-8
-							if(this->is(text, check_t::UTF8))
-								// Выполняем перекодирование в CP1251
-								return this->transcode(text, codepage_t::UTF8_CP1251);
-							// Выполняем перекодирование в UTF-8
-							else return this->transcode(text, codepage_t::CP1251_UTF8);
-						} break;
-						// Если требуется выполнить кодировку в UTF-8
-						case static_cast <uint8_t> (codepage_t::CP1251_UTF8):
-							// Выполняем конвертирование строки из CP1251 в UTF-8
-							return ::convertEncoding(text, "CP1251", "UTF-8", this->_log);
-						// Если требуется выполнить кодировку в CP1251
-						case static_cast <uint8_t> (codepage_t::UTF8_CP1251):
-							// Выполняем конвертирование строки из UTF-8 в CP1251
-							return ::convertEncoding(text, "UTF-8", "CP1251", this->_log);
-						// Если кодировка не установлена
-						default: return string{text};
-					}
-				/**
-				 * Выполняем работу для остальных условий
-				 */
-				#else
-					// Возвращаем текст как он есть
-					return string{text};
-				#endif
-			#endif
+			switch(static_cast <uint8_t> (codepage)){
+				// Если требуется выполнить кодировку в автоматическом режиме
+				case static_cast <uint8_t> (codepage_t::AUTO): {
+					// Если текст передан в кодировке UTF-8
+					if(this->is(text, check_t::UTF8))
+						// Выполняем перекодирование в CP1251
+						return this->transcode(text, codepage_t::UTF8_CP1251);
+					// Выполняем перекодирование в UTF-8
+					else return this->transcode(text, codepage_t::CP1251_UTF8);
+				} break;
+				// Если требуется выполнить кодировку в UTF-8
+				case static_cast <uint8_t> (codepage_t::CP1251_UTF8): {
+					// Выполняем перекодировку текста из кодировки CP1251 в UTF-8
+					if(!charset::transcode(text, charset::encoding_t::CP1251, charset::encoding_t::UTF8, result))
+						// Выполняем генерацию ошибки
+						throw ::logic_error("Unable to convert text from CP1251 to UTF-8");
+				} break;
+				// Если требуется выполнить кодировку в CP1251
+				case static_cast <uint8_t> (codepage_t::UTF8_CP1251): {
+					// Выполняем перекодировку текста из кодировки UTF-8 в CP1251
+					if(!charset::transcode(text, charset::encoding_t::UTF8, charset::encoding_t::CP1251, result))
+						// Выполняем генерацию ошибки
+						throw ::logic_error("Unable to convert text from UTF-8 to CP1251");
+				} break;
+				// Если кодировка не установлена
+				default: return string{text};
+			}
 		/**
 		 * Если возникает ошибка
 		 */

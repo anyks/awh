@@ -344,27 +344,6 @@ namespace awh {
 					bool belongs(const answer_t & answer, const request_t & request) const noexcept;
 				public:
 					/**
-					 * @brief Метод записи адреса IPv4 видом, отведённым договором
-					 *
-					 * @details Договор адреса IPv4 отдельным полем не передаёт: записываются
-					 * они видом, отведённым под IPv4 в IPv6
-					 *
-					 * @param address место под записываемый адрес размером ADDRESS_SIZE
-					 * @param value   записываемый адрес IPv4 в порядке октетов машины
-					 *
-					 */
-					static void encode(uint8_t * address, const uint32_t value) noexcept;
-					/**
-					 * @brief Метод извлечения адреса IPv4 из вида, отведённого договором
-					 *
-					 * @param address извлекаемый адрес размером ADDRESS_SIZE
-					 * @param value   ссылка на извлечённый адрес IPv4 в порядке октетов машины
-					 * @return        признак того, что адрес принадлежит IPv4
-					 *
-					 */
-					static bool decode(const uint8_t * address, uint32_t & value) noexcept;
-				public:
-					/**
 					 * @brief Метод получения срока ожидания ответа на очередную попытку
 					 *
 					 * @details Договор велит начинать с трёх секунд и удваивать срок с

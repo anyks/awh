@@ -54,7 +54,7 @@ TEST_F(PortmapFixture, PcpRequestMap) {
 	// Устанавливаем желаемый внешний порт перенаправления
 	request.externalPort = 8080;
 	// Записываем адрес машины, обращающейся к маршрутизатору
-	pcp_t::encode(request.client, 0xC0A8012A);
+	this->encodeAddress(request.client, "192.168.1.42");
 	/**
 	 * Выполняем заполнение отличительной метки перенаправления
 	 */
@@ -138,7 +138,7 @@ TEST_F(PortmapFixture, PcpRequestPeer) {
 	// Устанавливаем порт узла, с которым ведётся сношение
 	request.remotePort = 5060;
 	// Записываем адрес узла, с которым ведётся сношение
-	pcp_t::encode(request.remote, 0xCB007107);
+	this->encodeAddress(request.remote, "203.0.113.7");
 	// Выполняем сборку запроса к маршрутизатору
 	ASSERT_EQ(pcp->request(buffer, sizeof(buffer), request, error), static_cast <size_t> (80)) << message(error);
 	// Выполняем проверку действия договора без отметки ответа
@@ -221,7 +221,7 @@ TEST_F(PortmapFixture, PcpOptions) {
 		// Отводим место под адрес другой машины
 		option.data.resize(pcp_t::ADDRESS_SIZE, 0);
 		// Записываем адрес другой машины
-		pcp_t::encode(option.data.data(), 0xC0A80101);
+		this->encodeAddress(option.data.data(), "192.168.1.1");
 		// Выполняем добавление дополнения к запросу
 		request.options.push_back(option);
 	}
@@ -268,7 +268,7 @@ TEST_F(PortmapFixture, PcpOptions) {
 		// Извлекаемый адрес другой машины
 		uint32_t address = 0;
 		// Выполняем извлечение адреса другой машины
-		ASSERT_TRUE(pcp_t::decode(answer.options[1].data.data(), address));
+		ASSERT_TRUE(this->decodeAddress(answer.options[1].data.data(), address));
 		// Выполняем проверку извлечённого адреса другой машины
 		ASSERT_EQ(address, static_cast <uint32_t> (0xC0A80101));
 	}
@@ -341,7 +341,7 @@ TEST_F(PortmapFixture, PcpResponseMap) {
 	// Извлекаемый внешний адрес, назначенный маршрутизатором
 	uint32_t address = 0;
 	// Выполняем извлечение внешнего адреса
-	ASSERT_TRUE(pcp_t::decode(answer.external, address));
+	ASSERT_TRUE(this->decodeAddress(answer.external, address));
 	// Выполняем проверку извлечённого внешнего адреса
 	ASSERT_EQ(address, static_cast <uint32_t> (0xCB007107));
 	/**
@@ -501,7 +501,7 @@ TEST_F(PortmapFixture, PcpAddress) {
 	// Место под записываемый адрес
 	uint8_t address[pcp_t::ADDRESS_SIZE] = {0};
 	// Выполняем запись адреса IPv4 видом, отведённым договором
-	pcp_t::encode(address, 0xC0A8012A);
+	this->encodeAddress(address, "192.168.1.42");
 	// Выполняем проверку приставки, отмечающей адрес IPv4
 	ASSERT_EQ(address[10], 0xFF);
 	// Выполняем проверку приставки, отмечающей адрес IPv4
@@ -509,7 +509,7 @@ TEST_F(PortmapFixture, PcpAddress) {
 	// Извлекаемый адрес IPv4
 	uint32_t value = 0;
 	// Выполняем извлечение адреса IPv4
-	ASSERT_TRUE(pcp_t::decode(address, value));
+	ASSERT_TRUE(this->decodeAddress(address, value));
 	// Выполняем проверку извлечённого адреса IPv4
 	ASSERT_EQ(value, static_cast <uint32_t> (0xC0A8012A));
 	/**
@@ -522,7 +522,7 @@ TEST_F(PortmapFixture, PcpAddress) {
 		// Настоящий адрес IPv6
 		uint8_t six[pcp_t::ADDRESS_SIZE] = {0x20, 0x01, 0x0D, 0xB8};
 		// Выполняем извлечение адреса IPv4 из настоящего адреса IPv6
-		ASSERT_FALSE(pcp_t::decode(six, value));
+		ASSERT_FALSE(this->decodeAddress(six, value));
 	}
 }
 /**

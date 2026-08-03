@@ -32,6 +32,7 @@
 #include "../../../include/proto/portmap/upnp.hpp"
 #include "../../../include/proto/portmap/device.hpp"
 #include "../../../include/proto/portmap/natpmp.hpp"
+#include "../../../include/net/addr.hpp"
 
 /**
  * @brief Класс фикстуры для тестов подмодуля договоров перенаправления портов
@@ -97,6 +98,27 @@ class PortmapFixture : public testing::Test {
 		 *
 		 */
 		std::unique_ptr <awh::proto::portmap::upnp_t> makeUpnp() const noexcept;
+	protected:
+		/**
+		 * @brief Метод записи адреса записью IPv6, отведённой договором PCP
+		 *
+		 * @details Договор адреса IPv4 отдельным полем не передаёт: записываются они
+		 * отображением на пространство IPv6. Перевод ведёт объект работы с адресами
+		 *
+		 * @param address место под записываемый адрес размером ADDRESS_SIZE
+		 * @param value   записываемый адрес видом обычной записи
+		 *
+		 */
+		void encodeAddress(uint8_t * address, const std::string & value) const noexcept;
+		/**
+		 * @brief Метод извлечения адреса IPv4 из записи, отведённой договором PCP
+		 *
+		 * @param address извлекаемый адрес размером ADDRESS_SIZE
+		 * @param value   ссылка на извлечённый адрес IPv4 в порядке октетов машины
+		 * @return        признак того, что адрес принадлежит IPv4
+		 *
+		 */
+		bool decodeAddress(const uint8_t * address, uint32_t & value) const noexcept;
 };
 
 #endif // __AWH_PROTO_PORTMAP_TESTS__

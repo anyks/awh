@@ -1926,3 +1926,58 @@ TEST_F(CompressorFixture, WindowBitsAreSeparatePerEngineTest){
 	// Возвращаем большое окно движку Deflate
 	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
 }
+
+/**
+ * @brief Тест работы потоковой сессии с пустым объектом журнала
+ *
+ * @details Конструктор потока открыт наружу и пустой объект работы с логами принимает —
+ *          проверка размера скользящего окна в нём самом и проверка предела выхода
+ *          у кодеров его на пустоту стерегут. Подача же обращалась к нему без проверки,
+ *          и работа падала ровно там, где собиралась сообщить об ошибке вызывающей
+ *          стороны: подача пустого указателя при ненулевом размере. Закрепляем то,
+ *          что сессия с пустым журналом жива и на верной подаче, и на ошибочной
+ *
+ */
+TEST_F(CompressorFixture, StreamNullLogTest){
+	// Формируем текст для компрессии
+	const std::string text = "Anyks Framework null log payload, Anyks Framework null log payload!!!!!!!!!!!!!!?";
+	// Формируем параметры инициализации потоковой сессии
+	awh::compressor::params_t params;
+	// Устанавливаем размер скользящего окна
+	params.wbits = 15;
+	// Создаём потоковую сессию компрессии с пустым объектом работы с логами
+	awh::compressor::stream_t encoder(awh::compressor::method_t::DEFLATE, awh::compressor::event_t::ENCODE, params, nullptr);
+	// Проверяем что потоковая сессия заведена
+	ASSERT_TRUE(encoder.valid());
+	// Буфер выхода очередной порции
+	std::string part;
+	/**
+	 * Подача пустого указателя при ненулевом размере: работа обязана отвергнуть
+	 * её признаком, а не обращением по пустому объекту журнала
+	 */
+	encoder.push(nullptr, text.size(), part, awh::compressor::flush_t::NONE);
+	// Проверяем что ошибочная подача выхода не дала
+	ASSERT_TRUE(part.empty());
+	// Проверяем что сессия ошибочной подачей не сломана
+	ASSERT_TRUE(encoder.valid());
+	// Результат компрессии данных
+	std::string compressed;
+	// Выполняем подачу всех данных одной порцией с завершением кадра
+	encoder.push(text.data(), text.size(), part, awh::compressor::flush_t::FINISH);
+	// Добавляем полученную порцию к результату
+	compressed.append(part);
+	// Проверяем что компрессия выполнена
+	ASSERT_FALSE(compressed.empty());
+	// Создаём потоковую сессию декомпрессии с пустым объектом работы с логами
+	awh::compressor::stream_t decoder(awh::compressor::method_t::DEFLATE, awh::compressor::event_t::DECODE, params, nullptr);
+	// Проверяем что потоковая сессия заведена
+	ASSERT_TRUE(decoder.valid());
+	// Результат декомпрессии данных
+	std::string restored;
+	// Выполняем подачу всех данных одной порцией с завершением кадра
+	decoder.push(compressed.data(), compressed.size(), part, awh::compressor::flush_t::FINISH);
+	// Добавляем полученную порцию к результату
+	restored.append(part);
+	// Проверяем что данные восстановлены
+	ASSERT_EQ(text, restored);
+}

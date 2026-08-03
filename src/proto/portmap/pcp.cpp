@@ -69,15 +69,6 @@ namespace {
 	constexpr size_t OPTION_HEADER_SIZE = 0x04;
 
 	/**
-	 * @brief Приставка, отмечающая адрес IPv4 в записи IPv6
-	 *
-	 * @details Договор адреса IPv4 отдельным полем не передаёт, записывая их
-	 * приставкой из десяти нулевых октетов и двух октетов со всеми битами
-	 *
-	 */
-	constexpr uint8_t V4_PREFIX[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF};
-
-	/**
 	 * @brief Метод извлечения двухоктетного числа в порядке октетов сети
 	 *
 	 * @param buffer место, откуда извлекается число
@@ -591,54 +582,6 @@ bool awh::proto::portmap::PCP::belongs(const answer_t & answer, const request_t 
 		// Выводим признак того, что ответ запросу не принадлежит
 		return false;
 	// Выводим признак того, что ответ запросу принадлежит
-	return true;
-}
-/**
- * @brief Метод записи адреса IPv4 видом, отведённым договором
- *
- * @param address место под записываемый адрес размером ADDRESS_SIZE
- * @param value   записываемый адрес IPv4 в порядке октетов машины
- *
- */
-void awh::proto::portmap::PCP::encode(uint8_t * address, const uint32_t value) noexcept {
-	/**
-	 * Если место под записываемый адрес не отведено
-	 */
-	if(address == nullptr)
-		// Выходим из записи адреса
-		return;
-	// Записываем приставку, отмечающую адрес IPv4 в записи IPv6
-	::memcpy(address, ::V4_PREFIX, sizeof(::V4_PREFIX));
-	// Записываем сам адрес IPv4
-	::write32(address + sizeof(::V4_PREFIX), value);
-}
-/**
- * @brief Метод извлечения адреса IPv4 из вида, отведённого договором
- *
- * @param address извлекаемый адрес размером ADDRESS_SIZE
- * @param value   ссылка на извлечённый адрес IPv4 в порядке октетов машины
- * @return        признак того, что адрес принадлежит IPv4
- *
- */
-bool awh::proto::portmap::PCP::decode(const uint8_t * address, uint32_t & value) noexcept {
-	/**
-	 * Если извлекаемый адрес не передан
-	 */
-	if(address == nullptr)
-		// Выводим признак того, что адрес IPv4 не принадлежит
-		return false;
-	/**
-	 * Если приставка, отмечающая адрес IPv4, не совпадает
-	 *
-	 * @note Отличать это необходимо: маршрутизатор вправе назначить и настоящий
-	 *       адрес IPv6, и приводить его к IPv4 бессмысленно
-	 */
-	if(::memcmp(address, ::V4_PREFIX, sizeof(::V4_PREFIX)) != 0)
-		// Выводим признак того, что адрес IPv4 не принадлежит
-		return false;
-	// Запоминаем извлечённый адрес IPv4
-	value = ::read32(address + sizeof(::V4_PREFIX));
-	// Выводим признак того, что адрес принадлежит IPv4
 	return true;
 }
 /**

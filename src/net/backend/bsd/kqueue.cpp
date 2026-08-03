@@ -280,6 +280,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <net/if.h>
 #include <netinet/ip6.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
@@ -39654,7 +39655,18 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str());
+								/**
+								 * Разводим два повода отказа. Устройства может не быть в системе
+								 * вовсе, а может быть - но без адреса запрошенного семейства:
+								 * туннель, к примеру, сплошь и рядом держит один лишь IPv6.
+								 * Прежде оба повода объявлялись отсутствием устройства, и это
+								 * сбивало с толку - устройство-то на месте
+								 */
+								const string error = (
+									(::if_nametoindex(src.iface.c_str()) > 0) ?
+									this->_fmk->format("Network interface \"%s\" has no address of the requested family", src.iface.c_str()) :
+									this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str())
+								);
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -39705,7 +39717,18 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str());
+								/**
+								 * Разводим два повода отказа. Устройства может не быть в системе
+								 * вовсе, а может быть - но без адреса запрошенного семейства:
+								 * туннель, к примеру, сплошь и рядом держит один лишь IPv6.
+								 * Прежде оба повода объявлялись отсутствием устройства, и это
+								 * сбивало с толку - устройство-то на месте
+								 */
+								const string error = (
+									(::if_nametoindex(src.iface.c_str()) > 0) ?
+									this->_fmk->format("Network interface \"%s\" has no address of the requested family", src.iface.c_str()) :
+									this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str())
+								);
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -39763,7 +39786,18 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str());
+								/**
+								 * Разводим два повода отказа. Устройства может не быть в системе
+								 * вовсе, а может быть - но без адреса запрошенного семейства:
+								 * туннель, к примеру, сплошь и рядом держит один лишь IPv6.
+								 * Прежде оба повода объявлялись отсутствием устройства, и это
+								 * сбивало с толку - устройство-то на месте
+								 */
+								const string error = (
+									(::if_nametoindex(src.iface.c_str()) > 0) ?
+									this->_fmk->format("Network interface \"%s\" has no address of the requested family", src.iface.c_str()) :
+									this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str())
+								);
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -39811,7 +39845,18 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str());
+								/**
+								 * Разводим два повода отказа. Устройства может не быть в системе
+								 * вовсе, а может быть - но без адреса запрошенного семейства:
+								 * туннель, к примеру, сплошь и рядом держит один лишь IPv6.
+								 * Прежде оба повода объявлялись отсутствием устройства, и это
+								 * сбивало с толку - устройство-то на месте
+								 */
+								const string error = (
+									(::if_nametoindex(src.iface.c_str()) > 0) ?
+									this->_fmk->format("Network interface \"%s\" has no address of the requested family", src.iface.c_str()) :
+									this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str())
+								);
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -47700,12 +47745,41 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								if(!(result = (client->source != nullptr)))
 									// Прерываем выполнение
 									break;
+								// Если адрес источника не инициализирован
+								if(!(result = (awh_cast <net::attr_net_t *> (client->source.get())->ip != nullptr)))
+									// Прерываем выполнение
+									break;
 								// Если объект для извлечения IP-адреса не инициализирован
 								if(value == nullptr)
 									// Создаём новый объект IP-адреса
 									value = make_unique <net::addr_net_ipv4_t> ();
+								// Получаем адрес источника события
+								const net::addr_t * origin = awh_cast <net::attr_net_t *> (client->source.get())->ip.get();
+								// Временный объект для извлечения адреса устройства по умолчанию
+								net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+								/**
+								 * Нулевой адрес источника означает не устройство, а согласие
+								 * отдать выбор ядру. Показывать в ответ «все адреса» проку нет,
+								 * поэтому выводится адрес устройства по умолчанию - тот же, что
+								 * выводит и строковая перегрузка
+								 *
+								 * @warning Отдавать голый ноль нельзя: перегрузка отвечает
+								 *          согласием и размером в четыре октета, и отличить
+								 *          такой ответ от настоящего адреса вызывающему нечем.
+								 *          Договор `PCP` требует класть свой адрес внутрь
+								 *          пакета, и маршрутизатор сверяет его с адресом
+								 *          отправителя - на нуле любая просьба получала отказ
+								 *          несовпадением адресов
+								 *
+								 */
+								if(awh_cast <const net::addr_net_ipv4_t *> (origin)->address == 0){
+									// Выполняем извлечение сетевых параметров по умолчанию
+									this->_eth.addr.fillSource(src);
+									// Подменяем адрес источника адресом устройства по умолчанию
+									origin = src.ip.get();
+								}
 								// Устанавливаем полученный IPv4-адрес
-								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->source.get())->ip.get())->address;
+								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <const net::addr_net_ipv4_t *> (origin)->address;
 							} break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -47831,12 +47905,31 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								if(!(result = (client->source != nullptr)))
 									// Прерываем выполнение
 									break;
+								// Если адрес источника не инициализирован
+								if(!(result = (awh_cast <net::attr_net_t *> (client->source.get())->ip != nullptr)))
+									// Прерываем выполнение
+									break;
 								// Если объект для извлечения IP-адреса не инициализирован
 								if(value == nullptr)
 									// Создаём новый объект IP-адреса
 									value = make_unique <net::addr_net_ipv6_t> ();
+								// Получаем адрес источника события
+								const net::addr_t * origin = awh_cast <net::attr_net_t *> (client->source.get())->ip.get();
+								// Временный объект для извлечения адреса устройства по умолчанию
+								net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+								/**
+								 * Нулевой адрес источника означает не устройство, а согласие
+								 * отдать выбор ядру, и вместо «всех адресов» выводится адрес
+								 * устройства по умолчанию - довод тот же, что и у IPv4 выше
+								 */
+								if(::memcmp(&awh_cast <const net::addr_net_ipv6_t *> (origin)->address[0], ::__awh_zero_ipv6__, 16) == 0){
+									// Выполняем извлечение сетевых параметров по умолчанию
+									this->_eth.addr.fillSource(src);
+									// Подменяем адрес источника адресом устройства по умолчанию
+									origin = src.ip.get();
+								}
 								// Устанавливаем полученный IPv6-адрес
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->source.get())->ip.get())->address[0], 16);
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (origin)->address[0], 16);
 							} break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {

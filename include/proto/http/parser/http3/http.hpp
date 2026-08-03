@@ -1351,6 +1351,27 @@ namespace awh {
 				 */
 				bool validateSection(const uint64_t sid, const bool trailer, error_t & error, const bool promise = false) noexcept;
 				/**
+				 * @brief Метод получения лимита распакованной секции полей
+				 *
+				 * @details Лимит задаётся двумя источниками сразу - настроечным maxHeadersTotal
+				 *          и объявленным пиру SETTINGS_MAX_FIELD_SECTION_SIZE. В обоих ноль
+				 *          означает "без лимита", поэтому берётся не минимум, а строжайший
+				 *          из заданных: иначе maxHeadersTotal == 0 обнулял бы и объявленный
+				 *          нами лимит
+				 *
+				 * @return лимит распакованной секции полей (0 - без лимита)
+				 *
+				 */
+				uint64_t sectionLimit() const noexcept;
+				/**
+				 * @brief Метод предупреждения о полностью снятом лимите секции полей
+				 *
+				 * @details Вызывается при изменении лимитов безопасности и параметров SETTINGS:
+				 *          снятие обоих лимитов сразу оставляет арену декодера без границы
+				 *
+				 */
+				void checkFieldSectionLimits() const noexcept;
+				/**
 				 * @brief Метод проверки того, что расширенный CONNECT разрешён нами
 				 *
 				 * @details Разрешение выдаётся параметром SETTINGS_ENABLE_CONNECT_PROTOCOL

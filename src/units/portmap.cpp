@@ -26,10 +26,13 @@
 #include <units/portmap.hpp>
 
 /**
- * Подключаем пространства имён
+ * Используем стандартное пространство имён
  */
-using namespace awh;
 using namespace std;
+
+/**
+ * Используем пространство имён placeholders
+ */
 using namespace placeholders;
 
 /**
@@ -187,14 +190,14 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					return;
 				}
 				/**
-				 * Если отличительная метка ответа просьбе не отвечает
+				 * Если ответ отправленной просьбе не принадлежит
 				 *
 				 * @note Ответ приходит на общий порт договора, и прийти он может на чужую
-				 *       просьбу: метка для того и заведена, чтобы свой ответ отличить от
-				 *       постороннего. Отказом это не считается - ждём своего ответа
+				 *       просьбу. Сличает их кодек: он сверяет и действие, и отличительную
+				 *       метку, и внутренний порт. Отказом это не считается - ждём своего
+				 *       ответа
 				 */
-				if((this->_nonce.size() != proto::portmap::pcp_t::NONCE_SIZE) ||
-				   (::memcmp(&answer.nonce[0], this->_nonce.data(), proto::portmap::pcp_t::NONCE_SIZE) != 0))
+				if(!this->_pcp.belongs(answer, this->_inquiry))
 					// Ожидаем ответа на свою просьбу
 					return;
 				/**
@@ -226,25 +229,6 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					 *       нельзя: маршрутизатор опознаёт перенаправление именно по ней
 					 */
 					this->_mapping.nonce = this->_nonce;
-				}
-				/**
-				 * Если запрашивался внешний адрес маршрутизатора
-				 */
-				if(this->_action == action_t::EXTERNAL){
-					// Собираемый внешний адрес маршрутизатора
-					string address;
-					/**
-					 * Если внешний адрес маршрутизатора извлечь удалось
-					 */
-					if(this->convert(answer.external, address)){
-						// Выполняем завершение обмена по этому договору
-						this->complete(type);
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const string &, const type_t)> ("external", address, type);
-					// Если внешний адрес маршрутизатора извлечь не удалось
-					} else this->failure(type, error_t::MALFORMED);
-					// Завершаем обработку ответа
-					return;
 				}
 			} break;
 			/**
@@ -664,38 +648,6 @@ awh::unit::Portmap::error_t awh::unit::Portmap::reason(const proto::portmap::upn
 	return error_t::REFUSED;
 }
 /**
- * @brief Метод извлечения внешнего адреса маршрутизатора из записи договора PCP
- *
- * @details Договор PCP хранит адреса шестнадцатью октетами: адрес IPv4 лежит
- * в них отображением на пространство IPv6, и извлекается из последних четырёх
- *
- * @param address адрес в записи договора PCP
- * @param result  извлечённый адрес в виде текста
- * @return        результат извлечения адреса
- *
- */
-bool awh::unit::Portmap::convert(const uint8_t * address, string & result) noexcept {
-	// Извлекаемый адрес в порядке октетов машины
-	uint32_t value = 0;
-	/**
-	 * Если адрес отображением IPv4 на пространство IPv6 не является
-	 */
-	if(!proto::portmap::pcp_t::decode(address, value))
-		// Выводим отрицательный результат извлечения адреса
-		return false;
-	/**
-	 * Выполняем размещение извлечённого адреса
-	 *
-	 * @note Кодек выдаёт адрес числом, старший октет которого является первым октетом
-	 *       адреса, и порядок размещения здесь именно такой
-	 */
-	this->_addr.v4(value, net_addr_t::endian_t::BIG);
-	// Запоминаем извлечённый адрес в виде текста
-	result = static_cast <string> (this->_addr);
-	// Выводим положительный результат извлечения адреса
-	return true;
-}
-/**
  * @brief Метод получения внутреннего адреса машины для просьбы договора PCP
  *
  * @note Договор предписывает указывать в просьбе адрес обращающейся машины,
@@ -712,17 +664,21 @@ bool awh::unit::Portmap::client(const event::id_t eid, uint8_t * address) noexce
 	/**
 	 * Если внутренний адрес машины получить не удалось
 	 */
-	if(!this->_io->getAddress(eid, event::address_t::IPV4, value) || (value == nullptr))
+	if(!this->_io->getAddress(eid, ((this->_family == family_t::IPV6) ? event::address_t::IPV6 : event::address_t::IPV4), value) || (value == nullptr))
 		// Выводим отрицательный результат получения адреса
 		return false;
+	// Выполняем размещение полученного адреса
+	this->_addr.source(value.get());
 	/**
-	 * Если полученный адрес адресом IPv4 не является
+	 * Выполняем размещение внутреннего адреса машины записью IPv6, предписанной договором
+	 *
+	 * @note Объект работы с адресами переводит записи между разновидностями сам: адрес
+	 *       IPv4 он отдаёт отображением на пространство IPv6, а настоящий адрес IPv6 -
+	 *       как есть, и оба вида договор принимает без различия
 	 */
-	if(value->size != 4)
-		// Выводим отрицательный результат получения адреса
-		return false;
-	// Выполняем размещение внутреннего адреса машины отображением на пространство IPv6
-	proto::portmap::pcp_t::encode(address, awh_cast <net::addr_net_ipv4_t *> (value.get())->address);
+	const auto & result = this->_addr.v6(net_addr_t::endian_t::LITTLE);
+	// Выполняем копирование полученного адреса
+	::memcpy(address, result.data(), result.size());
 	// Выводим положительный результат получения адреса
 	return true;
 }
@@ -737,8 +693,8 @@ bool awh::unit::Portmap::client(const event::id_t eid, uint8_t * address) noexce
  *
  */
 bool awh::unit::Portmap::discover() noexcept {
-	// Выполняем размещение адреса маршрутизатора
-	this->_address = make_unique <net::addr_net_ipv4_t> ();
+	// Сбрасываем адрес маршрутизатора, отысканный прежде
+	this->_address = nullptr;
 	/**
 	 * Если адрес маршрутизатора задан настройкой
 	 */
@@ -746,28 +702,145 @@ bool awh::unit::Portmap::discover() noexcept {
 		/**
 		 * Если заданный адрес маршрутизатора разобрать не удалось
 		 */
-		if(!this->_addr.parse(this->_router, net_addr_t::type_t::IPV4))
+		if(!this->_addr.parse(this->_router))
 			// Выводим отрицательный результат отыскания маршрутизатора
 			return false;
-		// Запоминаем заданный настройкой адрес маршрутизатора
-		awh_cast <net::addr_net_ipv4_t *> (this->_address.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
-		// Выводим положительный результат отыскания маршрутизатора
-		return true;
+		/**
+		 * Если заданный адрес маршрутизатора разновидности обмена не отвечает
+		 *
+		 * @note Обмен ведётся целиком одной разновидностью, и адрес другой к
+		 *       маршрутизатору не приведёт: событие обмена заводится разновидностью
+		 *       настройки, и отправка по чужому адресу отказала бы уже в системе
+		 */
+		if(this->_addr.type() != ((this->_family == family_t::IPV6) ? net_addr_t::type_t::IPV6 : net_addr_t::type_t::IPV4)){
+			// Записываем в лог сообщение о непригодном адресе маршрутизатора
+			this->_log->print("Router address \"%s\" does not match the network family in use", log_t::flag_t::WARNING, this->_router.c_str());
+			// Выводим отрицательный результат отыскания маршрутизатора
+			return false;
+		}
+		/**
+		 * Запоминаем заданный настройкой адрес маршрутизатора
+		 *
+		 * @note Адрес снимается готовым объектом, а не собирается по числу: разбирать
+		 *       его вид и раскладывать октеты объект работы с адресами умеет сам
+		 */
+		this->_address = this->_addr.source();
+		// Выводим результат отыскания маршрутизатора
+		return (this->_address != nullptr);
 	}
 	// Маршрут до внешней сети
 	eth::gateway_t::route_t route{};
-	// Выполняем размещение адреса маршрутизатора в маршруте
-	route.gateway = make_unique <net::addr_net_ipv4_t> ();
+	/**
+	 * Выполняем размещение адреса маршрутизатора в маршруте
+	 *
+	 * @note Разновидность отыскиваемого маршрута задаётся размещённым адресом: система
+	 *       держит таблицы маршрутов раздельно, и маршрут разновидности обмена берётся
+	 *       из своей
+	 */
+	if(this->_family == family_t::IPV6)
+		// Выполняем размещение адреса маршрутизатора записью IPv6
+		route.gateway = make_unique <net::addr_net_ipv6_t> ();
+	// Выполняем размещение адреса маршрутизатора записью IPv4
+	else route.gateway = make_unique <net::addr_net_ipv4_t> ();
 	/**
 	 * Если маршрут до внешней сети получить не удалось
 	 */
 	if(!this->_gateway.get(route))
 		// Выводим отрицательный результат отыскания маршрутизатора
 		return false;
-	// Запоминаем адрес маршрутизатора, взятый из таблицы маршрутов
-	awh_cast <net::addr_net_ipv4_t *> (this->_address.get())->address = awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address;
-	// Выводим положительный результат отыскания маршрутизатора
-	return true;
+	/**
+	 * Запоминаем сетевое устройство, которым ведётся обмен
+	 *
+	 * @note Устройство нужно рассылке SSDP в сети IPv6, и берётся оно отсюда: маршрут
+	 *       до внешней сети ведёт через маршрутизатор, а он и есть то устройство, с
+	 *       которым ведётся обмен
+	 */
+	this->_link = route.ifname;
+	/**
+	 * Запоминаем адрес маршрутизатора, взятый из таблицы маршрутов
+	 *
+	 * @note Адрес маршрута перенимается целиком, а не по числу: разновидность его
+	 *       задаёт сам маршрут, и разбирать её вызывающему незачем
+	 */
+	this->_address = ::move(route.gateway);
+	// Выводим результат отыскания маршрутизатора
+	return (this->_address != nullptr);
+}
+/**
+ * @brief Метод получения сетевого устройства, которым ведётся обмен
+ *
+ * @return название сетевого устройства
+ *
+ */
+const string & awh::unit::Portmap::iface() const noexcept {
+	// Выводим устройство, заданное настройкой, либо взятое из маршрута до внешней сети
+	return (!this->_iface.empty() ? this->_iface : this->_link);
+}
+/**
+ * @brief Метод вступления события рассылки в группу обнаружения устройств
+ *
+ * @param group групповой адрес обнаружения устройств
+ * @param six   признак того, что обмен ведётся сетью IPv6
+ * @return      результат вступления в группу обнаружения
+ *
+ */
+bool awh::unit::Portmap::membership(const string & group, const bool six) noexcept {
+	/**
+	 * Если обмен ведётся сетью IPv4
+	 *
+	 * @note Устройство подписки в сети IPv4 задаётся неопределённым адресом: система
+	 *       выбирает его сама по таблице маршрутов
+	 */
+	if(!six)
+		// Выполняем вступление в группу обнаружения устройств
+		return this->_io->membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, group, "0.0.0.0");
+	// Получаем сетевое устройство, которым ведётся обмен
+	const string & iface = this->iface();
+	// Если сетевое устройство обмена неизвестно
+	if(iface.empty())
+		// Выводим отрицательный результат вступления в группу обнаружения
+		return false;
+	/**
+	 * Получаем адрес сетевого устройства, которым ведётся обмен
+	 *
+	 * @note Устройство подписки в сети IPv6 неопределённым адресом не задаётся:
+	 *       групповой адрес там принадлежит связи, и какой именно - система выводит
+	 *       из адреса устройства, с которого ведётся подписка
+	 */
+	const unique_ptr <net::addr_t> address = this->_ifaces.getAddress(iface, event::family_t::IPV6);
+	// Если адрес сетевого устройства получить не удалось
+	if(address == nullptr)
+		// Выводим отрицательный результат вступления в группу обнаружения
+		return false;
+	// Выполняем разбор группового адреса обнаружения устройств
+	if(!this->_addr.parse(group))
+		// Выводим отрицательный результат вступления в группу обнаружения
+		return false;
+	// Получаем групповой адрес обнаружения устройств
+	const unique_ptr <net::addr_t> value = this->_addr.source();
+	// Выполняем вступление в группу обнаружения устройств
+	return this->_io->membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, value.get(), address.get());
+}
+/**
+ * @brief Метод сборки узла для заголовка запроса к устройству UPnP
+ *
+ * @param host адрес устройства, с которым ведётся обмен
+ * @param port порт устройства, с которым ведётся обмен
+ * @return     собранный узел для заголовка запроса
+ *
+ */
+string awh::unit::Portmap::authority(const string & host, const uint16_t port) const noexcept {
+	/**
+	 * Если адрес устройства записан видом IPv6
+	 *
+	 * @note Проверка ведётся по самой записи, а не по разновидности обмена: узел этот
+	 *       назван устройством, и записан он так, как записан
+	 */
+	if(host.find(':') != string::npos)
+		// Выводим узел записью IPv6, взятой в квадратные скобки
+		return this->_fmk->format("[%s]:%u", host.c_str(), port);
+	// Выводим узел обычной записью
+	return this->_fmk->format("%s:%u", host.c_str(), port);
 }
 /**
  * @brief Метод отыскания устройства UPnP рассылкой SSDP
@@ -781,15 +854,88 @@ bool awh::unit::Portmap::discover() noexcept {
  */
 bool awh::unit::Portmap::search() noexcept {
 	/**
+	 * Если обмен ведётся сетью IPv4
+	 *
+	 * @note Группа обнаружения в сети IPv4 одна, и перебирать здесь нечего
+	 */
+	if(this->_family != family_t::IPV6)
+		// Выполняем отыскание устройства рассылкой на группу обнаружения
+		return this->search(proto::portmap::ssdp_t::MULTICAST_ADDRESS);
+	/**
+	 * Выполняем перебор групп обнаружения устройств сети IPv6
+	 *
+	 * @details Групп в сети IPv6 две: одна принадлежит связи, другая - площадке.
+	 *          Устройство доступа в сеть лежит на той же связи, и обычно отвечает в
+	 *          первую, но объявлять себя лишь во второй ему не запрещено. Перебор идёт
+	 *          от ближней к дальней и обрывается на первой удавшейся
+	 */
+	for(const char * group : {
+		proto::portmap::ssdp_t::MULTICAST_ADDRESS6,
+		proto::portmap::ssdp_t::MULTICAST_ADDRESS6_SITE
+	}){
+		// Если отыскание устройства рассылкой начать удалось
+		if(this->search(group))
+			// Выводим положительный результат начала отыскания устройства
+			return true;
+	}
+	// Выводим отрицательный результат начала отыскания устройства
+	return false;
+}
+/**
+ * @brief Метод отыскания устройства UPnP рассылкой SSDP на заданную группу
+ *
+ * @param group групповой адрес обнаружения устройств
+ * @return      результат начала отыскания устройства
+ *
+ */
+bool awh::unit::Portmap::search(string_view group) noexcept {
+	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Признак того, что обмен ведётся сетью IPv6
+		const bool six = (this->_family == family_t::IPV6);
+		/**
+		 * Собираемый адрес группы обнаружения устройств
+		 *
+		 * @note Групповой адрес сети IPv6 принадлежит связи, и без указания устройства
+		 *       он неоднозначен: система такую рассылку отвергает, не имея, каким
+		 *       устройством её вести
+		 */
+		string target(group.begin(), group.end());
+		/**
+		 * Если обмен ведётся сетью IPv6
+		 */
+		if(six){
+			// Получаем сетевое устройство, которым ведётся обмен
+			const string & iface = this->iface();
+			/**
+			 * Если сетевое устройство обмена неизвестно
+			 */
+			if(iface.empty()){
+				// Записываем в лог сообщение о неизвестном устройстве обмена
+				this->_log->print("Network interface for IPv6 discovery is unknown, set it explicitly", log_t::flag_t::WARNING);
+				// Выводим отрицательный результат начала отыскания устройства
+				return false;
+			}
+			// Выполняем дописывание зоны группового адреса
+			target.append(1, '%').append(iface);
+		}
 		// Если событие обмена уже заведено
 		if(this->_exchangeUPNP.eid > 0)
 			// Выполняем удаление события обмена
 			this->_io->destroy(this->_exchangeUPNP.eid);
 		// Выполняем заведение события рассылки
-		this->_exchangeUPNP.eid = this->_io->event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+		this->_exchangeUPNP.eid = this->_io->event(event::node_t::CLIENT, (six ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::DATAGRAM, event::protocol_t::UDP);
+		/**
+		 * Если сетевое устройство обмена задано, выполняем его установку
+		 *
+		 * @note Устройство задаётся и рассылке IPv4: сеть бывает не одна, и рассылать
+		 *       просьбу следует той, где лежит маршрутизатор
+		 */
+		if(!this->iface().empty())
+			// Выполняем установку сетевого устройства события рассылки
+			this->_io->setIface(this->_exchangeUPNP.eid, this->iface());
 		/**
 		 * Если групповой режим события установить не удалось
 		 */
@@ -829,7 +975,7 @@ bool awh::unit::Portmap::search() noexcept {
 		/**
 		 * Если групповой адрес обнаружения устройств установить не удалось
 		 */
-		if(!this->_io->setTarget(this->_exchangeUPNP.eid, proto::portmap::ssdp_t::MULTICAST_ADDRESS)){
+		if(!this->_io->setTarget(this->_exchangeUPNP.eid, target)){
 			// Выполняем удаление события рассылки
 			this->_io->destroy(this->_exchangeUPNP.eid);
 			// Сбрасываем идентификатор события рассылки
@@ -858,15 +1004,14 @@ bool awh::unit::Portmap::search() noexcept {
 		}
 		/**
 		 * Если вступление в группу обнаружения устройств выполнить не удалось
+		 *
+		 * @note Отказ обмен не прерывает: ответ на просьбу обнаружения устройство шлёт
+		 *       одному спросившему, а не в группу, и приходит он обычным чтением
+		 *       события. Членство нужно лишь для объявлений, которых модуль не ждёт
 		 */
-		if(!this->_io->membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, proto::portmap::ssdp_t::MULTICAST_ADDRESS, "0.0.0.0")){
-			// Выполняем удаление события рассылки
-			this->_io->destroy(this->_exchangeUPNP.eid);
-			// Сбрасываем идентификатор события рассылки
-			this->_exchangeUPNP.eid = 0;
-			// Выводим отрицательный результат начала отыскания устройства
-			return false;
-		}
+		if(!this->membership(target, six))
+			// Записываем в лог сообщение о неудавшемся вступлении в группу обнаружения
+			this->_log->print("Joining the discovery group \"%s\" failed, awaiting the unicast answer", log_t::flag_t::WARNING, target.c_str());
 		/**
 		 * Если запустить событие рассылки не удалось
 		 */
@@ -879,7 +1024,7 @@ bool awh::unit::Portmap::search() noexcept {
 			return false;
 		}
 		// Выполняем сборку просьбы обнаружения устройства доступа в сеть
-		const string & message = this->_ssdp.search(proto::portmap::ssdp_t::TARGET_GATEWAY);
+		const string & message = this->_ssdp.search(proto::portmap::ssdp_t::TARGET_GATEWAY, proto::portmap::ssdp_t::DEFAULT_DELAY, six);
 		/**
 		 * Если просьбу разослать не удалось
 		 */
@@ -906,7 +1051,7 @@ bool awh::unit::Portmap::search() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(group), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -940,7 +1085,16 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		// Снимаем признак того, что потоковое событие подключено
 		this->_connected = false;
 		// Выполняем заведение потокового события обмена
-		this->_stream = this->_io->event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+		/**
+		 * Определяем разновидность сети по адресу устройства
+		 *
+		 * @note Разновидность берётся у самого адреса, а не у настройки: адрес этот
+		 *       назван устройством в ответе на рассылку, и подключаться к нему следует
+		 *       той разновидностью, какой он записан
+		 */
+		const bool six = (this->_addr.parse(address) && (this->_addr.type() == net_addr_t::type_t::IPV6));
+		// Выполняем заведение потокового события обмена
+		this->_stream = this->_io->event(event::node_t::CLIENT, (six ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::STREAM, event::protocol_t::TCP);
 		/**
 		 * Если порт устройства установить не удалось
 		 */
@@ -1286,7 +1440,7 @@ bool awh::unit::Portmap::describe() noexcept {
 	 *       чтение датаграммного события его не выдаёт: договор `read_t` несёт лишь
 	 *       данные. Оттого проверяется происхождение адреса, а не его совпадение
 	 */
-	if(!this->_addr.parse(host, net_addr_t::type_t::IPV4) || (this->_addr.own() != net_addr_t::own_t::LAN)){
+	if(!this->_addr.parse(host) || (this->_addr.own() != net_addr_t::own_t::LAN)){
 		// Записываем в лог сообщение о непригодном адресе описания устройства
 		this->_log->print("Device description address \"%s\" does not belong to the local network", log_t::flag_t::WARNING, host.c_str());
 		// Выводим отрицательный результат начала чтения описания устройства
@@ -1303,12 +1457,12 @@ bool awh::unit::Portmap::describe() noexcept {
 	// Выполняем сборку запроса описания устройства
 	this->_request = this->_fmk->format(
 		"GET %s HTTP/1.1\r\n"
-		"Host: %s:%u\r\n"
+		"Host: %s\r\n"
 		"Connection: keep-alive\r\n"
 		"User-Agent: %s\r\n"
 		"Accept: text/xml\r\n"
 		"\r\n",
-		path.c_str(), host.c_str(), port, AWH_NAME
+		path.c_str(), this->authority(host, port).c_str(), AWH_NAME
 	);
 	// Запоминаем шаг обмена по договору UPnP
 	this->_stage = stage_t::DESCRIPTION;
@@ -1426,7 +1580,7 @@ bool awh::unit::Portmap::control() noexcept {
 			 *       устройством, и его адрес - это ровно тот, по которому устройство
 			 *       машину и видит
 			 */
-			mapping.internalClient = this->_io->getAddress(this->_stream, event::address_t::IPV4);
+			mapping.internalClient = this->_io->getAddress(this->_stream, ((this->_family == family_t::IPV6) ? event::address_t::IPV6 : event::address_t::IPV4));
 			// Если внутренний адрес машины получить не удалось
 			if(mapping.internalClient.empty())
 				// Выводим отрицательный результат начала вызова действия службы
@@ -1472,14 +1626,14 @@ bool awh::unit::Portmap::control() noexcept {
 	// Выполняем сборку вызова действия службы
 	this->_request = this->_fmk->format(
 		"POST %s HTTP/1.1\r\n"
-		"Host: %s:%u\r\n"
+		"Host: %s\r\n"
 		"Connection: keep-alive\r\n"
 		"User-Agent: %s\r\n"
 		"Content-Type: text/xml; charset=\"utf-8\"\r\n"
 		"SOAPAction: %s\r\n"
 		"Content-Length: %zu\r\n"
 		"\r\n%s",
-		path.c_str(), host.c_str(), port, AWH_NAME,
+		path.c_str(), this->authority(host, port).c_str(), AWH_NAME,
 		request.header.c_str(), request.body.length(), request.body.c_str()
 	);
 	// Запоминаем шаг обмена по договору UPnP
@@ -1683,7 +1837,7 @@ bool awh::unit::Portmap::datagram(const type_t type) noexcept {
 			// Выполняем удаление события обмена
 			this->_io->destroy(exchange.eid);
 		// Выполняем заведение события обмена
-		exchange.eid = this->_io->event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+		exchange.eid = this->_io->event(event::node_t::CLIENT, ((this->_family == family_t::IPV6) ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::DATAGRAM, event::protocol_t::UDP);
 		/**
 		 * Если порт маршрутизатора установить не удалось
 		 */
@@ -1792,8 +1946,15 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 			case static_cast <uint8_t> (type_t::PCP): {
 				// Код причины отказа кодека
 				proto::portmap::pcp_t::error_t error = proto::portmap::pcp_t::error_t::NONE;
-				// Собираемая просьба маршрутизатору
-				proto::portmap::pcp_t::request_t request;
+				/**
+				 * Собираемая просьба маршрутизатору
+				 *
+				 * @note Просьба держится обменом, а не остаётся здесь: ответ сличается с
+				 *       ней средствами кодека, и сличать его иначе не с чем
+				 */
+				proto::portmap::pcp_t::request_t & request = this->_inquiry;
+				// Выполняем очистку собираемой просьбы маршрутизатору
+				request = proto::portmap::pcp_t::request_t();
 				// Запоминаем действие договора
 				request.opcode = proto::portmap::pcp_t::opcode_t::MAP;
 				// Запоминаем договор перенаправляемого порта
@@ -1963,23 +2124,42 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	const bool listing = (action == action_t::LIST);
 	/**
 	 * Если обмен ведётся договором PCP
+	 *
+	 * @note Действия запроса внешнего адреса договор не имеет: адрес выдаётся в ответе
+	 *       на просьбу о перенаправлении, и спрашивать его отдельно негде. Заводить
+	 *       перенаправление ради одного лишь адреса неверно, и просьба эта договору не
+	 *       передаётся - её выполняют NAT-PMP и UPnP
 	 */
-	if(routed && !listing && ((this->_type == type_t::PCP) || (this->_type == type_t::AUTO)))
+	if(routed && !listing && (action != action_t::EXTERNAL) && ((this->_type == type_t::PCP) || (this->_type == type_t::AUTO)))
 		// Выполняем отправку просьбы по договору PCP
 		result = (this->submit(type_t::PCP) || result);
+	/**
+	 * Определяем, заводится ли или снимается перенаправление в сети IPv6
+	 *
+	 * @note Перенаправлений в сети IPv6 служба соединения не заводит: преобразования
+	 *       адресов там нет, и подключения сквозь заслон маршрутизатора разрешает
+	 *       отдельная служба заслона IPv6, которую устройство выдаёт не всякое.
+	 *       Внешний адрес и перечень служба соединения выдаёт и по связи IPv6, и они
+	 *       здесь не отсекаются
+	 */
+	const bool pinhole = ((this->_family == family_t::IPV6) && ((action == action_t::OPEN) || (action == action_t::CLOSE)));
 	/**
 	 * Если обмен ведётся договором UPnP
 	 *
 	 * @note Отыскание маршрутизатора договору UPnP не нужно: устройство отыскивается
 	 *       рассылкой SSDP, и заданный настройкой адрес маршрутизатора здесь ни при чём
 	 */
-	if((this->_type == type_t::UPNP) || (this->_type == type_t::AUTO))
+	if(!pinhole && ((this->_type == type_t::UPNP) || (this->_type == type_t::AUTO)))
 		// Выполняем отыскание устройства рассылкой SSDP
 		result = (this->search() || result);
 	/**
 	 * Если обмен ведётся договором NAT-PMP
+	 *
+	 * @note Разновидности IPv6 договор не имеет вовсе: RFC 6886 описан только для
+	 *       IPv4, и опрашивать им маршрутизатор в сети IPv6 незачем - ответить ему
+	 *       нечем, а общий срок опроса это только затянет
 	 */
-	if(routed && !listing && ((this->_type == type_t::NAT_PMP) || (this->_type == type_t::AUTO)))
+	if(routed && !listing && (this->_family != family_t::IPV6) && ((this->_type == type_t::NAT_PMP) || (this->_type == type_t::AUTO)))
 		// Выполняем отправку просьбы по договору NAT-PMP
 		result = (this->submit(type_t::NAT_PMP) || result);
 	/**
@@ -2173,6 +2353,26 @@ void awh::unit::Portmap::setType(const type_t type) noexcept {
 	this->_type = type;
 }
 /**
+ * @brief Метод получения разновидности сети, в которой ведётся обмен
+ *
+ * @return установленная разновидность сети
+ *
+ */
+awh::unit::Portmap::family_t awh::unit::Portmap::getFamily() const noexcept {
+	// Выводим разновидность сети, в которой ведётся обмен
+	return this->_family;
+}
+/**
+ * @brief Метод установки разновидности сети, в которой ведётся обмен
+ *
+ * @param family разновидность сети для установки
+ *
+ */
+void awh::unit::Portmap::setFamily(const family_t family) noexcept {
+	// Устанавливаем разновидность сети, в которой ведётся обмен
+	this->_family = family;
+}
+/**
  * @brief Метод установки срока ожидания ответа маршрутизатора
  *
  * @param delay срок ожидания ответа маршрутизатора в миллисекундах
@@ -2208,12 +2408,47 @@ void awh::unit::Portmap::setRouter(string_view router) noexcept {
 	this->_router.assign(router.begin(), router.end());
 }
 /**
+ * @brief Метод установки сетевого устройства, которым ведётся обмен
+ *
+ * @param iface название сетевого устройства для установки
+ *
+ */
+void awh::unit::Portmap::setIface(string_view iface) noexcept {
+	// Устанавливаем сетевое устройство, которым ведётся обмен
+	this->_iface.assign(iface.begin(), iface.end());
+}
+/**
  * @brief Метод получения внешнего адреса маршрутизатора
  *
  * @return результат отправки просьбы
  *
  */
 bool awh::unit::Portmap::external() noexcept {
+	/**
+	 * Если опрос ведётся договором PCP
+	 *
+	 * @note Действия запроса внешнего адреса договор не имеет: адрес выдаётся в ответе
+	 *       на просьбу о перенаправлении, и спрашивать его отдельно негде. Заводить
+	 *       перенаправление ради одного лишь адреса неверно
+	 */
+	if(this->_type == type_t::PCP){
+		// Выполняем завершение обмена отказом
+		this->failure(this->_type, error_t::NOT_SUPPORTED);
+		// Выводим отрицательный результат отправки просьбы
+		return false;
+	}
+	/**
+	 * Если опрос ведётся договором NAT-PMP в сети IPv6
+	 *
+	 * @note Разновидности IPv6 договор не имеет, и внешний адрес в такой сети выдаёт
+	 *       лишь UPnP
+	 */
+	if((this->_family == family_t::IPV6) && (this->_type == type_t::NAT_PMP)){
+		// Выполняем завершение обмена отказом
+		this->failure(this->_type, error_t::NOT_SUPPORTED);
+		// Выводим отрицательный результат отправки просьбы
+		return false;
+	}
 	// Выполняем начало обращения к маршрутизатору
 	return this->perform(action_t::EXTERNAL, mapping_t());
 }
@@ -2257,6 +2492,19 @@ bool awh::unit::Portmap::open(const mapping_t & mapping) noexcept {
 		// Выводим отрицательный результат отправки просьбы
 		return false;
 	}
+	/**
+	 * Если перенаправление заводится договором UPnP в сети IPv6
+	 *
+	 * @note Перенаправлений в сети IPv6 служба соединения не заводит: разрешает
+	 *       подключения там отдельная служба заслона IPv6, которую выдаёт не всякое
+	 *       устройство. Заводит перенаправления в такой сети договор PCP
+	 */
+	if((this->_family == family_t::IPV6) && (this->_type == type_t::UPNP)){
+		// Выполняем завершение обмена отказом
+		this->failure(this->_type, error_t::NOT_SUPPORTED);
+		// Выводим отрицательный результат отправки просьбы
+		return false;
+	}
 	// Выполняем начало обращения к маршрутизатору
 	return this->perform(action_t::OPEN, mapping);
 }
@@ -2277,6 +2525,19 @@ bool awh::unit::Portmap::close(const mapping_t & mapping) noexcept {
 		// Выводим отрицательный результат отправки просьбы
 		return false;
 	}
+	/**
+	 * Если перенаправление заводится договором UPnP в сети IPv6
+	 *
+	 * @note Перенаправлений в сети IPv6 служба соединения не заводит: разрешает
+	 *       подключения там отдельная служба заслона IPv6, которую выдаёт не всякое
+	 *       устройство. Заводит перенаправления в такой сети договор PCP
+	 */
+	if((this->_family == family_t::IPV6) && (this->_type == type_t::UPNP)){
+		// Выполняем завершение обмена отказом
+		this->failure(this->_type, error_t::NOT_SUPPORTED);
+		// Выводим отрицательный результат отправки просьбы
+		return false;
+	}
 	// Выполняем начало обращения к маршрутизатору
 	return this->perform(action_t::CLOSE, mapping);
 }
@@ -2288,11 +2549,11 @@ bool awh::unit::Portmap::close(const mapping_t & mapping) noexcept {
  *
  */
 awh::unit::Portmap::Portmap(const fmk_t * fmk, const log_t * log) noexcept :
- unit_t(fmk, log), _type(type_t::AUTO), _action(action_t::NONE),
+ unit_t(fmk, log), _type(type_t::AUTO), _family(family_t::IPV4), _action(action_t::NONE),
  _attempts(::DEFAULT_ATTEMPTS), _delay(::DEFAULT_DELAY),
  _index(0), _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
  _parser(http::direct_t::RESPONSE, fmk, log), _request{""}, _payload{""}, _complete(false), _connected(false), _uri(fmk, log), _router{""},
- _address(nullptr), _addr(fmk, log), _gateway(fmk, log), _pcp(fmk, log),
+ _iface{""}, _address(nullptr), _addr(fmk, log), _ifaces(fmk, log), _gateway(fmk, log), _pcp(fmk, log),
  _ssdp(fmk, log), _soap(fmk, log), _upnp(fmk, log), _device(fmk, log), _natpmp(fmk, log) {}
 /**
  * @brief Деструктор

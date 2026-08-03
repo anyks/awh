@@ -1661,7 +1661,7 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::dispatchMessage(const uint64_t 
 			// Код ошибки декодирования секции полей
 			error_t reason = error_t::H3_NO_ERROR;
 			// Выполняем декодирование секции полей обещанного запроса
-			const h3::status_t status = this->_decoder.decode(sid, promise.block, this->_fields, this->_limits.maxHeadersTotal, reason);
+			const h3::status_t status = this->_decoder.decode(sid, promise.block, this->_fields, this->sectionLimit(), reason);
 			// Если поток заблокирован ожиданием пополнения таблицы
 			if(status == h3::status_t::BLOCKED){
 				// Выполняем поиск состояния потока
@@ -2718,7 +2718,7 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 		// Код ошибки протокола
 		error_t error = error_t::H3_NO_ERROR;
 		// Выполняем декодирование отложенной секции полей
-		const h3::status_t status = this->_decoder.decode(sid, section, this->_fields, this->_limits.maxHeadersTotal, error);
+		const h3::status_t status = this->_decoder.decode(sid, section, this->_fields, this->sectionLimit(), error);
 		// Если поток всё ещё заблокирован
 		if(status == h3::status_t::BLOCKED){
 			// Обновляем состояние потока
@@ -3081,7 +3081,7 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::commitSection(const uint64_t si
 	// Код ошибки протокола
 	error_t error = error_t::H3_NO_ERROR;
 	// Выполняем декодирование секции полей
-	const h3::status_t status = this->_decoder.decode(sid, section, this->_fields, this->_limits.maxHeadersTotal, error);
+	const h3::status_t status = this->_decoder.decode(sid, section, this->_fields, this->sectionLimit(), error);
 	/**
 	 * Секция, пришедшая раньше нужных вставок QPACK, откладывается: инструкции
 	 * кодека идут отдельным потоком и обгоняют секцию (RFC 9204 §2.1.2)
@@ -3517,6 +3517,48 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::deliverPromise(const uint64_t s
 		this->sendCancelPush(pushId);
 	// Выводим результат доставки
 	return h3::status_t::OK;
+}
+/**
+ * @brief Метод получения лимита распакованной секции полей
+ *
+ * @return лимит распакованной секции полей (0 - без лимита)
+ *
+ */
+uint64_t awh::http::Parser_HTTP3::sectionLimit() const noexcept {
+	/**
+	 * Лимит суммарного размера распакованной секции полей (защита от decompression
+	 * bomb). В обоих источниках 0 означает "без лимита", поэтому берётся не минимум,
+	 * а строжайший из заданных: иначе maxHeadersTotal == 0 обнулял бы и лимит,
+	 * объявленный нами пиру параметром SETTINGS_MAX_FIELD_SECTION_SIZE
+	 */
+	uint64_t result = this->_limits.maxHeadersTotal;
+	// Если лимит SETTINGS_MAX_FIELD_SECTION_SIZE задан
+	if(this->_settings.maxFieldSectionSize != 0){
+		// Применяем его, если общий лимит не задан либо менее строг
+		if((result == 0) || (this->_settings.maxFieldSectionSize < result))
+			// Применяем лимит из наших параметров SETTINGS
+			result = this->_settings.maxFieldSectionSize;
+	}
+	// Выводим полученный лимит
+	return result;
+}
+/**
+ * @brief Метод предупреждения о полностью снятом лимите секции полей
+ *
+ */
+void awh::http::Parser_HTTP3::checkFieldSectionLimits() const noexcept {
+	/**
+	 * Оба лимита распакованной секции сняты. Секция полей ограничена размером
+	 * на проводе, но каждая индексная ссылка длиной в байт разворачивается в арене
+	 * декодера в полную пару название/значение из динамической таблицы: секция
+	 * в 64 КиБ ссылок даёт сотни мегабайт, и остановить это в такой конфигурации нечем
+	 */
+	if((this->_limits.maxHeadersTotal == 0) && (this->_settings.maxFieldSectionSize == 0))
+		// Записываем сообщение о снятом лимите в лог
+		this->_log->print(
+			"HTTP/3 decoded field section is unlimited: both maxHeadersTotal and SETTINGS_MAX_FIELD_SECTION_SIZE are 0",
+			log_t::flag_t::WARNING
+		);
 }
 /**
  * @brief Метод проверки семантики секции полей (RFC 9114 §4.1, §4.2)
@@ -4501,6 +4543,8 @@ void awh::http::Parser_HTTP3::limits(const limits_t & limits) noexcept {
 	this->_ctrlLimit.init(this->_limits.ctrlLimitBurst, this->_limits.ctrlLimitRate);
 	// Переинициализируем лимит частоты кадров приоритета
 	this->_priorityLimit.init(this->_limits.prioLimitBurst, this->_limits.prioLimitRate);
+	// Предупреждаем, если лимит распакованной секции полей снят полностью
+	this->checkFieldSectionLimits();
 }
 /**
  * @brief Метод получения наших параметров SETTINGS
@@ -4539,6 +4583,8 @@ void awh::http::Parser_HTTP3::settings(const settings_t & settings) noexcept {
 	this->_decoder.maxCapacity(this->_settings.qpackMaxTableCapacity);
 	// Устанавливаем число ожидающих потоков декодера по нашему анонсу
 	this->_decoder.maxBlocked(this->_settings.qpackBlockedStreams);
+	// Предупреждаем, если лимит распакованной секции полей снят полностью
+	this->checkFieldSectionLimits();
 }
 /**
  * @brief Метод получения параметров SETTINGS пира

@@ -2034,18 +2034,27 @@ void awh::compressor::Stream::push(const void * buffer, const size_t size, T & r
 	 */
 	if((buffer == nullptr) && (size > 0)){
 		/**
-		 * Если включён режим отладки
+		 * Объект работы с логами приходит извне и пустым быть волен: конструктор
+		 * потока открыт наружу и пустой журнал принимает, а проверка предела выхода
+		 * его же и стережёт. Обращение без проверки роняло бы работу ровно там, где
+		 * она собиралась сообщить об ошибке вызывающей стороны
 		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (flush)), log_t::flag_t::WARNING, "Buffer is not passed");
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Buffer is not passed");
-		#endif
+		// Если объект работы с логами установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (flush)), log_t::flag_t::WARNING, "Buffer is not passed");
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Buffer is not passed");
+			#endif
+		}
 		// Выходим из функции
 		return;
 	}
@@ -2063,19 +2072,22 @@ void awh::compressor::Stream::push(const void * buffer, const size_t size, T & r
 	 * разрядность движка, была бы обработана частично и без признака отказа
 	 */
 	if(!compressor::fits(size, this->_method)){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (flush)), log_t::flag_t::WARNING, "Input chunk is too large for the selected method");
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Input chunk is too large for the selected method");
-		#endif
+		// Если объект работы с логами установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (flush)), log_t::flag_t::WARNING, "Input chunk is too large for the selected method");
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Input chunk is too large for the selected method");
+			#endif
+		}
 		// Выходим из функции
 		return;
 	}

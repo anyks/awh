@@ -507,13 +507,156 @@ def casing():
 	return '\n'.join(lines) + '\n'
 
 
+# Путь к файлу выведенных свойств нормализации эталонной реализации приведения
+# доменных имён, откуда берётся свойство исключения из сочетания
+EXCLUSIONS = os.path.join(
+	os.path.dirname(os.path.abspath(__file__)),
+	'..', '..', 'submodules', 'libidn2', 'lib', 'DerivedNormalizationProps.txt'
+)
+
+
+def unicodedata():
+	"""Разбор основного файла базы данных символов Юникода
+
+	Выводятся канонические классы сочетания и разложения символов: каноническое
+	разложение записывается набором кодовых значений, разложение совместимости —
+	тем же набором, предваряемым обозначением вида разложения в угловых скобках.
+	"""
+	combining = []
+	decompositions = []
+	for line in open(os.path.join(TABLES, 'UnicodeData.txt'), encoding='utf-8'):
+		fields = line.split(';')
+		if len(fields) < 6:
+			continue
+		code = int(fields[0], 16)
+		# Канонический класс сочетания символа записан третьим полем
+		combining.append((code, code, int(fields[3])))
+		value = fields[5].strip()
+		if not value:
+			continue
+		compat = value.startswith('<')
+		if compat:
+			value = value[value.index('>') + 1:]
+		decompositions.append((code, tuple(int(item, 16) for item in value.split()), compat))
+	return compress(combining), decompositions
+
+
+def excluded():
+	"""Набор символов, исключённых из канонического сочетания
+
+	Свойство берётся файлом выведенных свойств нормализации: часть исключений
+	выводится из разложений самого файла базы данных, а часть задана списком
+	исключений, из его состава не выводимым.
+	"""
+	result = set()
+	for line in open(EXCLUSIONS, encoding='utf-8'):
+		line = line.split('#')[0].strip()
+		if not line:
+			continue
+		fields = [field.strip() for field in line.split(';')]
+		if (len(fields) < 2) or (fields[1] != 'Full_Composition_Exclusion'):
+			continue
+		bounds = fields[0].split('..')
+		begin = int(bounds[0], 16)
+		end = int(bounds[1], 16) if len(bounds) > 1 else begin
+		for code in range(begin, end + 1):
+			result.add(code)
+	return result
+
+
+def normalization():
+	"""Таблицы нормализации текста
+
+	Порождаются канонические классы сочетания, разложения символов и обратные им
+	сочетания пар символов. Слоги хангыля разлагаются и сочетаются вычислением
+	и в таблицы не входят.
+	"""
+	combining, decompositions = unicodedata()
+	classes = {}
+	for begin, end, value in combining:
+		for code in range(begin, end + 1):
+			classes[code] = value
+	skip = excluded()
+	# Размещаем разложения в общем наборе кодовых значений
+	pool = []
+	records = []
+	for code, value, compat in sorted(decompositions):
+		records.append((code, len(pool), len(value), compat))
+		pool.extend(value)
+	# Выводим сочетания обращением канонических разложений
+	compositions = []
+	for code, value, compat in sorted(decompositions):
+		# Разложения совместимости сочетанию не подлежат
+		if compat or (len(value) != 2):
+			continue
+		# Исключённые символы и разложения, начинающиеся не с начального символа,
+		# сочетанию не подлежат: их сочетание нарушило бы устойчивость нормализации
+		if (code in skip) or (classes.get(value[0], 0) != 0):
+			continue
+		compositions.append((value[0], value[1], code))
+	return combining, records, pool, sorted(compositions)
+
+
+def normalize():
+	"""Выпуск таблиц нормализации текста"""
+	combining, records, pool, compositions = normalization()
+	lines = []
+	lines.append('')
+	lines.append('/**')
+	lines.append(' * @brief Таблица канонических классов сочетания символов')
+	lines.append(' *')
+	lines.append(' */')
+	lines.append('const awh::unicode::interval_t awh::unicode::COMBINING[] = {')
+	for begin, end, value in combining:
+		lines.append('\t{0x%X, 0x%X, %s},' % (begin, end, value))
+	lines[-1] = lines[-1].rstrip(',')
+	lines.append('};')
+	lines.append('const size_t awh::unicode::COMBINING_COUNT = %d;' % len(combining))
+	lines.append('')
+	lines.append('/**')
+	lines.append(' * @brief Таблица разложений символов')
+	lines.append(' *')
+	lines.append(' */')
+	lines.append('const awh::unicode::decomposition_t awh::unicode::DECOMPOSITIONS[] = {')
+	for code, offset, length, compat in records:
+		lines.append('\t{0x%X, %d, %d, %s},' % (code, offset, length, ('true' if compat else 'false')))
+	lines[-1] = lines[-1].rstrip(',')
+	lines.append('};')
+	lines.append('const size_t awh::unicode::DECOMPOSITIONS_COUNT = %d;' % len(records))
+	lines.append('')
+	lines.append('/**')
+	lines.append(' * @brief Набор кодовых значений разложений символов')
+	lines.append(' *')
+	lines.append(' */')
+	lines.append('const uint32_t awh::unicode::DECOMPOSITION_SETS[] = {')
+	for row in range(0, len(pool), 12):
+		lines.append('\t' + ', '.join('0x%X' % value for value in pool[row:row + 12]) + ',')
+	lines[-1] = lines[-1].rstrip(',')
+	lines.append('};')
+	lines.append('')
+	lines.append('/**')
+	lines.append(' * @brief Таблица канонических сочетаний пар символов')
+	lines.append(' *')
+	lines.append(' */')
+	lines.append('const awh::unicode::composition_t awh::unicode::COMPOSITIONS[] = {')
+	for first, second, code in compositions:
+		lines.append('\t{0x%X, 0x%X, 0x%X},' % (first, second, code))
+	lines[-1] = lines[-1].rstrip(',')
+	lines.append('};')
+	lines.append('const size_t awh::unicode::COMPOSITIONS_COUNT = %d;' % len(compositions))
+	return '\n'.join(lines) + '\n'
+
+
 def main():
 	"""Порождение таблиц свойств Юникода"""
 	if not os.path.isdir(TABLES):
 		sys.stderr.write('Каталог таблиц Юникода отсутствует: %s\n' % TABLES)
 		return 1
+	if not os.path.isfile(EXCLUSIONS):
+		sys.stderr.write('Файл выведенных свойств нормализации отсутствует: %s\n' % EXCLUSIONS)
+		return 1
 	tables, sets, spans, names, order = build()
-	source = emit(tables, sets, spans, names, order) + casing()
+	source = emit(tables, sets, spans, names, order) + casing() + normalize()
 	path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'unicode', 'table.cpp')
 	open(path, 'w', encoding='utf-8').write(source)
 	sys.stdout.write('выпущен файл: %s\n' % os.path.normpath(path))
