@@ -83,6 +83,24 @@ if (${GTest_FOUND})
             message(STATUS "Build tests port mapping module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_PORTMAP_TEST})
 
+        # Указываем что нужно собрать тесты для модуля DNS-резолвера
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_DNS_TEST "Build unit DNS resolver test for ${UNIT_TEST_NAME}" ON)
+
+        # Если нужно собрать тесты для модуля DNS-резолвера
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_DNS_TEST})
+            # Выводим сообщение о сборке тестов для модуля DNS-резолвера
+            message(STATUS "Build tests DNS resolver module: Yes\n")
+            # Дополняем список источников тестами для модуля DNS-резолвера
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                dns/dns.cpp
+                dns/late.cpp
+            )
+        # Если не нужно собрать тесты для модуля DNS-резолвера
+        else()
+            # Выводим сообщение о сборке тестов для модуля DNS-резолвера
+            message(STATUS "Build tests DNS resolver module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_DNS_TEST})
+
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS
             GTest::gtest
