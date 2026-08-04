@@ -26,7 +26,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <locale>
 #include <string>
 #include <vector>
 #include <cctype>

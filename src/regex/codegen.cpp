@@ -2120,6 +2120,290 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	return true;
 }
 /**
+ * @brief Опознание набора команд порождённого машинного кода
+ *
+ * @details Порождённый код годен лишь набору команд, для какого порождён,
+ *          поэтому запись несёт его опознание. Восстановление на машине
+ *          набора иного отвечает отказом, а не исполнением чужих команд.
+ *
+ */
+static uint8_t instructionSet() noexcept {
+	/**
+	 * Если сборка выполняется для процессора с набором команд ARM64
+	 */
+	#if defined(__aarch64__) || defined(_M_ARM64)
+		// Выводим опознание набора команд ARM64
+		return 0x01;
+	/**
+	 * Если сборка выполняется для процессора с набором команд x86-64
+	 */
+	#elif defined(__x86_64__) || defined(_M_X64)
+		// Выводим опознание набора команд x86-64
+		return 0x02;
+	/**
+	 * Если сборка выполняется для прочих наборов команд
+	 */
+	#else
+		// Выводим отсутствие опознания набора команд
+		return 0x00;
+	#endif
+}
+/**
+ * @brief Функция записи числа переменной длины
+ *
+ * @param value  записываемое число
+ * @param result запись порождённого сопоставителя
+ *
+ */
+static void writeSize(uint64_t value, std::string & result) noexcept {
+	/**
+	 * Выполняем запись числа долями по семь разрядов
+	 */
+	while(value >= 0x80) {
+		// Выполняем запись очередной доли числа с признаком продолжения
+		result.push_back(static_cast <char> ((value & 0x7F) | 0x80));
+		// Переходим к следующей доле числа
+		value >>= 7;
+	}
+	// Выполняем запись последней доли числа
+	result.push_back(static_cast <char> (value & 0x7F));
+}
+/**
+ * @brief Функция чтения числа переменной длины
+ *
+ * @param data   запись порождённого сопоставителя
+ * @param offset позиция чтения записи
+ * @param value  прочитанное число
+ * @return       результат чтения числа
+ *
+ */
+static bool readSize(std::string_view data, size_t & offset, uint64_t & value) noexcept {
+	// Выполняем сброс прочитанного числа
+	value = 0;
+	/**
+	 * Выполняем чтение числа долями по семь разрядов
+	 */
+	for(uint8_t shift = 0; shift < 64; shift += 7) {
+		/**
+		 * Если запись оборвана до завершения числа
+		 */
+		if(offset >= data.size())
+			// Выводим результат чтения числа
+			return false;
+		// Получаем очередную долю числа
+		const uint8_t part = static_cast <uint8_t> (data[offset++]);
+		// Выполняем добавление доли числа
+		value |= (static_cast <uint64_t> (part & 0x7F) << shift);
+		/**
+		 * Если признак продолжения числа не установлен
+		 */
+		if((part & 0x80) == 0)
+			// Выводим результат чтения числа
+			return true;
+	}
+	// Выводим результат чтения числа
+	return false;
+}
+/**
+ * @brief Метод записи порождённого сопоставителя
+ *
+ * @param result запись порождённого сопоставителя
+ * @return       результат записи порождённого сопоставителя
+ *
+ */
+bool awh::regex::Codegen::save(string & result) const noexcept {
+	/**
+	 * Если порождённый сопоставитель не готов
+	 */
+	if(!this->ready())
+		// Выводим результат записи порождённого сопоставителя
+		return false;
+	// Выполняем запись опознания набора команд порождённого кода
+	result.push_back(static_cast <char> (instructionSet()));
+	// Выполняем запись размера порождённого машинного кода
+	writeSize(static_cast <uint64_t> (this->_assembly.length()), result);
+	// Выполняем запись порождённого машинного кода
+	result.append(reinterpret_cast <const char *> (this->_assembly.entry()), this->_assembly.length());
+	// Выполняем запись размера хранилища значений обстановки
+	writeSize(static_cast <uint64_t> (this->_members.size()), result);
+	/**
+	 * Если хранилище значений обстановки не пусто
+	 */
+	if(!this->_members.empty())
+		// Выполняем запись хранилища значений обстановки
+		result.append(reinterpret_cast <const char *> (this->_members.data()), this->_members.size());
+	// Выполняем запись количества смещений значений хранилища
+	writeSize(static_cast <uint64_t> (this->_offsets.size()), result);
+	/**
+	 * Выполняем перебор смещений значений хранилища
+	 */
+	for(const auto & offset : this->_offsets)
+		// Выполняем запись очередного смещения значения хранилища
+		writeSize(static_cast <uint64_t> (offset), result);
+	// Выводим результат записи порождённого сопоставителя
+	return true;
+}
+/**
+ * @brief Метод восстановления порождённого сопоставителя
+ *
+ * @param data    запись порождённого сопоставителя
+ * @param offset  позиция чтения записи
+ * @param program программа порождённого сопоставителя
+ * @return        результат восстановления сопоставителя
+ *
+ */
+bool awh::regex::Codegen::restore(string_view data, size_t & offset, const program_t & program) noexcept {
+	// Выполняем очистку порождённого сопоставителя
+	this->clear();
+	/**
+	 * Если запись оборвана до опознания набора команд
+	 */
+	if(offset >= data.size())
+		// Выводим результат восстановления сопоставителя
+		return false;
+	// Получаем опознание набора команд порождённого кода
+	const uint8_t machine = static_cast <uint8_t> (data[offset++]);
+	// Размер порождённого машинного кода
+	uint64_t length = 0;
+	/**
+	 * Если чтение размера порождённого кода не выполнено
+	 */
+	if(!readSize(data, offset, length))
+		// Выводим результат восстановления сопоставителя
+		return false;
+	/**
+	 * Если порождённый код за пределы записи выходит
+	 */
+	if(length > static_cast <uint64_t> (data.size() - offset))
+		// Выводим результат восстановления сопоставителя
+		return false;
+	// Получаем указание на начало порождённого машинного кода
+	const char * code = (data.data() + offset);
+	// Переходим за порождённый машинный код
+	offset += static_cast <size_t> (length);
+	// Размер хранилища значений обстановки исполнения
+	uint64_t members = 0;
+	/**
+	 * Если чтение размера хранилища значений не выполнено
+	 */
+	if(!readSize(data, offset, members))
+		// Выводим результат восстановления сопоставителя
+		return false;
+	/**
+	 * Если хранилище значений за пределы записи выходит
+	 */
+	if(members > static_cast <uint64_t> (data.size() - offset))
+		// Выводим результат восстановления сопоставителя
+		return false;
+	// Получаем указание на начало хранилища значений обстановки
+	const char * storage = (data.data() + offset);
+	// Переходим за хранилище значений обстановки
+	offset += static_cast <size_t> (members);
+	// Количество смещений значений хранилища
+	uint64_t count = 0;
+	/**
+	 * Если чтение количества смещений не выполнено
+	 */
+	if(!readSize(data, offset, count))
+		// Выводим результат восстановления сопоставителя
+		return false;
+	/**
+	 * Если количество смещений превышает размер оставшейся записи
+	 */
+	if(count > static_cast <uint64_t> (data.size() - offset))
+		// Выводим результат восстановления сопоставителя
+		return false;
+	// Набор смещений значений хранилища
+	vector <size_t> offsets;
+	// Выполняем размещение набора смещений значений хранилища
+	offsets.reserve(static_cast <size_t> (count));
+	/**
+	 * Выполняем чтение набора смещений значений хранилища
+	 */
+	for(uint64_t i = 0; i < count; i++) {
+		// Очередное смещение значения хранилища
+		uint64_t value = 0;
+		/**
+		 * Если чтение смещения значения хранилища не выполнено
+		 */
+		if(!readSize(data, offset, value))
+			// Выводим результат восстановления сопоставителя
+			return false;
+		/**
+		 * Если смещение хранилищу значений не принадлежит
+		 *
+		 * @details Смещение обращается адресом, по какому порождённый код
+		 *          читает таблицы и приметы, поэтому принадлежность его
+		 *          хранилищу удостоверяется до всякого исполнения.
+		 *
+		 */
+		if(value >= members)
+			// Выводим результат восстановления сопоставителя
+			return false;
+		// Выполняем добавление смещения в набор
+		offsets.push_back(static_cast <size_t> (value));
+	}
+	/**
+	 * Если запись порождена для набора команд иного
+	 *
+	 * @details Отказ этот изъяном не является: вызывающая сторона порождает
+	 *          сопоставитель заново, а выражение сопоставляется исполнением
+	 *          программы, покуда порождение не выполнено.
+	 *
+	 */
+	if((machine == 0x00) || (machine != instructionSet()))
+		// Выводим результат восстановления сопоставителя
+		return false;
+	/**
+	 * Если порождённый машинный код пуст
+	 */
+	if(length == 0)
+		// Выводим результат восстановления сопоставителя
+		return false;
+	// Выполняем установку хранилища значений обстановки исполнения
+	this->_members.assign(storage, (storage + members));
+	// Выполняем установку смещений значений хранилища
+	this->_offsets = ::move(offsets);
+	// Выполняем установку предварительного отбора позиций
+	this->_prefilter = program.prefilter;
+	// Выполняем размещение набора адресов обстановки исполнения
+	this->_context.assign((SLOT_TABLES + this->_offsets.size()), nullptr);
+	/**
+	 * Выполняем сборку набора адресов обстановки исполнения
+	 */
+	for(size_t i = SLOT_TABLES; i < this->_context.size(); i++)
+		// Выполняем установку адреса значения хранилища
+		this->_context.at(i) = (this->_members.data() + this->_offsets.at(i - SLOT_TABLES));
+	// Выполняем установку адреса предварительного отбора позиций
+	this->_context.at(SLOT_PREFILTER) = &this->_prefilter;
+	// Выполняем установку адреса подпрограммы отбора позиций
+	this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (&seeking);
+	// Выполняем установку адреса подпрограммы проверки возможности совпадения
+	this->_context.at(SLOT_FEASIBLE) = reinterpret_cast <const void *> (&feasible);
+	// Выполняем установку адреса подпрограммы проверки привязки к позиции
+	this->_context.at(SLOT_ASSERTING) = reinterpret_cast <const void *> (&asserting);
+	// Выполняем установку адреса подпрограммы прохода ряда повторения
+	this->_context.at(SLOT_SCANNING) = reinterpret_cast <const void *> (&scanning);
+	/**
+	 * Если размещение порождённого машинного кода не выполнено
+	 */
+	if(!this->_assembly.allocate(static_cast <size_t> (length)) ||
+	 !this->_assembly.fill(code, static_cast <size_t> (length)) || !this->_assembly.commit()) {
+		// Выполняем очистку порождённого сопоставителя
+		this->clear();
+		// Выводим результат восстановления сопоставителя
+		return false;
+	}
+	// Выполняем установку вызова порождённого сопоставителя
+	this->_matcher = reinterpret_cast <matcher_t> (const_cast <void *> (this->_assembly.entry()));
+	// Выполняем установку количества захватывающих групп выражения
+	this->_captures = program.captures;
+	// Выполняем установку опознания программы порождённого сопоставителя
+	this->_identity = program.id;
+	// Выводим результат восстановления сопоставителя
+	return true;
+}
+/**
  * @brief Метод очистки порождённого сопоставителя
  *
  */

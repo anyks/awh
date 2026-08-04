@@ -20,6 +20,7 @@
  * Стандартные заголовочные файлы
  */
 #include <cmath>
+#include <locale>
 #include <atomic>
 #include <bitset>
 #include <chrono>
