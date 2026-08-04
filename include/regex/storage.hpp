@@ -96,7 +96,7 @@ namespace awh {
 		 *          поскольку прочитана будет неверно.
 		 *
 		 */
-		constexpr uint16_t STORAGE_VERSION = 0x0001;
+		constexpr uint16_t STORAGE_VERSION = 0x0002;
 
 		/**
 		 * @brief Коды ошибок хранилища собранных выражений
@@ -110,7 +110,8 @@ namespace awh {
 			BAD_VERSION   = 0x04, // Версия устройства записи не поддерживается
 			BAD_CHECKSUM  = 0x05, // Контрольная сумма записи не совпадает
 			BAD_CONTENT   = 0x06, // Содержимое записи не отвечает устройству
-			TOO_LARGE     = 0x07  // Размер записи превышает допустимый
+			TOO_LARGE     = 0x07, // Размер записи превышает допустимый
+			BAD_PLATFORM  = 0x08  // Запись порождена машиной устройства иного
 		};
 
 		/**
@@ -152,6 +153,15 @@ namespace awh {
 				 *
 				 */
 				bool load(string_view data, size_t & offset, program_t & program) const noexcept;
+				/**
+				 * @brief Метод восстановления собранных выражений из записи
+				 *
+				 * @param blob   запись хранилища, взятая во владение
+				 * @param result набор восстановленных выражений
+				 * @return       результат восстановления собранных выражений
+				 *
+				 */
+				bool restore(const shared_ptr <const string> & blob, vector <exp_t> & result) const noexcept;
 			private:
 				/**
 				 * @brief Метод проверки правильности программы регулярного выражения
@@ -189,6 +199,20 @@ namespace awh {
 				 *
 				 */
 				bool load(string_view data, vector <exp_t> & result) const noexcept;
+				/**
+				 * @brief Метод восстановления собранных выражений
+				 *
+				 * @param data   запись хранилища
+				 * @param result набор восстановленных выражений
+				 * @return       результат восстановления собранных выражений
+				 *
+				 * @details Запись передаётся хранилищу во владение, отчего
+				 *          копирование её не выполняется вовсе: наборы программ
+				 *          обозревают участки переданной записи, а она живёт
+				 *          столько же, сколько восстановленные выражения.
+				 *
+				 */
+				bool adopt(string && data, vector <exp_t> & result) const noexcept;
 			public:
 				/**
 				 * @brief Метод извлечения кода ошибки хранилища

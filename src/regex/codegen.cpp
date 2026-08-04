@@ -326,7 +326,7 @@ namespace {
 			/**
 			 * Если очередной переход возглавляет повторение одиночного символа
 			 */
-			if(program.runs.at(static_cast <size_t> (current)) != awh::regex::INVALID_ADDRESS)
+			if(instruction.split.run != awh::regex::INVALID_ADDRESS)
 				// Выходим из разбора цепочки ветвей выбора
 				break;
 			// Получаем адрес остатка цепочки ветвей выбора
@@ -620,10 +620,9 @@ namespace {
 				 */
 				case static_cast <uint8_t> (awh::regex::opcode_t::SPLIT): {
 					// Получаем признак ленивого повторения одиночного символа
-					const bool lazily = (program.lazy.at(static_cast <size_t> (pc)) != awh::regex::INVALID_ADDRESS);
+					const bool lazily = (instruction.split.lazy != awh::regex::INVALID_ADDRESS);
 					// Получаем адрес тела повторения одиночного символа
-					const awh::regex::address_t body = (lazily ?
-					 program.lazy.at(static_cast <size_t> (pc)) : program.runs.at(static_cast <size_t> (pc)));
+					const awh::regex::address_t body = (lazily ? instruction.split.lazy : instruction.split.run);
 					/**
 					 * Если переход возглавляет цепочку ветвей выбора одной из них
 					 */
@@ -1524,8 +1523,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если инструкция выбирает одну из ветвей выражения
 		 */
-		if((instruction.type == opcode_t::SPLIT) && (program.runs.at(static_cast <size_t> (pc)) == INVALID_ADDRESS) &&
-		 (program.lazy.at(static_cast <size_t> (pc)) == INVALID_ADDRESS)) {
+		if((instruction.type == opcode_t::SPLIT) && (instruction.split.run == INVALID_ADDRESS) &&
+		 (instruction.split.lazy == INVALID_ADDRESS)) {
 			// Создаём разбираемую цепочку ветвей выбора одной из них
 			chain_t branching;
 			/**
@@ -1702,9 +1701,9 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          кадра, что и отступление жадного.
 		 *
 		 */
-		if(program.lazy.at(static_cast <size_t> (pc)) != INVALID_ADDRESS) {
+		if(instruction.split.lazy != INVALID_ADDRESS) {
 			// Получаем инструкцию тела ленивого повторения одиночного символа
-			const instruction_t & repeated = program.instructions.at(static_cast <size_t> (program.lazy.at(static_cast <size_t> (pc))));
+			const instruction_t & repeated = program.instructions.at(static_cast <size_t> (instruction.split.lazy));
 			// Выполняем заведение таблицы принадлежности байтов тела повторения
 			const size_t number = this->table(repeated, program);
 			// Заводим метку продвижения ленивого ряда по отказу продолжения
@@ -1803,7 +1802,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 */
 		{
 			// Получаем инструкцию тела повторения одиночного символа
-			const instruction_t & repeated = program.instructions.at(static_cast <size_t> (program.runs.at(static_cast <size_t> (pc))));
+			const instruction_t & repeated = program.instructions.at(static_cast <size_t> (instruction.split.run));
 			// Выполняем заведение таблицы принадлежности байтов тела повторения
 			const size_t number = this->table(repeated, program);
 			// Заводим метку прохода ряда подходящих символов

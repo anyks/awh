@@ -116,9 +116,9 @@ uint32_t awh::regex::Compiler::store(const class_t & value) noexcept {
 	// Выполняем установку количества свойств класса
 	record.propertyCount = static_cast <uint32_t> (value.properties.size());
 	// Выполняем перенос диапазонов класса в сплошной набор программы
-	this->_program->ranges.insert(this->_program->ranges.end(), value.ranges.begin(), value.ranges.end());
+	this->_program->ranges.append(value.ranges.data(), value.ranges.size());
 	// Выполняем перенос свойств класса в сплошной набор программы
-	this->_program->properties.insert(this->_program->properties.end(), value.properties.begin(), value.properties.end());
+	this->_program->properties.append(value.properties.data(), value.properties.size());
 	// Выполняем размещение ссылки на класс символов в хранилище
 	this->_program->classes.push_back(record);
 	// Выводим индекс класса символов в хранилище классов
@@ -1380,7 +1380,7 @@ void awh::regex::Compiler::condense() noexcept {
 		// Выходим из метода распознавания выражения
 		return;
 	// Получаем набор инструкций программы регулярного выражения
-	const vector <instruction_t> & instructions = program.instructions;
+	const Sequence <instruction_t> & instructions = program.instructions;
 	/**
 	 * Если набор инструкций короче наименьшего допустимого
 	 *
@@ -1830,11 +1830,7 @@ void awh::regex::Compiler::anchored() noexcept {
  */
 void awh::regex::Compiler::mark() noexcept {
 	// Получаем набор инструкций программы регулярного выражения
-	vector <instruction_t> & instructions = this->_program->instructions;
-	// Выполняем размещение набора адресов тел повторений одиночного символа
-	this->_program->runs.assign(instructions.size(), INVALID_ADDRESS);
-	// Выполняем размещение набора адресов тел ленивых повторений одиночного символа
-	this->_program->lazy.assign(instructions.size(), INVALID_ADDRESS);
+	Sequence <instruction_t> & instructions = this->_program->instructions;
 	/**
 	 * Выполняем обход инструкций программы регулярного выражения
 	 */
@@ -1845,6 +1841,10 @@ void awh::regex::Compiler::mark() noexcept {
 		if(instructions.at(i).type != opcode_t::SPLIT)
 			// Переходим к следующей инструкции программы
 			continue;
+		// Выполняем сброс пометки повторения одиночного символа
+		instructions.at(i).split.run = INVALID_ADDRESS;
+		// Выполняем сброс пометки ленивого повторения одиночного символа
+		instructions.at(i).split.lazy = INVALID_ADDRESS;
 		/**
 		 * Получаем признак ленивого повторения элемента выражения
 		 *
@@ -1905,14 +1905,8 @@ void awh::regex::Compiler::mark() noexcept {
 		if((lazy ? instructions.at(i).split.first : instructions.at(i).split.second) != static_cast <address_t> (body + 2))
 			// Переходим к следующей инструкции программы
 			continue;
-		/**
-		 * Если повторение элемента выражения является ленивым
-		 */
-		if(lazy)
-			// Выполняем пометку перехода адресом тела ленивого повторения
-			this->_program->lazy.at(i) = body;
-		// Выполняем пометку перехода адресом тела повторения
-		else this->_program->runs.at(i) = body;
+		// Выполняем пометку перехода адресом тела повторения одиночного символа
+		(lazy ? instructions.at(i).split.lazy : instructions.at(i).split.run) = body;
 	}
 }
 /**

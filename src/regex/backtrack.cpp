@@ -308,7 +308,7 @@ bool awh::regex::Backtrack::matches(const uint32_t number, const uint32_t flags,
  */
 bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const size_t base, const size_t bound, size_t & end) noexcept {
 	// Получаем набор инструкций исполняемой программы
-	const vector <instruction_t> & instructions = this->_program->instructions;
+	const Sequence <instruction_t> & instructions = this->_program->instructions;
 	/**
 	 * Получаем адреса набора инструкций и набора помеченных повторений
 	 *
@@ -319,8 +319,6 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 	 *
 	 */
 	const instruction_t * program = instructions.data();
-	// Получаем набор адресов тел повторений одиночного символа
-	const address_t * runs = this->_program->runs.data();
 	// Получаем размер текста сопоставления
 	const size_t size = this->_text.size();
 	// Получаем размер журнала изменений на входе в исполнение
@@ -448,7 +446,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 				 */
 				case static_cast <uint8_t> (opcode_t::SPLIT): {
 					// Получаем адрес тела повторения одиночного символа
-					const address_t body = runs[pc];
+					const address_t body = program[pc].split.run;
 					/**
 					 * Если переход возглавляет повторение одиночного символа
 					 *
