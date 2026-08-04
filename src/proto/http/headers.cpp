@@ -19,6 +19,8 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cstring>
+#include <cmath>
 #include <ctime>
 #include <iomanip>
 

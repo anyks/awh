@@ -19,6 +19,8 @@
 /**
  * Стандартный заголовочный файл
  */
+#include <cstring>
+#include <cmath>
 #include <array>
 
 /**

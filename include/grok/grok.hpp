@@ -96,6 +96,7 @@
  */
 #include "table.hpp"
 #include "common.hpp"
+#include "../regex/storage.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -150,6 +151,11 @@ namespace awh {
 			 *
 			 */
 			using exp_t = shared_ptr <const awh::grok::expression_t>;
+			/**
+			 * @brief Обработчик сжатия либо разжатия записи собранных шаблонов
+			 *
+			 */
+			using packer_t = awh::regex::storage_t::packer_t;
 		private:
 			/**
 			 * @brief Ключ кэша собранных шаблонов Grok
@@ -174,6 +180,9 @@ namespace awh {
 		private:
 			// Объект работы с регулярными выражениями
 			awh::RegularExpression _regexp;
+		private:
+			// Объект хранилища собранных регулярных выражений
+			awh::regex::storage_t _storage;
 		private:
 			// Код ошибки разбора шаблона
 			mutable error_t _error;
@@ -268,6 +277,25 @@ namespace awh {
 			bool pattern(string_view name, string_view body) noexcept;
 		public:
 			/**
+			 * @brief Метод наполнения реестра набором шаблонов из текста
+			 *
+			 * @param text текст набора шаблонов
+			 * @return     количество шаблонов, принятых реестром
+			 *
+			 * @details Набор записывается построчно видом «НАЗВАНИЕ выражение»:
+			 *          название отделено от текста шаблона пробельными символами.
+			 *          Строки пустые и строки, начинающиеся знаком «#», пропускаются.
+			 *          Шаблон с названием, реестру уже известным, заменяет прежний.
+			 *
+			 *          Чтение самого файла возложено на вызывающую сторону: Grok
+			 *          файловым вводом-выводом не ведает, дабы не тянуть за собою
+			 *          объекты фреймворка и журнала. Прочесть файл можно объектом
+			 *          «awh::fs_t» либо любым иным способом, а сюда подать текст.
+			 *
+			 */
+			size_t read(string_view text) noexcept;
+		public:
+			/**
 			 * @brief Метод извлечения названий шаблонов реестра
 			 *
 			 * @return набор названий шаблонов реестра
@@ -293,6 +321,59 @@ namespace awh {
 			 *
 			 */
 			exp_t build(string_view pattern, const vector <flag_t> & flags) const noexcept;
+		public:
+			/**
+			 * @brief Метод установки сжатия записи собранных шаблонов
+			 *
+			 * @param method метод сжатия записи собранных шаблонов
+			 * @param pack   обработчик сжатия записи
+			 * @param unpack обработчик разжатия записи
+			 *
+			 * @details Сжатию подлежит запись собранных регулярных выражений -
+			 *          доля наибольшая. Само сжатие выполняют обработчики,
+			 *          вызывающей стороной установленные: Grok, как и хранилище,
+			 *          сторонних библиотек сжатия не подключает.
+			 *
+			 */
+			void packer(const compressor::method_t method, packer_t pack, packer_t unpack) noexcept;
+		public:
+			/**
+			 * @brief Метод записи собранных шаблонов Grok
+			 *
+			 * @param patterns набор текстов шаблонов со ссылками
+			 * @param result   запись собранных шаблонов
+			 * @param flags    набор режимов сборки регулярного выражения
+			 * @return         результат записи собранных шаблонов
+			 *
+			 * @details Шаблоны собираются и записываются вместе с развёрнутым
+			 *          текстом и таблицей полей, поэтому восстановление минует
+			 *          и разворот ссылок, и разбор выражения, и компиляцию.
+			 *
+			 */
+			bool save(const vector <string> & patterns, string & result, const uint32_t flags = 0) const noexcept;
+			/**
+			 * @brief Метод записи собранных шаблонов Grok
+			 *
+			 * @param patterns набор текстов шаблонов со ссылками
+			 * @param result   запись собранных шаблонов
+			 * @param flags    набор режимов сборки регулярного выражения
+			 * @return         результат записи собранных шаблонов
+			 *
+			 */
+			bool save(const vector <string> & patterns, string & result, const vector <flag_t> & flags) const noexcept;
+			/**
+			 * @brief Метод восстановления собранных шаблонов Grok
+			 *
+			 * @param record запись собранных шаблонов
+			 * @param result набор восстановленных шаблонов
+			 * @return       результат восстановления собранных шаблонов
+			 *
+			 * @details Восстановленные шаблоны размещаются и в кэше, поэтому
+			 *          сборка шаблона, записи принадлежащего, выдаётся кэшем,
+			 *          пока вызывающая сторона удерживает его в наборе.
+			 *
+			 */
+			bool load(string_view record, vector <exp_t> & result) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки соответствия текста шаблону

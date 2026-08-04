@@ -124,7 +124,7 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 				// Если событие клиента запущено
 				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
 					// Выполняем подключение клиента к удалённому серверу
-					if(!this->_unit->client.connect(this->_id.eid)){
+					if(!this->_unit->client.connect(static_cast <event::id_t> (this->_id.eid))){
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**

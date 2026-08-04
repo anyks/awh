@@ -1201,3 +1201,441 @@ awh::Grok::Grok() noexcept : _error(error_t::NONE), _threadSafety(false) {
 		// Выполняем добавление шаблона в реестр
 		this->_patterns.emplace(awh::grok::PATTERNS[i].name, awh::grok::PATTERNS[i].body);
 }
+/**
+ * @brief Метод наполнения реестра набором шаблонов из текста
+ *
+ * @param text текст набора шаблонов
+ * @return     количество шаблонов, принятых реестром
+ *
+ */
+size_t awh::Grok::read(string_view text) noexcept {
+	// Количество шаблонов, принятых реестром
+	size_t result = 0;
+	// Выполняем сброс кода ошибки разбора шаблона
+	this->_error = error_t::NONE;
+	// Позиция начала очередной строки набора
+	size_t begin = 0;
+	/**
+	 * Выполняем перебор строк набора шаблонов
+	 */
+	while(begin <= text.size()) {
+		// Получаем позицию завершения очередной строки набора
+		size_t end = text.find('\n', begin);
+		/**
+		 * Если завершение строки не обнаружено
+		 */
+		if(end == string_view::npos)
+			// Выполняем установку завершения строки концом текста
+			end = text.size();
+		// Получаем очередную строку набора шаблонов
+		string_view line = text.substr(begin, (end - begin));
+		// Переходим к следующей строке набора шаблонов
+		begin = (end + 1);
+		/**
+		 * Выполняем отсечение возврата каретки в конце строки
+		 *
+		 * @details Набор шаблонов приходит и от систем, где строки завершаются
+		 *          парой знаков, поэтому возврат каретки отсекается: иначе он
+		 *          вошёл бы в текст шаблона и обратился в сопоставляемый знак.
+		 */
+		while(!line.empty() && ((line.back() == '\r') || (line.back() == ' ') || (line.back() == '\t')))
+			// Выполняем отсечение последнего знака строки
+			line.remove_suffix(1);
+		/**
+		 * Выполняем отсечение пробельных знаков в начале строки
+		 */
+		while(!line.empty() && ((line.front() == ' ') || (line.front() == '\t')))
+			// Выполняем отсечение первого знака строки
+			line.remove_prefix(1);
+		/**
+		 * Если строка пуста либо несёт примечание
+		 */
+		if(line.empty() || (line.front() == '#'))
+			// Переходим к следующей строке набора шаблонов
+			continue;
+		// Получаем позицию завершения названия шаблона
+		size_t space = line.find_first_of(" \t");
+		/**
+		 * Если строка текста шаблона не несёт
+		 */
+		if(space == string_view::npos)
+			// Переходим к следующей строке набора шаблонов
+			continue;
+		// Получаем название шаблона набора
+		const string_view name = line.substr(0, space);
+		/**
+		 * Выполняем отсечение пробельных знаков перед текстом шаблона
+		 */
+		while((space < line.size()) && ((line[space] == ' ') || (line[space] == '\t')))
+			// Переходим к следующему знаку строки
+			space++;
+		// Получаем текст шаблона набора
+		const string_view body = line.substr(space);
+		/**
+		 * Если добавление шаблона в реестр выполнено
+		 */
+		if(this->pattern(name, body))
+			// Выполняем увеличение количества принятых шаблонов
+			result++;
+	}
+	// Выполняем сброс кода ошибки разбора шаблона
+	this->_error = error_t::NONE;
+	// Выводим количество шаблонов, принятых реестром
+	return result;
+}
+/**
+ * @brief Метод установки сжатия записи собранных шаблонов
+ *
+ * @param method метод сжатия записи собранных шаблонов
+ * @param pack   обработчик сжатия записи
+ * @param unpack обработчик разжатия записи
+ *
+ */
+void awh::Grok::packer(const compressor::method_t method, packer_t pack, packer_t unpack) noexcept {
+	// Выполняем установку сжатия записи собранных выражений
+	this->_storage.packer(method, ::move(pack), ::move(unpack));
+}
+/**
+ * @brief Метод записи собранных шаблонов Grok
+ *
+ * @param patterns набор текстов шаблонов со ссылками
+ * @param result   запись собранных шаблонов
+ * @param flags    набор режимов сборки регулярного выражения
+ * @return         результат записи собранных шаблонов
+ *
+ */
+bool awh::Grok::save(const vector <string> & patterns, string & result, const uint32_t flags) const noexcept {
+	// Выполняем очистку записи собранных шаблонов
+	result.clear();
+	// Выполняем сброс кода ошибки разбора шаблона
+	this->_error = error_t::NONE;
+	/**
+	 * Если набор текстов шаблонов пуст
+	 */
+	if(patterns.empty()) {
+		// Устанавливаем код ошибки записи собранных шаблонов
+		this->_error = error_t::STORAGE_EMPTY;
+		// Выводим результат записи собранных шаблонов
+		return false;
+	}
+	// Набор собранных шаблонов Grok
+	vector <exp_t> expressions;
+	// Выполняем размещение набора собранных шаблонов
+	expressions.reserve(patterns.size());
+	/**
+	 * Выполняем перебор набора текстов шаблонов
+	 */
+	for(const auto & pattern : patterns) {
+		// Выполняем сборку шаблона Grok
+		const exp_t expression = this->build(pattern, flags);
+		/**
+		 * Если сборка шаблона Grok не выполнена
+		 */
+		if(!expression)
+			// Выводим результат записи собранных шаблонов
+			return false;
+		// Выполняем добавление собранного шаблона в набор
+		expressions.push_back(expression);
+	}
+	// Набор собранных регулярных выражений
+	vector <awh::regex::storage_t::exp_t> records;
+	// Выполняем размещение набора собранных регулярных выражений
+	records.reserve(expressions.size());
+	/**
+	 * Выполняем перебор набора собранных шаблонов
+	 */
+	for(const auto & expression : expressions)
+		// Выполняем добавление собранного регулярного выражения в набор
+		records.push_back(expression->exp);
+	// Выполняем запись опознания записи собранных шаблонов
+	writeNumber(GROK_MAGIC, result);
+	// Выполняем запись версии устройства записи
+	writeText(string(1, static_cast <char> (GROK_VERSION)), result);
+	// Выполняем запись набора режимов сборки выражения
+	writeNumber(static_cast <uint64_t> (flags), result);
+	// Выполняем запись количества собранных шаблонов
+	writeNumber(static_cast <uint64_t> (expressions.size()), result);
+	/**
+	 * Выполняем перебор набора собранных шаблонов
+	 */
+	for(const auto & expression : expressions) {
+		// Выполняем запись исходного текста шаблона
+		writeText(expression->pattern, result);
+		// Выполняем запись развёрнутого текста регулярного выражения
+		writeText(expression->expression, result);
+		// Выполняем запись количества полей шаблона
+		writeNumber(static_cast <uint64_t> (expression->fields.size()), result);
+		/**
+		 * Выполняем перебор набора полей шаблона
+		 */
+		for(const auto & field : expression->fields) {
+			// Выполняем запись номера группы захвата поля
+			writeNumber(static_cast <uint64_t> (field.number), result);
+			// Выполняем запись вида значения поля
+			result.push_back(static_cast <char> (field.kind));
+			// Выполняем запись названия поля шаблона
+			writeText(field.name, result);
+		}
+	}
+	// Запись хранилища собранных регулярных выражений
+	string records2;
+	/**
+	 * Если запись собранных регулярных выражений не выполнена
+	 */
+	if(!this->_storage.save(records, records2)) {
+		// Устанавливаем код ошибки записи собранных шаблонов
+		this->_error = error_t::STORAGE;
+		// Выполняем очистку записи собранных шаблонов
+		result.clear();
+		// Выводим результат записи собранных шаблонов
+		return false;
+	}
+	// Выполняем запись хранилища собранных регулярных выражений
+	result.append(records2);
+	// Выводим результат записи собранных шаблонов
+	return true;
+}
+/**
+ * @brief Метод записи собранных шаблонов Grok
+ *
+ * @param patterns набор текстов шаблонов со ссылками
+ * @param result   запись собранных шаблонов
+ * @param flags    набор режимов сборки регулярного выражения
+ * @return         результат записи собранных шаблонов
+ *
+ */
+bool awh::Grok::save(const vector <string> & patterns, string & result, const vector <flag_t> & flags) const noexcept {
+	// Собираемый набор режимов сборки регулярного выражения
+	uint32_t mode = 0;
+	/**
+	 * Выполняем перебор набора режимов сборки
+	 */
+	for(const auto & flag : flags)
+		// Выполняем добавление очередного режима сборки
+		mode |= static_cast <uint32_t> (flag);
+	// Выводим результат записи собранных шаблонов
+	return this->save(patterns, result, mode);
+}
+/**
+ * @brief Метод восстановления собранных шаблонов Grok
+ *
+ * @param record запись собранных шаблонов
+ * @param result набор восстановленных шаблонов
+ * @return       результат восстановления собранных шаблонов
+ *
+ */
+bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept {
+	// Выполняем очистку набора восстановленных шаблонов
+	result.clear();
+	// Выполняем сброс кода ошибки разбора шаблона
+	this->_error = error_t::NONE;
+	/**
+	 * Если запись собранных шаблонов пуста
+	 */
+	if(record.empty()) {
+		// Устанавливаем код ошибки восстановления собранных шаблонов
+		this->_error = error_t::STORAGE_EMPTY;
+		// Выводим результат восстановления собранных шаблонов
+		return false;
+	}
+	// Позиция чтения записи собранных шаблонов
+	size_t offset = 0;
+	// Опознание записи собранных шаблонов
+	uint64_t magic = 0;
+	/**
+	 * Если чтение опознания записи не выполнено
+	 */
+	if(!readNumber(record, offset, magic)) {
+		// Устанавливаем код ошибки восстановления собранных шаблонов
+		this->_error = error_t::STORAGE_TRUNCATED;
+		// Выводим результат восстановления собранных шаблонов
+		return false;
+	}
+	/**
+	 * Если опознание записи не совпадает
+	 */
+	if(magic != GROK_MAGIC) {
+		// Устанавливаем код ошибки восстановления собранных шаблонов
+		this->_error = error_t::STORAGE_MAGIC;
+		// Выводим результат восстановления собранных шаблонов
+		return false;
+	}
+	// Версия устройства записи собранных шаблонов
+	string version;
+	/**
+	 * Если чтение версии устройства записи не выполнено
+	 */
+	if(!readText(record, offset, version) || (version.size() != 1)) {
+		// Устанавливаем код ошибки восстановления собранных шаблонов
+		this->_error = error_t::STORAGE_TRUNCATED;
+		// Выводим результат восстановления собранных шаблонов
+		return false;
+	}
+	/**
+	 * Если версия устройства записи не поддерживается
+	 */
+	if(static_cast <uint8_t> (version.front()) != GROK_VERSION) {
+		// Устанавливаем код ошибки восстановления собранных шаблонов
+		this->_error = error_t::STORAGE_VERSION;
+		// Выводим результат восстановления собранных шаблонов
+		return false;
+	}
+	// Набор режимов сборки выражения и количество собранных шаблонов
+	uint64_t flags = 0, count = 0;
+	/**
+	 * Если чтение режимов сборки либо количества шаблонов не выполнено
+	 */
+	if(!readNumber(record, offset, flags) || !readNumber(record, offset, count)) {
+		// Устанавливаем код ошибки восстановления собранных шаблонов
+		this->_error = error_t::STORAGE_TRUNCATED;
+		// Выводим результат восстановления собранных шаблонов
+		return false;
+	}
+	/**
+	 * Если количество собранных шаблонов превышает размер оставшейся записи
+	 */
+	if(count > static_cast <uint64_t> (record.size() - offset)) {
+		// Устанавливаем код ошибки восстановления собранных шаблонов
+		this->_error = error_t::STORAGE;
+		// Выводим результат восстановления собранных шаблонов
+		return false;
+	}
+	// Набор восстанавливаемых шаблонов Grok
+	vector <shared_ptr <awh::grok::expression_t>> expressions;
+	// Выполняем размещение набора восстанавливаемых шаблонов
+	expressions.reserve(static_cast <size_t> (count));
+	/**
+	 * Выполняем восстановление набора шаблонов Grok
+	 */
+	for(uint64_t i = 0; i < count; i++) {
+		// Создаём восстанавливаемый шаблон Grok
+		auto expression = make_shared <awh::grok::expression_t> ();
+		// Количество полей восстанавливаемого шаблона
+		uint64_t fields = 0;
+		/**
+		 * Если чтение текстов шаблона либо количества полей не выполнено
+		 */
+		if(!readText(record, offset, expression->pattern) ||
+		 !readText(record, offset, expression->expression) ||
+		 !readNumber(record, offset, fields)) {
+			// Устанавливаем код ошибки восстановления собранных шаблонов
+			this->_error = error_t::STORAGE_TRUNCATED;
+			// Выводим результат восстановления собранных шаблонов
+			return false;
+		}
+		/**
+		 * Если количество полей превышает размер оставшейся записи
+		 */
+		if(fields > static_cast <uint64_t> (record.size() - offset)) {
+			// Устанавливаем код ошибки восстановления собранных шаблонов
+			this->_error = error_t::STORAGE;
+			// Выводим результат восстановления собранных шаблонов
+			return false;
+		}
+		// Выполняем размещение набора полей шаблона
+		expression->fields.reserve(static_cast <size_t> (fields));
+		/**
+		 * Выполняем восстановление набора полей шаблона
+		 */
+		for(uint64_t j = 0; j < fields; j++) {
+			// Восстанавливаемое поле шаблона
+			awh::grok::field_t field;
+			// Номер группы захвата поля
+			uint64_t number = 0;
+			/**
+			 * Если чтение номера группы захвата поля не выполнено
+			 */
+			if(!readNumber(record, offset, number) || (offset >= record.size())) {
+				// Устанавливаем код ошибки восстановления собранных шаблонов
+				this->_error = error_t::STORAGE_TRUNCATED;
+				// Выводим результат восстановления собранных шаблонов
+				return false;
+			}
+			// Выполняем установку номера группы захвата поля
+			field.number = static_cast <uint32_t> (number);
+			// Получаем вид значения поля шаблона
+			const uint8_t kind = static_cast <uint8_t> (record[offset++]);
+			/**
+			 * Если вид значения поля модулю неизвестен
+			 */
+			if(kind > static_cast <uint8_t> (kind_t::FLOATING)) {
+				// Устанавливаем код ошибки восстановления собранных шаблонов
+				this->_error = error_t::KIND_UNKNOWN;
+				// Выводим результат восстановления собранных шаблонов
+				return false;
+			}
+			// Выполняем установку вида значения поля шаблона
+			field.kind = static_cast <kind_t> (kind);
+			/**
+			 * Если чтение названия поля шаблона не выполнено
+			 */
+			if(!readText(record, offset, field.name)) {
+				// Устанавливаем код ошибки восстановления собранных шаблонов
+				this->_error = error_t::STORAGE_TRUNCATED;
+				// Выводим результат восстановления собранных шаблонов
+				return false;
+			}
+			// Выполняем добавление поля в набор полей шаблона
+			expression->fields.push_back(::move(field));
+		}
+		// Выполняем добавление восстанавливаемого шаблона в набор
+		expressions.push_back(::move(expression));
+	}
+	// Набор восстановленных регулярных выражений
+	vector <awh::regex::storage_t::exp_t> records;
+	/**
+	 * Если восстановление собранных регулярных выражений не выполнено
+	 */
+	if(!this->_storage.load(record.substr(offset), records)) {
+		// Устанавливаем код ошибки восстановления собранных шаблонов
+		this->_error = error_t::STORAGE;
+		// Выводим результат восстановления собранных шаблонов
+		return false;
+	}
+	/**
+	 * Если количество восстановленных выражений набору шаблонов не отвечает
+	 */
+	if(records.size() != expressions.size()) {
+		// Устанавливаем код ошибки восстановления собранных шаблонов
+		this->_error = error_t::STORAGE;
+		// Выводим результат восстановления собранных шаблонов
+		return false;
+	}
+	// Выполняем размещение набора восстановленных шаблонов
+	result.reserve(expressions.size());
+	/**
+	 * Выполняем перебор набора восстановленных шаблонов
+	 */
+	for(size_t i = 0; i < expressions.size(); i++) {
+		// Выполняем установку восстановленного регулярного выражения
+		expressions.at(i)->exp = records.at(i);
+		// Выполняем добавление восстановленного шаблона в набор
+		result.push_back(expressions.at(i));
+	}
+	/**
+	 * Выполняем размещение восстановленных шаблонов в кэше собранных шаблонов
+	 *
+	 * @details Кэш удерживает слабую ссылку, поэтому восстановленный шаблон
+	 *          выдаётся сборкой лишь до тех пор, пока его удерживает
+	 *          вызывающая сторона набором восстановленных шаблонов.
+	 *
+	 */
+	{
+		// Выполняем блокировку потока при согласовании доступа к реестру
+		unique_lock <mutex> lock(this->_mtx, defer_lock);
+		/**
+		 * Если согласование доступа к реестру шаблонов установлено
+		 */
+		if(this->_threadSafety)
+			// Выполняем блокировку потока
+			lock.lock();
+		/**
+		 * Выполняем перебор набора восстановленных шаблонов
+		 */
+		for(const auto & expression : result)
+			// Выполняем размещение восстановленного шаблона в кэше
+			this->_cache[make_pair(static_cast <uint32_t> (flags), expression->pattern)] = expression;
+	}
+	// Выводим результат восстановления собранных шаблонов
+	return true;
+}

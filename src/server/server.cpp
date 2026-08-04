@@ -290,7 +290,7 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 									// Выполняем фиксацию параметров сервера
 									if(this->commitUnit()){
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, event::family_t::IPV4, this->_host, this->getAddressUnit(event::address_t::IPV4));
+										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", static_cast <event::id_t> (this->_id.eid), event::family_t::IPV4, this->_host, this->getAddressUnit(event::address_t::IPV4));
 										// Запускаем сервер
 										this->startUnit();
 									}
@@ -308,7 +308,7 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 									// Выполняем фиксацию параметров сервера
 									if(this->commitUnit()){
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, event::family_t::IPV6, this->_host, this->getAddressUnit(event::address_t::IPV6));
+										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", static_cast <event::id_t> (this->_id.eid), event::family_t::IPV6, this->_host, this->getAddressUnit(event::address_t::IPV6));
 										// Запускаем сервер
 										this->startUnit();
 									}
@@ -338,7 +338,7 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						// Выполняем функцию обратного вызова
-						} else this->_callback.call <void (const event::id_t, const event::error_t, const string &, void *)> ("error", this->_id.eid, event::error_t::NOT_FOUND, error, nullptr);
+						} else this->_callback.call <void (const event::id_t, const event::error_t, const string &, void *)> ("error", static_cast <event::id_t> (this->_id.eid), event::error_t::NOT_FOUND, error, nullptr);
 					}
 				} break;
 				// Если событие DNS-резолвера остановлено
@@ -452,7 +452,7 @@ void awh::Server::opened(const event::id_t cid) noexcept {
 		 * Транслируем приложению принятие нового соединения: рукопожатие TLS 1.3
 		 * ведёт само соединение QUIC, поэтому идентификатор TLS-контекста не выдаётся
 		 */
-		this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", this->_id.eid, cid, 0);
+		this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", static_cast <event::id_t> (this->_id.eid), cid, 0);
 }
 /**
  * @brief Метод обработки собранных данных потока соединения QUIC
@@ -572,7 +572,7 @@ void awh::Server::resolve(const unit::dns_t::id_t, const event::family_t family,
 						// Выполняем фиксацию параметров сервера
 						if(this->commitUnit()){
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->getAddressUnit(event::address_t::IPV4));
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", static_cast <event::id_t> (this->_id.eid), family, domain, this->getAddressUnit(event::address_t::IPV4));
 							// Запускаем сервер
 							this->startUnit();
 						}
@@ -588,7 +588,7 @@ void awh::Server::resolve(const unit::dns_t::id_t, const event::family_t family,
 						// Выполняем фиксацию параметров сервера
 						if(this->commitUnit()){
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->getAddressUnit(event::address_t::IPV6));
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", static_cast <event::id_t> (this->_id.eid), family, domain, this->getAddressUnit(event::address_t::IPV6));
 							// Запускаем сервер
 							this->startUnit();
 						}
@@ -951,7 +951,7 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 			// Если состояние рукопожатия успешно завершено
 			case static_cast <uint8_t> (tls::coder_t::state_t::HANDSHAKED):
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", this->_id.eid, eid, id);
+				this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", static_cast <event::id_t> (this->_id.eid), eid, id);
 			break;
 		}
 	}
@@ -1249,7 +1249,7 @@ void awh::Server::start() noexcept {
 								break;
 							}
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> (fid, this->_id.eid, this->familyUnit(), host, host);
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> (fid, static_cast <event::id_t> (this->_id.eid), this->familyUnit(), host, host);
 						}
 						// Запускаем сервер
 						this->startUnit();

@@ -598,12 +598,12 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 							// Если сервер работает с адресами IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4):
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4), this->_unit->server.getPort(this->_id.eid));
+								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", static_cast <event::id_t> (this->_id.eid), this->_unit->server.getAddress(static_cast <event::id_t> (this->_id.eid), event::address_t::IPV4), this->_unit->server.getPort(static_cast <event::id_t> (this->_id.eid)));
 							break;
 							// Если сервер работает с адресами IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6):
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6), this->_unit->server.getPort(this->_id.eid));
+								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", static_cast <event::id_t> (this->_id.eid), this->_unit->server.getAddress(static_cast <event::id_t> (this->_id.eid), event::address_t::IPV6), this->_unit->server.getPort(static_cast <event::id_t> (this->_id.eid)));
 							break;
 						}
 						/**
@@ -891,7 +891,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 										// Выполняем фиксацию параметров сервера
 										if(this->_unit->server.commit(this->_id.eid)){
 											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, event::family_t::IPV4, this->_host, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4));
+											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", static_cast <event::id_t> (this->_id.eid), event::family_t::IPV4, this->_host, this->_unit->server.getAddress(static_cast <event::id_t> (this->_id.eid), event::address_t::IPV4));
 											// Запускаем сервер
 											this->_unit->server.start();
 										}
@@ -909,7 +909,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 										// Выполняем фиксацию параметров сервера
 										if(this->_unit->server.commit(this->_id.eid)){
 											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, event::family_t::IPV6, this->_host, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6));
+											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", static_cast <event::id_t> (this->_id.eid), event::family_t::IPV6, this->_host, this->_unit->server.getAddress(static_cast <event::id_t> (this->_id.eid), event::address_t::IPV6));
 											// Запускаем сервер
 											this->_unit->server.start();
 										}
@@ -939,7 +939,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							// Выполняем функцию обратного вызова
-							} else this->_callback.call <void (const event::id_t, const event::error_t, const string &, void *)> ("error", this->_id.eid, event::error_t::NOT_FOUND, error, nullptr);
+							} else this->_callback.call <void (const event::id_t, const event::error_t, const string &, void *)> ("error", static_cast <event::id_t> (this->_id.eid), event::error_t::NOT_FOUND, error, nullptr);
 						}
 					} break;
 					// Если событие DNS-резолвера остановлено
@@ -1476,7 +1476,7 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
 									// Очищаем буфер накопления SOCKS5-кадров
 									j->second.rx.clear();
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_id.eid, i->second, true);
+									this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", static_cast <event::id_t> (this->_id.eid), i->second, true);
 								}
 							// Если статус ответа от прокси-сервера как запрещённый, так и не поддерживаемый
 							} else j->second.ctx.state = proto::socks5_t::state_t::BROKEN;
@@ -2466,7 +2466,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																	this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> (fid, eid, family, address, address);
 																}
 																// Выполняем функцию обратного вызова
-																this->_callback.call <void (const event::id_t, const event::id_t)> ("accept", this->_id.eid, eid);
+																this->_callback.call <void (const event::id_t, const event::id_t)> ("accept", static_cast <event::id_t> (this->_id.eid), eid);
 																// Выполняем фиксацию настроек события сервера
 																if(this->_client.commit(i->second.eid)){
 																	// Если подключение к серверу прошло успешно
@@ -3100,7 +3100,7 @@ void awh::server::Socks5::failure(const unit::dns_t::id_t id, const unit::dns_t:
 		// Выполняем функцию обратного вызова
 		this->_callback.call <void (const event::id_t, const unit::dns_t::id_t, const unit::dns_t::record_t, const string &)> ("failure_dns", peer, id, record, domain);
 	// Если функция обратного вызова установлена, выполняем функцию обратного вызова
-	} else this->_callback.call <void (const event::id_t, const unit::dns_t::id_t, const unit::dns_t::record_t, const string &)> ("failure_dns", this->_id.eid, id, record, domain);
+	} else this->_callback.call <void (const event::id_t, const unit::dns_t::id_t, const unit::dns_t::record_t, const string &)> ("failure_dns", static_cast <event::id_t> (this->_id.eid), id, record, domain);
 }
 /**
  * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
@@ -3133,7 +3133,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 						// Если событие сервера не запущено, запускаем его
 						if(this->_unit->server.commit(this->_id.eid)){
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4));
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", static_cast <event::id_t> (this->_id.eid), family, domain, this->_unit->server.getAddress(static_cast <event::id_t> (this->_id.eid), event::address_t::IPV4));
 							// Запускаем сервер
 							this->_unit->server.start();
 						}
@@ -3146,7 +3146,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 						// Если событие сервера не запущено, запускаем его
 						if(this->_unit->server.commit(this->_id.eid)){
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6));
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", static_cast <event::id_t> (this->_id.eid), family, domain, this->_unit->server.getAddress(static_cast <event::id_t> (this->_id.eid), event::address_t::IPV6));
 							// Запускаем сервер
 							this->_unit->server.start();
 						}
@@ -3277,7 +3277,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 									// Выполняем функцию обратного вызова
 									this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", i->second, family, domain, this->_client.getTarget(j->second.eid));
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::id_t)> ("accept", this->_id.eid, i->second);
+									this->_callback.call <void (const event::id_t, const event::id_t)> ("accept", static_cast <event::id_t> (this->_id.eid), i->second);
 									// Выполняем фиксацию настроек события сервера
 									if(this->_client.commit(j->second.eid)){
 										// Если подключение к серверу прошло успешно
@@ -3550,7 +3550,7 @@ void awh::server::Socks5::start() noexcept {
 								break;
 							}
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> (fid, this->_id.eid, this->_unit->server.family(this->_id.eid), host, host);
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> (fid, static_cast <event::id_t> (this->_id.eid), this->_unit->server.family(static_cast <event::id_t> (this->_id.eid)), host, host);
 						}
 						// Запускаем сервер
 						this->_unit->server.start();

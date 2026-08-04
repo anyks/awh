@@ -1319,7 +1319,14 @@ bool awh::codec::xml::Writer::element(const node_t & node) noexcept {
 			return this->close();
 		}
 		// Если записывается текстовое содержимое
-		case static_cast <uint8_t> (kind_t::TEXT): return this->text(node.text());
+		case static_cast <uint8_t> (kind_t::TEXT):
+		/**
+		 * Если записывается незначимое пробельное содержимое
+		 *
+		 * @note Пробельное содержимое записывается наравне с текстовым: отделено оно
+		 *       лишь для того, кто его различает, а из записи выпадать не вправе
+		 */
+		case static_cast <uint8_t> (kind_t::SPACE): return this->text(node.text());
 		// Если записывается раздел дословного текста
 		case static_cast <uint8_t> (kind_t::CDATA): return this->cdata(node.text());
 		// Если записывается примечание

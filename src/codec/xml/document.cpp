@@ -494,6 +494,8 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 				switch(static_cast <uint8_t> (reader.event())){
 					// Если получен раздел дословного текста
 					case static_cast <uint8_t> (event_t::CDATA): kind = kind_t::CDATA; break;
+					// Если получено незначимое пробельное содержимое
+					case static_cast <uint8_t> (event_t::SPACE): kind = kind_t::SPACE; break;
 					// Если получено примечание
 					case static_cast <uint8_t> (event_t::COMMENT): kind = kind_t::COMMENT; break;
 					// Если получено описание типа документа
@@ -777,8 +779,12 @@ string awh::codec::xml::Node::text() const noexcept {
 		const kind_t kind = node.kind();
 		/**
 		 * Если обнаружено текстовое содержимое
+		 *
+		 * @note Пробельное содержимое собирается наравне с текстовым: отделено оно
+		 *       или нет, задаётся настройкой разбора, а содержимое узла от настроек
+		 *       разбора зависеть не вправе. Отбор ведётся видом узла
 		 */
-		if((kind == kind_t::TEXT) || (kind == kind_t::CDATA))
+		if((kind == kind_t::TEXT) || (kind == kind_t::CDATA) || (kind == kind_t::SPACE))
 			// Выполняем добавление содержимого к собираемому
 			result.append(this->_document->get(this->_document->_nodes[node._id].value));
 		/**
