@@ -971,7 +971,6 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	// Получаем признак порождения просеивания позиций начала попытки
 	const bool sifting = (!program.anchored && this->_prefilter.active && !seek && (allowed > 0) && (allowed < TABLE));
 	/**
-	/**
 	 * Получаем номер места кадра, действующий отказ сопоставления несущего
 	 *
 	 * @details Отказ, действующий в очередной миг сопоставления, известен лишь

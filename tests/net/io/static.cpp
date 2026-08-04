@@ -17091,3 +17091,106 @@ TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
 	this->_io->destroy(tick);
 	ASSERT_TRUE(this->_io->deinitialize());
 }
+
+/**
+ * @brief Тест наступления ближнего срока, взведённого вслед за срабатыванием интервала
+ *
+ * @details Взвод таймера ядра идёт двумя путями, и оба ведут к одному и тому же
+ *          таймеру - он единственный. Мгновенный обращается к ядру сразу,
+ *          отложенный кладёт изменение в общую очередь, уходящую в ядро следующим
+ *          опросом. Здесь проверяется, что ближний срок, взведённый мгновенным
+ *          путём сразу за разбором истёкших сроков, наступает в отведённое ему
+ *          время, а не отодвигается до дальнего
+ *
+ * @warning Порядок с **перезаписью** взведённого срока этот стенд не
+ *          воспроизводит, и доводом в пользу его снятия служить не может. Для
+ *          перезаписи нужно, чтобы отложенный взвод лежал в очереди изменений к
+ *          мигу мгновенного взвода, а здесь этого не случается: измерено записью
+ *          внутри снятия отложенного взвода - за весь набор проверок оно не
+ *          сработало ни разу. Стенд одинаково проходит и со снятием, и без него,
+ *          показывая 102-103 мс в обоих случаях
+ *
+ * @note Чтобы порядок собрался, событие таймера и готовность сокета к чтению
+ *       обязаны прийти одной пачкой от ядра: разбор сроков кладёт отложенный
+ *       взвод в очередь, а следующее за ним чтение снимает свой срок мгновенным
+ *       путём. Стенда на такое совпадение пока нет
+ *
+ */
+TEST_F(IoFixture, IoPromptDeadlineAfterIntervalTest){
+	// Количество срабатываний интервала
+	uint16_t intervals = 0;
+	// Количество срабатываний ближнего срока
+	uint8_t prompts = 0;
+	// Задержка ближнего срока в миллисекундах
+	constexpr uint32_t PROMPT = 60;
+	// Добавляем событие интервала, перезаряжаемого отложенным путём
+	const awh::event::id_t interval = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Добавляем событие таймаута, которому будет взводиться ближний срок
+	const awh::event::id_t prompt = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем что события созданы
+	ASSERT_GT(interval, 0u);
+	ASSERT_GT(prompt, 0u);
+	/**
+	 * Срок таймаута берётся заведомо дальним: ближний срок ему задаётся уже
+	 * перевзведением, и без этого он в куче дедлайнов корнем не станет
+	 */
+	this->_io->setTimeout(interval, awh::event::action_t::NONE, 40);
+	this->_io->setTimeout(prompt, awh::event::action_t::NONE, 5000);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(interval));
+	ASSERT_TRUE(this->_io->commit(prompt));
+	// Устанавливаем функцию обратного вызова на событие интервала
+	this->_io->on(interval, [&intervals]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если статус события успешен, считаем срабатывание интервала
+		if(status == awh::event::status_t::SUCCESS)
+			// Увеличиваем количество срабатываний интервала
+			intervals++;
+	});
+	// Устанавливаем функцию обратного вызова на событие ближнего срока
+	this->_io->on(prompt, [&prompts]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если статус события успешен, считаем срабатывание ближнего срока
+		if(status == awh::event::status_t::SUCCESS)
+			// Увеличиваем количество срабатываний ближнего срока
+			prompts++;
+	});
+	// Выполняем запуск событий
+	ASSERT_TRUE(this->_io->launch(interval));
+	ASSERT_TRUE(this->_io->launch(prompt));
+	/**
+	 * Дожидаемся первого срабатывания интервала: к возврату из этого опроса
+	 * перезарядка интервала уже лежит в очереди изменений отложенным взводом
+	 */
+	auto start = std::chrono::steady_clock::now();
+	while((intervals < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll());
+	ASSERT_GE(intervals, 1);
+	/**
+	 * Взводим ближний срок мгновенным путём
+	 *
+	 * @note Срок его короче периода интервала, то есть в куче дедлайнов он
+	 *       становится корнем, и наступить обязан прежде следующего интервала
+	 */
+	const auto armed = std::chrono::steady_clock::now();
+	ASSERT_TRUE(this->_io->rearmTimeout(prompt, awh::event::action_t::NONE, PROMPT));
+	// Дожидаемся наступления ближнего срока
+	while((prompts < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - armed).count() < 3000) && this->_io->poll());
+	// Запоминаем время, за которое ближний срок наступил
+	const int64_t spent = std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - armed).count();
+	// Собираем подпись для отчёта об отказе
+	const std::string sign = std::string("ближних=") + std::to_string(prompts) +
+		" интервалов=" + std::to_string(intervals) + " ушло=" + std::to_string(spent) + "мс";
+	// Ближний срок обязан наступить
+	ASSERT_GE(prompts, 1) << sign;
+	/**
+	 * Ближний срок обязан наступить в отведённое ему время
+	 *
+	 * @note Верхняя граница взята с запасом на разброс планировщика, но заведомо
+	 *       меньше дальнего срока таймаута: отодвинься взвод до него, и разница
+	 *       была бы не в проценты, а в порядок
+	 */
+	ASSERT_LT(spent, static_cast <int64_t> (PROMPT * 8)) << sign;
+	this->_io->destroy(interval);
+	this->_io->destroy(prompt);
+	ASSERT_TRUE(this->_io->deinitialize());
+}

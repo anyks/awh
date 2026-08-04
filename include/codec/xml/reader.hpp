@@ -579,7 +579,7 @@ namespace awh {
 					 * @return       результат выполнения операции
 					 *
 					 */
-					bool parseReference(size_t & offset, const size_t end, string & result, const uint32_t depth) noexcept;
+					bool parseReference(size_t & offset, const size_t end, string & result, const uint32_t depth, const bool space = false) noexcept;
 					/**
 					 * @brief Метод подстановки значения сущности по её имени
 					 *
@@ -592,7 +592,7 @@ namespace awh {
 					 * @return       результат выполнения операции
 					 *
 					 */
-					bool expand(const string_view name, string & result, const uint32_t depth) noexcept;
+					bool expand(const string_view name, string & result, const uint32_t depth, const bool space = false) noexcept;
 					/**
 					 * @brief Метод подстановки сущности с разметкой прямо в разбираемый текст
 					 *
@@ -618,6 +618,16 @@ namespace awh {
 					 *
 					 */
 					bool markup(const size_t offset, string_view & name, size_t & end) const noexcept;
+					/**
+					 * @brief Метод переноса признака разметки по вложенным ссылкам сущностей
+					 *
+					 * @details Значение сущности вправе ссылаться на другую сущность, и
+					 * подставляется такая ссылка не при объявлении, а при обращении. Оттого
+					 * сущность, сама знака начала разметки не несущая, приносит разметку той,
+					 * на которую ссылается, и признак следует переносить по ссылкам
+					 *
+					 */
+					void inherit() noexcept;
 					/**
 					 * @brief Метод разбора внутреннего подмножества описания типа документа
 					 *

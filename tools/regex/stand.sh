@@ -21,8 +21,8 @@ BUNDLE=$(mktemp -t awh-regex-stand)".tgz"
 
 echo "Собираем набор исходных текстов модуля"
 tar czf "$BUNDLE" -C "$ROOT" \
-	include/regex include/sys/ascii.hpp include/sys/global.hpp \
-	src/regex tools/regex/conformance.cpp tools/regex/conformance.hpp
+	include/regex include/unicode include/sys/ascii.hpp include/sys/global.hpp \
+	src/regex src/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp
 
 echo "Раскладываем набор на стенд $TARGET"
 # Домашний каталог стенда бывает недоступен для записи, поэтому набор
@@ -52,7 +52,7 @@ ssh -p "$PORT" "$TARGET" '
 	"$CXX" --version | head -1
 	for STD in c++2b c++20 c++17 ; do
 		if "$CXX" -std=$STD -O2 -Iinclude -Itools/regex \
-			tools/regex/conformance.cpp src/regex/*.cpp -o conformance 2>compile.log ; then
+			tools/regex/conformance.cpp src/regex/*.cpp src/unicode/*.cpp -o conformance 2>compile.log ; then
 			echo "Собрано в режиме -std=$STD"
 			break
 		fi
