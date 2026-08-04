@@ -1385,51 +1385,48 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 			// Для семейства IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				/**
-				 * NetBSD и OpenBSD признак перегрузки входящих IPv4-пакетов (IP_RECVTOS)
-				 * не сообщают - это сознательное решение их разработчиков, а не пробел
-				 * версии. Пометить исходящие пакеты как ECN-поддерживающие (ECT) значило
-				 * бы запрашивать обратную связь, которую мы не увидим никогда, - проверка
-				 * пути ECN ею и живёт (RFC 9000 §13.4). Поэтому на этих системах маркировку
-				 * ECN на IPv4 не выставляем: поле остаётся нетронутым, а его значение по
-				 * умолчанию 0x00 - это ecn_t::NOT_ECT, честно сообщающее пиру, что отправитель
-				 * ECN не поддерживает. Ноль как выдуманное значение при этом не подставляется:
-				 * неприменение отметки и есть правдивое состояние, а не подмена непрочитанного
-				 * нулём. Диспетчеризация по именам систем (а не по отсутствию IP_RECVTOS)
-				 * намеренна и единообразна с остальным socket.cpp: kqueue-бэкенд закрыт под
-				 * фиксированный набор ОС, и появись опция в новом выпуске - изменение должно
-				 * всплыть осознанной доработкой, а не молча включиться, скрыв новую возможность.
+				 * @par Намеренные решения
+				 *
+				 * Отметка выставляется одинаково на всех системах, в том числе там, где
+				 * ядро признак перегрузки принятых IPv4-пакетов не выдаёт (NetBSD и
+				 * OpenBSD не имеют IP_RECVTOS). Прежде на этих системах отметка молча
+				 * не выставлялась, а метод отвечал согласием: установка признака
+				 * расходилась с его последующим чтением, и потребитель узнать об этом
+				 * не мог. Довод был в том, что метить пакеты, не видя обратных отметок,
+				 * бесполезно, - но решение это принадлежит потребителю, а не установщику
+				 * параметра сокета: QUIC спрашивает доступность отдельно через
+				 * availableExplicitCongestionNotification() и сам отключает ECN там,
+				 * где обратной связи не будет
+				 *
 				 * Класс обслуживания (DSCP) задаётся отдельно методом
-				 * setDifferentiatedServicesCodePoint(), поэтому tclass здесь не пишем
+				 * setDifferentiatedServicesCodePoint(), и здесь он лишь сохраняется
+				 * нетронутым: оба поля делят один октет заголовка
+				 *
 				 */
-				#if __NetBSD__ || __OpenBSD__
-					// Состояние ECN корректно (нетронутый NOT_ECT), ошибки нет
-					result = true;
-				#else
-					// Устанавливаем значение поля Type Of Service (TOS) заголовка IPv4-пакета
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TOS, &tclass, sizeof(tclass))))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
-									sock,
-									static_cast <uint16_t> (family),
-									static_cast <uint16_t> (ecn)
-								), log_t::flag_t::WARNING,
-								::strerror(errno)
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-						#endif
-					}
-				#endif
+				// Устанавливаем значение поля Type Of Service (TOS) заголовка IPv4-пакета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TOS, &tclass, sizeof(tclass))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (ecn)
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
 			} break;
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -2663,7 +2660,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				/**
 				 * Если система различает срок задержки в тиках и в секундах
 				 */
-				#if defined(SO_LINGER_SEC)
+				#if SO_LINGER_SEC
 					// Выбираем опцию ядра, принимающую срок задержки в секундах
 					static constexpr int32_t LINGER_OPTION = SO_LINGER_SEC;
 				/**
@@ -2830,7 +2827,7 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
 			/**
 			 * Если опция установки режима обнаружения MTU доступна
 			 */
-			#if defined(IP_DONTFRAG)
+			#if IP_DONTFRAG
 				// Получаем режим обнаружения MTU (Dont Fragment flag)
 				if(::getsockopt(sock, IPPROTO_IP, IP_DONTFRAG, &value, &length) == 0)
 					// Устанавливаем полученный результат
@@ -2842,7 +2839,7 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
 			/**
 			 * Если опция установки режима обнаружения MTU доступна
 			 */
-			#if defined(IPV6_DONTFRAG)
+			#if IPV6_DONTFRAG
 				// Получаем режим обнаружения MTU (Dont Fragment flag)
 				if(::getsockopt(sock, IPPROTO_IPV6, IPV6_DONTFRAG, &value, &length) == 0)
 					// Устанавливаем полученный результат
@@ -2874,6 +2871,16 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 	 * аналогичные Linux (IP_PMTUDISC_PROBE, ADAPT и т.д.).
 	 * Доступен только флаг запрета фрагментации (IP_DONTFRAG / IPV6_DONTFRAG).
 	 * Поэтому мы маппим все активные режимы на включение этого флага.
+	 *
+	 * @par Намеренные решения
+	 *
+	 * У NetBSD и OpenBSD запрет фрагментации на отдельном сокете не задаётся вовсе:
+	 * NetBSD имеет его только для IPv6, OpenBSD - ни для одного семейства. Правдивой
+	 * замены здесь нет: обнаружение пути ведёт ядро само по своим настройкам, и
+	 * приложению остаётся лишь узнать итог. Согласиться, ничего не сделав, значило бы
+	 * выдать невыполненное за выполненное, поэтому метод отвечает отказом и пишет
+	 * причину в журнал - потребитель узнаёт, что запрет фрагментации ему не достался,
+	 * и обходится осторожным размером датаграммы
 	 */
 	switch(static_cast <uint8_t> (mode)){
 		/**
@@ -2917,7 +2924,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 			/**
 			 * Если опция установки режима обнаружения MTU доступна
 			 */
-			#if defined(IP_DONTFRAG)
+			#if IP_DONTFRAG
 				// Устанавливаем режим обнаружения MTU (Dont Fragment flag)
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_DONTFRAG, &value, sizeof(value))))){
 					/**
@@ -2942,6 +2949,12 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
+			/**
+			 * Если запрет фрагментации на отдельном сокете системой не задаётся
+			 */
+			#else
+				// Записываем причину отказа в журнал
+				this->_log->print("Per-socket fragmentation control is not supported by the system for IPv4", log_t::flag_t::WARNING);
 			#endif
 		} break;
 		// Для семейства IPv6
@@ -2949,7 +2962,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 			/**
 			 * Если опция установки режима обнаружения MTU доступна
 			 */
-			#if defined(IPV6_DONTFRAG)
+			#if IPV6_DONTFRAG
 				// Устанавливаем режим обнаружения MTU (Dont Fragment flag)
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_DONTFRAG, &value, sizeof(value))))){
 					/**
@@ -2974,6 +2987,12 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
+			/**
+			 * Если запрет фрагментации на отдельном сокете системой не задаётся
+			 */
+			#else
+				// Записываем причину отказа в журнал
+				this->_log->print("Per-socket fragmentation control is not supported by the system for IPv6", log_t::flag_t::WARNING);
 			#endif
 		} break;
 	}

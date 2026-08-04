@@ -21,6 +21,7 @@
  * Подключаем стандартные модули
  */
 #include <arpa/inet.h>
+#include <netinet/in.h>
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -176,10 +177,17 @@ TEST_F(EthFixture, EthSuiteTest){
 	// Получаем дифференцированные услуги (DSCP) для сокета
 	ASSERT_EQ(awh::event::dscp_t::CS0, this->_eth->socket.getDifferentiatedServicesCodePoint(sock, awh::event::family_t::IPV4));
 
-	// Устанавливаем обнаружение максимального размера пакета (MTU) для сокета
-	ASSERT_TRUE(this->_eth->socket.setMaximumTransmissionUnitDiscover(sock, awh::event::family_t::IPV4, awh::event::mtu_discover_t::DO));
-	// Получаем обнаружение максимального размера пакета (MTU) для сокета
-	ASSERT_EQ(awh::event::mtu_discover_t::DO, this->_eth->socket.getMaximumTransmissionUnitDiscover(sock, awh::event::family_t::IPV4));
+	/**
+	 * Обнаружение MTU проверяется лишь там, где запрет фрагментации на отдельном
+	 * сокете системой задаётся: NetBSD имеет его только для IPv6, OpenBSD - ни для
+	 * одного семейства, и обнаружение пути там ведёт ядро само
+	 */
+	#if defined(IP_DONTFRAG)
+		// Устанавливаем обнаружение максимального размера пакета (MTU) для сокета
+		ASSERT_TRUE(this->_eth->socket.setMaximumTransmissionUnitDiscover(sock, awh::event::family_t::IPV4, awh::event::mtu_discover_t::DO));
+		// Получаем обнаружение максимального размера пакета (MTU) для сокета
+		ASSERT_EQ(awh::event::mtu_discover_t::DO, this->_eth->socket.getMaximumTransmissionUnitDiscover(sock, awh::event::family_t::IPV4));
+	#endif
 
 	// Вычисляем контрольную сумму транспортного уровня с некорректными данными
 	ASSERT_EQ(0, this->_eth->addr.checksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, nullptr, nullptr, nullptr, 0));

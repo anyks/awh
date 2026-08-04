@@ -565,25 +565,52 @@ TEST_F(EthFixture, SocketEcnDeliveryTest){
  *
  */
 TEST_F(EthFixture, SocketMtuDiscoverTest){
-	// Создаём UDP сокет IPv4
-	auto sock4 = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
-	// Проверяем что сокет создан успешно
-	ASSERT_NE(sock4, awh::net::invalid_socket_t);
-	// Включаем обнаружение MTU (запрет фрагментации) для IPv4
-	ASSERT_TRUE(this->_eth->socket.setMaximumTransmissionUnitDiscover(sock4, awh::event::family_t::IPV4, awh::event::mtu_discover_t::DO));
-	ASSERT_EQ(awh::event::mtu_discover_t::DO, this->_eth->socket.getMaximumTransmissionUnitDiscover(sock4, awh::event::family_t::IPV4));
-	// Закрываем сокет
-	::close(sock4);
-
-	// Создаём UDP сокет IPv6
-	auto sock6 = this->_eth->socket.issue(awh::event::family_t::IPV6, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
-	// Проверяем что сокет создан успешно
-	ASSERT_NE(sock6, awh::net::invalid_socket_t);
-	// Включаем обнаружение MTU (запрет фрагментации) для IPv6
-	ASSERT_TRUE(this->_eth->socket.setMaximumTransmissionUnitDiscover(sock6, awh::event::family_t::IPV6, awh::event::mtu_discover_t::DO));
-	ASSERT_EQ(awh::event::mtu_discover_t::DO, this->_eth->socket.getMaximumTransmissionUnitDiscover(sock6, awh::event::family_t::IPV6));
-	// Закрываем сокет
-	::close(sock6);
+	/**
+	 * @par Намеренные решения
+	 *
+	 * Каждое семейство проверяется лишь там, где запрет фрагментации на отдельном
+	 * сокете системой вообще задаётся. NetBSD имеет его только для IPv6, OpenBSD -
+	 * ни для одного семейства: обнаружение пути ведёт ядро само, и приложению
+	 * задать его нечем. Признаком служит наличие самого параметра, а не перечисление
+	 * систем поимённо - перечисление устареет с первым же выпуском, который параметр
+	 * добавит
+	 *
+	 */
+	/**
+	 * Если запрет фрагментации для IPv4 системой задаётся
+	 */
+	#if defined(IP_DONTFRAG)
+		// Создаём UDP сокет IPv4
+		auto sock4 = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+		// Проверяем что сокет создан успешно
+		ASSERT_NE(sock4, awh::net::invalid_socket_t);
+		// Включаем обнаружение MTU (запрет фрагментации) для IPv4
+		ASSERT_TRUE(this->_eth->socket.setMaximumTransmissionUnitDiscover(sock4, awh::event::family_t::IPV4, awh::event::mtu_discover_t::DO));
+		ASSERT_EQ(awh::event::mtu_discover_t::DO, this->_eth->socket.getMaximumTransmissionUnitDiscover(sock4, awh::event::family_t::IPV4));
+		// Закрываем сокет
+		::close(sock4);
+	#endif
+	/**
+	 * Если запрет фрагментации для IPv6 системой задаётся
+	 */
+	#if defined(IPV6_DONTFRAG)
+		// Создаём UDP сокет IPv6
+		auto sock6 = this->_eth->socket.issue(awh::event::family_t::IPV6, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+		// Проверяем что сокет создан успешно
+		ASSERT_NE(sock6, awh::net::invalid_socket_t);
+		// Включаем обнаружение MTU (запрет фрагментации) для IPv6
+		ASSERT_TRUE(this->_eth->socket.setMaximumTransmissionUnitDiscover(sock6, awh::event::family_t::IPV6, awh::event::mtu_discover_t::DO));
+		ASSERT_EQ(awh::event::mtu_discover_t::DO, this->_eth->socket.getMaximumTransmissionUnitDiscover(sock6, awh::event::family_t::IPV6));
+		// Закрываем сокет
+		::close(sock6);
+	#endif
+	/**
+	 * Если ни одно семейство системой не поддерживается
+	 */
+	#if !defined(IP_DONTFRAG) && !defined(IPV6_DONTFRAG)
+		// Пропускаем тест - проверять нечего
+		GTEST_SKIP() << "per-socket fragmentation control is not supported by the system";
+	#endif
 }
 
 /**

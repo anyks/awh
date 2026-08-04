@@ -825,7 +825,7 @@ TEST(Grok, StoragePacking) {
 	vector <Grok::exp_t> expressions;
 	// Выполняем проверку отказа восстановления без обработчика разжатия
 	EXPECT_FALSE(restored.load(packed, expressions));
-	EXPECT_EQ(restored.error(), Grok::error_t::STORAGE);
+	EXPECT_EQ(restored.error(), Grok::error_t::STORAGE_METHOD);
 	// Выполняем установку сжатия записи собранных шаблонов
 	restored.packer(compressor::method_t::LZ4, &reversed, &reversed);
 	// Выполняем восстановление собранных шаблонов
