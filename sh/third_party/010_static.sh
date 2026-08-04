@@ -21,9 +21,11 @@ if [ -n "$1" ]; then
 		# Выполняем объединение статических библиотек
 		bash "$ROOT/merge_static_libs.sh"
 
-		# Копируем скрипт prepare-commit-msg в директорию .git/hooks
+		# Копируем скрипты хуков в директорию .git/hooks
+		cp -f "$ROOT/prepare-commit-msg.sh" "$ROOT/../.git/hooks/commit-msg"
 		cp -f "$ROOT/prepare-commit-msg.sh" "$ROOT/../.git/hooks/prepare-commit-msg"
 		# Делаем скрипт prepare-commit-msg исполняемым
+		chmod +x "$ROOT/../.git/hooks/commit-msg"
 		chmod +x "$ROOT/../.git/hooks/prepare-commit-msg"
 
 		# Переходим обратно в рабочий каталог

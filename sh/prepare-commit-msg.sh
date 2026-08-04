@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
-grep -iq 'co-authored-by' "$1" && sed -i '/[Cc][Oo]-[Aa][Uu][Tt][Hh][Oo][Rr][Ee][Dd]-[Bb][Yy]:/d' "$1"
 
+# Исправляем баг в git, когда при коммите в сообщении появляется лишняя строка Co-Authored-By:
+sed -i '' '/Co-Authored-By:/d' "$1"
