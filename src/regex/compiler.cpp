@@ -103,8 +103,24 @@ awh::regex::address_t awh::regex::Compiler::emit(const opcode_t type, const uint
 uint32_t awh::regex::Compiler::store(const class_t & value) noexcept {
 	// Получаем индекс размещаемого класса символов
 	const uint32_t result = static_cast <uint32_t> (this->_program->classes.size());
-	// Выполняем размещение класса символов в хранилище классов
-	this->_program->classes.push_back(value);
+	// Создаём ссылку на размещаемый класс символов
+	classref_t record;
+	// Выполняем установку признака отрицания класса символов
+	record.negative = value.negative;
+	// Выполняем установку номера первого диапазона класса
+	record.ranges = static_cast <uint32_t> (this->_program->ranges.size());
+	// Выполняем установку количества диапазонов класса
+	record.rangeCount = static_cast <uint32_t> (value.ranges.size());
+	// Выполняем установку номера первого свойства класса
+	record.properties = static_cast <uint32_t> (this->_program->properties.size());
+	// Выполняем установку количества свойств класса
+	record.propertyCount = static_cast <uint32_t> (value.properties.size());
+	// Выполняем перенос диапазонов класса в сплошной набор программы
+	this->_program->ranges.insert(this->_program->ranges.end(), value.ranges.begin(), value.ranges.end());
+	// Выполняем перенос свойств класса в сплошной набор программы
+	this->_program->properties.insert(this->_program->properties.end(), value.properties.begin(), value.properties.end());
+	// Выполняем размещение ссылки на класс символов в хранилище
+	this->_program->classes.push_back(record);
 	// Выводим индекс класса символов в хранилище классов
 	return result;
 }
@@ -1137,7 +1153,7 @@ bool awh::regex::Compiler::reachable(const address_t address) noexcept {
 			 */
 			case static_cast <uint8_t> (opcode_t::CLASS): {
 				// Получаем класс символов сопоставляемой инструкции
-				const class_t & value = this->_program->classes.at(instruction.charclass.index);
+				const classview_t value = this->_program->charclass(instruction.charclass.index);
 				/**
 				 * Если класс символов задан свойствами Юникода
 				 *

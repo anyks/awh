@@ -21,6 +21,8 @@
  * Подключаем стандартные модули
  */
 #include <cinttypes>
+#include <atomic>
+#include <thread>
 
 /**
  * Подключаем стандартные модули
@@ -16580,7 +16582,7 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 	const uint8_t reborn = rebirths, connected = successes;
 	// Крутим цикл заведомо дольше срока переподключения, давая подъёму случиться
 	start = std::chrono::steady_clock::now();
-	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 1500) && this->_io->poll());
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
 	const std::string sign = std::string("возрождений=") + std::to_string(rebirths - reborn) +
 		" подключений=" + std::to_string(successes - connected);
 	// Уничтоженное по воле вызывающего событие не вправе подняться ни разу
@@ -17192,5 +17194,190 @@ TEST_F(IoFixture, IoPromptDeadlineAfterIntervalTest){
 	ASSERT_LT(spent, static_cast <int64_t> (PROMPT * 8)) << sign;
 	this->_io->destroy(interval);
 	this->_io->destroy(prompt);
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
+ * @brief Тест совпадения срабатывания срока и готовности сокета в одной пачке событий
+ *
+ * @details Стенд собирает порядок, при котором отложенный взвод таймера ядра лежит
+ *          в очереди изменений к мигу мгновенного взвода. Событие таймера и
+ *          готовность сокета к чтению приходят от ядра одной пачкой: разбор
+ *          истёкших сроков кладёт отложенный взвод в очередь, а следующее за ним в
+ *          той же пачке чтение снимает свой срок мгновенным путём, обращаясь к ядру
+ *          напрямую. Очередь уходит в ядро лишь следующим опросом - и, не сними
+ *          мгновенный взвод отложенный, перезаписала бы взведённый срок своим,
+ *          уже устаревшим
+ *
+ * @par Что стенд установил
+ * Порядок этот **достижим**: измерено записью внутри снятия отложенного взвода -
+ * за прогон оно срабатывает. До этого стенда он не встречался ни в одной из 3396
+ * проверок набора, и снятие отложенного взвода выглядело кодом мёртвым. Оно не
+ * мёртвое
+ *
+ * @warning Наблюдаемого отказа отсюда пока не выведено: стенд проходит и со снятием
+ *          отложенного взвода, и без него. Причина в подстраховке цикла опроса -
+ *          время ожидания опроса ограничивается ближайшим сроком независимо от
+ *          того, на что взведено ядро, - и при её работе срок наступает даже при
+ *          перезаписанном взводе. Стенд стережёт достижимость порядка, а не вред
+ *          от него
+ *
+ * @note Соотношение величин здесь существенно и подобрано опытом. Срок ожидания
+ *       чтения обязан быть **короче** периода интервала: иначе ближайшим сроком
+ *       всегда оказывается интервал, снятие срока чтения ближайший срок не трогает,
+ *       и мгновенного взвода не выполняется вовсе. При обратном соотношении за
+ *       прогон случался ровно ноль мгновенных взводов при пяти сотнях отложенных
+ *
+ */
+TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
+	// Количество срабатываний интервала
+	uint16_t intervals = 0;
+	// Количество принятых от потока пакетов
+	uint16_t packets = 0;
+	// Количество наступивших сроков ожидания чтения
+	uint16_t expirations = 0;
+	// Заводим сокет источника потока
+	const int32_t feeder = ::socket(AF_INET, SOCK_DGRAM, 0);
+	// Проверяем что сокет источника заведён
+	ASSERT_GT(feeder, 0);
+	// Адрес источника потока
+	struct sockaddr_in origin{};
+	// Устанавливаем семейство адреса источника
+	origin.sin_family = AF_INET;
+	// Устанавливаем адрес устройства петли
+	origin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	// Привязываем источник к произвольному свободному порту
+	ASSERT_EQ(::bind(feeder, reinterpret_cast <struct sockaddr *> (&origin), sizeof(origin)), 0);
+	// Размер адреса источника
+	socklen_t length = sizeof(origin);
+	// Получаем занятый источником порт
+	ASSERT_EQ(::getsockname(feeder, reinterpret_cast <struct sockaddr *> (&origin), &length), 0);
+	// Добавляем событие интервала
+	const awh::event::id_t interval = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Добавляем событие дейтаграммного клиента, принимающего поток
+	const awh::event::id_t reader = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что события созданы
+	ASSERT_GT(interval, 0u);
+	ASSERT_GT(reader, 0u);
+	/**
+	 * Устанавливаем период интервала
+	 *
+	 * @note Период взят заведомо большим срока ожидания чтения. Иначе ближайшим
+	 *       сроком всегда оказывается интервал, снятие срока чтения ближайший срок
+	 *       не трогает - и мгновенный взвод не выполняется вовсе, а с ним не
+	 *       случается и порядка, ради которого стенд заведён
+	 */
+	this->_io->setTimeout(interval, awh::event::action_t::NONE, 100);
+	/**
+	 * Устанавливаем клиенту срок ожидания чтения
+	 *
+	 * @note Срок этот и снимается мгновенным путём на каждом принятом пакете - ради
+	 *       него стенд и заведён. Величина взята заведомо большей шага потока: срок
+	 *       обязан сниматься приходом данных, а не истекать сам
+	 */
+	this->_io->setTimeout(reader, awh::event::action_t::READ, 8);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем функцию обратного вызова на событие интервала
+	this->_io->on(interval, [&intervals]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если статус события успешен, считаем срабатывание интервала
+		if(status == awh::event::status_t::SUCCESS)
+			// Увеличиваем количество срабатываний интервала
+			intervals++;
+	});
+	// Устанавливаем функцию обратного вызова на событие чтения данных
+	this->_io->on(reader, static_cast <awh::engine::callback::read_t> (
+		[&packets]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+			// Считаем принятый от потока пакет
+			packets++;
+		}
+	));
+	// Устанавливаем функцию обратного вызова на событие наступления срока ожидания
+	this->_io->on(reader, static_cast <awh::engine::callback::timeout_t> (
+		[&expirations]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept -> bool {
+			// Считаем наступивший срок ожидания
+			expirations++;
+			// Запрещаем удаление события по наступлении срока
+			return false;
+		}
+	));
+	// Устанавливаем адрес источника потока
+	ASSERT_TRUE(this->_io->setTarget(reader, "127.0.0.1"));
+	// Устанавливаем порт источника потока
+	ASSERT_TRUE(this->_io->setTargetPort(reader, ntohs(origin.sin_port)));
+	// Устанавливаем опции события клиента
+	ASSERT_TRUE(this->_io->setOptions(reader, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(interval));
+	ASSERT_TRUE(this->_io->commit(reader));
+	// Выполняем запуск событий
+	ASSERT_TRUE(this->_io->launch(interval));
+	ASSERT_TRUE(this->_io->launch(reader));
+	/**
+	 * Отправляем источнику первую дейтаграмму
+	 *
+	 * @note Без неё источнику неоткуда узнать адрес клиента: сокет клиента
+	 *       подключённый, порт ему выдан ядром, и назвать его заранее нельзя
+	 */
+	const uint8_t hello[4] = {0x41, 0x57, 0x48, 0x00};
+	ASSERT_GT(this->_io->send(reader, hello, sizeof(hello)), static_cast <size_t> (0));
+	// Признак работы потока
+	std::atomic <bool> running(true);
+	/**
+	 * Заводим нить, гонящую поток дейтаграмм клиенту
+	 *
+	 * @note Шаг потока взят много короче срока ожидания чтения: срок снимается
+	 *       приходом данных и наступить не успевает. Событие интервала при этом
+	 *       приходит от ядра одной пачкой с готовностью сокета многократно за
+	 *       время прогона
+	 */
+	std::thread feed([&running, feeder]() noexcept -> void {
+		// Адрес клиента, узнаваемый из первой его дейтаграммы
+		struct sockaddr_in peer{};
+		// Размер адреса клиента
+		socklen_t size = sizeof(peer);
+		// Приёмный буфер источника
+		uint8_t buffer[64];
+		// Дожидаемся первой дейтаграммы клиента, узнавая его адрес
+		if(::recvfrom(feeder, buffer, sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&peer), &size) <= 0)
+			// Выходим, так-как адрес клиента узнать не удалось
+			return;
+		/**
+		 * Гоним поток, пока стенд его не остановит
+		 */
+		while(running.load()){
+			// Отправляем очередную дейтаграмму клиенту
+			::sendto(feeder, buffer, 4, 0, reinterpret_cast <const struct sockaddr *> (&peer), size);
+			// Выдерживаем шаг потока
+			std::this_thread::sleep_for(std::chrono::microseconds(1000));
+		}
+	});
+	// Запоминаем время начала опроса событий
+	const auto start = std::chrono::steady_clock::now();
+	// Ведём опрос событий отведённое стенду время
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
+	// Останавливаем поток
+	running.store(false);
+	// Дожидаемся завершения нити потока
+	feed.join();
+	// Освобождаем сокет источника потока
+	::close(feeder);
+	// Собираем подпись для отчёта об отказе
+	const std::string sign = std::string("интервалов=") + std::to_string(intervals) +
+		" пакетов=" + std::to_string(packets) + " сроков=" + std::to_string(expirations);
+	// Интервал обязан срабатывать всё отведённое время
+	ASSERT_GT(intervals, 10u) << sign;
+	// Клиент обязан принимать поток всё отведённое время
+	ASSERT_GT(packets, 50u) << sign;
+	/**
+	 * Срок ожидания чтения наступить не вправе
+	 *
+	 * @note Здесь и вскрылась бы перезапись взведённого срока: поток идёт шагом
+	 *       вдвое короче срока ожидания, и снимается срок на каждом пакете. Срок,
+	 *       наступивший при живом потоке, означает, что взвод до ядра не дошёл
+	 */
+	ASSERT_EQ(expirations, 0u) << sign;
+	this->_io->destroy(interval);
+	this->_io->destroy(reader);
 	ASSERT_TRUE(this->_io->deinitialize());
 }

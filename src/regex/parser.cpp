@@ -250,6 +250,8 @@ string awh::regex::Parser::message() const noexcept {
 		case static_cast <uint8_t> (error_t::PATTERN_TOO_LARGE): return "pattern is too large";
 		// Некорректная последовательность UTF-8 в выражении
 		case static_cast <uint8_t> (error_t::BAD_UTF8): return "invalid utf-8 sequence in pattern";
+		// Некорректная последовательность UTF-8 в тексте сопоставления
+		case static_cast <uint8_t> (error_t::BAD_UTF8_SUBJECT): return "invalid utf-8 sequence in subject";
 		// Недопустимая ретроспективная проверка
 		case static_cast <uint8_t> (error_t::LOOKBEHIND_INVALID): return "invalid lookbehind assertion";
 		// Конструкция не поддерживается модулем
@@ -1477,9 +1479,141 @@ bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
 	// Создаём набор диапазонов класса символов POSIX
 	vector <range_t> ranges;
 	/**
+	 * Если установлен режим соответствия сокращённых классов свойствам Юникода
+	 *
+	 * @details Режим «UCP» заменяет наборы символов ASCII, задающие классы POSIX,
+	 *          соответствующими свойствами Юникода, - ровно так же, как поступает
+	 *          он с сокращёнными классами. Состав каждого класса установлен
+	 *          сличением с эталонной реализацией, а не выведен из названия: классы
+	 *          «punct», «graph», «print» и «xdigit» общей категории Юникода не
+	 *          отвечают вовсе и заданы свойствами составными.
+	 *
+	 *          Классы «blank» и «ascii» заданы диапазонами, а не свойствами:
+	 *          первый совпадает с сокращённым классом «\h», второй от режима не
+	 *          зависит, - а отрицание набора диапазонов выполняется дополнением,
+	 *          отрицание же свойства ведётся признаком самого свойства.
+	 */
+	if(hasFlag(this->_flags, flag_t::UCP)) {
+		// Идентификатор свойства Юникода класса символов POSIX
+		uint16_t id = static_cast <uint16_t> (property_id_t::UNKNOWN);
+		/**
+		 * Если класс символов содержит буквы
+		 */
+		if(name.compare("alpha") == 0)
+			// Выполняем установку свойства букв
+			id = static_cast <uint16_t> (property_id_t::L);
+		/**
+		 * Если класс символов содержит буквы и цифры
+		 */
+		else if(name.compare("alnum") == 0)
+			// Выполняем установку свойства букв и цифр
+			id = static_cast <uint16_t> (property_id_t::XAN);
+		/**
+		 * Если класс символов содержит десятичные цифры
+		 */
+		else if(name.compare("digit") == 0)
+			// Выполняем установку свойства десятичных цифр
+			id = static_cast <uint16_t> (property_id_t::Nd);
+		/**
+		 * Если класс символов содержит пробельные символы
+		 */
+		else if(name.compare("space") == 0)
+			// Выполняем установку свойства пробельных символов
+			id = static_cast <uint16_t> (property_id_t::XPS);
+		/**
+		 * Если класс символов содержит прописные буквы
+		 */
+		else if(name.compare("upper") == 0)
+			// Выполняем установку свойства прописных букв
+			id = static_cast <uint16_t> (property_id_t::Lu);
+		/**
+		 * Если класс символов содержит строчные буквы
+		 */
+		else if(name.compare("lower") == 0)
+			// Выполняем установку свойства строчных букв
+			id = static_cast <uint16_t> (property_id_t::Ll);
+		/**
+		 * Если класс символов содержит символы слова
+		 */
+		else if(name.compare("word") == 0)
+			// Выполняем установку свойства символов слова
+			id = static_cast <uint16_t> (property_id_t::XWD);
+		/**
+		 * Если класс символов содержит управляющие символы
+		 */
+		else if(name.compare("cntrl") == 0)
+			// Выполняем установку свойства управляющих символов
+			id = static_cast <uint16_t> (property_id_t::Cc);
+		/**
+		 * Если класс символов содержит знаки пунктуации
+		 */
+		else if(name.compare("punct") == 0)
+			// Выполняем установку свойства знаков пунктуации
+			id = static_cast <uint16_t> (property_id_t::PX_PUNCT);
+		/**
+		 * Если класс символов содержит видимые символы
+		 */
+		else if(name.compare("graph") == 0)
+			// Выполняем установку свойства видимых символов
+			id = static_cast <uint16_t> (property_id_t::PX_GRAPH);
+		/**
+		 * Если класс символов содержит печатаемые символы
+		 */
+		else if(name.compare("print") == 0)
+			// Выполняем установку свойства печатаемых символов
+			id = static_cast <uint16_t> (property_id_t::PX_PRINT);
+		/**
+		 * Если класс символов содержит шестнадцатеричные цифры
+		 */
+		else if(name.compare("xdigit") == 0)
+			// Выполняем установку свойства шестнадцатеричных цифр
+			id = static_cast <uint16_t> (property_id_t::PX_XDIGIT);
+		/**
+		 * Если свойство Юникода класса символов POSIX определено
+		 */
+		if(id != static_cast <uint16_t> (property_id_t::UNKNOWN)) {
+			// Выполняем добавление свойства Юникода в класс символов
+			result.properties.emplace_back(id, negative);
+			// Выводим результат выполнения разбора
+			return true;
+		}
+		/**
+		 * Если класс символов содержит горизонтальные пробельные символы
+		 */
+		if(name.compare("blank") == 0) {
+			// Добавляем символ горизонтальной табуляции
+			ranges.emplace_back(0x09, 0x09);
+			// Добавляем символ пробела
+			ranges.emplace_back(0x20, 0x20);
+			// Добавляем неразрывный пробел
+			ranges.emplace_back(0xA0, 0xA0);
+			// Добавляем пробел огама
+			ranges.emplace_back(0x1680, 0x1680);
+			// Добавляем разделитель гласной монгольского письма
+			ranges.emplace_back(0x180E, 0x180E);
+			// Добавляем диапазон пробелов различной ширины
+			ranges.emplace_back(0x2000, 0x200A);
+			// Добавляем узкий неразрывный пробел
+			ranges.emplace_back(0x202F, 0x202F);
+			// Добавляем средний математический пробел
+			ranges.emplace_back(0x205F, 0x205F);
+			// Добавляем идеографический пробел
+			ranges.emplace_back(0x3000, 0x3000);
+		}
+	}
+	/**
+	 * Если набор диапазонов сформирован режимом соответствия Юникоду
+	 *
+	 * @details Набор непустой означает, что класс уже задан выше режимом «UCP»,
+	 *          и набор диапазонов набора ASCII, ниже собираемый, к делу не идёт.
+	 */
+	if(!ranges.empty())
+		// Пропускаем формирование набора диапазонов набора ASCII
+		;
+	/**
 	 * Если класс символов содержит буквы
 	 */
-	if(name.compare("alpha") == 0) {
+	else if(name.compare("alpha") == 0) {
 		// Добавляем диапазон прописных букв
 		ranges.emplace_back(0x41, 0x5A);
 		// Добавляем диапазон строчных букв

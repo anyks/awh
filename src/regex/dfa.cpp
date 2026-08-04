@@ -130,7 +130,7 @@ namespace {
 	 * @return         результат проверки сопоставления байта классом символов
 	 *
 	 */
-	inline bool belongs(const awh::regex::class_t & value, const uint32_t letter, const bool caseless) noexcept {
+	inline bool belongs(const awh::regex::classview_t & value, const uint32_t letter, const bool caseless) noexcept {
 		// Создаём набор проверяемых значений байта
 		uint32_t codes[2] = {letter, letter};
 		/**
@@ -325,7 +325,7 @@ void awh::regex::Dfa::alphabet() noexcept {
 			 */
 			case static_cast <uint8_t> (opcode_t::CLASS): {
 				// Получаем класс символов сопоставляемой инструкции
-				const class_t & value = this->_program->classes.at(instruction.charclass.index);
+				const classview_t value = this->_program->charclass(instruction.charclass.index);
 				// Определяем установку режима сопоставления без учёта регистра
 				const bool caseless = hasFlag(instruction.flags, flag_t::CASELESS);
 				/**
@@ -374,7 +374,7 @@ bool awh::regex::Dfa::available(const program_t & program) const noexcept {
 		/**
 		 * Если класс символов задан свойствами Юникода
 		 */
-		if(!value.properties.empty())
+		if(value.propertyCount > 0)
 			// Выводим результат проверки применимости исполнения
 			return false;
 	}
@@ -667,7 +667,7 @@ uint32_t awh::regex::Dfa::transition(const uint32_t index, const uint32_t letter
 			 */
 			case static_cast <uint8_t> (opcode_t::CLASS): {
 				// Получаем класс символов сопоставляемой инструкции
-				const class_t & value = this->_program->classes.at(instruction.charclass.index);
+				const classview_t value = this->_program->charclass(instruction.charclass.index);
 				// Выполняем установку флага сопоставления байта классом символов
 				accepted = belongs(value, letter, hasFlag(instruction.flags, flag_t::CASELESS));
 			} break;

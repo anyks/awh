@@ -760,7 +760,7 @@ size_t awh::regex::Codegen::table(const instruction_t & instruction, const progr
 			 */
 			case static_cast <uint8_t> (opcode_t::CLASS):
 				// Выполняем проверку принадлежности символа классу символов
-				belongs = regex::belongs(program.classes.at(instruction.charclass.index), letter, instruction.flags);
+				belongs = regex::belongs(program.charclass(instruction.charclass.index), letter, instruction.flags);
 			break;
 			/**
 			 * Если инструкция сопоставляет любой символ

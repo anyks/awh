@@ -957,6 +957,25 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		// Выходим из функции
 		return result;
 	}
+	/**
+	 * Посокетная настройка сроков проверки живости
+	 *
+	 * @details Задать их вправе не всякая система. У OpenBSD опций TCP_KEEPIDLE,
+	 *          TCP_KEEPINTVL и TCP_KEEPCNT нет вовсе: сроки задаются на всю машину
+	 *          настройками net.inet.tcp.keepidle и net.inet.tcp.keepintvl, а сокету
+	 *          достаётся лишь включение проверки целиком - оно выполнено выше и
+	 *          работает везде
+	 *
+	 * @warning Трогать общесистемные настройки отсюда нельзя: они принадлежат машине,
+	 *          а не нашему сокету, и правка их задела бы всякую службу на ней
+	 *
+	 * @note Замена посокетным срокам есть, но лежит она выше уровня сокета: проверку
+	 *       живости своими сроками ведёт сам движок, у него для этого есть и учёт
+	 *       сроков, и отправка. Здесь же честно сообщается, что заданные сроки взяты
+	 *       системой из своих умолчаний
+	 *
+	 */
+	#if !__OpenBSD__
 	// Максимальное количество попыток
 	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt))))){
 		/**
@@ -1014,7 +1033,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 	/**
 	 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
 	 */
-	#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#elif __FreeBSD__ || __NetBSD__
 		// Время через которое происходит проверка подключения
 		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
 			/**
@@ -1064,6 +1083,25 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
+	/**
+	 * Если система посокетных сроков проверки живости не даёт
+	 */
+	#else
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Сообщаем, что заданные сроки взяты системой из своих умолчаний
+			this->_log->debug(
+				"Per-socket keep-alive tuning is unavailable, system defaults applied",
+				__PRETTY_FUNCTION__,
+				make_tuple(
+					sock, cnt,
+					idle, intvl
+				), log_t::flag_t::INFO
+			);
+		#endif
+	#endif
 	// Возвращаем результат
 	return result;
 }
@@ -1346,30 +1384,54 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 		switch(static_cast <uint8_t> (family)){
 			// Для семейства IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
-				// Устанавливаем значение поля Type Of Service (TOS) заголовка IPv4-пакета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TOS, &tclass, sizeof(tclass))))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug(
-							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
-								sock,
-								static_cast <uint16_t> (family),
-								static_cast <uint16_t> (ecn)
-							), log_t::flag_t::WARNING,
-							::strerror(errno)
-						);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
+				/**
+				 * Если система сообщает признак перегрузки входящих IPv4-пакетов
+				 * (IP_RECVTOS), выставляем маркировку ECN на исходящих
+				 */
+				#if defined(IP_RECVTOS)
+					// Устанавливаем значение поля Type Of Service (TOS) заголовка IPv4-пакета
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TOS, &tclass, sizeof(tclass))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (ecn)
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				/**
+				 * Опции IP_RECVTOS нет (NetBSD, OpenBSD): признак перегрузки входящих
+				 * IPv4-пакетов ядро не сообщает никогда. Пометить исходящие пакеты как
+				 * ECN-поддерживающие (ECT) значило бы запрашивать обратную связь, которую
+				 * мы не увидим - проверка пути ECN такой связью и живёт (RFC 9000 §13.4).
+				 * Поэтому маркировку ECN на IPv4 здесь не выставляем: поле остаётся
+				 * нетронутым, а его значение по умолчанию 0x00 - это ecn_t::NOT_ECT,
+				 * честно сообщающее пиру, что отправитель ECN не поддерживает. Ноль как
+				 * выдуманное значение при этом не подставляется: неприменение отметки и
+				 * есть правдивое состояние, а не подмена непрочитанного нулём. Признак
+				 * недоступности определяется отсутствием самого макроса IP_RECVTOS, а не
+				 * перечислением систем поимённо - список устареет с первым же выпуском,
+				 * который опцию добавит. Класс обслуживания (DSCP) задаётся отдельно
+				 * методом setDifferentiatedServicesCodePoint(), поэтому tclass не пишем
+				 */
+				#else
+					// Состояние ECN корректно (нетронутый NOT_ECT), ошибки нет
+					result = true;
+				#endif
 			} break;
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -1501,6 +1563,39 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 				 * потока приложению не приходится
 				 */
 				if(ok2 && ((socktype == SOCK_RAW) || (socktype == SOCK_DGRAM))){
+				/**
+				 * Выдача класса обслуживания принятого пакета служебным сообщением
+				 *
+				 * @details Опции IP_RECVTOS нет ни у NetBSD, ни у OpenBSD, и подменить её
+				 *          нечем: соседние IP_RECVTTL, IP_RECVDSTADDR и IP_RECVIF выдают
+				 *          что угодно, кроме класса обслуживания, а из самого пакета
+				 *          прочесть его дейтаграммному сокету неоткуда - заголовок IP ядро
+				 *          ему не отдаёт
+				 *
+				 * @warning Подставлять сюда ноль нельзя. Ноль - это законный класс
+				 *          обслуживания CS0, и вызывающий принял бы выдуманное значение за
+				 *          прочитанное. Эмуляция здесь выродилась бы в ложь, поэтому
+				 *          настройка отвечает согласием, а класс обслуживания у принятых
+				 *          пакетов остаётся просто не выданным
+				 *
+				 */
+				#if __NetBSD__ || __OpenBSD__
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Сообщаем, что класс обслуживания принятых пакетов система не выдаёт
+						this->_log->debug(
+							"IP_RECVTOS is unavailable, service class of received packets is not reported",
+							__PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::INFO
+						);
+					#endif
+				#else
 					// Активируем/деактивируем генерацию информации о типе сервиса (TOS) в сокете
 					if(!(ok2 = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_RECVTOS, &flags, sizeof(flags))))){
 						/**
@@ -1525,6 +1620,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
+				#endif
 				}
 				// Формируем итоговый результат
 				result = (ok1 && ok2);
@@ -1740,8 +1836,33 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						flags = 0;
 					break;
 				}
-				// Включаем/отключаем или отключаем алгоритм TCP/CORK
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NOPUSH, &flags, sizeof(flags))))){
+				/**
+				 * Включаем/отключаем придержку отправки
+				 *
+				 * @details Имя механизма у каждой породы систем своё: у BSD и macOS это
+				 *          TCP_NOPUSH, у Linux - TCP_CORK. Наружу выставлено одно имя
+				 *          опции, а backend подставляет то, что даёт система
+				 *
+				 * @note У NetBSD нет ни того, ни другого, и ближайшее, что даёт там сам
+				 *       TCP, - алгоритм Нейгла: назначение у него то же, копить мелкие
+				 *       отправки до заполнения сегмента. Придержка включается снятием
+				 *       TCP_NODELAY, снимается - его возвратом
+				 *
+				 * @warning Равенством это не является: придержка держит до явного снятия,
+				 *          Нейгл - лишь до подтверждения предыдущего сегмента. Обмен,
+				 *          которому придержка нужна как строгая, на NetBSD получит
+				 *          приближение, а не её саму
+				 *
+				 */
+				#if __NetBSD__
+					// Придержке отправки соответствует включённый алгоритм Нейгла, снятию - выключенный
+					const int32_t nodelay = (flags ? 0 : 1);
+					// Включаем/отключаем алгоритм Нейгла вместо придержки отправки
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay))))){
+				#else
+					// Включаем/отключаем придержку отправки
+					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NOPUSH, &flags, sizeof(flags))))){
+				#endif
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2095,8 +2216,38 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						flags = 0;
 					break;
 				}
-				// Устанавливаем/снимаем игнорирование отключения сигнала записи в убитый сокет
+				/**
+				 * Устанавливаем/снимаем игнорирование отключения сигнала записи в убитый сокет
+				 *
+				 * @details У OpenBSD опции SO_NOSIGPIPE нет вовсе - ни в заголовках, ни в
+				 *          ядре. Замена ей там та же, что модуль применяет для систем, где
+				 *          посокетного способа не заведено: сигнал глушится обработчиком
+				 *          через sigaction, ровно как выше сделано для SIGILL
+				 *
+				 * @warning Способ этот не посокетный, а на весь процесс, и молчать сигнал
+				 *          будет для всякого сокета, а не только для этого. Иного OpenBSD
+				 *          не даёт, а последствие у настройки то же самое: запись в
+				 *          оборванное соединение отвечает отказом вместо гибели процесса
+				 *
+				 * @note Отвечать здесь согласием, не сделав ничего, нельзя. Настройка эта
+				 *       бережёт процесс от гибели, и мнимое её выполнение оставило бы
+				 *       вызывающего беззащитным ровно там, где он считает себя укрытым
+				 *
+				 */
+				#if __OpenBSD__
+					// Создаем структуру активации сигнала
+					struct sigaction act{0};
+					// Обнуляем маску блокируемых сигналов
+					sigemptyset(&act.sa_mask);
+					// Устанавливаем флаги перезагрузки
+					act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
+					// Глушим сигнал при включении настройки и возвращаем его обработку при снятии
+					act.sa_handler = (flags ? SIG_IGN : SIG_DFL);
+					// Устанавливаем обработку сигнала записи в оборванное соединение
+					if(!(result = !static_cast <bool> (::sigaction(SIGPIPE, &act, nullptr)))){
+				#else
 				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &flags, sizeof(flags))))){
+				#endif
 					/**
 					 * Если включён режим отладки
 					 */

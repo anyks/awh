@@ -225,7 +225,7 @@ namespace awh {
 		 * @return      результат проверки принадлежности символа классу
 		 *
 		 */
-		__AWH_SHARED_EXPORT__ bool belongs(const class_t & value, const uint32_t code, const uint32_t flags) noexcept;
+		__AWH_SHARED_EXPORT__ bool belongs(const classview_t & value, const uint32_t code, const uint32_t flags) noexcept;
 		/**
 		 * @brief Функция извлечения длины графемного кластера в позиции текста
 		 *

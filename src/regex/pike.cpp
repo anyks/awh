@@ -605,7 +605,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 				 */
 				case static_cast <uint8_t> (opcode_t::CLASS): {
 					// Выполняем проверку принадлежности символа классу символов
-					matched = belongs(program.classes.at(instruction.charclass.index), code, instruction.flags);
+					matched = belongs(program.charclass(instruction.charclass.index), code, instruction.flags);
 				} break;
 				/**
 				 * Выполняем сопоставление любого символа

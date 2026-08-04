@@ -278,9 +278,9 @@
 #include <sys/sysctl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#include <net/if.h>
 #include <netinet/ip6.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
@@ -293,6 +293,57 @@
 	 * Заголовочный файл для работы с протоколом SCTP
 	 */
 	#include <netinet/sctp.h>
+/**
+ * Если операционной системой является NetBSD либо OpenBSD
+ */
+#elif __NetBSD__ || __OpenBSD__
+	/**
+	 * Заголовочные файлы для числового указателя настроек UDP
+	 *
+	 * @note Порядок обязателен: заголовок настроек UDP объявляет поле типа struct
+	 *       ipovly, а сам этот тип описан в заголовке настроек IP. Подключённый в
+	 *       одиночку, заголовок UDP не собирается
+	 */
+	#include <netinet/ip_var.h>
+	#include <netinet/udp_var.h>
+#endif
+
+/**
+ * @brief Тип служебного сообщения, которым система выдаёт класс обслуживания принятого пакета
+ *
+ * @details Имя у этого типа не общее для всех систем. macOS и FreeBSD выдают класс
+ *          обслуживания сообщением IP_RECVTOS, а NetBSD и OpenBSD такого имени не
+ *          знают вовсе - ни как опции сокета, ни как типа служебного сообщения
+ *
+ *          Разбор входящих служебных сообщений сличает тип с обоими именами, и на
+ *          системах без второго имени сличение не собиралось бы. Здесь второе имя и
+ *          сводится к первому: сличение остаётся, но обе его половины называют одно
+ *          и то же, а лишним сравнением дело и ограничивается
+ *
+ * @warning Подменять имя самой системы (объявлять IP_RECVTOS своими силами) нельзя:
+ *          заголовки системы вправе объявить его позже и иначе, и расхождение это
+ *          вышло бы тихим. Оттого заведено имя собственное
+ *
+ * @note Класс обслуживания на таких системах просто не приходит: выдавать его ядру
+ *       нечем, а подставлять ноль - значит выдать законный CS0 за прочитанное. Поле
+ *       остаётся с прежним своим значением, и это намеренно
+ *
+ */
+#if defined(IP_RECVTOS)
+	/**
+	 * @brief Определяем имя типа служебного сообщения, которым система выдаёт класс обслуживания принятого пакета
+	 *
+	 */
+	#define AWH_CMSG_RECVTOS IP_RECVTOS
+/**
+ * Если операционной системой является NetBSD либо OpenBSD
+ */
+#else
+	/**
+	 * @brief Определяем имя типа служебного сообщения, которым система выдаёт класс обслуживания принятого пакета
+	 *
+	 */
+	#define AWH_CMSG_RECVTOS IP_TOS
 #endif
 
 /**
@@ -11424,7 +11475,7 @@ namespace io {
 													// Сохраняем сырое значение TTL (IPv4)
 													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
-												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
+												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
 													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 													/**
@@ -11687,7 +11738,7 @@ namespace io {
 												// Сохраняем сырое значение TTL (IPv4)
 												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
-											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
+											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
 												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												/**
@@ -11918,7 +11969,7 @@ namespace io {
 													// Сохраняем сырое значение TTL (IPv4)
 													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
-												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
+												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
 													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 													/**
@@ -12194,7 +12245,7 @@ namespace io {
 												// Сохраняем сырое значение TTL (IPv4)
 												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
-											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
+											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
 												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												/**
@@ -13208,7 +13259,7 @@ namespace io {
 													// Сохраняем сырое значение TTL (IPv4)
 													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
-												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
+												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
 													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 													/**
@@ -13515,7 +13566,7 @@ namespace io {
 												// Сохраняем сырое значение TTL (IPv4)
 												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
-											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
+											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
 												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												/**
@@ -29916,10 +29967,40 @@ namespace io {
 		uint32_t result = 0x2400;
 		// Размер получаемого значения
 		size_t length = sizeof(result);
-		// Выполняем чтение предельного размера дейтаграммы из настроек ядра
-		if(::sysctlbyname("net.inet.udp.maxdgram", &result, &length, nullptr, 0) != 0)
-			// Возвращаем значение по умолчанию
-			return 0x2400;
+		/**
+		 * Если операционной системой является NetBSD либо OpenBSD
+		 *
+		 * @details Настройки с именем «net.inet.udp.maxdgram» у этих систем нет, а
+		 *          предел одной дейтаграммы задаётся размером буфера отправки -
+		 *          «net.inet.udp.sendspace». Дейтаграмма крупнее его отвергается
+		 *          целиком с отказом о слишком длинном сообщении, то есть буфер этот
+		 *          и есть предел
+		 *
+		 * @note Обращение идёт числовым указателем настройки, а не именем: разрешения
+		 *       имён у OpenBSD нет вовсе - функции sysctlbyname там не существует
+		 *
+		 * @warning Совпадение значения этой настройки со значением по умолчанию (9216
+		 *          октетов на обеих системах) - совпадение и есть, а не замена чтению.
+		 *          Настройка задаётся управляющим машиной, и полагаться на её
+		 *          неизменность нельзя
+		 *
+		 */
+		#if __NetBSD__ || __OpenBSD__
+			// Числовой указатель настройки размера буфера отправки дейтаграмм
+			int32_t mib[4] = {CTL_NET, PF_INET, IPPROTO_UDP, UDPCTL_SENDSPACE};
+			// Выполняем чтение предельного размера дейтаграммы из настроек ядра
+			if(::sysctl(mib, 4, &result, &length, nullptr, 0) != 0)
+				// Возвращаем значение по умолчанию
+				return 0x2400;
+		/**
+		 * Если операционной системой является macOS либо FreeBSD
+		 */
+		#else
+			// Выполняем чтение предельного размера дейтаграммы из настроек ядра
+			if(::sysctlbyname("net.inet.udp.maxdgram", &result, &length, nullptr, 0) != 0)
+				// Возвращаем значение по умолчанию
+				return 0x2400;
+		#endif
 		// Возвращаем полученный предельный размер дейтаграммы
 		return static_cast <size_t> (result);
 	}

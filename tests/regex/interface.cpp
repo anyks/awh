@@ -396,3 +396,153 @@ TEST(Regex, InterfaceThreads) {
 		// Выполняем проверку количества совпадений потока исполнения
 		EXPECT_EQ(matched.at(i), rounds) << "Поток: " << i;
 }
+/**
+ * @brief Тест соответствия классов POSIX режиму соответствия Юникоду
+ *
+ * @details Режим «UCP» заменяет наборы символов ASCII, задающие классы POSIX,
+ *          свойствами Юникода - ровно так же, как поступает он с сокращёнными
+ *          классами. Состав каждого класса сличён с эталонной реализацией по
+ *          всем кодовым значениям, а тест закрепляет проверенные образцы,
+ *          включая классы «punct», «graph», «print» и «xdigit», общей категории
+ *          Юникода не отвечающие вовсе.
+ *
+ */
+TEST(Regex, InterfacePosixUnicode) {
+	// Создаём объект работы с регулярными выражениями
+	const regexp_t regexp;
+	/**
+	 * @brief Образец проверки класса символов POSIX
+	 *
+	 */
+	struct sample_t {
+		// Название класса символов POSIX
+		const char * name;
+		// Текст для сопоставления
+		const char * text;
+		// Ожидаемый результат под режимом соответствия Юникоду
+		bool unicode;
+		// Ожидаемый результат без режима соответствия Юникоду
+		bool plain;
+	};
+	// Набор образцов проверки классов символов POSIX
+	const sample_t samples[] = {
+		{"alpha", "ы", true, false},
+		{"alnum", "ы", true, false},
+		{"alnum", "٤", true, false},
+		{"digit", "٤", true, false},
+		{"digit", "7", true, true},
+		{"lower", "ы", true, false},
+		{"upper", "Ы", true, false},
+		{"upper", "ы", false, false},
+		{"word", "ы", true, false},
+		{"word", "_", true, true},
+		{"space", "\xC2\x85", true, false},
+		{"punct", "«", true, false},
+		{"punct", "$", true, true},
+		{"graph", "ы", true, false},
+		{"print", "ы", true, false},
+		{"print", " ", true, true},
+		{"graph", " ", false, false},
+		{"xdigit", "\xEF\xBC\x91", true, false},
+		{"xdigit", "f", true, true},
+		{"ascii", "ы", false, false},
+		{"ascii", "z", true, true},
+		{"blank", "\xC2\xA0", true, false}
+	};
+	/**
+	 * Выполняем перебор набора образцов проверки классов символов POSIX
+	 */
+	for(const auto & sample : samples) {
+		// Получаем текст выражения класса символов POSIX
+		const string pattern = (string("^[[:") + sample.name + ":]]$");
+		// Выполняем сборку выражения под режимом соответствия Юникоду
+		const auto unicode = regexp.build(pattern, {regexp_t::flag_t::UTF, regexp_t::flag_t::UCP});
+		// Выполняем проверку сборки выражения
+		ASSERT_TRUE(!!unicode) << "Класс \"" << sample.name << "\" не собран";
+		// Выполняем проверку соответствия текста классу символов POSIX
+		EXPECT_EQ(regexp.test(sample.text, unicode), sample.unicode)
+		 << "Класс \"" << sample.name << "\" под режимом Юникода на тексте \"" << sample.text << "\"";
+		// Выполняем сборку выражения без режима соответствия Юникоду
+		const auto plain = regexp.build(pattern);
+		// Выполняем проверку сборки выражения
+		ASSERT_TRUE(!!plain) << "Класс \"" << sample.name << "\" не собран";
+		// Выполняем проверку соответствия текста классу символов POSIX
+		EXPECT_EQ(regexp.test(sample.text, plain), sample.plain)
+		 << "Класс \"" << sample.name << "\" без режима Юникода на тексте \"" << sample.text << "\"";
+	}
+	/**
+	 * Выполняем проверку отрицания классов символов POSIX
+	 */
+	const auto negated = regexp.build("^[[:^alpha:]]$", {regexp_t::flag_t::UTF, regexp_t::flag_t::UCP});
+	// Выполняем проверку сборки выражения
+	ASSERT_TRUE(!!negated);
+	// Выполняем проверку отрицания класса символов POSIX
+	EXPECT_FALSE(regexp.test("ы", negated));
+	EXPECT_TRUE(regexp.test("7", negated));
+}
+/**
+ * @brief Тест отказа сопоставления по тексту с неверной записью UTF-8
+ *
+ * @details Под режимом «UTF» текст разбирается посимвольно, и запись, кодировке
+ *          UTF-8 не отвечающая, разбору не поддаётся. Эталонная реализация
+ *          отвечает на такой текст отказом, и модуль отвечает им же. Без режима
+ *          «UTF» текст разбирается побайтно, и проверка не ведётся вовсе.
+ *
+ */
+TEST(Regex, InterfaceBadUtf8Subject) {
+	// Создаём объект работы с регулярными выражениями
+	const regexp_t regexp;
+	// Выполняем сборку выражения под режимом разбора текста посимвольно
+	const auto unicode = regexp.build("\\w+|.", {regexp_t::flag_t::UTF, regexp_t::flag_t::UCP});
+	// Выполняем проверку сборки выражения
+	ASSERT_TRUE(!!unicode);
+	// Выполняем проверку сопоставления по тексту с правильной записью
+	EXPECT_TRUE(regexp.test("узел", unicode));
+	// Выполняем проверку отсутствия ошибки сопоставления
+	EXPECT_EQ(regexp.error(), regexp_t::error_t::NONE);
+	/**
+	 * @brief Набор текстов с неверной записью UTF-8
+	 *
+	 */
+	const vector <string> samples = {
+		string("\xD1", 1),
+		string("\xFF\xFE", 2),
+		string("\xED\xA0\x80", 3),
+		string("\xC0\xAF", 2)
+	};
+	/**
+	 * Выполняем перебор набора текстов с неверной записью UTF-8
+	 */
+	for(const auto & sample : samples) {
+		// Выполняем проверку отказа сопоставления по тексту
+		EXPECT_FALSE(regexp.test(sample, unicode));
+		// Выполняем проверку ошибки неверной записи текста сопоставления
+		EXPECT_EQ(regexp.error(), regexp_t::error_t::BAD_UTF8_SUBJECT);
+		// Набор границ совпадения и захваченных групп
+		vector <pair <size_t, size_t>> bounds;
+		// Выполняем проверку отказа извлечения границ совпадения
+		EXPECT_FALSE(regexp.match(sample, unicode, bounds));
+		// Выполняем проверку пустоты набора границ совпадения
+		EXPECT_TRUE(bounds.empty());
+	}
+	/**
+	 * Выполняем проверку снятия проверки записи режимом «UNCHECKED»
+	 *
+	 * @details Проверка проходит текст целиком, и проход по тексту повторными
+	 *          вызовами от очередной позиции обходится квадратично, поэтому
+	 *          там, где текст проверен единожды снаружи, проверка снимается.
+	 */
+	const auto unchecked = regexp.build("\\w+|.", {regexp_t::flag_t::UTF, regexp_t::flag_t::UCP, regexp_t::flag_t::UNCHECKED});
+	// Выполняем проверку сборки выражения
+	ASSERT_TRUE(!!unchecked);
+	// Выполняем проверку отсутствия проверки записи текста
+	EXPECT_TRUE(regexp.test(string("\xFF\xFE", 2), unchecked));
+	// Выполняем сборку выражения без режима разбора текста посимвольно
+	const auto plain = regexp.build("\\w+|.");
+	// Выполняем проверку сборки выражения
+	ASSERT_TRUE(!!plain);
+	/**
+	 * Выполняем проверку отсутствия проверки записи без режима «UTF»
+	 */
+	EXPECT_TRUE(regexp.test(string("\xFF\xFE", 2), plain));
+}

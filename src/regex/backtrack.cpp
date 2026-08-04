@@ -38,7 +38,7 @@ using namespace awh;
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _steps(0), _budget(MAX_STEPS), _limit(MAX_STEPS), _member(nullptr), _modes(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {
+ _program(nullptr), _start(0), _steps(0), _budget(MAX_STEPS), _limit(MAX_STEPS), _member(INVALID_ADDRESS), _modes(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {
 	// Выполняем сброс таблицы принадлежности значений байта классу символов
 	::memset(this->_bytes, 0, sizeof(this->_bytes));
 }
@@ -144,7 +144,7 @@ bool awh::regex::Backtrack::single(const instruction_t & instruction, const size
 		// Выполняем сопоставление символа из класса символов
 		case static_cast <uint8_t> (opcode_t::CLASS):
 			// Выводим результат принадлежности символа классу символов
-			return belongs(this->_program->classes.at(instruction.charclass.index), code, instruction.flags);
+			return belongs(this->_program->charclass(instruction.charclass.index), code, instruction.flags);
 		/**
 		 * Выполняем сопоставление любого символа
 		 */
@@ -488,7 +488,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						 */
 						if((repeated.type == opcode_t::CLASS) && !hasFlag(this->_program->flags, flag_t::UTF)) {
 							// Получаем класс символов, повторяемый инструкцией
-							const class_t & value = this->_program->classes.at(repeated.charclass.index);
+							const classview_t value = this->_program->charclass(repeated.charclass.index);
 							/**
 							 * Если таблица принадлежности байтов построена для иного класса
 							 *
@@ -499,7 +499,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							 *          обращением и удерживается до смены класса.
 							 *
 							 */
-							if((this->_member != &value) || (this->_modes != repeated.flags)) {
+							if((this->_member != repeated.charclass.index) || (this->_modes != repeated.flags)) {
 								/**
 								 * @details Набор режимов входит в ключ таблицы наравне
 								 *          с классом. Ныне каждое вхождение класса
@@ -518,7 +518,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 									// Выполняем установку принадлежности значения байта классу
 									this->_bytes[i] = (belongs(value, i, repeated.flags) ? 1 : 0);
 								// Выполняем установку класса символов построенной таблицы
-								this->_member = &value;
+								this->_member = repeated.charclass.index;
 								// Выполняем установку набора режимов построенной таблицы
 								this->_modes = repeated.flags;
 							}
@@ -1151,7 +1151,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							 */
 							case static_cast <uint8_t> (opcode_t::CLASS):
 								// Выполняем проверку принадлежности символа классу символов
-								matched = belongs(this->_program->classes.at(instruction.charclass.index), code, instruction.flags);
+								matched = belongs(this->_program->charclass(instruction.charclass.index), code, instruction.flags);
 							break;
 							/**
 							 * Выполняем сопоставление любого символа
@@ -1329,7 +1329,7 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		// Выполняем установку опознания исполняемой программы
 		this->_identity = program.id;
 		// Выполняем отмену таблицы принадлежности значений байта классу символов
-		this->_member = nullptr;
+		this->_member = INVALID_ADDRESS;
 	}
 	// Выполняем установку исполняемой программы регулярного выражения
 	this->_program = &program;

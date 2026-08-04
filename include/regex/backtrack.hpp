@@ -246,7 +246,7 @@ namespace awh {
 				 *          регистра наравне с самим классом.
 				 *
 				 */
-				const class_t * _member;
+				uint32_t _member;
 			private:
 				// Набор режимов, при каком построена таблица принадлежности байтов
 				uint32_t _modes;

@@ -405,7 +405,7 @@ bool awh::regex::assertion(string_view text, const size_t start, const anchor_t 
  * @return      результат проверки принадлежности символа классу
  *
  */
-bool awh::regex::belongs(const class_t & value, const uint32_t code, const uint32_t flags) noexcept {
+bool awh::regex::belongs(const classview_t & value, const uint32_t code, const uint32_t flags) noexcept {
 	// Флаг принадлежности символа набору диапазонов класса
 	bool result = false;
 	/**
