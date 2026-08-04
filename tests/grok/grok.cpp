@@ -558,3 +558,333 @@ TEST(Grok, JsonDuplicateNames) {
 	EXPECT_EQ(values.at(0).value, "alpha");
 	EXPECT_EQ(values.at(1).value, "bravo");
 }
+/**
+ * @brief Тест наполнения реестра набором шаблонов из текста
+ *
+ */
+TEST(Grok, ReadSet) {
+	// Создаём объект разбора текста по шаблонам Grok
+	Grok grok;
+	/**
+	 * @brief Текст набора шаблонов
+	 *
+	 * @details Набор несёт примечание, пустую строку, строку из одних
+	 *          пробельных знаков, строку без текста шаблона и строку,
+	 *          завершённую парой знаков перевода.
+	 *
+	 */
+	const string set =
+		"# набор шаблонов проверки\n"
+		"\n"
+		"   \t \n"
+		"NGINXSTAMP  \\d{2}/\\w{3}/\\d{4}:\\d{2}:\\d{2}:\\d{2}\r\n"
+		"\tNGINXCODE\t%{NUMBER:code:int}\n"
+		"ШАБЛОН_БЕЗ_ТЕЛА\n"
+		"NGINXLINE  %{IP:client} \\[%{NGINXSTAMP:stamp}\\] %{NGINXCODE}\n";
+	// Выполняем наполнение реестра набором шаблонов
+	ASSERT_EQ(grok.read(set), 3);
+	// Выполняем проверку наличия шаблонов в реестре
+	EXPECT_TRUE(grok.has("NGINXSTAMP"));
+	EXPECT_TRUE(grok.has("NGINXCODE"));
+	EXPECT_TRUE(grok.has("NGINXLINE"));
+	// Выполняем проверку пропуска строки без текста шаблона
+	EXPECT_FALSE(grok.has("ШАБЛОН_БЕЗ_ТЕЛА"));
+	// Выполняем проверку отсечения возврата каретки в конце строки
+	EXPECT_EQ(grok.pattern("NGINXSTAMP"), "\\d{2}/\\w{3}/\\d{4}:\\d{2}:\\d{2}:\\d{2}");
+	// Выполняем проверку отсечения пробельных знаков вокруг названия
+	EXPECT_EQ(grok.pattern("NGINXCODE"), "%{NUMBER:code:int}");
+	// Выполняем сборку шаблона, ссылающегося на прочитанные
+	const auto exp = grok.build("%{NGINXLINE}");
+	// Выполняем проверку сборки шаблона
+	ASSERT_TRUE(!!exp);
+	// Извлечённые значения полей шаблона
+	unordered_map <string, string> values;
+	// Выполняем извлечение значений полей шаблона
+	ASSERT_TRUE(grok.exec("192.168.5.150 [04/Aug/2026:12:30:00] 200", exp, values));
+	// Выполняем проверку извлечённых значений полей шаблона
+	EXPECT_EQ(values["client"], "192.168.5.150");
+	EXPECT_EQ(values["stamp"], "04/Aug/2026:12:30:00");
+	EXPECT_EQ(values["code"], "200");
+	// Выполняем проверку замещения шаблона реестра прочитанным
+	EXPECT_EQ(grok.read("NGINXCODE %{NUMBER:status:int}"), 1);
+	// Выполняем проверку замещения текста шаблона реестра
+	EXPECT_EQ(grok.pattern("NGINXCODE"), "%{NUMBER:status:int}");
+	// Выполняем проверку пропуска набора, шаблонов не несущего
+	EXPECT_EQ(grok.read("# одни лишь примечания\n\n#\n"), 0);
+}
+/**
+ * @brief Тест записи и восстановления собранных шаблонов
+ *
+ */
+TEST(Grok, StorageRoundtrip) {
+	// Создаём объект разбора текста по шаблонам Grok
+	Grok grok;
+	/**
+	 * @brief Набор текстов шаблонов записи
+	 *
+	 */
+	const vector <string> patterns = {
+		"%{IP:client}", "%{NUMBER:code:int}", "%{WORD:method} %{URIPATH:path}",
+		"%{TIMESTAMP_ISO8601:stamp}", "%{EMAILADDRESS:mail}", "%{LOGLEVEL:level}",
+		"%{IP:client} - %{USER:user} %{NUMBER:code:int} %{NUMBER:bytes:int}",
+		"%{HOSTNAME:host}", "%{QUOTEDSTRING:text}", "%{BASE16NUM:hex}"
+	};
+	// Запись собранных шаблонов Grok
+	string record;
+	// Выполняем запись собранных шаблонов
+	ASSERT_TRUE(grok.save(patterns, record)) << "код " << static_cast <uint32_t> (grok.error());
+	// Выполняем проверку непустоты записи собранных шаблонов
+	ASSERT_FALSE(record.empty());
+	// Создаём объект разбора текста по шаблонам Grok
+	Grok restored;
+	// Набор восстановленных шаблонов Grok
+	vector <Grok::exp_t> expressions;
+	// Выполняем восстановление собранных шаблонов
+	ASSERT_TRUE(restored.load(record, expressions)) << "код " << static_cast <uint32_t> (restored.error());
+	// Выполняем проверку количества восстановленных шаблонов
+	ASSERT_EQ(expressions.size(), patterns.size());
+	/**
+	 * @brief Набор текстов сличения поведения шаблонов
+	 *
+	 */
+	const vector <string> texts = {
+		"192.168.5.150", "forman@anyks.com", "2026-08-04T12:30:00Z", "GET /a/b",
+		"-42.5e3", "ERROR", "0x1F2E", "anyks.com", "\"текст в кавычках\"",
+		"192.168.5.150 - forman 200 4711", "", "слово"
+	};
+	/**
+	 * Выполняем перебор набора восстановленных шаблонов
+	 */
+	for(size_t i = 0; i < patterns.size(); i++) {
+		// Выполняем сборку шаблона начисто
+		const auto fresh = grok.build(patterns.at(i));
+		// Выполняем проверку сборки шаблона начисто
+		ASSERT_TRUE(!!fresh) << patterns.at(i);
+		// Выполняем сличение исходного текста шаблона
+		EXPECT_EQ(expressions.at(i)->pattern, patterns.at(i));
+		// Выполняем сличение развёрнутого текста регулярного выражения
+		EXPECT_EQ(expressions.at(i)->expression, fresh->expression);
+		// Выполняем сличение количества полей шаблона
+		ASSERT_EQ(expressions.at(i)->fields.size(), fresh->fields.size());
+		/**
+		 * Выполняем перебор набора полей шаблона
+		 */
+		for(size_t j = 0; j < fresh->fields.size(); j++) {
+			// Выполняем сличение номера группы захвата поля
+			EXPECT_EQ(expressions.at(i)->fields.at(j).number, fresh->fields.at(j).number);
+			// Выполняем сличение вида значения поля
+			EXPECT_EQ(expressions.at(i)->fields.at(j).kind, fresh->fields.at(j).kind);
+			// Выполняем сличение названия поля шаблона
+			EXPECT_EQ(expressions.at(i)->fields.at(j).name, fresh->fields.at(j).name);
+		}
+		/**
+		 * Выполняем перебор набора текстов сличения
+		 */
+		for(const auto & text : texts) {
+			// Выполняем сличение соответствия текста шаблону
+			EXPECT_EQ(grok.test(text, fresh), restored.test(text, expressions.at(i)))
+			 << "шаблон \"" << patterns.at(i) << "\" на тексте \"" << text << "\"";
+			// Выполняем сличение вывода значений полей в JSON
+			string first, second;
+			grok.json(text, fresh, first);
+			restored.json(text, expressions.at(i), second);
+			// Выполняем сличение выведенных значений полей
+			EXPECT_EQ(first, second) << "шаблон \"" << patterns.at(i) << "\" на тексте \"" << text << "\"";
+		}
+	}
+	/**
+	 * Выполняем проверку размещения восстановленных шаблонов в кэше
+	 *
+	 * @details Восстановленный шаблон обязан выдаваться сборкой без разворота
+	 *          ссылок и компиляции, пока его удерживает набор восстановленных.
+	 *
+	 */
+	EXPECT_EQ(restored.build(patterns.front()).get(), expressions.front().get());
+}
+/**
+ * @brief Тест отказов записи и восстановления собранных шаблонов
+ *
+ */
+TEST(Grok, StorageErrors) {
+	// Создаём объект разбора текста по шаблонам Grok
+	Grok grok;
+	// Запись собранных шаблонов Grok
+	string record;
+	// Набор восстановленных шаблонов Grok
+	vector <Grok::exp_t> expressions;
+	// Выполняем проверку отказа записи пустого набора шаблонов
+	EXPECT_FALSE(grok.save({}, record));
+	EXPECT_EQ(grok.error(), Grok::error_t::STORAGE_EMPTY);
+	// Выполняем проверку отказа записи шаблона со ссылкой неизвестной
+	EXPECT_FALSE(grok.save({"%{НЕТ_ТАКОГО:поле}"}, record));
+	EXPECT_EQ(grok.error(), Grok::error_t::REFERENCE_UNKNOWN);
+	// Выполняем проверку отказа восстановления пустой записи
+	EXPECT_FALSE(grok.load("", expressions));
+	EXPECT_EQ(grok.error(), Grok::error_t::STORAGE_EMPTY);
+	// Выполняем запись собранных шаблонов
+	ASSERT_TRUE(grok.save({"%{IP:client}", "%{NUMBER:code:int}"}, record));
+	/**
+	 * Выполняем проверку отказа восстановления записи с чужим опознанием
+	 */
+	{
+		// Получаем запись с подменённым опознанием
+		string foreign = record;
+		// Выполняем подмену опознания записи
+		foreign[0] = static_cast <char> (foreign[0] ^ 0x5A);
+		// Выполняем проверку отказа восстановления записи
+		EXPECT_FALSE(grok.load(foreign, expressions));
+		EXPECT_EQ(grok.error(), Grok::error_t::STORAGE_MAGIC);
+	}
+	/**
+	 * Выполняем проверку отказа восстановления записи версии иной
+	 */
+	{
+		// Получаем запись с подменённой версией устройства
+		string aged = record;
+		// Выполняем подмену версии устройства записи
+		aged[8] = static_cast <char> (0x5A);
+		// Выполняем проверку отказа восстановления записи
+		EXPECT_FALSE(grok.load(aged, expressions));
+		EXPECT_EQ(grok.error(), Grok::error_t::STORAGE_VERSION);
+	}
+	/**
+	 * Выполняем проверку отказа восстановления записи оборванной
+	 *
+	 * @details Обрыв проверяется на всякой длине: отказ обязан быть при всяком,
+	 *          а падения быть не обязано ни при каком.
+	 *
+	 */
+	for(size_t i = 0; i < record.size(); i++) {
+		// Получаем оборванную запись собранных шаблонов
+		const string cut = record.substr(0, i);
+		// Выполняем проверку отказа восстановления записи
+		EXPECT_FALSE(grok.load(cut, expressions)) << "оборвано на " << i;
+		// Выполняем проверку установки кода ошибки разбора
+		EXPECT_NE(grok.error(), Grok::error_t::NONE);
+	}
+	// Выполняем проверку восстановления записи нетронутой
+	EXPECT_TRUE(grok.load(record, expressions));
+}
+/**
+ * @brief Функция обращения последовательности байтов
+ *
+ * @param source исходная последовательность байтов
+ * @param result выводимая последовательность байтов
+ * @return       результат обращения последовательности
+ *
+ * @details Обращение служит образцом обработчика сжатия: настоящие методы
+ *          берутся из модуля «compressor», но тесты Grok от него намеренно
+ *          не зависят - проверять надлежит устройство крючков.
+ *
+ */
+static bool reversed(string_view source, string & result) noexcept {
+	// Выполняем размещение выводимой последовательности байтов
+	result.assign(source.rbegin(), source.rend());
+	// Выводим результат обращения последовательности
+	return true;
+}
+/**
+ * @brief Тест записи собранных шаблонов со сжатием
+ *
+ */
+TEST(Grok, StoragePacking) {
+	// Создаём объект разбора текста по шаблонам Grok
+	Grok grok;
+	/**
+	 * @brief Набор текстов шаблонов записи
+	 *
+	 */
+	const vector <string> patterns = {
+		"%{IP:client}", "%{NUMBER:code:int}", "%{TIMESTAMP_ISO8601:stamp}", "%{LOGLEVEL:level}"
+	};
+	// Запись собранных шаблонов без сжатия
+	string plain;
+	// Выполняем запись собранных шаблонов без сжатия
+	ASSERT_TRUE(grok.save(patterns, plain));
+	// Выполняем установку сжатия записи собранных шаблонов
+	grok.packer(compressor::method_t::LZ4, &reversed, &reversed);
+	// Запись собранных шаблонов со сжатием
+	string packed;
+	// Выполняем запись собранных шаблонов со сжатием
+	ASSERT_TRUE(grok.save(patterns, packed)) << "код " << static_cast <uint32_t> (grok.error());
+	// Выполняем проверку совпадения размеров записей
+	ASSERT_EQ(packed.size(), plain.size());
+	// Выполняем проверку расхождения содержимого записей
+	EXPECT_NE(packed, plain);
+	// Создаём объект разбора текста по шаблонам Grok
+	Grok restored;
+	// Набор восстановленных шаблонов Grok
+	vector <Grok::exp_t> expressions;
+	// Выполняем проверку отказа восстановления без обработчика разжатия
+	EXPECT_FALSE(restored.load(packed, expressions));
+	EXPECT_EQ(restored.error(), Grok::error_t::STORAGE);
+	// Выполняем установку сжатия записи собранных шаблонов
+	restored.packer(compressor::method_t::LZ4, &reversed, &reversed);
+	// Выполняем восстановление собранных шаблонов
+	ASSERT_TRUE(restored.load(packed, expressions)) << "код " << static_cast <uint32_t> (restored.error());
+	// Выполняем проверку количества восстановленных шаблонов
+	ASSERT_EQ(expressions.size(), patterns.size());
+	// Выполняем проверку сопоставления восстановленных шаблонов
+	EXPECT_TRUE(restored.test("192.168.5.150", expressions.at(0)));
+	EXPECT_TRUE(restored.test("4711", expressions.at(1)));
+	EXPECT_TRUE(restored.test("2026-08-04T12:30:00Z", expressions.at(2)));
+	EXPECT_TRUE(restored.test("ERROR", expressions.at(3)));
+}
+/**
+ * @brief Тест записи и восстановления всего встроенного набора шаблонов
+ *
+ */
+TEST(Grok, StorageBuiltin) {
+	// Создаём объект разбора текста по шаблонам Grok
+	Grok grok;
+	// Набор текстов шаблонов записи
+	vector <string> patterns;
+	/**
+	 * Выполняем перебор названий шаблонов реестра
+	 */
+	for(const auto & name : grok.patterns())
+		// Выполняем добавление ссылки на шаблон в набор
+		patterns.push_back("%{" + name + "}");
+	// Выполняем проверку непустоты набора текстов шаблонов
+	ASSERT_FALSE(patterns.empty());
+	// Запись собранных шаблонов Grok
+	string record;
+	// Выполняем запись собранных шаблонов
+	ASSERT_TRUE(grok.save(patterns, record)) << "код " << static_cast <uint32_t> (grok.error());
+	// Создаём объект разбора текста по шаблонам Grok
+	Grok restored;
+	// Набор восстановленных шаблонов Grok
+	vector <Grok::exp_t> expressions;
+	// Выполняем восстановление собранных шаблонов
+	ASSERT_TRUE(restored.load(record, expressions)) << "код " << static_cast <uint32_t> (restored.error());
+	// Выполняем проверку количества восстановленных шаблонов
+	ASSERT_EQ(expressions.size(), patterns.size());
+	/**
+	 * @brief Набор текстов сличения поведения шаблонов
+	 *
+	 */
+	const vector <string> texts = {
+		"192.168.5.150", "forman@anyks.com", "2026-08-04T12:30:00Z", "GET /a/b HTTP/1.1",
+		"-42.5e3", "слово", "ERROR", "anyks.com", "0x1F2E3D4C"
+	};
+	/**
+	 * Выполняем перебор набора восстановленных шаблонов
+	 */
+	for(size_t i = 0; i < patterns.size(); i++) {
+		// Выполняем сборку шаблона начисто
+		const auto fresh = grok.build(patterns.at(i));
+		/**
+		 * Если сборка шаблона начисто не выполнена
+		 */
+		if(!fresh)
+			// Переходим к следующему шаблону набора
+			continue;
+		/**
+		 * Выполняем перебор набора текстов сличения
+		 */
+		for(const auto & text : texts)
+			// Выполняем сличение соответствия текста шаблону
+			EXPECT_EQ(grok.test(text, fresh), restored.test(text, expressions.at(i)))
+			 << "шаблон \"" << patterns.at(i) << "\" на тексте \"" << text << "\"";
+	}
+}

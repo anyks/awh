@@ -51,6 +51,130 @@ static constexpr uint16_t MAX_DEPTH = 64;
 static constexpr size_t MAX_LENGTH = 0x400000;
 
 /**
+ * @brief Опознание записи собранных шаблонов Grok
+ *
+ */
+static constexpr uint64_t GROK_MAGIC = 0x4B4F52474841574Aull;
+
+/**
+ * @brief Версия устройства записи собранных шаблонов Grok
+ *
+ */
+static constexpr uint8_t GROK_VERSION = 0x01;
+
+/**
+ * @brief Пространство имён вспомогательных функций записи и чтения
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция записи числа переменной длины
+	 *
+	 * @param value  записываемое число
+	 * @param result запись собранных шаблонов
+	 *
+	 * @details Число записывается семью разрядами на байт, старший разряд
+	 *          байта отмечает продолжение. Значения малые - а таковы номера
+	 *          групп, количества полей и длины названий - занимают один байт
+	 *          взамен восьми.
+	 *
+	 */
+	void writeNumber(uint64_t value, string & result) noexcept {
+		/**
+		 * Выполняем запись числа долями по семь разрядов
+		 */
+		while(value >= 0x80) {
+			// Выполняем запись очередной доли числа с признаком продолжения
+			result.push_back(static_cast <char> ((value & 0x7F) | 0x80));
+			// Переходим к следующей доле числа
+			value >>= 7;
+		}
+		// Выполняем запись последней доли числа
+		result.push_back(static_cast <char> (value & 0x7F));
+	}
+	/**
+	 * @brief Функция чтения числа переменной длины
+	 *
+	 * @param data   запись собранных шаблонов
+	 * @param offset позиция чтения записи
+	 * @param value  прочитанное число
+	 * @return       результат чтения числа
+	 *
+	 */
+	bool readNumber(string_view data, size_t & offset, uint64_t & value) noexcept {
+		// Выполняем сброс прочитанного числа
+		value = 0;
+		/**
+		 * Выполняем чтение числа долями по семь разрядов
+		 */
+		for(uint8_t shift = 0; shift < 64; shift += 7) {
+			/**
+			 * Если запись оборвана до завершения числа
+			 */
+			if(offset >= data.size())
+				// Выводим результат чтения числа
+				return false;
+			// Получаем очередную долю числа
+			const uint8_t part = static_cast <uint8_t> (data[offset++]);
+			// Выполняем добавление доли числа
+			value |= (static_cast <uint64_t> (part & 0x7F) << shift);
+			/**
+			 * Если признак продолжения числа не установлен
+			 */
+			if((part & 0x80) == 0)
+				// Выводим результат чтения числа
+				return true;
+		}
+		// Выводим результат чтения числа
+		return false;
+	}
+	/**
+	 * @brief Функция записи последовательности символов
+	 *
+	 * @param value  записываемая последовательность символов
+	 * @param result запись собранных шаблонов
+	 *
+	 */
+	void writeText(const string & value, string & result) noexcept {
+		// Выполняем запись длины последовательности символов
+		writeNumber(static_cast <uint64_t> (value.size()), result);
+		// Выполняем запись последовательности символов
+		result.append(value);
+	}
+	/**
+	 * @brief Функция чтения последовательности символов
+	 *
+	 * @param data   запись собранных шаблонов
+	 * @param offset позиция чтения записи
+	 * @param value  прочитанная последовательность символов
+	 * @return       результат чтения последовательности символов
+	 *
+	 */
+	bool readText(string_view data, size_t & offset, string & value) noexcept {
+		// Длина читаемой последовательности символов
+		uint64_t length = 0;
+		/**
+		 * Если чтение длины последовательности не выполнено
+		 */
+		if(!readNumber(data, offset, length))
+			// Выводим результат чтения последовательности символов
+			return false;
+		/**
+		 * Если последовательность за пределы записи выходит
+		 */
+		if(length > static_cast <uint64_t> (data.size() - offset))
+			// Выводим результат чтения последовательности символов
+			return false;
+		// Выполняем чтение последовательности символов
+		value.assign(data.substr(offset, static_cast <size_t> (length)));
+		// Переходим за прочитанную последовательность символов
+		offset += static_cast <size_t> (length);
+		// Выводим результат чтения последовательности символов
+		return true;
+	}
+};
+
+/**
  * @brief Оператор вычисления хэша ключа кэша
  *
  * @param key ключ кэша собранных шаблонов Grok
@@ -1347,10 +1471,18 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 	for(const auto & expression : expressions)
 		// Выполняем добавление собранного регулярного выражения в набор
 		records.push_back(expression->exp);
-	// Выполняем запись опознания записи собранных шаблонов
-	writeNumber(GROK_MAGIC, result);
+	/**
+	 * Выполняем запись опознания записи собранных шаблонов
+	 *
+	 * @details Опознание и версия пишутся шириною постоянной, а не числом
+	 *          переменной длины: заголовок записи надлежит опознавать по
+	 *          первым её байтам, не разбирая содержимого.
+	 */
+	for(uint8_t shift = 0; shift < 64; shift += 8)
+		// Выполняем запись очередного байта опознания
+		result.push_back(static_cast <char> ((GROK_MAGIC >> shift) & 0xFF));
 	// Выполняем запись версии устройства записи
-	writeText(string(1, static_cast <char> (GROK_VERSION)), result);
+	result.push_back(static_cast <char> (GROK_VERSION));
 	// Выполняем запись набора режимов сборки выражения
 	writeNumber(static_cast <uint64_t> (flags), result);
 	// Выполняем запись количества собранных шаблонов
@@ -1378,11 +1510,11 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 		}
 	}
 	// Запись хранилища собранных регулярных выражений
-	string records2;
+	string storage;
 	/**
 	 * Если запись собранных регулярных выражений не выполнена
 	 */
-	if(!this->_storage.save(records, records2)) {
+	if(!this->_storage.save(records, storage)) {
 		// Устанавливаем код ошибки записи собранных шаблонов
 		this->_error = error_t::STORAGE;
 		// Выполняем очистку записи собранных шаблонов
@@ -1391,7 +1523,7 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 		return false;
 	}
 	// Выполняем запись хранилища собранных регулярных выражений
-	result.append(records2);
+	result.append(storage);
 	// Выводим результат записи собранных шаблонов
 	return true;
 }
@@ -1438,19 +1570,25 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		// Выводим результат восстановления собранных шаблонов
 		return false;
 	}
-	// Позиция чтения записи собранных шаблонов
-	size_t offset = 0;
-	// Опознание записи собранных шаблонов
-	uint64_t magic = 0;
 	/**
-	 * Если чтение опознания записи не выполнено
+	 * Если запись короче заголовка собранных шаблонов
 	 */
-	if(!readNumber(record, offset, magic)) {
+	if(record.size() < 9) {
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_TRUNCATED;
 		// Выводим результат восстановления собранных шаблонов
 		return false;
 	}
+	// Позиция чтения записи собранных шаблонов
+	size_t offset = 0;
+	// Опознание записи собранных шаблонов
+	uint64_t magic = 0;
+	/**
+	 * Выполняем чтение опознания записи собранных шаблонов
+	 */
+	for(uint8_t shift = 0; shift < 64; shift += 8)
+		// Выполняем добавление очередного байта опознания
+		magic |= (static_cast <uint64_t> (static_cast <uint8_t> (record[offset++])) << shift);
 	/**
 	 * Если опознание записи не совпадает
 	 */
@@ -1460,21 +1598,10 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		// Выводим результат восстановления собранных шаблонов
 		return false;
 	}
-	// Версия устройства записи собранных шаблонов
-	string version;
-	/**
-	 * Если чтение версии устройства записи не выполнено
-	 */
-	if(!readText(record, offset, version) || (version.size() != 1)) {
-		// Устанавливаем код ошибки восстановления собранных шаблонов
-		this->_error = error_t::STORAGE_TRUNCATED;
-		// Выводим результат восстановления собранных шаблонов
-		return false;
-	}
 	/**
 	 * Если версия устройства записи не поддерживается
 	 */
-	if(static_cast <uint8_t> (version.front()) != GROK_VERSION) {
+	if(static_cast <uint8_t> (record[offset++]) != GROK_VERSION) {
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_VERSION;
 		// Выводим результат восстановления собранных шаблонов

@@ -308,7 +308,7 @@ TEST_F(BigNumFixture, StressRealBigNumTest){
 		/**
 		 * Если один из операндов является специальным значением
 		 */
-		if(::isnan(first) || ::isnan(second) || ::isinf(first) || ::isinf(second))
+		if(std::isnan(first) || std::isnan(second) || std::isinf(first) || std::isinf(second))
 			// Переходим к следующей итерации
 			continue;
 

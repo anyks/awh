@@ -122,7 +122,7 @@ TEST_F(BigNumFixture, RealSqrtBigNumTest){
 		// Проверяем что корень из отрицательного числа не является числом
 		ASSERT_TRUE(awh::real64_t(sample).sqrt().category() == awh::bignum::class_t::UNDEFINED) << "value = " << sample;
 		// Проверяем что аппаратный тип даёт тот же результат
-		ASSERT_TRUE(::isnan(::sqrt(sample))) << "value = " << sample;
+		ASSERT_TRUE(std::isnan(::sqrt(sample))) << "value = " << sample;
 	}
 	// Проверяем что корень из отрицательного нуля сохраняет знак нуля
 	ASSERT_TRUE(this->identical(awh::real64_t(-0.0).sqrt(), ::sqrt(-0.0)));
@@ -601,9 +601,9 @@ TEST_F(BigNumFixture, RealPowBigNumTest){
 			const double result = static_cast <double> (number.pow(exponent));
 
 			// Если эталонное значение вышло за пределы разрядной сетки
-			if(::isinf(expected) || (expected == 0.0))
+			if(std::isinf(expected) || (expected == 0.0))
 				// Проверяем совпадение вида результата с эталонным значением
-				ASSERT_EQ(::isinf(result), ::isinf(expected)) << base << " ^ " << exponent;
+				ASSERT_EQ(std::isinf(result), std::isinf(expected)) << base << " ^ " << exponent;
 			/**
 			 * Если эталонное значение представимо разрядной сеткой
 			 */
