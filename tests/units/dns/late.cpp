@@ -137,6 +137,8 @@ TEST_F(DNSUnitFixture, DnsPromptAnswerAccepted) {
 			result.failed = true;
 			// Запоминаем доменное имя, по которому получен итог
 			result.domain = domain;
+			// Выполняем остановку работы резолвера
+			dns.stop();
 		}, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3
 	);
 	/**
