@@ -19,10 +19,42 @@ fi
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 BUNDLE=$(mktemp -t awh-regex-stand)".tgz"
 
+# Порождаем запись хранилища собранных выражений на рабочей машине, дабы стенд
+# проверил её восстановлением у себя. Наборы программы пишутся образом памяти,
+# поэтому запись зависит от устройства машины: стенду надлежит либо восстановить
+# её в точности, либо отвергнуть опознанием устройства, но не прочесть неверно.
+RECORD=""
+HOST_CXX="${CXX:-c++}"
+if command -v "$HOST_CXX" >/dev/null 2>&1 ; then
+	HOST_DIR=$(mktemp -d -t awh-regex-host)
+	if "$HOST_CXX" -std=c++17 -O2 -I"$ROOT/include" -I"$ROOT/tools/regex" \
+		"$ROOT/tools/regex/conformance.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/unicode/*.cpp \
+		-o "$HOST_DIR/conformance" 2>"$HOST_DIR/compile.log" ; then
+		if "$HOST_DIR/conformance" "--write=$HOST_DIR/record.bin" >/dev/null 2>&1 ; then
+			RECORD="$HOST_DIR/record.bin"
+			echo "Порождена запись хранилища рабочей машины"
+		fi
+	fi
+	if [ -z "$RECORD" ] ; then
+		echo "Запись хранилища рабочей машины не порождена, проверка её будет пропущена"
+	fi
+else
+	echo "Компилятор на рабочей машине не обнаружен, проверка записи будет пропущена"
+fi
+
 echo "Собираем набор исходных текстов модуля"
-tar czf "$BUNDLE" -C "$ROOT" \
-	include/regex include/unicode include/sys/ascii.hpp include/sys/global.hpp \
-	src/regex src/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp
+if [ -n "$RECORD" ] ; then
+	cp "$RECORD" "$ROOT/tools/regex/record.bin"
+	tar czf "$BUNDLE" -C "$ROOT" \
+		include/regex include/unicode include/sys/ascii.hpp include/sys/global.hpp \
+		src/regex src/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
+		tools/regex/record.bin
+	rm -f "$ROOT/tools/regex/record.bin"
+else
+	tar czf "$BUNDLE" -C "$ROOT" \
+		include/regex include/unicode include/sys/ascii.hpp include/sys/global.hpp \
+		src/regex src/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp
+fi
 
 echo "Раскладываем набор на стенд $TARGET"
 # Домашний каталог стенда бывает недоступен для записи, поэтому набор
@@ -62,5 +94,9 @@ ssh -p "$PORT" "$TARGET" '
 		tail -30 compile.log >&2
 		exit 4
 	fi
-	./conformance
+	if [ -f tools/regex/record.bin ] ; then
+		./conformance --read=tools/regex/record.bin
+	else
+		./conformance
+	fi
 '

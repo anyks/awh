@@ -28,8 +28,12 @@
  */
 #include <vector>
 #include <cstdint>
+#include <new>
+#include <cstdlib>
+#include <cstring>
 #include <utility>
 #include <stdexcept>
+#include <type_traits>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -415,44 +419,69 @@ namespace awh {
 		template <typename T>
 		class Sequence {
 			private:
-				// Содержимое набора, ему принадлежащее
-				vector <T> _own;
-			private:
 				// Указание на начало записей набора
 				const T * _records;
+			private:
 				// Количество записей набора
-				size_t _count;
-			private:
-				// Признак владения набором своим содержимым
-				bool _owned;
-			private:
+				uint32_t _count;
 				/**
-				 * @brief Метод обновления обзора собственного содержимого
+				 * Количество записей, размещённых набором
+				 *
+				 * @details Значение отлично от нуля, если набор содержимым
+				 *          владеет, и равно нулю, если набор обозревает участок
+				 *          записи. Признак владения отдельным полем не заведён
+				 *          намеренно: набор входит в программу пятью полями, и
+				 *          размер его сказывается на расходе сопоставления
+				 *          через попадание полей программы в общую строку кэша.
 				 *
 				 */
-				void refresh() noexcept {
-					// Выполняем установку указания на начало записей набора
-					this->_records = this->_own.data();
-					// Выполняем установку количества записей набора
-					this->_count = this->_own.size();
-				}
+				uint32_t _capacity;
+			private:
 				/**
-				 * @brief Метод обращения набора обозревающего во владеющий
+				 * @brief Метод размещения записей набора
+				 *
+				 * @param capacity требуемое количество размещаемых записей
 				 *
 				 */
-				void detach() {
+				void grow(const size_t capacity) noexcept {
 					/**
-					 * Если набор содержимым уже владеет
+					 * Если размещённого количества записей достаёт
 					 */
-					if(this->_owned)
-						// Выходим из метода обращения набора
+					if(this->_capacity >= capacity)
+						// Выходим из метода размещения записей
 						return;
-					// Выполняем перенос обозреваемого содержимого к себе
-					this->_own.assign(this->_records, (this->_records + this->_count));
-					// Выполняем установку признака владения содержимым
-					this->_owned = true;
-					// Выполняем обновление обзора собственного содержимого
-					this->refresh();
+					// Получаем требуемое количество размещаемых записей
+					size_t required = (this->_capacity > 0 ? (static_cast <size_t> (this->_capacity) * 2) : 8);
+					/**
+					 * Если удвоения размещённого количества не достаёт
+					 */
+					if(required < capacity)
+						// Выполняем установку требуемого количества записей
+						required = capacity;
+					// Выполняем размещение записей набора
+					T * records = static_cast <T *> (::malloc(required * sizeof(T)));
+					/**
+					 * Если размещение записей набора не выполнено
+					 */
+					if(records == nullptr)
+						// Выходим из метода размещения записей
+						return;
+					/**
+					 * Если набор содержит записи
+					 */
+					if(this->_count > 0)
+						// Выполняем перенос записей набора
+						::memcpy(records, this->_records, (static_cast <size_t> (this->_count) * sizeof(T)));
+					/**
+					 * Если набор содержимым владеет
+					 */
+					if(this->_capacity > 0)
+						// Выполняем освобождение прежних записей набора
+						::free(const_cast <T *> (this->_records));
+					// Выполняем установку указания на начало записей набора
+					this->_records = records;
+					// Выполняем установку размещённого количества записей
+					this->_capacity = static_cast <uint32_t> (required);
 				}
 			public:
 				/**
@@ -464,13 +493,11 @@ namespace awh {
 				 */
 				void attach(const T * records, const size_t count) noexcept {
 					// Выполняем освобождение собственного содержимого набора
-					vector <T> ().swap(this->_own);
+					this->clear();
 					// Выполняем установку указания на начало записей набора
 					this->_records = records;
 					// Выполняем установку количества записей набора
-					this->_count = count;
-					// Выполняем сброс признака владения содержимым
-					this->_owned = false;
+					this->_count = static_cast <uint32_t> (count);
 				}
 				/**
 				 * @brief Метод проверки владения набором своим содержимым
@@ -478,7 +505,7 @@ namespace awh {
 				 * @return результат проверки владения содержимым
 				 *
 				 */
-				bool owned() const noexcept { return this->_owned; }
+				bool owned() const noexcept { return (this->_capacity > 0); }
 			public:
 				/**
 				 * @brief Метод извлечения количества записей набора
@@ -486,7 +513,7 @@ namespace awh {
 				 * @return количество записей набора
 				 *
 				 */
-				size_t size() const noexcept { return this->_count; }
+				size_t size() const noexcept { return static_cast <size_t> (this->_count); }
 				/**
 				 * @brief Метод проверки отсутствия записей набора
 				 *
@@ -548,7 +575,7 @@ namespace awh {
 					/**
 					 * Если номер записи набору не принадлежит
 					 */
-					if(index >= this->_count)
+					if(index >= static_cast <size_t> (this->_count))
 						// Выполняем выброс исключения выхода за границы набора
 						throw out_of_range("regex::Sequence::at");
 					// Выводим извлечённую запись набора
@@ -563,10 +590,16 @@ namespace awh {
 				 *
 				 */
 				T & at(const size_t index) {
+					/**
+					 * Если номер записи набору не принадлежит
+					 */
+					if(index >= static_cast <size_t> (this->_count))
+						// Выполняем выброс исключения выхода за границы набора
+						throw out_of_range("regex::Sequence::at");
 					// Выполняем обращение набора обозревающего во владеющий
 					this->detach();
 					// Выводим извлечённую запись набора
-					return this->_own.at(index);
+					return const_cast <T *> (this->_records)[index];
 				}
 				/**
 				 * @brief Оператор извлечения изменяемой записи набора по номеру
@@ -579,7 +612,7 @@ namespace awh {
 					// Выполняем обращение набора обозревающего во владеющий
 					this->detach();
 					// Выводим извлечённую запись набора
-					return this->_own[index];
+					return const_cast <T *> (this->_records)[index];
 				}
 				/**
 				 * @brief Метод извлечения изменяемой последней записи набора
@@ -591,7 +624,38 @@ namespace awh {
 					// Выполняем обращение набора обозревающего во владеющий
 					this->detach();
 					// Выводим извлечённую запись набора
-					return this->_own.back();
+					return const_cast <T *> (this->_records)[this->_count - 1];
+				}
+				/**
+				 * @brief Метод обращения набора обозревающего во владеющий
+				 *
+				 */
+				void detach() noexcept {
+					/**
+					 * Если набор содержимым уже владеет
+					 */
+					if(this->_capacity > 0)
+						// Выходим из метода обращения набора
+						return;
+					// Получаем обозреваемый участок записи
+					const T * records = this->_records;
+					// Получаем количество записей обозреваемого участка
+					const size_t count = static_cast <size_t> (this->_count);
+					// Выполняем сброс количества записей набора
+					this->_count = 0;
+					// Выполняем сброс указания на начало записей набора
+					this->_records = nullptr;
+					// Выполняем размещение записей набора
+					this->grow(count > 0 ? count : 1);
+					/**
+					 * Если размещение записей набора выполнено
+					 */
+					if((this->_capacity > 0) && (count > 0)) {
+						// Выполняем перенос обозреваемого содержимого к себе
+						::memcpy(const_cast <T *> (this->_records), records, (count * sizeof(T)));
+						// Выполняем установку количества записей набора
+						this->_count = static_cast <uint32_t> (count);
+					}
 				}
 				/**
 				 * @brief Метод добавления записи в конец набора
@@ -600,12 +664,8 @@ namespace awh {
 				 *
 				 */
 				void push_back(const T & record) {
-					// Выполняем обращение набора обозревающего во владеющий
-					this->detach();
-					// Выполняем добавление записи в конец набора
-					this->_own.push_back(record);
-					// Выполняем обновление обзора собственного содержимого
-					this->refresh();
+					// Выполняем размещение записи в конце набора
+					this->emplace_back(record);
 				}
 				/**
 				 * @brief Метод размещения записи в конце набора
@@ -618,10 +678,18 @@ namespace awh {
 				void emplace_back(Args &&... args) {
 					// Выполняем обращение набора обозревающего во владеющий
 					this->detach();
+					// Выполняем размещение записей набора
+					this->grow(static_cast <size_t> (this->_count) + 1);
+					/**
+					 * Если размещения записей набора не достаёт
+					 */
+					if(this->_capacity <= this->_count)
+						// Выходим из метода размещения записи
+						return;
 					// Выполняем размещение записи в конце набора
-					this->_own.emplace_back(forward <Args> (args)...);
-					// Выполняем обновление обзора собственного содержимого
-					this->refresh();
+					new (const_cast <T *> (this->_records) + this->_count) T(forward <Args> (args)...);
+					// Выполняем увеличение количества записей набора
+					this->_count++;
 				}
 				/**
 				 * @brief Метод добавления участка записей в конец набора
@@ -633,10 +701,24 @@ namespace awh {
 				void append(const T * records, const size_t count) {
 					// Выполняем обращение набора обозревающего во владеющий
 					this->detach();
-					// Выполняем добавление участка записей в конец набора
-					this->_own.insert(this->_own.end(), records, (records + count));
-					// Выполняем обновление обзора собственного содержимого
-					this->refresh();
+					/**
+					 * Если добавляемый участок записей пуст
+					 */
+					if(count == 0)
+						// Выходим из метода добавления участка записей
+						return;
+					// Выполняем размещение записей набора
+					this->grow(static_cast <size_t> (this->_count) + count);
+					/**
+					 * Если размещения записей набора не достаёт
+					 */
+					if(static_cast <size_t> (this->_capacity) < (static_cast <size_t> (this->_count) + count))
+						// Выходим из метода добавления участка записей
+						return;
+					// Выполняем перенос добавляемого участка записей
+					::memcpy((const_cast <T *> (this->_records) + this->_count), records, (count * sizeof(T)));
+					// Выполняем увеличение количества записей набора
+					this->_count = static_cast <uint32_t> (static_cast <size_t> (this->_count) + count);
 				}
 				/**
 				 * @brief Метод изменения количества записей набора
@@ -647,10 +729,31 @@ namespace awh {
 				void resize(const size_t count) {
 					// Выполняем обращение набора обозревающего во владеющий
 					this->detach();
-					// Выполняем изменение количества записей набора
-					this->_own.resize(count);
-					// Выполняем обновление обзора собственного содержимого
-					this->refresh();
+					/**
+					 * Если количество записей набора сокращается
+					 */
+					if(count <= static_cast <size_t> (this->_count)) {
+						// Выполняем установку количества записей набора
+						this->_count = static_cast <uint32_t> (count);
+						// Выходим из метода изменения количества записей
+						return;
+					}
+					// Выполняем размещение записей набора
+					this->grow(count);
+					/**
+					 * Если размещения записей набора не достаёт
+					 */
+					if(static_cast <size_t> (this->_capacity) < count)
+						// Выходим из метода изменения количества записей
+						return;
+					/**
+					 * Выполняем размещение добавляемых записей набора
+					 */
+					for(size_t i = static_cast <size_t> (this->_count); i < count; i++)
+						// Выполняем размещение очередной записи набора
+						new (const_cast <T *> (this->_records) + i) T();
+					// Выполняем установку количества записей набора
+					this->_count = static_cast <uint32_t> (count);
 				}
 				/**
 				 * @brief Метод предварительного размещения записей набора
@@ -661,10 +764,8 @@ namespace awh {
 				void reserve(const size_t count) {
 					// Выполняем обращение набора обозревающего во владеющий
 					this->detach();
-					// Выполняем предварительное размещение записей набора
-					this->_own.reserve(count);
-					// Выполняем обновление обзора собственного содержимого
-					this->refresh();
+					// Выполняем размещение записей набора
+					this->grow(count);
 				}
 				/**
 				 * @brief Метод замещения содержимого набора повторением записи
@@ -674,46 +775,71 @@ namespace awh {
 				 *
 				 */
 				void assign(const size_t count, const T & record) {
-					// Выполняем обращение набора обозревающего во владеющий
-					this->detach();
-					// Выполняем замещение содержимого набора
-					this->_own.assign(count, record);
-					// Выполняем обновление обзора собственного содержимого
-					this->refresh();
+					// Выполняем очистку набора записей
+					this->clear();
+					// Выполняем размещение записей набора
+					this->grow(count);
+					/**
+					 * Если размещения записей набора не достаёт
+					 */
+					if(static_cast <size_t> (this->_capacity) < count)
+						// Выходим из метода замещения содержимого набора
+						return;
+					/**
+					 * Выполняем размещение записей набора
+					 */
+					for(size_t i = 0; i < count; i++)
+						// Выполняем размещение очередной записи набора
+						new (const_cast <T *> (this->_records) + i) T(record);
+					// Выполняем установку количества записей набора
+					this->_count = static_cast <uint32_t> (count);
 				}
 				/**
 				 * @brief Метод очистки набора записей
 				 *
 				 */
 				void clear() noexcept {
-					// Выполняем освобождение собственного содержимого набора
-					this->_own.clear();
-					// Выполняем установку признака владения содержимым
-					this->_owned = true;
-					// Выполняем обновление обзора собственного содержимого
-					this->refresh();
+					/**
+					 * Если набор содержимым владеет
+					 */
+					if(this->_capacity > 0)
+						// Выполняем освобождение записей набора
+						::free(const_cast <T *> (this->_records));
+					// Выполняем сброс указания на начало записей набора
+					this->_records = nullptr;
+					// Выполняем сброс количества записей набора
+					this->_count = 0;
+					// Выполняем сброс размещённого количества записей
+					this->_capacity = 0;
 				}
 			public:
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				Sequence() noexcept : _records(nullptr), _count(0), _owned(true) {}
+				Sequence() noexcept : _records(nullptr), _count(0), _capacity(0) {
+					/**
+					 * Набор пригоден лишь записям, перенос каких выполняется
+					 * переносом памяти: содержимое его переносится, размещается
+					 * и освобождается без вызова конструкторов копирования и
+					 * деструкторов.
+					 */
+					static_assert(is_trivially_copyable <T> ::value, "regex::Sequence: тип записи переносу памятью не поддаётся");
+					static_assert(is_trivially_destructible <T> ::value, "regex::Sequence: тип записи разрушения требует");
+				}
 				/**
 				 * @brief Конструктор копирования
 				 *
 				 * @param sequence копируемый набор записей
 				 *
 				 */
-				Sequence(const Sequence & sequence) : _own(sequence._own), _records(nullptr), _count(sequence._count), _owned(sequence._owned) {
+				Sequence(const Sequence & sequence) noexcept : _records(sequence._records), _count(sequence._count), _capacity(0) {
 					/**
-					 * Если набор содержимым владеет
+					 * Если копируемый набор содержимым владеет
 					 */
-					if(this->_owned)
-						// Выполняем обновление обзора собственного содержимого
-						this->refresh();
-					// Выполняем установку указания на обозреваемый участок записи
-					else this->_records = sequence._records;
+					if(sequence._capacity > 0)
+						// Выполняем обращение набора обозревающего во владеющий
+						this->detach();
 				}
 				/**
 				 * @brief Оператор присваивания копированием
@@ -722,36 +848,35 @@ namespace awh {
 				 * @return         текущий набор записей
 				 *
 				 */
-				Sequence & operator = (const Sequence & sequence) {
+				Sequence & operator = (const Sequence & sequence) noexcept {
 					/**
 					 * Если присваивание выполняется самому себе
 					 */
 					if(this == &sequence)
 						// Выводим текущий набор записей
 						return (* this);
-					// Выполняем копирование признака владения содержимым
-					this->_owned = sequence._owned;
+					// Выполняем очистку набора записей
+					this->clear();
+					// Выполняем установку указания на начало записей набора
+					this->_records = sequence._records;
+					// Выполняем установку количества записей набора
+					this->_count = sequence._count;
 					/**
-					 * Если набор содержимым владеет
+					 * Если копируемый набор содержимым владеет
 					 */
-					if(this->_owned) {
-						// Выполняем копирование собственного содержимого набора
-						this->_own = sequence._own;
-						// Выполняем обновление обзора собственного содержимого
-						this->refresh();
-					/**
-					 * Если набор обозревает участок записи
-					 */
-					} else {
-						// Выполняем освобождение собственного содержимого набора
-						vector <T> ().swap(this->_own);
-						// Выполняем установку указания на обозреваемый участок
-						this->_records = sequence._records;
-						// Выполняем установку количества записей набора
-						this->_count = sequence._count;
-					}
+					if(sequence._capacity > 0)
+						// Выполняем обращение набора обозревающего во владеющий
+						this->detach();
 					// Выводим текущий набор записей
 					return (* this);
+				}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~Sequence() noexcept {
+					// Выполняем очистку набора записей
+					this->clear();
 				}
 		};
 

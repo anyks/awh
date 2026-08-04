@@ -1226,6 +1226,15 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 		return false;
 	}
 	/**
+	 * Если байты выравнивания заголовка записи не пусты
+	 */
+	if(padding != 0) {
+		// Устанавливаем ошибку несообразного содержимого записи
+		this->_error = storage_error_t::BAD_CONTENT;
+		// Выводим результат восстановления собранных выражений
+		return false;
+	}
+	/**
 	 * Если запись порождена машиной устройства иного
 	 */
 	if(machine != platform()) {

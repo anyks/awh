@@ -64,10 +64,37 @@
 #elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
 	/**
 	 * Системные заголовочные файлы
+	 *
+	 * @note Заголовка sys/user.h у NetBSD нет вовсе: сведения о процессе описаны там
+	 *       в заголовке настроек ядра, откуда и берутся. У FreeBSD и OpenBSD он есть,
+	 *       и подключается по-прежнему
 	 */
 	#define _WANT_KINFO_PROC
 	#include <sys/param.h>
-	#include <sys/user.h>
+	#include <sys/sysctl.h>
+	#if !__NetBSD__
+		#include <sys/user.h>
+	#endif
+	/**
+	 * Если операционной системой является OpenBSD
+	 *
+	 * @note Разрешения названий настроек ядра у OpenBSD нет, и выполняется оно нами по
+	 *       таблицам названий, которые система отдаёт заголовками. Таблицы сетевой
+	 *       ветви лежат в заголовках сетевых, оттого они здесь и подключаются
+	 */
+	#if __OpenBSD__
+		#include <sys/queue.h>
+		#include <sys/socket.h>
+		#include <sys/timeout.h>
+		#include <net/route.h>
+		#include <netinet/in.h>
+		#include <netinet/ip_var.h>
+		#include <netinet/tcp.h>
+		#include <netinet/tcp_timer.h>
+		#include <netinet/tcp_var.h>
+		#include <netinet/udp.h>
+		#include <netinet/udp_var.h>
+	#endif
 #endif
 
 /**
@@ -364,6 +391,232 @@ using namespace std;
 	 * @param buffer бинарный буфер с извлечёнными значениями
 	 *
 	 */
+	/**
+	 * Если операционной системой является OpenBSD
+	 */
+	#if __OpenBSD__
+		/**
+		 * @brief Функция разрешения названия настройки ядра в числовой указатель
+		 *
+		 * @details Разрешения названий у OpenBSD нет: функции sysctlbyname там не
+		 *          существует, и обращаться к настройкам можно только числовым
+		 *          указателем. Название разбирается здесь самостоятельно - по тем же
+		 *          таблицам, которые система отдаёт заголовками и по которым разбирает
+		 *          названия её собственная утилита настройки ядра
+		 *
+		 *          Таблицы берутся из заголовков, а не переписываются сюда списком:
+		 *          переписанный список устареет с первым же выпуском, который настройку
+		 *          добавит или переименует, и расхождение это будет тихим
+		 *
+		 * @note Обход посторонней программой отвергнут намеренно. Запуск процесса на
+		 *       каждое обращение стоит несоизмеримо дороже разбора названия, а сведения
+		 *       эти доступны нам тем же путём, что и ей самой
+		 *
+		 * @warning Разрешаются ветви, отдающие таблицы названий: kern, vm, hw, machdep,
+		 *          debug, vfs и net для семейств IPv4 и IPv6. Ветви, чьих таблиц система
+		 *          заголовками не отдаёт, разрешить нечем, и обращение к ним отвечает
+		 *          отказом - но отказом честным, а не выдуманным значением
+		 *
+		 * @param name название настройки ядра
+		 * @param mib  числовой указатель настройки, заполняемый разбором
+		 * @param size количество заполненных частей числового указателя
+		 * @return     результат разрешения названия
+		 *
+		 */
+		static bool resolve(string_view name, int32_t * mib, u_int & size) noexcept {
+			// Обнуляем количество заполненных частей числового указателя
+			size = 0;
+			// Если название настройки не передано, разрешать нечего
+			if(name.empty())
+				// Выводим отрицательный результат
+				return false;
+			// Разбираем название настройки на части по разделителю
+			vector <string> parts;
+			/**
+			 * Выполняем разбор названия настройки на части
+			 */
+			for(size_t start = 0; start <= name.size();){
+				// Ищем очередной разделитель частей названия
+				const size_t pos = name.find('.', start);
+				// Запоминаем очередную часть названия
+				parts.emplace_back(name.substr(start, ((pos == string_view::npos) ? name.size() : pos) - start));
+				// Если разделителей больше нет, разбор окончен
+				if(pos == string_view::npos)
+					// Выходим из цикла разбора
+					break;
+				// Переходим к части следующей
+				start = (pos + 1);
+			}
+			// Если частей названия не набралось либо их больше, чем вмещает указатель
+			if(parts.empty() || (parts.size() > static_cast <size_t> (CTL_MAXNAME)))
+				// Выводим отрицательный результат
+				return false;
+			/**
+			 * @brief Функция поиска части названия в таблице названий
+			 *
+			 * @param table таблица названий ветви
+			 * @param count количество записей таблицы названий
+			 * @param part  искомая часть названия
+			 * @return      номер записи в таблице либо −1, если запись не найдена
+			 *
+			 */
+			auto lookup = [](const struct ctlname * table, const size_t count, const string & part) noexcept -> int32_t {
+				/**
+				 * Выполняем перебор всех записей таблицы названий
+				 */
+				for(size_t i = 0; i < count; i++){
+					// Если запись таблицы пуста, пропускаем её
+					if(table[i].ctl_name == nullptr)
+						// Переходим к записи следующей
+						continue;
+					// Если название записи совпало с искомой частью
+					if(part.compare(table[i].ctl_name) == 0)
+						// Выводим номер найденной записи
+						return static_cast <int32_t> (i);
+				}
+				// Сообщаем, что запись не найдена
+				return -1;
+			};
+			// Таблица названий верхнего уровня
+			static const struct ctlname top[] = CTL_NAMES;
+			// Разрешаем часть названия верхнего уровня
+			const int32_t root = lookup(top, (sizeof(top) / sizeof(top[0])), parts[0]);
+			// Если часть названия верхнего уровня не разрешена
+			if(root < 0)
+				// Выводим отрицательный результат
+				return false;
+			// Запоминаем разрешённую часть названия верхнего уровня
+			mib[size++] = root;
+			// Если название состояло из одной части, разбор окончен
+			if(parts.size() == 1)
+				// Выводим положительный результат
+				return true;
+			/**
+			 * Определяем ветвь настроек ядра
+			 */
+			switch(root){
+				/**
+				 * Ветвь сетевых настроек разбирается особо: за названием семейства
+				 * адресов идёт название протокола, а за ним - название самой настройки,
+				 * и таблицы на эти уровни лежат в заголовках сетевых, а не общих
+				 */
+				case CTL_NET: {
+					// Разрешаем название семейства адресов
+					if(parts[1].compare("inet") == 0)
+						// Запоминаем семейство адресов IPv4
+						mib[size++] = PF_INET;
+					// Если названо семейство адресов IPv6
+					else if(parts[1].compare("inet6") == 0)
+						// Запоминаем семейство адресов IPv6
+						mib[size++] = PF_INET6;
+					// Если названо семейство, разрешить которое нечем
+					else return false;
+					// Если название на семействе адресов и оканчивается, разбор окончен
+					if(parts.size() == 2)
+						// Выводим положительный результат
+						return true;
+					// Таблица названий протоколов
+					static const struct ctlname protocols[] = CTL_IPPROTO_NAMES;
+					// Разрешаем название протокола
+					const int32_t protocol = lookup(protocols, (sizeof(protocols) / sizeof(protocols[0])), parts[2]);
+					// Если название протокола не разрешено
+					if(protocol < 0)
+						// Выводим отрицательный результат
+						return false;
+					// Запоминаем разрешённое название протокола
+					mib[size++] = protocol;
+					// Если название на протоколе и оканчивается, разбор окончен
+					if(parts.size() == 3)
+						// Выводим положительный результат
+						return true;
+					// Номер разрешённой настройки протокола
+					int32_t option = -1;
+					/**
+					 * Определяем протокол, чья настройка разрешается
+					 */
+					switch(protocol){
+						// Если настройка принадлежит протоколу TCP
+						case IPPROTO_TCP: {
+							// Таблица названий настроек протокола TCP
+							static const struct ctlname options[] = TCPCTL_NAMES;
+							// Разрешаем название настройки протокола TCP
+							option = lookup(options, (sizeof(options) / sizeof(options[0])), parts[3]);
+						} break;
+						// Если настройка принадлежит протоколу UDP
+						case IPPROTO_UDP: {
+							// Таблица названий настроек протокола UDP
+							static const struct ctlname options[] = UDPCTL_NAMES;
+							// Разрешаем название настройки протокола UDP
+							option = lookup(options, (sizeof(options) / sizeof(options[0])), parts[3]);
+						} break;
+						// Если настройка принадлежит протоколу IP
+						case IPPROTO_IP: {
+							// Таблица названий настроек протокола IP
+							static const struct ctlname options[] = IPCTL_NAMES;
+							// Разрешаем название настройки протокола IP
+							option = lookup(options, (sizeof(options) / sizeof(options[0])), parts[3]);
+						} break;
+					}
+					// Если название настройки протокола не разрешено
+					if(option < 0)
+						// Выводим отрицательный результат
+						return false;
+					// Запоминаем разрешённое название настройки протокола
+					mib[size++] = option;
+					// Выводим положительный результат
+					return true;
+				}
+				// Если настройка принадлежит ветви настроек ядра
+				case CTL_KERN: {
+					// Таблица названий настроек ядра
+					static const struct ctlname options[] = CTL_KERN_NAMES;
+					// Разрешаем название настройки ядра
+					const int32_t option = lookup(options, (sizeof(options) / sizeof(options[0])), parts[1]);
+					// Если название настройки ядра не разрешено
+					if(option < 0)
+						// Выводим отрицательный результат
+						return false;
+					// Запоминаем разрешённое название настройки ядра
+					mib[size++] = option;
+					// Выводим положительный результат
+					return true;
+				}
+				// Если настройка принадлежит ветви настроек оборудования
+				case CTL_HW: {
+					// Таблица названий настроек оборудования
+					static const struct ctlname options[] = CTL_HW_NAMES;
+					// Разрешаем название настройки оборудования
+					const int32_t option = lookup(options, (sizeof(options) / sizeof(options[0])), parts[1]);
+					// Если название настройки оборудования не разрешено
+					if(option < 0)
+						// Выводим отрицательный результат
+						return false;
+					// Запоминаем разрешённое название настройки оборудования
+					mib[size++] = option;
+					// Выводим положительный результат
+					return true;
+				}
+				// Если настройка принадлежит ветви настроек виртуальной памяти
+				case CTL_VM: {
+					// Таблица названий настроек виртуальной памяти
+					static const struct ctlname options[] = CTL_VM_NAMES;
+					// Разрешаем название настройки виртуальной памяти
+					const int32_t option = lookup(options, (sizeof(options) / sizeof(options[0])), parts[1]);
+					// Если название настройки виртуальной памяти не разрешено
+					if(option < 0)
+						// Выводим отрицательный результат
+						return false;
+					// Запоминаем разрешённое название настройки виртуальной памяти
+					mib[size++] = option;
+					// Выводим положительный результат
+					return true;
+				}
+			}
+			// Выводим отрицательный результат
+			return false;
+		}
+	#endif
+
 	static void sysctl(string_view name, vector <char> & buffer) noexcept {
 		// Если название параметра и тип извлекаемого значения переданы
 		if(!name.empty()){
@@ -372,7 +625,29 @@ using namespace std;
 			/**
 			 * Если мы работаем в macOS, FreeBSD, NetBSD или OpenBSD
 			 */
-			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+			#if __OpenBSD__
+				// Числовой указатель настройки ядра
+				int32_t mib[CTL_MAXNAME];
+				// Количество частей числового указателя
+				u_int parts = 0;
+				// Если название настройки разрешено в числовой указатель
+				if(resolve(name, mib, parts)){
+					// Получаем размер буфера
+					size_t length = 0;
+					// Если размеры удачно получены
+					if(::sysctl(mib, parts, nullptr, &length, nullptr, 0) == 0){
+						// Выделяем в буфере нужное количество памяти
+						buffer.resize(length, 0);
+						// Запрашиваем искомые данные
+						if(::sysctl(mib, parts, &buffer[0], &length, nullptr, 0) < 0)
+							// Выполняем очистку буфера данных
+							buffer.clear();
+					}
+				}
+			/**
+			 * Если мы работаем в macOS, FreeBSD либо NetBSD
+			 */
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 				// Получаем размер буфера
 				size_t length = 0;
 				// Если размеры удачно получены
@@ -522,7 +797,21 @@ using namespace std;
 			/**
 			 * Если мы работаем в macOS, FreeBSD, NetBSD или OpenBSD
 			 */
-			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+			#if __OpenBSD__
+				// Числовой указатель настройки ядра
+				int32_t mib[CTL_MAXNAME];
+				// Количество частей числового указателя
+				u_int parts = 0;
+				// Если название настройки разрешить не удалось, устанавливать нечего
+				if(!resolve(name, mib, parts))
+					// Выводим отрицательный результат
+					return false;
+				// Устанавливаем новые параметры настройки ядра
+				return (::sysctl(mib, parts, nullptr, 0, const_cast <uint8_t *> (reinterpret_cast <const uint8_t *> (buffer)), size) == 0);
+			/**
+			 * Если мы работаем в macOS, FreeBSD либо NetBSD
+			 */
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 				// Устанавливаем новые параметры настройки ядра
 				return (::sysctlbyname(name.data(), nullptr, 0, const_cast <uint8_t *> (reinterpret_cast <const uint8_t *> (buffer)), size) == 0);
 			/**
@@ -874,14 +1163,51 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 					 * Для операционной системы FreeBSD, NetBSD, OpenBSD
 					 */
 					#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
-						// Создаём объект информации о памяти
-						struct kinfo_proc info;
-						// Получаем размер объекта информации
-						size_t size = sizeof(info);
-						// Устанавливаем флаги для необходимых нам процессов
-						int32_t mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid())};
+						/**
+						 * Сведения о процессе описаны у каждой системы своей структурой, и
+						 * запрашиваются они по-разному
+						 *
+						 * @details У FreeBSD запрос состоит из четырёх частей и отдаёт структуру
+						 *          kinfo_proc, где занятая память лежит в поле ki_rssize. У NetBSD
+						 *          и OpenBSD запрос состоит из шести: к отбору добавлены размер
+						 *          одной записи и их количество, - а поле зовётся p_vm_rssize.
+						 *          NetBSD вдобавок отдаёт структуру иную, kinfo_proc2: прежняя у
+						 *          него тоже есть, но заполняется не полностью
+						 *
+						 * @note Единица измерения у всех одна - страницы памяти, - поэтому перевод
+						 *       в октеты общий для всех трёх
+						 *
+						 */
+						#if __NetBSD__
+							// Создаём объект информации о памяти
+							struct kinfo_proc2 info;
+							// Получаем размер объекта информации
+							size_t size = sizeof(info);
+							// Устанавливаем флаги для необходимых нам процессов
+							int32_t mib[] = {CTL_KERN, KERN_PROC2, KERN_PROC_PID, static_cast <int32_t> (::getpid()), static_cast <int32_t> (sizeof(info)), 1};
+							// Количество частей запроса сведений о процессе
+							static constexpr u_int MIB_SIZE = 6;
+						#elif __OpenBSD__
+							// Создаём объект информации о памяти
+							struct kinfo_proc info;
+							// Получаем размер объекта информации
+							size_t size = sizeof(info);
+							// Устанавливаем флаги для необходимых нам процессов
+							int32_t mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid()), static_cast <int32_t> (sizeof(info)), 1};
+							// Количество частей запроса сведений о процессе
+							static constexpr u_int MIB_SIZE = 6;
+						#else
+							// Создаём объект информации о памяти
+							struct kinfo_proc info;
+							// Получаем размер объекта информации
+							size_t size = sizeof(info);
+							// Устанавливаем флаги для необходимых нам процессов
+							int32_t mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid())};
+							// Количество частей запроса сведений о процессе
+							static constexpr u_int MIB_SIZE = 4;
+						#endif
 						// Выполняем извлечение данных о потреблении памяти
-						if(::sysctl(mib, 4, &info, &size, nullptr, 0) != 0){
+						if(::sysctl(mib, MIB_SIZE, &info, &size, nullptr, 0) != 0){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -899,7 +1225,11 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							return result;
 						}
 						// RSS в страницах; переводим в байты
-						return (static_cast <size_t> (info.ki_rssize) * ::getpagesize());
+						#if __NetBSD__ || __OpenBSD__
+							return (static_cast <size_t> (info.p_vm_rssize) * ::getpagesize());
+						#else
+							return (static_cast <size_t> (info.ki_rssize) * ::getpagesize());
+						#endif
 					/**
 					 * Для операционной системы Linux
 					 */
