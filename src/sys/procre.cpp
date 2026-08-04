@@ -22,6 +22,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+
+/**
+ * Системные заголовочные файлы
+ */
 #include <sys/types.h>
 #include <netinet/in.h>
 
@@ -116,6 +120,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
+#include <sys/ascii.hpp>
 #include <sys/procre.hpp>
 
 /**

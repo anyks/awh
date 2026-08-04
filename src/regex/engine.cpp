@@ -245,10 +245,8 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 * Если выражение исполняется с возвратом
 	 */
 	if(expression.backtracking) {
-		// Создаём набор границ совпадения и захваченных групп
-		vector <pair <size_t, size_t>> captures;
 		// Выполняем сопоставление регулярного выражения исполнением с возвратом
-		const bool result = this->_backtrack.exec(expression.forward, text, start, captures);
+		const bool result = this->_backtrack.exec(expression.forward, text, start, this->_spare);
 		// Выполняем установку кода ошибки исполнения с возвратом
 		this->_error = this->_backtrack.error();
 		// Выводим результат проверки наличия совпадения
@@ -279,20 +277,15 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *          исполнением без возврата.
 	 *
 	 */
-	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY)) {
-		// Создаём набор границ совпадения и захваченных групп
-		vector <pair <size_t, size_t>> bounds;
+	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY))
 		// Выводим результат сопоставления исполнением без возврата
-		return this->_pike.exec(expression.forward, text, start, bounds);
-	}
+		return this->_pike.exec(expression.forward, text, start, this->_spare);
 	/**
 	 * Если детерминированное исполнение применимо
 	 */
 	if(this->_dfa.available(expression.forward))
 		// Выводим результат проверки наличия совпадения детерминированным исполнением
 		return this->_dfa.test(expression.forward, text, start);
-	// Создаём набор границ совпадения и захваченных групп
-	vector <pair <size_t, size_t>> captures;
 	/**
 	 * Выводим результат сопоставления исполнением без возврата
 	 *
@@ -300,7 +293,7 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *          поэтому повторный проход по тексту для его проверки не требуется.
 	 *
 	 */
-	return this->_pike.exec(expression.forward, text, start, captures, mode_t::VERIFIED);
+	return this->_pike.exec(expression.forward, text, start, this->_spare, mode_t::VERIFIED);
 }
 /**
  * @brief Метод сопоставления регулярного выражения с текстом

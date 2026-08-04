@@ -19,7 +19,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstring>
 #include <mutex>
 #include <array>
 #include <string>
@@ -28,6 +27,8 @@
 #include <random>
 #include <cerrno>
 #include <cstdint>
+#include <cstring>
+#include <algorithm>
 
 /**
  * Системные заголовочные файлы

@@ -60,7 +60,7 @@ static constexpr uint64_t GROK_MAGIC = 0x4B4F52474841574Aull;
  * @brief Версия устройства записи собранных шаблонов Grok
  *
  */
-static constexpr uint8_t GROK_VERSION = 0x01;
+static constexpr uint8_t GROK_VERSION = 0x02;
 
 /**
  * @brief Пространство имён вспомогательных функций записи и чтения
@@ -1315,7 +1315,7 @@ void awh::Grok::threadSafety(const bool mode) noexcept {
  * @brief Конструктор
  *
  */
-awh::Grok::Grok() noexcept : _error(error_t::NONE), _threadSafety(false) {
+awh::Grok::Grok() noexcept : _error(error_t::NONE), _method(compressor::method_t::NONE), _threadSafety(false) {
 	// Выполняем размещение реестра шаблонов
 	this->_patterns.reserve(awh::grok::PATTERNS_COUNT);
 	/**
@@ -1416,6 +1416,12 @@ size_t awh::Grok::read(string_view text) noexcept {
  *
  */
 void awh::Grok::packer(const compressor::method_t method, packer_t pack, packer_t unpack) noexcept {
+	// Выполняем установку метода сжатия части записи, шаблоны описывающей
+	this->_method = method;
+	// Выполняем установку обработчика сжатия части записи
+	this->_pack = pack;
+	// Выполняем установку обработчика разбора сжатой части записи
+	this->_unpack = unpack;
 	// Выполняем установку сжатия записи собранных выражений
 	this->_storage.packer(method, ::move(pack), ::move(unpack));
 }
@@ -1471,6 +1477,59 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 	for(const auto & expression : expressions)
 		// Выполняем добавление собранного регулярного выражения в набор
 		records.push_back(expression->exp);
+	// Содержимое части записи, шаблоны описывающей
+	string payload;
+	// Выполняем запись набора режимов сборки выражения
+	writeNumber(static_cast <uint64_t> (flags), payload);
+	// Выполняем запись количества собранных шаблонов
+	writeNumber(static_cast <uint64_t> (expressions.size()), payload);
+	/**
+	 * Выполняем перебор набора собранных шаблонов
+	 */
+	for(const auto & expression : expressions) {
+		// Выполняем запись исходного текста шаблона
+		writeText(expression->pattern, payload);
+		// Выполняем запись развёрнутого текста регулярного выражения
+		writeText(expression->expression, payload);
+		// Выполняем запись количества полей шаблона
+		writeNumber(static_cast <uint64_t> (expression->fields.size()), payload);
+		/**
+		 * Выполняем перебор набора полей шаблона
+		 */
+		for(const auto & field : expression->fields) {
+			// Выполняем запись номера группы захвата поля
+			writeNumber(static_cast <uint64_t> (field.number), payload);
+			// Выполняем запись вида значения поля
+			payload.push_back(static_cast <char> (field.kind));
+			// Выполняем запись названия поля шаблона
+			writeText(field.name, payload);
+		}
+	}
+	// Сжатое содержимое части записи, шаблоны описывающей
+	string packed;
+	/**
+	 * Если часть записи, шаблоны описывающая, подлежит сжатию
+	 */
+	if(this->_method != compressor::method_t::NONE) {
+		/**
+		 * Если обработчик сжатия части записи не установлен
+		 */
+		if(!this->_pack) {
+			// Устанавливаем код ошибки отсутствия обработчика метода сжатия
+			this->_error = error_t::STORAGE_METHOD;
+			// Выводим результат записи собранных шаблонов
+			return false;
+		}
+		/**
+		 * Если сжатие содержимого части записи не выполнено
+		 */
+		if(!this->_pack(payload, packed) || packed.empty()) {
+			// Устанавливаем код ошибки невыполненного сжатия части записи
+			this->_error = error_t::STORAGE_PACKING;
+			// Выводим результат записи собранных шаблонов
+			return false;
+		}
+	}
 	/**
 	 * Выполняем запись опознания записи собранных шаблонов
 	 *
@@ -1483,32 +1542,22 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 		result.push_back(static_cast <char> ((GROK_MAGIC >> shift) & 0xFF));
 	// Выполняем запись версии устройства записи
 	result.push_back(static_cast <char> (GROK_VERSION));
-	// Выполняем запись набора режимов сборки выражения
-	writeNumber(static_cast <uint64_t> (flags), result);
-	// Выполняем запись количества собранных шаблонов
-	writeNumber(static_cast <uint64_t> (expressions.size()), result);
+	// Выполняем запись метода сжатия части записи, шаблоны описывающей
+	result.push_back(static_cast <char> (this->_method));
 	/**
-	 * Выполняем перебор набора собранных шаблонов
+	 * Выполняем запись размера содержимого части записи до сжатия
+	 *
+	 * @details Размер этот пишется и тогда, когда сжатие не выполняется:
+	 *          им отделяется часть, шаблоны описывающая, от записи хранилища,
+	 *          к ней приложенной, а без него разбор опирался бы на то, что
+	 *          чтение полей остановится в нужном месте само.
+	 *
 	 */
-	for(const auto & expression : expressions) {
-		// Выполняем запись исходного текста шаблона
-		writeText(expression->pattern, result);
-		// Выполняем запись развёрнутого текста регулярного выражения
-		writeText(expression->expression, result);
-		// Выполняем запись количества полей шаблона
-		writeNumber(static_cast <uint64_t> (expression->fields.size()), result);
-		/**
-		 * Выполняем перебор набора полей шаблона
-		 */
-		for(const auto & field : expression->fields) {
-			// Выполняем запись номера группы захвата поля
-			writeNumber(static_cast <uint64_t> (field.number), result);
-			// Выполняем запись вида значения поля
-			result.push_back(static_cast <char> (field.kind));
-			// Выполняем запись названия поля шаблона
-			writeText(field.name, result);
-		}
-	}
+	writeNumber(static_cast <uint64_t> (payload.size()), result);
+	// Выполняем запись размера сжатого содержимого части записи
+	writeNumber(static_cast <uint64_t> (packed.size()), result);
+	// Выполняем запись содержимого части записи, шаблоны описывающей
+	result.append((this->_method != compressor::method_t::NONE) ? packed : payload);
 	// Запись хранилища собранных регулярных выражений
 	string storage;
 	/**
@@ -1572,8 +1621,12 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	}
 	/**
 	 * Если запись короче заголовка собранных шаблонов
+	 *
+	 * @details Заголовок несёт опознание восемью байтами, версию устройства
+	 *          записи и метод сжатия части её, шаблоны описывающей.
+	 *
 	 */
-	if(record.size() < 9) {
+	if(record.size() < 10) {
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_TRUNCATED;
 		// Выводим результат восстановления собранных шаблонов
@@ -1607,6 +1660,72 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		// Выводим результат восстановления собранных шаблонов
 		return false;
 	}
+	// Получаем метод сжатия части записи, шаблоны описывающей
+	const uint8_t method = static_cast <uint8_t> (record[offset++]);
+	// Размеры содержимого части записи до сжатия и после него
+	uint64_t origin = 0, length = 0;
+	/**
+	 * Если чтение размеров содержимого части записи не выполнено
+	 */
+	if(!readNumber(record, offset, origin) || !readNumber(record, offset, length)) {
+		// Устанавливаем код ошибки восстановления собранных шаблонов
+		this->_error = error_t::STORAGE_TRUNCATED;
+		// Выводим результат восстановления собранных шаблонов
+		return false;
+	}
+	// Получаем размер содержимого части записи, в ней размещённого
+	const uint64_t placed = ((method != static_cast <uint8_t> (compressor::method_t::NONE)) ? length : origin);
+	/**
+	 * Если содержимое части записи за её пределы выходит
+	 */
+	if(placed > static_cast <uint64_t> (record.size() - offset)) {
+		// Устанавливаем код ошибки восстановления собранных шаблонов
+		this->_error = error_t::STORAGE_TRUNCATED;
+		// Выводим результат восстановления собранных шаблонов
+		return false;
+	}
+	// Восстановленное содержимое части записи, шаблоны описывающей
+	string content;
+	/**
+	 * Если часть записи, шаблоны описывающая, сжата
+	 */
+	if(method != static_cast <uint8_t> (compressor::method_t::NONE)) {
+		/**
+		 * Если обработчик разбора сжатой части записи не установлен
+		 */
+		if(!this->_unpack) {
+			// Устанавливаем код ошибки отсутствия обработчика метода сжатия
+			this->_error = error_t::STORAGE_METHOD;
+			// Выводим результат восстановления собранных шаблонов
+			return false;
+		}
+		/**
+		 * Если разбор сжатого содержимого части записи не выполнен
+		 */
+		if(!this->_unpack(record.substr(offset, static_cast <size_t> (placed)), content) ||
+		 (content.size() != static_cast <size_t> (origin))) {
+			// Устанавливаем код ошибки невыполненного разбора сжатой части записи
+			this->_error = error_t::STORAGE_PACKING;
+			// Выводим результат восстановления собранных шаблонов
+			return false;
+		}
+	// Выполняем установку содержимого части записи, сжатию не подвергнутого
+	} else content.assign(record.substr(offset, static_cast <size_t> (placed)));
+	// Переходим за содержимое части записи, шаблоны описывающей
+	offset += static_cast <size_t> (placed);
+	// Получаем запись хранилища собранных регулярных выражений
+	const string_view storage = record.substr(offset);
+	/**
+	 * Выполняем перевод чтения на содержимое части записи
+	 *
+	 * @details Содержимое это лежит отдельною записью: сжатое оно разобрано
+	 *          в неё, а несжатое из записи в неё взято, - отчего чтение полей
+	 *          ведётся по ней, а не по записи целиком.
+	 *
+	 */
+	record = content;
+	// Выполняем сброс позиции чтения содержимого части записи
+	offset = 0;
 	// Набор режимов сборки выражения и количество собранных шаблонов
 	uint64_t flags = 0, count = 0;
 	/**
@@ -1713,7 +1832,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если восстановление собранных регулярных выражений не выполнено
 	 */
-	if(!this->_storage.load(record.substr(offset), records)) {
+	if(!this->_storage.load(storage, records)) {
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE;
 		// Выводим результат восстановления собранных шаблонов

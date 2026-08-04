@@ -562,7 +562,12 @@ namespace {
 	 * @return       результат декодирования (OK/INCOMPLETE/ERROR)
 	 *
 	 */
-	status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & arena, size_t & filled, string_view & output, error_t & error) noexcept {
+	/**
+	 * @note Обозначение кода ошибки записано полным именем намеренно: библиотека
+	 *       языка C в исполнении GNU объявляет свой `error_t` в общем пространстве
+	 *       имён, и краткое имя здесь становится двусмысленным
+	 */
+	status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & arena, size_t & filled, string_view & output, awh::http::h2::error_t & error) noexcept {
 		// Запоминаем смещение начала строки в арене
 		const size_t offset = filled;
 		// Сбрасываем представление декодированной строки
@@ -584,7 +589,7 @@ namespace {
 			// Если зафиксирована ошибка декодирования
 			if(status == status_t::ERROR)
 				// Фиксируем ошибку состояния HPACK
-				error = error_t::COMPRESSION_ERROR;
+				error = awh::http::h2::error_t::COMPRESSION_ERROR;
 			// Выводим статус декодирования
 			return status;
 		}
@@ -614,7 +619,7 @@ namespace {
 				// Возвращаем арене занятое под строку место
 				filled = offset;
 				// Фиксируем ошибку состояния HPACK
-				error = error_t::COMPRESSION_ERROR;
+				error = awh::http::h2::error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}

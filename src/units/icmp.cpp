@@ -23,6 +23,7 @@
 #include <vector>
 #include <random>
 #include <cstdint>
+#include <algorithm>
 
 /**
  * Системные заголовочные файлы

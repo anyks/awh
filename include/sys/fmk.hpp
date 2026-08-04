@@ -33,6 +33,7 @@
 #include <cwctype>
 #include <cstdarg>
 #include <cstdlib>
+#include <algorithm>
 #include <functional>
 #include <type_traits>
 #include <unordered_set>

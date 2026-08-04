@@ -1685,6 +1685,13 @@ void awh::unit::Portmap::described() noexcept {
 		// Выполняем сборку полного адреса управления отысканной службой
 		this->_control = this->_device.address(description, this->_location, service->control);
 		/**
+		 * Запоминаем, что состояние заслона IPv6 спрашивается прежде просьбы о пробое
+		 *
+		 * @note Спрашивается оно лишь перед проделыванием: заделывание пробоя от
+		 *       состояния заслона не зависит, а лишний шаг обмена его только затянет
+		 */
+		this->_probe = (this->_action == action_t::OPEN);
+		/**
 		 * Если вызов действия службы начать не удалось
 		 */
 		if(!this->control())
@@ -1769,6 +1776,19 @@ bool awh::unit::Portmap::control() noexcept {
 			 * Если проделывается пробой заслона IPv6
 			 */
 			if(this->_family == family_t::IPV6){
+				/**
+				 * Если состояние заслона IPv6 ещё не спрошено
+				 *
+				 * @note Спрашивается оно тем же ходом обмена, что и просьба о пробое:
+				 *       ответ на вопрос уводит сюда же, снимая признак, и следующая
+				 *       сборка выдаёт уже саму просьбу
+				 */
+				if(this->_probe){
+					// Выполняем сборку вызова запроса состояния заслона IPv6
+					request = this->_upnp.firewall(this->_service);
+					// Выходим из определения просьбы
+					break;
+				}
 				// Собираемый пробой заслона IPv6
 				proto::portmap::upnp_t::pinhole_t pinhole;
 				// Запоминаем договор пробоя заслона
@@ -2100,6 +2120,56 @@ void awh::unit::Portmap::controlled() noexcept {
 		this->complete(type_t::UPNP);
 		// Выполняем функцию обратного вызова
 		this->_callback.call <void (const string &, const type_t)> ("external", address, type_t::UPNP);
+		// Завершаем разбор ответа службы устройства
+		return;
+	}
+	/**
+	 * Если спрашивалось состояние заслона IPv6
+	 *
+	 * @details Ответ этот просьбой не является: он лишь отвечает, есть ли смысл
+	 *          просить о пробое. Отключённый заслон и запрет пробоев объявляются
+	 *          здесь прямо, а на саму просьбу устройство ответило бы отказом, по
+	 *          которому причина уже не видна
+	 */
+	if(this->_probe){
+		// Признак того, что заслон IPv6 у маршрутизатора включён
+		bool enabled = false;
+		// Признак того, что пробои заслона IPv6 маршрутизатором разрешены
+		bool allowed = false;
+		// Снимаем признак того, что спрашивается состояние заслона IPv6
+		this->_probe = false;
+		/**
+		 * Если состояние заслона IPv6 извлечь не удалось
+		 */
+		if(!this->_upnp.firewall(answer, enabled, allowed)){
+			// Выполняем завершение обмена отказом
+			this->failure(type_t::UPNP, error_t::MALFORMED);
+			// Завершаем разбор ответа службы устройства
+			return;
+		}
+		/**
+		 * Если заслон IPv6 отключён либо пробои его запрещены
+		 *
+		 * @note Отказ этот означает не ошибку просьбы, а отключённое устройством
+		 *       средство: просить его снова тем же способом бесполезно
+		 */
+		if(!enabled || !allowed){
+			// Записываем в лог сообщение о недоступности пробоев заслона IPv6
+			this->_log->print(
+				"IPv6 firewall is %s", log_t::flag_t::WARNING,
+				(enabled ? "enabled but inbound pinholes are not allowed" : "disabled")
+			);
+			// Выполняем завершение обмена отказом
+			this->failure(type_t::UPNP, error_t::NOT_SUPPORTED);
+			// Завершаем разбор ответа службы устройства
+			return;
+		}
+		/**
+		 * Если просьбу о пробое заслона начать не удалось
+		 */
+		if(!this->control())
+			// Выполняем завершение обмена отказом
+			this->failure(type_t::UPNP, error_t::NO_RESPONSE);
 		// Завершаем разбор ответа службы устройства
 		return;
 	}
@@ -2485,6 +2555,8 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	bool result = false;
 	// Сбрасываем порядковый номер читаемого перенаправления
 	this->_index = 0;
+	// Сбрасываем признак того, что спрашивается состояние заслона IPv6
+	this->_probe = false;
 	// Выполняем очистку прочитанного перечня перенаправлений
 	this->_mappings.clear();
 	/**
@@ -2914,7 +2986,7 @@ bool awh::unit::Portmap::close(const mapping_t & mapping) noexcept {
 awh::unit::Portmap::Portmap(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _type(type_t::AUTO), _family(family_t::IPV4), _action(action_t::NONE),
  _attempts(::DEFAULT_ATTEMPTS), _delay(::DEFAULT_DELAY),
- _index(0), _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
+ _index(0), _probe(false), _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
  _parser(http::direct_t::RESPONSE, fmk, log), _request{""}, _payload{""}, _complete(false), _connected(false), _uri(fmk, log), _router{""},
  _iface{""}, _address(nullptr), _addr(fmk, log), _ifaces(fmk, log), _gateway(fmk, log), _pcp(fmk, log),
  _ssdp(fmk, log), _soap(fmk, log), _upnp(fmk, log), _device(fmk, log), _natpmp(fmk, log) {}

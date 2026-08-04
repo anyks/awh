@@ -72,6 +72,9 @@
 	#define _WANT_KINFO_PROC
 	#include <sys/param.h>
 	#include <sys/sysctl.h>
+	/**
+	 * Если операционной системой является FreeBSD и NetBSD
+	 */
 	#if !__NetBSD__
 		#include <sys/user.h>
 	#endif
@@ -163,6 +166,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <sys/os.hpp>
+#include <sys/ascii.hpp>
 
 /**
  * Для операционной системы MS Windows
@@ -2832,9 +2836,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	template double awh::Operating_System::sysctl <double> (string_view) const noexcept;
 	template string awh::Operating_System::sysctl <string> (string_view) const noexcept;
 	/**
-	 * Если операционной системой является macOS или Linux
+	 * Если размер и знаковый размер являются самостоятельными видами
+	 *
+	 * @note У библиотеки языка C в исполнении GNU размер совпадает по виду с целым
+	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
+	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
 	 */
-	#if __APPLE__ || __MACH__ || __linux__
+	#if __APPLE__ || __MACH__
 		template size_t awh::Operating_System::sysctl <size_t> (string_view) const noexcept;
 		template ssize_t awh::Operating_System::sysctl <ssize_t> (string_view) const noexcept;
 	#endif
@@ -2853,9 +2861,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	template vector <double> awh::Operating_System::sysctl <vector <double>> (string_view) const noexcept;
 	template vector <string> awh::Operating_System::sysctl <vector <string>> (string_view) const noexcept;
 	/**
-	 * Если операционной системой является macOS или Linux
+	 * Если размер и знаковый размер являются самостоятельными видами
+	 *
+	 * @note У библиотеки языка C в исполнении GNU размер совпадает по виду с целым
+	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
+	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
 	 */
-	#if __APPLE__ || __MACH__ || __linux__
+	#if __APPLE__ || __MACH__
 		template vector <size_t> awh::Operating_System::sysctl <vector <size_t>> (string_view) const noexcept;
 		template vector <ssize_t> awh::Operating_System::sysctl <vector <ssize_t>> (string_view) const noexcept;
 	#endif
@@ -2914,9 +2926,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	template bool awh::Operating_System::sysctl <float> (string_view, const float) const noexcept;
 	template bool awh::Operating_System::sysctl <double> (string_view, const double) const noexcept;
 	/**
-	 * Если операционной системой является macOS или Linux
+	 * Если размер и знаковый размер являются самостоятельными видами
+	 *
+	 * @note У библиотеки языка C в исполнении GNU размер совпадает по виду с целым
+	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
+	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
 	 */
-	#if __APPLE__ || __MACH__ || __linux__
+	#if __APPLE__ || __MACH__
 		template bool awh::Operating_System::sysctl <size_t> (string_view, const size_t) const noexcept;
 		template bool awh::Operating_System::sysctl <ssize_t> (string_view, const ssize_t) const noexcept;
 	#endif
@@ -3027,9 +3043,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	template bool awh::Operating_System::sysctl <float> (string_view, const vector <float> &) const noexcept;
 	template bool awh::Operating_System::sysctl <double> (string_view, const vector <double> &) const noexcept;
 	/**
-	 * Если операционной системой является macOS или Linux
+	 * Если размер и знаковый размер являются самостоятельными видами
+	 *
+	 * @note У библиотеки языка C в исполнении GNU размер совпадает по виду с целым
+	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
+	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
 	 */
-	#if __APPLE__ || __MACH__ || __linux__
+	#if __APPLE__ || __MACH__
 		template bool awh::Operating_System::sysctl <size_t> (string_view, const vector <size_t> &) const noexcept;
 		template bool awh::Operating_System::sysctl <ssize_t> (string_view, const vector <ssize_t> &) const noexcept;
 	#endif

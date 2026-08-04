@@ -543,9 +543,9 @@ TEST_F(PortmapFixture, UpnpUnpinhole) {
 /**
  * @brief Проверка разбора ответов службы заслона IPv6
  *
- * @warning Проверить разбор на живом устройстве не удалось - см. замечание к проверке
- *          сборки вызова проделывания пробоя. Разбираемые ответы собраны по разметке
- *          договора UPnP IGD:2, а не сняты с устройства
+ * @note Разбираемые ответы сняты с живого устройства: MiniUPnPd 2.3.7 с заслоном
+ *       IPv6 на netfilter. Ответ отключённого заслона собран по разметке договора -
+ *       выключить заслон это устройство настройкой не даёт
  *
  */
 TEST_F(PortmapFixture, UpnpFirewall) {
@@ -587,6 +587,64 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 		ASSERT_TRUE(enabled);
 		// Выполняем проверку того, что пробои заслона IPv6 разрешены
 		ASSERT_TRUE(allowed);
+	}
+	/**
+	 * Выполняем проверку извлечения состояния отключённого заслона IPv6
+	 *
+	 * @note Отключённый заслон и запрет пробоев при включённом заслоне - разные
+	 *       положения, и различать их обязано именно это действие: на саму просьбу о
+	 *       пробое устройство ответило бы отказом, по которому причина уже не видна
+	 */
+	{
+		// Разбираемый ответ службы заслона IPv6
+		const std::string text =
+			"<?xml version=\"1.0\"?>"
+			"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+			"<s:Body><u:GetFirewallStatusResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\">"
+			"<FirewallEnabled>0</FirewallEnabled>"
+			"<InboundPinholeAllowed>0</InboundPinholeAllowed>"
+			"</u:GetFirewallStatusResponse></s:Body></s:Envelope>";
+		// Разобранный ответ службы устройства
+		soap_t::answer_t answer;
+		// Выполняем разбор ответа службы устройства
+		ASSERT_TRUE(soap->parse(text, answer, error));
+		// Признак того, что заслон IPv6 включён
+		bool enabled = true;
+		// Признак того, что пробои заслона IPv6 разрешены
+		bool allowed = true;
+		// Выполняем извлечение состояния заслона IPv6
+		ASSERT_TRUE(upnp->firewall(answer, enabled, allowed));
+		// Выполняем проверку того, что заслон IPv6 отключён
+		ASSERT_FALSE(enabled);
+		// Выполняем проверку того, что пробои заслона IPv6 запрещены
+		ASSERT_FALSE(allowed);
+	}
+	/**
+	 * Выполняем проверку извлечения запрета пробоев при включённом заслоне
+	 */
+	{
+		// Разбираемый ответ службы заслона IPv6
+		const std::string text =
+			"<?xml version=\"1.0\"?>"
+			"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+			"<s:Body><u:GetFirewallStatusResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\">"
+			"<FirewallEnabled>1</FirewallEnabled>"
+			"<InboundPinholeAllowed>0</InboundPinholeAllowed>"
+			"</u:GetFirewallStatusResponse></s:Body></s:Envelope>";
+		// Разобранный ответ службы устройства
+		soap_t::answer_t answer;
+		// Выполняем разбор ответа службы устройства
+		ASSERT_TRUE(soap->parse(text, answer, error));
+		// Признак того, что заслон IPv6 включён
+		bool enabled = false;
+		// Признак того, что пробои заслона IPv6 разрешены
+		bool allowed = true;
+		// Выполняем извлечение состояния заслона IPv6
+		ASSERT_TRUE(upnp->firewall(answer, enabled, allowed));
+		// Выполняем проверку того, что заслон IPv6 включён
+		ASSERT_TRUE(enabled);
+		// Выполняем проверку того, что пробои заслона IPv6 запрещены
+		ASSERT_FALSE(allowed);
 	}
 	/**
 	 * Выполняем проверку извлечения опознавателя проделанного пробоя

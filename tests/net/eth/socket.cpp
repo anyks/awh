@@ -469,8 +469,24 @@ TEST_F(EthFixture, SocketEcnTest){
  *          генерации метаданных трафика датаграмма приходит без неё,
  *          и определить перегрузку пути невозможно
  *
+ * @par Намеренные решения
+ *
+ * Проверка пропускается там, где ядро класс обслуживания принятой датаграммы
+ * не выдаёт вовсе: NetBSD и OpenBSD параметра IP_RECVTOS не имеют, и список
+ * их IP_RECV* класса обслуживания не содержит. Признаком служит отсутствие
+ * самого параметра, а не перечисление систем поимённо: перечисление устареет
+ * с первым же выпуском, который параметр добавит. По IPv6 обе системы класс
+ * выдают полностью, пробел только по IPv4
+ *
  */
 TEST_F(EthFixture, SocketEcnDeliveryTest){
+	/**
+	 * Если система класс обслуживания принятой датаграммы не выдаёт
+	 */
+	#if !defined(IP_RECVTOS)
+		// Пропускаем тест - проверять нечего
+		GTEST_SKIP() << "IPv4 traffic class delivery is not supported by the system";
+	#else
 	// Создаём UDP сокет получателя
 	auto rx = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
 	// Создаём UDP сокет отправителя
@@ -541,6 +557,7 @@ TEST_F(EthFixture, SocketEcnDeliveryTest){
 	::close(tx);
 	// Проверяем что маркировка доставлена в неизменном виде
 	ASSERT_EQ(congestion, static_cast <uint8_t> (awh::event::ecn_t::ECT0));
+	#endif
 }
 
 /**

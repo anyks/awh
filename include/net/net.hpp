@@ -29,6 +29,7 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <vector>
 #include <cstdint>
 #include <unordered_set>
 

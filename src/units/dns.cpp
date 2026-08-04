@@ -24,6 +24,7 @@
 #include <random>
 #include <cerrno>
 #include <cstdint>
+#include <algorithm>
 #include <string_view>
 #include <shared_mutex>
 #include <unordered_set>
