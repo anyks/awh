@@ -148,7 +148,15 @@ bool awh::Client::resumeUnit() noexcept {
  *
  */
 bool awh::Client::connectUnit() noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.connect(this->_id.eid) : this->_unit->client.connect(this->_id.eid));
+	/**
+	 * Копируем идентификатор события в переменную
+	 *
+	 * @note Поле принадлежит упакованной структуре, ссылку на него взять нельзя, а
+	 *       подключение принимает именно ссылку
+	 */
+	const event::id_t eid = this->_id.eid;
+	// Выполняем подключение к удалённому серверу
+	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.connect(eid) : this->_unit->client.connect(eid));
 }
 /**
  * @brief Метод отключения события клиента на активном юните транспорта

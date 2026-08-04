@@ -413,6 +413,31 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 				// Запоминаем количество атрибутов узла
 				this->_nodes[id].attributes = static_cast <uint32_t> (reader.attributes().size());
 				/**
+				 * Если узел объявил пространства имён
+				 *
+				 * @note Отрезок хранилища связываний заводится лишь объявившим узлам: объявляют
+				 *       их считанные из всего дерева, а место в записи узла заняли бы все
+				 */
+				if(!reader.bindings().empty()){
+					// Собираемый отрезок хранилища связываний узла
+					const span_t range(static_cast <uint32_t> (this->_scopes.size()), static_cast <uint32_t> (reader.bindings().size()));
+					/**
+					 * Выполняем перебор всех объявлений пространств имён узла
+					 */
+					for(const binding_t & binding : reader.bindings()){
+						// Собираемая запись связывания префикса
+						scope_t scope;
+						// Выполняем размещение префикса объявления
+						scope.prefix = store(binding.prefix);
+						// Выполняем размещение обозначения объявляемого пространства имён
+						scope.uri = intern(binding.uri);
+						// Выполняем добавление записи связывания к хранилищу
+						this->_scopes.push_back(scope);
+					}
+					// Выполняем привязку отрезка хранилища связываний к узлу
+					this->_scoped.emplace(id, range);
+				}
+				/**
 				 * Выполняем перебор всех атрибутов узла
 				 */
 				for(const attribute_t & attribute : reader.attributes()){
@@ -618,6 +643,10 @@ void awh::codec::xml::Document::clear() noexcept {
 	this->_nodes.clear();
 	// Выполняем очистку хранилища атрибутов
 	this->_attributes.clear();
+	// Выполняем очистку хранилища связываний префиксов
+	this->_scopes.clear();
+	// Выполняем очистку отрезков хранилища связываний
+	this->_scoped.clear();
 	// Выполняем очистку общего хранилища знаков
 	this->_storage.clear();
 	// Выполняем очистку таблицы размещённых имён
@@ -1012,6 +1041,49 @@ vector <awh::codec::xml::attribute_t> awh::codec::xml::Node::attributes() const 
 		result.push_back(attribute);
 	}
 	// Выводим собранный перечень атрибутов узла
+	return result;
+}
+/**
+ * @brief Метод получения перечня объявлений пространств имён узла
+ *
+ * @return перечень связываний префиксов, объявленных узлом
+ *
+ */
+vector <awh::codec::xml::binding_t> awh::codec::xml::Node::bindings() const noexcept {
+	// Собираемый перечень объявлений пространств имён узла
+	vector <binding_t> result;
+	/**
+	 * Если узел непригоден
+	 */
+	if(!this->valid())
+		// Выводим пустой перечень объявлений
+		return result;
+	// Выполняем отыскание отрезка хранилища связываний узла
+	auto i = this->_document->_scoped.find(this->_id);
+	/**
+	 * Если узел пространств имён не объявлял
+	 */
+	if(i == this->_document->_scoped.end())
+		// Выводим пустой перечень объявлений
+		return result;
+	// Выполняем отвод места под перечень объявлений узла
+	result.reserve(i->second.length);
+	/**
+	 * Выполняем перебор всех связываний, объявленных узлом
+	 */
+	for(uint32_t index = 0; index < i->second.length; index++){
+		// Получаем запись очередного связывания префикса
+		const Document::scope_t & scope = this->_document->_scopes[i->second.offset + index];
+		// Собираемое объявление пространства имён
+		binding_t binding;
+		// Запоминаем префикс объявления
+		binding.prefix = this->_document->get(scope.prefix);
+		// Запоминаем обозначение объявляемого пространства имён
+		binding.uri = this->_document->get(scope.uri);
+		// Выполняем добавление объявления к перечню узла
+		result.push_back(binding);
+	}
+	// Выводим собранный перечень объявлений пространств имён узла
 	return result;
 }
 /**

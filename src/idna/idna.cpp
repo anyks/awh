@@ -20,6 +20,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <cstring>
 #include <idna/idna.hpp>
 #include <sys/ascii.hpp>
 #include <unicode/utf8.hpp>

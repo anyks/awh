@@ -1093,8 +1093,56 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 		// Выводим результат записи собранных выражений
 		return false;
 	}
+	/**
+	 * Если запись хранилища подлежит сжатию
+	 */
+	if(this->_method != compressor::method_t::NONE) {
+		/**
+		 * Если обработчик сжатия записи не установлен
+		 */
+		if(!this->_pack) {
+			// Устанавливаем ошибку отсутствия обработчика метода сжатия
+			this->_error = storage_error_t::BAD_METHOD;
+			// Выводим результат записи собранных выражений
+			return false;
+		}
+		// Сжатое содержимое записи хранилища
+		string packed;
+		/**
+		 * Если сжатие содержимого записи не выполнено
+		 */
+		if(!this->_pack(payload, packed) || packed.empty()) {
+			// Устанавливаем ошибку невыполненного сжатия записи
+			this->_error = storage_error_t::BAD_PACKING;
+			// Выводим результат записи собранных выражений
+			return false;
+		}
+		// Выполняем размещение записи хранилища
+		result.reserve(packed.size() + 40);
+		// Выполняем запись опознания записи хранилища
+		write64(STORAGE_MAGIC, result);
+		// Выполняем запись версии устройства записи
+		write16(STORAGE_VERSION, result);
+		// Выполняем запись опознания устройства машины
+		write16(platform(), result);
+		// Выполняем запись метода сжатия записи хранилища
+		write8(static_cast <uint8_t> (this->_method), result);
+		// Выполняем запись байтов выравнивания заголовка записи
+		write8(0, result);
+		write16(0, result);
+		// Выполняем запись размера сжатого содержимого записи
+		write64(static_cast <uint64_t> (packed.size()), result);
+		// Выполняем запись размера содержимого записи до сжатия
+		write64(static_cast <uint64_t> (payload.size()), result);
+		// Выполняем запись контрольной суммы сжатого содержимого
+		write64(checksum(packed), result);
+		// Выполняем запись сжатого содержимого записи хранилища
+		result.append(packed);
+		// Выводим результат записи собранных выражений
+		return true;
+	}
 	// Выполняем размещение записи хранилища
-	result.reserve(payload.size() + 32);
+	result.reserve(payload.size() + 40);
 	// Выполняем запись опознания записи хранилища
 	write64(STORAGE_MAGIC, result);
 	// Выполняем запись версии устройства записи
@@ -1111,10 +1159,15 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 	 *
 	 */
 	write16(platform(), result);
+	// Выполняем запись метода сжатия записи хранилища
+	write8(static_cast <uint8_t> (compressor::method_t::NONE), result);
 	// Выполняем запись байтов выравнивания заголовка записи
-	write32(0, result);
+	write8(0, result);
+	write16(0, result);
 	// Выполняем запись размера содержимого записи
 	write64(static_cast <uint64_t> (payload.size()), result);
+	// Выполняем запись размера содержимого записи до сжатия
+	write64(0, result);
 	// Выполняем запись контрольной суммы содержимого
 	write64(checksum(payload), result);
 	// Выполняем запись содержимого записи хранилища
@@ -1212,14 +1265,17 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 		// Выводим результат восстановления собранных выражений
 		return false;
 	}
-	// Опознание устройства машины и байты выравнивания заголовка
+	// Опознание устройства машины
 	uint16_t machine = 0;
+	// Метод сжатия записи хранилища и байт выравнивания заголовка
+	uint8_t method = 0, filler = 0;
 	// Байты выравнивания заголовка записи
-	uint32_t padding = 0;
+	uint16_t padding = 0;
 	/**
 	 * Если чтение опознания устройства машины не выполнено
 	 */
-	if(!read16(data, offset, machine) || !read32(data, offset, padding)) {
+	if(!read16(data, offset, machine) || !read8(data, offset, method) ||
+	 !read8(data, offset, filler) || !read16(data, offset, padding)) {
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления собранных выражений
@@ -1228,7 +1284,7 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 	/**
 	 * Если байты выравнивания заголовка записи не пусты
 	 */
-	if(padding != 0) {
+	if((filler != 0) || (padding != 0)) {
 		// Устанавливаем ошибку несообразного содержимого записи
 		this->_error = storage_error_t::BAD_CONTENT;
 		// Выводим результат восстановления собранных выражений
@@ -1243,12 +1299,12 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 		// Выводим результат восстановления собранных выражений
 		return false;
 	}
-	// Размер содержимого записи и контрольная сумма
-	uint64_t length = 0, sum = 0;
+	// Размер содержимого записи, размер его до сжатия и контрольная сумма
+	uint64_t length = 0, origin = 0, sum = 0;
 	/**
-	 * Если чтение размера содержимого либо суммы не выполнено
+	 * Если чтение размеров содержимого либо суммы не выполнено
 	 */
-	if(!read64(data, offset, length) || !read64(data, offset, sum)) {
+	if(!read64(data, offset, length) || !read64(data, offset, origin) || !read64(data, offset, sum)) {
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления собранных выражений
@@ -1264,13 +1320,76 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 		return false;
 	}
 	// Получаем содержимое записи хранилища
-	const string_view payload = data.substr(offset);
+	string_view payload = data.substr(offset);
 	/**
 	 * Если контрольная сумма содержимого записи не совпадает
 	 */
 	if(checksum(payload) != sum) {
 		// Устанавливаем ошибку несовпадения контрольной суммы
 		this->_error = storage_error_t::BAD_CHECKSUM;
+		// Выводим результат восстановления собранных выражений
+		return false;
+	}
+	// Держатель содержимого записи, обозреваемого наборами программ
+	shared_ptr <const string> holder = blob;
+	/**
+	 * Если запись хранилища сжата
+	 */
+	if(method != static_cast <uint8_t> (compressor::method_t::NONE)) {
+		/**
+		 * Если обработчик разжатия записи не установлен
+		 */
+		if(!this->_unpack) {
+			// Устанавливаем ошибку отсутствия обработчика метода сжатия
+			this->_error = storage_error_t::BAD_METHOD;
+			// Выводим результат восстановления собранных выражений
+			return false;
+		}
+		/**
+		 * Если размер содержимого до сжатия превышает допустимый
+		 */
+		if(origin > static_cast <uint64_t> (MAX_STORAGE)) {
+			// Устанавливаем ошибку превышения размера записи
+			this->_error = storage_error_t::TOO_LARGE;
+			// Выводим результат восстановления собранных выражений
+			return false;
+		}
+		// Разжатое содержимое записи хранилища
+		string unpacked;
+		/**
+		 * Если разжатие содержимого записи не выполнено
+		 */
+		if(!this->_unpack(payload, unpacked)) {
+			// Устанавливаем ошибку невыполненного разжатия записи
+			this->_error = storage_error_t::BAD_PACKING;
+			// Выводим результат восстановления собранных выражений
+			return false;
+		}
+		/**
+		 * Если размер разжатого содержимого объявленному не отвечает
+		 */
+		if(static_cast <uint64_t> (unpacked.size()) != origin) {
+			// Устанавливаем ошибку несообразного содержимого записи
+			this->_error = storage_error_t::BAD_CONTENT;
+			// Выводим результат восстановления собранных выражений
+			return false;
+		}
+		/**
+		 * Выполняем передачу разжатого содержимого держателю
+		 *
+		 * @details Наборы программ обозревают участки содержимого разжатого,
+		 *          а не самой записи, поэтому держателем становится оно.
+		 *          Запись сжатая по выходе из восстановления не нужна вовсе.
+		 */
+		holder = make_shared <const string> (::move(unpacked));
+		// Выполняем установку обзора разжатого содержимого записи
+		payload = string_view(* holder);
+	/**
+	 * Если объявленный размер содержимого до сжатия не пуст
+	 */
+	} else if(origin != 0) {
+		// Устанавливаем ошибку несообразного содержимого записи
+		this->_error = storage_error_t::BAD_CONTENT;
 		// Выводим результат восстановления собранных выражений
 		return false;
 	}
@@ -1354,9 +1473,9 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 		 *          записи на срок жизни выражения и всех его копий.
 		 *
 		 */
-		expression->forward.blob = blob;
+		expression->forward.blob = holder;
 		// Выполняем установку держателя записи программе обратного направления
-		expression->backward.blob = blob;
+		expression->backward.blob = holder;
 		// Количество именованных групп выражения
 		uint32_t names = 0;
 		/**
@@ -1468,6 +1587,20 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 	}
 	// Выводим результат восстановления собранных выражений
 	return true;
+}
+/**
+ * @brief Метод извлечения кода ошибки хранилища
+ *
+ * @return код ошибки хранилища собранных выражений
+ *
+ */
+void awh::regex::Storage::packer(const compressor::method_t method, packer_t pack, packer_t unpack) noexcept {
+	// Выполняем установку метода сжатия записи хранилища
+	this->_method = method;
+	// Выполняем установку обработчика сжатия записи хранилища
+	this->_pack = ::move(pack);
+	// Выполняем установку обработчика разжатия записи хранилища
+	this->_unpack = ::move(unpack);
 }
 /**
  * @brief Метод извлечения кода ошибки хранилища

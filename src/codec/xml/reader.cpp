@@ -52,6 +52,28 @@ namespace {
 	constexpr size_t COMPACT_LIMIT = 0x10000;
 
 	/**
+	 * @brief Метод проверки знака на принадлежность к пробельным знакам разметки
+	 *
+	 * @param letter проверяемый знак
+	 * @return       результат проверки
+	 *
+	 * @details Договор XML относит к пробельным лишь пробел, знак горизонтального
+	 *          отступа, перевод строки и возврат каретки, тогда как общий разбор
+	 *          знаков US-ASCII считает пробельными ещё и вертикальный отступ с
+	 *          подачей страницы
+	 *
+	 * @note Оба набора знаков сейчас дают один и тот же итог: знаки, лишние по
+	 *       договору, отклоняются ещё при перекодировании текста и до разбора не
+	 *       доходят. Собственная проверка закрепляет договор в самом разборе, чтобы
+	 *       ослабление проверки при перекодировании не расширило набор молча
+	 *
+	 */
+	static constexpr bool isSpace(const char letter) noexcept {
+		// Выполняем проверку знака по договору разметки
+		return ((letter == ' ') || (letter == '\t') || (letter == '\n') || (letter == '\r'));
+	}
+
+	/**
 	 * @brief Разряды знаков US-ASCII, допустимых в именах
 	 *
 	 * @details Подавляющее большинство имён в разметке записано знаками US-ASCII, и
@@ -1393,7 +1415,7 @@ bool awh::codec::xml::Reader::subsetSpace(size_t & offset, const size_t end, con
 	/**
 	 * Выполняем пропуск пробельных знаков
 	 */
-	while((offset < end) && ascii::isSpace(this->_buffer[offset]))
+	while((offset < end) && ::isSpace(this->_buffer[offset]))
 		// Выполняем переход к следующему знаку
 		offset++;
 	// Выводим результат выполнения операции
@@ -2197,7 +2219,7 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 		/**
 		 * Если обнаружен пробельный знак
 		 */
-		if(ascii::isSpace(letter)){
+		if(::isSpace(letter)){
 			// Выполняем переход к следующему знаку
 			offset++;
 			// Выполняем переход к следующему объявлению
@@ -2317,7 +2339,7 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			/**
 			 * Если содержимое не отделено от обозначения обработчика
 			 */
-			if((stop > offset) && !ascii::isSpace(this->_buffer[offset])){
+			if((stop > offset) && !::isSpace(this->_buffer[offset])){
 				// Запоминаем код ошибки разбора
 				this->_error = error_t::INVALID_PROCESSING;
 				// Выводим отрицательный результат выполнения операции
@@ -2910,7 +2932,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseText() noexcept {
 		/**
 		 * Если обнаружен знак, не являющийся пробельным
 		 */
-		if(!ascii::isSpace(raw[i])){
+		if(!::isSpace(raw[i])){
 			// Запоминаем, что содержимое пробельным не является
 			spaces = false;
 			/**
@@ -3372,7 +3394,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseProcessing() noexc
 			/**
 			 * Выполняем пропуск пробельных знаков
 			 */
-			while((at < content.length()) && ascii::isSpace(content[at]))
+			while((at < content.length()) && ::isSpace(content[at]))
 				// Выполняем переход к следующему знаку
 				at++;
 			// Выводим результат выполнения операции
@@ -3547,7 +3569,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseProcessing() noexc
 		/**
 		 * Выполняем пропуск пробельных знаков перед данными указания
 		 */
-		while((pos < end) && ascii::isSpace(this->_buffer[pos]))
+		while((pos < end) && ::isSpace(this->_buffer[pos]))
 			// Выполняем переход к следующему знаку
 			pos++;
 		// Запоминаем цель указания обработчику
@@ -4413,7 +4435,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 		/**
 		 * Выполняем пропуск пробельных знаков
 		 */
-		while((pos < end) && ascii::isSpace(this->_buffer[pos]))
+		while((pos < end) && ::isSpace(this->_buffer[pos]))
 			// Выполняем переход к следующему знаку
 			pos++;
 		/**
@@ -4490,7 +4512,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 		/**
 		 * Выполняем пропуск пробельных знаков перед разделителем
 		 */
-		while((pos < end) && ascii::isSpace(this->_buffer[pos]))
+		while((pos < end) && ::isSpace(this->_buffer[pos]))
 			// Выполняем переход к следующему знаку
 			pos++;
 		/**
@@ -4504,7 +4526,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 		/**
 		 * Выполняем пропуск пробельных знаков перед значением
 		 */
-		while((pos < end) && ascii::isSpace(this->_buffer[pos]))
+		while((pos < end) && ::isSpace(this->_buffer[pos]))
 			// Выполняем переход к следующему знаку
 			pos++;
 		/**
@@ -4765,7 +4787,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseClosing() noexcept
 	/**
 	 * Выполняем пропуск пробельных знаков после имени
 	 */
-	while((pos < end) && ascii::isSpace(this->_buffer[pos]))
+	while((pos < end) && ::isSpace(this->_buffer[pos]))
 		// Выполняем переход к следующему знаку
 		pos++;
 	/**

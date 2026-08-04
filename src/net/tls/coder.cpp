@@ -20,6 +20,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cstring>
 #include <map>
 #include <ctime>
 #include <atomic>

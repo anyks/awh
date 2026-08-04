@@ -46,13 +46,15 @@ echo "Собираем набор исходных текстов модуля"
 if [ -n "$RECORD" ] ; then
 	cp "$RECORD" "$ROOT/tools/regex/record.bin"
 	tar czf "$BUNDLE" -C "$ROOT" \
-		include/regex include/unicode include/sys/ascii.hpp include/sys/global.hpp \
+		include/regex include/unicode include/compressor/types.hpp \
+		include/sys/ascii.hpp include/sys/global.hpp \
 		src/regex src/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
 		tools/regex/record.bin
 	rm -f "$ROOT/tools/regex/record.bin"
 else
 	tar czf "$BUNDLE" -C "$ROOT" \
-		include/regex include/unicode include/sys/ascii.hpp include/sys/global.hpp \
+		include/regex include/unicode include/compressor/types.hpp \
+		include/sys/ascii.hpp include/sys/global.hpp \
 		src/regex src/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp
 fi
 

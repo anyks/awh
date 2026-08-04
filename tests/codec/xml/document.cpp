@@ -25,6 +25,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/xml/document.hpp>
+#include <codec/xml/writer.hpp>
 
 /**
  * Подключаем заголовочные файлы тестового окружения
@@ -83,6 +84,86 @@ TEST(CodecXmlDocument, Soap) {
 	ASSERT_EQ(root.attribute("encodingStyle", "http://schemas.xmlsoap.org/soap/envelope/"), "http://schemas.xmlsoap.org/soap/encoding/");
 	// Выполняем проверку обхода дерева вверх
 	ASSERT_TRUE(address.parent().parent() == body);
+}
+/**
+ * @brief Проверка сохранения записи имён при обратной записи дерева
+ *
+ * @details Смысл имени задаёт обозначение пространства имён, а не префикс, и запись
+ *          вправе назначать префиксы сама. Но договор о подписи XML сличает документы
+ *          знак в знак, и переназначенный префикс подпись ломает: дерево удерживает
+ *          объявления узлов, а запись их применяет
+ *
+ */
+TEST(CodecXmlDocument, Bindings) {
+	/**
+	 * @brief Метод разбора текста разметки и обратной его записи
+	 *
+	 * @param text разбираемый текст разметки
+	 * @return     записанный обратно текст разметки
+	 *
+	 */
+	const auto walk = [](const string & text) noexcept -> string {
+		// Объект дерева разметки
+		xml::document_t document;
+		// Настройки разбора текста разметки
+		xml::reader_t::settings_t settings;
+		// Выполняем отключение выдачи примечаний отдельным событием
+		settings.comments = false;
+		// Выполняем отключение выдачи указаний обработчику отдельным событием
+		settings.processing = false;
+		// Если разбор текста разметки выполнить не удалось, выводим отказ
+		if(!document.parse(text, settings)) return string("ОТКАЗ РАЗБОРА");
+		// Объект записи текста разметки
+		xml::writer_t writer;
+		// Если обратную запись дерева выполнить не удалось, выводим отказ
+		if(!writer.element(document.root())) return string("ОТКАЗ ЗАПИСИ");
+		// Выводим записанный обратно текст разметки
+		return writer.text();
+	};
+	/**
+	 * @brief Перечень текстов разметки, обязанных пережить обратную запись знак в знак
+	 *
+	 * @note Здесь собраны все виды объявления пространства имён: под префиксом, по
+	 *       умолчанию, с отменой объявления по умолчанию, с перекрытием префикса
+	 *       вложенным узлом и с двумя префиксами разом
+	 */
+	static constexpr const char * TEXTS[] = {
+		"<s:Envelope xmlns:s=\"http://x/env\"><s:Body><u:Get xmlns:u=\"urn:svc\"><Arg>1</Arg></u:Get></s:Body></s:Envelope>",
+		"<a xmlns=\"urn:one\"><b><c/></b></a>",
+		"<a xmlns=\"urn:one\"><b xmlns=\"\"><c/></b></a>",
+		"<p:a xmlns:p=\"u1\"><p:b xmlns:p=\"u2\"><p:c/></p:b></p:a>",
+		"<a xmlns:p=\"u\" p:k=\"v\"/>",
+		"<a xmlns:p=\"u\" xmlns:q=\"w\"><p:b/><q:c/></a>",
+		"<a xmlns=\"u\"><p:b xmlns:p=\"u\"><c/></p:b></a>",
+		"<a><b x=\"1\">t</b></a>"
+	};
+	/**
+	 * Выполняем перебор всех текстов разметки
+	 */
+	for(const char * text : TEXTS)
+		// Выполняем проверку того, что текст пережил обратную запись знак в знак
+		ASSERT_EQ(walk(string(text)), string(text));
+	// Объект дерева разметки
+	xml::document_t document;
+	// Выполняем разбор текста разметки с объявлениями на разных уровнях
+	ASSERT_TRUE(document.parse("<a xmlns=\"u1\" xmlns:p=\"u2\"><p:b><c xmlns:q=\"u3\"/></p:b></a>"));
+	// Получаем корневой узел разметки
+	const xml::node_t root = document.element();
+	// Выполняем проверку количества объявлений корневого узла
+	ASSERT_EQ(root.bindings().size(), static_cast <size_t> (2));
+	/**
+	 * Выполняем проверку того, что объявления выдаются те, что записаны при самом узле
+	 *
+	 * @note Объявленное родителем действует и во вложенном узле, но принадлежит родителю:
+	 *       узел «b» своих объявлений не имеет, а узел «c» имеет единственное
+	 */
+	ASSERT_TRUE(root.child("b", "u2").bindings().empty());
+	// Выполняем проверку количества объявлений вложенного узла
+	ASSERT_EQ(root.find("c", "u1").bindings().size(), static_cast <size_t> (1));
+	// Выполняем проверку префикса объявления вложенного узла
+	ASSERT_EQ(root.find("c", "u1").bindings().front().prefix, string_view("q"));
+	// Выполняем проверку обозначения объявления вложенного узла
+	ASSERT_EQ(root.find("c", "u1").bindings().front().uri, string_view("u3"));
 }
 /**
  * @brief Проверка сведения повторяющихся обозначений пространств имён

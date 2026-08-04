@@ -183,7 +183,7 @@ using namespace std;
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
 				#endif
 			}
 			// Возвращаем результат
@@ -1263,7 +1263,7 @@ void awh::Process_Resolver::scanning() noexcept {
 										// Инициализируем путь к сокету значением удалённого адреса (который может содержать путь к сокету)
 										string path = foreign;
 										// Читаем оставшуюся часть строки, которая может содержать путь к сокету
-										::getline(iss, rest);
+										std::getline(iss, rest);
 										// Если оставшаяся часть строки не пуста, добавляем её к пути
 										if(!rest.empty())
 											// Добавляем оставшуюся часть строки к пути, так как она может содержать дополнительные компоненты пути к сокету
@@ -1617,7 +1617,7 @@ void awh::Process_Resolver::scanning() noexcept {
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			this->_log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1804,7 +1804,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			this->_log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат

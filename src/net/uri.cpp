@@ -20,6 +20,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cstring>
 #include <array>
 #include <cctype>
 #include <algorithm>

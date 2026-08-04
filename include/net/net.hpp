@@ -27,6 +27,7 @@
  * Стандартные заголовочные файлы
  */
 #include <array>
+#include <memory>
 #include <string>
 #include <cstdint>
 #include <unordered_set>

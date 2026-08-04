@@ -37,7 +37,7 @@ echo "Раскладываем набор исходных текстов на �
 # Передача ведётся через ввод tar, а не средством scp: подсистема sftp на
 # стенде отключена, и scp обрывает связь
 tar czf - -C "$ROOT" \
-	include/regex include/unicode include/sys/ascii.hpp include/sys/global.hpp \
+	include/regex include/unicode include/compressor/types.hpp include/sys/ascii.hpp include/sys/global.hpp \
 	src/regex src/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
 	tools/regex/stand.bat \
 	| ssh -p "$PORT" "$TARGET" "

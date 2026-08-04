@@ -363,9 +363,22 @@ TEST(Regex, StoragePlatform) {
 		EXPECT_EQ(storage.error(), regex::storage_error_t::BAD_PLATFORM);
 	}
 	/**
+	 * Выполняем проверку отказа записи с неизвестным методом сжатия
+	 */
+	{
+		// Получаем запись с подменённым методом сжатия
+		string packed = record;
+		// Выполняем подмену метода сжатия записи
+		packed[12] = static_cast <char> (0x5A);
+		// Выполняем проверку отказа восстановления записи
+		EXPECT_FALSE(storage.load(packed, restored));
+		// Выполняем проверку установки кода ошибки хранилища
+		EXPECT_EQ(storage.error(), regex::storage_error_t::BAD_METHOD);
+	}
+	/**
 	 * Выполняем перебор байтов выравнивания заголовка записи
 	 */
-	for(size_t i = 12; i < 16; i++) {
+	for(size_t i = 13; i < 16; i++) {
 		// Получаем запись с непустыми байтами выравнивания
 		string filled = record;
 		// Выполняем заполнение очередного байта выравнивания
@@ -458,4 +471,191 @@ TEST(Regex, StorageLifetime) {
 	// Выполняем проверку сопоставления восстановленного выражения
 	EXPECT_TRUE(regexp.test("узел 192.168.5.150 отвечает", restored.front()));
 	EXPECT_FALSE(regexp.test("узел 192.168.5 отвечает", restored.front()));
+}
+
+/**
+ * @brief Функция обращения последовательности байтов
+ *
+ * @param source исходная последовательность байтов
+ * @param result выводимая последовательность байтов
+ * @return       результат обращения последовательности
+ *
+ * @details Обращение служит образцом обработчика сжатия: оно содержимое
+ *          изменяет, размер сохраняет и обратимо самим собою. Настоящие
+ *          методы сжатия берутся из модуля «compressor», но тесты модуля
+ *          регулярных выражений от него намеренно не зависят: модуль
+ *          самостоятелен, и проверять надлежит устройство крючков,
+ *          а не сторонние библиотеки.
+ *
+ */
+static bool reversed(string_view source, string & result) noexcept {
+	// Выполняем размещение выводимой последовательности байтов
+	result.assign(source.rbegin(), source.rend());
+	// Выводим результат обращения последовательности
+	return true;
+}
+/**
+ * @brief Тест записи и восстановления со сжатием содержимого
+ *
+ */
+TEST(Regex, StoragePacking) {
+	// Создаём объект работы с регулярными выражениями
+	const regexp_t regexp;
+	// Создаём объект хранилища собранных выражений
+	regex::storage_t storage;
+	// Получаем набор текстов порождённых выражений
+	const auto patterns = samples(200);
+	// Набор собранных начисто выражений
+	vector <regex::storage_t::exp_t> fresh;
+	/**
+	 * Выполняем сборку набора выражений
+	 */
+	for(const auto & pattern : patterns) {
+		// Выполняем сборку регулярного выражения
+		const auto exp = regexp.build(pattern, {regexp_t::flag_t::DUPNAMES});
+		/**
+		 * Если сборка регулярного выражения выполнена
+		 */
+		if(exp)
+			// Выполняем добавление собранного выражения в набор
+			fresh.push_back(exp);
+	}
+	// Выполняем проверку сборки набора выражений
+	ASSERT_FALSE(fresh.empty());
+	// Запись хранилища без сжатия содержимого
+	string plain;
+	// Выполняем запись собранных выражений без сжатия
+	ASSERT_TRUE(storage.save(fresh, plain));
+	// Выполняем установку сжатия записи хранилища
+	storage.packer(compressor::method_t::LZ4, &reversed, &reversed);
+	// Запись хранилища со сжатием содержимого
+	string packed;
+	// Выполняем запись собранных выражений со сжатием
+	ASSERT_TRUE(storage.save(fresh, packed)) << "код " << static_cast <uint32_t> (storage.error());
+	// Выполняем проверку совпадения размеров записей
+	ASSERT_EQ(packed.size(), plain.size());
+	// Выполняем проверку расхождения содержимого записей
+	EXPECT_NE(packed, plain);
+	// Выполняем проверку записи метода сжатия в заголовок
+	EXPECT_EQ(static_cast <uint8_t> (packed[12]), static_cast <uint8_t> (compressor::method_t::LZ4));
+	// Набор восстановленных выражений
+	vector <regex::storage_t::exp_t> restored;
+	// Выполняем восстановление собранных выражений
+	ASSERT_TRUE(storage.adopt(::move(packed), restored)) << "код " << static_cast <uint32_t> (storage.error());
+	// Выполняем проверку количества восстановленных выражений
+	ASSERT_EQ(restored.size(), fresh.size());
+	/**
+	 * @brief Набор текстов сличения поведения выражений
+	 *
+	 */
+	const vector <string> texts = {
+		"", "a", "abc", "aaa 123 zzz", "x b00_\nb0", "qqqqqqqqqq", "z", "-42.5e3"
+	};
+	/**
+	 * Выполняем перебор набора восстановленных выражений
+	 */
+	for(size_t i = 0; i < fresh.size(); i++) {
+		/**
+		 * Выполняем перебор набора текстов сличения
+		 */
+		for(const auto & text : texts)
+			// Выполняем сличение границ совпадения восстановленного выражения
+			EXPECT_EQ(regexp.match(text, fresh.at(i)), regexp.match(text, restored.at(i)))
+			 << "выражение \"" << patterns.at(i) << "\" на тексте \"" << text << "\"";
+	}
+}
+/**
+ * @brief Тест отказов сжатия записи хранилища
+ *
+ */
+TEST(Regex, StoragePackingErrors) {
+	// Создаём объект работы с регулярными выражениями
+	const regexp_t regexp;
+	// Создаём объект хранилища собранных выражений
+	regex::storage_t storage;
+	// Выполняем сборку регулярного выражения
+	const auto exp = regexp.build("[a-z]+[0-9]{2,4}", {});
+	// Выполняем проверку сборки регулярного выражения
+	ASSERT_TRUE(!!exp);
+	// Запись хранилища собранных выражений
+	string record;
+	// Набор восстановленных выражений
+	vector <regex::storage_t::exp_t> restored;
+	/**
+	 * Выполняем проверку отказа записи без обработчика сжатия
+	 */
+	{
+		// Выполняем установку метода сжатия без обработчиков
+		storage.packer(compressor::method_t::ZSTD, nullptr, nullptr);
+		// Выполняем проверку отказа записи собранных выражений
+		EXPECT_FALSE(storage.save({exp}, record));
+		// Выполняем проверку установки кода ошибки хранилища
+		EXPECT_EQ(storage.error(), regex::storage_error_t::BAD_METHOD);
+	}
+	/**
+	 * Выполняем проверку отказа записи при невыполненном сжатии
+	 */
+	{
+		// Выполняем установку обработчика, сжатия не выполняющего
+		storage.packer(compressor::method_t::ZSTD,
+		 [](string_view, string &) noexcept -> bool { return false; }, &reversed);
+		// Выполняем проверку отказа записи собранных выражений
+		EXPECT_FALSE(storage.save({exp}, record));
+		// Выполняем проверку установки кода ошибки хранилища
+		EXPECT_EQ(storage.error(), regex::storage_error_t::BAD_PACKING);
+	}
+	// Выполняем установку исправного сжатия записи хранилища
+	storage.packer(compressor::method_t::ZSTD, &reversed, &reversed);
+	// Выполняем запись собранных выражений
+	ASSERT_TRUE(storage.save({exp}, record));
+	/**
+	 * Выполняем проверку отказа восстановления без обработчика разжатия
+	 */
+	{
+		// Создаём объект хранилища без обработчиков сжатия
+		const regex::storage_t plain;
+		// Выполняем проверку отказа восстановления собранных выражений
+		EXPECT_FALSE(plain.load(record, restored));
+		// Выполняем проверку установки кода ошибки хранилища
+		EXPECT_EQ(plain.error(), regex::storage_error_t::BAD_METHOD);
+	}
+	/**
+	 * Выполняем проверку отказа восстановления при невыполненном разжатии
+	 */
+	{
+		// Создаём объект хранилища с обработчиком, разжатия не выполняющим
+		regex::storage_t broken;
+		// Выполняем установку обработчика, разжатия не выполняющего
+		broken.packer(compressor::method_t::ZSTD, &reversed,
+		 [](string_view, string &) noexcept -> bool { return false; });
+		// Выполняем проверку отказа восстановления собранных выражений
+		EXPECT_FALSE(broken.load(record, restored));
+		// Выполняем проверку установки кода ошибки хранилища
+		EXPECT_EQ(broken.error(), regex::storage_error_t::BAD_PACKING);
+	}
+	/**
+	 * Выполняем проверку отказа восстановления при расхождении размера
+	 */
+	{
+		// Создаём объект хранилища с обработчиком, размер изменяющим
+		regex::storage_t shrunk;
+		// Выполняем установку обработчика, размер изменяющего
+		shrunk.packer(compressor::method_t::ZSTD, &reversed,
+		 [](string_view source, string & result) noexcept -> bool {
+			// Выполняем разжатие содержимого с потерей последнего байта
+			result.assign(source.rbegin(), source.rend());
+			/**
+			 * Если разжатое содержимое не пусто
+			 */
+			if(!result.empty())
+				// Выполняем усечение разжатого содержимого
+				result.erase(result.size() - 1);
+			// Выводим результат разжатия содержимого
+			return true;
+		 });
+		// Выполняем проверку отказа восстановления собранных выражений
+		EXPECT_FALSE(shrunk.load(record, restored));
+		// Выполняем проверку установки кода ошибки хранилища
+		EXPECT_EQ(shrunk.error(), regex::storage_error_t::BAD_CONTENT);
+	}
 }

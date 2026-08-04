@@ -19,6 +19,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
+#include <cstring>
 #include <net/net.hpp>
 
 /**

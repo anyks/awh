@@ -19,6 +19,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cstring>
 #include <mutex>
 #include <array>
 #include <string>
@@ -803,7 +804,20 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event
 		// Создаём объект пакета запроса
 		::ntp::packet_t packet{};
 		// Формируем NTP-запрос
-		::ntp::request(packet, this->_transfer.version, this->_transfer.origSec, this->_transfer.origFrac);
+		/**
+		 * Собираем вопрос, запоминая метку отправки
+		 *
+		 * @note Метка возвращается через переменные, а не записывается прямо в поля
+		 *       учёта: поля эти принадлежат упакованной структуре, ссылку на них взять
+		 *       нельзя, а собирающий вопрос именно ссылки и принимает
+		 */
+		uint32_t origSec = 0, origFrac = 0;
+		// Выполняем сборку вопроса к серверу времени
+		::ntp::request(packet, this->_transfer.version, origSec, origFrac);
+		// Запоминаем секунды метки отправки заданного вопроса
+		this->_transfer.origSec = origSec;
+		// Запоминаем доли секунды метки отправки заданного вопроса
+		this->_transfer.origFrac = origFrac;
 		// Отправляем повторный запрос; send == 0 — клиент сломан (EAGAIN в движке не доходит сюда), уничтожаем событие
 		if(this->_io->send(this->_client.eid, &packet, sizeof(packet)) == 0){
 			// Снимаем флаг ожидания ответа от NTP-сервера
@@ -1931,7 +1945,20 @@ bool awh::unit::NTP::sync(const version_t version) noexcept {
 			// Создаём объект пакета запроса
 			::ntp::packet_t packet{};
 			// Формируем NTP-запрос
-			::ntp::request(packet, this->_transfer.version, this->_transfer.origSec, this->_transfer.origFrac);
+			/**
+			 * Собираем вопрос, запоминая метку отправки
+			 *
+			 * @note Метка возвращается через переменные, а не записывается прямо в поля
+			 *       учёта: поля эти принадлежат упакованной структуре, ссылку на них взять
+			 *       нельзя, а собирающий вопрос именно ссылки и принимает
+			 */
+			uint32_t origSec = 0, origFrac = 0;
+			// Выполняем сборку вопроса к серверу времени
+			::ntp::request(packet, this->_transfer.version, origSec, origFrac);
+			// Запоминаем секунды метки отправки заданного вопроса
+			this->_transfer.origSec = origSec;
+			// Запоминаем доли секунды метки отправки заданного вопроса
+			this->_transfer.origFrac = origFrac;
 			// Отправляем запрос на NTP-сервер для синхронизации времени
 			if(this->_io->send(this->_client.eid, &packet, sizeof(packet)) > 0)
 				// Возвращаем положительный результат

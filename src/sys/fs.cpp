@@ -33,6 +33,8 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <climits>
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <cstdlib>

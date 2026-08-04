@@ -586,7 +586,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					// Устанавливаем идентификатор процесса воркера
 					worker->pid = ::getpid();
 					// Добавляем нового воркера в список активных воркеров
-					auto ret = this->_workers.emplace(worker->pid, ::move(worker));
+					auto ret = this->_workers.emplace(static_cast <pid_t> (worker->pid), ::move(worker));
 					// Выполняем фиксацию и запуск работы события
 					if(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid)){
 						// Записываем в лог сообщение об успешном запуске события
@@ -665,7 +665,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 				// Устанавливаем идентификатор события для обмена сообщениями между процессами
 				worker->eid = events[0];
 				// Добавляем нового воркера в список активных воркеров
-				auto ret = this->_workers.emplace(worker->pid, ::move(worker));
+				auto ret = this->_workers.emplace(static_cast <pid_t> (worker->pid), ::move(worker));
 				// Добавляем соответствие идентификаторов событий и идентификатора процесса в список соответствия
 				this->_matching.emplace(ret.first->second->eid, ret.first->first);
 				// Если запуск события не отложен (одиночное размещение воркера во время работы кластера)
