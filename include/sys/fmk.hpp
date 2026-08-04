@@ -195,9 +195,6 @@ namespace awh {
 			// Объект парсинга nwt адреса
 			nwt_t _nwt;
 		private:
-			// Устанавливаем локаль по умолчанию
-			std::locale _locale;
-		private:
 			// Объект работы с логами
 			const Logging * _log;
 		public:
@@ -1590,7 +1587,7 @@ namespace awh {
 			 * @param locale локализация приложения
 			 *
 			 */
-			void setLocale(string_view locale = AWH_LOCALE) noexcept;
+			void setLocale(const string & locale = AWH_LOCALE) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения координат url адресов в строке
@@ -1751,7 +1748,7 @@ namespace awh {
 			 * @param locale локализация приложения
 			 *
 			 */
-			explicit Framework(string_view locale) noexcept;
+			explicit Framework(const string & locale) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

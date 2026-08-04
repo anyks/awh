@@ -1059,12 +1059,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	for(size_t i = 0; i < runs; i++)
 		// Выполняем заведение метки отступления очередного ряда
 		retries.push_back(emitter.label());
-	/**
-	 * Если кадр вызова порождаемому сопоставителю требуется
-	 */
-	if(frame > 0)
-		// Выполняем отведение кадра вызова порождаемого сопоставителя
-		emitter.sub(reg_t::STACK, reg_t::STACK, frame);
+	// Выполняем размещение входа в порождаемый сопоставитель
+	emitter.prologue(frame);
 	// Выполняем установку позиции начала попытки сопоставления
 	emitter.move(reg_t::KEEPER, reg_t::START);
 	// Выполняем сохранение позиции начала поиска совпадения в кадре вызова
@@ -2062,24 +2058,16 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	emitter.store(reg_t::KEEPER, reg_t::BOUNDS, 0);
 	// Выполняем запись конечной границы обнаруженного совпадения
 	emitter.store(reg_t::CURSOR, reg_t::BOUNDS, 1);
-	/**
-	 * Если кадр вызова порождаемому сопоставителю отводился
-	 */
-	if(frame > 0)
-		// Выполняем освобождение кадра вызова порождаемого сопоставителя
-		emitter.add(reg_t::STACK, reg_t::STACK, frame);
+	// Выполняем размещение выхода из порождаемого сопоставителя
+	emitter.epilogue(frame);
 	// Выполняем установку результата обнаружения совпадения
 	emitter.move(reg_t::RESULT, static_cast <uint64_t> (1));
 	// Выполняем размещение завершения вызова
 	emitter.ret();
 	// Выполняем расстановку метки отсутствия совпадения в тексте
 	emitter.place(none);
-	/**
-	 * Если кадр вызова порождаемому сопоставителю отводился
-	 */
-	if(frame > 0)
-		// Выполняем освобождение кадра вызова порождаемого сопоставителя
-		emitter.add(reg_t::STACK, reg_t::STACK, frame);
+	// Выполняем размещение выхода из порождаемого сопоставителя
+	emitter.epilogue(frame);
 	// Выполняем установку результата отсутствия совпадения
 	emitter.move(reg_t::RESULT, static_cast <uint64_t> (0));
 	// Выполняем размещение завершения вызова

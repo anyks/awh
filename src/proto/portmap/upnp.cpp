@@ -347,8 +347,8 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::status(const str
 /**
  * @brief Метод сборки вызова проделывания пробоя заслона IPv6
  *
- * @warning Проверить вызов на живом устройстве не удалось: маршрутизатор, на котором
- * отлаживался модуль, службы заслона IPv6 не выдаёт. Собрано по договору UPnP IGD:2
+ * @note Собрано по договору UPnP IGD:2 и проверено на живом устройстве: MiniUPnPd 2.3.7
+ * с заслоном IPv6 на netfilter
  *
  * @param service обозначение вида службы заслона IPv6
  * @param pinhole параметры проделываемого пробоя заслона
@@ -430,13 +430,17 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const st
 	 * @note Договор пробоя передаётся числом договора по описи IANA, а не названием:
 	 *       здесь это отличается от заведения перенаправления, где то же поле несёт
 	 *       название договора
+	 *
+	 * @warning Порядок доводов задан описанием службы и произвольным не является:
+	 *          договор UPnP предписывает передавать доводы вызова ровно в том порядке,
+	 *          в каком они объявлены, и переставлять их местами нельзя
 	 */
 	const vector <soap_t::argument_t> arguments = {
 		soap_t::argument_t("RemoteHost", pinhole.remoteHost),
 		soap_t::argument_t("RemotePort", ::std::to_string(pinhole.remotePort)),
-		soap_t::argument_t("Protocol", ::std::to_string((pinhole.proto == proto_t::TCP) ? 6 : 17)),
-		soap_t::argument_t("InternalPort", ::std::to_string(pinhole.internalPort)),
 		soap_t::argument_t("InternalClient", pinhole.internalClient),
+		soap_t::argument_t("InternalPort", ::std::to_string(pinhole.internalPort)),
+		soap_t::argument_t("Protocol", ::std::to_string((pinhole.proto == proto_t::TCP) ? 6 : 17)),
 		soap_t::argument_t("LeaseTime", ::std::to_string(pinhole.lifeTime))
 	};
 	// Запоминаем название вызываемого действия службы
@@ -451,8 +455,8 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const st
 /**
  * @brief Метод сборки вызова заделывания пробоя заслона IPv6
  *
- * @warning Проверить вызов на живом устройстве не удалось - см. замечание к сборке
- * вызова проделывания пробоя
+ * @note Вызов проверен на живом устройстве - см. замечание к сборке вызова
+ * проделывания пробоя
  *
  * @param service обозначение вида службы заслона IPv6
  * @param unique  опознаватель заделываемого пробоя заслона
@@ -478,8 +482,8 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::unpinhole(const 
 /**
  * @brief Метод сборки вызова чтения состояния заслона IPv6
  *
- * @warning Проверить вызов на живом устройстве не удалось - см. замечание к сборке
- * вызова проделывания пробоя
+ * @note Вызов проверен на живом устройстве - см. замечание к сборке вызова
+ * проделывания пробоя
  *
  * @param service обозначение вида службы заслона IPv6
  * @return        собранный вызов действия службы
@@ -500,8 +504,8 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::firewall(const s
 /**
  * @brief Метод извлечения опознавателя пробоя из ответа службы
  *
- * @warning Проверить извлечение на живом устройстве не удалось - см. замечание к
- * сборке вызова проделывания пробоя
+ * @note Извлечение проверено на живом устройстве - см. замечание к сборке вызова
+ * проделывания пробоя
  *
  * @param answer разобранный ответ службы
  * @param unique ссылка на извлечённый опознаватель пробоя заслона
@@ -534,8 +538,8 @@ bool awh::proto::portmap::UPnP::unique(const soap_t::answer_t & answer, uint16_t
 /**
  * @brief Метод извлечения состояния заслона IPv6 из ответа службы
  *
- * @warning Проверить извлечение на живом устройстве не удалось - см. замечание к
- * сборке вызова проделывания пробоя
+ * @note Извлечение проверено на живом устройстве - см. замечание к сборке вызова
+ * проделывания пробоя
  *
  * @param answer  разобранный ответ службы
  * @param enabled ссылка на признак того, что заслон включён

@@ -28,6 +28,122 @@ using namespace std;
 using namespace awh;
 
 /**
+ * Если сборка выполняется для процессора с набором команд ARM64
+ *
+ * @details Порождение под x86-64 живёт отдельным файлом: наборы команд
+ *          устроены различно настолько, что общего в них - лишь договор,
+ *          заголовочным файлом заданный. Оба файла собираются на всякой
+ *          машине, но состав получает лишь тот, чьему набору команд отвечает
+ *          сборка, - иначе определения методов столкнулись бы.
+ *
+ */
+/**
+ * @brief Метод проверки поддержки порождения машинного кода сборкой
+ *
+ * @return результат проверки поддержки порождения машинного кода
+ *
+ */
+bool awh::regex::Emitter::available() noexcept {
+	/**
+	 * Если сборка выполняется для процессора с набором команд ARM64
+	 */
+	#if defined(__aarch64__) || defined(_M_ARM64) || defined(__x86_64__) || defined(_M_X64)
+		// Выводим поддержку порождения машинного кода сборкой
+		return true;
+	/**
+	 * Если сборка выполняется для прочих наборов команд
+	 */
+	#else
+		// Выводим отсутствие поддержки порождения машинного кода сборкой
+		return false;
+	#endif
+}
+/**
+ * @brief Метод очистки порождаемой последовательности команд
+ *
+ */
+void awh::regex::Emitter::clear() noexcept {
+	// Выполняем очистку порождаемой последовательности команд
+	this->_code.clear();
+	// Выполняем очистку положений меток перехода
+	this->_labels.clear();
+	// Выполняем очистку набора отложенных переходов
+	this->_fixups.clear();
+	// Выполняем сброс флага отказа порождения машинного кода
+	this->_failed = false;
+}
+/**
+ * @brief Метод заведения метки перехода
+ *
+ * @return номер заведённой метки перехода
+ *
+ */
+size_t awh::regex::Emitter::label() noexcept {
+	// Получаем номер заводимой метки перехода
+	const size_t result = this->_labels.size();
+	// Выполняем заведение метки, положения не имеющей
+	this->_labels.push_back(INVALID_LABEL);
+	// Выводим номер заведённой метки перехода
+	return result;
+}
+/**
+ * @brief Метод расстановки метки перехода
+ *
+ * @param label номер расставляемой метки перехода
+ *
+ */
+void awh::regex::Emitter::place(const size_t label) noexcept {
+	/**
+	 * Если метка перехода не заведена
+	 */
+	if(label >= this->_labels.size()) {
+		// Выполняем установку флага отказа порождения машинного кода
+		this->_failed = true;
+		// Выходим из метода расстановки метки перехода
+		return;
+	}
+	// Выполняем установку положения метки перехода
+	this->_labels.at(label) = this->_code.size();
+}
+/**
+ * @brief Метод извлечения порождённой последовательности команд
+ *
+ * @return порождённая последовательность команд процессора
+ *
+ */
+const vector <uint8_t> & awh::regex::Emitter::code() const noexcept {
+	// Выводим порождённую последовательность команд процессора
+	return this->_code;
+}
+/**
+ * @brief Метод извлечения размера порождённого машинного кода
+ *
+ * @return размер порождённого машинного кода в байтах
+ *
+ */
+size_t awh::regex::Emitter::length() const noexcept {
+	// Выводим размер порождённого машинного кода
+	return this->_code.size();
+}
+/**
+ * @brief Метод проверки отказа порождения машинного кода
+ *
+ * @return результат проверки отказа порождения машинного кода
+ *
+ */
+bool awh::regex::Emitter::failed() const noexcept {
+	// Выводим результат проверки отказа порождения машинного кода
+	return this->_failed;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::regex::Emitter::Emitter() noexcept : _failed(false) {}
+
+#if defined(__aarch64__) || defined(_M_ARM64)
+
+/**
  * @brief Пространство имён двоичного представления команд ARM64
  *
  * @details Команда ARM64 занимает ровно четыре байта и собирается из полей
@@ -81,6 +197,50 @@ namespace {
 	 */
 	constexpr int64_t MAX_ADDRESS = 0x3FFFF;
 
+	/**
+	 * @brief Функция размещения команды в последовательности байтов
+	 *
+	 * @param code    порождаемая последовательность команд процессора
+	 * @param command размещаемая команда процессора
+	 *
+	 * @details Команда размещается байтами от младшего: набор команд ARM64
+	 *          исполняется процессорами порядка байтов младшего впереди.
+	 *
+	 */
+	inline void emit(vector <uint8_t> & code, const uint32_t command) noexcept {
+		/**
+		 * Выполняем размещение команды байтами от младшего
+		 */
+		for(uint8_t shift = 0; shift < 32; shift += 8)
+			// Выполняем размещение очередного байта команды
+			code.push_back(static_cast <uint8_t> ((command >> shift) & 0xFF));
+	}
+	/**
+	 * @brief Функция вписывания смещения в размещённую команду
+	 *
+	 * @param code     порождённая последовательность команд процессора
+	 * @param position положение правимой команды в последовательности
+	 * @param value    вписываемое значение полей команды
+	 *
+	 */
+	inline void patch(vector <uint8_t> & code, const size_t position, const uint32_t value) noexcept {
+		// Собираемая размещённая команда процессора
+		uint32_t command = 0;
+		/**
+		 * Выполняем сборку размещённой команды байтами от младшего
+		 */
+		for(uint8_t shift = 0; shift < 32; shift += 8)
+			// Выполняем добавление очередного байта команды
+			command |= (static_cast <uint32_t> (code.at(position + (shift >> 3))) << shift);
+		// Выполняем вписывание значения полей команды
+		command |= value;
+		/**
+		 * Выполняем размещение правленой команды байтами от младшего
+		 */
+		for(uint8_t shift = 0; shift < 32; shift += 8)
+			// Выполняем размещение очередного байта команды
+			code.at(position + (shift >> 3)) = static_cast <uint8_t> ((command >> shift) & 0xFF);
+	}
 	/**
 	 * @brief Функция сборки команды сравнения значений регистров
 	 *
@@ -214,72 +374,36 @@ namespace {
 };
 
 /**
- * @brief Метод проверки поддержки порождения машинного кода сборкой
+ * @brief Метод размещения входа в порождаемый сопоставитель
  *
- * @return результат проверки поддержки порождения машинного кода
+ * @param frame размер отводимого кадра вызова в байтах
+ *
+ * @details Набор команд ARM64 отводит порождённому коду регистры с нулевого по
+ *          пятнадцатый, вызовом затираемые и сохранения не требующие, поэтому
+ *          вход отводит один лишь кадр вызова.
  *
  */
-bool awh::regex::Emitter::available() noexcept {
+void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 	/**
-	 * Если сборка выполняется для процессора с набором команд ARM64
+	 * Если кадр вызова порождаемому сопоставителю требуется
 	 */
-	#if defined(__aarch64__) || defined(_M_ARM64)
-		// Выводим поддержку порождения машинного кода сборкой
-		return true;
-	/**
-	 * Если сборка выполняется для прочих наборов команд
-	 */
-	#else
-		// Выводим отсутствие поддержки порождения машинного кода сборкой
-		return false;
-	#endif
+	if(frame > 0)
+		// Выполняем отведение кадра вызова порождаемого сопоставителя
+		this->sub(reg_t::STACK, reg_t::STACK, frame);
 }
 /**
- * @brief Метод очистки порождаемой последовательности команд
+ * @brief Метод размещения выхода из порождаемого сопоставителя
+ *
+ * @param frame размер освобождаемого кадра вызова в байтах
  *
  */
-void awh::regex::Emitter::clear() noexcept {
-	// Выполняем очистку порождаемой последовательности команд
-	this->_code.clear();
-	// Выполняем очистку положений меток перехода
-	this->_labels.clear();
-	// Выполняем очистку набора отложенных переходов
-	this->_fixups.clear();
-	// Выполняем сброс флага отказа порождения машинного кода
-	this->_failed = false;
-}
-/**
- * @brief Метод заведения метки перехода
- *
- * @return номер заведённой метки перехода
- *
- */
-size_t awh::regex::Emitter::label() noexcept {
-	// Получаем номер заводимой метки перехода
-	const size_t result = this->_labels.size();
-	// Выполняем заведение метки, положения не имеющей
-	this->_labels.push_back(INVALID_LABEL);
-	// Выводим номер заведённой метки перехода
-	return result;
-}
-/**
- * @brief Метод расстановки метки перехода
- *
- * @param label номер расставляемой метки перехода
- *
- */
-void awh::regex::Emitter::place(const size_t label) noexcept {
+void awh::regex::Emitter::epilogue(const uint32_t frame) noexcept {
 	/**
-	 * Если метка перехода не заведена
+	 * Если кадр вызова порождаемому сопоставителю отводился
 	 */
-	if(label >= this->_labels.size()) {
-		// Выполняем установку флага отказа порождения машинного кода
-		this->_failed = true;
-		// Выходим из метода расстановки метки перехода
-		return;
-	}
-	// Выполняем установку положения метки перехода
-	this->_labels.at(label) = this->_code.size();
+	if(frame > 0)
+		// Выполняем освобождение кадра вызова порождаемого сопоставителя
+		this->add(reg_t::STACK, reg_t::STACK, frame);
 }
 /**
  * @brief Метод размещения перехода к метке
@@ -306,7 +430,7 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 	// Выполняем установку вида размещаемой команды
 	this->_fixups.back().kind = fixup_t::kind_t::JUMP;
 	// Выполняем размещение команды перехода, смещения ещё не несущей
-	this->_code.push_back(0x14000000u);
+	::emit(this->_code, 0x14000000u);
 }
 /**
  * @brief Метод размещения перехода к метке по условию
@@ -334,7 +458,7 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	// Выполняем установку вида размещаемой команды
 	this->_fixups.back().kind = fixup_t::kind_t::BRANCH;
 	// Выполняем размещение команды перехода, смещения ещё не несущей
-	this->_code.push_back(0x54000000u | static_cast <uint32_t> (cond));
+	::emit(this->_code, 0x54000000u | static_cast <uint32_t> (cond));
 }
 /**
  * @brief Метод размещения сравнения значений регистров
@@ -345,7 +469,7 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
  */
 void awh::regex::Emitter::compare(const reg_t first, const reg_t second) noexcept {
 	// Выполняем размещение команды сравнения значений регистров
-	this->_code.push_back(::compare(static_cast <uint32_t> (first), static_cast <uint32_t> (second)));
+	::emit(this->_code, ::compare(static_cast <uint32_t> (first), static_cast <uint32_t> (second)));
 }
 /**
  * @brief Метод размещения сравнения значения регистра с числом
@@ -365,7 +489,7 @@ void awh::regex::Emitter::compare(const reg_t reg, const uint32_t value) noexcep
 		return;
 	}
 	// Выполняем размещение команды сравнения значения регистра с числом
-	this->_code.push_back(::compare(static_cast <uint32_t> (reg), value, true));
+	::emit(this->_code, ::compare(static_cast <uint32_t> (reg), value, true));
 }
 /**
  * @brief Метод размещения сложения значения регистра с числом
@@ -386,7 +510,7 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 		return;
 	}
 	// Выполняем размещение команды сложения значения регистра с числом
-	this->_code.push_back(::add(static_cast <uint32_t> (target), static_cast <uint32_t> (source), value));
+	::emit(this->_code, ::add(static_cast <uint32_t> (target), static_cast <uint32_t> (source), value));
 }
 /**
  * @brief Метод размещения вычитания числа из значения регистра
@@ -407,7 +531,7 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 		return;
 	}
 	// Выполняем размещение команды вычитания числа из значения регистра
-	this->_code.push_back(::sub(static_cast <uint32_t> (target), static_cast <uint32_t> (source), value));
+	::emit(this->_code, ::sub(static_cast <uint32_t> (target), static_cast <uint32_t> (source), value));
 }
 /**
  * @brief Метод размещения переноса значения регистра
@@ -418,7 +542,7 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
  */
 void awh::regex::Emitter::move(const reg_t target, const reg_t source) noexcept {
 	// Выполняем размещение команды переноса значения регистра
-	this->_code.push_back(::move(static_cast <uint32_t> (target), static_cast <uint32_t> (source)));
+	::emit(this->_code, ::move(static_cast <uint32_t> (target), static_cast <uint32_t> (source)));
 }
 /**
  * @brief Метод размещения записи числа в регистр
@@ -466,7 +590,7 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
 				continue;
 		}
 		// Выполняем размещение команды записи части числа в регистр
-		this->_code.push_back(::write(reg, part, shift, written));
+		::emit(this->_code, ::write(reg, part, shift, written));
 		// Выполняем установку флага размещения первой части числа
 		written = true;
 	}
@@ -481,7 +605,7 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
  */
 void awh::regex::Emitter::load(const reg_t target, const reg_t base, const reg_t offset) noexcept {
 	// Выполняем размещение команды чтения байта по сумме регистров
-	this->_code.push_back(::load(static_cast <uint32_t> (target), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
+	::emit(this->_code, ::load(static_cast <uint32_t> (target), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
 }
 /**
  * @brief Метод размещения чтения значения обстановки исполнения
@@ -501,7 +625,7 @@ void awh::regex::Emitter::context(const reg_t target, const uint32_t index) noex
 		return;
 	}
 	// Выполняем размещение команды чтения значения обстановки исполнения
-	this->_code.push_back(::fetch(static_cast <uint32_t> (target), static_cast <uint32_t> (reg_t::CONTEXT), index));
+	::emit(this->_code, ::fetch(static_cast <uint32_t> (target), static_cast <uint32_t> (reg_t::CONTEXT), index));
 }
 /**
  * @brief Метод размещения чтения значения из памяти
@@ -522,7 +646,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 		return;
 	}
 	// Выполняем размещение команды чтения значения из памяти
-	this->_code.push_back(::fetch(static_cast <uint32_t> (target), static_cast <uint32_t> (base), index));
+	::emit(this->_code, ::fetch(static_cast <uint32_t> (target), static_cast <uint32_t> (base), index));
 }
 /**
  * @brief Метод размещения записи значения регистра в память
@@ -543,7 +667,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 		return;
 	}
 	// Выполняем размещение команды записи значения регистра в память
-	this->_code.push_back(::store(static_cast <uint32_t> (source), static_cast <uint32_t> (base), index));
+	::emit(this->_code, ::store(static_cast <uint32_t> (source), static_cast <uint32_t> (base), index));
 }
 /**
  * @brief Метод размещения вызова подпрограммы по адресу в регистре
@@ -553,7 +677,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
  */
 void awh::regex::Emitter::call(const reg_t reg) noexcept {
 	// Выполняем размещение команды «blr xreg»
-	this->_code.push_back(0xD63F0000u | (static_cast <uint32_t> (reg) << 5));
+	::emit(this->_code, 0xD63F0000u | (static_cast <uint32_t> (reg) << 5));
 }
 /**
  * @brief Метод размещения вычисления адреса метки
@@ -581,7 +705,7 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	// Выполняем установку вида размещаемой команды
 	this->_fixups.back().kind = fixup_t::kind_t::ADDRESS;
 	// Выполняем размещение команды «adr xtarget, label», смещения ещё не несущей
-	this->_code.push_back(0x10000000u | static_cast <uint32_t> (target));
+	::emit(this->_code, 0x10000000u | static_cast <uint32_t> (target));
 }
 /**
  * @brief Метод размещения перехода по адресу в регистре
@@ -591,7 +715,7 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
  */
 void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
 	// Выполняем размещение команды «br xreg»
-	this->_code.push_back(0xD61F0000u | (static_cast <uint32_t> (reg) << 5));
+	::emit(this->_code, 0xD61F0000u | (static_cast <uint32_t> (reg) << 5));
 }
 /**
  * @brief Метод размещения завершения вызова
@@ -599,7 +723,7 @@ void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
  */
 void awh::regex::Emitter::ret() noexcept {
 	// Выполняем размещение команды «ret»
-	this->_code.push_back(0xD65F03C0u);
+	::emit(this->_code, 0xD65F03C0u);
 }
 /**
  * @brief Метод разрешения отложенных переходов
@@ -636,7 +760,7 @@ bool awh::regex::Emitter::resolve() noexcept {
 		 *          следующей за нею: так устроен набор команд ARM64.
 		 *
 		 */
-		const int64_t delta = (static_cast <int64_t> (target) - static_cast <int64_t> (fixup.position));
+		const int64_t delta = ((static_cast <int64_t> (target) - static_cast <int64_t> (fixup.position)) / 4);
 		/**
 		 * Если смещение перехода за пределы поля команды выходит
 		 */
@@ -661,7 +785,7 @@ bool awh::regex::Emitter::resolve() noexcept {
 			 */
 			case static_cast <uint8_t> (fixup_t::kind_t::BRANCH):
 				// Выполняем вписывание смещения в команду перехода по условию
-				this->_code.at(fixup.position) |= ((static_cast <uint32_t> (delta) & 0x7FFFFu) << 5);
+				::patch(this->_code, fixup.position, ((static_cast <uint32_t> (delta) & 0x7FFFFu) << 5));
 			break;
 			/**
 			 * Если команда выполняет вычисление адреса метки
@@ -675,12 +799,12 @@ bool awh::regex::Emitter::resolve() noexcept {
 				// Получаем смещение вычисления адреса метки в байтах
 				const uint32_t offset = static_cast <uint32_t> (delta * 4);
 				// Выполняем вписывание смещения в команду вычисления адреса
-				this->_code.at(fixup.position) |= (((offset & 0x3u) << 29) | (((offset >> 2) & 0x7FFFFu) << 5));
+				::patch(this->_code, fixup.position, (((offset & 0x3u) << 29) | (((offset >> 2) & 0x7FFFFu) << 5)));
 			} break;
 			/**
 			 * Если команда выполняет безусловный переход
 			 */
-			default: this->_code.at(fixup.position) |= (static_cast <uint32_t> (delta) & 0x3FFFFFFu);
+			default: ::patch(this->_code, fixup.position, (static_cast <uint32_t> (delta) & 0x3FFFFFFu));
 		}
 	}
 	// Выполняем очистку набора разрешённых переходов
@@ -688,38 +812,5 @@ bool awh::regex::Emitter::resolve() noexcept {
 	// Выводим результат разрешения отложенных переходов
 	return true;
 }
-/**
- * @brief Метод извлечения порождённой последовательности команд
- *
- * @return порождённая последовательность команд процессора
- *
- */
-const vector <uint32_t> & awh::regex::Emitter::code() const noexcept {
-	// Выводим порождённую последовательность команд процессора
-	return this->_code;
-}
-/**
- * @brief Метод извлечения размера порождённого машинного кода
- *
- * @return размер порождённого машинного кода в байтах
- *
- */
-size_t awh::regex::Emitter::length() const noexcept {
-	// Выводим размер порождённого машинного кода
-	return (this->_code.size() * sizeof(uint32_t));
-}
-/**
- * @brief Метод проверки отказа порождения машинного кода
- *
- * @return результат проверки отказа порождения машинного кода
- *
- */
-bool awh::regex::Emitter::failed() const noexcept {
-	// Выводим результат проверки отказа порождения машинного кода
-	return this->_failed;
-}
-/**
- * @brief Конструктор
- *
- */
-awh::regex::Emitter::Emitter() noexcept : _failed(false) {}
+
+#endif // defined(__aarch64__) || defined(_M_ARM64)

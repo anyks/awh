@@ -7511,22 +7511,17 @@ const unordered_set <string> & awh::Framework::domainZones() const noexcept {
  * @param locale локализация приложения
  *
  */
-void awh::Framework::setLocale(string_view locale) noexcept {
+void awh::Framework::setLocale(const string & locale) noexcept {
 	// Устанавливаем локаль
 	if(!locale.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Создаём новую локаль
-			// ::locale loc(locale.data());
 			// Устанавливапм локализацию приложения
-			::setlocale(LC_ALL, locale.data());
-			::setlocale(LC_CTYPE, locale.data());
-			::setlocale(LC_COLLATE, locale.data());
-			// Устанавливаем локаль системы
-			// this->_locale = ::locale::global(loc);
-			this->_locale = ::locale(locale.data());
+			::setlocale(LC_ALL, locale.c_str());
+			::setlocale(LC_CTYPE, locale.c_str());
+			::setlocale(LC_COLLATE, locale.c_str());
 			/**
 			 * Для операционной системы MS Windows
 			 */
@@ -7565,13 +7560,13 @@ void awh::Framework::setLocale(string_view locale) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(locale), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(locale), log_t::flag_t::WARNING, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					this->_log->print("%s", log_t::flag_t::WARNING, error.what());
 				#endif
 			// Если объект логирования не установлен
 			} else {
@@ -7580,13 +7575,13 @@ void awh::Framework::setLocale(string_view locale) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s (%s)\n\n", __PRETTY_FUNCTION__, error.what(), locale.data());
+					::fprintf(stderr, "WARNING! Called function:\n%s\n\nMessage:\n%s (%s)\n\n", __PRETTY_FUNCTION__, error.what(), locale.data());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s (%s)\n\n", error.what(), locale.data());
+					::fprintf(stderr, "WARNING! %s (%s)\n\n", error.what(), locale.data());
 				#endif
 			}
 		}
@@ -8257,7 +8252,7 @@ awh::Framework::Framework() noexcept : _nwt(nullptr), _log(nullptr) {
  * @param locale локализация приложения
  *
  */
-awh::Framework::Framework(string_view locale) noexcept : _nwt(nullptr), _log(nullptr) {
+awh::Framework::Framework(const string & locale) noexcept : _nwt(nullptr), _log(nullptr) {
 	// Устанавливаем локализацию системы
 	this->setLocale(locale);
 }
