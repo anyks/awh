@@ -162,7 +162,7 @@ namespace {
 		 */
 		#else
 			// Возвращаем размер страницы памяти
-			return ::__awh_pagesize__();
+			return static_cast <size_t> (::getpagesize());
 		#endif
 	}
 
@@ -3646,7 +3646,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						// Определяем размер читаемых данных
 						const off_t length = (static_cast <off_t> (info.st_size) - static_cast <off_t> (position));
 						// Выполняем создание буфера для чтения файла
-						vector <char> buffer(static_cast <size_t> (::min <off_t> (length, ::getpagesize())), 0);
+						vector <char> buffer(static_cast <size_t> (::min <off_t> (length, static_cast <off_t> (::__awh_pagesize__()))), 0);
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						/**
