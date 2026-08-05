@@ -64,6 +64,12 @@
 #include "../unicode/utf8.hpp"
 
 /**
+ * Снимаем на время объявлений макросы, чьи имена заняты
+ * членами перечислений, применяемых ниже (возвращает их macro_pop.hpp в конце файла)
+ */
+#include "../sys/macro_push.hpp"
+
+/**
  * @brief Основное пространство имён
  *
  */
@@ -148,5 +154,10 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ encoding_t detect(string_view text, const encoding_t fallback = encoding_t::CP1251) noexcept;
 	};
 };
+
+/**
+ * Возвращаем макросы, снятые в начале файла
+ */
+#include "../sys/macro_pop.hpp"
 
 #endif // __AWH_CHARSET__

@@ -34,6 +34,12 @@
 #include "../sys/global.hpp"
 
 /**
+ * Снимаем на время объявлений макросы, чьи имена заняты
+ * членами перечислений ниже (возвращает их macro_pop.hpp в конце файла)
+ */
+#include "../sys/macro_push.hpp"
+
+/**
  * @brief Основное пространство имён
  *
  */
@@ -149,5 +155,10 @@ namespace awh {
 		} labeling_t;
 	};
 };
+
+/**
+ * Возвращаем макросы, снятые в начале файла
+ */
+#include "../sys/macro_pop.hpp"
 
 #endif // __AWH_CHARSET_TYPES__

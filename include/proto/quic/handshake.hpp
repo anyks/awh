@@ -39,6 +39,12 @@
 #include "../../net/tls/coder.hpp"
 
 /**
+ * Снимаем на время объявлений макросы, чьи имена заняты
+ * членами перечислений ниже (возвращает их macro_pop.hpp в конце файла)
+ */
+#include "../../sys/macro_push.hpp"
+
+/**
  * Предварительные объявления типов BoringSSL (реализация в handshake.cpp)
  */
 struct ssl_st;
@@ -408,5 +414,10 @@ namespace awh {
 		} handshake_t;
 	};
 };
+
+/**
+ * Возвращаем макросы, снятые в начале файла
+ */
+#include "../../sys/macro_pop.hpp"
 
 #endif // __AWH_PROTO_QUIC_HANDSHAKE__

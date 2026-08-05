@@ -33,6 +33,12 @@
 #include "../../sys/global.hpp"
 
 /**
+ * Снимаем на время объявлений макросы, чьи имена заняты
+ * членами перечислений ниже (возвращает их macro_pop.hpp в конце файла)
+ */
+#include "../../sys/macro_push.hpp"
+
+/**
  * @brief основное пространство имён
  *
  */
@@ -331,5 +337,10 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ string_view errorName(const error_t code) noexcept;
 	};
 };
+
+/**
+ * Возвращаем макросы, снятые в начале файла
+ */
+#include "../../sys/macro_pop.hpp"
 
 #endif // __AWH_PROTO_QUIC__

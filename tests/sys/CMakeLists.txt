@@ -66,6 +66,7 @@ if(${GTest_FOUND})
 
         # Указываем что нужно собрать тесты для работы с ОС
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST "Build unit OS test for ${UNIT_TEST_NAME}" ON)
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_MACRO_TEST "Build unit MACRO test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с фреймворком
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_FMK_TEST "Build unit FMK test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с логированием
@@ -113,6 +114,21 @@ if(${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с операционной системой
             message(STATUS "Build tests OS module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST})
+
+        # Если нужно собрать тесты защиты от макросов MS Windows
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_MACRO_TEST})
+            # Выводим сообщение о сборке тестов защиты от макросов MS Windows
+            message(STATUS "Build tests MACRO module: Yes\n")
+            # Дополняем список источников тестами защиты от макросов MS Windows
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                macro/macro.cpp
+                macro/static.cpp
+            )
+        # Если не нужно собрать тесты защиты от макросов MS Windows
+        else()
+            # Выводим сообщение о сборке тестов защиты от макросов MS Windows
+            message(STATUS "Build tests MACRO module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_MACRO_TEST})
 
         # Если нужно собрать тесты для работы с фреймворком
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_FMK_TEST})

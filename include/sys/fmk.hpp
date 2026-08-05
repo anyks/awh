@@ -47,6 +47,12 @@
 #include "../charset/charset.hpp"
 
 /**
+ * Снимаем на время объявлений макросы, чьи имена заняты
+ * членами перечислений, применяемых ниже (возвращает их macro_pop.hpp в конце файла)
+ */
+#include "./macro_push.hpp"
+
+/**
  * @brief Основное пространство имён
  *
  */
@@ -1756,5 +1762,10 @@ namespace awh {
 			~Framework() noexcept {}
 	} fmk_t;
 };
+
+/**
+ * Возвращаем макросы, снятые в начале файла
+ */
+#include "./macro_pop.hpp"
 
 #endif // __AWH_FRAMEWORK__

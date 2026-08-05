@@ -118,13 +118,15 @@
  */
 #elif _WIN32 || _WIN64
 	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 */
+	#include <sys/win32.hpp>
+
+	/**
 	 * Системные заголовочные файлы
 	 */
-	#include <winsock2.h>
-	#include <ws2tcpip.h>
-	#include <iphlpapi.h>
-	#include <windows.h>
 	#include <psapi.h>
+	#include <iphlpapi.h>
 	#include <cstdint>
 #endif
 
