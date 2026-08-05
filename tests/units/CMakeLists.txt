@@ -85,6 +85,23 @@ if (${GTest_FOUND})
             message(STATUS "Build tests port mapping module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_PORTMAP_TEST})
 
+        # Указываем что нужно собрать тесты для модуля кластера
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_CLUSTER_TEST "Build unit cluster test for ${UNIT_TEST_NAME}" ON)
+
+        # Если нужно собрать тесты для модуля кластера
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_CLUSTER_TEST})
+            # Выводим сообщение о сборке тестов для модуля кластера
+            message(STATUS "Build tests cluster module: Yes\n")
+            # Дополняем список источников тестами для модуля кластера
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                cluster/status.cpp
+            )
+        # Если не нужно собрать тесты для модуля кластера
+        else()
+            # Выводим сообщение о сборке тестов для модуля кластера
+            message(STATUS "Build tests cluster module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_CLUSTER_TEST})
+
         # Указываем что нужно собрать тесты для модуля DNS-резолвера
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_DNS_TEST "Build unit DNS resolver test for ${UNIT_TEST_NAME}" ON)
 

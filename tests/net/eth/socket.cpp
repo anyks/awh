@@ -280,9 +280,9 @@ TEST_F(EthFixture, SocketSwitchOptionTcpTest){
 	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::DISABLED, awh::event::options::TCP_NO_DELAY));
 
 	// Включаем режим отложенной отправки TCP пакетов (TCP CORK)
-	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::TCP_CORK));
+	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::TCP_CORKING));
 	// Отключаем режим отложенной отправки TCP пакетов (TCP CORK)
-	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::DISABLED, awh::event::options::TCP_CORK));
+	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::DISABLED, awh::event::options::TCP_CORKING));
 
 	// Закрываем сокет
 	::close(sock);

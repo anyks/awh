@@ -1813,7 +1813,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				}
 			} break;
 			// Если необходимо установить опцию TCP CORK
-			case event::options::TCP_CORK: {
+			case event::options::TCP_CORKING: {
 				// Флаги установки опции
 				int32_t flags = 0;
 				/**

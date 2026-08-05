@@ -228,11 +228,31 @@ if [ -n "$1" ]; then
 				 .. || exit 1
 			# Выполняем конфигурацию проекта под все остальные операционные системы
 			else
+				# Дополнительные библиотеки, требуемые компоновщику
+				EXTRA_LIBS=""
+
+				# Если операционной системой является SunOS
+				if [ $OS = "SunOS" ]; then
+					# Сетевые вызовы у illumos лежат в отдельных библиотеках
+					#
+					# Утилита bssl обращается к recv, send, socket, bind, listen, accept,
+					# setsockopt и getaddrinfo. У illumos (OpenIndiana) они лежат в libsocket
+					# и libnsl, а не в libc, и сама BoringSSL их не подключает - компоновка
+					# отвечает отказом "Undefined symbol: __xnet_socket, __xnet_bind, recv, send".
+					# Solaris 11.4 перенёс эти вызовы в libc, и там сборка проходит и без них,
+					# но подключение лишних библиотек ей не вредит
+					#
+					# Отказ этот приходится на утилиту bssl, а не на сами libcrypto и libssl:
+					# те собираются целыми в обоих случаях
+					EXTRA_LIBS="-lsocket -lnsl"
+				fi
+
 				# Выполняем конфигурацию проекта
 				cmake \
 				 -DCMAKE_BUILD_TYPE=Release \
 				 -DBUILD_SHARED_LIBS=OFF \
 				 -DBUILD_TESTING=OFF \
+				 -DCMAKE_EXE_LINKER_FLAGS="$EXTRA_LIBS" \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 				 .. || exit 1
 			fi

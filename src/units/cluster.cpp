@@ -63,25 +63,37 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Для операционной системы MS Windows
+ * @brief Инкапсулируем статические типы данных в пространство имён
+ *
  */
-#if _WIN32 || _WIN64
+namespace {
 	/**
-	 * @brief Инкапсулируем статические типы данных в пространство имён
+	 * @brief Состояние завершения воркера, остановленного мастером
+	 *
+	 * @details Мастер останавливает воркера закрытием своего конца канала, и тот
+	 *          завершает работу сам. Наружу об этом извещает событие "exit",
+	 *          принимающее состояние завершения в том виде, в каком его отдаёт система,
+	 *          поэтому и значение это у каждой системы своё
+	 *
+	 *          У POSIX берётся SIGSTOP: число это - правильно сложенное состояние
+	 *          ожидания, читаемое разборными макросами как «снят сигналом SIGSTOP».
+	 *          Подделывать тот же номер у MS Windows нельзя - там на его месте стоит
+	 *          код завершения, и число 17 или 19 прочиталось бы как обычный код
+	 *          возврата приложения
+	 *
+	 *          Взамен у MS Windows берётся значение по правилам NTSTATUS: старшие
+	 *          разряды несут признак важности «ошибка» вместе с разрядом, отведённым
+	 *          значениям прикладным. Разряд этот затем и заведён - чтобы значения
+	 *          приложений не путались с системными, и по нему же метод `crashed`
+	 *          отличает падение от остановки
 	 *
 	 */
-	namespace {
-		/**
-		 * @brief Код сигнала принудительной остановки процесса
-		 *
-		 * @details Сигналов POSIX у MS Windows нет вовсе, а обработчик события «exit»
-		 *          принимает номер сигнала числом. Наружу отдаётся то же значение, что
-		 *          и на остальных системах, чтобы прикладной код не разбирал платформу
-		 *
-		 */
-		constexpr int32_t SIGSTOP = 19;
-	};
-#endif
+	#if _WIN32 || _WIN64
+		constexpr int32_t AWH_CLUSTER_STOPPED = static_cast <int32_t> (0xE0000001u);
+	#else
+		constexpr int32_t AWH_CLUSTER_STOPPED = SIGSTOP;
+	#endif
+};
 
 /**
  * @brief Инкапсулируем статические типы данных в пространство имён
@@ -146,6 +158,62 @@ namespace {
 		 *
 		 */
 		static awh::unit::cluster_t * __awh_cluster__ = nullptr;
+	};
+#endif
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * @brief Инкапсулируем состояние управления процессами в пространство имён
+	 *
+	 * @details Ничего этого нет у POSIX: там дочерний процесс достаётся вызовом fork,
+	 *          о завершении его извещает сигнал SIGCHLD, а пожинает его waitpid. У
+	 *          MS Windows каждое из трёх заменяется своим средством, и всем трём нужно
+	 *          где-то держать состояние
+	 *
+	 */
+	namespace {
+		/**
+		 * @brief Дочерний процесс кластера
+		 *
+		 */
+		struct Child {
+			// Дескриптор объекта процесса
+			HANDLE process;
+			// Дескриптор ожидания завершения процесса из системного пула потоков
+			HANDLE wait;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			Child() noexcept :
+			 process(nullptr), wait(nullptr) {}
+		};
+
+		/**
+		 * @brief Объект кластера для работы статических функций
+		 *
+		 */
+		static awh::unit::cluster_t * __awh_cluster__ = nullptr;
+		/**
+		 * @brief Объект задания, удерживающий дочерние процессы
+		 *
+		 * @details Задание заводится с пределом JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE:
+		 *          закрытие последнего дескриптора задания снимает все входящие в него
+		 *          процессы. Так замещается проверка на осиротевание, какую у POSIX даёт
+		 *          сравнение с getppid: погибни мастер любым образом, включая падение,
+		 *          система снимет воркеров сама, и осиротевших процессов не остаётся
+		 *
+		 */
+		static HANDLE __awh_job__ = nullptr;
+		// Список дочерних процессов, за которыми ведётся наблюдение
+		static std::unordered_map <pid_t, Child> __awh_children__;
+		// Очередь завершившихся процессов, ожидающих разбора в петле событий
+		static std::deque <pid_t> __awh_finished__;
+		// Замок доступа к спискам дочерних процессов
+		static std::mutex __awh_children_mutex__;
 	};
 #endif
 
@@ -336,10 +404,7 @@ void awh::unit::Cluster::create() noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		/**
-		 * Для операционных систем, отличных от MS Windows
-		 */
-		#if !_WIN32 && !_WIN64
+		{
 			/**
 			 * Создаём дочерние процессы по количеству установленных воркеров
 			 */
@@ -385,7 +450,7 @@ void awh::unit::Cluster::create() noexcept {
 			}
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const pid_t, const event_t)> ("events", this->_pid, event_t::START);
-		#endif
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -474,6 +539,28 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 	switch(static_cast <uint8_t> (status)){
 		// Если работа кластера запущена
 		case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				/**
+				 * Распознаём роль процесса по метке в окружении
+				 *
+				 * Дочерний процесс запускается тем же образом и с той же строкой доводов,
+				 * проходит main заново и доходит сюда точно так же, как мастер. Отличает
+				 * его лишь метка, выставленная мастером перед запуском
+				 */
+				if(this->adopt()){
+					// Записываем в лог сообщение об успешном запуске воркера
+					this->_log->print("Cluster worker process [%d] has been started successfully", log_t::flag_t::INFO, ::getpid());
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::status_t)> ("cluster_status", status);
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const pid_t, const event_t)> ("events", static_cast <pid_t> (::getpid()), event_t::START);
+					// Дочерний процесс воркеров не создаёт и завершившихся не пожинает
+					return;
+				}
+			#endif
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const event::status_t)> ("cluster_status", status);
 			// Сбрасываем счётчик подряд идущих быстрых падений при запуске кластера
@@ -802,10 +889,253 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 	 * Если операционной системой является MS Windows
 	 */
 	#else
-		// Возвращаем результат отсутствия созданного воркера
-		return family_t::NONE;
+		// Создаём новый вокрер дочернего процесса
+		unique_ptr <worker_t> worker = make_unique <worker_t> ();
+		// Устанавливаем время создания процесса
+		worker->life = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+		// Добавляем новые события для обмена сообщениями между процессами
+		const auto & events = this->_io->events(event::family_t::PIPE, this->_type);
+		// Если события не созданы
+		if((events[0] == 0) || (events[1] == 0)){
+			// Записываем ошибку в лог
+			this->_log->print("Child process worker could not be created", log_t::flag_t::CRITICAL);
+			// Возвращаем результат отсутствия созданного воркера
+			return family_t::NONE;
+		}
+		// Уничтожаем событие дочернего процесса: унаследовать его порождённый процесс не может
+		this->_io->destroy(events[1]);
+		// Выполняем порождение дочернего процесса
+		const pid_t pid = this->execute();
+		// Если порождение процесса не удалось
+		if(pid == 0){
+			// Уничтожаем событие родительского процесса
+			this->_io->destroy(events[0]);
+			// Возвращаем результат отсутствия созданного воркера
+			return family_t::NONE;
+		}
+		// Устанавливаем идентификатор процесса воркера
+		worker->pid = pid;
+		// Устанавливаем опции события
+		if(!this->_io->setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
+			// Записываем ошибку в лог
+			this->_log->print("Error setting cluster worker event options", log_t::flag_t::WARNING);
+		// Устанавливаем функцию обратного вызова на событие записи сообщений
+		this->_io->on(events[0], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие чтения сообщений
+		this->_io->on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие изменения состояния
+		this->_io->on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие получения ошибок
+		this->_io->on(events[0], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
+		this->_io->on(events[0], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
+		// Устанавливаем идентификатор события для обмена сообщениями между процессами
+		worker->eid = events[0];
+		// Добавляем нового воркера в список активных воркеров
+		auto ret = this->_workers.emplace(pid, ::move(worker));
+		// Добавляем соответствие идентификаторов событий и идентификатора процесса в список соответствия
+		this->_matching.emplace(static_cast <event::id_t> (ret.first->second->eid), ret.first->first);
+		// Если запуск события не отложен (одиночное размещение воркера во время работы кластера)
+		if(!deferred){
+			// Выполняем фиксацию и запуск работы события
+			if(!(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid))){
+				// Записываем ошибку в лог запуска события
+				this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, pid);
+				// Выходим из приложения
+				::_exit(EXIT_FAILURE);
+			}
+			// Если процесс размещается взамен упавшего
+			if(replaced > 0)
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const pid_t, const pid_t)> ("rebase", replaced, ret.first->first);
+		}
+		// Возвращаем признак родительского процесса
+		return family_t::MASTER;
 	#endif
 }
+/**
+ * Для операционной системы MS Windows
+ *
+ * @note Метода этого на системах POSIX нет вовсе: дочерний процесс достаётся там
+ *       вызовом fork, продолжающим работу с того же места и с тем же состоянием.
+ *       У MS Windows соответствия fork нет, и дочерний процесс приходится
+ *       запускать заново - собственным образом приложения
+ *
+ */
+#if _WIN32 || _WIN64
+/**
+ * @brief Метод порождения дочернего процесса повторным запуском образа приложения
+ *
+ * @return идентификатор порождённого процесса, либо 0 при отказе
+ *
+ */
+pid_t awh::unit::Cluster::execute() noexcept {
+	/**
+	 * Заводим объект задания, если тот ещё не заведён
+	 *
+	 * Задание держит все порождённые процессы и снимает их при закрытии последнего
+	 * своего дескриптора - то есть при завершении мастера любым образом, включая
+	 * падение. Так замещается проверка на осиротевание, какую у POSIX даёт сравнение
+	 * с getppid, и осиротевших воркеров не остаётся
+	 */
+	if(::__awh_job__ == nullptr){
+		// Создаём объект задания
+		::__awh_job__ = ::CreateJobObjectW(nullptr, nullptr);
+		// Если объект задания создан
+		if(::__awh_job__ != nullptr){
+			// Создаём объект пределов задания
+			JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
+			// Устанавливаем предел снятия процессов при закрытии задания
+			limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+			// Устанавливаем пределы объекта задания
+			if(!::SetInformationJobObject(::__awh_job__, JobObjectExtendedLimitInformation, &limits, sizeof(limits)))
+				// Записываем ошибку в лог
+				this->_log->print("Cluster job object limits could not be set", log_t::flag_t::WARNING);
+		// Если объект задания создать не удалось
+		} else this->_log->print("Cluster job object could not be created, orphaned workers are possible", log_t::flag_t::WARNING);
+	}
+	// Буфер под путь к образу приложения
+	wchar_t image[MAX_PATH]{0};
+	// Получаем путь к образу приложения
+	if(::GetModuleFileNameW(nullptr, image, MAX_PATH) == 0){
+		// Записываем ошибку в лог
+		this->_log->print("Cluster could not determine its own executable path", log_t::flag_t::CRITICAL);
+		// Возвращаем признак отсутствия порождённого процесса
+		return 0;
+	}
+	/**
+	 * Помечаем роль дочернего процесса в его окружении
+	 *
+	 * Окружение достаётся порождённому процессу целиком, и метка эта - единственное,
+	 * чем тот отличает себя от мастера: запускается он тем же образом и с той же
+	 * строкой доводов. Номер мастера в метке нужен ещё и затем, чтобы дочерний процесс
+	 * мог открыть дескриптор его объекта и следить, жив ли тот
+	 */
+	if(!::SetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", std::to_wstring(static_cast <uint32_t> (this->_pid)).c_str())){
+		// Записываем ошибку в лог
+		this->_log->print("Cluster role marker could not be set in the environment", log_t::flag_t::CRITICAL);
+		// Возвращаем признак отсутствия порождённого процесса
+		return 0;
+	}
+	// Копия строки доводов запуска: CreateProcessW вправе менять её на месте
+	std::wstring command = ::GetCommandLineW();
+	// Создаём объект сведений о запуске процесса
+	STARTUPINFOW startup{};
+	// Устанавливаем размер объекта сведений о запуске
+	startup.cb = sizeof(startup);
+	// Создаём объект сведений о порождённом процессе
+	PROCESS_INFORMATION info{};
+	/**
+	 * Порождаем процесс приостановленным: до внесения его в задание он работать не
+	 * должен. Успей он завершиться раньше, в задание попасть было бы уже некому, и
+	 * снятие по закрытию задания его не коснулось бы
+	 */
+	const BOOL created = ::CreateProcessW(image, command.data(), nullptr, nullptr, TRUE, CREATE_SUSPENDED, nullptr, nullptr, &startup, &info);
+	// Снимаем метку роли из своего окружения, чтобы та не досталась мастеру
+	::SetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", nullptr);
+	// Если процесс породить не удалось
+	if(!created){
+		// Записываем ошибку в лог
+		this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
+		// Возвращаем признак отсутствия порождённого процесса
+		return 0;
+	}
+	// Если объект задания заведён — вносим в него порождённый процесс
+	if((::__awh_job__ != nullptr) && !::AssignProcessToJobObject(::__awh_job__, info.hProcess))
+		// Записываем ошибку в лог
+		this->_log->print("Child process [%d] could not be assigned to the cluster job object", log_t::flag_t::WARNING, static_cast <int32_t> (info.dwProcessId));
+	// Получаем идентификатор порождённого процесса
+	const pid_t pid = static_cast <pid_t> (info.dwProcessId);
+	{
+		// Создаём запись о наблюдаемом дочернем процессе
+		::Child child;
+		// Запоминаем дескриптор объекта процесса
+		child.process = info.hProcess;
+		/**
+		 * Подписываемся на завершение процесса
+		 *
+		 * Извещение однократное: WT_EXECUTEONLYONCE снимает подписку после первого
+		 * срабатывания, а завершиться процесс может лишь однажды
+		 */
+		if(!::RegisterWaitForSingleObject(&child.wait, info.hProcess, &cluster_t::child, reinterpret_cast <PVOID> (static_cast <uintptr_t> (pid)), INFINITE, WT_EXECUTEONLYONCE))
+			// Записываем ошибку в лог
+			this->_log->print("Child process [%d] termination watch could not be registered", log_t::flag_t::CRITICAL, pid);
+		// Выполняем блокировку замка доступа к спискам дочерних процессов
+		const std::lock_guard <std::mutex> lock(::__awh_children_mutex__);
+		// Добавляем процесс в список наблюдаемых
+		::__awh_children__.emplace(pid, child);
+	}
+	// Возобновляем работу порождённого процесса
+	::ResumeThread(info.hThread);
+	// Закрываем дескриптор основного потока порождённого процесса: тот больше не нужен
+	::CloseHandle(info.hThread);
+	// Возвращаем идентификатор порождённого процесса
+	return pid;
+}
+/**
+ * @brief Метод распознавания роли дочернего процесса и захвата мастера
+ *
+ * @return признак того, что процесс является дочерним
+ *
+ */
+bool awh::unit::Cluster::adopt() noexcept {
+	// Буфер под метку роли
+	wchar_t marker[32]{0};
+	// Получаем метку роли из окружения
+	const DWORD size = ::GetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", marker, static_cast <DWORD> (sizeof(marker) / sizeof(marker[0])));
+	// Если метки роли в окружении нет — процесс является мастером
+	if((size == 0) || (size >= (sizeof(marker) / sizeof(marker[0]))))
+		// Сообщаем, что процесс дочерним не является
+		return false;
+	/**
+	 * Снимаем метку роли из окружения
+	 *
+	 * Порождай воркер собственные процессы, метка досталась бы тем по наследству, и
+	 * те сочли бы себя воркерами несуществующего мастера
+	 */
+	::SetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", nullptr);
+	// Идентификатор процесса мастера
+	pid_t pid = 0;
+	/**
+	 * Выполняем перехват ошибок разбора
+	 */
+	try {
+		// Разбираем идентификатор процесса мастера
+		pid = static_cast <pid_t> (std::stoul(marker));
+	/**
+	 * Если разобрать метку не удалось
+	 */
+	} catch(const exception &) {
+		// Записываем ошибку в лог
+		this->_log->print("Cluster role marker is malformed, the process is treated as master", log_t::flag_t::CRITICAL);
+		// Сообщаем, что процесс дочерним не является
+		return false;
+	}
+	/**
+	 * Перенимаем номер процесса мастера
+	 *
+	 * Поле это заполняется в конструкторе основания собственным номером процесса, и
+	 * на нём держится метод master. У дочернего процесса, запущенного заново, номер
+	 * этот свой, и без подмены тот счёл бы себя мастером
+	 */
+	this->_pid = pid;
+	/**
+	 * Открываем дескриптор объекта процесса мастера
+	 *
+	 * По дескриптору этому метод parent и отвечает, жив ли мастер. Права запрашиваются
+	 * наименьшие из достаточных: SYNCHRONIZE довольно, чтобы ожидать объект
+	 */
+	HANDLE handle = ::OpenProcess(SYNCHRONIZE, FALSE, static_cast <DWORD> (pid));
+	// Если дескриптор объекта мастера получен
+	if(handle != nullptr)
+		// Запоминаем дескриптор объекта родительского процесса
+		this->_master = reinterpret_cast <uintptr_t> (handle);
+	// Если дескриптор объекта мастера получить не удалось
+	else this->_log->print("Cluster master process [%d] could not be opened, orphan detection is disabled", log_t::flag_t::CRITICAL, pid);
+	// Сообщаем, что процесс является дочерним
+	return true;
+}
+#endif
 /**
  * @brief Метод перезапуска упавшего процесса
  *
@@ -813,67 +1143,62 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
  * @param status статус остановившегося процесса
  *
  */
-void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unused]] const int32_t status) noexcept {
-	/**
-	 * Для операционных систем, отличных от MS Windows
-	 */
-	#if !_WIN32 && !_WIN64
-		// Выполняем поиск завершившегося процесса
-		auto i = this->_workers.find(pid);
-		// Если указанный воркер найден
-		if(i != this->_workers.end()){
-			// Если завершившийся процесс требуется анализировать дальше
-			if(i->second->pid == pid){
-				// Записываем в лог сообщение об остановке дочернего процесса
-				this->_log->print("Child process stopped, PID=%d, STATUS=%d", log_t::flag_t::WARNING, pid, status);
-				// Определяем, является ли завершение ручной остановкой процесса (сигнал SIGINT)
-				const bool manual = (WIFSIGNALED(status) && (WTERMSIG(status) == SIGINT));
-				// Если это ручная остановка процесса — останавливаем весь кластер
-				if(manual){
-					// Освобождаем ресурсы всех воркеров и очищаем список активных воркеров
-					this->clear(shutdown_t::NONE);
-					// Выходим из приложения с кодом сигнала ручной остановки
-					::_exit(SIGINT);
-				}
-				// Определяем, упал ли процесс в пределах временного окна жизни (признак быстрого/раннего падения)
-				const bool rapid = ((this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) - i->second->life) <= this->_rebirth.window);
-				// Освобождаем ресурсы завершившегося воркера
-				this->release(i->second->eid);
-				// Удаляем завершившийся процесс из списка активных воркеров
-				this->_workers.erase(i);
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const pid_t, const int32_t)> ("exit", pid, status);
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const pid_t, const event_t)> ("events", pid, event_t::STOP);
-				// Если разрешён автоматический перезапуск процесса
-				if(this->_rebirth.mode){
-					// Если процесс упал слишком быстро
-					if(rapid)
-						// Увеличиваем счётчик подряд идущих быстрых падений
-						++this->_rebirth.restarts;
-					// Если процесс прожил достаточно долго — сбрасываем счётчик быстрых падений
-					else this->_rebirth.restarts = 0;
-					// Если защита включена и число подряд идущих быстрых падений превысило порог — прекращаем перезапуск и останавливаем кластер
-					if((this->_rebirth.limit > 0) && (this->_rebirth.restarts >= this->_rebirth.limit)){
-						// Записываем в лог сообщение об обнаружении цикла перезапусков
-						this->_log->print("Cluster [%s] worker keeps crashing on startup, aborting after %u rapid restarts", log_t::flag_t::CRITICAL, this->_name.c_str(), this->_rebirth.restarts);
-						// Освобождаем ресурсы оставшихся воркеров и очищаем список активных воркеров
-						this->clear(shutdown_t::NONE);
-						// Выходим из приложения с кодом завершения дочернего процесса
-						::_exit(WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
-					}
-					// Выполняем создание нового процесса взамен упавшего
-					this->emplace(pid);
-				}
-			// Если завершившийся процесс анализировать не нужно
-			} else {
-				// Освобождаем ресурсы воркера
-				this->release(i->second->eid);
-				// Удаляем завершившийся процесс из списка активных воркеров
-				this->_workers.erase(i);
+void awh::unit::Cluster::process(const pid_t pid, const int32_t status) noexcept {
+	// Выполняем поиск завершившегося процесса
+	auto i = this->_workers.find(pid);
+	// Если указанный воркер найден
+	if(i != this->_workers.end()){
+		// Если завершившийся процесс требуется анализировать дальше
+		if(i->second->pid == pid){
+			// Записываем в лог сообщение об остановке дочернего процесса
+			this->_log->print("Child process stopped, PID=%d, STATUS=%d", log_t::flag_t::WARNING, pid, status);
+			// Определяем, является ли завершение ручной остановкой процесса
+			const bool manual = cluster_t::manual(status);
+			// Если это ручная остановка процесса — останавливаем весь кластер
+			if(manual){
+				// Освобождаем ресурсы всех воркеров и очищаем список активных воркеров
+				this->clear(shutdown_t::NONE);
+				// Выходим из приложения с кодом сигнала ручной остановки
+				::_exit(SIGINT);
 			}
+			// Определяем, упал ли процесс в пределах временного окна жизни (признак быстрого/раннего падения)
+			const bool rapid = ((this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) - i->second->life) <= this->_rebirth.window);
+			// Освобождаем ресурсы завершившегося воркера
+			this->release(i->second->eid);
+			// Удаляем завершившийся процесс из списка активных воркеров
+			this->_workers.erase(i);
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const pid_t, const int32_t)> ("exit", pid, status);
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const pid_t, const event_t)> ("events", pid, event_t::STOP);
+			// Если разрешён автоматический перезапуск процесса
+			if(this->_rebirth.mode){
+				// Если процесс упал слишком быстро
+				if(rapid)
+					// Увеличиваем счётчик подряд идущих быстрых падений
+					++this->_rebirth.restarts;
+				// Если процесс прожил достаточно долго — сбрасываем счётчик быстрых падений
+				else this->_rebirth.restarts = 0;
+				// Если защита включена и число подряд идущих быстрых падений превысило порог — прекращаем перезапуск и останавливаем кластер
+				if((this->_rebirth.limit > 0) && (this->_rebirth.restarts >= this->_rebirth.limit)){
+					// Записываем в лог сообщение об обнаружении цикла перезапусков
+					this->_log->print("Cluster [%s] worker keeps crashing on startup, aborting after %u rapid restarts", log_t::flag_t::CRITICAL, this->_name.c_str(), this->_rebirth.restarts);
+					// Освобождаем ресурсы оставшихся воркеров и очищаем список активных воркеров
+					this->clear(shutdown_t::NONE);
+					// Выходим из приложения с кодом завершения дочернего процесса
+					::_exit(cluster_t::exitcode(status));
+				}
+				// Выполняем создание нового процесса взамен упавшего
+				this->emplace(pid);
+			}
+		// Если завершившийся процесс анализировать не нужно
+		} else {
+			// Освобождаем ресурсы воркера
+			this->release(i->second->eid);
+			// Удаляем завершившийся процесс из списка активных воркеров
+			this->_workers.erase(i);
 		}
-	#endif
+	}
 }
 /**
  * @brief Метод отложенной обработки завершившихся процессов (выполняется в цикле событий)
@@ -899,6 +1224,58 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
 		while((pid = ::waitpid(-1, &status, WNOHANG)) > 0)
 			// Выполняем обработку завершившегося процесса
 			this->process(pid, status);
+	/**
+	 * Если операционной системой является MS Windows
+	 */
+	#else
+		// Список завершившихся процессов, снятый с очереди на разбор
+		std::deque <pid_t> finished;
+		{
+			// Выполняем блокировку замка доступа к спискам дочерних процессов
+			const std::lock_guard <std::mutex> lock(::__awh_children_mutex__);
+			// Забираем всю очередь завершившихся процессов
+			finished.swap(::__awh_finished__);
+		}
+		/**
+		 * Пожинаем все завершившиеся дочерние процессы. Метод выполняется в потоке цикла
+		 * событий, поэтому мутации контейнеров, перезапуск воркеров и логирование здесь
+		 * безопасны
+		 */
+		for(const pid_t pid : finished){
+			// Код завершения процесса
+			DWORD status = static_cast <DWORD> (EXIT_FAILURE);
+			{
+				// Выполняем блокировку замка доступа к спискам дочерних процессов
+				const std::lock_guard <std::mutex> lock(::__awh_children_mutex__);
+				// Выполняем поиск завершившегося процесса среди наблюдаемых
+				auto i = ::__awh_children__.find(pid);
+				// Если наблюдаемый процесс найден
+				if(i != ::__awh_children__.end()){
+					// Получаем код завершения процесса
+					if(!::GetExitCodeProcess(i->second.process, &status))
+						// Считаем завершение ненормальным, если код получить не удалось
+						status = static_cast <DWORD> (EXIT_FAILURE);
+					/**
+					 * Снимаем наблюдение за процессом. Ожидание снимается доводом
+					 * INVALID_HANDLE_VALUE - тот велит системе дождаться завершения уже
+					 * начатых извещений, и после возврата обратный вызов не работает ни в
+					 * одном потоке. Без этого дескрипторы закрывались бы под работающим
+					 * извещением
+					 */
+					if(i->second.wait != nullptr)
+						// Снимаем ожидание завершения процесса
+						::UnregisterWaitEx(i->second.wait, INVALID_HANDLE_VALUE);
+					// Если дескриптор объекта процесса получен
+					if(i->second.process != nullptr)
+						// Закрываем дескриптор объекта процесса
+						::CloseHandle(i->second.process);
+					// Удаляем процесс из списка наблюдаемых
+					::__awh_children__.erase(i);
+				}
+			}
+			// Выполняем обработку завершившегося процесса
+			this->process(pid, static_cast <int32_t> (status));
+		}
 	#endif
 }
 /**
@@ -938,6 +1315,43 @@ void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]]
 				 */
 				self->_io->send(self->_wakeup, &marker, sizeof(marker));
 			}
+		}
+	}
+}
+#endif
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+/**
+ * @brief Функция извещения о завершении дочернего процесса
+ *
+ * @param ctx     идентификатор завершившегося процесса
+ * @param timeout признак срабатывания по истечении срока ожидания
+ *
+ */
+void __stdcall awh::unit::Cluster::child(void * ctx, [[maybe_unused]] uint8_t timeout) noexcept {
+	{
+		// Выполняем блокировку замка доступа к спискам дочерних процессов
+		const std::lock_guard <std::mutex> lock(::__awh_children_mutex__);
+		// Добавляем завершившийся процесс в очередь ожидающих разбора
+		::__awh_finished__.push_back(static_cast <pid_t> (reinterpret_cast <uintptr_t> (ctx)));
+	}
+	// Если объект кластера ещё существует
+	if(::__awh_cluster__ != nullptr){
+		// Получаем указатель на объект кластера
+		cluster_t * self = ::__awh_cluster__;
+		// Если событие пробуждения активно
+		if(self->_wakeup != 0){
+			// Байт-маркер для триггера события пробуждения
+			const uint8_t marker = 0x01;
+			/**
+			 * Не выполняем здесь разбора завершившихся процессов и мутации контейнеров:
+			 * вызов идёт из системного пула потоков, а списки кластера принадлежат потоку
+			 * петли событий. Безопасно триггерим событие пробуждения, чтобы разбор
+			 * выполнился в потоке петли (см. метод reap)
+			 */
+			self->_io->send(self->_wakeup, &marker, sizeof(marker));
 		}
 	}
 }
@@ -1062,7 +1476,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 						// Если уничтоженное событие соответствует событию процесса
 						if(i->second->eid == eid){
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const pid_t, const int32_t)> ("exit", i->first, SIGSTOP);
+							this->_callback.call <void (const pid_t, const int32_t)> ("exit", i->first, AWH_CLUSTER_STOPPED);
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const pid_t, const event_t)> ("events", i->first, event_t::STOP);
 							// Удаляем завершившийся процесс из списка активных воркеров
@@ -1231,113 +1645,241 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 	}
 }
 /**
+ * @brief Метод проверки, завершился ли процесс сам
+ *
+ * @param status состояние завершения процесса
+ * @return       признак того, что процесс завершился сам
+ *
+ */
+bool awh::unit::Cluster::exited(const int32_t status) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		/**
+		 * Различить возврат из main и снятие через TerminateProcess у MS Windows нельзя:
+		 * код завершения выставляется и в том, и в другом случае. Отделяется потому лишь
+		 * то, что кодом возврата не является вовсе - падение, снятие с клавиатуры и
+		 * остановка воркера мастером
+		 */
+		return (!cluster_t::crashed(status) && !cluster_t::manual(status) && (status != ::AWH_CLUSTER_STOPPED));
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Сообщаем, завершился ли процесс сам
+		return WIFEXITED(status);
+	#endif
+}
+/**
+ * @brief Метод получения кода возврата завершившегося процесса
+ *
+ * @param status состояние завершения процесса
+ * @return       код возврата процесса, либо EXIT_FAILURE при завершении ненормальном
+ *
+ */
+int32_t awh::unit::Cluster::exitcode(const int32_t status) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		/**
+		 * Значение GetExitCodeProcess и есть код возврата, разбирать нечего. Ненормальное
+		 * же завершение кодом возврата не является вовсе: система кладёт туда NTSTATUS
+		 * прервавшего исключения, и выдавать его за код возврата было бы обманом
+		 */
+		return (cluster_t::exited(status) ? status : EXIT_FAILURE);
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Возвращаем код возврата процесса
+		return (WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
+	#endif
+}
+/**
+ * @brief Метод проверки, снят ли процесс сигналом
+ *
+ * @param status состояние завершения процесса
+ * @return       признак того, что процесс снят сигналом
+ *
+ */
+bool awh::unit::Cluster::signaled([[maybe_unused]] const int32_t status) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Сигналов у MS Windows нет вовсе, снятым сигналом процесс быть не может
+		return false;
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Сообщаем, снят ли процесс сигналом
+		return WIFSIGNALED(status);
+	#endif
+}
+/**
+ * @brief Метод получения номера сигнала, снявшего процесс
+ *
+ * @param status состояние завершения процесса
+ * @return       номер сигнала, либо 0 если процесс снят не сигналом
+ *
+ */
+int32_t awh::unit::Cluster::termsig([[maybe_unused]] const int32_t status) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Сигналов у MS Windows нет вовсе, отдавать нечего
+		return 0;
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Возвращаем номер снявшего процесс сигнала
+		return (WIFSIGNALED(status) ? WTERMSIG(status) : 0);
+	#endif
+}
+/**
+ * @brief Метод проверки, завершился ли процесс ненормально
+ *
+ * @param status состояние завершения процесса
+ * @return       признак ненормального завершения процесса
+ *
+ */
+bool awh::unit::Cluster::crashed(const int32_t status) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		/**
+		 * Необработанное исключение система кладёт в код завершения значением NTSTATUS,
+		 * у которого два старших разряда - признак важности - выставлены в единицы
+		 * (`0xC0000005` - обращение по недопустимому адресу, `0xC00000FD` - переполнение
+		 * стека). Обычный код возврата приложения в такой диапазон не попадает
+		 *
+		 * Значения с выставленным прикладным разрядом (`0x20000000`) падением не
+		 * считаются: разряд этот затем и отведён, чтобы отличать значения приложений от
+		 * системных, и им же помечено собственное состояние остановки воркера
+		 *
+		 * Снятие с клавиатуры сюда тоже не относится: помечено оно тем же признаком
+		 * важности, но падением не является - процесс сняли намеренно
+		 */
+		const uint32_t code = static_cast <uint32_t> (status);
+		// Сообщаем, завершился ли процесс ненормально
+		return (((code & 0xC0000000u) == 0xC0000000u) && ((code & 0x20000000u) == 0) && !cluster_t::manual(status));
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Если процесс снят не сигналом - ненормальным завершение не является
+		if(!WIFSIGNALED(status))
+			// Сообщаем, что завершение ненормальным не является
+			return false;
+		/**
+		 * Определяем сигнал, снявший процесс
+		 */
+		switch(WTERMSIG(status)){
+			// Сигналы, снятие которыми считается падением процесса
+			case SIGILL:
+			case SIGFPE:
+			case SIGBUS:
+			case SIGSEGV:
+			case SIGABRT:
+				// Сообщаем, что процесс завершился ненормально
+				return true;
+		}
+		// Сообщаем, что завершение ненормальным не является
+		return false;
+	#endif
+}
+/**
+ * @brief Метод проверки, снят ли процесс с клавиатуры
+ *
+ * @param status состояние завершения процесса
+ * @return       признак ручной остановки процесса
+ *
+ */
+bool awh::unit::Cluster::manual(const int32_t status) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Сообщаем, признана ли остановка ручной
+		return (static_cast <uint32_t> (status) == static_cast <uint32_t> (STATUS_CONTROL_C_EXIT));
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Сообщаем, признана ли остановка ручной
+		return (WIFSIGNALED(status) && (WTERMSIG(status) == SIGINT));
+	#endif
+}
+/**
  * @brief Метод остановки кластера
  *
  */
 void awh::unit::Cluster::stop() noexcept {
-	/**
-	 * Для операционной системы не являющейся MS Windows
-	 */
-	#if !_WIN32 && !_WIN64
-		// Если процесс является родительским
-		if(this->master()){
-			// Если работа юнита запущена
-			if(this->working())
-				// Останавливаем работу основного юнита
-				unit_t::stop();
-		// Если процесс является дочерним то выводим сообщение об ошибке
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("Only the master process can stop the cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("Only the master process can stop the cluster", log_t::flag_t::WARNING);
-			#endif
-		}
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
+	// Если процесс является родительским
+	if(this->master()){
+		// Если работа юнита запущена
+		if(this->working())
+			// Останавливаем работу основного юнита
+			unit_t::stop();
+	// Если процесс является дочерним то выводим сообщение об ошибке
+	} else {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Записываем ошибку в лог запуска события
-			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			// Записываем ошибку в лог
+			this->_log->debug("Only the master process can stop the cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Записываем ошибку в лог запуска события
-			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+			// Записываем ошибку в лог
+			this->_log->print("Only the master process can stop the cluster", log_t::flag_t::WARNING);
 		#endif
-	#endif
+	}
 }
 /**
  * @brief Метод запуска кластера
  *
  */
 void awh::unit::Cluster::start() noexcept {
-	/**
-	 * Для операционных систем, отличных от MS Windows
-	 */
-	#if !_WIN32 && !_WIN64
-		// Если процесс является родительским
-		if(this->master()){
-			// Если работа юнита ещё не запущена
-			if(!this->working()){
-				// Выполняем получение идентификатора функции обратного вызова
-				const callback_t::id_t fid = this->_callback.id("status");
-				// Если функция обратного вызова установлена
-				if(this->_callback.is(fid))
-					// Выполняем получение функции обратного вызова
-					this->_callback.set(fid, this->_callback.id("cluster_status"), this->_callback);
-				// Устанавливаем функцию обратного вызова на запуск системы
-				this->_callback.on <void (const event::status_t)> (fid, &cluster_t::launch, this, _1);
-				// Выполняем запуск работы основного юнита
-				unit_t::start();
-			}
-		// Если процесс является дочерним то выводим сообщение об ошибке
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("Only the master process can start the cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("Only the master process can start the cluster", log_t::flag_t::WARNING);
-			#endif
+	// Если процесс является родительским
+	if(this->master()){
+		// Если работа юнита ещё не запущена
+		if(!this->working()){
+			// Выполняем получение идентификатора функции обратного вызова
+			const callback_t::id_t fid = this->_callback.id("status");
+			// Если функция обратного вызова установлена
+			if(this->_callback.is(fid))
+				// Выполняем получение функции обратного вызова
+				this->_callback.set(fid, this->_callback.id("cluster_status"), this->_callback);
+			// Устанавливаем функцию обратного вызова на запуск системы
+			this->_callback.on <void (const event::status_t)> (fid, &cluster_t::launch, this, _1);
+			// Выполняем запуск работы основного юнита
+			unit_t::start();
 		}
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
+	// Если процесс является дочерним то выводим сообщение об ошибке
+	} else {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Записываем ошибку в лог запуска события
-			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			// Записываем ошибку в лог
+			this->_log->debug("Only the master process can start the cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Записываем ошибку в лог запуска события
-			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+			// Записываем ошибку в лог
+			this->_log->print("Only the master process can start the cluster", log_t::flag_t::WARNING);
 		#endif
-	#endif
+	}
 }
 /**
  * @brief Метод очистки всех выделенных ресурсов
@@ -1414,23 +1956,6 @@ void awh::unit::Cluster::emplace() noexcept {
 				this->_log->print("Only the master process can create child processes", log_t::flag_t::WARNING);
 			#endif
 		}
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог запуска события
-			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог запуска события
-			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
-		#endif
 	#endif
 }
 /**
@@ -1662,13 +2187,13 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог запуска события
-			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+			this->_log->debug("MS Windows OS, inter-process messaging is not implemented yet", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог запуска события
-			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+			this->_log->print("MS Windows OS, inter-process messaging is not implemented yet", log_t::flag_t::WARNING);
 		#endif
 	#endif
 	// Возвращаем значение по умолчанию
@@ -1721,13 +2246,13 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, make_tuple(pid, buffer, size), log_t::flag_t::WARNING);
+			this->_log->debug("MS Windows OS, inter-process messaging is not implemented yet", __PRETTY_FUNCTION__, make_tuple(pid, buffer, size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+			this->_log->print("MS Windows OS, inter-process messaging is not implemented yet", log_t::flag_t::WARNING);
 		#endif
 	#endif
 	// Возвращаем значение по умолчанию
@@ -1786,13 +2311,13 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+			this->_log->debug("MS Windows OS, inter-process messaging is not implemented yet", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+			this->_log->print("MS Windows OS, inter-process messaging is not implemented yet", log_t::flag_t::WARNING);
 		#endif
 	#endif
 	// Возвращаем значение по умолчанию
@@ -1873,6 +2398,12 @@ awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 	#if _WIN32 || _WIN64
 		// Обнуляем дескриптор объекта родительского процесса (захватывается дочерним процессом при запуске)
 		this->_master = 0;
+		// Если кластер уже был создан ранее
+		if(::__awh_cluster__ != nullptr)
+			// Выполняем генерацию исключения
+			throw std::logic_error("A cluster cannot exist twice");
+		// Выполняем установку объекта кластера
+		::__awh_cluster__ = this;
 		// Устанавливаем количество доступных ядер в системе
 		this->_count = static_cast <uint16_t> (thread::hardware_concurrency());
 		// Если количество доступных ядер определить не удалось
@@ -1943,6 +2474,44 @@ awh::unit::Cluster::~Cluster() noexcept {
 			::CloseHandle(reinterpret_cast <HANDLE> (this->_master));
 			// Обнуляем дескриптор объекта родительского процесса
 			this->_master = 0;
+		}
+		// Если разрушаемый объект является текущим зарегистрированным кластером
+		if(::__awh_cluster__ == this){
+			{
+				// Выполняем блокировку замка доступа к спискам дочерних процессов
+				const std::lock_guard <std::mutex> lock(::__awh_children_mutex__);
+				/**
+				 * Снимаем наблюдение за всеми оставшимися дочерними процессами
+				 */
+				for(auto & [pid, child] : ::__awh_children__){
+					// Снимаем ожидание завершения процесса, дождавшись начатых извещений
+					if(child.wait != nullptr)
+						// Снимаем ожидание завершения процесса
+						::UnregisterWaitEx(child.wait, INVALID_HANDLE_VALUE);
+					// Если дескриптор объекта процесса получен
+					if(child.process != nullptr)
+						// Закрываем дескриптор объекта процесса
+						::CloseHandle(child.process);
+				}
+				// Очищаем список наблюдаемых процессов
+				::__awh_children__.clear();
+				// Очищаем очередь завершившихся процессов
+				::__awh_finished__.clear();
+			}
+			/**
+			 * Закрываем объект задания
+			 *
+			 * Закрытие последнего дескриптора задания снимает все входящие в него
+			 * процессы - тем и завершается работа воркеров, переживших мастера
+			 */
+			if(::__awh_job__ != nullptr){
+				// Закрываем объект задания
+				::CloseHandle(::__awh_job__);
+				// Обнуляем объект задания
+				::__awh_job__ = nullptr;
+			}
+			// Сбрасываем глобальный указатель на объект кластера
+			::__awh_cluster__ = nullptr;
 		}
 	#endif
 	/**

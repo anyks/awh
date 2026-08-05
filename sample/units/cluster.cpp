@@ -126,10 +126,27 @@ int32_t main(int32_t argc, char * argv[]){
 		// Возвращаем событие изменения статуса
 		log.print("Cluster process [%u] state: %d", log_t::flag_t::INFO, pid, static_cast <uint16_t> (status));
 	}, placeholders::_1, placeholders::_2);
-	// Устанавливаем функцию обратного вызова на событие получения сигнала
-	cluster.on <void (const pid_t, const int32_t)> ("exit", [&cluster, &log](const pid_t pid, const int32_t signal) noexcept -> void {
-		// Возвращаем событие получения сигнала
-		log.print("Cluster process [%u] has received signal: %d", log_t::flag_t::CRITICAL, pid, signal);
+	// Устанавливаем функцию обратного вызова на событие завершения процесса
+	cluster.on <void (const pid_t, const int32_t)> ("exit", [&cluster, &log](const pid_t pid, const int32_t status) noexcept -> void {
+		/**
+		 * Состояние завершения приходит в том виде, в каком его отдаёт система, и к
+		 * общему виду между системами не приводится: у POSIX это упакованное состояние
+		 * ожидания, у MS Windows - код завершения. Переносимые вопросы задаются
+		 * разборными методами кластера, платформу при этом разбирать не требуется
+		 */
+		if(unit::cluster_t::crashed(status))
+			// Возвращаем событие падения процесса
+			log.print("Cluster process [%u] has crashed, signal: %d", log_t::flag_t::CRITICAL, pid, unit::cluster_t::termsig(status));
+		// Если процесс был снят с клавиатуры
+		else if(unit::cluster_t::manual(status))
+			// Возвращаем событие ручной остановки процесса
+			log.print("Cluster process [%u] has been interrupted", log_t::flag_t::WARNING, pid);
+		// Если процесс завершился сам
+		else if(unit::cluster_t::exited(status))
+			// Возвращаем событие завершения процесса
+			log.print("Cluster process [%u] has exited with code: %d", log_t::flag_t::INFO, pid, unit::cluster_t::exitcode(status));
+		// Если процесс был остановлен мастером
+		else log.print("Cluster process [%u] has been stopped by master", log_t::flag_t::INFO, pid);
 	}, placeholders::_1, placeholders::_2);
 	// Запускаем работу кластера
 	cluster.start();

@@ -17,6 +17,46 @@ if [[ $OS =~ "MINGW64" ]]; then
 	OS="Windows"
 fi
 
+# Команда установки собранных файлов по месту
+#
+# Задаётся она здесь, а не в скриптах отдельных модулей, потому что пользуются ею
+# несколько из них - brotli, density и lizard, - а способ установки зависит от системы,
+# а не от модуля
+#
+# Прежде переменная эта присваивалась единственно в 007_brotli.sh, а density и lizard
+# только читали её. Работало это потому, что скрипты подключаются через source в общей
+# оболочке, а brotli идёт прежде них - и по сортировке ls, и в перечне Requirements.txt.
+# Обе опоры случайны: перестановка модулей, отключение brotli или правка его ветки по
+# системам оставили бы двум другим модулям чужую команду либо пустоту, и отказ вышел бы
+# молчаливым
+#
+# У macOS берётся ditto: он переносит файл со всеми его признаками
+#
+# У Sun Solaris и illumos утилит с именем install две. Solaris выводит в путь
+# /usr/bin/install из набора GNU coreutils, а OpenIndiana - /usr/sbin/install наследия
+# SVR4, который ключей -D и -m в такой записи не знает и отвечает подсказкой
+# "usage: install [options] file [dir1 ...]". Проверено опытом на обоих стендах. Набор
+# GNU лежит на обеих системах в /usr/gnu/bin, потому путь указывается явно
+#
+# У систем BSD ключа -D нет, каталог назначения там создаётся заранее
+INSTALL_CMD=""
+if [ $OS = "Darwin" ]; then
+	INSTALL_CMD="ditto -v"
+elif [ $OS = "Windows" ] || [ $OS = "Linux" ]; then
+	INSTALL_CMD="install -D -m 0644"
+elif [ $OS = "SunOS" ]; then
+	if [ -x "/usr/gnu/bin/install" ]; then
+		INSTALL_CMD="/usr/gnu/bin/install -D -m 0644"
+	else
+		INSTALL_CMD="install -D -m 0644"
+	fi
+elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
+	INSTALL_CMD="install -m 0644"
+else
+	echo "Operating system not defined"
+	exit 1
+fi
+
 # Тип архитектуры
 ARCHITECTURE=""
 # Получаем тип архитектуры

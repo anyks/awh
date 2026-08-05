@@ -346,3 +346,53 @@ TEST_F(PortmapFixture, SsdpMalformed) {
 		ASSERT_FALSE(ssdp->suitable(answer, ssdp_t::TARGET_GATEWAY));
 	}
 }
+
+/**
+ * @brief Проверка отклонения довода, непригодного к записи в заголовок обмена
+ *
+ * @details Обозначение искомой службы и групповой адрес записываются значениями
+ *          заголовков как есть: конец строки в них разбил бы просьбу надвое, а за
+ *          местом разрыва встал бы заголовок, вписанный вызывающим
+ *
+ */
+TEST_F(PortmapFixture, SsdpHeaderInjection) {
+	// Объект кодека договора обнаружения устройств
+	const std::unique_ptr <ssdp_t> ssdp = this->makeSsdp();
+	// Перечень доводов, к записи в заголовок непригодных
+	const char * hostile[] = {
+		"ssdp:all\r\nX-Injected: yes",
+		"ssdp:all\nX-Injected: yes",
+		"ssdp:all\rX-Injected: yes",
+		"ssdp:all\x01",
+		"ssdp:all\x7F"
+	};
+	/**
+	 * Выполняем перебор всех непригодных доводов
+	 */
+	for(const char * item : hostile){
+		// Выполняем проверку отклонения непригодного обозначения искомой службы
+		ASSERT_TRUE(ssdp->search(item).empty()) << item;
+		// Выполняем проверку отклонения непригодного группового адреса
+		ASSERT_TRUE(ssdp->search(ssdp_t::TARGET_GATEWAY, ssdp_t::DEFAULT_DELAY, item).empty()) << item;
+	}
+	/**
+	 * Выполняем проверку того, что пригодная просьба собирается целиком
+	 */
+	{
+		// Выполняем сборку просьбы обнаружения устройств
+		const std::string request = ssdp->search(ssdp_t::TARGET_GATEWAY);
+		// Выполняем проверку того, что просьба собрана
+		ASSERT_FALSE(request.empty());
+		/**
+		 * Выполняем проверку количества строк собранной просьбы
+		 *
+		 * @note Строк ровно семь: строка действия, пять заголовков и пустая строка,
+		 *       завершающая заголовки. Лишняя строка означала бы врезку доводом
+		 */
+		size_t breaks = 0;
+		// Выполняем подсчёт концов строк собранной просьбы
+		for(size_t offset = request.find("\r\n"); offset != std::string::npos; offset = request.find("\r\n", offset + 2)) breaks++;
+		// Выполняем проверку количества строк собранной просьбы
+		ASSERT_EQ(breaks, static_cast <size_t> (7));
+	}
+}

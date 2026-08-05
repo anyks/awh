@@ -144,10 +144,10 @@ namespace awh {
 				 * @brief Метод получения события завершения работы процесса
 				 *
 				 * @param pid    идентификатор процесса
-				 * @param signal сигнал с которым завершился процесс
+				 * @param status состояние, с которым завершился процесс
 				 *
 				 */
-				void exit(const pid_t pid, const int32_t signal) noexcept;
+				void exit(const pid_t pid, const int32_t status) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки события отправки сообщения процессу кластера

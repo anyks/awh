@@ -266,12 +266,8 @@ TEST_F(ReferenceFixture, ExecutionReferenceDaylightChronoTest){
 		for(const uint64_t date : dates){
 			// Получаем момент времени в единицах системного эталона
 			const time_t seconds = static_cast <time_t> (date / 1000ULL);
-			// Структура местного времени системного эталона
-			struct tm local;
-			// Получаем местное время системным эталоном
-			::localtime_r(&seconds, &local);
 			// Запоминаем смещение временной зоны системного эталона
-			offsets.push_back(static_cast <int32_t> (local.tm_gmtoff));
+			offsets.push_back(::systemTimeZoneOffset(seconds));
 		}
 		// Восстанавливаем временную зону окружения, закреплённую фикстурой
 		::setenv("TZ", "UTC", 1);

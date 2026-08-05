@@ -430,11 +430,18 @@ namespace {
 	/**
 	 * @brief Функция форматирования версии протокола HTTP в текстовый вид
 	 *
+	 * @warning Имя несёт окончание Name не для красоты: у Solaris в общем пространстве
+	 *          имён своё имя version, а помощники эти лежат в пространстве безымянном,
+	 *          которое к общему и приводится. Прежде вызов ::version разбирался там как
+	 *          приведение к чужому типу, и сборка отвечала отказом. Окончание это принято
+	 *          у соседей - methodName, statusMessage, - и столкновений больше не даёт
+	 *
+	 *
 	 * @param version версия протокола HTTP
 	 * @return        версия протокола HTTP в текстовом виде (например "1.1")
 	 *
 	 */
-	string version(const http::version_t version) noexcept {
+	string versionName(const http::version_t version) noexcept {
 		/**
 		 * Определяем текстовое представление версии протокола HTTP
 		 */
@@ -2591,7 +2598,7 @@ string awh::http::Headers::startline() const noexcept {
 					// Добавляем разделитель между URI и версией протокола
 					result.append(" HTTP/");
 					// Формируем строку версии протокола в формате "HTTP/Версия"
-					result.append(::version(request->version));
+					result.append(::versionName(request->version));
 				} break;
 				// Если установлен ответ сервера
 				case static_cast <uint8_t> (direct_t::RESPONSE): {
@@ -2606,7 +2613,7 @@ string awh::http::Headers::startline() const noexcept {
 					// Формируем стартовую строку ответа сервера в формате "HTTP/Версия Код Сообщение"
 					result.append("HTTP/");
 					// Формируем строку версии протокола в формате "HTTP/Версия"
-					result.append(::version(response->version));
+					result.append(::versionName(response->version));
 					// Добавляем разделитель между версией протокола и кодом ответа
 					result.append(1, ' ');
 					// Добавляем код ответа сервера

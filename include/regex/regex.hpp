@@ -133,7 +133,15 @@ namespace awh {
 			bool _safety;
 		private:
 			// Мютекс согласования доступа к кэшу собранных выражений
-			mutable mutex _mtx;
+			/**
+			 * Имя типа уточняется пространством имён намеренно
+			 *
+			 * @warning У Solaris в общем пространстве имён своё имя mutex - оно приходит
+			 *          из sys/t_lock.h, - и голое обращение там становится двусмысленным.
+			 *          Уточнение принято и у прочих заголовков набора: threadpool и signals
+			 *          пишут его так же
+			 */
+			mutable std::mutex _mtx;
 		private:
 			// Кэш собранных регулярных выражений
 			mutable unordered_map <key_t, weak_ptr <const awh::regex::expression_t>, Hash> _cache;

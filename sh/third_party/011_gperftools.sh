@@ -178,6 +178,24 @@ if [ -n "$1" ]; then
 				 -G "MSYS Makefiles" \
 				 .. || exit 1
 			else
+				# Дополнительные ключи настройки
+				GPERFTOOLS_EXTRA=""
+
+				# Если операционной системой является SunOS
+				if [ $OS = "SunOS" ]; then
+					# Измеритель нагрузки на illumos не собирается
+					#
+					# Заголовок src/getpc-inl.h перебирает способы достать счётчик команд из
+					# ucontext_t и ни одного подходящего для illumos не находит: сборка отвечает
+					# отказом "'Get' is not a member of ...". Это изъян самой gperftools на
+					# системе, ею не поддержанной, и правке с нашей стороны он не подлежит
+					#
+					# Гасится точечно лишь измеритель: сами tcmalloc и tcmalloc_minimal, ради
+					# которых gperftools и собирается, встают целыми - проверено опытом на
+					# стенде OpenIndiana. Solaris измеритель собирает, и там он остаётся
+					GPERFTOOLS_EXTRA="-DGPERFTOOLS_BUILD_CPU_PROFILER=OFF"
+				fi
+
 				cmake \
 				 -DBUILD_TESTING="OFF" \
 				 -DBUILD_SHARED_LIBS="OFF" \
@@ -185,6 +203,7 @@ if [ -n "$1" ]; then
 				 -DDEFAULT_BUILD_DEBUGALLOC="OFF" \
 				 -DCMAKE_BUILD_TYPE=Release \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+				 $GPERFTOOLS_EXTRA \
 				 .. || exit 1
 			fi
 

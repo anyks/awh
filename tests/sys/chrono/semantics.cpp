@@ -570,14 +570,10 @@ TEST_F(ChronoFixture, ExecutionEnvironmentZoneChronoTest){
 		::setenv("TZ", zone, 1);
 		// Устанавливаем временную зону по умолчанию
 		::tzset();
-		// Создаем структуру времени
-		std::tm tm = {};
 		// Получаем значение текущего времени
 		const time_t value = std::time(nullptr);
-		// Заполняем структуру времени
-		::localtime_r(&value, &tm);
 		// Смещение зоны окружения обязано совпасть со смещением, которое даёт система
-		ASSERT_EQ(this->_chrono->getTimeZone(awh::chrono_t::storage_t::GLOBAL), static_cast <int32_t> (tm.tm_gmtoff)) << zone;
+		ASSERT_EQ(this->_chrono->getTimeZone(awh::chrono_t::storage_t::GLOBAL), ::systemTimeZoneOffset(value)) << zone;
 	}
 	// Возвращаем временную зону окружения, закреплённую фикстурой
 	::setenv("TZ", "UTC", 1);

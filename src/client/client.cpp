@@ -271,7 +271,7 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (index), static_cast <uint16_t> (status)), log_t::flag_t::WARNING, this->_id.eid);
+							this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (index), static_cast <uint16_t> (status)), log_t::flag_t::WARNING, static_cast <event::id_t> (this->_id.eid));
 						/**
 						 * Если режим отладки не включён
 						 */

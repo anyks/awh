@@ -803,6 +803,8 @@ awh::codec::xml::span_t awh::codec::xml::Reader::lookup(const string_view prefix
  *
  */
 bool awh::codec::xml::Reader::parseName(size_t & offset, const size_t end, string_view & prefix, string_view & local) noexcept {
+	// Выполняем сброс признака имени, превысившего предел настроек
+	this->_overlong = false;
 	// Запоминаем начало разбираемого имени
 	const size_t begin = offset;
 	// Количество знаков разобранного имени
@@ -889,11 +891,23 @@ bool awh::codec::xml::Reader::parseName(size_t & offset, const size_t end, strin
  * @return       результат выполнения операции
  *
  */
-bool awh::codec::xml::Reader::qualify(const size_t begin, const size_t end, const uint32_t count, const uint8_t flags, string_view & prefix, string_view & local) const noexcept {
+bool awh::codec::xml::Reader::qualify(const size_t begin, const size_t end, const uint32_t count, const uint8_t flags, string_view & prefix, string_view & local) noexcept {
 	/**
-	 * Если имя пусто либо его длина превышает допустимую
+	 * Если длина имени превышает допустимую
+	 *
+	 * @note Повод этот от ошибочного построения отличается, и запоминается он отдельно:
+	 *       вызывающему выдаётся свой код отказа
 	 */
-	if((end == begin) || (count > this->_settings.maxName))
+	if(count > this->_settings.maxName){
+		// Запоминаем, что имя превысило предел, заданный настройками
+		this->_overlong = true;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Если имя пусто
+	 */
+	if(end == begin)
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Получаем имя в записи, принятой в исходном тексте
@@ -964,7 +978,7 @@ bool awh::codec::xml::Reader::qualify(const size_t begin, const size_t end, cons
  * @return       результат выполнения операции
  *
  */
-bool awh::codec::xml::Reader::parseReference(size_t & offset, const size_t end, string & result, const uint32_t depth, const bool space) noexcept {
+bool awh::codec::xml::Reader::parseReference(size_t & offset, const size_t end, string & result, const uint32_t depth, const bool space, const bool content) noexcept {
 	/**
 	 * Если глубина вложенности ссылок превышает допустимую
 	 */
@@ -1001,7 +1015,7 @@ bool awh::codec::xml::Reader::parseReference(size_t & offset, const size_t end, 
 	// Запоминаем положение конца ссылки на сущность
 	offset = (stop + 1);
 	// Выполняем подстановку значения сущности по её имени
-	return this->expand(name, result, depth, space);
+	return this->expand(name, result, depth, space, content);
 }
 /**
  * @brief Метод подстановки значения сущности по её имени
@@ -1012,7 +1026,7 @@ bool awh::codec::xml::Reader::parseReference(size_t & offset, const size_t end, 
  * @return       результат выполнения операции
  *
  */
-bool awh::codec::xml::Reader::expand(const string_view name, string & result, const uint32_t depth, const bool space) noexcept {
+bool awh::codec::xml::Reader::expand(const string_view name, string & result, const uint32_t depth, const bool space, const bool content) noexcept {
 	/**
 	 * Если глубина вложенности ссылок превышает допустимую
 	 */
@@ -1130,6 +1144,38 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 		return true;
 	}
 	/**
+	 * Выполняем перебор всех знаков имени сущности
+	 *
+	 * @details Ссылка на сущность обязана нести имя, построенное по правилам договора:
+	 *          записи вроде «&65;» либо «&a b;» именами не являются вовсе. Проверять их
+	 *          следует здесь, а не отыскиванием объявления: отсутствие объявления и
+	 *          ошибочно построенное имя - поводы разные, и первый из них снимается
+	 *          признаком прихода объявлений извне, тогда как второй не снимается ничем
+	 *
+	 * @warning Прежде имя не проверялось вовсе, а отказ выходил из того, что сущности с
+	 *          таким именем в объявлениях не находилось. Прикрытие это неполно: там, где
+	 *          объявления вправе прийти извне разобранного, отыскание вовсе не ведётся,
+	 *          и ошибочно построенная ссылка проходила разбор насквозь
+	 */
+	for(size_t offset = 0; offset < name.size();){
+		// Длина прочитанной последовательности знака
+		size_t length = 0;
+		// Выполняем чтение кодового значения очередного знака имени
+		const uint32_t code = decode(name.data() + offset, name.size() - offset, length);
+		/**
+		 * Если знак прочитать не удалось, либо он недопустим в имени, либо
+		 * недопустим в его начале
+		 */
+		if((length == 0) || (code == INVALID_CODEPOINT) || !isName(code) || ((offset == 0) && !isNameStart(code))){
+			// Запоминаем код ошибки разбора
+			this->_error = error_t::INVALID_REFERENCE;
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		}
+		// Выполняем переход к следующему знаку имени
+		offset += length;
+	}
+	/**
 	 * Если подстановка объявленных сущностей отключена настройками
 	 */
 	if(!this->_settings.entities){
@@ -1220,6 +1266,29 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 	 *       дописать в хранилище объявлений и обесценить ссылку на него
 	 */
 	const string value(i->second.value);
+	/**
+	 * Если подстановка ведётся в содержимое узла, а значение сущности несёт
+	 * последовательность, отведённую концу дословного раздела
+	 *
+	 * @details Договор велит значению подставляемой сущности быть построенным по
+	 *          правилам содержимого узла, а содержимому эта последовательность
+	 *          запрещена: записывается она либо разделом дословного текста, либо
+	 *          ссылкой на знак. Запрет проверяется по разбираемому тексту, где на
+	 *          месте сущности стоит ссылка, и значения её не достигает вовсе
+	 *
+	 * @note Проверяется объявленное значение, а не итог подстановки: вложенные
+	 *       ссылки внутри него - это уже ссылки, и знак, полученный ссылкой, запрета
+	 *       не нарушает. Тем же правилом законна и запись «]]&gt;»
+	 *
+	 * @warning Значению атрибута последовательность эта не запрещена, и проверять её
+	 *          там нельзя: правило договора отнесено к содержимому узла
+	 */
+	if(content && (value.find("]]>") != string::npos)){
+		// Запоминаем код ошибки разбора
+		this->_error = error_t::INVALID_CHARACTER;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
 	// Запоминаем, что подстановка сущности выполняется
 	i->second.active = true;
 	// Результат подстановки вложенных ссылок
@@ -2984,12 +3053,25 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseText() noexcept {
 			}
 			// Запоминаем конец выдаваемой части содержимого
 			end = size;
-			// Выполняем поиск последней ссылки на сущность
-			const size_t amp = this->_buffer.rfind('&', (end > 0 ? end - 1 : 0));
+			/**
+			 * Выполняем поиск последней ссылки на сущность в выдаваемой части
+			 *
+			 * @warning Поиск ведётся по выдаваемой части, а не по всему приведённому
+			 *          тексту: назад от неё лежит уже разобранное, и найденная там ссылка
+			 *          всё равно отбрасывается проверкой ниже. Поиск же по всему тексту
+			 *          обходит его целиком на каждом куске - при подаче кусками в полтора
+			 *          килобайта содержимое перечитывалось до полусотни раз, и разбор
+			 *          проседал вчетверо против подачи целиком
+			 */
+			const string_view tail(this->_buffer.data() + this->_offset, end - this->_offset);
+			// Получаем положение последней ссылки на сущность в выдаваемой части
+			const size_t at = tail.rfind('&');
+			// Получаем положение последней ссылки на сущность в приведённом тексте
+			const size_t amp = ((at == string_view::npos) ? string::npos : (this->_offset + at));
 			/**
 			 * Если ссылка на сущность оборвана границей куска
 			 */
-			if((amp != string::npos) && (amp >= this->_offset)){
+			if(amp != string::npos){
 				// Выполняем поиск конца оборванной ссылки
 				const size_t stop = this->_buffer.find(';', amp);
 				/**
@@ -3188,7 +3270,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseText() noexcept {
 				/**
 				 * Если подстановку ссылки выполнить не удалось
 				 */
-				if(!this->parseReference(pos, end, this->_scratch, 0))
+				if(!this->parseReference(pos, end, this->_scratch, 0, false, true))
 					// Выводим ошибку разбора ссылки на сущность
 					return this->fail(this->_error, pos);
 				// Выполняем переход к следующему знаку содержимого
@@ -3532,6 +3614,22 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseProcessing() noexc
 	if(!this->parseName(pos, end, prefix, target) || !prefix.empty())
 		// Выводим ошибку построения указания обработчику
 		return this->fail(error_t::INVALID_PROCESSING, this->_offset + 2);
+	/**
+	 * Если за целью указания обработчику стоит знак, целью не разделённый
+	 *
+	 * @details Договор велит отделять цель от передаваемых ею данных пробельным знаком,
+	 *          а без данных - завершать указание сразу. Разбор имени останавливается на
+	 *          первом знаке, имени не принадлежащем, и всё, что за ним, прежде уходило в
+	 *          данные молча: запись вида `<?pi[d?>` принималась указанием с целью `pi`,
+	 *          тогда как правильно построенным указанием она не является
+	 *
+	 * @note Конец разметки проверяется наравне с пробельным знаком: указание вправе не
+	 *       нести данных вовсе, и запись `<?pi?>` договором допущена
+	 */
+	if((pos < end) && !::isSpace(this->_buffer[pos]) &&
+	   !((this->_buffer[pos] == '?') && ((pos + 1) < this->_buffer.size()) && (this->_buffer[pos + 1] == '>')))
+		// Выводим ошибку построения указания обработчику
+		return this->fail(error_t::INVALID_PROCESSING, pos);
 	/**
 	 * Если указание обработчику стоит в самом начале исходного текста и названо
 	 * отведённым договором именем
@@ -4183,13 +4281,85 @@ bool awh::codec::xml::Reader::bind() noexcept {
 		 *       объявление действует и в том узле, где записано, а порядок записи
 		 *       атрибутов в разметке смысла не имеет
 		 */
+		/**
+		 * Если объявлений пространств имён у узла больше, чем стоит сличать попарно
+		 *
+		 * @details Попарное сличение растёт квадратом от числа объявлений, а настройками
+		 *          атрибутов дозволено до нескольких тысяч: узел с шестью десятками тысяч
+		 *          объявлений разбирался бы три секунды вместо трёх сотых. Раскладка по
+		 *          свёртке сводит совпадающие объявления в соседи, и сличать остаётся лишь
+		 *          соседей - ровно тем же способом, каким сличаются и обычные атрибуты
+		 *
+		 * @note Порядок задан полным, а не одной лишь свёрткой: свёртка криптографической
+		 *       не является, и подставной текст волен назвать префиксы так, чтобы свёртки
+		 *       у всех совпали. Раскладка по одной свёртке свела бы их тогда в единую
+		 *       вереницу, и сличение внутри неё вернуло бы рост квадратом
+		 */
+		if(this->_declares.size() > 32){
+			// Выполняем очистку раскладки объявлений по свёртке
+			this->_digests.clear();
+			/**
+			 * Выполняем перебор всех объявлений пространств имён узла
+			 */
+			for(size_t i = 0; i < this->_declares.size(); i++){
+				// Собираемая запись раскладки объявления
+				digest_t item;
+				// Запоминаем положение объявления в перечне узла
+				item.index = static_cast <uint32_t> (i);
+				// Выполняем свёртку объявления по его имени и префиксу
+				item.hash = ::digest(this->_declares[i].local, this->_declares[i].prefix);
+				// Выполняем добавление записи к раскладке
+				this->_digests.push_back(item);
+			}
+			// Выполняем раскладку записей по свёртке и по самому объявлению
+			::sort(this->_digests.begin(), this->_digests.end(), [this](const digest_t & first, const digest_t & second) noexcept -> bool {
+				// Если свёртки объявлений не совпадают, сличаем сами свёртки
+				if(first.hash != second.hash) return (first.hash < second.hash);
+				// Получаем имя первого сличаемого объявления
+				const string_view local = this->_declares[first.index].local;
+				// Получаем имя второго сличаемого объявления
+				const string_view other = this->_declares[second.index].local;
+				// Если имена объявлений не совпадают, сличаем сами имена
+				if(local != other) return (local < other);
+				// Выводим результат сличения префиксов объявлений
+				return (this->_declares[first.index].prefix < this->_declares[second.index].prefix);
+			});
+			/**
+			 * Выполняем перебор соседей разложенной вереницы объявлений
+			 */
+			for(size_t i = 1; i < this->_digests.size(); i++){
+				// Получаем предыдущее объявление разложенной вереницы
+				const record_t & previous = this->_declares[this->_digests[i - 1].index];
+				// Получаем очередное объявление разложенной вереницы
+				const record_t & current = this->_declares[this->_digests[i].index];
+				/**
+				 * Если объявление для того же префикса уже получено
+				 */
+				if((previous.local == current.local) && (previous.prefix == current.prefix)){
+					// Запоминаем код ошибки разбора
+					this->_error = error_t::DUPLICATE_ATTRIBUTE;
+					// Выводим отрицательный результат выполнения операции
+					return false;
+				}
+			}
+		}
+		/**
+		 * Признак того, что совпадения отыскиваются попарным сличением
+		 *
+		 * @note Узлов с десятком объявлений в разметке подавляющее большинство, и на
+		 *       таком количестве попарное сличение обходится дешевле раскладки
+		 */
+		const bool pairwise = (this->_declares.size() <= 32);
 		for(size_t index = 0; index < this->_declares.size(); index++){
 			// Получаем очередное объявление пространства имён узла
 			const record_t & record = this->_declares[index];
 			/**
 			 * Выполняем перебор всех ранее полученных объявлений узла
+			 *
+			 * @note Перебор ведётся лишь там, где объявлений немного: у прочих совпадения
+			 *       отсеяны раскладкой выше, и сличать их повторно незачем
 			 */
-			for(size_t i = 0; i < index; i++){
+			for(size_t i = 0; pairwise && (i < index); i++){
 				/**
 				 * Если объявление для того же префикса уже получено
 				 */
@@ -4645,8 +4815,8 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 	 * Если имя разбираемого узла разобрать не удалось
 	 */
 	if(!this->parseName(pos, end, prefix, local))
-		// Выводим ошибку построения имени
-		return this->fail(error_t::INVALID_NAME, this->_offset + 1);
+		// Выводим ошибку построения имени либо превышения его длины
+		return this->fail((this->_overlong ? error_t::NAME_TOO_LONG : error_t::INVALID_NAME), this->_offset + 1);
 	// Получаем имя узла в записи, принятой в исходном тексте
 	const string_view qname(this->_buffer.data() + this->_offset + 1, pos - (this->_offset + 1));
 	// Выполняем очистку объявлений пространств имён узла
@@ -4767,8 +4937,8 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 		 * Если имя атрибута разобрать не удалось
 		 */
 		if(!this->parseName(pos, end, record.prefix, record.local))
-			// Выводим ошибку построения имени
-			return this->fail(error_t::INVALID_NAME, pos);
+			// Выводим ошибку построения имени либо превышения его длины
+			return this->fail((this->_overlong ? error_t::NAME_TOO_LONG : error_t::INVALID_NAME), pos);
 		/**
 		 * Выполняем пропуск пробельных знаков перед разделителем
 		 */
@@ -5467,6 +5637,8 @@ void awh::codec::xml::Reader::reset() noexcept {
 	this->_section = 0;
 	// Выполняем сброс признака прихода объявлений извне разобранного
 	this->_foreign = false;
+	// Выполняем сброс признака имени, превысившего предел настроек
+	this->_overlong = false;
 	// Выполняем сброс признака выданной непробельной части содержимого
 	this->_dirty = false;
 	// Выполняем очистку приведённого исходного текста
@@ -5636,6 +5808,24 @@ bool awh::codec::xml::Reader::next() noexcept {
 			// Выводим отсутствие очередного события разбора
 			return false;
 		}
+	}
+	/**
+	 * Если содержимое полученного события превысило предел, заданный настройками
+	 *
+	 * @details Предел этот проверяется и по ходу накопления - там, где разбор дожидается
+	 *          следующего куска, - но одного накопления мало: текст, пришедший целиком,
+	 *          копить не приходится вовсе, и событие любого объёма выдавалось бы мимо
+	 *          предела. Предел обязан держаться одинаково, как бы текст ни был нарезан:
+	 *          иначе он зависел бы от устройства сети, а не от настроек вызывающего
+	 *
+	 * @note Проверяется содержимое выдаваемого события, а не остаток разбираемого текста:
+	 *       по ходу накопления известен лишь второй, а здесь - уже сам итог
+	 */
+	if((this->_settings.maxEvent > 0) && (this->_text.size() > this->_settings.maxEvent)){
+		// Выполняем выдачу ошибки превышения заданного настройками предела
+		this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
+		// Выводим отсутствие очередного события разбора
+		return false;
 	}
 	/**
 	 * Если текст разобран до конца
@@ -5861,7 +6051,7 @@ awh::codec::xml::standalone_t awh::codec::xml::Reader::standalone() const noexce
  */
 awh::codec::xml::Reader::Reader() noexcept :
  _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
- _closing(false), _cdata(false), _section(0), _dirty(false), _foreign(false), _offset(0), _consumed(0), _line(1), _column(1),
+ _closing(false), _cdata(false), _section(0), _dirty(false), _foreign(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _state(state_t::HUNGRY),
  _event(event_t::NONE), _error(error_t::NONE), _encoding(encoding_t::NONE),
  _standalone(standalone_t::NONE), _space(space_t::DEFAULT) {
@@ -5876,7 +6066,7 @@ awh::codec::xml::Reader::Reader() noexcept :
  */
 awh::codec::xml::Reader::Reader(const settings_t & settings) noexcept :
  _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
- _closing(false), _cdata(false), _section(0), _dirty(false), _foreign(false), _offset(0), _consumed(0), _line(1), _column(1),
+ _closing(false), _cdata(false), _section(0), _dirty(false), _foreign(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _settings(settings),
  _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE),
  _encoding(encoding_t::NONE), _standalone(standalone_t::NONE), _space(space_t::DEFAULT) {

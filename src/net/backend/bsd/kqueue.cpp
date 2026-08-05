@@ -3657,19 +3657,8 @@ namespace local {
 					::local::result.resize(::local::change.size());
 					// Выполняем изменение параметров события
 					if(!(result = (::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), &::local::result[0], ::local::result.size(), nullptr) != net::invalid_socket_t))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-						#endif
+						// Записываем ошибку в лог
+						log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
 						// Очищаем список изменений
 						::local::change.clear();
 						// Очищаем список результатов активации
@@ -54455,18 +54444,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										case static_cast <uint8_t> (event::family_t::IPV4):
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6): {
-											// Если опция передана как TCP_CORK
-											if(event::options::TCP_CORK & options){
+											// Если опция передана как TCP_CORKING
+											if(event::options::TCP_CORKING & options){
 												// Активируем алгоритм TCP/CORK
-												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
+												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORKING)))
 													// Устанавливаем опцию события
-													i->second->state.options |= event::options::TCP_CORK;
-											// Если опция не передана как TCP_CORK, но установлена в состоянии узла
-											} else if(i->second->state.options & event::options::TCP_CORK) {
+													i->second->state.options |= event::options::TCP_CORKING;
+											// Если опция не передана как TCP_CORKING, но установлена в состоянии узла
+											} else if(i->second->state.options & event::options::TCP_CORKING) {
 												// Деактивируем алгоритм TCP/CORK
-												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
+												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORKING)))
 													// Снимаем опцию события
-													i->second->state.options &= ~event::options::TCP_CORK;
+													i->second->state.options &= ~event::options::TCP_CORKING;
 											/**
 											 * @note Опция уже снята в состоянии узла, обращаться к ядру не за чем:
 											 *       снятие того, что не установлено, ничего не меняет ни на новом
@@ -54595,18 +54584,18 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										 * Для операционной системы FreeBSD
 										 */
 										#if __FreeBSD__
-											// Если опция передана как TCP_CORK
-											if(event::options::TCP_CORK & options){
+											// Если опция передана как TCP_CORKING
+											if(event::options::TCP_CORKING & options){
 												// Активируем алгоритм TCP/CORK
-												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORK)))
+												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORKING)))
 													// Устанавливаем опцию события
-													i->second->state.options |= event::options::TCP_CORK;
-											// Если опция не передана как TCP_CORK, но установлена в состоянии узла
-											} else if(i->second->state.options & event::options::TCP_CORK) {
+													i->second->state.options |= event::options::TCP_CORKING;
+											// Если опция не передана как TCP_CORKING, но установлена в состоянии узла
+											} else if(i->second->state.options & event::options::TCP_CORKING) {
 												// Деактивируем алгоритм TCP/CORK
-												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORK)))
+												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::DISABLED, event::options::TCP_CORKING)))
 													// Снимаем опцию события
-													i->second->state.options &= ~event::options::TCP_CORK;
+													i->second->state.options &= ~event::options::TCP_CORKING;
 											/**
 											 * @note Опция уже снята в состоянии узла, обращаться к ядру не за чем:
 											 *       снятие того, что не установлено, ничего не меняет ни на новом
@@ -55416,8 +55405,8 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 							}
 						}
 					} break;
-					// Если опция передана как TCP_CORK
-					case event::options::TCP_CORK: {
+					// Если опция передана как TCP_CORKING
+					case event::options::TCP_CORKING: {
 						/**
 						 * Определяем чем является текущий узел
 						 */
@@ -55449,13 +55438,13 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 												// Если событие принадлежит к типу STREAM
 												case static_cast <uint8_t> (event::type_t::STREAM): {
 													// Устанавливаем или снимаем режим алгоритма TCP/CORK
-													if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
+													if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORKING))){
 														// Если необходимо активировать режим алгоритма TCP/CORK
 														if(mode)
 															// Устанавливаем опцию события
-															i->second->state.options |= event::options::TCP_CORK;
+															i->second->state.options |= event::options::TCP_CORKING;
 														// Если необходимо деактивировать режим алгоритма TCP/CORK
-														else i->second->state.options ^= event::options::TCP_CORK;
+														else i->second->state.options ^= event::options::TCP_CORKING;
 													}
 												} break;
 												/**
@@ -55465,13 +55454,13 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													// Если событие принадлежит к типу SEQPACKET
 													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 														// Устанавливаем или снимаем режим алгоритма TCP/CORK
-														if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORK))){
+														if((result = this->_eth.socket.switchOption(fd, i->second->state.family, (mode ? net::socket_mode_t::ENABLED : net::socket_mode_t::DISABLED), event::options::TCP_CORKING))){
 															// Если необходимо активировать режим алгоритма TCP/CORK
 															if(mode)
 																// Устанавливаем опцию события
-																i->second->state.options |= event::options::TCP_CORK;
+																i->second->state.options |= event::options::TCP_CORKING;
 															// Если необходимо деактивировать режим алгоритма TCP/CORK
-															else i->second->state.options ^= event::options::TCP_CORK;
+															else i->second->state.options ^= event::options::TCP_CORKING;
 														}
 													} break;
 												#endif

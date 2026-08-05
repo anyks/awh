@@ -2042,12 +2042,12 @@ void awh::unit::QuicServer::rebase(const pid_t old, const pid_t pid) noexcept {
  * @brief Метод получения события завершения работы процесса кластера
  *
  * @param pid    идентификатор процесса
- * @param signal сигнал с которым завершился процесс
+ * @param status состояние, с которым завершился процесс
  *
  */
-void awh::unit::QuicServer::exit(const pid_t pid, const int32_t signal) noexcept {
+void awh::unit::QuicServer::exit(const pid_t pid, const int32_t status) noexcept {
 	// Выполняем функцию обратного вызова
-	this->_callback.call <void (const pid_t, const int32_t)> ("cluster_exit", pid, signal);
+	this->_callback.call <void (const pid_t, const int32_t)> ("cluster_exit", pid, status);
 }
 /**
  * @brief Метод обработки события отправки сообщения процессу кластера

@@ -67,6 +67,24 @@ static constexpr uint8_t RESPONSE_FLAG = 0x80;
  *
  */
 class Router {
+	public:
+		/**
+		 * @brief Порча, вносимая поддельным маршрутизатором в ответ
+		 *
+		 * @details Ответ, построенный ошибочно, приходит из сети наравне с правильным, и
+		 *          отличать одно от другого обязан сам модуль: гнездо обмена договором
+		 *          подключено к маршрутизатору, и негодный ответ приходит именно от него,
+		 *          а не от постороннего
+		 *
+		 */
+		enum class Damage : uint8_t {
+			NONE,      // Ответ выдаётся правильным
+			TRUNCATE,  // Ответ обрывается на середине заголовка
+			VERSION,   // Издание договора называется неизвестным
+			REQUEST,   // Отметка ответа снимается, и ответ выглядит просьбой
+			OPCODE,    // Действие в ответе называется чужим
+			SILENT     // Ответ не выдаётся вовсе
+		};
 	private:
 		// Дескриптор гнезда поддельного маршрутизатора
 		int _socket;
@@ -74,6 +92,15 @@ class Router {
 		std::thread _thread;
 		// Признак продолжения работы поддельного маршрутизатора
 		std::atomic <bool> _working;
+	public:
+		// Код итога, выдаваемый поддельным маршрутизатором
+		std::atomic <uint16_t> result{0};
+		// Порча, вносимая поддельным маршрутизатором в ответ
+		std::atomic <Damage> damage{Damage::NONE};
+		// Срок жизни перенаправления, называемый поддельным маршрутизатором
+		std::atomic <uint32_t> lifeTime{60};
+		// Количество просьб, полученных поддельным маршрутизатором
+		std::atomic <size_t> calls{0};
 	public:
 		/**
 		 * @brief Метод проверки готовности поддельного маршрутизатора
@@ -110,14 +137,56 @@ class Router {
 					::memset(&client, 0, sizeof(client));
 					// Выполняем чтение просьбы обратившейся машины
 					const ssize_t size = ::recvfrom(this->_socket, buffer, sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&client), &length);
-					// Если просьба не получена либо короче заголовка договора, ожидаем следующую
-					if(size < 12) continue;
+					/**
+					 * Если просьба не получена либо короче заголовка договора, ожидаем следующую
+					 *
+					 * @note Просьба о внешнем адресе занимает два байта, а о перенаправлении -
+					 *       двенадцать: короче двух не бывает ни одна
+					 */
+					if(size < 2) continue;
+					// Запоминаем полученную просьбу
+					this->calls.fetch_add(1);
+					// Получаем порчу, вносимую в ответ
+					const Damage damage = this->damage.load();
+					// Если ответ не выдаётся вовсе, ожидаем следующую просьбу
+					if(damage == Damage::SILENT) continue;
+					/**
+					 * Признак того, что просьба обращена за внешним адресом маршрутизатора
+					 *
+					 * @note Действие это договор обозначает нулём, а перенаправление - единицей
+					 *       у UDP и двойкой у TCP
+					 */
+					const bool address = (buffer[1] == 0);
 					// Собираемый ответ маршрутизатора
 					uint8_t answer[16] = {0};
 					// Записываем издание договора
-					answer[0] = 0;
+					answer[0] = static_cast <uint8_t> ((damage == Damage::VERSION) ? 0xFF : 0);
+					// Получаем действие, называемое в ответе
+					const uint8_t opcode = static_cast <uint8_t> ((damage == Damage::OPCODE) ? (buffer[1] + 1) : buffer[1]);
 					// Записываем действие договора с отметкой ответа
-					answer[1] = static_cast <uint8_t> (buffer[1] | RESPONSE_FLAG);
+					answer[1] = static_cast <uint8_t> ((damage == Damage::REQUEST) ? opcode : (opcode | RESPONSE_FLAG));
+					// Получаем код итога, выдаваемый маршрутизатором
+					const uint16_t code = this->result.load();
+					// Записываем код итога, выдаваемый маршрутизатором
+					answer[2] = static_cast <uint8_t> (code >> 8);
+					// Записываем код итога, выдаваемый маршрутизатором
+					answer[3] = static_cast <uint8_t> (code & 0xFF);
+					// Время работы маршрутизатора в секундах
+					answer[7] = 1;
+					/**
+					 * Если просьба обращена за внешним адресом маршрутизатора
+					 *
+					 * @note Ответ на неё занимает двенадцать байтов, а внешний адрес лежит
+					 *       в последних четырёх
+					 */
+					if(address){
+						// Записываем внешний адрес маршрутизатора
+						answer[8] = 203; answer[9] = 0; answer[10] = 113; answer[11] = 7;
+						// Выполняем отправку ответа обратившейся машине
+						::sendto(this->_socket, answer, ((damage == Damage::TRUNCATE) ? 5 : 12), 0, reinterpret_cast <struct sockaddr *> (&client), length);
+						// Ожидаем следующую просьбу
+						continue;
+					}
 					// Записываем внутренний порт, называемый испытанием
 					answer[8] = static_cast <uint8_t> (internalPort >> 8);
 					// Записываем внутренний порт, называемый испытанием
@@ -126,10 +195,18 @@ class Router {
 					answer[10] = static_cast <uint8_t> (INTERNAL_PORT >> 8);
 					// Записываем назначенный внешний порт
 					answer[11] = static_cast <uint8_t> (INTERNAL_PORT & 0xFF);
+					// Получаем назначенный срок жизни перенаправления
+					const uint32_t life = this->lifeTime.load();
 					// Записываем назначенный срок жизни перенаправления
-					answer[15] = 60;
+					answer[12] = static_cast <uint8_t> (life >> 24);
+					// Записываем назначенный срок жизни перенаправления
+					answer[13] = static_cast <uint8_t> ((life >> 16) & 0xFF);
+					// Записываем назначенный срок жизни перенаправления
+					answer[14] = static_cast <uint8_t> ((life >> 8) & 0xFF);
+					// Записываем назначенный срок жизни перенаправления
+					answer[15] = static_cast <uint8_t> (life & 0xFF);
 					// Выполняем отправку ответа обратившейся машине
-					::sendto(this->_socket, answer, sizeof(answer), 0, reinterpret_cast <struct sockaddr *> (&client), length);
+					::sendto(this->_socket, answer, ((damage == Damage::TRUNCATE) ? 5 : sizeof(answer)), 0, reinterpret_cast <struct sockaddr *> (&client), length);
 				}
 			});
 		}
@@ -292,4 +369,226 @@ TEST_F(PortmapUnitFixture, PortmapNatPmpForeignAnswer) {
 	ASSERT_TRUE(outcome.failed);
 	// Выполняем проверку кода причины отказа перенаправления
 	ASSERT_EQ(outcome.error, awh::unit::portmap_t::error_t::NO_RESPONSE);
+}
+
+/**
+ * @brief Метод настройки модуля перенаправления портов на поддельный маршрутизатор
+ *
+ * @param portmap объект модуля перенаправления портов
+ *
+ */
+static void setup(awh::unit::portmap_t & portmap) noexcept {
+	// Устанавливаем вид опроса маршрутизатора
+	portmap.setType(awh::unit::portmap_t::type_t::NAT_PMP);
+	// Устанавливаем адрес поддельного маршрутизатора
+	portmap.setRouter("127.0.0.1");
+	// Устанавливаем срок ожидания ответа маршрутизатора
+	portmap.setTimeout(300);
+	// Устанавливаем количество попыток обращения к маршрутизатору
+	portmap.setAttempts(2);
+}
+
+/**
+ * @brief Проверка приведения кодов отказа маршрутизатора
+ *
+ * @details Договор NAT-PMP несёт шесть кодов итога, и всякий из них модуль обязан
+ *          привести к своему коду причины отказа. Приведение это прежде не проверялось
+ *          вовсе: поддельный маршрутизатор отвечал только удачей
+ *
+ */
+TEST_F(PortmapUnitFixture, PortmapNatPmpRefusal) {
+	/**
+	 * @brief Соответствие кода итога договора коду причины отказа модуля
+	 *
+	 */
+	struct Pair {
+		// Код итога, выдаваемый маршрутизатором
+		uint16_t result;
+		// Ожидаемый код причины отказа перенаправления
+		awh::unit::portmap_t::error_t error;
+	};
+	// Перечень сличаемых кодов итога
+	const Pair pairs[] = {
+		{1, awh::unit::portmap_t::error_t::NOT_SUPPORTED},
+		{2, awh::unit::portmap_t::error_t::NOT_AUTHORIZED},
+		{3, awh::unit::portmap_t::error_t::NETWORK_FAILURE},
+		{4, awh::unit::portmap_t::error_t::OUT_OF_RESOURCES},
+		{5, awh::unit::portmap_t::error_t::NOT_SUPPORTED},
+		{9, awh::unit::portmap_t::error_t::REFUSED}
+	};
+	/**
+	 * Выполняем перебор всех сличаемых кодов итога
+	 */
+	for(const Pair & pair : pairs){
+		// Создаём поддельный маршрутизатор договора NAT-PMP
+		Router router;
+		// Если порт договора занят, испытание не проводится
+		if(!router.ready()) GTEST_SKIP() << "NAT-PMP port is occupied";
+		// Устанавливаем код итога, выдаваемый поддельным маршрутизатором
+		router.result.store(pair.result);
+		// Выполняем запуск поддельного маршрутизатора с тем же внутренним портом
+		router.start(INTERNAL_PORT);
+		// Создаём объект модуля перенаправления портов
+		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		// Выполняем настройку модуля на поддельный маршрутизатор
+		setup(portmap);
+		// Выполняем ожидание итога обращения к маршрутизатору
+		const outcome_t outcome = this->await(portmap, awh::unit::portmap_t::action_t::OPEN);
+		// Выполняем остановку поддельного маршрутизатора
+		router.stop();
+		// Выполняем проверку того, что обращение завершилось отказом
+		ASSERT_TRUE(outcome.failed) << "код итога " << pair.result;
+		// Выполняем проверку кода причины отказа перенаправления
+		ASSERT_EQ(outcome.error, pair.error) << "код итога " << pair.result;
+		// Выполняем проверку того, что повторов при осмысленном отказе не было
+		ASSERT_EQ(router.calls.load(), static_cast <size_t> (1)) << "код итога " << pair.result;
+	}
+}
+
+/**
+ * @brief Проверка разбора негодного ответа маршрутизатора
+ *
+ * @details Гнездо обмена договором подключено к маршрутизатору, и негодный ответ приходит
+ *          именно от него, а не от постороннего: ответ, разобрать который не удалось,
+ *          означает неисправность маршрутизатора, и объявляется он неразобранным сразу,
+ *          без повтора просьбы. Ответ же, разобранный успешно, но нашей просьбе не
+ *          отвечающий, - дело иное: он попросту не наш, отбрасывается молча, а ожидание
+ *          продолжается остатком срока
+ *
+ * @note Приведение это в точности то же, что у договора PCP: там оно закреплено
+ *       проверкой `PortmapPcpDamagedAnswer`, и расхождение между договорами означало бы,
+ *       что один из них разобран неверно
+ *
+ */
+TEST_F(PortmapUnitFixture, PortmapNatPmpDamagedAnswer) {
+	/**
+	 * @brief Соответствие вносимой порчи ожидаемому итогу обращения
+	 *
+	 */
+	struct Pair {
+		// Порча, вносимая поддельным маршрутизатором в ответ
+		Router::Damage damage;
+		// Ожидаемый код причины отказа перенаправления
+		awh::unit::portmap_t::error_t error;
+		// Ожидаемое количество просьб, полученных маршрутизатором
+		size_t calls;
+	};
+	// Перечень сличаемой порчи
+	const Pair pairs[] = {
+		// Ответ короче заголовка договора разобрать нечем
+		{Router::Damage::TRUNCATE, awh::unit::portmap_t::error_t::MALFORMED, 1},
+		// Издание договора в ответе неизвестно
+		{Router::Damage::VERSION, awh::unit::portmap_t::error_t::MALFORMED, 1},
+		// Ответ без отметки ответом не является
+		{Router::Damage::REQUEST, awh::unit::portmap_t::error_t::MALFORMED, 1},
+		// Действие в ответе названо чужим
+		{Router::Damage::OPCODE, awh::unit::portmap_t::error_t::MALFORMED, 1},
+		// Ответа нет вовсе, и просьба повторяется отведённое число раз
+		{Router::Damage::SILENT, awh::unit::portmap_t::error_t::NO_RESPONSE, 2}
+	};
+	/**
+	 * Выполняем перебор всей сличаемой порчи
+	 */
+	for(const Pair & pair : pairs){
+		// Получаем порчу, вносимую поддельным маршрутизатором в ответ
+		const Router::Damage damage = pair.damage;
+		// Создаём поддельный маршрутизатор договора NAT-PMP
+		Router router;
+		// Если порт договора занят, испытание не проводится
+		if(!router.ready()) GTEST_SKIP() << "NAT-PMP port is occupied";
+		// Устанавливаем порчу, вносимую поддельным маршрутизатором в ответ
+		router.damage.store(damage);
+		// Выполняем запуск поддельного маршрутизатора с тем же внутренним портом
+		router.start(INTERNAL_PORT);
+		// Создаём объект модуля перенаправления портов
+		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		// Выполняем настройку модуля на поддельный маршрутизатор
+		setup(portmap);
+		// Выполняем ожидание итога обращения к маршрутизатору
+		const outcome_t outcome = this->await(portmap, awh::unit::portmap_t::action_t::OPEN);
+		// Выполняем остановку поддельного маршрутизатора
+		router.stop();
+		// Выполняем проверку того, что негодный ответ за свой не принят
+		ASSERT_FALSE(outcome.answered) << "порча " << static_cast <int> (damage);
+		// Выполняем проверку того, что обращение завершилось отказом
+		ASSERT_TRUE(outcome.failed) << "порча " << static_cast <int> (damage);
+		// Выполняем проверку кода причины отказа перенаправления
+		ASSERT_EQ(outcome.error, pair.error) << "порча " << static_cast <int> (damage);
+		// Выполняем проверку количества просьб, полученных маршрутизатором
+		ASSERT_EQ(router.calls.load(), pair.calls) << "порча " << static_cast <int> (damage);
+	}
+}
+
+/**
+ * @brief Проверка получения внешнего адреса маршрутизатора
+ *
+ * @details Внешний адрес договор выдаёт отдельным действием, и разбор его прежде не
+ *          проверялся вовсе: адрес лежит в ответе четырьмя байтами в порядке сети
+ *
+ */
+TEST_F(PortmapUnitFixture, PortmapNatPmpExternal) {
+	// Создаём поддельный маршрутизатор договора NAT-PMP
+	Router router;
+	// Если порт договора занят, испытание не проводится
+	if(!router.ready()) GTEST_SKIP() << "NAT-PMP port is occupied";
+	// Выполняем запуск поддельного маршрутизатора с тем же внутренним портом
+	router.start(INTERNAL_PORT);
+	// Создаём объект модуля перенаправления портов
+	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	// Выполняем настройку модуля на поддельный маршрутизатор
+	setup(portmap);
+	// Выполняем ожидание итога обращения к маршрутизатору
+	const outcome_t outcome = this->await(portmap, awh::unit::portmap_t::action_t::EXTERNAL);
+	// Выполняем остановку поддельного маршрутизатора
+	router.stop();
+	// Выполняем проверку того, что обращение отказом не завершилось
+	ASSERT_FALSE(outcome.failed);
+	// Выполняем проверку того, что маршрутизатор ответил
+	ASSERT_TRUE(outcome.answered);
+	// Выполняем проверку договора, по которому получен итог
+	ASSERT_EQ(outcome.type, awh::unit::portmap_t::type_t::NAT_PMP);
+}
+
+/**
+ * @brief Проверка снятия и продления перенаправления
+ *
+ * @details Обе просьбы договор выражает тем же действием, что и заведение: снятие -
+ *          нулевым сроком жизни, продление - обычным. Различает их лишь сам модуль
+ *
+ */
+TEST_F(PortmapUnitFixture, PortmapNatPmpCloseAndRenew) {
+	// Перечень проверяемых просьб
+	const awh::unit::portmap_t::action_t actions[] = {
+		awh::unit::portmap_t::action_t::CLOSE,
+		awh::unit::portmap_t::action_t::RENEW
+	};
+	/**
+	 * Выполняем перебор всех проверяемых просьб
+	 */
+	for(const awh::unit::portmap_t::action_t action : actions){
+		// Создаём поддельный маршрутизатор договора NAT-PMP
+		Router router;
+		// Если порт договора занят, испытание не проводится
+		if(!router.ready()) GTEST_SKIP() << "NAT-PMP port is occupied";
+		/**
+		 * Устанавливаем нулевой срок жизни при снятии перенаправления
+		 *
+		 * @note Маршрутизатор отвечает на снятие тем же нулём, каким его и просили
+		 */
+		if(action == awh::unit::portmap_t::action_t::CLOSE) router.lifeTime.store(0);
+		// Выполняем запуск поддельного маршрутизатора с тем же внутренним портом
+		router.start(INTERNAL_PORT);
+		// Создаём объект модуля перенаправления портов
+		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		// Выполняем настройку модуля на поддельный маршрутизатор
+		setup(portmap);
+		// Выполняем ожидание итога обращения к маршрутизатору
+		const outcome_t outcome = this->await(portmap, action);
+		// Выполняем остановку поддельного маршрутизатора
+		router.stop();
+		// Выполняем проверку того, что обращение отказом не завершилось
+		ASSERT_FALSE(outcome.failed) << "просьба " << static_cast <int> (action);
+		// Выполняем проверку того, что маршрутизатор ответил
+		ASSERT_TRUE(outcome.answered) << "просьба " << static_cast <int> (action);
+	}
 }

@@ -142,7 +142,7 @@ TEST_F(EthFixture, EthSuiteTest){
 	// Получаем код ошибки сокета
 	ASSERT_EQ(0, this->_eth->socket.getError(sock));
 	// Включаем режим cork для TCP-сокета
-	ASSERT_FALSE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::TCP_CORK));
+	ASSERT_FALSE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::TCP_CORKING));
 	// Включаем или отключаем режим отображения IPv4 => IPv6
 	ASSERT_FALSE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::ENABLED, awh::event::options::IPV6_ONLY));
 	// Устанавливаем повторное использование адреса сокета

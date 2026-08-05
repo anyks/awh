@@ -250,7 +250,15 @@ namespace awh {
 			bool _threadSafety;
 		private:
 			// Объект согласования доступа к реестру шаблонов
-			mutable mutex _mtx;
+			/**
+			 * Имя типа уточняется пространством имён намеренно
+			 *
+			 * @warning У Solaris в общем пространстве имён своё имя mutex - оно приходит
+			 *          из sys/t_lock.h, - и голое обращение там становится двусмысленным.
+			 *          Уточнение принято и у прочих заголовков набора: threadpool и signals
+			 *          пишут его так же
+			 */
+			mutable std::mutex _mtx;
 		private:
 			// Реестр именованных шаблонов
 			unordered_map <string, string> _patterns;

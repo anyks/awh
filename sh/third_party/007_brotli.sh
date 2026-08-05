@@ -161,20 +161,10 @@ if [ -n "$1" ]; then
 			# Выполняем сборку на всех логических ядрах
 			$MAKE -j"$numproc" || exit 1
 
-			# Если сборка производится в операционной системе macOS
-			if [ $OS = "Darwin" ]; then
-				INSTALL_CMD="ditto -v"
-			# Если сборка производится в операционной системе Windows, Linux или Solaris
-			elif [ $OS = "Windows" ] || [ $OS = "Linux" ] || [ $OS = "SunOS" ]; then
-				INSTALL_CMD="install -D -m 0644"
-			# Если сборка производится в операционной системе FreeBSD, NetBSD или OpenBSD
-			elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
-				INSTALL_CMD="install -m 0644"
-			# Если операционная система не определена
-			else
-				echo "Operating system not defined"
-				exit 1
-			fi
+			# Команда установки задаётся родительским скриптом build_third_party.sh:
+			# пользуются ею несколько модулей, и способ её зависит от системы, а не от
+			# модуля. Прежде она задавалась здесь, а density и lizard читали её отсюда же -
+			# связь эта держалась лишь на том, что brotli идёт прежде них
 
 			# Производим установку библиотеки по нужному пути
 			echo "Install \"$src/${build}/libbrotlicommon.a\" to \"$PREFIX/lib/libbrotlicommon.a\""

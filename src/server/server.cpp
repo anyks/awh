@@ -224,7 +224,7 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (index), static_cast <uint16_t> (status)), log_t::flag_t::WARNING, this->_id.eid);
+							this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (index), static_cast <uint16_t> (status)), log_t::flag_t::WARNING, static_cast <event::id_t> (this->_id.eid));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -817,12 +817,12 @@ void awh::Server::rebaseCluster(const pid_t old, const pid_t pid) noexcept {
  * @brief Метод получения события завершения работы процесса
  *
  * @param pid    идентификатор процесса
- * @param signal сигнал, с которым завершился процесс
+ * @param status состояние, с которым завершился процесс
  *
  */
-void awh::Server::exitCluster(const pid_t pid, const int32_t signal) noexcept {
+void awh::Server::exitCluster(const pid_t pid, const int32_t status) noexcept {
 	// Выполняем функцию обратного вызова
-	this->_callback.call <void (const pid_t, const int32_t)> ("cluster_exit", pid, signal);
+	this->_callback.call <void (const pid_t, const int32_t)> ("cluster_exit", pid, status);
 }
 /**
  * @brief Метод обработки события отправки сообщения процессу кластера

@@ -88,6 +88,8 @@ namespace {
 		uint16_t options;
 		// Дескриптор операционной системы (у узла NOTIFY отсутствует)
 		HANDLE handle;
+		// Идентификатор узла-собеседника пары IPC (0 у узлов одиночных)
+		awh::event::id_t peer;
 		// Очередь принятых сообщений, границы которых сохраняются
 		std::deque <std::vector <uint8_t>> incoming;
 		// Функция обратного вызова на чтение сообщений
@@ -108,7 +110,7 @@ namespace {
 		 id(0), node(awh::event::node_t::NONE), family(awh::event::family_t::NONE),
 		 type(awh::event::type_t::NONE), protocol(awh::event::protocol_t::NONE),
 		 status(awh::event::status_t::NONE), options(awh::event::options::NONE),
-		 handle(INVALID_HANDLE_VALUE) {}
+		 handle(INVALID_HANDLE_VALUE), peer(0) {}
 	};
 
 	// Список заведённых узлов событий
@@ -188,9 +190,6 @@ namespace {
  *
  * @param id идентификатор события
  * @return   результат выполнения фиксации
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 bool awh::engine::IO::commit([[maybe_unused]] const event::id_t id) noexcept {
@@ -846,9 +845,6 @@ bool awh::engine::IO::setMaxConnections([[maybe_unused]] const event::id_t id, [
  * @param id идентификатор события
  * @return   результат выполнения удаления
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 bool awh::engine::IO::destroy([[maybe_unused]] const event::id_t id) noexcept {
 	// Функция обратного вызова на изменение состояния
@@ -883,15 +879,75 @@ bool awh::engine::IO::destroy([[maybe_unused]] const event::id_t id) noexcept {
  * @param protocol протокол сокета
  * @return         пара идентификаторов созданных событий
  *
+ * @warning Пара эта живёт **внутри одного процесса**: узлы связаны друг с другом
+ *          по идентификатору, и отправленное одному ложится в очередь другого.
+ *          Настоящего дескриптора операционной системы за ними не стоит, а
+ *          значит, порождённый процесс её не унаследует. Устройство временное,
+ *          как и всё ядро петли ниже: с приходом порта завершения ввода-вывода
+ *          на её место встанет именованный канал в режиме сообщений
  *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
+ * @note Семейства UDS у MS Windows в том виде, в каком оно есть у POSIX, не
+ *       существует, но договор метода семейством этим и не связан: вызывающая
+ *       сторона просит канал обмена между процессами, а чем он устроен -
+ *       забота бэкенда. Поэтому UDS и PIPE обрабатываются здесь одинаково
  *
  */
-std::array <awh::event::id_t, 2> awh::engine::IO::events([[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::type_t type, [[maybe_unused]] const event::protocol_t protocol) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return std::array <awh::event::id_t, 2>();
+std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
+	// Результат работы функции
+	std::array <awh::event::id_t, 2> result = {0, 0};
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Если движок не инициализирован — пару узлов завести нельзя
+	if(!::__awh_initialized__){
+		// Заносим в журнал предупреждение о неинициализированном движке
+		this->_log->print("%s: engine is not initialized", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__);
+		// Возвращаем пустую пару идентификаторов событий
+		return result;
+	}
+	/**
+	 * Временное ядро несёт лишь пару обмена сообщениями между процессами.
+	 * Пары сетевых событий появятся вместе с портом завершения ввода-вывода
+	 */
+	if((family != event::family_t::PIPE) && (family != event::family_t::UDS)){
+		// Заносим в журнал предупреждение о неподдерживаемом семействе событий
+		this->_log->print("%s: event pair for family %u is not supported yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint16_t> (family));
+		// Возвращаем пустую пару идентификаторов событий
+		return result;
+	}
+	/**
+	 * Заводим оба узла пары
+	 */
+	for(uint8_t i = 0; i < 2; i++){
+		// Создаём новый узел события
+		std::unique_ptr <::Node> item = std::make_unique <::Node> ();
+		// Устанавливаем идентификатор события, пропуская нулевой
+		item->id = ++::__awh_last_id__;
+		// Устанавливаем вид узла
+		item->node = event::node_t::IPC;
+		// Устанавливаем семейство событий
+		item->family = family;
+		// Устанавливаем тип сокета
+		item->type = type;
+		// Устанавливаем протокол передачи данных
+		item->protocol = protocol;
+		// Запоминаем идентификатор заведённого события
+		result[i] = item->id;
+		// Добавляем узел в список заведённых
+		::__awh_nodes__.emplace(item->id, ::std::move(item));
+	}
+	// Выполняем поиск первого узла пары
+	::Node * first = ::__awh_find__(result[0]);
+	// Выполняем поиск второго узла пары
+	::Node * second = ::__awh_find__(result[1]);
+	// Если оба узла пары заведены
+	if((first != nullptr) && (second != nullptr)){
+		// Связываем первый узел пары со вторым
+		first->peer = second->id;
+		// Связываем второй узел пары с первым
+		second->peer = first->id;
+	}
+	// Возвращаем пару идентификаторов заведённых событий
+	return result;
 }
 
 /**
@@ -942,9 +998,6 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events([[maybe_unused]] const 
  * @param protocol протокол сокета
  * @return         идентификатор созданного события, нулевой при отказе
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 awh::event::id_t awh::engine::IO::event([[maybe_unused]] const event::node_t node, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::type_t type, [[maybe_unused]] const event::protocol_t protocol) noexcept {
 	// Выполняем блокировку замка доступа к списку узлов
@@ -957,10 +1010,11 @@ awh::event::id_t awh::engine::IO::event([[maybe_unused]] const event::node_t nod
 		return 0;
 	}
 	/**
-	 * Пока временное ядро несёт лишь узел пробуждения. Прочие виды узлов появятся
-	 * вместе с портом завершения ввода-вывода
+	 * Временное ядро несёт узел пробуждения и узел обмена сообщениями между
+	 * процессами. Прочие виды узлов появятся вместе с портом завершения
+	 * ввода-вывода
 	 */
-	if(node != event::node_t::NOTIFY){
+	if((node != event::node_t::NOTIFY) && (node != event::node_t::IPC)){
 		// Заносим в журнал предупреждение о неподдерживаемом виде узла
 		this->_log->print("%s: node type %u is not supported yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint16_t> (node));
 		// Возвращаем признак отсутствия заведённого узла
@@ -1029,9 +1083,6 @@ bool awh::engine::IO::setSeek([[maybe_unused]] const event::id_t id, [[maybe_unu
  * @param id идентификатор события
  * @return   опции события
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 uint16_t awh::engine::IO::getOptions([[maybe_unused]] const event::id_t id) const noexcept {
 	// Выполняем блокировку замка доступа к списку узлов
@@ -1048,9 +1099,6 @@ uint16_t awh::engine::IO::getOptions([[maybe_unused]] const event::id_t id) cons
  * @param id      идентификатор события
  * @param options опции события для установки
  * @return        результат выполнения установки
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 bool awh::engine::IO::setOptions([[maybe_unused]] const event::id_t id, [[maybe_unused]] const uint16_t options) noexcept {
@@ -1128,9 +1176,6 @@ bool awh::engine::IO::splice([[maybe_unused]] const event::id_t eid, [[maybe_unu
  *
  * @param id идентификатор события
  * @return   результат выполнения запуска
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
@@ -1311,15 +1356,18 @@ bool awh::engine::IO::recv([[maybe_unused]] const event::id_t id) noexcept {
  * @param size   размер данных для отправки
  * @return       количество байт данных, отправленных событием
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
+ * @note Временное ядро принимает сообщение целиком либо не принимает вовсе:
+ *       очередь его не ограничена, и частичной отправки, какая бывает у
+ *       сокета с заполненным буфером, здесь не случается
  *
  */
-size_t awh::engine::IO::send([[maybe_unused]] const event::id_t id, [[maybe_unused]] const void * buffer, [[maybe_unused]] const size_t size) noexcept {
+size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const size_t size) noexcept {
 	// Если данные для отправки не переданы
 	if((buffer == nullptr) || (size == 0))
 		// Возвращаем количество отправленных байт
 		return 0;
+	// Функция обратного вызова на запись сообщений
+	engine::callback::write_t callback = nullptr;
 	{
 		// Выполняем блокировку замка доступа к списку узлов
 		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
@@ -1329,20 +1377,50 @@ size_t awh::engine::IO::send([[maybe_unused]] const event::id_t id, [[maybe_unus
 		if(item == nullptr)
 			// Возвращаем количество отправленных байт
 			return 0;
+		// Узел, которому предназначено сообщение
+		::Node * target = nullptr;
 		/**
-		 * Узел пробуждения принимает сообщение к себе же: отправитель кладёт байты
-		 * в очередь узла, а петля отдаёт их в обратный вызов чтения. Так устроено
-		 * извещение о завершившихся процессах у модуля кластера
+		 * Определяем вид узла-отправителя
 		 */
-		if(item->node != event::node_t::NOTIFY){
+		switch(static_cast <uint8_t> (item->node)){
+			/**
+			 * Узел пробуждения принимает сообщение к себе же: отправитель кладёт байты
+			 * в очередь узла, а петля отдаёт их в обратный вызов чтения. Так устроено
+			 * извещение о завершившихся процессах у модуля кластера
+			 */
+			case static_cast <uint8_t> (event::node_t::NOTIFY):
+				// Сообщение предназначено самому узлу
+				target = item;
+			break;
+			/**
+			 * Узел обмена сообщениями отправляет собеседнику: сообщение ложится в
+			 * очередь второго узла пары, откуда петля отдаёт его в обратный вызов
+			 * чтения. Границы сообщения при этом сохраняются
+			 */
+			case static_cast <uint8_t> (event::node_t::IPC):
+				// Сообщение предназначено собеседнику по паре
+				target = ::__awh_find__(item->peer);
+			break;
+		}
+		// Если узел-получатель определить не удалось
+		if(target == nullptr){
 			// Заносим в журнал предупреждение о неподдерживаемом виде узла
 			this->_log->print("%s: sending to node type %u is not supported yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint16_t> (item->node));
 			// Возвращаем количество отправленных байт
 			return 0;
 		}
-		// Добавляем сообщение в очередь узла, сохраняя его границы
-		item->incoming.emplace_back(reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
+		// Добавляем сообщение в очередь узла-получателя, сохраняя его границы
+		target->incoming.emplace_back(reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
+		// Получаем функцию обратного вызова на запись сообщений
+		callback = item->write;
 	}
+	/**
+	 * Извещение отдаётся уже без замка: обратный вызов вправе завести или
+	 * уничтожить событие, и удержание замка привело бы к его повторному захвату
+	 */
+	if(callback != nullptr)
+		// Извещаем отправителя об отданном сообщении
+		callback(id, size);
 	// Пробуждаем петлю событий, чтобы та разобрала накопленное
 	::__awh_wake__();
 	// Возвращаем количество отправленных байт
@@ -1926,9 +2004,6 @@ bool awh::engine::IO::isAlive([[maybe_unused]] const event::id_t id) const noexc
 /**
  * @brief Метод очистки сетевого движка
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 void awh::engine::IO::clear() noexcept {
 	// Выполняем блокировку замка доступа к списку узлов
@@ -1951,9 +2026,6 @@ void awh::engine::IO::clear() noexcept {
  *
  * @return результат выполнения операции
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 bool awh::engine::IO::kick() noexcept {
 	// Пробуждаем ожидающую петлю событий
@@ -1966,9 +2038,6 @@ bool awh::engine::IO::kick() noexcept {
  * @brief Метод инициализации сетевого движка
  *
  * @return результат выполнения инициализации
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 bool awh::engine::IO::initialize() noexcept {
@@ -1990,9 +2059,6 @@ bool awh::engine::IO::initialize() noexcept {
  * @brief Метод реинициализации сетевого движка
  *
  * @return результат выполнения реинициализации
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 bool awh::engine::IO::reinitialize() noexcept {
@@ -2021,9 +2087,6 @@ bool awh::engine::IO::reinitialize() noexcept {
  *
  * @return результат выполнения деинициализации
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 bool awh::engine::IO::deinitialize() noexcept {
 	// Выполняем уничтожение всех заведённых узлов событий
@@ -2045,9 +2108,6 @@ bool awh::engine::IO::deinitialize() noexcept {
  *
  * @return состояние инициализации
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 bool awh::engine::IO::isInitialized() const noexcept {
 	// Выполняем блокировку замка доступа к списку узлов
@@ -2061,9 +2121,6 @@ bool awh::engine::IO::isInitialized() const noexcept {
  *
  * @return количество событий
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 size_t awh::engine::IO::eventsCount() const noexcept {
 	// Выполняем блокировку замка доступа к списку узлов
@@ -2076,9 +2133,6 @@ size_t awh::engine::IO::eventsCount() const noexcept {
  * @brief Метод получения типа внутренних таймеров
  *
  * @return тип таймера для событий сетевого движка
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 awh::event::timer_t awh::engine::IO::getInternalTimer() const noexcept {
@@ -2114,9 +2168,6 @@ awh::event::timer_t awh::engine::IO::getInternalTimer() const noexcept {
  * @endcode
  *
  * @param timer тип таймера для событий сетевого движка
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 void awh::engine::IO::setInternalTimer([[maybe_unused]] const event::timer_t timer) noexcept {
@@ -2164,9 +2215,6 @@ size_t awh::engine::IO::available([[maybe_unused]] const event::id_t id) const n
  * @param id идентификатор события
  * @return   тип события
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 awh::event::type_t awh::engine::IO::type([[maybe_unused]] const event::id_t id) const noexcept {
 	// Выполняем блокировку замка доступа к списку узлов
@@ -2182,9 +2230,6 @@ awh::event::type_t awh::engine::IO::type([[maybe_unused]] const event::id_t id) 
  *
  * @param id идентификатор события
  * @return   тип узла события
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 awh::event::node_t awh::engine::IO::node([[maybe_unused]] const event::id_t id) const noexcept {
@@ -2202,9 +2247,6 @@ awh::event::node_t awh::engine::IO::node([[maybe_unused]] const event::id_t id) 
  * @param id идентификатор события
  * @return   семейство адресов
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 awh::event::family_t awh::engine::IO::family([[maybe_unused]] const event::id_t id) const noexcept {
 	// Выполняем блокировку замка доступа к списку узлов
@@ -2221,9 +2263,6 @@ awh::event::family_t awh::engine::IO::family([[maybe_unused]] const event::id_t 
  * @param id идентификатор события
  * @return   статус события
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 awh::event::status_t awh::engine::IO::status([[maybe_unused]] const event::id_t id) const noexcept {
 	// Выполняем блокировку замка доступа к списку узлов
@@ -2239,9 +2278,6 @@ awh::event::status_t awh::engine::IO::status([[maybe_unused]] const event::id_t 
  *
  * @param id идентификатор события
  * @return   протокол события
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 awh::event::protocol_t awh::engine::IO::protocol([[maybe_unused]] const event::id_t id) const noexcept {
@@ -2306,9 +2342,6 @@ awh::event::protocol_t awh::engine::IO::protocol([[maybe_unused]] const event::i
  * @param timeout таймаут опроса в миллисекундах: отрицательный - без
  *                предела, нулевой - без ожидания
  * @return        результат выполнения опроса
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 bool awh::engine::IO::poll([[maybe_unused]] const int32_t timeout) noexcept {
@@ -2430,9 +2463,6 @@ bool awh::engine::IO::poll([[maybe_unused]] const int32_t timeout) noexcept {
  * @param id идентификатор события
  * @param cb функция обратного вызова
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::read_t cb) noexcept {
 	// Выполняем блокировку замка доступа к списку узлов
@@ -2465,9 +2495,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::write_t cb) noexcept {
@@ -2506,9 +2533,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  * @param id идентификатор события
  * @param cb функция обратного вызова
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::spool_t cb) noexcept {
 	/**
@@ -2533,9 +2557,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::event_t cb) noexcept {
@@ -2565,9 +2586,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::error_t cb) noexcept {
@@ -2600,9 +2618,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  * @param id идентификатор события
  * @param cb функция обратного вызова
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::vnode_t cb) noexcept {
 	/**
@@ -2626,9 +2641,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::inject_t cb) noexcept {
@@ -2672,9 +2684,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  * @param id идентификатор события
  * @param cb функция обратного вызова
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::status_t cb) noexcept {
 	// Выполняем блокировку замка доступа к списку узлов
@@ -2710,9 +2719,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  * @param id идентификатор события
  * @param cb функция обратного вызова
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::accept_t cb) noexcept {
 	/**
@@ -2732,9 +2738,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::origin_t cb) noexcept {
@@ -2759,9 +2762,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::traffic_t cb) noexcept {
@@ -2790,9 +2790,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  * @param id идентификатор события
  * @param cb функция обратного вызова
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::connect_t cb) noexcept {
 	/**
@@ -2814,9 +2811,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::tuninfo_t cb) noexcept {
@@ -2871,9 +2865,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  * @param id идентификатор события
  * @param cb функция обратного вызова
  *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
- *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::timeout_t cb) noexcept {
 	/**
@@ -2899,9 +2890,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
- *
- *
- * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::available_t cb) noexcept {
@@ -2941,3 +2929,96 @@ awh::engine::IO::~IO() noexcept {
 	 * @todo IOCP: освобождение порта завершения ввода-вывода и всех заведённых событий
 	 */
 }
+
+/**
+ * @brief Метод очистки контрольного списка события
+ *
+ * @param id идентификатор события
+ * @return   результат выполнения очистки
+ *
+ *
+ * @todo IOCP: тела у метода ещё нет — отвечает отказом
+ *
+ */
+bool awh::engine::IO::Control_List::clear([[maybe_unused]] const event::id_t id) noexcept {
+	// Заносим в журнал предупреждение об отсутствии реализации
+	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	// Возвращаем пустой результат
+	return bool();
+}
+
+/**
+ * @brief Метод добавления адреса в контрольный список события
+ *
+ * @param id    идентификатор события
+ * @param value значение адреса события
+ * @return      результат выполнения установки
+ *
+ *
+ * @todo IOCP: тела у метода ещё нет — отвечает отказом
+ *
+ */
+bool awh::engine::IO::Control_List::add([[maybe_unused]] const event::id_t id, [[maybe_unused]] string_view value) noexcept {
+	// Заносим в журнал предупреждение об отсутствии реализации
+	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	// Возвращаем пустой результат
+	return bool();
+}
+
+/**
+ * @brief Метод удаления адреса из контрольного списка события
+ *
+ * @param id    идентификатор события
+ * @param value адрес для удаления из контрольного списка
+ * @return      результат выполнения удаления
+ *
+ *
+ * @todo IOCP: тела у метода ещё нет — отвечает отказом
+ *
+ */
+bool awh::engine::IO::Control_List::remove([[maybe_unused]] const event::id_t id, [[maybe_unused]] string_view value) noexcept {
+	// Заносим в журнал предупреждение об отсутствии реализации
+	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	// Возвращаем пустой результат
+	return bool();
+}
+
+/**
+ * @brief Метод получения контрольного списка события
+ *
+ * @param id идентификатор события
+ * @return   контрольный список события
+ *
+ * @note Отвечает ссылкой на пустой список, живущий всё время работы процесса:
+ *       договор метода требует ссылки, и вернуть ссылку на местную переменную
+ *       нельзя
+ *
+ *
+ * @todo IOCP: тела у метода ещё нет — отвечает пустым списком
+ *
+ */
+const unordered_map <string, awh::event::address_t> & awh::engine::IO::Control_List::get([[maybe_unused]] const event::id_t id) const noexcept {
+	// Пустой контрольный список, отдаваемый при отсутствии реализации
+	static const unordered_map <string, event::address_t> result;
+	// Заносим в журнал предупреждение об отсутствии реализации
+	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	// Возвращаем пустой результат
+	return result;
+}
+
+/**
+ * @brief Конструктор
+ *
+ * @param type тип контрольного списка
+ * @param fmk  объект фреймворка
+ * @param log  объект работы с логами
+ *
+ */
+awh::engine::IO::Control_List::Control_List(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept :
+ _addr(fmk, log), _type(type), _fmk(fmk), _log(log) {}
+
+/**
+ * @brief Деструктор
+ *
+ */
+awh::engine::IO::Control_List::~Control_List() noexcept {}
