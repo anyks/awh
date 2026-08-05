@@ -467,8 +467,11 @@ else()
     SET(CMAKE_C_FLAGS_DISTRIBUTION "-O3")
     SET(CMAKE_CXX_FLAGS_DISTRIBUTION "-O3")
 
-    # Активируем использование TcMalloc
-    add_compile_definitions(__AWH_USE_TCMALLOC__)
+    # Если распределитель памяти TcMalloc системой поддерживается
+    if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+        # Активируем использование TcMalloc
+        add_compile_definitions(__AWH_USE_TCMALLOC__)
+    endif()
 
     # Выводим сообщение релизной информации
     message(STATUS "C Flags: ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE}")
@@ -511,16 +514,33 @@ else (Dependence_FOUND)
     message(FATAL_ERROR "Dependence not found")
 endif (Dependence_FOUND)
 
-# Выполняем поиск библиотеки TcMalloc
-find_package(TcMalloc REQUIRED)
+##
+# Распределитель памяти TcMalloc собирается не везде
+#
+# Библиотека gperftools обращается к системе вызовом syscall(2), а OpenBSD этот
+# вызов убрала целиком - таково их решение по усилению защиты, а не пробел выпуска.
+# Собрать её там нельзя, и подменить обращение нечем: вызов убран намеренно.
+# Распределитель памяти при этом не пропадает - его задачу берёт на себя
+# собственный распределитель OpenBSD, писанный с тем же вниманием к защите
+##
+if (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+    # Оставляем набор библиотек TcMalloc пустым
+    SET(TCMALLOC_LIBRARIES "")
+    # Выводим сообщение об использовании системного распределителя памяти
+    message(STATUS "TcMalloc is not available on OpenBSD: using the system allocator")
+# Если распределитель памяти TcMalloc системой поддерживается
+else()
+    # Выполняем поиск библиотеки TcMalloc
+    find_package(TcMalloc REQUIRED)
 
-# Провекра TcMalloc
-if (TcMalloc_FOUND)
-    message(STATUS "TcMalloc include dir found: " ${TCMALLOC_INCLUDE_DIR})
-    message(STATUS "TcMalloc lib found: " ${TCMALLOC_LIBRARY} " " ${TCMALLOC_COMMON_LIBRARY})
-else (TcMalloc_FOUND)
-    message(FATAL_ERROR "TcMalloc not found")
-endif (TcMalloc_FOUND)
+    # Провекра TcMalloc
+    if (TcMalloc_FOUND)
+        message(STATUS "TcMalloc include dir found: " ${TCMALLOC_INCLUDE_DIR})
+        message(STATUS "TcMalloc lib found: " ${TCMALLOC_LIBRARY} " " ${TCMALLOC_COMMON_LIBRARY})
+    else (TcMalloc_FOUND)
+        message(FATAL_ERROR "TcMalloc not found")
+    endif (TcMalloc_FOUND)
+endif()
 
 # Если Doxygen найден
 if(Doxygen_FOUND)

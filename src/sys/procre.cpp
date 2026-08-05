@@ -182,7 +182,7 @@ using namespace std;
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), awh::log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */

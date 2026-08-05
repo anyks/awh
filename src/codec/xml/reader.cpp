@@ -2918,6 +2918,55 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseText() noexcept {
 			if(end <= this->_offset)
 				// Выводим требование следующего куска исходного текста
 				return step_t::HUNGRY;
+			/**
+			 * Если настройки требуют отделять незначимое пробельное содержимое
+			 *
+			 * @details Пробельным содержимое считается лишь тогда, когда пробельным
+			 *          оказалось оно целиком, а этого о выдаваемой части сказать нельзя:
+			 *          следующий кусок может начаться с непробельного знака, и содержимое
+			 *          пробельным быть перестанет. Выдай мы часть сразу, вид события
+			 *          зависел бы от того, где легла граница куска, тогда как разбиение
+			 *          на куски обязано быть для разбора незаметным
+			 *
+			 * @note Удерживается лишь пробельная часть: как только в ней появляется
+			 *       непробельный знак, вид события определён окончательно, и удержание
+			 *       прекращается
+			 */
+			if(this->_settings.separateSpaces && !this->_dirty){
+				// Признак того, что выдаваемая часть состоит из одних пробельных знаков
+				bool blank = true;
+				/**
+				 * Выполняем перебор всех знаков выдаваемой части
+				 */
+				for(size_t i = this->_offset; i < end; i++){
+					/**
+					 * Если обнаружен знак, не являющийся пробельным
+					 */
+					if(!::isSpace(this->_buffer[i])){
+						// Запоминаем, что выдаваемая часть пробельной не является
+						blank = false;
+						// Выходим из перебора знаков
+						break;
+					}
+				}
+				/**
+				 * Если вид события ещё не определён
+				 */
+				if(blank){
+					/**
+					 * Если объём события превысил допустимый
+					 *
+					 * @note Удержание пробельного содержимого копит его до конца наравне со
+					 *       склеиванием кусков, и предел объёма события проверяется здесь так
+					 *       же: иначе он обходился бы простым отделением пробельного содержимого
+					 */
+					if((this->_settings.maxEvent > 0) && ((size - this->_offset) > this->_settings.maxEvent))
+						// Выводим ошибку превышения заданного настройками предела
+						return this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
+					// Выводим требование следующего куска исходного текста
+					return step_t::HUNGRY;
+				}
+			}
 		// Запоминаем конец выдаваемого содержимого
 		} else end = size;
 	}
@@ -3080,7 +3129,15 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseText() noexcept {
 	// Запоминаем содержимое узла без приведения
 	} else this->_text = raw;
 	// Запоминаем вид полученного события разбора
-	this->_event = ((spaces && this->_settings.separateSpaces) ? event_t::SPACE : event_t::TEXT);
+	this->_event = ((spaces && !this->_dirty && this->_settings.separateSpaces) ? event_t::SPACE : event_t::TEXT);
+	/**
+	 * Запоминаем, выдана ли непробельная часть содержимого узла
+	 *
+	 * @note Признак держится до ближайшей разметки: содержимое, выданное частями,
+	 *       остаётся одним и тем же содержимым, и пробельный хвост его незначимым
+	 *       не делает
+	 */
+	this->_dirty = (this->_dirty || !spaces);
 	// Запоминаем глубину вложенности узла события
 	this->_depth = static_cast <uint32_t> (this->_stack.size() - 1);
 	// Выполняем переход к следующей разметке
@@ -5015,9 +5072,17 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parse() noexcept {
 		/**
 		 * Если обнаружено начало разметки
 		 */
-		} else if(this->_buffer[this->_offset] == '<')
+		} else if(this->_buffer[this->_offset] == '<'){
+			/**
+			 * Выполняем сброс признака выданной непробельной части содержимого
+			 *
+			 * @note Разметка содержимое узла обрывает, и следующее за ней содержимое
+			 *       считается незначимым или значимым уже само по себе
+			 */
+			this->_dirty = false;
 			// Выполняем разбор разметки
 			step = this->parseMarkup();
+		}
 		/**
 		 * Если обнаружена ссылка на сущность
 		 */
@@ -5169,6 +5234,8 @@ void awh::codec::xml::Reader::reset() noexcept {
 	this->_closing = false;
 	// Выполняем сброс признака нахождения внутри дословного раздела
 	this->_cdata = false;
+	// Выполняем сброс признака выданной непробельной части содержимого
+	this->_dirty = false;
 	// Выполняем очистку приведённого исходного текста
 	this->_buffer.clear();
 	// Выполняем сброс положения разбора
@@ -5561,7 +5628,7 @@ awh::codec::xml::standalone_t awh::codec::xml::Reader::standalone() const noexce
  */
 awh::codec::xml::Reader::Reader() noexcept :
  _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
- _closing(false), _cdata(false), _offset(0), _consumed(0), _line(1), _column(1),
+ _closing(false), _cdata(false), _dirty(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _state(state_t::HUNGRY),
  _event(event_t::NONE), _error(error_t::NONE), _encoding(encoding_t::NONE),
  _standalone(standalone_t::NONE), _space(space_t::DEFAULT) {
@@ -5576,7 +5643,7 @@ awh::codec::xml::Reader::Reader() noexcept :
  */
 awh::codec::xml::Reader::Reader(const settings_t & settings) noexcept :
  _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
- _closing(false), _cdata(false), _offset(0), _consumed(0), _line(1), _column(1),
+ _closing(false), _cdata(false), _dirty(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _settings(settings),
  _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE),
  _encoding(encoding_t::NONE), _standalone(standalone_t::NONE), _space(space_t::DEFAULT) {

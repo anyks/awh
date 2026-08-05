@@ -22,9 +22,30 @@ for %%E in (Community Professional Enterprise BuildTools) do (
 	)
 )
 
+rem Вооружения Visual Studio на машине может не быть вовсе, тогда как сборщик
+rem MinGW-w64 приходит вместе со Strawberry Perl и с Git for Windows, отчего
+rem встречается чаще. Переносимой проверке кроме компилятора C++ ничего
+rem не нужно, поэтому при отсутствии Visual Studio берётся он
 if "%VCVARS%" == "" (
-	echo Вооружение Visual Studio 2022 не обнаружено
-	exit /b 3
+	where g++ >nul 2>&1
+	if errorlevel 1 (
+		if exist "C:\Strawberry\c\bin\g++.exe" (
+			set "PATH=C:\Strawberry\c\bin;%PATH%"
+		) else (
+			echo Ни вооружения Visual Studio 2022, ни сборщика MinGW-w64 не обнаружено
+			exit /b 3
+		)
+	)
+	cd /d "%~dp0..\.."
+	echo Сборка ведётся сборщиком MinGW-w64
+	g++ -std=c++17 -O2 -Iinclude -Itools/regex -o conformance.exe tools\regex\conformance.cpp src\regex\*.cpp src\unicode\*.cpp > compile.log 2>&1
+	if errorlevel 1 (
+		echo Сборка не выполнена:
+		type compile.log
+		exit /b 4
+	)
+	conformance.exe
+	exit /b %errorlevel%
 )
 
 call "%VCVARS%" %TOOLSET% >nul

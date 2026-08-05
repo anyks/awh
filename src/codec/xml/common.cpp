@@ -262,10 +262,10 @@ const char * awh::codec::xml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::ENTITY_COUNT_EXCEEDED):
 			// Выводим описание кода ошибки
 			return "too many entity declarations";
-		// Если числовая ссылка указывает на недопустимое кодовое значение
+		// Если числовая ссылка построена ошибочно либо указывает на недопустимое кодовое значение
 		case static_cast <uint8_t> (error_t::INVALID_CHAR_REFERENCE):
 			// Выводим описание кода ошибки
-			return "character reference points to an invalid code point";
+			return "malformed or out-of-range character reference";
 		// Если примечание построено ошибочно
 		case static_cast <uint8_t> (error_t::INVALID_COMMENT):
 			// Выводим описание кода ошибки
