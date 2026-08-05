@@ -32,7 +32,28 @@
 /**
  * Системные заголовочные файлы
  */
-#include <arpa/inet.h>
+/**
+ * Для операционной системы MS Windows
+ *
+ * @note Заголовки эти принадлежат POSIX и у MS Windows отсутствуют.
+ *       Соответствующие им объявления приходят там из winsock2.h,
+ *       подключаемого через единую точку sys/win32.hpp
+ *
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 */
+	#include <sys/win32.hpp>
+/**
+ * Для всех остальных операционных систем
+ */
+#else
+	/**
+	 * Системные заголовочные файлы
+	 */
+	#include <arpa/inet.h>
+#endif
 #include <sys/types.h>
 
 /**
@@ -3311,13 +3332,13 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, this->_fmk->convert(wstring{message}).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_fmk->convert(wstring{message}).c_str());
 					#endif
 				// Получаем результат кодирования
 				} else result = this->_fmk->convert(wstring{buffer});
@@ -3410,13 +3431,13 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, this->_fmk->convert(wstring{message}).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
+						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_fmk->convert(wstring{message}).c_str());
 					#endif
 				// Получаем результат декодирования
 				} else result = this->_fmk->convert(wstring{buffer});

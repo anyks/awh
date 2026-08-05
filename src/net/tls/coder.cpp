@@ -47,10 +47,62 @@
 #include <openssl/hpke.h>
 
 /**
- * Системные заголовочные файлы
+ * Для операционной системы MS Windows
+ *
+ * @note Заголовки arpa/inet.h и netinet/in.h принадлежат POSIX и у MS Windows
+ *       отсутствуют. Соответствующие им объявления, включая порядок байтов сети,
+ *       приходят там из winsock2.h
+ *
  */
-#include <arpa/inet.h>
-#include <netinet/in.h>
+#if _WIN32 || _WIN64
+	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 */
+	#include <sys/win32.hpp>
+
+	/**
+	 * Системный заголовочный файл хранилища сертификатов
+	 *
+	 * @note Подключается отдельно: выключатель WIN32_LEAN_AND_MEAN, каким пользуется
+	 *       sys/win32.hpp, исключает подсистему шифрования из состава windows.h,
+	 *       и без него не находятся ни HCERTSTORE, ни CertOpenSystemStore
+	 *
+	 */
+	#include <wincrypt.h>
+
+	/**
+	 * Снимаем макросы, чьи имена заняты типами OpenSSL
+	 *
+	 * @details Заголовок wincrypt.h заводит эти имена макросами-постоянными, например
+	 *          "#define X509_NAME ((LPCSTR) 7)", а у OpenSSL это типы. Препроцессор
+	 *          заменяет имя прежде разбора, и объявление вида
+	 *          "X509_NAME * subject = X509_get_subject_name(x509)" превращается в
+	 *          "((LPCSTR) 7) * subject = ...", отчего сборка отвечает отказом
+	 *          "'subject' was not declared in this scope"
+	 *
+	 *          Снятие здесь постоянное и возврата не требует: файл этот работает с
+	 *          OpenSSL, а не с подсистемой шифрования MS Windows, и постоянные эти
+	 *          ему не нужны. Хранилище сертификатов системы, ради какого wincrypt.h
+	 *          и подключён, обращается к именам иным - HCERTSTORE, CertOpenSystemStore,
+	 *          CertEnumCertificatesInStore
+	 *
+	 */
+	#undef X509_NAME
+	#undef X509_EXTENSIONS
+	#undef X509_CERT_PAIR
+	#undef OCSP_REQUEST
+	#undef OCSP_RESPONSE
+	#undef PKCS7_SIGNER_INFO
+/**
+ * Для всех остальных операционных систем
+ */
+#else
+	/**
+	 * Системные заголовочные файлы
+	 */
+	#include <arpa/inet.h>
+	#include <netinet/in.h>
+#endif
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -369,6 +421,14 @@ namespace ssl {
 	 *
 	 */
 	inline void initOpenSSL(const log_t * log) noexcept {
+		/**
+		 * Для операционной системы не являющейся MS Windows
+		 *
+		 * @note Сигнала SIGPIPE у MS Windows не существует: запись в закрытое соединение
+		 *       отвечает там кодом ошибки, а не сигналом, и гасить нечего
+		 *
+		 */
+		#if !_WIN32 && !_WIN64
 		// Выполняем игнорирование сигналов SIGPIPE
 		if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
 			/**
@@ -385,6 +445,7 @@ namespace ssl {
 				log->print("Failed to ignore signal SIGPIPE", log_t::flag_t::CRITICAL);
 			#endif
 		}
+		#endif
 		// Выполняем инициализацию OpenSSL
 		::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
 		// Выполняем загрузки описаний ошибок SSL
@@ -6867,8 +6928,14 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						if(!::ssl::addCertToStore(store, "CA", this->_log) ||
 						   !::ssl::addCertToStore(store, "ROOT", this->_log) ||
 						   !::ssl::addCertToStore(store, "AuthRoot", this->_log))
-							// Выходим из функции
-							return;
+							/**
+							 * Возвращаем нулевой идентификатор - признак неудачи, принятый
+							 * в этом методе прочими путями выхода. Прежде здесь стоял
+							 * возврат без значения, и обнаружилось это лишь первой сборкой
+							 * под MinGW64: ветка эта принадлежит MS Windows и компилятором
+							 * не читалась ни разу
+							 */
+							return 0;
 					#endif
 					// Если стор не устанавливается, тогда выводим ошибку
 					if(::X509_STORE_set_default_paths(store) == 0){
@@ -7126,8 +7193,14 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						if(!::ssl::addCertToStore(store, "CA", this->_log) ||
 						   !::ssl::addCertToStore(store, "ROOT", this->_log) ||
 						   !::ssl::addCertToStore(store, "AuthRoot", this->_log))
-							// Выходим из функции
-							return;
+							/**
+							 * Возвращаем нулевой идентификатор - признак неудачи, принятый
+							 * в этом методе прочими путями выхода. Прежде здесь стоял
+							 * возврат без значения, и обнаружилось это лишь первой сборкой
+							 * под MinGW64: ветка эта принадлежит MS Windows и компилятором
+							 * не читалась ни разу
+							 */
+							return 0;
 					#endif
 					// Если стор не устанавливается, тогда выводим ошибку
 					if(::X509_STORE_set_default_paths(store) == 0){

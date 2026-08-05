@@ -138,7 +138,6 @@ if [ -n "$1" ]; then
 				 -DENABLE_SHARED_LIB="OFF" \
 				 -DENABLE_STATIC_LIB="ON" \
 				 -DCMAKE_BUILD_TYPE=Release \
-				 -DCMAKE_SYSTEM_NAME=Windows \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 				 -G "MSYS Makefiles" \
 				 .. || exit 1

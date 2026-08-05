@@ -138,7 +138,6 @@ if [ -n "$1" ]; then
 			if [[ $OS = "Windows" ]]; then
 				cmake \
 				 -DCMAKE_BUILD_TYPE="Release" \
-				 -DCMAKE_SYSTEM_NAME="Windows" \
 				 -DBROTLI_EMSCRIPTEN="ON" \
 				 -DBROTLI_DISABLE_TESTS="ON" \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \

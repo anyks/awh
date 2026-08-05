@@ -41,4 +41,5 @@
 #pragma pop_macro("FAILED")
 #pragma pop_macro("DELETE")
 #pragma pop_macro("ERROR")
+#pragma pop_macro("CALLBACK")
 #pragma pop_macro("TEXT")

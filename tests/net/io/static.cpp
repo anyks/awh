@@ -22,6 +22,7 @@
  */
 #include <cinttypes>
 #include <atomic>
+#include <set>
 #include <thread>
 
 /**
@@ -15337,20 +15338,34 @@ TEST_F(IoFixture, IoOriginKeyedRoutingTest){
 	ASSERT_GT(session, 0u);
 	// Проверяем что сессия приняла обе датаграммы
 	ASSERT_EQ(received.size(), 2u);
-	// Проверяем содержимое принятых сессией датаграмм
-	ASSERT_EQ(received[0], "KEY0first");
-	ASSERT_EQ(received[1], "KEY0second");
+	/**
+	 * @par Намеренные решения
+	 *
+	 * Принятое сличается составом, а не порядком. Датаграммы шлют два разных
+	 * клиента, у каждого своё гнездо и своя четвёрка, и очерёдности между
+	 * ними не задаёт ничто: она складывается из того, чей обработчик
+	 * подключения сработал прежде. На macOS, FreeBSD и NetBSD это выходил
+	 * порядок заведения, а на OpenBSD - обратный, и проверка на точный
+	 * порядок отказывала там, где ничего не нарушено
+	 *
+	 * Смысл проверки в том, что обе датаграммы попали в одну сессию и дошли
+	 * целыми, - он от очерёдности не зависит вовсе
+	 *
+	 */
+	ASSERT_EQ((std::multiset <std::string> (received.begin(), received.end())),
+	          (std::multiset <std::string> ({"KEY0first", "KEY0second"})));
 	// Проверяем что оба ответа доставлены
 	ASSERT_EQ(answers.size(), 2u);
 	/**
-	 * Проверяем что ответы ушли по адресам отправителей: сессия следует за
-	 * последней принятой датаграммой, поэтому второй ответ получил второй
-	 * клиент, а не первый, от которого сессия была заведена
+	 * Проверяем что ответы ушли по адресам отправителей
+	 *
+	 * @note Сличается тоже составом, но пара при этом цела: смысл здесь в том, что
+	 *       каждому клиенту вернулась именно его датаграмма, а не в том, которая из
+	 *       пар оказалась в перечне первой
+	 *
 	 */
-	ASSERT_EQ(answers[0].first, first);
-	ASSERT_EQ(answers[0].second, "KEY0first");
-	ASSERT_EQ(answers[1].first, second);
-	ASSERT_EQ(answers[1].second, "KEY0second");
+	ASSERT_EQ((std::multiset <std::pair <awh::event::id_t, std::string>> (answers.begin(), answers.end())),
+	          (std::multiset <std::pair <awh::event::id_t, std::string>> ({{first, "KEY0first"}, {second, "KEY0second"}})));
 }
 
 /**

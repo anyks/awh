@@ -605,6 +605,16 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Fre
             "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/sctp.cpp"
         )
     endif()
+# Если сборка производится под операционную систему MS Windows
+#
+# Состояние переноса движка ввода-вывода описано в src/net/backend/win/README.md.
+# Сборка ведётся только в MSYS2 MinGW 64bit, вариант с MSVC не рассматривается
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Выполняем подключение бэкендов IO
+    SET(SOURCE_FILES
+        "${SOURCE_FILES}"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/win/iocp.cpp"
+    )
 endif()
 
 # Выполняем подключение исходников
@@ -1164,8 +1174,19 @@ SET(AWH_FLAGS "")
 # Если сборка производится под операционную систему Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
-    # Устанавливаем необходимые зависимости для MS Windows
-    SET(AWH_FLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+    ##
+     # Устанавливаем необходимые зависимости для MS Windows
+     #
+     # Назначение каждой:
+     #   ws2_32   - сокеты Winsock2 и порты завершения ввода-вывода
+     #   Iphlpapi - сведения о сетевых устройствах и перевод названия устройства в номер
+     #   psapi    - сведения о памяти процесса, нужны модулям os и procre
+     #   dbghelp  - разбор стека вызовов в отладочной сборке взамен execinfo
+     #   crypt32  - хранилище сертификатов системы
+     #   bcrypt   - источник случайных чисел системы
+     #   gdi32    - требуется зависимостями, самой библиотекой графика не используется
+     ##
+    SET(AWH_FLAGS -lstdc++ -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
 
     # Устанавливаем иконку для windows под MinGW.
     SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)

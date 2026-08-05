@@ -134,7 +134,6 @@ if [ -n "$1" ]; then
 				 -DBUILD_SHARED_LIBS="OFF" \
 				 -DBUILD_STATIC_LIBS="ON" \
 				 -DCMAKE_BUILD_TYPE=Release \
-				 -DCMAKE_SYSTEM_NAME=Windows \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 				 -G "MSYS Makefiles" \
 				 .. || exit 1

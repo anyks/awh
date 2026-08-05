@@ -88,8 +88,19 @@ namespace awh {
 				size_t _cap;
 				// Указатель на активное хранилище (инлайн либо куча)
 				T * _data;
-				// Инлайн-хранилище первых N элементов
-				alignas(T) unsigned char _inline[N * sizeof(T)];
+				/**
+				 * Инлайн-хранилище первых N элементов
+				 *
+				 * @note Поле звалось прежде _inline, и под MinGW имя это непригодно:
+				 *       заголовок _mingw.h заводит "#define _inline __inline" ради
+				 *       совместимости с MSVC, и объявление превращалось в
+				 *       "unsigned char __inline[...]". Переименовано, а не закрыто снятием
+				 *       макроса: поле частное и внутреннее, открытого API не касается,
+				 *       а имя, совпадающее с ключевым словом целевой системы, ненадёжно само
+				 *       по себе
+				 *
+				 */
+				alignas(T) unsigned char _storage[N * sizeof(T)];
 			private:
 				/**
 				 * @brief Метод получения указателя на инлайн-хранилище
@@ -99,7 +110,7 @@ namespace awh {
 				 */
 				T * inlined() noexcept {
 					// Выводим указатель на инлайн-хранилище
-					return reinterpret_cast <T *> (this->_inline);
+					return reinterpret_cast <T *> (this->_storage);
 				}
 				/**
 				 * @brief Метод проверки размещения хранилища в инлайн-буфере
@@ -109,7 +120,7 @@ namespace awh {
 				 */
 				bool isInlined() const noexcept {
 					// Выводим признак размещения хранилища в инлайн-буфере
-					return (this->_data == reinterpret_cast <const T *> (this->_inline));
+					return (this->_data == reinterpret_cast <const T *> (this->_storage));
 				}
 				/**
 				 * @brief Метод расширения хранилища переносом в кучу
@@ -273,14 +284,14 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				small_vector() noexcept : _size(0), _cap(N), _data(reinterpret_cast <T *> (this->_inline)) {}
+				small_vector() noexcept : _size(0), _cap(N), _data(reinterpret_cast <T *> (this->_storage)) {}
 				/**
 				 * @brief Конструктор перемещения
 				 *
 				 * @param other вектор-источник
 				 *
 				 */
-				small_vector(small_vector && other) noexcept : _size(0), _cap(N), _data(reinterpret_cast <T *> (this->_inline)) {
+				small_vector(small_vector && other) noexcept : _size(0), _cap(N), _data(reinterpret_cast <T *> (this->_storage)) {
 					// Переносим содержимое источника
 					this->adopt(std::move(other));
 				}

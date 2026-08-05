@@ -132,7 +132,6 @@ if [ -n "$1" ]; then
 
 				cmake \
 				 -DCMAKE_BUILD_TYPE="Release" \
-				 -DCMAKE_SYSTEM_NAME="Windows" \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 				 -DINSTALL_INC_DIR="$PREFIX/include/zlib" \
 				 -DBUILD_SHARED_LIBS="NO" \

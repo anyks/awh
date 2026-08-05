@@ -22,6 +22,15 @@
  */
 #if _WIN32 || _WIN64
 	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 *
+	 * @note Подключается она прежде прочих заголовков MS Windows: те самостоятельными
+	 *       не являются и требуют, чтобы базовые типы были объявлены до них
+	 *
+	 */
+	#include <sys/win32.hpp>
+
+	/**
 	 * Системные заголовочные файлы
 	 */
 	#include <objbase.h>
@@ -122,6 +131,42 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Функция получения размера страницы памяти
+	 *
+	 * @details Заводится своя затем, что getpagesize принадлежит POSIX и у MS Windows
+	 *          отсутствует. Там же величина эта берётся из сведений о системе полем
+	 *          dwPageSize, а сами сведения запрашиваются единожды - меняться при работе
+	 *          они не могут
+	 *
+	 * @return размер страницы памяти в байтах
+	 *
+	 */
+	static size_t __awh_pagesize__() noexcept {
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if _WIN32 || _WIN64
+			// Сведения о системе, запрашиваемые единожды
+			static SYSTEM_INFO info = [](){
+				// Создаём объект сведений о системе
+				SYSTEM_INFO result;
+				// Выполняем получение сведений о системе
+				::GetSystemInfo(&result);
+				// Возвращаем полученные сведения
+				return result;
+			}();
+			// Возвращаем размер страницы памяти
+			return static_cast <size_t> (info.dwPageSize);
+		/**
+		 * Для операционной системы не являющейся MS Windows
+		 */
+		#else
+			// Возвращаем размер страницы памяти
+			return ::__awh_pagesize__();
+		#endif
+	}
+
+	/**
 	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
@@ -129,7 +174,7 @@ namespace {
 		 * @brief Класс для автоматического управления HANDLE (RAII)
 		 *
 		 */
-		typedef_t class HandleGuard {
+		typedef class HandleGuard {
 			private:
 				// Объект дескриптора
 				HANDLE _handle = INVALID_HANDLE_VALUE;
@@ -188,7 +233,7 @@ namespace {
 		 * @brief Класс для автоматического управления COM-интерфейсами (RAII)
 		 *
 		 */
-		typedef class ComGuard {
+		class ComGuard {
 			private:
 				// Указатель на COM-интерфейс
 				T * _ptr = nullptr;
@@ -266,7 +311,22 @@ namespace {
 					// Выполняем сброс указателя
 					this->reset();
 				}
-		} com_guard_t;
+		};
+
+		/**
+		 * @brief Псевдоним класса управления COM-интерфейсами
+		 *
+		 * @details Заводится псевдонимом шаблона, а не через typedef: объявить шаблон
+		 *          через typedef язык не позволяет вовсе, и прежняя запись
+		 *          "template <typename T> typedef class ComGuard { ... } com_guard_t;"
+		 *          сборкой не разбиралась. Обнаружилось это первой сборкой под MinGW64 —
+		 *          прежде блок этот компилятором не читался ни разу
+		 *
+		 * @tparam T тип интерфейса
+		 *
+		 */
+		template <typename T>
+		using com_guard_t = ComGuard <T>;
 		/**
 		 * @brief Класс для автоматического управления каталогом Windows (RAII)
 		 *
@@ -454,12 +514,45 @@ namespace {
 				const char * home = ::getenv("HOME");
 				// Если переменная окружения не установлена
 				if(home == nullptr){
-					// Получаем информацию о пользователе из системы
-					struct passwd * pw = ::getpwuid(::getuid());
-					// Если информация о пользователе получена
-					if(pw != nullptr)
-						// Устанавливаем домашний каталог пользователя
-						home = pw->pw_dir;
+					/**
+					 * Для операционной системы MS Windows
+					 *
+					 * @note Учётных записей в смысле POSIX там нет, как нет и getpwuid
+					 *       с getuid. Домашний каталог задаётся переменной окружения
+					 *       USERPROFILE, а при её отсутствии складывается из HOMEDRIVE
+					 *       и HOMEPATH - так поступают и сами средства MS Windows
+					 *
+					 */
+					#if _WIN32 || _WIN64
+						// Буфер для сборки домашнего каталога из двух переменных окружения
+						static string profile = "";
+						// Получаем домашний каталог пользователя
+						home = ::getenv("USERPROFILE");
+						// Если переменная окружения не установлена
+						if(home == nullptr){
+							// Получаем букву диска домашнего каталога
+							const char * drive = ::getenv("HOMEDRIVE");
+							// Получаем путь домашнего каталога
+							const char * tail = ::getenv("HOMEPATH");
+							// Если обе переменные окружения установлены
+							if((drive != nullptr) && (tail != nullptr)){
+								// Выполняем сборку домашнего каталога
+								profile.assign(drive).append(tail);
+								// Устанавливаем домашний каталог пользователя
+								home = profile.c_str();
+							}
+						}
+					/**
+					 * Для операционной системы не являющейся MS Windows
+					 */
+					#else
+						// Получаем информацию о пользователе из системы
+						struct passwd * pw = ::getpwuid(::getuid());
+						// Если информация о пользователе получена
+						if(pw != nullptr)
+							// Устанавливаем домашний каталог пользователя
+							home = pw->pw_dir;
+					#endif
 				}
 				// Добавляем домашний каталог пользователя в путь
 				path.append(home != nullptr ? home : AWH_FS_SEPARATOR);
@@ -3432,7 +3525,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 								return;
 							}
 							// Выполняем создание буфера для чтения файла
-							vector <char> buffer(static_cast <size_t> (::min(length.QuadPart, ::getpagesize())), 0);
+							vector <char> buffer(::min(static_cast <size_t> (length.QuadPart), ::__awh_pagesize__()), 0);
 							// Количество прочитанных байт
 							DWORD bytes = 0;
 							/**
@@ -3648,7 +3741,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 			// Если адрес получен правильный
 			if(!address.empty()){
 				// Определяем размер блока чтения (без модификации const-параметра)
-				const size_t chunk = ((size == 0) ? static_cast <size_t> (::getpagesize()) : size);
+				const size_t chunk = ((size == 0) ? ::__awh_pagesize__() : size);
 				/**
 				 * Для операционной системы MS Windows
 				 */

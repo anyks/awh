@@ -24,6 +24,7 @@
 #include <vector>
 #include <cstring>
 #include <cstdio>
+#include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/time.h>
@@ -44,9 +45,25 @@ class FakeIGD {
 		std::string _address;           // Адрес машины в местной сети
 		int _udp6;                      // Гнездо обнаружения устройств сетью IPv6
 		std::string _address6;          // Адрес машины в местной сети IPv6
+		/**
+		 * @brief Второе гнездо управления устройством, отведённое сети IPv4
+		 *
+		 * @details Держится оно лишь там, где одно гнездо обеим сетям служить не может.
+		 *          Совмещение задаётся настройкой IPV6_V6ONLY со значением лжи, и OpenBSD
+		 *          отвечает на неё отказом «недопустимый довод» - проверено опытом, - а
+		 *          macOS, FreeBSD и NetBSD принимают. Там, где совмещение доступно, гнездо
+		 *          это не заводится вовсе
+		 *
+		 * @note Оба гнезда встают на один и тот же порт: он объявляется в ответе рассылки
+		 *       один, и разводить их по разным значило бы объявлять неверный. Встать так
+		 *       им ничто не мешает - семейства адресов у них разные, а совмещения нет
+		 *
+		 */
+		int _tcp4;
 		std::thread _udp6Thread;
 		std::thread _udpThread;
 		std::thread _tcpThread;
+		std::thread _tcp4Thread;
 		std::atomic <bool> _working;
 		std::atomic <int> _calls;       // Количество принятых вызовов действий
 		std::atomic <int> _fetches;     // Количество выданных описаний устройства
@@ -329,9 +346,58 @@ class FakeIGD {
 				}
 			});
 			// Поток управления устройством
-			this->_tcpThread = std::thread([this]() noexcept -> void {
+			this->_tcpThread = std::thread(&FakeIGD::control, this, this->_tcp);
+			/**
+			 * Если заведено отдельное гнездо управления сети IPv4, заводим ему свою нить
+			 */
+			if(this->_tcp4 >= 0)
+				// Выполняем запуск нити обслуживания подключений управления сетью IPv4
+				this->_tcp4Thread = std::thread(&FakeIGD::control, this, this->_tcp4);
+		}
+		/**
+		 * @brief Метод обслуживания подключений управления устройством
+		 *
+		 * @details Ведётся он одинаково для обеих сетей, а гнездо передаётся доводом:
+		 *          там, где одно гнездо служит обеим сетям, нить заводится одна, а где
+		 *          совмещение недоступно - по нити на семейство адресов
+		 *
+		 * @param listener гнездо, принимающее подключения
+		 *
+		 */
+		void control(const int listener) noexcept {
 				while(this->_working.load()){
-					const int peer = ::accept(this->_tcp, nullptr, nullptr);
+					/**
+					 * @brief Ожидание подключения ведётся опросом, а не самим приёмом
+					 *
+					 * @details Приём подключения безвыходен: срок SO_RCVTIMEO на него не
+					 *          распространяется ни в одной системе - проверено опытом на
+					 *          macOS и OpenBSD, - и снять с него нить можно лишь закрытием
+					 *          гнезда. Но закрытие будит вызов не везде: macOS отвечает
+					 *          ECONNABORTED за миг, а OpenBSD чужую нить не снимает вовсе,
+					 *          и ожидание её завершения стояло там навсегда
+					 *
+					 * @note Опрос со сроком возвращает нить в круг, где сверяется признак
+					 *       работы, и остановка опирается на свой же признак, а не на
+					 *       поведение системы - одинаково на всякой из них
+					 *
+					 */
+					struct pollfd event;
+					/**
+					 * Устанавливаем гнездо, за которым ведётся наблюдение
+					 *
+					 * @warning Наблюдение ведётся за гнездом, переданным доводом, а не за
+					 *          гнездом сети IPv6: там, где заведено второе гнездо, нить
+					 *          сети IPv4 опрашивала чужое гнездо и подключения своего не
+					 *          дожидалась вовсе
+					 */
+					event.fd = listener;
+					// Устанавливаем ожидаемое событие готовности к приёму
+					event.events = POLLIN;
+					// Сбрасываем перечень наступивших событий
+					event.revents = 0;
+					// Если подключения за отведённый срок не поступило, идём на новый круг
+					if(::poll(&event, 1, 100) <= 0) continue;
+					const int peer = ::accept(listener, nullptr, nullptr);
 					if(peer < 0) continue;
 					std::string request;
 					// Читаем запрос целиком
@@ -384,23 +450,34 @@ class FakeIGD {
 					::send(peer, answer.data(), answer.size(), 0);
 					::close(peer);
 				}
-			});
 		}
+
 		void stop() noexcept {
 			this->_working.store(false);
-			if(this->_udp >= 0){ ::close(this->_udp); this->_udp = -1; }
-			if(this->_udp6 >= 0){ ::close(this->_udp6); this->_udp6 = -1; }
-			if(this->_tcp >= 0){ ::close(this->_tcp); this->_tcp = -1; }
+			/**
+			 * Гнёзда закрываются уже после завершения нитей
+			 *
+			 * @note Закрыть их раньше значило бы оставить нитям обмен по сброшенным
+			 *       дескрипторам, а то и по чужим, если система успеет выдать те же
+			 *       номера новым гнёздам. Снимают нити с ожидания выставленные им
+			 *       сроки, а не закрытие, потому спешить с ним нужды нет
+			 *
+			 */
 			if(this->_udpThread.joinable()) this->_udpThread.join();
 			if(this->_udp6Thread.joinable()) this->_udp6Thread.join();
 			if(this->_tcpThread.joinable()) this->_tcpThread.join();
+			if(this->_tcp4Thread.joinable()) this->_tcp4Thread.join();
+			if(this->_udp >= 0){ ::close(this->_udp); this->_udp = -1; }
+			if(this->_udp6 >= 0){ ::close(this->_udp6); this->_udp6 = -1; }
+			if(this->_tcp >= 0){ ::close(this->_tcp); this->_tcp = -1; }
+			if(this->_tcp4 >= 0){ ::close(this->_tcp4); this->_tcp4 = -1; }
 			// Выполняем закрытие подключений, оставленных без ответа
 			for(const int peer : this->_stalled) ::close(peer);
 			// Выполняем очистку перечня подключений, оставленных без ответа
 			this->_stalled.clear();
 		}
 	public:
-		FakeIGD() noexcept : _udp(-1), _tcp(-1), _port(0), _address(address()), _udp6(-1), _address6(address6()), _working(false), _calls(0), _fetches(0), _searches(0) {
+		FakeIGD() noexcept : _udp(-1), _tcp(-1), _port(0), _address(address()), _udp6(-1), _address6(address6()), _tcp4(-1), _working(false), _calls(0), _fetches(0), _searches(0) {
 			// Гнездо обнаружения устройств
 			this->_udp = ::socket(AF_INET, SOCK_DGRAM, 0);
 			if(this->_udp >= 0){
@@ -463,7 +540,8 @@ class FakeIGD {
 			if(this->_tcp >= 0){
 				int yes = 1, no = 0;
 				::setsockopt(this->_tcp, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-				::setsockopt(this->_tcp, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(no));
+				// Признак того, что одно гнездо служит обеим сетям
+				const bool merged = (::setsockopt(this->_tcp, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(no)) == 0);
 				struct timeval timeout; timeout.tv_sec = 0; timeout.tv_usec = 100000;
 				::setsockopt(this->_tcp, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 				struct sockaddr_in6 address; ::memset(&address, 0, sizeof(address));
@@ -474,6 +552,46 @@ class FakeIGD {
 					socklen_t length = sizeof(address);
 					::getsockname(this->_tcp, reinterpret_cast <struct sockaddr *> (&address), &length);
 					this->_port = ntohs(address.sin6_port);
+					/**
+					 * Если одно гнездо обеим сетям служить не может, заводим второе - сети IPv4
+					 *
+					 * @details Совмещение сетей на одном гнезде задаётся настройкой IPV6_V6ONLY
+					 *          со значением лжи. OpenBSD отвечает на неё отказом «недопустимый
+					 *          довод» - отображения адресов IPv4 в IPv6 там нет вовсе, - и
+					 *          гнездо служит одной лишь сети IPv6. Обмен UPnP по IPv4 при этом
+					 *          описания устройства забрать не мог, и проверки отказывали
+					 *
+					 * @note Второе гнездо встаёт на тот же порт, что и первое: в ответе рассылки
+					 *       он объявляется один. Помехи в том нет - семейства адресов разные, а
+					 *       совмещения, которое их бы столкнуло, система как раз и не даёт
+					 *
+					 */
+					if(!merged){
+						// Выполняем заведение гнезда управления устройством сети IPv4
+						this->_tcp4 = ::socket(AF_INET, SOCK_STREAM, 0);
+						// Если гнездо управления устройством сети IPv4 заведено
+						if(this->_tcp4 >= 0){
+							// Разрешаем повторное использование адреса гнезда
+							::setsockopt(this->_tcp4, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+							// Устанавливаем срок ожидания обмена гнезда
+							::setsockopt(this->_tcp4, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+							// Адрес, на котором гнездо принимает подключения
+							struct sockaddr_in target; ::memset(&target, 0, sizeof(target));
+							// Устанавливаем семейство адреса гнезда
+							target.sin_family = AF_INET;
+							// Устанавливаем порт гнезда, объявленный в ответе рассылки
+							target.sin_port = htons(this->_port);
+							// Устанавливаем приём подключений на всех устройствах машины
+							target.sin_addr.s_addr = htonl(INADDR_ANY);
+							// Если привязать гнездо к адресу либо открыть приём подключений не удалось
+							if((::bind(this->_tcp4, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)) != 0) || (::listen(this->_tcp4, 8) != 0)){
+								// Выполняем закрытие гнезда управления устройством сети IPv4
+								::close(this->_tcp4);
+								// Сбрасываем дескриптор гнезда управления устройством сети IPv4
+								this->_tcp4 = -1;
+							}
+						}
+					}
 				}
 			}
 		}

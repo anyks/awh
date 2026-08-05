@@ -141,7 +141,6 @@ if [ -n "$1" ]; then
 				 -DZSTD_BUILD_STATIC="ON" \
 				 -DZSTD_BUILD_SHARED="OFF" \
 				 -DCMAKE_BUILD_TYPE=Release \
-				 -DCMAKE_SYSTEM_NAME=Windows \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 				 -G "MSYS Makefiles" \
 				 .. || exit 1

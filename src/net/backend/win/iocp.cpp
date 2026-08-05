@@ -22,6 +22,15 @@
  */
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <deque>
+#include <mutex>
+#include <vector>
+#include <memory>
+#include <condition_variable>
+
+/**
  * Подключаем единую точку подключения системных заголовков MS Windows
  */
 #include <sys/win32.hpp>
@@ -41,6 +50,113 @@ using namespace std;
  *
  */
 static constexpr const char * __AWH_IO_BACKEND__ = "MS Windows IO backend";
+
+/**
+ * @brief Инкапсулируем состояние движка в пространство имён
+ *
+ * @details Класс `awh::engine::IO` собственных полей под состояние не имеет: заголовок
+ *          net/io.hpp един для всех систем, и заводить в нём поля, нужные лишь одному
+ *          бэкенду, нельзя. Эталонный бэкенд bsd/kqueue.cpp держит состояние в файловых
+ *          статиках, и здесь принят тот же порядок
+ *
+ * @warning Устройство это **временное**. Ожидание событий ведётся условной переменной,
+ *          а не портом завершения ввода-вывода. Сделано так затем, чтобы кластер можно
+ *          было отлаживать по-настоящему, не дожидаясь готовности IOCP: договор с
+ *          вызывающей стороной соблюдается полностью, меняется лишь способ ожидания.
+ *          С приходом IOCP блок этот подлежит замене целиком, а методы выше - нет
+ *
+ */
+namespace {
+	/**
+	 * @brief Узел события
+	 *
+	 */
+	struct Node {
+		// Идентификатор события
+		awh::event::id_t id;
+		// Вид узла
+		awh::event::node_t node;
+		// Семейство событий
+		awh::event::family_t family;
+		// Тип сокета
+		awh::event::type_t type;
+		// Протокол передачи данных
+		awh::event::protocol_t protocol;
+		// Состояние узла
+		awh::event::status_t status;
+		// Опции события
+		uint16_t options;
+		// Дескриптор операционной системы (у узла NOTIFY отсутствует)
+		HANDLE handle;
+		// Очередь принятых сообщений, границы которых сохраняются
+		std::deque <std::vector <uint8_t>> incoming;
+		// Функция обратного вызова на чтение сообщений
+		awh::engine::callback::read_t read;
+		// Функция обратного вызова на запись сообщений
+		awh::engine::callback::write_t write;
+		// Функция обратного вызова на изменение состояния
+		awh::engine::callback::status_t state;
+		// Функция обратного вызова на получение ошибок
+		awh::engine::callback::error_t error;
+		// Функция обратного вызова на доступность очереди сообщений
+		awh::engine::callback::available_t available;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Node() noexcept :
+		 id(0), node(awh::event::node_t::NONE), family(awh::event::family_t::NONE),
+		 type(awh::event::type_t::NONE), protocol(awh::event::protocol_t::NONE),
+		 status(awh::event::status_t::NONE), options(awh::event::options::NONE),
+		 handle(INVALID_HANDLE_VALUE) {}
+	};
+
+	// Список заведённых узлов событий
+	std::unordered_map <awh::event::id_t, std::unique_ptr <Node>> __awh_nodes__;
+	// Счётчик выдачи идентификаторов событий (нулевой идентификатор означает отсутствие)
+	awh::event::id_t __awh_last_id__ = 0;
+	// Замок доступа к списку узлов
+	std::recursive_mutex __awh_mutex__;
+	// Замок ожидания петли событий
+	std::mutex __awh_wait_mutex__;
+	// Условная переменная ожидания петли событий
+	std::condition_variable __awh_wait_cv__;
+	// Признак поступившего пробуждения петли
+	bool __awh_woken__ = false;
+	// Признак инициализации движка
+	bool __awh_initialized__ = false;
+	// Вид внутреннего таймера петли событий
+	awh::event::timer_t __awh_timer__ = awh::event::timer_t::SIMPLE;
+
+	/**
+	 * @brief Функция поиска узла события по его идентификатору
+	 *
+	 * @param id идентификатор события
+	 * @return   указатель на узел, либо nullptr если узел не найден
+	 *
+	 */
+	Node * __awh_find__(const awh::event::id_t id) noexcept {
+		// Выполняем поиск узла в списке заведённых
+		auto i = __awh_nodes__.find(id);
+		// Возвращаем найденный узел, либо признак отсутствия
+		return ((i != __awh_nodes__.end()) ? i->second.get() : nullptr);
+	}
+
+	/**
+	 * @brief Функция пробуждения петли событий
+	 *
+	 */
+	void __awh_wake__() noexcept {
+		{
+			// Выполняем блокировку замка ожидания
+			std::lock_guard <std::mutex> lock(__awh_wait_mutex__);
+			// Выставляем признак поступившего пробуждения
+			__awh_woken__ = true;
+		}
+		// Пробуждаем ожидающую петлю событий
+		__awh_wait_cv__.notify_all();
+	}
+};
 
 /**
  * @brief Метод фиксации настроек события
@@ -78,10 +194,25 @@ static constexpr const char * __AWH_IO_BACKEND__ = "MS Windows IO backend";
  *
  */
 bool awh::engine::IO::commit([[maybe_unused]] const event::id_t id) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Если узел не найден — фиксировать нечего
+	if(item == nullptr)
+		// Возвращаем отрицательный результат фиксации
+		return false;
+	/**
+	 * Состояние NONE бывает у события лишь однажды: повторная фиксация уже
+	 * инициализированного события ничего не делает и отвечает отказом
+	 */
+	if(item->status != event::status_t::NONE)
+		// Возвращаем отрицательный результат фиксации
+		return false;
+	// Переводим узел в состояние инициализации
+	item->status = event::status_t::INITIAL;
+	// Возвращаем положительный результат фиксации
+	return true;
 }
 
 /**
@@ -720,10 +851,28 @@ bool awh::engine::IO::setMaxConnections([[maybe_unused]] const event::id_t id, [
  *
  */
 bool awh::engine::IO::destroy([[maybe_unused]] const event::id_t id) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+	// Функция обратного вызова на изменение состояния
+	engine::callback::status_t callback = nullptr;
+	{
+		// Выполняем блокировку замка доступа к списку узлов
+		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+		// Выполняем поиск узла события
+		auto i = ::__awh_nodes__.find(id);
+		// Если узел не найден — уничтожать нечего
+		if(i == ::__awh_nodes__.end())
+			// Возвращаем отрицательный результат уничтожения
+			return false;
+		// Получаем функцию обратного вызова на изменение состояния
+		callback = i->second->state;
+		// Удаляем узел из списка заведённых
+		::__awh_nodes__.erase(i);
+	}
+	// Если функция обратного вызова на изменение состояния установлена
+	if(callback != nullptr)
+		// Извещаем о уничтожении события
+		callback(id, event::status_t::DESTROYED);
+	// Возвращаем положительный результат уничтожения
+	return true;
 }
 
 /**
@@ -798,10 +947,43 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events([[maybe_unused]] const 
  *
  */
 awh::event::id_t awh::engine::IO::event([[maybe_unused]] const event::node_t node, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::type_t type, [[maybe_unused]] const event::protocol_t protocol) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::event::id_t();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Если движок не инициализирован — узел завести нельзя
+	if(!::__awh_initialized__){
+		// Заносим в журнал предупреждение о неинициализированном движке
+		this->_log->print("%s: engine is not initialized", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__);
+		// Возвращаем признак отсутствия заведённого узла
+		return 0;
+	}
+	/**
+	 * Пока временное ядро несёт лишь узел пробуждения. Прочие виды узлов появятся
+	 * вместе с портом завершения ввода-вывода
+	 */
+	if(node != event::node_t::NOTIFY){
+		// Заносим в журнал предупреждение о неподдерживаемом виде узла
+		this->_log->print("%s: node type %u is not supported yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint16_t> (node));
+		// Возвращаем признак отсутствия заведённого узла
+		return 0;
+	}
+	// Создаём новый узел события
+	std::unique_ptr <::Node> item = std::make_unique <::Node> ();
+	// Устанавливаем идентификатор события, пропуская нулевой
+	item->id = ++::__awh_last_id__;
+	// Устанавливаем вид узла
+	item->node = node;
+	// Устанавливаем семейство событий
+	item->family = family;
+	// Устанавливаем тип сокета
+	item->type = type;
+	// Устанавливаем протокол передачи данных
+	item->protocol = protocol;
+	// Получаем идентификатор заведённого события
+	const event::id_t result = item->id;
+	// Добавляем узел в список заведённых
+	::__awh_nodes__.emplace(result, ::std::move(item));
+	// Возвращаем идентификатор заведённого события
+	return result;
 }
 
 /**
@@ -852,10 +1034,12 @@ bool awh::engine::IO::setSeek([[maybe_unused]] const event::id_t id, [[maybe_unu
  *
  */
 uint16_t awh::engine::IO::getOptions([[maybe_unused]] const event::id_t id) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return uint16_t();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Возвращаем опции события, либо признак отсутствия
+	return ((item != nullptr) ? item->options : static_cast <uint16_t> (event::options::NONE));
 }
 
 /**
@@ -870,10 +1054,18 @@ uint16_t awh::engine::IO::getOptions([[maybe_unused]] const event::id_t id) cons
  *
  */
 bool awh::engine::IO::setOptions([[maybe_unused]] const event::id_t id, [[maybe_unused]] const uint16_t options) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Если узел не найден — устанавливать опции некому
+	if(item == nullptr)
+		// Возвращаем отрицательный результат установки
+		return false;
+	// Устанавливаем опции события
+	item->options = options;
+	// Возвращаем положительный результат установки
+	return true;
 }
 
 /**
@@ -942,10 +1134,35 @@ bool awh::engine::IO::splice([[maybe_unused]] const event::id_t eid, [[maybe_unu
  *
  */
 bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+	// Функция обратного вызова на изменение состояния
+	engine::callback::status_t callback = nullptr;
+	{
+		// Выполняем блокировку замка доступа к списку узлов
+		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+		// Выполняем поиск узла события
+		::Node * item = ::__awh_find__(id);
+		// Если узел не найден — запускать нечего
+		if(item == nullptr)
+			// Возвращаем отрицательный результат запуска
+			return false;
+		/**
+		 * Запуск требует, чтобы событие было прежде зафиксировано: состояния
+		 * INITIAL либо SUCCESS
+		 */
+		if((item->status != event::status_t::INITIAL) && (item->status != event::status_t::SUCCESS))
+			// Возвращаем отрицательный результат запуска
+			return false;
+		// Переводим узел в состояние выполнения
+		item->status = event::status_t::LAUNCHED;
+		// Получаем функцию обратного вызова на изменение состояния
+		callback = item->state;
+	}
+	// Если функция обратного вызова на изменение состояния установлена
+	if(callback != nullptr)
+		// Извещаем о запуске работы события
+		callback(id, event::status_t::LAUNCHED);
+	// Возвращаем положительный результат запуска
+	return true;
 }
 
 /**
@@ -1099,10 +1316,37 @@ bool awh::engine::IO::recv([[maybe_unused]] const event::id_t id) noexcept {
  *
  */
 size_t awh::engine::IO::send([[maybe_unused]] const event::id_t id, [[maybe_unused]] const void * buffer, [[maybe_unused]] const size_t size) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return size_t();
+	// Если данные для отправки не переданы
+	if((buffer == nullptr) || (size == 0))
+		// Возвращаем количество отправленных байт
+		return 0;
+	{
+		// Выполняем блокировку замка доступа к списку узлов
+		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+		// Выполняем поиск узла события
+		::Node * item = ::__awh_find__(id);
+		// Если узел не найден — отправлять некуда
+		if(item == nullptr)
+			// Возвращаем количество отправленных байт
+			return 0;
+		/**
+		 * Узел пробуждения принимает сообщение к себе же: отправитель кладёт байты
+		 * в очередь узла, а петля отдаёт их в обратный вызов чтения. Так устроено
+		 * извещение о завершившихся процессах у модуля кластера
+		 */
+		if(item->node != event::node_t::NOTIFY){
+			// Заносим в журнал предупреждение о неподдерживаемом виде узла
+			this->_log->print("%s: sending to node type %u is not supported yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint16_t> (item->node));
+			// Возвращаем количество отправленных байт
+			return 0;
+		}
+		// Добавляем сообщение в очередь узла, сохраняя его границы
+		item->incoming.emplace_back(reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
+	}
+	// Пробуждаем петлю событий, чтобы та разобрала накопленное
+	::__awh_wake__();
+	// Возвращаем количество отправленных байт
+	return size;
 }
 
 /**
@@ -1687,8 +1931,19 @@ bool awh::engine::IO::isAlive([[maybe_unused]] const event::id_t id) const noexc
  *
  */
 void awh::engine::IO::clear() noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	/**
+	 * Перебираем все заведённые узлы, извещая о их уничтожении
+	 */
+	for(auto & item : ::__awh_nodes__){
+		// Если функция обратного вызова на изменение состояния установлена
+		if(item.second->state != nullptr)
+			// Извещаем о уничтожении узла события
+			item.second->state(item.first, event::status_t::DESTROYED);
+	}
+	// Очищаем список заведённых узлов
+	::__awh_nodes__.clear();
 }
 
 /**
@@ -1701,10 +1956,10 @@ void awh::engine::IO::clear() noexcept {
  *
  */
 bool awh::engine::IO::kick() noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+	// Пробуждаем ожидающую петлю событий
+	::__awh_wake__();
+	// Сообщаем об успешном пробуждении
+	return true;
 }
 
 /**
@@ -1717,10 +1972,18 @@ bool awh::engine::IO::kick() noexcept {
  *
  */
 bool awh::engine::IO::initialize() noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Если движок уже инициализирован — повторная инициализация ничего не меняет
+	if(::__awh_initialized__)
+		// Сообщаем, что инициализация уже выполнена
+		return true;
+	// Сбрасываем признак поступившего пробуждения
+	::__awh_woken__ = false;
+	// Выставляем признак инициализации движка
+	::__awh_initialized__ = true;
+	// Сообщаем об успешной инициализации
+	return true;
 }
 
 /**
@@ -1733,10 +1996,24 @@ bool awh::engine::IO::initialize() noexcept {
  *
  */
 bool awh::engine::IO::reinitialize() noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+	/**
+	 * Переинициализация нужна дочернему процессу: узлы, унаследованные от родителя,
+	 * ему не принадлежат, и работать с ними он не вправе. Счётчик идентификаторов
+	 * при этом не сбрасывается — идентификаторы остаются несовпадающими между
+	 * процессами, что облегчает чтение журналов
+	 */
+	{
+		// Выполняем блокировку замка доступа к списку узлов
+		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+		// Очищаем список заведённых узлов без извещения о состоянии
+		::__awh_nodes__.clear();
+		// Сбрасываем признак поступившего пробуждения
+		::__awh_woken__ = false;
+		// Выставляем признак инициализации движка
+		::__awh_initialized__ = true;
+	}
+	// Сообщаем об успешной переинициализации
+	return true;
 }
 
 /**
@@ -1749,10 +2026,18 @@ bool awh::engine::IO::reinitialize() noexcept {
  *
  */
 bool awh::engine::IO::deinitialize() noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+	// Выполняем уничтожение всех заведённых узлов событий
+	this->clear();
+	{
+		// Выполняем блокировку замка доступа к списку узлов
+		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+		// Сбрасываем признак инициализации движка
+		::__awh_initialized__ = false;
+	}
+	// Пробуждаем петлю событий, чтобы та вышла из ожидания
+	::__awh_wake__();
+	// Сообщаем об успешном освобождении
+	return true;
 }
 
 /**
@@ -1765,10 +2050,10 @@ bool awh::engine::IO::deinitialize() noexcept {
  *
  */
 bool awh::engine::IO::isInitialized() const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Возвращаем признак инициализации движка
+	return ::__awh_initialized__;
 }
 
 /**
@@ -1781,10 +2066,10 @@ bool awh::engine::IO::isInitialized() const noexcept {
  *
  */
 size_t awh::engine::IO::eventsCount() const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return size_t();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Возвращаем количество заведённых узлов событий
+	return ::__awh_nodes__.size();
 }
 
 /**
@@ -1797,10 +2082,8 @@ size_t awh::engine::IO::eventsCount() const noexcept {
  *
  */
 awh::event::timer_t awh::engine::IO::getInternalTimer() const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::event::timer_t();
+	// Возвращаем вид внутреннего таймера петли событий
+	return ::__awh_timer__;
 }
 
 /**
@@ -1837,8 +2120,8 @@ awh::event::timer_t awh::engine::IO::getInternalTimer() const noexcept {
  *
  */
 void awh::engine::IO::setInternalTimer([[maybe_unused]] const event::timer_t timer) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	// Устанавливаем вид внутреннего таймера петли событий
+	::__awh_timer__ = timer;
 }
 
 /**
@@ -1886,10 +2169,12 @@ size_t awh::engine::IO::available([[maybe_unused]] const event::id_t id) const n
  *
  */
 awh::event::type_t awh::engine::IO::type([[maybe_unused]] const event::id_t id) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::event::type_t();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Возвращаем тип сокета, либо признак отсутствия
+	return ((item != nullptr) ? item->type : event::type_t::NONE);
 }
 
 /**
@@ -1903,10 +2188,12 @@ awh::event::type_t awh::engine::IO::type([[maybe_unused]] const event::id_t id) 
  *
  */
 awh::event::node_t awh::engine::IO::node([[maybe_unused]] const event::id_t id) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::event::node_t();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Возвращаем вид узла, либо признак отсутствия
+	return ((item != nullptr) ? item->node : event::node_t::NONE);
 }
 
 /**
@@ -1920,10 +2207,12 @@ awh::event::node_t awh::engine::IO::node([[maybe_unused]] const event::id_t id) 
  *
  */
 awh::event::family_t awh::engine::IO::family([[maybe_unused]] const event::id_t id) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::event::family_t();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Возвращаем семейство событий, либо признак отсутствия
+	return ((item != nullptr) ? item->family : event::family_t::NONE);
 }
 
 /**
@@ -1937,10 +2226,12 @@ awh::event::family_t awh::engine::IO::family([[maybe_unused]] const event::id_t 
  *
  */
 awh::event::status_t awh::engine::IO::status([[maybe_unused]] const event::id_t id) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::event::status_t();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Возвращаем состояние узла, либо признак отсутствия
+	return ((item != nullptr) ? item->status : event::status_t::NONE);
 }
 
 /**
@@ -1954,10 +2245,12 @@ awh::event::status_t awh::engine::IO::status([[maybe_unused]] const event::id_t 
  *
  */
 awh::event::protocol_t awh::engine::IO::protocol([[maybe_unused]] const event::id_t id) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::event::protocol_t();
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Возвращаем протокол передачи данных, либо признак отсутствия
+	return ((item != nullptr) ? item->protocol : event::protocol_t::NONE);
 }
 
 /**
@@ -2019,10 +2312,76 @@ awh::event::protocol_t awh::engine::IO::protocol([[maybe_unused]] const event::i
  *
  */
 bool awh::engine::IO::poll([[maybe_unused]] const int32_t timeout) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+	/**
+	 * Ожидание ведётся условной переменной, а не портом завершения ввода-вывода:
+	 * устройство временное, см. пояснение к блоку состояния выше
+	 */
+	{
+		// Выполняем блокировку замка ожидания
+		std::unique_lock <std::mutex> lock(::__awh_wait_mutex__);
+		// Если пробуждение ещё не поступило
+		if(!::__awh_woken__){
+			// Если предел ожидания задан
+			if(timeout > 0)
+				// Ожидаем пробуждения не дольше заданного предела
+				::__awh_wait_cv__.wait_for(lock, std::chrono::milliseconds(timeout), []() noexcept -> bool { return ::__awh_woken__; });
+			// Если ожидание бессрочное
+			else if(timeout < 0)
+				// Ожидаем пробуждения без предела
+				::__awh_wait_cv__.wait(lock, []() noexcept -> bool { return ::__awh_woken__; });
+		}
+		// Сбрасываем признак поступившего пробуждения
+		::__awh_woken__ = false;
+	}
+	// Список накопленных сообщений, подлежащих раздаче
+	std::deque <std::pair <event::id_t, std::vector <uint8_t>>> messages;
+	{
+		// Выполняем блокировку замка доступа к списку узлов
+		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+		/**
+		 * Перебираем все заведённые узлы, снимая накопленное. Раздача ведётся уже
+		 * без замка: обратный вызов вправе завести или уничтожить событие, и
+		 * удержание замка привело бы к его повторному захвату
+		 */
+		for(auto & item : ::__awh_nodes__){
+			// Если узел не запущен — накопленное ему не раздаётся
+			if(item.second->status != event::status_t::LAUNCHED)
+				// Переходим к следующему узлу
+				continue;
+			/**
+			 * Снимаем с узла все накопленные сообщения
+			 */
+			while(!item.second->incoming.empty()){
+				// Добавляем сообщение в список подлежащих раздаче
+				messages.emplace_back(item.first, ::std::move(item.second->incoming.front()));
+				// Удаляем снятое сообщение из очереди узла
+				item.second->incoming.pop_front();
+			}
+		}
+	}
+	/**
+	 * Раздаём накопленные сообщения
+	 */
+	for(auto & message : messages){
+		// Функция обратного вызова на чтение сообщений
+		engine::callback::read_t callback = nullptr;
+		{
+			// Выполняем блокировку замка доступа к списку узлов
+			const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+			// Выполняем поиск узла события
+			::Node * item = ::__awh_find__(message.first);
+			// Если узел найден — получаем функцию обратного вызова на чтение
+			if(item != nullptr)
+				// Получаем функцию обратного вызова на чтение сообщений
+				callback = item->read;
+		}
+		// Если функция обратного вызова на чтение установлена
+		if(callback != nullptr)
+			// Передаём принятое сообщение
+			callback(message.first, message.second.data(), message.second.size());
+	}
+	// Сообщаем, что обход петли выполнен
+	return true;
 }
 
 /**
@@ -2076,8 +2435,19 @@ bool awh::engine::IO::poll([[maybe_unused]] const int32_t timeout) noexcept {
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::read_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Если узел не найден — подключать обратную связь некому
+	if(item == nullptr){
+		// Заносим в журнал предупреждение об отсутствии узла события
+		this->_log->print("%s: event %u not found, callback \"read\" is not connected", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
+		// Выходим из метода
+		return;
+	}
+	// Устанавливаем функцию обратного вызова
+	item->read = cb;
 }
 
 /**
@@ -2101,8 +2471,19 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::write_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Если узел не найден — подключать обратную связь некому
+	if(item == nullptr){
+		// Заносим в журнал предупреждение об отсутствии узла события
+		this->_log->print("%s: event %u not found, callback \"write\" is not connected", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
+		// Выходим из метода
+		return;
+	}
+	// Устанавливаем функцию обратного вызова
+	item->write = cb;
 }
 
 /**
@@ -2130,8 +2511,12 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::spool_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	/**
+	 * Обратная связь, к виду узла неприложимая, тихо не подключается: движок заносит
+	 * в журнал предупреждение и продолжает работу. Виды узлов, какие несёт временное
+	 * ядро, обратной связи "spool" не имеют
+	 */
+	this->_log->print("%s: callback \"spool\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
 }
 
 /**
@@ -2154,8 +2539,12 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::event_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	/**
+	 * Обратная связь, к виду узла неприложимая, тихо не подключается: движок заносит
+	 * в журнал предупреждение и продолжает работу. Виды узлов, какие несёт временное
+	 * ядро, обратной связи "event" не имеют
+	 */
+	this->_log->print("%s: callback \"event\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
 }
 
 /**
@@ -2182,8 +2571,19 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::error_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Если узел не найден — подключать обратную связь некому
+	if(item == nullptr){
+		// Заносим в журнал предупреждение об отсутствии узла события
+		this->_log->print("%s: event %u not found, callback \"error\" is not connected", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
+		// Выходим из метода
+		return;
+	}
+	// Устанавливаем функцию обратного вызова
+	item->error = cb;
 }
 
 /**
@@ -2205,8 +2605,12 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::vnode_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	/**
+	 * Обратная связь, к виду узла неприложимая, тихо не подключается: движок заносит
+	 * в журнал предупреждение и продолжает работу. Виды узлов, какие несёт временное
+	 * ядро, обратной связи "vnode" не имеют
+	 */
+	this->_log->print("%s: callback \"vnode\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
 }
 
 /**
@@ -2228,8 +2632,12 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::inject_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	/**
+	 * Обратная связь, к виду узла неприложимая, тихо не подключается: движок заносит
+	 * в журнал предупреждение и продолжает работу. Виды узлов, какие несёт временное
+	 * ядро, обратной связи "inject" не имеют
+	 */
+	this->_log->print("%s: callback \"inject\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
 }
 
 /**
@@ -2269,8 +2677,19 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::status_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Если узел не найден — подключать обратную связь некому
+	if(item == nullptr){
+		// Заносим в журнал предупреждение об отсутствии узла события
+		this->_log->print("%s: event %u not found, callback \"status\" is not connected", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
+		// Выходим из метода
+		return;
+	}
+	// Устанавливаем функцию обратного вызова
+	item->state = cb;
 }
 
 /**
@@ -2296,8 +2715,12 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::accept_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	/**
+	 * Обратная связь, к виду узла неприложимая, тихо не подключается: движок заносит
+	 * в журнал предупреждение и продолжает работу. Виды узлов, какие несёт временное
+	 * ядро, обратной связи "accept" не имеют
+	 */
+	this->_log->print("%s: callback \"accept\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
 }
 
 /**
@@ -2315,8 +2738,12 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::origin_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	/**
+	 * Обратная связь, к виду узла неприложимая, тихо не подключается: движок заносит
+	 * в журнал предупреждение и продолжает работу. Виды узлов, какие несёт временное
+	 * ядро, обратной связи "origin" не имеют
+	 */
+	this->_log->print("%s: callback \"origin\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
 }
 
 /**
@@ -2338,8 +2765,12 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::traffic_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	/**
+	 * Обратная связь, к виду узла неприложимая, тихо не подключается: движок заносит
+	 * в журнал предупреждение и продолжает работу. Виды узлов, какие несёт временное
+	 * ядро, обратной связи "traffic" не имеют
+	 */
+	this->_log->print("%s: callback \"traffic\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
 }
 
 /**
@@ -2364,8 +2795,12 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::connect_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	/**
+	 * Обратная связь, к виду узла неприложимая, тихо не подключается: движок заносит
+	 * в журнал предупреждение и продолжает работу. Виды узлов, какие несёт временное
+	 * ядро, обратной связи "connect" не имеют
+	 */
+	this->_log->print("%s: callback \"connect\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
 }
 
 /**
@@ -2385,8 +2820,12 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::tuninfo_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	/**
+	 * Обратная связь, к виду узла неприложимая, тихо не подключается: движок заносит
+	 * в журнал предупреждение и продолжает работу. Виды узлов, какие несёт временное
+	 * ядро, обратной связи "tuninfo" не имеют
+	 */
+	this->_log->print("%s: callback \"tuninfo\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
 }
 
 /**
@@ -2437,8 +2876,12 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::timeout_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	/**
+	 * Обратная связь, к виду узла неприложимая, тихо не подключается: движок заносит
+	 * в журнал предупреждение и продолжает работу. Виды узлов, какие несёт временное
+	 * ядро, обратной связи "timeout" не имеют
+	 */
+	this->_log->print("%s: callback \"timeout\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
 }
 
 /**
@@ -2462,8 +2905,19 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::available_t cb) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Если узел не найден — подключать обратную связь некому
+	if(item == nullptr){
+		// Заносим в журнал предупреждение об отсутствии узла события
+		this->_log->print("%s: event %u not found, callback \"available\" is not connected", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
+		// Выходим из метода
+		return;
+	}
+	// Устанавливаем функцию обратного вызова
+	item->available = cb;
 }
 
 /**

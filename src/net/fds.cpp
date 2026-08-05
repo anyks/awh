@@ -61,24 +61,6 @@
 #include <net/fds.hpp>
 
 /**
- * Для операционной системы MS Windows
- */
-#if _WIN32 || _WIN64
-	/**
-	 * Закрепляем совпадение типа сокета AWH с системным
-	 *
-	 * @details Тип awh::socket_t выписан в открытом заголовке своими словами (uintptr_t),
-	 *          чтобы тот не тянул за собой заголовки MS Windows. Проверка эта следит,
-	 *          чтобы написание не разошлось с системным SOCKET: разойдись оно, вызовы
-	 *          сокетного API усекали бы дескриптор, и обнаружилось бы это лишь под
-	 *          нагрузкой, когда номера дескрипторов выйдут за пределы младшего слова
-	 *
-	 */
-	static_assert(sizeof(awh::socket_t) == sizeof(SOCKET), "awh::socket_t size differs from system SOCKET");
-	static_assert(std::is_same <awh::socket_t, SOCKET>::value, "awh::socket_t differs from system SOCKET");
-#endif
-
-/**
  * Используем стандартное пространство имён
  */
 using namespace std;

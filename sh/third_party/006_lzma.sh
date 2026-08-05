@@ -146,7 +146,6 @@ if [ -n "$1" ]; then
 				 -DLZMA_BUILD_TESTS="OFF" \
 				 -DBUILD_SHARED_LIBS="OFF" \
 				 -DCMAKE_BUILD_TYPE=Release \
-				 -DCMAKE_SYSTEM_NAME=Windows \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 				 -G "MSYS Makefiles" \
 				 .. || exit 1

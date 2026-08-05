@@ -23,6 +23,34 @@
 #include <net/net.hpp>
 
 /**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 */
+	#include <sys/win32.hpp>
+
+	/**
+	 * Закрепляем совпадение типа сокета AWH с системным
+	 *
+	 * @details Тип awh::net::socket_t выписан в открытом заголовке своими словами
+	 *          (uintptr_t), чтобы тот не тянул за собой заголовки MS Windows. Проверка
+	 *          эта следит, чтобы написание не разошлось с системным SOCKET: разойдись
+	 *          оно, вызовы сокетного API усекали бы дескриптор, и обнаружилось бы это
+	 *          лишь под нагрузкой, когда номера дескрипторов выйдут за пределы
+	 *          младшего слова
+	 *
+	 * @note Проверка стоит здесь, а не в net/fds.cpp, поскольку объявление типа
+	 *       принадлежит net/net.hpp, и правка написания должна вскрываться в том же
+	 *       месте, где живёт само объявление
+	 *
+	 */
+	static_assert(sizeof(awh::net::socket_t) == sizeof(SOCKET), "awh::net::socket_t size differs from system SOCKET");
+	static_assert(std::is_same <awh::net::socket_t, SOCKET>::value, "awh::net::socket_t differs from system SOCKET");
+#endif
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;

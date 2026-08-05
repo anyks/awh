@@ -799,6 +799,17 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
 	#endif
 }
 /**
+ * Для операционных систем, отличных от MS Windows
+ *
+ * @note Метода этого под MS Windows нет вовсе - ни объявления в заголовке, ни тела
+ *       здесь: сигнала SIGCHLD там не существует, как и типа siginfo_t. О завершении
+ *       дочернего процесса извещает ожидание объекта процесса из системного пула
+ *       потоков, а пробуждение цикла и разбор завершившихся - общие, через событие
+ *       `_wakeup` и метод `reap`
+ *
+ */
+#if !_WIN32 && !_WIN64
+/**
  * @brief Функция фильтр перехватчика сигналов
  *
  * @param signal номер сигнала полученного системой
@@ -807,10 +818,7 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
  *
  */
 void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]] siginfo_t * info, [[maybe_unused]] void * ctx) noexcept {
-	/**
-	 * Для операционных систем, отличных от MS Windows
-	 */
-	#if !_WIN32 && !_WIN64
+	{
 		// Если объект кластера ещё существует
 		if(::__awh_cluster__ != nullptr){
 			// Получаем указатель на объект кластера
@@ -828,8 +836,9 @@ void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]]
 				self->_io->send(self->_wakeup, &marker, sizeof(marker));
 			}
 		}
-	#endif
+	}
 }
+#endif
 /**
  * @brief Метод обработки событий записи сообщений кластера
  *

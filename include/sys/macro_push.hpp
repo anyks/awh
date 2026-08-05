@@ -49,6 +49,7 @@
  *
  */
 #pragma push_macro("TEXT")
+#pragma push_macro("CALLBACK")
 #pragma push_macro("ERROR")
 #pragma push_macro("DELETE")
 #pragma push_macro("FAILED")
@@ -59,6 +60,7 @@
 #pragma push_macro("INVALID_SOCKET")
 
 #undef TEXT
+#undef CALLBACK
 #undef ERROR
 #undef DELETE
 #undef FAILED

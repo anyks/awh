@@ -169,7 +169,6 @@ if [ -n "$1" ]; then
 			# Выполняем конфигурацию проекта
 			if [[ $OS = "Windows" ]]; then
 				cmake \
-				 -DCMAKE_SYSTEM_NAME=Windows \
 				 -DCMAKE_BUILD_TYPE=Release \
 				 -DBUILD_TESTING="OFF" \
 				 -DBUILD_SHARED_LIBS="OFF" \

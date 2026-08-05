@@ -33,11 +33,32 @@
 /**
  * Системные заголовочные файлы
  */
-#include <netdb.h>
-#include <arpa/inet.h>
+/**
+ * Для операционной системы MS Windows
+ *
+ * @note Заголовки эти принадлежат POSIX и у MS Windows отсутствуют.
+ *       Соответствующие им объявления приходят там из winsock2.h,
+ *       подключаемого через единую точку sys/win32.hpp
+ *
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 */
+	#include <sys/win32.hpp>
+/**
+ * Для всех остальных операционных систем
+ */
+#else
+	/**
+	 * Системные заголовочные файлы
+	 */
+	#include <netdb.h>
+	#include <arpa/inet.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+#endif
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 
 /**
  * Подключаем заголовочный файл проекта

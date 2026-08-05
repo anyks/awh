@@ -132,7 +132,6 @@ if [ -n "$1" ]; then
 			if [[ $OS = "Windows" ]]; then
 				cmake \
 				 -DCMAKE_BUILD_TYPE="Release" \
-				 -DCMAKE_SYSTEM_NAME="Windows" \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 				 -DSNAPPY_INSTALL="YES" \
 				 -DBUILD_SHARED_LIBS="NO" \

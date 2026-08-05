@@ -130,6 +130,39 @@ if [ -n "$1" ]; then
 				exit 1
 			fi
 
+			# Для операционной системы Windows
+			if [ $OS = "Windows" ]; then
+				##
+				 # Накладываем исправление расхождения условий сборки ассемблера FIAT
+				 #
+				 # Дефект в самом BoringSSL, проявляется лишь под MinGW. Условия в двух
+				 # местах расходятся:
+				 #
+				 #   third_party/fiat/p256_64.h        - вызов:
+				 #     !OPENSSL_NO_ASM && __GNUC__ && __x86_64__
+				 #   third_party/fiat/asm/*_adx_*.S    - определение:
+				 #     !OPENSSL_NO_ASM && OPENSSL_X86_64 && (__APPLE__ || __ELF__)
+				 #
+				 # Под MinGW первое истинно, второе ложно - формат PE/COFF не ELF и не
+				 # Mach-O. Вызов есть, тела нет, и компоновка отвечает отказом на
+				 # fiat_p256_adx_mul и fiat_p256_adx_sqr. Под MSVC расхождения нет:
+				 # там __GNUC__ не объявлен, и оба условия ложны
+				 #
+				 # Исправление приводит условие вызова к условию определения. Собирать
+				 # эти файлы .S под Windows нельзя: соглашение о вызовах там SysV
+				 # (rdi, rsi, rdx), а у Windows x64 своё (rcx, rdx, r8) - скомпоновалось
+				 # бы, но работало бы неверно, что хуже отказа сборки
+				 #
+				 # Накладывается здесь, а не хранится в подмодуле, потому что выше
+				 # выполняется "git reset --hard origin/main", стирающий любые правки.
+				 # Мера временная: как только исправление ляжет в зеркало подмодуля,
+				 # этот блок подлежит удалению
+				 ##
+				sed -i \
+				 "s@defined(__GNUC__) \&\& defined(__x86_64__)\$@defined(__GNUC__) \&\& defined(__x86_64__) \&\& (defined(__APPLE__) || defined(__ELF__))@" \
+				 "$src/third_party/fiat/p256_64.h" || exit 1
+			fi
+
 			# Создаём каталог сборки
 			mkdir -p "build" || exit 1
 			# Переходим в каталог
@@ -141,8 +174,29 @@ if [ -n "$1" ]; then
 			# Выполняем конфигурацию проекта под Windows
 			if [ $OS = "Windows" ]; then
 				# Выполняем конфигурацию проекта
+				#
+				# Компиляторы указываются явно намеренно. Сборочный файл самого BoringSSL
+				# содержит "if(WIN32) set(CMAKE_GENERATOR_CC cl) endif()", то есть под
+				# MS Windows предпочитает cl от MSVC, даже когда доступен GCC. В сборке
+				# MSYS2 MinGW64 компилятора cl нет, и настройка отвечает отказом
+				# "The CMAKE_C_COMPILER: cl is not a full path and was not found in the PATH"
+				#
+				# Сборке требуется ассемблер NASM: без него настройка отвечает отказом
+				# "No CMAKE_ASM_NASM_COMPILER could be found". Ставится он командой
+				# pacman -S mingw-w64-x86_64-nasm. Отключать ассемблерные вставки через
+				# OPENSSL_NO_ASM не следует - потеря в скорости шифрования заметная
+				#
+				# Гашение -Werror=format нужно из-за дефекта в самой утилите bssl:
+				# в tool/transport_common.cc значение типа int выводится по образцу "%x",
+				# ждущему unsigned int, а собирается BoringSSL с -Werror. Под MinGW это
+				# останавливает сборку. Гасится точечно, лишь этот разряд предупреждений,
+				# и лишь потому, что дефект в чужом коде и правке с нашей стороны
+				# не подлежит. Сами библиотеки собираются без единого предупреждения
 				cmake \
-				 -DCMAKE_SYSTEM_NAME=Windows \
+				 -DCMAKE_C_COMPILER=gcc \
+				 -DCMAKE_CXX_COMPILER=g++ \
+				 -DCMAKE_C_FLAGS="-Wno-error=format" \
+				 -DCMAKE_CXX_FLAGS="-Wno-error=format" \
 				 -DCMAKE_BUILD_TYPE=Release \
 				 -DBUILD_SHARED_LIBS=OFF \
 				 -DBUILD_TESTING=OFF \

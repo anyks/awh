@@ -9685,7 +9685,14 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 					 * отдельно: глобальная _timezone несёт стандартное смещение зоны
 					 * и о переходе на летнее время не знает
 					 */
-					int daylight = 0, offset = 0;
+					/**
+					 * Признак летнего времени берётся типом int, а смещение - типом long:
+					 * так объявлены _get_daylight и _get_timezone у MS Windows, и иной тип
+					 * сборка отвергает отказом "invalid conversion from 'int*' to 'long int*'"
+					 */
+					int daylight = 0;
+					// Стандартное смещение временной зоны в секундах
+					long offset = 0;
 					// Получаем признак действия летнего времени
 					::_get_daylight(&daylight);
 					// Получаем стандартное смещение временной зоны
@@ -9695,7 +9702,7 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 					// Если летнее время в текущей временной зоне действует
 					if(daylight != 0){
 						// Величина перевода часов на летнее время
-						int dstbias = 0;
+						long dstbias = 0;
 						// Получаем величину перевода часов на летнее время
 						::_get_dstbias(&dstbias);
 						// Создаем структуру времени
