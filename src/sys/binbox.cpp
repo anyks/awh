@@ -24,6 +24,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/global.hpp>
 #include <sys/binbox.hpp>
 #include <sys/version.hpp>
 
@@ -856,9 +857,9 @@ template string awh::BinBox::get <string> (string_view) noexcept;
 template vector <char> awh::BinBox::get <vector <char>> (string_view) noexcept;
 template vector <uint8_t> awh::BinBox::get <vector <uint8_t>> (string_view) noexcept;
 /**
- * Если операционной системой является macOS или Linux
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __AWH_DISTINCT_SIZE_TYPES__
 	template size_t awh::BinBox::get <size_t> (string_view) noexcept;
 	template ssize_t awh::BinBox::get <ssize_t> (string_view) noexcept;
 #endif
@@ -930,9 +931,9 @@ template string awh::BinBox::get <string> (const uint64_t) noexcept;
 template vector <char> awh::BinBox::get <vector <char>> (const uint64_t) noexcept;
 template vector <uint8_t> awh::BinBox::get <vector <uint8_t>> (const uint64_t) noexcept;
 /**
- * Если операционной системой является macOS или Linux
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __AWH_DISTINCT_SIZE_TYPES__
 	template size_t awh::BinBox::get <size_t> (const uint64_t) noexcept;
 	template ssize_t awh::BinBox::get <ssize_t> (const uint64_t) noexcept;
 #endif
@@ -1124,9 +1125,9 @@ template bool awh::BinBox::add <uint64_t> (const uint64_t, const uint64_t) noexc
 template bool awh::BinBox::add <float> (const uint64_t, const float) noexcept;
 template bool awh::BinBox::add <double> (const uint64_t, const double) noexcept;
 /**
- * Если операционной системой является macOS или Linux
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __AWH_DISTINCT_SIZE_TYPES__
 	template bool awh::BinBox::add <size_t> (const uint64_t, const size_t) noexcept;
 	template bool awh::BinBox::add <ssize_t> (const uint64_t, const ssize_t) noexcept;
 #endif
@@ -1173,9 +1174,9 @@ template bool awh::BinBox::add <uint64_t> (const uint64_t, const vector <uint64_
 template bool awh::BinBox::add <float> (const uint64_t, const vector <float> &) noexcept;
 template bool awh::BinBox::add <double> (const uint64_t, const vector <double> &) noexcept;
 /**
- * Если операционной системой является macOS или Linux
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __AWH_DISTINCT_SIZE_TYPES__
 	template bool awh::BinBox::add <size_t> (const uint64_t, const vector <size_t> &) noexcept;
 	template bool awh::BinBox::add <ssize_t> (const uint64_t, const vector <ssize_t> &) noexcept;
 #endif
@@ -1304,9 +1305,9 @@ template bool awh::BinBox::add <uint64_t> (string_view, const uint64_t) noexcept
 template bool awh::BinBox::add <float> (string_view, const float) noexcept;
 template bool awh::BinBox::add <double> (string_view, const double) noexcept;
 /**
- * Если операционной системой является macOS или Linux
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __AWH_DISTINCT_SIZE_TYPES__
 	template bool awh::BinBox::add <size_t> (string_view, const size_t) noexcept;
 	template bool awh::BinBox::add <ssize_t> (string_view, const ssize_t) noexcept;
 #endif
@@ -1353,9 +1354,9 @@ template bool awh::BinBox::add <uint64_t> (string_view, const vector <uint64_t> 
 template bool awh::BinBox::add <float> (string_view, const vector <float> &) noexcept;
 template bool awh::BinBox::add <double> (string_view, const vector <double> &) noexcept;
 /**
- * Если операционной системой является macOS или Linux
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __AWH_DISTINCT_SIZE_TYPES__
 	template bool awh::BinBox::add <size_t> (string_view, const vector <size_t> &) noexcept;
 	template bool awh::BinBox::add <ssize_t> (string_view, const vector <ssize_t> &) noexcept;
 #endif

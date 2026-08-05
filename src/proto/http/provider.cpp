@@ -431,6 +431,160 @@ awh::http::Response::Response(const version_t version, const uint16_t code, cons
  provider_t(direct_t::RESPONSE, version), code(code), message{message} {}
 
 /**
+ * @brief Функция получения стандартного сообщения HTTP-ответа по коду
+ *
+ * @details Таблица сообщений хранится как локальная static constexpr-таблица указателей на строковые
+ *          литералы: данные размещаются в .rodata, без конструкторов при старте программы и без
+ *          динамических аллокаций. Функция помечена inline, поэтому во всей программе существует
+ *          единственный экземпляр таблицы (без inline-переменных, требующих C++17).
+ *
+ * @param code код ответа сервера
+ * @return     стандартное сообщение либо пустое представление, если код неизвестен
+ *
+ */
+string_view awh::http::statusMessage(const uint16_t code) noexcept {
+	/**
+	 * @brief Структура записи таблицы стандартных сообщений HTTP-ответов сервера
+	 *
+	 */
+	struct Message {
+		// Код ответа сервера
+		uint16_t code = 0;
+		// Стандартное сообщение сервера (указатель на строковый литерал в .rodata)
+		const char * text = nullptr;
+	};
+	// Таблица стандартных сообщений HTTP-ответов сервера
+	static constexpr Message messages[] = {
+		{0, "Not Answer"},
+		{100, "Continue"},
+		{101, "Switching Protocols"},
+		{102, "Processing"},
+		{103, "Early Hints"},
+		{200, "OK"},
+		{201, "Created"},
+		{202, "Accepted"},
+		{203, "Non-Authoritative Information"},
+		{204, "No Content"},
+		{205, "Reset Content"},
+		{206, "Partial Content"},
+		{300, "Multiple Choice"},
+		{301, "Moved Permanently"},
+		{302, "Found"},
+		{303, "See Other"},
+		{304, "Not Modified"},
+		{305, "Use Proxy"},
+		{306, "Switch Proxy"},
+		{307, "Temporary Redirect"},
+		{308, "Permanent Redirect"},
+		{400, "Bad Request"},
+		{401, "Authentication Required"},
+		{402, "Payment Required"},
+		{403, "Forbidden"},
+		{404, "Not Found"},
+		{405, "Method Not Allowed"},
+		{406, "Not Acceptable"},
+		{407, "Proxy Authentication Required"},
+		{408, "Request Timeout"},
+		{409, "Conflict"},
+		{410, "Gone"},
+		{411, "Length Required"},
+		{412, "Precondition Failed"},
+		{413, "Request Entity Too Large"},
+		{414, "Request-URI Too Long"},
+		{415, "Unsupported Media Type"},
+		{416, "Requested Range Not Satisfiable"},
+		{417, "Expectation Failed"},
+		{500, "Internal Server Error"},
+		{501, "Not Implemented"},
+		{502, "Bad Gateway"},
+		{503, "Service Unavailable"},
+		{504, "Gateway Timeout"},
+		{505, "HTTP Version Not Supported"}
+	};
+	/**
+	 * Выполняем перебор таблицы стандартных сообщений
+	 */
+	for(const auto & item : messages){
+		// Если код ответа совпадает - возвращаем соответствующее стандартное сообщение
+		if(item.code == code)
+			// Возвращаем найденное стандартное сообщение
+			return item.text;
+	}
+	// Стандартное сообщение для указанного кода не найдено
+	return "";
+}
+/**
+ * @brief Функция классификации метода запроса по значению псевдо-заголовка [:method]
+ *
+ * @note В отличие от HTTP/1.x сравнение выполняется с учётом регистра:
+ *       методы HTTP - регистрозависимые токены (RFC 9110 §9.1).
+ *
+ * @param method значение псевдо-заголовка [:method]
+ * @return       распознанный метод запроса либо method_t::NONE
+ *
+ */
+awh::http::method_t awh::http::classifyMethod(string_view method) noexcept {
+	/**
+	 * @brief Структура записи таблицы соответствия имён методов запроса
+	 *
+	 */
+	struct Entry {
+		// Имя метода запроса
+		const char * name;
+		// Распознанный метод запроса
+		http::method_t method;
+	};
+	// Таблица соответствия имён методов запроса (указатели на строковые литералы в .rodata)
+	static constexpr Entry methods[] = {
+		{"GET", http::method_t::GET},
+		{"PUT", http::method_t::PUT},
+		{"ACL", http::method_t::ACL},
+		{"PRI", http::method_t::PRI},
+		{"HEAD", http::method_t::HEAD},
+		{"POST", http::method_t::POST},
+		{"COPY", http::method_t::COPY},
+		{"LOCK", http::method_t::LOCK},
+		{"MOVE", http::method_t::MOVE},
+		{"BIND", http::method_t::BIND},
+		{"LINK", http::method_t::LINK},
+		{"TRACE", http::method_t::TRACE},
+		{"PATCH", http::method_t::PATCH},
+		{"MKCOL", http::method_t::MKCOL},
+		{"MERGE", http::method_t::MERGE},
+		{"PURGE", http::method_t::PURGE},
+		{"DELETE", http::method_t::DELETE},
+		{"SEARCH", http::method_t::SEARCH},
+		{"UNLOCK", http::method_t::UNLOCK},
+		{"REBIND", http::method_t::REBIND},
+		{"UNBIND", http::method_t::UNBIND},
+		{"REPORT", http::method_t::REPORT},
+		{"NOTIFY", http::method_t::NOTIFY},
+		{"SOURCE", http::method_t::SOURCE},
+		{"UNLINK", http::method_t::UNLINK},
+		{"CONNECT", http::method_t::CONNECT},
+		{"OPTIONS", http::method_t::OPTIONS},
+		{"PROPFIND", http::method_t::PROPFIND},
+		{"CHECKOUT", http::method_t::CHECKOUT},
+		{"M-SEARCH", http::method_t::MSEARCH},
+		{"PROPPATCH", http::method_t::PROPPATCH},
+		{"SUBSCRIBE", http::method_t::SUBSCRIBE},
+		{"MKACTIVITY", http::method_t::MKACTIVITY},
+		{"MKCALENDAR", http::method_t::MKCALENDAR},
+		{"UNSUBSCRIBE", http::method_t::UNSUBSCRIBE}
+	};
+	/**
+	 * Выполняем перебор таблицы соответствия имён методов запроса
+	 */
+	for(const auto & item : methods){
+		// Если имя метода запроса совпадает - выводим распознанный метод запроса
+		if(method.compare(item.name) == 0)
+			// Выводим распознанный метод запроса
+			return item.method;
+	}
+	// Метод запроса не распознан
+	return http::method_t::NONE;
+}
+/**
  * @brief Функция получения имени метода запроса для псевдо-заголовка [:method]
  *
  * @param request провайдер запроса клиента
@@ -453,10 +607,6 @@ string_view awh::http::methodName(const http::request_t * request) noexcept {
 		case static_cast <uint8_t> (http::method_t::PUT):
 			// Выводим название метода запроса
 			return "PUT";
-		// Если метод запроса установлен как DELETE
-		case static_cast <uint8_t> (http::method_t::DEL):
-			// Выводим название метода запроса
-			return "DELETE";
 		// Если метод запроса установлен как POST
 		case static_cast <uint8_t> (http::method_t::POST):
 			// Выводим название метода запроса
@@ -473,6 +623,10 @@ string_view awh::http::methodName(const http::request_t * request) noexcept {
 		case static_cast <uint8_t> (http::method_t::TRACE):
 			// Выводим название метода запроса
 			return "TRACE";
+		// Если метод запроса установлен как DELETE
+		case static_cast <uint8_t> (http::method_t::DELETE):
+			// Выводим название метода запроса
+			return "DELETE";
 		// Если метод запроса установлен как OPTIONS
 		case static_cast <uint8_t> (http::method_t::OPTIONS):
 			// Выводим название метода запроса
@@ -600,6 +754,43 @@ string_view awh::http::methodName(const http::request_t * request) noexcept {
 	return "";
 }
 /**
+ * @brief Функция приведения пути цели запроса к виду псевдо-заголовка [:path]
+ *
+ * @param path   путь цели запроса
+ * @param buffer буфер под дополненный путь
+ * @return       путь, пригодный для псевдо-заголовка
+ *
+ */
+string_view awh::http::targetPath(const string_view path, string & buffer) noexcept {
+	// Если путь цели запроса отсутствует - псевдо-заголовок принимает корневой путь
+	if(path.empty())
+		// Выводим корневой путь запроса
+		return "/";
+	// Если путь начинается с разделителя - дополнять его незачем
+	if(path.front() == '/')
+		// Выводим путь цели запроса без изменений
+		return path;
+	/**
+	 * Звёздочка - самостоятельная форма цели запроса: ею метод OPTIONS обращается
+	 * к серверу целиком, а не к какому-либо его ресурсу (RFC 9112 §3.2.4). В таком
+	 * запросе псевдо-заголовок пути обязан нести именно звёздочку (RFC 9113 §8.3.1,
+	 * RFC 9114 §4.3.1), и дополнение разделителем превратило бы обращение к серверу
+	 * в обращение к ресурсу с названием из звёздочки
+	 */
+	if(path == "*")
+		// Выводим звёздочную форму цели запроса без изменений
+		return path;
+	/**
+	 * Путь, начинающийся со строки запроса либо якоря, дополняется корневым
+	 * разделителем: пустой и не начинающийся с '/' псевдо-заголовок запрещён
+	 */
+	buffer.assign(1, '/');
+	// Дописываем в буфер сам путь цели запроса
+	buffer.append(path);
+	// Выводим дополненный путь цели запроса
+	return buffer;
+}
+/**
  * @brief Функция разбора цели запроса, заданной в абсолютной форме (RFC 9112 §3.2.2)
  *
  * @param target    цель запроса
@@ -645,41 +836,4 @@ bool awh::http::splitTarget(const string_view target, string_view & scheme, stri
 	} else authority = target.substr(start);
 	// Цель задана в абсолютной форме
 	return true;
-}
-/**
- * @brief Функция приведения пути цели запроса к виду псевдо-заголовка [:path]
- *
- * @param path   путь цели запроса
- * @param buffer буфер под дополненный путь
- * @return       путь, пригодный для псевдо-заголовка
- *
- */
-string_view awh::http::targetPath(const string_view path, string & buffer) noexcept {
-	// Если путь цели запроса отсутствует - псевдо-заголовок принимает корневой путь
-	if(path.empty())
-		// Выводим корневой путь запроса
-		return "/";
-	// Если путь начинается с разделителя - дополнять его незачем
-	if(path.front() == '/')
-		// Выводим путь цели запроса без изменений
-		return path;
-	/**
-	 * Звёздочка - самостоятельная форма цели запроса: ею метод OPTIONS обращается
-	 * к серверу целиком, а не к какому-либо его ресурсу (RFC 9112 §3.2.4). В таком
-	 * запросе псевдо-заголовок пути обязан нести именно звёздочку (RFC 9113 §8.3.1,
-	 * RFC 9114 §4.3.1), и дополнение разделителем превратило бы обращение к серверу
-	 * в обращение к ресурсу с названием из звёздочки
-	 */
-	if(path == "*")
-		// Выводим звёздочную форму цели запроса без изменений
-		return path;
-	/**
-	 * Путь, начинающийся со строки запроса либо якоря, дополняется корневым
-	 * разделителем: пустой и не начинающийся с '/' псевдо-заголовок запрещён
-	 */
-	buffer.assign(1, '/');
-	// Дописываем в буфер сам путь цели запроса
-	buffer.append(path);
-	// Выводим дополненный путь цели запроса
-	return buffer;
 }

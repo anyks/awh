@@ -48,165 +48,9 @@ namespace awh {
 	 */
 	namespace http {
 		/**
-		 * @brief Функция получения стандартного сообщения HTTP-ответа по коду
-		 *
-		 * @details Таблица сообщений хранится как локальная static constexpr-таблица указателей на строковые
-		 *          литералы: данные размещаются в .rodata, без конструкторов при старте программы и без
-		 *          динамических аллокаций. Функция помечена inline, поэтому во всей программе существует
-		 *          единственный экземпляр таблицы (без inline-переменных, требующих C++17).
-		 *
-		 * @param code код ответа сервера
-		 * @return     стандартное сообщение либо пустое представление, если код неизвестен
-		 *
-		 */
-		inline string_view statusMessage(const uint16_t code) noexcept {
-			/**
-			 * @brief Структура записи таблицы стандартных сообщений HTTP-ответов сервера
-			 *
-			 */
-			struct Message {
-				// Код ответа сервера
-				uint16_t code = 0;
-				// Стандартное сообщение сервера (указатель на строковый литерал в .rodata)
-				const char * text = nullptr;
-			};
-			// Таблица стандартных сообщений HTTP-ответов сервера
-			static constexpr Message messages[] = {
-				{0, "Not Answer"},
-				{100, "Continue"},
-				{101, "Switching Protocols"},
-				{102, "Processing"},
-				{103, "Early Hints"},
-				{200, "OK"},
-				{201, "Created"},
-				{202, "Accepted"},
-				{203, "Non-Authoritative Information"},
-				{204, "No Content"},
-				{205, "Reset Content"},
-				{206, "Partial Content"},
-				{300, "Multiple Choice"},
-				{301, "Moved Permanently"},
-				{302, "Found"},
-				{303, "See Other"},
-				{304, "Not Modified"},
-				{305, "Use Proxy"},
-				{306, "Switch Proxy"},
-				{307, "Temporary Redirect"},
-				{308, "Permanent Redirect"},
-				{400, "Bad Request"},
-				{401, "Authentication Required"},
-				{402, "Payment Required"},
-				{403, "Forbidden"},
-				{404, "Not Found"},
-				{405, "Method Not Allowed"},
-				{406, "Not Acceptable"},
-				{407, "Proxy Authentication Required"},
-				{408, "Request Timeout"},
-				{409, "Conflict"},
-				{410, "Gone"},
-				{411, "Length Required"},
-				{412, "Precondition Failed"},
-				{413, "Request Entity Too Large"},
-				{414, "Request-URI Too Long"},
-				{415, "Unsupported Media Type"},
-				{416, "Requested Range Not Satisfiable"},
-				{417, "Expectation Failed"},
-				{500, "Internal Server Error"},
-				{501, "Not Implemented"},
-				{502, "Bad Gateway"},
-				{503, "Service Unavailable"},
-				{504, "Gateway Timeout"},
-				{505, "HTTP Version Not Supported"}
-			};
-			/**
-			 * Выполняем перебор таблицы стандартных сообщений
-			 */
-			for(const auto & item : messages){
-				// Если код ответа совпадает - возвращаем соответствующее стандартное сообщение
-				if(item.code == code)
-					// Возвращаем найденное стандартное сообщение
-					return item.text;
-			}
-			// Стандартное сообщение для указанного кода не найдено
-			return "";
-		}
-
-		/**
 		 * @brief Класс провайдера
 		 *
 		 */
-		/**
-		 * @brief Функция классификации метода запроса по значению псевдо-заголовка [:method]
-		 *
-		 * @note В отличие от HTTP/1.x сравнение выполняется с учётом регистра:
-		 *       методы HTTP - регистрозависимые токены (RFC 9110 §9.1).
-		 *
-		 * @param method значение псевдо-заголовка [:method]
-		 * @return       распознанный метод запроса либо method_t::NONE
-		 *
-		 */
-		inline http::method_t classifyMethod(string_view method) noexcept {
-			/**
-			 * @brief Структура записи таблицы соответствия имён методов запроса
-			 *
-			 */
-			struct Entry {
-				// Имя метода запроса
-				const char * name;
-				// Распознанный метод запроса
-				http::method_t method;
-			};
-			// Таблица соответствия имён методов запроса (указатели на строковые литералы в .rodata)
-			static constexpr Entry methods[] = {
-				{"GET", http::method_t::GET},
-				{"PUT", http::method_t::PUT},
-				{"ACL", http::method_t::ACL},
-				{"PRI", http::method_t::PRI},
-				{"HEAD", http::method_t::HEAD},
-				{"POST", http::method_t::POST},
-				{"COPY", http::method_t::COPY},
-				{"LOCK", http::method_t::LOCK},
-				{"MOVE", http::method_t::MOVE},
-				{"BIND", http::method_t::BIND},
-				{"LINK", http::method_t::LINK},
-				{"TRACE", http::method_t::TRACE},
-				{"PATCH", http::method_t::PATCH},
-				{"MKCOL", http::method_t::MKCOL},
-				{"MERGE", http::method_t::MERGE},
-				{"PURGE", http::method_t::PURGE},
-				{"DELETE", http::method_t::DEL},
-				{"SEARCH", http::method_t::SEARCH},
-				{"UNLOCK", http::method_t::UNLOCK},
-				{"REBIND", http::method_t::REBIND},
-				{"UNBIND", http::method_t::UNBIND},
-				{"REPORT", http::method_t::REPORT},
-				{"NOTIFY", http::method_t::NOTIFY},
-				{"SOURCE", http::method_t::SOURCE},
-				{"UNLINK", http::method_t::UNLINK},
-				{"CONNECT", http::method_t::CONNECT},
-				{"OPTIONS", http::method_t::OPTIONS},
-				{"PROPFIND", http::method_t::PROPFIND},
-				{"CHECKOUT", http::method_t::CHECKOUT},
-				{"M-SEARCH", http::method_t::MSEARCH},
-				{"PROPPATCH", http::method_t::PROPPATCH},
-				{"SUBSCRIBE", http::method_t::SUBSCRIBE},
-				{"MKACTIVITY", http::method_t::MKACTIVITY},
-				{"MKCALENDAR", http::method_t::MKCALENDAR},
-				{"UNSUBSCRIBE", http::method_t::UNSUBSCRIBE}
-			};
-			/**
-			 * Выполняем перебор таблицы соответствия имён методов запроса
-			 */
-			for(const auto & item : methods){
-				// Если имя метода запроса совпадает - выводим распознанный метод запроса
-				if(method.compare(item.name) == 0)
-					// Выводим распознанный метод запроса
-					return item.method;
-			}
-			// Метод запроса не распознан
-			return http::method_t::NONE;
-		}
-
 		typedef class __AWH_SHARED_EXPORT__ Provider {
 			public:
 				// Версия протокола
@@ -527,6 +371,30 @@ namespace awh {
 		} response_t;
 
 		/**
+		 * @brief Функция получения стандартного сообщения HTTP-ответа по коду
+		 *
+		 * @details Таблица сообщений хранится как локальная static constexpr-таблица указателей на строковые
+		 *          литералы: данные размещаются в .rodata, без конструкторов при старте программы и без
+		 *          динамических аллокаций. Функция помечена inline, поэтому во всей программе существует
+		 *          единственный экземпляр таблицы (без inline-переменных, требующих C++17).
+		 *
+		 * @param code код ответа сервера
+		 * @return     стандартное сообщение либо пустое представление, если код неизвестен
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ string_view statusMessage(const uint16_t code) noexcept;
+		/**
+		 * @brief Функция классификации метода запроса по значению псевдо-заголовка [:method]
+		 *
+		 * @note В отличие от HTTP/1.x сравнение выполняется с учётом регистра:
+		 *       методы HTTP - регистрозависимые токены (RFC 9110 §9.1).
+		 *
+		 * @param method значение псевдо-заголовка [:method]
+		 * @return       распознанный метод запроса либо method_t::NONE
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ http::method_t classifyMethod(string_view method) noexcept;
+		/**
 		 * @brief Функция получения имени метода запроса для псевдо-заголовка [:method]
 		 *
 		 * @param request провайдер запроса клиента
@@ -534,6 +402,25 @@ namespace awh {
 		 *
 		 */
 		__AWH_SHARED_EXPORT__ string_view methodName(const http::request_t * request) noexcept;
+		/**
+		 * @brief Функция приведения пути цели запроса к виду псевдо-заголовка [:path]
+		 *
+		 * @details Псевдо-заголовок пути не бывает пустым и обязан начинаться с '/'
+		 *          (RFC 9113 §8.3.1, RFC 9114 §4.3.1). Буфер задействуется только
+		 *          когда путь требует дополнения, то есть в редком случае цели вида
+		 *          [https://example.com?q=1]; в остальных выдаётся представление
+		 *          на исходную строку без копирования.
+		 *
+		 *          Звёздочная форма цели выдаётся без изменений: ею метод OPTIONS
+		 *          обращается к серверу целиком, а не к его ресурсу (RFC 9112 §3.2.4),
+		 *          и псевдо-заголовок пути в таком запросе обязан нести именно её.
+		 *
+		 * @param path   путь цели запроса
+		 * @param buffer буфер под дополненный путь
+		 * @return       путь, пригодный для псевдо-заголовка
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ string_view targetPath(const string_view path, string & buffer) noexcept;
 		/**
 		 * @brief Функция разбора цели запроса, заданной в абсолютной форме (RFC 9112 §3.2.2)
 		 *
@@ -558,25 +445,6 @@ namespace awh {
 		 *
 		 */
 		__AWH_SHARED_EXPORT__ bool splitTarget(const string_view target, string_view & scheme, string_view & authority, string_view & path) noexcept;
-		/**
-		 * @brief Функция приведения пути цели запроса к виду псевдо-заголовка [:path]
-		 *
-		 * @details Псевдо-заголовок пути не бывает пустым и обязан начинаться с '/'
-		 *          (RFC 9113 §8.3.1, RFC 9114 §4.3.1). Буфер задействуется только
-		 *          когда путь требует дополнения, то есть в редком случае цели вида
-		 *          [https://example.com?q=1]; в остальных выдаётся представление
-		 *          на исходную строку без копирования.
-		 *
-		 *          Звёздочная форма цели выдаётся без изменений: ею метод OPTIONS
-		 *          обращается к серверу целиком, а не к его ресурсу (RFC 9112 §3.2.4),
-		 *          и псевдо-заголовок пути в таком запросе обязан нести именно её.
-		 *
-		 * @param path   путь цели запроса
-		 * @param buffer буфер под дополненный путь
-		 * @return       путь, пригодный для псевдо-заголовка
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ string_view targetPath(const string_view path, string & buffer) noexcept;
     };
 };
 

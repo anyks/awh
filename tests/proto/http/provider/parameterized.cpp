@@ -102,11 +102,11 @@ TEST_P(RequestParameterizedFixture, RequestLifecycleTest){
  */
 INSTANTIATE_TEST_SUITE_P(TestParameters, RequestParameterizedFixture,
 	::testing::Values(
-		RequestTestParameter({"/index.html", method_t::GET, version_t::HTTP1_1}),
-		RequestTestParameter({"/submit", method_t::POST, version_t::HTTP1_1}),
-		RequestTestParameter({"/upload", method_t::PUT, version_t::HTTP1_0}),
-		RequestTestParameter({"/item/42", method_t::DEL, version_t::HTTP2}),
 		RequestTestParameter({"*", method_t::OPTIONS, version_t::HTTP1_1}),
+		RequestTestParameter({"/upload", method_t::PUT, version_t::HTTP1_0}),
+		RequestTestParameter({"/submit", method_t::POST, version_t::HTTP1_1}),
+		RequestTestParameter({"/item/42", method_t::DELETE, version_t::HTTP2}),
+		RequestTestParameter({"/index.html", method_t::GET, version_t::HTTP1_1}),
 		RequestTestParameter({"example.com:443", method_t::CONNECT, version_t::HTTP2})
 	)
 );

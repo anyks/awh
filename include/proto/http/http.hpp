@@ -100,11 +100,11 @@ namespace awh {
 			 */
 			GET     = 0x01, // Метод GET (RFC 7231)
 			PUT     = 0x02, // Метод PUT (RFC 7231)
-			DEL     = 0x03, // Метод DELETE (RFC 7231)
-			POST    = 0x04, // Метод POST (RFC 7231)
-			HEAD    = 0x05, // Метод HEAD (RFC 7231)
-			PATCH   = 0x06, // Метод PATCH (RFC 5789)
-			TRACE   = 0x07, // Метод TRACE (RFC 7231)
+			POST    = 0x03, // Метод POST (RFC 7231)
+			HEAD    = 0x04, // Метод HEAD (RFC 7231)
+			PATCH   = 0x05, // Метод PATCH (RFC 5789)
+			TRACE   = 0x06, // Метод TRACE (RFC 7231)
+			DELETE  = 0x07, // Метод DELETE (RFC 7231)
 			OPTIONS = 0x08, // Метод OPTIONS (RFC 7231)
 			CONNECT = 0x09, // Метод CONNECT (RFC 7231)
 			/**

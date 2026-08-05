@@ -36,22 +36,32 @@
 class FakeIGD {
 	public:
 		// Как отвечать на вызов действия службы
-		enum class Mode : uint8_t { OK, FAULT, TRUNCATED, GARBAGE, DROP, SLOW, HTTP_ERROR, NO_SERVICE, BAD_XML };
+		enum class Mode : uint8_t { OK, FAULT, TRUNCATED, GARBAGE, DROP, SLOW, HTTP_ERROR, NO_SERVICE, BAD_XML, STALL };
 	private:
 		int _udp;                       // Гнездо обнаружения устройств
 		int _tcp;                       // Гнездо управления устройством
 		uint16_t _port;                 // Порт гнезда управления устройством
 		std::string _address;           // Адрес машины в местной сети
+		int _udp6;                      // Гнездо обнаружения устройств сетью IPv6
+		std::string _address6;          // Адрес машины в местной сети IPv6
+		std::thread _udp6Thread;
 		std::thread _udpThread;
 		std::thread _tcpThread;
 		std::atomic <bool> _working;
 		std::atomic <int> _calls;       // Количество принятых вызовов действий
 		std::atomic <int> _fetches;     // Количество выданных описаний устройства
 		std::atomic <int> _searches;    // Количество принятых рассылок обнаружения
+		std::vector <int> _stalled;     // Подключения, оставленные без ответа
 	public:
 		Mode mode = Mode::OK;           // Как отвечать на вызов действия
+		uint32_t fault = 718;           // Код отказа службы, выдаваемый при Mode::FAULT
+		uint32_t entries = 0;           // Количество перенаправлений в выдаваемом перечне
+		bool firewall = true;           // Признак того, что заслон IPv6 включён
+		bool pinholes = true;           // Признак того, что пробои заслона IPv6 дозволены
+		uint32_t unique = 4242;         // Опознаватель, выдаваемый проделанному пробою
 		bool answerSearch = true;       // Отвечать ли на рассылку обнаружения
 		std::string iface = "127.0.0.1";
+		std::string device = "lo0";
 	private:
 		/**
 		 * @brief Метод получения адреса машины в местной сети
@@ -96,8 +106,54 @@ class FakeIGD {
 			// Выводим собранный адрес машины в местной сети
 			return result;
 		}
+		/**
+		 * @brief Метод получения адреса машины в местной сети IPv6
+		 *
+		 * @details Годится лишь адрес, отведённый договором местным сетям: заслон модуля
+		 *          не пускает чтение описания по адресу вне местной сети, а петля и
+		 *          адрес связи под него не подходят - первая объявлена зарезервированной,
+		 *          второй без указания устройства неоднозначен
+		 *
+		 * @return адрес машины в местной сети IPv6, пустой при его отсутствии
+		 *
+		 */
+		static std::string address6() noexcept {
+			// Перечень сетевых устройств машины
+			struct ifaddrs * list = nullptr;
+			// Если перечень сетевых устройств получить не удалось, выводим пустой адрес
+			if(::getifaddrs(&list) != 0) return std::string();
+			// Собираемый адрес машины в местной сети IPv6
+			std::string result;
+			/**
+			 * Выполняем перебор всех сетевых устройств машины
+			 */
+			for(struct ifaddrs * item = list; item != nullptr; item = item->ifa_next){
+				// Если устройство не поднято либо адреса сети IPv6 не имеет, пропускаем его
+				if((item->ifa_addr == nullptr) || (item->ifa_addr->sa_family != AF_INET6)) continue;
+				// Если устройство является петлёй, пропускаем его
+				if((item->ifa_flags & IFF_LOOPBACK) || !(item->ifa_flags & IFF_UP)) continue;
+				// Получаем адрес очередного сетевого устройства
+				const struct in6_addr & value = reinterpret_cast <struct sockaddr_in6 *> (item->ifa_addr)->sin6_addr;
+				// Если адрес местным сетям договором не отведён, пропускаем его
+				if((value.s6_addr[0] & 0xFE) != 0xFC) continue;
+				// Место под запись адреса машины
+				char buffer[INET6_ADDRSTRLEN] = {0};
+				// Если запись адреса собрать не удалось, пропускаем его
+				if(::inet_ntop(AF_INET6, &value, buffer, sizeof(buffer)) == nullptr) continue;
+				// Запоминаем адрес машины в местной сети IPv6
+				result.assign(buffer);
+				// Выходим из перебора сетевых устройств
+				break;
+			}
+			// Выполняем освобождение перечня сетевых устройств
+			::freeifaddrs(list);
+			// Выводим собранный адрес машины в местной сети IPv6
+			return result;
+		}
 	public:
 		bool ready() const noexcept { return ((this->_udp >= 0) && (this->_tcp >= 0) && !this->_address.empty()); }
+		// Признак готовности поддельного шлюза к обмену сетью IPv6
+		bool ready6() const noexcept { return (this->ready() && (this->_udp6 >= 0) && !this->_address6.empty()); }
 		int calls() const noexcept { return this->_calls.load(); }
 		int fetches() const noexcept { return this->_fetches.load(); }
 		int searches() const noexcept { return this->_searches.load(); }
@@ -111,6 +167,16 @@ class FakeIGD {
 				"<serviceId>urn:upnp-org:serviceId:WANIPConn1</serviceId>"
 				"<controlURL>/ctl/IPConn</controlURL><eventSubURL>/evt/IPConn</eventSubURL>"
 				"<SCPDURL>/IPConn.xml</SCPDURL></service>";
+			/**
+			 * Дописываем службу заслона IPv6
+			 *
+			 * @note Настоящее устройство держит обе службы разом: перенаправление портов
+			 *       сети IPv4 и пробои заслона сети IPv6, - и объявляет их в одном описании
+			 */
+			services += "<service><serviceType>urn:schemas-upnp-org:service:WANIPv6FirewallControl:1</serviceType>"
+			            "<serviceId>urn:upnp-org:serviceId:WANIPv6FC1</serviceId>"
+			            "<controlURL>/ctl/IPv6FC</controlURL><eventSubURL>/evt/IPv6FC</eventSubURL>"
+			            "<SCPDURL>/IPv6FC.xml</SCPDURL></service>";
 			if(this->mode == Mode::NO_SERVICE) services = "";
 			return std::string(
 				"<?xml version=\"1.0\"?>"
@@ -130,10 +196,70 @@ class FakeIGD {
 				return "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
 				       "<s:Body><u:AddPortMappingResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\"/>"
 				       "</s:Body></s:Envelope>";
+			/**
+			 * Если спрашивается состояние заслона IPv6
+			 *
+			 * @note Спрос этот предшествует проделыванию пробоя: заслон бывает отключён
+			 *       либо пробои им запрещены, и просить о пробое тогда бесполезно
+			 */
+			if(request.find("GetFirewallStatus") != std::string::npos)
+				return std::string(
+					"<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body>"
+					"<u:GetFirewallStatusResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\">"
+					"<FirewallEnabled>") + (this->firewall ? "1" : "0") + "</FirewallEnabled>"
+					"<InboundPinholeAllowed>" + (this->pinholes ? "1" : "0") + "</InboundPinholeAllowed>"
+					"</u:GetFirewallStatusResponse></s:Body></s:Envelope>";
+			// Если проделывается пробой заслона IPv6, выводим выданный ему опознаватель
+			if(request.find("AddPinhole") != std::string::npos)
+				return std::string(
+					"<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body>"
+					"<u:AddPinholeResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\">"
+					"<UniqueID>") + std::to_string(this->unique) + "</UniqueID></u:AddPinholeResponse></s:Body></s:Envelope>";
+			// Если продлевается срок пробоя заслона IPv6, выводим пустой ответ
+			if(request.find("UpdatePinhole") != std::string::npos)
+				return "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+				       "<s:Body><u:UpdatePinholeResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\"/>"
+				       "</s:Body></s:Envelope>";
+			// Если заделывается пробой заслона IPv6, выводим пустой ответ
+			if(request.find("DeletePinhole") != std::string::npos)
+				return "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+				       "<s:Body><u:DeletePinholeResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\"/>"
+				       "</s:Body></s:Envelope>";
 			if(request.find("GetExternalIPAddress") != std::string::npos)
 				return "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
 				       "<s:Body><u:GetExternalIPAddressResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\">"
 				       "<NewExternalIPAddress>203.0.113.7</NewExternalIPAddress></u:GetExternalIPAddressResponse></s:Body></s:Envelope>";
+			/**
+			 * Если читается очередная запись перечня заведённых перенаправлений
+			 *
+			 * @note Перечень читается по порядковому номеру, пока служба не ответит отказом
+			 *       «номер вне перечня»: иного признака конца договор не даёт
+			 */
+			if(request.find("GetGenericPortMappingEntry") != std::string::npos){
+				// Получаем порядковый номер читаемой записи перечня
+				const size_t at = request.find("<NewPortMappingIndex>");
+				// Порядковый номер читаемой записи перечня
+				const uint32_t index = ((at == std::string::npos) ? 0 : static_cast <uint32_t> (::atol(request.c_str() + at + 21)));
+				/**
+				 * Если порядковый номер вышел за пределы перечня
+				 */
+				if(index >= this->entries)
+					// Выводим отказ службы с кодом «номер вне перечня»
+					return std::string(
+						"<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><s:Fault>"
+						"<faultcode>s:Client</faultcode><faultstring>UPnPError</faultstring><detail>"
+						"<UPnPError xmlns=\"urn:schemas-upnp-org:control-1-0\"><errorCode>713</errorCode>"
+						"<errorDescription>SpecifiedArrayIndexInvalid</errorDescription></UPnPError></detail></s:Fault></s:Body></s:Envelope>");
+				// Выводим очередную запись перечня заведённых перенаправлений
+				return std::string(
+					"<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body>"
+					"<u:GetGenericPortMappingEntryResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\">"
+					"<NewRemoteHost></NewRemoteHost><NewExternalPort>") + std::to_string(40000 + index) + "</NewExternalPort>"
+					"<NewProtocol>TCP</NewProtocol><NewInternalPort>" + std::to_string(8000 + index) + "</NewInternalPort>"
+					"<NewInternalClient>" + this->_address + "</NewInternalClient><NewEnabled>1</NewEnabled>"
+					"<NewPortMappingDescription>запись " + std::to_string(index) + "</NewPortMappingDescription>"
+					"<NewLeaseDuration>3600</NewLeaseDuration></u:GetGenericPortMappingEntryResponse></s:Body></s:Envelope>";
+			}
 			if(request.find("DeletePortMapping") != std::string::npos)
 				return "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
 				       "<s:Body><u:DeletePortMappingResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\"/>"
@@ -142,11 +268,11 @@ class FakeIGD {
 			       "<s:Body><u:GenericResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPConnection:1\"/></s:Body></s:Envelope>";
 		}
 		// Отказ службы, записанный по правилам SOAP
-		static std::string fault(){
+		std::string refusal() const noexcept {
 			return "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><s:Fault>"
 			       "<faultcode>s:Client</faultcode><faultstring>UPnPError</faultstring><detail>"
-			       "<UPnPError xmlns=\"urn:schemas-upnp-org:control-1-0\"><errorCode>718</errorCode>"
-			       "<errorDescription>ConflictInMappingEntry</errorDescription></UPnPError></detail></s:Fault></s:Body></s:Envelope>";
+			       "<UPnPError xmlns=\"urn:schemas-upnp-org:control-1-0\"><errorCode>" + std::to_string(this->fault) + "</errorCode>"
+			       "<errorDescription>Refused</errorDescription></UPnPError></detail></s:Fault></s:Body></s:Envelope>";
 		}
 	public:
 		void start() noexcept {
@@ -172,6 +298,34 @@ class FakeIGD {
 						"USN: uuid:fake-igd-0001::urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n\r\n",
 						this->_address.c_str(), static_cast <unsigned> (this->_port));
 					::sendto(this->_udp, answer, static_cast <size_t> (count), 0, reinterpret_cast <struct sockaddr *> (&peer), length);
+				}
+			});
+			/**
+			 * Поток обнаружения устройств сетью IPv6
+			 *
+			 * @note Ответ выдаётся адресом машины в местной сети IPv6, а не адресом петли:
+			 *       петля объявлена договором зарезервированной, и заслон модуля её не пустит
+			 */
+			this->_udp6Thread = std::thread([this]() noexcept -> void {
+				char buffer[2048];
+				while(this->_working.load()){
+					struct sockaddr_in6 peer; socklen_t length = sizeof(peer);
+					::memset(&peer, 0, sizeof(peer));
+					const ssize_t size = ::recvfrom(this->_udp6, buffer, sizeof(buffer) - 1, 0, reinterpret_cast <struct sockaddr *> (&peer), &length);
+					if(size <= 0) continue;
+					buffer[size] = 0;
+					if(::strncmp(buffer, "M-SEARCH", 8) != 0) continue;
+					this->_searches.fetch_add(1);
+					if(!this->answerSearch) continue;
+					char answer[1024];
+					const int count = ::snprintf(answer, sizeof(answer),
+						"HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=1800\r\nEXT:\r\n"
+						"LOCATION: http://[%s]:%u/rootDesc.xml\r\n"
+						"SERVER: Test/1.0 UPnP/1.0 FakeIGD/1.0\r\n"
+						"ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n"
+						"USN: uuid:fake-igd-0001::urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n\r\n",
+						this->_address6.c_str(), static_cast <unsigned> (this->_port));
+					::sendto(this->_udp6, answer, static_cast <size_t> (count), 0, reinterpret_cast <struct sockaddr *> (&peer), length);
 				}
 			});
 			// Поток управления устройством
@@ -201,6 +355,14 @@ class FakeIGD {
 					std::string body, answer;
 					const Mode mode = this->mode;
 					if(control && (mode == Mode::DROP)){ ::close(peer); continue; }
+					/**
+					 * Если вызов действия оставляется без ответа
+					 *
+					 * @note Подключение при этом держится открытым: само по себе оно не
+					 *       оборвётся, и обмен остаётся ждать ответа до истечения срока -
+					 *       именно тогда модуль и повторяет шаг
+					 */
+					if(control && (mode == Mode::STALL)){ this->_stalled.push_back(peer); continue; }
 					if(control && (mode == Mode::SLOW)){ ::usleep(900000); }
 					if(control && (mode == Mode::GARBAGE)){
 						const char * junk = "!!! это не разметка вовсе !!!";
@@ -212,7 +374,7 @@ class FakeIGD {
 						answer = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
 						::send(peer, answer.data(), answer.size(), 0); ::close(peer); continue;
 					}
-					if(control) body = ((mode == Mode::FAULT) ? fault() : this->soap(request));
+					if(control) body = ((mode == Mode::FAULT) ? this->refusal() : this->soap(request));
 					else body = this->description();
 					const bool error = (control && (mode == Mode::FAULT));
 					answer = std::string("HTTP/1.1 ") + (error ? "500 Internal Server Error" : "200 OK")
@@ -227,12 +389,18 @@ class FakeIGD {
 		void stop() noexcept {
 			this->_working.store(false);
 			if(this->_udp >= 0){ ::close(this->_udp); this->_udp = -1; }
+			if(this->_udp6 >= 0){ ::close(this->_udp6); this->_udp6 = -1; }
 			if(this->_tcp >= 0){ ::close(this->_tcp); this->_tcp = -1; }
 			if(this->_udpThread.joinable()) this->_udpThread.join();
+			if(this->_udp6Thread.joinable()) this->_udp6Thread.join();
 			if(this->_tcpThread.joinable()) this->_tcpThread.join();
+			// Выполняем закрытие подключений, оставленных без ответа
+			for(const int peer : this->_stalled) ::close(peer);
+			// Выполняем очистку перечня подключений, оставленных без ответа
+			this->_stalled.clear();
 		}
 	public:
-		FakeIGD() noexcept : _udp(-1), _tcp(-1), _port(0), _address(address()), _working(false), _calls(0), _fetches(0), _searches(0) {
+		FakeIGD() noexcept : _udp(-1), _tcp(-1), _port(0), _address(address()), _udp6(-1), _address6(address6()), _working(false), _calls(0), _fetches(0), _searches(0) {
 			// Гнездо обнаружения устройств
 			this->_udp = ::socket(AF_INET, SOCK_DGRAM, 0);
 			if(this->_udp >= 0){
@@ -255,22 +423,57 @@ class FakeIGD {
 						::fprintf(stderr, "вступление в группу не удалось: %s\n", ::strerror(errno));
 				}
 			}
-			// Гнездо управления устройством
-			this->_tcp = ::socket(AF_INET, SOCK_STREAM, 0);
-			if(this->_tcp >= 0){
+			/**
+			 * Гнездо обнаружения устройств сетью IPv6
+			 *
+			 * @note Вступление в группу ведётся устройством петли: рассылка модуля уходит
+			 *       им же, и принимать её следует на нём
+			 */
+			this->_udp6 = ::socket(AF_INET6, SOCK_DGRAM, 0);
+			if(this->_udp6 >= 0){
 				int yes = 1;
+				::setsockopt(this->_udp6, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+				::setsockopt(this->_udp6, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes));
+				::setsockopt(this->_udp6, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof(yes));
+				struct timeval timeout; timeout.tv_sec = 0; timeout.tv_usec = 100000;
+				::setsockopt(this->_udp6, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+				struct sockaddr_in6 address; ::memset(&address, 0, sizeof(address));
+				address.sin6_family = AF_INET6; address.sin6_port = htons(1900); address.sin6_addr = in6addr_any;
+				if(::bind(this->_udp6, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0){
+					::close(this->_udp6); this->_udp6 = -1;
+				} else {
+					// Вступаем в группу обнаружения устройств на устройстве петли
+					struct ipv6_mreq group; ::memset(&group, 0, sizeof(group));
+					::inet_pton(AF_INET6, "FF02::C", &group.ipv6mr_multiaddr);
+					group.ipv6mr_interface = ::if_nametoindex(this->device.c_str());
+					if(::setsockopt(this->_udp6, IPPROTO_IPV6, IPV6_JOIN_GROUP, &group, sizeof(group)) != 0){
+						::close(this->_udp6); this->_udp6 = -1;
+					}
+				}
+			}
+			// Гнездо управления устройством
+			this->_tcp = ::socket(AF_INET6, SOCK_STREAM, 0);
+			/**
+			 * Если гнездо управления устройством заведено
+			 *
+			 * @note Гнездо заводится разновидностью IPv6 без запрета на IPv4: обмен ведётся
+			 *       то одной сетью, то другой, а порт у описания устройства один - держать
+			 *       под каждую сеть своё гнездо значило бы объявлять разные порты
+			 */
+			if(this->_tcp >= 0){
+				int yes = 1, no = 0;
 				::setsockopt(this->_tcp, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+				::setsockopt(this->_tcp, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(no));
 				struct timeval timeout; timeout.tv_sec = 0; timeout.tv_usec = 100000;
 				::setsockopt(this->_tcp, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-				struct sockaddr_in address; ::memset(&address, 0, sizeof(address));
-				address.sin_family = AF_INET; address.sin_port = 0;
-				address.sin_addr.s_addr = htonl(INADDR_ANY);
+				struct sockaddr_in6 address; ::memset(&address, 0, sizeof(address));
+				address.sin6_family = AF_INET6; address.sin6_port = 0; address.sin6_addr = in6addr_any;
 				if((::bind(this->_tcp, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0) || (::listen(this->_tcp, 8) != 0)){
 					::close(this->_tcp); this->_tcp = -1;
 				} else {
 					socklen_t length = sizeof(address);
 					::getsockname(this->_tcp, reinterpret_cast <struct sockaddr *> (&address), &length);
-					this->_port = ntohs(address.sin_port);
+					this->_port = ntohs(address.sin6_port);
 				}
 			}
 		}

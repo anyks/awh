@@ -25,6 +25,7 @@
  * Стандартные заголовочные файлы
  */
 #include <chrono>
+#include <vector>
 
 /**
  * @brief Метод настройки тестового окружения
@@ -122,6 +123,21 @@ PortmapUnitFixture::outcome_t PortmapUnitFixture::await(awh::unit::portmap_t & p
 		}, std::placeholders::_1, std::placeholders::_2
 	);
 	/**
+	 * Устанавливаем функцию обратного вызова на чтение перечня перенаправлений
+	 */
+	portmap.on <void (const std::vector <awh::unit::portmap_t::mapping_t> &, const awh::unit::portmap_t::type_t)> (
+		"mappings", [&portmap, &result](const std::vector <awh::unit::portmap_t::mapping_t> & mappings, const awh::unit::portmap_t::type_t type) noexcept -> void {
+			// Запоминаем прочитанный перечень заведённых перенаправлений
+			result.mappings = mappings;
+			// Запоминаем, что маршрутизатор ответил
+			result.answered = true;
+			// Запоминаем договор, по которому получен итог
+			result.type = type;
+			// Выполняем остановку работы модуля
+			portmap.stop();
+		}, std::placeholders::_1, std::placeholders::_2
+	);
+	/**
 	 * Определяем просьбу, с которой ведётся обращение
 	 */
 	switch(static_cast <uint8_t> (action)){
@@ -151,9 +167,22 @@ PortmapUnitFixture::outcome_t PortmapUnitFixture::await(awh::unit::portmap_t & p
 			mapping.proto = awh::unit::portmap_t::proto_t::TCP;
 			// Устанавливаем внутренний порт перенаправления
 			mapping.internalPort = 8081;
+			/**
+			 * Устанавливаем опознаватель пробоя заслона IPv6
+			 *
+			 * @note Пробой заделывается по опознавателю, выданному при его проделывании:
+			 *       без него служба заслона отказала бы наверняка, и модуль такую просьбу
+			 *       до неё даже не доносит
+			 */
+			mapping.pinhole = 4242;
 			// Выполняем снятие перенаправления порта
 			portmap.close(mapping);
 		} break;
+		// Если читается перечень заведённых перенаправлений
+		case static_cast <uint8_t> (awh::unit::portmap_t::action_t::LIST):
+			// Выполняем чтение перечня заведённых перенаправлений
+			portmap.list();
+		break;
 		// Если продлевается срок заведённого перенаправления
 		case static_cast <uint8_t> (awh::unit::portmap_t::action_t::RENEW): {
 			// Продлеваемое перенаправление порта
@@ -164,6 +193,8 @@ PortmapUnitFixture::outcome_t PortmapUnitFixture::await(awh::unit::portmap_t & p
 			mapping.internalPort = 8081;
 			// Устанавливаем срок жизни перенаправления в секундах
 			mapping.lifeTime = 60;
+			// Устанавливаем опознаватель пробоя заслона IPv6
+			mapping.pinhole = 4242;
 			// Выполняем продление срока перенаправления порта
 			portmap.renew(mapping);
 		} break;

@@ -160,7 +160,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, MethodParameterizedFixture,
 	::testing::Values(
 		MethodTestParameter({"GET", method_t::GET}),
 		MethodTestParameter({"PUT", method_t::PUT}),
-		MethodTestParameter({"DELETE", method_t::DEL}),
+		MethodTestParameter({"DELETE", method_t::DELETE}),
 		MethodTestParameter({"POST", method_t::POST}),
 		MethodTestParameter({"HEAD", method_t::HEAD}),
 		MethodTestParameter({"PATCH", method_t::PATCH}),
@@ -1667,7 +1667,7 @@ TEST_F(ParserFixture, LeadingBlankLinesTest){
  * @brief Метод тестирования допустимости октетов в расширениях чанка
  *
  * @details Структурно расширения чанка не разбираются, но по RFC 9112 §7.1.1 они
- *          состоят из token и token либо quoted-string. DEL не входит ни в token,
+ *          состоят из token и token либо quoted-string. DELETE не входит ни в token,
  *          ни в qdtext и обязан отвергаться - как и в значении заголовка, - а
  *          obs-text законен внутри quoted-string и обязан приниматься
  *
@@ -1704,7 +1704,7 @@ TEST_F(ParserFixture, ChunkExtensionOctetsTest){
 	ASSERT_EQ(probe(' '), parser_http_t::error_t::NONE);
 	// Проверяем что obs-text в расширении чанка принимается (законен внутри quoted-string)
 	ASSERT_EQ(probe(static_cast <char> (0x80)), parser_http_t::error_t::NONE);
-	// Проверяем что DEL в расширении чанка отвергается
+	// Проверяем что DELETE в расширении чанка отвергается
 	ASSERT_EQ(probe(static_cast <char> (0x7F)), parser_http_t::error_t::INVALID_CHUNK_SIZE);
 	// Проверяем что управляющий символ в расширении чанка отвергается
 	ASSERT_EQ(probe(static_cast <char> (0x01)), parser_http_t::error_t::INVALID_CHUNK_SIZE);

@@ -38,10 +38,9 @@
  */
 #if _WIN32 || _WIN64
 	/**
-	 * Системные заголовочные файлы
+	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
-	#include <Ws2def.h>
-	#include <winsock2.h>
+	#include "../sys/win32.hpp"
 /**
  * Для операционной системы не являющейся MS Windows
  */
@@ -87,7 +86,7 @@ namespace awh {
 			 * @brief Некорректный сокет
 			 *
 			 */
-			static constexpr socket_t invalid_socket_t = INVALID_SOCKET;
+			static constexpr socket_t invalid_socket_t = AWH_INVALID_SOCKET;
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */

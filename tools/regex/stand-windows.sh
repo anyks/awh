@@ -26,6 +26,33 @@ fi
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 
+# Порождаем запись хранилища собранных выражений на рабочей машине, дабы стенд
+# проверил её восстановлением у себя. Наборы программы пишутся образом памяти,
+# поэтому запись зависит от устройства машины: стенду надлежит либо восстановить
+# её в точности, либо отвергнуть опознанием устройства, но не прочесть неверно.
+#
+# Проверка эта ведётся и стендом tools/regex/stand.sh, однако именно на Windows
+# она весома вдвойне: соглашение о вызове там своё, и запись, порождённая
+# машиной с иным соглашением, различий в отображении регистров нести не должна
+RECORD=""
+HOST_CXX="${CXX:-c++}"
+if command -v "$HOST_CXX" >/dev/null 2>&1 ; then
+	HOST_DIR=$(mktemp -d -t awh-regex-host)
+	if "$HOST_CXX" -std=c++17 -O2 -I"$ROOT/include" -I"$ROOT/tools/regex" \
+		"$ROOT/tools/regex/conformance.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/unicode/*.cpp \
+		-o "$HOST_DIR/conformance" 2>"$HOST_DIR/compile.log" ; then
+		if "$HOST_DIR/conformance" "--write=$HOST_DIR/record.bin" >/dev/null 2>&1 ; then
+			RECORD="$HOST_DIR/record.bin"
+			echo "Порождена запись хранилища рабочей машины"
+		fi
+	fi
+	if [ -z "$RECORD" ] ; then
+		echo "Запись хранилища рабочей машины не порождена, проверка её будет пропущена"
+	fi
+else
+	echo "Компилятор на рабочей машине не обнаружен, проверка записи будет пропущена"
+fi
+
 # Каталог раскладки на стенде
 #
 # Каталог временных файлов Windows зависит от пользователя и в оболочке
@@ -34,16 +61,29 @@ REMOTE="awh-regex-stand"
 
 echo "Раскладываем набор исходных текстов на стенд $TARGET"
 
+# Запись хранилища кладётся в набор исходных текстов, поскольку раскладка
+# ведётся единственным вызовом tar, а не передачей файлов по одному
+if [ -n "$RECORD" ] ; then
+	cp "$RECORD" "$ROOT/tools/regex/record.bin"
+	EXTRA="tools/regex/record.bin"
+else
+	EXTRA=""
+fi
+
 # Передача ведётся через ввод tar, а не средством scp: подсистема sftp на
 # стенде отключена, и scp обрывает связь
 tar czf - -C "$ROOT" \
 	include/regex include/unicode include/compressor/types.hpp include/sys/ascii.hpp include/sys/global.hpp \
 	src/regex src/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
-	tools/regex/stand.bat \
+	tools/regex/stand.bat $EXTRA \
 	| ssh -p "$PORT" "$TARGET" "
 		cmd.exe //c \"rmdir /s /q %USERPROFILE%\\\\$REMOTE 2>nul & mkdir %USERPROFILE%\\\\$REMOTE\" > /dev/null 2>&1
 		cd ~/$REMOTE && tar xzf -
 	"
+
+# Запись рабочей машины из набора исходных текстов убирается: место ей лишь
+# в раскладке на стенд, а в дереве исходных текстов её быть не должно
+rm -f "$ROOT/tools/regex/record.bin"
 
 echo "Собираем и прогоняем проверку на стенде"
 ssh -p "$PORT" "$TARGET" "cmd.exe //c \"%USERPROFILE%\\\\$REMOTE\\\\tools\\\\regex\\\\stand.bat $TOOLSET\""

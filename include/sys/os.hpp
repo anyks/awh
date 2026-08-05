@@ -43,9 +43,13 @@
  */
 #if _WIN32 || _WIN64
 	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 */
+	#include "win32.hpp"
+
+	/**
 	 * Системные заголовочные файлы
 	 */
-	#include <windows.h>
 	#include <sddl.h>
 	#include <process.h>
 	#include <processthreadsapi.h>

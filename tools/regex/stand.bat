@@ -44,7 +44,7 @@ if "%VCVARS%" == "" (
 		type compile.log
 		exit /b 4
 	)
-	conformance.exe
+	call :RUN
 	exit /b %errorlevel%
 )
 
@@ -71,5 +71,21 @@ if errorlevel 1 (
 	exit /b 4
 )
 
-conformance.exe
+call :RUN
+exit /b %errorlevel%
+
+rem Прогон переносимой проверки
+rem
+rem Запись хранилища рабочей машины кладётся стендом рядом с исходными
+rem текстами, и при наличии её проверка ведётся с нею: стенду надлежит
+rem либо восстановить запись в точности, либо отвергнуть её опознанием
+rem устройства машины, но не прочесть неверно. Запись эта передаётся не
+rem всегда - на рабочей машине может не оказаться компилятора, - потому
+rem наличие её проверяется, а не полагается
+:RUN
+if exist tools\regex\record.bin (
+	conformance.exe --read=tools/regex/record.bin
+) else (
+	conformance.exe
+)
 exit /b %errorlevel%

@@ -25,6 +25,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <vector>
+
 #include "../../main.hpp"
 #include "../../../include/units/portmap.hpp"
 
@@ -81,6 +83,8 @@ class PortmapUnitFixture : public testing::Test {
 			 * тогда не пришло бы вовсе
 			 */
 			awh::unit::portmap_t::mapping_t mapping;
+			// Перечень заведённых перенаправлений, прочитанный у маршрутизатора
+			std::vector <awh::unit::portmap_t::mapping_t> mappings;
 			/**
 			 * @brief Конструктор
 			 *

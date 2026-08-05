@@ -106,9 +106,16 @@ TEST_F(EthFixture, EthSuiteTest){
 	// Блокируем сигнал SIGILL
 	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_SIGILL));
 	/**
-	 * Для операционной системы FreeBSD и Linux
+	 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
+	 *
+	 * @details Признак взят тот же, что и у самого модуля SCTP в net.cpp - иначе набор
+	 *          и то, что он проверяет, расходились бы в понимании, где протокол есть
+	 *
+	 * @note У NetBSD заголовки протокола есть, но ядро его не даёт, у OpenBSD нет и
+	 *       заголовков - обе системы сюда не входят намеренно
+	 *
 	 */
-	#if __FreeBSD__ || __Linux__
+	#if __linux__ || __FreeBSD__ || __sun
 		// Активируем получение SCTP-событий для сокета
 		ASSERT_FALSE(this->_eth->sctp.eventsSubscribe(sock, {
 			awh::net::sctp::event_type_t::ASSOC_CHANGE,

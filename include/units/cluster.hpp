@@ -202,14 +202,25 @@ namespace awh {
 				void reap(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 			private:
 				/**
-				 * @brief Функция фильтр перехватчика сигналов
-				 *
-				 * @param signal номер сигнала полученного системой
-				 * @param info   объект информации полученный системой
-				 * @param ctx    передаваемый внутренний контекст
-				 *
+				 * Для операционных систем, отличных от MS Windows
 				 */
-				static void child(int32_t signal, siginfo_t * info, void * ctx) noexcept;
+				#if !_WIN32 && !_WIN64
+					/**
+					 * @brief Функция фильтр перехватчика сигналов
+					 *
+					 * @param signal номер сигнала полученного системой
+					 * @param info   объект информации полученный системой
+					 * @param ctx    передаваемый внутренний контекст
+					 *
+					 * @note Под MS Windows тела у метода нет: сигнала SIGCHLD там не
+					 *       существует, и о завершении дочернего процесса извещает
+					 *       ожидание объекта процесса из системного пула потоков.
+					 *       Пробуждение цикла событий в обоих случаях общее — событие
+					 *       `_wakeup`, а разбор завершившихся ведёт метод `reap`
+					 *
+					 */
+					static void child(int32_t signal, siginfo_t * info, void * ctx) noexcept;
+				#endif
 			private:
 				/**
 				 * @brief Метод обработки событий записи сообщений кластера

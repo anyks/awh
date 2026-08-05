@@ -1325,7 +1325,7 @@ namespace {
 				// Если метод совпадает с известным методом запроса DELETE
 				if(::equalsMethod(method, "DELETE"))
 					// Выводим распознанный метод запроса
-					return http::method_t::DEL;
+					return http::method_t::DELETE;
 				// Если метод совпадает с известным методом запроса SEARCH
 				if(::equalsMethod(method, "SEARCH"))
 					// Выводим распознанный метод запроса
@@ -5505,9 +5505,9 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					 * Структурно расширения не разбираются - они пропускаются и отдаются
 					 * потребителю как есть, - но октеты, недопустимые в них ни при каком
 					 * разборе, отвергаются. По RFC 9112 §7.1.1 расширение состоит из token
-					 * и token либо quoted-string, а DEL не входит ни в token, ни в qdtext.
+					 * и token либо quoted-string, а DELETE не входит ни в token, ни в qdtext.
 					 * Правило берётся то же, что и для значения заголовка: управляющие
-					 * символы и DEL запрещены, obs-text допускается - он законен внутри
+					 * символы и DELETE запрещены, obs-text допускается - он законен внутри
 					 * quoted-string, а отличить её без структурного разбора нечем
 					 */
 					if(!::isValueCh(ch)){

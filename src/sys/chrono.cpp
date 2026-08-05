@@ -28,6 +28,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/global.hpp>
 #include <sys/log.hpp>
 #include <sys/chrono.hpp>
 
@@ -6417,9 +6418,9 @@ template void awh::Chrono::set(const float, const unit_t) noexcept;
 template void awh::Chrono::set(const double, const unit_t) noexcept;
 template void awh::Chrono::set(const string, const unit_t) noexcept;
 /**
- * Если операционной системой является macOS или Linux
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __AWH_DISTINCT_SIZE_TYPES__
 	template void awh::Chrono::set(const size_t, const unit_t) noexcept;
 	template void awh::Chrono::set(const ssize_t, const unit_t) noexcept;
 #endif
@@ -7403,9 +7404,9 @@ template float awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 template double awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 template string awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 /**
- * Если операционной системой является macOS или Linux
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __AWH_DISTINCT_SIZE_TYPES__
 	template size_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 	template ssize_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 #endif
@@ -7471,9 +7472,9 @@ template float awh::Chrono::get(const unit_t) const noexcept;
 template double awh::Chrono::get(const unit_t) const noexcept;
 template string awh::Chrono::get(const unit_t) const noexcept;
 /**
- * Если операционной системой является macOS или Linux
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __AWH_DISTINCT_SIZE_TYPES__
 	template size_t awh::Chrono::get(const unit_t) const noexcept;
 	template ssize_t awh::Chrono::get(const unit_t) const noexcept;
 #endif
@@ -7540,9 +7541,9 @@ template float awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 template double awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 template string awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 /**
- * Если операционной системой является macOS или Linux
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __AWH_DISTINCT_SIZE_TYPES__
 	template size_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 	template ssize_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 #endif
