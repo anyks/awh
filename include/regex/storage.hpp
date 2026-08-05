@@ -187,6 +187,18 @@ namespace awh {
 				// Код ошибки хранилища собранных выражений
 				mutable storage_error_t _error;
 			private:
+				/**
+				 * Признак доверия порождённому коду, записью несомому
+				 *
+				 * @details Порождённый машинный код записи исполняется, а не
+				 *          разбирается, отчего проверкой он не оберегаем вовсе:
+				 *          проверить можно данные, но не команды. Признак снят
+				 *          по умолчанию, и восстановление код записи не берёт,
+				 *          а порождает заново.
+				 *
+				 */
+				bool _trusted;
+			private:
 				// Метод сжатия записи хранилища
 				compressor::method_t _method;
 			private:
@@ -293,6 +305,20 @@ namespace awh {
 				void packer(const compressor::method_t method, packer_t pack, packer_t unpack) noexcept;
 			public:
 				/**
+				 * @brief Метод установки доверия порождённому коду записи
+				 *
+				 * @param mode признак доверия порождённому коду записи
+				 *
+				 * @details Признак снят по умолчанию: восстановление порождённый
+				 *          код записи не берёт, а порождает заново. Установка его
+				 *          означает, что запись изготовлена самим потребителем
+				 *          и подмене не подвергалась, - код её при этом берётся
+				 *          как есть и размещается в исполняемой памяти.
+				 *
+				 */
+				void trusted(const bool mode) noexcept;
+			public:
+				/**
 				 * @brief Метод извлечения кода ошибки хранилища
 				 *
 				 * @return код ошибки хранилища собранных выражений
@@ -304,7 +330,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Storage() noexcept : _error(storage_error_t::NONE), _method(compressor::method_t::NONE) {}
+				Storage() noexcept : _error(storage_error_t::NONE), _trusted(false), _method(compressor::method_t::NONE) {}
 				/**
 				 * @brief Деструктор
 				 *

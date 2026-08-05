@@ -125,10 +125,24 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 			} break;
 			// Для семейства UDS
 			case static_cast <uint8_t> (awh::event::family_t::UDS): {
-				// Устанавливаем адрес источника процесса
-				source = awh_cast <awh::net::addr_fs_t *> (info.addresses.src.get())->address;
-				// Устанавливаем адрес назначения процесса
-				destination = awh_cast <awh::net::addr_fs_t *> (info.addresses.dst.get())->address;
+				/**
+				 * @par Намеренные решения
+				 *
+				 * Адреса берутся с проверкой на наличие. У сокета Unix собеседника
+				 * может не быть вовсе - слушающий сокет его не имеет, - и пустой
+				 * указатель адреса назначения тут правда о нём, а не пробел разбора.
+				 * Прежде он разыменовывался без проверки, и на OpenBSD, где такие
+				 * сокеты в перечислении встречаются, набор падал с дампом
+				 *
+				 */
+				// Если адрес источника процесса получен
+				if(info.addresses.src != nullptr)
+					// Устанавливаем адрес источника процесса
+					source = awh_cast <awh::net::addr_fs_t *> (info.addresses.src.get())->address;
+				// Если адрес назначения процесса получен
+				if(info.addresses.dst != nullptr)
+					// Устанавливаем адрес назначения процесса
+					destination = awh_cast <awh::net::addr_fs_t *> (info.addresses.dst.get())->address;
 			} break;
 		}
 		/**

@@ -2742,8 +2742,20 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				switch(static_cast <uint8_t> (family)){
 					// Для семейства IPv4
 					case static_cast <uint8_t> (event::family_t::IPV4): {
+						/**
+						 * @brief Значение признака обратной петли для IPv4
+						 *
+						 * @details Договор BSD отводит этому параметру для IPv4 **один
+						 *          октет**, тогда как одноимённому параметру IPv6 - целое.
+						 *          Прежде и тому и другому передавалось целое: macOS и
+						 *          NetBSD принимают оба размера, а OpenBSD отвечает отказом
+						 *          «недопустимый довод», и рассылка на петлю там не
+						 *          включалась вовсе
+						 *
+						 */
+						const uint8_t loopback = static_cast <uint8_t> (flags);
 						// Активируем/деактивируем режим обратной петли для multicast пакетов
-						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &flags, sizeof(flags))))){
+						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &loopback, sizeof(loopback))))){
 							/**
 							 * Если включён режим отладки
 							 */

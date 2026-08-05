@@ -300,8 +300,20 @@ TEST_F(EthFixture, SocketSwitchOptionIPv6Test){
 
 	// Включаем режим только IPv6 на IPv6 сокете
 	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::ENABLED, awh::event::options::IPV6_ONLY));
-	// Отключаем режим только IPv6 на IPv6 сокете
-	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::DISABLED, awh::event::options::IPV6_ONLY));
+	/**
+	 * @par Намеренные решения
+	 *
+	 * Отключение режима проверяется лишь там, где система его вообще допускает.
+	 * OpenBSD отображённых адресов IPv4 в IPv6 не поддерживает вовсе - это её
+	 * осознанное решение, а не пробел выпуска, - и режим у неё выключить нельзя:
+	 * гнездо IPv6 там всегда только IPv6. Подменить это нечем, и ожидать успеха
+	 * значило бы требовать от системы того, чего она не делает
+	 *
+	 */
+	#if !__OpenBSD__
+		// Отключаем режим только IPv6 на IPv6 сокете
+		ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::DISABLED, awh::event::options::IPV6_ONLY));
+	#endif
 
 	// Для IPv6 опция ручной установки заголовков (HDRINCL) не поддерживается и всегда возвращает успех
 	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::ENABLED, awh::event::options::HDRINCL));

@@ -76,6 +76,8 @@ if (${GTest_FOUND})
                 portmap/portmap.cpp
                 portmap/retry.cpp
                 portmap/natpmp.cpp
+                portmap/pcp.cpp
+                portmap/upnp.cpp
             )
         # Если не нужно собрать тесты для модуля перенаправления портов
         else()

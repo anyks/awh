@@ -78,9 +78,20 @@
 	#include <sstream>
 
 	/**
-	 * Системный заголовочный файл
+	 * Системные заголовочные файлы
 	 */
 	#include <arpa/inet.h>
+
+	/**
+	 * Для операционной системы OpenBSD
+	 *
+	 * @note Название процесса берётся у ядра запросом: файловой системы процессов
+	 *       у OpenBSD нет вовсе, и читать название неоткуда
+	 *
+	 */
+	#if __OpenBSD__
+		#include <sys/sysctl.h>
+	#endif
 /**
  * Реализация под Sun Solaris
  */
@@ -1704,9 +1715,38 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 				// Выполняем формирование результата
 				result.assign(buffer, buffer + size);
 		/**
-		 * Для операционной системы NetBSD или OpenBSD
+		 * Для операционной системы OpenBSD
+		 *
+		 * @details Название процесса берётся у ядра запросом, а не из файловой системы
+		 *          процессов: OpenBSD её убрала целиком - каталога `/proc` там нет
+		 *          вовсе, - и чтение оттуда возвращало пустое название всегда. Ядро
+		 *          же держит название в записи о процессе и отдаёт его запросом
+		 *
 		 */
-		#elif __NetBSD__ || __OpenBSD__
+		#elif __OpenBSD__
+			// Запись о процессе, получаемая у ядра
+			struct kinfo_proc process;
+			// Зануляем запись о процессе
+			::memset(&process, 0, sizeof(process));
+			// Размер записи о процессе
+			size_t length = sizeof(process);
+			// Идентификатор параметра записи о запрошенном процессе
+			int32_t mib[6] = {
+				CTL_KERN,           // Ядро системы
+				KERN_PROC,          // Записи о процессах
+				KERN_PROC_PID,      // Отбор по идентификатору процесса
+				static_cast <int32_t> (pid),
+				static_cast <int32_t> (sizeof(process)),
+				1                   // Число запрашиваемых записей
+			};
+			// Если запись о процессе получена и название в ней есть
+			if((::sysctl(mib, 6, &process, &length, nullptr, 0) == 0) && (length > 0) && (process.p_comm[0] != '\0'))
+				// Устанавливаем название процесса
+				result.assign(process.p_comm, ::strnlen(process.p_comm, sizeof(process.p_comm)));
+		/**
+		 * Для операционной системы NetBSD
+		 */
+		#elif __NetBSD__
 			// Строковый поток названия файла
 			stringstream ss;
 			// Формируем название файла

@@ -422,7 +422,7 @@ template awh::Buffer::Iterator <double> awh::Buffer::end <double> () noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template awh::Buffer::Iterator <size_t> awh::Buffer::end <size_t> () noexcept;
 	template awh::Buffer::Iterator <ssize_t> awh::Buffer::end <ssize_t> () noexcept;
 #endif
@@ -465,7 +465,7 @@ template awh::Buffer::Iterator <double> awh::Buffer::begin <double> () noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template awh::Buffer::Iterator <size_t> awh::Buffer::begin <size_t> () noexcept;
 	template awh::Buffer::Iterator <ssize_t> awh::Buffer::begin <ssize_t> () noexcept;
 #endif
@@ -539,7 +539,7 @@ template awh::Buffer::Const_Iterator <double> awh::Buffer::cend <double> () cons
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template awh::Buffer::Const_Iterator <size_t> awh::Buffer::end <size_t> () const noexcept;
 	template awh::Buffer::Const_Iterator <size_t> awh::Buffer::cend <size_t> () const noexcept;
 	template awh::Buffer::Const_Iterator <ssize_t> awh::Buffer::end <ssize_t> () const noexcept;
@@ -615,7 +615,7 @@ template awh::Buffer::Const_Iterator <double> awh::Buffer::cbegin <double> () co
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template awh::Buffer::Const_Iterator <size_t> awh::Buffer::begin <size_t> () const noexcept;
 	template awh::Buffer::Const_Iterator <size_t> awh::Buffer::cbegin <size_t> () const noexcept;
 	template awh::Buffer::Const_Iterator <ssize_t> awh::Buffer::begin <ssize_t> () const noexcept;
@@ -660,7 +660,7 @@ template void awh::Buffer::pop <double> () noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template void awh::Buffer::pop <size_t> () noexcept;
 	template void awh::Buffer::pop <ssize_t> () noexcept;
 #endif
@@ -707,7 +707,7 @@ template size_t awh::Buffer::count <double> () const noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template size_t awh::Buffer::count <size_t> () const noexcept;
 	template size_t awh::Buffer::count <ssize_t> () const noexcept;
 #endif
@@ -761,7 +761,7 @@ template double awh::Buffer::back() const noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template size_t awh::Buffer::back() const noexcept;
 	template ssize_t awh::Buffer::back() const noexcept;
 #endif
@@ -815,7 +815,7 @@ template double awh::Buffer::front() const noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template size_t awh::Buffer::front() const noexcept;
 	template ssize_t awh::Buffer::front() const noexcept;
 #endif
@@ -874,7 +874,7 @@ template double awh::Buffer::at(const size_t) const noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template size_t awh::Buffer::at(const size_t) const noexcept;
 	template ssize_t awh::Buffer::at(const size_t) const noexcept;
 #endif
@@ -929,7 +929,7 @@ template void awh::Buffer::set(const double, const size_t) noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template void awh::Buffer::set(const size_t, const size_t) noexcept;
 	template void awh::Buffer::set(const ssize_t, const size_t) noexcept;
 #endif
@@ -1110,7 +1110,7 @@ template bool awh::Buffer::push(const double) noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template bool awh::Buffer::push(const size_t) noexcept;
 	template bool awh::Buffer::push(const ssize_t) noexcept;
 #endif

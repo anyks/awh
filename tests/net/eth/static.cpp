@@ -152,8 +152,27 @@ TEST_F(EthFixture, EthSuiteTest){
 	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::NO_IO_BLOCK));
 	// Устанавливаем режим автоматического закрытия файлового дескриптора при вызове exec
 	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::CLOSE_ON_EXEC));
-	// Устанавливаем постоянное подключение на сокет
-	ASSERT_FALSE(this->_eth->socket.setKeepalive(sock, 30, 60, 10));
+	/**
+	 * @par Намеренные решения
+	 *
+	 * Отказ тут ждётся оттого, что сокет создан датаграммным, а сроки проверки
+	 * живости задаются опциями уровня IPPROTO_TCP - на таком сокете система их
+	 * не принимает, и установка честно проваливается
+	 *
+	 * У OpenBSD опций TCP_KEEPIDLE, TCP_KEEPINTVL и TCP_KEEPCNT нет вовсе, сроки
+	 * там общесистемные. Единственный доступный шаг - SO_KEEPALIVE уровня
+	 * SOL_SOCKET, а его система принимает на сокете любого рода. Проваливаться
+	 * там попросту нечему, и установка возвращает истину. Это правда о системе,
+	 * а не расхождение поведения, потому проверка разделена по системам
+	 *
+	 */
+	#if !__OpenBSD__
+		// Устанавливаем постоянное подключение на сокет
+		ASSERT_FALSE(this->_eth->socket.setKeepalive(sock, 30, 60, 10));
+	#else
+		// Устанавливаем постоянное подключение на сокет
+		ASSERT_TRUE(this->_eth->socket.setKeepalive(sock, 30, 60, 10));
+	#endif
 	// Включаем заголовки в сокете
 	ASSERT_FALSE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::HDRINCL));
 	// Временный объект для извлечения сетевого интерфейса

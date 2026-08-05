@@ -40225,6 +40225,14 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								}
 								// Устанавливаем IP-адрес в источник сетевого адреса
 								awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
+								/**
+								 * Устройство выхода групповой рассылки задаётся отдельной
+								 * настройкой гнезда: привязка его не задаёт, и рассылка без
+								 * неё уходит туда, куда укажет таблица маршрутов
+								 */
+								if(client->state.delivery == event::delivery_mode_t::MULTICAST)
+									// Устанавливаем устройство выхода групповой рассылки
+									result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -40287,6 +40295,14 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								}
 								// Устанавливаем IP-адрес в источник сетевого адреса
 								awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
+								/**
+								 * Устройство выхода групповой рассылки задаётся отдельной
+								 * настройкой гнезда: привязка его не задаёт, и рассылка без
+								 * неё уходит туда, куда укажет таблица маршрутов
+								 */
+								if(client->state.delivery == event::delivery_mode_t::MULTICAST)
+									// Устанавливаем устройство выхода групповой рассылки
+									result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -60836,8 +60852,34 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
-					// Устанавливаем максимальное количество хопов для события
-					awh_cast <::io::client_t *> (i->second.get())->state.delivery = delivery;
+					// Получаем объект клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Устанавливаем режим трансляции пакетов события
+					client->state.delivery = delivery;
+					/**
+					 * @brief Устройство выхода групповой рассылки
+					 *
+					 * @details Привязка к устройству, заданная отдельно, устройство выхода
+					 *          групповой рассылки **не задаёт**: по договору его задаёт
+					 *          настройка гнезда IP_MULTICAST_IF, и без неё рассылка уходит
+					 *          туда, куда укажет таблица маршрутов. Прежде настройка эта
+					 *          ставилась одному лишь серверу, и клиент, которому устройство
+					 *          назвали, рассылал не по нему: обнаружение шлюза на машине с
+					 *          несколькими сетями уходило мимо названной
+					 *
+					 * @note Порядок вызовов произволен, поэтому настройка ставится с обеих
+					 *       сторон: здесь - когда устройство назвали прежде режима, и в
+					 *       установке устройства - когда режим назвали прежде него
+					 *
+					 */
+					if(delivery == event::delivery_mode_t::MULTICAST){
+						// Получаем название устройства, заданного событию
+						const string & iface = this->getIface(id);
+						// Если устройство событию задано
+						if(!iface.empty())
+							// Устанавливаем устройство выхода групповой рассылки
+							return this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, iface);
+					}
 					// Выводим результат
 					return true;
 				}

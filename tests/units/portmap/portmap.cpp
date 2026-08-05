@@ -95,7 +95,24 @@ PortmapUnitFixture::outcome_t PortmapUnitFixture::await(awh::unit::portmap_t & p
 	 * Устанавливаем функцию обратного вызова на заведение перенаправления порта
 	 */
 	portmap.on <void (const awh::unit::portmap_t::mapping_t &, const awh::unit::portmap_t::type_t)> (
-		"mapped", [&portmap, &result](const awh::unit::portmap_t::mapping_t &, const awh::unit::portmap_t::type_t type) noexcept -> void {
+		"mapped", [&portmap, &result](const awh::unit::portmap_t::mapping_t & mapping, const awh::unit::portmap_t::type_t type) noexcept -> void {
+			// Запоминаем перенаправление, выданное маршрутизатором
+			result.mapping = mapping;
+			// Запоминаем, что маршрутизатор ответил
+			result.answered = true;
+			// Запоминаем договор, по которому получен итог
+			result.type = type;
+			// Выполняем остановку работы модуля
+			portmap.stop();
+		}, std::placeholders::_1, std::placeholders::_2
+	);
+	/**
+	 * Устанавливаем функцию обратного вызова на снятие перенаправления порта
+	 */
+	portmap.on <void (const awh::unit::portmap_t::mapping_t &, const awh::unit::portmap_t::type_t)> (
+		"unmapped", [&portmap, &result](const awh::unit::portmap_t::mapping_t & mapping, const awh::unit::portmap_t::type_t type) noexcept -> void {
+			// Запоминаем перенаправление, выданное маршрутизатором
+			result.mapping = mapping;
 			// Запоминаем, что маршрутизатор ответил
 			result.answered = true;
 			// Запоминаем договор, по которому получен итог
@@ -125,6 +142,30 @@ PortmapUnitFixture::outcome_t PortmapUnitFixture::await(awh::unit::portmap_t & p
 			mapping.lifeTime = 60;
 			// Выполняем заведение перенаправления порта
 			portmap.open(mapping);
+		} break;
+		// Если убирается заведённое перенаправление порта
+		case static_cast <uint8_t> (awh::unit::portmap_t::action_t::CLOSE): {
+			// Убираемое перенаправление порта
+			awh::unit::portmap_t::mapping_t mapping;
+			// Устанавливаем договор перенаправляемого порта
+			mapping.proto = awh::unit::portmap_t::proto_t::TCP;
+			// Устанавливаем внутренний порт перенаправления
+			mapping.internalPort = 8081;
+			// Выполняем снятие перенаправления порта
+			portmap.close(mapping);
+		} break;
+		// Если продлевается срок заведённого перенаправления
+		case static_cast <uint8_t> (awh::unit::portmap_t::action_t::RENEW): {
+			// Продлеваемое перенаправление порта
+			awh::unit::portmap_t::mapping_t mapping;
+			// Устанавливаем договор перенаправляемого порта
+			mapping.proto = awh::unit::portmap_t::proto_t::TCP;
+			// Устанавливаем внутренний порт перенаправления
+			mapping.internalPort = 8081;
+			// Устанавливаем срок жизни перенаправления в секундах
+			mapping.lifeTime = 60;
+			// Выполняем продление срока перенаправления порта
+			portmap.renew(mapping);
 		} break;
 	}
 	// Выполняем запуск работы модуля

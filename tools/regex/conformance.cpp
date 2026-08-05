@@ -83,44 +83,95 @@
  *          ломает отсчёт операндов в памяти. Обёртка же ведает соглашение
  *          о вызове целиком и сохраняет всё, что занимает.
  *
+ *          Соглашений у набора x86-64 два, и обёрток потому тоже две. System V
+ *          подаёт доводы в rdi, rsi, rdx, rcx и r8, а оберегаемыми вызываемым
+ *          числит rbx, r12 и r13 - их три и проверяется. Windows подаёт доводы
+ *          в rcx, rdx, r8 и r9, довод пятый - кадром вызова, требует отвести
+ *          под доводы вызываемого тридцать два байта прежде вызова и числит
+ *          оберегаемыми сверх того rsi и rdi - их пять и проверяется.
+ *
  */
 #if defined(__x86_64__) || defined(_M_X64)
-	/**
-	 * Размещаем обёртку вызова, укладывающую приметы в оберегаемые регистры
-	 */
-	__asm__ (
-		".text\n"
-		".globl awh_regex_preserving\n"
-		"awh_regex_preserving:\n"
-		"  pushq %rbx\n"
-		"  pushq %r12\n"
-		"  pushq %r13\n"
-		"  pushq %r14\n"
-		"  movq %rdi, %r14\n"
-		"  movq %rsi, %rdi\n"
-		"  movq %rdx, %rsi\n"
-		"  movq %rcx, %rdx\n"
-		"  movq %r8, %rcx\n"
-		"  movq %r9, %r8\n"
-		"  movabsq $0x1122334455667788, %rbx\n"
-		"  movabsq $0x99AABBCCDDEEFF00, %r12\n"
-		"  movabsq $0x0F1E2D3C4B5A6978, %r13\n"
-		"  callq *%r14\n"
-		"  movq %rbx, %rax\n"
-		"  xorq %r12, %rax\n"
-		"  xorq %r13, %rax\n"
-		"  popq %r14\n"
-		"  popq %r13\n"
-		"  popq %r12\n"
-		"  popq %rbx\n"
-		"  retq\n"
-	);
+	#if defined(_WIN32)
+		/**
+		 * Размещаем обёртку вызова соглашения Windows
+		 */
+		__asm__ (
+			".text\n"
+			".globl awh_regex_preserving\n"
+			"awh_regex_preserving:\n"
+			"  pushq %rbx\n"
+			"  pushq %rsi\n"
+			"  pushq %rdi\n"
+			"  pushq %r12\n"
+			"  pushq %r13\n"
+			"  subq $48, %rsp\n"
+			"  movq %rcx, %r10\n"
+			"  movq 128(%rsp), %r11\n"
+			"  movq 136(%rsp), %rax\n"
+			"  movq %rax, 32(%rsp)\n"
+			"  movq %rdx, %rcx\n"
+			"  movq %r8, %rdx\n"
+			"  movq %r9, %r8\n"
+			"  movq %r11, %r9\n"
+			"  movabsq $0x1122334455667788, %rbx\n"
+			"  movabsq $0x99AABBCCDDEEFF00, %r12\n"
+			"  movabsq $0x0F1E2D3C4B5A6978, %r13\n"
+			"  movabsq $0x2468ACE013579BDF, %rsi\n"
+			"  movabsq $0x76543210FEDCBA98, %rdi\n"
+			"  callq *%r10\n"
+			"  movq %rbx, %rax\n"
+			"  xorq %r12, %rax\n"
+			"  xorq %r13, %rax\n"
+			"  xorq %rsi, %rax\n"
+			"  xorq %rdi, %rax\n"
+			"  addq $48, %rsp\n"
+			"  popq %r13\n"
+			"  popq %r12\n"
+			"  popq %rdi\n"
+			"  popq %rsi\n"
+			"  popq %rbx\n"
+			"  retq\n"
+		);
+	#else
+		/**
+		 * Размещаем обёртку вызова соглашения System V
+		 */
+		__asm__ (
+			".text\n"
+			".globl awh_regex_preserving\n"
+			"awh_regex_preserving:\n"
+			"  pushq %rbx\n"
+			"  pushq %r12\n"
+			"  pushq %r13\n"
+			"  pushq %r14\n"
+			"  movq %rdi, %r14\n"
+			"  movq %rsi, %rdi\n"
+			"  movq %rdx, %rsi\n"
+			"  movq %rcx, %rdx\n"
+			"  movq %r8, %rcx\n"
+			"  movq %r9, %r8\n"
+			"  movabsq $0x1122334455667788, %rbx\n"
+			"  movabsq $0x99AABBCCDDEEFF00, %r12\n"
+			"  movabsq $0x0F1E2D3C4B5A6978, %r13\n"
+			"  callq *%r14\n"
+			"  movq %rbx, %rax\n"
+			"  xorq %r12, %rax\n"
+			"  xorq %r13, %rax\n"
+			"  popq %r14\n"
+			"  popq %r13\n"
+			"  popq %r12\n"
+			"  popq %rbx\n"
+			"  retq\n"
+		);
+	#endif
 	/**
 	 * @brief Функция вызова с укладкой примет в оберегаемые регистры
 	 *
 	 * @details Выдаётся сумма примет по исключающему или, снятая по возвращении:
 	 *          совпадение её с суммой укладываемых примет означает сохранность
-	 *          всех трёх регистров, а расхождение - затирание хотя бы одного.
+	 *          всех оберегаемых регистров, а расхождение - затирание хотя бы
+	 *          одного.
 	 *
 	 * @param entry  адрес вызываемого порождённого кода
 	 * @param text   текст сопоставления
@@ -692,7 +743,12 @@ namespace {
 			/**
 			 * Получаем сумму примет, в оберегаемые регистры укладываемых
 			 */
-			const uint64_t expected = (0x1122334455667788ull ^ 0x99AABBCCDDEEFF00ull ^ 0x0F1E2D3C4B5A6978ull);
+			#if defined(_WIN32)
+				const uint64_t expected = (0x1122334455667788ull ^ 0x99AABBCCDDEEFF00ull ^
+				 0x0F1E2D3C4B5A6978ull ^ 0x2468ACE013579BDFull ^ 0x76543210FEDCBA98ull);
+			#else
+				const uint64_t expected = (0x1122334455667788ull ^ 0x99AABBCCDDEEFF00ull ^ 0x0F1E2D3C4B5A6978ull);
+			#endif
 			/**
 			 * Если сумма примет оберегаемых регистров не совпала
 			 */
@@ -960,7 +1016,19 @@ static bool storing(const char * write, const char * read) noexcept {
 	// Создаём объект работы с регулярными выражениями
 	const awh::regexp_t regexp;
 	// Создаём объект хранилища собранных выражений
-	const awh::regex::storage_t storage;
+	awh::regex::storage_t storage;
+	/**
+	 * Выполняем установку доверия порождённому коду записи
+	 *
+	 * @details Порождённый машинный код записи исполняется, а не разбирается,
+	 *          отчего берётся он лишь при установленном признаке доверия,
+	 *          снятом по умолчанию: без него восстановление порождает код
+	 *          заново, и путь восстановления его из записи проверка не
+	 *          проходила бы вовсе. Запись здесь изготовлена самой проверкой,
+	 *          поэтому доверие ей правомерно.
+	 *
+	 */
+	storage.trusted(true);
 	// Набор собранных начисто выражений
 	std::vector <awh::regex::storage_t::exp_t> fresh;
 	// Выполняем сборку набора выражений проверки хранилища
@@ -1139,6 +1207,16 @@ static bool storing(const char * write, const char * read) noexcept {
 	return true;
 }
 int main(int argc, char ** argv) {
+	/**
+	 * Выполняем отмену буферизации вывода стенда
+	 *
+	 * @details Вывод, направленный не на терминал, буферизуется целиком и при
+	 *          падении теряется весь: стенд, оборвавшийся на середине, выводит
+	 *          пустоту взамен указания на место обрыва. Отмена буферизации
+	 *          стоит вывода посимвольно, а стенд выводит две дюжины строк.
+	 *
+	 */
+	::setvbuf(stdout, nullptr, _IONBF, 0);
 	// Название блока образцов, подлежащего подробному выводу
 	const char * verbose = nullptr;
 	// Путь записи хранилища, порождаемой стендом, и путь записи иной машины

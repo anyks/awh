@@ -1458,6 +1458,16 @@ size_t awh::Grok::read(string_view text) noexcept {
 	return result;
 }
 /**
+ * @brief Метод установки доверия порождённому коду записи
+ *
+ * @param mode признак доверия порождённому коду записи
+ *
+ */
+void awh::Grok::trusted(const bool mode) noexcept {
+	// Выполняем установку доверия порождённому коду записи хранилища
+	this->_storage.trusted(mode);
+}
+/**
  * @brief Метод установки сжатия записи собранных шаблонов
  *
  * @param method метод сжатия записи собранных шаблонов

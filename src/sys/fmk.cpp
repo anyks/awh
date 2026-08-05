@@ -2601,7 +2601,7 @@ template string awh::Framework::timestamp <string> (const chrono_t) const noexce
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template size_t awh::Framework::timestamp <size_t> (const chrono_t) const noexcept;
 	template ssize_t awh::Framework::timestamp <ssize_t> (const chrono_t) const noexcept;
 #endif
@@ -3765,7 +3765,7 @@ template size_t awh::Framework::size <double> (const double) const noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template size_t awh::Framework::size <size_t> (const size_t) const noexcept;
 	template size_t awh::Framework::size <ssize_t> (const ssize_t) const noexcept;
 #endif
@@ -3884,7 +3884,7 @@ template bool awh::Framework::isGreater <double> (const double, const double) co
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template bool awh::Framework::isGreater <size_t> (const size_t, const size_t) const noexcept;
 	template bool awh::Framework::isGreater <ssize_t> (const ssize_t, const ssize_t) const noexcept;
 #endif
@@ -4009,7 +4009,7 @@ template string awh::Framework::itoa <double> (const double, const uint8_t) cons
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template string awh::Framework::itoa <size_t> (const size_t, const uint8_t) const noexcept;
 	template string awh::Framework::itoa <ssize_t> (const ssize_t, const uint8_t) const noexcept;
 #endif
@@ -4268,7 +4268,7 @@ template double awh::Framework::atoi <double> (string_view) const noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template size_t awh::Framework::atoi <size_t> (string_view) const noexcept;
 	template ssize_t awh::Framework::atoi <ssize_t> (string_view) const noexcept;
 #endif
@@ -4320,7 +4320,7 @@ template double awh::Framework::atoi <double> (string_view, const uint8_t) const
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template size_t awh::Framework::atoi <size_t> (string_view, const uint8_t) const noexcept;
 	template ssize_t awh::Framework::atoi <ssize_t> (string_view, const uint8_t) const noexcept;
 #endif
@@ -4610,7 +4610,7 @@ template double awh::Framework::atoi <double> (wstring_view) const noexcept;
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template size_t awh::Framework::atoi <size_t> (wstring_view) const noexcept;
 	template ssize_t awh::Framework::atoi <ssize_t> (wstring_view) const noexcept;
 #endif
@@ -4662,7 +4662,7 @@ template double awh::Framework::atoi <double> (wstring_view, const uint8_t) cons
 /**
  * Если операционной системой является macOS или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__
+#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 	template size_t awh::Framework::atoi <size_t> (wstring_view, const uint8_t) const noexcept;
 	template ssize_t awh::Framework::atoi <ssize_t> (wstring_view, const uint8_t) const noexcept;
 #endif
