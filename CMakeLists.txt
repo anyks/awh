@@ -321,7 +321,18 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
      # Используем GCC
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
+        # Признак --no-as-needed здесь не задаётся намеренно
+        #
+        # Приём этот принадлежит компоновщику GNU, а у Sun Solaris и illumos работает
+        # свой - Solaris Link Editors. Solaris 11.4 признак этот принимает, а illumos
+        # отвечает отказом "ld: fatal: unrecognized option '--no-as-needed'", и наборы
+        # проверок там не компонуются вовсе. Проверено опытом на обоих стендах
+        #
+        # Смысла он тут и не несёт: назначение его - удержать библиотеку, которую
+        # компоновщик счёл лишней, а нужна была лишь одна такая - libdl. У этих же
+        # систем dlopen лежит в libc, и замер показал, что сборка проходит и вовсе
+        # без -ldl. Библиотека оставлена ради явности, признак убран
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ldl")
     endif()
     # Добавляем расширения Sun Solaris
     add_compile_definitions(__EXTENSIONS__)

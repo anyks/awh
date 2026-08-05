@@ -33,6 +33,12 @@
  *          предшествующего снятия поведения не определяет
  *
  */
+#pragma pop_macro("GS")
+#pragma pop_macro("DS")
+#pragma pop_macro("SS")
+#pragma pop_macro("CS")
+#pragma pop_macro("ES")
+#pragma pop_macro("FS")
 #pragma pop_macro("INVALID_SOCKET")
 #pragma pop_macro("TRANSPARENT")
 #pragma pop_macro("ALTERNATE")

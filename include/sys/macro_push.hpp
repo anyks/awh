@@ -58,6 +58,12 @@
 #pragma push_macro("ALTERNATE")
 #pragma push_macro("TRANSPARENT")
 #pragma push_macro("INVALID_SOCKET")
+#pragma push_macro("FS")
+#pragma push_macro("ES")
+#pragma push_macro("CS")
+#pragma push_macro("SS")
+#pragma push_macro("DS")
+#pragma push_macro("GS")
 
 #undef TEXT
 #undef CALLBACK
@@ -69,3 +75,25 @@
 #undef ALTERNATE
 #undef TRANSPARENT
 #undef INVALID_SOCKET
+
+/**
+ * Имена указателей сегментов набора команд x86
+ *
+ * @details Заголовок sys/regset.h у Sun Solaris и illumos заводит макросами имена
+ *          указателей сегментов - FS, ES, CS, SS, DS, GS, - раскрывая их в порядковые
+ *          числа состояния процесса. Приходит он не напрямую, а через заголовки работы
+ *          с процессами, и оттого столкновение всплывает не везде: перечисление
+ *          address_t с членом FS собиралось на Solaris и отказывало на OpenIndiana,
+ *          где набор подключаемых заголовков сложился иначе
+ *
+ * @note Сняты все шесть, а не один лишь столкнувшийся FS: имена эти короткие и общие,
+ *       под члены перечислений годятся все, и снятие их ничего не стоит - ровно тот же
+ *       довод, по какому выше взяты FAILED и TEXT
+ *
+ */
+#undef FS
+#undef ES
+#undef CS
+#undef SS
+#undef DS
+#undef GS
