@@ -232,12 +232,14 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				/**
 				 * Если заводилось перенаправление порта
 				 *
-				 * @note Назначенное маршрутизатором перенимается лишь при заведении: ответ
-				 *       на удаление несёт по договору нулевой внешний порт и нулевой срок,
-				 *       и перенять их значило бы выдать в итоге не то перенаправление,
-				 *       которое убиралось
+				 * @note Назначенное маршрутизатором перенимается при заведении и продлении,
+				 *       но не при удалении: ответ на удаление несёт по договору нулевой
+				 *       внешний порт и нулевой срок, и перенять их значило бы выдать в итоге
+				 *       не то перенаправление, которое убиралось. Продление же назначает
+				 *       новый срок, и выдать вызывающему запрошенный вместо назначенного
+				 *       значило бы соврать о том, до каких пор перенаправление живёт
 				 */
-				if(this->_action == action_t::OPEN){
+				if((this->_action == action_t::OPEN) || (this->_action == action_t::RENEW)){
 					// Запоминаем назначенный маршрутизатором внешний порт
 					this->_mapping.externalPort = answer.externalPort;
 					// Запоминаем назначенный маршрутизатором срок жизни перенаправления
@@ -393,12 +395,14 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				/**
 				 * Если заводилось перенаправление порта
 				 *
-				 * @note Назначенное маршрутизатором перенимается лишь при заведении: ответ
-				 *       на удаление несёт по договору нулевой внешний порт и нулевой срок,
-				 *       и перенять их значило бы выдать в итоге не то перенаправление,
-				 *       которое убиралось
+				 * @note Назначенное маршрутизатором перенимается при заведении и продлении,
+				 *       но не при удалении: ответ на удаление несёт по договору нулевой
+				 *       внешний порт и нулевой срок, и перенять их значило бы выдать в итоге
+				 *       не то перенаправление, которое убиралось. Продление же назначает
+				 *       новый срок, и выдать вызывающему запрошенный вместо назначенного
+				 *       значило бы соврать о том, до каких пор перенаправление живёт
 				 */
-				if(this->_action == action_t::OPEN){
+				if((this->_action == action_t::OPEN) || (this->_action == action_t::RENEW)){
 					// Запоминаем назначенный маршрутизатором внешний порт
 					this->_mapping.externalPort = answer.externalPort;
 					// Запоминаем назначенный маршрутизатором срок жизни перенаправления
@@ -421,6 +425,8 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 		switch(static_cast <uint8_t> (action)){
 			// Если заводилось перенаправление порта
 			case static_cast <uint8_t> (action_t::OPEN):
+			// Если продлевался срок заведённого перенаправления
+			case static_cast <uint8_t> (action_t::RENEW):
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const mapping_t &, const type_t)> ("mapped", this->_mapping, type);
 			break;
@@ -1662,7 +1668,7 @@ void awh::unit::Portmap::described() noexcept {
 	 *       Внешний адрес и перечень служба соединения выдаёт и по связи IPv6, и они
 	 *       ведутся ею же
 	 */
-	const bool pinhole = ((this->_family == family_t::IPV6) && ((this->_action == action_t::OPEN) || (this->_action == action_t::CLOSE)));
+	const bool pinhole = ((this->_family == family_t::IPV6) && ((this->_action == action_t::OPEN) || (this->_action == action_t::CLOSE) || (this->_action == action_t::RENEW)));
 	/**
 	 * Если проделывается либо заделывается пробой заслона IPv6
 	 */
@@ -1770,8 +1776,28 @@ bool awh::unit::Portmap::control() noexcept {
 			// Выполняем сборку вызова чтения перенаправления по порядковому номеру
 			request = this->_upnp.entry(this->_service, this->_index);
 		break;
-		// Если заводится перенаправление порта
-		case static_cast <uint8_t> (action_t::OPEN): {
+		/**
+		 * Если заводится перенаправление порта либо продлевается срок заведённого
+		 *
+		 * @note Продление у службы соединения отдельного действия не имеет: договор
+		 *       продлевает перенаправление повторной просьбой о его заведении, и
+		 *       собирается она той же сборкой. Отдельное действие есть лишь у службы
+		 *       заслона IPv6, где заведение заново выдало бы новый опознаватель
+		 */
+		case static_cast <uint8_t> (action_t::OPEN):
+		case static_cast <uint8_t> (action_t::RENEW): {
+			/**
+			 * Если продлевается срок пробоя заслона IPv6
+			 */
+			if((this->_family == family_t::IPV6) && (this->_action == action_t::RENEW)){
+				// Выполняем сборку вызова продления срока пробоя заслона IPv6
+				request = this->_upnp.repinhole(
+					this->_service, this->_mapping.pinhole,
+					(this->_mapping.lifeTime > 0 ? this->_mapping.lifeTime : ::DEFAULT_LIFETIME)
+				);
+				// Выходим из определения просьбы
+				break;
+			}
 			/**
 			 * Если проделывается пробой заслона IPv6
 			 */
@@ -2203,6 +2229,17 @@ void awh::unit::Portmap::controlled() noexcept {
 			// Запоминаем срок жизни пробоя, отведённый по умолчанию
 			this->_mapping.lifeTime = ::DEFAULT_LIFETIME;
 	}
+	/**
+	 * Если продлевался срок пробоя заслона IPv6
+	 *
+	 * @note Срок доводится до отведённого по умолчанию тем же порядком, что и при
+	 *       проделывании пробоя: нулевой срок просьбе передан не был - его заменила
+	 *       сборка вызова, - и выдать вызывающему нуль значило бы соврать о том, до
+	 *       каких пор пробой живёт
+	 */
+	if((this->_family == family_t::IPV6) && (this->_action == action_t::RENEW) && (this->_mapping.lifeTime == 0))
+		// Запоминаем срок жизни пробоя, отведённый по умолчанию
+		this->_mapping.lifeTime = ::DEFAULT_LIFETIME;
 	// Сохраняем просьбу, с которой велось обращение
 	const action_t action = this->_action;
 	// Выполняем завершение обмена по этому договору
@@ -2213,6 +2250,8 @@ void awh::unit::Portmap::controlled() noexcept {
 	switch(static_cast <uint8_t> (action)){
 		// Если заводилось перенаправление порта
 		case static_cast <uint8_t> (action_t::OPEN):
+		// Если продлевался срок заведённого перенаправления
+		case static_cast <uint8_t> (action_t::RENEW):
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const mapping_t &, const type_t)> ("mapped", this->_mapping, type_t::UPNP);
 		break;
@@ -2603,7 +2642,7 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	 *       под видом опроса AUTO пробой в такой сети заделывает договор PCP, и её
 	 *       отказ лишь затянул бы обмен и запутал бы вызывающего
 	 */
-	const bool unnamed = ((this->_family == family_t::IPV6) && (action == action_t::CLOSE) && (mapping.pinhole == 0));
+	const bool unnamed = ((this->_family == family_t::IPV6) && ((action == action_t::CLOSE) || (action == action_t::RENEW)) && (mapping.pinhole == 0));
 	/**
 	 * Если обмен ведётся договором UPnP
 	 *
@@ -2975,6 +3014,40 @@ bool awh::unit::Portmap::close(const mapping_t & mapping) noexcept {
 	}
 	// Выполняем начало обращения к маршрутизатору
 	return this->perform(action_t::CLOSE, mapping);
+}
+/**
+ * @brief Метод продления срока заведённого перенаправления порта
+ *
+ * @param mapping перенаправление порта для продления
+ * @return        результат отправки просьбы
+ *
+ */
+bool awh::unit::Portmap::renew(const mapping_t & mapping) noexcept {
+	/**
+	 * Если перенаправление задано неполно
+	 */
+	if((mapping.proto == proto_t::NONE) || (mapping.internalPort == 0)){
+		// Выполняем завершение обмена отказом
+		this->failure(this->_type, error_t::MALFORMED);
+		// Выводим отрицательный результат отправки просьбы
+		return false;
+	}
+	/**
+	 * Если продлевается пробой заслона IPv6 без опознавателя
+	 *
+	 * @note Продлевается пробой по опознавателю, выданному при его проделывании, и
+	 *       без него служба заслона отказала бы наверняка
+	 */
+	if((this->_family == family_t::IPV6) && (this->_type == type_t::UPNP) && (mapping.pinhole == 0)){
+		// Записываем в лог сообщение о незаданном опознавателе пробоя
+		this->_log->print("Firewall pinhole identifier is missing", log_t::flag_t::WARNING);
+		// Выполняем завершение обмена отказом
+		this->failure(this->_type, error_t::MALFORMED);
+		// Выводим отрицательный результат отправки просьбы
+		return false;
+	}
+	// Выполняем начало обращения к маршрутизатору
+	return this->perform(action_t::RENEW, mapping);
 }
 /**
  * @brief Конструктор

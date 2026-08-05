@@ -245,7 +245,29 @@ namespace awh {
 					 * @return         результат выполнения операции
 					 *
 					 */
-					bool open(const string_view local, const string_view uri, const vector <binding_t> * declares, const string_view * preferred) noexcept;
+					bool open(const string_view local, const string_view uri, const vector <binding_t> * declares, const string_view * preferred, const bool verbatim) noexcept;
+					/**
+					 * @brief Метод записи атрибута при открытом узле с дословной записью имени
+					 *
+					 * @details Дословная запись предназначена дереву, разобранному без
+					 * пространств имён: имена лежат там целиком, вместе с разделителем
+					 * префикса, а объявления пространств имён считаются обычными атрибутами.
+					 * Подбор префикса такому имени не по чему вести, а учёт связываний
+					 * учитывать нечего - объявлений в таком дереве нет
+					 *
+					 * @warning Дословная запись объявления мимо учёта действующих связываний
+					 * допустима лишь потому, что задаётся она не вызывающим, а записью дерева:
+					 * разбор с пространствами имён объявления из перечня атрибутов изымает, и
+					 * смешать оба вида записи в одном тексте неоткуда
+					 *
+					 * @param local    имя атрибута, записываемое как есть
+					 * @param value    значение атрибута
+					 * @param uri      обозначение пространства имён атрибута
+					 * @param verbatim признак дословной записи имени атрибута
+					 * @return         результат выполнения операции
+					 *
+					 */
+					bool attribute(const string_view local, const string_view value, const string_view uri, const bool verbatim) noexcept;
 				private:
 					// Счётчик самостоятельно назначенных префиксов пространств имён
 					uint32_t _counter;

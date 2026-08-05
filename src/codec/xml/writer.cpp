@@ -89,6 +89,51 @@ namespace {
 		// Выводим положительный результат проверки
 		return true;
 	}
+	/**
+	 * @brief Метод проверки имени, записываемого дословно
+	 *
+	 * @details Разбор без пространств имён кладёт имя в дерево целиком, вместе с
+	 * разделителем префикса: пространств имён там нет вовсе, и делить имя не на что.
+	 * Такое имя записью дословно и воспроизводится, а проверяется оно правилом
+	 * договора разметки, где разделитель обычным знаком имени и является
+	 *
+	 * @param name проверяемое имя
+	 * @return     результат проверки
+	 *
+	 */
+	static bool plain(const string_view name) noexcept {
+		/**
+		 * Если имя пусто
+		 */
+		if(name.empty())
+			// Выводим отрицательный результат проверки
+			return false;
+		/**
+		 * Выполняем перебор всех знаков имени
+		 */
+		for(size_t i = 0; i < name.length();){
+			// Длина прочитанной последовательности знака
+			size_t length = 0;
+			// Выполняем чтение кодового значения очередного знака
+			const uint32_t code = decode(name.data() + i, name.length() - i, length);
+			/**
+			 * Если знак прочитать не удалось
+			 */
+			if((length == 0) || (code == INVALID_CODEPOINT))
+				// Выводим отрицательный результат проверки
+				return false;
+			/**
+			 * Если знак недопустим в имени
+			 */
+			if((i == 0) ? !isNameStart(code) : !isName(code))
+				// Выводим отрицательный результат проверки
+				return false;
+			// Выполняем переход к следующему знаку имени
+			i += length;
+		}
+		// Выводим положительный результат проверки
+		return true;
+	}
 };
 
 /**
@@ -557,7 +602,7 @@ bool awh::codec::xml::Writer::declaration(const standalone_t standalone) noexcep
  */
 bool awh::codec::xml::Writer::open(const string_view local, const string_view uri) noexcept {
 	// Выводим результат открытия узла разметки без заданных объявлений
-	return this->open(local, uri, nullptr, nullptr);
+	return this->open(local, uri, nullptr, nullptr, false);
 }
 /**
  * @brief Метод открытия узла разметки с заданными объявлениями
@@ -569,7 +614,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
  * @return          результат выполнения операции
  *
  */
-bool awh::codec::xml::Writer::open(const string_view local, const string_view uri, const vector <binding_t> * declares, const string_view * preferred) noexcept {
+bool awh::codec::xml::Writer::open(const string_view local, const string_view uri, const vector <binding_t> * declares, const string_view * preferred, const bool verbatim) noexcept {
 	/**
 	 * Если запись уже прекращена ошибкой
 	 */
@@ -579,7 +624,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	/**
 	 * Если имя открываемого узла построено ошибочно
 	 */
-	if(!::correct(local)){
+	if(verbatim ? !::plain(local) : !::correct(local)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_NAME;
 		// Выводим отрицательный результат выполнения операции
@@ -657,6 +702,15 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	}
 	// Назначенный узлу префикс пространства имён
 	string prefix;
+	/**
+	 * Если имя узла записывается дословно
+	 */
+	if(verbatim){
+		// Запоминаем имя узла для его закрывающей метки
+		this->_opened.back().name.assign(local);
+		// Выводим положительный результат выполнения операции
+		return true;
+	}
 	// Признак того, что префикс узлу уже назначен
 	bool resolved = false;
 	/**
@@ -826,6 +880,20 @@ bool awh::codec::xml::Writer::occupy(const string_view name) noexcept {
  *
  */
 bool awh::codec::xml::Writer::attribute(const string_view local, const string_view value, const string_view uri) noexcept {
+	// Выводим результат записи атрибута с подбором префикса по обозначению
+	return this->attribute(local, value, uri, false);
+}
+/**
+ * @brief Метод записи атрибута при открытом узле с дословной записью имени
+ *
+ * @param local    имя атрибута, записываемое как есть
+ * @param value    значение атрибута
+ * @param uri      обозначение пространства имён атрибута
+ * @param verbatim признак дословной записи имени атрибута
+ * @return         результат выполнения операции
+ *
+ */
+bool awh::codec::xml::Writer::attribute(const string_view local, const string_view value, const string_view uri, const bool verbatim) noexcept {
 	/**
 	 * Если запись уже прекращена ошибкой
 	 */
@@ -844,7 +912,7 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	/**
 	 * Если имя атрибута построено ошибочно
 	 */
-	if(!::correct(local)){
+	if(verbatim ? !::plain(local) : !::correct(local)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_NAME;
 		// Выводим отрицательный результат выполнения операции
@@ -857,7 +925,7 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	 *       атрибутом, оно попало бы в текст мимо учёта действующих связываний, и
 	 *       записываемые следом имена получили бы не то пространство имён
 	 */
-	if(local == "xmlns"){
+	if(!verbatim && (local.compare("xmlns") == 0)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_ATTRIBUTE;
 		// Выводим отрицательный результат выполнения операции
@@ -866,9 +934,9 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	// Назначенный атрибуту префикс пространства имён
 	string prefix;
 	/**
-	 * Если префикс для пространства имён получить не удалось
+	 * Если префикс атрибуту требуется подобрать
 	 */
-	if(!this->prefix(uri, true, prefix))
+	if(!verbatim && !this->prefix(uri, true, prefix))
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Собираемое имя атрибута в том виде, в каком оно попадает в текст
@@ -1289,8 +1357,20 @@ bool awh::codec::xml::Writer::element(const node_t & node) noexcept {
 			 */
 			// Получаем префикс, каким имя узла записано в исходном тексте
 			const string_view preferred = node.name().prefix;
+			/**
+			 * Определяем, записываются ли имена узла дословно
+			 *
+			 * @details Разбор без пространств имён кладёт имя в дерево целиком, вместе с
+			 *          разделителем префикса, а обозначения пространства имён не даёт вовсе.
+			 *          Подбирать префикс такому имени не по чему и незачем: пространств имён
+			 *          в таком дереве нет, и запись выводит имя как есть
+			 *
+			 * @note Признаком служит сам разделитель в имени: разбор с пространствами имён
+			 *       имя делит и разделителя в местном имени не оставляет
+			 */
+			const bool verbatim = (node.name().uri.empty() && (node.name().local.find(':') != string_view::npos));
 			// Выполняем открытие записываемого узла с его объявлениями и префиксом
-			if(!this->open(node.name().local, node.name().uri, (declares.empty() ? nullptr : &declares), &preferred))
+			if(!this->open(node.name().local, node.name().uri, (declares.empty() ? nullptr : &declares), &preferred, verbatim))
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			/**
@@ -1300,7 +1380,10 @@ bool awh::codec::xml::Writer::element(const node_t & node) noexcept {
 				/**
 				 * Если записать очередной атрибут не удалось
 				 */
-				if(!this->attribute(attribute.name.local, attribute.value, attribute.name.uri))
+				if(!this->attribute(
+					attribute.name.local, attribute.value, attribute.name.uri,
+					(attribute.name.uri.empty() && ((attribute.name.local.find(':') != string_view::npos) || (attribute.name.local.compare("xmlns") == 0)))
+				))
 					// Выводим отрицательный результат выполнения операции
 					return false;
 			}

@@ -548,6 +548,60 @@ TEST_F(PortmapFixture, UpnpUnpinhole) {
  *       выключить заслон это устройство настройкой не даёт
  *
  */
+/**
+ * @brief Проверка сборки вызова продления срока пробоя заслона IPv6
+ *
+ * @details Продление снимать и заводить пробой заново не требует: опознаватель
+ *          остаётся прежним. Довод срока именуется здесь с приставкой, в отличие
+ *          от проделывания пробоя, и приставку эту объявляет описание службы
+ *
+ * @note Вызов проверен на живом устройстве: MiniUPnPd 2.3.7 с заслоном IPv6 на
+ *       netfilter продлевает пробой и оставляет разрешение на месте
+ *
+ */
+TEST_F(PortmapFixture, UpnpRepinhole) {
+	// Создаём объект кодека действий службы перенаправления
+	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
+	// Выполняем сборку вызова продления срока пробоя заслона
+	const upnp_t::request_t request = upnp->repinhole(WAN_SERVICE6, 42, 7200);
+	// Выполняем проверку пригодности собранного вызова
+	ASSERT_TRUE(request.valid());
+	// Выполняем проверку названия вызываемого действия службы
+	ASSERT_EQ(request.action, "UpdatePinhole");
+	// Выполняем проверку обозначения вызываемого действия службы
+	ASSERT_EQ(request.header, "\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1#UpdatePinhole\"");
+	// Выполняем проверку наличия опознавателя продлеваемого пробоя
+	ASSERT_NE(request.body.find("<UniqueID>42</UniqueID>"), std::string::npos);
+	/**
+	 * Выполняем проверку имени довода срока жизни пробоя
+	 *
+	 * @note Приставка в имени довода обязательна: её объявляет описание службы, и
+	 *       без неё устройство срока попросту не увидит. У проделывания пробоя тот
+	 *       же по смыслу довод именуется без приставки
+	 */
+	ASSERT_NE(request.body.find("<NewLeaseTime>7200</NewLeaseTime>"), std::string::npos);
+	// Выполняем проверку отсутствия довода срока без приставки
+	ASSERT_EQ(request.body.find("<LeaseTime>"), std::string::npos);
+	/**
+	 * Выполняем проверку порядка доводов вызова действия службы
+	 */
+	ASSERT_LT(request.body.find("<UniqueID>"), request.body.find("<NewLeaseTime>"));
+	/**
+	 * Выполняем проверку отклонения срока за пределами, отведёнными договором
+	 *
+	 * @note Договор отводит сроку промежуток от одной секунды до суток, и просьба за
+	 *       его пределами отвергается устройством. Отвергать её здесь дешевле: иначе
+	 *       за отказом пришлось бы ходить к устройству
+	 */
+	{
+		// Выполняем проверку отклонения сборки с нулевым сроком жизни пробоя
+		ASSERT_FALSE(upnp->repinhole(WAN_SERVICE6, 42, 0).valid());
+		// Выполняем проверку отклонения сборки со сроком жизни свыше суток
+		ASSERT_FALSE(upnp->repinhole(WAN_SERVICE6, 42, upnp_t::MAX_LIFETIME + 1).valid());
+		// Выполняем проверку принятия предельного срока жизни пробоя
+		ASSERT_TRUE(upnp->repinhole(WAN_SERVICE6, 42, upnp_t::MAX_LIFETIME).valid());
+	}
+}
 TEST_F(PortmapFixture, UpnpFirewall) {
 	// Создаём объект кодека действий службы перенаправления
 	const std::unique_ptr <upnp_t> upnp = this->makeUpnp();
@@ -667,6 +721,53 @@ TEST_F(PortmapFixture, UpnpFirewall) {
 		ASSERT_TRUE(upnp->unique(answer, unique));
 		// Выполняем проверку извлечённого опознавателя пробоя заслона
 		ASSERT_EQ(unique, 65000);
+	}
+	/**
+	 * Выполняем проверку отклонения опознавателя, записанного не числом
+	 *
+	 * @details Общее приведение к числу нечисловую запись выдаёт нулём, а нуль здесь
+	 *          неотличим от опознавателя. Принять такой ответ за успех недопустимо:
+	 *          заделать и продлить пробой нечем, а обмен объявлен удавшимся
+	 *
+	 */
+	{
+		/**
+		 * Выполняем перебор всех негодных записей опознавателя пробоя
+		 */
+		for(const char * value : {"abc", "12x", " 1", "1 ", "-1", "65536", "99999"}){
+			// Разбираемый ответ службы заслона IPv6
+			const std::string text = std::string(
+				"<?xml version=\"1.0\"?>"
+				"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+				"<s:Body><u:AddPinholeResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\">"
+				"<UniqueID>").append(value).append("</UniqueID>"
+				"</u:AddPinholeResponse></s:Body></s:Envelope>");
+			// Разобранный ответ службы устройства
+			soap_t::answer_t answer;
+			// Выполняем разбор ответа службы устройства
+			ASSERT_TRUE(soap->parse(text, answer, error));
+			// Извлекаемый опознаватель пробоя заслона
+			uint16_t unique = 0;
+			// Выполняем проверку отклонения извлечения негодного опознавателя
+			ASSERT_FALSE(upnp->unique(answer, unique));
+		}
+		// Разбираемый ответ службы заслона IPv6 с предельным опознавателем
+		const std::string text =
+			"<?xml version=\"1.0\"?>"
+			"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+			"<s:Body><u:AddPinholeResponse xmlns:u=\"urn:schemas-upnp-org:service:WANIPv6FirewallControl:1\">"
+			"<UniqueID>65535</UniqueID>"
+			"</u:AddPinholeResponse></s:Body></s:Envelope>";
+		// Разобранный ответ службы устройства
+		soap_t::answer_t answer;
+		// Выполняем разбор ответа службы устройства
+		ASSERT_TRUE(soap->parse(text, answer, error));
+		// Извлекаемый опознаватель пробоя заслона
+		uint16_t unique = 0;
+		// Выполняем проверку извлечения предельного опознавателя пробоя
+		ASSERT_TRUE(upnp->unique(answer, unique));
+		// Выполняем проверку извлечённого опознавателя пробоя заслона
+		ASSERT_EQ(unique, 65535);
 	}
 	/**
 	 * Выполняем проверку отклонения извлечения из ответа без опознавателя

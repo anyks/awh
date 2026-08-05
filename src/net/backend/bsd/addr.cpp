@@ -1599,10 +1599,20 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 								continue;
 							// Получаем указатель на IPv6-адрес
 							struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
+							/**
+							 * Получаем адрес устройства со снятой встроенной зоной
+							 *
+							 * @note Снятие обязательно, как и в разборе по заданной сети:
+							 *       список устройств отдаёт канальные адреса со встроенной
+							 *       зоной, а движок хранит их очищенными, и сличение сырого
+							 *       адреса с очищенным не совпадает никогда
+							 *
+							 */
+							const struct in6_addr device = ::unscope(sin->sin6_addr);
 							// Если IP-адрес установлен
 							if(::memcmp(&addr.sin6_addr, __awh_zero_ipv6__, 16) != 0){
 								// Если IP-адрес совпадает с указанным IP-адресом
-								if(IN6_ARE_ADDR_EQUAL(&addr.sin6_addr, &sin->sin6_addr)){
+								if(IN6_ARE_ADDR_EQUAL(&addr.sin6_addr, &device)){
 									// Устанавливаем название сетевого интерфейса
 									source.iface = ifa->ifa_name;
 									// Получаем MAC-адрес сетевого интерфейса

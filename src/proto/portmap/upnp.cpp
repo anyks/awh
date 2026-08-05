@@ -19,6 +19,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/ascii.hpp>
 #include <proto/portmap/upnp.hpp>
 
 /**
@@ -80,6 +81,10 @@ namespace {
 			case static_cast <uint8_t> (awh::proto::portmap::upnp_t::action_t::UNPINHOLE):
 				// Выводим название действия службы
 				return "DeletePinhole";
+			// Если действием является продление срока пробоя заслона IPv6
+			case static_cast <uint8_t> (awh::proto::portmap::upnp_t::action_t::REPINHOLE):
+				// Выводим название действия службы
+				return "UpdatePinhole";
 			// Если действием является чтение состояния заслона IPv6
 			case static_cast <uint8_t> (awh::proto::portmap::upnp_t::action_t::FIREWALL):
 				// Выводим название действия службы
@@ -480,6 +485,69 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::unpinhole(const 
 	return result;
 }
 /**
+ * @brief Метод сборки вызова продления срока пробоя заслона IPv6
+ *
+ * @note Вызов проверен на живом устройстве - см. замечание к сборке вызова
+ * проделывания пробоя
+ *
+ * @param service  обозначение вида службы заслона IPv6
+ * @param unique   опознаватель продлеваемого пробоя заслона
+ * @param lifeTime запрашиваемый срок жизни пробоя заслона
+ * @return         собранный вызов действия службы
+ *
+ */
+awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::repinhole(const string_view service, const uint16_t unique, const uint32_t lifeTime) const noexcept {
+	// Собираемый вызов действия службы
+	request_t result;
+	/**
+	 * Если запрашиваемый срок жизни пробоя договором не допускается
+	 *
+	 * @note Договор отводит сроку промежуток от одной секунды до суток, и просьба
+	 *       за его пределами отвергается устройством. Отвергать её здесь дешевле:
+	 *       иначе за отказом пришлось бы ходить к устройству
+	 */
+	if((lifeTime == 0) || (lifeTime > MAX_LIFETIME)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				make_tuple(unique, lifeTime),
+				log_t::flag_t::WARNING, "firewall pinhole lease time is out of range"
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::WARNING, "firewall pinhole lease time is out of range");
+		#endif
+		// Выводим пустой вызов действия службы
+		return result;
+	}
+	/**
+	 * Собираемый перечень доводов вызова действия
+	 *
+	 * @warning Довод срока именуется здесь с приставкой - `NewLeaseTime`, а не
+	 *          `LeaseTime`, как у проделывания пробоя. Приставку объявляет описание
+	 *          службы, и без неё устройство срока попросту не увидит
+	 */
+	const vector <soap_t::argument_t> arguments = {
+		soap_t::argument_t("UniqueID", ::std::to_string(unique)),
+		soap_t::argument_t("NewLeaseTime", ::std::to_string(lifeTime))
+	};
+	// Запоминаем название вызываемого действия службы
+	result.action.assign(::name(action_t::REPINHOLE));
+	// Выполняем сборку обозначения вызываемого действия службы
+	result.header = this->_soap.action(service, result.action);
+	// Выполняем сборку текста вызова действия службы
+	result.body = this->_soap.request(service, result.action, arguments);
+	// Выводим собранный вызов действия службы
+	return result;
+}
+/**
  * @brief Метод сборки вызова чтения состояния заслона IPv6
  *
  * @note Вызов проверен на живом устройстве - см. замечание к сборке вызова
@@ -530,8 +598,37 @@ bool awh::proto::portmap::UPnP::unique(const soap_t::answer_t & answer, uint16_t
 	if(result.empty())
 		// Выводим признак неудачного извлечения
 		return false;
+	// Собираемый опознаватель проделанного пробоя заслона
+	uint32_t value = 0;
+	/**
+	 * Выполняем перебор всех знаков опознавателя пробоя заслона
+	 *
+	 * @details Разбор ведётся своим перебором, а не общим приведением к числу: то
+	 *          нечисловую запись выдаёт нулём, а нуль здесь неотличим от опознавателя.
+	 *          Принять такой ответ за успех недопустимо - заделать и продлить пробой
+	 *          нечем, а вызывающему обмен объявлен удавшимся
+	 *
+	 * @note Договор отводит опознавателю два байта, и запись сверх этого ответом
+	 *       службы быть не может
+	 */
+	for(const char letter : result){
+		/**
+		 * Если знак опознавателя цифрой не является
+		 */
+		if(!ascii::isDigit(letter))
+			// Выводим признак неудачного извлечения
+			return false;
+		// Выполняем разбор очередного знака опознавателя
+		value = ((value * 10) + static_cast <uint32_t> (letter - '0'));
+		/**
+		 * Если опознаватель вышел за отведённые ему пределы
+		 */
+		if(value > 0xFFFF)
+			// Выводим признак неудачного извлечения
+			return false;
+	}
 	// Запоминаем извлечённый опознаватель пробоя заслона
-	unique = this->_fmk->atoi <uint16_t> (result);
+	unique = static_cast <uint16_t> (value);
 	// Выводим признак успешного извлечения
 	return true;
 }
