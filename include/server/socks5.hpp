@@ -147,8 +147,12 @@ namespace awh {
 						/**
 						 * @brief Конструктор
 						 *
+						 * @note Ключевого слова explicit здесь быть не должно: unordered_map
+						 *       создаёт объект хеш-функции списочной инициализацией, а та
+						 *       явный конструктор не берёт
+						 *
 						 */
-						explicit Origin_Hash() noexcept = default;
+						Origin_Hash() noexcept = default;
 				} origin_hash_t;
 			private:
 				/**

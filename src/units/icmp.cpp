@@ -55,30 +55,11 @@
 #endif
 #include <sys/types.h>
 /**
- * Для операционной системы не являющейся MS Windows
- *
- * @note Заголовок netinet/ip.h принадлежит POSIX и у MS Windows отсутствует:
- *       заголовок пакета IP описывается там своими средствами
- *
- */
-#if !_WIN32 && !_WIN64
-	/**
-	 * Системный заголовочный файл
-	 */
-	#include <netinet/ip.h>
-#endif
-/**
- * Для операционной системы не являющейся MS Windows
- *
- * @note Заголовок netinet/ip6.h принадлежит POSIX и у MS Windows отсутствует
+ * @note Системные заголовки netinet/ip.h и netinet/ip6.h здесь не подключаются вовсе:
+ *       у MS Windows их нет, а заголовки пакетов IPv4 и IPv6 модуль описывает своими
+ *       словами по месту разбора ответа - структурами ip4_hdr_min и ip6_hdr_min
  *
  */
-#if !_WIN32 && !_WIN64
-	/**
-	 * Системный заголовочный файл
-	 */
-	#include <netinet/ip6.h>
-#endif
 
 /**
  * Подключаем заголовочный файл проекта
@@ -626,14 +607,42 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 			switch(((data[0] & 0xF0) >> 4)){
 				// Если адрес является IPv4
 				case 4: {
+					/**
+					 * Добавляем выравнивание структуры для корректного чтения данных из буфера
+					 */
+					#pragma pack(push, 1)
+					/**
+					 * @brief IPv4 заголовок без списка опций = 20 байт
+					 *
+					 * @details Заголовок описан здесь своими словами, а не взят из
+					 *          системного `netinet/ip.h`: у MS Windows заголовка этого нет
+					 *          вовсе. Заодно снимается зависимость от порядка следования
+					 *          битовых полей `ip_v`/`ip_hl`, который у системного описания
+					 *          задан условной сборкой по порядку октетов машины
+					 *
+					 */
+					struct ip4_hdr_min {
+						uint8_t  verihl; // Версия протокола и длина заголовка в 32-битных словах
+						uint8_t  tos;    // Тип обслуживания
+						uint16_t plen;   // Полная длина пакета
+						uint16_t id;     // Идентификатор пакета
+						uint16_t frag;   // Флаги и смещение фрагмента
+						uint8_t  ttl;    // Лимит времени жизни
+						uint8_t  nxt;    // Протокол вышестоящего уровня
+						uint16_t sum;    // Контрольная сумма заголовка
+						uint32_t src;    // Адрес источника
+						uint32_t dst;    // Адрес назначения
+					};
+					// Удаляем выравнивание структуры для корректного чтения данных из буфера
+					#pragma pack(pop)
 					// Если размер данных меньше размера заголовка IP
-					if(size < sizeof(struct ip))
+					if(size < sizeof(struct ip4_hdr_min))
 						// Ответ не наш - продолжаем ожидание своего
 						return this->keepWaiting(eid);
 					// Приводим данные к структуре IP-заголовка
-					const struct ip * iph = reinterpret_cast <const struct ip *> (data);
-					// Извлекаем длину IP-заголовка
-					length = (iph->ip_hl * 4);
+					const struct ip4_hdr_min * iph = reinterpret_cast <const struct ip4_hdr_min *> (data);
+					// Извлекаем длину IP-заголовка (младшая половина первого октета в 32-битных словах)
+					length = ((iph->verihl & 0x0F) * 4);
 					// Если заголовок пришёл битый
 					if((length < 20) || (size < (length + 8)))
 						// Минимум ICMP-заголовок
@@ -643,11 +652,11 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 						// Приводим данные к структуре ICMP-заголовка
 						icmp = reinterpret_cast <const header_t *> (data + length);
 						// Извлекаем TTL из IPv4-заголовка
-						timeToLive = iph->ip_ttl;
+						timeToLive = iph->ttl;
 						// Выполняем инициализацию объекта IP-адреса
 						address = make_unique <net::addr_net_ipv4_t> ();
 						// Устанавливаем IP-адрес
-						awh_cast <net::addr_net_ipv4_t *> (address.get())->address = iph->ip_src.s_addr;
+						awh_cast <net::addr_net_ipv4_t *> (address.get())->address = iph->src;
 					}
 				} break;
 				// Если адрес является IPv6

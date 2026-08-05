@@ -662,10 +662,6 @@ void awh::codec::xml::Reader::advance(const size_t offset) noexcept {
 	this->_offset = (offset > this->_buffer.size() ? this->_buffer.size() : offset);
 }
 /**
- * @brief Метод изъятия разобранного начала приведённого текста
- *
- */
-/**
  * @brief Метод проверки того, что разметка не пересекает границу подстановки
  *
  * @details Договор велит подставленной сущности быть построенной правильно самой по
@@ -3537,9 +3533,6 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseProcessing() noexc
 		// Выводим ошибку построения указания обработчику
 		return this->fail(error_t::INVALID_PROCESSING, this->_offset + 2);
 	/**
-	 * Если целью указания обработчику является отведённое договором имя
-	 */
-	/**
 	 * Если указание обработчику стоит в самом начале исходного текста и названо
 	 * отведённым договором именем
 	 *
@@ -3559,6 +3552,9 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseProcessing() noexc
 	   (target[3] != '-'))
 		// Выводим ошибку использования отведённого договором имени
 		return this->fail(error_t::RESERVED_PROCESSING, this->_offset + 2);
+	/**
+	 * Если целью указания обработчику является отведённое договором имя
+	 */
 	if((target.length() == 3) && ascii::equals(target[0], 'x') && ascii::equals(target[1], 'm') && ascii::equals(target[2], 'l')){
 		/**
 		 * Если имя записано не так, как предписано договором объявлению разметки

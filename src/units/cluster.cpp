@@ -28,9 +28,17 @@
 #include <csignal>
 
 /**
- * Для операционных систем, отличных от MS Windows
+ * Для операционной системы MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if _WIN32 || _WIN64
+	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 */
+	#include <sys/win32.hpp>
+/**
+ * Для всех остальных операционных систем
+ */
+#else
 	/**
 	 * Системные заголовочные файлы
 	 */
@@ -53,6 +61,71 @@ using namespace std;
  * Используем пространство имён placeholders
  */
 using namespace placeholders;
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * @brief Инкапсулируем статические типы данных в пространство имён
+	 *
+	 */
+	namespace {
+		/**
+		 * @brief Код сигнала принудительной остановки процесса
+		 *
+		 * @details Сигналов POSIX у MS Windows нет вовсе, а обработчик события «exit»
+		 *          принимает номер сигнала числом. Наружу отдаётся то же значение, что
+		 *          и на остальных системах, чтобы прикладной код не разбирал платформу
+		 *
+		 */
+		constexpr int32_t SIGSTOP = 19;
+	};
+#endif
+
+/**
+ * @brief Инкапсулируем статические типы данных в пространство имён
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция принудительного завершения процесса
+	 *
+	 * @param pid идентификатор завершаемого процесса
+	 *
+	 * @details Соответствие между системами прямое: `kill(pid, SIGKILL)` у POSIX и
+	 *          `TerminateProcess` у MS Windows. Ни то, ни другое процесс перехватить
+	 *          не может, и ни то, ни другое не даёт ему довести работу до конца
+	 *
+	 * @note Дескриптор процесса у MS Windows приходится открывать заново по номеру:
+	 *       список активных воркеров хранит именно номера процессов. Номер система
+	 *       переиспользует, поэтому вызывать функцию допустимо лишь для процессов,
+	 *       которые кластер считает живыми
+	 *
+	 */
+	void __awh_terminate__([[maybe_unused]] const pid_t pid) noexcept {
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if _WIN32 || _WIN64
+			// Выполняем открытие дескриптора завершаемого процесса
+			HANDLE handle = ::OpenProcess(PROCESS_TERMINATE, FALSE, static_cast <DWORD> (pid));
+			// Если дескриптор процесса получен
+			if(handle != nullptr){
+				// Выполняем принудительное завершение процесса
+				::TerminateProcess(handle, static_cast <UINT> (EXIT_FAILURE));
+				// Закрываем дескриптор процесса
+				::CloseHandle(handle);
+			}
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			// Выполняем принудительное завершение процесса
+			::kill(pid, SIGKILL);
+		#endif
+	}
+};
 
 /**
  * Для операционной системы не являющейся MS Windows
@@ -224,6 +297,36 @@ awh::unit::Cluster::Rebirth::Rebirth() noexcept :
  mode(false), limit(10),
  window(30000), restarts(0) {}
 
+/**
+ * @brief Метод проверки, что родительский процесс жив
+ *
+ * @return признак того, что родительский процесс жив
+ *
+ */
+bool awh::unit::Cluster::parent() const noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Если дескриптор объекта родительского процесса не получен - процесс родителя не отслеживается
+		if(this->_master == 0)
+			// Сообщаем, что родительского процесса нет
+			return false;
+		/**
+		 * Ожидание объекта процесса с нулевой выдержкой отвечает WAIT_TIMEOUT, пока
+		 * процесс работает, и WAIT_OBJECT_0, как только тот завершился. Дескриптор
+		 * удерживает запись о процессе в системе, поэтому номер его в этот промежуток
+		 * не может достаться другому процессу, и подмены здесь не происходит
+		 */
+		return (::WaitForSingleObject(reinterpret_cast <HANDLE> (this->_master), 0) == WAIT_TIMEOUT);
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Сообщаем, что родителем процесса по прежнему является мастер кластера
+		return (this->_pid == ::getppid());
+	#endif
+}
 /**
  * @brief Метод создания дочерних процессов при запуске кластера
  *
@@ -527,7 +630,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					}
 				#endif
 				// Если родительский процесс живой
-				if(this->_pid == ::getppid()){
+				if(this->parent()){
 					// Если список активных воркеров не пустой
 					if(!this->_workers.empty()){
 						/**
@@ -862,7 +965,7 @@ void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcep
 		// Если процесс является дочерним
 		} else {
 			// Если родительский процесс живой
-			if(this->_pid == ::getppid())
+			if(this->parent())
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const pid_t, const size_t)> (fid, this->_pid, size);
 			// Если родительский процесс умер
@@ -910,7 +1013,7 @@ void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const
 		// Если процесс является дочерним
 		} else {
 			// Если родительский процесс живой
-			if(this->_pid == ::getppid())
+			if(this->parent())
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> (fid, this->_pid, data, size);
 			// Если родительский процесс умер
@@ -951,7 +1054,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 			// Если процесс является дочерним
 			if(!this->master()){
 				// Если родительский процесс живой
-				if(this->_pid == ::getppid()){
+				if(this->parent()){
 					// Выполняем поиск процесса по идентификатору
 					auto i = this->_workers.find(::getpid());
 					// Если указанный процесс найден
@@ -1005,7 +1108,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 				// Если процесс является дочерним
 				} else {
 					// Если родительский процесс живой
-					if(this->_pid == ::getppid())
+					if(this->parent())
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const pid_t, const event::status_t)> (fid, this->_pid, status);
 					// Если родительский процесс умер
@@ -1055,7 +1158,7 @@ void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error
 		// Если процесс является дочерним
 		} else {
 			// Если родительский процесс живой
-			if(this->_pid == ::getppid())
+			if(this->parent())
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const pid_t, const event::error_t, const string &)> (fid, this->_pid, error, message);
 			// Если родительский процесс умер
@@ -1103,7 +1206,7 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 		// Если процесс является дочерним
 		} else {
 			// Если родительский процесс живой
-			if(this->_pid == ::getppid())
+			if(this->parent())
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const pid_t, const event::status_t, const size_t)> (fid, this->_pid, status, size);
 			// Если родительский процесс умер
@@ -1258,7 +1361,7 @@ void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
 				// Если требуется принудительное завершение работы процесса
 				if(shutdown == shutdown_t::FORCEFUL)
 					// Убиваем дочерний процесс
-					::kill(pid, SIGKILL);
+					__awh_terminate__(pid);
 			}
 			// Очищаем список активных воркеров
 			this->_workers.clear();
@@ -1353,7 +1456,7 @@ void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexc
 				// Если требуется принудительное завершение работы процесса
 				if(shutdown == shutdown_t::FORCEFUL)
 					// Убиваем дочерний процесс
-					::kill(i->first, SIGKILL);
+					__awh_terminate__(i->first);
 				// Удаляем процесс из списка активных воркеров
 				this->_workers.erase(i);
 			}
@@ -1509,7 +1612,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 		// Если процесс является дочерним
 		if(!this->master()){
 			// Если родительский процесс живой
-			if(this->_pid == ::getppid()){
+			if(this->parent()){
 				// Выполняем поиск текущего процесса по идентификатору
 				auto i = this->_workers.find(::getpid());
 				// Если указанный процесс найден
@@ -1765,6 +1868,23 @@ awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _name{AWH_SHORT_NAME},
  _count(0), _wakeup(0), _type(event::type_t::SEQPACKET) {
 	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Обнуляем дескриптор объекта родительского процесса (захватывается дочерним процессом при запуске)
+		this->_master = 0;
+		// Устанавливаем количество доступных ядер в системе
+		this->_count = static_cast <uint16_t> (thread::hardware_concurrency());
+		// Если количество доступных ядер определить не удалось
+		if(this->_count == 0)
+			// Используем один воркер по умолчанию
+			this->_count = 1;
+		// Если количество доступных воркеров больше 1-х, уменьшаем пополам
+		else if(this->_count > 1)
+			// Уменьшаем количество воркеров в два раза
+			this->_count /= 2;
+	#endif
+	/**
 	 * Для операционных систем, отличных от MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
@@ -1813,6 +1933,18 @@ awh::unit::Cluster::~Cluster() noexcept {
 		// Обнуляем идентификатор события пробуждения
 		this->_wakeup = 0;
 	}
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Если дескриптор объекта родительского процесса был получен
+		if(this->_master != 0){
+			// Закрываем дескриптор объекта родительского процесса
+			::CloseHandle(reinterpret_cast <HANDLE> (this->_master));
+			// Обнуляем дескриптор объекта родительского процесса
+			this->_master = 0;
+		}
+	#endif
 	/**
 	 * Для операционных систем, отличных от MS Windows
 	 */

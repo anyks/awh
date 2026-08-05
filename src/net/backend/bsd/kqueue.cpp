@@ -812,7 +812,7 @@ namespace std {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Origin_Identifier_Hash() noexcept = default;
+			Origin_Identifier_Hash() noexcept = default;
 	} origin_id_hash_t;
 };
 

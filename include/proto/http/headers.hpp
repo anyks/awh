@@ -145,8 +145,12 @@ namespace awh {
 						/**
 						 * @brief Конструктор
 						 *
+						 * @note Ключевого слова explicit здесь быть не должно: unordered_map
+						 *       создаёт объекты хеш-функции и предиката равенства списочной
+						 *       инициализацией, а та явный конструктор не берёт
+						 *
 						 */
-						explicit Header_Hash() noexcept = default;
+						Header_Hash() noexcept = default;
 				} header_hash_t;
 			public:
 				/**
@@ -167,8 +171,12 @@ namespace awh {
 						/**
 						 * @brief Конструктор
 						 *
+						 * @note Ключевого слова explicit здесь быть не должно: unordered_map
+						 *       создаёт объекты хеш-функции и предиката равенства списочной
+						 *       инициализацией, а та явный конструктор не берёт
+						 *
 						 */
-						explicit Header_Name_Hash() noexcept = default;
+						Header_Name_Hash() noexcept = default;
 				} header_name_hash_t;
 			public:
 				/**
@@ -190,8 +198,12 @@ namespace awh {
 						/**
 						 * @brief Конструктор
 						 *
+						 * @note Ключевого слова explicit здесь быть не должно: unordered_map
+						 *       создаёт объекты хеш-функции и предиката равенства списочной
+						 *       инициализацией, а та явный конструктор не берёт
+						 *
 						 */
-						explicit Header_Name_Equal() noexcept = default;
+						Header_Name_Equal() noexcept = default;
 				} header_name_equal_t;
 			public:
 				/**
