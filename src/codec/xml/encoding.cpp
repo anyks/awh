@@ -487,12 +487,6 @@ bool awh::codec::xml::encode(const uint32_t code, string & result) noexcept {
 	return true;
 }
 /**
- * @brief Метод получения определённой кодировки исходного текста
- *
- * @return определённая кодировка исходного текста
- *
- */
-/**
  * @brief Метод получения признака обнаружения метки порядка байтов
  *
  * @return признак обнаружения метки порядка байтов
@@ -502,6 +496,12 @@ bool awh::codec::xml::Decoder::signature() const noexcept {
 	// Выводим признак обнаружения метки порядка байтов
 	return this->_signed;
 }
+/**
+ * @brief Метод получения определённой кодировки исходного текста
+ *
+ * @return определённая кодировка исходного текста
+ *
+ */
 awh::codec::xml::encoding_t awh::codec::xml::Decoder::encoding() const noexcept {
 	// Выводим определённую кодировку исходного текста
 	return this->_encoding;
