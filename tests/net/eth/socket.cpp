@@ -67,42 +67,42 @@ TEST_F(EthFixture, SocketCreateTest){
 	// Проверяем что UDP сокет IPv4 создан успешно
 	ASSERT_NE(udp4, awh::net::invalid_socket_t);
 	// Закрываем сокет
-	::close(udp4);
+	::closesocket(udp4);
 
 	// Создаём TCP сокет IPv4
 	auto tcp4 = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	// Проверяем что TCP сокет IPv4 создан успешно
 	ASSERT_NE(tcp4, awh::net::invalid_socket_t);
 	// Закрываем сокет
-	::close(tcp4);
+	::closesocket(tcp4);
 
 	// Создаём UDP сокет IPv6
 	auto udp6 = this->_eth->socket.issue(awh::event::family_t::IPV6, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
 	// Проверяем что UDP сокет IPv6 создан успешно
 	ASSERT_NE(udp6, awh::net::invalid_socket_t);
 	// Закрываем сокет
-	::close(udp6);
+	::closesocket(udp6);
 
 	// Создаём TCP сокет IPv6
 	auto tcp6 = this->_eth->socket.issue(awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	// Проверяем что TCP сокет IPv6 создан успешно
 	ASSERT_NE(tcp6, awh::net::invalid_socket_t);
 	// Закрываем сокет
-	::close(tcp6);
+	::closesocket(tcp6);
 
 	// Создаём STREAM сокет Unix Domain
 	auto uds = this->_eth->socket.issue(awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
 	// Проверяем что Unix Domain сокет создан успешно
 	ASSERT_NE(uds, awh::net::invalid_socket_t);
 	// Закрываем сокет
-	::close(uds);
+	::closesocket(uds);
 
 	// Создаём DATAGRAM сокет Unix Domain
 	auto udsg = this->_eth->socket.issue(awh::event::family_t::UDS, awh::event::type_t::DATAGRAM, awh::event::protocol_t::NONE);
 	// Проверяем что Unix Domain дейтаграммный сокет создан успешно
 	ASSERT_NE(udsg, awh::net::invalid_socket_t);
 	// Закрываем сокет
-	::close(udsg);
+	::closesocket(udsg);
 }
 
 /**
@@ -132,8 +132,8 @@ TEST_F(EthFixture, SocketPairTest){
 	// Проверяем что второй сокет пары создан успешно
 	ASSERT_NE(uds[1], awh::net::invalid_socket_t);
 	// Закрываем сокеты пары
-	::close(uds[0]);
-	::close(uds[1]);
+	::closesocket(uds[0]);
+	::closesocket(uds[1]);
 
 	// Создаём пару сокетов Unix Domain Datagram
 	auto udsg = this->_eth->socket.ipc(awh::event::family_t::UDS, awh::event::type_t::DATAGRAM, awh::event::protocol_t::NONE);
@@ -142,8 +142,8 @@ TEST_F(EthFixture, SocketPairTest){
 	// Проверяем что второй сокет пары создан успешно
 	ASSERT_NE(udsg[1], awh::net::invalid_socket_t);
 	// Закрываем сокеты пары
-	::close(udsg[0]);
-	::close(udsg[1]);
+	::closesocket(udsg[0]);
+	::closesocket(udsg[1]);
 
 	// Создаём пару файловых дескрипторов канала PIPE
 	auto pipe = this->_eth->socket.ipc(awh::event::family_t::PIPE, awh::event::type_t::NONE, awh::event::protocol_t::NONE);
@@ -152,8 +152,8 @@ TEST_F(EthFixture, SocketPairTest){
 	// Проверяем что дескриптор записи канала создан успешно
 	ASSERT_NE(pipe[1], awh::net::invalid_socket_t);
 	// Закрываем дескрипторы канала
-	::close(pipe[0]);
-	::close(pipe[1]);
+	::closesocket(pipe[0]);
+	::closesocket(pipe[1]);
 }
 
 /**
@@ -168,7 +168,7 @@ TEST_F(EthFixture, SocketErrorTest){
 	// На свежесозданном сокете ошибки быть не должно
 	ASSERT_EQ(0, this->_eth->socket.getError(sock));
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }
 
 /**
@@ -198,7 +198,7 @@ TEST_F(EthFixture, SocketTimeoutTest){
 	ASSERT_EQ(0, this->_eth->socket.getTimeout(sock, awh::net::socket_event_t::READ));
 
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }
 
 /**
@@ -226,7 +226,7 @@ TEST_F(EthFixture, SocketBufferSizeTest){
 	ASSERT_GT(this->_eth->socket.setBufferSize(sock, awh::net::socket_event_t::WRITE, snd * 2), 0);
 
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }
 
 /**
@@ -249,7 +249,7 @@ TEST_F(EthFixture, SocketKeepaliveTest){
 	ASSERT_NO_FATAL_FAILURE(this->_eth->socket.setKeepalive(sock, -1, -1, -1));
 
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }
 
 /**
@@ -287,7 +287,7 @@ TEST_F(EthFixture, SocketSwitchOptionCommonTest){
 	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::MULTICAST_LOOPBACK));
 
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }
 
 /**
@@ -311,7 +311,7 @@ TEST_F(EthFixture, SocketSwitchOptionTcpTest){
 	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::DISABLED, awh::event::options::TCP_CORKING));
 
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }
 
 /**
@@ -345,7 +345,7 @@ TEST_F(EthFixture, SocketSwitchOptionIPv6Test){
 	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::ENABLED, awh::event::options::HDRINCL));
 
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }
 
 /**
@@ -365,7 +365,7 @@ TEST_F(EthFixture, SocketTrafficInfoTest){
 	// Отключаем генерацию информации о трафике для IPv4
 	ASSERT_TRUE(this->_eth->socket.trafficInfoGeneration(sock4, awh::event::family_t::IPV4, awh::net::socket_mode_t::DISABLED));
 	// Закрываем сокет
-	::close(sock4);
+	::closesocket(sock4);
 
 	// Создаём UDP сокет IPv6
 	auto sock6 = this->_eth->socket.issue(awh::event::family_t::IPV6, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -376,7 +376,7 @@ TEST_F(EthFixture, SocketTrafficInfoTest){
 	// Отключаем генерацию информации о трафике для IPv6
 	ASSERT_TRUE(this->_eth->socket.trafficInfoGeneration(sock6, awh::event::family_t::IPV6, awh::net::socket_mode_t::DISABLED));
 	// Закрываем сокет
-	::close(sock6);
+	::closesocket(sock6);
 }
 
 /**
@@ -398,7 +398,7 @@ TEST_F(EthFixture, SocketHopsTest){
 	ASSERT_EQ(4, this->_eth->socket.getHops(sock4, awh::event::family_t::IPV4, awh::event::delivery_mode_t::MULTICAST));
 
 	// Закрываем сокет
-	::close(sock4);
+	::closesocket(sock4);
 
 	// Создаём UDP сокет IPv6
 	auto sock6 = this->_eth->socket.issue(awh::event::family_t::IPV6, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -414,7 +414,7 @@ TEST_F(EthFixture, SocketHopsTest){
 	ASSERT_EQ(4, this->_eth->socket.getHops(sock6, awh::event::family_t::IPV6, awh::event::delivery_mode_t::MULTICAST));
 
 	// Закрываем сокет
-	::close(sock6);
+	::closesocket(sock6);
 }
 
 /**
@@ -433,7 +433,7 @@ TEST_F(EthFixture, SocketDscpTest){
 	ASSERT_TRUE(this->_eth->socket.setDifferentiatedServicesCodePoint(sock4, awh::event::family_t::IPV4, awh::event::dscp_t::CS3));
 	ASSERT_EQ(awh::event::dscp_t::CS3, this->_eth->socket.getDifferentiatedServicesCodePoint(sock4, awh::event::family_t::IPV4));
 	// Закрываем сокет
-	::close(sock4);
+	::closesocket(sock4);
 
 	// Создаём UDP сокет IPv6
 	auto sock6 = this->_eth->socket.issue(awh::event::family_t::IPV6, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -443,7 +443,7 @@ TEST_F(EthFixture, SocketDscpTest){
 	ASSERT_TRUE(this->_eth->socket.setDifferentiatedServicesCodePoint(sock6, awh::event::family_t::IPV6, awh::event::dscp_t::CS5));
 	ASSERT_EQ(awh::event::dscp_t::CS5, this->_eth->socket.getDifferentiatedServicesCodePoint(sock6, awh::event::family_t::IPV6));
 	// Закрываем сокет
-	::close(sock6);
+	::closesocket(sock6);
 }
 
 /**
@@ -481,7 +481,7 @@ TEST_F(EthFixture, SocketEcnTest){
 	ASSERT_TRUE(this->_eth->socket.setExplicitCongestionNotification(sock4, awh::event::family_t::IPV4, awh::event::ecn_t::NOT_ECT));
 	ASSERT_EQ(awh::event::ecn_t::NOT_ECT, this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
 	// Закрываем сокет
-	::close(sock4);
+	::closesocket(sock4);
 
 	// Создаём UDP сокет IPv6
 	auto sock6 = this->_eth->socket.issue(awh::event::family_t::IPV6, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -496,7 +496,7 @@ TEST_F(EthFixture, SocketEcnTest){
 	ASSERT_EQ(awh::event::ecn_t::ECT0, this->_eth->socket.getExplicitCongestionNotification(sock6, awh::event::family_t::IPV6));
 	ASSERT_EQ(awh::event::dscp_t::CS5, this->_eth->socket.getDifferentiatedServicesCodePoint(sock6, awh::event::family_t::IPV6));
 	// Закрываем сокет
-	::close(sock6);
+	::closesocket(sock6);
 }
 
 /**
@@ -524,6 +524,18 @@ TEST_F(EthFixture, SocketEcnDeliveryTest){
 	#if !defined(IP_RECVTOS)
 		// Пропускаем тест - проверять нечего
 		GTEST_SKIP() << "IPv4 traffic class delivery is not supported by the system";
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#elif _WIN32 || _WIN64
+		/**
+		 * Служебные сообщения гнезда снимаются здесь через recvmsg, а средства этого у
+		 * MS Windows нет: отвечает ему там WSARecvMsg, добываемый у гнезда отдельным
+		 * запросом расширения. Переписывать проверку на него до поры не на чем -
+		 * слой гнёзд у MS Windows пока заглушки, и trafficInfoGeneration там ничего
+		 * не включает. Пропуск снимается вместе с этим слоем
+		 */
+		GTEST_SKIP() << "the socket layer for MS Windows is not implemented yet";
 	#else
 	// Создаём UDP сокет получателя
 	auto rx = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -550,8 +562,8 @@ TEST_F(EthFixture, SocketEcnDeliveryTest){
 	// Если привязка сокета получателя не выполнена
 	if(::bind(rx, reinterpret_cast <struct sockaddr *> (&addr), sizeof(addr)) != 0){
 		// Закрываем сокеты
-		::close(rx);
-		::close(tx);
+		::closesocket(rx);
+		::closesocket(tx);
 		// Пропускаем тест - порт занят
 		GTEST_SKIP() << "loopback port is not available";
 	}
@@ -591,8 +603,8 @@ TEST_F(EthFixture, SocketEcnDeliveryTest){
 			congestion = static_cast <uint8_t> ((* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg))) & 0x03);
 	}
 	// Закрываем сокеты
-	::close(rx);
-	::close(tx);
+	::closesocket(rx);
+	::closesocket(tx);
 	// Проверяем что маркировка доставлена в неизменном виде
 	ASSERT_EQ(congestion, static_cast <uint8_t> (awh::event::ecn_t::ECT0));
 	#endif
@@ -626,7 +638,7 @@ TEST_F(EthFixture, SocketMtuDiscoverTest){
 		ASSERT_TRUE(this->_eth->socket.setMaximumTransmissionUnitDiscover(sock4, awh::event::family_t::IPV4, awh::event::mtu_discover_t::DO));
 		ASSERT_EQ(awh::event::mtu_discover_t::DO, this->_eth->socket.getMaximumTransmissionUnitDiscover(sock4, awh::event::family_t::IPV4));
 		// Закрываем сокет
-		::close(sock4);
+		::closesocket(sock4);
 	#endif
 	/**
 	 * Если запрет фрагментации для IPv6 системой задаётся
@@ -640,7 +652,7 @@ TEST_F(EthFixture, SocketMtuDiscoverTest){
 		ASSERT_TRUE(this->_eth->socket.setMaximumTransmissionUnitDiscover(sock6, awh::event::family_t::IPV6, awh::event::mtu_discover_t::DO));
 		ASSERT_EQ(awh::event::mtu_discover_t::DO, this->_eth->socket.getMaximumTransmissionUnitDiscover(sock6, awh::event::family_t::IPV6));
 		// Закрываем сокет
-		::close(sock6);
+		::closesocket(sock6);
 	#endif
 	/**
 	 * Если ни одно семейство системой не поддерживается
@@ -681,7 +693,7 @@ TEST_F(EthFixture, SocketMulticastIfaceTest){
 	}
 
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }
 
 /**
@@ -717,7 +729,7 @@ TEST_F(EthFixture, SocketMembershipGuardTest){
 	ASSERT_FALSE(this->_eth->socket.membership(sock, awh::net::socket_mode_t::ENABLED, zero.get(), zero.get()));
 
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }
 
 /**
@@ -751,7 +763,7 @@ TEST_F(EthFixture, SocketMembershipIPv4Test){
 	ASSERT_NO_FATAL_FAILURE(this->_eth->socket.membership(sock, awh::net::socket_mode_t::DISABLED, group.get(), source.get()));
 
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }
 
 /**
@@ -785,5 +797,5 @@ TEST_F(EthFixture, SocketMembershipIPv6Test){
 	ASSERT_NO_FATAL_FAILURE(this->_eth->socket.membership(sock, awh::net::socket_mode_t::DISABLED, group.get(), source.get()));
 
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }

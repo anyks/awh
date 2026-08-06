@@ -64,6 +64,23 @@
 #include "io.hpp"
 
 /**
+ * Снимаем макросы MS Windows, сталкивающиеся с именами членов перечислений AWH
+ *
+ * @details Проверка эта пишет «awh::event::error_t::INVALID_SOCKET», а MS Windows
+ *          заводит имя INVALID_SOCKET макросом. Заголовки AWH защищают **свои**
+ *          объявления парой macro_push.hpp и macro_pop.hpp, но возвращают макросы
+ *          следом - тем они и оставляют их тому, кто ими пользуется по делу. Потому
+ *          всякий, кто называет такие члены в **своём** коде, защищает свой файл
+ *          той же парой, и проверка эта не исключение
+ *
+ * @note Снятие идёт после всех подключений и снимается в конце файла: макросы эти
+ *       нужны самим заголовкам MS Windows, и снимать их прежде подключения нельзя
+ *
+ */
+#include <sys/macro_push.hpp>
+
+
+/**
  * Системные заголовочные файлы
  */
 
@@ -15608,7 +15625,7 @@ TEST_F(IoFixture, IoOriginNamespaceTest){
 		ASSERT_GT(::sendto(sock, "SAMEpayload", 11, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0);
 	}
 	// Закрываем сокет отправителя
-	::close(sock);
+	::closesocket(sock);
 	/**
 	 * Запускаем опрос событий
 	 */
@@ -15767,7 +15784,7 @@ TEST_F(IoFixture, IoOriginBindTest){
 	 */
 	while(!stop && (sessions < 2) && this->_io->poll());
 	// Закрываем сокет отправителя
-	::close(sock);
+	::closesocket(sock);
 	/**
 	 * Проверяем что снятый ключ маршрутизироваться перестал: датаграмма с ним
 	 * образовала новую сессию, а не попала в прежнюю
@@ -16669,7 +16686,7 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 	ASSERT_EQ(reborn, rebirths) << sign;
 	ASSERT_EQ(connected, successes) << sign;
 	// Закрываем слушающий сокет
-	::close(listener);
+	::closesocket(listener);
 	this->_io->destroy(tick);
 	ASSERT_TRUE(this->_io->deinitialize());
 }
@@ -17046,7 +17063,7 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	 */
 	const int32_t peer = ::accept(listener, nullptr, nullptr);
 	ASSERT_GT(peer, 0);
-	ASSERT_EQ(0, ::close(peer));
+	ASSERT_EQ(0, ::closesocket(peer));
 	// Даём обрыву дойти и назначению состояться, не дожидаясь самого подъёма
 	start = std::chrono::steady_clock::now();
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 400) && this->_io->poll());
@@ -17068,7 +17085,7 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	ASSERT_TRUE(relaunched) << sign;
 	// Подключений обязано быть ровно два: сдвоенного подъёма быть не должно
 	ASSERT_EQ(2, successes) << sign;
-	::close(listener);
+	::closesocket(listener);
 	this->_io->setOption(eid, awh::event::options::AUTO_RECONNECT, false);
 	this->_io->destroy(eid);
 	this->_io->destroy(tick);
@@ -17441,7 +17458,7 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 	// Дожидаемся завершения нити потока
 	feed.join();
 	// Освобождаем сокет источника потока
-	::close(feeder);
+	::closesocket(feeder);
 	// Собираем подпись для отчёта об отказе
 	const std::string sign = std::string("интервалов=") + std::to_string(intervals) +
 		" пакетов=" + std::to_string(packets) + " сроков=" + std::to_string(expirations);
@@ -17461,3 +17478,8 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 	this->_io->destroy(reader);
 	ASSERT_TRUE(this->_io->deinitialize());
 }
+
+/**
+ * Возвращаем снятые макросы MS Windows
+ */
+#include <sys/macro_pop.hpp>

@@ -35,6 +35,54 @@
 #define __AWH_TESTS_POSIX__
 
 /**
+ * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+ */
+#if !_WIN32 && !_WIN64
+	/**
+	 * Стандартный заголовочный файл работы с файловыми дескрипторами
+	 */
+	#include <unistd.h>
+
+	/**
+	 * @brief Функция закрытия гнезда
+	 *
+	 * @param fd закрываемое гнездо
+	 * @return   ноль при успехе, иначе -1
+	 *
+	 * @details Средство это принадлежит MS Windows, где гнёзда и файловые дескрипторы
+	 *          разведены порознь: гнёзда закрываются closesocket, файлы - _close, и
+	 *          подмена одного другим отвечает отказом. У систем POSIX разделения этого
+	 *          нет, и закрывает то и другое один close
+	 *
+	 *          Заведено оно **у POSIX**, а не наоборот, намеренно. Обратный путь -
+	 *          подменить у MS Windows close - невозможен: библиотека MinGW объявляет
+	 *          его сама, и своё определение столкнулось бы с её объявлением. Проверено
+	 *          опытом: сборка отвечала отказом «conflicting declaration of 'int
+	 *          close(int)' with 'C' linkage»
+	 *
+	 *          Оттого обращения наборов приведены к closesocket - имени, у MS Windows
+	 *          настоящему, - а восполняется недостающее здесь
+	 *
+	 */
+	inline int32_t closesocket(const int32_t fd) noexcept {
+		/**
+		 * Средство закрытия зовётся здесь без указания глобального пространства имён
+		 * намеренно
+		 *
+		 * @warning Запись «::close» выглядела бы строже, но именно она и оказалась
+		 *          ловушкой: определение это лежит в глобальном пространстве имён, и
+		 *          поточная правка обращений, прошедшая по всем файлам наборов, задела
+		 *          и его собственное тело - «::close» стало «::closesocket», и средство
+		 *          принялось звать само себя. Уход вглубь без конца, переполнение стека,
+		 *          отказ доступа к памяти. Тот же вид ошибки уже встречался у
+		 *          __awh_pagesize__ в sys/fs.cpp
+		 *
+		 */
+		return close(fd);
+	}
+#endif
+
+/**
  * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
@@ -42,6 +90,8 @@
 	 * Стандартные заголовочные файлы
 	 */
 	#include <ctime>
+	#include <new>
+	#include <vector>
 	#include <cstdint>
 	#include <cstdlib>
 	#include <cstring>
@@ -50,6 +100,11 @@
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
 	#include <sys/win32.hpp>
+
+	/**
+	 * Заголовочный файл перечисления сетевых устройств машины
+	 */
+	#include <iphlpapi.h>
 
 	/**
 	 * @brief Функция установки переменной окружения
@@ -228,6 +283,199 @@
 	inline int32_t inet_aton(const char * value, struct in_addr * result) noexcept {
 		// Выполняем разбор записи адреса IPv4
 		return ((::inet_pton(AF_INET, value, result) == 1) ? 1 : 0);
+	}
+	/**
+	 * @brief Функция опроса готовности гнёзд
+	 *
+	 * @param events  перечень опрашиваемых гнёзд
+	 * @param count   количество опрашиваемых гнёзд
+	 * @param timeout предел ожидания в миллисекундах
+	 * @return        количество готовых гнёзд, ноль по истечении предела, иначе -1
+	 *
+	 * @warning Замена эта опрашивает **только гнёзда**: WSAPoll иного и не умеет, тогда
+	 *          как poll у POSIX опрашивает всякий файловый дескриптор. Наборам этого
+	 *          достаёт - опрашиваются там одни лишь гнёзда, - но полной заменой считать
+	 *          её нельзя
+	 *
+	 */
+	inline int32_t poll(struct pollfd * events, const uint32_t count, const int32_t timeout) noexcept {
+		// Выполняем опрос готовности гнёзд
+		return ::WSAPoll(events, count, timeout);
+	}
+	/**
+	 * @brief Признак устройства, являющегося петлёй
+	 *
+	 * @note Заводится он лишь при отсутствии: заголовок ws2ipdef.h объявляет признаки
+	 *       эти сам, и притом иными значениями - IFF_LOOPBACK равен там 0x4, а не 0x8,
+	 *       принятому у систем POSIX. Своё определение поверх системного расходилось бы
+	 *       с тем, чем пользуются прочие средства той же системы
+	 *
+	 */
+	#ifndef IFF_LOOPBACK
+		#define IFF_LOOPBACK 0x8
+	#endif
+	/**
+	 * @brief Признак поднятого устройства
+	 *
+	 */
+	#ifndef IFF_UP
+		#define IFF_UP 0x1
+	#endif
+
+	/**
+	 * @brief Запись сетевого устройства машины
+	 *
+	 * @details Составом полей запись эта повторяет одноимённую запись POSIX ровно в той
+	 *          мере, в какой ею пользуются наборы: название устройства, его признаки и
+	 *          адрес. Полей ifa_netmask, ifa_dstaddr и ifa_data здесь нет - наборы их
+	 *          не читают, а собрать их значило бы завести подобие, ничем не проверяемое
+	 *
+	 */
+	struct ifaddrs {
+		// Следующая запись перечня
+		struct ifaddrs * ifa_next;
+		// Название сетевого устройства
+		char * ifa_name;
+		// Признаки сетевого устройства
+		uint32_t ifa_flags;
+		// Адрес сетевого устройства
+		struct sockaddr * ifa_addr;
+	};
+
+	/**
+	 * @brief Внутреннее хранилище записей перечня сетевых устройств
+	 *
+	 * @details Записи и всё, на что они указывают, отводятся одним куском: перечень
+	 *          POSIX освобождается единственным вызовом freeifaddrs, и раздельное
+	 *          отведение имён и адресов пришлось бы обходить при освобождении
+	 *
+	 */
+	struct __awh_ifaddrs_entry {
+		// Запись, выдаваемая наружу
+		struct ifaddrs entry;
+		// Название сетевого устройства
+		char name[256];
+		// Место под адрес сетевого устройства любого семейства
+		struct sockaddr_storage address;
+	};
+	/**
+	 * @brief Функция получения перечня сетевых устройств машины
+	 *
+	 * @param result перечень сетевых устройств машины
+	 * @return       ноль при успехе, иначе -1
+	 *
+	 * @details Средства ifaddrs у MS Windows нет вовсе, а отвечает ему там
+	 *          GetAdaptersAddresses. Перебор ведётся по устройствам, а внутри каждого -
+	 *          по его адресам передачи одному: запись POSIX несёт один адрес, и
+	 *          устройство с несколькими адресами даёт несколько записей, как и у POSIX
+	 *
+	 * @note Признаки устройства собираются из двух его примет: IFF_UP ставится по
+	 *       рабочему состоянию, IFF_LOOPBACK - по виду устройства. Числовые значения
+	 *       признаков взяты те же, что у POSIX, чтобы наборы сличали их одинаково
+	 *
+	 */
+	inline int32_t getifaddrs(struct ifaddrs ** result) noexcept {
+		// Если перечень сетевых устройств принять некуда
+		if(result == nullptr)
+			// Выводим признак отказа
+			return -1;
+		// Сбрасываем перечень сетевых устройств
+		(* result) = nullptr;
+		// Размер буфера сведений о сетевых устройствах
+		ULONG size = 0;
+		/**
+		 * Размер буфера запрашивается отдельным вызовом: он зависит от числа устройств
+		 * машины и числа их адресов, а наперёд то и другое не известно
+		 */
+		if(::GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, nullptr, &size) != ERROR_BUFFER_OVERFLOW)
+			// Выводим признак отказа
+			return -1;
+		// Буфер сведений о сетевых устройствах
+		std::vector <uint8_t> buffer(static_cast <size_t> (size), 0);
+		// Начало перечня сведений о сетевых устройствах
+		IP_ADAPTER_ADDRESSES * adapters = reinterpret_cast <IP_ADAPTER_ADDRESSES *> (buffer.data());
+		// Если сведения о сетевых устройствах получить не удалось
+		if(::GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, adapters, &size) != NO_ERROR)
+			// Выводим признак отказа
+			return -1;
+		// Последняя собранная запись перечня
+		struct ifaddrs * last = nullptr;
+		/**
+		 * Выполняем перебор всех сетевых устройств машины
+		 */
+		for(IP_ADAPTER_ADDRESSES * adapter = adapters; adapter != nullptr; adapter = adapter->Next){
+			/**
+			 * Выполняем перебор всех адресов передачи одному у текущего устройства
+			 */
+			for(IP_ADAPTER_UNICAST_ADDRESS * address = adapter->FirstUnicastAddress; address != nullptr; address = address->Next){
+				// Если адрес устройства негоден, пропускаем его
+				if((address->Address.lpSockaddr == nullptr) || (address->Address.iSockaddrLength <= 0))
+					// Переходим к следующему адресу устройства
+					continue;
+				// Если длина адреса в отведённое место не умещается, пропускаем его
+				if(static_cast <size_t> (address->Address.iSockaddrLength) > sizeof(struct sockaddr_storage))
+					// Переходим к следующему адресу устройства
+					continue;
+				// Отводим место под очередную запись перечня
+				__awh_ifaddrs_entry * item = new (std::nothrow) __awh_ifaddrs_entry();
+				// Если отвести место под запись не удалось, прекращаем сбор
+				if(item == nullptr)
+					// Прекращаем сбор перечня
+					break;
+				// Выполняем обнуление отведённой записи
+				::memset(item, 0, sizeof(__awh_ifaddrs_entry));
+				// Запоминаем название сетевого устройства
+				::strncpy(item->name, ((adapter->AdapterName != nullptr) ? adapter->AdapterName : ""), (sizeof(item->name) - 1));
+				// Копируем адрес сетевого устройства
+				::memcpy(&item->address, address->Address.lpSockaddr, static_cast <size_t> (address->Address.iSockaddrLength));
+				// Устанавливаем название сетевого устройства
+				item->entry.ifa_name = item->name;
+				// Устанавливаем адрес сетевого устройства
+				item->entry.ifa_addr = reinterpret_cast <struct sockaddr *> (&item->address);
+				// Собираем признаки сетевого устройства
+				item->entry.ifa_flags = 0;
+				// Если сетевое устройство поднято
+				if(adapter->OperStatus == IfOperStatusUp)
+					// Помечаем сетевое устройство поднятым
+					item->entry.ifa_flags |= IFF_UP;
+				// Если сетевое устройство является петлёй
+				if(adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK)
+					// Помечаем сетевое устройство петлёй
+					item->entry.ifa_flags |= IFF_LOOPBACK;
+				// Если запись перечня является первой
+				if(last == nullptr)
+					// Устанавливаем начало перечня
+					(* result) = &item->entry;
+				// Если запись перечня первой не является
+				else last->ifa_next = &item->entry;
+				// Запоминаем последнюю собранную запись перечня
+				last = &item->entry;
+			}
+		}
+		// Выводим признак успеха
+		return 0;
+	}
+	/**
+	 * @brief Функция освобождения перечня сетевых устройств машины
+	 *
+	 * @param list освобождаемый перечень сетевых устройств
+	 *
+	 */
+	inline void freeifaddrs(struct ifaddrs * list) noexcept {
+		/**
+		 * Выполняем перебор всех записей перечня сетевых устройств
+		 */
+		while(list != nullptr){
+			// Запоминаем следующую запись перечня прежде снятия текущей
+			struct ifaddrs * next = list->ifa_next;
+			/**
+			 * Запись выдавалась первым полем хранилища, и приведение это обратно тому,
+			 * каким она наружу и выдавалась
+			 */
+			delete reinterpret_cast <__awh_ifaddrs_entry *> (list);
+			// Переходим к следующей записи перечня
+			list = next;
+		}
 	}
 #endif
 

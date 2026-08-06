@@ -20,7 +20,6 @@
  * Стандартные заголовочные файлы
  */
 #include <cerrno>
-#include <string>
 #include <cstring>
 
 /**

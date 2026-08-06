@@ -30,11 +30,8 @@
  * Стандартные заголовочные файлы
  */
 #include <cerrno>
-#include <memory>
-#include <vector>
 #include <cstring>
 #include <cstdlib>
-#include <iostream>
 
 /**
  * Системный заголовочный файл
@@ -116,56 +113,68 @@ namespace options {
 			 * Если необходимо выполнить тюннинг операционной системы
 			 */
 			#if AWH_BOOSTING_NET
-				/**
-				 * Для операционной системы macOS
-				 */
-				#if __APPLE__ || __MACH__
-					// Если эффективный идентификатор пользователя принадлежит ROOT
-					if(os.isAdmin()){
+				// Если эффективный идентификатор пользователя не принадлежит ROOT
+				if(!os.isAdmin()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						log->debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log->print("Root privileges are required to apply network optimizations", awh::log_t::flag_t::WARNING);
+					#endif
+				// Если права суперпользователя получены
+				} else {
+					/**
+					 * Для операционной системы macOS
+					 *
+					 * Названия проверены на macOS 26.5
+					 */
+					#if __APPLE__ || __MACH__
 						// Устанавливаем максимальное количество подключений
 						os.sysctl("kern.ipc.somaxconn", 49152);
 						/**
 						 * Для хостов 10G было бы неплохо увеличить это значение,
 						 * т.к. 4G, похоже, является пределом для некоторых установок macOS
 						 */
-						os.sysctl("kern.ipc.maxsockbuf", 6291456);
+						os.sysctl("kern.ipc.maxsockbuf", 16777216);
 						// Увеличиваем максимальный размер буферов для отправки
 						os.sysctl("net.inet.tcp.sendspace", 1042560);
 						// Увеличиваем максимальный размер буферов для чтения
 						os.sysctl("net.inet.tcp.recvspace", 1042560);
-						// В macOS значение по умолчанию 3, что очень мало
-						os.sysctl("net.inet.tcp.r", 8);
+						/**
+						 * Увеличиваем множитель масштабирования окна: у macOS он равен 3, что
+						 * держит окно в пределах четверти мегабайта и режет пропускную
+						 * способность на путях с большой задержкой
+						 *
+						 * @warning Прежде здесь стояло имя "net.inet.tcp.r", которого не
+						 *          существует: замер на macOS 26.5 отвечает unknown oid. Судя
+						 *          по пояснению рядом - "значение по умолчанию 3, что очень
+						 *          мало", - имелось в виду именно это имя, усечённое при переносе
+						 */
+						os.sysctl("net.inet.tcp.win_scale_factor", 8);
 						// Увеличиваем максимумы автонастройки macOS TCP
 						os.sysctl("net.inet.tcp.autorcvbufmax", 33554432);
 						os.sysctl("net.inet.tcp.autosndbufmax", 33554432);
-						// Устанавливаем прочие настройки
-						os.sysctl("net.inet.tcp.slowstart_flightsize", 20);
+						/**
+						 * Увеличиваем начальное окно для подключений внутри машины
+						 *
+						 * @warning Соседнее "net.inet.tcp.slowstart_flightsize" убрано: замер
+						 *          на macOS 26.5 отвечает unknown oid
+						 */
 						os.sysctl("net.inet.tcp.local_slowstart_flightsize", 20);
-					// Если пользователь не является суперпользователем
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							log->debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log->print("Root privileges are required to apply network optimizations", awh::log_t::flag_t::WARNING);
-						#endif
-					}
-				/**
-				 * Для операционной системы FreeBSD, NetBSD или OpenBSD
-				 */
-				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
-					// Если эффективный идентификатор пользователя принадлежит ROOT
-					if(os.isAdmin()){
-						/**
-						 * Данные оптимизаций операционной системы берет от сюда: http://fasterdata.es.net/host-tuning/freebsd
-						 */
+					/**
+					 * Для операционной системы FreeBSD
+					 *
+					 * Данные оптимизаций берутся отсюда: http://fasterdata.es.net/host-tuning/freebsd
+					 * Названия проверены на FreeBSD 14.1-RELEASE
+					 */
+					#elif __FreeBSD__
 						// Активируем контроль работы временной марки и масштабируемого окна
 						os.sysctl("net.inet.tcp.rfc1323", 1);
 						// Устанавливаем максимальное количество подключений
@@ -173,12 +182,21 @@ namespace options {
 						// Активируем автоматическую отправку и получение
 						os.sysctl("net.inet.tcp.sendbuf_auto", 1);
 						os.sysctl("net.inet.tcp.recvbuf_auto", 1);
-						// Увеличиваем размер шага автонастройки
+						/**
+						 * Увеличиваем размер шага автонастройки
+						 *
+						 * @warning Соседнее "net.inet.tcp.recvbuf_inc" убрано: замер на
+						 *          FreeBSD 14.1 отвечает unknown oid, шаг приёма отдельной
+						 *          настройкой там больше не задаётся
+						 */
 						os.sysctl("net.inet.tcp.sendbuf_inc", 8192);
-						os.sysctl("net.inet.tcp.recvbuf_inc", 16384);
-						// Активируем нормальное TCP Reno
-						os.sysctl("net.inet.tcp.inflight.enable", 0);
-						// Активируем на хостах тестирования/измерений
+						/**
+						 * Активируем на хостах тестирования/измерений
+						 *
+						 * @warning Соседнее "net.inet.tcp.inflight.enable" убрано: замер на
+						 *          FreeBSD 14.1 отвечает unknown oid, ограничение объёма данных
+						 *          в пути снято из ядра вместе с настройкой
+						 */
 						os.sysctl("net.inet.tcp.hostcache.expire", 1);
 						/**
 						 * Для хостов 10G было бы неплохо увеличить это значение,
@@ -208,23 +226,81 @@ namespace options {
 								// Активируем выбранный нами алгоритм
 								os.sysctl("net.inet.tcp.cc.algorithm", "htcp");
 						}
-					// Если пользователь не является суперпользователем
-					} else {
+					/**
+					 * Для операционной системы NetBSD
+					 *
+					 * Названия проверены на NetBSD 10. Ветвь настроек здесь своя: общего
+					 * потолка "kern.ipc.maxsockbuf" у NetBSD нет вовсе, его место занимает
+					 * "kern.sbmax", и поднимать его следует **первым** - пределы буферов TCP
+					 * выше него не встанут
+					 */
+					#elif __NetBSD__
+						// Поднимаем общий потолок буферов сокета
+						os.sysctl("kern.sbmax", 16777216);
+						// Активируем контроль работы временной марки и масштабируемого окна
+						os.sysctl("net.inet.tcp.rfc1323", 1);
+						// Разрешаем использование временных меток
+						os.sysctl("net.inet.tcp.timestamps", 1);
+						// Разрешаем выборочные подтверждения
+						os.sysctl("net.inet.tcp.sack.enable", 1);
+						// Активируем автоматическую отправку и получение
+						os.sysctl("net.inet.tcp.sendbuf_auto", 1);
+						os.sysctl("net.inet.tcp.recvbuf_auto", 1);
+						// Увеличиваем размер шага автонастройки
+						os.sysctl("net.inet.tcp.sendbuf_inc", 8192);
+						os.sysctl("net.inet.tcp.recvbuf_inc", 16384);
+						// Увеличиваем максимальный размер буферов для отправки
+						os.sysctl("net.inet.tcp.sendbuf_max", 16777216);
+						// Увеличиваем максимальный размер буферов для чтения
+						os.sysctl("net.inet.tcp.recvbuf_max", 16777216);
+						// Увеличиваем размеры буферов, устанавливаемых по умолчанию
+						os.sysctl("net.inet.tcp.sendspace", 1042560);
+						os.sysctl("net.inet.tcp.recvspace", 1042560);
+						// Увеличиваем начальное окно до предписанного RFC 6928
+						os.sysctl("net.inet.tcp.init_win", 10);
 						/**
-						 * Если включён режим отладки
+						 * Алгоритмы у NetBSD перечисляются в net.inet.tcp.congctl.available,
+						 * а выбор ведётся через net.inet.tcp.congctl.selected
 						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							log->debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING);
+						const string & algorithm = os.sysctl <string> ("net.inet.tcp.congctl.available");
+						// Если выбран лучший доступны алгоритм
+						if(!algorithm.empty()){
+							// Если найден алгоритм cubic
+							if(fmk->exists("cubic", algorithm))
+								// Активируем выбранный нами алгоритм
+								os.sysctl("net.inet.tcp.congctl.selected", "cubic");
+							// Если же найден алгоритм newreno
+							else if(fmk->exists("newreno", algorithm))
+								// Активируем выбранный нами алгоритм
+								os.sysctl("net.inet.tcp.congctl.selected", "newreno");
+						}
+					/**
+					 * Для операционной системы OpenBSD
+					 *
+					 * Названия проверены на OpenBSD 7.9. Настроек здесь намеренно мало:
+					 * размеры буферов сокета OpenBSD подбирает сам и наружу этого не выносит,
+					 * а потому ни "sendspace", ни "recvspace", ни пределов автонастройки, ни
+					 * выбора алгоритма перегрузки там нет вовсе. Прежде сюда прилагалась
+					 * ветвь FreeBSD целиком, и из десяти её настроек ложилась ровно одна -
+					 * прочие отвергались молча
+					 */
+					#elif __OpenBSD__
 						/**
-						 * Если режим отладки не включён
+						 * Устанавливаем максимальное количество подключений
+						 *
+						 * @warning Предел здесь 32767, и значение выше отвергается целиком:
+						 *          замер на OpenBSD 7.9 отвечает Invalid argument уже на 65535.
+						 *          Принятое у прочих систем 49152 сюда не годится
 						 */
-						#else
-							// Записываем ошибку в лог
-							log->print("Root privileges are required to apply network optimizations", awh::log_t::flag_t::WARNING);
-						#endif
-					}
-				#endif
+						os.sysctl("kern.somaxconn", 32767);
+						// Активируем контроль работы временной марки и масштабируемого окна
+						os.sysctl("net.inet.tcp.rfc1323", 1);
+						// Разрешаем выборочные подтверждения
+						os.sysctl("net.inet.tcp.sack", 1);
+						// Активируем увеличенное начальное окно по RFC 3390
+						os.sysctl("net.inet.tcp.rfc3390", 2);
+					#endif
+				}
 			#endif
 		/**
 		 * Если возникает ошибка

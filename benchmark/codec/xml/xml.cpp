@@ -123,6 +123,23 @@ double awh::benchmark::markup::perDocument(const outcome_t & output) noexcept {
 	return (static_cast <double> (output.allocations) / static_cast <double> (output.operations));
 }
 /**
+ * @brief Функция извлечения задержки обработки одного документа
+ *
+ * @param output итоги прогона сценария
+ * @return       задержка обработки одного документа в микросекундах
+ *
+ */
+double awh::benchmark::markup::perLatency(const outcome_t & output) noexcept {
+	/**
+	 * Если замер не состоялся
+	 */
+	if(output.operations == 0)
+		// Выводим нулевую задержку обработки документа
+		return 0.0;
+	// Выводим задержку обработки одного документа
+	return ((output.seconds * 1000000.0) / static_cast <double> (output.operations));
+}
+/**
  * @brief Функция получения контрольной суммы прогонов
  *
  * @return ссылка на контрольную сумму прогонов

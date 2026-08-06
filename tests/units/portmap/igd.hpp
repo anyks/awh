@@ -24,15 +24,35 @@
 #include <vector>
 #include <cstring>
 #include <cstdio>
-#include <poll.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <ifaddrs.h>
-#include <net/if.h>
+/**
+ * Для операционной системы MS Windows
+ *
+ * @note Заголовки эти принадлежат POSIX и у MS Windows отсутствуют: отвечающие им
+ *       объявления приходят там из winsock2.h, подключаемого через единую точку
+ *       sys/win32.hpp, а недостающее восполняет tests/posix.hpp
+ *
+ */
+#if _WIN32 || _WIN64
+	#include <sys/win32.hpp>
+/**
+ * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+ */
+#else
+	#include <poll.h>
+	#include <unistd.h>
+	#include <fcntl.h>
+	#include <sys/time.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+	#include <arpa/inet.h>
+	#include <ifaddrs.h>
+	#include <net/if.h>
+#endif
+
+/**
+ * Подключаем восполнение средств POSIX, отсутствующих у MS Windows
+ */
+#include "../../posix.hpp"
 // Поддельное устройство доступа в сеть с поддержкой UPnP
 class FakeIGD {
 	public:
@@ -414,13 +434,13 @@ class FakeIGD {
 						if(at != std::string::npos) length = static_cast <size_t> (::atol(request.c_str() + at + 15));
 						if(request.size() >= (head + 4 + length)) break;
 					}
-					if(request.empty()){ ::close(peer); continue; }
+					if(request.empty()){ ::closesocket(peer); continue; }
 					const bool control = (request.compare(0, 4, "POST") == 0);
 					if(control) this->_calls.fetch_add(1);
 					else this->_fetches.fetch_add(1);
 					std::string body, answer;
 					const Mode mode = this->mode;
-					if(control && (mode == Mode::DROP)){ ::close(peer); continue; }
+					if(control && (mode == Mode::DROP)){ ::closesocket(peer); continue; }
 					/**
 					 * Если вызов действия оставляется без ответа
 					 *
@@ -434,11 +454,11 @@ class FakeIGD {
 						const char * junk = "!!! это не разметка вовсе !!!";
 						answer = std::string("HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\nContent-Length: ")
 						       + std::to_string(::strlen(junk)) + "\r\nConnection: close\r\n\r\n" + junk;
-						::send(peer, answer.data(), answer.size(), 0); ::close(peer); continue;
+						::send(peer, answer.data(), answer.size(), 0); ::closesocket(peer); continue;
 					}
 					if(control && (mode == Mode::HTTP_ERROR)){
 						answer = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-						::send(peer, answer.data(), answer.size(), 0); ::close(peer); continue;
+						::send(peer, answer.data(), answer.size(), 0); ::closesocket(peer); continue;
 					}
 					if(control) body = ((mode == Mode::FAULT) ? this->refusal() : this->soap(request));
 					else body = this->description();
@@ -448,7 +468,7 @@ class FakeIGD {
 					       + std::to_string(control && (mode == Mode::TRUNCATED) ? body.size() + 64 : body.size())
 					       + "\r\nConnection: close\r\n\r\n" + body;
 					::send(peer, answer.data(), answer.size(), 0);
-					::close(peer);
+					::closesocket(peer);
 				}
 		}
 
@@ -467,12 +487,12 @@ class FakeIGD {
 			if(this->_udp6Thread.joinable()) this->_udp6Thread.join();
 			if(this->_tcpThread.joinable()) this->_tcpThread.join();
 			if(this->_tcp4Thread.joinable()) this->_tcp4Thread.join();
-			if(this->_udp >= 0){ ::close(this->_udp); this->_udp = -1; }
-			if(this->_udp6 >= 0){ ::close(this->_udp6); this->_udp6 = -1; }
-			if(this->_tcp >= 0){ ::close(this->_tcp); this->_tcp = -1; }
-			if(this->_tcp4 >= 0){ ::close(this->_tcp4); this->_tcp4 = -1; }
+			if(this->_udp >= 0){ ::closesocket(this->_udp); this->_udp = -1; }
+			if(this->_udp6 >= 0){ ::closesocket(this->_udp6); this->_udp6 = -1; }
+			if(this->_tcp >= 0){ ::closesocket(this->_tcp); this->_tcp = -1; }
+			if(this->_tcp4 >= 0){ ::closesocket(this->_tcp4); this->_tcp4 = -1; }
 			// Выполняем закрытие подключений, оставленных без ответа
-			for(const int peer : this->_stalled) ::close(peer);
+			for(const int peer : this->_stalled) ::closesocket(peer);
 			// Выполняем очистку перечня подключений, оставленных без ответа
 			this->_stalled.clear();
 		}
@@ -490,7 +510,7 @@ class FakeIGD {
 				address.sin_family = AF_INET; address.sin_port = htons(1900);
 				address.sin_addr.s_addr = htonl(INADDR_ANY);
 				if(::bind(this->_udp, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0){
-					::close(this->_udp); this->_udp = -1;
+					::closesocket(this->_udp); this->_udp = -1;
 				} else {
 					// Вступаем в группу обнаружения устройств на устройстве петли
 					struct ip_mreq group; ::memset(&group, 0, sizeof(group));
@@ -517,14 +537,14 @@ class FakeIGD {
 				struct sockaddr_in6 address; ::memset(&address, 0, sizeof(address));
 				address.sin6_family = AF_INET6; address.sin6_port = htons(1900); address.sin6_addr = in6addr_any;
 				if(::bind(this->_udp6, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0){
-					::close(this->_udp6); this->_udp6 = -1;
+					::closesocket(this->_udp6); this->_udp6 = -1;
 				} else {
 					// Вступаем в группу обнаружения устройств на устройстве петли
 					struct ipv6_mreq group; ::memset(&group, 0, sizeof(group));
 					::inet_pton(AF_INET6, "FF02::C", &group.ipv6mr_multiaddr);
 					group.ipv6mr_interface = ::if_nametoindex(this->device.c_str());
 					if(::setsockopt(this->_udp6, IPPROTO_IPV6, IPV6_JOIN_GROUP, &group, sizeof(group)) != 0){
-						::close(this->_udp6); this->_udp6 = -1;
+						::closesocket(this->_udp6); this->_udp6 = -1;
 					}
 				}
 			}
@@ -547,7 +567,7 @@ class FakeIGD {
 				struct sockaddr_in6 address; ::memset(&address, 0, sizeof(address));
 				address.sin6_family = AF_INET6; address.sin6_port = 0; address.sin6_addr = in6addr_any;
 				if((::bind(this->_tcp, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0) || (::listen(this->_tcp, 8) != 0)){
-					::close(this->_tcp); this->_tcp = -1;
+					::closesocket(this->_tcp); this->_tcp = -1;
 				} else {
 					socklen_t length = sizeof(address);
 					::getsockname(this->_tcp, reinterpret_cast <struct sockaddr *> (&address), &length);
@@ -586,7 +606,7 @@ class FakeIGD {
 							// Если привязать гнездо к адресу либо открыть приём подключений не удалось
 							if((::bind(this->_tcp4, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)) != 0) || (::listen(this->_tcp4, 8) != 0)){
 								// Выполняем закрытие гнезда управления устройством сети IPv4
-								::close(this->_tcp4);
+								::closesocket(this->_tcp4);
 								// Сбрасываем дескриптор гнезда управления устройством сети IPv4
 								this->_tcp4 = -1;
 							}

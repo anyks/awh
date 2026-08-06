@@ -161,7 +161,7 @@ TEST_F(EthFixture, IfaceCreateDestroyTest){
 	// Если сокет создан успешно
 	if(sock != awh::net::invalid_socket_t){
 		// Если создался, закрываем и уничтожаем
-		::close(sock);
+		::closesocket(sock);
 		// Уничтожение может требовать persistent режима, здесь просто проверяем вызов
 		this->_eth->iface.destroy(name);
 	}

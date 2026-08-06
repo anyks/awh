@@ -33,6 +33,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
             xml/xml.cpp
             xml/reader.cpp
+            xml/writer.cpp
             xml/document.cpp
         )
     # Если не нужно собрать бенчмарки для контейнера XML

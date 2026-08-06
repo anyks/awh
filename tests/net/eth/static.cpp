@@ -292,5 +292,5 @@ TEST_F(EthFixture, EthSuiteTest){
 		ASSERT_FALSE(source.iface.empty());
 	}
 	// Закрываем сокет
-	::close(sock);
+	::closesocket(sock);
 }

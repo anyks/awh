@@ -21,6 +21,7 @@
  */
 #include <vector>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 /**
  * Для операционной системы MS Windows
@@ -44,10 +45,49 @@
 	 */
 	#include <arpa/inet.h>
 	#include <netinet/in.h>
-	#include <netinet/tcp.h>
-	#include <netinet/udp.h>
 #endif
 #include <sys/types.h>
+
+/**
+ * @brief Заголовок сегмента TCP в наименьшем виде
+ *
+ * @details Объявляется он здесь, а не берётся у системы, по двум доводам. Первый -
+ *          у MS Windows заголовков «netinet/tcp.h» и «netinet/udp.h» нет вовсе.
+ *          Второй - имена полей у систем POSIX разнятся: одни зовут поле контрольной
+ *          суммы «th_sum», другие «check», и запись, собранная под одну систему, у
+ *          другой не собиралась бы
+ *
+ *          Проверке нужно от этих заголовков одно - смещение поля контрольной суммы, -
+ *          а оно задано стандартом (RFC 9293 §3.1 для TCP, RFC 768 для UDP) и от
+ *          системы не зависит вовсе
+ *
+ * @note Объявление помечено плотным размещением: без того выравнивание могло бы
+ *       развести поля и сместить искомое
+ *
+ */
+#pragma pack(push, 1)
+	struct tcp_hdr_min {
+		uint16_t sport;  // Порт источника
+		uint16_t dport;  // Порт назначения
+		uint32_t seq;    // Порядковый номер
+		uint32_t ack;    // Номер подтверждения
+		uint8_t  offset; // Смещение данных и зарезервированные разряды
+		uint8_t  flags;  // Разряды управления
+		uint16_t window; // Размер окна
+		uint16_t sum;    // Контрольная сумма
+		uint16_t urgent; // Указатель важности
+	};
+	/**
+	 * @brief Заголовок датаграммы UDP
+	 *
+	 */
+	struct udp_hdr_min {
+		uint16_t sport;  // Порт источника
+		uint16_t dport;  // Порт назначения
+		uint16_t length; // Длина датаграммы
+		uint16_t sum;    // Контрольная сумма
+	};
+#pragma pack(pop)
 
 /**
  * Подключаем восполнение средств POSIX, отсутствующих у MS Windows
@@ -121,11 +161,11 @@ namespace {
 		switch(static_cast <uint8_t> (protocol)){
 			// Если протокол определён как TCP
 			case static_cast <uint8_t> (awh::event::protocol_t::TCP):
-				checksumOffset = offsetof(struct tcphdr, th_sum);
+				checksumOffset = offsetof(struct tcp_hdr_min, sum);
 			break;
 			// Если протокол определён как UDP
 			case static_cast <uint8_t> (awh::event::protocol_t::UDP):
-				checksumOffset = offsetof(struct udphdr, uh_sum);
+				checksumOffset = offsetof(struct udp_hdr_min, sum);
 			break;
 			// Для неподдерживаемого протокола
 			default: return 0;
@@ -388,8 +428,8 @@ TEST_F(EthFixture, AddressChecksumIPv4TcpTest){
 	for(size_t i = 0; i < data.size(); ++i)
 		data[i] = static_cast <uint8_t> (i + 1);
 	// Записываем заведомо ненулевое значение в поле контрольной суммы
-	data[offsetof(struct tcphdr, th_sum)] = 0xAB;
-	data[offsetof(struct tcphdr, th_sum) + 1] = 0xCD;
+	data[offsetof(struct tcp_hdr_min, sum)] = 0xAB;
+	data[offsetof(struct tcp_hdr_min, sum) + 1] = 0xCD;
 	// Сравниваем результат с эталоном
 	ASSERT_EQ(
 		refChecksum(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, &src, &dst, data.data(), data.size()),

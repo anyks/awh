@@ -150,11 +150,11 @@ void awh::codec::xml::Writer::flush() noexcept {
 	/**
 	 * Если метка узла не завершена
 	 */
-	if(!this->_opened.empty() && this->_opened.back().pending){
+	if((this->_depth > 0) && this->_opened[this->_depth - 1].pending){
 		// Выполняем завершение метки узла
 		this->_text.push_back('>');
 		// Запоминаем, что метка узла завершена
-		this->_opened.back().pending = false;
+		this->_opened[this->_depth - 1].pending = false;
 	}
 }
 /**
@@ -177,7 +177,7 @@ void awh::codec::xml::Writer::indent() noexcept {
 	// Выполняем добавление перевода строки
 	this->_text.push_back('\n');
 	// Выполняем добавление отступа записываемого уровня
-	this->_text.append(static_cast <size_t> (this->_opened.size()) * this->_settings.indent, this->_settings.space);
+	this->_text.append(this->_depth * this->_settings.indent, this->_settings.space);
 }
 /**
  * @brief Метод проверки последовательности знаков на пригодность к записи
@@ -403,7 +403,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 					// Выполняем добавление связывания к действующим
 					this->_scopes.push_back(scope);
 					// Выполняем подсчёт связываний, объявленных узлом
-					this->_opened.back().bindings++;
+					this->_opened[this->_depth - 1].bindings++;
 				}
 				// Выходим из перебора связываний
 				break;
@@ -538,7 +538,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 	// Выполняем добавление связывания к действующим
 	this->_scopes.push_back(::move(scope));
 	// Выполняем подсчёт связываний, объявленных узлом
-	this->_opened.back().bindings++;
+	this->_opened[this->_depth - 1].bindings++;
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -642,7 +642,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 * @note Правильно построенный текст разметки вмещает единственный корневой
 	 *       узел, и второй такой узел записи не подлежит
 	 */
-	if(this->_opened.empty() && this->_root){
+	if((this->_depth == 0) && this->_root){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::MULTIPLE_ROOTS;
 		// Выводим отрицательный результат выполнения операции
@@ -653,16 +653,16 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	/**
 	 * Если открываемый узел вложен в другой
 	 */
-	if(!this->_opened.empty()){
+	if(this->_depth > 0){
 		// Запоминаем, что узел содержит вложенное содержимое
-		this->_opened.back().filled = true;
+		this->_opened[this->_depth - 1].filled = true;
 		// Запоминаем, что узел содержит вложенные узлы разметки
-		this->_opened.back().elements = true;
+		this->_opened[this->_depth - 1].elements = true;
 	}
 	/**
 	 * Если глубина вложенности узлов превысила допустимую
 	 */
-	if(this->_opened.size() >= MAX_DEPTH){
+	if(this->_depth >= MAX_DEPTH){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::DEPTH_EXCEEDED;
 		// Выводим отрицательный результат выполнения операции
@@ -672,12 +672,35 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	this->indent();
 	// Запоминаем, что корневой узел разметки записан
 	this->_root = true;
-	// Собираемая запись открытого узла
-	opened_t opened;
+	/**
+	 * Если запись под очередной уровень вложенности ещё не заведена
+	 *
+	 * @note Заводится она однажды и дальше переиспользуется: закрытие узла
+	 *       записи не уничтожает, а лишь уменьшает глубину стека
+	 */
+	if(this->_depth >= this->_opened.size())
+		// Выполняем заведение записи под очередной уровень вложенности
+		this->_opened.emplace_back();
+	// Получаем запись очередного открываемого узла
+	opened_t & opened = this->_opened[this->_depth];
+	/**
+	 * Выполняем сброс переиспользуемой записи открытого узла
+	 *
+	 * @note Очистка хранилищ ёмкости их не отнимает, и следующему узлу они
+	 *       достаются уже готовыми: ради этого записи и переиспользуются
+	 */
+	opened.name.clear();
+	opened.names.clear();
+	// Запоминаем, что узел содержимого ещё не имеет
+	opened.filled = false;
+	// Запоминаем, что вложенных узлов узел ещё не имеет
+	opened.elements = false;
+	// Запоминаем, что связываний узел ещё не объявил
+	opened.bindings = 0;
 	// Запоминаем, что метка узла не завершена
 	opened.pending = true;
-	// Выполняем добавление записи узла к стеку
-	this->_opened.push_back(::move(opened));
+	// Выполняем углубление стека открытых узлов
+	this->_depth++;
 	// Выполняем добавление начала метки узла
 	this->_text.push_back('<');
 	// Запоминаем положение имени узла в записанном тексте
@@ -713,7 +736,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 */
 	if(verbatim){
 		// Запоминаем имя узла для его закрывающей метки
-		this->_opened.back().name.assign(local);
+		this->_opened[this->_depth - 1].name.assign(local);
 		// Выводим положительный результат выполнения операции
 		return true;
 	}
@@ -767,7 +790,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 *       требуется закрывающей метке. Сборка сцеплением дала бы на каждый узел
 	 *       до трёх посредников, из которых в дело идёт лишь последний
 	 */
-	string & name = this->_opened.back().name;
+	string & name = this->_opened[this->_depth - 1].name;
 	/**
 	 * Если узлу назначен префикс пространства имён
 	 */
@@ -805,14 +828,22 @@ bool awh::codec::xml::Writer::close() noexcept {
 	/**
 	 * Если закрывать нечего
 	 */
-	if(this->_opened.empty()){
+	if(this->_depth == 0){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::UNEXPECTED_CLOSE_TAG;
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
-	// Получаем закрываемый узел разметки
-	const opened_t opened = ::move(this->_opened.back());
+	/**
+	 * Получаем закрываемый узел разметки
+	 *
+	 * @warning Ссылка берётся на запись хранилища, а не её снимок: запись эта
+	 *          переживает уменьшение глубины стека и годна до самого конца
+	 *          метода. Снимок же переносом отнял бы у записи её хранилища
+	 *          вместе с занятой ими памятью, ради сбережения которой стек и
+	 *          перестал записи уничтожать
+	 */
+	const opened_t & opened = this->_opened[this->_depth - 1];
 	/**
 	 * Выполняем снятие связываний, объявленных закрываемым узлом
 	 */
@@ -820,7 +851,7 @@ bool awh::codec::xml::Writer::close() noexcept {
 		// Выполняем снятие очередного связывания
 		this->_scopes.pop_back();
 	// Выполняем снятие закрываемого узла со стека
-	this->_opened.pop_back();
+	this->_depth--;
 	/**
 	 * Если узел содержимого не имеет и записывается самозакрывающейся меткой
 	 */
@@ -860,7 +891,7 @@ bool awh::codec::xml::Writer::occupy(const string_view name) noexcept {
 	/**
 	 * Выполняем перебор всех записанных имён атрибутов узла
 	 */
-	for(const string & item : this->_opened.back().names){
+	for(const string & item : this->_opened[this->_depth - 1].names){
 		/**
 		 * Если имя атрибута узлу уже записано
 		 */
@@ -872,7 +903,7 @@ bool awh::codec::xml::Writer::occupy(const string_view name) noexcept {
 		}
 	}
 	// Выполняем добавление имени к записанным именам атрибутов узла
-	this->_opened.back().names.emplace_back(name);
+	this->_opened[this->_depth - 1].names.emplace_back(name);
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -909,7 +940,7 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	/**
 	 * Если метка узла уже завершена
 	 */
-	if(this->_opened.empty() || !this->_opened.back().pending){
+	if((this->_depth == 0) || !this->_opened[this->_depth - 1].pending){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_ATTRIBUTE;
 		// Выводим отрицательный результат выполнения операции
@@ -1000,7 +1031,7 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	/**
 	 * Если метка узла уже завершена
 	 */
-	if(this->_opened.empty() || !this->_opened.back().pending){
+	if((this->_depth == 0) || !this->_opened[this->_depth - 1].pending){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_ATTRIBUTE;
 		// Выводим отрицательный результат выполнения операции
@@ -1074,7 +1105,7 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	// Выполняем добавление связывания к действующим
 	this->_scopes.push_back(::move(scope));
 	// Выполняем подсчёт связываний, объявленных узлом
-	this->_opened.back().bindings++;
+	this->_opened[this->_depth - 1].bindings++;
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -1095,7 +1126,7 @@ bool awh::codec::xml::Writer::text(const string_view text) noexcept {
 	/**
 	 * Если содержимое записывается вне корневого узла
 	 */
-	if(this->_opened.empty()){
+	if(this->_depth == 0){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::CONTENT_OUTSIDE_ROOT;
 		// Выводим отрицательный результат выполнения операции
@@ -1104,7 +1135,7 @@ bool awh::codec::xml::Writer::text(const string_view text) noexcept {
 	// Выполняем завершение незакрытой метки узла
 	this->flush();
 	// Запоминаем, что узел содержит вложенное содержимое
-	this->_opened.back().filled = true;
+	this->_opened[this->_depth - 1].filled = true;
 	// Выводим результат записи текстового содержимого
 	return this->escape(text, false);
 }
@@ -1125,7 +1156,7 @@ bool awh::codec::xml::Writer::cdata(const string_view text) noexcept {
 	/**
 	 * Если содержимое записывается вне корневого узла
 	 */
-	if(this->_opened.empty()){
+	if(this->_depth == 0){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::CONTENT_OUTSIDE_ROOT;
 		// Выводим отрицательный результат выполнения операции
@@ -1152,7 +1183,7 @@ bool awh::codec::xml::Writer::cdata(const string_view text) noexcept {
 	// Выполняем завершение незакрытой метки узла
 	this->flush();
 	// Запоминаем, что узел содержит вложенное содержимое
-	this->_opened.back().filled = true;
+	this->_opened[this->_depth - 1].filled = true;
 	// Выполняем добавление раздела дословного текста
 	this->_text.append("<![CDATA[").append(text).append("]]>");
 	// Выводим положительный результат выполнения операции
@@ -1192,11 +1223,11 @@ bool awh::codec::xml::Writer::comment(const string_view text) noexcept {
 	/**
 	 * Если примечание записывается внутри узла
 	 */
-	if(!this->_opened.empty()){
+	if(this->_depth > 0){
 		// Запоминаем, что узел содержит вложенное содержимое
-		this->_opened.back().filled = true;
+		this->_opened[this->_depth - 1].filled = true;
 		// Запоминаем, что узел содержит вложенные узлы разметки
-		this->_opened.back().elements = true;
+		this->_opened[this->_depth - 1].elements = true;
 	}
 	// Выполняем запись отступа перед примечанием
 	this->indent();
@@ -1258,11 +1289,11 @@ bool awh::codec::xml::Writer::processing(const string_view target, const string_
 	/**
 	 * Если указание обработчику записывается внутри узла
 	 */
-	if(!this->_opened.empty()){
+	if(this->_depth > 0){
 		// Запоминаем, что узел содержит вложенное содержимое
-		this->_opened.back().filled = true;
+		this->_opened[this->_depth - 1].filled = true;
 		// Запоминаем, что узел содержит вложенные узлы разметки
-		this->_opened.back().elements = true;
+		this->_opened[this->_depth - 1].elements = true;
 	}
 	// Выполняем запись отступа перед указанием обработчику
 	this->indent();
@@ -1444,7 +1475,7 @@ awh::codec::xml::error_t awh::codec::xml::Writer::error() const noexcept {
  */
 bool awh::codec::xml::Writer::complete() const noexcept {
 	// Выводим результат проверки завершённости собранного текста
-	return (this->_opened.empty() && this->_root && (this->_error == error_t::NONE));
+	return ((this->_depth == 0) && this->_root && (this->_error == error_t::NONE));
 }
 /**
  * @brief Метод получения собранного текста разметки
@@ -1484,8 +1515,14 @@ void awh::codec::xml::Writer::clear() noexcept {
 	this->_root = false;
 	// Выполняем очистку собранного текста разметки
 	this->_text.clear();
-	// Выполняем очистку стека открытых узлов разметки
-	this->_opened.clear();
+	/**
+	 * Выполняем очистку стека открытых узлов разметки
+	 *
+	 * @note Хранилище записей при этом сберегается: очистка сбрасывает лишь
+	 *       глубину, и переиспользованный объект записи заводит их заново не с
+	 *       пустого места
+	 */
+	this->_depth = 0;
 	// Выполняем очистку действующих связываний префиксов
 	this->_scopes.clear();
 	// Выполняем сброс счётчика назначенных префиксов
@@ -1495,7 +1532,7 @@ void awh::codec::xml::Writer::clear() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false), _counter(0) {}
+awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false), _depth(0), _counter(0) {}
 /**
  * @brief Конструктор
  *
@@ -1503,7 +1540,7 @@ awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false)
  *
  */
 awh::codec::xml::Writer::Writer(const settings_t & settings) noexcept :
- _settings(settings), _error(error_t::NONE), _root(false), _counter(0) {}
+ _settings(settings), _error(error_t::NONE), _root(false), _depth(0), _counter(0) {}
 /**
  * @brief Деструктор
  *

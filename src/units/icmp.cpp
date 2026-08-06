@@ -102,6 +102,23 @@ namespace {
 	 * @brief Структура заголовков ICMP
 	 *
 	 */
+	/**
+	 * @par Намеренные решения
+	 *
+	 *      **Поля объединения оставлены без начальных значений.** Прежде каждое из
+	 *      них задавалось как `= 0`, отчего объединение переставало быть простым, а
+	 *      признак `packed` на всей структуре отвергался. GCC сообщал об этом
+	 *      предупреждением, Clang умалчивал, - и заголовок не упаковывался ни там,
+	 *      ни там
+	 *
+	 *      Расхождение это не косметическое: у запроса `echo` восьмибайтовое поле
+	 *      полезной нагрузки выравнивалось по восьми байтам и съезжало с четвёртого
+	 *      байта на восьмой. В сеть уходил формат, отличный от предписанного RFC 792
+	 *
+	 *      Обнуление обеспечивается на месте создания - `header_t icmp{}`, - и в
+	 *      начальных значениях полей нужды нет
+	 *
+	 */
 	typedef struct IcmpHeader {
 		uint8_t type;      // Тип запроса
 		uint8_t code;      // Код запроса
@@ -116,36 +133,46 @@ namespace {
 			 *
 			 */
 			struct {
-				uint16_t identifier = 0; // Идентификатор запроса
-				uint16_t sequence   = 0; // Номер последовательности
-				uint64_t payload    = 0; // Тело полезной нагрузки
-			} echo;
+				uint16_t identifier; // Идентификатор запроса
+				uint16_t sequence;   // Номер последовательности
+				uint64_t payload;    // Тело полезной нагрузки
+			} __attribute__((packed)) echo;
 			/**
 			 * @brief Структура указателя запроса
 			 *
 			 */
 			struct ICMP_PACKET_POINTER_HEADER {
 				// Указатель пакета
-				uint8_t pointer = 0;
-			} pointer;
+				uint8_t pointer;
+			} __attribute__((packed)) pointer;
 			/**
 			 * @brief Структура адреса ответа
 			 *
 			 */
 			struct ICMP_PACKET_REDIRECT_HEADER {
 				// Адрес ответа IPv4
-				uint32_t gatewayAddress = 0;
-			} redirect;
+				uint32_t gatewayAddress;
+			} __attribute__((packed)) redirect;
 			/**
 			 * @brief Структура адреса ответа
 			 *
 			 */
 			struct ICMP6_PACKET_REDIRECT_HEADER {
 				// Адрес ответа IPv6
-				uint32_t gatewayAddress[4] = {0,0,0,0};
-			} redirect6;
-		} meta;
+				uint32_t gatewayAddress[4];
+			} __attribute__((packed)) redirect6;
+		} __attribute__((packed)) meta;
 	} __attribute__((packed)) header_t;
+
+	/**
+	 * Закрепляем разметку заголовка: она предписана RFC 792 и проверяется здесь, а не
+	 * доверяется признаку упаковки. Без упаковки поле полезной нагрузки съезжает с
+	 * восьмого байта на шестнадцатый, а сам заголовок разрастается с 20 байт до 24
+	 */
+	static_assert(sizeof(header_t) == 20, "AWH: разметка заголовка ICMP нарушена");
+	static_assert(offsetof(header_t, meta) == 4, "AWH: разметка заголовка ICMP нарушена");
+	static_assert(offsetof(header_t, meta.echo.sequence) == 6, "AWH: разметка заголовка ICMP нарушена");
+	static_assert(offsetof(header_t, meta.echo.payload) == 8, "AWH: разметка заголовка ICMP нарушена");
 
 	/**
 	 * @brief Функция генерации уникального идентификатора

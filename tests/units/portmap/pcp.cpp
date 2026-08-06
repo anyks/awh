@@ -31,11 +31,32 @@
 /**
  * Системные заголовочные файлы
  */
-#include <unistd.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+/**
+ * Для операционной системы MS Windows
+ *
+ * @note Заголовки эти принадлежат POSIX и у MS Windows отсутствуют: отвечающие им
+ *       объявления приходят там из winsock2.h, подключаемого через единую точку
+ *       sys/win32.hpp, а недостающее восполняет tests/posix.hpp
+ *
+ */
+#if _WIN32 || _WIN64
+	#include <sys/win32.hpp>
+/**
+ * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+ */
+#else
+	#include <unistd.h>
+	#include <sys/time.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+	#include <arpa/inet.h>
+#endif
+
+/**
+ * Подключаем восполнение средств POSIX, отсутствующих у MS Windows
+ */
+#include "../../posix.hpp"
+
 
 /**
  * @brief Порт договора PCP
@@ -234,7 +255,7 @@ class PcpRouter {
 			 */
 			if(this->_socket >= 0){
 				// Выполняем закрытие гнезда поддельного маршрутизатора
-				::close(this->_socket);
+				::closesocket(this->_socket);
 				// Сбрасываем дескриптор гнезда поддельного маршрутизатора
 				this->_socket = -1;
 			}
@@ -286,7 +307,7 @@ class PcpRouter {
 			 */
 			if(::bind(this->_socket, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0){
 				// Выполняем закрытие гнезда поддельного маршрутизатора
-				::close(this->_socket);
+				::closesocket(this->_socket);
 				// Сбрасываем дескриптор гнезда поддельного маршрутизатора
 				this->_socket = -1;
 			}

@@ -26,12 +26,33 @@
  */
 #include <chrono>
 #include <cstring>
-#include <unistd.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+/**
+ * Для операционной системы MS Windows
+ *
+ * @note Заголовки эти принадлежат POSIX и у MS Windows отсутствуют: отвечающие им
+ *       объявления приходят там из winsock2.h, подключаемого через единую точку
+ *       sys/win32.hpp, а недостающее восполняет tests/posix.hpp
+ *
+ */
+#if _WIN32 || _WIN64
+	#include <sys/win32.hpp>
+/**
+ * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+ */
+#else
+	#include <unistd.h>
+	#include <sys/time.h>
+	#include <sys/types.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+	#include <arpa/inet.h>
+#endif
+
+/**
+ * Подключаем восполнение средств POSIX, отсутствующих у MS Windows
+ */
+#include "../../posix.hpp"
+
 
 /**
  * @brief Адрес, которым подставной сервер отвечает на всякий вопрос
@@ -143,7 +164,7 @@ bool DNSStubServer::start(const uint32_t delay, const bool silent, const uint32_
 	// Выполняем привязку сокета к адресу
 	if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&addr), sizeof(addr)) < 0){
 		// Выполняем закрытие сокета
-		::close(this->_fd);
+		::closesocket(this->_fd);
 		// Сбрасываем дескриптор сокета
 		this->_fd = -1;
 		// Выводим отрицательный результат запуска сервера
@@ -154,7 +175,7 @@ bool DNSStubServer::start(const uint32_t delay, const bool silent, const uint32_
 	// Выполняем получение выбранного системой порта
 	if(::getsockname(this->_fd, reinterpret_cast <struct sockaddr *> (&addr), &length) < 0){
 		// Выполняем закрытие сокета
-		::close(this->_fd);
+		::closesocket(this->_fd);
 		// Сбрасываем дескриптор сокета
 		this->_fd = -1;
 		// Выводим отрицательный результат запуска сервера
@@ -217,7 +238,7 @@ void DNSStubServer::stop() noexcept {
 	// Если сокет заведён, выполняем его закрытие
 	if(this->_fd >= 0){
 		// Выполняем закрытие сокета
-		::close(this->_fd);
+		::closesocket(this->_fd);
 		// Сбрасываем дескриптор сокета
 		this->_fd = -1;
 	}
@@ -431,7 +452,7 @@ bool NTPStubServer::start(const bool foreign) noexcept {
 	// Выполняем привязку сокета к адресу
 	if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&addr), sizeof(addr)) < 0){
 		// Выполняем закрытие сокета
-		::close(this->_fd);
+		::closesocket(this->_fd);
 		// Сбрасываем дескриптор сокета
 		this->_fd = -1;
 		// Выводим отрицательный результат запуска сервера
@@ -442,7 +463,7 @@ bool NTPStubServer::start(const bool foreign) noexcept {
 	// Выполняем получение выбранного системой порта
 	if(::getsockname(this->_fd, reinterpret_cast <struct sockaddr *> (&addr), &length) < 0){
 		// Выполняем закрытие сокета
-		::close(this->_fd);
+		::closesocket(this->_fd);
 		// Сбрасываем дескриптор сокета
 		this->_fd = -1;
 		// Выводим отрицательный результат запуска сервера
@@ -496,7 +517,7 @@ void NTPStubServer::stop() noexcept {
 	// Если сокет заведён, выполняем его закрытие
 	if(this->_fd >= 0){
 		// Выполняем закрытие сокета
-		::close(this->_fd);
+		::closesocket(this->_fd);
 		// Сбрасываем дескриптор сокета
 		this->_fd = -1;
 	}

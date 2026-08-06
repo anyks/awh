@@ -57,6 +57,23 @@
 #include "../../include/sys/chrono.hpp"
 
 /**
+ * Снимаем макросы MS Windows, сталкивающиеся с именами членов перечислений AWH
+ *
+ * @details Проверка эта пишет «awh::event::error_t::INVALID_SOCKET», а MS Windows
+ *          заводит имя INVALID_SOCKET макросом. Заголовки AWH защищают **свои**
+ *          объявления парой macro_push.hpp и macro_pop.hpp, но возвращают макросы
+ *          следом - тем они и оставляют их тому, кто ими пользуется по делу. Потому
+ *          всякий, кто называет такие члены в **своём** коде, защищает свой файл
+ *          той же парой, и проверка эта не исключение
+ *
+ * @note Снятие идёт после всех подключений и снимается в конце файла: макросы эти
+ *       нужны самим заголовкам MS Windows, и снимать их прежде подключения нельзя
+ *
+ */
+#include <sys/macro_push.hpp>
+
+
+/**
  * @brief Параметры теста выполнения пингования
  *
  */
@@ -583,6 +600,22 @@ class IoIPCTestParameterizedFixture : public IoFixture, public ::testing::WithPa
  *
  */
 TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		/**
+		 * Проверка эта строит обмен между двумя настоящими процессами, порождая второй
+		 * через fork. Средства этого у MS Windows нет вовсе, а отвечает ему там
+		 * повторный запуск себя же с последующей передачей дескрипторов - именно так
+		 * порождает работников модуль кластера
+		 *
+		 * Переписывать проверку на этот лад до поры не на чем: обмен между процессами
+		 * у MS Windows ляжет на именованный канал, а тот ещё не написан. Пропуск
+		 * снимается вместе с ним
+		 */
+		GTEST_SKIP() << "inter-process exchange requires a named pipe, which is not implemented yet";
+	#else
 	// Флаг остановки теста
 	bool stop = false;
 	/**
@@ -1580,6 +1613,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			}
 		} break;
 	}
+	#endif
 }
 
 /**
@@ -1606,3 +1640,8 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, IoIPCTestParameterizedFixture,
 		})
 	)
 );
+
+/**
+ * Возвращаем снятые макросы MS Windows
+ */
+#include <sys/macro_pop.hpp>

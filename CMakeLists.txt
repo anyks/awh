@@ -616,6 +616,28 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Fre
             "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/sctp.cpp"
         )
     endif()
+# Если сборка производится под операционные системы Solaris или illumos
+#
+# Набор модулей здесь пока заполняется: они переносятся с bsd по одному, с тем же
+# самым API, и подключаются по мере готовности. Движка ввода-вывода тут ещё нет,
+# потому наборы тестов net, proto и units под эти системы не собираются
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
+    # Выполняем подключение бэкендов IO
+    SET(SOURCE_FILES
+        "${SOURCE_FILES}"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/sun/eth.cpp"
+    )
+# Если сборка производится под операционную систему Linux
+#
+# Набор модулей здесь пока заполняется: они переносятся с bsd по одному, с тем же
+# самым API, и подключаются по мере готовности. Движка ввода-вывода тут ещё нет,
+# потому наборы тестов net, proto и units под Linux не собираются
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    # Выполняем подключение бэкендов IO
+    SET(SOURCE_FILES
+        "${SOURCE_FILES}"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/eth.cpp"
+    )
 # Если сборка производится под операционную систему MS Windows
 #
 # Состояние переноса движка ввода-вывода описано в src/net/backend/win/README.md.
