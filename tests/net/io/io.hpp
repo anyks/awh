@@ -25,7 +25,7 @@
 #include "../../main.hpp"
 #include "../../../include/net/io.hpp"
 #include "../../../include/net/addr.hpp"
-#include "../../../include/net/tls/coder.hpp"
+#include "../../../include/cryptography/tls/coder.hpp"
 
 /**
  * @brief Класс фикстуры для тестов асинхронного движка ввода-вывода

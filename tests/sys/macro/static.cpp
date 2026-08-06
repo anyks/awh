@@ -58,10 +58,10 @@
 #include "../../../include/proto/http/parser/http3/h3.hpp"
 #include "../../../include/codec/xml/reader.hpp"
 #include "../../../include/codec/xml/document.hpp"
-#include "../../../include/charset/charset.hpp"
+#include "../../../include/encoding/charset/charset.hpp"
 #include "../../../include/regex/common.hpp"
-#include "../../../include/grok/common.hpp"
-#include "../../../include/idna/types.hpp"
+#include "../../../include/regex/grok/common.hpp"
+#include "../../../include/encoding/idna/types.hpp"
 
 /**
  * Для операционной системы MS Windows

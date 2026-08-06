@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
-#include <unicode/unicode.hpp>
+#include <encoding/unicode/unicode.hpp>
 #include <regex/parser.hpp>
 #include <regex/compiler.hpp>
 #include <regex/backtrack.hpp>

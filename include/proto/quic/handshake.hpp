@@ -36,7 +36,7 @@
 #include "params.hpp"
 #include "../../sys/log.hpp"
 #include "../../sys/global.hpp"
-#include "../../net/tls/coder.hpp"
+#include "../../cryptography/tls/coder.hpp"
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты

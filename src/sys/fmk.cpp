@@ -50,7 +50,7 @@
 /**
  * Заголовочный файл для работы с быстрыми числами с плавающей точкой
  */
-#include <lexical/lexical.hpp>
+#include <num/lexical/lexical.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -58,9 +58,9 @@
 #include <sys/global.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <sys/ascii.hpp>
-#include <charset/charset.hpp>
-#include <unicode/utf8.hpp>
+#include <encoding/ascii.hpp>
+#include <encoding/charset/charset.hpp>
+#include <encoding/unicode/utf8.hpp>
 
 /**
  * Используем стандартное пространство имён

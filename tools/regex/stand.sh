@@ -28,7 +28,7 @@ HOST_CXX="${CXX:-c++}"
 if command -v "$HOST_CXX" >/dev/null 2>&1 ; then
 	HOST_DIR=$(mktemp -d -t awh-regex-host)
 	if "$HOST_CXX" -std=c++17 -O2 -I"$ROOT/include" -I"$ROOT/tools/regex" \
-		"$ROOT/tools/regex/conformance.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/unicode/*.cpp \
+		"$ROOT/tools/regex/conformance.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/encoding/unicode/*.cpp \
 		-o "$HOST_DIR/conformance" 2>"$HOST_DIR/compile.log" ; then
 		if "$HOST_DIR/conformance" "--write=$HOST_DIR/record.bin" >/dev/null 2>&1 ; then
 			RECORD="$HOST_DIR/record.bin"
@@ -46,16 +46,16 @@ echo "Собираем набор исходных текстов модуля"
 if [ -n "$RECORD" ] ; then
 	cp "$RECORD" "$ROOT/tools/regex/record.bin"
 	tar czf "$BUNDLE" -C "$ROOT" \
-		include/regex include/unicode include/compressor/types.hpp \
-		include/sys/ascii.hpp include/sys/global.hpp \
-		src/regex src/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
+		include/regex include/encoding/unicode include/compressor/types.hpp \
+		include/encoding/ascii.hpp include/sys/global.hpp \
+		src/regex src/encoding/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
 		tools/regex/record.bin
 	rm -f "$ROOT/tools/regex/record.bin"
 else
 	tar czf "$BUNDLE" -C "$ROOT" \
-		include/regex include/unicode include/compressor/types.hpp \
-		include/sys/ascii.hpp include/sys/global.hpp \
-		src/regex src/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp
+		include/regex include/encoding/unicode include/compressor/types.hpp \
+		include/encoding/ascii.hpp include/sys/global.hpp \
+		src/regex src/encoding/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp
 fi
 
 echo "Раскладываем набор на стенд $TARGET"
@@ -86,7 +86,7 @@ ssh -p "$PORT" "$TARGET" '
 	"$CXX" --version | head -1
 	for STD in c++2b c++20 c++17 ; do
 		if "$CXX" -std=$STD -O2 -Iinclude -Itools/regex \
-			tools/regex/conformance.cpp src/regex/*.cpp src/unicode/*.cpp -o conformance 2>compile.log ; then
+			tools/regex/conformance.cpp src/regex/*.cpp src/encoding/unicode/*.cpp -o conformance 2>compile.log ; then
 			echo "Собрано в режиме -std=$STD"
 			break
 		fi

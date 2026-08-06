@@ -33,6 +33,16 @@
 #include <openssl/nid.h>
 
 /**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 */
+	#include <sys/win32.hpp>
+#endif
+
+/**
  * Подключаем заголовочный файлы проекта
  */
 #include "quic.hpp"
@@ -179,12 +189,43 @@ namespace {
 	 *
 	 * @return путь к временному каталогу
 	 *
+	 * @note У MS Windows путь берётся у самой системы, а не из окружения. Оболочка MSYS2
+	 *       выставляет там TEMP и TMP по правилам POSIX (значением "/tmp"), но собранный
+	 *       под MinGW двоичный файл - родной для Windows, и такой путь ему непонятен:
+	 *       он раскрывается в "C:\\tmp", какого на машине нет вовсе
+	 *
 	 */
 	static std::string directory() noexcept {
-		// Получаем путь к временному каталогу из окружения
-		const char * result = ::getenv("TMPDIR");
-		// Выводим путь к временному каталогу
-		return ((result != nullptr) ? std::string(result) : std::string("/tmp"));
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if _WIN32 || _WIN64
+			// Буфер под путь к временному каталогу
+			char buffer[MAX_PATH + 1]{0};
+			// Получаем путь к временному каталогу у системы
+			const DWORD size = ::GetTempPathA(static_cast <DWORD> (sizeof(buffer)), buffer);
+			// Если путь к временному каталогу получен
+			if((size > 0) && (size <= MAX_PATH)){
+				// Формируем путь к временному каталогу
+				std::string result(buffer, static_cast <size_t> (size));
+				// Удаляем завершающий разделитель, добавляемый системой
+				while(!result.empty() && ((result.back() == '\\') || (result.back() == '/')))
+					// Удаляем завершающий разделитель
+					result.pop_back();
+				// Выводим путь к временному каталогу
+				return result;
+			}
+			// Выводим запасной путь к временному каталогу
+			return std::string(".");
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			// Получаем путь к временному каталогу из окружения
+			const char * result = ::getenv("TMPDIR");
+			// Выводим путь к временному каталогу
+			return ((result != nullptr) ? std::string(result) : std::string("/tmp"));
+		#endif
 	}
 	/**
 	 * @brief Функция записи данных во временный файл

@@ -35,7 +35,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <grok/table.hpp>
+#include <regex/grok/table.hpp>
 #include <regex/regex.hpp>
 #include <regex/storage.hpp>
 

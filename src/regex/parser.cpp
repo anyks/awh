@@ -26,8 +26,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <regex/parser.hpp>
-#include <unicode/unicode.hpp>
-#include <sys/ascii.hpp>
+#include <encoding/unicode/unicode.hpp>
+#include <encoding/ascii.hpp>
 
 /**
  * Используем стандартное пространство имён

@@ -24,7 +24,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/ascii.hpp>
+#include <encoding/ascii.hpp>
 #include <codec/xml/encoding.hpp>
 
 /**

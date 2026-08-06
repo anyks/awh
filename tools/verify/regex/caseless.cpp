@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <regex/engine.hpp>
-#include <unicode/unicode.hpp>
+#include <encoding/unicode/unicode.hpp>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 using namespace std; using namespace awh;

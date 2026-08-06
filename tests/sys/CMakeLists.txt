@@ -71,18 +71,12 @@ if(${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_FMK_TEST "Build unit FMK test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с логированием
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_LOG_TEST "Build unit LOG test for ${UNIT_TEST_NAME}" ON)
-        # Указываем что нужно собрать тесты для работы с очередями
-        option(CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST "Build unit QUEUE test for ${UNIT_TEST_NAME}" ON)
-        # Указываем что нужно собрать тесты для работы с буферами
-        option(CMAKE_BUILD_${UNIT_TEST_NAME}_BUFFER_TEST "Build unit BUFFER test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с датой и временем
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_CHRONO_TEST "Build unit CHRONO test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с холдером (блокировкой) доступа к методам и функциям
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HOLDER_TEST "Build unit HOLDER test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с версионированием
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_VERSION_TEST "Build unit VERSION test for ${UNIT_TEST_NAME}" ON)
-        # Указываем что нужно собрать тесты для работы с криптографией
-        option(CMAKE_BUILD_${UNIT_TEST_NAME}_CRYPTO_TEST "Build unit CRYPTO test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с компрессором
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_COMPRESSOR_TEST "Build unit COMPRESSOR test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с пуллам потоков
@@ -95,10 +89,6 @@ if(${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_PROCRE_TEST "Build unit PROCRE test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с сигналами
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_SIGNALS_TEST "Build unit SIGNALS test for ${UNIT_TEST_NAME}" ON)
-        # Указываем что нужно собрать тесты для работы с длинными числами
-        option(CMAKE_BUILD_${UNIT_TEST_NAME}_BIGNUM_TEST "Build unit BIGNUM test for ${UNIT_TEST_NAME}" ON)
-        # Указываем что нужно собрать тесты для работы с хэшированием
-        option(CMAKE_BUILD_${UNIT_TEST_NAME}_HASH_TEST "Build unit HASH test for ${UNIT_TEST_NAME}" ON)
 
         # Если нужно собрать тесты для работы с ОС
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_OS_TEST})
@@ -162,38 +152,6 @@ if(${GTest_FOUND})
             message(STATUS "Build tests LOG module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_LOG_TEST})
 
-        # Если нужно собрать тесты для работы с очередями
-        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST})
-            # Выводим сообщение о сборке тестов для модуля работы с очередями
-            message(STATUS "Build tests QUEUE module: Yes\n")
-            # Дополняем список источников тестами для модуля работы с очередями
-            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
-                queue/queue.cpp
-                queue/static.cpp
-                queue/parameterized.cpp
-            )
-        # Если не нужно собрать тесты для работы с очередями
-        else()
-            # Выводим сообщение о сборке тестов для модуля работы с очередями
-            message(STATUS "Build tests QUEUE module: No\n")
-        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUEUE_TEST})
-
-        # Если нужно собрать тесты для работы с буферами
-        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_BUFFER_TEST})
-            # Выводим сообщение о сборке тестов для модуля работы с буферами
-            message(STATUS "Build tests BUFFER module: Yes\n")
-            # Дополняем список источников тестами для модуля работы с буферами
-            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
-                buffer/buffer.cpp
-                buffer/static.cpp
-                buffer/parameterized.cpp
-            )
-        # Если не нужно собрать тесты для работы с буферами
-        else()
-            # Выводим сообщение о сборке тестов для модуля работы с буферами
-            message(STATUS "Build tests BUFFER module: No\n")
-        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_BUFFER_TEST})
-
         # Если нужно собрать тесты для работы с датой и временем
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_CHRONO_TEST})
             # Выводим сообщение о сборке тестов для модуля работы с датой и временем
@@ -252,22 +210,6 @@ if(${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с версионированием
             message(STATUS "Build tests VERSION module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_VERSION_TEST})
-
-        # Если нужно собрать тесты для работы с криптографией
-        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_CRYPTO_TEST})
-            # Выводим сообщение о сборке тестов для модуля работы с криптографией
-            message(STATUS "Build tests CRYPTO module: Yes\n")
-            # Дополняем список источников тестами для модуля работы с криптографией
-            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
-                crypto/crypto.cpp
-                crypto/static.cpp
-                crypto/parameterized.cpp
-            )
-        # Если не нужно собрать тесты для работы с криптографией
-        else()
-            # Выводим сообщение о сборке тестов для модуля работы с криптографией
-            message(STATUS "Build tests CRYPTO module: No\n")
-        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_CRYPTO_TEST})
 
         # Если нужно собрать тесты для работы с компрессором
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_COMPRESSOR_TEST})
@@ -366,46 +308,6 @@ if(${GTest_FOUND})
             message(STATUS "Build tests SIGNALS module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_SIGNALS_TEST})
 
-        # Если нужно собрать тесты для работы с длинными числами
-        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_BIGNUM_TEST})
-            # Выводим сообщение о сборке тестов для модуля работы с длинными числами
-            message(STATUS "Build tests BIGNUM module: Yes\n")
-            # Дополняем список источников тестами для модуля работы с длинными числами
-            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
-                bignum/bignum.cpp
-                bignum/static.cpp
-                bignum/real.cpp
-                bignum/strings.cpp
-                bignum/rounding.cpp
-                bignum/stress.cpp
-                bignum/parameterized.cpp
-            )
-        # Если не нужно собрать тесты для работы с длинными числами
-        else()
-            # Выводим сообщение о сборке тестов для модуля работы с длинными числами
-            message(STATUS "Build tests BIGNUM module: No\n")
-        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_BIGNUM_TEST})
-
-        # Если нужно собрать тесты для работы с хэшированием
-        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HASH_TEST})
-            # Выводим сообщение о сборке тестов для модуля работы с хэшированием
-            message(STATUS "Build tests HASH module: Yes\n")
-            # Дополняем список источников тестами для модуля работы с хэшированием
-            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
-                hash/hash.cpp
-                hash/static.cpp
-                hash/engine.cpp
-                hash/bignum.cpp
-                hash/crypto.cpp
-                hash/stress.cpp
-                hash/parameterized.cpp
-            )
-        # Если не нужно собрать тесты для работы с хэшированием
-        else()
-            # Выводим сообщение о сборке тестов для модуля работы с хэшированием
-            message(STATUS "Build tests HASH module: No\n")
-        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HASH_TEST})
-
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS
             GTest::gtest
@@ -422,7 +324,7 @@ if(${GTest_FOUND})
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
             # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
             # Устанавливаем необходимые зависимости для MS Windows
-            SET(AWH_FLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+            SET(AWH_FLAGS -lstdc++ -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lsynchronization -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
 
             # Устанавливаем иконку для windows под MinGW.
             SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)

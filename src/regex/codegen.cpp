@@ -29,7 +29,7 @@
  */
 #include <regex/text.hpp>
 #include <regex/codegen.hpp>
-#include <unicode/unicode.hpp>
+#include <encoding/unicode/unicode.hpp>
 
 /**
  * Используем стандартное пространство имён

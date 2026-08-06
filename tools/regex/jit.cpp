@@ -17,7 +17,7 @@
  *          текстов модуля, поэтому годна всякой машине, включая ту, где ничего
  *          не установлено:
  *          @code
- *          c++ -std=c++17 -O2 -Iinclude -o jit tools/regex/jit.cpp src/regex/*.cpp src/unicode/*.cpp
+ *          c++ -std=c++17 -O2 -Iinclude -o jit tools/regex/jit.cpp src/regex/*.cpp src/encoding/unicode/*.cpp
  *          ./jit
  *          @endcode
  *

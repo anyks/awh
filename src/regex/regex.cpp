@@ -22,7 +22,7 @@
  */
 #include <regex/regex.hpp>
 #include <regex/text.hpp>
-#include <unicode/utf8.hpp>
+#include <encoding/unicode/utf8.hpp>
 
 /**
  * Используем стандартное пространство имён

@@ -37,8 +37,9 @@ set_target_properties(
 target_compile_options(awh_BENCHMARK_syscount PRIVATE -O2 -Wall -Wextra -fvisibility=hidden)
 
 add_subdirectory(sys)
+add_subdirectory(cryptography)
 add_subdirectory(net)
 add_subdirectory(proto)
-add_subdirectory(lexical)
+add_subdirectory(num)
 add_subdirectory(codec)
 add_subdirectory(regex)

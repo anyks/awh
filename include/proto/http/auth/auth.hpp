@@ -40,7 +40,7 @@
  */
 #include "../../../sys/fmk.hpp"
 #include "../../../sys/log.hpp"
-#include "../../../sys/crypto.hpp"
+#include "../../../cryptography/crypto.hpp"
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты

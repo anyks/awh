@@ -1,0 +1,89 @@
+/**
+ * @file: table.hpp
+ * @date: 2026-08-03
+ * @license: LicenseRef-AWH-1.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @brief Заголовочный файл таблиц базы данных символов Юникода — объявления таблиц
+ *        общих категорий, письменностей, их расширений, двоичных свойств, классов
+ *        двунаправленности, приведения регистра, графемных кластеров и сочетаний
+ *
+ * @copyright: Copyright © 2026
+ *
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#ifndef __AWH_UNICODE_TABLE__
+#define __AWH_UNICODE_TABLE__
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <cstdint>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include "types.hpp"
+
+/**
+ * @brief Основное пространство имён
+ *
+ */
+namespace awh {
+	/**
+	 * Используем стандартное пространство имён
+	 */
+	using namespace std;
+
+	/**
+	 * @brief Пространство имён модуля Юникода
+	 *
+	 */
+	namespace unicode {
+		/**
+		 * Таблицы свойств Юникода, порождаемые средством «tools/encoding/unicode/generate.py»
+		 */
+		extern __AWH_SHARED_EXPORT__ const interval_t CATEGORIES[];
+		extern __AWH_SHARED_EXPORT__ const size_t CATEGORIES_COUNT;
+		extern __AWH_SHARED_EXPORT__ const interval_t SCRIPTS[];
+		extern __AWH_SHARED_EXPORT__ const size_t SCRIPTS_COUNT;
+		extern __AWH_SHARED_EXPORT__ const interval_t EXTENSIONS[];
+		extern __AWH_SHARED_EXPORT__ const size_t EXTENSIONS_COUNT;
+		extern __AWH_SHARED_EXPORT__ const interval_t BIDIRECTIONAL[];
+		extern __AWH_SHARED_EXPORT__ const size_t BIDIRECTIONAL_COUNT;
+		extern __AWH_SHARED_EXPORT__ const interval_t BINARIES[];
+		extern __AWH_SHARED_EXPORT__ const size_t BINARIES_COUNT;
+		extern __AWH_SHARED_EXPORT__ const uint16_t EXTENSION_SETS[];
+		extern __AWH_SHARED_EXPORT__ const uint32_t EXTENSION_OFFSETS[];
+		extern __AWH_SHARED_EXPORT__ const uint32_t BINARY_SPANS[];
+		extern __AWH_SHARED_EXPORT__ const size_t BINARY_COUNT;
+		extern __AWH_SHARED_EXPORT__ const naming_t NAMES[];
+		extern __AWH_SHARED_EXPORT__ const size_t NAMES_COUNT;
+		extern __AWH_SHARED_EXPORT__ const folding_t FOLDING[];
+		extern __AWH_SHARED_EXPORT__ const size_t FOLDING_COUNT;
+		extern __AWH_SHARED_EXPORT__ const interval_t ORBITS[];
+		extern __AWH_SHARED_EXPORT__ const size_t ORBITS_COUNT;
+		extern __AWH_SHARED_EXPORT__ const uint32_t ORBIT_SETS[];
+		extern __AWH_SHARED_EXPORT__ const interval_t CLUSTERS[];
+		extern __AWH_SHARED_EXPORT__ const size_t CLUSTERS_COUNT;
+		extern __AWH_SHARED_EXPORT__ const interval_t INDIC[];
+		extern __AWH_SHARED_EXPORT__ const size_t INDIC_COUNT;
+		extern __AWH_SHARED_EXPORT__ const interval_t COMBINING[];
+		extern __AWH_SHARED_EXPORT__ const size_t COMBINING_COUNT;
+		extern __AWH_SHARED_EXPORT__ const decomposition_t DECOMPOSITIONS[];
+		extern __AWH_SHARED_EXPORT__ const size_t DECOMPOSITIONS_COUNT;
+		extern __AWH_SHARED_EXPORT__ const uint32_t DECOMPOSITION_SETS[];
+		extern __AWH_SHARED_EXPORT__ const composition_t COMPOSITIONS[];
+		extern __AWH_SHARED_EXPORT__ const size_t COMPOSITIONS_COUNT;
+	};
+};
+
+#endif // __AWH_UNICODE_TABLE__

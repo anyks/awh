@@ -89,7 +89,7 @@ if (${GTest_FOUND})
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
             # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
             # Устанавливаем необходимые зависимости для MS Windows
-            SET(AWH_FLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+            SET(AWH_FLAGS -lstdc++ -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lsynchronization -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
 
             # Устанавливаем иконку для windows под MinGW.
             SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)

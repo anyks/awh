@@ -32,7 +32,7 @@
  */
 #include "quic.hpp"
 #include "../../../include/proto/quic/params.hpp"
-#include "../../../include/net/tls/coder.hpp"
+#include "../../../include/cryptography/tls/coder.hpp"
 #include "../../../include/proto/quic/frame.hpp"
 #include "../../../include/proto/quic/packet.hpp"
 #include "../../../include/proto/quic/crypto.hpp"

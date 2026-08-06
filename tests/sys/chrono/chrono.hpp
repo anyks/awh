@@ -26,6 +26,11 @@
 #include <memory>
 
 /**
+ * Подключаем восполнение средств POSIX, отсутствующих у MS Windows
+ */
+#include "../../posix.hpp"
+
+/**
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
@@ -97,7 +102,7 @@ class ChronoFixture : public testing::Test {
 		// Признак наличия временной зоны в окружении до начала теста
 		bool _restore;
 		// Временная зона окружения, действовавшая до начала теста
-		std::string _timezone;
+		std::string _zone;
 	protected:
 		// Объекты фреймворка
 		std::unique_ptr <awh::fmk_t> _fmk;

@@ -40,7 +40,7 @@
 #include "frame.hpp"
 #include "crypto.hpp"
 #include "handshake.hpp"
-#include "../../net/tls/coder.hpp"
+#include "../../cryptography/tls/coder.hpp"
 
 /**
  * @brief основное пространство имён

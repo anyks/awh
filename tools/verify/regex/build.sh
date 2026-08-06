@@ -83,7 +83,7 @@ for STAND in $PLAIN; do
 	# Выполняем сборку стенда сверки
 	g++ $FLAGS \
 		-I"$ROOT/include" -I"$ROOT/tests" -I"$ORACLE/include" \
-		"$STANDS/$STAND.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/unicode/*.cpp \
+		"$STANDS/$STAND.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/encoding/unicode/*.cpp \
 		-o "$OUTPUT/$STAND" \
 		-L"$ORACLE/lib" -lpcre2-8 || exit 1
 done
@@ -95,7 +95,7 @@ for STAND in $SUITE; do
 	# Выполняем сборку стенда сверки
 	g++ $FLAGS \
 		-I"$ROOT/include" -I"$ROOT/tests" -I"$ORACLE/include" -I"$GTEST/include" \
-		"$STANDS/$STAND.cpp" "$ROOT/tests/main.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/unicode/*.cpp \
+		"$STANDS/$STAND.cpp" "$ROOT/tests/main.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/encoding/unicode/*.cpp \
 		-o "$OUTPUT/$STAND" \
 		-L"$ORACLE/lib" -L"$GTEST/lib" -lpcre2-8 -lgtest -lgmock || exit 1
 done

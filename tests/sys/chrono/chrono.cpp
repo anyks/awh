@@ -27,19 +27,20 @@
  */
 #include "chrono.hpp"
 
+
 /**
  * @brief Метод настройки тестовой фикстуры
  *
  */
 void ChronoFixture::SetUp(){
 	// Получаем временную зону, установленную в окружении
-	const char * timezone = ::getenv("TZ");
+	const char * zone = ::getenv("TZ");
 	// Запоминаем признак наличия временной зоны в окружении
-	this->_restore = (timezone != nullptr);
+	this->_restore = (zone != nullptr);
 	// Если временная зона в окружении установлена
 	if(this->_restore)
 		// Запоминаем временную зону окружения
-		this->_timezone.assign(timezone);
+		this->_zone.assign(zone);
 	/**
 	 * Закрепляем временную зону процесса на UTC: методы модуля берут смещение зоны
 	 * из окружения всюду, где формат его не задаёт, и без закрепления ожидаемые
@@ -64,7 +65,7 @@ void ChronoFixture::TearDown(){
 	// Если временная зона в окружении была установлена до начала теста
 	if(this->_restore)
 		// Восстанавливаем временную зону окружения
-		::setenv("TZ", this->_timezone.c_str(), 1);
+		::setenv("TZ", this->_zone.c_str(), 1);
 	// Если временной зоны в окружении не было
 	else ::unsetenv("TZ");
 	// Применяем восстановленную временную зону

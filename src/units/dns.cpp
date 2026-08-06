@@ -59,9 +59,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/ascii.hpp>
+#include <encoding/ascii.hpp>
 #include <units/dns.hpp>
-#include <idna/idna.hpp>
+#include <encoding/idna/idna.hpp>
 
 /**
  * Используем стандартное пространство имён

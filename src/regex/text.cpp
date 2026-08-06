@@ -21,7 +21,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <regex/text.hpp>
-#include <unicode/unicode.hpp>
+#include <encoding/unicode/unicode.hpp>
 
 /**
  * Используем стандартное пространство имён

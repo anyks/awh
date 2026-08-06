@@ -45,7 +45,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <grok/table.hpp>
+#include <regex/grok/table.hpp>
 #include <regex/regex.hpp>
 #include <regex/storage.hpp>
 #include <compressor/block.hpp>

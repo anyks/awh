@@ -40,7 +40,7 @@
 #include "fmk.hpp"
 #include "log.hpp"
 #include "locker.hpp"
-#include "crypto.hpp"
+#include "../cryptography/crypto.hpp"
 
 /**
  * @brief Основное пространство имён

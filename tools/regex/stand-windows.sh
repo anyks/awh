@@ -39,7 +39,7 @@ HOST_CXX="${CXX:-c++}"
 if command -v "$HOST_CXX" >/dev/null 2>&1 ; then
 	HOST_DIR=$(mktemp -d -t awh-regex-host)
 	if "$HOST_CXX" -std=c++17 -O2 -I"$ROOT/include" -I"$ROOT/tools/regex" \
-		"$ROOT/tools/regex/conformance.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/unicode/*.cpp \
+		"$ROOT/tools/regex/conformance.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/encoding/unicode/*.cpp \
 		-o "$HOST_DIR/conformance" 2>"$HOST_DIR/compile.log" ; then
 		if "$HOST_DIR/conformance" "--write=$HOST_DIR/record.bin" >/dev/null 2>&1 ; then
 			RECORD="$HOST_DIR/record.bin"
@@ -73,8 +73,8 @@ fi
 # Передача ведётся через ввод tar, а не средством scp: подсистема sftp на
 # стенде отключена, и scp обрывает связь
 tar czf - -C "$ROOT" \
-	include/regex include/unicode include/compressor/types.hpp include/sys/ascii.hpp include/sys/global.hpp \
-	src/regex src/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
+	include/regex include/encoding/unicode include/compressor/types.hpp include/encoding/ascii.hpp include/sys/global.hpp \
+	src/regex src/encoding/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
 	tools/regex/stand.bat $EXTRA \
 	| ssh -p "$PORT" "$TARGET" "
 		cmd.exe //c \"rmdir /s /q %USERPROFILE%\\\\$REMOTE 2>nul & mkdir %USERPROFILE%\\\\$REMOTE\" > /dev/null 2>&1

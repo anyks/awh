@@ -20,11 +20,37 @@
  * Подключаем системные заголовочные файлы
  */
 #include <cstring>
-#include <unistd.h>
-#include <arpa/inet.h>
+/**
+ * Для операционной системы MS Windows
+ *
+ * @note Заголовки эти принадлежат POSIX и у MS Windows отсутствуют:
+ *       соответствующие им объявления приходят там из winsock2.h,
+ *       подключаемого через единую точку sys/win32.hpp
+ *
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 */
+	#include <sys/win32.hpp>
+/**
+ * Для всех остальных операционных систем
+ */
+#else
+	/**
+	 * Системные заголовочные файлы
+	 */
+	#include <unistd.h>
+	#include <arpa/inet.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+#endif
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+
+/**
+ * Подключаем восполнение средств POSIX, отсутствующих у MS Windows
+ */
+#include "../../posix.hpp"
 
 /**
  * Подключаем заголовочный файлы проекта

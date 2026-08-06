@@ -37,7 +37,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/ascii.hpp>
+#include <encoding/ascii.hpp>
 #include <proto/http/auth/digest.hpp>
 
 /**

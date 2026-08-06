@@ -36,6 +36,11 @@
 #include <vector>
 
 /**
+ * Подключаем восполнение средств POSIX, отсутствующих у MS Windows
+ */
+#include "../../posix.hpp"
+
+/**
  * Подключаем заголовочный файл проекта
  */
 #include "chrono.hpp"

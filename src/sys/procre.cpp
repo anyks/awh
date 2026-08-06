@@ -147,7 +147,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <sys/ascii.hpp>
+#include <encoding/ascii.hpp>
 #include <sys/procre.hpp>
 
 /**

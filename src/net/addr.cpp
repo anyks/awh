@@ -81,7 +81,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <net/addr.hpp>
-#include <sys/ascii.hpp>
+#include <encoding/ascii.hpp>
 
 /**
  * Системные заголовочные файлы для перевода зоны адреса IPv6

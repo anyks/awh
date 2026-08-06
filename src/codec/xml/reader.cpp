@@ -26,8 +26,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/ascii.hpp>
-#include <lexical/api.hpp>
+#include <encoding/ascii.hpp>
+#include <num/lexical/api.hpp>
 #include <codec/xml/reader.hpp>
 
 /**

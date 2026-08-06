@@ -636,27 +636,25 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/fs.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/queue.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/procre.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/binbox.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/bignum.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/hash.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/version.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"
-    "${CMAKE_SOURCE_DIR}/src/lexical/table.cpp"
-    "${CMAKE_SOURCE_DIR}/src/unicode/utf8.cpp"
-    "${CMAKE_SOURCE_DIR}/src/charset/table.cpp"
-    "${CMAKE_SOURCE_DIR}/src/charset/charset.cpp"
-    "${CMAKE_SOURCE_DIR}/src/unicode/table.cpp"
-    "${CMAKE_SOURCE_DIR}/src/unicode/unicode.cpp"
-    "${CMAKE_SOURCE_DIR}/src/unicode/normalize.cpp"
-    "${CMAKE_SOURCE_DIR}/src/idna/table.cpp"
-    "${CMAKE_SOURCE_DIR}/src/idna/punycode.cpp"
-    "${CMAKE_SOURCE_DIR}/src/idna/context.cpp"
-    "${CMAKE_SOURCE_DIR}/src/idna/idna.cpp"
+    "${CMAKE_SOURCE_DIR}/src/container/queue.cpp"
+    "${CMAKE_SOURCE_DIR}/src/container/buffer.cpp"
+    "${CMAKE_SOURCE_DIR}/src/container/binbox.cpp"
+    "${CMAKE_SOURCE_DIR}/src/num/bignum.cpp"
+    "${CMAKE_SOURCE_DIR}/src/num/lexical/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/unicode/utf8.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/charset/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/charset/charset.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/unicode/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/unicode/unicode.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/unicode/normalize.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/idna/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/idna/punycode.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/idna/context.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/idna/idna.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/text.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/parser.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/compiler.cpp"
@@ -670,8 +668,8 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/regex/engine.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/regex.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/storage.cpp"
-    "${CMAKE_SOURCE_DIR}/src/grok/table.cpp"
-    "${CMAKE_SOURCE_DIR}/src/grok/grok.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/grok/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/grok/grok.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/xml/common.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/xml/encoding.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/xml/reader.cpp"
@@ -683,8 +681,10 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/addr.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/queue.cpp"
-    "${CMAKE_SOURCE_DIR}/src/net/tls/coder.cpp"
-    "${CMAKE_SOURCE_DIR}/src/net/tls/fingerprint.cpp"
+    "${CMAKE_SOURCE_DIR}/src/cryptography/hash.cpp"
+    "${CMAKE_SOURCE_DIR}/src/cryptography/crypto.cpp"
+    "${CMAKE_SOURCE_DIR}/src/cryptography/tls/coder.cpp"
+    "${CMAKE_SOURCE_DIR}/src/cryptography/tls/fingerprint.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/fs.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/dns.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/ntp.cpp"
@@ -956,9 +956,9 @@ if (${CMAKE_BUILD_SAMPLES})
     option(CMAKE_BUILD_DATE_SYS_APP_SAMPLE "Build Date app sample" ON)
 
     # Устанавливаем имя приложения работы с бинарным контейнером
-    SET(BINBOX_APP_SYS_NAME sys-binbox)
+    SET(BINBOX_APP_CONTAINER_NAME container-binbox)
     # Указываем что нужно собрать приложение работы с бинарным контейнером
-    option(CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE "Build BinBox app sample" ON)
+    option(CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE "Build BinBox app sample" ON)
 
     # Устанавливаем имя приложения работы с файловой системой
     SET(FILESYSTEM_APP_SYS_NAME sys-filesystem)
@@ -971,14 +971,14 @@ if (${CMAKE_BUILD_SAMPLES})
     option(CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE "Build Process Resolver app sample" ON)
 
     # Устанавливаем имя приложения работы с шифрованием и хэшированием
-    SET(CRYPTO_APP_SYS_NAME sys-crypto)
+    SET(CRYPTO_APP_CRYPTOGRAPHY_NAME cryptography-crypto)
     # Указываем что нужно собрать приложение работы с шифрованием и хэшированием
-    option(CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE "Build Crypto app sample" ON)
+    option(CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE "Build Crypto app sample" ON)
 
     # Устанавливаем имя приложения работы с хэшированием данных
-    SET(HASH_APP_SYS_NAME sys-hash)
+    SET(HASH_APP_CRYPTOGRAPHY_NAME cryptography-hash)
     # Указываем что нужно собрать приложение работы с хэшированием данных
-    option(CMAKE_BUILD_HASH_SYS_APP_SAMPLE "Build Hash app sample" ON)
+    option(CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE "Build Hash app sample" ON)
 
     # Устанавливаем имя приложения работы с HTTP-авторизацией
     SET(AUTH_APP_PROTO_NAME proto-auth)
@@ -1194,11 +1194,12 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
      #   Iphlpapi - сведения о сетевых устройствах и перевод названия устройства в номер
      #   psapi    - сведения о памяти процесса, нужны модулям os и procre
      #   dbghelp  - разбор стека вызовов в отладочной сборке взамен execinfo
+     #   synchronization - ожидание по адресу (WaitOnAddress), нужно аллокатору TcMalloc
      #   crypt32  - хранилище сертификатов системы
      #   bcrypt   - источник случайных чисел системы
      #   gdi32    - требуется зависимостями, самой библиотекой графика не используется
      ##
-    SET(AWH_FLAGS -lstdc++ -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
+    SET(AWH_FLAGS -lstdc++ -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lsynchronization -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
 
     # Устанавливаем иконку для windows под MinGW.
     SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)
@@ -1480,16 +1481,16 @@ if (${CMAKE_BUILD_SAMPLES})
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с бинарным контейнером
-    if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+    if (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample BinBox: Yes\n")
         # Выполняем создание приложения работы с бинарным контейнером
-        add_sample(${BINBOX_APP_SYS_NAME} sample/sys/binbox.cpp sys)
+        add_sample(${BINBOX_APP_CONTAINER_NAME} sample/container/binbox.cpp container)
     # Если не нужно собирать семплы для работы с бинарным контейнером
     else()
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample BinBox: No\n")
-    endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+    endif (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с файловой системой
     if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -1516,28 +1517,28 @@ if (${CMAKE_BUILD_SAMPLES})
     endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с шифрованием и хэшированием
-    if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+    if (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample Crypto: Yes\n")
         # Выполняем создание приложения работы с шифрованием и хэшированием
-        add_sample(${CRYPTO_APP_SYS_NAME} sample/sys/crypto.cpp sys)
+        add_sample(${CRYPTO_APP_CRYPTOGRAPHY_NAME} sample/cryptography/crypto.cpp cryptography)
     # Если не нужно собирать семплы для работы с шифрованием и хэшированием
     else()
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample Crypto: No\n")
-    endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+    endif (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с хэшированием данных
-    if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+    if (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample Hash: Yes\n")
         # Выполняем создание приложения работы с хэшированием данных
-        add_sample(${HASH_APP_SYS_NAME} sample/sys/hash.cpp sys)
+        add_sample(${HASH_APP_CRYPTOGRAPHY_NAME} sample/cryptography/hash.cpp cryptography)
     # Если не нужно собирать семплы для работы с хэшированием данных
     else()
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample Hash: No\n")
-    endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+    endif (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с HTTP-авторизацией
     if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
@@ -2369,15 +2370,15 @@ if (CMAKE_SHARED_BUILD_LIB)
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с бинарным контейнером
-        if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+        if (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
             # Выполняем сборку приложения работы с бинарным контейнером
             target_link_libraries(
-                ${BINBOX_APP_SYS_NAME}
+                ${BINBOX_APP_CONTAINER_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
-        endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+        endif (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с файловой системой
         if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -2402,26 +2403,26 @@ if (CMAKE_SHARED_BUILD_LIB)
         endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с шифрованием и хэшированием
-        if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+        if (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
             # Выполняем сборку приложения шифрования и хэширования
             target_link_libraries(
-                ${CRYPTO_APP_SYS_NAME}
+                ${CRYPTO_APP_CRYPTOGRAPHY_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
-        endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+        endif (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с хэшированием данных
-        if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+        if (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
             # Выполняем сборку приложения хэширования данных
             target_link_libraries(
-                ${HASH_APP_SYS_NAME}
+                ${HASH_APP_CRYPTOGRAPHY_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
-        endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+        endif (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с HTTP-авторизацией
         if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
@@ -3417,16 +3418,16 @@ else (CMAKE_SHARED_BUILD_LIB)
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с бинарным контейнером
-        if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+        if (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
             # Выполняем сборку приложения работы с бинарным контейнером
             target_link_libraries(
-                ${BINBOX_APP_SYS_NAME}
+                ${BINBOX_APP_CONTAINER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
-        endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+        endif (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с файловой системой
         if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -3453,28 +3454,28 @@ else (CMAKE_SHARED_BUILD_LIB)
         endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с шифрованием и хэшированием
-        if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+        if (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
             # Выполняем сборку приложения шифрования и хэширования
             target_link_libraries(
-                ${CRYPTO_APP_SYS_NAME}
+                ${CRYPTO_APP_CRYPTOGRAPHY_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
-        endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+        endif (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с хэшированием данных
-        if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+        if (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
             # Выполняем сборку приложения хэширования данных
             target_link_libraries(
-                ${HASH_APP_SYS_NAME}
+                ${HASH_APP_CRYPTOGRAPHY_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
-        endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+        endif (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с HTTP-авторизацией
         if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
@@ -4442,14 +4443,14 @@ if (${CMAKE_BUILD_SAMPLES})
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с бинарным контейнером
-            if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+            if (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
                 # Выполняем сборку приложения работы с бинарным контейнером
-                add_custom_command(TARGET "${BINBOX_APP_SYS_NAME}" POST_BUILD
-                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${BINBOX_APP_SYS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${BINBOX_APP_SYS_NAME}\" to enable core dump on macOS"
+                add_custom_command(TARGET "${BINBOX_APP_CONTAINER_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${BINBOX_APP_CONTAINER_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${BINBOX_APP_CONTAINER_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
-            endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+            endif (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с файловой системой
             if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -4472,24 +4473,24 @@ if (${CMAKE_BUILD_SAMPLES})
             endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с шифрованием и хэшированием
-            if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+            if (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
                 # Выполняем сборку приложения шифрования и хэширования
-                add_custom_command(TARGET "${CRYPTO_APP_SYS_NAME}" POST_BUILD
-                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CRYPTO_APP_SYS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CRYPTO_APP_SYS_NAME}\" to enable core dump on macOS"
+                add_custom_command(TARGET "${CRYPTO_APP_CRYPTOGRAPHY_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CRYPTO_APP_CRYPTOGRAPHY_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CRYPTO_APP_CRYPTOGRAPHY_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
-            endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+            endif (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с хэшированием данных
-            if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+            if (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
                 # Выполняем сборку приложения хэширования данных
-                add_custom_command(TARGET "${HASH_APP_SYS_NAME}" POST_BUILD
-                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${HASH_APP_SYS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${HASH_APP_SYS_NAME}\" to enable core dump on macOS"
+                add_custom_command(TARGET "${HASH_APP_CRYPTOGRAPHY_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${HASH_APP_CRYPTOGRAPHY_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${HASH_APP_CRYPTOGRAPHY_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
-            endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+            endif (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с HTTP-авторизацией
             if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
@@ -5036,10 +5037,10 @@ if (${CMAKE_BUILD_SAMPLES})
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с бинарным контейнером
-            if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+            if (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
                 # Выполняем анализ приложения работы с бинарным контейнером
-                pvs_studio_add_target(TARGET ${BINBOX_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${BINBOX_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-            endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+                pvs_studio_add_target(TARGET ${BINBOX_APP_CONTAINER_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${BINBOX_APP_CONTAINER_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с файловой системой
             if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -5054,16 +5055,16 @@ if (${CMAKE_BUILD_SAMPLES})
             endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с шифрованием и хэшированием
-            if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+            if (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
                 # Выполняем анализ приложения даты и времени
-                pvs_studio_add_target(TARGET ${CRYPTO_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CRYPTO_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-            endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+                pvs_studio_add_target(TARGET ${CRYPTO_APP_CRYPTOGRAPHY_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CRYPTO_APP_CRYPTOGRAPHY_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с хэшированием данных
-            if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+            if (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
                 # Выполняем анализ приложения хэширования данных
-                pvs_studio_add_target(TARGET ${HASH_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${HASH_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-            endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+                pvs_studio_add_target(TARGET ${HASH_APP_CRYPTOGRAPHY_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${HASH_APP_CRYPTOGRAPHY_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с компрессией данных
             if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -5527,10 +5528,10 @@ if (${CMAKE_BUILD_SAMPLES})
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с бинарным контейнером
-    if (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+    if (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
         # Устанавливаем приложение работы с бинарным контейнером
-        install(TARGETS ${BINBOX_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-    endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
+        install(TARGETS ${BINBOX_APP_CONTAINER_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с файловой системой
     if (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -5545,16 +5546,16 @@ if (${CMAKE_BUILD_SAMPLES})
     endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с шифрованием и хэшированием
-    if (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+    if (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
         # Устанавливаем приложение работы с шифрованием и хэшированием
-        install(TARGETS ${CRYPTO_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-    endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
+        install(TARGETS ${CRYPTO_APP_CRYPTOGRAPHY_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с хэшированием данных
-    if (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+    if (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
         # Устанавливаем приложение работы с хэшированием данных
-        install(TARGETS ${HASH_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-    endif (${CMAKE_BUILD_HASH_SYS_APP_SAMPLE})
+        install(TARGETS ${HASH_APP_CRYPTOGRAPHY_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с HTTP-авторизацией
     if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})

@@ -22,46 +22,6 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
     # Источники для сборки бенчмарков
     SET(${PROJECT_NAME}_BENCHMARK_SOURCES ../main.cpp)
 
-    # Указываем что нужно собрать бенчмарки для подмодуля длинных чисел
-    option(CMAKE_BUILD_${BENCHMARK_NAME}_BIGNUM_BENCHMARK "Build BigNum benchmark for ${BENCHMARK_NAME}" ON)
-
-    # Если нужно собрать бенчмарки для подмодуля длинных чисел
-    if (${CMAKE_BUILD_${BENCHMARK_NAME}_BIGNUM_BENCHMARK})
-        # Выводим сообщение о сборке бенчмарков для подмодуля длинных чисел
-        message(STATUS "Build benchmarks BigNum submodule: Yes\n")
-        # Дополняем список источников бенчмарками для подмодуля длинных чисел
-        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
-            bignum/bignum.cpp
-            bignum/integer.cpp
-            bignum/real.cpp
-            bignum/strings.cpp
-        )
-    # Если не нужно собрать бенчмарки для подмодуля длинных чисел
-    else()
-        # Выводим сообщение о сборке бенчмарков для подмодуля длинных чисел
-        message(STATUS "Build benchmarks BigNum submodule: No\n")
-    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_BIGNUM_BENCHMARK})
-
-    # Указываем что нужно собрать бенчмарки для подмодуля хэширования
-    option(CMAKE_BUILD_${BENCHMARK_NAME}_HASH_BENCHMARK "Build Hash benchmark for ${BENCHMARK_NAME}" ON)
-
-    # Если нужно собрать бенчмарки для подмодуля хэширования
-    if (${CMAKE_BUILD_${BENCHMARK_NAME}_HASH_BENCHMARK})
-        # Выводим сообщение о сборке бенчмарков для подмодуля хэширования
-        message(STATUS "Build benchmarks Hash submodule: Yes\n")
-        # Дополняем список источников бенчмарками для подмодуля хэширования
-        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
-            hash/hash.cpp
-            hash/oneshot.cpp
-            hash/stream.cpp
-            hash/widths.cpp
-        )
-    # Если не нужно собрать бенчмарки для подмодуля хэширования
-    else()
-        # Выводим сообщение о сборке бенчмарков для подмодуля хэширования
-        message(STATUS "Build benchmarks Hash submodule: No\n")
-    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_HASH_BENCHMARK})
-
     # Указываем что нужно собрать бенчмарки для подмодуля работы с датой и временем
     option(CMAKE_BUILD_${BENCHMARK_NAME}_CHRONO_BENCHMARK "Build Chrono benchmark for ${BENCHMARK_NAME}" ON)
 
@@ -83,27 +43,6 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         # Выводим сообщение о сборке бенчмарков для подмодуля работы с датой и временем
         message(STATUS "Build benchmarks Chrono submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_CHRONO_BENCHMARK})
-
-    # Указываем что нужно собрать бенчмарки для подмодуля криптографии
-    option(CMAKE_BUILD_${BENCHMARK_NAME}_CRYPTO_BENCHMARK "Build Crypto benchmark for ${BENCHMARK_NAME}" ON)
-
-    # Если нужно собрать бенчмарки для подмодуля криптографии
-    if (${CMAKE_BUILD_${BENCHMARK_NAME}_CRYPTO_BENCHMARK})
-        # Выводим сообщение о сборке бенчмарков для подмодуля криптографии
-        message(STATUS "Build benchmarks Crypto submodule: Yes\n")
-        # Дополняем список источников бенчмарками для подмодуля криптографии
-        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
-            crypto/crypto.cpp
-            crypto/oneshot.cpp
-            crypto/stream.cpp
-            crypto/digest.cpp
-            crypto/keys.cpp
-        )
-    # Если не нужно собрать бенчмарки для подмодуля криптографии
-    else()
-        # Выводим сообщение о сборке бенчмарков для подмодуля криптографии
-        message(STATUS "Build benchmarks Crypto submodule: No\n")
-    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_CRYPTO_BENCHMARK})
 
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)

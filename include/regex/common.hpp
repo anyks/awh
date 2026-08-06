@@ -39,7 +39,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../sys/global.hpp"
-#include "../unicode/types.hpp"
+#include "../encoding/unicode/types.hpp"
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты

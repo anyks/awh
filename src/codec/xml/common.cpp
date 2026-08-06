@@ -19,8 +19,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/ascii.hpp>
-#include <lexical/lexical.hpp>
+#include <encoding/ascii.hpp>
+#include <num/lexical/lexical.hpp>
 #include <codec/xml/common.hpp>
 
 /**

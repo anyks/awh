@@ -44,7 +44,7 @@
  */
 #include "lib.hpp"
 #include "../net/nwt.hpp"
-#include "../charset/charset.hpp"
+#include "../encoding/charset/charset.hpp"
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты
