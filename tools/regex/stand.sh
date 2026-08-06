@@ -47,14 +47,14 @@ if [ -n "$RECORD" ] ; then
 	cp "$RECORD" "$ROOT/tools/regex/record.bin"
 	tar czf "$BUNDLE" -C "$ROOT" \
 		include/regex include/encoding/unicode include/compressor/types.hpp \
-		include/encoding/ascii.hpp include/sys/global.hpp \
+		include/encoding/ascii.hpp include/sys/global.hpp include/sys/macro_push.hpp include/sys/macro_pop.hpp \
 		src/regex src/encoding/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
 		tools/regex/record.bin
 	rm -f "$ROOT/tools/regex/record.bin"
 else
 	tar czf "$BUNDLE" -C "$ROOT" \
 		include/regex include/encoding/unicode include/compressor/types.hpp \
-		include/encoding/ascii.hpp include/sys/global.hpp \
+		include/encoding/ascii.hpp include/sys/global.hpp include/sys/macro_push.hpp include/sys/macro_pop.hpp \
 		src/regex src/encoding/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp
 fi
 

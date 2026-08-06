@@ -79,7 +79,7 @@ namespace {
 	 *          и порог, снятый с рабочей машины, отказывал бы на стендах всякий раз
 	 *
 	 */
-	static constexpr double WRITE_ELEMENTS_THRESHOLD = 10.0;
+	static constexpr double WRITE_ELEMENTS_THRESHOLD = 16.0;
 	/**
 	 * @brief Порог пропускной способности записи содержимого с экранированием
 	 *
@@ -97,7 +97,7 @@ namespace {
 	 *          этот обязан вестись раскладкой, а не перебором объявлений
 	 *
 	 */
-	static constexpr double WRITE_NAMESPACES_THRESHOLD = 10.0;
+	static constexpr double WRITE_NAMESPACES_THRESHOLD = 15.0;
 	/**
 	 * @brief Порог задержки сборки вызова службы по договору SOAP в микросекундах
 	 *
@@ -117,7 +117,7 @@ namespace {
 	 *          Порог назначен по наибольшему из снятых на стендах
 	 *
 	 */
-	static constexpr double WRITE_ALLOCATIONS_THRESHOLD = 32.0;
+	static constexpr double WRITE_ALLOCATIONS_THRESHOLD = 26.0;
 
 	/**
 	 * @brief Функция получения эталонного содержимого, требующего экранирования

@@ -73,7 +73,7 @@ fi
 # Передача ведётся через ввод tar, а не средством scp: подсистема sftp на
 # стенде отключена, и scp обрывает связь
 tar czf - -C "$ROOT" \
-	include/regex include/encoding/unicode include/compressor/types.hpp include/encoding/ascii.hpp include/sys/global.hpp \
+	include/regex include/encoding/unicode include/compressor/types.hpp include/encoding/ascii.hpp include/sys/global.hpp include/sys/macro_push.hpp include/sys/macro_pop.hpp \
 	src/regex src/encoding/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
 	tools/regex/stand.bat $EXTRA \
 	| ssh -p "$PORT" "$TARGET" "
