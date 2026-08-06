@@ -1434,7 +1434,7 @@ uint16_t awh::unit::QuicServer::getMaximumTransmissionUnit(const event::id_t eid
  * @return    результат установки MTU сетевого интерфейса
  *
  */
-bool awh::unit::QuicServer::setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept {
+bool awh::unit::QuicServer::setMaximumTransmissionUnit(const event::id_t eid, const uint32_t mtu) const noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку MTU сетевого интерфейса для события сервера
@@ -3877,7 +3877,7 @@ uint16_t awh::unit::QuicClient::getMaximumTransmissionUnit(const event::id_t eid
  * @return    результат установки MTU сетевого интерфейса
  *
  */
-bool awh::unit::QuicClient::setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept {
+bool awh::unit::QuicClient::setMaximumTransmissionUnit(const event::id_t eid, const uint32_t mtu) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку MTU сетевого интерфейса для события клиента

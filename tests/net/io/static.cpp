@@ -16633,7 +16633,14 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
 	ASSERT_GT(listener, 0);
 	struct sockaddr_in host{};
-	host.sin_len = sizeof(host);
+	/**
+	 * Поле длины записи адреса заводят лишь системы происхождения BSD: у Linux и
+	 * MS Windows его нет вовсе, а нужным оно не является нигде - длина подаётся
+	 * вызовам отдельным доводом
+	 */
+	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		host.sin_len = sizeof(host);
+	#endif
 	host.sin_family = AF_INET;
 	host.sin_port = 0;
 	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
@@ -16697,7 +16704,14 @@ TEST_F(IoFixture, IoRebuildRevivesClientTest){
 	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
 	ASSERT_GT(listener, 0);
 	struct sockaddr_in host{};
-	host.sin_len = sizeof(host);
+	/**
+	 * Поле длины записи адреса заводят лишь системы происхождения BSD: у Linux и
+	 * MS Windows его нет вовсе, а нужным оно не является нигде - длина подаётся
+	 * вызовам отдельным доводом
+	 */
+	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		host.sin_len = sizeof(host);
+	#endif
 	host.sin_family = AF_INET;
 	host.sin_port = 0;
 	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
@@ -17004,7 +17018,14 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
 	ASSERT_GT(listener, 0);
 	struct sockaddr_in host{};
-	host.sin_len = sizeof(host);
+	/**
+	 * Поле длины записи адреса заводят лишь системы происхождения BSD: у Linux и
+	 * MS Windows его нет вовсе, а нужным оно не является нигде - длина подаётся
+	 * вызовам отдельным доводом
+	 */
+	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		host.sin_len = sizeof(host);
+	#endif
 	host.sin_family = AF_INET;
 	host.sin_port = 0;
 	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
@@ -17436,7 +17457,7 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 		// Приёмный буфер источника
 		uint8_t buffer[64];
 		// Дожидаемся первой дейтаграммы клиента, узнавая его адрес
-		if(::recvfrom(feeder, buffer, sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&peer), &size) <= 0)
+		if(::recvfrom(feeder, reinterpret_cast <char *> (buffer), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&peer), &size) <= 0)
 			// Выходим, так-как адрес клиента узнать не удалось
 			return;
 		/**
@@ -17444,7 +17465,7 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 		 */
 		while(running.load()){
 			// Отправляем очередную дейтаграмму клиенту
-			::sendto(feeder, buffer, 4, 0, reinterpret_cast <const struct sockaddr *> (&peer), size);
+			::sendto(feeder, reinterpret_cast <const char *> (buffer), 4, 0, reinterpret_cast <const struct sockaddr *> (&peer), size);
 			// Выдерживаем шаг потока
 			std::this_thread::sleep_for(std::chrono::microseconds(1000));
 		}

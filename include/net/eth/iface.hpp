@@ -181,7 +181,7 @@ namespace awh {
 				 * @return     MTU сетевого интерфейса
 				 *
 				 */
-				uint16_t mtu(string_view name) const noexcept;
+				uint32_t mtu(string_view name) const noexcept;
 				/**
 				 * @brief Метод установки MTU сетевого интерфейса
 				 *
@@ -197,7 +197,7 @@ namespace awh {
 				 * @return     результат установки MTU сетевого интерфейса
 				 *
 				 */
-				bool mtu(string_view name, const uint16_t mtu) const noexcept;
+				bool mtu(string_view name, const uint32_t mtu) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения установленных флагов сетевого интерфейса
@@ -290,7 +290,7 @@ namespace awh {
 				 * @return       результат комплексной настройки сетевого интерфейса
 				 *
 				 */
-				bool configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint16_t mtu = 0) const noexcept;
+				bool configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint32_t mtu = 0) const noexcept;
 				/**
 				 * @brief Метод комплексной настройки сетевого интерфейса точка-точка (адрес + пир + MTU + поднятие) за один управляющий сокет
 				 *
@@ -310,7 +310,7 @@ namespace awh {
 				 * @return       результат комплексной настройки сетевого интерфейса
 				 *
 				 */
-				bool configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint16_t mtu = 0) const noexcept;
+				bool configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint32_t mtu = 0) const noexcept;
 			public:
 				/**
 				 * @brief Конструктор

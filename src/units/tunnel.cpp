@@ -345,7 +345,7 @@ uint16_t awh::unit::Tunnel::getMaximumTransmissionUnit(const event::id_t eid) co
  * @return    результат установки MTU сетевого интерфейса
  *
  */
-bool awh::unit::Tunnel::setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept {
+bool awh::unit::Tunnel::setMaximumTransmissionUnit(const event::id_t eid, const uint32_t mtu) const noexcept {
 	// Выполняем установку MTU сетевого интерфейса для события туннеля
 	return this->_io->setMaximumTransmissionUnit(eid, mtu);
 }

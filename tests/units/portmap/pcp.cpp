@@ -184,7 +184,7 @@ class PcpRouter {
 					// Выполняем очистку адреса обратившейся машины
 					::memset(&client, 0, sizeof(client));
 					// Выполняем чтение просьбы обратившейся машины
-					const ssize_t size = ::recvfrom(this->_socket, buffer, sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&client), &length);
+					const ssize_t size = ::recvfrom(this->_socket, reinterpret_cast <char *> (buffer), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&client), &length);
 					// Если просьба короче заголовка с полезной частью, ожидаем следующую
 					if(size < static_cast <ssize_t> (PCP_HEADER_SIZE + PCP_MAP_PAYLOAD_SIZE)) continue;
 					// Запоминаем принятую просьбу
@@ -239,7 +239,7 @@ class PcpRouter {
 					// Получаем размер выдаваемого ответа
 					const size_t length2 = ((damage == Damage::TRUNCATE) ? (PCP_HEADER_SIZE / 2) : sizeof(answer));
 					// Выполняем отправку ответа обратившейся машине
-					::sendto(this->_socket, answer, length2, 0, reinterpret_cast <struct sockaddr *> (&client), length);
+					::sendto(this->_socket, reinterpret_cast <const char *> (answer), length2, 0, reinterpret_cast <struct sockaddr *> (&client), length);
 				}
 			});
 		}
@@ -297,7 +297,7 @@ class PcpRouter {
 				// Устанавливаем срок ожидания в микросекундах
 				timeout.tv_usec = 100000;
 				// Выполняем установку срока ожидания приёма просьбы
-				::setsockopt(this->_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+				::setReceiveTimeout(this->_socket, 100);
 			}
 			/**
 			 * Если привязать гнездо к порту договора не удалось

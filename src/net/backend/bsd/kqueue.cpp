@@ -50234,7 +50234,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
  * @return    результат установки MTU сетевого интерфейса
  *
  */
-bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uint16_t mtu) const noexcept {
+bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uint32_t mtu) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */

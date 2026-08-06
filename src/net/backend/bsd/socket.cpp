@@ -1180,7 +1180,17 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 			} break;
 		}
 		// Маскируем значение поля Traffic Class (TC) для получения только DSCP
-		result = static_cast <event::dscp_t> (tclass & 0xFC);
+		/**
+		 * Класс обслуживания занимает старшие шесть разрядов октета, а младшие два
+		 * отданы признаку перегрузки, потому прочитанный октет сдвигается на два
+		 * разряда вправо
+		 *
+		 * @warning Прежде сдвига здесь не было, а октет лишь чистился маской 0xFC. При
+		 *          такой записи кодовая точка теряла два младших разряда: замер отвечал
+		 *          44 на запрошенное EF, равное 46. Ошибка была вчетверо и у всякой
+		 *          кодовой точки, не только у этой
+		 */
+		result = static_cast <event::dscp_t> ((tclass >> 2) & 0x3F);
 	}
 	// Возвращаем результат
 	return result;
@@ -1205,7 +1215,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 		 * заменой только старших шести бит: запись целого октета сбросила бы
 		 * установленный признак перегрузки
 		 */
-		const int32_t tclass = (static_cast <int32_t> (dscp) | static_cast <int32_t> (this->getExplicitCongestionNotification(sock, family)));
+		const int32_t tclass = ((static_cast <int32_t> (dscp) << 2) | static_cast <int32_t> (this->getExplicitCongestionNotification(sock, family)));
 		/**
 		 * Определяем семейство события
 		 */
@@ -1377,7 +1387,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 		 * заменой только младших двух бит: запись целого октета сбросила бы
 		 * настроенный класс обслуживания
 		 */
-		const int32_t tclass = (static_cast <int32_t> (this->getDifferentiatedServicesCodePoint(sock, family)) | static_cast <int32_t> (ecn));
+		const int32_t tclass = ((static_cast <int32_t> (this->getDifferentiatedServicesCodePoint(sock, family)) << 2) | static_cast <int32_t> (ecn));
 		/**
 		 * Определяем семейство события
 		 */
@@ -2079,8 +2089,16 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				struct sigaction act{0};
 				// Обнуляем маску блокируемых сигналов
 				sigemptyset(&act.sa_mask);
-				// Устанавливаем флаги перезагрузки
-				act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
+				/**
+				 * Устанавливаем флаги перезагрузки
+				 *
+				 * @warning Признак SA_SIGINFO здесь **не ставится** намеренно: он
+				 *          обязывает заполнять sa_sigaction, а заполняется sa_handler,
+				 *          и поля эти у большинства систем лежат в одном объединении.
+				 *          Для SIG_IGN и SIG_DFL последствий нет - ядро смотрит на само
+				 *          значение, - но признак противоречил бы тому, что задано
+				 */
+				act.sa_flags = (SA_ONSTACK | SA_RESTART);
 				/**
 				 * Определяем режим блокировки
 				 */
@@ -2234,8 +2252,16 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					struct sigaction act{0};
 					// Обнуляем маску блокируемых сигналов
 					sigemptyset(&act.sa_mask);
-					// Устанавливаем флаги перезагрузки
-					act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
+					/**
+					 * Устанавливаем флаги перезагрузки
+					 *
+					 * @warning Признак SA_SIGINFO здесь **не ставится** намеренно: он
+					 *          обязывает заполнять sa_sigaction, а заполняется sa_handler,
+					 *          и поля эти у большинства систем лежат в одном объединении.
+					 *          Для SIG_IGN и SIG_DFL последствий нет - ядро смотрит на само
+					 *          значение, - но признак противоречил бы тому, что задано
+					 */
+					act.sa_flags = (SA_ONSTACK | SA_RESTART);
 					// Глушим сигнал при включении настройки и возвращаем его обработку при снятии
 					act.sa_handler = (flags ? SIG_IGN : SIG_DFL);
 					// Устанавливаем обработку сигнала записи в оборванное соединение

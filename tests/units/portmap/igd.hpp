@@ -21,6 +21,7 @@
 #include <atomic>
 #include <string>
 #include <thread>
+#include <chrono>
 #include <vector>
 #include <cstring>
 #include <cstdio>
@@ -320,7 +321,7 @@ class FakeIGD {
 				while(this->_working.load()){
 					struct sockaddr_in peer; socklen_t length = sizeof(peer);
 					::memset(&peer, 0, sizeof(peer));
-					const ssize_t size = ::recvfrom(this->_udp, buffer, sizeof(buffer) - 1, 0, reinterpret_cast <struct sockaddr *> (&peer), &length);
+					const ssize_t size = ::recvfrom(this->_udp, reinterpret_cast <char *> (buffer), sizeof(buffer) - 1, 0, reinterpret_cast <struct sockaddr *> (&peer), &length);
 					if(size <= 0) continue;
 					buffer[size] = 0;
 					if(::strncmp(buffer, "M-SEARCH", 8) != 0) continue;
@@ -334,7 +335,7 @@ class FakeIGD {
 						"ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n"
 						"USN: uuid:fake-igd-0001::urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n\r\n",
 						this->_address.c_str(), static_cast <unsigned> (this->_port));
-					::sendto(this->_udp, answer, static_cast <size_t> (count), 0, reinterpret_cast <struct sockaddr *> (&peer), length);
+					::sendto(this->_udp, reinterpret_cast <const char *> (answer), static_cast <size_t> (count), 0, reinterpret_cast <struct sockaddr *> (&peer), length);
 				}
 			});
 			/**
@@ -348,7 +349,7 @@ class FakeIGD {
 				while(this->_working.load()){
 					struct sockaddr_in6 peer; socklen_t length = sizeof(peer);
 					::memset(&peer, 0, sizeof(peer));
-					const ssize_t size = ::recvfrom(this->_udp6, buffer, sizeof(buffer) - 1, 0, reinterpret_cast <struct sockaddr *> (&peer), &length);
+					const ssize_t size = ::recvfrom(this->_udp6, reinterpret_cast <char *> (buffer), sizeof(buffer) - 1, 0, reinterpret_cast <struct sockaddr *> (&peer), &length);
 					if(size <= 0) continue;
 					buffer[size] = 0;
 					if(::strncmp(buffer, "M-SEARCH", 8) != 0) continue;
@@ -362,7 +363,7 @@ class FakeIGD {
 						"ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n"
 						"USN: uuid:fake-igd-0001::urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n\r\n",
 						this->_address6.c_str(), static_cast <unsigned> (this->_port));
-					::sendto(this->_udp6, answer, static_cast <size_t> (count), 0, reinterpret_cast <struct sockaddr *> (&peer), length);
+					::sendto(this->_udp6, reinterpret_cast <const char *> (answer), static_cast <size_t> (count), 0, reinterpret_cast <struct sockaddr *> (&peer), length);
 				}
 			});
 			// Поток управления устройством
@@ -423,7 +424,7 @@ class FakeIGD {
 					// Читаем запрос целиком
 					for(;;){
 						char buffer[4096];
-						const ssize_t size = ::recv(peer, buffer, sizeof(buffer), 0);
+						const ssize_t size = ::recv(peer, reinterpret_cast <char *> (buffer), sizeof(buffer), 0);
 						if(size <= 0) break;
 						request.append(buffer, static_cast <size_t> (size));
 						const size_t head = request.find("\r\n\r\n");
@@ -449,16 +450,16 @@ class FakeIGD {
 					 *       именно тогда модуль и повторяет шаг
 					 */
 					if(control && (mode == Mode::STALL)){ this->_stalled.push_back(peer); continue; }
-					if(control && (mode == Mode::SLOW)){ ::usleep(900000); }
+					if(control && (mode == Mode::SLOW)){ std::this_thread::sleep_for(std::chrono::milliseconds(900)); }
 					if(control && (mode == Mode::GARBAGE)){
 						const char * junk = "!!! это не разметка вовсе !!!";
 						answer = std::string("HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\nContent-Length: ")
 						       + std::to_string(::strlen(junk)) + "\r\nConnection: close\r\n\r\n" + junk;
-						::send(peer, answer.data(), answer.size(), 0); ::closesocket(peer); continue;
+						::send(peer, reinterpret_cast <char *> (answer.data()), answer.size(), 0); ::closesocket(peer); continue;
 					}
 					if(control && (mode == Mode::HTTP_ERROR)){
 						answer = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-						::send(peer, answer.data(), answer.size(), 0); ::closesocket(peer); continue;
+						::send(peer, reinterpret_cast <char *> (answer.data()), answer.size(), 0); ::closesocket(peer); continue;
 					}
 					if(control) body = ((mode == Mode::FAULT) ? this->refusal() : this->soap(request));
 					else body = this->description();
@@ -467,7 +468,7 @@ class FakeIGD {
 					       + "\r\nContent-Type: text/xml; charset=\"utf-8\"\r\nContent-Length: "
 					       + std::to_string(control && (mode == Mode::TRUNCATED) ? body.size() + 64 : body.size())
 					       + "\r\nConnection: close\r\n\r\n" + body;
-					::send(peer, answer.data(), answer.size(), 0);
+					::send(peer, reinterpret_cast <char *> (answer.data()), answer.size(), 0);
 					::closesocket(peer);
 				}
 		}
@@ -502,10 +503,15 @@ class FakeIGD {
 			this->_udp = ::socket(AF_INET, SOCK_DGRAM, 0);
 			if(this->_udp >= 0){
 				int yes = 1;
-				::setsockopt(this->_udp, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-				::setsockopt(this->_udp, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes));
-				struct timeval timeout; timeout.tv_sec = 0; timeout.tv_usec = 100000;
-				::setsockopt(this->_udp, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+				::setsockopt(this->_udp, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&yes), sizeof(yes));
+				/**
+				 * Настройки SO_REUSEPORT у MS Windows нет вовсе: разделение порта между
+				 * гнёздами выражается там одним лишь SO_REUSEADDR, поставленным выше
+				 */
+				#ifdef SO_REUSEPORT
+					::setsockopt(this->_udp, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&yes), sizeof(yes));
+				#endif
+								::setReceiveTimeout(this->_udp, 100);
 				struct sockaddr_in address; ::memset(&address, 0, sizeof(address));
 				address.sin_family = AF_INET; address.sin_port = htons(1900);
 				address.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -516,7 +522,7 @@ class FakeIGD {
 					struct ip_mreq group; ::memset(&group, 0, sizeof(group));
 					group.imr_multiaddr.s_addr = ::inet_addr("239.255.255.250");
 					group.imr_interface.s_addr = ::inet_addr(this->iface.c_str());
-					if(::setsockopt(this->_udp, IPPROTO_IP, IP_ADD_MEMBERSHIP, &group, sizeof(group)) != 0)
+					if(::setsockopt(this->_udp, IPPROTO_IP, IP_ADD_MEMBERSHIP, reinterpret_cast <const char *> (&group), sizeof(group)) != 0)
 						::fprintf(stderr, "вступление в группу не удалось: %s\n", ::strerror(errno));
 				}
 			}
@@ -529,11 +535,16 @@ class FakeIGD {
 			this->_udp6 = ::socket(AF_INET6, SOCK_DGRAM, 0);
 			if(this->_udp6 >= 0){
 				int yes = 1;
-				::setsockopt(this->_udp6, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-				::setsockopt(this->_udp6, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes));
-				::setsockopt(this->_udp6, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof(yes));
-				struct timeval timeout; timeout.tv_sec = 0; timeout.tv_usec = 100000;
-				::setsockopt(this->_udp6, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+				::setsockopt(this->_udp6, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&yes), sizeof(yes));
+				/**
+				 * Настройки SO_REUSEPORT у MS Windows нет вовсе: разделение порта между
+				 * гнёздами выражается там одним лишь SO_REUSEADDR, поставленным выше
+				 */
+				#ifdef SO_REUSEPORT
+					::setsockopt(this->_udp6, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&yes), sizeof(yes));
+				#endif
+				::setsockopt(this->_udp6, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast <const char *> (&yes), sizeof(yes));
+								::setReceiveTimeout(this->_udp6, 100);
 				struct sockaddr_in6 address; ::memset(&address, 0, sizeof(address));
 				address.sin6_family = AF_INET6; address.sin6_port = htons(1900); address.sin6_addr = in6addr_any;
 				if(::bind(this->_udp6, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0){
@@ -543,7 +554,7 @@ class FakeIGD {
 					struct ipv6_mreq group; ::memset(&group, 0, sizeof(group));
 					::inet_pton(AF_INET6, "FF02::C", &group.ipv6mr_multiaddr);
 					group.ipv6mr_interface = ::if_nametoindex(this->device.c_str());
-					if(::setsockopt(this->_udp6, IPPROTO_IPV6, IPV6_JOIN_GROUP, &group, sizeof(group)) != 0){
+					if(::setsockopt(this->_udp6, IPPROTO_IPV6, IPV6_JOIN_GROUP, reinterpret_cast <const char *> (&group), sizeof(group)) != 0){
 						::closesocket(this->_udp6); this->_udp6 = -1;
 					}
 				}
@@ -559,11 +570,10 @@ class FakeIGD {
 			 */
 			if(this->_tcp >= 0){
 				int yes = 1, no = 0;
-				::setsockopt(this->_tcp, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+				::setsockopt(this->_tcp, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&yes), sizeof(yes));
 				// Признак того, что одно гнездо служит обеим сетям
-				const bool merged = (::setsockopt(this->_tcp, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(no)) == 0);
-				struct timeval timeout; timeout.tv_sec = 0; timeout.tv_usec = 100000;
-				::setsockopt(this->_tcp, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+				const bool merged = (::setsockopt(this->_tcp, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast <const char *> (&no), sizeof(no)) == 0);
+								::setReceiveTimeout(this->_tcp, 100);
 				struct sockaddr_in6 address; ::memset(&address, 0, sizeof(address));
 				address.sin6_family = AF_INET6; address.sin6_port = 0; address.sin6_addr = in6addr_any;
 				if((::bind(this->_tcp, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0) || (::listen(this->_tcp, 8) != 0)){
@@ -592,9 +602,9 @@ class FakeIGD {
 						// Если гнездо управления устройством сети IPv4 заведено
 						if(this->_tcp4 >= 0){
 							// Разрешаем повторное использование адреса гнезда
-							::setsockopt(this->_tcp4, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+							::setsockopt(this->_tcp4, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&yes), sizeof(yes));
 							// Устанавливаем срок ожидания обмена гнезда
-							::setsockopt(this->_tcp4, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+							::setReceiveTimeout(this->_tcp4, 100);
 							// Адрес, на котором гнездо принимает подключения
 							struct sockaddr_in target; ::memset(&target, 0, sizeof(target));
 							// Устанавливаем семейство адреса гнезда

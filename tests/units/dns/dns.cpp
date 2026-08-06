@@ -197,13 +197,8 @@ bool DNSStubServer::start(const uint32_t delay, const bool silent, const uint32_
 	 *       признак - одинаково на всякой из них
 	 *
 	 */
-	struct timeval timeout{};
-	// Устанавливаем целые секунды срока ожидания приёма
-	timeout.tv_sec = 0;
-	// Устанавливаем долю секунды срока ожидания приёма
-	timeout.tv_usec = 50000;
 	// Выполняем установку срока ожидания приёма
-	::setsockopt(this->_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+	::setReceiveTimeout(this->_fd, 50);
 	// Выставляем признак работы нити сервера
 	this->_running.store(true);
 	// Выполняем запуск нити приёма вопросов
@@ -260,7 +255,7 @@ void DNSStubServer::run() noexcept {
 		// Размер адреса, с которого пришёл вопрос
 		socklen_t length = sizeof(from);
 		// Выполняем приём вопроса
-		const ssize_t size = ::recvfrom(this->_fd, buffer, sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&from), &length);
+		const ssize_t size = ::recvfrom(this->_fd, reinterpret_cast <char *> (buffer), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&from), &length);
 		// Если приём не удался, продолжаем работу
 		if(size < static_cast <ssize_t> (DNS_HEADER_SIZE))
 			// Переходим к следующему кругу приёма
@@ -336,7 +331,7 @@ void DNSStubServer::run() noexcept {
 			// Дописываем октет адреса
 			answer.push_back(octet);
 		// Выполняем отправку ответа
-		::sendto(this->_fd, answer.data(), answer.size(), 0, reinterpret_cast <struct sockaddr *> (&from), length);
+		::sendto(this->_fd, reinterpret_cast <const char *> (answer.data()), answer.size(), 0, reinterpret_cast <struct sockaddr *> (&from), length);
 	}
 }
 
@@ -479,13 +474,8 @@ bool NTPStubServer::start(const bool foreign) noexcept {
 	 *       ожидания и собственный признак работы
 	 *
 	 */
-	struct timeval timeout{};
-	// Устанавливаем целые секунды срока ожидания приёма
-	timeout.tv_sec = 0;
-	// Устанавливаем долю секунды срока ожидания приёма
-	timeout.tv_usec = 50000;
 	// Выполняем установку срока ожидания приёма
-	::setsockopt(this->_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+	::setReceiveTimeout(this->_fd, 50);
 	// Выставляем признак работы нити сервера
 	this->_running.store(true);
 	// Выполняем запуск нити приёма вопросов
@@ -539,7 +529,7 @@ void NTPStubServer::run() noexcept {
 		// Размер адреса, с которого пришёл вопрос
 		socklen_t length = sizeof(from);
 		// Выполняем приём вопроса
-		const ssize_t size = ::recvfrom(this->_fd, buffer, sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&from), &length);
+		const ssize_t size = ::recvfrom(this->_fd, reinterpret_cast <char *> (buffer), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&from), &length);
 		// Если принято меньше целого сообщения, продолжаем работу
 		if(size < static_cast <ssize_t> (NTP_PACKET_SIZE))
 			// Переходим к следующему кругу приёма
@@ -583,6 +573,6 @@ void NTPStubServer::run() noexcept {
 		answer[NTP_TRANSMIT_OFFSET + 2] = 0x00;
 		answer[NTP_TRANSMIT_OFFSET + 3] = 0x00;
 		// Выполняем отправку ответа
-		::sendto(this->_fd, answer, sizeof(answer), 0, reinterpret_cast <struct sockaddr *> (&from), length);
+		::sendto(this->_fd, reinterpret_cast <const char *> (answer), sizeof(answer), 0, reinterpret_cast <struct sockaddr *> (&from), length);
 	}
 }

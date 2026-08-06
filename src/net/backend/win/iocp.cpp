@@ -520,7 +520,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit([[maybe_unused]] const even
  * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
-bool awh::engine::IO::setMaximumTransmissionUnit([[maybe_unused]] const event::id_t id, [[maybe_unused]] const uint16_t mtu) const noexcept {
+bool awh::engine::IO::setMaximumTransmissionUnit([[maybe_unused]] const event::id_t id, [[maybe_unused]] const uint32_t mtu) const noexcept {
 	// Заносим в журнал предупреждение об отсутствии реализации
 	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
 	// Возвращаем пустой результат

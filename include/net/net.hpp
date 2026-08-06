@@ -669,7 +669,7 @@ namespace awh {
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Interface {
 			string name;                             // Название интерфейса
-			uint16_t mtu;                            // MTU интерфейса
+			uint32_t mtu;                            // MTU интерфейса
 			unordered_set <event::eth_flag_t> flags; // Флаги интерфейса
 			/**
 			 * @brief Конструктор

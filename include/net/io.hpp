@@ -677,7 +677,7 @@ namespace awh {
 				 * @return    результат установки MTU сетевого интерфейса
 				 *
 				 */
-				bool setMaximumTransmissionUnit(const event::id_t id, const uint16_t mtu) const noexcept;
+				bool setMaximumTransmissionUnit(const event::id_t id, const uint32_t mtu) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения признака выдачи системой поля Explicit Congestion Notification (ECN) принятых пакетов

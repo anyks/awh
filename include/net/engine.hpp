@@ -267,7 +267,7 @@ namespace awh {
 			 * @return    результат установки MTU сетевого интерфейса
 			 *
 			 */
-			virtual bool setMaximumTransmissionUnit(const event::id_t id, const uint16_t mtu) const noexcept = 0;
+			virtual bool setMaximumTransmissionUnit(const event::id_t id, const uint32_t mtu) const noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета

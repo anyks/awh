@@ -1385,7 +1385,7 @@ size_t awh::Client::datagrams() const noexcept {
 	 */
 	if((this->_type == event::type_t::DATAGRAM) || (this->_type == event::type_t::SEQPACKET)){
 		// Извлекаем MTU сетевого интерфейса события клиента
-		const uint16_t mtu = this->_unit->client.getMaximumTransmissionUnit(this->_id.eid);
+		const uint32_t mtu = this->_unit->client.getMaximumTransmissionUnit(this->_id.eid);
 		// Накладные расходы заголовков IP и UDP по семейству адресов (IPv4 - 20+8, IPv6 - 40+8)
 		const uint16_t overhead = ((this->familyUnit() == event::family_t::IPV6) ? 48 : 28);
 		// Выводим предельный размер данных датаграммы (MTU за вычетом заголовков)

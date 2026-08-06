@@ -157,7 +157,7 @@ class Router {
 					// Выполняем очистку адреса обратившейся машины
 					::memset(&client, 0, sizeof(client));
 					// Выполняем чтение просьбы обратившейся машины
-					const ssize_t size = ::recvfrom(this->_socket, buffer, sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&client), &length);
+					const ssize_t size = ::recvfrom(this->_socket, reinterpret_cast <char *> (buffer), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&client), &length);
 					/**
 					 * Если просьба не получена либо короче заголовка договора, ожидаем следующую
 					 *
@@ -204,7 +204,7 @@ class Router {
 						// Записываем внешний адрес маршрутизатора
 						answer[8] = 203; answer[9] = 0; answer[10] = 113; answer[11] = 7;
 						// Выполняем отправку ответа обратившейся машине
-						::sendto(this->_socket, answer, ((damage == Damage::TRUNCATE) ? 5 : 12), 0, reinterpret_cast <struct sockaddr *> (&client), length);
+						::sendto(this->_socket, reinterpret_cast <const char *> (answer), ((damage == Damage::TRUNCATE) ? 5 : 12), 0, reinterpret_cast <struct sockaddr *> (&client), length);
 						// Ожидаем следующую просьбу
 						continue;
 					}
@@ -227,7 +227,7 @@ class Router {
 					// Записываем назначенный срок жизни перенаправления
 					answer[15] = static_cast <uint8_t> (life & 0xFF);
 					// Выполняем отправку ответа обратившейся машине
-					::sendto(this->_socket, answer, ((damage == Damage::TRUNCATE) ? 5 : sizeof(answer)), 0, reinterpret_cast <struct sockaddr *> (&client), length);
+					::sendto(this->_socket, reinterpret_cast <const char *> (answer), ((damage == Damage::TRUNCATE) ? 5 : sizeof(answer)), 0, reinterpret_cast <struct sockaddr *> (&client), length);
 				}
 			});
 		}
@@ -285,7 +285,7 @@ class Router {
 				// Устанавливаем срок ожидания в микросекундах
 				timeout.tv_usec = 100000;
 				// Выполняем установку срока ожидания приёма просьбы
-				::setsockopt(this->_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+				::setReceiveTimeout(this->_socket, 100);
 			}
 			/**
 			 * Если привязать гнездо к порту договора не удалось

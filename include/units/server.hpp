@@ -637,7 +637,7 @@ namespace awh {
 				 * @return    результат установки MTU сетевого интерфейса
 				 *
 				 */
-				bool setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept;
+				bool setMaximumTransmissionUnit(const event::id_t eid, const uint32_t mtu) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения режима трансляции пакетов сервера

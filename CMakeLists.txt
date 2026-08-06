@@ -637,6 +637,10 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     SET(SOURCE_FILES
         "${SOURCE_FILES}"
         "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/eth.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/addr.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/iface.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/socket.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/netlink.cpp"
     )
 # Если сборка производится под операционную систему MS Windows
 #

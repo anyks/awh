@@ -1581,7 +1581,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
  * @return     MTU сетевого интерфейса
  *
  */
-uint16_t awh::eth::Interface::mtu(string_view name) const noexcept {
+uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 	// Если название сетевого интерфейса передано
 	if(!name.empty()){
 		/**
@@ -1635,7 +1635,7 @@ uint16_t awh::eth::Interface::mtu(string_view name) const noexcept {
 			// Закрываем сокет
 			::close(sock);
 			// Возвращаем результат
-			return static_cast <uint16_t> (ifr.ifr_mtu);
+			return static_cast <uint32_t> (ifr.ifr_mtu);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -1666,7 +1666,7 @@ uint16_t awh::eth::Interface::mtu(string_view name) const noexcept {
  * @return     результат установки MTU сетевого интерфейса
  *
  */
-bool awh::eth::Interface::mtu(string_view name, const uint16_t mtu) const noexcept {
+bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если название сетевого интерфейса передано
@@ -2535,7 +2535,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
  * @return       результат комплексной настройки сетевого интерфейса
  *
  */
-bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint16_t mtu) const noexcept {
+bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint32_t mtu) const noexcept {
 	// Делегируем выполнение комплексной настройке без адреса удалённого пира
 	return this->configure(name, ip, nullptr, prefix, mtu);
 }
@@ -2550,7 +2550,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
  * @return       результат комплексной настройки сетевого интерфейса
  *
  */
-bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint16_t mtu) const noexcept {
+bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint32_t mtu) const noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если имя интерфейса и адрес переданы, а адрес пира (если задан) совпадает по типу

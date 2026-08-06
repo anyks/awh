@@ -2623,7 +2623,7 @@ uint16_t awh::Server::getMaximumTransmissionUnit(const event::id_t eid) const no
  * @return    результат установки MTU сетевого интерфейса
  *
  */
-bool awh::Server::setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept {
+bool awh::Server::setMaximumTransmissionUnit(const event::id_t eid, const uint32_t mtu) const noexcept {
 	// Если идентификатор сервера является активным
 	if(eid == this->_id.eid)
 		// Устанавливаем MTU сетевого интерфейса
