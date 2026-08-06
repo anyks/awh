@@ -58,10 +58,25 @@ TEST_P(ProcreTestParameterizedFixture, NameTest){
 		ASSERT_TRUE(name.empty());
 	// Если результат не должен быть пустым
 	else if(this->_parameter.pid == 1) {
-		// Если мы работаем от имени суперпользователя
-		if(::geteuid() == 0)
-			// Проверяем что имя не пустое
-			ASSERT_FALSE(name.empty());
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if _WIN32 || _WIN64
+			/**
+			 * Процесса с идентификатором 1 у MS Windows не существует: идентификаторы
+			 * выдаются там кратными четырём, единица среди них не встречается вовсе
+			 */
+			// Проверяем что имя пустое
+			ASSERT_TRUE(name.empty());
+		/**
+		 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+		 */
+		#else
+			// Если мы работаем от имени суперпользователя
+			if(::geteuid() == 0)
+				// Проверяем что имя не пустое
+				ASSERT_FALSE(name.empty());
+		#endif
 	// Проверяем что имя не пустое
 	} else ASSERT_FALSE(name.empty());
 }

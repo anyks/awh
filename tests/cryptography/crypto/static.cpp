@@ -38,6 +38,111 @@
 #include <sys/stat.h>
 
 /**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Заголовочный файл работы со списками управления доступом
+	 */
+	#include <aclapi.h>
+#endif
+
+/**
+ * @brief Функция проверки, что файл доступен одному лишь его владельцу
+ *
+ * @param path путь к проверяемому файлу
+ * @return     признак того, что доступ к файлу закрыт для всех прочих
+ *
+ * @details У систем POSIX проверка эта выражается разрядами прав: доступ владельца
+ *          на чтение и запись, и ничего более. У MS Windows разрядов прав нет вовсе,
+ *          а `stat` там отвечает `0666` либо `0444` по одному лишь признаку «только
+ *          для чтения», ничего о настоящем доступе не сообщая
+ *
+ *          Поэтому у MS Windows проверяется то, чем доступ там и выражен: список
+ *          управления доступом файла. Годным считается список из единственной записи,
+ *          выданной тому же пользователю, от имени которого работает проверка
+ *
+ */
+static bool restricted(const std::string & path) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Список управления доступом файла
+		PACL dacl = nullptr;
+		// Описатель защиты файла
+		PSECURITY_DESCRIPTOR descriptor = nullptr;
+		// Если список управления доступом файла снять не удалось
+		if(::GetNamedSecurityInfoA(path.c_str(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, &dacl, nullptr, &descriptor) != ERROR_SUCCESS)
+			// Выводим признак отказа
+			return false;
+		// Признак того, что доступ к файлу закрыт для всех прочих
+		bool result = false;
+		/**
+		 * Выполняем проверку списка управления доступом
+		 */
+		do {
+			// Если список управления доступом у файла отсутствует - доступ открыт всем
+			if(dacl == nullptr)
+				// Прекращаем проверку
+				break;
+			// Если список содержит не единственную запись
+			if(dacl->AceCount != 1)
+				// Прекращаем проверку
+				break;
+			// Запись списка управления доступом
+			LPVOID entry = nullptr;
+			// Если запись списка получить не удалось
+			if(!::GetAce(dacl, 0, &entry))
+				// Прекращаем проверку
+				break;
+			// Заголовок записи списка управления доступом
+			ACE_HEADER * header = reinterpret_cast <ACE_HEADER *> (entry);
+			// Если запись дозволением не является
+			if(header->AceType != ACCESS_ALLOWED_ACE_TYPE)
+				// Прекращаем проверку
+				break;
+			// Защитное обозначение, которому выдано дозволение
+			PSID granted = reinterpret_cast <PSID> (&(reinterpret_cast <ACCESS_ALLOWED_ACE *> (entry)->SidStart));
+			// Дескриптор маркера доступа процесса
+			HANDLE token = nullptr;
+			// Если маркер доступа процесса получить не удалось
+			if(!::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &token))
+				// Прекращаем проверку
+				break;
+			// Размер сведений о пользователе процесса
+			DWORD size = 0;
+			// Запрашиваем размер сведений о пользователе процесса
+			::GetTokenInformation(token, TokenUser, nullptr, 0, &size);
+			// Буфер сведений о пользователе процесса
+			std::vector <uint8_t> user(static_cast <size_t> (size), 0);
+			// Если сведения о пользователе процесса получены
+			if((size > 0) && ::GetTokenInformation(token, TokenUser, user.data(), size, &size))
+				// Проверяем что дозволение выдано пользователю процесса
+				result = (::EqualSid(granted, reinterpret_cast <TOKEN_USER *> (user.data())->User.Sid) != FALSE);
+			// Закрываем дескриптор маркера доступа процесса
+			::CloseHandle(token);
+		} while(false);
+		// Снимаем описатель защиты файла
+		::LocalFree(descriptor);
+		// Выводим признак того, что доступ к файлу закрыт для всех прочих
+		return result;
+	/**
+	 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+	 */
+	#else
+		// Приметы файла
+		struct stat attributes;
+		// Если приметы файла снять не удалось
+		if(::stat(path.c_str(), &attributes) != 0)
+			// Выводим признак отказа
+			return false;
+		// Проверяем что права файла даны одному лишь владельцу
+		return (static_cast <uint32_t> (attributes.st_mode & 0777) == static_cast <uint32_t> (0600));
+	#endif
+}
+
+/**
  * @brief Тест создания объекта шифрования
  *
  */
@@ -1831,12 +1936,8 @@ TEST_F(CryptoFixture, KeyFileRightsCryptoTest){
 	ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
 	// Выполняем выписывание приватного ключа RSA в файл
 	ASSERT_TRUE(this->_crypto->savePrivateKeyRSA(path));
-	// Приметы файла приватного ключа
-	struct stat attributes;
-	// Проверяем что приметы файла сняты
-	ASSERT_EQ(::stat(path.c_str(), &attributes), 0);
-	// Проверяем что права файла даны одному лишь владельцу
-	EXPECT_EQ(static_cast <uint32_t> (attributes.st_mode & 0777), static_cast <uint32_t> (0600));
+	// Проверяем что доступ к файлу закрыт для всех, кроме владельца
+	EXPECT_TRUE(restricted(path));
 	// Удаляем файл приватного ключа
 	::remove(path.c_str());
 	/**
@@ -1855,10 +1956,8 @@ TEST_F(CryptoFixture, KeyFileRightsCryptoTest){
 	ASSERT_EQ(::chmod(path.c_str(), 0644), 0);
 	// Выполняем выписывание приватного ключа RSA поверх прежнего файла
 	ASSERT_TRUE(this->_crypto->savePrivateKeyRSA(path));
-	// Проверяем что приметы перезаписанного файла сняты
-	ASSERT_EQ(::stat(path.c_str(), &attributes), 0);
-	// Проверяем что права перезаписанного файла даны одному лишь владельцу
-	EXPECT_EQ(static_cast <uint32_t> (attributes.st_mode & 0777), static_cast <uint32_t> (0600));
+	// Проверяем что доступ к перезаписанному файлу закрыт для всех, кроме владельца
+	EXPECT_TRUE(restricted(path));
 	// Удаляем файл приватного ключа
 	::remove(path.c_str());
 }

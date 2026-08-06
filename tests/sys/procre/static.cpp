@@ -66,11 +66,28 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 
 	// Получаем имя процесса с PID 1
 	std::string name = this->_procre->name(1);
-	
-	// Если мы работаем от имени суперпользователя
-	if(::geteuid() == 0)
-		// Проверяем что имя не пустое
-		ASSERT_FALSE(name.empty());
+
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		/**
+		 * Процесса с идентификатором 1 у MS Windows не существует: идентификаторы
+		 * выдаются там кратными четырём, единица среди них не встречается вовсе.
+		 * Ни init, ни launchd, ни иного родоначальника всех процессов там нет -
+		 * ближайшее по смыслу зовётся System и носит идентификатор 4
+		 */
+		// Проверяем что имя пустое
+		ASSERT_TRUE(name.empty());
+	/**
+	 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
+	 */
+	#else
+		// Если мы работаем от имени суперпользователя
+		if(::geteuid() == 0)
+			// Проверяем что имя не пустое
+			ASSERT_FALSE(name.empty());
+	#endif
 
 	// Устанавливаем функцию обратного вызова для получения информации о процессе
 	this->_procre->on([this](const pid_t pid, const awh::procre_t::info_t & info){

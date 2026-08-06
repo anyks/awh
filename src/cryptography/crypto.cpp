@@ -39,6 +39,15 @@
 	 */
 	#include <fcntl.h>
 	#include <unistd.h>
+/**
+ * Для операционной системы MS Windows
+ */
+#else
+	/**
+	 * Стандартные заголовочные файлы работы с файловыми дескрипторами
+	 */
+	#include <io.h>
+	#include <fcntl.h>
 #endif
 
 /**
@@ -86,9 +95,187 @@
 #include <cryptography/crypto.hpp>
 
 /**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Заголовочный файл работы со списками управления доступом
+	 *
+	 * @note Место включения обязательно. Заголовок этот самостоятельным не является
+	 *       и требует, чтобы заголовки MS Windows были подключены прежде него, - оттого
+	 *       он и стоит после заголовка модуля, тянущего за собой sys/win32.hpp. А выше
+	 *       «using namespace std» он стоит потому, что тянет за собой объявления COM,
+	 *       а те заводят тип «byte», сталкивающийся с «std::byte»: подключение ниже
+	 *       отвечало отказом «reference to 'byte' is ambiguous» в четырёх десятках мест
+	 *       самих заголовков MS Windows
+	 *
+	 */
+	#include <aclapi.h>
+#endif
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	namespace {
+		/**
+		 * @brief Функция заведения файла, доступного одному лишь заводящему
+		 *
+		 * @param path путь к заводимому файлу
+		 * @return     поток записи заведённого файла, либо nullptr при отказе
+		 *
+		 * @details Средство это отвечает у MS Windows тому, чем у POSIX служит открытие
+		 *          с правами «S_IRUSR | S_IWUSR»: приватный ключ не должен ложиться на
+		 *          диск доступным прочим в системе. Разрядов прав POSIX у MS Windows нет
+		 *          вовсе, и та же защита выражается там списком управления доступом, где
+		 *          дозволение выдано одному лишь заводящему
+		 *
+		 *          Заводимому файлу выдаётся список из единственной записи, дозволяющей
+		 *          чтение, запись и снятие тому пользователю, от имени которого работает
+		 *          процесс. Наследование дозволений от каталога при этом пресекается:
+		 *          список подаётся заведению своим, а не берётся у родителя
+		 *
+		 * @note Список ставится дважды - при заведении и уже заведённому файлу. Причина
+		 *       та же, по которой у POSIX права ставятся ещё и снятому дескриптору:
+		 *       поданный заведению список берётся лишь при появлении нового файла, а
+		 *       перезапись прежнего усекает содержимое, оставляя дозволения как есть
+		 *
+		 */
+		FILE * openPrivateFile(const wstring & path) noexcept {
+			// Дескриптор маркера доступа процесса
+			HANDLE token = nullptr;
+			// Если маркер доступа процесса получить не удалось
+			if(!::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &token))
+				// Выводим признак отказа
+				return nullptr;
+			// Размер сведений о пользователе процесса
+			DWORD size = 0;
+			/**
+			 * Размер сведений запрашивается отдельным вызовом: длина записи о пользователе
+			 * зависит от длины его защитного обозначения и наперёд не известна
+			 */
+			::GetTokenInformation(token, TokenUser, nullptr, 0, &size);
+			// Если размер сведений о пользователе процесса получить не удалось
+			if(size == 0){
+				// Закрываем дескриптор маркера доступа процесса
+				::CloseHandle(token);
+				// Выводим признак отказа
+				return nullptr;
+			}
+			// Буфер сведений о пользователе процесса
+			vector <uint8_t> user(static_cast <size_t> (size), 0);
+			// Если сведения о пользователе процесса получить не удалось
+			if(!::GetTokenInformation(token, TokenUser, user.data(), size, &size)){
+				// Закрываем дескриптор маркера доступа процесса
+				::CloseHandle(token);
+				// Выводим признак отказа
+				return nullptr;
+			}
+			// Закрываем дескриптор маркера доступа процесса
+			::CloseHandle(token);
+			// Защитное обозначение пользователя процесса
+			PSID sid = reinterpret_cast <TOKEN_USER *> (user.data())->User.Sid;
+			// Если защитное обозначение пользователя процесса негодно
+			if((sid == nullptr) || !::IsValidSid(sid))
+				// Выводим признак отказа
+				return nullptr;
+			/**
+			 * Размер списка складывается из его заголовка и единственной записи. Разряд
+			 * SidStart записи уже отведён её объявлением, оттого он и вычитается
+			 */
+			// Размер списка управления доступом
+			const DWORD length = static_cast <DWORD> (sizeof(ACL) + sizeof(ACCESS_ALLOWED_ACE) - sizeof(DWORD) + ::GetLengthSid(sid));
+			// Буфер списка управления доступом
+			vector <uint8_t> buffer(static_cast <size_t> (length), 0);
+			// Список управления доступом
+			PACL dacl = reinterpret_cast <PACL> (buffer.data());
+			// Если список управления доступом подготовить не удалось
+			if(!::InitializeAcl(dacl, length, ACL_REVISION))
+				// Выводим признак отказа
+				return nullptr;
+			// Если дозволение пользователю процесса в список внести не удалось
+			if(!::AddAccessAllowedAce(dacl, ACL_REVISION, (GENERIC_READ | GENERIC_WRITE | DELETE), sid))
+				// Выводим признак отказа
+				return nullptr;
+			// Описатель защиты заводимого файла
+			SECURITY_DESCRIPTOR descriptor;
+			// Если описатель защиты подготовить не удалось
+			if(!::InitializeSecurityDescriptor(&descriptor, SECURITY_DESCRIPTOR_REVISION))
+				// Выводим признак отказа
+				return nullptr;
+			/**
+			 * Последним доводом подаётся ложь: список задан явно, а не унаследован, и
+			 * помечать его унаследованным нельзя
+			 */
+			// Если список управления доступом описателю защиты задать не удалось
+			if(!::SetSecurityDescriptorDacl(&descriptor, TRUE, dacl, FALSE))
+				// Выводим признак отказа
+				return nullptr;
+			// Приметы защиты заводимого файла
+			SECURITY_ATTRIBUTES attributes;
+			// Устанавливаем размер примет защиты
+			attributes.nLength = sizeof(attributes);
+			// Устанавливаем описатель защиты
+			attributes.lpSecurityDescriptor = &descriptor;
+			// Запрещаем наследование дескриптора порождаемыми процессами
+			attributes.bInheritHandle = FALSE;
+			/**
+			 * Право WRITE_DAC запрашивается затем, что список ставится ещё и заведённому
+			 * файлу, а без этого права поставить его дескриптору нельзя
+			 */
+			// Заводим файл приватного ключа
+			HANDLE handle = ::CreateFileW(path.c_str(), (GENERIC_WRITE | WRITE_DAC | DELETE), 0, &attributes, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+			// Если файл приватного ключа завести не удалось
+			if(handle == INVALID_HANDLE_VALUE)
+				// Выводим признак отказа
+				return nullptr;
+			/**
+			 * Список ставится ещё и заведённому файлу - к этой поре файл усечён и ключа
+			 * в нём нет, а стало быть доступным с прежними дозволениями он не побывал
+			 */
+			// Если список управления доступом заведённому файлу поставить не удалось
+			if(::SetSecurityInfo(handle, SE_FILE_OBJECT, (DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION), nullptr, nullptr, dacl, nullptr) != ERROR_SUCCESS){
+				// Закрываем дескриптор заведённого файла
+				::CloseHandle(handle);
+				// Снимаем файл, дозволений не получивший
+				::DeleteFileW(path.c_str());
+				// Выводим признак отказа
+				return nullptr;
+			}
+			// Получаем файловый дескриптор заведённого файла
+			const int32_t fd = ::_open_osfhandle(reinterpret_cast <intptr_t> (handle), (_O_WRONLY | _O_BINARY));
+			// Если файловый дескриптор получить не удалось
+			if(fd < 0){
+				// Закрываем дескриптор заведённого файла
+				::CloseHandle(handle);
+				// Снимаем файл, потока записи не получивший
+				::DeleteFileW(path.c_str());
+				// Выводим признак отказа
+				return nullptr;
+			}
+			/**
+			 * Дескриптор системы дальше не закрывается: он перешёл во владение файлового
+			 * дескриптора, и закрытие его здесь оставило бы тот указывать в никуда
+			 */
+			// Получаем поток записи заведённого файла
+			FILE * result = ::_fdopen(fd, "wb");
+			// Если поток записи получить не удалось
+			if(result == nullptr){
+				// Закрываем файловый дескриптор
+				::_close(fd);
+				// Снимаем файл, потока записи не получивший
+				::DeleteFileW(path.c_str());
+			}
+			// Выводим поток записи заведённого файла
+			return result;
+		}
+	}
+#endif
 
 /**
  * @brief Пространство имён общих помощников затирания
@@ -5841,8 +6028,22 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
+				// Имя файла открытого ключа в широкой записи
+				const wstring filename = this->_fmk->convert(path);
+				/**
+				 * Ключ выписывается в отдельный файл, а на место его ставится
+				 * переименованием - тем же порядком и по тем же доводам, что и у
+				 * прочих операционных систем (5.29a)
+				 *
+				 * @note Дозволений, доступ ограничивающих, открытому ключу не ставится
+				 *       намеренно: тайны он не несёт, а закрывать его от прочих значило
+				 *       бы мешать тому, для чего он и выписывается
+				 *
+				 */
+				// Имя отдельного файла, в который ключ выписывается
+				const wstring temporary(filename + L".tmp");
 				// Сохраняем публичный ключ
-				FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"wb");
+				FILE * file = ::_wfopen(temporary.c_str(), L"wb");
 				// Если файл открыт удачно
 				if(file != nullptr){
 					// Если файл не может быть записан
@@ -5865,14 +6066,34 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 					::fclose(file);
 					/**
 					 * Файл, записанный не до конца, снимается тем же порядком, что и у
-					 * приватного ключа: наполовину выписанный ключ ключом не является.
-					 * Записи через отдельный файл с переименованием здесь нет - её
-					 * пробел записан решением 5.29 вместе с правами доступа
+					 * приватного ключа: наполовину выписанный ключ ключом не является
 					 */
+					// Если запись ключа удалась
+					if(result){
+						// Если поставить ключ на место переименованием не удалось
+						if(!::MoveFileExW(temporary.c_str(), filename.c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug("Public key file renaming failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print("Public key file renaming failed", log_t::flag_t::CRITICAL);
+							#endif
+							// Снимаем отдельный файл, на место не ставший
+							::DeleteFileW(temporary.c_str());
+							// Запоминаем, что выписывание ключа не удалось
+							result = false;
+						}
 					// Если запись ключа не удалась
-					if(!result)
-						// Удаляем файл, записанный не до конца
-						::_wremove(this->_fmk->convert(path).c_str());
+					} else
+						// Удаляем отдельный файл, записанный не до конца
+						::DeleteFileW(temporary.c_str());
 				// Если файл не открыт
 				} else {
 					/**
@@ -6115,8 +6336,24 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
+					// Имя файла приватного ключа в широкой записи
+					const wstring filename = this->_fmk->convert(path);
+					/**
+					 * Ключ выписывается в отдельный файл, а на место его ставится
+					 * переименованием - тем же порядком и по тем же доводам, что и у
+					 * прочих операционных систем: запись прямо в конечный файл усекает
+					 * прежний ключ первым же открытием, и всякий отказ письма оставлял
+					 * бы вызывающего вовсе без ключа
+					 */
+					// Имя отдельного файла, в который ключ выписывается
+					const wstring temporary(filename + L".tmp");
+					/**
+					 * Файл заводится дозволением одному лишь заводящему: обычное открытие
+					 * берёт дозволения у каталога, а те у многих дозволяют чтение прочим,
+					 * и приватный ключ ложился бы на диск доступным им
+					 */
 					// Сохраняем приватный ключ
-					FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"wb");
+					FILE * file = openPrivateFile(temporary);
 					// Если файл открыт удачно
 					if(file != nullptr){
 						// Если пароль защиты приватного ключа не установлен
@@ -6210,10 +6447,39 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 						 * ключом не является, а лежит он под тем же именем, под которым
 						 * вызывающий ждёт годный
 						 */
+						// Если запись ключа удалась
+						if(result){
+							/**
+							 * Признак MOVEFILE_REPLACE_EXISTING дозволяет замену на месте:
+							 * без него переименование поверх existing файла отвечает отказом.
+							 * Признак MOVEFILE_WRITE_THROUGH велит вернуться лишь по
+							 * достижении записью диска - без него отказ питания между
+							 * возвратом и сбросом кэша оставлял бы на месте ни то ни сё
+							 */
+							// Если поставить ключ на место переименованием не удалось
+							if(!::MoveFileExW(temporary.c_str(), filename.c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									this->_log->debug("Private key file renaming failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									this->_log->print("Private key file renaming failed", log_t::flag_t::CRITICAL);
+								#endif
+								// Снимаем отдельный файл, на место не ставший
+								::DeleteFileW(temporary.c_str());
+								// Запоминаем, что выписывание ключа не удалось
+								result = false;
+							}
 						// Если запись ключа не удалась
-						if(!result)
-							// Удаляем файл, записанный не до конца
-							::_wremove(this->_fmk->convert(path).c_str());
+						} else
+							// Удаляем отдельный файл, записанный не до конца
+							::DeleteFileW(temporary.c_str());
 					// Если файл не открыт
 					} else {
 						/**

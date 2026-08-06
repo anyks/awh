@@ -29,14 +29,14 @@
 #if _WIN32 || _WIN64
 	// Формируем переносы строк лога
 	#define AWH_STRING_BREAK "\r\n"
-	#define AWH_STRING_BREAKS AWH_STRING_BREAK""AWH_STRING_BREAK
+	#define AWH_STRING_BREAKS AWH_STRING_BREAK"" AWH_STRING_BREAK
 /**
  * Для операционной системы не являющейся MS Windows
  */
 #else
 	// Формируем переносы строк лога
 	#define AWH_STRING_BREAK "\n"
-	#define AWH_STRING_BREAKS AWH_STRING_BREAK""AWH_STRING_BREAK
+	#define AWH_STRING_BREAKS AWH_STRING_BREAK"" AWH_STRING_BREAK
 #endif
 
 /**
@@ -599,7 +599,7 @@ namespace awh {
 					// Если метод названия функции передан
 					if(!method.empty()){
 						// Формируем результирующую строку отладки
-						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m"AWH_STRING_BREAK;
+						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m" AWH_STRING_BREAK;
 						// Добавляем название метода
 						debug.append(method);
 						// Добавляем перенос строки
@@ -607,13 +607,13 @@ namespace awh {
 						// Если аргументы функции переданы
 						if(this->count(params) > 0){
 							// Добавляем входные аргументы функции
-							debug.append("\x1B[1mArguments function:\x1B[0m"AWH_STRING_BREAK);
+							debug.append("\x1B[1mArguments function:\x1B[0m" AWH_STRING_BREAK);
 							// Добавляем список аргументов функции
 							debug.append(this->serialization(params));
 							// Добавляем перенос строки
 							debug.append(AWH_STRING_BREAKS);
 							// Добавляем описание входящего сообщения
-							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
+							debug.append("\x1B[1mMessage:\x1B[0m" AWH_STRING_BREAK);
 						}
 						// Добавляем формат сообщения
 						debug.append(format);
@@ -647,7 +647,7 @@ namespace awh {
 					// Если метод названия функции передан
 					if(!method.empty()){
 						// Формируем результирующую строку отладки
-						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m"AWH_STRING_BREAK;
+						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m" AWH_STRING_BREAK;
 						// Добавляем название метода
 						debug.append(method);
 						// Добавляем перенос строки
@@ -655,13 +655,13 @@ namespace awh {
 						// Если аргументы функции переданы
 						if(this->count(params) > 0){
 							// Добавляем входные аргументы функции
-							debug.append("\x1B[1mArguments function:\x1B[0m"AWH_STRING_BREAK);
+							debug.append("\x1B[1mArguments function:\x1B[0m" AWH_STRING_BREAK);
 							// Добавляем список аргументов функции
 							debug.append(this->serialization(params));
 							// Добавляем перенос строки
 							debug.append(AWH_STRING_BREAKS);
 							// Добавляем описание входящего сообщения
-							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
+							debug.append("\x1B[1mMessage:\x1B[0m" AWH_STRING_BREAK);
 						}
 						// Добавляем формат сообщения
 						debug.append(this->_fmk->convert(format));
@@ -695,7 +695,7 @@ namespace awh {
 					// Если метод названия функции передан
 					if(!method.empty()){
 						// Формируем результирующую строку отладки
-						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m"AWH_STRING_BREAK;
+						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m" AWH_STRING_BREAK;
 						// Добавляем название метода
 						debug.append(method);
 						// Добавляем перенос строки
@@ -703,13 +703,13 @@ namespace awh {
 						// Если аргументы функции переданы
 						if(this->count(params) > 0){
 							// Добавляем входные аргументы функции
-							debug.append("\x1B[1mArguments function:\x1B[0m"AWH_STRING_BREAK);
+							debug.append("\x1B[1mArguments function:\x1B[0m" AWH_STRING_BREAK);
 							// Добавляем список аргументов функции
 							debug.append(this->serialization(params));
 							// Добавляем перенос строки
 							debug.append(AWH_STRING_BREAKS);
 							// Добавляем описание входящего сообщения
-							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
+							debug.append("\x1B[1mMessage:\x1B[0m" AWH_STRING_BREAK);
 						}
 						// Добавляем формат сообщения
 						debug.append(format);
@@ -742,7 +742,7 @@ namespace awh {
 					// Если метод названия функции передан
 					if(!method.empty()){
 						// Формируем результирующую строку отладки
-						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m"AWH_STRING_BREAK;
+						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m" AWH_STRING_BREAK;
 						// Добавляем название метода
 						debug.append(method);
 						// Добавляем перенос строки
@@ -750,13 +750,13 @@ namespace awh {
 						// Если аргументы функции переданы
 						if(this->count(params) > 0){
 							// Добавляем входные аргументы функции
-							debug.append("\x1B[1mArguments function:\x1B[0m"AWH_STRING_BREAK);
+							debug.append("\x1B[1mArguments function:\x1B[0m" AWH_STRING_BREAK);
 							// Добавляем список аргументов функции
 							debug.append(this->serialization(params));
 							// Добавляем перенос строки
 							debug.append(AWH_STRING_BREAKS);
 							// Добавляем описание входящего сообщения
-							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
+							debug.append("\x1B[1mMessage:\x1B[0m" AWH_STRING_BREAK);
 						}
 						// Добавляем формат сообщения
 						debug.append(this->_fmk->convert(format));
