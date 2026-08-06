@@ -639,6 +639,8 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
         "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/eth.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/addr.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/iface.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/gateway.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/sctp.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/socket.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/netlink.cpp"
     )

@@ -58,6 +58,23 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks HTTP headers submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_HTTP_HEADERS_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для подмодуля перенаправления портов
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_PORTMAP_BENCHMARK "Build port mapping benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для подмодуля перенаправления портов
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_PORTMAP_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для подмодуля перенаправления портов
+        message(STATUS "Build benchmarks port mapping submodule: Yes\n")
+        # Дополняем список источников бенчмарками для подмодуля перенаправления портов
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            portmap/portmap.cpp
+        )
+    # Если не нужно собрать бенчмарки для подмодуля перенаправления портов
+    else()
+        # Выводим сообщение о сборке бенчмарков для подмодуля перенаправления портов
+        message(STATUS "Build benchmarks port mapping submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_PORTMAP_BENCHMARK})
+
     # Указываем что нужно собрать бенчмарки для подмодуля протокола HTTP/1.x
     option(CMAKE_BUILD_${BENCHMARK_NAME}_HTTP1_BENCHMARK "Build HTTP/1.x benchmark for ${BENCHMARK_NAME}" ON)
 

@@ -235,19 +235,16 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 	return result;
 }
 /**
- * @brief Метод отправки ядру сообщения изменения и приёма отклика
- *
- * @details Ядро отвечает на изменение одним сообщением: успехом либо кодом ошибки.
- *          Признак подтверждения (NLM_F_ACK) выставляется всегда - без него отклика
- *          не будет вовсе, и отказ прошёл бы незамеченным
+ * @brief Метод отправки ядру сообщения изменения
  *
  * @param message сообщение изменения
  * @param size    размер сообщения изменения
- * @param log     объект работы с логами
  * @return        результат выполнения изменения
  *
  */
-static bool commit(const void * message, const size_t size, const awh::log_t * log) noexcept {
+bool awh::gnu::Netlink::commit(const void * message, const size_t size) const noexcept {
+	// Получаем объект работы с логами
+	const awh::log_t * log = this->_log;
 	// Переменная результата
 	bool result = false;
 	// Создаём сокет к ядру
@@ -404,7 +401,7 @@ bool awh::gnu::Netlink::link(string_view name, string_view kind) const noexcept 
 	// Увеличиваем размер сообщения
 	message.header.nlmsg_len = (NLMSG_ALIGN(message.header.nlmsg_len) + RTA_ALIGN(info->rta_len));
 	// Выполняем отправку сообщения ядру
-	return ::commit(&message, message.header.nlmsg_len, this->_log);
+	return this->commit(&message, message.header.nlmsg_len);
 }
 /**
  * @brief Метод снятия виртуального сетевого устройства
@@ -464,5 +461,110 @@ bool awh::gnu::Netlink::unlink(string_view name) const noexcept {
 	// Устанавливаем номер снимаемого устройства
 	message.info.ifi_index = static_cast <int32_t> (index);
 	// Выполняем отправку сообщения ядру
-	return ::commit(&message, message.header.nlmsg_len, this->_log);
+	return this->commit(&message, message.header.nlmsg_len);
+}
+/**
+ * @brief Метод запроса сведений у ядра
+ *
+ * @param message  сообщение запроса
+ * @param size     размер сообщения запроса
+ * @param callback функция обхода полученных сообщений
+ * @return         результат выполнения запроса
+ *
+ */
+bool awh::gnu::Netlink::request(const void * message, const size_t size, const handler_t & callback) const noexcept {
+	// Переменная результата
+	bool result = false;
+	// Если сообщение запроса либо функция обхода не переданы
+	if((message == nullptr) || (size == 0) || (callback == nullptr))
+		// Выходим из функции
+		return result;
+	// Создаём сокет к ядру
+	const int32_t fd = ::socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE);
+	// Если сокет создать не удалось
+	if(fd < 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, ::strerror(errno));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+		#endif
+		// Выходим из функции
+		return result;
+	}
+	// Выполняем отправку запроса ядру
+	if(::send(fd, message, size, 0) < 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, ::strerror(errno));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+		#endif
+		// Закрываем сокет к ядру
+		::close(fd);
+		// Выходим из функции
+		return result;
+	}
+	// Создаём буфер приёма ответа
+	vector <uint8_t> buffer(32768, 0);
+	// Выполняем чтение ответа ядра
+	ssize_t bytes = ::recv(fd, buffer.data(), buffer.size(), 0);
+	// Если ответ получен
+	if(bytes > 0){
+		// Получаем указатель на первое сообщение ответа
+		const struct nlmsghdr * header = reinterpret_cast <const struct nlmsghdr *> (buffer.data());
+		/**
+		 * Переходим по всем сообщениям полученного ответа
+		 */
+		for(; NLMSG_OK(header, static_cast <uint32_t> (bytes)); header = NLMSG_NEXT(header, bytes)){
+			// Если сообщение сообщает о конце ответа
+			if(header->nlmsg_type == NLMSG_DONE)
+				// Выходим из цикла
+				break;
+			// Если сообщение сообщает об ошибке
+			if(header->nlmsg_type == NLMSG_ERROR){
+				// Получаем описание ошибки
+				const struct nlmsgerr * error = reinterpret_cast <const struct nlmsgerr *> (NLMSG_DATA(header));
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, ::strerror(-error->error));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(-error->error));
+				#endif
+				// Выходим из цикла
+				break;
+			}
+			// Запоминаем, что ответ получен
+			result = true;
+			// Передаём сообщение обходчику, пока тот не прервал обход
+			if(!callback(header))
+				// Выходим из цикла
+				break;
+		}
+	}
+	// Закрываем сокет к ядру
+	::close(fd);
+	// Возвращаем результат
+	return result;
 }
