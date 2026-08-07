@@ -151,7 +151,7 @@ TEST_F(QuicFixture, ParseClientInitialTest){
 	// Разобранный заголовок пакета
 	packet::header_t header;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем заголовок пакета
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (packet.data()), packet.size(), 0, header, error), status_t::OK);
 	// Проверяем тип пакета
@@ -195,7 +195,7 @@ TEST_F(QuicFixture, LongHeaderRoundTripTest){
 	// Разобранный заголовок пакета
 	packet::header_t header;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранный заголовок
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (output.data()), output.size(), 0, header, error), status_t::OK);
 	// Проверяем тип пакета
@@ -241,7 +241,7 @@ TEST_F(QuicFixture, ShortHeaderRoundTripTest){
 	// Разобранный заголовок пакета
 	packet::header_t header;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранный заголовок (длина идентификатора известна эндпоинту)
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (output.data()), output.size(), dcid.size, header, error), status_t::OK);
 	// Проверяем тип пакета
@@ -279,7 +279,7 @@ TEST_F(QuicFixture, VersionNegotiationRoundTripTest){
 	// Разобранный заголовок пакета
 	packet::header_t header;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранный пакет
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (output.data()), output.size(), 0, header, error), status_t::OK);
 	// Проверяем тип пакета
@@ -319,7 +319,7 @@ TEST_F(QuicFixture, RetryRoundTripTest){
 	// Разобранный заголовок пакета
 	packet::header_t header;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранный пакет
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (output.data()), output.size(), 0, header, error), status_t::OK);
 	// Проверяем тип пакета
@@ -343,13 +343,13 @@ TEST_F(QuicFixture, MalformedPacketTest){
 	// Разобранный заголовок пакета
 	packet::header_t header;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Пакет со сброшенным fixed-битом длинного заголовка
 	const std::string badFixed = this->unhex("8000000001088394c8f03e51570800000a");
 	// Проверяем отклонение пакета
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (badFixed.data()), badFixed.size(), 0, header, error), status_t::ERROR);
 	// Проверяем код ошибки транспорта
-	ASSERT_EQ(error, error_t::PROTOCOL_VIOLATION);
+	ASSERT_EQ(error, awh::quic::error_t::PROTOCOL_VIOLATION);
 	// Пакет с длиной идентификатора соединения больше лимита QUIC v1
 	const std::string badCid = this->unhex("c000000001ff");
 	// Проверяем отклонение пакета
@@ -399,7 +399,7 @@ TEST_F(QuicFixture, AckFrameRoundTripTest){
 	// Количество потреблённых октетов
 	size_t consumed = 0;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранный фрейм
 	ASSERT_EQ(frame::parser::ack(reinterpret_cast <const uint8_t *> (output.data()), output.size(), parsed, consumed, error), status_t::OK);
 	// Проверяем что фрейм потреблён целиком
@@ -452,7 +452,7 @@ TEST_F(QuicFixture, AckEcnFrameRoundTripTest){
 	// Количество потреблённых октетов
 	size_t consumed = 0;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранный фрейм
 	ASSERT_EQ(frame::parser::ack(reinterpret_cast <const uint8_t *> (output.data()), output.size(), parsed, consumed, error), status_t::OK);
 	// Проверяем наличие счётчиков ECN
@@ -475,11 +475,11 @@ TEST_F(QuicFixture, AckFrameMalformedTest){
 	// Количество потреблённых октетов
 	size_t consumed = 0;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Проверяем отклонение фрейма
 	ASSERT_EQ(frame::parser::ack(reinterpret_cast <const uint8_t *> (underflow.data()), underflow.size(), parsed, consumed, error), status_t::ERROR);
 	// Проверяем код ошибки транспорта
-	ASSERT_EQ(error, error_t::FRAME_ENCODING_ERROR);
+	ASSERT_EQ(error, awh::quic::error_t::FRAME_ENCODING_ERROR);
 }
 
 /**
@@ -498,14 +498,14 @@ TEST_F(QuicFixture, StreamFrameFinalSizeTest){
 	// Количество потреблённых октетов
 	size_t consumed = 0;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Проверяем отклонение фрейма
 	ASSERT_EQ(frame::parser::stream(reinterpret_cast <const uint8_t *> (overflow.data()), overflow.size(), parsed, consumed, error), status_t::ERROR);
 	/**
 	 * Проверяем код ошибки транспорта: RFC 9000 §19.8 допускает лишь FRAME_ENCODING_ERROR
 	 * либо FLOW_CONTROL_ERROR, но не FINAL_SIZE_ERROR
 	 */
-	ASSERT_EQ(error, error_t::FRAME_ENCODING_ERROR);
+	ASSERT_EQ(error, awh::quic::error_t::FRAME_ENCODING_ERROR);
 }
 
 /**
@@ -524,7 +524,7 @@ TEST_F(QuicFixture, CryptoFrameRoundTripTest){
 	// Количество потреблённых октетов
 	size_t consumed = 0;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранный фрейм
 	ASSERT_EQ(frame::parser::crypto(reinterpret_cast <const uint8_t *> (output.data()), output.size(), parsed, consumed, error), status_t::OK);
 	// Проверяем что фрейм потреблён целиком
@@ -558,7 +558,7 @@ TEST_F(QuicFixture, NewConnectionIdFrameRoundTripTest){
 	// Количество потреблённых октетов
 	size_t consumed = 0;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранный фрейм
 	ASSERT_EQ(frame::parser::newConnectionId(reinterpret_cast <const uint8_t *> (output.data()), output.size(), parsed, consumed, error), status_t::OK);
 	// Проверяем что фрейм потреблён целиком
@@ -590,19 +590,19 @@ TEST_F(QuicFixture, ConnectionCloseFrameRoundTripTest){
 	// Причина завершения соединения
 	const std::string reason = "protocol violation detected";
 	// Собираем фрейм CONNECTION_CLOSE с ошибкой транспорта
-	frame::serialize::connectionClose(output, static_cast <uint64_t> (error_t::PROTOCOL_VIOLATION), static_cast <uint64_t> (frame_t::CRYPTO), reason, false);
+	frame::serialize::connectionClose(output, static_cast <uint64_t> (awh::quic::error_t::PROTOCOL_VIOLATION), static_cast <uint64_t> (frame_t::CRYPTO), reason, false);
 	// Разобранный фрейм CONNECTION_CLOSE
 	frame::connection_close_t parsed;
 	// Количество потреблённых октетов
 	size_t consumed = 0;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранный фрейм
 	ASSERT_EQ(frame::parser::connectionClose(reinterpret_cast <const uint8_t *> (output.data()), output.size(), parsed, consumed, error), status_t::OK);
 	// Проверяем что фрейм содержит ошибку транспорта
 	ASSERT_FALSE(parsed.app);
 	// Проверяем код ошибки
-	ASSERT_EQ(parsed.code, static_cast <uint64_t> (error_t::PROTOCOL_VIOLATION));
+	ASSERT_EQ(parsed.code, static_cast <uint64_t> (awh::quic::error_t::PROTOCOL_VIOLATION));
 	// Проверяем тип фрейма, вызвавшего ошибку
 	ASSERT_EQ(parsed.frameType, static_cast <uint64_t> (frame_t::CRYPTO));
 	// Проверяем причину завершения
@@ -643,7 +643,7 @@ TEST_F(QuicFixture, FrameSequenceTest){
 	// Количество потреблённых октетов
 	size_t consumed = 0;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Определённый тип фрейма
 	frame_t type = frame_t::UNKNOWN;
 	// Определяем тип первого фрейма

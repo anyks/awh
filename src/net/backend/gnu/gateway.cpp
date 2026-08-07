@@ -186,6 +186,16 @@ namespace routing {
 		if(route.gateway == nullptr)
 			// Сообщаем, что правка не выполнена
 			return false;
+		/**
+		 * @note Размер адреса сверяется с обоими допустимыми значениями, а не с одним
+		 *       лишь размером адреса IPv4. Развилка «четыре либо всё остальное»
+		 *       разбирала бы всякий иной адрес как IPv6 и читала бы шестнадцать
+		 *       октетов там, где их нет: адрес канального уровня, к примеру, занимает
+		 *       шесть, и чтение вышло бы за его пределы
+		 */
+		if((route.gateway->size != 4) && (route.gateway->size != 16))
+			// Сообщаем, что правка не выполнена
+			return false;
 		// Определяем семейство протоколов по размеру адреса
 		const uint8_t family = ((route.gateway->size == 4) ? AF_INET : AF_INET6);
 		// Получаем размер адреса семейства протоколов
@@ -224,10 +234,15 @@ namespace routing {
 		message.route.rtm_type = RTN_UNICAST;
 		// Получаем предел размера сообщения
 		const size_t limit = sizeof(message);
-		// Если адрес назначения задан
-		if(route.destination != nullptr){
+		/**
+		 * @note Адрес назначения сверяется не только с допустимыми размерами, но и с
+		 *       семейством самого шлюза: маршрут описывает один путь, и адрес
+		 *       назначения иного семейства, нежели шлюз, ядро отвергло бы, а прочтён
+		 *       он был бы размером семейства шлюза - то есть за своими пределами
+		 */
+		if((route.destination != nullptr) && (static_cast <size_t> (route.destination->size) == size)){
 			// Если адрес назначения является IPv4
-			if(route.destination->size == 4)
+			if(family == AF_INET)
 				// Добавляем адрес назначения маршрута
 				::routing::attribute(&message.header, limit, RTA_DST, &awh_cast <const awh::net::addr_net_ipv4_t *> (route.destination.get())->address, size);
 			// Добавляем адрес назначения маршрута
@@ -309,6 +324,15 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		if(route.gateway == nullptr)
 			// Выходим из функции
 			return result;
+		/**
+		 * @note Размер адреса сверяется с обоими допустимыми значениями, а не с одним
+		 *       лишь размером адреса IPv4. Развилка «четыре либо всё остальное»
+		 *       разбирала бы всякий иной адрес как IPv6 и читала бы шестнадцать
+		 *       октетов там, где их нет
+		 */
+		if((route.gateway->size != 4) && (route.gateway->size != 16))
+			// Выходим из функции
+			return result;
 		// Определяем семейство протоколов по размеру адреса
 		const uint8_t family = ((route.gateway->size == 4) ? AF_INET : AF_INET6);
 		// Получаем размер адреса семейства протоколов
@@ -323,10 +347,14 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		uint8_t destination[16] = {0};
 		// Признак того, что адрес назначения задан
 		bool wanted = false;
-		// Если адрес назначения задан
-		if(route.destination != nullptr){
+		/**
+		 * @note Адрес назначения сверяется с семейством самого шлюза: маршрут описывает
+		 *       один путь, и адрес иного семейства был бы прочтён размером семейства
+		 *       шлюза - то есть за своими пределами
+		 */
+		if((route.destination != nullptr) && (static_cast <size_t> (route.destination->size) == size)){
 			// Если адрес назначения является IPv4
-			if(route.destination->size == 4)
+			if(family == AF_INET)
 				// Копируем искомый адрес назначения
 				::memcpy(destination, &awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address, 4);
 			// Копируем искомый адрес назначения

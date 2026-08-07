@@ -199,7 +199,7 @@ TEST_F(QuicFixture, CryptoOpenClientInitialTest){
 	// Разобранный заголовок пакета
 	packet::header_t header;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем заголовок защищённого пакета
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (packet.data()), packet.size(), 0, header, error), status_t::OK);
 	// Восстановленный полный номер пакета
@@ -244,7 +244,7 @@ TEST_F(QuicFixture, CryptoServerInitialTest){
 	// Разобранный заголовок пакета
 	packet::header_t header;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем заголовок защищённого пакета
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (output.data()), output.size(), 0, header, error), status_t::OK);
 	// Восстановленный полный номер пакета
@@ -322,7 +322,7 @@ TEST_F(QuicFixture, CryptoChaChaShortHeaderTest){
 	// Разобранный заголовок пакета
 	packet::header_t header;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем заголовок защищённого пакета (пустой идентификатор соединения)
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (output.data()), output.size(), 0, header, error), status_t::OK);
 	// Восстановленный полный номер пакета
@@ -353,7 +353,7 @@ TEST_F(QuicFixture, CryptoOpenTamperedTest){
 	// Разобранный заголовок пакета
 	packet::header_t header;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем заголовок повреждённого пакета
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (packet.data()), packet.size(), 0, header, error), status_t::OK);
 	// Восстановленный полный номер пакета
@@ -400,7 +400,7 @@ TEST_F(QuicFixture, CryptoReservedBitsTest){
 	// Расшифрованная нагрузка пакета
 	std::string plain;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Смещение поля Packet Number соответствует длине заголовка без номера пакета
 	const size_t pnOffset = (header.size() - 4);
 	// Выполняем снятие защиты пакета ключами клиента
@@ -408,7 +408,7 @@ TEST_F(QuicFixture, CryptoReservedBitsTest){
 	// Проверяем что снятие защиты отвергнуто
 	ASSERT_EQ(status, status_t::ERROR);
 	// Проверяем что причиной отказа названо нарушение протокола, а не ошибка расшифровки
-	ASSERT_EQ(error, error_t::PROTOCOL_VIOLATION);
+	ASSERT_EQ(error, awh::quic::error_t::PROTOCOL_VIOLATION);
 }
 
 /**
@@ -471,7 +471,7 @@ TEST_F(QuicFixture, CryptoOpenWithoutKeysTest){
 	// Расшифрованная нагрузка пакета
 	std::string plain;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Выполняем снятие защиты пакета незаполненными ключами
 	const status_t status = crypto::open(reinterpret_cast <uint8_t *> (&packet[0]), packet.size(), 18, 0, crypto::keys_t(), pn, plain, error);
 	// Проверяем что снятие защиты отвергнуто

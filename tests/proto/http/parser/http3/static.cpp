@@ -160,7 +160,7 @@ TEST_F(ParserHttp3Fixture, QpackRoundTrip){
 		// Количество разобранных октетов
 		size_t consumed = 0;
 		// Код ошибки протокола
-		error_t error = error_t::H3_NO_ERROR;
+		awh::http::h3::error_t error = awh::http::h3::error_t::H3_NO_ERROR;
 		// Если инструкции потока кодера накоплены
 		if(!instructions.empty()){
 			// Инструкции обязаны разбираться декодером
@@ -232,7 +232,7 @@ TEST_F(ParserHttp3Fixture, QpackBlockedStream){
 	// Декодированные поля секции
 	std::vector <qpack::field_view_t> output;
 	// Код ошибки протокола
-	error_t error = error_t::H3_NO_ERROR;
+	awh::http::h3::error_t error = awh::http::h3::error_t::H3_NO_ERROR;
 	/**
 	 * Секция подаётся раньше инструкций: декодер обязан сообщить о блокировке,
 	 * а не об ошибке
@@ -398,7 +398,7 @@ TEST_F(ParserHttp3Fixture, FrameRoundTrip){
 	// Неполный заголовок кадра разбираться не должен
 	ASSERT_EQ(frame::parser::header(reinterpret_cast <const uint8_t *> (buffer.data()), 1, head), 0u);
 	// Код ошибки протокола
-	error_t error = error_t::H3_NO_ERROR;
+	awh::http::h3::error_t error = awh::http::h3::error_t::H3_NO_ERROR;
 	// Разобранное значение идентификатора
 	uint64_t identifier = 0;
 	// Выполняем очистку буфера собираемого кадра
@@ -419,7 +419,7 @@ TEST_F(ParserHttp3Fixture, FrameRoundTrip){
 	// Нагрузка с лишними октетами разбираться не должна
 	ASSERT_EQ(frame::parser::identifier(reinterpret_cast <const uint8_t *> (buffer.data() + used), (buffer.size() - used), identifier, error), status_t::ERROR);
 	// Код ошибки обязан указывать на нарушение требований к нагрузке
-	ASSERT_EQ(error, error_t::H3_FRAME_ERROR);
+	ASSERT_EQ(error, awh::http::h3::error_t::H3_FRAME_ERROR);
 }
 /**
  * @brief Проверка разбора кадра параметров соединения
@@ -429,7 +429,7 @@ TEST_F(ParserHttp3Fixture, FrameSettingsDuplicate){
 	// Разобранный набор параметров
 	std::vector <frame::setting_entry_t> items;
 	// Код ошибки протокола
-	error_t error = error_t::H3_NO_ERROR;
+	awh::http::h3::error_t error = awh::http::h3::error_t::H3_NO_ERROR;
 	// Собираемая нагрузка кадра параметров
 	std::string payload;
 	// Записываем идентификатор первого параметра
@@ -454,7 +454,7 @@ TEST_F(ParserHttp3Fixture, FrameSettingsDuplicate){
 	// Набор с повторным параметром разбираться не должен
 	ASSERT_EQ(frame::parser::settings(reinterpret_cast <const uint8_t *> (payload.data()), payload.size(), items, error), status_t::ERROR);
 	// Код ошибки обязан указывать на недопустимое содержимое кадра параметров
-	ASSERT_EQ(error, error_t::H3_SETTINGS_ERROR);
+	ASSERT_EQ(error, awh::http::h3::error_t::H3_SETTINGS_ERROR);
 	/**
 	 * Повтор обязан ловиться и за порогом перебора: выше него поиск идёт
 	 * по множеству, и переключение не должно терять уже разобранные
@@ -482,7 +482,7 @@ TEST_F(ParserHttp3Fixture, FrameSettingsDuplicate){
 	// Набор с повторным параметром разбираться не должен
 	ASSERT_EQ(frame::parser::settings(reinterpret_cast <const uint8_t *> (wide.data()), wide.size(), items, error), status_t::ERROR);
 	// Код ошибки обязан указывать на недопустимое содержимое кадра параметров
-	ASSERT_EQ(error, error_t::H3_SETTINGS_ERROR);
+	ASSERT_EQ(error, awh::http::h3::error_t::H3_SETTINGS_ERROR);
 	/**
 	 * Обрыв нагрузки посреди пары - нарушение требований к нагрузке любого кадра,
 	 * а не к содержимому именно SETTINGS, поэтому код ошибки другой (RFC 9114 §7.1)
@@ -494,7 +494,7 @@ TEST_F(ParserHttp3Fixture, FrameSettingsDuplicate){
 	// Оборванный набор параметров разбираться не должен
 	ASSERT_EQ(frame::parser::settings(reinterpret_cast <const uint8_t *> (truncated.data()), truncated.size(), items, error), status_t::ERROR);
 	// Код ошибки обязан указывать на нарушение требований к нагрузке кадра
-	ASSERT_EQ(error, error_t::H3_FRAME_ERROR);
+	ASSERT_EQ(error, awh::http::h3::error_t::H3_FRAME_ERROR);
 }
 /**
  * @brief Проверка обмена параметрами соединения
@@ -584,7 +584,7 @@ TEST_F(ParserHttp3Fixture, RequestResponseExchange){
 	// Поток обязан быть закрыт после завершения обоих направлений
 	ASSERT_EQ(client.events.closes.size(), 1u);
 	// Код закрытия потока обязан быть штатным
-	ASSERT_EQ(client.events.closes.front().second, error_t::H3_NO_ERROR);
+	ASSERT_EQ(client.events.closes.front().second, awh::http::h3::error_t::H3_NO_ERROR);
 	// Поток обязан быть закрыт и на стороне сервера
 	ASSERT_EQ(server.events.closes.size(), 1u);
 }
@@ -793,7 +793,7 @@ TEST_F(ParserHttp3Fixture, NoContentResponseTrailersRejected){
 		// Поток обязан быть оборван
 		ASSERT_FALSE(client.events.aborts.empty()) << "code: " << code;
 		// Код обрыва потока обязан указывать на ошибку сообщения
-		ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << "code: " << code;
+		ASSERT_EQ(std::get <1> (client.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR) << "code: " << code;
 	}
 }
 
@@ -862,7 +862,7 @@ TEST_F(ParserHttp3Fixture, ForbiddenTrailerCategories){
 				// Поток обязан быть оборван
 				ASSERT_FALSE(server.events.aborts.empty()) << "field: " << probe.first;
 				// Код обрыва потока обязан указывать на ошибку сообщения
-				ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << "field: " << probe.first;
+				ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR) << "field: " << probe.first;
 			// Иначе сообщение обязано быть принято целиком
 			} else {
 				// Обрыва потока быть не должно
@@ -905,7 +905,7 @@ TEST_F(ParserHttp3Fixture, ContentLengthMismatch){
 	// Поток обязан быть оборван
 	ASSERT_FALSE(server.events.aborts.empty());
 	// Код обрыва потока обязан указывать на ошибку сообщения
-	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR);
+	ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR);
 }
 /**
  * @brief Проверка отбраковки формы цели запроса
@@ -992,7 +992,7 @@ TEST_F(ParserHttp3Fixture, RequestTargetFormValidated){
 			// Поток обязан быть оборван
 			ASSERT_FALSE(server.events.aborts.empty()) << probes[i].label;
 			// Код обрыва потока обязан указывать на ошибку сообщения
-			ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << probes[i].label;
+			ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR) << probes[i].label;
 		}
 	}
 }
@@ -1026,7 +1026,7 @@ TEST_F(ParserHttp3Fixture, ForbiddenConnectionField){
 	// Поток обязан быть оборван
 	ASSERT_FALSE(server.events.aborts.empty());
 	// Код обрыва потока обязан указывать на ошибку сообщения
-	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR);
+	ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR);
 }
 /**
  * @brief Проверка требования начинать управляющий поток кадром SETTINGS
@@ -1046,7 +1046,7 @@ TEST_F(ParserHttp3Fixture, ControlStreamMissingSettings){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(server.events.errors.empty());
 	// Код ошибки обязан указывать на отсутствие кадра параметров
-	ASSERT_EQ(server.events.errors.front().first, error_t::H3_MISSING_SETTINGS);
+	ASSERT_EQ(server.events.errors.front().first, awh::http::h3::error_t::H3_MISSING_SETTINGS);
 }
 /**
  * @brief Проверка отбраковки второго управляющего потока
@@ -1071,7 +1071,7 @@ TEST_F(ParserHttp3Fixture, SecondControlStream){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(server.events.errors.empty());
 	// Код ошибки обязан указывать на недопустимое создание потока
-	ASSERT_EQ(server.events.errors.front().first, error_t::H3_STREAM_CREATION_ERROR);
+	ASSERT_EQ(server.events.errors.front().first, awh::http::h3::error_t::H3_STREAM_CREATION_ERROR);
 }
 /**
  * @brief Проверка отбраковки закрытия управляющего потока
@@ -1094,7 +1094,7 @@ TEST_F(ParserHttp3Fixture, ClosedCriticalStream){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(server.events.errors.empty());
 	// Код ошибки обязан указывать на закрытие критического потока
-	ASSERT_EQ(server.events.errors.front().first, error_t::H3_CLOSED_CRITICAL_STREAM);
+	ASSERT_EQ(server.events.errors.front().first, awh::http::h3::error_t::H3_CLOSED_CRITICAL_STREAM);
 }
 /**
  * @brief Проверка отбраковки кадров, изъятых из употребления в HTTP/3
@@ -1119,7 +1119,7 @@ TEST_F(ParserHttp3Fixture, RetiredFrameType){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(server.events.errors.empty());
 	// Код ошибки обязан указывать на недопустимый в этом месте кадр
-	ASSERT_EQ(server.events.errors.front().first, error_t::H3_FRAME_UNEXPECTED);
+	ASSERT_EQ(server.events.errors.front().first, awh::http::h3::error_t::H3_FRAME_UNEXPECTED);
 }
 /**
  * @brief Проверка игнорирования зарезервированных кадров
@@ -1169,7 +1169,7 @@ TEST_F(ParserHttp3Fixture, DataBeforeHeaders){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(server.events.errors.empty());
 	// Код ошибки обязан указывать на недопустимый в этом месте кадр
-	ASSERT_EQ(server.events.errors.front().first, error_t::H3_FRAME_UNEXPECTED);
+	ASSERT_EQ(server.events.errors.front().first, awh::http::h3::error_t::H3_FRAME_UNEXPECTED);
 }
 /**
  * @brief Проверка отбраковки управляющих кадров в потоке сообщения
@@ -1190,7 +1190,7 @@ TEST_F(ParserHttp3Fixture, ControlFrameOnRequestStream){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(server.events.errors.empty());
 	// Код ошибки обязан указывать на недопустимый в этом месте кадр
-	ASSERT_EQ(server.events.errors.front().first, error_t::H3_FRAME_UNEXPECTED);
+	ASSERT_EQ(server.events.errors.front().first, awh::http::h3::error_t::H3_FRAME_UNEXPECTED);
 }
 /**
  * @brief Проверка отбраковки параметров, изъятых из употребления в HTTP/3
@@ -1218,7 +1218,7 @@ TEST_F(ParserHttp3Fixture, RetiredSettingRejected){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(server.events.errors.empty());
 	// Код ошибки обязан указывать на недопустимое содержимое кадра параметров
-	ASSERT_EQ(server.events.errors.front().first, error_t::H3_SETTINGS_ERROR);
+	ASSERT_EQ(server.events.errors.front().first, awh::http::h3::error_t::H3_SETTINGS_ERROR);
 }
 /**
  * @brief Проверка реакции на однонаправленный поток неизвестного типа
@@ -1245,7 +1245,7 @@ TEST_F(ParserHttp3Fixture, UnknownUnidirectionalStream){
 	// Просьба обязана быть остановкой приёма, а не обрывом отправки
 	ASSERT_TRUE(std::get <2> (server.events.aborts.front()));
 	// Код обязан указывать на недопустимое создание потока
-	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_STREAM_CREATION_ERROR);
+	ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_STREAM_CREATION_ERROR);
 }
 /**
  * @brief Проверка отбраковки возрастания идентификатора в кадре GOAWAY
@@ -1280,7 +1280,7 @@ TEST_F(ParserHttp3Fixture, GoawayMustNotIncrease){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(client.events.errors.empty());
 	// Код ошибки обязан указывать на идентификатор вне допустимых границ
-	ASSERT_EQ(client.events.errors.front().first, error_t::H3_ID_ERROR);
+	ASSERT_EQ(client.events.errors.front().first, awh::http::h3::error_t::H3_ID_ERROR);
 }
 /**
  * @brief Проверка неприменимости унаследованной сигнатуры разбора
@@ -1299,7 +1299,7 @@ TEST_F(ParserHttp3Fixture, InheritedParseSignatureRejected){
 	// Ошибка обязана быть зафиксирована
 	ASSERT_FALSE(server.events.errors.empty());
 	// Код ошибки обязан указывать на внутреннюю ошибку реализации
-	ASSERT_EQ(server.events.errors.front().first, error_t::H3_INTERNAL_ERROR);
+	ASSERT_EQ(server.events.errors.front().first, awh::http::h3::error_t::H3_INTERNAL_ERROR);
 	// Итоговый статус разбора обязан стать ошибочным
 	ASSERT_EQ(server.parser->status(), parser_t::status_t::ERROR);
 }
@@ -1343,7 +1343,7 @@ TEST_F(ParserHttp3Fixture, HeaderSectionLimit){
 	// Поток обязан быть оборван
 	ASSERT_FALSE(server.events.aborts.empty());
 	// Код обрыва потока обязан указывать на чрезмерную нагрузку
-	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_EXCESSIVE_LOAD);
+	ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_EXCESSIVE_LOAD);
 }
 /**
  * @brief Проверка ограничения суммарного размера тела потока
@@ -1375,7 +1375,7 @@ TEST_F(ParserHttp3Fixture, BodySizeLimit){
 	// Поток обязан быть оборван
 	ASSERT_FALSE(server.events.aborts.empty());
 	// Код обрыва потока обязан указывать на чрезмерную нагрузку
-	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_EXCESSIVE_LOAD);
+	ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_EXCESSIVE_LOAD);
 }
 /**
  * @brief Проверка информационного ответа сервера
@@ -1443,7 +1443,7 @@ TEST_F(ParserHttp3Fixture, SwitchingProtocolsRejected){
 	// Поток обязан быть оборван
 	ASSERT_FALSE(client.events.aborts.empty());
 	// Код обрыва потока обязан указывать на ошибку сообщения
-	ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_MESSAGE_ERROR);
+	ASSERT_EQ(std::get <1> (client.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR);
 }
 /**
  * @brief Проверка отказа транспорта открывать однонаправленные потоки
@@ -1669,7 +1669,7 @@ TEST_F(ParserHttp3Fixture, QpackBlockedTailLimit){
 	// Поток обязан быть оборван
 	ASSERT_FALSE(server.events.aborts.empty());
 	// Код обрыва потока обязан указывать на чрезмерную нагрузку
-	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_EXCESSIVE_LOAD);
+	ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_EXCESSIVE_LOAD);
 }
 /**
  * @brief Проверка отбраковки потока отменённого обещания push
@@ -1710,7 +1710,7 @@ TEST_F(ParserHttp3Fixture, CancelledPushStreamAborted){
 	// Поток обязан быть оборван
 	ASSERT_FALSE(client.events.aborts.empty());
 	// Код обрыва потока обязан указывать на отмену запроса
-	ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_REQUEST_CANCELLED);
+	ASSERT_EQ(std::get <1> (client.events.aborts.front()), awh::http::h3::error_t::H3_REQUEST_CANCELLED);
 	// Приём потока обязан быть остановлен
 	ASSERT_TRUE(std::get <2> (client.events.aborts.front()));
 	// Ничего доставлено быть не должно
@@ -1744,7 +1744,7 @@ TEST_F(ParserHttp3Fixture, GoawayStreamIdClass){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(client.events.errors.empty());
 	// Код ошибки обязан указывать на расхождение в учёте идентификаторов
-	ASSERT_EQ(client.events.errors.front().first, error_t::H3_ID_ERROR);
+	ASSERT_EQ(client.events.errors.front().first, awh::http::h3::error_t::H3_ID_ERROR);
 }
 /**
  * @brief Проверка отбраковки тела у безтелесного ответа
@@ -1785,7 +1785,7 @@ TEST_F(ParserHttp3Fixture, DataOnHeadlessResponse){
 	// Поток обязан быть оборван
 	ASSERT_FALSE(client.events.aborts.empty());
 	// Код обрыва потока обязан указывать на искажённое сообщение
-	ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_MESSAGE_ERROR);
+	ASSERT_EQ(std::get <1> (client.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR);
 	// Тело доставлено быть не должно
 	ASSERT_TRUE(client.events.bodies.empty());
 }
@@ -1821,7 +1821,7 @@ TEST_F(ParserHttp3Fixture, BodyExceedsContentLength){
 	// Поток обязан быть оборван до завершения потока пиром
 	ASSERT_FALSE(server.events.aborts.empty());
 	// Код обрыва потока обязан указывать на искажённое сообщение
-	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR);
+	ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR);
 }
 /**
  * @brief Проверка отката ровно последней закодированной секции
@@ -1859,7 +1859,7 @@ TEST_F(ParserHttp3Fixture, QpackRollbackKeepsSentSections){
 	// Количество разобранных октетов
 	size_t consumed = 0;
 	// Код ошибки протокола
-	error_t error = error_t::H3_NO_ERROR;
+	awh::http::h3::error_t error = awh::http::h3::error_t::H3_NO_ERROR;
 	// Подаём декодеру инструкции потока кодера
 	ASSERT_EQ(decoder.decodeEncoderStream(encoder.pending(), consumed, error), status_t::OK);
 	// Отмечаем инструкции отправленными
@@ -1885,7 +1885,7 @@ TEST_F(ParserHttp3Fixture, QpackRollbackKeepsSentSections){
 	 */
 	ASSERT_EQ(encoder.decodeDecoderStream(feedback, consumed, error), status_t::ERROR);
 	// Код ошибки обязан указывать на ошибку потока декодера
-	ASSERT_EQ(error, error_t::QPACK_DECODER_STREAM_ERROR);
+	ASSERT_EQ(error, awh::http::h3::error_t::QPACK_DECODER_STREAM_ERROR);
 }
 /**
  * @brief Проверка того, что отмена обещания push не копится без предела
@@ -1959,7 +1959,7 @@ TEST_F(ParserHttp3Fixture, DuplicatePushStreamRejected){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(client.events.errors.empty());
 	// Код ошибки обязан указывать на расхождение в учёте идентификаторов
-	ASSERT_EQ(client.events.errors.front().first, error_t::H3_ID_ERROR);
+	ASSERT_EQ(client.events.errors.front().first, awh::http::h3::error_t::H3_ID_ERROR);
 }
 /**
  * @brief Проверка учёта потоков push в лимите одновременных потоков
@@ -2006,7 +2006,7 @@ TEST_F(ParserHttp3Fixture, PushStreamsCountedInStreamLimit){
 	// Второй поток обязан быть отвергнут
 	ASSERT_FALSE(client.events.aborts.empty());
 	// Код обрыва потока обязан указывать на отказ в потоке
-	ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_REQUEST_REJECTED);
+	ASSERT_EQ(std::get <1> (client.events.aborts.front()), awh::http::h3::error_t::H3_REQUEST_REJECTED);
 }
 /**
  * @brief Проверка сохранности отложенного состояния при повторной блокировке
@@ -2168,7 +2168,7 @@ TEST_F(ParserHttp3Fixture, RepeatedPushPromiseSectionMismatch){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(client.events.errors.empty());
 	// Код ошибки обязан указывать на нарушение протокола
-	ASSERT_EQ(client.events.errors.front().first, error_t::H3_GENERAL_PROTOCOL_ERROR);
+	ASSERT_EQ(client.events.errors.front().first, awh::http::h3::error_t::H3_GENERAL_PROTOCOL_ERROR);
 }
 
 /**
@@ -2432,7 +2432,7 @@ TEST_F(ParserHttp3Fixture, PushStreamAfterLocalGoaway){
 	// Поток обязан быть оборван
 	ASSERT_EQ(client.events.aborts.size(), 1u);
 	// Код обрыва потока обязан указывать на отклонение запроса
-	ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_REQUEST_REJECTED);
+	ASSERT_EQ(std::get <1> (client.events.aborts.front()), awh::http::h3::error_t::H3_REQUEST_REJECTED);
 	// Приём потока обязан быть остановлен
 	ASSERT_TRUE(std::get <2> (client.events.aborts.front()));
 	// Ничего доставлено быть не должно
@@ -2555,7 +2555,7 @@ TEST_F(ParserHttp3Fixture, AnnouncedFieldSectionSizeEnforced){
 	// Поток обязан быть оборван
 	ASSERT_FALSE(server.events.aborts.empty());
 	// Код обрыва потока обязан указывать на чрезмерную нагрузку
-	ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_EXCESSIVE_LOAD);
+	ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_EXCESSIVE_LOAD);
 }
 
 /**
@@ -2674,7 +2674,7 @@ TEST_F(ParserHttp3Fixture, ServerInitiatedBidiRejected){
 		// Ошибка уровня соединения обязана быть зафиксирована
 		ASSERT_FALSE(endpoint.events.errors.empty());
 		// Код ошибки обязан указывать на недопустимое создание потока
-		ASSERT_EQ(endpoint.events.errors.front().first, error_t::H3_STREAM_CREATION_ERROR);
+		ASSERT_EQ(endpoint.events.errors.front().first, awh::http::h3::error_t::H3_STREAM_CREATION_ERROR);
 	}
 }
 
@@ -2870,7 +2870,7 @@ TEST_F(ParserHttp3Fixture, PushPriorityNotPromised){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(server.events.errors.empty());
 	// Код ошибки обязан указывать на нарушение учёта идентификаторов
-	ASSERT_EQ(server.events.errors.front().first, error_t::H3_ID_ERROR);
+	ASSERT_EQ(server.events.errors.front().first, awh::http::h3::error_t::H3_ID_ERROR);
 }
 
 /**
@@ -2899,7 +2899,7 @@ TEST_F(ParserHttp3Fixture, PriorityUpdateRejectedByClient){
 	// Ошибка уровня соединения обязана быть зафиксирована
 	ASSERT_FALSE(client.events.errors.empty());
 	// Код ошибки обязан указывать на неуместный кадр
-	ASSERT_EQ(client.events.errors.front().first, error_t::H3_FRAME_UNEXPECTED);
+	ASSERT_EQ(client.events.errors.front().first, awh::http::h3::error_t::H3_FRAME_UNEXPECTED);
 }
 
 /**
@@ -3301,7 +3301,7 @@ TEST_F(ParserHttp3Fixture, ProxyBodylessResponseFraming){
 				// Поток обязан быть оборван
 				ASSERT_FALSE(client.events.aborts.empty()) << "code: " << code;
 				// Код обрыва потока обязан указывать на искажённое сообщение
-				ASSERT_EQ(std::get <1> (client.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << "code: " << code;
+				ASSERT_EQ(std::get <1> (client.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR) << "code: " << code;
 			// Прямое соединение такой ответ принимает
 			} else ASSERT_TRUE(client.events.aborts.empty()) << "code: " << code;
 			// Соединение обязано остаться живым в любом случае
@@ -3356,7 +3356,7 @@ TEST_F(ParserHttp3Fixture, ProxyFieldValueControlCharacter){
 				// Поток обязан быть оборван
 				ASSERT_FALSE(server.events.aborts.empty()) << "letter: " << probe;
 				// Код обрыва потока обязан указывать на искажённое сообщение
-				ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << "letter: " << probe;
+				ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR) << "letter: " << probe;
 			// Прямое соединение такой запрос принимает
 			} else {
 				// Обрыва потока быть не должно
@@ -3426,7 +3426,7 @@ TEST_F(ParserHttp3Fixture, ProxyPseudoHeaderSplitting){
 				// Поток обязан быть оборван
 				ASSERT_FALSE(server.events.aborts.empty()) << "pseudo: " << probe.first << ", value: " << probe.second;
 				// Код обрыва потока обязан указывать на искажённое сообщение
-				ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR)
+				ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR)
 					<< "pseudo: " << probe.first << ", value: " << probe.second;
 			// Прямое соединение такой запрос принимает
 			} else ASSERT_TRUE(server.events.aborts.empty()) << "pseudo: " << probe.first << ", value: " << probe.second;
@@ -3483,7 +3483,7 @@ TEST_F(ParserHttp3Fixture, WebSocketRoleEnablesExtendedConnect){
 			// Поток обязан быть оборван
 			ASSERT_FALSE(server.events.aborts.empty()) << "websocket: " << websocket;
 			// Код обрыва потока обязан указывать на искажённое сообщение
-			ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR) << "websocket: " << websocket;
+			ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR) << "websocket: " << websocket;
 		}
 		// Соединение обязано остаться живым в любом случае
 		ASSERT_TRUE(server.events.errors.empty()) << "websocket: " << websocket;
@@ -3544,7 +3544,7 @@ TEST_F(ParserHttp3Fixture, WebSocketTargetScheme){
 				// Поток обязан быть оборван
 				ASSERT_FALSE(server.events.aborts.empty()) << "websocket: " << websocket << ", scheme: " << scheme;
 				// Код обрыва потока обязан указывать на искажённое сообщение
-				ASSERT_EQ(std::get <1> (server.events.aborts.front()), error_t::H3_MESSAGE_ERROR)
+				ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_MESSAGE_ERROR)
 					<< "websocket: " << websocket << ", scheme: " << scheme;
 			// В остальных случаях запрос принимается
 			} else {
@@ -4223,7 +4223,7 @@ TEST_F(ParserHttp3Fixture, QpackRetainedEntriesBounded){
 	// Количество разобранных октетов
 	size_t consumed = 0;
 	// Код ошибки разбора
-	error_t error = error_t::H3_NO_ERROR;
+	awh::http::h3::error_t error = awh::http::h3::error_t::H3_NO_ERROR;
 	// Поток инструкций обязан быть разобран целиком
 	ASSERT_EQ(decoder.decodeEncoderStream(stream, consumed, error), status_t::OK);
 	// Разобрать обязано весь поток
@@ -4267,7 +4267,7 @@ TEST_F(ParserHttp3Fixture, QpackHoldSurvivesMixedStreamOrder){
 		// Количество разобранных октетов
 		size_t consumed = 0;
 		// Код ошибки протокола
-		error_t error = error_t::H3_NO_ERROR;
+		awh::http::h3::error_t error = awh::http::h3::error_t::H3_NO_ERROR;
 		// Подаём декодеру накопленные инструкции потока кодера
 		ASSERT_EQ(decoder.decodeEncoderStream(encoder.pending(), consumed, error), status_t::OK);
 		// Отмечаем инструкции отправленными
@@ -4287,7 +4287,7 @@ TEST_F(ParserHttp3Fixture, QpackHoldSurvivesMixedStreamOrder){
 		// Количество разобранных октетов
 		size_t consumed = 0;
 		// Код ошибки протокола
-		error_t error = error_t::H3_NO_ERROR;
+		awh::http::h3::error_t error = awh::http::h3::error_t::H3_NO_ERROR;
 		// Подаём кодеру накопленные подтверждения
 		ASSERT_EQ(encoder.decodeDecoderStream(feedback, consumed, error), status_t::OK);
 		// Отмечаем подтверждения отправленными
@@ -4326,7 +4326,7 @@ TEST_F(ParserHttp3Fixture, QpackHoldSurvivesMixedStreamOrder){
 	// Декодированные поля секции
 	std::vector <qpack::field_view_t> output;
 	// Код ошибки протокола
-	error_t error = error_t::H3_NO_ERROR;
+	awh::http::h3::error_t error = awh::http::h3::error_t::H3_NO_ERROR;
 	// Секция потока 4 обязана разбираться
 	ASSERT_EQ(decoder.decode(4, middle, output, 0, error), status_t::OK);
 	// Подтверждаем кодеру секцию потока 4 вне очереди

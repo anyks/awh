@@ -144,7 +144,7 @@ TEST_P(QuicStreamFrameParameterizedFixture, RoundTrip){
 	// Количество потреблённых октетов
 	size_t consumed = 0;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранный фрейм
 	ASSERT_EQ(frame::parser::stream(reinterpret_cast <const uint8_t *> (output.data()), output.size(), parsed, consumed, error), status_t::OK);
 	// Проверяем что фрейм потреблён целиком

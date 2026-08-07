@@ -150,7 +150,7 @@ TEST_F(QuicFixture, FuzzFrameParsersTest){
 		// Количество потреблённых октетов
 		size_t consumed = 0;
 		// Код ошибки транспорта
-		error_t error = error_t::NO_ERROR;
+		awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 		// Разобранный фрейм подтверждения приёма пакетов
 		frame::ack_t ack;
 		// Выполняем разбор фрейма ACK
@@ -272,7 +272,7 @@ TEST_F(QuicFixture, FuzzFrameBodiesTest){
 		// Количество потреблённых октетов
 		size_t consumed = 0;
 		// Код ошибки транспорта
-		error_t error = error_t::NO_ERROR;
+		awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 		// Генерируем буфер фрейма ACK с корректным октетом типа
 		const std::string ackBuffer = ::generate(random, std::string(1, static_cast <char> (frame_t::ACK)));
 		// Разобранный фрейм подтверждения приёма пакетов
@@ -377,7 +377,7 @@ TEST_F(QuicFixture, FuzzTransportParamsTest){
 			// Разобранные транспортные параметры
 			params::params_t output;
 			// Код ошибки транспорта
-			error_t error = error_t::NO_ERROR;
+			awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 			// Выполняем разбор транспортных параметров
 			if(params::parser::decode(reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), sender, output, error) != status_t::OK)
 				// Переходим к следующей роли отправителя
@@ -440,7 +440,7 @@ TEST_F(QuicFixture, FuzzPacketHeaderTest){
 		// Разобранный заголовок пакета
 		packet::header_t header;
 		// Код ошибки транспорта
-		error_t error = error_t::NO_ERROR;
+		awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 		// Выполняем разбор заголовка пакета с типовой длиной идентификатора соединения
 		if(packet::parser::header(reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), 8, header, error) != status_t::OK)
 			// Переходим к следующей итерации

@@ -69,7 +69,7 @@ TEST_F(QuicFixture, ParamsClientRoundTripTest){
 	// Разобранные параметры транспорта
 	params::params_t parsed;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранные параметры
 	ASSERT_EQ(params::parser::decode(reinterpret_cast <const uint8_t *> (output.data()), output.size(), endpoint_t::CLIENT, parsed, error), status_t::OK);
 	// Проверяем SCID первого пакета клиента
@@ -142,7 +142,7 @@ TEST_F(QuicFixture, ParamsServerRoundTripTest){
 	// Разобранные параметры транспорта
 	params::params_t parsed;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем собранные параметры
 	ASSERT_EQ(params::parser::decode(reinterpret_cast <const uint8_t *> (output.data()), output.size(), endpoint_t::SERVER, parsed, error), status_t::OK);
 	// Проверяем исходный DCID первого пакета Initial клиента
@@ -179,7 +179,7 @@ TEST_F(QuicFixture, ParamsDefaultsTest){
 	// Разобранные параметры транспорта
 	params::params_t parsed;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем пустой набор параметров
 	ASSERT_EQ(params::parser::decode(nullptr, 0, endpoint_t::CLIENT, parsed, error), status_t::OK);
 	// Проверяем значения по умолчанию из RFC 9000 §18.2
@@ -203,7 +203,7 @@ TEST_F(QuicFixture, ParamsReferenceTest){
 	// Разобранные параметры транспорта
 	params::params_t parsed;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем эталонную запись
 	ASSERT_EQ(params::parser::decode(reinterpret_cast <const uint8_t *> (reference.data()), reference.size(), endpoint_t::CLIENT, parsed, error), status_t::OK);
 	// Проверяем эталонное значение параметра
@@ -230,7 +230,7 @@ TEST_F(QuicFixture, ParamsUnknownIgnoredTest){
 	// Разобранные параметры транспорта
 	params::params_t parsed;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Разбираем набор параметров
 	ASSERT_EQ(params::parser::decode(reinterpret_cast <const uint8_t *> (input.data()), input.size(), endpoint_t::CLIENT, parsed, error), status_t::OK);
 	// Проверяем что известный параметр разобран
@@ -245,13 +245,13 @@ TEST_F(QuicFixture, ParamsMalformedTest){
 	// Разобранные параметры транспорта
 	params::params_t parsed;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Дубликат параметра initial_max_data (RFC 9000 §7.4)
 	const std::string duplicate = this->unhex("040243e8040243e8");
 	// Проверяем отклонение дубликата
 	ASSERT_EQ(params::parser::decode(reinterpret_cast <const uint8_t *> (duplicate.data()), duplicate.size(), endpoint_t::CLIENT, parsed, error), status_t::ERROR);
 	// Проверяем код ошибки транспорта
-	ASSERT_EQ(error, error_t::TRANSPORT_PARAMETER_ERROR);
+	ASSERT_EQ(error, awh::quic::error_t::TRANSPORT_PARAMETER_ERROR);
 	// Параметр только для сервера в параметрах клиента (original_destination_connection_id)
 	const std::string serverOnly = this->unhex("00088394c8f03e515708");
 	// Проверяем отклонение параметров клиента

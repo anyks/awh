@@ -153,9 +153,9 @@ TEST_F(QuicFixture, HandshakeCompleteTest){
 	// Проверяем состояние хендшейка сервера
 	ASSERT_EQ(server.state(), handshake_t::state_t::COMPLETED);
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 	// Проверяем отсутствие ошибки транспорта на сервере
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -198,7 +198,7 @@ TEST_F(QuicFixture, HandshakeTransportParamsTest){
 	// Транспортные параметры удалённого узла
 	params::params_t params;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Проверяем что до хендшейка параметры удалённого узла недоступны
 	ASSERT_EQ(client.peer(params, error), status_t::INCOMPLETE);
 	// Выполняем начало хендшейка на обоих эндпоинтах
@@ -311,8 +311,8 @@ TEST_F(QuicFixture, HandshakeAlpnMismatchTest){
 	// Проверяем состояние ошибки хендшейка сервера
 	ASSERT_EQ(server.state(), handshake_t::state_t::FAILED);
 	// Проверяем что код ошибки транспорта находится в диапазоне CRYPTO_ERROR (RFC 9001 §4.8)
-	ASSERT_GE(static_cast <uint64_t> (server.error()), static_cast <uint64_t> (error_t::CRYPTO_ERROR));
-	ASSERT_LE(static_cast <uint64_t> (server.error()), (static_cast <uint64_t> (error_t::CRYPTO_ERROR) + 0xFF));
+	ASSERT_GE(static_cast <uint64_t> (server.error()), static_cast <uint64_t> (awh::quic::error_t::CRYPTO_ERROR));
+	ASSERT_LE(static_cast <uint64_t> (server.error()), (static_cast <uint64_t> (awh::quic::error_t::CRYPTO_ERROR) + 0xFF));
 	// Удаляем созданный шаблон контекста безопасности
 	ASSERT_TRUE(this->_security->coder().destroy(context));
 }
@@ -354,7 +354,7 @@ TEST_F(QuicFixture, HandshakeVerifyFailedTest){
 	// Проверяем состояние ошибки хендшейка клиента
 	ASSERT_EQ(client.state(), handshake_t::state_t::FAILED);
 	// Проверяем что клиент зарегистрировал ошибку транспорта
-	ASSERT_NE(client.error(), error_t::NO_ERROR);
+	ASSERT_NE(client.error(), awh::quic::error_t::NO_ERROR);
 	// Удаляем созданный шаблон контекста безопасности
 	ASSERT_TRUE(coder.destroy(context));
 }

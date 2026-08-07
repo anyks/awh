@@ -310,7 +310,7 @@ namespace {
 		// Разобранный заголовок пакета
 		packet::header_t header;
 		// Код ошибки транспорта
-		error_t error = error_t::NO_ERROR;
+		awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 		// Выполняем разбор заголовка пакета
 		if(packet::parser::header(reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), connection_t::LOCAL_CID_SIZE, header, error) != status_t::OK)
 			// Выводим отрицательный результат
@@ -340,7 +340,7 @@ namespace {
 		 */
 		while(offset < datagram.size()){
 			// Код ошибки разбора заголовка
-			error_t error = error_t::NO_ERROR;
+			awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 			// Заголовок очередного пакета
 			packet::header_t header;
 			// Если разбор заголовка очередного пакета не выполнен
@@ -389,9 +389,9 @@ TEST_F(QuicFixture, ConnectionEstablishTest){
 	// Проверяем состояние соединения сервера
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 	// Проверяем отсутствие ошибки транспорта на сервере
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	// Проверяем согласованный ALPN-протокол на обоих эндпоинтах
 	ASSERT_EQ(client.alpn().protocol, "h3");
 	ASSERT_EQ(server.alpn().protocol, "h3");
@@ -443,7 +443,7 @@ TEST_F(QuicFixture, ConnectionPeerParamsTest){
 	// Транспортные параметры удалённого узла
 	params::params_t params;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Извлекаем транспортные параметры сервера на клиенте
 	ASSERT_EQ(client.peer(params, error), status_t::OK);
 	// Проверяем лимит данных соединения сервера
@@ -495,7 +495,7 @@ TEST_F(QuicFixture, ConnectionCloseTest){
 	// Проверяем состояние завершения соединения удалённым эндпоинтом
 	ASSERT_EQ(server.state(), connection_t::state_t::DRAINING);
 	// Проверяем код ошибки приложения на сервере
-	ASSERT_EQ(server.error(), error_t::APPLICATION_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::APPLICATION_ERROR);
 	// Проверяем что сервер в состоянии DRAINING не отправляет датаграмм
 	ASSERT_FALSE(server.write(datagram, now));
 }
@@ -539,7 +539,7 @@ TEST_F(QuicFixture, ConnectionCloseTrailingFrameTest){
 	// Проверяем что клиент перешёл в завершённое состояние
 	ASSERT_EQ(client.state(), connection_t::state_t::DRAINING);
 	// Проверяем что причиной завершения осталась ошибка приложения удалённого узла
-	ASSERT_EQ(client.error(), error_t::APPLICATION_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::APPLICATION_ERROR);
 	// Буфер исходящей датаграммы клиента
 	std::string datagram = "";
 	// Проверяем что клиент в завершённом состоянии датаграмм не отправляет
@@ -583,7 +583,7 @@ TEST_F(QuicFixture, ConnectionCloseCoalescedPacketTest){
 	// Нагрузка первого пакета датаграммы
 	std::string closing = "";
 	// Выполняем сборку фрейма CONNECTION_CLOSE с кодом ошибки транспорта
-	frame::serialize::connectionClose(closing, static_cast <uint64_t> (error_t::NO_ERROR), 0, "goodbye", false);
+	frame::serialize::connectionClose(closing, static_cast <uint64_t> (awh::quic::error_t::NO_ERROR), 0, "goodbye", false);
 	/**
 	 * Нагрузка второго пакета датаграммы: фрейм неизвестного типа недопустим
 	 * на уровне Handshake и завершается ошибкой разбора (RFC 9000 §12.4)
@@ -604,7 +604,7 @@ TEST_F(QuicFixture, ConnectionCloseCoalescedPacketTest){
 	// Проверяем что клиент остался в завершённом удалённым эндпоинтом состоянии
 	ASSERT_EQ(client.state(), connection_t::state_t::DRAINING);
 	// Проверяем что причиной завершения осталась причина удалённого эндпоинта
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 	// Буфер исходящей датаграммы клиента
 	std::string response = "";
 	// Проверяем что клиент в завершённом состоянии датаграмм не отправляет
@@ -677,8 +677,8 @@ TEST_F(QuicFixture, ConnectionStopSendingCollectTest){
 	 */
 	ASSERT_LT(client.streams(), COUNT);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -748,7 +748,7 @@ TEST_F(QuicFixture, ConnectionClientAmplificationTest){
 	ASSERT_LE(sent, (3 * static_cast <size_t> (1200)));
 	ASSERT_LT(sent, static_cast <size_t> (60000));
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -854,8 +854,8 @@ TEST_F(QuicFixture, ConnectionPathRevertTest){
 	ASSERT_EQ(server.receive(sid, received, fin), status_t::OK);
 	ASSERT_EQ(received, "connection survived spoofing");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -950,8 +950,8 @@ TEST_F(QuicFixture, ConnectionPathChainTest){
 	// Проверяем что достижимость восстановленного адреса считается подтверждённой
 	ASSERT_TRUE(client.validated());
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -1057,7 +1057,7 @@ TEST_F(QuicFixture, ConnectionAmplificationTimerTest){
 	 */
 	ASSERT_LT((deadline - now), static_cast <uint64_t> (2000));
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -1129,8 +1129,8 @@ TEST_F(QuicFixture, ConnectionEcnMigrationTest){
 	 */
 	ASSERT_EQ(client.marking(), awh::event::ecn_t::ECT0);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -1207,8 +1207,8 @@ TEST_F(QuicFixture, ConnectionMigrateCongestionResetTest){
 	 */
 	ASSERT_EQ(client.cwnd(), window);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -1238,7 +1238,7 @@ TEST_F(QuicFixture, ConnectionAckDelayTimeoutTest){
 	// Транспортные параметры клиента
 	params::params_t params;
 	// Код ошибки транспорта
-	error_t error = error_t::NO_ERROR;
+	awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 	// Извлекаем транспортные параметры удалённого эндпоинта
 	ASSERT_EQ(server.peer(params, error), status_t::OK);
 	// Нагрузка пакета сервера с ack-eliciting фреймом
@@ -1258,7 +1258,7 @@ TEST_F(QuicFixture, ConnectionAckDelayTimeoutTest){
 	 */
 	ASSERT_LE(deadline, (now + params.maxAckDelay));
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -1311,8 +1311,8 @@ TEST_F(QuicFixture, ConnectionPathResponseQueueTest){
 	ASSERT_NE(plain.find(first), std::string::npos);
 	ASSERT_NE(plain.find(second), std::string::npos);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -1367,8 +1367,8 @@ TEST_F(QuicFixture, ConnectionPathValidationPaddingTest){
 	 */
 	ASSERT_GE(datagram.size(), static_cast <size_t> (proto::MIN_INITIAL_SIZE));
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -1439,7 +1439,7 @@ TEST_F(QuicFixture, ConnectionCryptoOverlapMismatchTest){
 	// Передаём датаграмму клиенту
 	ASSERT_EQ(client.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now), status_t::ERROR);
 	// Проверяем что соединение завершено нарушением протокола
-	ASSERT_EQ(client.error(), error_t::PROTOCOL_VIOLATION);
+	ASSERT_EQ(client.error(), awh::quic::error_t::PROTOCOL_VIOLATION);
 }
 
 /**
@@ -1481,7 +1481,7 @@ TEST_F(QuicFixture, ConnectionMaxStreamsBoundTest){
 	// Доставляем нагрузку клиенту пакетом 1-RTT
 	ASSERT_EQ(::inject(server, client, 1001, payload, now), status_t::ERROR);
 	// Проверяем что соединение завершено ошибкой кодирования фрейма
-	ASSERT_EQ(client.error(), error_t::FRAME_ENCODING_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::FRAME_ENCODING_ERROR);
 }
 
 /**
@@ -1535,7 +1535,7 @@ TEST_F(QuicFixture, ConnectionStreamOverlapMismatchTest){
 	// Доставляем нагрузку клиенту пакетом 1-RTT
 	ASSERT_EQ(::inject(server, client, 1002, payload, now), status_t::ERROR);
 	// Проверяем что соединение завершено нарушением протокола
-	ASSERT_EQ(client.error(), error_t::PROTOCOL_VIOLATION);
+	ASSERT_EQ(client.error(), awh::quic::error_t::PROTOCOL_VIOLATION);
 	// Проверяем состояние завершения соединения клиента
 	ASSERT_EQ(client.state(), connection_t::state_t::CLOSING);
 }
@@ -1587,7 +1587,7 @@ TEST_F(QuicFixture, ConnectionStreamFragmentLimitTest){
 	// Проверяем что соединение умеренным дроблением не разорвано
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 	// Результат обработки нагрузки клиентом
 	status_t status = status_t::OK;
 	/**
@@ -1607,7 +1607,7 @@ TEST_F(QuicFixture, ConnectionStreamFragmentLimitTest){
 	// Проверяем что предел дробления сработал
 	ASSERT_EQ(status, status_t::ERROR);
 	// Проверяем что соединение завершено ошибкой flow control
-	ASSERT_EQ(client.error(), error_t::FLOW_CONTROL_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::FLOW_CONTROL_ERROR);
 	// Проверяем состояние завершения соединения клиента
 	ASSERT_EQ(client.state(), connection_t::state_t::CLOSING);
 }
@@ -1850,7 +1850,7 @@ TEST_F(QuicFixture, ConnectionDuplicateTest){
 	// Проверяем что состояние соединения клиента не изменилось
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -2034,9 +2034,9 @@ TEST_F(QuicFixture, ConnectionLossServerFlightTest){
 	// Проверяем состояние соединения сервера
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 	// Проверяем отсутствие ошибки транспорта на сервере
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -2131,8 +2131,8 @@ TEST_F(QuicFixture, StreamEchoTest){
 	ASSERT_EQ(response, "echo: hello quic streams");
 	ASSERT_TRUE(fin);
 	// Проверяем отсутствие ошибок транспорта
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -2201,8 +2201,8 @@ TEST_F(QuicFixture, StreamDataSourceTest){
 	// Проверяем совпадение шаблона
 	ASSERT_TRUE(pattern);
 	// Проверяем отсутствие ошибок транспорта
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -2261,8 +2261,8 @@ TEST_F(QuicFixture, StreamBackpressureTest){
 	// Проверяем полный принятый объём (первый кусок 4096 + остаток 3000)
 	ASSERT_EQ(body.size(), static_cast <size_t> (7096));
 	// Проверяем отсутствие ошибок транспорта
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -2302,7 +2302,7 @@ TEST_F(QuicFixture, StreamCoalescedHandshakeTest){
 	// Проверяем что соединение сервера установлено
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на сервере
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	// Проверяем список потоков с данными на сервере
 	std::vector <uint64_t> readable;
 	// Получаем список потоков с данными на сервере
@@ -2526,8 +2526,8 @@ TEST_F(QuicFixture, StreamFlowControlTest){
 	ASSERT_TRUE(fin);
 	ASSERT_EQ(received, payload);
 	// Проверяем отсутствие ошибок транспорта
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -2611,8 +2611,8 @@ TEST_F(QuicFixture, StreamStopSendingTest){
 	// Проверяем что отправка в прекращённый поток недопустима
 	ASSERT_EQ(client.send(sid, "more", false), static_cast <size_t> (0));
 	// Проверяем отсутствие ошибок транспорта
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -2821,7 +2821,7 @@ TEST_F(QuicFixture, VersionNegotiationTest){
 	// Проверяем что клиент завершил соединение из-за отсутствия общей версии (RFC 9000 §6.2)
 	ASSERT_EQ(client.state(), connection_t::state_t::DRAINING);
 	// Проверяем код ошибки согласования версии
-	ASSERT_EQ(client.error(), error_t::VERSION_NEGOTIATION_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::VERSION_NEGOTIATION_ERROR);
 }
 
 /**
@@ -2872,8 +2872,8 @@ TEST_F(QuicFixture, RetryTest){
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -2994,8 +2994,8 @@ TEST_F(QuicFixture, ConnectionLostHandshakeFlightTest){
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -3120,8 +3120,8 @@ TEST_F(QuicFixture, ConnectionRetireRetransmitTest){
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -3222,7 +3222,7 @@ TEST_F(QuicFixture, ConnectionAckIntegrityTest){
 		// Количество потреблённых октетов фрейма
 		size_t consumed = 0;
 		// Код ошибки транспорта
-		error_t error = error_t::NO_ERROR;
+		awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 		// Выполняем разбор фрейма подтверждения
 		ASSERT_EQ(frame::parser::ack(reinterpret_cast <const uint8_t *> (plain.data()), plain.size(), frame, consumed, error), status_t::OK);
 		/**
@@ -3250,7 +3250,7 @@ TEST_F(QuicFixture, ConnectionAckIntegrityTest){
 		// Проверяем что соединение обработкой разрывов не затронуто
 		ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 		// Проверяем отсутствие ошибки транспорта на клиенте
-		ASSERT_EQ(client.error(), error_t::NO_ERROR);
+		ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 	}
 }
 
@@ -3308,7 +3308,7 @@ TEST_F(QuicFixture, ConnectionAckRangeMergeTest){
 		// Количество потреблённых октетов фрейма
 		size_t consumed = 0;
 		// Код ошибки транспорта
-		error_t error = error_t::NO_ERROR;
+		awh::quic::error_t error = awh::quic::error_t::NO_ERROR;
 		// Если нагрузка не начинается с фрейма подтверждения
 		if(frame::parser::ack(reinterpret_cast <const uint8_t *> (plain.data()), plain.size(), frame, consumed, error) != status_t::OK)
 			// Выводим нулевое количество диапазонов
@@ -3354,7 +3354,7 @@ TEST_F(QuicFixture, ConnectionAckRangeMergeTest){
 	// Проверяем что соединение обработкой разрывов не затронуто
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -3449,8 +3449,8 @@ TEST_F(QuicFixture, ConnectionHandshakeReorderTest){
 	// Проверяем содержимое принятых данных
 	ASSERT_EQ(payload, "handshake survived reordering");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -3608,8 +3608,8 @@ TEST_F(QuicFixture, ConnectionLossyControlTest){
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -3754,8 +3754,8 @@ TEST_F(QuicFixture, ConnectionLossyPathTest){
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -3852,8 +3852,8 @@ TEST_F(QuicFixture, KeyUpdateReorderTest){
 	// Проверяем что сервер остался в новой фазе ключей
 	ASSERT_EQ(server.phase(), client.phase());
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -3947,8 +3947,8 @@ TEST_F(QuicFixture, KeyUpdatePreviousDiscardTest){
 	// Проверяем что отброшенные пакеты соединение не разорвали
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -3997,8 +3997,8 @@ TEST_F(QuicFixture, KeyUpdateTest){
 	// Проверяем данные обеих фаз ключей
 	ASSERT_EQ(received, "phase zero phase one");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -4065,8 +4065,8 @@ TEST_F(QuicFixture, AeadConfidentialityUpdateTest){
 	// Проверяем совпадение фаз ключей эндпоинтов после обмена
 	ASSERT_EQ(server.phase(), client.phase());
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	// Принятые сервером данные потока
 	std::string received = "";
 	// Флаг завершения потока
@@ -4114,7 +4114,7 @@ TEST_F(QuicFixture, AeadConfidentialityLimitTest){
 	 * после переключения фазы её первый пакет не подтверждён, и следующее пересечение
 	 * лимита завершает соединение
 	 */
-	for(size_t i = 0; (i < 64) && (client.error() == error_t::NO_ERROR); i++){
+	for(size_t i = 0; (i < 64) && (client.error() == awh::quic::error_t::NO_ERROR); i++){
 		// Ставим данные в очередь отправки
 		client.send(sid, "x", false);
 		// Извлекаем исходящие датаграммы клиента, отбрасывая их (подтверждений не будет)
@@ -4123,7 +4123,7 @@ TEST_F(QuicFixture, AeadConfidentialityLimitTest){
 			now += 5;
 	}
 	// Проверяем завершение соединения по достижении лимита конфиденциальности AEAD
-	ASSERT_EQ(client.error(), error_t::AEAD_LIMIT_REACHED);
+	ASSERT_EQ(client.error(), awh::quic::error_t::AEAD_LIMIT_REACHED);
 }
 
 /**
@@ -4155,11 +4155,11 @@ TEST_F(QuicFixture, AeadIntegrityLimitTest){
 	// Номер очередного искажённого пакета
 	uint64_t pn = 1000;
 	// Доставляем серверу искажённые пакеты до исчерпания лимита целостности
-	for(size_t i = 0; (i < 32) && (server.error() == error_t::NO_ERROR); i++)
+	for(size_t i = 0; (i < 32) && (server.error() == awh::quic::error_t::NO_ERROR); i++)
 		// Доставляем пакет уровня приложения с искажённым тегом AEAD
 		::injectBroken(client, server, pn++, now);
 	// Проверяем завершение соединения по достижении лимита целостности AEAD
-	ASSERT_EQ(server.error(), error_t::AEAD_LIMIT_REACHED);
+	ASSERT_EQ(server.error(), awh::quic::error_t::AEAD_LIMIT_REACHED);
 }
 
 /**
@@ -4204,8 +4204,8 @@ TEST_F(QuicFixture, ConnectionIdRotationTest){
 	// Проверяем данные потока после ротации идентификатора
 	ASSERT_EQ(received, "rotated cid");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -4508,8 +4508,8 @@ TEST_F(QuicFixture, DatagramSizeBudgetTest){
 	// Проверяем что завершение потока доставлено приложению
 	ASSERT_TRUE(finished);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -4579,8 +4579,8 @@ TEST_F(QuicFixture, StreamStopSendingBeforeFinCreditTest){
 	 */
 	ASSERT_NE(client.open(false), connection_t::INVALID_STREAM);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -4641,8 +4641,8 @@ TEST_F(QuicFixture, StreamStopSendingAfterFinCreditTest){
 	 */
 	ASSERT_NE(client.open(false), connection_t::INVALID_STREAM);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -4719,8 +4719,8 @@ TEST_F(QuicFixture, StreamRoundRobinTest){
 	// Проверяем что эфир получил не только поток с наименьшим идентификатором
 	ASSERT_GT(served, 1u);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -4802,8 +4802,8 @@ TEST_F(QuicFixture, StreamCollectTest){
 	// Проверяем содержимое принятых данных
 	ASSERT_EQ(payload, "after collect");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -4890,8 +4890,8 @@ TEST_F(QuicFixture, ConnectionReplayWindowTest){
 	// Проверяем что повтор не породил ни одного дублирующего октета
 	ASSERT_TRUE(duplicated.empty());
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 	// Проверяем что состояние соединения не изменилось
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 }
@@ -4991,8 +4991,8 @@ TEST_F(QuicFixture, CongestionPersistentTest){
 	// Проверяем что окно перегрузки было заметно выше до обрыва связи
 	ASSERT_GT(before, minimal);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -5100,8 +5100,8 @@ TEST_F(QuicFixture, CongestionPersistentReorderTest){
 		// Иначе целый период двух потерь за порогом схлопнул окно до минимального
 		else ASSERT_EQ(client.cwnd(), 2400u);
 		// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-		ASSERT_EQ(client.error(), error_t::NO_ERROR);
-		ASSERT_EQ(server.error(), error_t::NO_ERROR);
+		ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+		ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	}
 }
 
@@ -5399,7 +5399,7 @@ TEST_F(QuicFixture, ConnectionForeignResetTokenTest){
 	// Проверяем что состояние соединения не изменилось
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -5574,8 +5574,8 @@ TEST_F(QuicFixture, ConnectionVerifyWithCaTest){
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	// Удаляем созданный шаблон контекста безопасности
 	ASSERT_TRUE(this->_security->coder().destroy(context));
 }
@@ -5624,7 +5624,7 @@ TEST_F(QuicFixture, ConnectionVerifyWithoutCaTest){
 	// Проверяем что хендшейк клиента завершился ошибкой
 	ASSERT_EQ(client.handshake().state(), handshake_t::state_t::FAILED);
 	// Проверяем что клиент сообщил об ошибке криптографического уровня (RFC 9001 §4.8)
-	ASSERT_GE(static_cast <uint64_t> (client.error()), static_cast <uint64_t> (error_t::CRYPTO_ERROR));
+	ASSERT_GE(static_cast <uint64_t> (client.error()), static_cast <uint64_t> (awh::quic::error_t::CRYPTO_ERROR));
 	// Удаляем созданный шаблон контекста безопасности
 	ASSERT_TRUE(coder.destroy(context));
 }
@@ -5667,8 +5667,8 @@ TEST_F(QuicFixture, ConnectionExternalContextTest){
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	// Открываем двунаправленный поток на клиенте
 	const uint64_t sid = client.open(false);
 	// Проверяем что поток открыт
@@ -5723,8 +5723,8 @@ TEST_F(QuicFixture, ConnectionPathValidationTest){
 	// Проверяем что путь подтверждён ответом удалённого эндпоинта
 	ASSERT_TRUE(client.validated());
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	// Проверяем что после подтверждения возможна новая проверка пути
 	ASSERT_TRUE(client.probe());
 	// Проверяем что новая проверка сбросила подтверждение
@@ -5804,8 +5804,8 @@ TEST_F(QuicFixture, ConnectionMigrationDetectTest){
 	// Проверяем что достижимость нового пути подтверждена
 	ASSERT_TRUE(server.validated());
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -5876,7 +5876,7 @@ TEST_F(QuicFixture, ConnectionMigrationSpoofGuardTest){
 	ASSERT_EQ(client.path(), this->makePath(SPOOFED, 443));
 	ASSERT_EQ(client.migrations(), 1u);
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -5930,7 +5930,7 @@ TEST_F(QuicFixture, ConnectionMigrationRoamingDisabledTest){
 	ASSERT_EQ(client.path(), this->makePath(ORIGIN, 443));
 	ASSERT_EQ(client.migrations(), 0u);
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -6017,7 +6017,7 @@ TEST_F(QuicFixture, ConnectionStreamsBlockedTest){
 	// Проверяем что клиент сигнализировал блокировку лимитом потоков
 	ASSERT_TRUE(blocked);
 	// Проверяем что сервер разобрал фрейм без ошибки транспорта
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -6119,8 +6119,8 @@ TEST_F(QuicFixture, ConnectionStreamsBlockedRaiseTest){
 	// Проверяем что блокировка на новом лимите сигнализирована заново
 	ASSERT_TRUE(blocked);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -6154,7 +6154,7 @@ TEST_F(QuicFixture, ConnectionCloseHandshakeSpacesTest){
 	// Разобранный заголовок первого пакета датаграммы
 	packet::header_t header;
 	// Код ошибки транспорта разбора заголовка
-	error_t perror = error_t::NO_ERROR;
+	awh::quic::error_t perror = awh::quic::error_t::NO_ERROR;
 	// Разбираем заголовок первого пакета (Initial с ServerHello)
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), connection_t::LOCAL_CID_SIZE, header, perror), status_t::OK);
 	// Проверяем что размер пакета определён
@@ -6268,8 +6268,8 @@ TEST_F(QuicFixture, ConnectionMigrateTest){
 	// Проверяем содержимое принятых данных
 	ASSERT_EQ(payload, "payload over migrated path");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -6317,8 +6317,8 @@ TEST_F(QuicFixture, ConnectionEcnEchoTest){
 	 */
 	ASSERT_EQ(client.read(reinterpret_cast <const uint8_t *> (answer.data()), answer.size(), now), status_t::OK);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -6496,8 +6496,8 @@ TEST_F(QuicFixture, ConnectionSessionResumeTest){
 		ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 		ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 		// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-		ASSERT_EQ(client.error(), error_t::NO_ERROR);
-		ASSERT_EQ(server.error(), error_t::NO_ERROR);
+		ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+		ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 		// Открываем двунаправленный поток на возобновлённом соединении
 		const uint64_t sid = client.open(false);
 		// Проверяем что поток открыт
@@ -6704,8 +6704,8 @@ TEST_F(QuicFixture, ConnectionEarlyDataTest){
 		// Проверяем содержимое принятых ранних данных
 		ASSERT_EQ(payload, "early application data");
 		// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-		ASSERT_EQ(client.error(), error_t::NO_ERROR);
-		ASSERT_EQ(server.error(), error_t::NO_ERROR);
+		ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+		ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	}
 }
 
@@ -6813,8 +6813,8 @@ TEST_F(QuicFixture, ConnectionEarlyDataRejectTest){
 		ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 		ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 		// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-		ASSERT_EQ(client.error(), error_t::NO_ERROR);
-		ASSERT_EQ(server.error(), error_t::NO_ERROR);
+		ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+		ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 		// Выполняем обмен датаграммами
 		::pump(client, server, now);
 		// Буфер принятых сервером данных
@@ -6876,8 +6876,8 @@ TEST_F(QuicFixture, ConnectionEcnValidationTest){
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -6935,8 +6935,8 @@ TEST_F(QuicFixture, ConnectionEcnValidationPassTest){
 	// Проверяем содержимое принятых данных
 	ASSERT_EQ(payload, "marked path payload");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -6994,8 +6994,8 @@ TEST_F(QuicFixture, ConnectionEcnValidationPartialTest){
 	// Проверяем что непройденная проверка пути соединение не разорвала
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -7070,8 +7070,8 @@ TEST_F(QuicFixture, ConnectionNewTokenTest){
 		// Проверяем что токен проверки адреса получен от сервера
 		ASSERT_FALSE(token.empty());
 		// Проверяем что ошибки транспорта на обоих эндпоинтах нет
-		ASSERT_EQ(client.error(), error_t::NO_ERROR);
-		ASSERT_EQ(server.error(), error_t::NO_ERROR);
+		ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+		ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	}
 	/**
 	 * Выполняем второе соединение с предъявлением выданного токена
@@ -7128,8 +7128,8 @@ TEST_F(QuicFixture, ConnectionNewTokenTest){
 		ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 		ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 		// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-		ASSERT_EQ(client.error(), error_t::NO_ERROR);
-		ASSERT_EQ(server.error(), error_t::NO_ERROR);
+		ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+		ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	}
 }
 
@@ -7190,8 +7190,8 @@ TEST_F(QuicFixture, ConnectionNewTokenRejectTest){
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -7341,8 +7341,8 @@ TEST_F(QuicFixture, ConnectionPreferredAddressTest){
 	// Проверяем содержимое принятых данных
 	ASSERT_EQ(payload, "relocated connection");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -7496,8 +7496,8 @@ TEST_F(QuicFixture, ConnectionPathValidationTimeoutTest){
 	ASSERT_TRUE(client.relocatable());
 	ASSERT_TRUE(client.relocate());
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -7629,8 +7629,8 @@ TEST_F(QuicFixture, ConnectionSoakTest){
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	// Проверяем что данные потоков переданы
 	ASSERT_GT(transferred, static_cast <size_t> (100000));
 	// Проверяем что обновления ключей выполнялись
@@ -7742,8 +7742,8 @@ TEST_F(QuicFixture, ConnectionCollectReferencedTest){
 	 */
 	ASSERT_LT(client.streams(), COUNT);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -8057,7 +8057,7 @@ TEST_F(QuicFixture, ConnectionFuzzPayloadTest){
 	 * пакет отбрасывается, а данные неиспорченных доходят до приложения
 	 */
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 	// Буфер принятых клиентом данных
 	std::string payload = "";
 	// Флаг завершения потока
@@ -8122,8 +8122,8 @@ TEST_F(QuicFixture, ConnectionMigrateGuardTest){
 	// Проверяем что смена пути учтена
 	ASSERT_EQ(client.migrations(), migrations + 1);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -8232,8 +8232,8 @@ TEST_F(QuicFixture, ConnectionMigrateReservedOnlyTest){
 	// Проверяем что переезд выполнен на закреплённый за адресом идентификатор
 	ASSERT_TRUE(client.dcid() == options.preferredAddress.cid);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -8388,7 +8388,7 @@ TEST_F(QuicFixture, ConnectionForcedRetireCidTest){
 	ASSERT_TRUE(client.relocatable());
 	ASSERT_TRUE(client.relocate());
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -8524,8 +8524,8 @@ TEST_F(QuicFixture, ConnectionPreferredCidReservedTest){
 	// Проверяем что переезд выполнен на закреплённый за адресом идентификатор
 	ASSERT_TRUE(client.dcid() == reserved);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -8668,8 +8668,8 @@ TEST_F(QuicFixture, ConnectionRelocationProbingTest){
 	ASSERT_EQ(server.receive(sid, payload, fin), status_t::OK);
 	ASSERT_EQ(payload, "data during validation");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -8755,8 +8755,8 @@ TEST_F(QuicFixture, ConnectionDatagramTest){
 	// Проверяем что датаграмма сверх анонсированного предела не принимается
 	ASSERT_EQ(client.datagram(std::string(client.datagrams() + 1, 'x')), status_t::ERROR);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -8789,8 +8789,8 @@ TEST_F(QuicFixture, ConnectionDatagramUnsupportedTest){
 	ASSERT_EQ(client.datagram("unsupported"), status_t::ERROR);
 	ASSERT_EQ(server.datagram("unsupported"), status_t::ERROR);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -8901,8 +8901,8 @@ TEST_F(QuicFixture, ConnectionStatelessResetForeignTest){
 	// Проверяем что соединение чужим сбросом не разорвано
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -9034,8 +9034,8 @@ TEST_F(QuicFixture, ConnectionDisableActiveMigrationTest){
 	// Проверяем содержимое принятых данных
 	ASSERT_EQ(payload, "no migration allowed");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -9094,8 +9094,8 @@ TEST_F(QuicFixture, ConnectionPmtuDiscoveryTest){
 	 */
 	ASSERT_EQ(client.pmtu(), connection_t::MAX_DATAGRAM_SIZE);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -9169,8 +9169,8 @@ TEST_F(QuicFixture, ConnectionPmtuLimitMigrationTest){
 	 */
 	ASSERT_LE(client.pmtu(), LIMIT);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -9242,8 +9242,8 @@ TEST_F(QuicFixture, ConnectionPmtuNarrowPathTest){
 	// Проверяем что соединение узким путём не разорвано
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -9304,8 +9304,8 @@ TEST_F(QuicFixture, ConnectionPmtuCongestionTest){
 	 */
 	ASSERT_GE(client.cwnd(), 12000u);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -9408,8 +9408,8 @@ TEST_F(QuicFixture, ConnectionPmtuBlackHoleTest){
 	// Проверяем что размер действительно был выше до сужения
 	ASSERT_GT(before, connection_t::MAX_DATAGRAM_SIZE);
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -9492,7 +9492,7 @@ TEST_F(QuicFixture, ConnectionStreamResurrectionGuardTest){
 		}
 	}
 	// Проверяем что соединение здорово после массовой передачи
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	// Прогоняем дополнительный обмен, чтобы сборка гарантированно отработала
 	for(size_t i = 0; i < 4; i++){
 		// Продвигаем часы и передаём датаграммы в обе стороны
@@ -9521,7 +9521,7 @@ TEST_F(QuicFixture, ConnectionStreamResurrectionGuardTest){
 	now += 10;
 	server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now);
 	// Проверяем что соединение не разорвано ложной ошибкой - воскрешение предотвращено
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 	// Проверяем что соединение не переведено в завершение: ретрансмиссия закрытого потока не рвёт связь
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
 	// Список потоков с собранными данными после ретрансмиссии
@@ -9531,7 +9531,7 @@ TEST_F(QuicFixture, ConnectionStreamResurrectionGuardTest){
 	// Проверяем что данные закрытого потока приложению повторно не выданы
 	ASSERT_EQ(std::find(streams.begin(), streams.end(), first), streams.end());
 	// Проверяем отсутствие ошибки транспорта на клиенте
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
 }
 
 /**
@@ -9599,7 +9599,7 @@ TEST_F(QuicFixture, ConnectionStreamAdvertisedCapTest){
 	 * ограничен санитарной границей, поэтому поток на границе выходит за применяемый
 	 * лимит, а без ограничения он был бы принят с материализацией множества потоков
 	 */
-	ASSERT_EQ(server.error(), error_t::STREAM_LIMIT_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::STREAM_LIMIT_ERROR);
 }
 
 /**
@@ -9668,7 +9668,7 @@ TEST_F(QuicFixture, ConnectionStreamCapConfigurableTest){
 	 * применяемый лимит и отвергается, тогда как при умолчании (65536) он был бы
 	 * принят - это доказывает, что настройка границы вступила в силу
 	 */
-	ASSERT_EQ(server.error(), error_t::STREAM_LIMIT_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::STREAM_LIMIT_ERROR);
 }
 
 /**
@@ -9741,7 +9741,7 @@ TEST_F(QuicFixture, ConnectionRetireFloodGuardTest){
 	now += 10;
 	server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now);
 	// Проверяем что флуд ограничен: соединение завершено превышением лимита идентификаторов, а не растит очередь
-	ASSERT_EQ(server.error(), error_t::CONNECTION_ID_LIMIT_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::CONNECTION_ID_LIMIT_ERROR);
 }
 
 /**
@@ -9871,6 +9871,6 @@ TEST_F(QuicFixture, ConnectionStreamBlockedOnceTest){
 		ASSERT_GT(received.size(), 0u);
 	}
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
-	ASSERT_EQ(client.error(), error_t::NO_ERROR);
-	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	ASSERT_EQ(client.error(), awh::quic::error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), awh::quic::error_t::NO_ERROR);
 }

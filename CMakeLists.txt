@@ -296,6 +296,17 @@ message(STATUS "Architecture: ${ARCHITECTURE}")
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(STATUS "Detected OS: Linux")
     SET(DEBUGGER "-ggdb3")
+    ##
+     # Подключаем библиотеку SCTP
+     #
+     # Вызовы SCTP у Linux вынесены в отдельную библиотеку (lksctp-tools), тогда как
+     # FreeBSD, Solaris и illumos держат их в самой стандартной библиотеке и ничего
+     # подключать не требуют. Разница эта здешняя, а не общая.
+     #
+     # Подключается она здесь, а не списком библиотек ниже, оттого что наборы тестов
+     # заводятся раньше того списка и до него не достают
+     ##
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lsctp")
     # Используем Clang
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
@@ -628,10 +639,6 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
         "${CMAKE_SOURCE_DIR}/src/net/backend/sun/eth.cpp"
     )
 # Если сборка производится под операционную систему Linux
-#
-# Набор модулей здесь пока заполняется: они переносятся с bsd по одному, с тем же
-# самым API, и подключаются по мере готовности. Движка ввода-вывода тут ещё нет,
-# потому наборы тестов net, proto и units под Linux не собираются
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     # Выполняем подключение бэкендов IO
     SET(SOURCE_FILES
@@ -644,6 +651,35 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
         "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/socket.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/netlink.cpp"
     )
+
+    # Механизм ожидания событий под Linux
+    #
+    # Движков под Linux два, и собирается ровно один из них. Задано это одним
+    # выбором, а не двумя независимыми признаками, намеренно: два признака дают
+    # недопустимое состояние «включены оба», которое пришлось бы ловить проверкой,
+    # тогда как выбор одного из перечня недопустимого состояния не имеет вовсе.
+    #
+    # Умолчанием взят epoll: io_uring есть далеко не у всякого ядра - в том числе
+    # у Android, - и движок, требующий его, собрался бы не везде
+    SET(AWH_ENGINE "epoll" CACHE STRING "Механизм ожидания событий под Linux: epoll либо io_uring")
+    SET_PROPERTY(CACHE AWH_ENGINE PROPERTY STRINGS "epoll" "io_uring")
+
+    # Если выбран механизм ожидания epoll
+    if (${AWH_ENGINE} STREQUAL "epoll")
+        message(STATUS "Engine: epoll")
+
+        # Выполняем подключение движка ввода-вывода
+        SET(SOURCE_FILES
+            "${SOURCE_FILES}"
+            "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/epoll.cpp"
+        )
+    # Если выбран механизм ожидания io_uring
+    elseif (${AWH_ENGINE} STREQUAL "io_uring")
+        message(FATAL_ERROR "AWH: движок io_uring ещё не реализован, соберите с -DAWH_ENGINE=epoll")
+    # Если выбран механизм ожидания, которого нет
+    else()
+        message(FATAL_ERROR "AWH: неизвестный механизм ожидания '${AWH_ENGINE}', допустимы epoll и io_uring")
+    endif()
 # Если сборка производится под операционную систему MS Windows
 #
 # Состояние переноса движка ввода-вывода описано в src/net/backend/win/README.md.
@@ -1268,6 +1304,7 @@ else()
     if (APPLE AND AWH_TARGET_MACOS AND NOT CMAKE_NO_MACOS_ALIAS)
         SET(AWH_FLAGS "-framework Foundation")
     endif()
+
 
     # Если необходимо собрать семплы
     if (${CMAKE_BUILD_SAMPLES})
