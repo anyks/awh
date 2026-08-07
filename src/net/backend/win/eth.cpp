@@ -779,135 +779,12 @@ bool awh::eth::Interface::configure([[maybe_unused]] string_view name, [[maybe_u
 	return bool();
 }
 
-/**
- * @brief Метод получения кода ошибки
- *
- * @param sock сетевой сокет
- * @return     код ошибки на сокете если присутствует
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-int32_t awh::eth::Socket::getError([[maybe_unused]] const net::socket_t sock) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return int32_t();
-}
 
-/**
- * @brief Метод получения таймаута сокета
- *
- * @param sock  сетевой сокет
- * @param event событие сокета
- * @return      время таймаута в миллисекундах
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-uint32_t awh::eth::Socket::getTimeout([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::socket_event_t event) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return uint32_t();
-}
 
-/**
- * @brief Метод установки таймаута сокета
- *
- * @param sock  сетевой сокет
- * @param event событие сокета
- * @param msec  время таймаута в миллисекундах
- * @return      результат установки таймаута
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Socket::setTimeout([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::socket_event_t event, [[maybe_unused]] const uint32_t msec) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
-/**
- * @brief Метод получения размера буфера
- *
- * @param sock  сетевой сокет
- * @param event событие сокета
- * @return      размер буфера сокета
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-int32_t awh::eth::Socket::getBufferSize([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::socket_event_t event) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return int32_t();
-}
 
-/**
- * @brief Метод установки размеров буфера
- *
- * @param sock  сетевой сокет
- * @param event событие сокета
- * @param size  размер буфера сокета
- * @return      установленный размер буфера сокета
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-int32_t awh::eth::Socket::setBufferSize([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::socket_event_t event, [[maybe_unused]] const int32_t size) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return int32_t();
-}
 
-/**
- * @brief Метод установки сетевого интерфейса для multicast пакетов
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @param ifname имя сетевого интерфейса
- * @return       результат работы функции
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Socket::setMulticastIface([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] string_view ifname) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
-/**
- * @brief Метод устанавливает постоянное подключение на сокет
- *
- * @param sock  сетевой сокет
- * @param cnt   максимальное количество попыток
- * @param idle  время через которое происходит проверка подключения
- * @param intvl время между попытками
- * @return      результат работы функции
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Socket::setKeepalive([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] int32_t cnt, [[maybe_unused]] int32_t idle, [[maybe_unused]] int32_t intvl) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
 /**
  * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
@@ -1023,88 +900,16 @@ bool awh::eth::Socket::trafficInfoGeneration([[maybe_unused]] const net::socket_
  * @todo Windows: тела у метода ещё нет — отвечает пустым значением
  *
  */
-bool awh::eth::Socket::switchOption([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const net::socket_mode_t mode, [[maybe_unused]] const uint16_t option) const noexcept {
+bool awh::eth::Socket::switchOption([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const net::socket_mode_t mode, [[maybe_unused]] const uint16_t option, [[maybe_unused]] const event::protocol_t proto) const noexcept {
 	// Заносим в журнал предупреждение об отсутствии реализации
 	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
 	// Возвращаем пустой результат
 	return bool();
 }
 
-/**
- * @brief Метод получения обнаружения максимального размера пакета (MTU)
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @return       режим обнаружения максимального размера пакета (MTU)
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::event::mtu_discover_t();
-}
 
-/**
- * @brief Метод установки обнаружения максимального размера пакета (MTU)
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @param mode   режим обнаружения максимального размера пакета (MTU)
- * @return       результат работы функции
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Socket::setMaximumTransmissionUnitDiscover([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::mtu_discover_t mode) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
-/**
- * @brief Метод получения максимального количества хопов, через которые может пройти пакет
- *
- * @param sock     сетевой сокет
- * @param family   семейство протоколов (IPv4 или IPv6)
- * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
- * @return         максимальное количество хопов
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-uint8_t awh::eth::Socket::getHops([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::delivery_mode_t delivery) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return uint8_t();
-}
 
-/**
- * @brief Метод установки максимального количества хопов, через которые может пройти пакет
- *
- * @param sock     сетевой сокет
- * @param family   семейство протоколов (IPv4 или IPv6)
- * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
- * @param hops     максимальное количество хопов
- * @return         результат работы функции
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Socket::setHops([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::delivery_mode_t delivery, [[maybe_unused]] const uint8_t hops) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
 /**
  * @brief Метод активации/деактивации мультикаст группы события
@@ -1126,43 +931,7 @@ bool awh::eth::Socket::membership([[maybe_unused]] const net::socket_t sock, [[m
 	return bool();
 }
 
-/**
- * @brief Метод выдачи нового сокета
- *
- * @param family семейство протоколов сокета
- * @param type   тип сокета
- * @param proto  протокол сокета
- * @return       созданный сокет
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-awh::net::socket_t awh::eth::Socket::issue([[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::type_t type, [[maybe_unused]] const event::protocol_t proto) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::net::socket_t();
-}
 
-/**
- * @brief Метод создания пары сокетов для межпроцессного взаимодействия (IPC)
- *
- * @param family семейство протоколов сокета
- * @param type   тип сокета
- * @param proto  протокол сокета
- * @return       созданный сокет
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-array <awh::net::socket_t, 2> awh::eth::Socket::ipc([[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::type_t type, [[maybe_unused]] const event::protocol_t proto) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return array <awh::net::socket_t, 2>();
-}
 
 /**
  * @brief Метод получения маршрута для указанного адреса
@@ -1226,16 +995,6 @@ void awh::eth::Network_Address::threadSafety(const bool mode) noexcept {
 	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
 }
 
-/**
- * @brief Метод установки безопасности работы потоков
- *
- * @param mode флаг режима безопасности потоков
- *
- */
-void awh::eth::Socket::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности потоков
-	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
-}
 
 /**
  * @brief Метод установки объекта управления шлюзами

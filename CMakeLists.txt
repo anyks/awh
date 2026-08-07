@@ -681,8 +681,12 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     # возможностей выясняет движок. Устройство описано в src/net/backend/gnu/IO_URING.md
     elseif (${AWH_ENGINE} STREQUAL "io_uring")
         # Выполняем проверку наличия заголовка io_uring
-        INCLUDE(CheckIncludeFile)
-        CHECK_INCLUDE_FILE("linux/io_uring.h" AWH_HAVE_IO_URING_H)
+        #
+        # Проверка ведётся компилятором C++, а не C: в проекте включён только C++
+        # (project(awh LANGUAGES CXX)), и проверка компилятором C отвечала бы отказом
+        # всегда - не оттого, что заголовка нет, а оттого, что проверять его нечем
+        INCLUDE(CheckIncludeFileCXX)
+        CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" AWH_HAVE_IO_URING_H)
 
         # Если заголовок io_uring в системе отсутствует
         if (NOT AWH_HAVE_IO_URING_H)
@@ -713,6 +717,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         "${SOURCE_FILES}"
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/eth.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/iocp.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/win/socket.cpp"
     )
 endif()
 
