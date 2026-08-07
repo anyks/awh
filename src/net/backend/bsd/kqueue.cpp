@@ -33697,15 +33697,30 @@ namespace sctp {
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Если протокол интернета установлен как SCTP
-						if(server->state.protocol == event::protocol_t::SCTP){
-							// Если тип таймаута является HEARTBEAT
-							if(type == net::sctp::timeout_t::HEARTBEAT)
-								// Получаем значение таймаута SCTP события
-								return this->_eth.sctp.timeout(server->fd, server->sctp.id, type, &server->endpoint.server);
-							// Получаем значение таймаута SCTP события
-							else return this->_eth.sctp.timeout(server->fd, server->sctp.id, type);
+						if(server->state.protocol == event::protocol_t::SCTP)
+							/**
+							 * Адрес удалённой стороны у слушающего узла не передаётся
+							 *
+							 * @details Таймаут HEARTBEAT задаётся параметрами адреса удалённой
+							 *          стороны, и адрес этот выбирает, к какому пути ассоциации
+							 *          параметры относятся. У слушающего узла ассоциаций нет
+							 *          вовсе, а собственный его адрес удалённой стороной не
+							 *          является: подстановка своего адреса называла бы путём
+							 *          то, что путём не является
+							 *
+							 *          Пустой адрес означает по стандарту параметры самой
+							 *          конечной точки - то, что слушающему узлу и требуется, и
+							 *          то, чем они у него и устанавливаются
+							 *
+							 * @note FreeBSD подставленный свой адрес прощает и отдаёт параметры
+							 *       конечной точки, а Linux ищет по нему путь ассоциации, не
+							 *       находит и отвечает отказом. Обращение здесь потому и
+							 *       исправлено, что неверно оно само по себе, а не по системе
+							 *
+							 */
+							return this->_eth.sctp.timeout(server->fd, server->sctp.id, type);
 						// Если протокол интернета не установлен как SCTP
-						} else {
+						else {
 							// Если установлена функция обратного вызова
 							if(server->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова об ошибке отказа
@@ -33887,15 +33902,18 @@ namespace sctp {
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 						// Если протокол интернета установлен как SCTP
-						if(server->state.protocol == event::protocol_t::SCTP){
-							// Если тип таймаута является HEARTBEAT
-							if(type == net::sctp::timeout_t::HEARTBEAT)
-								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctp.timeout(server->fd, server->sctp.id, type, timeout, &server->endpoint.server);
-							// Устанавливаем значение таймаута SCTP события
-							else return this->_eth.sctp.timeout(server->fd, server->sctp.id, type, timeout);
+						if(server->state.protocol == event::protocol_t::SCTP)
+							/**
+							 * Адрес удалённой стороны у слушающего узла не передаётся
+							 *
+							 * @note Обоснование - у чтения этого же таймаута: параметры задаются
+							 *       и читаются у самой конечной точки, а не у пути ассоциации,
+							 *       которого у слушающего узла нет
+							 *
+							 */
+							return this->_eth.sctp.timeout(server->fd, server->sctp.id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
-						} else {
+						else {
 							// Если установлена функция обратного вызова
 							if(server->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова об ошибке отказа

@@ -5764,30 +5764,6 @@ namespace timer {
 	 */
 	static uint64_t timestamp() noexcept {
 		/**
-		 * Если операционной системой является macOS
-		 *
-		 * @note Время берётся функцией, отдающей наносекунды числом, а не через
-		 *       структуру: 13.0 наносекунды против 15.5 у `clock_gettime`, и
-		 *       вдобавок без сборки наносекунд из полей структуры
-		 *
-		 * @note У macOS, как и у FreeBSD, помимо точных монотонных часов есть
-		 *       дешёвые: они не опрашивают счётчик тактов, а отдают значение,
-		 *       обновляемое ядром. Разница почти четырёхкратная - 3.7 наносекунды
-		 *       против 13.0, - и для операции с таймером, которая вся целиком
-		 *       стоит три десятка наносекунд, это заметная доля
-		 *
-		 * @note Отсчёт у дешёвых часов тот же: `CLOCK_MONOTONIC_RAW_APPROX`, как и
-		 *       `CLOCK_MONOTONIC`, считает время сна машины, тогда как семейство
-		 *       `CLOCK_UPTIME_RAW` его отбрасывает. От точных часов дешёвые
-		 *       отстают на постоянную величину, а дедлайн вычисляется сложением
-		 *       текущего времени с задержкой и сравнивается с текущим же временем,
-		 *       поэтому постоянное смещение сокращается и на сроки не влияет
-		 *
-		 * @note Платой служит зернистость: дешёвые часы меняют значение раз в 68
-		 *       микросекунд. Функция и без того отдаёт миллисекунды и отбрасывает
-		 *       всё, что мельче, поэтому платы здесь нет вовсе
-		 */
-		/**
 		 * @note Источник времени выбирается один раз при запуске: там, где
 		 *       зернистость дешёвых часов не превышает отдаваемой функцией
 		 *       миллисекунды, берутся они
@@ -9700,9 +9676,6 @@ namespace io {
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
-							/**
-							 * Если это другая операционная система
-							 */
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes);
 								// Если мы получили ошибку
@@ -9904,9 +9877,6 @@ namespace io {
 							);
 						// Выполняем чтение данных из TCP/IP сокета
 						else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-					/**
-					 * Если это другая операционная система
-					 */
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -11594,9 +11564,6 @@ namespace io {
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
-							/**
-							 * Если это другая операционная система
-							 */
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes);
 								// Если мы получили ошибку
@@ -11798,9 +11765,6 @@ namespace io {
 							);
 						// Выполняем чтение данных из TCP/IP сокета
 						else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-					/**
-					 * Если это другая операционная система
-					 */
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -12938,9 +12902,6 @@ namespace io {
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-							/**
-							 * Если это другая операционная система
-							 */
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes);
 								// Если мы получили ошибку
@@ -13091,9 +13052,6 @@ namespace io {
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-						/**
-						 * Если это другая операционная система
-						 */
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -13221,9 +13179,6 @@ namespace io {
 									&::trust_cast <struct sockaddr> (client->endpoint.server),
 									&client->endpoint.size
 								);
-							/**
-							 * Если это другая операционная система
-							 */
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes);
 								// Если мы получили ошибку
@@ -13381,9 +13336,6 @@ namespace io {
 								&::trust_cast <struct sockaddr> (client->endpoint.server),
 								&client->endpoint.size
 							);
-						/**
-						 * Если это другая операционная система
-						 */
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -14793,9 +14745,6 @@ namespace io {
 										);
 									// Выполняем отправку данных в TCP/IP сокет
 									else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
-								/**
-								 * Если это другая операционная система
-								 */
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -16149,9 +16098,6 @@ namespace io {
 										);
 									// Выполняем отправку данных в TCP/IP сокет
 									else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
-								/**
-								 * Если это другая операционная система
-								 */
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -16863,9 +16809,6 @@ namespace io {
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
-									/**
-									 * Если это другая операционная система
-									 */
 									// Если клиент находится в запущенном состоянии
 									} else if(client->state.status == event::status_t::LAUNCHED) {
 										/**
@@ -16894,9 +16837,6 @@ namespace io {
 											&::trust_cast <struct sockaddr> (client->endpoint.server),
 											client->endpoint.size
 										);
-									/**
-									 * Если это другая операционная система
-									 */
 									}
 									// Если данные отправлены успешно
 									if(bytes > 0){
@@ -18453,9 +18393,6 @@ namespace io {
 										);
 									// Выполняем отправку данных в TCP/IP сокет
 									else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-								/**
-								 * Если это другая операционная система
-								 */
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -18850,9 +18787,6 @@ namespace io {
 										);
 									// Выполняем отправку данных в сокет
 									else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-								/**
-								 * Если это другая операционная система
-								 */
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -19208,9 +19142,6 @@ namespace io {
 							);
 						// Выполняем отправку данных в TCP/IP сокет
 						else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-					/**
-					 * Если это другая операционная система
-					 */
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -22002,9 +21933,6 @@ namespace io {
 										);
 									// Выполняем отправку данных в TCP/IP сокет
 									else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-								/**
-								 * Если это другая операционная система
-								 */
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -22399,9 +22327,6 @@ namespace io {
 										);
 									// Выполняем отправку данных в сокет
 									else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-								/**
-								 * Если это другая операционная система
-								 */
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -22757,9 +22682,6 @@ namespace io {
 							);
 						// Выполняем отправку данных в TCP/IP сокет
 						else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-					/**
-					 * Если это другая операционная система
-					 */
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -24391,9 +24313,6 @@ namespace io {
 											);
 										// Выполняем отправку данных в сокет
 										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-									/**
-									 * Если это другая операционная система
-									 */
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -24738,9 +24657,6 @@ namespace io {
 												);
 											// Выполняем отправку данных в сокет
 											else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-										/**
-										 * Если это другая операционная система
-										 */
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -25072,9 +24988,6 @@ namespace io {
 								);
 							// Выполняем отправку данных в сокет
 							else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-						/**
-						 * Если это другая операционная система
-						 */
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -25197,9 +25110,6 @@ namespace io {
 											);
 										// Выполняем отправку данных в UDP-сокет
 										else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
-									/**
-									 * Если это другая операционная система
-									 */
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -25544,9 +25454,6 @@ namespace io {
 												);
 											// Выполняем отправку данных в UDP-сокет
 											else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
-										/**
-										 * Если это другая операционная система
-										 */
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -25878,9 +25785,6 @@ namespace io {
 								);
 							// Выполняем отправку данных в UDP-сокет
 							else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
-						/**
-						 * Если это другая операционная система
-						 */
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -29144,9 +29048,6 @@ namespace io {
 								}
 							} break;
 						}
-					/**
-					 * Если это другая операционная система
-					 */
 						// Если сокет не создан тогда выходим
 						if(sock == net::invalid_socket_t){
 							// Если процесс является родительским
@@ -33582,15 +33483,29 @@ uint32_t awh::engine::Stream_Control_Transmission_Protocol::getTimeout(const eve
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если протокол интернета установлен как SCTP
-					if(server->state.protocol == event::protocol_t::SCTP){
-						// Если тип таймаута является HEARTBEAT
-						if(type == net::sctp::timeout_t::HEARTBEAT)
-							// Получаем значение таймаута SCTP события
-							return this->_eth.sctp.timeout(server->fd, server->sctp.id, type, &server->endpoint.server);
-						// Получаем значение таймаута SCTP события
-						else return this->_eth.sctp.timeout(server->fd, server->sctp.id, type);
+					if(server->state.protocol == event::protocol_t::SCTP)
+						/**
+						 * Адрес удалённой стороны у слушающего узла не передаётся
+						 *
+						 * @details Таймаут HEARTBEAT задаётся параметрами адреса удалённой
+						 *          стороны, и адрес этот выбирает, к какому пути ассоциации
+						 *          параметры относятся. У слушающего узла ассоциаций нет
+						 *          вовсе, а собственный его адрес удалённой стороной не
+						 *          является: подстановка своего адреса называла бы путём
+						 *          то, что путём не является
+						 *
+						 *          Пустой адрес означает по стандарту параметры самой
+						 *          конечной точки - то, что слушающему узлу и требуется, и
+						 *          то, чем они у него и устанавливаются
+						 *
+						 * @note Расхождение это стоило отказа: FreeBSD подставленный свой
+						 *       адрес прощает и отдаёт параметры конечной точки, а Linux
+						 *       ищет по нему путь ассоциации, не находит и отвечает отказом
+						 *
+						 */
+						return this->_eth.sctp.timeout(server->fd, server->sctp.id, type);
 					// Если протокол интернета не установлен как SCTP
-					} else {
+					else {
 						// Если установлена функция обратного вызова
 						if(server->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
@@ -33772,15 +33687,18 @@ bool awh::engine::Stream_Control_Transmission_Protocol::setTimeout(const event::
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если протокол интернета установлен как SCTP
-					if(server->state.protocol == event::protocol_t::SCTP){
-						// Если тип таймаута является HEARTBEAT
-						if(type == net::sctp::timeout_t::HEARTBEAT)
-							// Устанавливаем значение таймаута SCTP события
-							return this->_eth.sctp.timeout(server->fd, server->sctp.id, type, timeout, &server->endpoint.server);
-						// Устанавливаем значение таймаута SCTP события
-						else return this->_eth.sctp.timeout(server->fd, server->sctp.id, type, timeout);
+					if(server->state.protocol == event::protocol_t::SCTP)
+						/**
+						 * Адрес удалённой стороны у слушающего узла не передаётся
+						 *
+						 * @note Обоснование - у чтения этого же таймаута: параметры задаются
+						 *       и читаются у самой конечной точки, а не у пути ассоциации,
+						 *       которого у слушающего узла нет
+						 *
+						 */
+						return this->_eth.sctp.timeout(server->fd, server->sctp.id, type, timeout);
 					// Если протокол интернета не установлен как SCTP
-					} else {
+					else {
 						// Если установлена функция обратного вызова
 						if(server->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа

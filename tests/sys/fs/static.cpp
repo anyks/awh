@@ -138,9 +138,23 @@ TEST_F(FSFixture, FSTest){
 	// -------------------------------------------------------------
 	std::string symLink = testDir + "/symlink.txt";
 	std::string hardLink = testDir + "/hardlink.txt";
-	
+
 	// Создаем символьную ссылку
 	this->_fs->symlink(testFile, symLink);
+	/**
+	 * Для операционной системы MS Windows
+	 *
+	 * @note Символьной ссылки в понимании POSIX у MS Windows нет: заведение её требует
+	 *       особого права SeCreateSymbolicLinkPrivilege, какого у обычного пользователя
+	 *       не бывает. Оттого Filesystem::symlink заводит там ярлык оболочки, а тот
+	 *       обязан носить расширение «.lnk» - без него оболочка ярлыка не распознаёт.
+	 *       Проверять надлежит то имя, какое библиотека и создала
+	 *
+	 */
+	#if _WIN32 || _WIN64
+		// Дополняем адрес ссылки расширением ярлыка оболочки
+		symLink.append(".lnk");
+	#endif
 	ASSERT_EQ(this->_fs->type(symLink), awh::fs_t::type_t::LINK);
 	
 	// Создаем жесткую ссылку

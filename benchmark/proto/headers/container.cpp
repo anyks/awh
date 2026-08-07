@@ -77,8 +77,24 @@ namespace {
 	 *          поэтому печать идёт по самому набору. Порог опущен до измеренного
 	 *          значения: возврат к восьми означал бы, что копия вернулась
 	 *
+	 * @warning Показатель этот воспроизводим до единиц в пределах одной стандартной
+	 *          библиотеки, но не между ними: у libstdc++ короткая строка
+	 *          размещается внутри объекта строки по иной границе, чем у libc++, и
+	 *          значение, укладывающееся у одной внутрь объекта, у другой требует
+	 *          выделения. Замер на стендах дал у NetBSD на единицу больше, чем у
+	 *          macOS, FreeBSD и OpenBSD, совпавших между собой в точности
+	 *
+	 * @note Порог потому задан по стандартной библиотеке, а не поднят до
+	 *       наибольшего из снятых: общий порог по наибольшему снял бы сторожа там,
+	 *       где он работает, - ради ложной тревоги на одной системе перестал бы
+	 *       ловиться откат на всех прочих
+	 *
 	 */
-	static constexpr double BUILD_ALLOCATIONS = 7.0;
+	#if defined(__GLIBCXX__)
+		static constexpr double BUILD_ALLOCATIONS = 8.5;
+	#else
+		static constexpr double BUILD_ALLOCATIONS = 7.0;
+	#endif
 	static constexpr double LOOKUP_ALLOCATIONS = 0.0;
 	static constexpr double SERIALIZE_ALLOCATIONS = 2.0;
 	static constexpr double REPLACE_ALLOCATIONS = 0.0;
