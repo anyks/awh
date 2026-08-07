@@ -45,14 +45,35 @@ namespace {
 	 *
 	 */
 	std::string pattern(const size_t count, const char base) noexcept {
+		// Длина периода узора
+		static constexpr size_t PERIOD = 26;
 		// Результирующая строка
 		std::string result;
 		// Резервируем ёмкость под узор
 		result.reserve(count);
-		// Заполняем строку циклическим узором
-		for(size_t i = 0; i < count; i++)
-			// Дописываем очередной символ узора
-			result.push_back(static_cast <char> (base + static_cast <char> (i % 26)));
+		// Один период узора
+		char period[PERIOD];
+		/**
+		 * Выполняем сборку одного периода узора
+		 */
+		for(size_t i = 0; i < PERIOD; i++)
+			// Записываем очередной символ периода
+			period[i] = static_cast <char> (base + static_cast <char> (i));
+		/**
+		 * Заполняем строку целыми периодами узора
+		 *
+		 * @note Заполнение идёт периодами, а не символами: узор посимвольный обходился
+		 *       в отладочной сборке дороже всей остальной проверки вместе взятой -
+		 *       libstdc++ на нулевой оптимизации не встраивает ни одного обращения к
+		 *       строке, и каждый символ стоил цепочки настоящих вызовов. Собираемая
+		 *       строка от этого не меняется ни на октет
+		 *
+		 */
+		while((result.size() + PERIOD) <= count)
+			// Дописываем очередной целый период узора
+			result.append(period, PERIOD);
+		// Дописываем остаток узора, не уместившийся целым периодом
+		result.append(period, count - result.size());
 		// Выводим сгенерированную строку
 		return result;
 	}
