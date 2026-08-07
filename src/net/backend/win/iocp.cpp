@@ -31,6 +31,7 @@
 #include <memory>
 #include <atomic>
 #include <string>
+#include <cstdio>
 #include <condition_variable>
 
 /**
@@ -252,6 +253,7 @@ namespace {
 		 *          отказом по существу не является
 		 *
 		 */
+		std::fprintf(stderr, "[ПРОБА движок] поток чтения %llu запущен, сторона=%s\n", (unsigned long long) id, (listener ? "ожидания" : "встречная")); std::fflush(stderr);
 		if(listener && !::ConnectNamedPipe(handle, nullptr)){
 			// Получаем код отказа ожидания подключения
 			const DWORD code = ::GetLastError();
@@ -260,6 +262,7 @@ namespace {
 				// Завершаем работу потока чтения
 				return;
 		}
+		std::fprintf(stderr, "[ПРОБА движок] узел %llu готов к чтению\n", (unsigned long long) id); std::fflush(stderr);
 		// Буфер принимаемого сообщения
 		std::vector <uint8_t> buffer(4096, 0);
 		/**
@@ -1627,6 +1630,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 		DWORD mode = PIPE_READMODE_MESSAGE;
 		// Устанавливаем строй чтения своего конца канала
 		::SetNamedPipeHandleState(handle, &mode, nullptr, nullptr);
+		std::fprintf(stderr, "[ПРОБА движок] узел %llu подключён к каналу\n", (unsigned long long) id); std::fflush(stderr);
 		// Запоминаем дескриптор именованного канала у узла
 		item->handle = handle;
 		// Переводим узел в состояние состоявшегося подключения
@@ -1747,6 +1751,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		 *
 		 */
 		if((item->node == event::node_t::IPC) && (item->handle != INVALID_HANDLE_VALUE)){
+			std::fprintf(stderr, "[ПРОБА движок] отправка %zu байт узлом %llu\n", size, (unsigned long long) id); std::fflush(stderr);
 			// Количество отправленных байт, снятое системой
 			DWORD sent = 0;
 			// Выполняем отправку сообщения в именованный канал
@@ -1755,6 +1760,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 				written = static_cast <size_t> (sent);
 			// Если отправка завершилась отказом - запоминаем его код
 			else code = ::GetLastError();
+			std::fprintf(stderr, "[ПРОБА движок] отправка узлом %llu завершена, отказ=%lu\n", (unsigned long long) id, code); std::fflush(stderr);
 		/**
 		 * Если настоящего канала за узлом нет - сообщение ложится в очередь собеседника
 		 */

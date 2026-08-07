@@ -1752,10 +1752,11 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
  * @param family семейство протоколов (IPv4 или IPv6)
  * @param mode   режим активации или деактивации
  * @param option опция сокета
+ * @param proto  протокол сокета, `NONE` - протокол не назван
  * @return       результат работы функции
  *
  */
-bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option) const noexcept {
+bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, const event::protocol_t proto) const noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если сокет корректен
