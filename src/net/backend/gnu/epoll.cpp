@@ -3056,6 +3056,36 @@ namespace fs {
  * @brief Инкапсулируем статические типы данных в пространство имён
  *
  */
+/**
+ * @brief Предварительные объявления средств учёта подписок
+ *
+ * @note Закрытие дескрипторов встречается по файлу раньше, чем объявлено само
+ *       пространство учёта, а идти вместе с забвением состояния оно обязано всюду
+ *
+ */
+namespace kernel {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Функция забвения состояния учёта закрываемого дескриптора
+	 *
+	 * @param sock дескриптор, состояние которого забывается
+	 *
+	 */
+	static void forget(const net::socket_t sock) noexcept;
+	/**
+	 * @brief Функция закрытия дескриптора с забвением его состояния учёта
+	 *
+	 * @param sock закрываемый дескриптор
+	 * @return     результат закрытия
+	 *
+	 */
+	static inline int32_t close(const net::socket_t sock) noexcept;
+};
+
 namespace {
 	/**
 	 * Используем пространство имён AWH
@@ -3196,7 +3226,7 @@ namespace {
 					// Если дескриптор сокета инициализирован
 					if(dir->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(dir->fd);
+						::kernel::close(dir->fd);
 						// Сбрасываем значение дескриптора сокета
 						dir->fd = net::invalid_socket_t;
 					}
@@ -3212,7 +3242,7 @@ namespace {
 					// Если дескриптор сокета инициализирован
 					if(fs->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(fs->fd);
+						::kernel::close(fs->fd);
 						// Сбрасываем значение дескриптора сокета
 						fs->fd = net::invalid_socket_t;
 					}
@@ -3228,7 +3258,7 @@ namespace {
 					// Если дескриптор сокета инициализирован
 					if(ipc->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(ipc->transfer.fd);
+						::kernel::close(ipc->transfer.fd);
 						// Сбрасываем значение дескриптора сокета
 						ipc->transfer.fd = net::invalid_socket_t;
 					}
@@ -3244,7 +3274,7 @@ namespace {
 					// Если дескриптор сокета инициализирован
 					if(peer->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(peer->transfer.fd);
+						::kernel::close(peer->transfer.fd);
 						// Сбрасываем значение дескриптора сокета
 						peer->transfer.fd = net::invalid_socket_t;
 					}
@@ -3288,7 +3318,7 @@ namespace {
 					// Если дескриптор сокета инициализирован
 					if(tunnel->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(tunnel->fd);
+						::kernel::close(tunnel->fd);
 						// Сбрасываем значение дескриптора сокета
 						tunnel->fd = net::invalid_socket_t;
 					}
@@ -3357,7 +3387,7 @@ namespace {
 					// Если дескриптор сокета инициализирован
 					if(client->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(client->transfer.fd);
+						::kernel::close(client->transfer.fd);
 						// Сбрасываем значение дескриптора сокета
 						client->transfer.fd = net::invalid_socket_t;
 					}
@@ -3393,7 +3423,7 @@ namespace {
 					// Если дескриптор сокета инициализирован
 					if(server->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(server->fd);
+						::kernel::close(server->fd);
 						// Сбрасываем значение дескриптора сокета
 						server->fd = net::invalid_socket_t;
 					}
@@ -3579,6 +3609,24 @@ namespace kernel {
 		uint32_t oneshot;
 		// Признак того, что подписка заведена в очереди опроса
 		bool registered;
+		/**
+		 * @brief Признак расхождения учёта с очередью опроса
+		 *
+		 * @details Правки подписок ложатся сперва в учёт, а к ядру уходят одним
+		 *          обращением на дескриптор - непосредственно перед ожиданием. Правок
+		 *          между двумя ожиданиями по одному дескриптору набирается несколько:
+		 *          снятие сработавшей однократной подписки на запись и следующая за
+		 *          ним подписка на чтение прежде стоили двух обращений, а сходятся в
+		 *          одно, потому что итог у них общий
+		 *
+		 * @note Задержка эта ничего не меняет по существу: согласование выполняется
+		 *       прежде, чем ядро спросят о событиях, а до того ядру о правках знать
+		 *       незачем - оно всё равно не опрашивается
+		 *
+		 */
+		bool pending;
+		// Набор признаков ожидания, поданный ядру последним
+		uint32_t applied;
 		// Узел, которому подписка принадлежит
 		void * udata;
 		/**
@@ -3586,7 +3634,8 @@ namespace kernel {
 		 *
 		 */
 		Registry() noexcept :
-		 sock(net::invalid_socket_t), declared(0), enabled(0), edge(false), oneshot(0), registered(false), udata(nullptr) {}
+		 sock(net::invalid_socket_t), declared(0), enabled(0), edge(false), oneshot(0),
+		 registered(false), pending(false), applied(0), udata(nullptr) {}
 	} registry_t;
 
 	/**
@@ -3642,6 +3691,97 @@ namespace kernel {
 	 *
 	 */
 	static vector <net::socket_t> retired;
+
+	/**
+	 * @brief Дескрипторы, чей учёт разошёлся с очередью опроса и ждёт согласования
+	 *
+	 * @details Правки подписок накапливаются здесь между двумя ожиданиями и уходят к
+	 *          ядру одним обращением на дескриптор. Прежде каждая правка обращалась к
+	 *          ядру сама, и на одно короткоживущее подключение выходило четыре
+	 *          обращения там, где довольно трёх
+	 *
+	 * @note Дескриптор попадает сюда не чаще одного раза: повторную запись отсекает
+	 *       признак расхождения в самом учёте
+	 *
+	 */
+	static vector <net::socket_t> pending;
+
+	/**
+	 * @brief Функция забвения состояния учёта закрываемого дескриптора
+	 *
+	 * @details Закрытие дескриптора снимает все его подписки в ядре само, без всякого
+	 *          обращения к очереди опроса. Учёт об этом узнать неоткуда, и признак
+	 *          заведения подписки у него остаётся поднятым
+	 *
+	 *          Пока номер свободен, ложь эта безобидна. Но система выдаёт номер заново,
+	 *          и достаться он вправе другому узлу тем же самым оборотом: движок шлёт
+	 *          тогда правку незаведённой подписки, ядро отвечает отказом, и обращение
+	 *          повторяется противоположным действием. Замер показал по два таких отказа
+	 *          на каждое короткоживущее подключение
+	 *
+	 *          Отличить нового владельца по узлу нельзя - опробовано и отвергнуто:
+	 *          распределитель памяти выдаёт новому узлу тот же адрес, что был у прежнего,
+	 *          и сличение узлов расхождения не видит. Единственный достоверный признак -
+	 *          само закрытие, и знает о нём движок, а не учёт
+	 *
+	 * @note Сама запись здесь не снимается: её адрес мог уйти ядру и лежать в уже
+	 *       полученной, но ещё не разобранной пачке событий. Снятие откладывается на
+	 *       оборот наравне с прочими, а сбрасывается лишь состояние
+	 *
+	 * @param sock дескриптор, состояние которого забывается
+	 *
+	 */
+	static void forget(const net::socket_t sock) noexcept {
+		// Если дескриптор не заведён вовсе, забывать нечего
+		if(sock == net::invalid_socket_t)
+			// Выходим из функции
+			return;
+		// Выполняем поиск записи учёта по дескриптору
+		auto i = ::kernel::registry.find(sock);
+		// Если записи учёта по дескриптору нет, забывать нечего
+		if(i == ::kernel::registry.end())
+			// Выходим из функции
+			return;
+		// Забываем заведение подписки в очереди опроса: ядро сняло её при закрытии
+		i->second.registered = false;
+		// Забываем включённые подписки
+		i->second.enabled = 0;
+		// Забываем объявленные подписки
+		i->second.declared = 0;
+		// Забываем однократные подписки
+		i->second.oneshot = 0;
+		// Забываем разновидность оповещения
+		i->second.edge = false;
+		// Забываем набор признаков, поданный ядру
+		i->second.applied = 0;
+		// Забываем расхождение учёта: согласовывать у закрытого дескриптора нечего
+		i->second.pending = false;
+		// Забываем узел, которому подписки принадлежали
+		i->second.udata = nullptr;
+		// Откладываем снятие записи учёта до следующего оборота
+		::kernel::retired.push_back(sock);
+	}
+
+	/**
+	 * @brief Функция закрытия дескриптора с забвением его состояния учёта
+	 *
+	 * @details Ставится всюду, где движок закрывает дескриптор события. Закрытие и
+	 *          забвение обязаны идти вместе: разойдясь, они оставляют учёт уверенным
+	 *          в подписке, которой у ядра уже нет
+	 *
+	 * @note Дескрипторы самой очереди опроса, пробуждения и наблюдения за файлами
+	 *       закрываются напрямую: подписок в очереди у них нет, забывать нечего
+	 *
+	 * @param sock закрываемый дескриптор
+	 * @return     результат закрытия
+	 *
+	 */
+	static inline int32_t close(const net::socket_t sock) noexcept {
+		// Забываем состояние учёта закрываемого дескриптора
+		::kernel::forget(sock);
+		// Выполняем закрытие дескриптора
+		return ::close(sock);
+	}
 
 	/**
 	 * @brief Функция снятия записей учёта, отложенных прошлым оборотом
@@ -3850,6 +3990,65 @@ namespace kernel {
 			// Отмечаем разновидность подписки многократной
 			state.oneshot &= ~bit;
 		}
+		/**
+		 * Отмечаем расхождение учёта с очередью опроса
+		 *
+		 * @details К ядру правка уходит не отсюда, а согласованием - одним обращением
+		 *          на дескриптор, прямо перед ожиданием. Правок между двумя ожиданиями
+		 *          по одному дескриптору набирается несколько, и порознь каждая стоила
+		 *          бы своего обращения
+		 *
+		 */
+		if(!state.pending){
+			// Отмечаем учёт разошедшимся с очередью опроса
+			state.pending = true;
+			// Ставим дескриптор в очередь согласования
+			::kernel::pending.push_back(sock);
+		}
+		// Выводим успешный результат: согласование выполнит само обращение к ядру
+		(void) log;
+		// Выводим результат применения записи
+		return true;
+	}
+	/**
+	 * @brief Функция согласования учёта одного дескриптора с очередью опроса
+	 *
+	 * @details Приводит подписку в очереди опроса к тому виду, который сложился в
+	 *          учёте: заводит её, правит либо снимает - одним обращением, каким бы
+	 *          числом правок этот вид ни сложился
+	 *
+	 * @param state состояние подписки по дескриптору
+	 * @param log   объект работы с логами
+	 * @return      результат согласования
+	 *
+	 */
+	static bool reconcile(registry_t & state, const log_t * log) noexcept {
+		// Снимаем отметку расхождения: согласование выполняется прямо сейчас
+		state.pending = false;
+		// Результат работы функции
+		int32_t result = 0;
+		// Если включённых подписок не осталось вовсе
+		if(state.enabled == 0){
+			// Если подписка в очереди опроса заведена была
+			if(state.registered){
+				// Выполняем снятие подписки с очереди опроса
+				result = gnu::epollCtl(::__awh_ep__, EPOLL_CTL_DEL, state.sock, nullptr);
+				// Отмечаем подписку снятой с очереди опроса
+				state.registered = false;
+				// Снимаем набор признаков, поданный ядру последним
+				state.applied = 0;
+			}
+			/**
+			 * @note Запись учёта снимается не здесь, а оборотом позже: ссылка на неё
+			 *       передана ядру и может лежать в уже полученной, но ещё не
+			 *       разобранной пачке событий
+			 */
+			if(state.declared == 0)
+				// Откладываем снятие записи учёта до следующего оборота
+				::kernel::retired.push_back(state.sock);
+			// Выводим результат согласования
+			return (result == 0);
+		}
 		// Собираем набор признаков ожидания
 		struct epoll_event event{};
 		// Устанавливаем включённые подписки
@@ -3865,44 +4064,25 @@ namespace kernel {
 			// Отмечаем подписку сообщающей о переходе
 			event.events |= EPOLLET;
 		/**
-		 * @note Однократность средством ядра здесь не обслуживается: `EPOLLONESHOT`
-		 *       отключает дескриптор целиком, а движку нужно снятие одной лишь
-		 *       сработавшей подписки. Выполняет его разбор события
-		 */
-		/**
 		 * @note Закрытие дальней стороной и ошибка приходят у epoll независимо от
 		 *       затребованных признаков, и запрашивать их незачем. Затребовано здесь
-		 *       лишь закрытие дальней стороной на запись: без него закрытое на приём
-		 *       соединение молчит, тогда как kqueue сообщал о нём признаком конца
-		 *       данных
+		 *       лишь закрытие дальней стороной на запись
 		 */
-		if(state.enabled != 0)
-			// Затребуем оповещение о закрытии дальней стороной
-			event.events |= EPOLLRDHUP;
-		// Результат работы функции
-		int32_t result = 0;
-		// Если включённых подписок не осталось вовсе
-		if(state.enabled == 0){
-			// Если подписка в очереди опроса заведена была
-			if(state.registered){
-				// Выполняем снятие подписки с очереди опроса
-				result = gnu::epollCtl(::__awh_ep__, EPOLL_CTL_DEL, sock, nullptr);
-				// Отмечаем подписку снятой с очереди опроса
-				state.registered = false;
-			}
-			/**
-			 * @note Запись учёта снимается не здесь, а оборотом позже: ссылка на неё
-			 *       передана ядру и может лежать в уже полученной, но ещё не
-			 *       разобранной пачке событий
-			 */
-			if(state.declared == 0)
-				// Откладываем снятие записи учёта до следующего оборота
-				::kernel::retired.push_back(sock);
-			// Выводим результат применения записи
-			return (result == 0);
-		}
+		// Затребуем оповещение о закрытии дальней стороной
+		event.events |= EPOLLRDHUP;
+		/**
+		 * Если набор признаков ядру уже подан и с тех пор не изменился, обращаться незачем
+		 *
+		 * @note Отсечка эта берёт на себя правки, ничего не меняющие по существу:
+		 *       подписка включается там, где уже включена, либо снимается однократность,
+		 *       ядру неизвестная вовсе
+		 *
+		 */
+		if(state.registered && (state.applied == event.events))
+			// Выводим успешный результат: очередь опроса и без того согласна с учётом
+			return true;
 		// Выполняем заведение либо правку подписки в очереди опроса
-		result = gnu::epollCtl(::__awh_ep__, (state.registered ? EPOLL_CTL_MOD : EPOLL_CTL_ADD), sock, &event);
+		result = gnu::epollCtl(::__awh_ep__, (state.registered ? EPOLL_CTL_MOD : EPOLL_CTL_ADD), state.sock, &event);
 		/**
 		 * @note Ядро отвергает заведение уже заведённой подписки и правку
 		 *       незаведённой. Расхождение это возможно после перестройки события:
@@ -3912,18 +4092,51 @@ namespace kernel {
 		 */
 		if((result != 0) && ((errno == EEXIST) || (errno == ENOENT)))
 			// Выполняем повторное обращение противоположным действием
-			result = gnu::epollCtl(::__awh_ep__, (state.registered ? EPOLL_CTL_ADD : EPOLL_CTL_MOD), sock, &event);
-		// Если запись применена, отмечаем подписку заведённой в очереди опроса
-		if(result == 0)
+			result = gnu::epollCtl(::__awh_ep__, (state.registered ? EPOLL_CTL_ADD : EPOLL_CTL_MOD), state.sock, &event);
+		// Если запись применена
+		if(result == 0){
 			// Отмечаем подписку заведённой в очереди опроса
 			state.registered = true;
+			// Запоминаем набор признаков, поданный ядру
+			state.applied = event.events;
 		// Если применить запись не удалось
-		if(result != 0)
-			// Записываем ошибку в лог
-			log->print("Event change rejected: ident=%llu, filter=%u, flags=0x%x, %s", log_t::flag_t::WARNING,
-			 static_cast <uint64_t> (rec.ident), static_cast <uint32_t> (rec.filter), static_cast <uint32_t> (rec.flags), ::strerror(errno));
-		// Выводим результат применения записи
+		} else log->print("Event change rejected: ident=%llu, events=0x%x, %s", log_t::flag_t::WARNING,
+		 static_cast <uint64_t> (state.sock), static_cast <uint32_t> (event.events), ::strerror(errno));
+		// Выводим результат согласования
 		return (result == 0);
+	}
+	/**
+	 * @brief Функция согласования всех расхождений учёта с очередью опроса
+	 *
+	 * @details Зовётся прямо перед ожиданием: до него ядру о правках знать незачем,
+	 *          а к его началу очередь опроса обязана отвечать учёту в точности
+	 *
+	 * @param log объект работы с логами
+	 * @return    результат согласования
+	 *
+	 */
+	static bool flush(const log_t * log) noexcept {
+		// Если согласовывать нечего
+		if(::kernel::pending.empty())
+			// Выводим успешный результат
+			return true;
+		// Результат работы функции
+		bool result = true;
+		/**
+		 * Выполняем перебор всех дескрипторов, ждущих согласования
+		 */
+		for(auto & sock : ::kernel::pending){
+			// Выполняем поиск записи учёта по дескриптору
+			auto i = ::kernel::registry.find(sock);
+			// Если запись учёта жива и согласования всё ещё ждёт
+			if((i != ::kernel::registry.end()) && i->second.pending)
+				// Выполняем согласование, запоминая общий исход
+				result = (::kernel::reconcile(i->second, log) && result);
+		}
+		// Очищаем очередь согласования
+		::kernel::pending.clear();
+		// Выводим результат согласования
+		return result;
 	}
 	/**
 	 * @brief Функция снятия сработавшей однократной подписки
@@ -3947,34 +4160,21 @@ namespace kernel {
 		state.enabled &= ~bit;
 		// Отмечаем разновидность подписки многократной
 		state.oneshot &= ~bit;
-		// Если включённых подписок по дескриптору не осталось вовсе
-		if(state.enabled == 0){
-			// Если подписка в очереди опроса заведена была
-			if(state.registered){
-				// Выполняем снятие подписки с очереди опроса
-				gnu::epollCtl(::__awh_ep__, EPOLL_CTL_DEL, state.sock, nullptr);
-				// Отмечаем подписку снятой с очереди опроса
-				state.registered = false;
-			}
-			// Если подписок по дескриптору не осталось вовсе
-			if(state.declared == 0)
-				// Откладываем снятие записи учёта до следующего оборота
-				::kernel::retired.push_back(state.sock);
-			// Выходим из функции
-			return;
+		/**
+		 * Отмечаем расхождение учёта с очередью опроса
+		 *
+		 * @note К ядру снятие уходит согласованием, прямо перед ожиданием. Сразу за
+		 *       снятием этим движок обыкновенно заводит подписку на чтение того же
+		 *       дескриптора, и порознь они стоили двух обращений, а согласованием
+		 *       сходятся в одно: итог у них общий
+		 *
+		 */
+		if(!state.pending){
+			// Отмечаем учёт разошедшимся с очередью опроса
+			state.pending = true;
+			// Ставим дескриптор в очередь согласования
+			::kernel::pending.push_back(state.sock);
 		}
-		// Собираем набор признаков ожидания
-		struct epoll_event event{};
-		// Устанавливаем включённые подписки
-		event.events = (state.enabled | EPOLLRDHUP);
-		// Устанавливаем запись учёта, которой подписка принадлежит
-		event.data.ptr = &state;
-		// Если подписка сообщает о переходе, а не об уровне
-		if(state.edge)
-			// Отмечаем подписку сообщающей о переходе
-			event.events |= EPOLLET;
-		// Выполняем правку подписки в очереди опроса
-		gnu::epollCtl(::__awh_ep__, EPOLL_CTL_MOD, state.sock, &event);
 	}
 	/**
 	 * @brief Функция применения записи наблюдения за файлом либо каталогом
@@ -4819,9 +5019,10 @@ namespace local {
 			 *       вернётся
 			 *
 			 * @param bytes количество полученных октетов
+			 * @param size  запрошенный у ядра объём, ноль - объём не сообщён
 			 *
 			 */
-			void consume(const ssize_t bytes) noexcept;
+			void consume(const ssize_t bytes, const size_t size = 0) noexcept;
 		public:
 			/**
 			 * @brief Оператор проверки того, что цикл может продолжаться
@@ -4850,11 +5051,33 @@ namespace local {
 	 * @param bytes количество полученных октетов
 	 *
 	 */
-	void Watchdog::consume(const ssize_t bytes) noexcept {
+	void Watchdog::consume(const ssize_t bytes, const size_t size) noexcept {
 		// Если объявленный объём известен и получение состоялось
 		if((this->_volume > 0) && (bytes > 0))
 			// Уменьшаем оставшийся к получению объём, не уходя ниже нуля
 			this->_volume = ((static_cast <int64_t> (bytes) < this->_volume) ? (this->_volume - static_cast <int64_t> (bytes)) : 0);
+		/**
+		 * Считаем объём выбранным, если получено меньше запрошенного
+		 *
+		 * @details Объявленного ядром объёма у epoll нет: готовность приходит без него,
+		 *          и цикл, ничего не знающий об оставшемся, узнаёт об исчерпании буфера
+		 *          отдельным приёмом, отвечающим отказом. На коротком обмене вызов этот
+		 *          есть половина всех обращений к ядру за чтение - замер показал восемь
+		 *          обращений на обмен против шести у чужих циклов, и вся разница была в нём
+		 *
+		 *          Получено меньше запрошенного - буфер сокета исчерпан: ядро отдаёт
+		 *          столько, сколько в нём есть, а больше запрошенного не отдаёт никогда
+		 *
+		 * @note Безопасно это ровно по той же причине, что и учёт по объёму: подписка на
+		 *       чтение уровневая. Даже если к мигу остановки в буфер успело поступить ещё,
+		 *       ядро сообщит о готовности повторно, и данные не потеряются. С краевой
+		 *       подпиской остановка раньше отказа стоила бы потерянного пробуждения,
+		 *       оттого признак краевой подписки на потоковых сокетах и не ставится
+		 *
+		 */
+		else if((this->_volume < 0) && (bytes > 0) && (size > 0) && (static_cast <size_t> (bytes) < size))
+			// Отмечаем объём выбранным: продолжать цикл незачем
+			this->_volume = 0;
 	}
 	/**
 	 * @brief Оператор проверки того, что цикл может продолжаться
@@ -9373,7 +9596,7 @@ namespace io {
 							// Выполняем чтение данных из IPC-сокета
 							bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 							// Учитываем полученное в объявленном ядром объёме
-							watchdog.consume(bytes);
+							watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если нам нужно повторить попытку позже
@@ -9509,7 +9732,7 @@ namespace io {
 							// Выполняем чтение данных из IPC-сокета
 							bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 							// Учитываем полученное в объявленном ядром объёме
-							watchdog.consume(bytes);
+							watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если нам нужно повторить попытку позже
@@ -9746,7 +9969,7 @@ namespace io {
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
 								// Учитываем полученное в объявленном ядром объёме
-								watchdog.consume(bytes);
+								watchdog.consume(bytes, ((peer->state.protocol == event::protocol_t::SCTP) ? 0 : size));
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -10070,7 +10293,7 @@ namespace io {
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 							// Учитываем полученное в объявленном ядром объёме
-							watchdog.consume(bytes);
+							watchdog.consume(bytes, ((peer->state.protocol == event::protocol_t::SCTP) ? 0 : AWH_EVENT_MAX_BUFFER_SIZE));
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если нам нужно повторить попытку позже
@@ -11634,7 +11857,7 @@ namespace io {
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
 								// Учитываем полученное в объявленном ядром объёме
-								watchdog.consume(bytes);
+								watchdog.consume(bytes, ((client->state.protocol == event::protocol_t::SCTP) ? 0 : size));
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -12090,7 +12313,7 @@ namespace io {
 								// Выполняем чтение данных из сокета в обычном режиме, если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 								} else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 								// Учитываем полученное в объявленном ядром объёме
-								watchdog.consume(bytes);
+								watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -12972,7 +13195,7 @@ namespace io {
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 								// Учитываем полученное в объявленном ядром объёме
-								watchdog.consume(bytes);
+								watchdog.consume(bytes, ((client->state.protocol == event::protocol_t::SCTP) ? 0 : AWH_EVENT_MAX_BUFFER_SIZE));
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -26483,7 +26706,7 @@ namespace io {
 									// Если очередь опроса не заведена
 									} else {
 										// Закрываем дескриптор сокета
-										::close(ipc->transfer.fd);
+										::kernel::close(ipc->transfer.fd);
 										// Сбрасываем значение дескриптора сокета
 										ipc->transfer.fd = net::invalid_socket_t;
 									}
@@ -26491,7 +26714,7 @@ namespace io {
 							// Если процесс является дочерним процессом
 							} else {
 								// Закрываем дескриптор сокета
-								::close(ipc->transfer.fd);
+								::kernel::close(ipc->transfer.fd);
 								// Сбрасываем значение дескриптора сокета
 								ipc->transfer.fd = net::invalid_socket_t;
 							}
@@ -26653,7 +26876,7 @@ namespace io {
 									// Если очередь опроса не заведена
 									} else {
 										// Закрываем дескриптор сокета
-										::close(tunnel->fd);
+										::kernel::close(tunnel->fd);
 										// Сбрасываем значение дескриптора сокета
 										tunnel->fd = net::invalid_socket_t;
 									}
@@ -26661,7 +26884,7 @@ namespace io {
 							// Если процесс является дочерним процессом
 							} else {
 								// Закрываем дескриптор сокета
-								::close(tunnel->fd);
+								::kernel::close(tunnel->fd);
 								// Сбрасываем значение дескриптора сокета
 								tunnel->fd = net::invalid_socket_t;
 							}
@@ -26765,7 +26988,7 @@ namespace io {
 											 */
 											if(client->transfer.fd != net::invalid_socket_t){
 												// Закрываем дескриптор сокета
-												::close(client->transfer.fd);
+												::kernel::close(client->transfer.fd);
 												// Сбрасываем значение дескриптора сокета
 												client->transfer.fd = net::invalid_socket_t;
 											}
@@ -26908,7 +27131,7 @@ namespace io {
 									// Если очередь опроса не заведена
 									} else {
 										// Закрываем дескриптор сокета
-										::close(server->fd);
+										::kernel::close(server->fd);
 										// Сбрасываем значение дескриптора сокета
 										server->fd = net::invalid_socket_t;
 									}
@@ -28629,7 +28852,7 @@ namespace io {
 			// Если дескриптор сокета инициализирован
 			if(client->transfer.fd != net::invalid_socket_t){
 				// Закрываем дескриптор сокета
-				::close(client->transfer.fd);
+				::kernel::close(client->transfer.fd);
 				// Сбрасываем значение дескриптора сокета
 				client->transfer.fd = net::invalid_socket_t;
 			}
@@ -29016,7 +29239,7 @@ namespace io {
 					// Если сокет создан успешно
 					if(sock != net::invalid_socket_t)
 						// Закрываем сокет подключения
-						::close(sock);
+						::kernel::close(sock);
 					// Если установлена функция обратного вызова
 					if(server->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об отмене подключения
@@ -29212,7 +29435,7 @@ namespace io {
 										#endif
 									}
 									// Закрываем сокет подключения
-									::close(peer->transfer.fd);
+									::kernel::close(peer->transfer.fd);
 									// Сбрасываем значение дескриптора сокета
 									peer->transfer.fd = net::invalid_socket_t;
 									// Выходим из функции
@@ -29284,7 +29507,7 @@ namespace io {
 												#endif
 											}
 											// Закрываем сокет подключения
-											::close(peer->transfer.fd);
+											::kernel::close(peer->transfer.fd);
 											// Сбрасываем значение дескриптора сокета
 											peer->transfer.fd = net::invalid_socket_t;
 											// Выходим из функции
@@ -29319,7 +29542,7 @@ namespace io {
 												#endif
 											}
 											// Закрываем сокет подключения
-											::close(peer->transfer.fd);
+											::kernel::close(peer->transfer.fd);
 											// Сбрасываем значение дескриптора сокета
 											peer->transfer.fd = net::invalid_socket_t;
 											// Выходим из функции
@@ -29359,7 +29582,7 @@ namespace io {
 											#endif
 										}
 										// Закрываем сокет подключения
-										::close(peer->transfer.fd);
+										::kernel::close(peer->transfer.fd);
 										// Сбрасываем значение дескриптора сокета
 										peer->transfer.fd = net::invalid_socket_t;
 										// Выходим из функции
@@ -29394,7 +29617,7 @@ namespace io {
 											#endif
 										}
 										// Закрываем сокет подключения
-										::close(peer->transfer.fd);
+										::kernel::close(peer->transfer.fd);
 										// Сбрасываем значение дескриптора сокета
 										peer->transfer.fd = net::invalid_socket_t;
 										// Выходим из функции
@@ -29471,7 +29694,7 @@ namespace io {
 												#endif
 											}
 											// Закрываем сокет подключения
-											::close(peer->transfer.fd);
+											::kernel::close(peer->transfer.fd);
 											// Сбрасываем значение дескриптора сокета
 											peer->transfer.fd = net::invalid_socket_t;
 											// Выходим из функции
@@ -29506,7 +29729,7 @@ namespace io {
 												#endif
 											}
 											// Закрываем сокет подключения
-											::close(peer->transfer.fd);
+											::kernel::close(peer->transfer.fd);
 											// Сбрасываем значение дескриптора сокета
 											peer->transfer.fd = net::invalid_socket_t;
 											// Выходим из функции
@@ -29546,7 +29769,7 @@ namespace io {
 											#endif
 										}
 										// Закрываем сокет подключения
-										::close(peer->transfer.fd);
+										::kernel::close(peer->transfer.fd);
 										// Сбрасываем значение дескриптора сокета
 										peer->transfer.fd = net::invalid_socket_t;
 										// Выходим из функции
@@ -29581,7 +29804,7 @@ namespace io {
 											#endif
 										}
 										// Закрываем сокет подключения
-										::close(peer->transfer.fd);
+										::kernel::close(peer->transfer.fd);
 										// Сбрасываем значение дескриптора сокета
 										peer->transfer.fd = net::invalid_socket_t;
 										// Выходим из функции
@@ -29621,7 +29844,7 @@ namespace io {
 								// Вызываем функцию обратного вызова об ошибке отказа
 								server->callbacks.status(server->id, event::status_t::FAILURE);
 							// Закрываем сокет принятого подключения
-							::close(sock);
+							::kernel::close(sock);
 							// Выходим из функции, так как принять подключение не удалось
 							return false;
 						}
@@ -35499,7 +35722,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											#endif
 										}
 										// Закрываем файловый дескриптор каталога
-										::close(dir->fd);
+										::kernel::close(dir->fd);
 										// Сбрасываем файловый дескриптор каталога
 										dir->fd = net::invalid_socket_t;
 									// Если объект открытого каталога создан успешно
@@ -36388,7 +36611,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		}
 																	}
 																	// Закрываем файловый дескриптор временного файла unix-сокета
-																	::close(fd);
+																	::kernel::close(fd);
 																	// Удаляем созданный временный файл unix-сокета
 																	::unlink(filename.c_str());
 																	// Копируем установленный адрес клиента
@@ -39058,14 +39281,14 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Если у первого узла был действующий дескриптор
 				if(ipc->transfer.fd != net::invalid_socket_t){
 					// Закрываем прежний дескриптор первого узла
-					::close(ipc->transfer.fd);
+					::kernel::close(ipc->transfer.fd);
 					// Сбрасываем значение дескриптора первого узла
 					ipc->transfer.fd = net::invalid_socket_t;
 				}
 				// Если у парного узла был действующий дескриптор
 				if(mate->transfer.fd != net::invalid_socket_t){
 					// Закрываем прежний дескриптор парного узла
-					::close(mate->transfer.fd);
+					::kernel::close(mate->transfer.fd);
 					// Сбрасываем значение дескриптора парного узла
 					mate->transfer.fd = net::invalid_socket_t;
 				}
@@ -39196,7 +39419,7 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Если действующий дескриптор присутствует
 				if(tunnel->fd != net::invalid_socket_t){
 					// Закрываем прежний дескриптор устройства
-					::close(tunnel->fd);
+					::kernel::close(tunnel->fd);
 					// Сбрасываем значение дескриптора
 					tunnel->fd = net::invalid_socket_t;
 				}
@@ -39257,7 +39480,7 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Если действующий дескриптор присутствует
 				if(fs->fd != net::invalid_socket_t){
 					// Закрываем прежний дескриптор
-					::close(fs->fd);
+					::kernel::close(fs->fd);
 					// Сбрасываем значение дескриптора
 					fs->fd = net::invalid_socket_t;
 				}
@@ -39319,7 +39542,7 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Если действующий дескриптор присутствует
 				if(dir->fd != net::invalid_socket_t){
 					// Закрываем прежний дескриптор
-					::close(dir->fd);
+					::kernel::close(dir->fd);
 					// Сбрасываем значение дескриптора
 					dir->fd = net::invalid_socket_t;
 				}
@@ -39403,7 +39626,7 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Если действующий дескриптор присутствует
 				if(client->transfer.fd != net::invalid_socket_t){
 					// Закрываем прежний дескриптор
-					::close(client->transfer.fd);
+					::kernel::close(client->transfer.fd);
 					// Сбрасываем значение дескриптора
 					client->transfer.fd = net::invalid_socket_t;
 				}
@@ -39575,7 +39798,7 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Если действующий дескриптор присутствует
 				if(server->fd != net::invalid_socket_t){
 					// Закрываем прежний дескриптор
-					::close(server->fd);
+					::kernel::close(server->fd);
 					// Сбрасываем значение дескриптора
 					server->fd = net::invalid_socket_t;
 				}
@@ -56844,7 +57067,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 						// Если дескриптор сокета инициализирован
 						if(peer->transfer.fd != net::invalid_socket_t){
 							// Закрываем дескриптор сокета
-							::close(peer->transfer.fd);
+							::kernel::close(peer->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
 							peer->transfer.fd = net::invalid_socket_t;
 						}
@@ -56883,7 +57106,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 						// Если дескриптор сокета инициализирован
 						if(client->transfer.fd != net::invalid_socket_t){
 							// Закрываем дескриптор сокета
-							::close(client->transfer.fd);
+							::kernel::close(client->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
 							client->transfer.fd = net::invalid_socket_t;
 						}
@@ -64986,7 +65209,7 @@ void awh::engine::IO::clear() noexcept {
 								// Закрываем каталог
 								::closedir(dir->handle);
 							// Закрываем дескриптор сокета
-							::close(dir->fd);
+							::kernel::close(dir->fd);
 							// Сбрасываем значение дескриптора сокета
 							dir->fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
@@ -65010,7 +65233,7 @@ void awh::engine::IO::clear() noexcept {
 							// Выполняем удаление события из списка ожидания
 							::kernel::apply(event, this->_log);
 							// Закрываем дескриптор сокета
-							::close(fs->fd);
+							::kernel::close(fs->fd);
 							// Сбрасываем значение дескриптора сокета
 							fs->fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
@@ -65042,7 +65265,7 @@ void awh::engine::IO::clear() noexcept {
 								}
 							}
 							// Закрываем дескриптор сокета
-							::close(ipc->transfer.fd);
+							::kernel::close(ipc->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
 							ipc->transfer.fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
@@ -65124,7 +65347,7 @@ void awh::engine::IO::clear() noexcept {
 									for(uint8_t index = 0; index < count; index++) ::kernel::apply(events[index], this->_log);
 							}
 							// Закрываем дескриптор сокета
-							::close(peer->transfer.fd);
+							::kernel::close(peer->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
 							peer->transfer.fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
@@ -65201,7 +65424,7 @@ void awh::engine::IO::clear() noexcept {
 								}
 							}
 							// Закрываем дескриптор сокета
-							::close(tunnel->fd);
+							::kernel::close(tunnel->fd);
 							// Сбрасываем значение дескриптора сокета
 							tunnel->fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
@@ -65304,7 +65527,7 @@ void awh::engine::IO::clear() noexcept {
 									for(uint8_t index = 0; index < count; index++) ::kernel::apply(events[index], this->_log);
 							}
 							// Закрываем дескриптор сокета
-							::close(client->transfer.fd);
+							::kernel::close(client->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
 							client->transfer.fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
@@ -65379,7 +65602,7 @@ void awh::engine::IO::clear() noexcept {
 								}
 							}
 							// Закрываем дескриптор сокета
-							::close(server->fd);
+							::kernel::close(server->fd);
 							// Сбрасываем значение дескриптора сокета
 							server->fd = net::invalid_socket_t;
 							// Если установлена функция обратного вызова
@@ -65665,7 +65888,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(dir->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(dir->fd);
+						::kernel::close(dir->fd);
 						// Сбрасываем значение дескриптора сокета
 						dir->fd = net::invalid_socket_t;
 					}
@@ -65698,7 +65921,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(fs->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(fs->fd);
+						::kernel::close(fs->fd);
 						// Сбрасываем значение дескриптора сокета
 						fs->fd = net::invalid_socket_t;
 					}
@@ -66212,7 +66435,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(dir->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(dir->fd);
+						::kernel::close(dir->fd);
 						// Сбрасываем значение дескриптора сокета
 						dir->fd = net::invalid_socket_t;
 					}
@@ -66230,7 +66453,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(fs->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(fs->fd);
+						::kernel::close(fs->fd);
 						// Сбрасываем значение дескриптора сокета
 						fs->fd = net::invalid_socket_t;
 					}
@@ -66248,7 +66471,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(ipc->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(ipc->transfer.fd);
+						::kernel::close(ipc->transfer.fd);
 						// Сбрасываем значение дескриптора сокета
 						ipc->transfer.fd = net::invalid_socket_t;
 					}
@@ -66266,7 +66489,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(peer->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(peer->transfer.fd);
+						::kernel::close(peer->transfer.fd);
 						// Сбрасываем значение дескриптора сокета
 						peer->transfer.fd = net::invalid_socket_t;
 					}
@@ -66302,7 +66525,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(tunnel->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(tunnel->fd);
+						::kernel::close(tunnel->fd);
 						// Сбрасываем значение дескриптора сокета
 						tunnel->fd = net::invalid_socket_t;
 					}
@@ -66331,7 +66554,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(client->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(client->transfer.fd);
+						::kernel::close(client->transfer.fd);
 						// Сбрасываем значение дескриптора сокета
 						client->transfer.fd = net::invalid_socket_t;
 					}
@@ -66369,7 +66592,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(server->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(server->fd);
+						::kernel::close(server->fd);
 						// Сбрасываем значение дескриптора сокета
 						server->fd = net::invalid_socket_t;
 					}
@@ -67060,6 +67283,18 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 * разобрана целиком, а новую ядро ещё не отдавало
 			 */
 			::kernel::sweep();
+			/**
+			 * Согласуем очередь опроса с учётом прежде ожидания
+			 *
+			 * @note Правки подписок ложатся сперва в учёт, а к ядру уходят отсюда -
+			 *       одним обращением на дескриптор, каким бы числом правок его вид ни
+			 *       сложился. До ожидания ядру о них знать незачем: оно всё равно не
+			 *       опрашивается, а к началу ожидания очередь опроса обязана отвечать
+			 *       учёту в точности
+			 *
+			 */
+			::kernel::flush(this->_log);
+
 			/**
 			 * Если взведённые пользовательские события уже накоплены, ожидать нечего
 			 *
@@ -68764,7 +68999,7 @@ awh::engine::IO::~IO() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(dir->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(dir->fd);
+						::kernel::close(dir->fd);
 						// Сбрасываем значение дескриптора сокета
 						dir->fd = net::invalid_socket_t;
 					}
@@ -68778,7 +69013,7 @@ awh::engine::IO::~IO() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(fs->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(fs->fd);
+						::kernel::close(fs->fd);
 						// Сбрасываем значение дескриптора сокета
 						fs->fd = net::invalid_socket_t;
 					}
@@ -68792,7 +69027,7 @@ awh::engine::IO::~IO() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(ipc->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(ipc->transfer.fd);
+						::kernel::close(ipc->transfer.fd);
 						// Сбрасываем значение дескриптора сокета
 						ipc->transfer.fd = net::invalid_socket_t;
 					}
@@ -68806,7 +69041,7 @@ awh::engine::IO::~IO() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(peer->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(peer->transfer.fd);
+						::kernel::close(peer->transfer.fd);
 						// Сбрасываем значение дескриптора сокета
 						peer->transfer.fd = net::invalid_socket_t;
 					}
@@ -68827,7 +69062,7 @@ awh::engine::IO::~IO() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(tunnel->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(tunnel->fd);
+						::kernel::close(tunnel->fd);
 						// Сбрасываем значение дескриптора сокета
 						tunnel->fd = net::invalid_socket_t;
 					}
@@ -68841,7 +69076,7 @@ awh::engine::IO::~IO() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(client->transfer.fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(client->transfer.fd);
+						::kernel::close(client->transfer.fd);
 						// Сбрасываем значение дескриптора сокета
 						client->transfer.fd = net::invalid_socket_t;
 					}
@@ -68875,7 +69110,7 @@ awh::engine::IO::~IO() noexcept {
 					// Если дескриптор сокета инициализирован
 					if(server->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
-						::close(server->fd);
+						::kernel::close(server->fd);
 						// Сбрасываем значение дескриптора сокета
 						server->fd = net::invalid_socket_t;
 					}

@@ -910,10 +910,33 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 			// Возвращаем результат отсутствия созданного воркера
 			return family_t::NONE;
 		}
+		/**
+		 * Передаём порождаемому процессу имя канала обмена сообщениями
+		 *
+		 * @details Дескриптора по наследству порождённый процесс не получает - он
+		 *          проходит main заново, - зато имя именованного канала переносимо и
+		 *          доходит до него окружением. Свой конец канала работник открывает по
+		 *          этому имени сам
+		 *
+		 * @note Имя снимается прежде уничтожения события: уничтоженное события имени
+		 *       уже не отдаст
+		 *
+		 */
+		const string & pipe = this->_io->getTarget(events[1]);
+		// Если имя канала обмена сообщениями получено
+		if(!pipe.empty()){
+			// Передаём имя канала порождаемому процессу через окружение
+			if(!::SetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", this->_fmk->convert(pipe).c_str()))
+				// Записываем ошибку в лог
+				this->_log->print("Cluster worker pipe name could not be passed to the child process", log_t::flag_t::CRITICAL);
+		// Если имя канала обмена сообщениями получить не удалось
+		} else this->_log->print("Cluster worker pipe name could not be obtained", log_t::flag_t::CRITICAL);
 		// Уничтожаем событие дочернего процесса: унаследовать его порождённый процесс не может
 		this->_io->destroy(events[1]);
 		// Выполняем порождение дочернего процесса
 		const pid_t pid = this->execute();
+		// Снимаем имя канала из окружения: своим процессам работник его не передаёт
+		::SetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", nullptr);
 		// Если порождение процесса не удалось
 		if(pid == 0){
 			// Уничтожаем событие родительского процесса
@@ -1140,7 +1163,87 @@ bool awh::unit::Cluster::adopt() noexcept {
 		this->_master = reinterpret_cast <uintptr_t> (handle);
 	// Если дескриптор объекта мастера получить не удалось
 	else this->_log->print("Cluster master process [%d] could not be opened, orphan detection is disabled", log_t::flag_t::CRITICAL, pid);
+	// Открываем свой конец канала обмена сообщениями с мастером
+	this->attach();
 	// Сообщаем, что процесс является дочерним
+	return true;
+}
+/**
+ * @brief Метод открытия своего конца канала обмена сообщениями с мастером
+ *
+ * @details Соответствия socketpair у MS Windows нет, и пара обмена строится
+ *          именованным каналом. Сторону ожидания заводит мастер, а имя её передаёт
+ *          порождаемому процессу окружением - дескриптора тот по наследству не
+ *          получает, проходя main заново. Здесь имя это снимается, и по нему
+ *          открывается свой конец
+ *
+ * @note Работник заводит себе воркера с собственным номером процесса - ровно так же,
+ *       как это делает дочерний процесс на системах POSIX после fork. На нём и
+ *       держится отправка сообщений мастеру
+ *
+ * @return признак того, что канал обмена сообщениями открыт
+ *
+ */
+bool awh::unit::Cluster::attach() noexcept {
+	// Буфер под имя канала обмена сообщениями
+	wchar_t buffer[256]{0};
+	// Получаем имя канала обмена сообщениями из окружения
+	const DWORD size = ::GetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", buffer, static_cast <DWORD> (sizeof(buffer) / sizeof(buffer[0])));
+	// Если имени канала в окружении нет
+	if((size == 0) || (size >= (sizeof(buffer) / sizeof(buffer[0])))){
+		// Записываем ошибку в лог
+		this->_log->print("Cluster worker pipe name is not set, messaging with the master is disabled", log_t::flag_t::CRITICAL);
+		// Сообщаем, что канал обмена сообщениями не открыт
+		return false;
+	}
+	/**
+	 * Снимаем имя канала из окружения
+	 *
+	 * Порождай работник собственные процессы, имя досталось бы тем по наследству, и
+	 * те подключились бы к чужому каналу
+	 */
+	::SetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", nullptr);
+	// Заводим событие обмена сообщениями с мастером
+	const event::id_t eid = this->_io->event(event::node_t::IPC, event::family_t::PIPE, this->_type);
+	// Если событие завести не удалось
+	if(eid == 0){
+		// Записываем ошибку в лог
+		this->_log->print("Cluster worker event could not be created", log_t::flag_t::CRITICAL);
+		// Сообщаем, что канал обмена сообщениями не открыт
+		return false;
+	}
+	// Устанавливаем имя канала обмена сообщениями событию
+	this->_io->setTarget(eid, this->_fmk->convert(wstring(buffer)));
+	// Устанавливаем функцию обратного вызова на событие записи сообщений
+	this->_io->on(eid, static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
+	// Устанавливаем функцию обратного вызова на событие чтения сообщений
+	this->_io->on(eid, static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
+	// Устанавливаем функцию обратного вызова на событие изменения состояния
+	this->_io->on(eid, static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+	// Устанавливаем функцию обратного вызова на событие получения ошибок
+	this->_io->on(eid, static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
+	// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
+	this->_io->on(eid, static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
+	// Создаём воркера для самого себя
+	unique_ptr <worker_t> worker = make_unique <worker_t> ();
+	// Устанавливаем время создания процесса
+	worker->life = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+	// Устанавливаем идентификатор события обмена сообщениями
+	worker->eid = eid;
+	// Устанавливаем собственный идентификатор процесса
+	worker->pid = static_cast <pid_t> (::getpid());
+	// Добавляем воркера в список активных воркеров
+	auto ret = this->_workers.emplace(static_cast <pid_t> (worker->pid), ::move(worker));
+	// Добавляем соответствие идентификатора события идентификатору процесса
+	this->_matching.emplace(eid, ret.first->first);
+	// Выполняем фиксацию, подключение и запуск работы события
+	if(!(this->_io->commit(eid) && this->_io->connect({eid}) && this->_io->launch(eid))){
+		// Записываем ошибку в лог
+		this->_log->print("Cluster worker event could not be launched", log_t::flag_t::CRITICAL);
+		// Сообщаем, что канал обмена сообщениями не открыт
+		return false;
+	}
+	// Сообщаем, что канал обмена сообщениями открыт
 	return true;
 }
 #endif

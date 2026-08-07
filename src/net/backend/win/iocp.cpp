@@ -26,8 +26,11 @@
  */
 #include <deque>
 #include <mutex>
+#include <thread>
 #include <vector>
 #include <memory>
+#include <atomic>
+#include <string>
 #include <condition_variable>
 
 /**
@@ -90,6 +93,23 @@ namespace {
 		HANDLE handle;
 		// Идентификатор узла-собеседника пары IPC (0 у узлов одиночных)
 		awh::event::id_t peer;
+		/**
+		 * Имя именованного канала, стоящего за узлом
+		 *
+		 * @details Соответствия socketpair у MS Windows нет, и пара обмена сообщениями
+		 *          между процессами строится именованным каналом. Имя это узел несёт
+		 *          затем, чтобы сторона, канал не заводившая, могла открыть свой конец
+		 *          сама - порождённый процесс проходит main заново и дескриптора по
+		 *          наследству не получает
+		 *
+		 */
+		std::wstring name;
+		// Признак того, что узел держит сторону канала, ожидающую подключения
+		bool listener;
+		// Поток чтения из именованного канала
+		std::thread reader;
+		// Признак того, что потоку чтения следует завершиться
+		std::shared_ptr <std::atomic_bool> stopped;
 		// Очередь принятых сообщений, границы которых сохраняются
 		std::deque <std::vector <uint8_t>> incoming;
 		// Функция обратного вызова на чтение сообщений
@@ -110,7 +130,8 @@ namespace {
 		 id(0), node(awh::event::node_t::NONE), family(awh::event::family_t::NONE),
 		 type(awh::event::type_t::NONE), protocol(awh::event::protocol_t::NONE),
 		 status(awh::event::status_t::NONE), options(awh::event::options::NONE),
-		 handle(INVALID_HANDLE_VALUE), peer(0) {}
+		 handle(INVALID_HANDLE_VALUE), peer(0), name{L""}, listener(false),
+		 stopped(std::make_shared <std::atomic_bool> (false)) {}
 	};
 
 	// Список заведённых узлов событий
@@ -145,6 +166,24 @@ namespace {
 	}
 
 	/**
+	 * @brief Функция составления имени именованного канала
+	 *
+	 * @details Имя обязано быть неповторимым в пределах всей машины: пространство имён
+	 *          каналов у MS Windows общее, и совпадение имён свело бы вместе два
+	 *          несвязанных кластера. Неповторимость даётся парой «номер процесса -
+	 *          порядковый номер события»: первый разводит процессы между собой, второй
+	 *          разводит пары внутри одного процесса
+	 *
+	 * @param id идентификатор события
+	 * @return   полное имя именованного канала
+	 *
+	 */
+	std::wstring __awh_pipe_name__(const awh::event::id_t id) noexcept {
+		// Составляем имя именованного канала
+		return (L"\\\\.\\pipe\\awh-" + std::to_wstring(static_cast <uint32_t> (::GetCurrentProcessId())) + L"-" + std::to_wstring(static_cast <uint64_t> (id)));
+	}
+
+	/**
 	 * @brief Функция пробуждения петли событий
 	 *
 	 */
@@ -157,6 +196,111 @@ namespace {
 		}
 		// Пробуждаем ожидающую петлю событий
 		__awh_wait_cv__.notify_all();
+	}
+
+	/**
+	 * @brief Функция запуска потока чтения из именованного канала
+	 *
+	 * @details Поток ведёт чтение вызовом ReadFile без наложения, оттого он и нужен:
+	 *          иначе ожидание сообщения остановило бы петлю событий. С приходом порта
+	 *          завершения ввода-вывода поток этот уходит - чтение станет наложенным, а
+	 *          готовность его будет снимать сама петля
+	 *
+	 * @note Канал открыт в строе сообщений, и одно чтение даёт ровно одно сообщение
+	 *       целиком. Отказ ERROR_MORE_DATA означает, что сообщение в буфер не влезло:
+	 *       буфер тогда наращивается, а остаток дочитывается следующим вызовом
+	 *
+	 * @warning Поток обращается к узлу лишь под замком и по идентификатору, а не по
+	 *          указателю: узел вправе исчезнуть между двумя чтениями
+	 *
+	 * @param id идентификатор события
+	 *
+	 */
+	void __awh_reader__(const awh::event::id_t id) noexcept {
+		// Дескриптор именованного канала, из которого ведётся чтение
+		HANDLE handle = INVALID_HANDLE_VALUE;
+		// Признак того, что узел держит сторону канала, ожидающую подключения
+		bool listener = false;
+		// Признак того, что потоку чтения следует завершиться
+		std::shared_ptr <std::atomic_bool> stopped;
+		{
+			// Выполняем блокировку замка доступа к списку узлов
+			const std::lock_guard <std::recursive_mutex> lock(__awh_mutex__);
+			// Выполняем поиск узла события
+			Node * item = __awh_find__(id);
+			// Если узел не найден - читать неоткуда
+			if(item == nullptr)
+				// Завершаем работу потока чтения
+				return;
+			// Запоминаем дескриптор именованного канала
+			handle = item->handle;
+			// Запоминаем признак стороны, ожидающей подключения
+			listener = item->listener;
+			// Запоминаем признак завершения потока чтения
+			stopped = item->stopped;
+		}
+		// Если дескриптор канала не получен либо признак завершения не заведён
+		if((handle == INVALID_HANDLE_VALUE) || !stopped)
+			// Завершаем работу потока чтения
+			return;
+		/**
+		 * Сторона ожидания дожидается подключения встречной
+		 *
+		 * @details Читать со стороны, к какой никто не подключён, нельзя: система
+		 *          отвечает отказом ERROR_PIPE_LISTENING. Отказ ERROR_PIPE_CONNECTED
+		 *          означает, что встречная сторона подключилась прежде вызова, и
+		 *          отказом по существу не является
+		 *
+		 */
+		if(listener && !::ConnectNamedPipe(handle, nullptr)){
+			// Получаем код отказа ожидания подключения
+			const DWORD code = ::GetLastError();
+			// Если встречная сторона не подключилась и прежде вызова
+			if(code != ERROR_PIPE_CONNECTED)
+				// Завершаем работу потока чтения
+				return;
+		}
+		// Буфер принимаемого сообщения
+		std::vector <uint8_t> buffer(4096, 0);
+		/**
+		 * Выполняем чтение до тех пор, пока канал не закроется либо не поступит
+		 * указание завершиться
+		 */
+		while(!stopped->load()){
+			// Количество принятых байт
+			DWORD received = 0;
+			// Выполняем чтение сообщения из именованного канала
+			const BOOL result = ::ReadFile(handle, buffer.data(), static_cast <DWORD> (buffer.size()), &received, nullptr);
+			// Если чтение отказом не завершилось
+			if(!result){
+				// Получаем код отказа чтения
+				const DWORD code = ::GetLastError();
+				// Если сообщение в буфер не поместилось - наращиваем буфер и дочитываем
+				if(code == ERROR_MORE_DATA){
+					// Наращиваем буфер вдвое
+					buffer.resize(buffer.size() * 2, 0);
+					// Переходим к следующему чтению
+					continue;
+				}
+				// Завершаем работу потока чтения: канал закрыт другой стороной
+				break;
+			}
+			// Если сообщение принято
+			if(received > 0){
+				// Выполняем блокировку замка доступа к списку узлов
+				const std::lock_guard <std::recursive_mutex> lock(__awh_mutex__);
+				// Выполняем поиск узла события
+				Node * item = __awh_find__(id);
+				// Если узел исчез - завершаем работу потока чтения
+				if(item == nullptr)
+					// Завершаем работу потока чтения
+					break;
+				// Добавляем принятое сообщение в очередь узла, сохраняя его границы
+				item->incoming.emplace_back(buffer.data(), buffer.data() + received);
+			}
+			// Пробуждаем петлю событий, чтобы та разобрала принятое
+			__awh_wake__();
+		}
 	}
 };
 
@@ -356,7 +500,26 @@ bool awh::engine::IO::setTargetPort([[maybe_unused]] const event::id_t id, [[may
  * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
-string awh::engine::IO::getTarget([[maybe_unused]] const event::id_t id) const noexcept {
+string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Если узел не найден - отдавать нечего
+	if(item == nullptr)
+		// Возвращаем пустой результат
+		return string();
+	/**
+	 * Узел обмена сообщениями отдаёт имя своего именованного канала
+	 *
+	 * @details Именем этим сторона, канал не заводившая, открывает свой конец сама.
+	 *          Кластеру оно нужно затем, чтобы передать его порождаемому процессу:
+	 *          дескриптора тот по наследству не получает, а имя переносимо
+	 *
+	 */
+	if(item->node == event::node_t::IPC)
+		// Возвращаем имя именованного канала узла
+		return this->_fmk->convert(item->name);
 	// Заносим в журнал предупреждение об отсутствии реализации
 	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
 	// Возвращаем пустой результат
@@ -374,7 +537,28 @@ string awh::engine::IO::getTarget([[maybe_unused]] const event::id_t id) const n
  * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
-bool awh::engine::IO::setTarget([[maybe_unused]] const event::id_t id, [[maybe_unused]] string_view target) noexcept {
+bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexcept {
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Если узел не найден - устанавливать некому
+	if(item == nullptr)
+		// Возвращаем отрицательный результат установки
+		return false;
+	/**
+	 * Узлу обмена сообщениями задаётся имя именованного канала
+	 *
+	 * @details Само подключение к каналу ведёт connect: здесь имя лишь запоминается,
+	 *          ровно как у сокета запоминается адрес целевой машины
+	 *
+	 */
+	if(item->node == event::node_t::IPC){
+		// Запоминаем имя именованного канала узла
+		item->name = this->_fmk->convert(string(target));
+		// Возвращаем положительный результат установки
+		return true;
+	}
 	// Заносим в журнал предупреждение об отсутствии реализации
 	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
 	// Возвращаем пустой результат
@@ -860,6 +1044,30 @@ bool awh::engine::IO::destroy([[maybe_unused]] const event::id_t id) noexcept {
 			return false;
 		// Получаем функцию обратного вызова на изменение состояния
 		callback = i->second->state;
+		/**
+		 * Останавливаем поток чтения и закрываем именованный канал
+		 *
+		 * @details Закрытие дескриптора обрывает ожидающий ReadFile отказом, и поток
+		 *          чтения выходит сам. Признак завершения выставляется прежде закрытия,
+		 *          чтобы поток не ушёл на новое чтение по уже закрытому дескриптору
+		 *
+		 * @note Поток отвязывается, а не дожидается: уничтожение события вправе
+		 *       случиться прямо из обратного вызова, отданного этим же потоком, и
+		 *       ожидание его свело бы поток на себя самого
+		 *
+		 */
+		if(i->second->handle != INVALID_HANDLE_VALUE){
+			// Выставляем признак завершения потока чтения
+			i->second->stopped->store(true);
+			// Закрываем дескриптор именованного канала
+			::CloseHandle(i->second->handle);
+			// Помечаем дескриптор канала недействительным
+			i->second->handle = INVALID_HANDLE_VALUE;
+		}
+		// Если поток чтения заведён
+		if(i->second->reader.joinable())
+			// Отвязываем поток чтения
+			i->second->reader.detach();
 		// Удаляем узел из списка заведённых
 		::__awh_nodes__.erase(i);
 	}
@@ -939,13 +1147,62 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 	::Node * first = ::__awh_find__(result[0]);
 	// Выполняем поиск второго узла пары
 	::Node * second = ::__awh_find__(result[1]);
-	// Если оба узла пары заведены
-	if((first != nullptr) && (second != nullptr)){
-		// Связываем первый узел пары со вторым
-		first->peer = second->id;
-		// Связываем второй узел пары с первым
-		second->peer = first->id;
+	// Если оба узла пары завести не удалось
+	if((first == nullptr) || (second == nullptr))
+		// Возвращаем пару идентификаторов заведённых событий
+		return result;
+	// Связываем первый узел пары со вторым
+	first->peer = second->id;
+	// Связываем второй узел пары с первым
+	second->peer = first->id;
+	/**
+	 * Заводим за парой настоящий именованный канал
+	 *
+	 * @details Строй сообщений выбран не случайно: он сохраняет границы сообщений и
+	 *          потому отвечает SOCK_SEQPACKET, на который опирается обмен между
+	 *          процессами кластера. Строй поточный границы теряет, и разметку
+	 *          сообщений пришлось бы заводить самим
+	 *
+	 * @note Отказ заведения канала пару не отменяет: узлы остаются связанными по
+	 *       идентификаторам, и обмен внутри одного процесса работает как прежде. Тем
+	 *       сохраняется поведение для случаев, где канал не нужен вовсе
+	 *
+	 */
+	// Составляем имя именованного канала по первому узлу пары
+	const std::wstring & name = ::__awh_pipe_name__(first->id);
+	// Заводим сторону канала, ожидающую подключения
+	HANDLE server = ::CreateNamedPipeW(
+		name.c_str(),
+		PIPE_ACCESS_DUPLEX,
+		PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+		2, 65536, 65536, 0, nullptr
+	);
+	// Если сторону канала завести не удалось
+	if(server == INVALID_HANDLE_VALUE){
+		// Заносим в журнал предупреждение об отказе заведения канала
+		this->_log->print("%s: named pipe \"%ls\" could not be created, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, name.c_str(), ::GetLastError());
+		// Возвращаем пару идентификаторов заведённых событий
+		return result;
 	}
+	/**
+	 * Встречный конец канала здесь не открывается
+	 *
+	 * @details Открыть его сразу нельзя: пару эту мастер заводит для порождаемого
+	 *          процесса и свой встречный конец тут же уничтожает, а закрытие
+	 *          подключённого конца обрывает сторону ожидания - подключиться к ней
+	 *          работник уже не смог бы. Оттого конец этот и открывается лениво, при
+	 *          пуске события, и открывает его тот, кто событием пользуется: свой
+	 *          процесс либо порождённый, безразлично
+	 *
+	 */
+	// Запоминаем дескриптор стороны канала у первого узла пары
+	first->handle = server;
+	// Помечаем первый узел пары стороной, ожидающей подключения
+	first->listener = true;
+	// Запоминаем имя канала у первого узла пары
+	first->name = name;
+	// Запоминаем имя канала у второго узла пары
+	second->name = name;
 	// Возвращаем пару идентификаторов заведённых событий
 	return result;
 }
@@ -1201,6 +1458,32 @@ bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
 		item->status = event::status_t::LAUNCHED;
 		// Получаем функцию обратного вызова на изменение состояния
 		callback = item->state;
+		/**
+		 * Запускаем поток чтения, если за узлом стоит настоящий именованный канал
+		 *
+		 * @note Поток заводится именно здесь, а не при заведении узла: до запуска
+		 *       события подписки на чтение ещё может не быть, и принятое сообщение
+		 *       ушло бы в никуда
+		 *
+		 */
+		if((item->handle == INVALID_HANDLE_VALUE) && !item->name.empty() && (item->node == event::node_t::IPC)){
+			// Открываем свой конец именованного канала
+			HANDLE handle = ::CreateFileW(item->name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+			// Если свой конец канала открыт
+			if(handle != INVALID_HANDLE_VALUE){
+				// Строй чтения своего конца канала
+				DWORD mode = PIPE_READMODE_MESSAGE;
+				// Переводим свой конец канала в строй сообщений
+				::SetNamedPipeHandleState(handle, &mode, nullptr, nullptr);
+				// Запоминаем дескриптор именованного канала у узла
+				item->handle = handle;
+			// Если открыть свой конец канала не удалось
+			} else this->_log->print("%s: named pipe \"%ls\" could not be opened, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, item->name.c_str(), ::GetLastError());
+		}
+		// Если за узлом стоит настоящий именованный канал, а поток чтения ещё не заведён
+		if((item->handle != INVALID_HANDLE_VALUE) && !item->reader.joinable())
+			// Запускаем поток чтения из именованного канала
+			item->reader = std::thread(&::__awh_reader__, id);
 	}
 	// Если функция обратного вызова на изменение состояния установлена
 	if(callback != nullptr)
@@ -1284,11 +1567,75 @@ bool awh::engine::IO::disconnect([[maybe_unused]] const event::id_t id) noexcept
  * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
-bool awh::engine::IO::connect([[maybe_unused]] const vector <event::id_t> & ids) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
+	// Результат выполнения подключения
+	bool result = false;
+	// Выполняем блокировку замка доступа к списку узлов
+	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
+	/**
+	 * Выполняем перебор всех переданных событий
+	 */
+	for(const auto & id : ids){
+		// Выполняем поиск узла события
+		::Node * item = ::__awh_find__(id);
+		// Если узел не найден - подключать нечего
+		if(item == nullptr)
+			// Переходим к следующему событию
+			continue;
+		/**
+		 * Временное ядро подключает лишь узлы обмена сообщениями: подключение
+		 * сокетов появится вместе с портом завершения ввода-вывода
+		 */
+		if(item->node != event::node_t::IPC){
+			// Заносим в журнал предупреждение об отсутствии реализации
+			this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+			// Переходим к следующему событию
+			continue;
+		}
+		// Если имя именованного канала узлу не задано
+		if(item->name.empty()){
+			// Заносим в журнал предупреждение об отсутствии имени канала
+			this->_log->print("%s: named pipe for event %llu is not set", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Переходим к следующему событию
+			continue;
+		}
+		// Если дескриптор канала у узла уже есть - подключать его повторно незачем
+		if(item->handle != INVALID_HANDLE_VALUE){
+			// Запоминаем положительный результат подключения
+			result = true;
+			// Переходим к следующему событию
+			continue;
+		}
+		/**
+		 * Открываем свой конец именованного канала
+		 *
+		 * @details Ожидания занятого канала здесь нет намеренно: заводит его мастер до
+		 *          порождения процесса, и к мигу подключения канал уже стоит. Отказ
+		 *          потому означает настоящую беду, а не гонку, и скрывать его ожиданием
+		 *          значило бы прятать её
+		 *
+		 */
+		HANDLE handle = ::CreateFileW(item->name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+		// Если открыть свой конец канала не удалось
+		if(handle == INVALID_HANDLE_VALUE){
+			// Заносим в журнал предупреждение об отказе подключения
+			this->_log->print("%s: named pipe \"%ls\" could not be opened, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, item->name.c_str(), ::GetLastError());
+			// Переходим к следующему событию
+			continue;
+		}
+		// Переводим свой конец канала в строй сообщений
+		DWORD mode = PIPE_READMODE_MESSAGE;
+		// Устанавливаем строй чтения своего конца канала
+		::SetNamedPipeHandleState(handle, &mode, nullptr, nullptr);
+		// Запоминаем дескриптор именованного канала у узла
+		item->handle = handle;
+		// Переводим узел в состояние состоявшегося подключения
+		item->status = event::status_t::SUCCESS;
+		// Запоминаем положительный результат подключения
+		result = true;
+	}
+	// Возвращаем результат выполнения подключения
+	return result;
 }
 
 /**
@@ -1366,8 +1713,14 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 	if((buffer == nullptr) || (size == 0))
 		// Возвращаем количество отправленных байт
 		return 0;
+	// Количество отправленных байт
+	size_t written = 0;
+	// Код отказа отправки, нулевой при её успехе
+	DWORD code = 0;
 	// Функция обратного вызова на запись сообщений
 	engine::callback::write_t callback = nullptr;
+	// Функция обратного вызова на получение ошибок
+	engine::callback::error_t failure = nullptr;
 	{
 		// Выполняем блокировку замка доступа к списку узлов
 		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
@@ -1377,54 +1730,96 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		if(item == nullptr)
 			// Возвращаем количество отправленных байт
 			return 0;
-		// Узел, которому предназначено сообщение
-		::Node * target = nullptr;
-		/**
-		 * Определяем вид узла-отправителя
-		 */
-		switch(static_cast <uint8_t> (item->node)){
-			/**
-			 * Узел пробуждения принимает сообщение к себе же: отправитель кладёт байты
-			 * в очередь узла, а петля отдаёт их в обратный вызов чтения. Так устроено
-			 * извещение о завершившихся процессах у модуля кластера
-			 */
-			case static_cast <uint8_t> (event::node_t::NOTIFY):
-				// Сообщение предназначено самому узлу
-				target = item;
-			break;
-			/**
-			 * Узел обмена сообщениями отправляет собеседнику: сообщение ложится в
-			 * очередь второго узла пары, откуда петля отдаёт его в обратный вызов
-			 * чтения. Границы сообщения при этом сохраняются
-			 */
-			case static_cast <uint8_t> (event::node_t::IPC):
-				// Сообщение предназначено собеседнику по паре
-				target = ::__awh_find__(item->peer);
-			break;
-		}
-		// Если узел-получатель определить не удалось
-		if(target == nullptr){
-			// Заносим в журнал предупреждение о неподдерживаемом виде узла
-			this->_log->print("%s: sending to node type %u is not supported yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint16_t> (item->node));
-			// Возвращаем количество отправленных байт
-			return 0;
-		}
-		// Добавляем сообщение в очередь узла-получателя, сохраняя его границы
-		target->incoming.emplace_back(reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
 		// Получаем функцию обратного вызова на запись сообщений
 		callback = item->write;
+		// Получаем функцию обратного вызова на получение ошибок
+		failure = item->error;
+		/**
+		 * Отправляем сообщение в именованный канал, если тот за узлом стоит
+		 *
+		 * @details Путь этот и есть настоящий обмен между процессами: запись уходит в
+		 *          канал, а принимает её поток чтения встречной стороны - в своём
+		 *          процессе либо в чужом, безразлично. Строй сообщений сохраняет
+		 *          границы, оттого одна запись даёт ровно одно чтение
+		 *
+		 * @note Очередь узла-собеседника ниже остаётся для узла пробуждения и для пар,
+		 *       заведённых без канала: там обмен ведётся внутри одного процесса
+		 *
+		 */
+		if((item->node == event::node_t::IPC) && (item->handle != INVALID_HANDLE_VALUE)){
+			// Количество отправленных байт, снятое системой
+			DWORD sent = 0;
+			// Выполняем отправку сообщения в именованный канал
+			if(::WriteFile(item->handle, buffer, static_cast <DWORD> (size), &sent, nullptr))
+				// Запоминаем количество отправленных байт
+				written = static_cast <size_t> (sent);
+			// Если отправка завершилась отказом - запоминаем его код
+			else code = ::GetLastError();
+		/**
+		 * Если настоящего канала за узлом нет - сообщение ложится в очередь собеседника
+		 */
+		} else {
+			// Узел, которому предназначено сообщение
+			::Node * target = nullptr;
+			/**
+			 * Определяем вид узла-отправителя
+			 */
+			switch(static_cast <uint8_t> (item->node)){
+				/**
+				 * Узел пробуждения принимает сообщение к себе же: отправитель кладёт байты
+				 * в очередь узла, а петля отдаёт их в обратный вызов чтения. Так устроено
+				 * извещение о завершившихся процессах у модуля кластера
+				 */
+				case static_cast <uint8_t> (event::node_t::NOTIFY):
+					// Сообщение предназначено самому узлу
+					target = item;
+				break;
+				/**
+				 * Узел обмена сообщениями отправляет собеседнику: сообщение ложится в
+				 * очередь второго узла пары, откуда петля отдаёт его в обратный вызов
+				 * чтения. Границы сообщения при этом сохраняются
+				 */
+				case static_cast <uint8_t> (event::node_t::IPC):
+					// Сообщение предназначено собеседнику по паре
+					target = ::__awh_find__(item->peer);
+				break;
+			}
+			// Если узел-получатель определить не удалось
+			if(target == nullptr){
+				// Заносим в журнал предупреждение о неподдерживаемом виде узла
+				this->_log->print("%s: sending to node type %u is not supported yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint16_t> (item->node));
+				// Возвращаем количество отправленных байт
+				return 0;
+			}
+			// Добавляем сообщение в очередь узла-получателя, сохраняя его границы
+			target->incoming.emplace_back(reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
+			// Запоминаем количество отправленных байт
+			written = size;
+		}
 	}
 	/**
-	 * Извещение отдаётся уже без замка: обратный вызов вправе завести или
+	 * Извещения отдаются уже без замка: обратный вызов вправе завести или
 	 * уничтожить событие, и удержание замка привело бы к его повторному захвату
 	 */
+	// Если отправка завершилась отказом
+	if(code != 0){
+		// Заносим в журнал предупреждение об отказе отправки
+		this->_log->print("%s: message could not be sent, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, code);
+		// Если функция обратного вызова на получение ошибок установлена
+		if(failure != nullptr)
+			// Извещаем об отказе отправки
+			failure(id, event::error_t::EVENT_FAIL, this->_fmk->format("named pipe write failed, error %lu", code));
+		// Возвращаем количество отправленных байт
+		return 0;
+	}
+	// Если функция обратного вызова на запись сообщений установлена
 	if(callback != nullptr)
 		// Извещаем отправителя об отданном сообщении
-		callback(id, size);
+		callback(id, written);
 	// Пробуждаем петлю событий, чтобы та разобрала накопленное
 	::__awh_wake__();
 	// Возвращаем количество отправленных байт
-	return size;
+	return written;
 }
 
 /**

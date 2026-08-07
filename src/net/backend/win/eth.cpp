@@ -599,11 +599,11 @@ awh::net::socket_t awh::eth::Interface::create([[maybe_unused]] const event::eth
  * @todo Windows: тела у метода ещё нет — отвечает пустым значением
  *
  */
-uint16_t awh::eth::Interface::mtu([[maybe_unused]] string_view name) const noexcept {
+uint32_t awh::eth::Interface::mtu([[maybe_unused]] string_view name) const noexcept {
 	// Заносим в журнал предупреждение об отсутствии реализации
 	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
 	// Возвращаем пустой результат
-	return uint16_t();
+	return uint32_t();
 }
 
 /**

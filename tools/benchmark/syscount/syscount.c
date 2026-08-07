@@ -45,7 +45,18 @@
 #include <ifaddrs.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/sysctl.h>
+/**
+ * Заголовочный файл запроса параметров ядра
+ *
+ * @note Вызов этот принадлежит BSD. Linux его объявлял, но признал устаревшим и
+ *       убрал вовсе - параметры ядра читаются там через `/proc` и netlink, - и
+ *       заголовка у него нет. Перехватывать на Linux оттого нечего, а безусловное
+ *       подключение стоило бы сборке отказа ещё до первой строки самого счётчика
+ *
+ */
+#if !__linux__
+	#include <sys/sysctl.h>
+#endif
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 #include <netinet/in.h>
