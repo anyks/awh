@@ -453,55 +453,8 @@ bool awh::eth::Interface::destroy([[maybe_unused]] string_view name) const noexc
 	return bool();
 }
 
-/**
- * @brief Метод получения списка сетевых интерфейсов системы
- *
- * @return список сетевых интерфейсов системы
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-unordered_set <string> awh::eth::Interface::available() const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return unordered_set <string>();
-}
 
-/**
- * @brief Метод проверки доступности сетевого интерфейса
- *
- * @param name имя сетевого интерфейса
- * @return     результат проверки доступности сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::isAvailable([[maybe_unused]] string_view name) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
-/**
- * @brief Метод проверки туннельного сетевого интерфейса
- *
- * @param name имя сетевого интерфейса
- * @return     результат проверки туннельного сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::isTunnel([[maybe_unused]] string_view name) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
 /**
  * @brief Метод проверки туннельного сетевого интерфейса по адресу
@@ -520,22 +473,6 @@ bool awh::eth::Interface::isTunnel([[maybe_unused]] const net::addr_t * addr) co
 	return bool();
 }
 
-/**
- * @brief Метод проверки виртуального сетевого интерфейса
- *
- * @param name имя сетевого интерфейса
- * @return     результат проверки виртуального сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::isVirtual([[maybe_unused]] string_view name) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
 /**
  * @brief Метод проверки виртуального сетевого интерфейса по адресу
@@ -554,22 +491,6 @@ bool awh::eth::Interface::isVirtual([[maybe_unused]] const net::addr_t * addr) c
 	return bool();
 }
 
-/**
- * @brief Метод получения имени сетевого интерфейса по адресу
- *
- * @param addr адрес сетевого подключения
- * @return     имя сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-string awh::eth::Interface::name([[maybe_unused]] const net::addr_t * addr) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return string();
-}
 
 /**
  * @brief Метод создания сетевого интерфейса
@@ -589,57 +510,8 @@ awh::net::socket_t awh::eth::Interface::create([[maybe_unused]] const event::eth
 	return awh::net::socket_t();
 }
 
-/**
- * @brief Метод получения MTU сетевого интерфейса
- *
- * @param name имя сетевого интерфейса
- * @return     MTU сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-uint32_t awh::eth::Interface::mtu([[maybe_unused]] string_view name) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return uint32_t();
-}
 
-/**
- * @brief Метод установки MTU сетевого интерфейса
- *
- * @param name имя сетевого интерфейса
- * @param mtu  размер MTU интерфейса
- * @return     результат установки MTU сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::mtu([[maybe_unused]] string_view name, [[maybe_unused]] const uint32_t mtu) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
-/**
- * @brief Метод получения установленных флагов сетевого интерфейса
- *
- * @param name имя сетевого интерфейса
- * @return     флаги сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags([[maybe_unused]] string_view name) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return unordered_set <awh::event::eth_flag_t>();
-}
 
 /**
  * @brief Метод установки флага сетевого интерфейса
@@ -680,23 +552,6 @@ bool awh::eth::Interface::setAddress([[maybe_unused]] string_view name, [[maybe_
 	return bool();
 }
 
-/**
- * @brief Метод получения IP-адреса сетевого интерфейса
- *
- * @param name   имя сетевого интерфейса
- * @param family семейство протоколов (IPv4 или IPv6)
- * @return       IP-адрес сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress([[maybe_unused]] string_view name, [[maybe_unused]] const event::family_t family) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return unique_ptr <awh::net::addr_t>();
-}
 
 /**
  * @brief Метод установки параметров сетевого интерфейса точка-точка
