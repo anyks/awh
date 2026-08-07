@@ -844,46 +844,6 @@ namespace io {
 	static const sctp_endpoint_t __awh_sctp_none__;
 
 	/**
-	 * @brief Структура конечного подключения
-	 *
-	 */
-	typedef struct Endpoint {
-		// Размер объекта подключения
-		socklen_t size;
-		// Параметры подключения клиента
-		struct sockaddr_storage client;
-		// Параметры подключения сервера
-		struct sockaddr_storage server;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Endpoint() noexcept :
-		 size(0), client{0}, server{0} {}
-	} endpoint_t;
-
-	/**
-	 * @brief Структура метаданных RAW-пакета
-	 *
-	 * @details Держит только то, что переживает приём и отдаётся наружу методом
-	 *          получения метаданных. Описание сообщения и буфер полезной нагрузки
-	 *          здесь тоже лежали, хотя заполнялись заново на каждый приём и
-	 *          дочитывались тут же: в узле они занимали 64 октета, ничего между
-	 *          вызовами не храня, и переехали на стек той функции, которая ими и
-	 *          пользуется.
-	 *
-	 */
-	typedef struct RAW_Endpoint {
-		// Метаданные последнего принятого пакета
-		net::dgram_info_t info;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit RAW_Endpoint() noexcept {}
-	} raw_endpoint_t;
-
-	/**
 	 * @brief Класс передачи данных SCTP-протокола
 	 *
 	 */
@@ -1001,6 +961,46 @@ namespace io {
 		// Возвращаем собственный набор, а при его отсутствии - общий пустой
 		return ((this->_sctp != nullptr) ? (* this->_sctp) : __awh_sctp_none__);
 	}
+
+	/**
+	 * @brief Структура конечного подключения
+	 *
+	 */
+	typedef struct Endpoint {
+		// Размер объекта подключения
+		socklen_t size;
+		// Параметры подключения клиента
+		struct sockaddr_storage client;
+		// Параметры подключения сервера
+		struct sockaddr_storage server;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Endpoint() noexcept :
+		 size(0), client{0}, server{0} {}
+	} endpoint_t;
+
+	/**
+	 * @brief Структура метаданных RAW-пакета
+	 *
+	 * @details Держит только то, что переживает приём и отдаётся наружу методом
+	 *          получения метаданных. Описание сообщения и буфер полезной нагрузки
+	 *          здесь тоже лежали, хотя заполнялись заново на каждый приём и
+	 *          дочитывались тут же: в узле они занимали 64 октета, ничего между
+	 *          вызовами не храня, и переехали на стек той функции, которая ими и
+	 *          пользуется.
+	 *
+	 */
+	typedef struct RAW_Endpoint {
+		// Метаданные последнего принятого пакета
+		net::dgram_info_t info;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit RAW_Endpoint() noexcept {}
+	} raw_endpoint_t;
 
 	/**
 	 * @brief Структура передачи данных
