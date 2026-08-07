@@ -2241,10 +2241,6 @@ void awh::unit::Cluster::callback(const callback_t & callback) noexcept {
  *
  */
 size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept {
-	/**
-	 * Для операционных систем, отличных от MS Windows
-	 */
-	#if !_WIN32 && !_WIN64
 		// Если процесс является дочерним
 		if(!this->master()){
 			// Если родительский процесс живой
@@ -2289,24 +2285,6 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 				this->_log->print("A message addressed to a parent process can only be sent from child processes", log_t::flag_t::WARNING);
 			#endif
 		}
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог запуска события
-			this->_log->debug("MS Windows OS, inter-process messaging is not implemented yet", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог запуска события
-			this->_log->print("MS Windows OS, inter-process messaging is not implemented yet", log_t::flag_t::WARNING);
-		#endif
-	#endif
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -2320,10 +2298,6 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
  *
  */
 size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size_t size) noexcept {
-	/**
-	 * Для операционных систем, отличных от MS Windows
-	 */
-	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
 		if(this->master()){
 			// Выполняем поиск указанного процесса по идентификатору
@@ -2348,24 +2322,6 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
 				this->_log->print("A message addressed to a child process can only be sent from the parent process", log_t::flag_t::WARNING);
 			#endif
 		}
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("MS Windows OS, inter-process messaging is not implemented yet", __PRETTY_FUNCTION__, make_tuple(pid, buffer, size), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("MS Windows OS, inter-process messaging is not implemented yet", log_t::flag_t::WARNING);
-		#endif
-	#endif
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -2378,10 +2334,6 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
  *
  */
 size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noexcept {
-	/**
-	 * Для операционных систем, отличных от MS Windows
-	 */
-	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
 		if(this->master()){
 			// Если список активных воркеров не пустой
@@ -2413,24 +2365,6 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 				this->_log->print("A message addressed to a child process can only be sent from the parent process", log_t::flag_t::WARNING);
 			#endif
 		}
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("MS Windows OS, inter-process messaging is not implemented yet", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("MS Windows OS, inter-process messaging is not implemented yet", log_t::flag_t::WARNING);
-		#endif
-	#endif
 	// Возвращаем значение по умолчанию
 	return 0;
 }
