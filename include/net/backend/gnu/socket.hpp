@@ -85,7 +85,7 @@
  * Если затребован обходной стек XDP
  */
 #if defined(USE_XDP)
-	#error "AWH: обходной стек XDP пока не поддерживается, соберите без USE_XDP"
+	#error "AWH: XDP bypass stack not supported yet, build without USE_XDP"
 #endif
 
 /**

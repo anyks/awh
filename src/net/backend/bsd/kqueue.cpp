@@ -916,6 +916,130 @@ namespace io {
 	} raw_endpoint_t;
 
 	/**
+	 * Если операционной системой является FreeBSD
+	 */
+	#if __FreeBSD__
+		/**
+		 * @brief Класс передачи данных SCTP-протокола
+		 *
+		 */
+		typedef class SCTP_Transfer {
+			private:
+				/**
+				 * Параметры SCTP-протокола, заводятся при первом обращении.
+				 *
+				 * Встроенный по значению набор занимал 272 октета в каждом узле - у
+				 * подключений TCP и UDP тоже, хотя нужен он одному лишь SCTP. На
+				 * сервере, держащем сотню тысяч подключений, это два с половиной
+				 * десятка мегабайт впустую, поэтому набор заводится по надобности
+				 */
+				unique_ptr <sctp_endpoint_t> _sctp;
+			public:
+				/**
+				 * @brief Метод сброса набора параметров SCTP
+				 *
+				 * @note Обратные связи переживают сброс: подписка задаётся один раз, а
+				 *       сбрасываются числовые параметры очередного обмена
+				 *
+				 */
+				void reset() noexcept;
+				/**
+				 * @brief Метод проверки, заведён ли набор параметров SCTP
+				 *
+				 * @return результат проверки
+				 *
+				 */
+				bool has() const noexcept;
+			public:
+				/**
+				 * @brief Метод получения набора параметров SCTP для правки
+				 *
+				 * @note Незаведённый набор заводится: обращаться следует лишь там,
+				 *       где узел и вправду работает по SCTP
+				 *
+				 * @return набор параметров SCTP
+				 *
+				 */
+				sctp_endpoint_t & use() noexcept;
+				/**
+				 * @brief Метод чтения набора параметров SCTP
+				 *
+				 * @note Набора не заводит: у незаведённого отдаётся общий пустой,
+				 *       поэтому читать разрешено у любого узла
+				 *
+				 * @return набор параметров SCTP
+				 *
+				 */
+				const sctp_endpoint_t & endpoint() const noexcept;
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit SCTP_Transfer() noexcept : _sctp(nullptr) {}
+		} sctp_transfer_t;
+		/**
+		 * @brief Метод сброса набора параметров SCTP
+		 *
+		 * @note Обратные связи переживают сброс: подписка задаётся один раз, а
+		 *       сбрасываются числовые параметры очередного обмена
+		 *
+		 */
+		void SCTP_Transfer::reset() noexcept {
+			// Если набор не заводился, сбрасывать нечего
+			if(this->_sctp == nullptr)
+				// Выходим из функции
+				return;
+			// Сохраняем объект функций обратного вызова SCTP
+			auto callbacks = ::move(this->_sctp->callbacks);
+			// Выполняем зануление набора параметров SCTP
+			::memset(this->_sctp.get(), 0, sizeof(sctp_endpoint_t));
+			// Восстанавливаем объект функций обратного вызова SCTP
+			this->_sctp->callbacks = ::move(callbacks);
+		}
+		/**
+		 * @brief Метод проверки, заведён ли набор параметров SCTP
+		 *
+		 * @return результат проверки
+		 *
+		 */
+		bool SCTP_Transfer::has() const noexcept {
+			// Набор заводился, если указатель на него не пуст
+			return (this->_sctp != nullptr);
+		}
+		/**
+		 * @brief Метод получения набора параметров SCTP для правки
+		 *
+		 * @note Незаведённый набор заводится: обращаться следует лишь там,
+		 *       где узел и вправду работает по SCTP
+		 *
+		 * @return набор параметров SCTP
+		 *
+		 */
+		sctp_endpoint_t & SCTP_Transfer::use() noexcept {
+			// Если собственный набор ещё не заведён
+			if(this->_sctp == nullptr)
+				// Заводим набор параметров SCTP-протокола
+				this->_sctp = unique_ptr <sctp_endpoint_t> (new sctp_endpoint_t);
+			// Возвращаем собственный набор
+			return (* this->_sctp);
+		}
+		/**
+		 * @brief Метод чтения набора параметров SCTP
+		 *
+		 * @note Набора не заводит: у незаведённого отдаётся общий пустой,
+		 *       поэтому читать разрешено у любого узла
+		 *
+		 * @return набор параметров SCTP
+		 *
+		 */
+		const sctp_endpoint_t & SCTP_Transfer::endpoint() const noexcept {
+			// Возвращаем собственный набор, а при его отсутствии - общий пустой
+			return ((this->_sctp != nullptr) ? (* this->_sctp) : __awh_sctp_none__);
+		}
+	#endif
+
+	/**
 	 * @brief Структура передачи данных
 	 *
 	 */
@@ -932,76 +1056,8 @@ namespace io {
 		 * Если операционной системой является FreeBSD
 		 */
 		#if __FreeBSD__
-			private:
-				/**
-				 * Параметры SCTP-протокола, заводятся при первом обращении.
-				 *
-				 * Встроенный по значению набор занимал 272 октета в каждом узле - у
-				 * подключений TCP и UDP тоже, хотя нужен он одному лишь SCTP. На
-				 * сервере, держащем сотню тысяч подключений, это два с половиной
-				 * десятка мегабайт впустую, поэтому набор заводится по надобности
-				 */
-				unique_ptr <sctp_endpoint_t> _sctp;
-			public:
-				/**
-				 * @brief Метод проверки, заведён ли набор параметров SCTP
-				 *
-				 * @return результат проверки
-				 *
-				 */
-				bool hasSctp() const noexcept {
-					// Набор заводился, если указатель на него не пуст
-					return (this->_sctp != nullptr);
-				}
-				/**
-				 * @brief Метод чтения набора параметров SCTP
-				 *
-				 * @note Набора не заводит: у незаведённого отдаётся общий пустой,
-				 *       поэтому читать разрешено у любого узла
-				 *
-				 * @return набор параметров SCTP
-				 *
-				 */
-				const sctp_endpoint_t & sctp() const noexcept {
-					// Возвращаем собственный набор, а при его отсутствии - общий пустой
-					return ((this->_sctp != nullptr) ? (* this->_sctp) : __awh_sctp_none__);
-				}
-				/**
-				 * @brief Метод получения набора параметров SCTP для правки
-				 *
-				 * @note Незаведённый набор заводится: обращаться следует лишь там,
-				 *       где узел и вправду работает по SCTP
-				 *
-				 * @return набор параметров SCTP
-				 *
-				 */
-				sctp_endpoint_t & sctpUse() noexcept {
-					// Если собственный набор ещё не заведён
-					if(this->_sctp == nullptr)
-						// Заводим набор параметров SCTP-протокола
-						this->_sctp = unique_ptr <sctp_endpoint_t> (new sctp_endpoint_t);
-					// Возвращаем собственный набор
-					return (* this->_sctp);
-				}
-				/**
-				 * @brief Метод сброса набора параметров SCTP
-				 *
-				 * @note Обратные связи переживают сброс: подписка задаётся один раз, а
-				 *       сбрасываются числовые параметры очередного обмена
-				 *
-				 */
-				void sctpReset() noexcept {
-					// Если набор не заводился, сбрасывать нечего
-					if(this->_sctp == nullptr)
-						// Выходим из функции
-						return;
-					// Сохраняем объект функций обратного вызова SCTP
-					auto callbacks = ::move(this->_sctp->callbacks);
-					// Выполняем зануление набора параметров SCTP
-					::memset(this->_sctp.get(), 0, sizeof(sctp_endpoint_t));
-					// Восстанавливаем объект функций обратного вызова SCTP
-					this->_sctp->callbacks = ::move(callbacks);
-				}
+			// Набор параметров SCTP-протокола
+			sctp_transfer_t sctp;
 		#endif
 		/**
 		 * @brief Конструктор
@@ -9249,8 +9305,8 @@ namespace io {
 											peer->transfer.fd,
 											::__awh_buffer__, size,
 											nullptr, nullptr,
-											&peer->transfer.sctpUse().info,
-											&peer->transfer.sctpUse().flags
+											&peer->transfer.sctp.use().info,
+											&peer->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
@@ -9316,16 +9372,16 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP){
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-											if(peer->transfer.sctp().callbacks.info != nullptr){
+											if(peer->transfer.sctp.endpoint().callbacks.info != nullptr){
 												// Объект для хранения информационных метаданных SCTP сообщения
 												net::sctp::minfo_t minfo;
 												// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-												::sctp::info(peer->transfer.sctpUse().info, minfo);
+												::sctp::info(peer->transfer.sctp.use().info, minfo);
 												// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-												peer->transfer.sctp().callbacks.info(peer->id, minfo);
+												peer->transfer.sctp.endpoint().callbacks.info(peer->id, minfo);
 											}
 											// Если мы получили уведомления SCTP
-											if(peer->transfer.sctpUse().flags & MSG_NOTIFICATION){
+											if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
 												// Обрабатываем события SCTP
 												offset = static_cast <ssize_t> (::sctp::events(peer, ::__awh_buffer__, bytes, log));
 												// Если все полученные байты были уведомлениями SCTP
@@ -9466,8 +9522,8 @@ namespace io {
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&peer->transfer.sctpUse().info,
-									&peer->transfer.sctpUse().flags
+									&peer->transfer.sctp.use().info,
+									&peer->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -9521,16 +9577,16 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(peer->state.protocol == event::protocol_t::SCTP){
 									// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-									if(peer->transfer.sctp().callbacks.info != nullptr){
+									if(peer->transfer.sctp.endpoint().callbacks.info != nullptr){
 										// Объект для хранения информационных метаданных SCTP сообщения
 										net::sctp::minfo_t minfo;
 										// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-										::sctp::info(peer->transfer.sctpUse().info, minfo);
+										::sctp::info(peer->transfer.sctp.use().info, minfo);
 										// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-										peer->transfer.sctp().callbacks.info(peer->id, minfo);
+										peer->transfer.sctp.endpoint().callbacks.info(peer->id, minfo);
 									}
 									// Если мы получили уведомления SCTP
-									if(peer->transfer.sctpUse().flags & MSG_NOTIFICATION){
+									if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
 										// Обрабатываем события SCTP
 										offset = ::sctp::events(peer, ::__awh_buffer__, bytes, log);
 										// Если все полученные байты были уведомлениями SCTP
@@ -9605,8 +9661,8 @@ namespace io {
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										nullptr, nullptr,
-										&peer->transfer.sctpUse().info,
-										&peer->transfer.sctpUse().flags
+										&peer->transfer.sctp.use().info,
+										&peer->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -9661,16 +9717,16 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP){
 										// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-										if(peer->transfer.sctp().callbacks.info != nullptr){
+										if(peer->transfer.sctp.endpoint().callbacks.info != nullptr){
 											// Объект для хранения информационных метаданных SCTP сообщения
 											net::sctp::minfo_t minfo;
 											// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-											::sctp::info(peer->transfer.sctpUse().info, minfo);
+											::sctp::info(peer->transfer.sctp.use().info, minfo);
 											// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-											peer->transfer.sctp().callbacks.info(peer->id, minfo);
+											peer->transfer.sctp.endpoint().callbacks.info(peer->id, minfo);
 										}
 										// Если мы получили уведомления SCTP
-										if(peer->transfer.sctpUse().flags & MSG_NOTIFICATION){
+										if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
 											// Обрабатываем события SCTP
 											::sctp::events(peer, ::__awh_buffer__, bytes, log);
 											// Пропускаем дальнейшую обработку
@@ -9753,8 +9809,8 @@ namespace io {
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&peer->transfer.sctpUse().info,
-									&peer->transfer.sctpUse().flags
+									&peer->transfer.sctp.use().info,
+									&peer->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -9795,16 +9851,16 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(peer->state.protocol == event::protocol_t::SCTP){
 									// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-									if(peer->transfer.sctp().callbacks.info != nullptr){
+									if(peer->transfer.sctp.endpoint().callbacks.info != nullptr){
 										// Объект для хранения информационных метаданных SCTP сообщения
 										net::sctp::minfo_t minfo;
 										// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-										::sctp::info(peer->transfer.sctpUse().info, minfo);
+										::sctp::info(peer->transfer.sctp.use().info, minfo);
 										// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-										peer->transfer.sctp().callbacks.info(peer->id, minfo);
+										peer->transfer.sctp.endpoint().callbacks.info(peer->id, minfo);
 									}
 									// Если мы получили уведомления SCTP
-									if(peer->transfer.sctpUse().flags & MSG_NOTIFICATION){
+									if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
 										// Обрабатываем события SCTP
 										::sctp::events(peer, ::__awh_buffer__, bytes, log);
 										// Формируем положительный результат
@@ -11174,8 +11230,8 @@ namespace io {
 											client->transfer.fd,
 											::__awh_buffer__, size,
 											nullptr, nullptr,
-											&client->transfer.sctpUse().info,
-											&client->transfer.sctpUse().flags
+											&client->transfer.sctp.use().info,
+											&client->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
@@ -11241,16 +11297,16 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP){
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-											if(client->transfer.sctp().callbacks.info != nullptr){
+											if(client->transfer.sctp.endpoint().callbacks.info != nullptr){
 												// Объект для хранения информационных метаданных SCTP сообщения
 												net::sctp::minfo_t minfo;
 												// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-												::sctp::info(client->transfer.sctpUse().info, minfo);
+												::sctp::info(client->transfer.sctp.use().info, minfo);
 												// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-												client->transfer.sctp().callbacks.info(client->id, minfo);
+												client->transfer.sctp.endpoint().callbacks.info(client->id, minfo);
 											}
 											// Если мы получили уведомления SCTP
-											if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
+											if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
 												// Обрабатываем события SCTP
 												offset = static_cast <ssize_t> (::sctp::events(client, ::__awh_buffer__, bytes, log));
 												// Если все полученные байты были уведомлениями SCTP
@@ -11391,8 +11447,8 @@ namespace io {
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&client->transfer.sctpUse().info,
-									&client->transfer.sctpUse().flags
+									&client->transfer.sctp.use().info,
+									&client->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -11446,16 +11502,16 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP){
 									// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-									if(client->transfer.sctp().callbacks.info != nullptr){
+									if(client->transfer.sctp.endpoint().callbacks.info != nullptr){
 										// Объект для хранения информационных метаданных SCTP сообщения
 										net::sctp::minfo_t minfo;
 										// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-										::sctp::info(client->transfer.sctpUse().info, minfo);
+										::sctp::info(client->transfer.sctp.use().info, minfo);
 										// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-										client->transfer.sctp().callbacks.info(client->id, minfo);
+										client->transfer.sctp.endpoint().callbacks.info(client->id, minfo);
 									}
 									// Если мы получили уведомления SCTP
-									if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
+									if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
 										// Обрабатываем события SCTP
 										offset = ::sctp::events(client, ::__awh_buffer__, bytes, log);
 										// Если все полученные байты были уведомлениями SCTP
@@ -12544,8 +12600,8 @@ namespace io {
 											::__awh_buffer__,
 											AWH_EVENT_MAX_BUFFER_SIZE,
 											nullptr, nullptr,
-											&client->transfer.sctpUse().info,
-											&client->transfer.sctpUse().flags
+											&client->transfer.sctp.use().info,
+											&client->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -12611,18 +12667,18 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP){
 											// Запоминаем идентификатор ассоциации SCTP
-											client->transfer.sctpUse().id = client->transfer.sctpUse().info.sinfo_assoc_id;
+											client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-											if(client->transfer.sctp().callbacks.info != nullptr){
+											if(client->transfer.sctp.endpoint().callbacks.info != nullptr){
 												// Объект для хранения информационных метаданных SCTP сообщения
 												net::sctp::minfo_t minfo;
 												// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-												::sctp::info(client->transfer.sctpUse().info, minfo);
+												::sctp::info(client->transfer.sctp.use().info, minfo);
 												// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-												client->transfer.sctp().callbacks.info(client->id, minfo);
+												client->transfer.sctp.endpoint().callbacks.info(client->id, minfo);
 											}
 											// Если мы получили уведомления SCTP
-											if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
+											if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
 												// Обрабатываем события SCTP
 												::sctp::events(client, ::__awh_buffer__, bytes, log);
 												// Пропускаем дальнейшую обработку
@@ -12710,8 +12766,8 @@ namespace io {
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										nullptr, nullptr,
-										&client->transfer.sctpUse().info,
-										&client->transfer.sctpUse().flags
+										&client->transfer.sctp.use().info,
+										&client->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -12763,18 +12819,18 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP){
 										// Запоминаем идентификатор ассоциации SCTP
-										client->transfer.sctpUse().id = client->transfer.sctpUse().info.sinfo_assoc_id;
+										client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
 										// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-										if(client->transfer.sctp().callbacks.info != nullptr){
+										if(client->transfer.sctp.endpoint().callbacks.info != nullptr){
 											// Объект для хранения информационных метаданных SCTP сообщения
 											net::sctp::minfo_t minfo;
 											// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-											::sctp::info(client->transfer.sctpUse().info, minfo);
+											::sctp::info(client->transfer.sctp.use().info, minfo);
 											// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-											client->transfer.sctp().callbacks.info(client->id, minfo);
+											client->transfer.sctp.endpoint().callbacks.info(client->id, minfo);
 										}
 										// Если мы получили уведомления SCTP
-										if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
+										if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
 											// Обрабатываем события SCTP
 											::sctp::events(client, ::__awh_buffer__, bytes, log);
 											// Формируем положительный результат
@@ -12847,8 +12903,8 @@ namespace io {
 											AWH_EVENT_MAX_BUFFER_SIZE,
 											&::trust_cast <struct sockaddr> (client->endpoint.server),
 											&client->endpoint.size,
-											&client->transfer.sctpUse().info,
-											&client->transfer.sctpUse().flags
+											&client->transfer.sctp.use().info,
+											&client->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из UDP-сокета
 									else bytes = ::recvfrom(
@@ -12926,18 +12982,18 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP){
 											// Запоминаем идентификатор ассоциации SCTP
-											client->transfer.sctpUse().id = client->transfer.sctpUse().info.sinfo_assoc_id;
+											client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-											if(client->transfer.sctp().callbacks.info != nullptr){
+											if(client->transfer.sctp.endpoint().callbacks.info != nullptr){
 												// Объект для хранения информационных метаданных SCTP сообщения
 												net::sctp::minfo_t minfo;
 												// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-												::sctp::info(client->transfer.sctpUse().info, minfo);
+												::sctp::info(client->transfer.sctp.use().info, minfo);
 												// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-												client->transfer.sctp().callbacks.info(client->id, minfo);
+												client->transfer.sctp.endpoint().callbacks.info(client->id, minfo);
 											}
 											// Если мы получили уведомления SCTP
-											if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
+											if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
 												// Обрабатываем события SCTP
 												::sctp::events(client, ::__awh_buffer__, bytes, log);
 												// Пропускаем дальнейшую обработку
@@ -13026,8 +13082,8 @@ namespace io {
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										&client->endpoint.size,
-										&client->transfer.sctpUse().info,
-										&client->transfer.sctpUse().flags
+										&client->transfer.sctp.use().info,
+										&client->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из UDP-сокета
 								else bytes = ::recvfrom(
@@ -13091,18 +13147,18 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP){
 										// Запоминаем идентификатор ассоциации SCTP
-										client->transfer.sctpUse().id = client->transfer.sctpUse().info.sinfo_assoc_id;
+										client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
 										// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
-										if(client->transfer.sctp().callbacks.info != nullptr){
+										if(client->transfer.sctp.endpoint().callbacks.info != nullptr){
 											// Объект для хранения информационных метаданных SCTP сообщения
 											net::sctp::minfo_t minfo;
 											// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-											::sctp::info(client->transfer.sctpUse().info, minfo);
+											::sctp::info(client->transfer.sctp.use().info, minfo);
 											// Вызываем функцию обратного вызова для обработки информационных метаданных SCTP сообщения
-											client->transfer.sctp().callbacks.info(client->id, minfo);
+											client->transfer.sctp.endpoint().callbacks.info(client->id, minfo);
 										}
 										// Если мы получили уведомления SCTP
-										if(client->transfer.sctpUse().flags & MSG_NOTIFICATION){
+										if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
 											// Обрабатываем события SCTP
 											::sctp::events(client, ::__awh_buffer__, bytes, log);
 											// Формируем положительный результат
@@ -14478,11 +14534,11 @@ namespace io {
 												peer->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												peer->transfer.sctpUse().info.sinfo_ppid,
-												peer->transfer.sctpUse().info.sinfo_flags,
-												peer->transfer.sctpUse().info.sinfo_stream,
-												peer->transfer.sctpUse().info.sinfo_timetolive,
-												peer->transfer.sctpUse().info.sinfo_context
+												peer->transfer.sctp.use().info.sinfo_ppid,
+												peer->transfer.sctp.use().info.sinfo_flags,
+												peer->transfer.sctp.use().info.sinfo_stream,
+												peer->transfer.sctp.use().info.sinfo_timetolive,
+												peer->transfer.sctp.use().info.sinfo_context
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -14856,11 +14912,11 @@ namespace io {
 												peer->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												peer->transfer.sctpUse().info.sinfo_ppid,
-												peer->transfer.sctpUse().info.sinfo_flags,
-												peer->transfer.sctpUse().info.sinfo_stream,
-												peer->transfer.sctpUse().info.sinfo_timetolive,
-												peer->transfer.sctpUse().info.sinfo_context
+												peer->transfer.sctp.use().info.sinfo_ppid,
+												peer->transfer.sctp.use().info.sinfo_flags,
+												peer->transfer.sctp.use().info.sinfo_stream,
+												peer->transfer.sctp.use().info.sinfo_timetolive,
+												peer->transfer.sctp.use().info.sinfo_context
 											);
 										// Выполняем отправку данных в UDP-сокет
 										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -15854,11 +15910,11 @@ namespace io {
 												client->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												client->transfer.sctpUse().info.sinfo_ppid,
-												client->transfer.sctpUse().info.sinfo_flags,
-												client->transfer.sctpUse().info.sinfo_stream,
-												client->transfer.sctpUse().info.sinfo_timetolive,
-												client->transfer.sctpUse().info.sinfo_context
+												client->transfer.sctp.use().info.sinfo_ppid,
+												client->transfer.sctp.use().info.sinfo_flags,
+												client->transfer.sctp.use().info.sinfo_stream,
+												client->transfer.sctp.use().info.sinfo_timetolive,
+												client->transfer.sctp.use().info.sinfo_context
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -16576,11 +16632,11 @@ namespace io {
 													reinterpret_cast <const uint8_t *> (buffer), size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctpUse().info.sinfo_ppid,
-													client->transfer.sctpUse().info.sinfo_flags,
-													client->transfer.sctpUse().info.sinfo_stream,
-													client->transfer.sctpUse().info.sinfo_timetolive,
-													client->transfer.sctpUse().info.sinfo_context
+													client->transfer.sctp.use().info.sinfo_ppid,
+													client->transfer.sctp.use().info.sinfo_flags,
+													client->transfer.sctp.use().info.sinfo_stream,
+													client->transfer.sctp.use().info.sinfo_timetolive,
+													client->transfer.sctp.use().info.sinfo_context
 												);
 											// Выполняем отправку данных в TCP/IP сокет
 											else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -16609,11 +16665,11 @@ namespace io {
 													reinterpret_cast <const uint8_t *> (buffer), size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctpUse().info.sinfo_ppid,
-													client->transfer.sctpUse().info.sinfo_flags,
-													client->transfer.sctpUse().info.sinfo_stream,
-													client->transfer.sctpUse().info.sinfo_timetolive,
-													client->transfer.sctpUse().info.sinfo_context
+													client->transfer.sctp.use().info.sinfo_ppid,
+													client->transfer.sctp.use().info.sinfo_flags,
+													client->transfer.sctp.use().info.sinfo_stream,
+													client->transfer.sctp.use().info.sinfo_timetolive,
+													client->transfer.sctp.use().info.sinfo_context
 												);
 											// Выполняем отправку данных в UDP-сокет
 											else bytes = ::sendto(
@@ -18195,11 +18251,11 @@ namespace io {
 											bytes = ::sctp_sendmsg(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctpUse().info.sinfo_ppid,
-												peer->transfer.sctpUse().info.sinfo_flags,
-												peer->transfer.sctpUse().info.sinfo_stream,
-												peer->transfer.sctpUse().info.sinfo_timetolive,
-												peer->transfer.sctpUse().info.sinfo_context
+												peer->transfer.sctp.use().info.sinfo_ppid,
+												peer->transfer.sctp.use().info.sinfo_flags,
+												peer->transfer.sctp.use().info.sinfo_stream,
+												peer->transfer.sctp.use().info.sinfo_timetolive,
+												peer->transfer.sctp.use().info.sinfo_context
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -18600,11 +18656,11 @@ namespace io {
 											bytes = ::sctp_sendmsg(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctpUse().info.sinfo_ppid,
-												peer->transfer.sctpUse().info.sinfo_flags,
-												peer->transfer.sctpUse().info.sinfo_stream,
-												peer->transfer.sctpUse().info.sinfo_timetolive,
-												peer->transfer.sctpUse().info.sinfo_context
+												peer->transfer.sctp.use().info.sinfo_ppid,
+												peer->transfer.sctp.use().info.sinfo_flags,
+												peer->transfer.sctp.use().info.sinfo_stream,
+												peer->transfer.sctp.use().info.sinfo_timetolive,
+												peer->transfer.sctp.use().info.sinfo_context
 											);
 										// Выполняем отправку данных в сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -18966,11 +19022,11 @@ namespace io {
 								bytes = ::sctp_sendmsg(
 									peer->transfer.fd,
 									buffer, size, nullptr, 0,
-									peer->transfer.sctpUse().info.sinfo_ppid,
-									peer->transfer.sctpUse().info.sinfo_flags,
-									peer->transfer.sctpUse().info.sinfo_stream,
-									peer->transfer.sctpUse().info.sinfo_timetolive,
-									peer->transfer.sctpUse().info.sinfo_context
+									peer->transfer.sctp.use().info.sinfo_ppid,
+									peer->transfer.sctp.use().info.sinfo_flags,
+									peer->transfer.sctp.use().info.sinfo_stream,
+									peer->transfer.sctp.use().info.sinfo_timetolive,
+									peer->transfer.sctp.use().info.sinfo_context
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -19072,11 +19128,11 @@ namespace io {
 											bytes = ::sctp_sendmsg(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctpUse().info.sinfo_ppid,
-												peer->transfer.sctpUse().info.sinfo_flags,
-												peer->transfer.sctpUse().info.sinfo_stream,
-												peer->transfer.sctpUse().info.sinfo_timetolive,
-												peer->transfer.sctpUse().info.sinfo_context
+												peer->transfer.sctp.use().info.sinfo_ppid,
+												peer->transfer.sctp.use().info.sinfo_flags,
+												peer->transfer.sctp.use().info.sinfo_stream,
+												peer->transfer.sctp.use().info.sinfo_timetolive,
+												peer->transfer.sctp.use().info.sinfo_context
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -19414,11 +19470,11 @@ namespace io {
 												bytes = ::sctp_sendmsg(
 													peer->transfer.fd,
 													buffer, size, nullptr, 0,
-													peer->transfer.sctpUse().info.sinfo_ppid,
-													peer->transfer.sctpUse().info.sinfo_flags,
-													peer->transfer.sctpUse().info.sinfo_stream,
-													peer->transfer.sctpUse().info.sinfo_timetolive,
-													peer->transfer.sctpUse().info.sinfo_context
+													peer->transfer.sctp.use().info.sinfo_ppid,
+													peer->transfer.sctp.use().info.sinfo_flags,
+													peer->transfer.sctp.use().info.sinfo_stream,
+													peer->transfer.sctp.use().info.sinfo_timetolive,
+													peer->transfer.sctp.use().info.sinfo_context
 												);
 											// Выполняем отправку данных в TCP/IP сокет
 											else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -19743,11 +19799,11 @@ namespace io {
 								bytes = ::sctp_sendmsg(
 									peer->transfer.fd,
 									buffer, size, nullptr, 0,
-									peer->transfer.sctpUse().info.sinfo_ppid,
-									peer->transfer.sctpUse().info.sinfo_flags,
-									peer->transfer.sctpUse().info.sinfo_stream,
-									peer->transfer.sctpUse().info.sinfo_timetolive,
-									peer->transfer.sctpUse().info.sinfo_context
+									peer->transfer.sctp.use().info.sinfo_ppid,
+									peer->transfer.sctp.use().info.sinfo_flags,
+									peer->transfer.sctp.use().info.sinfo_stream,
+									peer->transfer.sctp.use().info.sinfo_timetolive,
+									peer->transfer.sctp.use().info.sinfo_context
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -21780,11 +21836,11 @@ namespace io {
 											bytes = ::sctp_sendmsg(
 												client->transfer.fd,
 												buffer, size, nullptr, 0,
-												client->transfer.sctpUse().info.sinfo_ppid,
-												client->transfer.sctpUse().info.sinfo_flags,
-												client->transfer.sctpUse().info.sinfo_stream,
-												client->transfer.sctpUse().info.sinfo_timetolive,
-												client->transfer.sctpUse().info.sinfo_context
+												client->transfer.sctp.use().info.sinfo_ppid,
+												client->transfer.sctp.use().info.sinfo_flags,
+												client->transfer.sctp.use().info.sinfo_stream,
+												client->transfer.sctp.use().info.sinfo_timetolive,
+												client->transfer.sctp.use().info.sinfo_context
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -22185,11 +22241,11 @@ namespace io {
 											bytes = ::sctp_sendmsg(
 												client->transfer.fd,
 												buffer, size, nullptr, 0,
-												client->transfer.sctpUse().info.sinfo_ppid,
-												client->transfer.sctpUse().info.sinfo_flags,
-												client->transfer.sctpUse().info.sinfo_stream,
-												client->transfer.sctpUse().info.sinfo_timetolive,
-												client->transfer.sctpUse().info.sinfo_context
+												client->transfer.sctp.use().info.sinfo_ppid,
+												client->transfer.sctp.use().info.sinfo_flags,
+												client->transfer.sctp.use().info.sinfo_stream,
+												client->transfer.sctp.use().info.sinfo_timetolive,
+												client->transfer.sctp.use().info.sinfo_context
 											);
 										// Выполняем отправку данных в сокет
 										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -22551,11 +22607,11 @@ namespace io {
 								bytes = ::sctp_sendmsg(
 									client->transfer.fd,
 									buffer, size, nullptr, 0,
-									client->transfer.sctpUse().info.sinfo_ppid,
-									client->transfer.sctpUse().info.sinfo_flags,
-									client->transfer.sctpUse().info.sinfo_stream,
-									client->transfer.sctpUse().info.sinfo_timetolive,
-									client->transfer.sctpUse().info.sinfo_context
+									client->transfer.sctp.use().info.sinfo_ppid,
+									client->transfer.sctp.use().info.sinfo_flags,
+									client->transfer.sctp.use().info.sinfo_stream,
+									client->transfer.sctp.use().info.sinfo_timetolive,
+									client->transfer.sctp.use().info.sinfo_context
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -24193,11 +24249,11 @@ namespace io {
 													buffer, size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctpUse().info.sinfo_ppid,
-													client->transfer.sctpUse().info.sinfo_flags,
-													client->transfer.sctpUse().info.sinfo_stream,
-													client->transfer.sctpUse().info.sinfo_timetolive,
-													client->transfer.sctpUse().info.sinfo_context
+													client->transfer.sctp.use().info.sinfo_ppid,
+													client->transfer.sctp.use().info.sinfo_flags,
+													client->transfer.sctp.use().info.sinfo_stream,
+													client->transfer.sctp.use().info.sinfo_timetolive,
+													client->transfer.sctp.use().info.sinfo_context
 												);
 											// Выполняем отправку данных в сокет
 											else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -24548,11 +24604,11 @@ namespace io {
 														buffer, size,
 														&::trust_cast <struct sockaddr> (client->endpoint.server),
 														client->endpoint.size,
-														client->transfer.sctpUse().info.sinfo_ppid,
-														client->transfer.sctpUse().info.sinfo_flags,
-														client->transfer.sctpUse().info.sinfo_stream,
-														client->transfer.sctpUse().info.sinfo_timetolive,
-														client->transfer.sctpUse().info.sinfo_context
+														client->transfer.sctp.use().info.sinfo_ppid,
+														client->transfer.sctp.use().info.sinfo_flags,
+														client->transfer.sctp.use().info.sinfo_stream,
+														client->transfer.sctp.use().info.sinfo_timetolive,
+														client->transfer.sctp.use().info.sinfo_context
 													);
 												// Выполняем отправку данных в сокет
 												else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -24890,11 +24946,11 @@ namespace io {
 										buffer, size,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										client->endpoint.size,
-										client->transfer.sctpUse().info.sinfo_ppid,
-										client->transfer.sctpUse().info.sinfo_flags,
-										client->transfer.sctpUse().info.sinfo_stream,
-										client->transfer.sctpUse().info.sinfo_timetolive,
-										client->transfer.sctpUse().info.sinfo_context
+										client->transfer.sctp.use().info.sinfo_ppid,
+										client->transfer.sctp.use().info.sinfo_flags,
+										client->transfer.sctp.use().info.sinfo_stream,
+										client->transfer.sctp.use().info.sinfo_timetolive,
+										client->transfer.sctp.use().info.sinfo_context
 									);
 								// Выполняем отправку данных в сокет
 								else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -25023,11 +25079,11 @@ namespace io {
 													buffer, size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctpUse().info.sinfo_ppid,
-													client->transfer.sctpUse().info.sinfo_flags,
-													client->transfer.sctpUse().info.sinfo_stream,
-													client->transfer.sctpUse().info.sinfo_timetolive,
-													client->transfer.sctpUse().info.sinfo_context
+													client->transfer.sctp.use().info.sinfo_ppid,
+													client->transfer.sctp.use().info.sinfo_flags,
+													client->transfer.sctp.use().info.sinfo_stream,
+													client->transfer.sctp.use().info.sinfo_timetolive,
+													client->transfer.sctp.use().info.sinfo_context
 												);
 											// Выполняем отправку данных в UDP-сокет
 											else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
@@ -25378,11 +25434,11 @@ namespace io {
 														buffer, size,
 														&::trust_cast <struct sockaddr> (client->endpoint.server),
 														client->endpoint.size,
-														client->transfer.sctpUse().info.sinfo_ppid,
-														client->transfer.sctpUse().info.sinfo_flags,
-														client->transfer.sctpUse().info.sinfo_stream,
-														client->transfer.sctpUse().info.sinfo_timetolive,
-														client->transfer.sctpUse().info.sinfo_context
+														client->transfer.sctp.use().info.sinfo_ppid,
+														client->transfer.sctp.use().info.sinfo_flags,
+														client->transfer.sctp.use().info.sinfo_stream,
+														client->transfer.sctp.use().info.sinfo_timetolive,
+														client->transfer.sctp.use().info.sinfo_context
 													);
 												// Выполняем отправку данных в UDP-сокет
 												else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
@@ -25720,11 +25776,11 @@ namespace io {
 										buffer, size,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										client->endpoint.size,
-										client->transfer.sctpUse().info.sinfo_ppid,
-										client->transfer.sctpUse().info.sinfo_flags,
-										client->transfer.sctpUse().info.sinfo_stream,
-										client->transfer.sctpUse().info.sinfo_timetolive,
-										client->transfer.sctpUse().info.sinfo_context
+										client->transfer.sctp.use().info.sinfo_ppid,
+										client->transfer.sctp.use().info.sinfo_flags,
+										client->transfer.sctp.use().info.sinfo_stream,
+										client->transfer.sctp.use().info.sinfo_timetolive,
+										client->transfer.sctp.use().info.sinfo_context
 									);
 								// Выполняем отправку данных в UDP-сокет
 								else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
@@ -26580,7 +26636,7 @@ namespace io {
 						 */
 						#if __FreeBSD__
 							// Сбрасываем числовые параметры SCTP, сохраняя обратные связи
-							client->transfer.sctpReset();
+							client->transfer.sctp.reset();
 						#endif
 						/**
 						 * Определяем тип сокета
@@ -29352,7 +29408,7 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
-										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctpUse().events);
+										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.use().events);
 								#endif
 							} break;
 							// Для семейства IPv6
@@ -29544,7 +29600,7 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
-										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctpUse().events);
+										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.use().events);
 								#endif
 							} break;
 						}
@@ -31567,9 +31623,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp().callbacks.events != nullptr)
+								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -31578,9 +31634,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp().callbacks.events != nullptr)
+								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp().callbacks.events(client->id, ::move(event));
+									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -31690,9 +31746,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp().callbacks.events != nullptr)
+								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -31701,9 +31757,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp().callbacks.events != nullptr)
+								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp().callbacks.events(client->id, ::move(event));
+									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -31783,9 +31839,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp().callbacks.events != nullptr)
+								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -31794,9 +31850,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp().callbacks.events != nullptr)
+								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp().callbacks.events(client->id, ::move(event));
+									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -31850,9 +31906,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp().callbacks.events != nullptr)
+								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -31861,9 +31917,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp().callbacks.events != nullptr)
+								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp().callbacks.events(client->id, ::move(event));
+									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -31902,9 +31958,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp().callbacks.events != nullptr)
+								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -31913,9 +31969,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp().callbacks.events != nullptr)
+								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp().callbacks.events(client->id, ::move(event));
+									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -31957,9 +32013,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp().callbacks.events != nullptr)
+								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -31968,9 +32024,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp().callbacks.events != nullptr)
+								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp().callbacks.events(client->id, ::move(event));
+									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -32019,9 +32075,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp().callbacks.events != nullptr)
+								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -32030,9 +32086,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp().callbacks.events != nullptr)
+								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp().callbacks.events(client->id, ::move(event));
+									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -32095,9 +32151,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp().callbacks.events != nullptr)
+								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -32106,9 +32162,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp().callbacks.events != nullptr)
+								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp().callbacks.events(client->id, ::move(event));
+									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -32181,9 +32237,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp().callbacks.events != nullptr)
+									if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+										peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -32192,9 +32248,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp().callbacks.events != nullptr)
+									if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp().callbacks.events(client->id, ::move(event));
+										client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -32223,9 +32279,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp().callbacks.events != nullptr)
+									if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+										peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -32234,9 +32290,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp().callbacks.events != nullptr)
+									if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp().callbacks.events(client->id, ::move(event));
+										client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -32276,9 +32332,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp().callbacks.events != nullptr)
+								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -32287,9 +32343,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp().callbacks.events != nullptr)
+								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp().callbacks.events(client->id, ::move(event));
+									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -32356,9 +32412,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp().callbacks.events != nullptr)
+								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -32367,9 +32423,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp().callbacks.events != nullptr)
+								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp().callbacks.events(client->id, ::move(event));
+									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -32424,9 +32480,9 @@ namespace sctp {
 								// Получаем текущее значение объекта однорангового узла
 								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp().callbacks.events != nullptr)
+								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -32435,9 +32491,9 @@ namespace sctp {
 								// Получаем текущее значение объекта клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (node);
 								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp().callbacks.events != nullptr)
+								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp().callbacks.events(client->id, ::move(event));
+									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 							} break;
 						}
 						/**
@@ -32507,9 +32563,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp().callbacks.events != nullptr)
+									if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+										peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -32518,9 +32574,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp().callbacks.events != nullptr)
+									if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp().callbacks.events(client->id, ::move(event));
+										client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -32549,9 +32605,9 @@ namespace sctp {
 									// Получаем текущее значение объекта однорангового узла
 									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp().callbacks.events != nullptr)
+									if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp().callbacks.events(peer->id, ::move(event));
+										peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
 								} break;
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -32560,9 +32616,9 @@ namespace sctp {
 									// Получаем текущее значение объекта клиента
 									::io::client_t * client = awh_cast <::io::client_t *> (node);
 									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp().callbacks.events != nullptr)
+									if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp().callbacks.events(client->id, ::move(event));
+										client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
 								} break;
 							}
 							/**
@@ -32636,12 +32692,12 @@ namespace sctp {
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER):
 						// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-						::sctp::info(awh_cast <::io::peer_t *> (i->second.get())->transfer.sctpUse().info, result);
+						::sctp::info(awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.use().info, result);
 					break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT):
 						// Извлекаем информационные метаданные SCTP сообщения из однорангового узла
-						::sctp::info(awh_cast <::io::client_t *> (i->second.get())->transfer.sctpUse().info, result);
+						::sctp::info(awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.use().info, result);
 					break;
 					// Если узел является другим типом узла
 					default: {
@@ -32711,17 +32767,17 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(peer->state.protocol == event::protocol_t::SCTP){
 							// Выполняем зануление объекта информации SCTP
-							::memset(&peer->transfer.sctpUse().info, 0, sizeof(peer->transfer.sctpUse().info));
+							::memset(&peer->transfer.sctp.use().info, 0, sizeof(peer->transfer.sctp.use().info));
 							// Устанавливаем номер потока SCTP в результат работы функции
-							peer->transfer.sctpUse().info.sinfo_stream = info.num;
+							peer->transfer.sctp.use().info.sinfo_stream = info.num;
 							// Устанавливаем контекст сообщения SCTP в результат работы функции
-							peer->transfer.sctpUse().info.sinfo_context = info.ctx;
+							peer->transfer.sctp.use().info.sinfo_context = info.ctx;
 							// Устанавливаем время жизни сообщения SCTP в результат работы функции
-							peer->transfer.sctpUse().info.sinfo_timetolive = info.ttl;
+							peer->transfer.sctp.use().info.sinfo_timetolive = info.ttl;
 							// Устанавливаем тип полезной нагрузки SCTP сообщения
-							peer->transfer.sctpUse().info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
+							peer->transfer.sctp.use().info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
 							// Выполняем зануление флагов SCTP в результат работы функции
-							peer->transfer.sctpUse().info.sinfo_flags = 0;
+							peer->transfer.sctp.use().info.sinfo_flags = 0;
 							// Если флаги SCTP установлены
 							if(!info.flags.empty()){
 								/**
@@ -32735,47 +32791,47 @@ namespace sctp {
 										// Если установлен флаг EOF в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::STATUS_EOF):
 											// Устанавливаем флаг EOF в результат работы функции
-											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_EOF;
+											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_EOF;
 										break;
 										// Если установлен флаг ABORT в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::STATUS_ABORT):
 											// Устанавливаем флаг ABORT в результат работы функции
-											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_ABORT;
+											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_ABORT;
 										break;
 										// Если установлен флаг SENDALL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::SEND_ALL):
 											// Устанавливаем флаг SENDALL в результат работы функции
-											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_SENDALL;
+											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_SENDALL;
 										break;
 										// Если установлен флаг UNORDERED в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::DELIVERY_UNORDERED):
 											// Устанавливаем флаг UNORDERED в результат работы функции
-											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_UNORDERED;
+											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_UNORDERED;
 										break;
 										// Если установлен флаг ADDR_OVER в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::ADDR_OVER):
 											// Устанавливаем флаг ADDR_OVER в результат работы функции
-											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_ADDR_OVER;
+											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_ADDR_OVER;
 										break;
 										// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::SACK_IMMEDIATELY):
 											// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
+											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
 										break;
 										// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_TTL):
 											// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_TTL;
 										break;
 										// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_RTX):
 											// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_RTX;
 										break;
 										// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_PRIO):
 											// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-											peer->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
 										break;
 									}
 								}
@@ -32817,17 +32873,17 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(client->state.protocol == event::protocol_t::SCTP){
 							// Выполняем зануление объекта информации SCTP
-							::memset(&client->transfer.sctpUse().info, 0, sizeof(client->transfer.sctpUse().info));
+							::memset(&client->transfer.sctp.use().info, 0, sizeof(client->transfer.sctp.use().info));
 							// Устанавливаем номер потока SCTP в результат работы функции
-							client->transfer.sctpUse().info.sinfo_stream = info.num;
+							client->transfer.sctp.use().info.sinfo_stream = info.num;
 							// Устанавливаем контекст сообщения SCTP в результат работы функции
-							client->transfer.sctpUse().info.sinfo_context = info.ctx;
+							client->transfer.sctp.use().info.sinfo_context = info.ctx;
 							// Устанавливаем время жизни сообщения SCTP в результат работы функции
-							client->transfer.sctpUse().info.sinfo_timetolive = info.ttl;
+							client->transfer.sctp.use().info.sinfo_timetolive = info.ttl;
 							// Устанавливаем тип полезной нагрузки SCTP сообщения
-							client->transfer.sctpUse().info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
+							client->transfer.sctp.use().info.sinfo_ppid = static_cast <uint32_t> (info.ppid);
 							// Выполняем зануление флагов SCTP в результат работы функции
-							client->transfer.sctpUse().info.sinfo_flags = 0;
+							client->transfer.sctp.use().info.sinfo_flags = 0;
 							// Если флаги SCTP установлены
 							if(!info.flags.empty()){
 								/**
@@ -32841,47 +32897,47 @@ namespace sctp {
 										// Если установлен флаг EOF в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::STATUS_EOF):
 											// Устанавливаем флаг EOF в результат работы функции
-											client->transfer.sctpUse().info.sinfo_flags |= SCTP_EOF;
+											client->transfer.sctp.use().info.sinfo_flags |= SCTP_EOF;
 										break;
 										// Если установлен флаг ABORT в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::STATUS_ABORT):
 											// Устанавливаем флаг ABORT в результат работы функции
-											client->transfer.sctpUse().info.sinfo_flags |= SCTP_ABORT;
+											client->transfer.sctp.use().info.sinfo_flags |= SCTP_ABORT;
 										break;
 										// Если установлен флаг SENDALL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::SEND_ALL):
 											// Устанавливаем флаг SENDALL в результат работы функции
-											client->transfer.sctpUse().info.sinfo_flags |= SCTP_SENDALL;
+											client->transfer.sctp.use().info.sinfo_flags |= SCTP_SENDALL;
 										break;
 										// Если установлен флаг UNORDERED в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::DELIVERY_UNORDERED):
 											// Устанавливаем флаг UNORDERED в результат работы функции
-											client->transfer.sctpUse().info.sinfo_flags |= SCTP_UNORDERED;
+											client->transfer.sctp.use().info.sinfo_flags |= SCTP_UNORDERED;
 										break;
 										// Если установлен флаг ADDR_OVER в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::ADDR_OVER):
 											// Устанавливаем флаг ADDR_OVER в результат работы функции
-											client->transfer.sctpUse().info.sinfo_flags |= SCTP_ADDR_OVER;
+											client->transfer.sctp.use().info.sinfo_flags |= SCTP_ADDR_OVER;
 										break;
 										// Если установлен флаг SACK_IMMEDIATELY в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::SACK_IMMEDIATELY):
 											// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
-											client->transfer.sctpUse().info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
+											client->transfer.sctp.use().info.sinfo_flags |= SCTP_SACK_IMMEDIATELY;
 										break;
 										// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_TTL):
 											// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-											client->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+											client->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_TTL;
 										break;
 										// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_RTX):
 											// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-											client->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+											client->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_RTX;
 										break;
 										// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_PRIO):
 											// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-											client->transfer.sctpUse().info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+											client->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
 										break;
 									}
 								}
@@ -32992,7 +33048,7 @@ namespace sctp {
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 									// Устанавливаем идентификатор ассоциации SCTP
-									result.id = peer->transfer.sctpUse().id;
+									result.id = peer->transfer.sctp.use().id;
 									// Инициализируем рукопожатие SCTP для клиента
 									this->_eth.sctp.status(peer->transfer.fd, result);
 								} break;
@@ -33071,7 +33127,7 @@ namespace sctp {
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 									// Устанавливаем идентификатор ассоциации SCTP
-									result.id = client->transfer.sctpUse().id;
+									result.id = client->transfer.sctp.use().id;
 									// Инициализируем рукопожатие SCTP для клиента
 									this->_eth.sctp.status(client->transfer.fd, result);
 								} break;
@@ -33366,11 +33422,11 @@ namespace sctp {
 					// Если узел является одноранговым узлом
 					case static_cast <uint8_t> (event::node_t::PEER):
 						// Получаем опции подписки SCTP событий
-						return awh_cast <::io::peer_t *> (i->second.get())->transfer.sctpUse().events;
+						return awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.use().events;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT):
 						// Получаем опции подписки SCTP событий
-						return awh_cast <::io::client_t *> (i->second.get())->transfer.sctpUse().events;
+						return awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.use().events;
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER):
 						// Получаем опции подписки SCTP событий
@@ -33427,7 +33483,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(client->state.protocol == event::protocol_t::SCTP)
 							// Устанавливаем опции подписки SCTP событий
-							client->transfer.sctpUse().events = events;
+							client->transfer.sctp.use().events = events;
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -33566,9 +33622,9 @@ namespace sctp {
 									break;
 								}
 								// Получаем значение таймаута SCTP события
-								return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctpUse().id, type, &endpoint);
+								return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.use().id, type, &endpoint);
 							// Получаем значение таймаута SCTP события
-							} else return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctpUse().id, type);
+							} else return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.use().id, type);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -33608,9 +33664,9 @@ namespace sctp {
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT)
 								// Получаем значение таймаута SCTP события
-								return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctpUse().id, type, &client->endpoint.server);
+								return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.use().id, type, &client->endpoint.server);
 							// Получаем значение таймаута SCTP события
-							else return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctpUse().id, type);
+							else return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.use().id, type);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -33756,9 +33812,9 @@ namespace sctp {
 									break;
 								}
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctpUse().id, type, timeout, &endpoint);
+								return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.use().id, type, timeout, &endpoint);
 							// Устанавливаем значение таймаута SCTP события
-							} else return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctpUse().id, type, timeout);
+							} else return this->_eth.sctp.timeout(peer->transfer.fd, peer->transfer.sctp.use().id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -33798,9 +33854,9 @@ namespace sctp {
 							// Если тип таймаута является HEARTBEAT
 							if(type == net::sctp::timeout_t::HEARTBEAT)
 								// Устанавливаем значение таймаута SCTP события
-								return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctpUse().id, type, timeout, &client->endpoint.server);
+								return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.use().id, type, timeout, &client->endpoint.server);
 							// Устанавливаем значение таймаута SCTP события
-							else return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctpUse().id, type, timeout);
+							else return this->_eth.sctp.timeout(client->transfer.fd, client->transfer.sctp.use().id, type, timeout);
 						// Если протокол интернета не установлен как SCTP
 						} else {
 							// Если установлена функция обратного вызова
@@ -34056,11 +34112,11 @@ namespace sctp {
 								// Если необходимо активировать ключ аутентификации SCTP сокета
 								case static_cast <uint8_t> (event::mode_t::ENABLED):
 									// Активируем ключ аутентификации SCTP сокета
-									return this->_eth.sctp.authenticateKey(client->transfer.fd, net::socket_mode_t::ENABLED, client->transfer.sctpUse().id, num);
+									return this->_eth.sctp.authenticateKey(client->transfer.fd, net::socket_mode_t::ENABLED, client->transfer.sctp.use().id, num);
 								// Если необходимо деактивировать ключ аутентификации SCTP сокета
 								case static_cast <uint8_t> (event::mode_t::DISABLED):
 									// Деактивируем ключ аутентификации SCTP сокета
-									return this->_eth.sctp.authenticateKey(client->transfer.fd, net::socket_mode_t::DISABLED, client->transfer.sctpUse().id, num);
+									return this->_eth.sctp.authenticateKey(client->transfer.fd, net::socket_mode_t::DISABLED, client->transfer.sctp.use().id, num);
 							}
 						// Если протокол интернета не установлен как SCTP
 						} else {
@@ -34323,7 +34379,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(peer->state.protocol == event::protocol_t::SCTP)
 							// Извлекаем чанки аутентификации SCTP сокета
-							return this->_eth.sctp.authenticateChunks(peer->transfer.fd, origin, peer->transfer.sctpUse().id, chunks);
+							return this->_eth.sctp.authenticateChunks(peer->transfer.fd, origin, peer->transfer.sctp.use().id, chunks);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -34361,7 +34417,7 @@ namespace sctp {
 						// Если протокол интернета установлен как SCTP
 						if(client->state.protocol == event::protocol_t::SCTP)
 							// Извлекаем чанки аутентификации SCTP сокета
-							return this->_eth.sctp.authenticateChunks(client->transfer.fd, origin, client->transfer.sctpUse().id, chunks);
+							return this->_eth.sctp.authenticateChunks(client->transfer.fd, origin, client->transfer.sctp.use().id, chunks);
 						// Если протокол интернета не установлен как SCTP
 						else {
 							// Если установлена функция обратного вызова
@@ -34644,12 +34700,12 @@ namespace sctp {
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER):
 							// Устанавливаем функцию обратного вызова для получения метаданных SCTP-сообщения
-							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctpUse().callbacks.info = ::move(cb);
+							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.use().callbacks.info = ::move(cb);
 						break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Устанавливаем функцию обратного вызова для получения метаданных SCTP-сообщения
-							awh_cast <::io::client_t *> (i->second.get())->transfer.sctpUse().callbacks.info = ::move(cb);
+							awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.use().callbacks.info = ::move(cb);
 						break;
 						// Для других типов узлов
 						default: {
@@ -34718,12 +34774,12 @@ namespace sctp {
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER):
 							// Устанавливаем функцию обратного вызова для получения SCTP-событий
-							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctpUse().callbacks.events = ::move(cb);
+							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.use().callbacks.events = ::move(cb);
 						break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Устанавливаем функцию обратного вызова для получения SCTP-событий
-							awh_cast <::io::client_t *> (i->second.get())->transfer.sctpUse().callbacks.events = ::move(cb);
+							awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.use().callbacks.events = ::move(cb);
 						break;
 						// Для других типов узлов
 						default: {
@@ -36688,7 +36744,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если событие принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
-																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctpUse().events);
+																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.use().events);
 															break;
 														}
 													}
@@ -37273,7 +37329,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если событие принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
-																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctpUse().events);
+																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.use().events);
 															break;
 														}
 													}
@@ -57416,7 +57472,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 															}
 														}
 														// Если подключение к удаленному серверу не выполнено
-														if(!(result = (::sctp_connectx(client->transfer.fd, &addrs[0], addrs.size(), &client->transfer.sctpUse().id) == 0))){
+														if(!(result = (::sctp_connectx(client->transfer.fd, &addrs[0], addrs.size(), &client->transfer.sctp.use().id) == 0))){
 															// Если ошибка не является ошибкой в процессе подключения
 															if(!(result = (errno == EINPROGRESS))){
 																// Если установлена функция обратного вызова
@@ -65574,7 +65630,7 @@ void awh::engine::IO::clear() noexcept {
 						 */
 						#if __FreeBSD__
 							// Сбрасываем числовые параметры SCTP, сохраняя обратные связи
-							client->transfer.sctpReset();
+							client->transfer.sctp.reset();
 						#endif
 						/**
 						 * Определяем тип таймера для событий сетевого движка
