@@ -38,7 +38,7 @@ static void setup(awh::unit::portmap_t & portmap) noexcept {
 	// Устанавливаем вид опроса маршрутизатора
 	portmap.setType(awh::unit::portmap_t::type_t::UPNP);
 	// Устанавливаем сетевое устройство петли, которым ведётся обмен
-	portmap.setIface("lo0");
+	portmap.setIface(LOOPBACK_IFACE);
 	// Устанавливаем срок ожидания ответа устройства
 	portmap.setTimeout(600);
 	// Устанавливаем количество попыток обращения к устройству

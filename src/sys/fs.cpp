@@ -806,11 +806,32 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
 			/**
 			 * Для операционной системы MS Windows
 			 */
+			/**
+			 * Для операционной системы MS Windows
+			 *
+			 * @details Жёсткая ссылка у MS Windows своя и настоящая: CreateHardLinkW
+			 *          заводит на файловой системе NTFS вторую запись каталога, ведущую
+			 *          к тем же данным, - ровно то же, что делает link у POSIX. Особых
+			 *          полномочий она не требует, в отличие от ссылки символьной
+			 *
+			 * @note Ярлык оболочки остаётся здесь запасным ходом, и лишь им: жёсткая
+			 *       ссылка невозможна поверх FAT и exFAT, а равно между разными томами -
+			 *       обе записи обязаны лежать на одном. Там, где система отвечает
+			 *       отказом, заводится ярлык - тем сохраняется прежнее поведение вызова
+			 *
+			 */
 			#else
 				// Если адрес на который нужно создать ссылку существует
-				if(this->type(first) != type_t::NONE)
-					// Выполняем создание обычный ярлык
-					this->symlink(first, second);
+				if(this->type(first) != type_t::NONE){
+					// Получаем полный адрес файла, на который ведёт ссылка
+					const wstring & target = this->_fmk->convert(this->fullpath(first, true));
+					// Получаем полный адрес создаваемой ссылки
+					const wstring & filename = this->_fmk->convert(this->fullpath(second, true));
+					// Выполняем создание жёсткой ссылки средствами системы
+					if(!::CreateHardLinkW(filename.c_str(), target.c_str(), nullptr))
+						// Если система жёсткую ссылку завести не смогла - заводим ярлык
+						this->symlink(first, second);
+				}
 			#endif
 		/**
 		 * Если возникает ошибка

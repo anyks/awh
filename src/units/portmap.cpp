@@ -121,6 +121,12 @@ awh::unit::Portmap::Mapping::Mapping() noexcept :
 awh::unit::Portmap::Exchange::Exchange() noexcept : waiting(false), attempt(0), eid(0) {}
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::unit::Portmap::Epoch::Epoch() noexcept : filled(false), value(0), stamp(0) {}
+
+/**
  * @brief Метод обработки ошибок событий обмена с маршрутизатором
  *
  * @param eid         идентификатор события обмена
@@ -198,6 +204,15 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					// Завершаем обработку ответа
 					return;
 				}
+				/**
+				 * Выполняем сверку отсчёта времени работы маршрутизатора
+				 *
+				 * @note Сверяется отсчёт у каждого разобранного ответа, а не только у
+				 *       ответа на свою просьбу: договор предписывает именно так, и ответ
+				 *       на чужую просьбу приходит от того же маршрутизатора. Обмена сверка
+				 *       не прерывает - об утрате состояния она лишь объявляет
+				 */
+				this->lost(type, answer.epoch);
 				/**
 				 * Если ответ отправленной просьбе не принадлежит
 				 *
@@ -330,6 +345,14 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					// Завершаем обработку ответа
 					return;
 				}
+				/**
+				 * Выполняем сверку отсчёта времени работы маршрутизатора
+				 *
+				 * @note Сверяется отсчёт у каждого разобранного ответа, как и по договору
+				 *       PCP: отсчёт несут оба вида ответа этого договора - и о внешнем
+				 *       адресе, и о перенаправлении
+				 */
+				this->lost(type, answer.epoch);
 				/**
 				 * Если маршрутизатор ответил отказом
 				 */
@@ -2706,6 +2729,98 @@ bool awh::unit::Portmap::perform(const action_t action, const mapping_t & mappin
 	return result;
 }
 /**
+ * @brief Метод сверки отсчёта времени работы маршрутизатора
+ *
+ * @param type  договор перенаправления, по которому получен ответ
+ * @param epoch отсчёт времени работы маршрутизатора из ответа
+ * @return      признак того, что маршрутизатор утратил своё состояние
+ *
+ */
+bool awh::unit::Portmap::lost(const type_t type, const uint32_t epoch) noexcept {
+	// Отсчёт времени работы маршрутизатора по нужному договору
+	epoch_t & record = ((type == type_t::PCP) ? this->_epochPCP : this->_epochNATPMP);
+	// Получаем время получения ответа по часам этой машины
+	const uint64_t stamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+	/**
+	 * Если отсчёт получен впервые
+	 *
+	 * @note Сверять первый отсчёт не с чем: он лишь запоминается, и утратой это не
+	 *       считается. Тем же ходом обходится и запуск после перезагрузки маршрутизатора -
+	 *       заводить нам к этому времени ещё нечего
+	 */
+	if(!record.filled){
+		// Запоминаем полученный отсчёт
+		record.filled = true;
+		// Запоминаем значение отсчёта
+		record.value = epoch;
+		// Запоминаем время получения отсчёта
+		record.stamp = stamp;
+		// Состояние маршрутизатором не утрачено
+		return false;
+	}
+	/**
+	 * Считаем, на сколько отсчёт вырос и сколько времени прошло по часам этой машины
+	 *
+	 * @note Считается в секундах и с защитой от хода часов вспять: перевод времени
+	 *       машины назад дал бы отрицательную разницу, а она здесь беззнаковая
+	 */
+	const uint64_t elapsed = ((stamp > record.stamp) ? ((stamp - record.stamp) / 1000) : 0);
+	// Определяем прирост отсчёта маршрутизатора
+	const uint64_t growth = ((epoch >= record.value) ? static_cast <uint64_t> (epoch - record.value) : 0);
+	/**
+	 * Определяем, утратил ли маршрутизатор своё состояние
+	 *
+	 * @details Отсчёт, пошедший вспять, означает утрату сам по себе. Отставший же
+	 *          сверяется с допуском RFC 6886: прощается одна шестнадцатая прошедшего
+	 *          времени и ещё две секунды сверху - столько расходятся часы двух машин,
+	 *          но не столько теряет перезагрузившийся маршрутизатор
+	 */
+	const bool result = ((epoch < record.value) || ((growth + 2) < (elapsed - (elapsed / 16))));
+	// Запоминаем значение отсчёта
+	record.value = epoch;
+	// Запоминаем время получения отсчёта
+	record.stamp = stamp;
+	/**
+	 * Если маршрутизатор своё состояние утратил
+	 */
+	if(result){
+		// Выполняем получение идентификатора функции обратного вызова
+		const callback_t::id_t fid = this->_callback.id("reset");
+		/**
+		 * Если функция обратного вызова установлена
+		 */
+		if(this->_callback.is(fid))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const type_t)> (fid, type);
+		/**
+		 * Если функция обратного вызова не установлена
+		 */
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем сообщение в лог
+				this->_log->debug(
+					"Router has lost its port mapping state (protocol: %u)",
+					__PRETTY_FUNCTION__,
+					make_tuple(static_cast <uint16_t> (type)),
+					log_t::flag_t::WARNING,
+					static_cast <uint16_t> (type)
+				);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем сообщение в лог
+				this->_log->print("Router has lost its port mapping state (protocol: %u)", log_t::flag_t::WARNING, static_cast <uint16_t> (type));
+			#endif
+		}
+	}
+	// Выводим признак утраты состояния маршрутизатором
+	return result;
+}
+/**
  * @brief Метод завершения обмена отказом
  *
  * @param type  договор перенаправления, по которому вёлся обмен
@@ -2865,6 +2980,8 @@ void awh::unit::Portmap::callback(const callback_t & callback) noexcept {
 	this->_callback.set("mappings", callback);
 	// Выполняем установку функции обратного вызова для отказа перенаправления
 	this->_callback.set("failure", callback);
+	// Выполняем установку функции обратного вызова для утраты состояния маршрутизатором
+	this->_callback.set("reset", callback);
 }
 /**
  * @brief Метод получения вида опроса маршрутизатора
