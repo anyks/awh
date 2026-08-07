@@ -172,6 +172,20 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             COMMENT "Running ${NAME} benchmarks with system call accounting"
         )
+    # Если сборка производится под операционную систему Linux
+    elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+        # Та же цель для Linux. Отличается она одним - именем переменной окружения,
+        # которой загрузчик внедряет подставную библиотеку: у dyld это
+        # DYLD_INSERT_LIBRARIES, у загрузчика ELF - LD_PRELOAD
+        add_custom_target(
+            benchmark-${NAME}-syscalls
+            COMMAND ${CMAKE_COMMAND} -E env
+                LD_PRELOAD=${CMAKE_BINARY_DIR}/benchmarks/libsyscount${CMAKE_SHARED_LIBRARY_SUFFIX}
+                ${CMAKE_BINARY_DIR}/benchmarks/${NAME}
+            DEPENDS ${PROJECT_NAME}${POSTFIX} awh_BENCHMARK_syscount
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Running ${NAME} benchmarks with system call accounting"
+        )
     endif()
 # Если не нужно собрать бенчмарки
 else()

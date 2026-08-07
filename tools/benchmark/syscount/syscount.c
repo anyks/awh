@@ -57,6 +57,17 @@
 #if !__linux__
 	#include <sys/sysctl.h>
 #endif
+
+/**
+ * Заголовочные файлы механизма подмены через LD_PRELOAD и очереди опроса Linux
+ *
+ * @note Разыскание подлинных функций нужно лишь этому способу подмены: у macOS
+ *       подлинная функция остаётся доступной по своему имени
+ */
+#if __linux__
+	#include <dlfcn.h>
+	#include <sys/epoll.h>
+#endif
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 #include <netinet/in.h>
@@ -76,14 +87,25 @@
 /**
  * @brief Признак поддержки перехвата на текущей платформе
  *
- * @details Перехват выполняется разделом `__interpose` загрузчика dyld, то есть
- *          доступен на macOS. Остальные системы подменяют символы совпадением
- *          имени при загрузке через `LD_PRELOAD`, и для них потребуется
- *          отдельная реализация: заводить её до появления самого движка под эти
- *          системы бессмысленно, потому что измерять там пока нечего
+ * @details Способов подмены два, и они не похожи один на другой.
+ *
+ *          macOS подменяет разделом `__interpose` загрузчика dyld: в объект кладётся
+ *          таблица пар «подмена, подменяемое», и загрузчик переписывает переходы во
+ *          всех прочих объектах. Подлинная функция при этом остаётся доступной по
+ *          своему имени, и разыскивать её не требуется.
+ *
+ *          Linux подменяет совпадением имени при загрузке через `LD_PRELOAD`:
+ *          подменяющая функция **носит то же имя**, что и подменяемая, и получает
+ *          перед нею предпочтение. Подлинная функция по имени становится недоступна -
+ *          вместо неё звалась бы сама подмена, - и добывается она разысканием в
+ *          следующем объекте загрузки (`RTLD_NEXT`)
+ *
+ * @note Прочие системы остаются без перехвата. BSD подменяют тем же способом, что и
+ *       Linux, и завести их будет нетрудно - но проверять это следует замером на них
+ *       самих, а не рассуждением по сходству
  *
  */
-#if __APPLE__
+#if __APPLE__ || __linux__
 	#define AWH_SYSCOUNT_SUPPORTED 1
 #else
 	#define AWH_SYSCOUNT_SUPPORTED 0
@@ -318,10 +340,96 @@ static void __awh_initialize__(void){
  *          своему имени, поэтому получать её через `dlsym` не требуется
  *
  */
-#define AWH_SYSCOUNT_BIND(name) \
-	__attribute__((used)) static struct { const void * replacement; const void * replacee; } \
-	__awh_interpose_##name __attribute__((section("__DATA,__interpose"))) = \
-	{ (const void *) (uintptr_t) &__awh_##name##__, (const void *) (uintptr_t) &name };
+#if __APPLE__
+	#define AWH_SYSCOUNT_BIND(name) \
+		__attribute__((used)) static struct { const void * replacement; const void * replacee; } \
+		__awh_interpose_##name __attribute__((section("__DATA,__interpose"))) = \
+		{ (const void *) (uintptr_t) &__awh_##name##__, (const void *) (uintptr_t) &name };
+	/**
+	 * @brief Имя подменяющей функции
+	 *
+	 * @note Загрузчик берёт подмену из таблицы, а не по имени, поэтому имя ей годится
+	 *       любое собственное - и оно намеренно отлично от подменяемого
+	 *
+	 */
+	#define AWH_SYSCOUNT_HOOK(name) __awh_##name##__
+	/**
+	 * @brief Обращение к подлинной функции
+	 *
+	 * @note Подлинная функция остаётся доступной по своему имени: таблица переписывает
+	 *       переходы прочих объектов, а не саму подставную библиотеку
+	 *
+	 */
+	#define AWH_SYSCOUNT_REAL(name) name
+	// Признак необходимости разыскания подлинных функций
+	#define AWH_SYSCOUNT_RESOLVE 0
+#else
+	/**
+	 * @brief Макрос привязки подменяющей функции к подменяемой
+	 *
+	 * @details Привязки как отдельного действия здесь нет вовсе: подменяющая функция
+	 *          носит имя подменяемой, и предпочтение ей отдаёт сам компоновщик времени
+	 *          загрузки. Макрос заводит указатель на подлинную функцию - её и
+	 *          разыскивает конструктор библиотеки
+	 *
+	 */
+	#define AWH_SYSCOUNT_BIND(name) /* привязка выполняется совпадением имени */
+	/**
+	 * @brief Имя подменяющей функции
+	 *
+	 * @note Имя обязано в точности совпадать с подменяемым, иначе подмены не выйдет
+	 *       вовсе, и видимость обязана быть открытой: библиотека собирается со
+	 *       скрытой по умолчанию, а скрытый символ подменять нечего
+	 *
+	 */
+	#define AWH_SYSCOUNT_HOOK(name) __attribute__((visibility("default"))) name
+	/**
+	 * @brief Обращение к подлинной функции
+	 *
+	 * @note Зовётся через указатель: по имени зовётся сама подмена, и обращение к нему
+	 *       ушло бы в бесконечное самоповторение
+	 *
+	 */
+	#define AWH_SYSCOUNT_REAL(name) __awh_real_##name
+	// Признак необходимости разыскания подлинных функций
+	#define AWH_SYSCOUNT_RESOLVE 1
+#endif
+
+/**
+ * @brief Макрос объявления указателя на подлинную функцию
+ *
+ * @details Заводится лишь там, где подлинная функция по имени недоступна. У macOS
+ *          макрос пуст: обращение к подлинной идёт прямо по имени
+ *
+ */
+#if AWH_SYSCOUNT_RESOLVE
+	#define AWH_SYSCOUNT_DECLARE(type, name, parameters) static type (* __awh_real_##name) parameters = NULL;
+	/**
+	 * @brief Макрос разыскания подлинной функции в следующем объекте загрузки
+	 *
+	 * @note Разыскание выполняется конструктором, до первого перехваченного обращения:
+	 *       разыскивать при первом обращении значило бы звать `dlsym` с горячего пути,
+	 *       а он и сам обращается к перехватываемым функциям
+	 *
+	 */
+	#define AWH_SYSCOUNT_RESOLVE_ONE(name) \
+		* (void **) (& __awh_real_##name) = dlsym(RTLD_NEXT, #name);
+	/**
+	 * @brief Макрос страховки на случай обращения прежде разыскания
+	 *
+	 * @note Конструкторы прочих объектов загрузки вправе обратиться к перехваченной
+	 *       функции раньше, чем отработает наш, и указатель окажется пуст. Сличение
+	 *       это стоит одного обращения к памяти и бережёт от падения на пустом
+	 *       указателе - расход неотличим от нуля рядом с самим системным вызовом
+	 *
+	 */
+	#define AWH_SYSCOUNT_ENSURE(name) \
+		if(__awh_real_##name == NULL) AWH_SYSCOUNT_RESOLVE_ONE(name)
+#else
+	#define AWH_SYSCOUNT_DECLARE(type, name, parameters)
+	#define AWH_SYSCOUNT_RESOLVE_ONE(name)
+	#define AWH_SYSCOUNT_ENSURE(name)
+#endif
 
 /**
  * @brief Макрос объявления подменяющей функции с учётом вызова
@@ -332,12 +440,14 @@ static void __awh_initialize__(void){
  *
  */
 #define AWH_SYSCOUNT_WRAP(kind, type, name, parameters, arguments) \
-	static type __awh_##name##__ parameters { \
+	AWH_SYSCOUNT_DECLARE(type, name, parameters) \
+	type AWH_SYSCOUNT_HOOK(name) parameters { \
+		AWH_SYSCOUNT_ENSURE(name) \
 		if(!__awh_syscount__.enabled || (__awh_depth__ > 0)) \
-			return name arguments; \
+			return AWH_SYSCOUNT_REAL(name) arguments; \
 		__awh_depth__++; \
 		const uint64_t start = __awh_nanostamp__(); \
-		type result = name arguments; \
+		type result = AWH_SYSCOUNT_REAL(name) arguments; \
 		__awh_syscount__.entries[kind].nanoseconds += (__awh_nanostamp__() - start); \
 		__awh_syscount__.entries[kind].calls++; \
 		__awh_depth__--; \
@@ -359,7 +469,10 @@ static void __awh_initialize__(void){
  * @return         файловый дескриптор сокета либо признак ошибки
  *
  */
-static int32_t __awh_socket__(int32_t domain, int32_t type, int32_t protocol){
+AWH_SYSCOUNT_DECLARE(int32_t, socket, (int32_t domain, int32_t type, int32_t protocol))
+int32_t AWH_SYSCOUNT_HOOK(socket)(int32_t domain, int32_t type, int32_t protocol){
+	// Разыскиваем подлинную функцию, если конструктор ещё не отработал
+	AWH_SYSCOUNT_ENSURE(socket)
 	// Если требуется выключить пробное подключение дейтаграммным сокетом
 	if((__awh_syscount__.disabled & AWH_SYSCOUNT_DISABLE_UDP_PROBE)
 	 && ((domain == AF_INET) || (domain == AF_INET6))
@@ -372,13 +485,13 @@ static int32_t __awh_socket__(int32_t domain, int32_t type, int32_t protocol){
 	// Если учёт вызовов не ведётся
 	if(!__awh_syscount__.enabled || (__awh_depth__ > 0))
 		// Выполняем создание сокета
-		return socket(domain, type, protocol);
+		return AWH_SYSCOUNT_REAL(socket)(domain, type, protocol);
 	// Увеличиваем глубину вложенности перехваченных вызовов
 	__awh_depth__++;
 	// Запоминаем время начала вызова
 	const uint64_t start = __awh_nanostamp__();
 	// Выполняем создание сокета
-	const int32_t result = socket(domain, type, protocol);
+	const int32_t result = AWH_SYSCOUNT_REAL(socket)(domain, type, protocol);
 	// Суммируем время, проведённое в вызове
 	__awh_syscount__.entries[AWH_SYSCOUNT_SOCKET].nanoseconds += (__awh_nanostamp__() - start);
 	// Считаем выполненный вызов
@@ -390,6 +503,12 @@ static int32_t __awh_socket__(int32_t domain, int32_t type, int32_t protocol){
 }
 AWH_SYSCOUNT_BIND(socket)
 
+/**
+ * Перехват запроса параметров ядра
+ *
+ * @note Вызова этого у Linux нет вовсе - перехватывать там нечего
+ */
+#if !__linux__
 /**
  * @brief Подменяющая функция запроса параметров ядра
  *
@@ -407,7 +526,8 @@ AWH_SYSCOUNT_BIND(socket)
  * @return          результат выполнения запроса
  *
  */
-static int32_t __awh_sysctl__(int32_t * name, u_int length, void * output, size_t * outlength, void * input, size_t inlength){
+AWH_SYSCOUNT_DECLARE(int32_t, sysctl, (int32_t * name, u_int length, void * output, size_t * outlength, void * input, size_t inlength))
+int32_t AWH_SYSCOUNT_HOOK(sysctl)(int32_t * name, u_int length, void * output, size_t * outlength, void * input, size_t inlength){
 	// Если требуется выключить обращения к маршрутной таблице
 	if((__awh_syscount__.disabled & AWH_SYSCOUNT_DISABLE_ROUTE)
 	 && (length >= 2) && (name != NULL) && (name[1] == PF_ROUTE)){
@@ -419,13 +539,13 @@ static int32_t __awh_sysctl__(int32_t * name, u_int length, void * output, size_
 	// Если учёт вызовов не ведётся
 	if(!__awh_syscount__.enabled || (__awh_depth__ > 0))
 		// Выполняем запрос параметров ядра
-		return sysctl(name, length, output, outlength, input, inlength);
+		return AWH_SYSCOUNT_REAL(sysctl)(name, length, output, outlength, input, inlength);
 	// Увеличиваем глубину вложенности перехваченных вызовов
 	__awh_depth__++;
 	// Запоминаем время начала вызова
 	const uint64_t start = __awh_nanostamp__();
 	// Выполняем запрос параметров ядра
-	const int32_t result = sysctl(name, length, output, outlength, input, inlength);
+	const int32_t result = AWH_SYSCOUNT_REAL(sysctl)(name, length, output, outlength, input, inlength);
 	// Суммируем время, проведённое в вызове
 	__awh_syscount__.entries[AWH_SYSCOUNT_SYSCTL].nanoseconds += (__awh_nanostamp__() - start);
 	// Считаем выполненный вызов
@@ -436,6 +556,7 @@ static int32_t __awh_sysctl__(int32_t * name, u_int length, void * output, size_
 	return result;
 }
 AWH_SYSCOUNT_BIND(sysctl)
+#endif // !__linux__
 
 /**
  * @brief Подменяющая функция приёма данных из сокета
@@ -454,7 +575,10 @@ AWH_SYSCOUNT_BIND(sysctl)
  * @return       количество принятых октетов либо признак ошибки
  *
  */
-static ssize_t __awh_recv__(int32_t fd, void * buffer, size_t length, int32_t flags){
+AWH_SYSCOUNT_DECLARE(ssize_t, recv, (int32_t fd, void * buffer, size_t length, int32_t flags))
+ssize_t AWH_SYSCOUNT_HOOK(recv)(int32_t fd, void * buffer, size_t length, int32_t flags){
+	// Разыскиваем подлинную функцию, если конструктор ещё не отработал
+	AWH_SYSCOUNT_ENSURE(recv)
 	// Признак учёта дескриптора в таблице коротких чтений
 	const int32_t tracked = ((fd >= 0) && (fd < (int32_t) (sizeof(__awh_shortened__) / sizeof(__awh_shortened__[0]))));
 	// Если требуется выключить повторное чтение после короткого
@@ -471,7 +595,7 @@ static ssize_t __awh_recv__(int32_t fd, void * buffer, size_t length, int32_t fl
 	// Если учёт вызовов не ведётся
 	if(!__awh_syscount__.enabled || (__awh_depth__ > 0))
 		// Выполняем приём данных из сокета
-		result = recv(fd, buffer, length, flags);
+		result = AWH_SYSCOUNT_REAL(recv)(fd, buffer, length, flags);
 	// Если учёт вызовов ведётся
 	else {
 		// Увеличиваем глубину вложенности перехваченных вызовов
@@ -479,7 +603,7 @@ static ssize_t __awh_recv__(int32_t fd, void * buffer, size_t length, int32_t fl
 		// Запоминаем время начала вызова
 		const uint64_t start = __awh_nanostamp__();
 		// Выполняем приём данных из сокета
-		result = recv(fd, buffer, length, flags);
+		result = AWH_SYSCOUNT_REAL(recv)(fd, buffer, length, flags);
 		// Суммируем время, проведённое в вызове
 		__awh_syscount__.entries[AWH_SYSCOUNT_RECV].nanoseconds += (__awh_nanostamp__() - start);
 		// Считаем выполненный вызов
@@ -496,6 +620,13 @@ static ssize_t __awh_recv__(int32_t fd, void * buffer, size_t length, int32_t fl
 }
 AWH_SYSCOUNT_BIND(recv)
 
+/**
+ * Перехват ожидания готовности событий у kqueue
+ *
+ * @note Вызов этот принадлежит BSD и macOS. Правки подписок уходят у него тем же
+ *       вызовом, что и ожидание, оттого оба и учитываются одной разновидностью
+ */
+#if __APPLE__
 /**
  * @brief Подменяющая функция ожидания готовности событий
  *
@@ -514,11 +645,12 @@ AWH_SYSCOUNT_BIND(recv)
  * @return          количество готовых событий либо признак ошибки
  *
  */
-static int32_t __awh_kevent__(int32_t fd, const struct kevent * changes, int32_t nchanges, struct kevent * events, int32_t nevents, const struct timespec * timeout){
+AWH_SYSCOUNT_DECLARE(int32_t, kevent, (int32_t fd, const struct kevent * changes, int32_t nchanges, struct kevent * events, int32_t nevents, const struct timespec * timeout))
+int32_t AWH_SYSCOUNT_HOOK(kevent)(int32_t fd, const struct kevent * changes, int32_t nchanges, struct kevent * events, int32_t nevents, const struct timespec * timeout){
 	// Если учёт вызовов не ведётся
 	if(!__awh_syscount__.enabled || (__awh_depth__ > 0))
 		// Выполняем ожидание готовности событий
-		return kevent(fd, changes, nchanges, events, nevents, timeout);
+		return AWH_SYSCOUNT_REAL(kevent)(fd, changes, nchanges, events, nevents, timeout);
 	// Увеличиваем глубину вложенности перехваченных вызовов
 	__awh_depth__++;
 	// Если ядру передаются изменения подписки
@@ -533,7 +665,7 @@ static int32_t __awh_kevent__(int32_t fd, const struct kevent * changes, int32_t
 	// Запоминаем время начала вызова
 	const uint64_t start = __awh_nanostamp__();
 	// Выполняем ожидание готовности событий
-	const int32_t result = kevent(fd, changes, nchanges, events, nevents, timeout);
+	const int32_t result = AWH_SYSCOUNT_REAL(kevent)(fd, changes, nchanges, events, nevents, timeout);
 	// Суммируем время, проведённое в вызове
 	__awh_syscount__.entries[AWH_SYSCOUNT_POLL].nanoseconds += (__awh_nanostamp__() - start);
 	// Считаем выполненный вызов
@@ -544,6 +676,43 @@ static int32_t __awh_kevent__(int32_t fd, const struct kevent * changes, int32_t
 	return result;
 }
 AWH_SYSCOUNT_BIND(kevent)
+#endif // __APPLE__
+
+/**
+ * Перехват очереди опроса Linux
+ *
+ * @note Учитываются обе её стороны - ожидание и правка подписок - одной
+ *       разновидностью. У kqueue они и вовсе выполняются одним вызовом, и сведение
+ *       их вместе здесь тому и служит: показатель обращений к очереди опроса
+ *       остаётся сопоставим между платформами, а не считает разное разным числом
+ */
+#if __linux__
+	/**
+	 * @brief Подменяющая функция ожидания готовности событий
+	 *
+	 * @param fd      дескриптор очереди опроса
+	 * @param events  массив, в который складываются полученные события
+	 * @param count   ёмкость массива событий
+	 * @param timeout срок ожидания в миллисекундах
+	 * @return        количество полученных событий
+	 *
+	 */
+	AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_POLL, int32_t, epoll_wait,
+	 (int32_t fd, struct epoll_event * events, int32_t count, int32_t timeout), (fd, events, count, timeout))
+
+	/**
+	 * @brief Подменяющая функция правки подписки в очереди опроса
+	 *
+	 * @param fd    дескриптор очереди опроса
+	 * @param op    выполняемое действие
+	 * @param sock  дескриптор, подписка которого правится
+	 * @param event набор признаков ожидания
+	 * @return      результат правки
+	 *
+	 */
+	AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_POLL, int32_t, epoll_ctl,
+	 (int32_t fd, int32_t op, int32_t sock, struct epoll_event * event), (fd, op, sock, event))
+#endif // __linux__
 
 /**
  * @brief Подменяющая функция управления файловым дескриптором
@@ -558,7 +727,10 @@ AWH_SYSCOUNT_BIND(kevent)
  * @return        результат выполнения команды
  *
  */
-static int32_t __awh_fcntl__(int32_t fd, int32_t command, ...){
+AWH_SYSCOUNT_DECLARE(int32_t, fcntl, (int32_t fd, int32_t command, ...))
+int32_t AWH_SYSCOUNT_HOOK(fcntl)(int32_t fd, int32_t command, ...){
+	// Разыскиваем подлинную функцию, если конструктор ещё не отработал
+	AWH_SYSCOUNT_ENSURE(fcntl)
 	// Список параметров переменной длины
 	va_list arguments;
 	// Открываем список параметров переменной длины
@@ -570,13 +742,13 @@ static int32_t __awh_fcntl__(int32_t fd, int32_t command, ...){
 	// Если учёт вызовов не ведётся
 	if(!__awh_syscount__.enabled || (__awh_depth__ > 0))
 		// Выполняем управление файловым дескриптором
-		return fcntl(fd, command, argument);
+		return AWH_SYSCOUNT_REAL(fcntl)(fd, command, argument);
 	// Увеличиваем глубину вложенности перехваченных вызовов
 	__awh_depth__++;
 	// Запоминаем время начала вызова
 	const uint64_t start = __awh_nanostamp__();
 	// Выполняем управление файловым дескриптором
-	const int32_t result = fcntl(fd, command, argument);
+	const int32_t result = AWH_SYSCOUNT_REAL(fcntl)(fd, command, argument);
 	// Суммируем время, проведённое в вызове
 	__awh_syscount__.entries[AWH_SYSCOUNT_FCNTL].nanoseconds += (__awh_nanostamp__() - start);
 	// Считаем выполненный вызов
@@ -596,7 +768,10 @@ AWH_SYSCOUNT_BIND(fcntl)
  * @return        результат выполнения запроса
  *
  */
-static int32_t __awh_ioctl__(int32_t fd, unsigned long request, ...){
+AWH_SYSCOUNT_DECLARE(int32_t, ioctl, (int32_t fd, unsigned long request, ...))
+int32_t AWH_SYSCOUNT_HOOK(ioctl)(int32_t fd, unsigned long request, ...){
+	// Разыскиваем подлинную функцию, если конструктор ещё не отработал
+	AWH_SYSCOUNT_ENSURE(ioctl)
 	// Список параметров переменной длины
 	va_list arguments;
 	// Открываем список параметров переменной длины
@@ -608,13 +783,13 @@ static int32_t __awh_ioctl__(int32_t fd, unsigned long request, ...){
 	// Если учёт вызовов не ведётся
 	if(!__awh_syscount__.enabled || (__awh_depth__ > 0))
 		// Выполняем управление устройством
-		return ioctl(fd, request, argument);
+		return AWH_SYSCOUNT_REAL(ioctl)(fd, request, argument);
 	// Увеличиваем глубину вложенности перехваченных вызовов
 	__awh_depth__++;
 	// Запоминаем время начала вызова
 	const uint64_t start = __awh_nanostamp__();
 	// Выполняем управление устройством
-	const int32_t result = ioctl(fd, request, argument);
+	const int32_t result = AWH_SYSCOUNT_REAL(ioctl)(fd, request, argument);
 	// Суммируем время, проведённое в вызове
 	__awh_syscount__.entries[AWH_SYSCOUNT_IOCTL].nanoseconds += (__awh_nanostamp__() - start);
 	// Считаем выполненный вызов
@@ -650,5 +825,54 @@ AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_SENDMSG, ssize_t, sendmsg, (int32_t fd, const str
 AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_READV, ssize_t, readv, (int32_t fd, const struct iovec * vector, int32_t count), (fd, vector, count))
 AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_WRITEV, ssize_t, writev, (int32_t fd, const struct iovec * vector, int32_t count), (fd, vector, count))
 AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_CLOCK, int32_t, clock_gettime, (clockid_t id, struct timespec * ts), (id, ts))
+
+/**
+ * @brief Функция разыскания подлинных функций в следующем объекте загрузки
+ *
+ * @details Выполняется конструктором, до первого перехваченного обращения:
+ *          разыскивать при обращении значило бы звать `dlsym` с горячего пути, а он
+ *          и сам обращается к перехватываемым функциям
+ *
+ * @note Приоритет задан меньшим, чем у разбора окружения, чтобы указатели были
+ *       заполнены прежде, чем учёт вообще включится
+ *
+ */
+#if AWH_SYSCOUNT_RESOLVE
+__attribute__((constructor(101)))
+static void __awh_resolve__(void){
+	// Разыскиваем подлинные функции работы с сокетами
+	AWH_SYSCOUNT_RESOLVE_ONE(socket)
+	AWH_SYSCOUNT_RESOLVE_ONE(close)
+	AWH_SYSCOUNT_RESOLVE_ONE(connect)
+	AWH_SYSCOUNT_RESOLVE_ONE(accept)
+	AWH_SYSCOUNT_RESOLVE_ONE(bind)
+	AWH_SYSCOUNT_RESOLVE_ONE(listen)
+	AWH_SYSCOUNT_RESOLVE_ONE(shutdown)
+	AWH_SYSCOUNT_RESOLVE_ONE(setsockopt)
+	AWH_SYSCOUNT_RESOLVE_ONE(getsockopt)
+	AWH_SYSCOUNT_RESOLVE_ONE(getsockname)
+	AWH_SYSCOUNT_RESOLVE_ONE(getpeername)
+	// Разыскиваем подлинные функции управления дескрипторами
+	AWH_SYSCOUNT_RESOLVE_ONE(fcntl)
+	AWH_SYSCOUNT_RESOLVE_ONE(ioctl)
+	AWH_SYSCOUNT_RESOLVE_ONE(getifaddrs)
+	// Разыскиваем подлинные функции обмена данными
+	AWH_SYSCOUNT_RESOLVE_ONE(read)
+	AWH_SYSCOUNT_RESOLVE_ONE(write)
+	AWH_SYSCOUNT_RESOLVE_ONE(recv)
+	AWH_SYSCOUNT_RESOLVE_ONE(send)
+	AWH_SYSCOUNT_RESOLVE_ONE(recvfrom)
+	AWH_SYSCOUNT_RESOLVE_ONE(sendto)
+	AWH_SYSCOUNT_RESOLVE_ONE(recvmsg)
+	AWH_SYSCOUNT_RESOLVE_ONE(sendmsg)
+	AWH_SYSCOUNT_RESOLVE_ONE(readv)
+	AWH_SYSCOUNT_RESOLVE_ONE(writev)
+	// Разыскиваем подлинные функции очереди опроса
+	AWH_SYSCOUNT_RESOLVE_ONE(epoll_wait)
+	AWH_SYSCOUNT_RESOLVE_ONE(epoll_ctl)
+	// Разыскиваем подлинную функцию обращения к часам
+	AWH_SYSCOUNT_RESOLVE_ONE(clock_gettime)
+}
+#endif
 
 #endif // AWH_SYSCOUNT_SUPPORTED
