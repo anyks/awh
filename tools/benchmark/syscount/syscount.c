@@ -712,6 +712,42 @@ AWH_SYSCOUNT_BIND(kevent)
 	 */
 	AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_POLL, int32_t, epoll_ctl,
 	 (int32_t fd, int32_t op, int32_t sock, struct epoll_event * event), (fd, op, sock, event))
+
+	/**
+	 * @brief Подменяющая функция ожидания готовности событий с маской сигналов
+	 *
+	 * @note Заводится наравне с `epoll_wait`: часть библиотек зовёт эту разновидность
+	 *       даже без маски сигналов, и без её перехвата их ожидания не были бы видны
+	 *       вовсе - показания вышли бы заниженными молча
+	 *
+	 * @param fd      дескриптор очереди опроса
+	 * @param events  массив, в который складываются полученные события
+	 * @param count   ёмкость массива событий
+	 * @param timeout срок ожидания в миллисекундах
+	 * @param mask    маска блокируемых на время ожидания сигналов
+	 * @return        количество полученных событий
+	 *
+	 */
+	AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_POLL, int32_t, epoll_pwait,
+	 (int32_t fd, struct epoll_event * events, int32_t count, int32_t timeout, const sigset_t * mask),
+	 (fd, events, count, timeout, mask))
+
+	/**
+	 * @brief Подменяющая функция принятия входящего подключения с набором признаков
+	 *
+	 * @note Разновидность эта принадлежит Linux и заводит принятый сокет сразу с
+	 *       нужными признаками, без отдельных обращений. Перехватывать её обязательно:
+	 *       без этого приём подключений у пользующихся ею библиотек не виден вовсе
+	 *
+	 * @param fd     дескриптор слушающего сокета
+	 * @param addr   адрес принятого подключения
+	 * @param length размер структуры адреса
+	 * @param flags  набор признаков заводимого сокета
+	 * @return       дескриптор принятого подключения
+	 *
+	 */
+	AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_ACCEPT, int32_t, accept4,
+	 (int32_t fd, struct sockaddr * addr, socklen_t * length, int32_t flags), (fd, addr, length, flags))
 #endif // __linux__
 
 /**
@@ -870,6 +906,8 @@ static void __awh_resolve__(void){
 	// Разыскиваем подлинные функции очереди опроса
 	AWH_SYSCOUNT_RESOLVE_ONE(epoll_wait)
 	AWH_SYSCOUNT_RESOLVE_ONE(epoll_ctl)
+	AWH_SYSCOUNT_RESOLVE_ONE(epoll_pwait)
+	AWH_SYSCOUNT_RESOLVE_ONE(accept4)
 	// Разыскиваем подлинную функцию обращения к часам
 	AWH_SYSCOUNT_RESOLVE_ONE(clock_gettime)
 }

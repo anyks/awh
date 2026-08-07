@@ -54540,7 +54540,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если опция передана как TCP_NODELAY
 											if(event::options::TCP_NO_DELAY & options){
 												// Устанавливаем режим отключения алгоритма Нейгла
-												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
+												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY, i->second->state.protocol)))
 													// Устанавливаем опцию события
 													i->second->state.options |= event::options::TCP_NO_DELAY;
 											// Если опция не передана как TCP_NODELAY, но установлена в состоянии узла
@@ -54681,7 +54681,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										// Если опция передана как TCP_NODELAY
 										if(event::options::TCP_NO_DELAY & options){
 											// Устанавливаем режим отключения алгоритма Нейгла
-											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY)))
+											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_NO_DELAY, i->second->state.protocol)))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::TCP_NO_DELAY;
 										// Если опция не передана как TCP_NODELAY, но установлена в состоянии узла

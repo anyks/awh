@@ -1662,7 +1662,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
  * @return       результат работы функции
  *
  */
-bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option) const noexcept {
+bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, const event::protocol_t proto) const noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если сокет корректен
@@ -1807,12 +1807,50 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				/**
 				 * Если операционной системой является FreeBSD
 				 */
-				// Переменная для хранения протокола сокета
+				/**
+				 * Определяем протокол сокета
+				 *
+				 * @details Названный вызывающим протокол принимается как есть: он завёл
+				 *          этот сокет сам и знает о нём больше, чем ядро сообщит настройкой.
+				 *          Обращение к ядру ради уже известного стоило одного системного
+				 *          вызова на каждую установку опции
+				 *
+				 * @note Неназванный протокол разыскивается у сокета по-прежнему: обращений
+				 *       к методу много, и не всякому из них протокол известен
+				 *
+				 */
 				int32_t protocol = 0;
-				// Длина протокола сокета
-				socklen_t length = sizeof(protocol);
-				// Получаем протокол сокета
-				if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
+				// Признак того, что протокол сокета определён
+				bool resolved = true;
+				/**
+				 * Определяем названный вызывающим протокол
+				 */
+				switch(static_cast <uint8_t> (proto)){
+					// Если протокол интернета установлен как TCP
+					case static_cast <uint8_t> (event::protocol_t::TCP):
+						// Запоминаем протокол сокета
+						protocol = IPPROTO_TCP;
+					break;
+					// Если протокол интернета установлен как UDP
+					case static_cast <uint8_t> (event::protocol_t::UDP):
+						// Запоминаем протокол сокета
+						protocol = IPPROTO_UDP;
+					break;
+					// Если протокол интернета установлен как SCTP
+					case static_cast <uint8_t> (event::protocol_t::SCTP):
+						// Запоминаем протокол сокета
+						protocol = IPPROTO_SCTP;
+					break;
+					// Если протокол вызывающим не назван
+					default: {
+						// Длина протокола сокета
+						socklen_t length = sizeof(protocol);
+						// Получаем протокол сокета у ядра
+						resolved = (::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0);
+					}
+				}
+				// Если протокол сокета определён
+				if(resolved){
 					/**
 					 * Определяем протокол сокета
 					 */

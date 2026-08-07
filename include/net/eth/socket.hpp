@@ -243,14 +243,26 @@ namespace awh {
 				/**
 				 * @brief Метод переключения опции сокета
 				 *
+				 * @details Протокол принимается доводом, а не разыскивается у самого сокета.
+				 *          Часть опций приложима лишь к одному протоколу - `TCP_NO_DELAY`
+				 *          к TCP, - и прежде протокол читался настройкой `SO_PROTOCOL`,
+				 *          то есть обращением к ядру ради того, что вызывающему и без
+				 *          того известно: он этот сокет сам и заводил
+				 *
+				 * @note Довод необязателен, и значение `NONE` означает «протокол не
+				 *       назван». Тогда он разыскивается у сокета по-прежнему: обращений
+				 *       к методу много, и обязать все их назвать протокол значило бы
+				 *       править места, которым он безразличен
+				 *
 				 * @param sock   сетевой сокет
 				 * @param family семейство протоколов (IPv4 или IPv6)
 				 * @param mode   режим активации или деактивации
 				 * @param option опция сокета
+				 * @param proto  протокол сокета, `NONE` - протокол не назван
 				 * @return       результат работы функции
 				 *
 				 */
-				bool switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option) const noexcept;
+				bool switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, const event::protocol_t proto = event::protocol_t::NONE) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения обнаружения максимального размера пакета (MTU)
