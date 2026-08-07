@@ -31,7 +31,6 @@
 #include <memory>
 #include <atomic>
 #include <string>
-#include <cstdio>
 #include <condition_variable>
 
 /**
@@ -253,16 +252,53 @@ namespace {
 		 *          отказом по существу не является
 		 *
 		 */
-		std::fprintf(stderr, "[ПРОБА движок] поток чтения %llu запущен, сторона=%s\n", (unsigned long long) id, (listener ? "ожидания" : "встречная")); std::fflush(stderr);
-		if(listener && !::ConnectNamedPipe(handle, nullptr)){
-			// Получаем код отказа ожидания подключения
-			const DWORD code = ::GetLastError();
-			// Если встречная сторона не подключилась и прежде вызова
-			if(code != ERROR_PIPE_CONNECTED)
-				// Завершаем работу потока чтения
-				return;
+		if(listener){
+			// Событие завершения наложенного ожидания подключения
+			HANDLE signal = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+			// Описание наложенной операции ожидания подключения
+			OVERLAPPED overlapped{};
+			// Привязываем событие завершения к наложенной операции
+			overlapped.hEvent = signal;
+			// Выполняем наложенное ожидание подключения встречной стороны
+			if(!::ConnectNamedPipe(handle, &overlapped)){
+				// Получаем код отказа ожидания подключения
+				const DWORD code = ::GetLastError();
+				/**
+				 * Определяем исход ожидания подключения
+				 */
+				switch(code){
+					// Ожидание принято системой - дожидаемся его завершения
+					case ERROR_IO_PENDING: {
+						// Количество переданных байт наложенной операции
+						DWORD transferred = 0;
+						// Дожидаемся завершения наложенного ожидания подключения
+						if(!::GetOverlappedResult(handle, &overlapped, &transferred, TRUE)){
+							// Закрываем событие завершения наложенной операции
+							::CloseHandle(signal);
+							// Завершаем работу потока чтения
+							return;
+						}
+					} break;
+					// Встречная сторона подключилась прежде вызова - отказом это не является
+					case ERROR_PIPE_CONNECTED: break;
+					// Всякий иной исход означает отказ
+					default: {
+						// Закрываем событие завершения наложенной операции
+						::CloseHandle(signal);
+						// Завершаем работу потока чтения
+						return;
+					}
+				}
+			}
+			// Закрываем событие завершения наложенной операции
+			::CloseHandle(signal);
 		}
-		std::fprintf(stderr, "[ПРОБА движок] узел %llu готов к чтению\n", (unsigned long long) id); std::fflush(stderr);
+		// Событие завершения наложенных операций чтения
+		HANDLE signal = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+		// Если событие завершения завести не удалось
+		if(signal == nullptr)
+			// Завершаем работу потока чтения
+			return;
 		// Буфер принимаемого сообщения
 		std::vector <uint8_t> buffer(4096, 0);
 		/**
@@ -272,9 +308,19 @@ namespace {
 		while(!stopped->load()){
 			// Количество принятых байт
 			DWORD received = 0;
-			// Выполняем чтение сообщения из именованного канала
-			const BOOL result = ::ReadFile(handle, buffer.data(), static_cast <DWORD> (buffer.size()), &received, nullptr);
-			// Если чтение отказом не завершилось
+			// Описание наложенной операции чтения
+			OVERLAPPED overlapped{};
+			// Привязываем событие завершения к наложенной операции
+			overlapped.hEvent = signal;
+			// Сбрасываем событие завершения наложенной операции
+			::ResetEvent(signal);
+			// Выполняем наложенное чтение сообщения из именованного канала
+			BOOL result = ::ReadFile(handle, buffer.data(), static_cast <DWORD> (buffer.size()), &received, &overlapped);
+			// Если чтение принято системой к исполнению - дожидаемся его завершения
+			if(!result && (::GetLastError() == ERROR_IO_PENDING))
+				// Дожидаемся завершения наложенного чтения
+				result = ::GetOverlappedResult(handle, &overlapped, &received, TRUE);
+			// Если чтение отказом завершилось
 			if(!result){
 				// Получаем код отказа чтения
 				const DWORD code = ::GetLastError();
@@ -304,6 +350,8 @@ namespace {
 			// Пробуждаем петлю событий, чтобы та разобрала принятое
 			__awh_wake__();
 		}
+		// Закрываем событие завершения наложенных операций чтения
+		::CloseHandle(signal);
 	}
 };
 
@@ -1090,12 +1138,17 @@ bool awh::engine::IO::destroy([[maybe_unused]] const event::id_t id) noexcept {
  * @param protocol протокол сокета
  * @return         пара идентификаторов созданных событий
  *
- * @warning Пара эта живёт **внутри одного процесса**: узлы связаны друг с другом
- *          по идентификатору, и отправленное одному ложится в очередь другого.
- *          Настоящего дескриптора операционной системы за ними не стоит, а
- *          значит, порождённый процесс её не унаследует. Устройство временное,
- *          как и всё ядро петли ниже: с приходом порта завершения ввода-вывода
- *          на её место встанет именованный канал в режиме сообщений
+ * @details За парой стоит настоящий именованный канал в строе сообщений: строй этот
+ *          сохраняет границы записей и потому отвечает SOCK_SEQPACKET, на который
+ *          опирается обмен между процессами кластера. Заводится здесь лишь сторона
+ *          ожидания; встречный конец открывается лениво, при пуске события, и
+ *          открыть его вправе как свой процесс, так и порождённый - по имени канала,
+ *          какое отдаёт getTarget
+ *
+ * @note Открывать встречный конец сразу нельзя: пару эту мастер заводит для
+ *       порождаемого процесса и свой встречный конец тут же уничтожает, а закрытие
+ *       подключённого конца обрывает сторону ожидания - подключиться к ней работник
+ *       уже не смог бы
  *
  * @note Семейства UDS у MS Windows в том виде, в каком оно есть у POSIX, не
  *       существует, но договор метода семейством этим и не связан: вызывающая
@@ -1176,7 +1229,7 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 	// Заводим сторону канала, ожидающую подключения
 	HANDLE server = ::CreateNamedPipeW(
 		name.c_str(),
-		PIPE_ACCESS_DUPLEX,
+		PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
 		PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
 		2, 65536, 65536, 0, nullptr
 	);
@@ -1471,7 +1524,7 @@ bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
 		 */
 		if((item->handle == INVALID_HANDLE_VALUE) && !item->name.empty() && (item->node == event::node_t::IPC)){
 			// Открываем свой конец именованного канала
-			HANDLE handle = ::CreateFileW(item->name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+			HANDLE handle = ::CreateFileW(item->name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
 			// Если свой конец канала открыт
 			if(handle != INVALID_HANDLE_VALUE){
 				// Строй чтения своего конца канала
@@ -1618,7 +1671,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 		 *          значило бы прятать её
 		 *
 		 */
-		HANDLE handle = ::CreateFileW(item->name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+		HANDLE handle = ::CreateFileW(item->name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
 		// Если открыть свой конец канала не удалось
 		if(handle == INVALID_HANDLE_VALUE){
 			// Заносим в журнал предупреждение об отказе подключения
@@ -1630,7 +1683,6 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 		DWORD mode = PIPE_READMODE_MESSAGE;
 		// Устанавливаем строй чтения своего конца канала
 		::SetNamedPipeHandleState(handle, &mode, nullptr, nullptr);
-		std::fprintf(stderr, "[ПРОБА движок] узел %llu подключён к каналу\n", (unsigned long long) id); std::fflush(stderr);
 		// Запоминаем дескриптор именованного канала у узла
 		item->handle = handle;
 		// Переводим узел в состояние состоявшегося подключения
@@ -1751,16 +1803,39 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		 *
 		 */
 		if((item->node == event::node_t::IPC) && (item->handle != INVALID_HANDLE_VALUE)){
-			std::fprintf(stderr, "[ПРОБА движок] отправка %zu байт узлом %llu\n", size, (unsigned long long) id); std::fflush(stderr);
 			// Количество отправленных байт, снятое системой
 			DWORD sent = 0;
-			// Выполняем отправку сообщения в именованный канал
-			if(::WriteFile(item->handle, buffer, static_cast <DWORD> (size), &sent, nullptr))
+			/**
+			 * Отправка ведётся наложенной
+			 *
+			 * @details Дескриптор канала открыт с FILE_FLAG_OVERLAPPED, и иначе быть не
+			 *          может: у дескриптора без наложения система выстраивает операции в
+			 *          очередь, и запись дожидалась бы ожидающего чтения, какое поток
+			 *          чтения держит всё время. Обнаружено опытом - обмен вставал намертво
+			 *
+			 */
+			// Событие завершения наложенной операции отправки
+			HANDLE signal = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+			// Описание наложенной операции отправки
+			OVERLAPPED overlapped{};
+			// Привязываем событие завершения к наложенной операции
+			overlapped.hEvent = signal;
+			// Выполняем наложенную отправку сообщения в именованный канал
+			BOOL result = ::WriteFile(item->handle, buffer, static_cast <DWORD> (size), &sent, &overlapped);
+			// Если отправка принята системой к исполнению - дожидаемся её завершения
+			if(!result && (::GetLastError() == ERROR_IO_PENDING))
+				// Дожидаемся завершения наложенной отправки
+				result = ::GetOverlappedResult(item->handle, &overlapped, &sent, TRUE);
+			// Если отправка состоялась
+			if(result)
 				// Запоминаем количество отправленных байт
 				written = static_cast <size_t> (sent);
 			// Если отправка завершилась отказом - запоминаем его код
 			else code = ::GetLastError();
-			std::fprintf(stderr, "[ПРОБА движок] отправка узлом %llu завершена, отказ=%lu\n", (unsigned long long) id, code); std::fflush(stderr);
+			// Если событие завершения наложенной операции заведено
+			if(signal != nullptr)
+				// Закрываем событие завершения наложенной операции
+				::CloseHandle(signal);
 		/**
 		 * Если настоящего канала за узлом нет - сообщение ложится в очередь собеседника
 		 */

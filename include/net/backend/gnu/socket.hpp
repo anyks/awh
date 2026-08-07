@@ -77,6 +77,21 @@
 #include <poll.h>
 
 /**
+ * Если собирается движок io_uring
+ *
+ * @details Заголовок ядра нужен исключительно ради устройства структур колец.
+ *          Коды операций и признаки движок объявляет своими числами: заголовок
+ *          дистрибутива отстаёт от ядра, и опираться на него значило бы молча
+ *          потерять возможности, которые ядро даёт. Подробности - в
+ *          src/net/backend/gnu/IO_URING.md
+ *
+ */
+#if defined(AWH_ENGINE_IO_URING)
+	#include <sys/syscall.h>
+	#include <linux/io_uring.h>
+#endif
+
+/**
  * Наши модули
  */
 #include "../../net.hpp"
@@ -748,6 +763,66 @@ namespace awh {
 				return ::epoll_wait(epfd, events, count, timeout);
 			#endif
 		}
+		/**
+		 * Если собирается движок io_uring
+		 */
+		#if defined(AWH_ENGINE_IO_URING)
+			/**
+			 * @brief Метод устройства колец io_uring
+			 *
+			 * @details Обходного стека здесь нет и быть не может: io_uring - средство
+			 *          ядра, а DPDK ядро как раз обходит. Оттого посредник в отличие от
+			 *          соседних ветвления не имеет
+			 *
+			 * @note Библиотека liburing намеренно не используется: на стендах её нет
+			 *       ни на одном, а обращений к ядру у io_uring всего три, и обходятся
+			 *       они своими силами без внешней зависимости
+			 *
+			 * @param entries количество записей кольца подачи
+			 * @param params  устройство колец, заполняется ядром
+			 * @return        дескриптор колец либо признак ошибки
+			 *
+			 */
+			AWH_GNU_INLINE int32_t ioUringSetup(const uint32_t entries, struct io_uring_params * params) noexcept {
+				return static_cast <int32_t> (::syscall(__NR_io_uring_setup, entries, params));
+			}
+			/**
+			 * @brief Метод подачи операций и ожидания завершений io_uring
+			 *
+			 * @details Одним обращением выполняются оба действия сразу: подаётся всё,
+			 *          что положено в кольцо подачи, и ожидается указанное число
+			 *          завершений. Этим io_uring и отличается от epoll, где подписка и
+			 *          ожидание - два разных обращения
+			 *
+			 * @param fd        дескриптор колец
+			 * @param submitted количество поданных записей
+			 * @param waiting   количество ожидаемых завершений, ноль - не ожидать
+			 * @param flags     признаки обращения
+			 * @param arg       дополнительный довод, зависит от признаков
+			 * @param size      размер дополнительного довода
+			 * @return          количество принятых записей либо признак ошибки
+			 *
+			 */
+			AWH_GNU_INLINE int32_t ioUringEnter(const int32_t fd, const uint32_t submitted, const uint32_t waiting, const uint32_t flags, const void * arg, const size_t size) noexcept {
+				return static_cast <int32_t> (::syscall(__NR_io_uring_enter, fd, submitted, waiting, flags, arg, size));
+			}
+			/**
+			 * @brief Метод закрепления ресурсов за кольцами io_uring
+			 *
+			 * @details Через него выполняется и проба возможностей ядра, и закрепление
+			 *          колец буферов приёма, и закрепление дескрипторов
+			 *
+			 * @param fd    дескриптор колец
+			 * @param op    действие закрепления
+			 * @param arg   довод действия
+			 * @param count количество записей довода
+			 * @return      результат работы функции
+			 *
+			 */
+			AWH_GNU_INLINE int32_t ioUringRegister(const int32_t fd, const uint32_t op, void * arg, const uint32_t count) noexcept {
+				return static_cast <int32_t> (::syscall(__NR_io_uring_register, fd, op, arg, count));
+			}
+		#endif
 	};
 };
 

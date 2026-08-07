@@ -674,8 +674,31 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
             "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/epoll.cpp"
         )
     # Если выбран механизм ожидания io_uring
+    #
+    # Наличие самих операций проверяется пробой при запуске, а не здесь: заголовок
+    # дистрибутива отстаёт от ядра (на Ubuntu 24.10 он не знает операций, которые
+    # ядро поддерживает), поэтому сборка судит лишь о наличии заголовка, а состав
+    # возможностей выясняет движок. Устройство описано в src/net/backend/gnu/IO_URING.md
     elseif (${AWH_ENGINE} STREQUAL "io_uring")
-        message(FATAL_ERROR "AWH: движок io_uring ещё не реализован, соберите с -DAWH_ENGINE=epoll")
+        # Выполняем проверку наличия заголовка io_uring
+        INCLUDE(CheckIncludeFile)
+        CHECK_INCLUDE_FILE("linux/io_uring.h" AWH_HAVE_IO_URING_H)
+
+        # Если заголовок io_uring в системе отсутствует
+        if (NOT AWH_HAVE_IO_URING_H)
+            message(FATAL_ERROR "AWH: заголовок linux/io_uring.h не найден, соберите с -DAWH_ENGINE=epoll")
+        endif()
+
+        message(STATUS "Engine: io_uring")
+
+        # Выполняем объявление признака сборки движка io_uring
+        ADD_DEFINITIONS(-DAWH_ENGINE_IO_URING)
+
+        # Выполняем подключение движка ввода-вывода
+        SET(SOURCE_FILES
+            "${SOURCE_FILES}"
+            "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/io_uring.cpp"
+        )
     # Если выбран механизм ожидания, которого нет
     else()
         message(FATAL_ERROR "AWH: неизвестный механизм ожидания '${AWH_ENGINE}', допустимы epoll и io_uring")
