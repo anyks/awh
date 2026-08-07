@@ -67294,7 +67294,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *
 			 */
 			::kernel::flush(this->_log);
-
 			/**
 			 * Если взведённые пользовательские события уже накоплены, ожидать нечего
 			 *
@@ -67364,7 +67363,9 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					if(signal.data.ptr == ::kernel::waker){
 						// Значение, вычитываемое из дескриптора пробуждения
 						uint64_t value = 0;
-						// Выполняем опустошение дескриптора пробуждения
+						/**
+						 * Выполняем опустошение дескриптора пробуждения
+						 */
 						while(::read(::kernel::wakeup, &value, sizeof(value)) == static_cast <ssize_t> (sizeof(value)));
 						// Переходим к событию следующему
 						continue;
