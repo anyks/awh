@@ -200,14 +200,58 @@ namespace {
 	};
 
 	/**
-	 * @brief Обратные вызовы узла, ведущего обмен данными
+	 * @brief Обратные вызовы узла события
+	 *
+	 * @details Основание несёт лишь то, о чём сообщается узлу любого вида: отказ да
+	 *          смену состояния. Всё прочее разнесено по наследникам - у каждого
+	 *          вида узлов свой набор, - и узел не платит памятью за вызовы, каких
+	 *          ему не сделают: серверу не сообщают о принятых данных, а принятой
+	 *          связи - об установке исходящей
+	 *
+	 * @warning Заводить здесь вызовы, нужные одному виду узлов, нельзя: объект
+	 *          вызова занимает три десятка байт, а узлов на нагруженном сервере
+	 *          сотни тысяч
 	 *
 	 */
 	struct Callbacks {
+		awh::engine::callback::error_t error;     // Отказ обмена
+		awh::engine::callback::status_t status;   // Смена состояния
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		virtual ~Callbacks() noexcept = default;
+	};
+
+	/**
+	 * @brief Обратные вызовы принятой связи
+	 *
+	 */
+	struct Peer_Callbacks : public Callbacks {
 		awh::engine::callback::read_t read;       // Приём данных
 		awh::engine::callback::write_t write;     // Отдача данных
-		awh::engine::callback::status_t status;   // Смена состояния
-		awh::engine::callback::error_t error;     // Отказ обмена
+	};
+
+	/**
+	 * @brief Обратные вызовы клиента
+	 *
+	 */
+	struct Client_Callbacks : public Callbacks {
+		awh::engine::callback::read_t read;       // Приём данных
+		awh::engine::callback::write_t write;     // Отдача данных
+		awh::engine::callback::connect_t connect; // Установка исходящей связи
+	};
+
+	/**
+	 * @brief Обратные вызовы сервера
+	 *
+	 * @details Приём данных серверу не сообщается: данные приходят принятым связям,
+	 *          и вызов чтения ставится на них, а не на слушающий узел
+	 *
+	 */
+	struct Server_Callbacks : public Callbacks {
+		awh::engine::callback::write_t write;     // Отдача данных
+		awh::engine::callback::accept_t accept;   // Принятие входящей связи
 	};
 
 	/**
@@ -220,7 +264,6 @@ namespace {
 	struct Transfer : public Node {
 		uint32_t pending;                 // Число незавершённых обменов, начатых на узле
 		bool closing;                     // Признак того, что узел закрывается
-		Callbacks callbacks;              // Обратные вызовы узла
 		/**
 		 * @brief Конструктор
 		 *
@@ -261,12 +304,24 @@ namespace {
 	};
 
 	/**
+	 * @brief Узел принятой связи
+	 *
+	 * @details Заводится движком сам при приёме входящей связи и через `event()`
+	 *          не создаётся. Конечной точки не несёт: адрес его известен сокету,
+	 *          а связей этих на нагруженном сервере сотни тысяч
+	 *
+	 */
+	struct Peer : public Socket {
+		Peer_Callbacks callbacks;                            // Обратные вызовы узла
+	};
+
+	/**
 	 * @brief Узел клиента
 	 *
 	 */
 	struct Client : public Socket {
 		std::unique_ptr <Endpoint> endpoint;                 // Конечная точка обмена
-		awh::engine::callback::connect_t connected;          // Установка исходящей связи
+		Client_Callbacks callbacks;                          // Обратные вызовы узла
 	};
 
 	/**
@@ -275,7 +330,7 @@ namespace {
 	 */
 	struct Server : public Socket {
 		std::unique_ptr <Endpoint> endpoint;                 // Конечная точка обмена
-		awh::engine::callback::accept_t accepted;            // Принятие входящей связи
+		Server_Callbacks callbacks;                          // Обратные вызовы узла
 	};
 
 	/**
@@ -305,6 +360,7 @@ namespace {
 		HANDLE handle;                                       // Дескриптор именованного канала
 		awh::event::id_t peer;                               // Идентификатор узла-собеседника пары
 		std::unique_ptr <Listener> pipe;                     // Сторона канала, ожидающая подключения
+		Peer_Callbacks callbacks;                            // Обратные вызовы узла
 		/**
 		 * @brief Конструктор
 		 *
@@ -316,7 +372,9 @@ namespace {
 	 * @brief Узел пробуждения петли событий
 	 *
 	 */
-	struct Notify : public Transfer {};
+	struct Notify : public Transfer {
+		Callbacks callbacks;                                 // Обратные вызовы узла
+	};
 
 	// Список заведённых узлов событий
 	std::unordered_map <awh::event::id_t, std::unique_ptr <Node>> __awh_nodes__;
@@ -394,6 +452,250 @@ namespace {
 	bool __awh_initialized__ = false;
 	// Вид внутреннего таймера петли событий
 	awh::event::timer_t __awh_timer__ = awh::event::timer_t::SIMPLE;
+
+
+	/**
+	 * @brief Функция приведения узла к узлу, ведущему обмен данными
+	 *
+	 * @details Приведение ведётся по виду узла, а не опросом сведений о типе:
+	 *          вид этот узел несёт при себе, и разбор его обходится сравнением
+	 *
+	 * @param item приводимый узел
+	 * @return     приведённый узел, либо пустое значение при несовпадении вида
+	 *
+	 */
+	Transfer * __awh_transfer__(Node * item) noexcept {
+		// Если узел не передан
+		if(item == nullptr)
+			// Выводим пустое значение
+			return nullptr;
+		/**
+		 * Определяем вид узла
+		 */
+		switch(static_cast <uint8_t> (item->state.node)){
+			// Если узел является клиентом
+			case static_cast <uint8_t> (awh::event::node_t::CLIENT):
+			// Если узел является сервером
+			case static_cast <uint8_t> (awh::event::node_t::SERVER):
+			// Если узел является принятой связью
+			case static_cast <uint8_t> (awh::event::node_t::PEER):
+			// Если узел является узлом обмена сообщениями между процессами
+			case static_cast <uint8_t> (awh::event::node_t::IPC):
+			// Если узел является узлом пробуждения петли
+			case static_cast <uint8_t> (awh::event::node_t::NOTIFY):
+				// Выводим приведённый узел
+				return static_cast <Transfer *> (item);
+		}
+		// Выводим пустое значение
+		return nullptr;
+	}
+
+	/**
+	 * @brief Функция приведения узла к узлу, за которым стоит сокет
+	 *
+	 * @param item приводимый узел
+	 * @return     приведённый узел, либо пустое значение при несовпадении вида
+	 *
+	 */
+	Socket * __awh_socket__(Node * item) noexcept {
+		// Если узел не передан
+		if(item == nullptr)
+			// Выводим пустое значение
+			return nullptr;
+		/**
+		 * Определяем вид узла
+		 */
+		switch(static_cast <uint8_t> (item->state.node)){
+			// Если узел является клиентом
+			case static_cast <uint8_t> (awh::event::node_t::CLIENT):
+			// Если узел является сервером
+			case static_cast <uint8_t> (awh::event::node_t::SERVER):
+			// Если узел является принятой связью
+			case static_cast <uint8_t> (awh::event::node_t::PEER):
+				// Выводим приведённый узел
+				return static_cast <Socket *> (item);
+		}
+		// Выводим пустое значение
+		return nullptr;
+	}
+
+	/**
+	 * @brief Функция приведения узла к узлу обмена сообщениями между процессами
+	 *
+	 * @param item приводимый узел
+	 * @return     приведённый узел, либо пустое значение при несовпадении вида
+	 *
+	 */
+	Ipc * __awh_ipc__(Node * item) noexcept {
+		// Выводим приведённый узел, если вид его совпал
+		return (((item != nullptr) && (item->state.node == awh::event::node_t::IPC)) ? static_cast <Ipc *> (item) : nullptr);
+	}
+
+	/**
+	 * @brief Функция получения общих обратных вызовов узла
+	 *
+	 * @details Набор у каждого вида узлов свой, и общее их основание достаётся
+	 *          приведением по виду узла. Вызовы, какие есть у всех, - отказ да
+	 *          смена состояния, - берутся отсюда, а видовые - своими функциями
+	 *
+	 * @param item узел, у которого спрашиваются вызовы
+	 * @return     общее основание набора вызовов, либо пустое значение
+	 *
+	 */
+	Callbacks * __awh_callbacks__(Node * item) noexcept {
+		// Если узел не передан
+		if(item == nullptr)
+			// Выводим пустое значение
+			return nullptr;
+		/**
+		 * Определяем вид узла
+		 */
+		switch(static_cast <uint8_t> (item->state.node)){
+			// Если узел является клиентом
+			case static_cast <uint8_t> (awh::event::node_t::CLIENT):
+				// Выводим набор вызовов клиента
+				return static_cast <Callbacks *> (&static_cast <Client *> (item)->callbacks);
+			// Если узел является сервером
+			case static_cast <uint8_t> (awh::event::node_t::SERVER):
+				// Выводим набор вызовов сервера
+				return static_cast <Callbacks *> (&static_cast <Server *> (item)->callbacks);
+			// Если узел является принятой связью
+			case static_cast <uint8_t> (awh::event::node_t::PEER):
+				// Выводим набор вызовов принятой связи
+				return static_cast <Callbacks *> (&static_cast <Peer *> (item)->callbacks);
+			// Если узел является узлом обмена сообщениями между процессами
+			case static_cast <uint8_t> (awh::event::node_t::IPC):
+				// Выводим набор вызовов канала обмена
+				return static_cast <Callbacks *> (&static_cast <Ipc *> (item)->callbacks);
+			// Если узел является узлом пробуждения петли
+			case static_cast <uint8_t> (awh::event::node_t::NOTIFY):
+				// Выводим набор вызовов узла пробуждения
+				return &static_cast <Notify *> (item)->callbacks;
+		}
+		// Выводим пустое значение
+		return nullptr;
+	}
+
+	/**
+	 * @brief Функция получения обратного вызова приёма данных
+	 *
+	 * @details Вызов этот есть не у всякого узла: серверу данные не приходят вовсе,
+	 *          и пустое значение здесь означает, что виду узла приём не сообщается
+	 *
+	 * @param item узел, у которого спрашивается вызов
+	 * @return     место обратного вызова, либо пустое значение
+	 *
+	 */
+	awh::engine::callback::read_t * __awh_read__(Node * item) noexcept {
+		// Если узел не передан
+		if(item == nullptr)
+			// Выводим пустое значение
+			return nullptr;
+		/**
+		 * Определяем вид узла
+		 */
+		switch(static_cast <uint8_t> (item->state.node)){
+			// Если узел является клиентом
+			case static_cast <uint8_t> (awh::event::node_t::CLIENT):
+				// Выводим вызов приёма данных клиента
+				return &static_cast <Client *> (item)->callbacks.read;
+			// Если узел является принятой связью
+			case static_cast <uint8_t> (awh::event::node_t::PEER):
+				// Выводим вызов приёма данных принятой связи
+				return &static_cast <Peer *> (item)->callbacks.read;
+			// Если узел является узлом обмена сообщениями между процессами
+			case static_cast <uint8_t> (awh::event::node_t::IPC):
+				// Выводим вызов приёма данных канала обмена
+				return &static_cast <Ipc *> (item)->callbacks.read;
+		}
+		// Выводим пустое значение
+		return nullptr;
+	}
+
+	/**
+	 * @brief Функция получения обратного вызова отдачи данных
+	 *
+	 * @param item узел, у которого спрашивается вызов
+	 * @return     место обратного вызова, либо пустое значение
+	 *
+	 */
+	awh::engine::callback::write_t * __awh_write__(Node * item) noexcept {
+		// Если узел не передан
+		if(item == nullptr)
+			// Выводим пустое значение
+			return nullptr;
+		/**
+		 * Определяем вид узла
+		 */
+		switch(static_cast <uint8_t> (item->state.node)){
+			// Если узел является клиентом
+			case static_cast <uint8_t> (awh::event::node_t::CLIENT):
+				// Выводим вызов отдачи данных клиента
+				return &static_cast <Client *> (item)->callbacks.write;
+			// Если узел является сервером
+			case static_cast <uint8_t> (awh::event::node_t::SERVER):
+				// Выводим вызов отдачи данных сервера
+				return &static_cast <Server *> (item)->callbacks.write;
+			// Если узел является принятой связью
+			case static_cast <uint8_t> (awh::event::node_t::PEER):
+				// Выводим вызов отдачи данных принятой связи
+				return &static_cast <Peer *> (item)->callbacks.write;
+			// Если узел является узлом обмена сообщениями между процессами
+			case static_cast <uint8_t> (awh::event::node_t::IPC):
+				// Выводим вызов отдачи данных канала обмена
+				return &static_cast <Ipc *> (item)->callbacks.write;
+		}
+		// Выводим пустое значение
+		return nullptr;
+	}
+
+	/**
+	 * @brief Функция получения конечной точки обмена узла
+	 *
+	 * @details Точка эта заводится по требованию: узлу, которому её не задавали,
+	 *          она не нужна вовсе, и держать под неё место у каждого значило бы
+	 *          платить памятью за всех ради немногих
+	 *
+	 * @param item      узел, у которого спрашивается точка
+	 * @param establish признак заведения точки, если её ещё нет
+	 * @return          конечная точка обмена, либо пустое значение
+	 *
+	 */
+	Endpoint * __awh_endpoint__(Node * item, const bool establish = false) noexcept {
+		// Если узел не передан
+		if(item == nullptr)
+			// Выводим пустое значение
+			return nullptr;
+		/**
+		 * Определяем вид узла
+		 */
+		switch(static_cast <uint8_t> (item->state.node)){
+			// Если узел является клиентом
+			case static_cast <uint8_t> (awh::event::node_t::CLIENT): {
+				// Получаем узел клиента
+				Client * client = static_cast <Client *> (item);
+				// Если точка ещё не заведена, а завести её просят
+				if((client->endpoint == nullptr) && establish)
+					// Заводим конечную точку обмена
+					client->endpoint = std::make_unique <Endpoint> ();
+				// Выводим конечную точку обмена
+				return client->endpoint.get();
+			}
+			// Если узел является сервером
+			case static_cast <uint8_t> (awh::event::node_t::SERVER): {
+				// Получаем узел сервера
+				Server * server = static_cast <Server *> (item);
+				// Если точка ещё не заведена, а завести её просят
+				if((server->endpoint == nullptr) && establish)
+					// Заводим конечную точку обмена
+					server->endpoint = std::make_unique <Endpoint> ();
+				// Выводим конечную точку обмена
+				return server->endpoint.get();
+			}
+		}
+		// Выводим пустое значение
+		return nullptr;
+	}
 
 	/**
 	 * @brief Функция поиска узла события по его идентификатору
@@ -535,7 +837,7 @@ namespace {
 	 * @return     признак успешного заведения
 	 *
 	 */
-	bool __awh_recv__(Node * item, Overlapped * context = nullptr) noexcept {
+	bool __awh_recv__(Socket * item, Overlapped * context = nullptr) noexcept {
 		// Если узел закрывается либо сокета за ним нет
 		if((item == nullptr) || item->closing || (item->socket == INVALID_SOCKET)){
 			// Если описание обмена передано на повторное заведение
@@ -601,7 +903,7 @@ namespace {
 	 * @return     признак успешного заведения
 	 *
 	 */
-	bool __awh_accept__(Node * item) noexcept {
+	bool __awh_accept__(Server * item) noexcept {
 		// Если узел закрывается либо сокета за ним нет
 		if((item == nullptr) || item->closing || (item->socket == INVALID_SOCKET))
 			// Выводим признак неуспешного заведения
@@ -668,38 +970,49 @@ namespace {
 	 *
 	 */
 	void __awh_close__(Node * item) noexcept {
-		// Если узел не передан
-		if(item == nullptr)
+		// Приводим узел к ведущему обмен данными
+		Transfer * transfer = __awh_transfer__(item);
+		// Если узел обмена не ведёт
+		if(transfer == nullptr)
 			// Выходим из функции
 			return;
 		// Отмечаем узел закрывающимся, чтобы новых обменов на нём не заводили
-		item->closing = true;
+		transfer->closing = true;
+		// Приводим узел к узлу, за которым стоит сокет
+		Socket * socket = __awh_socket__(item);
 		// Если за узлом стоит сокет
-		if(item->socket != INVALID_SOCKET){
+		if((socket != nullptr) && (socket->socket != INVALID_SOCKET)){
 			// Выполняем отмену всех начатых на сокете обменов
-			::CancelIoEx(reinterpret_cast <HANDLE> (item->socket), nullptr);
+			::CancelIoEx(reinterpret_cast <HANDLE> (socket->socket), nullptr);
 			// Снимаем с сокета поток качества обслуживания
-			awh::win::qos::release(static_cast <awh::net::socket_t> (item->socket));
+			awh::win::qos::release(static_cast <awh::net::socket_t> (socket->socket));
 			// Выполняем закрытие сокета
-			::closesocket(item->socket);
+			::closesocket(socket->socket);
 			// Сбрасываем сокет узла
-			item->socket = INVALID_SOCKET;
+			socket->socket = INVALID_SOCKET;
 		}
+		// Приводим узел к узлу обмена сообщениями между процессами
+		Ipc * ipc = __awh_ipc__(item);
 		// Если за узлом стоит именованный канал
-		if(item->handle != INVALID_HANDLE_VALUE){
-			// Просим поток чтения завершиться
-			item->stopped->store(true);
-			// Выполняем отмену всех начатых на канале обменов
-			::CancelIoEx(item->handle, nullptr);
-			// Выполняем закрытие канала
-			::CloseHandle(item->handle);
-			// Сбрасываем дескриптор канала
-			item->handle = INVALID_HANDLE_VALUE;
+		if(ipc != nullptr){
+			// Если сторона канала, ожидающая подключения, заведена
+			if(ipc->pipe != nullptr)
+				// Просим поток чтения завершиться
+				ipc->pipe->stopped->store(true);
+			// Если дескриптор канала заведён
+			if(ipc->handle != INVALID_HANDLE_VALUE){
+				// Выполняем отмену всех начатых на канале обменов
+				::CancelIoEx(ipc->handle, nullptr);
+				// Выполняем закрытие канала
+				::CloseHandle(ipc->handle);
+				// Сбрасываем дескриптор канала
+				ipc->handle = INVALID_HANDLE_VALUE;
+			}
+			// Если поток чтения заведён
+			if((ipc->pipe != nullptr) && ipc->pipe->reader.joinable())
+				// Дожидаемся завершения потока чтения
+				ipc->pipe->reader.join();
 		}
-		// Если поток чтения заведён
-		if(item->reader.joinable())
-			// Дожидаемся завершения потока чтения
-			item->reader.join();
 	}
 
 	/**
@@ -793,16 +1106,25 @@ namespace {
 			const std::lock_guard <std::recursive_mutex> lock(__awh_mutex__);
 			// Выполняем поиск узла события
 			Node * item = __awh_find__(id);
+			// Приводим узел к узлу, за которым стоит сокет
+			::Socket * socket = ::__awh_socket__(item);
+			// Приводим узел к узлу обмена сообщениями между процессами
+			::Ipc * ipc = ::__awh_ipc__(item);
 			// Если узел не найден - читать неоткуда
 			if(item == nullptr)
 				// Завершаем работу потока чтения
 				return;
 			// Запоминаем дескриптор именованного канала
-			handle = item->handle;
+			handle = ipc->handle;
 			// Запоминаем признак стороны, ожидающей подключения
-			listener = item->listener;
+			// Если сторона канала не заведена - читать неоткуда
+			if((ipc == nullptr) || (ipc->pipe == nullptr))
+				// Завершаем работу потока чтения
+				return;
+			// Запоминаем признак стороны, ожидающей подключения
+			listener = ipc->pipe->listener;
 			// Запоминаем признак завершения потока чтения
-			stopped = item->stopped;
+			stopped = ipc->pipe->stopped;
 		}
 		// Если дескриптор канала не получен либо признак завершения не заведён
 		if((handle == INVALID_HANDLE_VALUE) || !stopped)
@@ -976,7 +1298,9 @@ bool awh::engine::IO::commit([[maybe_unused]] const event::id_t id) noexcept {
 	 *       завершения
 	 *
 	 */
-	if((item->state.node == event::node_t::CLIENT) || (item->state.node == event::node_t::SERVER)){
+	if(::__awh_socket__(item) != nullptr){
+		// Приводим узел к узлу, за которым стоит сокет
+		::Socket * socket = ::__awh_socket__(item);
 		// Определяем семейство заводимого сокета
 		const int32_t family = (item->state.family == event::family_t::IPV6 ? AF_INET6 : AF_INET);
 		// Определяем вид заводимого сокета
@@ -984,22 +1308,22 @@ bool awh::engine::IO::commit([[maybe_unused]] const event::id_t id) noexcept {
 		// Определяем протокол заводимого сокета
 		const int32_t protocol = (item->state.type == event::type_t::DATAGRAM ? IPPROTO_UDP : IPPROTO_TCP);
 		// Заводим сокет узла
-		item->socket = ::WSASocketW(family, type, protocol, nullptr, 0, WSA_FLAG_OVERLAPPED);
+		socket->socket = ::WSASocketW(family, type, protocol, nullptr, 0, WSA_FLAG_OVERLAPPED);
 		// Если завести сокет не удалось
-		if(item->socket == INVALID_SOCKET){
+		if(socket->socket == INVALID_SOCKET){
 			// Заносим в журнал предупреждение об отказе заведения сокета
 			this->_log->print("%s: socket could not be created, error %d", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ::WSAGetLastError());
 			// Возвращаем отрицательный результат фиксации
 			return false;
 		}
 		// Если получить расширенные вызовы библиотеки сокетов не удалось
-		if(!::__awh_extensions__(item->socket)){
+		if(!::__awh_extensions__(socket->socket)){
 			// Заносим в журнал предупреждение об отсутствии расширенных вызовов
 			this->_log->print("%s: Winsock extension functions are not available", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__);
 			// Выполняем закрытие заведённого сокета
-			::closesocket(item->socket);
+			::closesocket(socket->socket);
 			// Сбрасываем сокет узла
-			item->socket = INVALID_SOCKET;
+			socket->socket = INVALID_SOCKET;
 			// Возвращаем отрицательный результат фиксации
 			return false;
 		}
@@ -1010,13 +1334,13 @@ bool awh::engine::IO::commit([[maybe_unused]] const event::id_t id) noexcept {
 		 *          иначе нельзя вовсе
 		 *
 		 */
-		if(::CreateIoCompletionPort(reinterpret_cast <HANDLE> (item->socket), ::__awh_port__, static_cast <ULONG_PTR> (item->id), 0) == nullptr){
+		if(::CreateIoCompletionPort(reinterpret_cast <HANDLE> (socket->socket), ::__awh_port__, static_cast <ULONG_PTR> (item->id), 0) == nullptr){
 			// Заносим в журнал предупреждение об отказе связывания
 			this->_log->print("%s: socket could not be attached to the completion port, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ::GetLastError());
 			// Выполняем закрытие заведённого сокета
-			::closesocket(item->socket);
+			::closesocket(socket->socket);
 			// Сбрасываем сокет узла
-			item->socket = INVALID_SOCKET;
+			socket->socket = INVALID_SOCKET;
 			// Возвращаем отрицательный результат фиксации
 			return false;
 		}
@@ -1104,23 +1428,27 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
+	// Приводим узел к узлу, за которым стоит сокет
+	::Socket * socket = ::__awh_socket__(item);
+	// Получаем конечную точку обмена узла
+	::Endpoint * endpoint = ::__awh_endpoint__(item, true);
 	// Если узел не найден
 	if(item == nullptr)
 		// Возвращаем отсутствие порта
 		return 0;
 	// Если сокет узла заведён и привязан
-	if(item->socket != INVALID_SOCKET){
+	if(socket->socket != INVALID_SOCKET){
 		// Собственный адрес сокета
 		sockaddr_storage addr{};
 		// Размер собственного адреса
 		int32_t size = static_cast <int32_t> (sizeof(addr));
 		// Если собственный адрес сокета получен
-		if(::getsockname(item->socket, reinterpret_cast <sockaddr *> (&addr), &size) == 0)
+		if(::getsockname(socket->socket, reinterpret_cast <sockaddr *> (&addr), &size) == 0)
 			// Возвращаем порт, каким узел представляется сети
 			return ::ntohs(addr.ss_family == AF_INET6 ? reinterpret_cast <sockaddr_in6 *> (&addr)->sin6_port : reinterpret_cast <sockaddr_in *> (&addr)->sin_port);
 	}
 	// Возвращаем запрошенный порт
-	return item->source;
+	return (endpoint != nullptr ? endpoint->source : 0);
 }
 
 /**
@@ -1139,12 +1467,19 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
+	// Получаем конечную точку обмена узла
+	::Endpoint * endpoint = ::__awh_endpoint__(item, true);
 	// Если узел не найден - устанавливать некому
 	if(item == nullptr)
 		// Возвращаем отрицательный результат установки
 		return false;
 	// Запоминаем порт, каким узел представляется сети
-	item->source = port;
+	// Если конечная точка обмена узлу неприложима
+	if(endpoint == nullptr)
+		// Возвращаем отрицательный результат установки
+		return false;
+	// Запоминаем порт, каким узел представляется сети
+	endpoint->source = port;
 	// Возвращаем положительный результат установки
 	return true;
 }
@@ -1164,8 +1499,10 @@ uint16_t awh::engine::IO::getTargetPort(const event::id_t id) const noexcept {
 	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
+	// Получаем конечную точку обмена узла
+	::Endpoint * endpoint = ::__awh_endpoint__(item, true);
 	// Возвращаем порт целевой машины
-	return (item != nullptr ? item->port : 0);
+	return (endpoint != nullptr ? endpoint->port : 0);
 }
 
 /**
@@ -1184,12 +1521,19 @@ bool awh::engine::IO::setTargetPort(const event::id_t id, const uint16_t port) n
 	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
+	// Получаем конечную точку обмена узла
+	::Endpoint * endpoint = ::__awh_endpoint__(item, true);
 	// Если узел не найден - устанавливать некому
 	if(item == nullptr)
 		// Возвращаем отрицательный результат установки
 		return false;
 	// Запоминаем порт целевой машины
-	item->port = port;
+	// Если конечная точка обмена узлу неприложима
+	if(endpoint == nullptr)
+		// Возвращаем отрицательный результат установки
+		return false;
+	// Запоминаем порт целевой машины
+	endpoint->port = port;
 	// Возвращаем положительный результат установки
 	return true;
 }
@@ -1209,6 +1553,8 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
+	// Приводим узел к узлу обмена сообщениями между процессами
+	::Ipc * ipc = ::__awh_ipc__(item);
 	// Если узел не найден - отдавать нечего
 	if(item == nullptr)
 		// Возвращаем пустой результат
@@ -1223,7 +1569,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 	 */
 	if(item->state.node == event::node_t::IPC)
 		// Возвращаем имя именованного канала узла
-		return this->_fmk->convert(item->name);
+		return ((ipc->pipe != nullptr) ? this->_fmk->convert(ipc->pipe->name) : string{});
 	// Заносим в журнал предупреждение об отсутствии реализации
 	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
 	// Возвращаем пустой результат
@@ -1246,6 +1592,10 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
+	// Приводим узел к узлу обмена сообщениями между процессами
+	::Ipc * ipc = ::__awh_ipc__(item);
+	// Получаем конечную точку обмена узла
+	::Endpoint * endpoint = ::__awh_endpoint__(item, true);
 	// Если узел не найден - устанавливать некому
 	if(item == nullptr)
 		// Возвращаем отрицательный результат установки
@@ -1259,7 +1609,12 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 	 */
 	if(item->state.node == event::node_t::IPC){
 		// Запоминаем имя именованного канала узла
-		item->name = this->_fmk->convert(string(target));
+		// Если сторона канала ещё не заведена
+		if(ipc->pipe == nullptr)
+			// Заводим узлу сторону именованного канала
+			ipc->pipe = std::make_unique <::Listener> ();
+		// Запоминаем имя именованного канала узла
+		ipc->pipe->name = this->_fmk->convert(string(target));
 		// Возвращаем положительный результат установки
 		return true;
 	}
@@ -1271,7 +1626,12 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 	 */
 	if((item->state.node == event::node_t::CLIENT) || (item->state.node == event::node_t::SERVER)){
 		// Запоминаем название целевой машины
-		item->host.assign(target);
+		// Если конечная точка обмена узлу неприложима
+		if(endpoint == nullptr)
+			// Возвращаем отрицательный результат установки
+			return false;
+		// Запоминаем название целевой машины
+		endpoint->host.assign(target);
 		// Возвращаем положительный результат установки
 		return true;
 	}
@@ -1758,32 +2118,21 @@ bool awh::engine::IO::destroy([[maybe_unused]] const event::id_t id) noexcept {
 		if(i == ::__awh_nodes__.end())
 			// Возвращаем отрицательный результат уничтожения
 			return false;
-		// Получаем функцию обратного вызова на изменение состояния
-		callback = i->second->callbacks.status;
+		// Получаем общие обратные вызовы узла
+		::Callbacks * callbacks = ::__awh_callbacks__(i->second.get());
+		// Если обратные вызовы у узла есть
+		if(callbacks != nullptr)
+			// Получаем функцию обратного вызова на изменение состояния
+			callback = callbacks->status;
 		/**
-		 * Останавливаем поток чтения и закрываем именованный канал
+		 * Закрываем всё, что за узлом числится
 		 *
-		 * @details Закрытие дескриптора обрывает ожидающий ReadFile отказом, и поток
-		 *          чтения выходит сам. Признак завершения выставляется прежде закрытия,
-		 *          чтобы поток не ушёл на новое чтение по уже закрытому дескриптору
-		 *
-		 * @note Поток отвязывается, а не дожидается: уничтожение события вправе
-		 *       случиться прямо из обратного вызова, отданного этим же потоком, и
-		 *       ожидание его свело бы поток на себя самого
+		 * @note Порядок закрытия и доводы к нему собраны в самой обёртке: связь
+		 *       дескриптора с портом завершения рвётся одним лишь закрытием, и
+		 *       снимать за ним прочее приходится там же
 		 *
 		 */
-		if(i->second->handle != INVALID_HANDLE_VALUE){
-			// Выставляем признак завершения потока чтения
-			i->second->stopped->store(true);
-			// Закрываем дескриптор именованного канала
-			::CloseHandle(i->second->handle);
-			// Помечаем дескриптор канала недействительным
-			i->second->handle = INVALID_HANDLE_VALUE;
-		}
-		// Если поток чтения заведён
-		if(i->second->reader.joinable())
-			// Отвязываем поток чтения
-			i->second->reader.detach();
+		::__awh_close__(i->second.get());
 		// Удаляем узел из списка заведённых
 		::__awh_nodes__.erase(i);
 	}
@@ -1847,8 +2196,8 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 	 * Заводим оба узла пары
 	 */
 	for(uint8_t i = 0; i < 2; i++){
-		// Создаём новый узел события
-		std::unique_ptr <::Node> item = std::make_unique <::Node> ();
+		// Заводим узел обмена сообщениями между процессами
+		std::unique_ptr <::Node> item = std::make_unique <::Ipc> ();
 		// Устанавливаем идентификатор события, пропуская нулевой
 		item->id = ++::__awh_last_id__;
 		// Устанавливаем вид узла
@@ -1872,10 +2221,18 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 	if((first == nullptr) || (second == nullptr))
 		// Возвращаем пару идентификаторов заведённых событий
 		return result;
+	// Приводим узлы пары к узлам обмена сообщениями между процессами
+	::Ipc * one = ::__awh_ipc__(first);
+	// Приводим второй узел пары
+	::Ipc * two = ::__awh_ipc__(second);
+	// Если хотя бы один из узлов пары обмена не ведёт
+	if((one == nullptr) || (two == nullptr))
+		// Возвращаем пару идентификаторов заведённых событий
+		return result;
 	// Связываем первый узел пары со вторым
-	first->peer = second->id;
+	one->peer = two->id;
 	// Связываем второй узел пары с первым
-	second->peer = first->id;
+	two->peer = one->id;
 	/**
 	 * Заводим за парой настоящий именованный канал
 	 *
@@ -1917,13 +2274,17 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 	 *
 	 */
 	// Запоминаем дескриптор стороны канала у первого узла пары
-	first->handle = server;
+	one->handle = server;
+	// Заводим первому узлу пары сторону, ожидающую подключения
+	one->pipe = std::make_unique <::Listener> ();
 	// Помечаем первый узел пары стороной, ожидающей подключения
-	first->listener = true;
+	one->pipe->listener = true;
 	// Запоминаем имя канала у первого узла пары
-	first->name = name;
+	one->pipe->name = name;
+	// Заводим второму узлу пары сторону канала
+	two->pipe = std::make_unique <::Listener> ();
 	// Запоминаем имя канала у второго узла пары
-	second->name = name;
+	two->pipe->name = name;
 	// Возвращаем пару идентификаторов заведённых событий
 	return result;
 }
@@ -2014,8 +2375,42 @@ awh::event::id_t awh::engine::IO::event([[maybe_unused]] const event::node_t nod
 		// Возвращаем признак отсутствия заведённого узла
 		return 0;
 	}
-	// Создаём новый узел события
-	std::unique_ptr <::Node> item = std::make_unique <::Node> ();
+	// Заводимый узел события
+	std::unique_ptr <::Node> item = nullptr;
+	/**
+	 * Заводим узел того вида, какой запрошен
+	 *
+	 * @warning Вид этот определяет и устройство узла: приведение к наследнику
+	 *          опирается на поле вида, и узел, заведённый основанием, но
+	 *          объявленный клиентом, привёл бы к обращению по чужой памяти
+	 *
+	 */
+	switch(static_cast <uint8_t> (node)){
+		// Если заводится узел клиента
+		case static_cast <uint8_t> (event::node_t::CLIENT):
+			// Заводим узел клиента
+			item = std::make_unique <::Client> ();
+		break;
+		// Если заводится узел сервера
+		case static_cast <uint8_t> (event::node_t::SERVER):
+			// Заводим узел сервера
+			item = std::make_unique <::Server> ();
+		break;
+		// Если заводится узел обмена сообщениями между процессами
+		case static_cast <uint8_t> (event::node_t::IPC):
+			// Заводим узел обмена сообщениями между процессами
+			item = std::make_unique <::Ipc> ();
+		break;
+		// Если заводится узел пробуждения петли
+		case static_cast <uint8_t> (event::node_t::NOTIFY):
+			// Заводим узел пробуждения петли
+			item = std::make_unique <::Notify> ();
+		break;
+		// Если вид узла движку неизвестен
+		default:
+			// Возвращаем признак отсутствия заведённого узла
+			return 0;
+	}
 	// Устанавливаем идентификатор события, пропуская нулевой
 	item->id = ++::__awh_last_id__;
 	// Устанавливаем вид узла
@@ -2180,6 +2575,10 @@ bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
 		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 		// Выполняем поиск узла события
 		::Node * item = ::__awh_find__(id);
+		// Приводим узел к узлу обмена сообщениями между процессами
+		::Ipc * ipc = ::__awh_ipc__(item);
+		// Получаем общие обратные вызовы узла
+		::Callbacks * callbacks = ::__awh_callbacks__(item);
 		// Если узел не найден — запускать нечего
 		if(item == nullptr)
 			// Возвращаем отрицательный результат запуска
@@ -2208,16 +2607,16 @@ bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
 			 */
 			for(uint8_t i = 0; i < AWH_COUNT_PREPOSTED_ACCEPTS; i++)
 				// Заводим очередное принятие входящей связи
-				::__awh_accept__(item);
+				::__awh_accept__(static_cast <::Server *> (item));
 			// Получаем функцию обратного вызова на изменение состояния
-			callback = item->callbacks.status;
+			callback = ((callbacks != nullptr) ? callbacks->status : nullptr);
 			// Переходим к окончанию запуска узла
 			goto Launched;
 		}
 		// Переводим узел в состояние выполнения
 		item->state.status = event::status_t::LAUNCHED;
 		// Получаем функцию обратного вызова на изменение состояния
-		callback = item->callbacks.status;
+		callback = ((callbacks != nullptr) ? callbacks->status : nullptr);
 		/**
 		 * Запускаем поток чтения, если за узлом стоит настоящий именованный канал
 		 *
@@ -2226,9 +2625,9 @@ bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
 		 *       ушло бы в никуда
 		 *
 		 */
-		if((item->handle == INVALID_HANDLE_VALUE) && !item->name.empty() && (item->state.node == event::node_t::IPC)){
+		if((ipc != nullptr) && (ipc->pipe != nullptr) && (ipc->handle == INVALID_HANDLE_VALUE) && !ipc->pipe->name.empty()){
 			// Открываем свой конец именованного канала
-			HANDLE handle = ::CreateFileW(item->name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
+			HANDLE handle = ::CreateFileW(ipc->pipe->name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
 			// Если свой конец канала открыт
 			if(handle != INVALID_HANDLE_VALUE){
 				// Строй чтения своего конца канала
@@ -2236,14 +2635,14 @@ bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
 				// Переводим свой конец канала в строй сообщений
 				::SetNamedPipeHandleState(handle, &mode, nullptr, nullptr);
 				// Запоминаем дескриптор именованного канала у узла
-				item->handle = handle;
+				ipc->handle = handle;
 			// Если открыть свой конец канала не удалось
-			} else this->_log->print("%s: named pipe \"%ls\" could not be opened, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, item->name.c_str(), ::GetLastError());
+			} else this->_log->print("%s: named pipe \"%ls\" could not be opened, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ipc->pipe->name.c_str(), ::GetLastError());
 		}
 		// Если за узлом стоит настоящий именованный канал, а поток чтения ещё не заведён
-		if((item->handle != INVALID_HANDLE_VALUE) && !item->reader.joinable())
+		if((ipc != nullptr) && (ipc->pipe != nullptr) && (ipc->handle != INVALID_HANDLE_VALUE) && !ipc->pipe->reader.joinable())
 			// Запускаем поток чтения из именованного канала
-			item->reader = std::thread(&::__awh_reader__, id);
+			ipc->pipe->reader = std::thread(&::__awh_reader__, id);
 		// Метка окончания запуска узла
 		Launched:;
 	}
@@ -2340,6 +2739,14 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 	for(const auto & id : ids){
 		// Выполняем поиск узла события
 		::Node * item = ::__awh_find__(id);
+		// Приводим узел к узлу, за которым стоит сокет
+		::Socket * socket = ::__awh_socket__(item);
+		// Приводим узел к узлу обмена сообщениями между процессами
+		::Ipc * ipc = ::__awh_ipc__(item);
+		// Приводим узел к ведущему обмен данными
+		::Transfer * transfer = ::__awh_transfer__(item);
+		// Получаем конечную точку обмена узла
+		::Endpoint * endpoint = ::__awh_endpoint__(item, true);
 		// Если узел не найден - подключать нечего
 		if(item == nullptr)
 			// Переходим к следующему событию
@@ -2358,14 +2765,21 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 		 *
 		 */
 		if(item->state.node == event::node_t::CLIENT){
+			// Если конечная точка обмена узлу не задана
+			if((endpoint == nullptr) || (socket == nullptr) || (socket->socket == INVALID_SOCKET)){
+				// Заносим в журнал предупреждение о незаданной цели
+				this->_log->print("%s: target for event %llu is not set", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+				// Переходим к следующему событию
+				continue;
+			}
 			// Собираемый адрес привязки
 			sockaddr_storage local{};
 			// Размер собираемого адреса привязки
 			int32_t size = 0;
 			// Выполняем сборку адреса привязки
-			::__awh_sockaddr__(item->state.family, std::string{}, item->source, local, size);
+			::__awh_sockaddr__(item->state.family, std::string{}, endpoint->source, local, size);
 			// Если привязать сокет к адресу не удалось
-			if(::bind(item->socket, reinterpret_cast <sockaddr *> (&local), size) != 0){
+			if(::bind(socket->socket, reinterpret_cast <sockaddr *> (&local), size) != 0){
 				// Заносим в журнал предупреждение об отказе привязки
 				this->_log->print("%s: socket could not be bound, error %d", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ::WSAGetLastError());
 				// Переходим к следующему событию
@@ -2374,16 +2788,16 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 			// Собираемый адрес целевой машины
 			sockaddr_storage remote{};
 			// Если собрать адрес целевой машины не удалось
-			if(!::__awh_sockaddr__(item->state.family, item->host, item->port, remote, size)){
+			if(!::__awh_sockaddr__(item->state.family, endpoint->host, endpoint->port, remote, size)){
 				// Заносим в журнал предупреждение о неразобранном адресе
-				this->_log->print("%s: address \"%s\" could not be parsed", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, item->host.c_str());
+				this->_log->print("%s: address \"%s\" could not be parsed", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, endpoint->host.c_str());
 				// Переходим к следующему событию
 				continue;
 			}
 			// Заводим описание установки связи
 			::Overlapped * context = new ::Overlapped(::op_t::CONNECT, id);
 			// Если завести установку связи не удалось
-			if(!::__awh_ext__.connect(item->socket, reinterpret_cast <sockaddr *> (&remote), size, nullptr, 0, nullptr, &context->overlapped) && (::WSAGetLastError() != WSA_IO_PENDING)){
+			if(!::__awh_ext__.connect(socket->socket, reinterpret_cast <sockaddr *> (&remote), size, nullptr, 0, nullptr, &context->overlapped) && (::WSAGetLastError() != WSA_IO_PENDING)){
 				// Заносим в журнал предупреждение об отказе установки связи
 				this->_log->print("%s: connection could not be started, error %d", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ::WSAGetLastError());
 				// Выполняем освобождение описания установки связи
@@ -2392,7 +2806,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 				continue;
 			}
 			// Отмечаем заведённый обмен незавершённым
-			item->pending++;
+			transfer->pending++;
 			/**
 			 * Отмечаем стадию подъёма пройденной
 			 *
@@ -2418,14 +2832,14 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 			continue;
 		}
 		// Если имя именованного канала узлу не задано
-		if(item->name.empty()){
+		if((ipc == nullptr) || (ipc->pipe == nullptr) || ipc->pipe->name.empty()){
 			// Заносим в журнал предупреждение об отсутствии имени канала
 			this->_log->print("%s: named pipe for event %llu is not set", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
 			// Переходим к следующему событию
 			continue;
 		}
 		// Если дескриптор канала у узла уже есть - подключать его повторно незачем
-		if(item->handle != INVALID_HANDLE_VALUE){
+		if(ipc->handle != INVALID_HANDLE_VALUE){
 			// Запоминаем положительный результат подключения
 			result = true;
 			// Переходим к следующему событию
@@ -2440,11 +2854,11 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 		 *          значило бы прятать её
 		 *
 		 */
-		HANDLE handle = ::CreateFileW(item->name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
+		HANDLE handle = ::CreateFileW(ipc->pipe->name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
 		// Если открыть свой конец канала не удалось
 		if(handle == INVALID_HANDLE_VALUE){
 			// Заносим в журнал предупреждение об отказе подключения
-			this->_log->print("%s: named pipe \"%ls\" could not be opened, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, item->name.c_str(), ::GetLastError());
+			this->_log->print("%s: named pipe \"%ls\" could not be opened, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ipc->pipe->name.c_str(), ::GetLastError());
 			// Переходим к следующему событию
 			continue;
 		}
@@ -2453,7 +2867,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 		// Устанавливаем строй чтения своего конца канала
 		::SetNamedPipeHandleState(handle, &mode, nullptr, nullptr);
 		// Запоминаем дескриптор именованного канала у узла
-		item->handle = handle;
+		ipc->handle = handle;
 		// Переводим узел в состояние состоявшегося подключения
 		item->state.status = event::status_t::SUCCESS;
 		// Запоминаем положительный результат подключения
@@ -2501,14 +2915,25 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
+	// Приводим узел к узлу, за которым стоит сокет
+	::Socket * socket = ::__awh_socket__(item);
+	// Получаем конечную точку обмена узла
+	::Endpoint * endpoint = ::__awh_endpoint__(item, true);
 	// Если узел не найден - слушать нечего
 	if(item == nullptr)
 		// Возвращаем отрицательный результат перевода
 		return false;
 	// Если узел не является сервером либо сокета за ним нет
-	if((item->state.node != event::node_t::SERVER) || (item->socket == INVALID_SOCKET)){
+	if((item->state.node != event::node_t::SERVER) || (socket->socket == INVALID_SOCKET)){
 		// Заносим в журнал предупреждение о неприложимости перевода
 		this->_log->print("%s: listening is not applicable to event %llu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+		// Возвращаем отрицательный результат перевода
+		return false;
+	}
+	// Если конечная точка обмена узлу не задана
+	if(endpoint == nullptr){
+		// Заносим в журнал предупреждение о незаданной цели
+		this->_log->print("%s: target for event %llu is not set", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
 		// Возвращаем отрицательный результат перевода
 		return false;
 	}
@@ -2517,14 +2942,14 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 	// Размер собираемого адреса
 	int32_t size = 0;
 	// Если собрать адрес привязки не удалось
-	if(!::__awh_sockaddr__(item->state.family, item->host, item->port, addr, size)){
+	if(!::__awh_sockaddr__(item->state.family, endpoint->host, endpoint->port, addr, size)){
 		// Заносим в журнал предупреждение о неразобранном адресе
-		this->_log->print("%s: address \"%s\" could not be parsed", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, item->host.c_str());
+		this->_log->print("%s: address \"%s\" could not be parsed", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, endpoint->host.c_str());
 		// Возвращаем отрицательный результат перевода
 		return false;
 	}
 	// Если привязать сокет к адресу не удалось
-	if(::bind(item->socket, reinterpret_cast <sockaddr *> (&addr), size) != 0){
+	if(::bind(socket->socket, reinterpret_cast <sockaddr *> (&addr), size) != 0){
 		// Заносим в журнал предупреждение об отказе привязки
 		this->_log->print("%s: socket could not be bound, error %d", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ::WSAGetLastError());
 		// Возвращаем отрицательный результат перевода
@@ -2537,7 +2962,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 	 *       какой система полагает разумным сама
 	 *
 	 */
-	if(::listen(item->socket, (max > 0 ? static_cast <int32_t> (max) : SOMAXCONN)) != 0){
+	if(::listen(socket->socket, (max > 0 ? static_cast <int32_t> (max) : SOMAXCONN)) != 0){
 		// Заносим в журнал предупреждение об отказе перевода
 		this->_log->print("%s: socket could not be switched to listening, error %d", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ::WSAGetLastError());
 		// Возвращаем отрицательный результат перевода
@@ -2597,6 +3022,12 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 		// Выполняем поиск узла события
 		::Node * item = ::__awh_find__(id);
+		// Приводим узел к узлу обмена сообщениями между процессами
+		::Ipc * ipc = ::__awh_ipc__(item);
+		// Получаем общие обратные вызовы узла
+		::Callbacks * callbacks = ::__awh_callbacks__(item);
+		// Получаем обратный вызов отдачи данных
+		engine::callback::write_t * writer = ::__awh_write__(item);
 		/**
 		 * Узел сокета отдаёт данные наложенным обменом
 		 *
@@ -2612,7 +3043,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		 */
 		{
 			// Получаем узел, от имени которого ведётся отправка
-			::Node * sender = item;
+			::Socket * sender = ::__awh_socket__(item);
 			// Если узел найден и за ним стоит сокет
 			if((sender != nullptr) && (sender->socket != INVALID_SOCKET)){
 				// Если узел закрывается - отправлять больше нечего
@@ -2652,9 +3083,9 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 			// Возвращаем количество отправленных байт
 			return 0;
 		// Получаем функцию обратного вызова на запись сообщений
-		callback = item->callbacks.write;
+		callback = ((writer != nullptr) ? (* writer) : nullptr);
 		// Получаем функцию обратного вызова на получение ошибок
-		failure = item->callbacks.error;
+		failure = ((callbacks != nullptr) ? callbacks->error : nullptr);
 		/**
 		 * Отправляем сообщение в именованный канал, если тот за узлом стоит
 		 *
@@ -2667,7 +3098,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		 *       заведённых без канала: там обмен ведётся внутри одного процесса
 		 *
 		 */
-		if((item->state.node == event::node_t::IPC) && (item->handle != INVALID_HANDLE_VALUE)){
+		if((item->state.node == event::node_t::IPC) && (ipc->handle != INVALID_HANDLE_VALUE)){
 			// Количество отправленных байт, снятое системой
 			DWORD sent = 0;
 			/**
@@ -2686,11 +3117,11 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 			// Привязываем событие завершения к наложенной операции
 			overlapped.hEvent = signal;
 			// Выполняем наложенную отправку сообщения в именованный канал
-			BOOL result = ::WriteFile(item->handle, buffer, static_cast <DWORD> (size), &sent, &overlapped);
+			BOOL result = ::WriteFile(ipc->handle, buffer, static_cast <DWORD> (size), &sent, &overlapped);
 			// Если отправка принята системой к исполнению - дожидаемся её завершения
 			if(!result && (::GetLastError() == ERROR_IO_PENDING))
 				// Дожидаемся завершения наложенной отправки
-				result = ::GetOverlappedResult(item->handle, &overlapped, &sent, TRUE);
+				result = ::GetOverlappedResult(ipc->handle, &overlapped, &sent, TRUE);
 			// Если отправка состоялась
 			if(result)
 				// Запоминаем количество отправленных байт
@@ -2727,7 +3158,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 				 */
 				case static_cast <uint8_t> (event::node_t::IPC):
 					// Сообщение предназначено собеседнику по паре
-					target = ::__awh_find__(item->peer);
+					target = ::__awh_find__(ipc->peer);
 				break;
 			}
 			// Если узел-получатель определить не удалось
@@ -3353,10 +3784,12 @@ void awh::engine::IO::clear() noexcept {
 	 * Перебираем все заведённые узлы, извещая о их уничтожении
 	 */
 	for(auto & item : ::__awh_nodes__){
+		// Получаем общие обратные вызовы узла
+		::Callbacks * callbacks = ::__awh_callbacks__(item.second.get());
 		// Если функция обратного вызова на изменение состояния установлена
-		if(item.second->callbacks.status != nullptr)
+		if((callbacks != nullptr) && (callbacks->status != nullptr))
 			// Извещаем о уничтожении узла события
-			item.second->callbacks.status(item.first, event::status_t::DESTROYED);
+			callbacks->status(item.first, event::status_t::DESTROYED);
 	}
 	// Очищаем список заведённых узлов
 	::__awh_nodes__.clear();
@@ -3890,16 +4323,27 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск узла события
 					::Node * item = ::__awh_find__(context->id);
+					// Приводим узел к узлу, за которым стоит сокет
+					::Socket * socket = ::__awh_socket__(item);
+					// Приводим узел к ведущему обмен данными
+					::Transfer * transfer = ::__awh_transfer__(item);
 					// Если узел найден
-					if(item != nullptr){
+					if(transfer != nullptr){
 						// Отмечаем завершившийся обмен
-						item->pending--;
+						transfer->pending--;
 						// Запоминаем, что узел жив
 						alive = true;
 						// Если данные приняты и узел запущен
-						if((received > 0) && (item->state.status == event::status_t::LAUNCHED))
+						if((received > 0) && (transfer->state.status == event::status_t::LAUNCHED))
 							// Получаем функцию обратного вызова на чтение данных
-							callback = item->callbacks.read;
+							{
+							// Получаем обратный вызов приёма данных
+							engine::callback::read_t * reader = ::__awh_read__(item);
+							// Если приём данных виду узла сообщается
+							if(reader != nullptr)
+								// Получаем функцию обратного вызова на приём данных
+								callback = (* reader);
+						}
 					}
 				}
 				// Если собеседник закрыл свою сторону
@@ -3932,7 +4376,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					// Выполняем блокировку замка доступа к списку узлов
 					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск узла события
-					::Node * item = ::__awh_find__(context->id);
+					::Socket * item = ::__awh_socket__(::__awh_find__(context->id));
 					// Заводим следующий приём, отдавая ему то же описание обмена
 					if(!::__awh_recv__(item, context))
 						// Если завести приём не удалось - описание уже освобождено
@@ -3951,13 +4395,20 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					// Выполняем блокировку замка доступа к списку узлов
 					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск узла события
-					::Node * item = ::__awh_find__(context->id);
+					::Transfer * item = ::__awh_transfer__(::__awh_find__(context->id));
 					// Если узел найден
 					if(item != nullptr){
 						// Отмечаем завершившийся обмен
 						item->pending--;
 						// Получаем функцию обратного вызова на запись данных
-						callback = item->callbacks.write;
+						{
+							// Получаем обратный вызов отдачи данных
+							engine::callback::write_t * writer = ::__awh_write__(item);
+							// Если отдача данных виду узла сообщается
+							if(writer != nullptr)
+								// Получаем функцию обратного вызова на отдачу данных
+								callback = (* writer);
+						}
 					}
 				}
 				// Если функция обратного вызова на запись установлена
@@ -3982,21 +4433,21 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					// Выполняем блокировку замка доступа к списку узлов
 					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск узла события
-					::Node * item = ::__awh_find__(context->id);
+					::Transfer * item = ::__awh_transfer__(::__awh_find__(context->id));
 					// Если узел найден
 					if(item != nullptr){
 						// Отмечаем завершившийся обмен
 						item->pending--;
 						// Выполняем настройку сокета установленной связью
-						established = (::setsockopt(item->socket, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, nullptr, 0) == 0);
+						established = (::setsockopt(static_cast <::Client *> (item)->socket, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, nullptr, 0) == 0);
 						// Получаем функцию обратного вызова на установку связи
-						callback = item->connected;
+						callback = static_cast <::Client *> (item)->callbacks.connect;
 						// Если связь установлена
 						if(established){
 							// Применяем к сокету запомненную отметку класса обслуживания
-							win::qos::apply(static_cast <net::socket_t> (item->socket), nullptr);
+							win::qos::apply(static_cast <net::socket_t> (static_cast <::Client *> (item)->socket), nullptr);
 							// Заводим приём из сокета вперёд
-							::__awh_recv__(item);
+							::__awh_recv__(static_cast <::Client *> (item));
 						}
 					}
 				}
@@ -4021,19 +4472,27 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					// Выполняем блокировку замка доступа к списку узлов
 					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск узла события
-					::Node * item = ::__awh_find__(context->id);
+					::Transfer * item = ::__awh_transfer__(::__awh_find__(context->id));
 					// Если узел найден
 					if(item != nullptr){
 						// Отмечаем завершившийся обмен
 						item->pending--;
 						// Переносим настройки слушающего сокета на принятый
-						if(::setsockopt(context->socket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast <const char *> (&item->socket), sizeof(item->socket)) == 0){
+						if(::setsockopt(context->socket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast <const char *> (&static_cast <::Server *> (item)->socket), sizeof(SOCKET)) == 0){
 							// Заводим узел принятой связи
-							std::unique_ptr <::Node> peer = std::make_unique <::Node> ();
+							std::unique_ptr <::Peer> peer = std::make_unique <::Peer> ();
 							// Устанавливаем идентификатор узла, пропуская нулевой
 							peer->id = ++::__awh_last_id__;
-							// Устанавливаем вид узла
-							peer->state.node = event::node_t::CLIENT;
+							/**
+							 * Устанавливаем вид узла
+							 *
+							 * @note Принятая связь заводится узлом своего вида, а не
+							 *       клиентом: исходящей связи она не устанавливает, и
+							 *       ни конечная точка обмена, ни вызов её установки ей
+							 *       не нужны вовсе
+							 *
+							 */
+							peer->state.node = event::node_t::PEER;
 							// Устанавливаем семейство событий
 							peer->state.family = item->state.family;
 							// Устанавливаем вид передачи данных
@@ -4051,11 +4510,11 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							// Добавляем узел принятой связи в список заведённых
 							::__awh_nodes__.emplace(accepted, ::std::move(peer));
 							// Получаем функцию обратного вызова на принятие входящей связи
-							callback = item->accepted;
+							callback = static_cast <::Server *> (item)->callbacks.accept;
 						// Если перенести настройки не удалось
 						} else ::closesocket(context->socket);
 						// Заводим следующее принятие входящей связи вперёд
-						::__awh_accept__(item);
+						::__awh_accept__(static_cast <::Server *> (item));
 					// Если узел исчез - принятая связь никому не нужна
 					} else ::closesocket(context->socket);
 				}
@@ -4068,7 +4527,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					// Выполняем блокировку замка доступа к списку узлов
 					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск заведённого узла
-					::Node * peer = ::__awh_find__(accepted);
+					::Socket * peer = ::__awh_socket__(::__awh_find__(accepted));
 					// Если узел найден
 					if(peer != nullptr)
 						/**
@@ -4099,11 +4558,18 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			// Выполняем блокировку замка доступа к списку узлов
 			const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 			// Выполняем поиск узла события
-			::Node * item = ::__awh_find__(message.first);
+			::Transfer * item = ::__awh_transfer__(::__awh_find__(message.first));
 			// Если узел найден и запущен
 			if((item != nullptr) && (item->state.status == event::status_t::LAUNCHED))
 				// Получаем функцию обратного вызова на чтение сообщений
-				callback = item->callbacks.read;
+				{
+					// Получаем обратный вызов приёма данных
+					engine::callback::read_t * reader = ::__awh_read__(item);
+					// Если приём данных виду узла сообщается
+					if(reader != nullptr)
+						// Получаем функцию обратного вызова на приём данных
+						callback = (* reader);
+				}
 		}
 		// Если функция обратного вызова на чтение установлена
 		if(callback != nullptr)
@@ -4129,8 +4595,12 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			if(item == nullptr)
 				// Переходим к следующему узлу
 				continue;
-			// Получаем функцию обратного вызова на изменение состояния
-			callback = item->callbacks.status;
+			// Получаем общие обратные вызовы узла
+			::Callbacks * callbacks = ::__awh_callbacks__(item);
+			// Если обратные вызовы у узла есть
+			if(callbacks != nullptr)
+				// Получаем функцию обратного вызова на изменение состояния
+				callback = callbacks->status;
 			// Выполняем закрытие всего, что числится за узлом
 			::__awh_close__(item);
 			// Выполняем изъятие узла из списка заведённых
@@ -4197,6 +4667,8 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
 	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
+	// Получаем обратный вызов приёма данных
+	engine::callback::read_t * callback = ::__awh_read__(item);
 	// Если узел не найден — подключать обратную связь некому
 	if(item == nullptr){
 		// Заносим в журнал предупреждение об отсутствии узла события
@@ -4204,8 +4676,15 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
 		// Выходим из метода
 		return;
 	}
+	// Если приём данных виду узла не сообщается
+	if(callback == nullptr){
+		// Заносим в журнал предупреждение о неприменимости обратного вызова
+		this->_log->print("%s: callback \"read\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
+		// Выходим из метода
+		return;
+	}
 	// Устанавливаем функцию обратного вызова
-	item->callbacks.read = cb;
+	(* callback) = cb;
 }
 
 /**
@@ -4230,6 +4709,8 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
 	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
+	// Получаем обратный вызов отдачи данных
+	engine::callback::write_t * callback = ::__awh_write__(item);
 	// Если узел не найден — подключать обратную связь некому
 	if(item == nullptr){
 		// Заносим в журнал предупреждение об отсутствии узла события
@@ -4237,8 +4718,15 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
 		// Выходим из метода
 		return;
 	}
+	// Если отдача данных виду узла не сообщается
+	if(callback == nullptr){
+		// Заносим в журнал предупреждение о неприменимости обратного вызова
+		this->_log->print("%s: callback \"write\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
+		// Выходим из метода
+		return;
+	}
 	// Устанавливаем функцию обратного вызова
-	item->callbacks.write = cb;
+	(* callback) = cb;
 }
 
 /**
@@ -4321,6 +4809,8 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
 	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
+	// Получаем общие обратные вызовы узла
+	::Callbacks * callbacks = ::__awh_callbacks__(item);
 	// Если узел не найден — подключать обратную связь некому
 	if(item == nullptr){
 		// Заносим в журнал предупреждение об отсутствии узла события
@@ -4328,8 +4818,15 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
 		// Выходим из метода
 		return;
 	}
+	// Если обратных вызовов у вида узла нет
+	if(callbacks == nullptr){
+		// Заносим в журнал предупреждение о неприменимости обратного вызова
+		this->_log->print("%s: callback \"error\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
+		// Выходим из метода
+		return;
+	}
 	// Устанавливаем функцию обратного вызова
-	item->callbacks.error = cb;
+	callbacks->error = cb;
 }
 
 /**
@@ -4418,6 +4915,8 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
 	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
+	// Получаем общие обратные вызовы узла
+	::Callbacks * callbacks = ::__awh_callbacks__(item);
 	// Если узел не найден — подключать обратную связь некому
 	if(item == nullptr){
 		// Заносим в журнал предупреждение об отсутствии узла события
@@ -4425,8 +4924,15 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
 		// Выходим из метода
 		return;
 	}
+	// Если обратных вызовов у вида узла нет
+	if(callbacks == nullptr){
+		// Заносим в журнал предупреждение о неприменимости обратного вызова
+		this->_log->print("%s: callback \"status\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
+		// Выходим из метода
+		return;
+	}
 	// Устанавливаем функцию обратного вызова
-	item->callbacks.status = cb;
+	callbacks->status = cb;
 }
 
 /**
@@ -4474,7 +4980,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
 		return;
 	}
 	// Устанавливаем функцию обратного вызова
-	item->accepted = ::std::move(cb);
+	static_cast <::Server *> (item)->callbacks.accept = ::std::move(cb);
 }
 
 /**
@@ -4565,7 +5071,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) n
 		return;
 	}
 	// Устанавливаем функцию обратного вызова
-	item->connected = ::std::move(cb);
+	static_cast <::Client *> (item)->callbacks.connect = ::std::move(cb);
 }
 
 /**
@@ -4672,8 +5178,14 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
 		// Выходим из метода
 		return;
 	}
-	// Устанавливаем функцию обратного вызова
-	item->available = cb;
+	/**
+	 * Подписка на доступность очереди узлам движка пока не приложима
+	 *
+	 * @note Очередь эта заводится узлам с ограничением объёма исходящего, а
+	 *       ограничения этого движок ещё не завёл
+	 *
+	 */
+	this->_log->print("%s: callback \"available\" is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
 }
 
 /**

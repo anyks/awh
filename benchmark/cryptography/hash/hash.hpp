@@ -92,8 +92,11 @@ namespace awh {
 			 *
 			 * @note Имя намеренно не `PAGE_SIZE`: у систем BSD это макрос из
 			 * `machine/param.h`, и препроцессор подменяет им объявление ещё до разбора -
-			 * сборка отвечает "expected unqualified-id". Проверено опытом на стенде
-			 * FreeBSD 15.1
+			 * сборка отвечает "expected unqualified-id"
+			 *
+			 * @note Разрядности отказ не разбирает: макрос приходит по цепочке
+			 * `include/sys/global.hpp` -> `sys/param.h`, а она одна на все FreeBSD.
+			 * Проверено опытом на обоих стендах - 15.1 arm64 и 14.1 amd64
 			 *
 			 */
 			static constexpr size_t MEMORY_PAGE_SIZE = 4096;

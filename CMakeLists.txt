@@ -1022,6 +1022,11 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с юнитом перенаправления портов
     option(CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE "Build Unit Portmap app sample" ON)
 
+    # Устанавливаем имя приложения присмотра за перенаправлением порта
+    SET(UNIT_APP_WATCHDOG_NAME unit-watchdog)
+    # Указываем что нужно собрать приложение присмотра за перенаправлением порта
+    option(CMAKE_BUILD_UNIT_WATCHDOG_APP_SAMPLE "Build Unit Portmap watchdog app sample" ON)
+
     # Устанавливаем имя приложения работы с юнитом ICMP-клиентом
     SET(UNIT_APP_ICMP_NAME unit-ping)
     # Указываем что нужно собрать приложение работы с юнитом ICMP-клиентом
@@ -1527,6 +1532,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT PORTMAP: No\n")
     endif (${CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE})
+
+    # Если нужно собрать семплы присмотра за перенаправлением порта
+    if (${CMAKE_BUILD_UNIT_WATCHDOG_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT WATCHDOG: Yes\n")
+        # Выполняем создание приложения присмотра за перенаправлением порта
+        add_sample(${UNIT_APP_WATCHDOG_NAME} sample/units/watchdog.cpp units)
+    # Если не нужно собирать семплы присмотра за перенаправлением порта
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample UNIT WATCHDOG: No\n")
+    endif (${CMAKE_BUILD_UNIT_WATCHDOG_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
     if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
@@ -2388,6 +2405,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE})
+
+        # Если нужно собрать семплы присмотра за перенаправлением порта
+        if (${CMAKE_BUILD_UNIT_WATCHDOG_APP_SAMPLE})
+            # Выполняем сборку приложения присмотра за перенаправлением порта
+            target_link_libraries(
+                ${UNIT_APP_WATCHDOG_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_WATCHDOG_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
         if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
@@ -3428,6 +3456,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE})
+
+        # Если нужно собрать семплы присмотра за перенаправлением порта
+        if (${CMAKE_BUILD_UNIT_WATCHDOG_APP_SAMPLE})
+            # Выполняем сборку приложения присмотра за перенаправлением порта
+            target_link_libraries(
+                ${UNIT_APP_WATCHDOG_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_UNIT_WATCHDOG_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом ICMP-клиентом
         if (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
