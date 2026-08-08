@@ -1,0 +1,856 @@
+/**
+ * @file: tunnel.cpp
+ * @date: 2026-08-08
+ * @license: LicenseRef-AWH-1.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @brief Реализация модуля туннельных устройств MS Windows
+ *
+ * @details Разбор устройства обоих драйверов и доводы к принятым решениям вынесены в
+ *          заголовочный файл модуля, здесь же остаётся одно исполнение
+ *
+ * @copyright: Copyright © 2026
+ *
+ */
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <mutex>
+#include <string>
+#include <vector>
+#include <cstring>
+#include <unordered_map>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <net/backend/win/tunnel.hpp>
+
+/**
+ * @brief Средства опроса и настройки сетевых устройств
+ *
+ */
+#include <iphlpapi.h>
+#include <netioapi.h>
+
+/**
+ * @brief Средства управления драйверами устройств
+ *
+ * @details Отсюда берётся сборка управляющих кодов CTL_CODE, какими драйверу
+ *          tap-windows6 сообщается вид переноса и подключение устройства
+ *
+ */
+#include <winioctl.h>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * @brief Название модуля для записей в журнале
+ *
+ */
+static constexpr const char * __AWH_TUNNEL_BACKEND__ = "MS Windows tunnel backend";
+
+/**
+ * @brief Инкапсулируем состояние модуля в пространство имён
+ *
+ */
+namespace {
+	/**
+	 * @brief Описатели устройства и сеанса драйвера Wintun
+	 *
+	 * @details Оба непрозрачны, и объявлять их точнее указателя незачем. Взяты они
+	 *          отсюда, а не из заголовка поставщика, чтобы набор не обзаводился
+	 *          сторонним заголовком ради десятка объявлений
+	 *
+	 */
+	typedef void * wintun_adapter_t;
+	typedef void * wintun_session_t;
+	/**
+	 * @brief Подписи вызовов драйвера Wintun
+	 *
+	 */
+	typedef wintun_adapter_t (WINAPI * wintun_create_t)(LPCWSTR, LPCWSTR, const GUID *);
+	typedef wintun_adapter_t (WINAPI * wintun_open_t)(LPCWSTR);
+	typedef void (WINAPI * wintun_close_t)(wintun_adapter_t);
+	typedef void (WINAPI * wintun_luid_t)(wintun_adapter_t, NET_LUID *);
+	typedef wintun_session_t (WINAPI * wintun_start_t)(wintun_adapter_t, DWORD);
+	typedef void (WINAPI * wintun_end_t)(wintun_session_t);
+	typedef HANDLE (WINAPI * wintun_event_t)(wintun_session_t);
+	typedef BYTE * (WINAPI * wintun_receive_t)(wintun_session_t, DWORD *);
+	typedef void (WINAPI * wintun_release_t)(wintun_session_t, const BYTE *);
+	typedef BYTE * (WINAPI * wintun_allocate_t)(wintun_session_t, DWORD);
+	typedef void (WINAPI * wintun_send_t)(wintun_session_t, const BYTE *);
+	/**
+	 * @brief Набор вызовов драйвера Wintun
+	 *
+	 * @details Библиотека подключается по ходу работы, а не связыванием: машина вправе
+	 *          обойтись вовсе без неё, и отсутствие её обязано отвечать внятным
+	 *          отказом, а не срывом запуска всего приложения
+	 *
+	 */
+	struct wintun_t {
+		HMODULE dll;                  // Описатель подключённой библиотеки
+		wintun_create_t create;       // Заведение устройства
+		wintun_open_t open;           // Занятие уже заведённого устройства
+		wintun_close_t close;         // Устранение устройства
+		wintun_luid_t luid;           // Получение местного номера устройства
+		wintun_start_t start;         // Открытие сеанса обмена
+		wintun_end_t end;             // Закрытие сеанса обмена
+		wintun_event_t event;         // Событие готовности к чтению
+		wintun_receive_t receive;     // Приём пакета из кольца
+		wintun_release_t release;     // Возврат места в кольцо
+		wintun_allocate_t allocate;   // Отведение места под отправку
+		wintun_send_t send;           // Отправка пакета
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		wintun_t() noexcept :
+		 dll(nullptr), create(nullptr), open(nullptr), close(nullptr),
+		 luid(nullptr), start(nullptr), end(nullptr), event(nullptr),
+		 receive(nullptr), release(nullptr), allocate(nullptr), send(nullptr) {}
+	};
+	/**
+	 * @brief Запись реестра заведённых туннельных устройств
+	 *
+	 */
+	struct entry_t {
+		awh::win::tunnel::driver_t driver;   // Драйвер, каким устройство заведено
+		string name;                         // Название устройства в виде «{GUID}»
+		wintun_adapter_t adapter;            // Описатель устройства Wintun
+		wintun_session_t session;            // Описатель сеанса Wintun
+		HANDLE handle;                       // Дескриптор файла устройства tap-windows6
+		HANDLE event;                        // Событие готовности к чтению
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		entry_t() noexcept :
+		 driver(awh::win::tunnel::driver_t::NONE), adapter(nullptr),
+		 session(nullptr), handle(INVALID_HANDLE_VALUE), event(nullptr) {}
+	};
+	// Замок, оберегающий реестр заведённых устройств
+	static std::mutex __awh_mutex__;
+	// Реестр заведённых туннельных устройств
+	static std::unordered_map <awh::net::socket_t, entry_t> __awh_registry__;
+	/**
+	 * @brief Функция подключения библиотеки драйвера Wintun
+	 *
+	 * @details Подключается она единожды за время работы и остаётся подключённой:
+	 *          отключение её при живых устройствах устранило бы их разом
+	 *
+	 * @param log объект ведения журнала
+	 * @return    набор вызовов драйвера либо пустое значение при отказе
+	 *
+	 */
+	static const wintun_t * __awh_wintun__(const awh::log_t * log) noexcept {
+		// Набор вызовов драйвера
+		static wintun_t result;
+		// Признак уже выполненной попытки подключения
+		static bool attempted = false;
+		// Если попытка подключения уже выполнялась
+		if(attempted)
+			// Выводим набор вызовов, если подключение удалось
+			return (result.dll != nullptr ? &result : nullptr);
+		// Запоминаем выполнение попытки подключения
+		attempted = true;
+		// Выполняем подключение библиотеки драйвера
+		result.dll = ::LoadLibraryExW(L"wintun.dll", nullptr, LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
+		// Если подключить библиотеку драйвера не удалось
+		if(result.dll == nullptr){
+			// Если объект ведения журнала передан
+			if(log != nullptr)
+				// Выводим в журнал сообщение о невозможности подключения
+				log->print("%s: wintun.dll could not be loaded, error %lu", awh::log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+			// Выводим пустое значение
+			return nullptr;
+		}
+		/**
+		 * @brief Снятие вызова из подключённой библиотеки
+		 *
+		 */
+		#define __AWH_BIND__(field, type, symbol) \
+			result.field = reinterpret_cast <type> (reinterpret_cast <void *> (::GetProcAddress(result.dll, symbol)))
+		// Выполняем снятие вызовов драйвера
+		__AWH_BIND__(create, wintun_create_t, "WintunCreateAdapter");
+		__AWH_BIND__(open, wintun_open_t, "WintunOpenAdapter");
+		__AWH_BIND__(close, wintun_close_t, "WintunCloseAdapter");
+		__AWH_BIND__(luid, wintun_luid_t, "WintunGetAdapterLUID");
+		__AWH_BIND__(start, wintun_start_t, "WintunStartSession");
+		__AWH_BIND__(end, wintun_end_t, "WintunEndSession");
+		__AWH_BIND__(event, wintun_event_t, "WintunGetReadWaitEvent");
+		__AWH_BIND__(receive, wintun_receive_t, "WintunReceivePacket");
+		__AWH_BIND__(release, wintun_release_t, "WintunReleaseReceivePacket");
+		__AWH_BIND__(allocate, wintun_allocate_t, "WintunAllocateSendPacket");
+		__AWH_BIND__(send, wintun_send_t, "WintunSendPacket");
+		// Снимаем объявление снятия вызовов
+		#undef __AWH_BIND__
+		// Если хотя бы один вызов драйвера снять не удалось
+		if((result.create == nullptr) || (result.close == nullptr) || (result.luid == nullptr) ||
+		   (result.start == nullptr) || (result.end == nullptr) || (result.event == nullptr) ||
+		   (result.receive == nullptr) || (result.release == nullptr) ||
+		   (result.allocate == nullptr) || (result.send == nullptr)){
+			// Выводим в журнал сообщение о несовпадении состава библиотеки
+			log->print("%s: wintun.dll does not export the expected entry points", awh::log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+			// Выполняем отключение библиотеки драйвера
+			::FreeLibrary(result.dll);
+			// Сбрасываем описатель подключённой библиотеки
+			result.dll = nullptr;
+			// Выводим пустое значение
+			return nullptr;
+		}
+		// Выводим набор вызовов драйвера
+		return &result;
+	}
+	/**
+	 * @brief Функция получения названия устройства по его местному номеру
+	 *
+	 * @details Названием устройства слой сетевых устройств считает неизменное имя вида
+	 *          «{GUID}», а не переименуемое описание, и здесь оно приводится к тому же
+	 *          виду - иначе заведённое устройство нельзя было бы найти опросом
+	 *
+	 * @param luid местный номер устройства
+	 * @return     название устройства в виде «{GUID}»
+	 *
+	 */
+	static string __awh_name__(const NET_LUID & luid) noexcept {
+		// Уникальный номер устройства
+		GUID guid{};
+		// Если получить уникальный номер устройства не удалось
+		if(::ConvertInterfaceLuidToGuid(&luid, &guid) != NO_ERROR)
+			// Выводим пустое название устройства
+			return string{};
+		// Буфер под название устройства
+		char buffer[64];
+		// Выполняем сборку названия устройства
+		const int32_t size = ::snprintf(
+			buffer, sizeof(buffer),
+			"{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+			static_cast <unsigned long> (guid.Data1), guid.Data2, guid.Data3,
+			guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
+			guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]
+		);
+		// Выводим собранное название устройства
+		return (size > 0 ? string(buffer, static_cast <size_t> (size)) : string{});
+	}
+	/**
+	 * @brief Функция поиска свободного устройства драйвера tap-windows6
+	 *
+	 * @details Устройства эти ставит установщик драйвера, и завести новое из работающего
+	 *          приложения нельзя. Перечень их система держит в ветви настроек класса
+	 *          сетевых устройств, откуда и снимается уникальный номер каждого
+	 *
+	 * @param name  название занятого устройства
+	 * @param log   объект ведения журнала
+	 * @return      дескриптор занятого устройства
+	 *
+	 */
+	static HANDLE __awh_tap__(string & name, const awh::log_t * log) noexcept {
+		/**
+		 * @brief Ветвь настроек класса сетевых устройств
+		 *
+		 */
+		static constexpr const wchar_t * BRANCH = L"SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}";
+		// Описатель ветви настроек класса сетевых устройств
+		HKEY branch = nullptr;
+		// Если открыть ветвь настроек класса сетевых устройств не удалось
+		if(::RegOpenKeyExW(HKEY_LOCAL_MACHINE, BRANCH, 0, KEY_READ, &branch) != ERROR_SUCCESS){
+			// Если объект ведения журнала передан
+			if(log != nullptr)
+				// Выводим в журнал сообщение о невозможности опроса устройств
+				log->print("%s: network adapter class registry branch could not be opened", awh::log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+			// Выводим пустой дескриптор
+			return INVALID_HANDLE_VALUE;
+		}
+		// Результат занятия устройства
+		HANDLE result = INVALID_HANDLE_VALUE;
+		/**
+		 * Выполняем перебор всех устройств класса сетевых устройств
+		 */
+		for(DWORD index = 0; result == INVALID_HANDLE_VALUE; index++){
+			// Буфер под название записи устройства
+			wchar_t key[256];
+			// Размер названия записи устройства
+			DWORD size = static_cast <DWORD> (sizeof(key) / sizeof(key[0]));
+			// Если записи устройств исчерпаны
+			if(::RegEnumKeyExW(branch, index, key, &size, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS)
+				// Завершаем перебор записей устройств
+				break;
+			// Описатель записи устройства
+			HKEY entry = nullptr;
+			// Если открыть запись устройства не удалось
+			if(::RegOpenKeyExW(branch, key, 0, KEY_READ, &entry) != ERROR_SUCCESS)
+				// Переходим к следующей записи устройства
+				continue;
+			// Буфер под опознаватель драйвера устройства
+			wchar_t component[64];
+			// Размер опознавателя драйвера устройства
+			DWORD length = static_cast <DWORD> (sizeof(component));
+			// Признак принадлежности устройства драйверу tap-windows6
+			bool matched = false;
+			// Если опознаватель драйвера устройства получен
+			if(::RegQueryValueExW(entry, L"ComponentId", nullptr, nullptr, reinterpret_cast <LPBYTE> (component), &length) == ERROR_SUCCESS)
+				// Запоминаем принадлежность устройства драйверу tap-windows6
+				matched = ((::wcscmp(component, L"tap0901") == 0) || (::wcscmp(component, L"root\\tap0901") == 0));
+			// Если устройство драйверу tap-windows6 не принадлежит
+			if(!matched){
+				// Выполняем закрытие записи устройства
+				::RegCloseKey(entry);
+				// Переходим к следующей записи устройства
+				continue;
+			}
+			// Буфер под уникальный номер устройства
+			wchar_t guid[64];
+			// Размер уникального номера устройства
+			length = static_cast <DWORD> (sizeof(guid));
+			// Если уникальный номер устройства получен
+			if(::RegQueryValueExW(entry, L"NetCfgInstanceId", nullptr, nullptr, reinterpret_cast <LPBYTE> (guid), &length) == ERROR_SUCCESS){
+				// Буфер под путь к устройству
+				wchar_t path[128];
+				// Выполняем сборку пути к устройству
+				::_snwprintf(path, sizeof(path) / sizeof(path[0]), L"\\\\.\\Global\\%ls.tap", guid);
+				/**
+				 * Открывается устройство обязательно с перекрытым обменом
+				 *
+				 * @note На дескрипторе без перекрытия система обмен упорядочивает, и
+				 *       незавершённое чтение задержало бы запись из другого потока
+				 *
+				 */
+				result = ::CreateFileW(
+					path, GENERIC_READ | GENERIC_WRITE, 0, nullptr,
+					OPEN_EXISTING, FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED, nullptr
+				);
+				// Если устройство занять удалось
+				if(result != INVALID_HANDLE_VALUE){
+					// Буфер под название занятого устройства
+					char buffer[64];
+					// Выполняем перевод названия устройства в узкую кодировку
+					const int32_t count = ::WideCharToMultiByte(CP_UTF8, 0, guid, -1, buffer, static_cast <int32_t> (sizeof(buffer)), nullptr, nullptr);
+					// Если название устройства переведено
+					if(count > 0)
+						// Запоминаем название занятого устройства
+						name.assign(buffer, static_cast <size_t> (count - 1));
+				}
+			}
+			// Выполняем закрытие записи устройства
+			::RegCloseKey(entry);
+		}
+		// Выполняем закрытие ветви настроек класса сетевых устройств
+		::RegCloseKey(branch);
+		// Если свободного устройства найти не удалось
+		if((result == INVALID_HANDLE_VALUE) && (log != nullptr))
+			// Выводим в журнал сообщение об отсутствии свободных устройств
+			log->print("%s: no free tap-windows6 adapter is available, the driver installer creates them", awh::log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+		// Выводим результат занятия устройства
+		return result;
+	}
+	/**
+	 * @brief Функция перевода устройства драйвера tap-windows6 в рабочее состояние
+	 *
+	 * @details Устройство после открытия молчит, покуда драйверу не сообщено, что оно
+	 *          подключено. Вид же переноса - пакеты сетевого уровня либо кадры
+	 *          канального - задаётся тому же драйверу отдельно
+	 *
+	 * @param handle дескриптор устройства
+	 * @param tun    признак переноса пакетов сетевого уровня
+	 * @return       результат выполнения перевода
+	 *
+	 */
+	static bool __awh_activate__(HANDLE handle, const bool tun) noexcept {
+		/**
+		 * @brief Сборка управляющего кода драйвера tap-windows6
+		 *
+		 */
+		#define __AWH_TAP_CONTROL__(code) CTL_CODE(FILE_DEVICE_UNKNOWN, (code), METHOD_BUFFERED, FILE_ANY_ACCESS)
+		// Размер переданных драйверу данных
+		DWORD size = 0;
+		// Если устройство переносит пакеты сетевого уровня
+		if(tun){
+			/**
+			 * Адреса эти драйвер требует, но занятыми их не считает: они лишь
+			 * очерчивают сеть, пакеты которой устройство принимает
+			 *
+			 */
+			ULONG config[3] = { 0x0100000A, 0x0100000A, 0x00FFFFFF };
+			// Если сообщить драйверу о переносе пакетов сетевого уровня не удалось
+			if(!::DeviceIoControl(handle, __AWH_TAP_CONTROL__(10), config, sizeof(config), config, sizeof(config), &size, nullptr))
+				// Выводим отрицательный результат перевода
+				return false;
+		}
+		// Признак подключения устройства
+		ULONG status = 1;
+		// Выполняем сообщение драйверу о подключении устройства
+		const bool result = ::DeviceIoControl(handle, __AWH_TAP_CONTROL__(6), &status, sizeof(status), &status, sizeof(status), &size, nullptr);
+		// Снимаем объявление сборки управляющего кода
+		#undef __AWH_TAP_CONTROL__
+		// Выводим результат выполнения перевода
+		return result;
+	}
+}
+
+/**
+ * @brief Функция заведения туннельного устройства
+ *
+ * @param type   вид заводимого устройства
+ * @param driver драйвер, каким устройство заводится
+ * @param name   название заводимого устройства
+ * @param log    объект ведения журнала
+ * @return       дескриптор заведённого устройства
+ *
+ */
+awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const driver_t driver, string & name, const log_t * log) noexcept {
+	// Если вид заводимого устройства не поддерживается
+	if((type != event::eth_t::TUN) && (type != event::eth_t::TAP)){
+		// Выводим в журнал сообщение о неподдерживаемом виде устройства
+		log->print("%s: only TUN and TAP devices are supported", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+		// Выводим пустой дескриптор
+		return net::invalid_socket_t;
+	}
+	// Если кадры канального уровня запрошены у драйвера, какой их не переносит
+	if((type == event::eth_t::TAP) && (driver == driver_t::WINTUN)){
+		// Выводим в журнал сообщение о несовместимости драйвера с видом устройства
+		log->print("%s: Wintun carries network layer packets only, TAP requires tap-windows6", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+		// Выводим пустой дескриптор
+		return net::invalid_socket_t;
+	}
+	// Заводимая запись реестра устройств
+	entry_t entry;
+	/**
+	 * Определяем драйвер, каким устройство заводится
+	 */
+	switch(static_cast <uint8_t> (driver)){
+		// Если устройство заводится драйвером Wintun
+		case static_cast <uint8_t> (driver_t::WINTUN): {
+			// Выполняем подключение библиотеки драйвера
+			const wintun_t * wintun = ::__awh_wintun__(log);
+			// Если подключить библиотеку драйвера не удалось
+			if(wintun == nullptr)
+				// Выводим пустой дескриптор
+				return net::invalid_socket_t;
+			// Описание заводимого устройства
+			const string & title = (name.empty() ? string{"AWH"} : name);
+			// Буфер под описание заводимого устройства
+			std::vector <wchar_t> buffer(title.size() + 1, 0);
+			// Выполняем перевод описания устройства в широкую кодировку
+			::MultiByteToWideChar(CP_UTF8, 0, title.c_str(), -1, buffer.data(), static_cast <int32_t> (buffer.size()));
+			// Выполняем заведение устройства
+			entry.adapter = wintun->create(buffer.data(), L"AWH", nullptr);
+			// Если завести устройство не удалось
+			if(entry.adapter == nullptr){
+				// Выводим в журнал сообщение о невозможности заведения устройства
+				log->print("%s: Wintun adapter could not be created, error %lu", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+				// Выводим пустой дескриптор
+				return net::invalid_socket_t;
+			}
+			/**
+			 * Объём кольца берётся наибольшим из допустимых
+			 *
+			 * @note Кольцо это - единственное место, где пакеты ждут разбора, и
+			 *       переполнение его отбрасывает их молча. Памяти под наибольший
+			 *       объём уходит четыре мегабайта на устройство
+			 *
+			 */
+			entry.session = wintun->start(entry.adapter, 0x400000);
+			// Если открыть сеанс обмена не удалось
+			if(entry.session == nullptr){
+				// Выводим в журнал сообщение о невозможности открытия сеанса обмена
+				log->print("%s: Wintun session could not be started, error %lu", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+				// Выполняем устранение заведённого устройства
+				wintun->close(entry.adapter);
+				// Выводим пустой дескриптор
+				return net::invalid_socket_t;
+			}
+			// Местный номер заведённого устройства
+			NET_LUID luid{};
+			// Выполняем получение местного номера заведённого устройства
+			wintun->luid(entry.adapter, &luid);
+			// Запоминаем название заведённого устройства
+			entry.name = ::__awh_name__(luid);
+			// Запоминаем событие готовности устройства к чтению
+			entry.event = wintun->event(entry.session);
+			// Запоминаем драйвер, каким устройство заведено
+			entry.driver = driver_t::WINTUN;
+		} break;
+		// Если устройство заводится драйвером tap-windows6
+		case static_cast <uint8_t> (driver_t::TAP): {
+			// Выполняем занятие свободного устройства
+			entry.handle = ::__awh_tap__(entry.name, log);
+			// Если занять свободное устройство не удалось
+			if(entry.handle == INVALID_HANDLE_VALUE)
+				// Выводим пустой дескриптор
+				return net::invalid_socket_t;
+			// Если перевести устройство в рабочее состояние не удалось
+			if(!::__awh_activate__(entry.handle, (type == event::eth_t::TUN))){
+				// Выводим в журнал сообщение о невозможности перевода устройства
+				log->print("%s: tap-windows6 adapter could not be brought up, error %lu", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+				// Выполняем освобождение занятого устройства
+				::CloseHandle(entry.handle);
+				// Выводим пустой дескриптор
+				return net::invalid_socket_t;
+			}
+			// Запоминаем драйвер, каким устройство заведено
+			entry.driver = driver_t::TAP;
+		} break;
+		// Если драйвер заведения устройства не определён
+		default: {
+			// Выводим в журнал сообщение о неопределённом драйвере
+			log->print("%s: tunnel driver is not specified", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+			// Выводим пустой дескриптор
+			return net::invalid_socket_t;
+		}
+	}
+	/**
+	 * Дескриптором устройства служит событие готовности у Wintun и дескриптор файла
+	 * у tap-windows6 - оба уникальны и оба ложатся в net::socket_t без потерь
+	 *
+	 */
+	const net::socket_t result = reinterpret_cast <net::socket_t> (
+		entry.driver == driver_t::WINTUN ? entry.event : entry.handle
+	);
+	// Запоминаем название заведённого устройства
+	name = entry.name;
+	// Выполняем блокировку реестра заведённых устройств
+	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	// Выполняем занесение устройства в реестр
+	::__awh_registry__.emplace(result, ::std::move(entry));
+	// Выводим дескриптор заведённого устройства
+	return result;
+}
+/**
+ * @brief Функция устранения туннельного устройства
+ *
+ * @param sock дескриптор устраняемого устройства
+ * @param log  объект ведения журнала
+ * @return     результат выполнения устранения
+ *
+ */
+bool awh::win::tunnel::destroy(const net::socket_t sock, const log_t * log) noexcept {
+	// Устраняемая запись реестра устройств
+	entry_t entry;
+	{
+		// Выполняем блокировку реестра заведённых устройств
+		const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+		// Выполняем поиск устройства в реестре
+		auto i = ::__awh_registry__.find(sock);
+		// Если устройство в реестре не значится
+		if(i == ::__awh_registry__.end())
+			// Выводим отрицательный результат устранения
+			return false;
+		// Снимаем запись устраняемого устройства
+		entry = ::std::move(i->second);
+		// Выполняем изъятие устройства из реестра
+		::__awh_registry__.erase(i);
+	}
+	/**
+	 * Определяем драйвер, каким устройство заведено
+	 */
+	switch(static_cast <uint8_t> (entry.driver)){
+		// Если устройство заведено драйвером Wintun
+		case static_cast <uint8_t> (driver_t::WINTUN): {
+			// Выполняем подключение библиотеки драйвера
+			const wintun_t * wintun = ::__awh_wintun__(log);
+			// Если библиотека драйвера подключена
+			if(wintun != nullptr){
+				// Выполняем закрытие сеанса обмена
+				wintun->end(entry.session);
+				// Выполняем устранение заведённого устройства
+				wintun->close(entry.adapter);
+			}
+		} break;
+		// Если устройство заведено драйвером tap-windows6
+		case static_cast <uint8_t> (driver_t::TAP):
+			// Выполняем освобождение занятого устройства
+			::CloseHandle(entry.handle);
+		break;
+	}
+	// Выводим положительный результат устранения
+	return true;
+}
+/**
+ * @brief Функция проверки доступности драйвера туннельных устройств
+ *
+ * @param driver проверяемый драйвер
+ * @return       признак доступности драйвера
+ *
+ */
+bool awh::win::tunnel::available(const driver_t driver) noexcept {
+	/**
+	 * Определяем проверяемый драйвер
+	 */
+	switch(static_cast <uint8_t> (driver)){
+		// Если проверяется драйвер Wintun
+		case static_cast <uint8_t> (driver_t::WINTUN):
+			// Выводим признак доступности библиотеки драйвера
+			return (::__awh_wintun__(nullptr) != nullptr);
+		// Если проверяется драйвер tap-windows6
+		case static_cast <uint8_t> (driver_t::TAP): {
+			// Название занятого для проверки устройства
+			string name;
+			/**
+			 * Доступность проверяется занятием свободного устройства
+			 *
+			 * @note Иного способа узнать, осталось ли свободное устройство, драйвер
+			 *       не даёт: перечень настроек показывает все, а занято ли каждое из
+			 *       них, выясняется лишь попыткой его открыть
+			 *
+			 */
+			HANDLE handle = ::__awh_tap__(name, nullptr);
+			// Если свободное устройство нашлось
+			if(handle != INVALID_HANDLE_VALUE){
+				// Выполняем освобождение занятого устройства
+				::CloseHandle(handle);
+				// Выводим признак доступности драйвера
+				return true;
+			}
+		} break;
+	}
+	// Выводим признак недоступности драйвера
+	return false;
+}
+/**
+ * @brief Функция поиска туннельного устройства по его названию
+ *
+ * @param name название искомого устройства
+ * @return     дескриптор найденного устройства
+ *
+ */
+awh::net::socket_t awh::win::tunnel::find(const string & name) noexcept {
+	// Выполняем блокировку реестра заведённых устройств
+	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	/**
+	 * Выполняем перебор всех заведённых туннельных устройств
+	 */
+	for(auto & item : ::__awh_registry__){
+		// Если название устройства с искомым совпало
+		if(item.second.name.compare(name) == 0)
+			// Выводим дескриптор найденного устройства
+			return item.first;
+	}
+	// Выводим пустой дескриптор
+	return net::invalid_socket_t;
+}
+/**
+ * @brief Функция проверки принадлежности дескриптора туннельному устройству
+ *
+ * @param sock проверяемый дескриптор
+ * @return     признак принадлежности дескриптора туннелю
+ *
+ */
+bool awh::win::tunnel::exists(const net::socket_t sock) noexcept {
+	// Выполняем блокировку реестра заведённых устройств
+	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	// Выводим признак наличия устройства в реестре
+	return (::__awh_registry__.find(sock) != ::__awh_registry__.end());
+}
+/**
+ * @brief Функция получения драйвера туннельного устройства
+ *
+ * @param sock дескриптор туннельного устройства
+ * @return     драйвер, каким устройство заведено
+ *
+ */
+awh::win::tunnel::driver_t awh::win::tunnel::driver(const net::socket_t sock) noexcept {
+	// Выполняем блокировку реестра заведённых устройств
+	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	// Выполняем поиск устройства в реестре
+	auto i = ::__awh_registry__.find(sock);
+	// Выводим драйвер, каким устройство заведено
+	return (i != ::__awh_registry__.end() ? i->second.driver : driver_t::NONE);
+}
+/**
+ * @brief Функция получения названия туннельного устройства
+ *
+ * @param sock дескриптор туннельного устройства
+ * @return     название туннельного устройства
+ *
+ */
+string awh::win::tunnel::name(const net::socket_t sock) noexcept {
+	// Выполняем блокировку реестра заведённых устройств
+	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	// Выполняем поиск устройства в реестре
+	auto i = ::__awh_registry__.find(sock);
+	// Выводим название туннельного устройства
+	return (i != ::__awh_registry__.end() ? i->second.name : string{});
+}
+/**
+ * @brief Функция получения события готовности к чтению
+ *
+ * @param sock дескриптор туннельного устройства
+ * @return     событие готовности устройства к чтению
+ *
+ */
+HANDLE awh::win::tunnel::event(const net::socket_t sock) noexcept {
+	// Выполняем блокировку реестра заведённых устройств
+	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	// Выполняем поиск устройства в реестре
+	auto i = ::__awh_registry__.find(sock);
+	// Выводим событие готовности устройства к чтению
+	return (i != ::__awh_registry__.end() ? i->second.event : nullptr);
+}
+/**
+ * @brief Функция приёма пакета из туннельного устройства
+ *
+ * @param sock   дескриптор туннельного устройства
+ * @param buffer буфер, в который принимается пакет
+ * @param size   размер буфера приёма
+ * @return       размер принятого пакета, ноль если пакетов нет, -1 при отказе
+ *
+ */
+int64_t awh::win::tunnel::read(const net::socket_t sock, void * buffer, const size_t size) noexcept {
+	// Если буфер приёма не передан
+	if((buffer == nullptr) || (size == 0))
+		// Выводим признак отказа приёма
+		return -1;
+	// Снятая запись устройства
+	entry_t entry;
+	{
+		// Выполняем блокировку реестра заведённых устройств
+		const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+		// Выполняем поиск устройства в реестре
+		auto i = ::__awh_registry__.find(sock);
+		// Если устройство в реестре не значится
+		if(i == ::__awh_registry__.end())
+			// Выводим признак отказа приёма
+			return -1;
+		// Запоминаем драйвер, каким устройство заведено
+		entry.driver = i->second.driver;
+		// Запоминаем описатель сеанса обмена
+		entry.session = i->second.session;
+		// Запоминаем дескриптор устройства
+		entry.handle = i->second.handle;
+	}
+	// Если устройство заведено драйвером Wintun
+	if(entry.driver == driver_t::WINTUN){
+		// Выполняем подключение библиотеки драйвера
+		const wintun_t * wintun = ::__awh_wintun__(nullptr);
+		// Если библиотека драйвера не подключена
+		if(wintun == nullptr)
+			// Выводим признак отказа приёма
+			return -1;
+		// Размер принятого пакета
+		DWORD length = 0;
+		// Выполняем приём пакета из кольца
+		BYTE * packet = wintun->receive(entry.session, &length);
+		// Если пакетов в кольце не осталось
+		if(packet == nullptr)
+			// Выводим отсутствие принятых пакетов либо признак отказа приёма
+			return (::GetLastError() == ERROR_NO_MORE_ITEMS ? 0 : -1);
+		// Определяем размер переносимых данных
+		const size_t count = (static_cast <size_t> (length) < size ? static_cast <size_t> (length) : size);
+		// Выполняем перенос принятого пакета в буфер приёма
+		::memcpy(buffer, packet, count);
+		// Выполняем возврат места в кольцо
+		wintun->release(entry.session, packet);
+		// Выводим размер принятого пакета
+		return static_cast <int64_t> (count);
+	}
+	// Описатель перекрытого обмена
+	OVERLAPPED overlapped{};
+	// Выполняем заведение события завершения обмена
+	overlapped.hEvent = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	// Если завести событие завершения обмена не удалось
+	if(overlapped.hEvent == nullptr)
+		// Выводим признак отказа приёма
+		return -1;
+	// Размер принятого пакета
+	DWORD length = 0;
+	// Результат выполнения приёма
+	int64_t result = -1;
+	// Если приём пакета выполнен либо начат
+	if(::ReadFile(entry.handle, buffer, static_cast <DWORD> (size), &length, &overlapped) || (::GetLastError() == ERROR_IO_PENDING)){
+		// Если приём пакета завершён
+		if(::GetOverlappedResult(entry.handle, &overlapped, &length, TRUE))
+			// Запоминаем размер принятого пакета
+			result = static_cast <int64_t> (length);
+	}
+	// Выполняем закрытие события завершения обмена
+	::CloseHandle(overlapped.hEvent);
+	// Выводим результат выполнения приёма
+	return result;
+}
+/**
+ * @brief Функция отправки пакета в туннельное устройство
+ *
+ * @param sock   дескриптор туннельного устройства
+ * @param buffer буфер отправляемого пакета
+ * @param size   размер отправляемого пакета
+ * @return       размер отправленного пакета, -1 при отказе
+ *
+ */
+int64_t awh::win::tunnel::write(const net::socket_t sock, const void * buffer, const size_t size) noexcept {
+	// Если буфер отправки не передан
+	if((buffer == nullptr) || (size == 0))
+		// Выводим признак отказа отправки
+		return -1;
+	// Снятая запись устройства
+	entry_t entry;
+	{
+		// Выполняем блокировку реестра заведённых устройств
+		const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+		// Выполняем поиск устройства в реестре
+		auto i = ::__awh_registry__.find(sock);
+		// Если устройство в реестре не значится
+		if(i == ::__awh_registry__.end())
+			// Выводим признак отказа отправки
+			return -1;
+		// Запоминаем драйвер, каким устройство заведено
+		entry.driver = i->second.driver;
+		// Запоминаем описатель сеанса обмена
+		entry.session = i->second.session;
+		// Запоминаем дескриптор устройства
+		entry.handle = i->second.handle;
+	}
+	// Если устройство заведено драйвером Wintun
+	if(entry.driver == driver_t::WINTUN){
+		// Выполняем подключение библиотеки драйвера
+		const wintun_t * wintun = ::__awh_wintun__(nullptr);
+		// Если библиотека драйвера не подключена
+		if(wintun == nullptr)
+			// Выводим признак отказа отправки
+			return -1;
+		// Выполняем отведение места под отправку
+		BYTE * packet = wintun->allocate(entry.session, static_cast <DWORD> (size));
+		// Если места под отправку не осталось
+		if(packet == nullptr)
+			// Выводим признак отказа отправки
+			return -1;
+		// Выполняем перенос отправляемого пакета в кольцо
+		::memcpy(packet, buffer, size);
+		// Выполняем отправку пакета
+		wintun->send(entry.session, packet);
+		// Выводим размер отправленного пакета
+		return static_cast <int64_t> (size);
+	}
+	// Описатель перекрытого обмена
+	OVERLAPPED overlapped{};
+	// Выполняем заведение события завершения обмена
+	overlapped.hEvent = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	// Если завести событие завершения обмена не удалось
+	if(overlapped.hEvent == nullptr)
+		// Выводим признак отказа отправки
+		return -1;
+	// Размер отправленного пакета
+	DWORD length = 0;
+	// Результат выполнения отправки
+	int64_t result = -1;
+	// Если отправка пакета выполнена либо начата
+	if(::WriteFile(entry.handle, buffer, static_cast <DWORD> (size), &length, &overlapped) || (::GetLastError() == ERROR_IO_PENDING)){
+		// Если отправка пакета завершена
+		if(::GetOverlappedResult(entry.handle, &overlapped, &length, TRUE))
+			// Запоминаем размер отправленного пакета
+			result = static_cast <int64_t> (length);
+	}
+	// Выполняем закрытие события завершения обмена
+	::CloseHandle(overlapped.hEvent);
+	// Выводим результат выполнения отправки
+	return result;
+}

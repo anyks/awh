@@ -863,6 +863,76 @@ AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_WRITEV, ssize_t, writev, (int32_t fd, const struc
 AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_CLOCK, int32_t, clock_gettime, (clockid_t id, struct timespec * ts), (id, ts))
 
 /**
+ * Перехват обращений к кольцам io_uring
+ *
+ * @note Механизм этот принадлежит одному Linux, и подмена заводится только там
+ */
+#if __linux__
+/**
+ * @brief Подменяющая функция обращения к ядру по номеру вызова
+ *
+ * @details Заводится ради io_uring: у него нет именованных функций libc, и движок
+ *          ходит в ядро прямо через `syscall`. Без этой подмены обращения его
+ *          счётчику не видны вовсе, и число обращений на операцию вышло бы
+ *          занижённым - сравнение с движком `epoll` оказалось бы ложным
+ *
+ * @note Учитываются только обращения самого io_uring. Прочие вызовы через `syscall`
+ *       передаются подлинной функции без учёта: они принадлежат не измеряемому
+ *       пути, а исполняющей среде, и складывать их с работой движка незачем
+ *
+ * @note Доводов у вызова не более шести - таков предел двоичного соглашения Linux,
+ *       и разбирать больше нечего
+ *
+ * @param number номер системного вызова
+ * @return       итог системного вызова
+ *
+ */
+AWH_SYSCOUNT_DECLARE(long, syscall, (long number, ...))
+long AWH_SYSCOUNT_HOOK(syscall)(long number, ...){
+	// Разыскиваем подлинную функцию, если конструктор ещё не отработал
+	AWH_SYSCOUNT_ENSURE(syscall)
+	// Список доводов вызова
+	va_list arguments;
+	// Открываем перебор доводов вызова
+	va_start(arguments, number);
+	// Извлекаем шесть доводов вызова
+	const long a1 = va_arg(arguments, long);
+	const long a2 = va_arg(arguments, long);
+	const long a3 = va_arg(arguments, long);
+	const long a4 = va_arg(arguments, long);
+	const long a5 = va_arg(arguments, long);
+	const long a6 = va_arg(arguments, long);
+	// Закрываем перебор доводов вызова
+	va_end(arguments);
+	/**
+	 * Признак принадлежности вызова io_uring. Номера заданы числами намеренно:
+	 * заголовки сборочной машины вправе отставать от ядра, а числа эти закреплены
+	 * двоичным соглашением Linux и смене не подлежат
+	 */
+	const int32_t uring = ((number == 425) || (number == 426) || (number == 427));
+	// Если учёт вызовов не ведётся либо вызов к io_uring не относится
+	if(!uring || !__awh_syscount__.enabled || (__awh_depth__ > 0))
+		// Выполняем обращение к ядру
+		return AWH_SYSCOUNT_REAL(syscall)(number, a1, a2, a3, a4, a5, a6);
+	// Увеличиваем глубину вложенности перехваченных вызовов
+	__awh_depth__++;
+	// Запоминаем время начала вызова
+	const uint64_t start = __awh_nanostamp__();
+	// Выполняем обращение к ядру
+	const long result = AWH_SYSCOUNT_REAL(syscall)(number, a1, a2, a3, a4, a5, a6);
+	// Суммируем время, проведённое в вызове
+	__awh_syscount__.entries[AWH_SYSCOUNT_URING].nanoseconds += (__awh_nanostamp__() - start);
+	// Считаем выполненный вызов
+	__awh_syscount__.entries[AWH_SYSCOUNT_URING].calls++;
+	// Уменьшаем глубину вложенности перехваченных вызовов
+	__awh_depth__--;
+	// Выводим итог системного вызова
+	return result;
+}
+AWH_SYSCOUNT_BIND(syscall)
+#endif
+
+/**
  * @brief Функция разыскания подлинных функций в следующем объекте загрузки
  *
  * @details Выполняется конструктором, до первого перехваченного обращения:
@@ -908,6 +978,8 @@ static void __awh_resolve__(void){
 	AWH_SYSCOUNT_RESOLVE_ONE(epoll_ctl)
 	AWH_SYSCOUNT_RESOLVE_ONE(epoll_pwait)
 	AWH_SYSCOUNT_RESOLVE_ONE(accept4)
+	// Разыскиваем подлинную функцию обращения к ядру по номеру вызова
+	AWH_SYSCOUNT_RESOLVE_ONE(syscall)
 	// Разыскиваем подлинную функцию обращения к часам
 	AWH_SYSCOUNT_RESOLVE_ONE(clock_gettime)
 }

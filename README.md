@@ -298,11 +298,10 @@ $ genhtml -o report awh_filtered.info
 - [MSYS2](https://www.msys2.org)
 - [CMAKE](https://cmake.org/download)
 
-#### Assembly is done in MSYS2 - MINGW64 terminal
+#### Assembly is done in MSYS2 - MINGW64 terminal (x86_64)
 
 ```bash
 $ pacman -Syuu
-$ pacman -Ss cmake
 $ pacman -S mingw64/mingw-w64-x86_64-cmake
 $ pacman -S make
 $ pacman -S curl
@@ -315,6 +314,37 @@ $ pacman -S git
 $ pacman -S autoconf
 $ pacman -S --needed base-devel mingw-w64-x86_64-toolchain
 $ pacman -S mingw-w64-x86_64-dlfcn
+```
+
+#### Project build
+
+```bash
+$ mkdir ./build
+$ cd ./build
+
+$ cmake \
+ -G "MSYS Makefiles" \
+ -DCMAKE_BUILD_TYPE=Release \
+ -DCMAKE_SYSTEM_NAME=Windows \
+ -DCMAKE_SHARED_BUILD_LIB=YES \
+ ..
+
+$ cmake --build .
+```
+
+#### Assembly is done in MSYS2 - CLANGARM64 terminal (ARM64)
+
+```bash
+$ pacman -Syu
+$ pacman -S cmake
+$ pacman -S make
+$ pacman -S curl
+$ pacman -S wget
+$ pacman -S mc
+$ pacman -S clangarm64/mingw-w64-clang-aarch64-gdbm
+$ pacman -S bash
+$ pacman -S git
+$ pacman -S autoconf
 ```
 
 #### Project build

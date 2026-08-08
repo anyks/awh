@@ -27264,6 +27264,54 @@ namespace io {
 		return result;
 	}
 	/**
+	 * @brief Функция проверки привязанности дескриптора к адресу
+	 *
+	 * @details Заведена ради вступления в группу многоадресной рассылки. Вступление
+	 *          привязывает дескриптор к порту группы само - без этого приём из
+	 *          группы невозможен, и `commit` такой привязки не делает: он
+	 *          привязывает свою точку узла, а не точку группы.
+	 *
+	 *          Оттого порядок вызова задан: сначала `membership`, затем `commit`.
+	 *          Нарушение порядка прежде отвечало отказом всегда - система не
+	 *          привязывает дескриптор дважды и отвечает `EINVAL`, - и отказ этот
+	 *          гасил живое событие. Проверка эта позволяет вступить в группу и
+	 *          после `commit`: привязка тогда просто пропускается, а сама подписка
+	 *          выполняется
+	 *
+	 * @param sock дескриптор сокета
+	 * @return     признак привязанности дескриптора к адресу
+	 *
+	 */
+	static bool bound(const net::socket_t sock) noexcept {
+		// Если дескриптор сокета не заведён
+		if(sock == net::invalid_socket_t)
+			// Выводим отсутствие привязки дескриптора
+			return false;
+		// Адрес, к которому дескриптор привязан
+		struct sockaddr_storage endpoint{};
+		// Длина адреса, к которому дескриптор привязан
+		socklen_t size = sizeof(endpoint);
+		// Если адрес привязки дескриптора получить не удалось
+		if(::getsockname(sock, &::trust_cast <struct sockaddr> (endpoint), &size) != 0)
+			// Выводим отсутствие привязки дескриптора
+			return false;
+		/**
+		 * Определяем семейство адреса привязки
+		 */
+		switch(endpoint.ss_family){
+			// Для семейства IPv4
+			case AF_INET:
+				// Выводим признак привязанности дескриптора к порту
+				return (::trust_cast <struct sockaddr_in> (endpoint).sin_port != 0);
+			// Для семейства IPv6
+			case AF_INET6:
+				// Выводим признак привязанности дескриптора к порту
+				return (::trust_cast <struct sockaddr_in6> (endpoint).sin6_port != 0);
+		}
+		// Выводим отсутствие привязки дескриптора
+		return false;
+	}
+	/**
 	 * @brief Функция создания сокета события
 	 *
 	 * @param node узел для которого создаётся сокет
@@ -51048,8 +51096,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
 										// Обнуляем серверную структуру
 										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
-										// Выполняем бинд события
-										if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+										// Выполняем бинд события, если дескриптор ещё не привязан
+										if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -51076,8 +51124,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
-											// Снимаем флаг ожидания подключения
-											client->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -51177,8 +51223,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 * и отвечает отказом в маршруте
 										 */
 										endpoint.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source.get())->zone;
-										// Выполняем бинд события
-										if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+										// Выполняем бинд события, если дескриптор ещё не привязан
+										if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -51205,8 +51251,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
-											// Снимаем флаг ожидания подключения
-											client->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -51318,8 +51362,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
 										// Обнуляем серверную структуру
 										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
-										// Выполняем бинд события
-										if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+										// Выполняем бинд события, если дескриптор ещё не привязан
+										if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -51346,8 +51390,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
-											// Снимаем флаг ожидания подключения
-											server->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -51453,8 +51495,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 * и отвечает отказом в маршруте
 										 */
 										endpoint.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source.get())->zone;
-										// Выполняем бинд события
-										if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+										// Выполняем бинд события, если дескриптор ещё не привязан
+										if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -51481,8 +51523,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
-											// Снимаем флаг ожидания подключения
-											server->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -51687,8 +51727,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								endpoint.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
 								// Обнуляем серверную структуру
 								::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
-								// Выполняем бинд события
-								if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+								// Выполняем бинд события, если дескриптор ещё не привязан
+								if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -51715,8 +51755,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
-									// Снимаем флаг ожидания подключения
-									client->state.status = event::status_t::NONE;
 									// Выходим из функции с ошибкой
 									return false;
 								}
@@ -51750,8 +51788,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								 * и отвечает отказом в маршруте
 								 */
 								endpoint.sin6_scope_id = awh_cast <const net::addr_net_ipv6_t *> (source)->zone;
-								// Выполняем бинд события
-								if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+								// Выполняем бинд события, если дескриптор ещё не привязан
+								if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -51778,8 +51816,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
-									// Снимаем флаг ожидания подключения
-									client->state.status = event::status_t::NONE;
 									// Выходим из функции с ошибкой
 									return false;
 								}
@@ -51825,8 +51861,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								endpoint.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
 								// Обнуляем серверную структуру
 								::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
-								// Выполняем бинд события
-								if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+								// Выполняем бинд события, если дескриптор ещё не привязан
+								if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -51853,8 +51889,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
-									// Снимаем флаг ожидания подключения
-									server->state.status = event::status_t::NONE;
 									// Выходим из функции с ошибкой
 									return false;
 								}
@@ -51894,8 +51928,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								 * и отвечает отказом в маршруте
 								 */
 								endpoint.sin6_scope_id = awh_cast <const net::addr_net_ipv6_t *> (source)->zone;
-								// Выполняем бинд события
-								if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+								// Выполняем бинд события, если дескриптор ещё не привязан
+								if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -51922,8 +51956,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
-									// Снимаем флаг ожидания подключения
-									server->state.status = event::status_t::NONE;
 									// Выходим из функции с ошибкой
 									return false;
 								}

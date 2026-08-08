@@ -2821,6 +2821,272 @@ bool awh::unit::Portmap::lost(const type_t type, const uint32_t epoch) noexcept 
 	return result;
 }
 /**
+ * @brief Метод приёма отправителя объявлений маршрутизатора
+ *
+ * @param eid идентификатор события приёма объявлений
+ * @param oid идентификатор события отправителя объявлений
+ *
+ */
+void awh::unit::Portmap::accepted([[maybe_unused]] const event::id_t eid, const event::id_t oid) noexcept {
+	// Если событие отправителя объявлений не заведено, выходим
+	if(oid == 0) return;
+	/**
+	 * Если предел числа отправителей объявлений исчерпан
+	 *
+	 * @note Закрывается самое давнее событие, а не отвергается новое: объявление,
+	 *       пришедшее только что, ближе к делу, чем то, что молчит дольше всех
+	 */
+	if(this->_announcers.size() >= MAX_ANNOUNCERS){
+		// Выполняем удаление самого давнего события отправителя объявлений
+		this->_io->destroy(this->_announcers.front());
+		// Выполняем удаление самого давнего события из списка отправителей
+		this->_announcers.erase(this->_announcers.begin());
+	}
+	// Запоминаем событие отправителя объявлений
+	this->_announcers.push_back(oid);
+	// Устанавливаем функцию обратного вызова на событие получения ошибок
+	this->_io->on(oid, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
+	// Устанавливаем функцию обратного вызова на событие чтения объявления
+	this->_io->on(oid, static_cast <engine::callback::read_t> (std::bind(&portmap_t::announced, this, _1, _2, _3)));
+}
+/**
+ * @brief Метод приёма объявления, разосланного маршрутизатором
+ *
+ * @param eid  идентификатор события приёма объявления
+ * @param data полученное объявление маршрутизатора
+ * @param size размер полученного объявления
+ *
+ */
+void awh::unit::Portmap::announced(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
+	// Если объявление получено пустым, выходим
+	if((data == nullptr) || (size == 0)) return;
+	/**
+	 * Получаем адрес отправителя объявления
+	 *
+	 * @note Объявление приходит на групповой адрес, и разослать его вправе любой узел
+	 *       сети, а не один лишь маршрутизатор. Отбрасывается пришедшее из внешней
+	 *       сети: подделать отправителя нападающий сумел бы и так, но принимать
+	 *       заведомо чужое незачем
+	 *
+	 * @note Отбор ведётся по внешнему адресу, а не по принадлежности местной сети:
+	 *       петля местной сетью не считается, а объявление по ней приходит от службы,
+	 *       работающей на этой же машине, - отбрасывать его значило бы отвергать своё
+	 */
+	const string & host = this->_io->getTarget(eid);
+	// Если отправитель объявления принадлежит внешней сети, выходим
+	if(host.empty() || !this->_addr.parse(host) || (this->_addr.own() == net_addr_t::own_t::WAN)) return;
+	/**
+	 * Определяем договор, по которому разослано объявление
+	 *
+	 * @note Объявления обоих договоров приходят на один и тот же порт, и разделяются
+	 *       они изданием в первом октете сообщения - как и обычные ответы
+	 */
+	switch(data[0]){
+		/**
+		 * Если объявление разослано по договору NAT-PMP
+		 */
+		case proto::portmap::natpmp_t::VERSION: {
+			// Код причины отказа кодека
+			proto::portmap::natpmp_t::error_t error = proto::portmap::natpmp_t::error_t::NONE;
+			// Разобранное объявление маршрутизатора
+			proto::portmap::natpmp_t::answer_t answer;
+			// Если объявление разобрать не удалось, выходим
+			if(!this->_natpmp.parse(data, size, answer, error)) return;
+			/**
+			 * Если объявление удачным не является, выходим
+			 *
+			 * @note Объявление о неудаче договор не рассылает вовсе, и пришедшее с
+			 *       кодом отказа объявлением не является
+			 */
+			if(answer.result != proto::portmap::natpmp_t::result_t::SUCCESS) return;
+			// Если объявлен не внешний адрес маршрутизатора, выходим
+			if(answer.kind != proto::portmap::natpmp_t::kind_t::ADDRESS) return;
+			// Выполняем сверку отсчёта времени работы маршрутизатора
+			this->lost(type_t::NAT_PMP, answer.epoch);
+			/**
+			 * Выполняем размещение объявленного внешнего адреса маршрутизатора
+			 *
+			 * @note Кодек выдаёт адрес числом, старший октет которого является первым
+			 *       октетом адреса, - как и у ответа на запрос внешнего адреса
+			 */
+			this->_addr.v4(answer.address, net_addr_t::endian_t::BIG);
+			// Выполняем получение идентификатора функции обратного вызова
+			const callback_t::id_t fid = this->_callback.id("external");
+			/**
+			 * Если функция обратного вызова установлена
+			 *
+			 * @note Объявленный адрес выдаётся тем же обратным вызовом, что и
+			 *       спрошенный: адрес это один и тот же, и заводить под объявленный
+			 *       отдельный вызов значило бы обязать вызывающего разбирать одно и то
+			 *       же дважды
+			 */
+			if(this->_callback.is(fid))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const string &, const type_t)> (fid, static_cast <string> (this->_addr), type_t::NAT_PMP);
+		} break;
+		/**
+		 * Если объявление разослано по договору PCP
+		 */
+		case proto::portmap::pcp_t::VERSION: {
+			// Код причины отказа кодека
+			proto::portmap::pcp_t::error_t error = proto::portmap::pcp_t::error_t::NONE;
+			// Разобранное объявление маршрутизатора
+			proto::portmap::pcp_t::answer_t answer;
+			// Если объявление разобрать не удалось, выходим
+			if(!this->_pcp.parse(data, size, answer, error)) return;
+			/**
+			 * Если полученное действие объявлением не является, выходим
+			 *
+			 * @note На этот порт приходят лишь объявления, но действие проверяется
+			 *       всё равно: порт открыт всей сети, и прислать туда вправе что угодно
+			 */
+			if(answer.opcode != proto::portmap::pcp_t::opcode_t::ANNOUNCE) return;
+			// Выполняем сверку отсчёта времени работы маршрутизатора
+			this->lost(type_t::PCP, answer.epoch);
+		} break;
+	}
+}
+/**
+ * @brief Метод включения приёма объявлений маршрутизатора
+ *
+ * @param mode режим приёма объявлений маршрутизатора
+ * @return     результат включения приёма объявлений
+ *
+ */
+bool awh::unit::Portmap::announce(const bool mode) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		/**
+		 * Выполняем удаление событий отправителей объявлений
+		 *
+		 * @note События эти заведены движком, а закрывать их обязан модуль: время их
+		 *       жизни движку не принадлежит
+		 */
+		for(const event::id_t oid : this->_announcers)
+			// Выполняем удаление события отправителя объявлений
+			this->_io->destroy(oid);
+		// Выполняем очистку списка событий отправителей объявлений
+		this->_announcers.clear();
+		/**
+		 * Если событие приёма объявлений заведено
+		 */
+		if(this->_announcer > 0){
+			// Выполняем удаление события приёма объявлений
+			this->_io->destroy(this->_announcer);
+			// Сбрасываем идентификатор события приёма объявлений
+			this->_announcer = 0;
+		}
+		// Если приём объявлений отключается, выводим положительный результат
+		if(!mode) return true;
+		// Признак того, что приём ведётся сетью IPv6
+		const bool six = (this->_family == family_t::IPV6);
+		/**
+		 * Если приём объявлений ведётся сетью IPv6 по договору NAT-PMP
+		 *
+		 * @note Договор описан только для IPv4, и объявлений в сети IPv6 он не
+		 *       рассылает вовсе. Приём при этом не отменяется: тем же гнездом приходят
+		 *       объявления договора PCP, у которого разновидность IPv6 есть
+		 */
+		// Выполняем заведение события приёма объявлений
+		this->_announcer = this->_io->event(event::node_t::SERVER, (six ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::DATAGRAM, event::protocol_t::UDP);
+		// Если событие приёма объявлений завести не удалось, выводим отрицательный результат
+		if(this->_announcer == 0) return false;
+		/**
+		 * Если адрес привязки приёма объявлений установить не удалось
+		 *
+		 * @note Привязка ведётся неопределённым адресом намеренно: объявление
+		 *       рассылается на групповой адрес, и принять его гнездо, привязанное к
+		 *       адресу самой машины, не сумело бы
+		 */
+		if(!this->_io->setAddress(this->_announcer, (six ? event::address_t::IPV6 : event::address_t::IPV4), (six ? "::" : "0.0.0.0"))){
+			// Выполняем удаление события приёма объявлений
+			this->_io->destroy(this->_announcer);
+			// Сбрасываем идентификатор события приёма объявлений
+			this->_announcer = 0;
+			// Выводим отрицательный результат включения приёма объявлений
+			return false;
+		}
+		/**
+		 * Если порт приёма объявлений установить не удалось
+		 */
+		if(!this->_io->setSourcePort(this->_announcer, proto::portmap::natpmp_t::ANNOUNCE_PORT)){
+			// Выполняем удаление события приёма объявлений
+			this->_io->destroy(this->_announcer);
+			// Сбрасываем идентификатор события приёма объявлений
+			this->_announcer = 0;
+			// Выводим отрицательный результат включения приёма объявлений
+			return false;
+		}
+		// Устанавливаем функцию обратного вызова на событие получения ошибок
+		this->_io->on(this->_announcer, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на приём отправителя объявлений
+		this->_io->on(this->_announcer, static_cast <engine::callback::accept_t> (std::bind(&portmap_t::accepted, this, _1, _2)));
+		/**
+		 * Если опции события приёма объявлений установить не удалось
+		 *
+		 * @note Переиспользование адреса и порта здесь обязательно: порт этот
+		 *       договорный, и занимает его всякая работающая на машине служба
+		 *       перенаправления - без переиспользования приём не завёлся бы рядом с ней
+		 */
+		if(!this->_io->setOptions(this->_announcer, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::MULTICAST_LOOPBACK)){
+			// Выполняем удаление события приёма объявлений
+			this->_io->destroy(this->_announcer);
+			// Сбрасываем идентификатор события приёма объявлений
+			this->_announcer = 0;
+			// Выводим отрицательный результат включения приёма объявлений
+			return false;
+		}
+		/**
+		 * Если запустить событие приёма объявлений не удалось
+		 */
+		if(!(this->_io->commit(this->_announcer) && this->_io->launch(this->_announcer))){
+			// Выполняем удаление события приёма объявлений
+			this->_io->destroy(this->_announcer);
+			// Сбрасываем идентификатор события приёма объявлений
+			this->_announcer = 0;
+			// Выводим отрицательный результат включения приёма объявлений
+			return false;
+		}
+		/**
+		 * Вступление в группу объявлений намеренно не выполняется
+		 *
+		 * @details Объявления рассылаются на всеобщие групповые адреса - 224.0.0.1 в
+		 *          сети IPv4 и FF02::1 в сети IPv6, - а членство в них принадлежит
+		 *          всякому узлу сети по устройству самой сети, и заводить его нечем:
+		 *          система такую просьбу отвергает как негодную. Рассылку по ним она
+		 *          доставляет и без подписки - тем же порядком, что и обращённую прямо
+		 *          к машине
+		 *
+		 * @note Отступление это от рассылки обнаружения SSDP, где членство заводится:
+		 *       там групповой адрес свой, договорный, и без подписки на него ничего не
+		 *       придёт вовсе
+		 */
+		// Выводим положительный результат включения приёма объявлений
+		return true;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(mode), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим отрицательный результат включения приёма объявлений
+	return false;
+}
+/**
  * @brief Метод завершения обмена отказом
  *
  * @param type  договор перенаправления, по которому вёлся обмен
@@ -3209,7 +3475,7 @@ bool awh::unit::Portmap::renew(const mapping_t & mapping) noexcept {
  */
 awh::unit::Portmap::Portmap(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _type(type_t::AUTO), _family(family_t::IPV4), _action(action_t::NONE),
- _attempts(::DEFAULT_ATTEMPTS), _delay(::DEFAULT_DELAY),
+ _attempts(::DEFAULT_ATTEMPTS), _delay(::DEFAULT_DELAY), _announcer(0),
  _index(0), _probe(false), _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
  _parser(http::direct_t::RESPONSE, fmk, log), _request{""}, _payload{""}, _complete(false), _connected(false), _uri(fmk, log), _router{""},
  _iface{""}, _address(nullptr), _addr(fmk, log), _ifaces(fmk, log), _gateway(fmk, log), _pcp(fmk, log),
@@ -3221,4 +3487,11 @@ awh::unit::Portmap::Portmap(const fmk_t * fmk, const log_t * log) noexcept :
 awh::unit::Portmap::~Portmap() noexcept {
 	// Выполняем прекращение всех ведущихся обменов
 	this->cancel();
+	/**
+	 * Выполняем отключение приёма объявлений маршрутизатора
+	 *
+	 * @note Приём обменами не заводится и ими не прекращается: держится он всё время
+	 *       работы модуля, и закрыть его больше негде
+	 */
+	this->announce(false);
 }

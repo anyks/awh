@@ -74,7 +74,7 @@ int32_t main(int32_t argc, char * argv[]){
 		if(io.setDelivery(eid, event::delivery_mode_t::MULTICAST)){
 			// Устанавливаем адрес сервера назначения
 			if(io.membership(eid, event::mode_t::ENABLED, "239.1.2.3", "0.0.0.0", 5000)){
-				// Фиксировать нужно до вызова membership!
+				// Фиксация идёт после membership: группу привязывает к своему порту он, а не commit
 				if(io.commit(eid)){
 					// Устанавливаем функцию обратного вызова на событие клиента
 					io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {

@@ -73,14 +73,31 @@ fi
 rm -f "$ROOT/tools/regex/sources.list"
 
 echo "Раскладываем набор на стенд $TARGET"
+# Передача ведётся через ввод ssh, а не средством scp: подсистема sftp на части
+# стендов отключена, и scp обрывает связь, тогда как поток ввода доступен всегда.
+#
 # Домашний каталог стенда бывает недоступен для записи, поэтому набор
 # раскладывается в каталог временных файлов, доступный на всякой машине
-scp -q -P "$PORT" "$BUNDLE" "$TARGET:/tmp/awh-regex-stand.tgz"
+ssh -p "$PORT" "$TARGET" '
+	for DIR in /usr/bin /bin ; do
+		[ -d "$DIR" ] && PATH="$DIR:$PATH"
+	done
+	export PATH
+	cat > /tmp/awh-regex-stand.tgz
+' < "$BUNDLE"
 rm -f "$BUNDLE"
 
 echo "Собираем и прогоняем проверку на стенде"
 ssh -p "$PORT" "$TARGET" '
 	set -e
+	# Оболочка MSYS2 на стендах Windows заводит путь без каталогов набора POSIX
+	# и без каталога связки вооружения, отчего ни tar, ни компилятор в нём
+	# не находятся. Каталоги эти приписываются к пути при наличии их; системам
+	# семейства UNIX приписка безвредна - каталогов таких у них нет
+	for DIR in /clangarm64/bin /mingw64/bin /usr/bin ; do
+		[ -d "$DIR" ] && PATH="$DIR:$PATH"
+	done
+	export PATH
 	rm -rf /tmp/awh-regex-stand
 	mkdir -p /tmp/awh-regex-stand
 	# Распаковка выполняется отдельным вызовом распаковщика: набор команд tar

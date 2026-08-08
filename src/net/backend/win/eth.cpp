@@ -436,22 +436,6 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 	return ((first[fullBytes] & mask) == (second[fullBytes] & mask));
 }
 
-/**
- * @brief Метод удаления сетевого интерфейса
- *
- * @param name имя сетевого интерфейса
- * @return     результат удаления сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::destroy([[maybe_unused]] string_view name) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
 
 
@@ -492,23 +476,6 @@ bool awh::eth::Interface::isVirtual([[maybe_unused]] const net::addr_t * addr) c
 }
 
 
-/**
- * @brief Метод создания сетевого интерфейса
- *
- * @param type тип сетевого интерфейса
- * @param name имя сетевого интерфейса
- * @return     дескриптор созданного сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-awh::net::socket_t awh::eth::Interface::create([[maybe_unused]] const event::eth_t type, [[maybe_unused]] string & name) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::net::socket_t();
-}
 
 
 
@@ -885,7 +852,8 @@ awh::eth::Network_Address::~Network_Address() noexcept {}
  * @param log объект работы с логами
  *
  */
-awh::eth::Interface::Interface(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::eth::Interface::Interface(const fmk_t * fmk, const log_t * log) noexcept :
+ _fmk(fmk), _log(log), _driver(driver_t::AUTO) {}
 
 /**
  * @brief Деструктор

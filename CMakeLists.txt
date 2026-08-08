@@ -719,6 +719,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/iocp.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/socket.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/iface.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/win/tunnel.cpp"
     )
 endif()
 

@@ -4179,6 +4179,447 @@ namespace ring {
 };
 
 /**
+ * @brief Инкапсулируем кольцо буферов приёма
+ *
+ * @details Слой этот и есть то, ради чего движок на io_uring вообще заводился.
+ *          Замер показал, что одна лишь замена ожидания кольцом не даёт ничего:
+ *          обмен как стоил шести обращений к ядру (`ожидание 2, recv 2, send 2`),
+ *          так и стоит, а расход самих колец добавился.
+ *
+ *          Выигрыш появляется тогда, когда приём уходит в кольцо. Но родной приём
+ *          требует буфера, отданного ядру **заранее**, до прихода данных, и
+ *          отдавать его на каждое подключение нельзя: при четырёх тысячах
+ *          подключений это четверть гигабайта памяти, лежащей без дела.
+ *
+ *          Кольцо буферов эту беду и снимает: приложение кладёт в него общий на
+ *          всех запас, а ядро берёт оттуда буфер **в тот миг, когда данные
+ *          пришли**, и сообщает его номер в завершении. Память тогда стоит не по
+ *          числу подключений, а по числу подключений, у которых данные есть
+ *          прямо сейчас
+ *
+ * @note Кольцо заводится **лениво**, при первой же подписке потокового узла:
+ *       приложению, не ведущему потокового обмена, оно не стоит ничего
+ *
+ * @note Устройство кольца задано своими объявлениями, а не заголовком ядра.
+ *       Довод тот же, что и у кодов операций: заголовки сборочной машины вправе
+ *       отставать от ядра, на котором движок будет работать
+ *
+ */
+namespace pool {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Номер набора буферов, которым движок помечает свои подачи
+	 *
+	 */
+	static constexpr uint16_t GROUP = 1;
+
+	/**
+	 * @brief Количество буферов кольца
+	 *
+	 * @note Обязано быть степенью двойки - таково требование ядра
+	 *
+	 */
+	static constexpr uint32_t COUNT = 256;
+
+	/**
+	 * @brief Размер одного буфера кольца в октетах
+	 *
+	 */
+	static constexpr uint32_t SIZE = AWH_EVENT_MAX_BUFFER_SIZE;
+
+	/**
+	 * @brief Действия учёта наборов буферов
+	 *
+	 */
+	static constexpr uint32_t REGISTER   = 22;
+	static constexpr uint32_t UNREGISTER = 23;
+
+	/**
+	 * @brief Признак завершения, означающий выданный ядром буфер
+	 *
+	 * @details При наличии признака старшие шестнадцать разрядов признаков
+	 *          завершения содержат номер выданного буфера
+	 *
+	 */
+	static constexpr uint32_t CQE_BUFFER = (1U << 0);
+
+	/**
+	 * @brief Запись кольца буферов
+	 *
+	 */
+	struct entry_t {
+		uint64_t addr; /**< Адрес буфера */
+		uint32_t len;  /**< Размер буфера в октетах */
+		uint16_t bid;  /**< Номер буфера */
+		uint16_t resv; /**< Место, занятое хвостом кольца у первой записи */
+	};
+
+	/**
+	 * @brief Устройство заведения набора буферов
+	 *
+	 */
+	struct reg_t {
+		uint64_t addr;    /**< Адрес кольца буферов */
+		uint32_t entries; /**< Количество записей кольца */
+		uint16_t group;   /**< Номер набора буферов */
+		uint16_t flags;   /**< Признаки заведения набора */
+		uint64_t resv[3]; /**< Место, оставленное ядром про запас */
+	};
+
+	/**
+	 * @brief Кольцо буферов, отданное ядру
+	 *
+	 */
+	static entry_t * ring = nullptr;
+
+	/**
+	 * @brief Память самих буферов, общая на всё кольцо
+	 *
+	 */
+	static uint8_t * area = nullptr;
+
+	/**
+	 * @brief Хвост кольца, ведомый приложением
+	 *
+	 */
+	static uint16_t tail = 0;
+
+	/**
+	 * @brief Признак наличия заведённого кольца буферов
+	 *
+	 */
+	static bool ready = false;
+
+	/**
+	 * @brief Признак невозможности завести кольцо буферов на этом ядре
+	 *
+	 * @details Ставится единожды, при неудавшемся заведении: повторять обречённую
+	 *          попытку на каждой подписке незачем
+	 *
+	 */
+	static bool refused = false;
+
+	/**
+	 * @brief Функция возврата буфера в кольцо
+	 *
+	 * @details Зовётся сразу после того, как принятое из буфера израсходовано.
+	 *          Возврат - это запись в кольцо и сдвиг хвоста; обращения к ядру он
+	 *          не требует вовсе, и в этом весь смысл устройства
+	 *
+	 * @param bid номер возвращаемого буфера
+	 *
+	 */
+	static void give(const uint16_t bid) noexcept {
+		// Если кольцо буферов не заведено либо номер буфера неверен
+		if(!::pool::ready || (bid >= ::pool::COUNT))
+			// Выходим из функции
+			return;
+		// Получаем запись кольца, в которую ложится буфер
+		entry_t & entry = ::pool::ring[::pool::tail & (::pool::COUNT - 1)];
+		// Устанавливаем адрес буфера
+		entry.addr = reinterpret_cast <uint64_t> (::pool::area + (static_cast <size_t> (bid) * ::pool::SIZE));
+		// Устанавливаем размер буфера
+		entry.len = ::pool::SIZE;
+		// Устанавливаем номер буфера
+		entry.bid = bid;
+		// Сдвигаем хвост кольца
+		::pool::tail++;
+		/**
+		 * Отдаём ядру новый хвост кольца
+		 *
+		 * @note Запись выполняется с освобождающей семантикой: ядро вправе прочесть
+		 *       хвост в тот же миг, и оно обязано увидеть запись буфера **прежде**
+		 *       сдвинутого хвоста, иначе возьмёт запись, ещё не заполненную
+		 */
+		__atomic_store_n(
+			reinterpret_cast <uint16_t *> (reinterpret_cast <uint8_t *> (::pool::ring) + offsetof(entry_t, resv)),
+			::pool::tail, __ATOMIC_RELEASE
+		);
+	}
+	/**
+	 * @brief Функция получения адреса выданного ядром буфера
+	 *
+	 * @param bid номер выданного буфера
+	 * @return    адрес буфера либо пустой указатель
+	 *
+	 */
+	static const uint8_t * data(const uint16_t bid) noexcept {
+		// Выводим адрес выданного ядром буфера
+		return ((::pool::ready && (bid < ::pool::COUNT)) ? (::pool::area + (static_cast <size_t> (bid) * ::pool::SIZE)) : nullptr);
+	}
+	/**
+	 * @brief Принятое ядром, но ещё не забранное потребителем
+	 *
+	 * @details Ядро приняло данные само и выдало под них буфер из кольца. Потребитель
+	 *          же устроен по модели готовности: он ждёт оповещения и зовёт приём сам.
+	 *          Запись эта их и связывает - оповещение потребителю выдаётся, а его
+	 *          приём обслуживается уже принятым, без обращения к ядру
+	 *
+	 */
+	struct fetched_t {
+		uint16_t bid;    /**< Номер выданного ядром буфера */
+		uint32_t offset; /**< Смещение неизрасходованного остатка */
+		uint32_t length; /**< Размер принятого в октетах */
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		fetched_t() noexcept : bid(0), offset(0), length(0) {}
+	};
+
+	/**
+	 * @brief Таблица принятого по дескрипторам
+	 *
+	 * @note Таблица, а не отображение: отображение обходилось бы выделением памяти
+	 *       на каждый обмен, а именно этой ценой замер уже поймал движок однажды.
+	 *       Дескрипторы же у Linux малы и плотны, и таблица по ним обходится даром
+	 *
+	 */
+	static vector <fetched_t> fetched;
+
+	/**
+	 * @brief Функция проверки наличия принятого по дескриптору
+	 *
+	 * @param sock дескриптор сокета
+	 * @return     наличие принятого, ещё не забранного потребителем
+	 *
+	 */
+	static bool pending(const net::socket_t sock) noexcept {
+		// Выводим наличие принятого по дескриптору
+		return (
+			(sock >= 0) && (static_cast <size_t> (sock) < ::pool::fetched.size()) &&
+			(::pool::fetched.at(static_cast <size_t> (sock)).length > 0)
+		);
+	}
+	/**
+	 * @brief Функция заведения кольца буферов
+	 *
+	 * @details Зовётся лениво, при первой надобности. Неудача заведения не есть
+	 *          отказ движка: приём тогда идёт прежним путём, через `recv`
+	 *
+	 * @param log объект для работы с логами
+	 * @return    результат заведения кольца буферов
+	 *
+	 */
+	static bool create(const log_t * log) noexcept {
+		// Если кольцо буферов уже заведено либо завести его не вышло прежде
+		if(::pool::ready || ::pool::refused)
+			// Выводим наличие заведённого кольца буферов
+			return ::pool::ready;
+		// Отмечаем попытку заведения выполненной
+		::pool::refused = true;
+		// Вычисляем размер кольца буферов
+		const size_t size = (static_cast <size_t> (::pool::COUNT) * sizeof(entry_t));
+		// Выполняем отображение памяти кольца буферов
+		void * memory = ::mmap(nullptr, size, (PROT_READ | PROT_WRITE), (MAP_ANONYMOUS | MAP_PRIVATE), -1, 0);
+		// Если отображение памяти кольца буферов не удалось
+		if(memory == MAP_FAILED){
+			// Записываем предупреждение в лог
+			log->print("io_uring: cannot map buffer ring, falling back to userspace receive: %s", log_t::flag_t::WARNING, ::strerror(errno));
+			// Выводим отсутствие заведённого кольца буферов
+			return false;
+		}
+		// Выполняем зануление памяти кольца буферов
+		::memset(memory, 0, size);
+		// Устройство заведения набора буферов
+		reg_t registration{};
+		// Устанавливаем адрес кольца буферов
+		registration.addr = reinterpret_cast <uint64_t> (memory);
+		// Устанавливаем количество записей кольца
+		registration.entries = ::pool::COUNT;
+		// Устанавливаем номер набора буферов
+		registration.group = ::pool::GROUP;
+		// Если заведение набора буферов ядром не принято
+		if(gnu::ioUringRegister(::ring::fd, ::pool::REGISTER, &registration, 1) != 0){
+			// Записываем предупреждение в лог
+			log->print("io_uring: kernel does not support buffer rings, falling back to userspace receive: %s", log_t::flag_t::WARNING, ::strerror(errno));
+			// Выполняем снятие отображения памяти кольца буферов
+			::munmap(memory, size);
+			// Выводим отсутствие заведённого кольца буферов
+			return false;
+		}
+		// Выполняем выделение памяти самих буферов
+		::pool::area = static_cast <uint8_t *> (::mmap(
+			nullptr, (static_cast <size_t> (::pool::COUNT) * ::pool::SIZE),
+			(PROT_READ | PROT_WRITE), (MAP_ANONYMOUS | MAP_PRIVATE), -1, 0
+		));
+		// Если выделение памяти самих буферов не удалось
+		if(reinterpret_cast <void *> (::pool::area) == MAP_FAILED){
+			// Записываем предупреждение в лог
+			log->print("io_uring: cannot map receive buffers, falling back to userspace receive: %s", log_t::flag_t::WARNING, ::strerror(errno));
+			// Устройство снятия набора буферов
+			reg_t removal{};
+			// Устанавливаем номер снимаемого набора буферов
+			removal.group = ::pool::GROUP;
+			// Выполняем снятие набора буферов
+			gnu::ioUringRegister(::ring::fd, ::pool::UNREGISTER, &removal, 1);
+			// Выполняем снятие отображения памяти кольца буферов
+			::munmap(memory, size);
+			// Сбрасываем указатель памяти самих буферов
+			::pool::area = nullptr;
+			// Выводим отсутствие заведённого кольца буферов
+			return false;
+		}
+		// Запоминаем кольцо буферов
+		::pool::ring = static_cast <entry_t *> (memory);
+		// Сбрасываем хвост кольца буферов
+		::pool::tail = 0;
+		// Отмечаем кольцо буферов заведённым
+		::pool::ready = true;
+		/**
+		 * Наполняем кольцо буферами целиком
+		 */
+		for(uint16_t i = 0; i < static_cast <uint16_t> (::pool::COUNT); i++)
+			// Выполняем возврат буфера в кольцо
+			::pool::give(i);
+		// Выводим наличие заведённого кольца буферов
+		return true;
+	}
+	/**
+	 * @brief Функция сохранения принятого ядром
+	 *
+	 * @param sock   дескриптор сокета, по которому пришли данные
+	 * @param bid    номер выданного ядром буфера
+	 * @param length количество принятых октетов
+	 *
+	 */
+	static void keep(const net::socket_t sock, const uint16_t bid, const uint32_t length) noexcept {
+		// Если дескриптор сокета неверен
+		if(sock < 0){
+			// Выполняем возврат буфера в кольцо
+			::pool::give(bid);
+			// Выходим из функции
+			return;
+		}
+		// Если места под дескриптор в таблице не хватает
+		if(static_cast <size_t> (sock) >= ::pool::fetched.size())
+			// Выполняем расширение таблицы принятого
+			::pool::fetched.resize((static_cast <size_t> (sock) + 1));
+		// Получаем запись принятого по дескриптору
+		fetched_t & record = ::pool::fetched.at(static_cast <size_t> (sock));
+		/**
+		 * Если по дескриптору уже лежит незабранное - возвращаем прежний буфер
+		 *
+		 * @note Случай этот возможен при многократном приёме: ядро вправе принять
+		 *       следующую порцию прежде, чем потребитель забрал предыдущую. Терять
+		 *       данные тут нельзя, и порядок их менять нельзя тоже, поэтому новая
+		 *       порция откладывается, а прежняя остаётся первой в очереди
+		 */
+		if(record.length > 0){
+			// Выполняем возврат нового буфера в кольцо
+			::pool::give(bid);
+			// Выходим из функции
+			return;
+		}
+		// Устанавливаем номер выданного ядром буфера
+		record.bid = bid;
+		// Сбрасываем смещение неизрасходованного остатка
+		record.offset = 0;
+		// Устанавливаем размер принятого
+		record.length = length;
+	}
+	/**
+	 * @brief Функция приёма данных из сокета
+	 *
+	 * @details Посредник между потребителем и двумя путями приёма. Если ядро уже
+	 *          приняло данные само - они забираются из выданного им буфера, и
+	 *          обращения к ядру не происходит вовсе. Если нет - приём идёт обычным
+	 *          путём, через `recv`
+	 *
+	 * @param sock   дескриптор сокета
+	 * @param buffer буфер для приёма данных
+	 * @param size   размер буфера
+	 * @return       количество принятых октетов либо признак ошибки
+	 *
+	 */
+	static ssize_t receive(const net::socket_t sock, void * buffer, const size_t size) noexcept {
+		// Если принятого по дескриптору нет
+		if(!::pool::pending(sock))
+			// Выполняем приём данных обычным путём
+			return ::recv(sock, buffer, size, MSG_NOSIGNAL);
+		// Получаем запись принятого по дескриптору
+		fetched_t & record = ::pool::fetched.at(static_cast <size_t> (sock));
+		// Получаем адрес выданного ядром буфера
+		const uint8_t * data = ::pool::data(record.bid);
+		// Если адрес выданного ядром буфера получить не вышло
+		if(data == nullptr){
+			// Сбрасываем размер принятого
+			record.length = 0;
+			// Выполняем приём данных обычным путём
+			return ::recv(sock, buffer, size, MSG_NOSIGNAL);
+		}
+		// Вычисляем количество отдаваемых потребителю октетов
+		const uint32_t bytes = static_cast <uint32_t> (
+			(static_cast <size_t> (record.length - record.offset) < size) ?
+			static_cast <size_t> (record.length - record.offset) : size
+		);
+		// Выполняем перенос принятого в буфер потребителя
+		::memcpy(buffer, (data + record.offset), bytes);
+		// Сдвигаем смещение неизрасходованного остатка
+		record.offset += bytes;
+		// Если принятое израсходовано целиком
+		if(record.offset >= record.length){
+			// Сбрасываем размер принятого
+			record.length = 0;
+			// Выполняем возврат буфера в кольцо
+			::pool::give(record.bid);
+		}
+		// Выводим количество принятых октетов
+		return static_cast <ssize_t> (bytes);
+	}
+	/**
+	 * @brief Функция снятия кольца буферов
+	 *
+	 */
+	static void destroy() noexcept {
+		/**
+		 * Возвращаем в кольцо буферы, оставшиеся незабранными
+		 */
+		for(auto & record : ::pool::fetched){
+			// Если по дескриптору осталось незабранное
+			if(record.length > 0)
+				// Сбрасываем размер принятого
+				record.length = 0;
+		}
+		// Выполняем очистку таблицы принятого
+		::pool::fetched.clear();
+		// Если кольцо буферов заведено
+		if(::pool::ready){
+			// Устройство снятия набора буферов
+			reg_t removal{};
+			// Устанавливаем номер снимаемого набора буферов
+			removal.group = ::pool::GROUP;
+			// Выполняем снятие набора буферов
+			gnu::ioUringRegister(::ring::fd, ::pool::UNREGISTER, &removal, 1);
+		}
+		// Если память самих буферов выделена
+		if(::pool::area != nullptr){
+			// Выполняем снятие отображения памяти самих буферов
+			::munmap(::pool::area, (static_cast <size_t> (::pool::COUNT) * ::pool::SIZE));
+			// Сбрасываем указатель памяти самих буферов
+			::pool::area = nullptr;
+		}
+		// Если кольцо буферов отображено
+		if(::pool::ring != nullptr){
+			// Выполняем снятие отображения памяти кольца буферов
+			::munmap(::pool::ring, (static_cast <size_t> (::pool::COUNT) * sizeof(entry_t)));
+			// Сбрасываем указатель кольца буферов
+			::pool::ring = nullptr;
+		}
+		// Сбрасываем хвост кольца буферов
+		::pool::tail = 0;
+		// Отмечаем кольцо буферов снятым
+		::pool::ready = false;
+		// Сбрасываем признак невозможности заведения кольца буферов
+		::pool::refused = false;
+	}
+};
+
+/**
  * @brief Инкапсулируем учёт поданных ядру операций
  *
  * @details Слоя этого у epoll и kqueue не было вовсе, и завести его вынуждает сама
@@ -4197,8 +4638,14 @@ namespace ring {
  *
  * @note Отмена операции **не отменяет** завершения: возможно, ядро успело её
  *       выполнить. Оттого запись учёта снимается по приходу завершения, и только
- *       по нему. Учёт числа операций в полёте на узле обязателен: пока оно не
- *       обнулилось, узел уничтожать нельзя
+ *       по нему
+ *
+ * @note От обращения к уничтоженному узлу бережёт не подсчёт операций в полёте, а
+ *       отметка `cancelled`: пути закрытия проходят по записям учёта и метят
+ *       операции ушедшего узла, а разбор завершений такие операции отбрасывает, к
+ *       узлу не обращаясь. Подсчёт операций на узле здесь заводился, но не
+ *       использовался ни разу - обходился он в два выделения памяти на каждый
+ *       обмен и удалён по замеру
  *
  */
 namespace inflight {
@@ -4291,15 +4738,6 @@ namespace inflight {
 	 *
 	 */
 	static vector <uint32_t> released;
-
-	/**
-	 * @brief Количество операций в полёте на каждом узле
-	 *
-	 * @details Узел уничтожается лишь тогда, когда счётчик его обнулился. Иначе
-	 *          ядро завершит операцию и вернёт указатель на освобождённую память
-	 *
-	 */
-	static unordered_map <void *, uint32_t> counters;
 
 	/**
 	 * @brief Метка, означающая отсутствие записи учёта
@@ -4397,10 +4835,6 @@ namespace inflight {
 		::memset(&slot.addr, 0, sizeof(slot.addr));
 		// Выполняем зануление устройства сообщения
 		::memset(&slot.message, 0, sizeof(slot.message));
-		// Если узел за операцией имеется
-		if(udata != nullptr)
-			// Увеличиваем количество операций в полёте на узле
-			::inflight::counters[udata]++;
 		// Выводим метку завершения
 		return ::inflight::token(index, slot.generation);
 	}
@@ -4427,22 +4861,6 @@ namespace inflight {
 		if(!slot.busy || (slot.generation != static_cast <uint32_t> (token >> 32)))
 			// Выходим из функции
 			return;
-		// Если узел за операцией имеется
-		if(slot.udata != nullptr){
-			// Выполняем поиск счётчика операций узла
-			auto i = ::inflight::counters.find(slot.udata);
-			// Если счётчик операций узла найден
-			if(i != ::inflight::counters.end()){
-				// Уменьшаем количество операций в полёте на узле
-				if(i->second > 0)
-					// Выполняем уменьшение счётчика операций узла
-					i->second--;
-				// Если операций в полёте на узле не осталось
-				if(i->second == 0)
-					// Убираем счётчик операций узла
-					::inflight::counters.erase(i);
-			}
-		}
 		// Отмечаем запись как свободную
 		slot.busy = false;
 		// Сбрасываем разновидность поданной операции
@@ -4455,49 +4873,6 @@ namespace inflight {
 		::inflight::released.push_back(index);
 	}
 	/**
-	 * @brief Функция получения количества операций в полёте на узле
-	 *
-	 * @param udata узел, операции которого подсчитываются
-	 * @return      количество операций в полёте на узле
-	 *
-	 */
-	static uint32_t count(const void * udata) noexcept {
-		// Если узел не задан
-		if(udata == nullptr)
-			// Выводим отсутствие операций в полёте
-			return 0;
-		// Выполняем поиск счётчика операций узла
-		auto i = ::inflight::counters.find(const_cast <void *> (udata));
-		// Выводим количество операций в полёте на узле
-		return ((i != ::inflight::counters.end()) ? i->second : 0);
-	}
-	/**
-	 * @brief Функция отметки операций узла отменёнными
-	 *
-	 * @details Сами записи учёта здесь не снимаются и снятыми быть не могут: ядро
-	 *          вправе выполнить операцию раньше, чем дойдёт до отмены. Отметка
-	 *          означает лишь, что пришедшее завершение следует отбросить, не
-	 *          обращаясь к узлу
-	 *
-	 * @param udata узел, операции которого отмечаются отменёнными
-	 *
-	 */
-	static void cancel(const void * udata) noexcept {
-		// Если узел не задан либо операций в полёте на нём нет
-		if((udata == nullptr) || (::inflight::count(udata) == 0))
-			// Выходим из функции
-			return;
-		/**
-		 * Отмечаем отменёнными все операции узла
-		 */
-		for(auto & slot : ::inflight::slots){
-			// Если запись занята и принадлежит узлу
-			if(slot.busy && (slot.udata == udata))
-				// Отмечаем операцию отменённой
-				slot.cancelled = true;
-		}
-	}
-	/**
 	 * @brief Функция очистки учёта поданных операций
 	 *
 	 */
@@ -4506,8 +4881,6 @@ namespace inflight {
 		::inflight::slots.clear();
 		// Выполняем очистку очереди свободных ячеек
 		::inflight::released.clear();
-		// Выполняем очистку счётчиков операций узлов
-		::inflight::counters.clear();
 	}
 };
 
@@ -29429,6 +29802,54 @@ namespace io {
 		return result;
 	}
 	/**
+	 * @brief Функция проверки привязанности дескриптора к адресу
+	 *
+	 * @details Заведена ради вступления в группу многоадресной рассылки. Вступление
+	 *          привязывает дескриптор к порту группы само - без этого приём из
+	 *          группы невозможен, и `commit` такой привязки не делает: он
+	 *          привязывает свою точку узла, а не точку группы.
+	 *
+	 *          Оттого порядок вызова задан: сначала `membership`, затем `commit`.
+	 *          Нарушение порядка прежде отвечало отказом всегда - система не
+	 *          привязывает дескриптор дважды и отвечает `EINVAL`, - и отказ этот
+	 *          гасил живое событие. Проверка эта позволяет вступить в группу и
+	 *          после `commit`: привязка тогда просто пропускается, а сама подписка
+	 *          выполняется
+	 *
+	 * @param sock дескриптор сокета
+	 * @return     признак привязанности дескриптора к адресу
+	 *
+	 */
+	static bool bound(const net::socket_t sock) noexcept {
+		// Если дескриптор сокета не заведён
+		if(sock == net::invalid_socket_t)
+			// Выводим отсутствие привязки дескриптора
+			return false;
+		// Адрес, к которому дескриптор привязан
+		struct sockaddr_storage endpoint{};
+		// Длина адреса, к которому дескриптор привязан
+		socklen_t size = sizeof(endpoint);
+		// Если адрес привязки дескриптора получить не удалось
+		if(::getsockname(sock, &::trust_cast <struct sockaddr> (endpoint), &size) != 0)
+			// Выводим отсутствие привязки дескриптора
+			return false;
+		/**
+		 * Определяем семейство адреса привязки
+		 */
+		switch(endpoint.ss_family){
+			// Для семейства IPv4
+			case AF_INET:
+				// Выводим признак привязанности дескриптора к порту
+				return (::trust_cast <struct sockaddr_in> (endpoint).sin_port != 0);
+			// Для семейства IPv6
+			case AF_INET6:
+				// Выводим признак привязанности дескриптора к порту
+				return (::trust_cast <struct sockaddr_in6> (endpoint).sin6_port != 0);
+		}
+		// Выводим отсутствие привязки дескриптора
+		return false;
+	}
+	/**
 	 * @brief Функция создания сокета события
 	 *
 	 * @param node узел для которого создаётся сокет
@@ -53269,8 +53690,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
 										// Обнуляем серверную структуру
 										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
-										// Выполняем бинд события
-										if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+										// Выполняем бинд события, если дескриптор ещё не привязан
+										if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -53297,8 +53718,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
-											// Снимаем флаг ожидания подключения
-											client->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -53398,8 +53817,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 * и отвечает отказом в маршруте
 										 */
 										endpoint.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source.get())->zone;
-										// Выполняем бинд события
-										if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+										// Выполняем бинд события, если дескриптор ещё не привязан
+										if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -53426,8 +53845,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
-											// Снимаем флаг ожидания подключения
-											client->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -53539,8 +53956,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										endpoint.sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source.get())->address;
 										// Обнуляем серверную структуру
 										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
-										// Выполняем бинд события
-										if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+										// Выполняем бинд события, если дескриптор ещё не привязан
+										if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -53567,8 +53984,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
-											// Снимаем флаг ожидания подключения
-											server->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -53674,8 +54089,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 * и отвечает отказом в маршруте
 										 */
 										endpoint.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source.get())->zone;
-										// Выполняем бинд события
-										if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+										// Выполняем бинд события, если дескриптор ещё не привязан
+										if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -53702,8 +54117,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
-											// Снимаем флаг ожидания подключения
-											server->state.status = event::status_t::NONE;
 											// Выходим из функции с ошибкой
 											return false;
 										}
@@ -53908,8 +54321,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								endpoint.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
 								// Обнуляем серверную структуру
 								::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
-								// Выполняем бинд события
-								if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+								// Выполняем бинд события, если дескриптор ещё не привязан
+								if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -53936,8 +54349,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
-									// Снимаем флаг ожидания подключения
-									client->state.status = event::status_t::NONE;
 									// Выходим из функции с ошибкой
 									return false;
 								}
@@ -53971,8 +54382,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								 * и отвечает отказом в маршруте
 								 */
 								endpoint.sin6_scope_id = awh_cast <const net::addr_net_ipv6_t *> (source)->zone;
-								// Выполняем бинд события
-								if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+								// Выполняем бинд события, если дескриптор ещё не привязан
+								if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -53999,8 +54410,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
-									// Снимаем флаг ожидания подключения
-									client->state.status = event::status_t::NONE;
 									// Выходим из функции с ошибкой
 									return false;
 								}
@@ -54046,8 +54455,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								endpoint.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
 								// Обнуляем серверную структуру
 								::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
-								// Выполняем бинд события
-								if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+								// Выполняем бинд события, если дескриптор ещё не привязан
+								if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -54074,8 +54483,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
-									// Снимаем флаг ожидания подключения
-									server->state.status = event::status_t::NONE;
 									// Выходим из функции с ошибкой
 									return false;
 								}
@@ -54115,8 +54522,8 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								 * и отвечает отказом в маршруте
 								 */
 								endpoint.sin6_scope_id = awh_cast <const net::addr_net_ipv6_t *> (source)->zone;
-								// Выполняем бинд события
-								if(::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0){
+								// Выполняем бинд события, если дескриптор ещё не привязан
+								if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -54143,8 +54550,6 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
-									// Снимаем флаг ожидания подключения
-									server->state.status = event::status_t::NONE;
 									// Выходим из функции с ошибкой
 									return false;
 								}

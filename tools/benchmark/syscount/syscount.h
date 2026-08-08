@@ -105,6 +105,7 @@ typedef enum {
 	AWH_SYSCOUNT_SENDMSG,        // Передача составного сообщения
 	AWH_SYSCOUNT_READV,          // Чтение в набор буферов
 	AWH_SYSCOUNT_WRITEV,         // Запись из набора буферов
+	AWH_SYSCOUNT_URING,          // Обращение к кольцам io_uring
 	AWH_SYSCOUNT_SYSCALLS,       // Граница системных вызовов - служебное значение
 	AWH_SYSCOUNT_CLOCK = AWH_SYSCOUNT_SYSCALLS, // Обращение к текущему времени
 	AWH_SYSCOUNT_MAX             // Количество разновидностей - служебное значение
@@ -210,6 +211,7 @@ static inline const char * awh_syscount_name(const awh_syscount_kind_t kind){
 		case AWH_SYSCOUNT_SENDMSG:     return "sendmsg";
 		case AWH_SYSCOUNT_READV:       return "readv";
 		case AWH_SYSCOUNT_WRITEV:      return "writev";
+		case AWH_SYSCOUNT_URING:       return "io_uring";
 		case AWH_SYSCOUNT_CLOCK:       return "clock_gettime";
 		default:                       return "";
 	}
