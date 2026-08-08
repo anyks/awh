@@ -272,7 +272,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Выполняем прогон измеряемой операции
-		const outcome_t outcome = oneshot(PAGE_ROUNDS, PAGE_SIZE);
+		const outcome_t outcome = oneshot(PAGE_ROUNDS, MEMORY_PAGE_SIZE);
 		// Устанавливаем измеренное значение
 		result.value = perBytes(outcome);
 		// Устанавливаем сведения о прогоне

@@ -336,6 +336,16 @@
 using namespace std;
 
 /**
+ * @brief Название бэкенда для записей в журнале
+ *
+ * @details Заведено ради того, чтобы записи журнала называли себя сами: движков
+ *          четыре, собирается в двоичный файл один, и по записи должно быть видно,
+ *          какой именно её оставил
+ *
+ */
+static constexpr const char * __AWH_IO_BACKEND__ = "Linux io_uring IO backend";
+
+/**
  * @brief Инкапсулируем активности событий в пространство имён
  *
  */
@@ -3780,7 +3790,7 @@ namespace ring {
 		// Если проба возможностей ядра не удалась
 		if(gnu::ioUringRegister(::ring::fd, static_cast <uint32_t> (reg_t::PROBE), result, 256) != 0){
 			// Записываем предупреждение в лог
-			log->print("io_uring: kernel does not support operation probe, assuming base operation set", log_t::flag_t::WARNING);
+			log->print("%s: kernel does not support operation probe, assuming base operation set", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__);
 			/**
 			 * Считаем наличными операции первого набора: они есть у io_uring с
 			 * самого его появления, и ядро, не знающее пробы, старше их не бывает
@@ -3828,7 +3838,7 @@ namespace ring {
 			// Сбрасываем указатель отображения
 			::ring::area = nullptr;
 			// Записываем ошибку в лог
-			log->print("io_uring: cannot map submission ring: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			log->print("%s: cannot map submission ring: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			// Выводим результат работы функции
 			return false;
 		}
@@ -3848,7 +3858,7 @@ namespace ring {
 				// Сбрасываем указатель отображения
 				::ring::areaCq = nullptr;
 				// Записываем ошибку в лог
-				log->print("io_uring: cannot map completion ring: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				log->print("%s: cannot map completion ring: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 				// Выводим результат работы функции
 				return false;
 			}
@@ -3862,7 +3872,7 @@ namespace ring {
 			// Сбрасываем указатель отображения
 			::ring::areaSqe = nullptr;
 			// Записываем ошибку в лог
-			log->print("io_uring: cannot map submission entries: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			log->print("%s: cannot map submission entries: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			// Выводим результат работы функции
 			return false;
 		}
@@ -3941,13 +3951,21 @@ namespace ring {
 		 *       `SINGLE_ISSUER` этого не допускает. Строка оставлена явной, чтобы
 		 *       отсутствие признаков читалось решением, а не недосмотром
 		 */
-		params.flags = 0;
+		/**
+		 * Признаки устройства колец
+		 *
+		 * @note `SINGLE_ISSUER` привязывает кольца к заведшему их потоку, `DEFER_TASKRUN`
+		 *       откладывает завершения до выборки. Берутся они лишь потому, что кольца
+		 *       заводятся в потоке цикла - довод приведён при заведении. Замер: поток
+		 *       1 574 -> 2 470 МБ/с, обмен на пятистах соединениях 44 342 -> 49 281
+		 */
+		params.flags = (IORING_SETUP_SINGLE_ISSUER | IORING_SETUP_DEFER_TASKRUN);
 		// Выполняем устройство колец
 		::ring::fd = gnu::ioUringSetup(::ring::ENTRIES, &params);
 		// Если устройство колец не удалось
 		if(::ring::fd < 0){
 			// Записываем ошибку в лог
-			log->print("io_uring: cannot setup rings: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			log->print("%s: cannot setup rings: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			// Выводим результат работы функции
 			return false;
 		}
@@ -4129,7 +4147,7 @@ namespace ring {
 		// Если подача не удалась
 		if(result < 0)
 			// Записываем ошибку в лог
-			log->print("io_uring: submit failed: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			log->print("%s: submit failed: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 		// Выводим результат работы функции
 		return result;
 	}
@@ -4190,7 +4208,7 @@ namespace ring {
 		// Если переполнение кольца завершений возросло
 		if(count > ::ring::overflowed){
 			// Записываем предупреждение в лог
-			log->print("io_uring: completion ring overflowed %u times, consider a larger ring", log_t::flag_t::WARNING, (count - ::ring::overflowed));
+			log->print("%s: completion ring overflowed %u times, consider a larger ring", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, (count - ::ring::overflowed));
 			// Запоминаем количество завершений, не поместившихся в кольцо
 			::ring::overflowed = count;
 		}
@@ -4509,7 +4527,7 @@ namespace pool {
 		// Если отображение памяти кольца буферов не удалось
 		if(memory == MAP_FAILED){
 			// Записываем предупреждение в лог
-			log->print("io_uring: cannot map buffer ring, falling back to userspace receive: %s", log_t::flag_t::WARNING, ::strerror(errno));
+			log->print("%s: cannot map buffer ring, falling back to userspace receive: %s", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			// Выводим отсутствие заведённого кольца буферов
 			return false;
 		}
@@ -4526,7 +4544,7 @@ namespace pool {
 		// Если заведение набора буферов ядром не принято
 		if(gnu::ioUringRegister(::ring::fd, ::pool::REGISTER, &registration, 1) != 0){
 			// Записываем предупреждение в лог
-			log->print("io_uring: kernel does not support buffer rings, falling back to userspace receive: %s", log_t::flag_t::WARNING, ::strerror(errno));
+			log->print("%s: kernel does not support buffer rings, falling back to userspace receive: %s", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			// Выполняем снятие отображения памяти кольца буферов
 			::munmap(memory, size);
 			// Выводим отсутствие заведённого кольца буферов
@@ -4540,7 +4558,7 @@ namespace pool {
 		// Если выделение памяти самих буферов не удалось
 		if(reinterpret_cast <void *> (::pool::area) == MAP_FAILED){
 			// Записываем предупреждение в лог
-			log->print("io_uring: cannot map receive buffers, falling back to userspace receive: %s", log_t::flag_t::WARNING, ::strerror(errno));
+			log->print("%s: cannot map receive buffers, falling back to userspace receive: %s", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			// Устройство снятия набора буферов
 			reg_t removal{};
 			// Устанавливаем номер снимаемого набора буферов
@@ -5079,6 +5097,25 @@ namespace post {
 	static const log_t * log = nullptr;
 
 	/**
+	 * @brief Записи подачи, отложенные до заведения колец
+	 *
+	 * @details Подача случается и до того, как кольца заведены: ожидание дескриптора
+	 *          пробуждения подаётся при подготовке движка, а кольца заводятся первым
+	 *          оборотом цикла. Записи эти ждут здесь и уходят к ядру, как только
+	 *          кольца появятся
+	 *
+	 */
+	static vector <struct io_uring_sqe> postponed;
+
+	/**
+	 * @brief Функция переноса отложенных записей в кольцо подачи
+	 *
+	 * @details Зовётся сразу после заведения колец, из потока цикла
+	 *
+	 */
+	static void flush() noexcept;
+
+	/**
 	 * @brief Функция добычи записи подачи
 	 *
 	 * @details Если кольцо подачи заполнено - опорожняет его обращением к ядру и
@@ -5089,6 +5126,32 @@ namespace post {
 	 *
 	 */
 	static struct io_uring_sqe * sqe() noexcept {
+		/**
+		 * Если кольца ещё не заведены - откладываем запись до их заведения
+		 *
+		 * @details Кольца заводятся не при подготовке движка, а при первом обороте
+		 *          цикла: `SINGLE_ISSUER` привязывает их к заведшему потоку, а цикл
+		 *          вправе вести не тот поток, что готовил движок. Но подача случается и
+		 *          до первого оборота - ожидание дескриптора пробуждения подаётся при
+		 *          подготовке, - и без этой очереди такая запись пропадала бы молча.
+		 *
+		 *          Замка очереди не нужно: договор движка (`include/net/io.hpp`) прямо
+		 *          запрещает обращаться к событиям из чужих потоков, и единственная
+		 *          законная дорога снаружи - взвод пользовательского события - идёт
+		 *          своим путём и кольца не касается
+		 *
+		 * @note Указатель отдаётся в глубину хранилища, и вызывающий заполняет запись
+		 *       тут же, до следующей добычи. Иначе перераспределение хранилища сделало
+		 *       бы указатель недействительным
+		 */
+		if(::ring::fd < 0){
+			// Заводим отложенную запись подачи
+			::post::postponed.emplace_back();
+			// Выполняем зануление отложенной записи подачи
+			::memset(&::post::postponed.back(), 0, sizeof(struct io_uring_sqe));
+			// Выводим отложенную запись подачи
+			return &::post::postponed.back();
+		}
 		// Выполняем добычу записи подачи
 		struct io_uring_sqe * result = ::ring::acquire();
 		// Если запись подачи добыта
@@ -5099,6 +5162,47 @@ namespace post {
 		::ring::submit(0, -1, ::post::log);
 		// Выполняем повторную добычу записи подачи
 		return ::ring::acquire();
+	}
+	/**
+	 * @brief Функция переноса отложенных записей в кольцо подачи
+	 *
+	 * @details Зовётся сразу после заведения колец, из потока цикла. Отложенные записи
+	 *          переносятся в том же порядке, в каком подавались: порядок подачи
+	 *          значим - отмена обязана идти после операции, которую отменяет
+	 *
+	 */
+	static void flush() noexcept {
+		// Если отложенных записей подачи нет
+		if(::post::postponed.empty())
+			// Выходим из функции
+			return;
+		/**
+		 * Переносим отложенные записи в кольцо подачи
+		 */
+		for(auto & entry : ::post::postponed){
+			// Выполняем добычу записи подачи
+			struct io_uring_sqe * result = ::ring::acquire();
+			// Если запись подачи добыть не удалось
+			if(result == nullptr){
+				// Выполняем подачу накопленного, не ожидая завершений
+				::ring::submit(0, -1, ::post::log);
+				// Выполняем повторную добычу записи подачи
+				result = ::ring::acquire();
+			}
+			// Если запись подачи добыть так и не удалось
+			if(result == nullptr){
+				// Записываем ошибку в лог
+				if(::post::log != nullptr)
+					// Выводим сообщение об отброшенной записи подачи
+					::post::log->print("%s: postponed submission dropped, ring is full", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__);
+				// Прекращаем перенос
+				break;
+			}
+			// Выполняем перенос отложенной записи в кольцо подачи
+			::memcpy(result, &entry, sizeof(struct io_uring_sqe));
+		}
+		// Выполняем очистку очереди отложенных записей
+		::post::postponed.clear();
 	}
 	/**
 	 * @brief Функция подачи ожидания готовности дескриптора
@@ -6589,8 +6693,14 @@ namespace kernel {
 	 *       общий замок на весь движок значило бы платить им на каждой подписке ради
 	 *       одного этого списка
 	 *
+	 * @note Замок берётся свой, а не стандартный. Стандартный мьютекс, захваченный в
+	 *       миг ветвления процесса, остаётся в потомке замкнутым навсегда: владелец
+	 *       его в потомок не переходит, и отпереть замок становится некому. AWH же
+	 *       ветвится кластером, и такой замок остановил бы потомка намертво. Свой
+	 *       замок ветвление распознаёт и перерождается
+	 *
 	 */
-	static mutex locker;
+	static lock_state_t <std::mutex> locker;
 
 	/**
 	 * @brief Функция пробуждения цикла событий
@@ -7074,7 +7184,7 @@ namespace kernel {
 			// Если подать ожидание дескриптора наблюдения не удалось
 			if(::kernel::watching == ::inflight::INVALID)
 				// Записываем ошибку в лог
-				log->print("io_uring: cannot submit watcher poll", log_t::flag_t::WARNING);
+				log->print("%s: cannot submit watcher poll", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__);
 		}
 		/**
 		 * @note Наблюдение заводится по пути, а не по дескриптору: inotify иного не
@@ -7238,7 +7348,7 @@ namespace kernel {
 				return true;
 			{
 				// Выполняем блокировку списка взведённых событий
-				const lock_guard <mutex> lock(::kernel::locker);
+				const locker_t <> lock(::kernel::locker);
 				// Откладываем взведённое событие до выдачи циклу
 				::kernel::triggered.emplace_back(rec.ident, ((rec.udata != nullptr) ? rec.udata : i->second));
 			}
@@ -7333,12 +7443,6 @@ namespace kernel {
 	static bool create(const log_t * log) noexcept {
 		// Запоминаем объект работы с логами для слоя подачи операций
 		::post::log = log;
-		// Выполняем заведение колец
-		if(!::ring::create(log))
-			// Выходим из приложения
-			::_exit(EXIT_FAILURE);
-		// Запоминаем дескриптор колец признаком заведённого механизма ожидания
-		::__awh_ep__ = ::ring::fd;
 		// Выполняем заведение дескриптора пробуждения цикла событий
 		if((::kernel::wakeup = ::eventfd(0, (EFD_NONBLOCK | EFD_CLOEXEC))) == net::invalid_socket_t){
 			// Записываем ошибку в лог
@@ -7346,15 +7450,60 @@ namespace kernel {
 			// Выходим из приложения
 			::_exit(EXIT_FAILURE);
 		}
-		// Выполняем подачу ожидания дескриптора пробуждения цикла
+		/**
+		 * Запоминаем дескриптор пробуждения признаком заведённого механизма ожидания
+		 *
+		 * @note Признаком служил дескриптор колец, но кольца заводятся теперь не здесь,
+		 *       а в потоке цикла. Роль признака от этого не меняется: он отвечает лишь
+		 *       на вопрос, заведён ли механизм ожидания вообще
+		 */
+		::__awh_ep__ = ::kernel::wakeup;
+		/**
+		 * Выполняем подачу ожидания дескриптора пробуждения цикла
+		 *
+		 * @note Колец на этот миг ещё нет, и запись подачи ложится в очередь
+		 *       отложенных. К ядру она уйдёт первым же оборотом цикла, вместе с
+		 *       заведением колец
+		 */
 		::kernel::awaken();
 		// Если подать ожидание дескриптора пробуждения не удалось
 		if(::kernel::waking == ::inflight::INVALID){
 			// Записываем ошибку в лог
-			log->print("io_uring: cannot submit wakeup poll", log_t::flag_t::WARNING);
+			log->print("%s: cannot submit wakeup poll", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__);
 			// Выводим результат с ошибкой
 			return false;
 		}
+		// Выводим успешный результат
+		return true;
+	}
+	/**
+	 * @brief Функция заведения колец в потоке, ведущем цикл событий
+	 *
+	 * @details Кольца заводятся **не там, где движок готовится, а там, где он
+	 *          работает**, и это требование ядра, а не придирка к порядку.
+	 *          `IORING_SETUP_SINGLE_ISSUER` привязывает кольца к заведшему их потоку,
+	 *          а `DEFER_TASKRUN` без него не берётся вовсе. Готовит же движок вправе
+	 *          один поток, а цикл вести другой - договор это прямо разрешает.
+	 *
+	 *          Ради признаков этих всё и затевалось: замер дал потоковую передачу
+	 *          2 470 против 1 574 МБ/с без них, то есть первенство над epoll (2 289)
+	 *          вместо отставания
+	 *
+	 * @param log объект для работы с логами
+	 * @return    результат заведения колец
+	 *
+	 */
+	static bool attach(const log_t * log) noexcept {
+		// Если кольца уже заведены
+		if(::ring::fd >= 0)
+			// Выводим успешный результат
+			return true;
+		// Выполняем заведение колец
+		if(!::ring::create(log))
+			// Выходим из приложения
+			::_exit(EXIT_FAILURE);
+		// Выполняем перенос отложенных записей в кольцо подачи
+		::post::flush();
 		// Выводим успешный результат
 		return true;
 	}
@@ -70127,6 +70276,16 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			// Запоминаем поток, ведущий опрос очереди событий
 			::__awh_poll_thread__ = ::pthread_self();
 			/**
+			 * Заводим кольца, если они ещё не заведены
+			 *
+			 * @note Заводятся они здесь, а не при подготовке движка, потому что
+			 *       `SINGLE_ISSUER` привязывает их к заведшему потоку. Довод целиком
+			 *       приведён при самом заведении
+			 */
+			if(!::kernel::attach(this->_log))
+				// Выводим результат с ошибкой
+				return false;
+			/**
 			 * Добиваем узлы, отложенные на уничтожение позапрошлым оборотом цикла
 			 *
 			 * @note Место выбрано не случайно. Записи этих узлов ушли в ядро прошлым
@@ -70268,7 +70427,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 */
 			{
 				// Выполняем блокировку списка взведённых событий
-				const lock_guard <mutex> lock(::kernel::locker);
+				const locker_t <> lock(::kernel::locker);
 				// Если взведённые события уже накоплены
 				if(!::kernel::triggered.empty())
 					// Ожидание не выполняем вовсе: разбирать есть что уже сейчас
@@ -70681,7 +70840,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				 */
 				if(!::kernel::triggered.empty()){
 					// Выполняем блокировку списка взведённых событий
-					const lock_guard <mutex> lock(::kernel::locker);
+					const locker_t <> lock(::kernel::locker);
 					/**
 					 * Перебираем все взведённые пользовательские события
 					 */

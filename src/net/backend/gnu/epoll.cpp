@@ -336,6 +336,16 @@
 using namespace std;
 
 /**
+ * @brief Название бэкенда для записей в журнале
+ *
+ * @details Заведено ради того, чтобы записи журнала называли себя сами: движков
+ *          четыре, собирается в двоичный файл один, и по записи должно быть видно,
+ *          какой именно её оставил
+ *
+ */
+static constexpr const char * __AWH_IO_BACKEND__ = "Linux epoll IO backend";
+
+/**
  * @brief Инкапсулируем активности событий в пространство имён
  *
  */
@@ -3865,8 +3875,14 @@ namespace kernel {
 	 *       общий замок на весь движок значило бы платить им на каждой подписке ради
 	 *       одного этого списка
 	 *
+	 * @note Замок берётся свой, а не стандартный. Стандартный мьютекс, захваченный в
+	 *       миг ветвления процесса, остаётся в потомке замкнутым навсегда: владелец
+	 *       его в потомок не переходит, и отпереть замок становится некому. AWH же
+	 *       ветвится кластером, и такой замок остановил бы потомка намертво. Свой
+	 *       замок ветвление распознаёт и перерождается
+	 *
 	 */
-	static mutex locker;
+	static lock_state_t <std::mutex> locker;
 
 	/**
 	 * @brief Функция пробуждения цикла событий
@@ -4387,7 +4403,7 @@ namespace kernel {
 				return true;
 			{
 				// Выполняем блокировку списка взведённых событий
-				const lock_guard <mutex> lock(::kernel::locker);
+				const locker_t <> lock(::kernel::locker);
 				// Откладываем взведённое событие до выдачи циклу
 				::kernel::triggered.emplace_back(rec.ident, ((rec.udata != nullptr) ? rec.udata : i->second));
 			}
@@ -67339,7 +67355,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 */
 			{
 				// Выполняем блокировку списка взведённых событий
-				const lock_guard <mutex> lock(::kernel::locker);
+				const locker_t <> lock(::kernel::locker);
 				// Если взведённые события уже накоплены
 				if(!::kernel::triggered.empty())
 					// Ожидание не выполняем вовсе: разбирать есть что уже сейчас
@@ -67504,7 +67520,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				 */
 				if(!::kernel::triggered.empty()){
 					// Выполняем блокировку списка взведённых событий
-					const lock_guard <mutex> lock(::kernel::locker);
+					const locker_t <> lock(::kernel::locker);
 					/**
 					 * Перебираем все взведённые пользовательские события
 					 */

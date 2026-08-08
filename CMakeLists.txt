@@ -135,6 +135,16 @@ if (CMAKE_MAX_POLL_EVENTS_COUNT)
     message(STATUS "Build with initial poll events count: ${CMAKE_MAX_POLL_EVENTS_COUNT}\n")
 endif (CMAKE_MAX_POLL_EVENTS_COUNT)
 
+# Если активирован флаг установки числа заводимых вперёд принятий входящих связей (по умолчанию: 8)
+#
+# Величина эта касается одного лишь движка на портах завершения: у kqueue и epoll
+# принятие заранее не заводится вовсе, там ядро сообщает о готовности слушающего
+# сокета, а сокет принятой связи заводит сам вызов принятия
+if (CMAKE_COUNT_PREPOSTED_ACCEPTS)
+    add_compile_definitions(AWH_COUNT_PREPOSTED_ACCEPTS=${CMAKE_COUNT_PREPOSTED_ACCEPTS})
+    message(STATUS "Build with pre-posted accepts count: ${CMAKE_COUNT_PREPOSTED_ACCEPTS}\n")
+endif (CMAKE_COUNT_PREPOSTED_ACCEPTS)
+
 # Если активирован флаг установки верхнего предела роста массива опрашиваемых событий (по умолчанию: 4096)
 if (CMAKE_MAX_POLL_EVENTS_LIMIT)
     add_compile_definitions(AWH_MAX_POLL_EVENTS_LIMIT=${CMAKE_MAX_POLL_EVENTS_LIMIT})

@@ -90,8 +90,13 @@ namespace awh {
 			/**
 			 * @brief Размер данных сценариев размером со страницу памяти в октетах
 			 *
+			 * @note Имя намеренно не `PAGE_SIZE`: у систем BSD это макрос из
+			 * `machine/param.h`, и препроцессор подменяет им объявление ещё до разбора -
+			 * сборка отвечает "expected unqualified-id". Проверено опытом на стенде
+			 * FreeBSD 15.1
+			 *
 			 */
-			static constexpr size_t PAGE_SIZE = 4096;
+			static constexpr size_t MEMORY_PAGE_SIZE = 4096;
 			/**
 			 * @brief Размер данных сценариев потоковой обработки в октетах
 			 *

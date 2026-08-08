@@ -260,9 +260,9 @@ namespace {
 		// Накопитель результата операций
 		uint64_t accumulator = 0;
 		// Выполняем добавление данных в потоковое хэширование
-		hash.update(buffer().data(), PAGE_SIZE);
+		hash.update(buffer().data(), MEMORY_PAGE_SIZE);
 		// Выполняем прогон измеряемой операции
-		const outcome_t outcome = measure(DIGEST_ROUNDS, PAGE_SIZE, [&]() noexcept {
+		const outcome_t outcome = measure(DIGEST_ROUNDS, MEMORY_PAGE_SIZE, [&]() noexcept {
 			// Выполняем формирование результата потокового хэширования
 			accumulator += hash.digest <uint64_t> ();
 		});
