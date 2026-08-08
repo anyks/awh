@@ -46,6 +46,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/eth/eth.hpp>
+#include <net/backend/win/qos.hpp>
 
 /**
  * @brief Средства перевода названия сетевого устройства в его номер
@@ -1054,23 +1055,16 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc([[maybe_unused]] const event
  * @param family семейство протоколов
  * @return       класс обслуживания
  *
- * @warning Класса обслуживания MS Windows не отдаёт вовсе. Настройка IP_TOS здесь
- *          существует, но система с версии Windows XP SP2 её не исполняет: запись
- *          отвечает согласием, а в заголовок пакета не попадает ничего, и обратное
- *          чтение отдаёт то, что записали, а не то, что уходит в сеть. Отдавать такое
- *          значение за настоящее значило бы вводить в заблуждение
- *
- *          Отмечать пакеты классом обслуживания система даёт иначе - подсистемой
- *          качества обслуживания qWAVE, где на каждый сокет заводится поток с
- *          собственным описателем. Описателю этому в нынешнем составе хранить себя
- *          негде, и подсистема эта останется до отдельного о том уговора
+ * @warning Отдаётся здесь запрошенное, а не показание системы. Настройка IP_TOS у MS
+ *          Windows существует, но с версии Windows XP SP2 не исполняется: запись
+ *          отвечает согласием, а в заголовок пакета не попадает ничего. Отметка
+ *          ставится подсистемой качества обслуживания qWAVE, а обратного чтения она
+ *          не даёт вовсе - оттого выдаётся то, что запрашивали
  *
  */
-awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family) const noexcept {
-	// Выводим в журнал сообщение о неисполнении настройки системой
-	this->_log->print("%s: DSCP marking is ignored by MS Windows since XP SP2, qWAVE is required instead", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
-	// Выводим обычный класс обслуживания
-	return event::dscp_t::CS0;
+awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const net::socket_t sock, [[maybe_unused]] const event::family_t family) const noexcept {
+	// Выводим запрошенный для сокета класс обслуживания
+	return win::qos::mark(sock);
 }
 /**
  * @brief Метод установки класса обслуживания в заголовке IP-пакета
@@ -1080,15 +1074,17 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint([[maybe_
  * @param dscp   устанавливаемый класс обслуживания
  * @return       результат выполнения установки
  *
- * @warning Отвечает отказом всегда - разбор тому изложен при чтении класса
- *          обслуживания
+ * @note Отметка ставится сразу, если сокет уже соединён - подсистема берёт назначение
+ *       у него самого. Иначе она запоминается и будет применена, едва назначение
+ *       станет известно: назначения требует сама подсистема, а порядок вызовов ей не
+ *       подчинён
+ *
+ * @warning Заведённый подсистемой поток обязан быть снят прежде закрытия сокета
  *
  */
-bool awh::eth::Socket::setDifferentiatedServicesCodePoint([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::dscp_t dscp) const noexcept {
-	// Выводим в журнал сообщение о неисполнении настройки системой
-	this->_log->print("%s: DSCP marking is ignored by MS Windows since XP SP2, qWAVE is required instead", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
-	// Выводим отрицательный результат установки
-	return false;
+bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t sock, [[maybe_unused]] const event::family_t family, const event::dscp_t dscp) const noexcept {
+	// Выводим результат установки класса обслуживания сокету
+	return win::qos::mark(sock, dscp, this->_log);
 }
 /**
  * @brief Метод получения признака перегрузки в заголовке IP-пакета

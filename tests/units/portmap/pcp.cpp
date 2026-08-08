@@ -140,6 +140,14 @@ class PcpRouter {
 		std::atomic <uint8_t> result{0};
 		// Вид порчи выдаваемого ответа
 		std::atomic <Damage> damage{Damage::NONE};
+		/**
+		 * Отсчёт времени работы, называемый поддельным маршрутизатором
+		 *
+		 * @note Отсчёт этот испытание задаёт само: откат его означает, что маршрутизатор
+		 *       перезагрузился и заведённые перенаправления утратил, и подделать такое
+		 *       событие иначе, чем назначив отсчёт, нечем
+		 */
+		std::atomic <uint32_t> epoch{1000};
 	public:
 		/**
 		 * @brief Метод проверки готовности поддельного маршрутизатора
@@ -203,8 +211,16 @@ class PcpRouter {
 					answer[3] = this->result.load();
 					// Записываем назначенный срок жизни перенаправления
 					answer[7] = 60;
-					// Записываем время работы маршрутизатора
-					answer[11] = 1;
+					// Получаем отсчёт времени работы маршрутизатора
+					const uint32_t epoch = this->epoch.load();
+					// Записываем отсчёт времени работы маршрутизатора
+					answer[8] = static_cast <uint8_t> (epoch >> 24);
+					// Записываем отсчёт времени работы маршрутизатора
+					answer[9] = static_cast <uint8_t> ((epoch >> 16) & 0xFF);
+					// Записываем отсчёт времени работы маршрутизатора
+					answer[10] = static_cast <uint8_t> ((epoch >> 8) & 0xFF);
+					// Записываем отсчёт времени работы маршрутизатора
+					answer[11] = static_cast <uint8_t> (epoch & 0xFF);
 					// Выполняем перенос отличительной метки перенаправления из просьбы в ответ
 					::memcpy(&answer[PCP_HEADER_SIZE], &buffer[PCP_HEADER_SIZE], 12);
 					// Если ответ выдаётся с чужой отличительной меткой, портим её первый байт
@@ -589,3 +605,315 @@ TEST_F(PortmapUnitFixture, PortmapPcpCloseAndRenew) {
 	}
 }
 
+
+/**
+ * @brief Порт машины, принимающий объявления маршрутизатора
+ *
+ */
+static constexpr uint16_t PCP_ANNOUNCE_PORT = 5350;
+
+/**
+ * @brief Метод рассылки объявления маршрутизатора договора PCP
+ *
+ * @details Объявление собирается ответом на действие ANNOUNCE, как его и рассылает
+ *          маршрутизатор: полезной части у этого действия нет вовсе, и объявление
+ *          занимает один заголовок договора
+ *
+ * @note Объявление шлётся прямо на порт петли, а не на групповой адрес: групповая
+ *       рассылка петлёй ходит не на всякой машине, и испытание зависело бы от
+ *       устройства сети, а проверяется здесь разбор объявления, а не доставка
+ *
+ * @param epoch отсчёт времени работы, называемый в объявлении
+ *
+ */
+static void proclaimPcp(const uint32_t epoch) noexcept {
+	// Выполняем заведение гнезда рассылки объявления
+	const int fd = ::socket(AF_INET, SOCK_DGRAM, 0);
+	// Если гнездо завести не удалось, выходим
+	if(fd < 0) return;
+	// Собираемое объявление маршрутизатора
+	uint8_t message[PCP_HEADER_SIZE] = {0};
+	// Записываем издание договора
+	message[0] = PCP_VERSION;
+	// Записываем действие объявления с отметкой ответа
+	message[1] = PCP_RESPONSE_FLAG;
+	// Записываем отсчёт времени работы маршрутизатора
+	message[8] = static_cast <uint8_t> (epoch >> 24);
+	// Записываем отсчёт времени работы маршрутизатора
+	message[9] = static_cast <uint8_t> ((epoch >> 16) & 0xFF);
+	// Записываем отсчёт времени работы маршрутизатора
+	message[10] = static_cast <uint8_t> ((epoch >> 8) & 0xFF);
+	// Записываем отсчёт времени работы маршрутизатора
+	message[11] = static_cast <uint8_t> (epoch & 0xFF);
+	// Адрес приёмника объявлений
+	struct sockaddr_in target;
+	// Выполняем очистку адреса приёмника объявлений
+	::memset(&target, 0, sizeof(target));
+	// Устанавливаем разновидность сети
+	target.sin_family = AF_INET;
+	// Устанавливаем порт приёма объявлений
+	target.sin_port = htons(PCP_ANNOUNCE_PORT);
+	// Устанавливаем адрес петли
+	target.sin_addr.s_addr = ::inet_addr("127.0.0.1");
+	// Выполняем рассылку объявления маршрутизатора
+	::sendto(fd, reinterpret_cast <const char *> (message), sizeof(message), 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target));
+	// Выполняем закрытие гнезда рассылки объявления
+	::closesocket(fd);
+}
+
+/**
+ * @brief Проверка обнаружения утраты состояния маршрутизатором по договору PCP
+ *
+ * @details Отсчёт времени работы маршрутизатора несут оба дейтаграммных договора, и
+ *          сверяется он у каждого ответа: откат означает, что маршрутизатор
+ *          перезагрузился и заведённые перенаправления утратил (RFC 6887, раздел 8.5)
+ *
+ * @note Отсчёт держится отдельно на каждый договор, и проверка эта не повторяет
+ *       проверку договора NAT-PMP: маршрутизатор вправе вести договоры разными
+ *       службами, и совпадения отсчётов они не требуют
+ *
+ */
+TEST_F(PortmapUnitFixture, PortmapPcpEpochRollback) {
+	// Создаём поддельный маршрутизатор договора PCP
+	PcpRouter router;
+	// Если порт договора занят, испытание не проводится
+	if(!router.ready()) GTEST_SKIP() << "PCP port is occupied";
+	// Выполняем запуск поддельного маршрутизатора
+	router.start();
+	// Создаём объект модуля перенаправления портов
+	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	// Выполняем настройку модуля на поддельный маршрутизатор
+	::setup(portmap);
+	// Количество объявлений об утрате состояния маршрутизатором
+	size_t resets = 0;
+	// Устанавливаем функцию обратного вызова на утрату состояния маршрутизатором
+	portmap.on <void (const awh::unit::portmap_t::type_t)> (
+		"reset", [&resets](const awh::unit::portmap_t::type_t) noexcept -> void {
+			// Запоминаем объявление об утрате состояния маршрутизатором
+			resets++;
+		}, std::placeholders::_1
+	);
+	// Выполняем первое обращение к маршрутизатору
+	const outcome_t first = this->await(portmap, awh::unit::portmap_t::action_t::OPEN);
+	// Выполняем проверку того, что первый ответ принят
+	ASSERT_TRUE(first.answered);
+	// Выполняем проверку того, что первый ответ утратой состояния не признан
+	ASSERT_EQ(resets, static_cast <size_t> (0));
+	// Задаём отсчёт, откатившийся назад перезагрузкой маршрутизатора
+	router.epoch.store(1);
+	// Выполняем второе обращение к маршрутизатору
+	const outcome_t second = this->await(portmap, awh::unit::portmap_t::action_t::OPEN);
+	// Выполняем остановку поддельного маршрутизатора
+	router.stop();
+	// Выполняем проверку того, что второй ответ принят
+	ASSERT_TRUE(second.answered);
+	// Выполняем проверку того, что утрата состояния маршрутизатором объявлена
+	ASSERT_EQ(resets, static_cast <size_t> (1));
+}
+
+/**
+ * @brief Проверка приёма объявления маршрутизатора по договору PCP
+ *
+ * @details Объявления обоих договоров приходят на один и тот же порт и разделяются
+ *          изданием в первом октете. Проверяется здесь именно ветка договора PCP:
+ *          действие ANNOUNCE полезной части не имеет вовсе, и объявление занимает
+ *          один заголовок
+ *
+ * @note Обращение к маршрутизатору ведётся туда, откуда ответа не будет, и служит оно
+ *       лишь пределом: не приди объявления вовсе - работа всё равно прекратится, а
+ *       испытание объявит неудачу проверкой, а не зависанием
+ *
+ */
+TEST_F(PortmapUnitFixture, PortmapPcpAnnouncement) {
+	// Создаём объект модуля перенаправления портов
+	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	// Выполняем настройку модуля на поддельный маршрутизатор
+	::setup(portmap);
+	// Если приём объявлений завести не удалось, испытание не проводится
+	if(!portmap.announce(true)) GTEST_SKIP() << "PCP announcement port is occupied";
+	// Количество объявлений об утрате состояния маршрутизатором
+	std::atomic <size_t> resets{0};
+	// Договор, по которому объявлена утрата состояния
+	std::atomic <awh::unit::portmap_t::type_t> type{awh::unit::portmap_t::type_t::NONE};
+	/**
+	 * Устанавливаем функцию обратного вызова на утрату состояния маршрутизатором
+	 *
+	 * @note Работа модуля прекращается объявлением утраты: цикл базы событий сам собой
+	 *       не остановится, а проверяемое к этой поре уже случилось
+	 */
+	portmap.on <void (const awh::unit::portmap_t::type_t)> (
+		"reset", [&portmap, &resets, &type](const awh::unit::portmap_t::type_t protocol) noexcept -> void {
+			// Запоминаем договор, по которому объявлена утрата состояния
+			type.store(protocol);
+			// Запоминаем объявление об утрате состояния маршрутизатором
+			resets.fetch_add(1);
+			// Выполняем остановку работы модуля
+			portmap.stop();
+		}, std::placeholders::_1
+	);
+	// Устанавливаем функцию обратного вызова на отказ перенаправления
+	portmap.on <void (const awh::unit::portmap_t::error_t, const awh::unit::portmap_t::type_t)> (
+		"failure", [&portmap](const awh::unit::portmap_t::error_t, const awh::unit::portmap_t::type_t) noexcept -> void {
+			// Выполняем остановку работы модуля
+			portmap.stop();
+		}, std::placeholders::_1, std::placeholders::_2
+	);
+	// Признак продолжения рассылки объявлений
+	std::atomic <bool> working{true};
+	// Выполняем запуск потока рассылки объявлений маршрутизатора
+	std::thread sender([&working]() noexcept -> void {
+		/**
+		 * Выполняем рассылку объявлений, пока работа не прекращена
+		 */
+		while(working.load()){
+			// Выполняем рассылку объявления с исходным отсчётом времени работы
+			::proclaimPcp(1000);
+			// Выполняем ожидание перед рассылкой объявления об утрате состояния
+			std::this_thread::sleep_for(std::chrono::milliseconds(30));
+			// Выполняем рассылку объявления с откатившимся отсчётом времени работы
+			::proclaimPcp(1);
+			// Выполняем ожидание перед следующей рассылкой
+			std::this_thread::sleep_for(std::chrono::milliseconds(30));
+		}
+	});
+	// Заводимое перенаправление порта
+	awh::unit::portmap_t::mapping_t mapping;
+	// Устанавливаем договор перенаправляемого порта
+	mapping.proto = awh::unit::portmap_t::proto_t::TCP;
+	// Устанавливаем внутренний порт перенаправления
+	mapping.internalPort = PCP_INTERNAL_PORT;
+	// Устанавливаем срок жизни перенаправления в секундах
+	mapping.lifeTime = 60;
+	// Выполняем заведение перенаправления порта
+	portmap.open(mapping);
+	// Выполняем запуск работы модуля
+	portmap.start();
+	// Запоминаем, что рассылка объявлений прекращена
+	working.store(false);
+	// Дожидаемся завершения потока рассылки объявлений
+	sender.join();
+	// Выполняем отключение приёма объявлений маршрутизатора
+	portmap.announce(false);
+	// Выполняем проверку того, что утрата состояния маршрутизатором объявлена
+	ASSERT_GT(resets.load(), static_cast <size_t> (0));
+	// Выполняем проверку того, что утрата объявлена именно по договору PCP
+	ASSERT_EQ(type.load(), awh::unit::portmap_t::type_t::PCP);
+}
+
+/**
+ * @brief Метод рассылки объявления маршрутизатора договора PCP по сети IPv6
+ *
+ * @details Объявление то же, что и в сети IPv4: договор PCP разновидностями сети
+ *          сообщения не разнит, и разбирается объявление одним и тем же ходом
+ *
+ * @param epoch отсчёт времени работы, называемый в объявлении
+ * @return      признак того, что объявление разослано
+ *
+ */
+static bool proclaimPcp6(const uint32_t epoch) noexcept {
+	// Выполняем заведение гнезда рассылки объявления
+	const int fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+	// Если гнездо завести не удалось, выводим отрицательный результат
+	if(fd < 0) return false;
+	// Собираемое объявление маршрутизатора
+	uint8_t message[PCP_HEADER_SIZE] = {0};
+	// Записываем издание договора
+	message[0] = PCP_VERSION;
+	// Записываем действие объявления с отметкой ответа
+	message[1] = PCP_RESPONSE_FLAG;
+	// Записываем отсчёт времени работы маршрутизатора
+	message[8] = static_cast <uint8_t> (epoch >> 24);
+	// Записываем отсчёт времени работы маршрутизатора
+	message[9] = static_cast <uint8_t> ((epoch >> 16) & 0xFF);
+	// Записываем отсчёт времени работы маршрутизатора
+	message[10] = static_cast <uint8_t> ((epoch >> 8) & 0xFF);
+	// Записываем отсчёт времени работы маршрутизатора
+	message[11] = static_cast <uint8_t> (epoch & 0xFF);
+	// Адрес приёмника объявлений
+	struct sockaddr_in6 target;
+	// Выполняем очистку адреса приёмника объявлений
+	::memset(&target, 0, sizeof(target));
+	// Устанавливаем разновидность сети
+	target.sin6_family = AF_INET6;
+	// Устанавливаем порт приёма объявлений
+	target.sin6_port = htons(PCP_ANNOUNCE_PORT);
+	// Устанавливаем адрес петли
+	::inet_pton(AF_INET6, "::1", &target.sin6_addr);
+	// Выполняем рассылку объявления маршрутизатора
+	const ssize_t size = ::sendto(fd, reinterpret_cast <const char *> (message), sizeof(message), 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target));
+	// Выполняем закрытие гнезда рассылки объявления
+	::closesocket(fd);
+	// Выводим признак того, что объявление разослано
+	return (size == static_cast <ssize_t> (sizeof(message)));
+}
+
+/**
+ * @brief Проверка приёма объявления маршрутизатора по сети IPv6
+ *
+ * @details Приёмник объявлений сети IPv6 привязывается неопределённым адресом и
+ *          разбирает то же объявление, что и в сети IPv4. Проверяется здесь именно
+ *          привязка и приём: разбор объявления закреплён проверкой сети IPv4
+ *
+ * @note Объявления рассылаются до запуска работы модуля намеренно: гнездо приёмника
+ *       к этой поре уже привязано, и присланное на него ложится в очередь гнезда, а
+ *       выбирается запущенным циклом базы событий. Так испытание не зависит от того,
+ *       успел ли поток рассылки попасть в отведённое ему время
+ *
+ * @note Сети IPv6 на машине может не быть вовсе - тогда рассылка не проходит, и
+ *       испытание не проводится: доказать этим нечего ни в ту, ни в другую сторону
+ *
+ */
+TEST_F(PortmapUnitFixture, PortmapPcpAnnouncementIPv6) {
+	// Создаём объект модуля перенаправления портов
+	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	// Устанавливаем вид опроса маршрутизатора
+	portmap.setType(awh::unit::portmap_t::type_t::PCP);
+	// Устанавливаем разновидность сети, в которой ведётся обмен
+	portmap.setFamily(awh::unit::portmap_t::family_t::IPV6);
+	// Устанавливаем адрес поддельного маршрутизатора
+	portmap.setRouter("::1");
+	// Устанавливаем срок ожидания ответа маршрутизатора
+	portmap.setTimeout(300);
+	// Устанавливаем количество попыток обращения к маршрутизатору
+	portmap.setAttempts(2);
+	// Если приём объявлений завести не удалось, испытание не проводится
+	if(!portmap.announce(true)) GTEST_SKIP() << "PCP announcement port is occupied";
+	// Если объявление разослать не удалось, испытание не проводится
+	if(!::proclaimPcp6(1000)) GTEST_SKIP() << "IPv6 network is unavailable";
+	// Выполняем рассылку объявления с откатившимся отсчётом времени работы
+	::proclaimPcp6(1);
+	// Количество объявлений об утрате состояния маршрутизатором
+	std::atomic <size_t> resets{0};
+	// Устанавливаем функцию обратного вызова на утрату состояния маршрутизатором
+	portmap.on <void (const awh::unit::portmap_t::type_t)> (
+		"reset", [&portmap, &resets](const awh::unit::portmap_t::type_t) noexcept -> void {
+			// Запоминаем объявление об утрате состояния маршрутизатором
+			resets.fetch_add(1);
+			// Выполняем остановку работы модуля
+			portmap.stop();
+		}, std::placeholders::_1
+	);
+	// Устанавливаем функцию обратного вызова на отказ перенаправления
+	portmap.on <void (const awh::unit::portmap_t::error_t, const awh::unit::portmap_t::type_t)> (
+		"failure", [&portmap](const awh::unit::portmap_t::error_t, const awh::unit::portmap_t::type_t) noexcept -> void {
+			// Выполняем остановку работы модуля
+			portmap.stop();
+		}, std::placeholders::_1, std::placeholders::_2
+	);
+	// Заводимое перенаправление порта
+	awh::unit::portmap_t::mapping_t mapping;
+	// Устанавливаем договор перенаправляемого порта
+	mapping.proto = awh::unit::portmap_t::proto_t::TCP;
+	// Устанавливаем внутренний порт перенаправления
+	mapping.internalPort = PCP_INTERNAL_PORT;
+	// Устанавливаем срок жизни перенаправления в секундах
+	mapping.lifeTime = 60;
+	// Выполняем заведение перенаправления порта
+	portmap.open(mapping);
+	// Выполняем запуск работы модуля
+	portmap.start();
+	// Выполняем отключение приёма объявлений маршрутизатора
+	portmap.announce(false);
+	// Выполняем проверку того, что утрата состояния маршрутизатором объявлена
+	ASSERT_GT(resets.load(), static_cast <size_t> (0));
+}

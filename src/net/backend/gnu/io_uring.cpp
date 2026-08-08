@@ -2158,6 +2158,25 @@ namespace {
 	static uint8_t __awh_buffer__[AWH_EVENT_MAX_BUFFER_SIZE];
 
 	/**
+	 * @brief Указатель на принятое, отдаваемое потребителю
+	 *
+	 * @details Обыкновенно ведёт на общий буфер: приём пишет туда, потребитель оттуда
+	 *          и читает. Но когда данные принимает само ядро в буфер кольца, копировать
+	 *          их в общий буфер незачем - указатель наводится прямо на буфер кольца.
+	 *
+	 *          Заведён по замеру, а не из красоты: с копированием потоковая передача
+	 *          теряла треть скорости (2 351 против 1 622 МБ/с). Сэкономленное обращение
+	 *          к ядру обходится дешевле, чем лишнее копирование, и выгода родного
+	 *          приёма без этого указателя оборачивалась убытком
+	 *
+	 * @note Наводится указатель на общий буфер в начале разбора каждого завершения, и
+	 *       переставляется лишь тем приёмом, который отдал принятое из кольца. Оттого
+	 *       пути, читающие сокет своим порядком, видят общий буфер всегда
+	 *
+	 */
+	static uint8_t * __awh_input__ = ::__awh_buffer__;
+
+	/**
 	 * @brief Количество опросов подряд, не заполнивших и четверти массива событий
 	 *
 	 * @details Массив, разросшийся под нагрузкой, держит память и после её спада.
@@ -4361,6 +4380,7 @@ namespace pool {
 	 *
 	 */
 	struct fetched_t {
+		bool armed;      /**< Признак заведённого в кольце приёма по дескриптору */
 		uint16_t bid;    /**< Номер выданного ядром буфера */
 		uint32_t offset; /**< Смещение неизрасходованного остатка */
 		uint32_t length; /**< Размер принятого в октетах */
@@ -4368,7 +4388,7 @@ namespace pool {
 		 * @brief Конструктор
 		 *
 		 */
-		fetched_t() noexcept : bid(0), offset(0), length(0) {}
+		fetched_t() noexcept : armed(false), bid(0), offset(0), length(0) {}
 	};
 
 	/**
@@ -4380,6 +4400,16 @@ namespace pool {
 	 *
 	 */
 	static vector <fetched_t> fetched;
+
+	/**
+	 * @brief Отложенный возврат буфера в кольцо
+	 *
+	 * @details Буфер, принятое из которого отдано потребителю. Вернуть его сразу
+	 *          нельзя - потребитель ещё читает, а возвращённый буфер ядро вправе выдать
+	 *          под новые данные. Возврат выполняется оборотом разбора позже
+	 *
+	 */
+	static vector <uint16_t> deferred;
 
 	/**
 	 * @brief Функция проверки наличия принятого по дескриптору
@@ -4394,6 +4424,43 @@ namespace pool {
 			(sock >= 0) && (static_cast <size_t> (sock) < ::pool::fetched.size()) &&
 			(::pool::fetched.at(static_cast <size_t> (sock)).length > 0)
 		);
+	}
+	/**
+	 * @brief Функция проверки заведённого в кольце приёма по дескриптору
+	 *
+	 * @details Признак этот бережёт от беды, замеченной прежде врезки: пока по сокету
+	 *          заведён приём в кольце, обычный `recv` по нему звать нельзя вовсе -
+	 *          ядро исполнит обе операции, и данные придут потребителю вперемешку
+	 *
+	 * @param sock дескриптор сокета
+	 * @return     признак заведённого в кольце приёма
+	 *
+	 */
+	static bool armed(const net::socket_t sock) noexcept {
+		// Выводим признак заведённого в кольце приёма
+		return (
+			(sock >= 0) && (static_cast <size_t> (sock) < ::pool::fetched.size()) &&
+			::pool::fetched.at(static_cast <size_t> (sock)).armed
+		);
+	}
+	/**
+	 * @brief Функция отметки заведённого в кольце приёма по дескриптору
+	 *
+	 * @param sock  дескриптор сокета
+	 * @param value признак заведённого в кольце приёма
+	 *
+	 */
+	static void arm(const net::socket_t sock, const bool value) noexcept {
+		// Если дескриптор сокета неверен
+		if(sock < 0)
+			// Выходим из функции
+			return;
+		// Если места под дескриптор в таблице не хватает
+		if(static_cast <size_t> (sock) >= ::pool::fetched.size())
+			// Выполняем расширение таблицы принятого
+			::pool::fetched.resize((static_cast <size_t> (sock) + 1));
+		// Устанавливаем признак заведённого в кольце приёма
+		::pool::fetched.at(static_cast <size_t> (sock)).armed = value;
 	}
 	/**
 	 * @brief Функция заведения кольца буферов
@@ -4538,9 +4605,26 @@ namespace pool {
 	 */
 	static ssize_t receive(const net::socket_t sock, void * buffer, const size_t size) noexcept {
 		// Если принятого по дескриптору нет
-		if(!::pool::pending(sock))
+		if(!::pool::pending(sock)){
+			/**
+			 * Если по дескриптору заведён приём в кольце - обычный приём запрещён
+			 *
+			 * @note Звать здесь `recv` значило бы поставить ядру две операции приёма на
+			 *       один сокет, и данные пришли бы потребителю вперемешку. Отсутствие
+			 *       принятого при заведённом приёме означает исчерпание, и отвечаем мы
+			 *       тем же, чем ответил бы сокет, - отсутствием данных
+			 */
+			if(::pool::armed(sock)){
+				// Устанавливаем признак отсутствия данных
+				errno = EAGAIN;
+				// Выводим признак отсутствия данных
+				return -1;
+			}
+			// Наводим указатель принятого на буфер, отданный вызывающим
+			::__awh_input__ = static_cast <uint8_t *> (buffer);
 			// Выполняем приём данных обычным путём
 			return ::recv(sock, buffer, size, MSG_NOSIGNAL);
+		}
 		// Получаем запись принятого по дескриптору
 		fetched_t & record = ::pool::fetched.at(static_cast <size_t> (sock));
 		// Получаем адрес выданного ядром буфера
@@ -4557,16 +4641,28 @@ namespace pool {
 			(static_cast <size_t> (record.length - record.offset) < size) ?
 			static_cast <size_t> (record.length - record.offset) : size
 		);
-		// Выполняем перенос принятого в буфер потребителя
-		::memcpy(buffer, (data + record.offset), bytes);
+		/**
+		 * Наводим указатель принятого прямо на буфер кольца
+		 *
+		 * @note Копирования здесь нет намеренно, и в этом весь смысл. Копирование
+		 *       съедало треть скорости потоковой передачи и обращало выгоду родного
+		 *       приёма в убыток - замер приведён при объявлении указателя
+		 */
+		::__awh_input__ = const_cast <uint8_t *> (data + record.offset);
 		// Сдвигаем смещение неизрасходованного остатка
 		record.offset += bytes;
 		// Если принятое израсходовано целиком
 		if(record.offset >= record.length){
 			// Сбрасываем размер принятого
 			record.length = 0;
-			// Выполняем возврат буфера в кольцо
-			::pool::give(record.bid);
+			/**
+			 * Откладываем возврат буфера в кольцо
+			 *
+			 * @note Вернуть его прямо здесь нельзя: потребитель ещё не прочёл принятое,
+			 *       а возвращённый буфер ядро вправе выдать под новые данные. Возврат
+			 *       выполняется оборотом позже, когда чтение заведомо закончено
+			 */
+			::pool::deferred.push_back(record.bid);
 		}
 		// Выводим количество принятых октетов
 		return static_cast <ssize_t> (bytes);
@@ -4587,6 +4683,8 @@ namespace pool {
 		}
 		// Выполняем очистку таблицы принятого
 		::pool::fetched.clear();
+		// Выполняем очистку очереди отложенных возвратов
+		::pool::deferred.clear();
 		// Если кольцо буферов заведено
 		if(::pool::ready){
 			// Устройство снятия набора буферов
@@ -5125,6 +5223,52 @@ namespace post {
 		entry->addr = reinterpret_cast <uint64_t> (buffer);
 		// Устанавливаем размер буфера приёма данных
 		entry->len = static_cast <uint32_t> (size);
+		// Устанавливаем метку завершения
+		entry->user_data = result;
+		// Выводим метку завершения
+		return result;
+	}
+	/**
+	 * @brief Функция подачи приёма данных с выбором буфера ядром
+	 *
+	 * @details Ради этой подачи движок на io_uring и заводился. Буфер здесь не
+	 *          передаётся вовсе: ядро берёт его из кольца само, **в миг прихода
+	 *          данных**, и сообщает номер взятого буфера признаками завершения.
+	 *          Приём тогда обходится без обращения к ядру со стороны потребителя -
+	 *          обмен теряет два обращения из шести.
+	 *
+	 *          Подача **однократная**, как и ожидание готовности, и по той же
+	 *          причине: движок вычерпывает сокет не до конца намеренно, а
+	 *          многократный приём уровня не повторяет
+	 *
+	 * @param sock  дескриптор, с которого читаются данные
+	 * @param udata запись подписки, которой операция принадлежит
+	 * @return      метка завершения
+	 *
+	 */
+	static uint64_t fetch(const net::socket_t sock, void * udata) noexcept {
+		// Выполняем добычу записи подачи
+		struct io_uring_sqe * entry = ::post::sqe();
+		// Если запись подачи добыть не удалось
+		if(entry == nullptr)
+			// Выводим отсутствие метки завершения
+			return ::inflight::INVALID;
+		// Занимаем запись учёта под операцию
+		const uint64_t result = ::inflight::acquire(::inflight::kind_t::RECV, sock, udata);
+		// Устанавливаем код операции
+		entry->opcode = static_cast <uint8_t> (::ring::op_t::RECV);
+		// Устанавливаем дескриптор, с которого читаются данные
+		entry->fd = static_cast <int32_t> (sock);
+		// Буфер не задаётся: ядро берёт его из кольца само
+		entry->addr = 0;
+		// Устанавливаем наибольший размер принимаемого
+		entry->len = ::pool::SIZE;
+		// Устанавливаем признак приёма без порождения сигнала обрыва
+		entry->msg_flags = MSG_NOSIGNAL;
+		// Указываем ядру брать буфер из кольца
+		entry->flags |= static_cast <uint8_t> (IOSQE_BUFFER_SELECT);
+		// Устанавливаем номер набора буферов, из которого берётся буфер
+		entry->buf_group = ::pool::GROUP;
 		// Устанавливаем метку завершения
 		entry->user_data = result;
 		// Выводим метку завершения
@@ -6608,7 +6752,95 @@ namespace kernel {
 		 *       не завершалась за две минуты, с однократным укладывается в 1072 мс
 		 *       против 1058 мс у epoll
 		 */
-		state.token = ::post::poll(state.sock, events, false, &state);
+		/**
+		 * Если подписка годна для родного приёма - подаём приём вместо ожидания
+		 *
+		 * @details Ожидание лишь сообщает о готовности, и потребитель следом зовёт
+		 *          `recv` сам - два обращения к ядру там, где родной приём обходится
+		 *          одним. Замер показал, что без этой подмены io_uring обращается к
+		 *          ядру ровно столько же, сколько epoll, и смысла в нём нет никакого.
+		 *
+		 *          Годность проверяется при каждом согласовании заново, а не
+		 *          запоминается: набор ожидаемых событий у подписки меняется на ходу
+		 *
+		 * @note Условий три, и все обязательны:
+		 *       - **кольцо буферов заведено**. Без него приём требовал бы буфера на
+		 *         каждое подключение, а это четверть гигабайта на четырёх тысячах;
+		 *       - **ожидается одно лишь чтение**. Запись родной приём не покрывает, а
+		 *         подписка у io_uring одна на дескриптор: пришлось бы подавать две
+		 *         операции и сводить два завершения в одно событие;
+		 *       - **сокет потоковый**. У сокетов с сохранением границ приём обязан
+		 *         отдавать адрес отправителя, а этого `RECV` не делает вовсе -
+		 *         дейтаграммам нужен `RECVMSG`, и это работа отдельная
+		 */
+		::io::node_t * const node = reinterpret_cast <::io::node_t *> (state.udata);
+		/**
+		 * Признак принадлежности узла к ведущим обмен данными
+		 *
+		 * @note Отбор этот обязателен. Слушающий узел сервера тоже потоковый, но
+		 *       готовность его означает пришедшее подключение, а не данные, и поданный
+		 *       ему приём не завершится никогда - приёма подключений тогда не
+		 *       происходит вовсе. Установлено прогоном: набор вставал в самом начале,
+		 *       процесс спал с семью дескрипторами
+		 */
+		const bool exchanging = ((node != nullptr) && ((node->state.node == event::node_t::PEER) || (node->state.node == event::node_t::CLIENT)));
+		/**
+		 * Признак заданного ограничителя входящей полосы
+		 *
+		 * @note Ограничитель работает тем, что движок **не зовёт** приём, пока
+		 *       разрешённый объём не восполнился. Заведённый же приём читает ядром и до
+		 *       движка: данные приходят вопреки ограничителю, и учёт его встаёт.
+		 *       Установлено прогоном: набор вставал на `IoBandwidthGlobalIngressTest`
+		 */
+		const bool limited = (
+			(::bandwidth::read > 0) || (exchanging && ((node->state.node == event::node_t::PEER) ?
+			 reinterpret_cast <::io::peer_t *> (node)->limitedRead() :
+			 reinterpret_cast <::io::client_t *> (node)->limitedRead()))
+		);
+		/**
+		 * Годность подписки для родного приёма
+		 *
+		 * @note Протокол SCTP исключён: тип у него потоковый, но приём идёт через
+		 *       `sctp_recvmsg`, а не `recv` - потребителю нужны сведения о сообщении,
+		 *       которых `RECV` не отдаёт вовсе. Заведённый приём забирал бы данные в
+		 *       кольцо, а читающий их не видел бы. Установлено прогоном: набор вставал
+		 *       на `IoSCTPStreamTest`
+		 *
+		 * @note Сокеты с сохранением границ исключены тем же условием потокового типа:
+		 *       им приём обязан отдавать адрес отправителя, а этого `RECV` не делает -
+		 *       нужен `RECVMSG`, и это работа отдельная
+		 */
+		// Дескриптор приёмника объединения, если узел годен в источники
+		net::socket_t joined = net::invalid_socket_t;
+		/**
+		 * Годность подписки для родного приёма
+		 *
+		 * @note Протокол SCTP исключён: тип у него потоковый, но приём идёт через
+		 *       `sctp_recvmsg`, а не `recv` - потребителю нужны сведения о сообщении,
+		 *       которых `RECV` не отдаёт вовсе. Заведённый приём забирал бы данные в
+		 *       кольцо, а читающий их не видел бы. Установлено прогоном: набор вставал
+		 *       на `IoSCTPStreamTest`
+		 *
+		 * @note Сокеты с сохранением границ исключены условием потокового типа: им
+		 *       приём обязан отдавать адрес отправителя, а этого `RECV` не делает -
+		 *       нужен `RECVMSG`, и это работа отдельная
+		 *
+		 * @note Узлы, годные в источники объединения, исключены: оба пути ядерные и
+		 *       забирают одни и те же данные, но объединение переносит их **мимо
+		 *       памяти приложения**, а приём поднимает в кольцо. Объединение выгоднее,
+		 *       и уступает ему приём. Установлено прогоном: набор вставал на
+		 *       `IoTCPSplicePairTest`
+		 */
+		const bool suitable = (
+			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
+			exchanging && !limited && (node->state.type == event::type_t::STREAM) &&
+			(node->state.protocol != event::protocol_t::SCTP) && !::splicing::eligible(node, &joined)
+		);
+		const bool fetching = (suitable && ::pool::create(log));
+		// Выполняем подачу приёма либо ожидания готовности
+		state.token = (fetching ? ::post::fetch(state.sock, &state) : ::post::poll(state.sock, events, false, &state));
+		// Отмечаем заведение родного приёма по дескриптору
+		::pool::arm(state.sock, (fetching && (state.token != ::inflight::INVALID)));
 		// Если подать ожидание готовности не удалось
 		if(state.token == ::inflight::INVALID){
 			// Записываем ошибку в лог
@@ -7042,6 +7274,13 @@ namespace kernel {
 	 *
 	 */
 	static void destroy() noexcept {
+		/**
+		 * Выполняем снятие кольца буферов
+		 *
+		 * @note Снимается оно прежде колец: снятие набора буферов идёт обращением по
+		 *       дескриптору колец, а разрушение колец дескриптор этот закрывает
+		 */
+		::pool::destroy();
 		// Выполняем разрушение колец
 		::ring::destroy();
 		// Сбрасываем признак заведённого механизма ожидания
@@ -12018,9 +12257,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(ipc->callbacks.read != nullptr)
 												// Вызываем функцию обратного вызова для вывода полученных данных
-												ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+												ipc->callbacks.read(ipc->id, ::__awh_input__, static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+										} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 										// Если дескриптор сокета стал недействительным
 										if(ipc->transfer.fd == net::invalid_socket_t)
 											// Формируем отрицательный результат
@@ -12074,9 +12313,9 @@ namespace io {
 										// Если функция обратного вызова для вывода прочитанных данных установлена
 										if(ipc->callbacks.read != nullptr)
 											// Вызываем функцию обратного вызова для вывода полученных данных
-											ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+											ipc->callbacks.read(ipc->id, ::__awh_input__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 									// Возвращаем результат
 									return result;
 								}
@@ -12132,7 +12371,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем чтение данных из IPC-сокета
-							bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							bytes = ::pool::receive(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Учитываем полученное в объявленном ядром объёме
 							watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Если мы получили ошибку
@@ -12183,9 +12422,9 @@ namespace io {
 									// Если функция обратного вызова для вывода прочитанных данных установлена
 									if(ipc->callbacks.read != nullptr)
 										// Вызываем функцию обратного вызова для вывода полученных данных
-										ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										ipc->callbacks.read(ipc->id, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -12201,7 +12440,7 @@ namespace io {
 					// Если событие является блокирующим
 					} else {
 						// Выполняем чтение данных из IPC-сокета
-						const ssize_t bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						const ssize_t bytes = ::pool::receive(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -12239,9 +12478,9 @@ namespace io {
 								// Если функция обратного вызова для вывода прочитанных данных установлена
 								if(ipc->callbacks.read != nullptr)
 									// Вызываем функцию обратного вызова для вывода полученных данных
-									ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+									ipc->callbacks.read(ipc->id, ::__awh_input__, static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+							} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 							// Возвращаем результат
 							return result;
 						}
@@ -12268,7 +12507,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем чтение данных из IPC-сокета
-							bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							bytes = ::pool::receive(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Учитываем полученное в объявленном ядром объёме
 							watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Если мы получили ошибку
@@ -12319,9 +12558,9 @@ namespace io {
 									// Если функция обратного вызова для вывода прочитанных данных установлена
 									if(ipc->callbacks.read != nullptr)
 										// Вызываем функцию обратного вызова для вывода полученных данных
-										ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										ipc->callbacks.read(ipc->id, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -12337,7 +12576,7 @@ namespace io {
 					// Если событие является блокирующим
 					} else {
 						// Выполняем чтение данных из IPC-сокета
-						const ssize_t bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						const ssize_t bytes = ::pool::receive(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -12375,9 +12614,9 @@ namespace io {
 								// Если функция обратного вызова для вывода прочитанных данных установлена
 								if(ipc->callbacks.read != nullptr)
 									// Вызываем функцию обратного вызова для вывода полученных данных
-									ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+									ipc->callbacks.read(ipc->id, ::__awh_input__, static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+							} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 							// Возвращаем результат
 							return result;
 						}
@@ -12505,7 +12744,7 @@ namespace io {
 										&peer->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
-								else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
+								else bytes = ::pool::receive(peer->transfer.fd, ::__awh_buffer__, size);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, ((peer->state.protocol == event::protocol_t::SCTP) ? 0 : size));
 								// Если мы получили ошибку
@@ -12584,9 +12823,9 @@ namespace io {
 										// Если функция обратного вызова для вывода прочитанных данных установлена
 										if(peer->callbacks.read != nullptr)
 											// Вызываем функцию обратного вызова для вывода полученных данных
-											peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+											peer->callbacks.read(peer->id, ::__awh_input__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+									} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_input__ + offset, static_cast <size_t> (bytes - offset));
 									// Если дескриптор сокета стал недействительным
 									if(peer->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -12706,7 +12945,7 @@ namespace io {
 								&peer->transfer.sctp.use().flags
 							);
 						// Выполняем чтение данных из TCP/IP сокета
-						else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						else bytes = ::pool::receive(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -12773,9 +13012,9 @@ namespace io {
 								// Если функция обратного вызова для вывода прочитанных данных установлена
 								if(peer->callbacks.read != nullptr)
 									// Вызываем функцию обратного вызова для вывода полученных данных
-									peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+									peer->callbacks.read(peer->id, ::__awh_input__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+							} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_input__ + offset, static_cast <size_t> (bytes - offset));
 							// Если дескриптор сокета стал недействительным
 							if(peer->transfer.fd == net::invalid_socket_t)
 								// Формируем отрицательный результат
@@ -12829,7 +13068,7 @@ namespace io {
 									&peer->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
-							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							else bytes = ::pool::receive(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Учитываем полученное в объявленном ядром объёме
 							watchdog.consume(bytes, ((peer->state.protocol == event::protocol_t::SCTP) ? 0 : AWH_EVENT_MAX_BUFFER_SIZE));
 							// Если мы получили ошибку
@@ -12906,9 +13145,9 @@ namespace io {
 									// Если функция обратного вызова для вывода прочитанных данных установлена
 									if(peer->callbacks.read != nullptr)
 										// Вызываем функцию обратного вызова для вывода полученных данных
-										peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										peer->callbacks.read(peer->id, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(peer->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -12977,7 +13216,7 @@ namespace io {
 								&peer->transfer.sctp.use().flags
 							);
 						// Выполняем чтение данных из TCP/IP сокета
-						else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						else bytes = ::pool::receive(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -13040,9 +13279,9 @@ namespace io {
 								// Если функция обратного вызова для вывода прочитанных данных установлена
 								if(peer->callbacks.read != nullptr)
 									// Вызываем функцию обратного вызова для вывода полученных данных
-									peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+									peer->callbacks.read(peer->id, ::__awh_input__, static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+							} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 							// Если дескриптор сокета стал недействительным
 							if(peer->transfer.fd == net::invalid_socket_t)
 								// Формируем отрицательный результат
@@ -13372,9 +13611,9 @@ namespace io {
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(mediator->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
-													mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+													mediator->callbacks.read(mediator->dest, ::__awh_input__, static_cast <size_t> (size));
 												// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-												else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+												else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_input__, static_cast <size_t> (size));
 											}
 										}
 									// Если адрес сервера не совпадает с настройками туннеля
@@ -13586,9 +13825,9 @@ namespace io {
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(mediator->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
-													mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+													mediator->callbacks.read(mediator->dest, ::__awh_input__, static_cast <size_t> (size));
 												// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-												else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+												else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_input__, static_cast <size_t> (size));
 											}
 										}
 									// Если адрес сервера не совпадает с настройками туннеля
@@ -13907,9 +14146,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(mediator->callbacks.read != nullptr)
 												// Вызываем функцию обратного вызова для вывода полученных данных
-												mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+												mediator->callbacks.read(mediator->dest, ::__awh_input__, static_cast <size_t> (size));
 											// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-											else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+											else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_input__, static_cast <size_t> (size));
 										}
 									}
 								// Если адрес сервера не совпадает с настройками туннеля
@@ -14121,9 +14360,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(mediator->callbacks.read != nullptr)
 												// Вызываем функцию обратного вызова для вывода полученных данных
-												mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+												mediator->callbacks.read(mediator->dest, ::__awh_input__, static_cast <size_t> (size));
 											// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-											else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+											else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_input__, static_cast <size_t> (size));
 										}
 									}
 								// Если адрес сервера не совпадает с настройками туннеля
@@ -14393,7 +14632,7 @@ namespace io {
 										&client->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
-								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
+								else bytes = ::pool::receive(client->transfer.fd, ::__awh_buffer__, size);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, ((client->state.protocol == event::protocol_t::SCTP) ? 0 : size));
 								// Если мы получили ошибку
@@ -14472,9 +14711,9 @@ namespace io {
 										// Если функция обратного вызова для вывода прочитанных данных установлена
 										if(client->callbacks.read != nullptr)
 											// Вызываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+											client->callbacks.read(client->id, ::__awh_input__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_input__ + offset, static_cast <size_t> (bytes - offset));
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -14594,7 +14833,7 @@ namespace io {
 								&client->transfer.sctp.use().flags
 							);
 						// Выполняем чтение данных из TCP/IP сокета
-						else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						else bytes = ::pool::receive(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -14661,9 +14900,9 @@ namespace io {
 								// Если функция обратного вызова для вывода прочитанных данных установлена
 								if(client->callbacks.read != nullptr)
 									// Вызываем функцию обратного вызова для вывода полученных данных
-									client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+									client->callbacks.read(client->id, ::__awh_input__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+							} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_input__ + offset, static_cast <size_t> (bytes - offset));
 							// Если дескриптор сокета стал недействительным
 							if(client->transfer.fd == net::invalid_socket_t)
 								// Формируем отрицательный результат
@@ -14849,7 +15088,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
 										client->callbacks.traffic(client->id, client->raw.info);
 								// Выполняем чтение данных из сокета в обычном режиме, если не активирован режим получения информационных метаданных для дейтаграммных пакетов
-								} else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+								} else bytes = ::pool::receive(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 								// Если мы получили ошибку
@@ -14907,9 +15146,9 @@ namespace io {
 										// Если функция обратного вызова для вывода прочитанных данных установлена
 										if(client->callbacks.read != nullptr)
 											// Вызываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+											client->callbacks.read(client->id, ::__awh_input__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -15112,7 +15351,7 @@ namespace io {
 									// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
 									client->callbacks.traffic(client->id, client->raw.info);
 							// Выполняем чтение данных из сокета в обычном режиме, если не активирован режим получения информационных метаданных для дейтаграммных пакетов
-							} else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							} else bytes = ::pool::receive(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -15156,9 +15395,9 @@ namespace io {
 									// Если функция обратного вызова для вывода прочитанных данных установлена
 									if(client->callbacks.read != nullptr)
 										// Вызываем функцию обратного вызова для вывода полученных данных
-										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										client->callbacks.read(client->id, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -15410,9 +15649,9 @@ namespace io {
 										// Если функция обратного вызова для вывода прочитанных данных установлена
 										if(client->callbacks.read != nullptr)
 											// Вызываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+											client->callbacks.read(client->id, ::__awh_input__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -15672,9 +15911,9 @@ namespace io {
 									// Если функция обратного вызова для вывода прочитанных данных установлена
 									if(client->callbacks.read != nullptr)
 										// Вызываем функцию обратного вызова для вывода полученных данных
-										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										client->callbacks.read(client->id, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -15731,7 +15970,7 @@ namespace io {
 										&client->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
-								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+								else bytes = ::pool::receive(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, ((client->state.protocol == event::protocol_t::SCTP) ? 0 : AWH_EVENT_MAX_BUFFER_SIZE));
 								// Если мы получили ошибку
@@ -15810,9 +16049,9 @@ namespace io {
 										// Если функция обратного вызова для вывода прочитанных данных установлена
 										if(client->callbacks.read != nullptr)
 											// Вызываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+											client->callbacks.read(client->id, ::__awh_input__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -15881,7 +16120,7 @@ namespace io {
 									&client->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
-							else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							else bytes = ::pool::receive(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -15946,9 +16185,9 @@ namespace io {
 									// Если функция обратного вызова для вывода прочитанных данных установлена
 									if(client->callbacks.read != nullptr)
 										// Вызываем функцию обратного вызова для вывода полученных данных
-										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										client->callbacks.read(client->id, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -16087,9 +16326,9 @@ namespace io {
 										// Если функция обратного вызова для вывода прочитанных данных установлена
 										if(client->callbacks.read != nullptr)
 											// Вызываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+											client->callbacks.read(client->id, ::__awh_input__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
 										// Формируем отрицательный результат
@@ -16230,9 +16469,9 @@ namespace io {
 									// Если функция обратного вызова для вывода прочитанных данных установлена
 									if(client->callbacks.read != nullptr)
 										// Вызываем функцию обратного вызова для вывода полученных данных
-										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										client->callbacks.read(client->id, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_input__, static_cast <size_t> (bytes));
 								// Если дескриптор сокета стал недействительным
 								if(client->transfer.fd == net::invalid_socket_t)
 									// Формируем отрицательный результат
@@ -32458,7 +32697,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(peer->callbacks.read != nullptr)
 									// Вызываем функцию обратного вызова для вывода полученных данных
-									peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+									peer->callbacks.read(peer->id, ::__awh_input__, static_cast <size_t> (bytes));
 							}
 							// Если узел не помечен как мусорный
 							if(!guard.garbage()){
@@ -70092,7 +70331,82 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 * @note Ожидание готовности отдаёт набор событий числовым исходом
 					 *       завершения, а не отдельным полем, как это делал epoll
 					 */
-					const uint32_t signalEvents = ((kind == ::inflight::kind_t::POLL) && (completion.res > 0) ? static_cast <uint32_t> (completion.res) : 0);
+					/**
+					 * Наводим указатель принятого на общий буфер
+					 *
+					 * @note Место это единственное, где указатель приводится к
+					 *       обыкновенному состоянию, и оттого оно надёжно: переставить
+					 *       его вправе лишь приём, отдавший принятое из кольца, и лишь
+					 *       на время разбора этого самого завершения. Пути, читающие
+					 *       сокет своим порядком, видят общий буфер всегда
+					 */
+					::__awh_input__ = ::__awh_buffer__;
+					/**
+					 * Выполняем отложенный возврат буфера в кольцо
+					 *
+					 * @note Буфер этот отдавался потребителю разбором предыдущего
+					 *       завершения, и чтение его к этому мигу заведомо закончено
+					 */
+					if(!::pool::deferred.empty()){
+						/**
+						 * Возвращаем в кольцо все отложенные буферы
+						 */
+						for(auto & bid : ::pool::deferred)
+							// Выполняем возврат буфера в кольцо
+							::pool::give(bid);
+						// Выполняем очистку очереди отложенных возвратов
+						::pool::deferred.clear();
+					}
+					uint32_t signalEvents = ((kind == ::inflight::kind_t::POLL) && (completion.res > 0) ? static_cast <uint32_t> (completion.res) : 0);
+					/**
+					 * Если завершение принадлежит родному приёму
+					 *
+					 * @details Ядро приняло данные само и выдало под них буфер из кольца.
+					 *          Потребитель же устроен по модели готовности, оттого
+					 *          принятое откладывается по дескриптору, а наружу выдаётся
+					 *          обычное событие готовности к чтению - разбор ниже о разнице
+					 *          не знает вовсе, и знать ему незачем
+					 *
+					 */
+					if((kind == ::inflight::kind_t::RECV) && (owner != nullptr)){
+						// Получаем запись учёта подписки
+						::kernel::registry_t * state = reinterpret_cast <::kernel::registry_t *> (owner);
+						// Отмечаем родной приём снятым: подача однократная
+						::pool::arm(state->sock, false);
+						// Если данные приняты
+						if(completion.res > 0){
+							// Если ядро выдало буфер из кольца
+							if(completion.flags & ::pool::CQE_BUFFER)
+								// Откладываем принятое по дескриптору
+								::pool::keep(state->sock, static_cast <uint16_t> (completion.flags >> 16), static_cast <uint32_t> (completion.res));
+							// Выдаём наружу готовность к чтению
+							signalEvents = EPOLLIN;
+						/**
+						 * Если дальняя сторона закрыла соединение
+						 *
+						 * @note Приём отвечает нулём, и это то же самое, чем ответил бы
+						 *       `recv`. Наружу выдаётся и готовность, и закрытие: разбору
+						 *       ниже довольно первого, чтобы позвать приём, а тот ответит
+						 *       нулём и уже своим порядком доведёт узел до отключения
+						 */
+						} else if(completion.res == 0)
+							// Выдаём наружу готовность к чтению и закрытие дальней стороной
+							signalEvents = (EPOLLIN | EPOLLRDHUP);
+						/**
+						 * Если буферов в кольце не осталось
+						 *
+						 * @note Исход этот не отказ, а обычное следствие нагрузки: данные
+						 *       пришли разом по большему числу сокетов, чем в кольце
+						 *       буферов. Событие наружу не выдаётся вовсе - подписка
+						 *       остаётся несогласованной, и ближайшее согласование подаст
+						 *       приём заново, к тому мигу буферы уже вернутся
+						 */
+						else if(completion.res == -ENOBUFS)
+							// Событий готовности не выдаём
+							signalEvents = 0;
+						// Если приём завершился отказом
+						else signalEvents = EPOLLERR;
+					}
 					// Получаем узел, которому завершение принадлежит
 					void * const signalData = owner;
 					/**
@@ -70110,7 +70424,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       обязан быть к нему готов, даже если многократных ожиданий
 					 *       движок не подаёт
 					 */
-					if((kind == ::inflight::kind_t::POLL) && !more){
+					if(((kind == ::inflight::kind_t::POLL) || (kind == ::inflight::kind_t::RECV)) && !more){
 						// Если ожидание принадлежало дескриптору пробуждения цикла
 						if(signalData == ::kernel::waker)
 							// Выполняем повторную подачу ожидания дескриптора пробуждения
@@ -70161,7 +70475,16 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						// Прекращаем перевод, остаток заберёт следующий оборот
 						break;
 					// Если завершение принадлежит не ожиданию готовности
-					if(kind != ::inflight::kind_t::POLL)
+					if((kind != ::inflight::kind_t::POLL) && (kind != ::inflight::kind_t::RECV))
+						// Переходим к завершению следующему
+						continue;
+					/**
+					 * Если родной приём завершился без событий готовности
+					 *
+					 * @note Случай этот один - буферов в кольце не осталось. Подписка
+					 *       остаётся несогласованной и будет подана заново
+					 */
+					if((kind == ::inflight::kind_t::RECV) && (signalEvents == 0))
 						// Переходим к завершению следующему
 						continue;
 					// Получаем запись учёта подписки, которой событие принадлежит

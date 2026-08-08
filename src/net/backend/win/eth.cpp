@@ -440,40 +440,6 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 
 
 
-/**
- * @brief Метод проверки туннельного сетевого интерфейса по адресу
- *
- * @param addr адрес сетевого подключения
- * @return     результат проверки туннельного сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::isTunnel([[maybe_unused]] const net::addr_t * addr) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
-
-
-/**
- * @brief Метод проверки виртуального сетевого интерфейса по адресу
- *
- * @param addr адрес сетевого подключения
- * @return     результат проверки виртуального сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::isVirtual([[maybe_unused]] const net::addr_t * addr) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
 
 
@@ -507,56 +473,10 @@ bool awh::eth::Interface::isVirtual([[maybe_unused]] const net::addr_t * addr) c
 
 
 
-/**
- * @brief Метод получения маршрута для указанного адреса
- *
- * @param route объект для извлечения маршрута
- * @return      результат получения маршрута
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Gateway::get([[maybe_unused]] route_t & route) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
-/**
- * @brief Метод добавления маршрута
- *
- * @param route объект маршрута для добавления
- * @return      результат добавления маршрута
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Gateway::add([[maybe_unused]] const route_t & route) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
-/**
- * @brief Метод удаления маршрута
- *
- * @param route объект маршрута для удаления
- * @return      результат удаления маршрута
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Gateway::remove([[maybe_unused]] const route_t & route) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
+
+
 
 /**
  * @brief Метод установки безопасности работы потоков
