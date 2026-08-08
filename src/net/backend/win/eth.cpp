@@ -139,49 +139,8 @@ namespace {
 	}
 };
 
-/**
- * @brief Метод заполнения источника сетевых адресов по имени сетевого интерфейса
- *
- * @param source объект источника сетевых адресов
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-void awh::eth::Network_Address::fillSource([[maybe_unused]] net::src_t & source) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-}
 
-/**
- * @brief Метод заполнения источника сетевых адресов по заданной сети
- *
- * @param net    сетевой адрес подсети (IP-адрес в сетевом порядке байт)
- * @param source объект источника сетевых адресов
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-void awh::eth::Network_Address::fillSource([[maybe_unused]] const net::addr_t * net, [[maybe_unused]] net::src_t & source) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-}
 
-/**
- * @brief Метод заполнения источника сетевых адресов
- *
- * @param node   тип узла события
- * @param source объект источника сетевых адресов
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-void awh::eth::Network_Address::fillSource([[maybe_unused]] const event::node_t node, [[maybe_unused]] net::src_t & source) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-}
 
 /**
  * @brief Метод проверки принадлежности IP-адреса подсети

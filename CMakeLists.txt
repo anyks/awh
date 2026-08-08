@@ -722,6 +722,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/tunnel.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/gateway.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/qos.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/win/addr.cpp"
     )
 endif()
 

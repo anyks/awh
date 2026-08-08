@@ -62,11 +62,14 @@ static constexpr const char * __AWH_IO_BACKEND__ = "MS Windows IO backend";
  *          бэкенду, нельзя. Эталонный бэкенд bsd/kqueue.cpp держит состояние в файловых
  *          статиках, и здесь принят тот же порядок
  *
- * @warning Устройство это **временное**. Ожидание событий ведётся условной переменной,
- *          а не портом завершения ввода-вывода. Сделано так затем, чтобы кластер можно
- *          было отлаживать по-настоящему, не дожидаясь готовности IOCP: договор с
- *          вызывающей стороной соблюдается полностью, меняется лишь способ ожидания.
- *          С приходом IOCP блок этот подлежит замене целиком, а методы выше - нет
+ * @note Ожидание событий ведётся портом завершения ввода-вывода. Соответствия ему у
+ *       систем POSIX нет: там ожидание сообщает о **готовности** дескриптора к обмену,
+ *       а обмен ведёт сама петля. Здесь наоборот - обмен начат заранее, а порт
+ *       сообщает о его **завершении**
+ *
+ * @warning Обмен сокетами ещё не переведён на порт: сокеты движком пока не заводятся
+ *          вовсе, и порт обслуживает межпроцессный обмен да пробуждения петли. Узлы
+ *          прочих видов отвечают отказом с записью в журнал
  *
  */
 namespace {
@@ -93,6 +96,18 @@ namespace {
 		HANDLE handle;
 		// Идентификатор узла-собеседника пары IPC (0 у узлов одиночных)
 		awh::event::id_t peer;
+		// Сокет узла, если за узлом стоит сокет
+		SOCKET socket;
+		// Название целевой машины
+		std::string host;
+		// Порт целевой машины
+		uint16_t port;
+		// Порт, каким узел представляется сети
+		uint16_t source;
+		// Число незавершённых обменов, начатых на узле
+		uint32_t pending;
+		// Признак того, что узел закрывается и новых обменов заводить не следует
+		bool closing;
 		/**
 		 * Имя именованного канала, стоящего за узлом
 		 *
@@ -110,8 +125,6 @@ namespace {
 		std::thread reader;
 		// Признак того, что потоку чтения следует завершиться
 		std::shared_ptr <std::atomic_bool> stopped;
-		// Очередь принятых сообщений, границы которых сохраняются
-		std::deque <std::vector <uint8_t>> incoming;
 		// Функция обратного вызова на чтение сообщений
 		awh::engine::callback::read_t read;
 		// Функция обратного вызова на запись сообщений
@@ -130,7 +143,9 @@ namespace {
 		 id(0), node(awh::event::node_t::NONE), family(awh::event::family_t::NONE),
 		 type(awh::event::type_t::NONE), protocol(awh::event::protocol_t::NONE),
 		 status(awh::event::status_t::NONE), options(awh::event::options::NONE),
-		 handle(INVALID_HANDLE_VALUE), peer(0), name{L""}, listener(false),
+		 handle(INVALID_HANDLE_VALUE), peer(0), socket(INVALID_SOCKET),
+		 host{""}, port(0), source(0), pending(0), closing(false),
+		 name{L""}, listener(false),
 		 stopped(std::make_shared <std::atomic_bool> (false)) {}
 	};
 
@@ -142,10 +157,70 @@ namespace {
 	std::recursive_mutex __awh_mutex__;
 	// Замок ожидания петли событий
 	std::mutex __awh_wait_mutex__;
-	// Условная переменная ожидания петли событий
-	std::condition_variable __awh_wait_cv__;
-	// Признак поступившего пробуждения петли
-	bool __awh_woken__ = false;
+	/**
+	 * @brief Порт завершения ввода-вывода, вокруг какого построен движок
+	 *
+	 * @details Порт этот - средоточие движка: в него сходятся завершения всех
+	 *          начатых обменов, и петля событий занята одним лишь снятием их с
+	 *          порта. Соответствия ему у систем POSIX нет: там ожидание сообщает о
+	 *          **готовности** дескриптора к обмену, а обмен ведёт сама петля.
+	 *          Здесь наоборот - обмен начат заранее, а порт сообщает о его
+	 *          **завершении**
+	 *
+	 * @warning Связь дескриптора с портом рвётся одним лишь закрытием дескриптора.
+	 *          Отвязать его иначе нельзя вовсе, оттого закрытие обязано идти одной
+	 *          обёрткой, где стоит и снятие всего, что за дескриптором числится
+	 *
+	 */
+	HANDLE __awh_port__ = nullptr;
+	/**
+	 * @brief Ключ завершения, каким помечается пробуждение петли
+	 *
+	 * @note Ключом этим не может быть ни один идентификатор события: счёт их
+	 *       начинается с единицы, а нулевой означает отсутствие
+	 *
+	 */
+	constexpr ULONG_PTR __AWH_KEY_WAKE__ = 0;
+	/**
+	 * @brief Вид завершения, снятого с порта
+	 *
+	 */
+	enum class op_t : uint8_t {
+		WAKE    = 0x00, // Пробуждение петли без работы
+		MESSAGE = 0x01, // Принятое сообщение, подлежащее раздаче
+		RECV    = 0x02, // Завершение приёма из сокета
+		SEND    = 0x03, // Завершение отправки в сокет
+		ACCEPT  = 0x04, // Завершение принятия входящей связи
+		CONNECT = 0x05  // Завершение установки исходящей связи
+	};
+	/**
+	 * @brief Описание начатого обмена, отдаваемое порту завершения
+	 *
+	 * @details Описатель наложенного обмена обязан жить всё время, пока обмен не
+	 *          завершён: система пишет в него итог и отдаёт его обратно портом.
+	 *          Оттого он и заводится в куче, а не на стеке начавшего обмен
+	 *
+	 * @note Поле наложенного обмена стоит первым намеренно: система отдаёт
+	 *       указатель именно на него, и приведение обратно к описанию опирается на
+	 *       совпадение их начал
+	 *
+	 */
+	struct Overlapped {
+		OVERLAPPED overlapped;          // Описатель наложенного обмена для системы
+		op_t operation;                 // Вид завершившегося обмена
+		awh::event::id_t id;            // Идентификатор события, которому обмен принадлежит
+		std::vector <uint8_t> buffer;   // Буфер обмена
+		SOCKET socket;                  // Сокет принятой связи у принятия входящей
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param operation вид обмена
+		 * @param id        идентификатор события
+		 *
+		 */
+		Overlapped(const op_t operation, const awh::event::id_t id) noexcept :
+		 overlapped{}, operation(operation), id(id), socket(INVALID_SOCKET) {}
+	};
 	// Признак инициализации движка
 	bool __awh_initialized__ = false;
 	// Вид внутреннего таймера петли событий
@@ -163,6 +238,225 @@ namespace {
 		auto i = __awh_nodes__.find(id);
 		// Возвращаем найденный узел, либо признак отсутствия
 		return ((i != __awh_nodes__.end()) ? i->second.get() : nullptr);
+	}
+
+
+	/**
+	 * @brief Расширенные вызовы Winsock, каких нет в самой библиотеке
+	 *
+	 * @details Вызовы эти в библиотеке не объявлены вовсе: их адреса спрашиваются у
+	 *          самого поставщика услуг сокетов по неповторимому номеру. Сделано так
+	 *          затем, что поставщики бывают разные, и вызов у каждого свой
+	 *
+	 * @note Спрашиваются они однажды и на любом сокете: набор их от сокета не
+	 *       зависит вовсе
+	 *
+	 */
+	struct extensions_t {
+		LPFN_CONNECTEX connect;                 // Установка исходящей связи наложенным обменом
+		LPFN_ACCEPTEX accept;                   // Принятие входящей связи наложенным обменом
+		LPFN_GETACCEPTEXSOCKADDRS addresses;    // Разбор адресов принятой связи
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		extensions_t() noexcept : connect(nullptr), accept(nullptr), addresses(nullptr) {}
+	};
+	// Расширенные вызовы Winsock
+	extensions_t __awh_ext__;
+	/**
+	 * @brief Функция получения расширенных вызовов Winsock
+	 *
+	 * @param sock сокет, у поставщика которого спрашиваются вызовы
+	 * @return     признак готовности набора вызовов
+	 *
+	 */
+	bool __awh_extensions__(const SOCKET sock) noexcept {
+		// Если набор вызовов уже получен
+		if(__awh_ext__.connect != nullptr)
+			// Выводим признак готовности набора
+			return true;
+		/**
+		 * @brief Запрос одного расширенного вызова у поставщика услуг сокетов
+		 *
+		 */
+		#define __AWH_EXT__(field, guid) do { \
+			GUID id = guid; \
+			DWORD size = 0; \
+			if(::WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &id, sizeof(id), &__awh_ext__.field, sizeof(__awh_ext__.field), &size, nullptr, nullptr) != 0) \
+				__awh_ext__.field = nullptr; \
+		} while(0)
+		// Выполняем запрос расширенных вызовов
+		__AWH_EXT__(connect, WSAID_CONNECTEX);
+		__AWH_EXT__(accept, WSAID_ACCEPTEX);
+		__AWH_EXT__(addresses, WSAID_GETACCEPTEXSOCKADDRS);
+		// Снимаем объявление запроса вызова
+		#undef __AWH_EXT__
+		// Выводим признак готовности набора вызовов
+		return ((__awh_ext__.connect != nullptr) && (__awh_ext__.accept != nullptr) && (__awh_ext__.addresses != nullptr));
+	}
+
+	/**
+	 * @brief Функция сборки адреса из названия машины и порта
+	 *
+	 * @param family семейство адресов
+	 * @param host   название машины, пустое означает «любой адрес»
+	 * @param port   порт машины
+	 * @param out    собранный адрес
+	 * @param size   размер собранного адреса
+	 * @return       признак успешной сборки
+	 *
+	 */
+	bool __awh_sockaddr__(const awh::event::family_t family, const std::string & host, const uint16_t port, sockaddr_storage & out, int32_t & size) noexcept {
+		// Обнуляем собираемый адрес
+		::memset(&out, 0, sizeof(out));
+		// Если собирается адрес IPv6
+		if(family == awh::event::family_t::IPV6){
+			// Получаем собираемый адрес нужного вида
+			sockaddr_in6 * value = reinterpret_cast <sockaddr_in6 *> (&out);
+			// Устанавливаем семейство адреса
+			value->sin6_family = AF_INET6;
+			// Устанавливаем порт машины
+			value->sin6_port = ::htons(port);
+			// Если название машины не задано - берётся любой адрес
+			if(host.empty())
+				// Устанавливаем адрес, означающий любой
+				value->sin6_addr = in6addr_any;
+			// Если разобрать название машины не удалось
+			else if(::inet_pton(AF_INET6, host.c_str(), &value->sin6_addr) != 1)
+				// Выводим признак неуспешной сборки
+				return false;
+			// Запоминаем размер собранного адреса
+			size = static_cast <int32_t> (sizeof(sockaddr_in6));
+			// Выводим признак успешной сборки
+			return true;
+		}
+		// Получаем собираемый адрес нужного вида
+		sockaddr_in * value = reinterpret_cast <sockaddr_in *> (&out);
+		// Устанавливаем семейство адреса
+		value->sin_family = AF_INET;
+		// Устанавливаем порт машины
+		value->sin_port = ::htons(port);
+		// Если название машины не задано - берётся любой адрес
+		if(host.empty())
+			// Устанавливаем адрес, означающий любой
+			value->sin_addr.s_addr = INADDR_ANY;
+		// Если разобрать название машины не удалось
+		else if(::inet_pton(AF_INET, host.c_str(), &value->sin_addr) != 1)
+			// Выводим признак неуспешной сборки
+			return false;
+		// Запоминаем размер собранного адреса
+		size = static_cast <int32_t> (sizeof(sockaddr_in));
+		// Выводим признак успешной сборки
+		return true;
+	}
+
+	/**
+	 * @brief Функция заведения приёма из сокета
+	 *
+	 * @details Приём заводится **вперёд**, не дожидаясь прихода данных: в этом и
+	 *          состоит устройство порта завершения. Ожидания готовности здесь нет
+	 *          вовсе - система сама сложит принятое в отданный ей буфер и сообщит,
+	 *          когда закончит
+	 *
+	 * @note Буфер обмена принадлежит описанию обмена и живёт, пока обмен не
+	 *       завершён: отдавать системе память, живущую на стеке заводящего, нельзя
+	 *
+	 * @param item узел, на котором заводится приём
+	 * @return     признак успешного заведения
+	 *
+	 */
+	bool __awh_recv__(Node * item) noexcept {
+		// Если узел закрывается либо сокета за ним нет
+		if((item == nullptr) || item->closing || (item->socket == INVALID_SOCKET))
+			// Выводим признак неуспешного заведения
+			return false;
+		// Заводим описание приёма
+		Overlapped * context = new Overlapped(op_t::RECV, item->id);
+		// Отводим место под принимаемые данные
+		context->buffer.assign(0x4000, 0);
+		// Описание буфера приёма для библиотеки сокетов
+		WSABUF buffer{};
+		// Устанавливаем размер буфера приёма
+		buffer.len = static_cast <ULONG> (context->buffer.size());
+		// Устанавливаем сам буфер приёма
+		buffer.buf = reinterpret_cast <char *> (context->buffer.data());
+		// Число принятых байт
+		DWORD received = 0;
+		// Признаки приёма
+		DWORD flags = 0;
+		// Если завести приём не удалось
+		if((::WSARecv(item->socket, &buffer, 1, &received, &flags, &context->overlapped, nullptr) != 0) && (::WSAGetLastError() != WSA_IO_PENDING)){
+			// Выполняем освобождение описания приёма
+			delete context;
+			// Выводим признак неуспешного заведения
+			return false;
+		}
+		// Отмечаем заведённый обмен незавершённым
+		item->pending++;
+		// Выводим признак успешного заведения
+		return true;
+	}
+
+	/**
+	 * @brief Функция заведения принятия входящей связи
+	 *
+	 * @details Сокет под принимаемую связь заводится **заранее**: система кладёт в
+	 *          него принятую связь сама, не спрашивая. Тем принятие и отличается от
+	 *          привычного accept, где сокет заводит система в миг принятия
+	 *
+	 * @param item узел, на котором заводится принятие
+	 * @return     признак успешного заведения
+	 *
+	 */
+	bool __awh_accept__(Node * item) noexcept {
+		// Если узел закрывается либо сокета за ним нет
+		if((item == nullptr) || item->closing || (item->socket == INVALID_SOCKET))
+			// Выводим признак неуспешного заведения
+			return false;
+		// Определяем семейство заводимого сокета
+		const int32_t family = (item->family == awh::event::family_t::IPV6 ? AF_INET6 : AF_INET);
+		// Заводим сокет под принимаемую связь
+		const SOCKET accepted = ::WSASocketW(family, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
+		// Если завести сокет не удалось
+		if(accepted == INVALID_SOCKET)
+			// Выводим признак неуспешного заведения
+			return false;
+		// Заводим описание принятия
+		Overlapped * context = new Overlapped(op_t::ACCEPT, item->id);
+		// Запоминаем сокет принимаемой связи
+		context->socket = accepted;
+		/**
+		 * Место под адреса отводится с запасом
+		 *
+		 * @note Система требует на каждый из двух адресов шестнадцать байт сверх
+		 *       его собственного размера - таково её требование, а не наша
+		 *       предосторожность
+		 *
+		 */
+		context->buffer.assign((sizeof(sockaddr_storage) + 16) * 2, 0);
+		// Число принятых вместе со связью байт
+		DWORD received = 0;
+		/**
+		 * Заводим принятие входящей связи без ожидания данных
+		 *
+		 * @note Нулевая длина принимаемых данных задана намеренно: принятие с
+		 *       ожиданием данных придержало бы связь до первой их порции, а
+		 *       собеседник вправе молчать сколь угодно долго
+		 *
+		 */
+		if(!__awh_ext__.accept(item->socket, accepted, context->buffer.data(), 0, sizeof(sockaddr_storage) + 16, sizeof(sockaddr_storage) + 16, &received, &context->overlapped) && (::WSAGetLastError() != WSA_IO_PENDING)){
+			// Выполняем закрытие заведённого сокета
+			::closesocket(accepted);
+			// Выполняем освобождение описания принятия
+			delete context;
+			// Выводим признак неуспешного заведения
+			return false;
+		}
+		// Отмечаем заведённый обмен незавершённым
+		item->pending++;
+		// Выводим признак успешного заведения
+		return true;
 	}
 
 	/**
@@ -188,14 +482,42 @@ namespace {
 	 *
 	 */
 	void __awh_wake__() noexcept {
-		{
-			// Выполняем блокировку замка ожидания
-			std::lock_guard <std::mutex> lock(__awh_wait_mutex__);
-			// Выставляем признак поступившего пробуждения
-			__awh_woken__ = true;
-		}
-		// Пробуждаем ожидающую петлю событий
-		__awh_wait_cv__.notify_all();
+		// Выполняем блокировку замка ожидания
+		const std::lock_guard <std::mutex> lock(__awh_wait_mutex__);
+		// Если порт завершения заведён
+		if(__awh_port__ != nullptr)
+			// Отдаём порту завершение пробуждения без работы
+			::PostQueuedCompletionStatus(__awh_port__, 0, __AWH_KEY_WAKE__, nullptr);
+	}
+
+	/**
+	 * @brief Функция отдачи порту принятого сообщения
+	 *
+	 * @details Приняв сообщение, поток чтения не раздаёт его сам: раздача обязана
+	 *          идти из потока петли событий, ибо обратные вызовы вправе заводить и
+	 *          уничтожать события. Сообщение потому отдаётся порту, а петля снимает
+	 *          его оттуда наравне с завершениями обменов
+	 *
+	 * @param id     идентификатор события
+	 * @param buffer буфер принятого сообщения
+	 * @param size   размер принятого сообщения
+	 *
+	 */
+	void __awh_post__(const awh::event::id_t id, const uint8_t * buffer, const size_t size) noexcept {
+		// Выполняем блокировку замка ожидания
+		const std::lock_guard <std::mutex> lock(__awh_wait_mutex__);
+		// Если порт завершения не заведён
+		if(__awh_port__ == nullptr)
+			// Выходим из функции
+			return;
+		// Заводим описание отдаваемого сообщения
+		Overlapped * context = new Overlapped(op_t::MESSAGE, id);
+		// Наполняем буфер отдаваемого сообщения
+		context->buffer.assign(buffer, buffer + size);
+		// Если отдать сообщение порту не удалось
+		if(!::PostQueuedCompletionStatus(__awh_port__, static_cast <DWORD> (size), static_cast <ULONG_PTR> (id), &context->overlapped))
+			// Выполняем освобождение описания сообщения
+			delete context;
 	}
 
 	/**
@@ -336,19 +658,18 @@ namespace {
 			}
 			// Если сообщение принято
 			if(received > 0){
-				// Выполняем блокировку замка доступа к списку узлов
-				const std::lock_guard <std::recursive_mutex> lock(__awh_mutex__);
-				// Выполняем поиск узла события
-				Node * item = __awh_find__(id);
-				// Если узел исчез - завершаем работу потока чтения
-				if(item == nullptr)
-					// Завершаем работу потока чтения
-					break;
-				// Добавляем принятое сообщение в очередь узла, сохраняя его границы
-				item->incoming.emplace_back(buffer.data(), buffer.data() + received);
-			}
-			// Пробуждаем петлю событий, чтобы та разобрала принятое
-			__awh_wake__();
+				{
+					// Выполняем блокировку замка доступа к списку узлов
+					const std::lock_guard <std::recursive_mutex> lock(__awh_mutex__);
+					// Если узел исчез - завершаем работу потока чтения
+					if(__awh_find__(id) == nullptr)
+						// Завершаем работу потока чтения
+						break;
+				}
+				// Отдаём принятое сообщение порту завершения
+				__awh_post__(id, buffer.data(), static_cast <size_t> (received));
+			// Если сообщения не принято - лишь пробуждаем петлю событий
+			} else __awh_wake__();
 		}
 		// Закрываем событие завершения наложенных операций чтения
 		::CloseHandle(signal);
@@ -1872,8 +2193,8 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 				// Возвращаем количество отправленных байт
 				return 0;
 			}
-			// Добавляем сообщение в очередь узла-получателя, сохраняя его границы
-			target->incoming.emplace_back(reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
+			// Отдаём сообщение порту завершения от имени узла-получателя
+			::__awh_post__(target->id, reinterpret_cast <const uint8_t *> (buffer), size);
 			// Запоминаем количество отправленных байт
 			written = size;
 		}
@@ -2545,8 +2866,29 @@ bool awh::engine::IO::initialize() noexcept {
 		// Сообщаем об отказе инициализации
 		return false;
 	}
-	// Сбрасываем признак поступившего пробуждения
-	::__awh_woken__ = false;
+	{
+		// Выполняем блокировку замка ожидания
+		const std::lock_guard <std::mutex> lock(::__awh_wait_mutex__);
+		/**
+		 * Заводим порт завершения ввода-вывода
+		 *
+		 * @note Число потоков обслуживания задаётся единицей намеренно: договор
+		 *       движка велит опрашивать его из одного и того же потока, и
+		 *       позволять системе будить несколько разом значило бы договор этот
+		 *       нарушить
+		 *
+		 */
+		::__awh_port__ = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
+		// Если завести порт завершения не удалось
+		if(::__awh_port__ == nullptr){
+			// Заносим в журнал ошибку заведения порта завершения
+			this->_log->print("%s: completion port could not be created, error %lu", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::GetLastError());
+			// Останавливаем библиотеку сокетов
+			::WSACleanup();
+			// Сообщаем об отказе инициализации
+			return false;
+		}
+	}
 	// Выставляем признак инициализации движка
 	::__awh_initialized__ = true;
 	// Сообщаем об успешной инициализации
@@ -2571,10 +2913,25 @@ bool awh::engine::IO::reinitialize() noexcept {
 		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 		// Очищаем список заведённых узлов без извещения о состоянии
 		::__awh_nodes__.clear();
-		// Сбрасываем признак поступившего пробуждения
-		::__awh_woken__ = false;
 		// Выставляем признак инициализации движка
 		::__awh_initialized__ = true;
+	}
+	{
+		// Выполняем блокировку замка ожидания
+		const std::lock_guard <std::mutex> lock(::__awh_wait_mutex__);
+		/**
+		 * Порт родителя дочернему процессу не принадлежит
+		 *
+		 * @note Порождённый процесс проходит main заново и описателя по наследству
+		 *       не получает: порт, оставшийся в переменной, указывает в пустоту, и
+		 *       заводить его следует наново
+		 *
+		 */
+		if(::__awh_port__ != nullptr)
+			// Выполняем закрытие прежнего порта завершения
+			::CloseHandle(::__awh_port__);
+		// Заводим порт завершения ввода-вывода
+		::__awh_port__ = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
 	}
 	// Сообщаем об успешной переинициализации
 	return true;
@@ -2608,6 +2965,17 @@ bool awh::engine::IO::deinitialize() noexcept {
 	}
 	// Пробуждаем петлю событий, чтобы та вышла из ожидания
 	::__awh_wake__();
+	{
+		// Выполняем блокировку замка ожидания
+		const std::lock_guard <std::mutex> lock(::__awh_wait_mutex__);
+		// Если порт завершения заведён
+		if(::__awh_port__ != nullptr){
+			// Выполняем закрытие порта завершения
+			::CloseHandle(::__awh_port__);
+			// Сбрасываем описатель порта завершения
+			::__awh_port__ = nullptr;
+		}
+	}
 	// Сообщаем об успешном освобождении
 	return true;
 }
@@ -2853,56 +3221,90 @@ awh::event::protocol_t awh::engine::IO::protocol([[maybe_unused]] const event::i
  * @return        результат выполнения опроса
  *
  */
-bool awh::engine::IO::poll([[maybe_unused]] const int32_t timeout) noexcept {
-	/**
-	 * Ожидание ведётся условной переменной, а не портом завершения ввода-вывода:
-	 * устройство временное, см. пояснение к блоку состояния выше
-	 */
+bool awh::engine::IO::poll(const int32_t timeout) noexcept {
+	// Описатель порта завершения, с какого снимаются завершения
+	HANDLE port = nullptr;
 	{
 		// Выполняем блокировку замка ожидания
-		std::unique_lock <std::mutex> lock(::__awh_wait_mutex__);
-		// Если пробуждение ещё не поступило
-		if(!::__awh_woken__){
-			// Если предел ожидания задан
-			if(timeout > 0)
-				// Ожидаем пробуждения не дольше заданного предела
-				::__awh_wait_cv__.wait_for(lock, std::chrono::milliseconds(timeout), []() noexcept -> bool { return ::__awh_woken__; });
-			// Если ожидание бессрочное
-			else if(timeout < 0)
-				// Ожидаем пробуждения без предела
-				::__awh_wait_cv__.wait(lock, []() noexcept -> bool { return ::__awh_woken__; });
-		}
-		// Сбрасываем признак поступившего пробуждения
-		::__awh_woken__ = false;
+		const std::lock_guard <std::mutex> lock(::__awh_wait_mutex__);
+		// Запоминаем описатель порта завершения
+		port = ::__awh_port__;
 	}
-	// Список накопленных сообщений, подлежащих раздаче
-	std::deque <std::pair <event::id_t, std::vector <uint8_t>>> messages;
-	{
-		// Выполняем блокировку замка доступа к списку узлов
-		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
-		/**
-		 * Перебираем все заведённые узлы, снимая накопленное. Раздача ведётся уже
-		 * без замка: обратный вызов вправе завести или уничтожить событие, и
-		 * удержание замка привело бы к его повторному захвату
-		 */
-		for(auto & item : ::__awh_nodes__){
-			// Если узел не запущен — накопленное ему не раздаётся
-			if(item.second->status != event::status_t::LAUNCHED)
-				// Переходим к следующему узлу
-				continue;
-			/**
-			 * Снимаем с узла все накопленные сообщения
-			 */
-			while(!item.second->incoming.empty()){
-				// Добавляем сообщение в список подлежащих раздаче
-				messages.emplace_back(item.first, ::std::move(item.second->incoming.front()));
-				// Удаляем снятое сообщение из очереди узла
-				item.second->incoming.pop_front();
-			}
-		}
+	// Если порт завершения не заведён
+	if(port == nullptr){
+		// Заносим в журнал предупреждение о неготовности движка
+		this->_log->print("%s: engine is not initialized", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__);
+		// Сообщаем об отказе опроса
+		return false;
 	}
 	/**
-	 * Раздаём накопленные сообщения
+	 * Завершения снимаются с порта пачкой, а не поодиночке
+	 *
+	 * @details Снятие поодиночке стоило бы перехода в ядро на каждое из них. Пачкой
+	 *          же берётся всё, что накопилось, одним переходом - при потоке событий
+	 *          разница эта заметна, а при их отсутствии не стоит ничего
+	 *
+	 */
+	OVERLAPPED_ENTRY entries[64];
+	// Число снятых с порта завершений
+	ULONG removed = 0;
+	// Предел ожидания завершений в миллисекундах
+	const DWORD limit = (timeout < 0 ? INFINITE : static_cast <DWORD> (timeout));
+	// Если снять завершения с порта не удалось
+	if(!::GetQueuedCompletionStatusEx(port, entries, static_cast <ULONG> (sizeof(entries) / sizeof(entries[0])), &removed, limit, FALSE)){
+		// Получаем причину отказа снятия
+		const DWORD code = ::GetLastError();
+		/**
+		 * Истечение отведённого срока отказом не считается
+		 *
+		 * @note Оборот без единого завершения - это обычный успех, а не отказ:
+		 *       вызывающий волен опрашивать движок вовсе без ожидания
+		 *
+		 */
+		if(code == WAIT_TIMEOUT)
+			// Сообщаем, что обход петли выполнен
+			return true;
+		// Заносим в журнал предупреждение об отказе снятия завершений
+		this->_log->print("%s: completion port wait failed, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, code);
+		// Сообщаем об отказе опроса
+		return false;
+	}
+	// Список принятых сообщений, подлежащих раздаче
+	std::deque <std::pair <event::id_t, std::vector <uint8_t>>> messages;
+	/**
+	 * Разбираем снятые с порта завершения
+	 */
+	for(ULONG i = 0; i < removed; i++){
+		// Если завершение пробуждения петли - работы за ним нет
+		if(entries[i].lpOverlapped == nullptr)
+			// Переходим к следующему завершению
+			continue;
+		/**
+		 * Приводим описатель наложенного обмена обратно к его описанию
+		 *
+		 * @note Приведение опирается на то, что поле обмена стоит в описании первым
+		 *
+		 */
+		::Overlapped * context = reinterpret_cast <::Overlapped *> (entries[i].lpOverlapped);
+		/**
+		 * Определяем вид завершившегося обмена
+		 */
+		switch(static_cast <uint8_t> (context->operation)){
+			// Если завершением принесено сообщение
+			case static_cast <uint8_t> (::op_t::MESSAGE):
+				// Откладываем сообщение до раздачи
+				messages.emplace_back(context->id, ::std::move(context->buffer));
+			break;
+		}
+		// Выполняем освобождение описания завершившегося обмена
+		delete context;
+	}
+	/**
+	 * Раздаём принятые сообщения
+	 *
+	 * @note Раздача ведётся уже без замка: обратный вызов вправе завести или
+	 *       уничтожить событие, и удержание замка привело бы к его повторному захвату
+	 *
 	 */
 	for(auto & message : messages){
 		// Функция обратного вызова на чтение сообщений
@@ -2912,8 +3314,8 @@ bool awh::engine::IO::poll([[maybe_unused]] const int32_t timeout) noexcept {
 			const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 			// Выполняем поиск узла события
 			::Node * item = ::__awh_find__(message.first);
-			// Если узел найден — получаем функцию обратного вызова на чтение
-			if(item != nullptr)
+			// Если узел найден и запущен
+			if((item != nullptr) && (item->status == event::status_t::LAUNCHED))
 				// Получаем функцию обратного вызова на чтение сообщений
 				callback = item->read;
 		}
