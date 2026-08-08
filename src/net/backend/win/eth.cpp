@@ -494,150 +494,16 @@ bool awh::eth::Interface::isVirtual([[maybe_unused]] const net::addr_t * addr) c
 
 
 
-/**
- * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @return       значение DSCP
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::event::dscp_t();
-}
-
-/**
- * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @param dscp   значение DSCP
- * @return       результат работы функции
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Socket::setDifferentiatedServicesCodePoint([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::dscp_t dscp) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
-
-/**
- * @brief Метод получения значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
- *
- * @note Выдаёт значение, устанавливаемое на исходящих пакетах. Признак
- *       перегрузки принятых пакетов приходит отдельно для каждой
- *       датаграммы в метаданных дейтаграммного пакета
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @return       значение ECN
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return awh::event::ecn_t();
-}
-
-/**
- * @brief Метод установки значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
- *
- * @note Класс обслуживания (DSCP) сохраняется: оба поля занимают один
- *       октет заголовка, поэтому установка выполняется чтением текущего
- *       значения с последующей заменой только младших двух бит
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @param ecn    значение ECN
- * @return       результат работы функции
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Socket::setExplicitCongestionNotification([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::ecn_t ecn) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
-
-/**
- * @brief Метод активации/деактивации генерации информации о трафике
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @param mode   режим активации или деактивации
- * @return       результат работы функции
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Socket::trafficInfoGeneration([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const net::socket_mode_t mode) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
-
-/**
- * @brief Метод переключения опции сокета
- *
- * @param sock   сетевой сокет
- * @param family семейство протоколов (IPv4 или IPv6)
- * @param mode   режим активации или деактивации
- * @param option опция сокета
- * @return       результат работы функции
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Socket::switchOption([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const net::socket_mode_t mode, [[maybe_unused]] const uint16_t option, [[maybe_unused]] const event::protocol_t proto) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
 
 
 
 
-/**
- * @brief Метод активации/деактивации мультикаст группы события
- *
- * @param sock   сетевой сокет
- * @param mode   режим активации/деактивации
- * @param group  мультикаст-группа для активации/деактивации
- * @param source адрес сетевого интерфейса с которого выполняется подписка
- * @return       результат работы функции
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Socket::membership([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::socket_mode_t mode, [[maybe_unused]] const net::addr_net_t * group, [[maybe_unused]] const net::addr_net_t * source) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
+
+
+
+
+
 
 
 

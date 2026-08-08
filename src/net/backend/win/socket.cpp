@@ -1046,3 +1046,467 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc([[maybe_unused]] const event
 	// Возвращаем пустую пару сокетов
 	return result;
 }
+
+/**
+ * @brief Метод получения класса обслуживания в заголовке IP-пакета
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @return       класс обслуживания
+ *
+ * @warning Класса обслуживания MS Windows не отдаёт вовсе. Настройка IP_TOS здесь
+ *          существует, но система с версии Windows XP SP2 её не исполняет: запись
+ *          отвечает согласием, а в заголовок пакета не попадает ничего, и обратное
+ *          чтение отдаёт то, что записали, а не то, что уходит в сеть. Отдавать такое
+ *          значение за настоящее значило бы вводить в заблуждение
+ *
+ *          Отмечать пакеты классом обслуживания система даёт иначе - подсистемой
+ *          качества обслуживания qWAVE, где на каждый сокет заводится поток с
+ *          собственным описателем. Описателю этому в нынешнем составе хранить себя
+ *          негде, и подсистема эта останется до отдельного о том уговора
+ *
+ */
+awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family) const noexcept {
+	// Выводим в журнал сообщение о неисполнении настройки системой
+	this->_log->print("%s: DSCP marking is ignored by MS Windows since XP SP2, qWAVE is required instead", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+	// Выводим обычный класс обслуживания
+	return event::dscp_t::CS0;
+}
+/**
+ * @brief Метод установки класса обслуживания в заголовке IP-пакета
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @param dscp   устанавливаемый класс обслуживания
+ * @return       результат выполнения установки
+ *
+ * @warning Отвечает отказом всегда - разбор тому изложен при чтении класса
+ *          обслуживания
+ *
+ */
+bool awh::eth::Socket::setDifferentiatedServicesCodePoint([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::dscp_t dscp) const noexcept {
+	// Выводим в журнал сообщение о неисполнении настройки системой
+	this->_log->print("%s: DSCP marking is ignored by MS Windows since XP SP2, qWAVE is required instead", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+	// Выводим отрицательный результат установки
+	return false;
+}
+/**
+ * @brief Метод получения признака перегрузки в заголовке IP-пакета
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @return       признак перегрузки
+ *
+ * @note У систем POSIX признак этот занимает два младших разряда того же октета, где
+ *       стоит класс обслуживания, и читается вместе с ним настройкой IP_TOS. MS
+ *       Windows развела их порознь: признак перегрузки читается своей настройкой
+ *       IP_ECN и класса обслуживания при себе не несёт - оттого прикрывать чтение
+ *       разрядной маской здесь не приходится
+ *
+ */
+awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net::socket_t sock, const event::family_t family) const noexcept {
+	// Если сокет не передан
+	if(sock == net::invalid_socket_t)
+		// Выводим отсутствие признака перегрузки
+		return event::ecn_t::NOT_ECT;
+	// Считываемое значение признака перегрузки
+	int32_t value = 0;
+	// Размер считываемого значения
+	int32_t length = static_cast <int32_t> (sizeof(value));
+	// Уровень настройки и её название
+	int32_t level = IPPROTO_IP, option = IP_ECN;
+	// Если сокет работает по протоколу IPv6
+	if(family == event::family_t::IPV6){
+		// Устанавливаем уровень настройки
+		level = IPPROTO_IPV6;
+		// Устанавливаем название настройки
+		option = IPV6_ECN;
+	}
+	// Если считать признак перегрузки не удалось
+	if(::getsockopt(sock, level, option, reinterpret_cast <char *> (&value), &length) != 0){
+		// Выводим в журнал сообщение о невозможности чтения признака перегрузки
+		this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		// Выводим отсутствие признака перегрузки
+		return event::ecn_t::NOT_ECT;
+	}
+	// Выводим считанный признак перегрузки
+	return static_cast <event::ecn_t> (value & 0x03);
+}
+/**
+ * @brief Метод установки признака перегрузки в заголовке IP-пакета
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @param ecn    устанавливаемый признак перегрузки
+ * @return       результат выполнения установки
+ *
+ * @note Читать прежнее значение перед записью, как то делают эталонные бэкенды, здесь
+ *       не нужно: класс обслуживания настройкой этой не задевается вовсе
+ *
+ */
+bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t sock, const event::family_t family, const event::ecn_t ecn) const noexcept {
+	// Если сокет не передан
+	if(sock == net::invalid_socket_t)
+		// Выводим отрицательный результат установки
+		return false;
+	// Устанавливаемое значение признака перегрузки
+	const int32_t value = static_cast <int32_t> (ecn);
+	// Уровень настройки и её название
+	int32_t level = IPPROTO_IP, option = IP_ECN;
+	// Если сокет работает по протоколу IPv6
+	if(family == event::family_t::IPV6){
+		// Устанавливаем уровень настройки
+		level = IPPROTO_IPV6;
+		// Устанавливаем название настройки
+		option = IPV6_ECN;
+	}
+	// Если установить признак перегрузки не удалось
+	if(::setsockopt(sock, level, option, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
+		// Выводим в журнал сообщение о невозможности установки признака перегрузки
+		this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		// Выводим отрицательный результат установки
+		return false;
+	}
+	// Выводим положительный результат установки
+	return true;
+}
+/**
+ * @brief Метод включения либо выключения выдачи сведений о принятых пакетах
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @param mode   режим включения либо выключения
+ * @return       результат выполнения переключения
+ *
+ * @details Выдача эта прикладывает к каждому принятому пакету его сопутствующие
+ *          сведения - число переходов, какое пакет ещё вправе сделать, и устройство,
+ *          каким он принят
+ *
+ * @note Обе настройки выставляются заодно, и успехом считается лишь общий их успех:
+ *       выдача сведений наполовину для разбора пакета непригодна
+ *
+ */
+bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept {
+	// Если сокет не передан
+	if(sock == net::invalid_socket_t)
+		// Выводим отрицательный результат переключения
+		return false;
+	// Устанавливаемое значение настроек
+	const int32_t value = (mode == net::socket_mode_t::ENABLED ? 1 : 0);
+	// Уровень настроек и их названия
+	int32_t level = IPPROTO_IP, hops = IP_RECVTTL, info = IP_PKTINFO;
+	// Если сокет работает по протоколу IPv6
+	if(family == event::family_t::IPV6){
+		// Устанавливаем уровень настроек
+		level = IPPROTO_IPV6;
+		// Устанавливаем название настройки выдачи числа переходов
+		hops = IPV6_HOPLIMIT;
+		// Устанавливаем название настройки выдачи сведений об устройстве
+		info = IPV6_PKTINFO;
+	}
+	// Результат выставления настройки выдачи числа переходов
+	const bool first = (::setsockopt(sock, level, hops, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) == 0);
+	// Если выставить настройку выдачи числа переходов не удалось
+	if(!first)
+		// Выводим в журнал сообщение о невозможности выставления настройки
+		this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+	// Результат выставления настройки выдачи сведений об устройстве
+	const bool second = (::setsockopt(sock, level, info, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) == 0);
+	// Если выставить настройку выдачи сведений об устройстве не удалось
+	if(!second)
+		// Выводим в журнал сообщение о невозможности выставления настройки
+		this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+	// Выводим общий результат переключения
+	return (first && second);
+}
+/**
+ * @brief Метод переключения настройки сокета
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов
+ * @param mode   режим включения либо выключения
+ * @param option переключаемая настройка
+ * @param proto  протокол сокета, NONE - протокол не назван
+ * @return       результат выполнения переключения
+ *
+ * @details Часть настроек у MS Windows зовётся иначе, чем у систем POSIX, часть
+ *          достигается вовсе не настройкой сокета, а часть недостижима
+ *
+ *          | Настройка | Чем достигается у MS Windows |
+ *          |---|---|
+ *          | HDRINCL | IP_HDRINCL, у IPv6 соответствия нет |
+ *          | TCP_NO_DELAY | TCP_NODELAY |
+ *          | IPV6_ONLY | IPV6_V6ONLY |
+ *          | BROADCAST | SO_BROADCAST |
+ *          | REUSE_ADDR | SO_REUSEADDR |
+ *          | MULTICAST_LOOPBACK | IP_MULTICAST_LOOP либо IPV6_MULTICAST_LOOP |
+ *          | HARD_CLOSE | SO_LINGER с нулевой выдержкой |
+ *          | NO_IO_BLOCK, SM_IO_BLOCK | ioctlsocket с FIONBIO |
+ *          | CLOSE_ON_EXEC | SetHandleInformation без наследования |
+ *          | NO_SIGILL, NO_SIGPIPE | достигнуто само собой |
+ *          | TCP_CORKING | недостижимо |
+ *          | REUSE_PORT | недостижимо |
+ *
+ * @note Заглушение сигналов настройки не требует вовсе: сокеты MS Windows сигналов не
+ *       поднимают, и запрошенное состояние здесь уже стоит. Отвечать отказом на то,
+ *       чего добивались и что уже есть, было бы неверно, оттого настройки эти
+ *       отвечают согласием, не трогая сокета
+ *
+ */
+bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, [[maybe_unused]] const event::protocol_t proto) const noexcept {
+	// Если сокет не передан
+	if(sock == net::invalid_socket_t)
+		// Выводим отрицательный результат переключения
+		return false;
+	// Устанавливаемое значение настройки
+	const int32_t value = (mode == net::socket_mode_t::ENABLED ? 1 : 0);
+	// Уровень настройки и её название
+	int32_t level = 0, name = 0;
+	/**
+	 * Определяем переключаемую настройку
+	 */
+	switch(option){
+		// Если переключается настройка самостоятельной сборки заголовков пакета
+		case event::options::HDRINCL: {
+			// Если сокет работает по протоколу IPv6
+			if(family == event::family_t::IPV6){
+				// Выводим в журнал сообщение об отсутствии соответствия
+				this->_log->print("%s: IPv6 header inclusion is not supported by MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+				// Выводим отрицательный результат переключения
+				return false;
+			}
+			// Устанавливаем уровень настройки
+			level = IPPROTO_IP;
+			// Устанавливаем название настройки
+			name = IP_HDRINCL;
+		} break;
+		// Если переключается настройка немедленной отправки
+		case event::options::TCP_NO_DELAY: {
+			// Устанавливаем уровень настройки
+			level = IPPROTO_TCP;
+			// Устанавливаем название настройки
+			name = TCP_NODELAY;
+		} break;
+		// Если переключается настройка работы одним лишь IPv6
+		case event::options::IPV6_ONLY: {
+			// Устанавливаем уровень настройки
+			level = IPPROTO_IPV6;
+			// Устанавливаем название настройки
+			name = IPV6_V6ONLY;
+		} break;
+		// Если переключается настройка широковещательной рассылки
+		case event::options::BROADCAST: {
+			// Устанавливаем уровень настройки
+			level = SOL_SOCKET;
+			// Устанавливаем название настройки
+			name = SO_BROADCAST;
+		} break;
+		// Если переключается настройка повторного занятия адреса
+		case event::options::REUSE_ADDR: {
+			// Устанавливаем уровень настройки
+			level = SOL_SOCKET;
+			// Устанавливаем название настройки
+			name = SO_REUSEADDR;
+		} break;
+		// Если переключается настройка возврата рассылки самому себе
+		case event::options::MULTICAST_LOOPBACK: {
+			// Устанавливаем уровень настройки
+			level = (family == event::family_t::IPV6 ? IPPROTO_IPV6 : IPPROTO_IP);
+			// Устанавливаем название настройки
+			name = (family == event::family_t::IPV6 ? IPV6_MULTICAST_LOOP : IP_MULTICAST_LOOP);
+		} break;
+		/**
+		 * Если переключается настройка обрыва связи без доводки
+		 *
+		 * @note Достигается она выдержкой закрытия нулевой длины: сокет закрывается
+		 *       немедленно, недоставленное отбрасывается, а тому концу уходит сброс
+		 *       связи взамен обыкновенного её завершения
+		 *
+		 */
+		case event::options::HARD_CLOSE: {
+			// Настройки выдержки закрытия сокета
+			struct linger value{};
+			// Устанавливаем признак применения выдержки
+			value.l_onoff = static_cast <u_short> (mode == net::socket_mode_t::ENABLED ? 1 : 0);
+			// Устанавливаем длину выдержки
+			value.l_linger = 0;
+			// Если выставить выдержку закрытия не удалось
+			if(::setsockopt(sock, SOL_SOCKET, SO_LINGER, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
+				// Выводим в журнал сообщение о невозможности выставления настройки
+				this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				// Выводим отрицательный результат переключения
+				return false;
+			}
+			// Выводим положительный результат переключения
+			return true;
+		}
+		// Если переключается настройка работы сокета без задержек
+		case event::options::NO_IO_BLOCK:
+		// Если переключается настройка работы сокета с задержками
+		case event::options::SM_IO_BLOCK: {
+			/**
+			 * Настройка эта у MS Windows задаётся не сокету, а его управлению
+			 *
+			 * @note Значение здесь обратное по смыслу: единица означает работу без
+			 *       задержек, оттого настройка задержек и настройка их отсутствия
+			 *       разводятся сами собой
+			 *
+			 */
+			u_long value = static_cast <u_long> (option == event::options::NO_IO_BLOCK ? (mode == net::socket_mode_t::ENABLED ? 1 : 0) : (mode == net::socket_mode_t::ENABLED ? 0 : 1));
+			// Если выставить настройку не удалось
+			if(::ioctlsocket(sock, FIONBIO, &value) != 0){
+				// Выводим в журнал сообщение о невозможности выставления настройки
+				this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				// Выводим отрицательный результат переключения
+				return false;
+			}
+			// Выводим положительный результат переключения
+			return true;
+		}
+		/**
+		 * Если переключается настройка закрытия сокета при запуске другого приложения
+		 *
+		 * @note Наследования у MS Windows нет вовсе - взамен него дочернему процессу
+		 *       передаётся перечень описателей, помеченных наследуемыми. Снятие
+		 *       пометки и есть то самое, чего добиваются закрытием при запуске
+		 *
+		 */
+		case event::options::CLOSE_ON_EXEC: {
+			// Если снять либо поставить пометку наследования не удалось
+			if(!::SetHandleInformation(reinterpret_cast <HANDLE> (sock), HANDLE_FLAG_INHERIT, (mode == net::socket_mode_t::ENABLED ? 0 : HANDLE_FLAG_INHERIT))){
+				// Выводим в журнал сообщение о невозможности выставления настройки
+				this->_log->print("%s: handle inheritance could not be changed, error %lu", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
+				// Выводим отрицательный результат переключения
+				return false;
+			}
+			// Выводим положительный результат переключения
+			return true;
+		}
+		// Если переключается заглушение сигнала неверного действия
+		case event::options::NO_SIGILL:
+		// Если переключается заглушение сигнала обрыва канала
+		case event::options::NO_SIGPIPE:
+			/**
+			 * Сигналов этих сокеты MS Windows не поднимают вовсе
+			 *
+			 * @note Запрошенное состояние здесь стоит само собой, и отвечать отказом
+			 *       на достигнутое было бы неверно
+			 *
+			 */
+			return true;
+		// Если переключается настройка придержки отправки
+		case event::options::TCP_CORKING: {
+			// Выводим в журнал сообщение об отсутствии соответствия
+			this->_log->print("%s: TCP output corking has no counterpart on MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			// Выводим отрицательный результат переключения
+			return false;
+		}
+		/**
+		 * Если переключается настройка повторного занятия порта
+		 *
+		 * @note Соответствия ей у MS Windows нет: SO_REUSEADDR здесь позволяет занять
+		 *       уже занятый порт и без неё, отчего подменять одно другим означало бы
+		 *       выдать иное поведение за запрошенное
+		 *
+		 */
+		case event::options::REUSE_PORT: {
+			// Выводим в журнал сообщение об отсутствии соответствия
+			this->_log->print("%s: port reuse has no counterpart on MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			// Выводим отрицательный результат переключения
+			return false;
+		}
+		// Если настройка модулю неизвестна
+		default: {
+			// Выводим в журнал сообщение о неизвестной настройке
+			this->_log->print("%s: socket option %u is not supported", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint32_t> (option));
+			// Выводим отрицательный результат переключения
+			return false;
+		}
+	}
+	// Если выставить настройку сокета не удалось
+	if(::setsockopt(sock, level, name, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
+		// Выводим в журнал сообщение о невозможности выставления настройки
+		this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		// Выводим отрицательный результат переключения
+		return false;
+	}
+	// Выводим положительный результат переключения
+	return true;
+}
+/**
+ * @brief Метод входа в группу рассылки либо выхода из неё
+ *
+ * @param sock   сетевой сокет
+ * @param mode   режим входа либо выхода
+ * @param group  адрес группы рассылки
+ * @param source адрес устройства, каким выполняется вход
+ * @return       результат выполнения
+ *
+ * @note Устройство у IPv6 задаётся не адресом, а номером, и номер этот берётся из
+ *       поля зоны переданного адреса. Пустая зона означает выбор устройства самой
+ *       системой - тем поведение приводится к общему с эталонными бэкендами виду
+ *
+ */
+bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept {
+	// Если сокет либо адреса не переданы
+	if((sock == net::invalid_socket_t) || (group == nullptr) || (source == nullptr)){
+		// Выводим в журнал сообщение о непереданных адресах
+		this->_log->print("%s: multicast group or source address is not initialized", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		// Выводим отрицательный результат выполнения
+		return false;
+	}
+	// Если виды переданных адресов не совпали
+	if(group->size != source->size){
+		// Выводим в журнал сообщение о несовпадении видов адресов
+		this->_log->print("%s: multicast group and source addresses belong to different families", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		// Выводим отрицательный результат выполнения
+		return false;
+	}
+	// Признак входа в группу рассылки
+	const bool join = (mode == net::socket_mode_t::ENABLED);
+	/**
+	 * Определяем вид переданных адресов
+	 */
+	switch(group->size){
+		// Если адреса являются адресами IPv4
+		case 4: {
+			// Запрос на вход в группу рассылки
+			struct ip_mreq request{};
+			// Устанавливаем адрес группы рассылки
+			request.imr_multiaddr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (group)->address;
+			// Устанавливаем адрес устройства, каким выполняется вход
+			request.imr_interface.s_addr = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
+			// Если выполнить вход в группу рассылки либо выход из неё не удалось
+			if(::setsockopt(sock, IPPROTO_IP, (join ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP), reinterpret_cast <const char *> (&request), static_cast <int32_t> (sizeof(request))) != 0){
+				// Выводим в журнал сообщение о невозможности выполнения
+				this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				// Выводим отрицательный результат выполнения
+				return false;
+			}
+			// Выводим положительный результат выполнения
+			return true;
+		}
+		// Если адреса являются адресами IPv6
+		case 16: {
+			// Запрос на вход в группу рассылки
+			struct ipv6_mreq request{};
+			// Устанавливаем адрес группы рассылки
+			::memcpy(&request.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(request.ipv6mr_multiaddr));
+			// Устанавливаем номер устройства, каким выполняется вход
+			request.ipv6mr_interface = static_cast <ULONG> (awh_cast <const net::addr_net_ipv6_t *> (source)->zone);
+			// Если выполнить вход в группу рассылки либо выход из неё не удалось
+			if(::setsockopt(sock, IPPROTO_IPV6, (join ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP), reinterpret_cast <const char *> (&request), static_cast <int32_t> (sizeof(request))) != 0){
+				// Выводим в журнал сообщение о невозможности выполнения
+				this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				// Выводим отрицательный результат выполнения
+				return false;
+			}
+			// Выводим положительный результат выполнения
+			return true;
+		}
+	}
+	// Выводим в журнал сообщение о неподдерживаемом виде адресов
+	this->_log->print("%s: only IPv4 and IPv6 multicast groups are supported", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+	// Выводим отрицательный результат выполнения
+	return false;
+}
