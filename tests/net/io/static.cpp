@@ -17504,3 +17504,181 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
  * Возвращаем снятые макросы MS Windows
  */
 #include <sys/macro_pop.hpp>
+
+/**
+ * @brief Проверка объединения двух потоковых сокетов с потоком данных
+ *
+ * @details Проверка эта заведена оттого, что объединения потоковых сокетов между
+ *          собой в наборе не было вовсе: единственное объединение с потоком
+ *          данных шло из файла в дейтаграммный сокет. Между тем именно
+ *          объединение сокет-сокет и есть случай посредника, ради которого
+ *          движок io_uring переносит данные средствами ядра, не поднимая их в
+ *          пользовательскую память
+ *
+ * @note Проверка работает одинаково на любом движке: у kqueue и epoll данные
+ *       пойдут через память движка, у io_uring - через ядро, а наблюдаемый
+ *       исход обязан совпасть до октета. В этом и смысл - сличать поведение, а
+ *       не устройство
+ *
+ * Устройство проверки:
+ *
+ *   отправитель --> [сервер А] ==объединение==> [клиент Б] --> [сервер Б] --> сверка
+ *
+ * Отправитель шлёт сообщение серверу А. Принятый сервером А узел объединён с
+ * клиентом Б, поэтому данные уходят не в приложение, а прямиком серверу Б,
+ * который их и сверяет
+ *
+ */
+TEST_F(IoFixture, IoTCPSplicePairTest){
+	// Флаг остановки проверки
+	bool stop = false;
+	// Полученное сервером Б сообщение
+	std::string received = "";
+	// Отправляемое сообщение
+	const std::string message = "проверка объединения потоковых сокетов";
+	// Признак того, что объединение заведено успешно
+	bool spliced = false;
+	// Выполняем генерацию портов
+	uint16_t portA = ::port(), portB = ::port();
+	/**
+	 * Добиваемся того, чтобы порты не совпали
+	 *
+	 * @note Порты выдаются случайно, и совпадение хоть и редко, но возможно. Две
+	 *       пары на одном порту дали бы отказ занятости, а выглядело бы это
+	 *       плавающим отказом самой проверки
+	 */
+	while(portB == portA)
+		// Выполняем повторную генерацию порта
+		portB = ::port();
+	// Добавляем события отправителя и сервера А
+	const auto pairA = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP));
+	// Добавляем события клиента Б и сервера Б
+	const auto pairB = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP));
+	/**
+	 * Проверяем, что все четыре события созданы успешно
+	 */
+	ASSERT_GT(pairA[0], 0);
+	ASSERT_GT(pairA[1], 0);
+	ASSERT_GT(pairB[0], 0);
+	ASSERT_GT(pairB[1], 0);
+	// Устанавливаем порты пары А
+	ASSERT_TRUE(this->_io->setTargetPort(pairA[0], portA));
+	ASSERT_TRUE(this->_io->setSourcePort(pairA[1], portA));
+	// Устанавливаем порты пары Б
+	ASSERT_TRUE(this->_io->setTargetPort(pairB[0], portB));
+	ASSERT_TRUE(this->_io->setSourcePort(pairB[1], portB));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	/**
+	 * Выставляем опции всем четырём событиям
+	 */
+	for(auto & eid : {pairA[0], pairA[1], pairB[0], pairB[1]})
+		// Устанавливаем опции события
+		ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
+	/**
+	 * Сервер Б - приёмник объединённых данных
+	 */
+	{
+		// Устанавливаем адрес сервера Б
+		ASSERT_TRUE(this->_io->setAddress(pairB[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на принятие подключения
+		this->_io->on(pairB[1], static_cast <awh::engine::callback::accept_t> ([&](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			// Устанавливаем функцию обратного вызова на чтение данных
+			this->_io->on(cid, [&](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Накапливаем полученное сообщение
+				received.append(reinterpret_cast <const char *> (data), size);
+				// Если сообщение получено целиком
+				if(received.size() >= message.size())
+					// Останавливаем проверку
+					stop = true;
+			});
+		}));
+		// Выполняем фиксацию настроек сервера Б
+		ASSERT_TRUE(this->_io->commit(pairB[1]));
+		// Выполняем прослушивание сервера Б
+		ASSERT_TRUE(this->_io->listen(pairB[1], 100));
+		// Запускаем сервер Б
+		ASSERT_TRUE(this->_io->launch(pairB[1]));
+	}
+	/**
+	 * Клиент Б - отводит объединённые данные серверу Б
+	 */
+	{
+		// Устанавливаем адрес клиента Б
+		ASSERT_TRUE(this->_io->setAddress(pairB[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		// Устанавливаем адрес назначения клиента Б
+		ASSERT_TRUE(this->_io->setTarget(pairB[0], "127.0.0.1"));
+		// Устанавливаем таймаут события на подключение
+		this->_io->setTimeout(pairB[0], awh::event::action_t::CONNECT, 5000);
+		// Выполняем фиксацию настроек клиента Б
+		ASSERT_TRUE(this->_io->commit(pairB[0]));
+		// Выполняем подключение клиента Б к серверу Б
+		ASSERT_TRUE(this->_io->connect(pairB[0]));
+		// Запускаем клиента Б
+		ASSERT_TRUE(this->_io->launch(pairB[0]));
+	}
+	/**
+	 * Сервер А - объединяет принятый узел с клиентом Б
+	 */
+	{
+		// Устанавливаем адрес сервера А
+		ASSERT_TRUE(this->_io->setAddress(pairA[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на принятие подключения
+		this->_io->on(pairA[1], static_cast <awh::engine::callback::accept_t> ([&](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			/**
+			 * Выполняем объединение принятого узла с клиентом Б
+			 *
+			 * @note Подписки на чтение принятому узлу не ставится намеренно: данные
+			 *       обязаны уйти приёмнику, минуя приложение. У движка io_uring это
+			 *       и есть условие ядерного пути - байты, нужные приложению, ядро
+			 *       перенести мимо него не может
+			 *
+			 * @note Исход запоминается признаком, а не проверяется здесь же:
+			 *       проверка gtest выходит из **окружающей** функции, а окружающая
+			 *       здесь - сама лямбда, и отказ объединения прошёл бы молча,
+			 *       обернувшись потом невнятным превышением времени
+			 */
+			spliced = this->_io->splice(cid, pairB[0]);
+		}));
+		// Выполняем фиксацию настроек сервера А
+		ASSERT_TRUE(this->_io->commit(pairA[1]));
+		// Выполняем прослушивание сервера А
+		ASSERT_TRUE(this->_io->listen(pairA[1], 100));
+		// Запускаем сервер А
+		ASSERT_TRUE(this->_io->launch(pairA[1]));
+	}
+	/**
+	 * Отправитель - шлёт сообщение серверу А
+	 */
+	{
+		// Устанавливаем адрес отправителя
+		ASSERT_TRUE(this->_io->setAddress(pairA[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		// Устанавливаем адрес назначения отправителя
+		ASSERT_TRUE(this->_io->setTarget(pairA[0], "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на подключение
+		this->_io->on(pairA[0], static_cast <awh::engine::callback::connect_t> ([&](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			// Если подключение состоялось
+			if(ok)
+				// Выполняем отправку сообщения серверу А
+				this->_io->send(eid, message.c_str(), message.size());
+		}));
+		// Устанавливаем таймаут события на подключение
+		this->_io->setTimeout(pairA[0], awh::event::action_t::CONNECT, 5000);
+		// Выполняем фиксацию настроек отправителя
+		ASSERT_TRUE(this->_io->commit(pairA[0]));
+		// Выполняем подключение отправителя к серверу А
+		ASSERT_TRUE(this->_io->connect(pairA[0]));
+		// Запускаем отправителя
+		ASSERT_TRUE(this->_io->launch(pairA[0]));
+	}
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll(10000));
+	// Проверяем, что объединение было заведено
+	ASSERT_TRUE(spliced) << "объединение сокетов не заведено";
+	// Проверяем, что сообщение дошло до приёмника целиком и без искажений
+	ASSERT_EQ(message, received);
+	// Уничтожаем все события
+	ASSERT_TRUE(this->_io->deinitialize());
+}

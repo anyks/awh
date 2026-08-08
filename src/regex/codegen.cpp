@@ -1847,6 +1847,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				if(i > 0) {
 					// Выполняем расстановку метки входа в очередную ветвь выбора
 					emitter.place(entries.at(i));
+					// Выполняем размещение метки цели перехода по адресу в регистре
+					emitter.landing();
 					// Выполняем восстановление позиции начала выбора из кадра вызова
 					emitter.fetch(reg_t::CURSOR, reg_t::STACK, static_cast <uint32_t> (slot));
 					/**
@@ -1902,6 +1904,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *
 			 */
 			emitter.place(drained);
+			// Выполняем размещение метки цели перехода по адресу в регистре
+			emitter.landing();
 			/**
 			 * Выполняем восстановление границ групп, последней ветвью записанных
 			 */
@@ -1975,6 +1979,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *
 			 */
 			emitter.place(advance);
+			// Выполняем размещение метки цели перехода по адресу в регистре
+			emitter.landing();
 			// Выполняем чтение положения ленивого ряда из кадра вызова
 			emitter.fetch(reg_t::CURSOR, reg_t::STACK, static_cast <uint32_t> (index * SLOTS));
 			// Заводим метку исчерпания продвижения ленивого ряда
@@ -2009,6 +2015,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				emitter.jump(resume);
 				// Выполняем расстановку метки исчерпания продвижения ряда
 				emitter.place(drained);
+				// Выполняем размещение метки цели перехода по адресу в регистре
+				emitter.landing();
 				// Выполняем чтение прежнего отказа из места ряда повторения
 				emitter.fetch(reg_t::SCRATCH, reg_t::STACK, static_cast <uint32_t> ((index * SLOTS) + 2));
 				// Выполняем восстановление действующего отказа сопоставления
@@ -2188,6 +2196,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *
 			 */
 			emitter.place(retries.at(index));
+			// Выполняем размещение метки цели перехода по адресу в регистре
+			emitter.landing();
 			// Выполняем чтение положения отступления ряда из кадра вызова
 			emitter.fetch(reg_t::CURSOR, reg_t::STACK, static_cast <uint32_t> (index * SLOTS));
 			// Выполняем чтение положения начала ряда из кадра вызова
@@ -2214,6 +2224,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				emitter.jump(resume);
 				// Выполняем расстановку метки исчерпания отступления ряда
 				emitter.place(drained);
+				// Выполняем размещение метки цели перехода по адресу в регистре
+				emitter.landing();
 				// Выполняем чтение прежнего отказа из места ряда повторения
 				emitter.fetch(reg_t::SCRATCH, reg_t::STACK, static_cast <uint32_t> ((index * SLOTS) + 2));
 				// Выполняем восстановление действующего отказа сопоставления
@@ -2254,6 +2266,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	}
 	// Выполняем расстановку метки перехода к следующей позиции начала попытки
 	emitter.place(following);
+	// Выполняем размещение метки цели перехода по адресу в регистре
+	emitter.landing();
 	/**
 	 * Если выражение привязано к позиции начала поиска совпадения
 	 *

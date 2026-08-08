@@ -53,15 +53,18 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 CROSS_PORT="${CROSS_PORT:-22}"
 WORK=$(mktemp -d -t awh-regex-cross)
 
+# Состав набора ведётся общим для всех стендов файлом
+. "$(dirname "$0")/sources.sh"
+
 # Набор исходных текстов, потребных переносимой проверке
+BUNDLE="$STAND_HEADERS $STAND_SOURCES $STAND_TOOLS"
+
+# Перечень собираемых исходных текстов
 #
-# Перечень ведётся вручную, а не сборкой целиком: набор модуля мал, а дерево
-# исходных текстов библиотеки велико, и передача его заняла бы много дольше
-SOURCES="include/regex include/encoding/unicode include/compressor/types.hpp
-	include/encoding/ascii.hpp include/sys/global.hpp
-	include/sys/macro_push.hpp include/sys/macro_pop.hpp
-	src/regex src/encoding/unicode
-	tools/regex/conformance.cpp tools/regex/conformance.hpp"
+# Разбирать состав поиском на узле сборки нельзя: дерево src/regex несёт
+# подкаталог grok, модулю выражений подчинённый, однако переносимой проверке
+# не нужный и связанный с прочими частями библиотеки
+CODE=$(cd "$ROOT" && find $STAND_SOURCES -maxdepth 1 -name '*.cpp' | tr '\n' ' ')
 
 # Связка ключей сборки
 #
@@ -76,9 +79,10 @@ FLAGS="-std=c++17 -O2 -static -Iinclude -Itools/regex"
 RECORD=""
 HOST_CXX="${CXX:-c++}"
 if command -v "$HOST_CXX" >/dev/null 2>&1 ; then
-	if "$HOST_CXX" -std=c++17 -O2 -I"$ROOT/include" -I"$ROOT/tools/regex" \
-		"$ROOT/tools/regex/conformance.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/encoding/unicode/*.cpp \
-		-o "$WORK/conformance" 2>"$WORK/compile.log" ; then
+	# shellcheck disable=SC2086
+	if (cd "$ROOT" && "$HOST_CXX" -std=c++17 -O2 -Iinclude -Itools/regex \
+		tools/regex/conformance.cpp $CODE \
+		-o "$WORK/conformance") 2>"$WORK/compile.log" ; then
 		if "$WORK/conformance" "--write=$WORK/record.bin" >/dev/null 2>&1 ; then
 			RECORD="$WORK/record.bin"
 			echo "Порождена запись хранилища рабочей машины"
@@ -99,7 +103,7 @@ fi
 if [ -n "$CROSS_HOST" ]; then
 	echo "Ведём встречную сборку на узле $CROSS_HOST"
 	# shellcheck disable=SC2086
-	tar czf - -C "$ROOT" $SOURCES | ssh -p "$CROSS_PORT" "$CROSS_HOST" "
+	tar czf - -C "$ROOT" $BUNDLE | ssh -p "$CROSS_PORT" "$CROSS_HOST" "
 		set -e
 		rm -rf /tmp/awh-regex-cross
 		mkdir -p /tmp/awh-regex-cross
@@ -115,10 +119,10 @@ if [ -n "$CROSS_HOST" ]; then
 		# не подключают. Наличие её заранее неизвестно, поэтому связывание
 		# ведётся сперва без неё, а при отказе повторяется с нею
 		\"$CROSS_CXX\" $FLAGS \
-			tools/regex/conformance.cpp src/regex/*.cpp src/encoding/unicode/*.cpp \
+			tools/regex/conformance.cpp $CODE \
 			-o conformance 2>compile.log || \
 		\"$CROSS_CXX\" $FLAGS \
-			tools/regex/conformance.cpp src/regex/*.cpp src/encoding/unicode/*.cpp \
+			tools/regex/conformance.cpp $CODE \
 			-o conformance -lgcc_eh 2>compile.log || \
 		{ echo 'Встречная сборка не выполнена:' >&2; tail -30 compile.log >&2; exit 4; }
 	"
@@ -129,7 +133,7 @@ else
 	echo "Ведём встречную сборку на рабочей машине"
 	# shellcheck disable=SC2086
 	(cd "$ROOT" && "$CROSS_CXX" $FLAGS \
-		tools/regex/conformance.cpp src/regex/*.cpp src/encoding/unicode/*.cpp \
+		tools/regex/conformance.cpp $CODE \
 		-o "$WORK/embedded")
 fi
 

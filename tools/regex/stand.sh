@@ -19,6 +19,9 @@ fi
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 BUNDLE=$(mktemp -t awh-regex-stand)".tgz"
 
+# Состав набора ведётся общим для всех стендов файлом
+. "$(dirname "$0")/sources.sh"
+
 # Порождаем запись хранилища собранных выражений на рабочей машине, дабы стенд
 # проверил её восстановлением у себя. Наборы программы пишутся образом памяти,
 # поэтому запись зависит от устройства машины: стенду надлежит либо восстановить
@@ -27,9 +30,13 @@ RECORD=""
 HOST_CXX="${CXX:-c++}"
 if command -v "$HOST_CXX" >/dev/null 2>&1 ; then
 	HOST_DIR=$(mktemp -d -t awh-regex-host)
-	if "$HOST_CXX" -std=c++17 -O2 -I"$ROOT/include" -I"$ROOT/tools/regex" \
-		"$ROOT/tools/regex/conformance.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/encoding/unicode/*.cpp \
-		-o "$HOST_DIR/conformance" 2>"$HOST_DIR/compile.log" ; then
+	# Состав исходных текстов разбирается поиском, а не перечислением: перечень
+	# каталогов ведётся общим файлом, а состав каталога - самим деревом
+	HOST_SOURCES=$(cd "$ROOT" && find $STAND_SOURCES -maxdepth 1 -name '*.cpp')
+	# shellcheck disable=SC2086
+	if (cd "$ROOT" && "$HOST_CXX" -std=c++17 -O2 -Iinclude -Itools/regex \
+		tools/regex/conformance.cpp $HOST_SOURCES \
+		-o "$HOST_DIR/conformance") 2>"$HOST_DIR/compile.log" ; then
 		if "$HOST_DIR/conformance" "--write=$HOST_DIR/record.bin" >/dev/null 2>&1 ; then
 			RECORD="$HOST_DIR/record.bin"
 			echo "Порождена запись хранилища рабочей машины"
@@ -42,21 +49,28 @@ else
 	echo "Компилятор на рабочей машине не обнаружен, проверка записи будет пропущена"
 fi
 
+# Перечень собираемых исходных текстов кладётся в набор отдельным файлом
+#
+# Разбирать состав поиском на самом стенде нельзя: дерево src/regex несёт
+# подкаталог grok, модулю выражений подчинённый, однако переносимой проверке
+# не нужный и связанный с прочими частями библиотеки. Перечень потому выводится
+# здесь по составу каталогов, а стенд берёт его готовым
+(cd "$ROOT" && find $STAND_SOURCES -maxdepth 1 -name '*.cpp') > "$ROOT/tools/regex/sources.list"
+
 echo "Собираем набор исходных текстов модуля"
 if [ -n "$RECORD" ] ; then
 	cp "$RECORD" "$ROOT/tools/regex/record.bin"
+	# shellcheck disable=SC2086
 	tar czf "$BUNDLE" -C "$ROOT" \
-		include/regex include/encoding/unicode include/compressor/types.hpp \
-		include/encoding/ascii.hpp include/sys/global.hpp include/sys/macro_push.hpp include/sys/macro_pop.hpp \
-		src/regex src/encoding/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
-		tools/regex/record.bin
+		$STAND_HEADERS $STAND_SOURCES $STAND_TOOLS \
+		tools/regex/sources.list tools/regex/record.bin
 	rm -f "$ROOT/tools/regex/record.bin"
 else
-	tar czf "$BUNDLE" -C "$ROOT" \
-		include/regex include/encoding/unicode include/compressor/types.hpp \
-		include/encoding/ascii.hpp include/sys/global.hpp include/sys/macro_push.hpp include/sys/macro_pop.hpp \
-		src/regex src/encoding/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp
+	# shellcheck disable=SC2086
+	tar czf "$BUNDLE" -C "$ROOT" $STAND_HEADERS $STAND_SOURCES $STAND_TOOLS \
+		tools/regex/sources.list
 fi
+rm -f "$ROOT/tools/regex/sources.list"
 
 echo "Раскладываем набор на стенд $TARGET"
 # Домашний каталог стенда бывает недоступен для записи, поэтому набор
@@ -86,7 +100,7 @@ ssh -p "$PORT" "$TARGET" '
 	"$CXX" --version | head -1
 	for STD in c++2b c++20 c++17 ; do
 		if "$CXX" -std=$STD -O2 -Iinclude -Itools/regex \
-			tools/regex/conformance.cpp src/regex/*.cpp src/encoding/unicode/*.cpp -o conformance 2>compile.log ; then
+			tools/regex/conformance.cpp $(cat tools/regex/sources.list) -o conformance 2>compile.log ; then
 			echo "Собрано в режиме -std=$STD"
 			break
 		fi

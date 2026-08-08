@@ -26,6 +26,9 @@ fi
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 
+# Состав набора ведётся общим для всех стендов файлом
+. "$(dirname "$0")/sources.sh"
+
 # Порождаем запись хранилища собранных выражений на рабочей машине, дабы стенд
 # проверил её восстановлением у себя. Наборы программы пишутся образом памяти,
 # поэтому запись зависит от устройства машины: стенду надлежит либо восстановить
@@ -38,9 +41,11 @@ RECORD=""
 HOST_CXX="${CXX:-c++}"
 if command -v "$HOST_CXX" >/dev/null 2>&1 ; then
 	HOST_DIR=$(mktemp -d -t awh-regex-host)
-	if "$HOST_CXX" -std=c++17 -O2 -I"$ROOT/include" -I"$ROOT/tools/regex" \
-		"$ROOT/tools/regex/conformance.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/encoding/unicode/*.cpp \
-		-o "$HOST_DIR/conformance" 2>"$HOST_DIR/compile.log" ; then
+	HOST_SOURCES=$(cd "$ROOT" && find $STAND_SOURCES -maxdepth 1 -name '*.cpp')
+	# shellcheck disable=SC2086
+	if (cd "$ROOT" && "$HOST_CXX" -std=c++17 -O2 -Iinclude -Itools/regex \
+		tools/regex/conformance.cpp $HOST_SOURCES \
+		-o "$HOST_DIR/conformance") 2>"$HOST_DIR/compile.log" ; then
 		if "$HOST_DIR/conformance" "--write=$HOST_DIR/record.bin" >/dev/null 2>&1 ; then
 			RECORD="$HOST_DIR/record.bin"
 			echo "Порождена запись хранилища рабочей машины"
@@ -59,6 +64,13 @@ fi
 # доступен не всегда, поэтому набор раскладывается в каталог домашний
 REMOTE="awh-regex-stand"
 
+# Перечень собираемых исходных текстов кладётся в набор отдельным файлом
+#
+# Разбирать состав поиском на самом стенде нельзя: дерево src/regex несёт
+# подкаталог grok, модулю выражений подчинённый, однако переносимой проверке
+# не нужный и связанный с прочими частями библиотеки
+(cd "$ROOT" && find $STAND_SOURCES -maxdepth 1 -name '*.cpp') > "$ROOT/tools/regex/sources.list"
+
 echo "Раскладываем набор исходных текстов на стенд $TARGET"
 
 # Запись хранилища кладётся в набор исходных текстов, поскольку раскладка
@@ -72,10 +84,10 @@ fi
 
 # Передача ведётся через ввод tar, а не средством scp: подсистема sftp на
 # стенде отключена, и scp обрывает связь
+# shellcheck disable=SC2086
 tar czf - -C "$ROOT" \
-	include/regex include/encoding/unicode include/compressor/types.hpp include/encoding/ascii.hpp include/sys/global.hpp include/sys/macro_push.hpp include/sys/macro_pop.hpp \
-	src/regex src/encoding/unicode tools/regex/conformance.cpp tools/regex/conformance.hpp \
-	tools/regex/stand.bat $EXTRA \
+	$STAND_HEADERS $STAND_SOURCES $STAND_TOOLS \
+	tools/regex/sources.list tools/regex/stand.bat $EXTRA \
 	| ssh -p "$PORT" "$TARGET" "
 		cmd.exe //c \"rmdir /s /q %USERPROFILE%\\\\$REMOTE 2>nul & mkdir %USERPROFILE%\\\\$REMOTE\" > /dev/null 2>&1
 		cd ~/$REMOTE && tar xzf -
@@ -83,7 +95,7 @@ tar czf - -C "$ROOT" \
 
 # Запись рабочей машины из набора исходных текстов убирается: место ей лишь
 # в раскладке на стенд, а в дереве исходных текстов её быть не должно
-rm -f "$ROOT/tools/regex/record.bin"
+rm -f "$ROOT/tools/regex/record.bin" "$ROOT/tools/regex/sources.list"
 
 echo "Собираем и прогоняем проверку на стенде"
 ssh -p "$PORT" "$TARGET" "cmd.exe //c \"%USERPROFILE%\\\\$REMOTE\\\\tools\\\\regex\\\\stand.bat $TOOLSET\""
