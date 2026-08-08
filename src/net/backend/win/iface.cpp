@@ -142,6 +142,46 @@ namespace {
 		// Возвращаем переведённую запись без завершающего нуля
 		return std::string(buffer.data());
 	}
+
+	/**
+	 * @brief Функция получения местного номера устройства по его названию
+	 *
+	 * @details Настройка устройств у MS Windows ведётся не по названию, а по местному
+	 *          номеру - неизменному числу, каким система метит устройство внутри себя
+	 *
+	 * @param name название искомого устройства
+	 * @param luid местный номер найденного устройства
+	 * @return     признак того, что устройство найдено
+	 *
+	 */
+	bool __awh_luid__(string_view name, NET_LUID & luid) noexcept {
+		// Если название устройства не передано
+		if(name.empty())
+			// Выводим признак того, что устройство не найдено
+			return false;
+		// Буфер под перечень сетевых устройств
+		std::vector <uint8_t> buffer;
+		// Выполняем опрос перечня сетевых устройств
+		PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
+		// Если перечень устройств получить не удалось
+		if(adapters == nullptr)
+			// Выводим признак того, что устройство не найдено
+			return false;
+		/**
+		 * Выполняем перебор всех сетевых устройств машины
+		 */
+		for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
+			// Если название устройства с искомым совпало
+			if((adapter->AdapterName != nullptr) && (name.compare(adapter->AdapterName) == 0)){
+				// Запоминаем местный номер найденного устройства
+				luid = adapter->Luid;
+				// Выводим признак того, что устройство найдено
+				return true;
+			}
+		}
+		// Выводим признак того, что устройство не найдено
+		return false;
+	}
 };
 
 /**
@@ -825,4 +865,384 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 	}
 	// Выполняем удаление найденного устройства
 	return win::tunnel::destroy(sock, this->_log);
+}
+
+/**
+ * @brief Метод установки адреса сетевого устройства
+ *
+ * @param name   название сетевого устройства
+ * @param ip     устанавливаемый адрес
+ * @param prefix длина префикса сети
+ * @return       результат выполнения установки
+ *
+ * @note Адрес добавляется к устройству, а не замещает прежние: у MS Windows за
+ *       устройством числится перечень адресов, и понятия «единственного» адреса нет
+ *       вовсе. Отказ ERROR_OBJECT_ALREADY_EXISTS означает, что адрес уже стоит, и
+ *       считается за успех - итог тот же, какого добивались
+ *
+ * @warning Установка требует надзорных прав и переживает завершение процесса
+ *
+ */
+bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const uint8_t prefix) const noexcept {
+	// Если название устройства либо адрес не переданы
+	if(name.empty() || (ip == nullptr))
+		// Выводим отрицательный результат установки
+		return false;
+	// Местный номер сетевого устройства
+	NET_LUID luid{};
+	// Если сетевое устройство найти не удалось
+	if(!::__awh_luid__(name, luid)){
+		// Выводим в журнал сообщение о ненайденном устройстве
+		this->_log->print("%s: interface \"%s\" was not found", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		// Выводим отрицательный результат установки
+		return false;
+	}
+	// Устанавливаемая запись адреса устройства
+	MIB_UNICASTIPADDRESS_ROW row{};
+	// Выполняем начальную подготовку записи адреса
+	::InitializeUnicastIpAddressEntry(&row);
+	// Устанавливаем местный номер устройства
+	row.InterfaceLuid = luid;
+	// Устанавливаем длину префикса сети
+	row.OnLinkPrefixLength = static_cast <uint8_t> (prefix);
+	/**
+	 * Состояние адреса выставляется годным сразу
+	 *
+	 * @note Иначе система запускает проверку на повторение адреса в сети, и до её
+	 *       окончания устройство адресом не пользуется. Туннелю проверка эта не нужна
+	 *       вовсе: у него нет соседей, с которыми адрес мог бы столкнуться
+	 *
+	 */
+	row.DadState = IpDadStatePreferred;
+	/**
+	 * Определяем семейство устанавливаемого адреса
+	 */
+	switch(ip->size){
+		// Если устанавливается адрес IPv4
+		case 4: {
+			// Устанавливаем семейство адреса
+			row.Address.Ipv4.sin_family = AF_INET;
+			// Устанавливаем сам адрес
+			row.Address.Ipv4.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (ip)->address;
+		} break;
+		// Если устанавливается адрес IPv6
+		case 16: {
+			// Устанавливаем семейство адреса
+			row.Address.Ipv6.sin6_family = AF_INET6;
+			// Устанавливаем сам адрес
+			::memcpy(&row.Address.Ipv6.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (ip)->address[0], sizeof(struct in6_addr));
+			// Устанавливаем номер устройства зоны адреса
+			row.Address.Ipv6.sin6_scope_id = static_cast <ULONG> (awh_cast <const net::addr_net_ipv6_t *> (ip)->zone);
+		} break;
+		// Если семейство адреса определить не удалось
+		default: {
+			// Выводим в журнал сообщение о неподдерживаемом виде адреса
+			this->_log->print("%s: only IPv4 and IPv6 addresses can be assigned to an interface", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+			// Выводим отрицательный результат установки
+			return false;
+		}
+	}
+	// Выполняем установку адреса устройства
+	const DWORD code = ::CreateUnicastIpAddressEntry(&row);
+	// Если адрес устройства установлен либо уже стоял
+	if((code == NO_ERROR) || (code == ERROR_OBJECT_ALREADY_EXISTS))
+		// Выводим положительный результат установки
+		return true;
+	// Выводим в журнал сообщение о невозможности установки адреса
+	this->_log->print("%s: interface address could not be assigned, error %lu", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
+	// Выводим отрицательный результат установки
+	return false;
+}
+/**
+ * @brief Метод установки адреса сетевого устройства связи точка-точка
+ *
+ * @param name   название сетевого устройства
+ * @param ip     устанавливаемый адрес
+ * @param peer   адрес того конца связи
+ * @param prefix длина префикса сети
+ * @return       результат выполнения установки
+ *
+ * @note Понятия адреса того конца у MS Windows нет: система не держит при адресе
+ *       устройства второго адреса, как то заведено у систем POSIX полем ifa_dstaddr.
+ *       Тот же самый смысл достигается иначе - к тому концу прокладывается путь
+ *       через это устройство, и обмен с ним идёт ровно так же, как шёл бы при связи
+ *       точка-точка
+ *
+ * @warning Установка требует надзорных прав. Проложенный путь переживает завершение
+ *          процесса и снимается вместе с устройством
+ *
+ */
+bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix) const noexcept {
+	// Если установить адрес устройства не удалось
+	if(!this->setAddress(name, ip, prefix))
+		// Выводим отрицательный результат установки
+		return false;
+	// Если адрес того конца связи не передан
+	if(peer == nullptr)
+		// Выводим положительный результат установки
+		return true;
+	// Местный номер сетевого устройства
+	NET_LUID luid{};
+	// Если сетевое устройство найти не удалось
+	if(!::__awh_luid__(name, luid))
+		// Выводим отрицательный результат установки
+		return false;
+	// Прокладываемый к тому концу связи путь
+	MIB_IPFORWARD_ROW2 row{};
+	// Выполняем начальную подготовку пути
+	::InitializeIpForwardEntry(&row);
+	// Устанавливаем местный номер устройства
+	row.InterfaceLuid = luid;
+	/**
+	 * Путь прокладывается к одному узлу, а не к сети
+	 *
+	 * @note Длина префикса берётся наибольшей: тот конец связи есть один узел, и
+	 *       перехватывать путём этим что-либо ещё было бы прямым вредом
+	 *
+	 */
+	switch(peer->size){
+		// Если тот конец связи задан адресом IPv4
+		case 4: {
+			// Устанавливаем семейство адреса
+			row.DestinationPrefix.Prefix.Ipv4.sin_family = AF_INET;
+			// Устанавливаем сам адрес
+			row.DestinationPrefix.Prefix.Ipv4.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (peer)->address;
+			// Устанавливаем длину префикса пути
+			row.DestinationPrefix.PrefixLength = 32;
+		} break;
+		// Если тот конец связи задан адресом IPv6
+		case 16: {
+			// Устанавливаем семейство адреса
+			row.DestinationPrefix.Prefix.Ipv6.sin6_family = AF_INET6;
+			// Устанавливаем сам адрес
+			::memcpy(&row.DestinationPrefix.Prefix.Ipv6.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (peer)->address[0], sizeof(struct in6_addr));
+			// Устанавливаем длину префикса пути
+			row.DestinationPrefix.PrefixLength = 128;
+		} break;
+		// Если семейство адреса определить не удалось
+		default: {
+			// Выводим в журнал сообщение о неподдерживаемом виде адреса
+			this->_log->print("%s: only IPv4 and IPv6 peer addresses are supported", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+			// Выводим отрицательный результат установки
+			return false;
+		}
+	}
+	// Устанавливаем семейство того конца пути
+	row.NextHop.si_family = row.DestinationPrefix.Prefix.si_family;
+	// Устанавливаем стоимость пути
+	row.Metric = 1;
+	// Выполняем прокладку пути к тому концу связи
+	const DWORD code = ::CreateIpForwardEntry2(&row);
+	// Если путь проложен либо уже был проложен
+	if((code == NO_ERROR) || (code == ERROR_OBJECT_ALREADY_EXISTS))
+		// Выводим положительный результат установки
+		return true;
+	// Выводим в журнал сообщение о невозможности прокладки пути
+	this->_log->print("%s: route to the peer could not be created, error %lu", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
+	// Выводим отрицательный результат установки
+	return false;
+}
+/**
+ * @brief Метод получения адреса сетевого устройства вместе с адресом того конца связи
+ *
+ * @param name   название сетевого устройства
+ * @param ip     заполняемый адрес устройства
+ * @param peer   заполняемый адрес того конца связи
+ * @param prefix заполняемая длина префикса сети
+ * @return       результат выполнения получения
+ *
+ * @note Семейство искомого адреса задаётся заранее подготовленным объектом ip:
+ *       четыре байта означают IPv4, шестнадцать - IPv6. Так же устроены и эталонные
+ *       бэкенды
+ *
+ * @warning Адрес того конца связи остаётся нетронутым всегда: система при адресе
+ *          устройства второго адреса не держит вовсе, и взять его неоткуда. Тот же
+ *          смысл несёт проложенный к нему путь, но путь этот адресом устройства не
+ *          является и выдаваться за него не должен
+ *
+ */
+bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> & ip, [[maybe_unused]] unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept {
+	// Если название устройства либо заполняемый адрес не переданы
+	if(name.empty() || (ip == nullptr))
+		// Выводим отрицательный результат получения
+		return false;
+	// Буфер под перечень сетевых устройств
+	std::vector <uint8_t> buffer;
+	// Выполняем опрос перечня сетевых устройств
+	PIP_ADAPTER_ADDRESSES adapters = ::__awh_adapters__(buffer);
+	// Если перечень устройств получить не удалось
+	if(adapters == nullptr)
+		// Выводим отрицательный результат получения
+		return false;
+	// Результат выполнения получения
+	bool result = false;
+	/**
+	 * Выполняем перебор всех сетевых устройств машины
+	 */
+	for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
+		// Если название устройства с искомым не совпало
+		if((adapter->AdapterName == nullptr) || (name.compare(adapter->AdapterName) != 0))
+			// Переходим к следующему устройству
+			continue;
+		/**
+		 * Выполняем перебор всех адресов устройства
+		 */
+		for(PIP_ADAPTER_UNICAST_ADDRESS address = adapter->FirstUnicastAddress; address != nullptr; address = address->Next){
+			// Если адрес устройства не задан
+			if(address->Address.lpSockaddr == nullptr)
+				// Переходим к следующему адресу
+				continue;
+			// Если искомым является адрес IPv4 и адрес устройства ему отвечает
+			if((ip->size == 4) && (address->Address.lpSockaddr->sa_family == AF_INET)){
+				// Запоминаем адрес устройства
+				awh_cast <net::addr_net_ipv4_t *> (ip.get())->address = reinterpret_cast <struct sockaddr_in *> (address->Address.lpSockaddr)->sin_addr.s_addr;
+				// Запоминаем длину префикса сети
+				prefix = static_cast <uint8_t> (address->OnLinkPrefixLength);
+				// Запоминаем длину префикса сети в самом адресе
+				awh_cast <net::addr_net_ipv4_t *> (ip.get())->prefix = prefix;
+				// Выводим положительный результат получения
+				return true;
+			}
+			// Если искомым является адрес IPv6 и адрес устройства ему отвечает
+			if((ip->size == 16) && (address->Address.lpSockaddr->sa_family == AF_INET6)){
+				// Получаем адрес устройства вида IPv6
+				struct sockaddr_in6 * value = reinterpret_cast <struct sockaddr_in6 *> (address->Address.lpSockaddr);
+				// Определяем, является ли адрес адресом канальной связи
+				const bool link = IN6_IS_ADDR_LINKLOCAL(&value->sin6_addr);
+				// Если адрес ещё не найден либо найден глобальный взамен канального
+				if(!result || !link){
+					// Запоминаем адрес устройства
+					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], &value->sin6_addr, sizeof(struct in6_addr));
+					// Запоминаем длину префикса сети
+					prefix = static_cast <uint8_t> (address->OnLinkPrefixLength);
+					// Запоминаем длину префикса сети в самом адресе
+					awh_cast <net::addr_net_ipv6_t *> (ip.get())->prefix = prefix;
+					// Запоминаем номер устройства зоны адреса
+					awh_cast <net::addr_net_ipv6_t *> (ip.get())->zone = static_cast <uint32_t> (value->sin6_scope_id);
+					// Запоминаем положительный результат получения
+					result = true;
+					// Если найден глобальный адрес - поиск на нём и оканчивается
+					if(!link)
+						// Выводим положительный результат получения
+						return result;
+				}
+			}
+		}
+		// Завершаем перебор устройств
+		break;
+	}
+	// Выводим результат выполнения получения
+	return result;
+}
+/**
+ * @brief Метод установки признака сетевого устройства
+ *
+ * @param name название сетевого устройства
+ * @param flag устанавливаемый признак
+ * @param mode режим включения либо выключения признака
+ * @return     результат выполнения установки
+ *
+ * @note Правится здесь один признак поднятия устройства: у MS Windows он и есть
+ *       единственный, каким приложение вправе распоряжаться. Прочие признаки система
+ *       выводит из устройства драйвера и настройками не считает - выключить приём
+ *       широковещательных кадров либо отключить разрешение адресов в сегменте здесь
+ *       нельзя вовсе
+ *
+ * @warning Установка требует надзорных прав и действует на всю машину: устройство
+ *          останется поднятым либо опущенным и после завершения процесса
+ *
+ */
+bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, const event::mode_t mode) const noexcept {
+	// Если название сетевого устройства не передано
+	if(name.empty())
+		// Выводим отрицательный результат установки
+		return false;
+	// Если правится признак, каким система распоряжаться не даёт
+	if(flag != event::eth_flag_t::UP){
+		// Выводим в журнал сообщение о неподдерживаемом признаке
+		this->_log->print("%s: only the UP flag can be changed, MS Windows derives the rest from the driver", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		// Выводим отрицательный результат установки
+		return false;
+	}
+	// Местный номер сетевого устройства
+	NET_LUID luid{};
+	// Если сетевое устройство найти не удалось
+	if(!::__awh_luid__(name, luid)){
+		// Выводим в журнал сообщение о ненайденном устройстве
+		this->_log->print("%s: interface \"%s\" was not found", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		// Выводим отрицательный результат установки
+		return false;
+	}
+	// Настройки сетевого устройства
+	MIB_IF_ROW2 row{};
+	// Устанавливаем местный номер устройства
+	row.InterfaceLuid = luid;
+	// Если снять нынешние настройки устройства не удалось
+	if(::GetIfEntry2(&row) != NO_ERROR){
+		// Выводим в журнал сообщение о невозможности опроса устройства
+		this->_log->print("%s: interface state could not be read", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		// Выводим отрицательный результат установки
+		return false;
+	}
+	// Устанавливаем состояние устройства
+	row.AdminStatus = (mode == event::mode_t::ENABLED ? NET_IF_ADMIN_STATUS_UP : NET_IF_ADMIN_STATUS_DOWN);
+	// Выполняем запись настроек устройства
+	const DWORD code = ::SetIfEntry(reinterpret_cast <PMIB_IFROW> (&row));
+	// Если настройки устройства записаны
+	if(code == NO_ERROR)
+		// Выводим положительный результат установки
+		return true;
+	// Выводим в журнал сообщение о невозможности записи настроек
+	this->_log->print("%s: interface state could not be changed, error %lu", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
+	// Выводим отрицательный результат установки
+	return false;
+}
+/**
+ * @brief Метод полной настройки сетевого устройства
+ *
+ * @param name   название сетевого устройства
+ * @param ip     устанавливаемый адрес
+ * @param prefix длина префикса сети
+ * @param mtu    размер кадра устройства, ноль означает «не трогать»
+ * @return       результат выполнения настройки
+ *
+ * @note Устройство поднимать здесь не приходится: у MS Windows оно поднимается само,
+ *       едва драйвер сообщил системе о подключении. Попытка поднять уже поднятое
+ *       отвечает отказом, и потому её здесь нет вовсе
+ *
+ */
+bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint32_t mtu) const noexcept {
+	// Если установить адрес устройства не удалось
+	if(!this->setAddress(name, ip, prefix))
+		// Выводим отрицательный результат настройки
+		return false;
+	// Если размер кадра задан и установить его не удалось
+	if((mtu > 0) && !this->mtu(name, mtu))
+		// Выводим отрицательный результат настройки
+		return false;
+	// Выводим положительный результат настройки
+	return true;
+}
+/**
+ * @brief Метод полной настройки сетевого устройства связи точка-точка
+ *
+ * @param name   название сетевого устройства
+ * @param ip     устанавливаемый адрес
+ * @param peer   адрес того конца связи
+ * @param prefix длина префикса сети
+ * @param mtu    размер кадра устройства, ноль означает «не трогать»
+ * @return       результат выполнения настройки
+ *
+ */
+bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint32_t mtu) const noexcept {
+	// Если установить адрес устройства не удалось
+	if(!this->setAddress(name, ip, peer, prefix))
+		// Выводим отрицательный результат настройки
+		return false;
+	// Если размер кадра задан и установить его не удалось
+	if((mtu > 0) && !this->mtu(name, mtu))
+		// Выводим отрицательный результат настройки
+		return false;
+	// Выводим положительный результат настройки
+	return true;
 }

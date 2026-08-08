@@ -480,126 +480,12 @@ bool awh::eth::Interface::isVirtual([[maybe_unused]] const net::addr_t * addr) c
 
 
 
-/**
- * @brief Метод установки флага сетевого интерфейса
- *
- * @param name имя сетевого интерфейса
- * @param flag флаг сетевого интерфейса
- * @param mode режим включения/выключения флага
- * @return     результат установки флага сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::flag([[maybe_unused]] string_view name, [[maybe_unused]] const event::eth_flag_t flag, [[maybe_unused]] const event::mode_t mode) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
-
-/**
- * @brief Метод установки IP-адреса на сетевой интерфейс
- *
- * @param name   имя сетевого интерфейса
- * @param ip     адрес сетевого интерфейса для установки
- * @param peer   адрес удалённого пира (для точка-точка)
- * @param prefix префикс подсети
- * @return       результат установки IP-адреса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::setAddress([[maybe_unused]] string_view name, [[maybe_unused]] const net::addr_t * ip, [[maybe_unused]] const uint8_t prefix) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
 
-/**
- * @brief Метод установки параметров сетевого интерфейса точка-точка
- *
- * @param name   имя сетевого интерфейса
- * @param ip     адрес сетевого интерфейса для установки
- * @param peer   адрес удалённого пира (для точка-точка)
- * @param prefix префикс подсети
- * @return       результат установки параметров сетевого интерфейса точка-точка
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::setAddress([[maybe_unused]] string_view name, [[maybe_unused]] const net::addr_t * ip, [[maybe_unused]] const net::addr_t * peer, [[maybe_unused]] const uint8_t prefix) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
-/**
- * @brief Метод изменения параметров сетевого интерфейса точка-точка
- *
- * @param name   имя сетевого интерфейса
- * @param ip     адрес сетевого интерфейса для получения
- * @param peer   адрес удалённого пира (для точка-точка)
- * @param prefix префикс подсети
- * @return       результат изменения параметров сетевого интерфейса точка-точка
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::getAddress([[maybe_unused]] string_view name, [[maybe_unused]] unique_ptr <net::addr_t> & ip, [[maybe_unused]] unique_ptr <net::addr_t> & peer, [[maybe_unused]] uint8_t & prefix) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
-/**
- * @brief Метод комплексной настройки сетевого интерфейса (адрес + MTU + поднятие) за один управляющий сокет
- *
- * @param name   имя сетевого интерфейса
- * @param ip     адрес сетевого интерфейса для установки
- * @param prefix префикс подсети
- * @param mtu    размер MTU интерфейса (0 - не изменять)
- * @return       результат комплексной настройки сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::configure([[maybe_unused]] string_view name, [[maybe_unused]] const net::addr_t * ip, [[maybe_unused]] const uint8_t prefix, [[maybe_unused]] const uint32_t mtu) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
 
-/**
- * @brief Метод комплексной настройки сетевого интерфейса точка-точка (адрес + пир + MTU + поднятие) за один управляющий сокет
- *
- * @param name   имя сетевого интерфейса
- * @param ip     адрес сетевого интерфейса для установки
- * @param peer   адрес удалённого пира (для точка-точка) либо nullptr
- * @param prefix префикс подсети
- * @param mtu    размер MTU интерфейса (0 - не изменять)
- * @return       результат комплексной настройки сетевого интерфейса
- *
- *
- * @todo Windows: тела у метода ещё нет — отвечает пустым значением
- *
- */
-bool awh::eth::Interface::configure([[maybe_unused]] string_view name, [[maybe_unused]] const net::addr_t * ip, [[maybe_unused]] const net::addr_t * peer, [[maybe_unused]] const uint8_t prefix, [[maybe_unused]] const uint32_t mtu) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_ETH_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
-}
+
 
 
 

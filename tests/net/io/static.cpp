@@ -7340,6 +7340,60 @@ TEST_F(IoFixture, DISABLED_IoMulticast1Test){
  *       сетевой интерфейс, а через VPN она не проходит вовсе, поэтому
  *       результат прогона зависит от того, где он выполняется, а не от кода
  */
+/**
+ * @brief Проверка того, что отказ вступления в группу не гасит работающее событие
+ *
+ * @details Порядок вызова задан устройством: `membership` привязывает дескриптор к порту
+ *          группы, чего `commit` не делает, оттого звать его следует ДО `commit`. Проверка
+ *          закрепляет поведение при нарушении этого порядка: вступление после `commit`
+ *          вправе ответить чем угодно, но событие обязано остаться тем, чем было.
+ *
+ *          Прежде путь отказа ставил событию состояние `NONE`, объявляя работающее
+ *          событие незапущенным: дескриптор открыт, из базы не удалено, а принимать
+ *          оно больше ничего не могло
+ *
+ */
+TEST_F(IoFixture, IoMulticastMembershipAfterCommitTest){
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Добавляем новое событие клиента и сервера UDP
+	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM));
+	/**
+	 * Проверяем, что оба идентификатора события созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(events[i], 0);
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем мультикастовый режим события
+	ASSERT_TRUE(this->_io->setDelivery(events[0], awh::event::delivery_mode_t::MULTICAST));
+	// Устанавливаем опции события
+	ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	// Выполняем фиксацию настроек события клиента
+	ASSERT_TRUE(this->_io->commit(events[0]));
+	// Запоминаем состояние события до вступления в группу
+	const awh::event::status_t before = this->_io->status(events[0]);
+	// Проверяем, что событие не числится незапущенным до вступления в группу
+	ASSERT_NE(before, awh::event::status_t::NONE);
+	/**
+	 * Выполняем вступление в группу ПОСЛЕ фиксации - порядок нарушен намеренно
+	 *
+	 * @note Исход вызова здесь не проверяется вовсе, и это намеренно: привязка
+	 *       пропускается как уже выполненная, а сама подписка вправе и удаться, и нет -
+	 *       зависит это от настройки сети испытательной машины. Проверка не об исходе
+	 */
+	this->_io->membership(events[0], awh::event::mode_t::ENABLED, "239.255.1.1", "0.0.0.0", port);
+	// Проверяем, что состояние события вступлением в группу не изменилось
+	ASSERT_EQ(before, this->_io->status(events[0]));
+	// Проверяем, что событие не объявлено незапущенным
+	ASSERT_NE(this->_io->status(events[0]), awh::event::status_t::NONE);
+}
+
 TEST_F(IoFixture, DISABLED_IoMulticast3Test){
 	/**
 	 * 3. Сервер-обнаружение
