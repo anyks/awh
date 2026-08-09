@@ -248,8 +248,17 @@ TEST_F(BigNumFixture, RealSubnormalBigNumTest){
 TEST_F(BigNumFixture, RealHalfBigNumTest){
 	/**
 	 * Если компилятор поддерживает аппаратный тип половинной точности
+	 *
+	 * @note Одного макроса `__FLT16_MANT_DIG__` мало: он говорит о наличии самого
+	 *       формата, а не о доступности типа в C++. GCC 12 объявляет его и на aarch64
+	 *       принимает `_Float16` в C, но в C++ отвечает отказом "'_Float16' does not
+	 *       name a type" - тип этот пришёл в C++ лишь с GCC 13. Проверено опытом на
+	 *       стенде NetBSD 11.0 aarch64 с GCC 12.5
+	 *
+	 * @note Clang объявляет `__GNUC__` равным четырём, поэтому проверяется он отдельно:
+	 *       тип этот он принимает и в C++
 	 */
-	#if defined(__FLT16_MANT_DIG__)
+	#if defined(__FLT16_MANT_DIG__) && (defined(__clang__) || !defined(__GNUC__) || (__GNUC__ >= 13))
 		/**
 		 * В цикле сверяем битовый образ числа половинной точности с аппаратным типом
 		 */
