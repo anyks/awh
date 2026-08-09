@@ -285,6 +285,21 @@
 #include <afunix.h>
 
 /**
+ * @brief Признак отправки, подавляющий сигнал разорванного канала
+ *
+ * @details Признак этот у систем POSIX велит отправке не поднимать SIGPIPE, когда
+ *          собеседник закрыл свою сторону, а ответить отказом. MS Windows сигналов
+ *          не имеет вовсе - отправка в закрытую связь и без того отвечает отказом
+ *          WSAECONNRESET, - и подавлять здесь нечего
+ *
+ * @note Объявлено именно нулём, а не снятием обращений к признаку: движки
+ *       передают его отправке и приёму всюду, и расхождение в этих местах развело
+ *       бы код там, где довод общий
+ *
+ */
+#define MSG_NOSIGNAL 0
+
+/**
  * @brief Тип служебного сообщения, которым система выдаёт класс обслуживания принятого пакета
  *
  * @details Имя у этого типа не общее для всех систем, оттого разбор входящих служебных
@@ -349,6 +364,344 @@ static constexpr awh::net::socket_t AWH_INVALID_SOCKET = static_cast <awh::net::
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Посредники вызовов POSIX, каких у MS Windows нет под теми же именами
+ *
+ * @details Строй сообщений с рассеянными буферами и служебными метаданными у MS
+ *          Windows есть весь, но зовётся он своими именами: `WSAMSG` взамен
+ *          `msghdr`, `WSABUF` взамен `iovec`, `WSA_CMSG_*` взамен `CMSG_*`, а сам
+ *          приём с метаданными - расширенным вызовом `WSARecvMsg`, какой берётся
+ *          через `WSAIoctl`, а не объявлен наперёд
+ *
+ * @note Посредники заведены здесь, а не подменой имён в самом движке: строй этот
+ *       движки передают приёму и отправке всюду, и подмена развела бы код там, где
+ *       довод общий. Снаружи посредники неотличимы от вызовов POSIX, а внутри
+ *       обращаются к средствам MS Windows
+ *
+ * @warning Состав полей у `WSABUF` и `WSAMSG` иной, чем у их двойников POSIX -
+ *          одним переобъявлением имени тут не обойтись, и перенос состава ведётся
+ *          в самих посредниках
+ *
+ */
+/**
+ * @brief Описание буфера обмена в строе POSIX
+ *
+ */
+struct iovec {
+	void * iov_base;                  // Начало буфера обмена
+	size_t iov_len;                   // Размер буфера обмена
+};
+
+/**
+ * @brief Описание сообщения в строе POSIX
+ *
+ */
+struct msghdr {
+	void * msg_name;                  // Адрес собеседника
+	socklen_t msg_namelen;            // Размер адреса собеседника
+	struct iovec * msg_iov;           // Набор буферов обмена
+	size_t msg_iovlen;                // Число буферов обмена
+	void * msg_control;               // Буфер служебных метаданных
+	size_t msg_controllen;            // Размер буфера служебных метаданных
+	int32_t msg_flags;                // Признаки сообщения
+};
+
+/**
+ * @brief Заголовок служебного метаданного
+ *
+ * @note Состав его у MS Windows совпадает с POSIX поимённо, оттого здесь довольно
+ *       переобъявления имени
+ *
+ */
+typedef WSACMSGHDR cmsghdr;
+
+/**
+ * @brief Функция выравнивания размера служебного метаданного
+ *
+ * @param size выравниваемый размер
+ * @return     выровненный размер
+ *
+ */
+static inline size_t __awh_cmsg_align__(const size_t size) noexcept {
+	// Выравниваем размер по границе машинного слова
+	return ((size + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1));
+}
+
+/**
+ * @brief Функция получения первого служебного метаданного сообщения
+ *
+ * @param msg описание сообщения
+ * @return    первое служебное метаданное, либо пустое значение
+ *
+ */
+static inline cmsghdr * __awh_cmsg_first__(const struct msghdr * msg) noexcept {
+	// Если буфера служебных метаданных нет либо он меньше заголовка
+	if((msg == nullptr) || (msg->msg_control == nullptr) || (msg->msg_controllen < sizeof(cmsghdr)))
+		// Выводим пустое значение
+		return nullptr;
+	// Выводим первое служебное метаданное
+	return reinterpret_cast <cmsghdr *> (msg->msg_control);
+}
+
+/**
+ * @brief Функция получения следующего служебного метаданного сообщения
+ *
+ * @param msg  описание сообщения
+ * @param cmsg текущее служебное метаданное
+ * @return     следующее служебное метаданное, либо пустое значение
+ *
+ */
+static inline cmsghdr * __awh_cmsg_next__(const struct msghdr * msg, cmsghdr * cmsg) noexcept {
+	// Если обход окончен либо заголовок неполон
+	if((msg == nullptr) || (cmsg == nullptr) || (cmsg->cmsg_len < sizeof(cmsghdr)))
+		// Выводим пустое значение
+		return nullptr;
+	// Получаем начало буфера служебных метаданных
+	uint8_t * const begin = reinterpret_cast <uint8_t *> (msg->msg_control);
+	// Получаем следующее служебное метаданное
+	uint8_t * const next = (reinterpret_cast <uint8_t *> (cmsg) + __awh_cmsg_align__(static_cast <size_t> (cmsg->cmsg_len)));
+	// Если следующее метаданное за пределами буфера
+	if(static_cast <size_t> ((next + sizeof(cmsghdr)) - begin) > msg->msg_controllen)
+		// Выводим пустое значение
+		return nullptr;
+	// Выводим следующее служебное метаданное
+	return reinterpret_cast <cmsghdr *> (next);
+}
+
+/**
+ * @brief Обход служебных метаданных сообщения
+ *
+ */
+#define CMSG_FIRSTHDR(msg) ::__awh_cmsg_first__(msg)
+#define CMSG_NXTHDR(msg, cmsg) ::__awh_cmsg_next__(msg, cmsg)
+#define CMSG_DATA(cmsg) (reinterpret_cast <uint8_t *> (cmsg) + ::__awh_cmsg_align__(sizeof(cmsghdr)))
+#define CMSG_LEN(size) (::__awh_cmsg_align__(sizeof(cmsghdr)) + (size))
+#define CMSG_SPACE(size) (::__awh_cmsg_align__(sizeof(cmsghdr)) + ::__awh_cmsg_align__(size))
+
+/**
+ * @brief Функция получения расширенного вызова приёма сообщения с метаданными
+ *
+ * @details Вызов этот у MS Windows не объявлен наперёд: адрес его берётся у самого
+ *          сокета управляющим запросом. Берётся он однажды и запоминается - адрес
+ *          общий для всех сокетов библиотеки
+ *
+ * @param sock сокет, у которого спрашивается вызов
+ * @return     адрес расширенного вызова, либо пустое значение
+ *
+ */
+static LPFN_WSARECVMSG __awh_wsa_recvmsg__(const SOCKET sock) noexcept {
+	// Запомненный адрес расширенного вызова
+	static LPFN_WSARECVMSG result = nullptr;
+	// Если адрес уже взят
+	if(result != nullptr)
+		// Выводим запомненный адрес
+		return result;
+	// Опознаватель расширенного вызова приёма сообщения
+	GUID guid = WSAID_WSARECVMSG;
+	// Размер отданного адреса
+	DWORD size = 0;
+	// Если взять адрес расширенного вызова не удалось
+	if(::WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, sizeof(guid), &result, sizeof(result), &size, nullptr, nullptr) != 0)
+		// Сбрасываем адрес расширенного вызова
+		result = nullptr;
+	// Выводим адрес расширенного вызова
+	return result;
+}
+
+/**
+ * @brief Функция приёма сообщения со служебными метаданными
+ *
+ * @param sock  сокет, из которого ведётся приём
+ * @param msg   описание принимаемого сообщения
+ * @param flags признаки приёма
+ * @return      число принятых октетов, либо -1 при отказе
+ *
+ */
+static ssize_t recvmsg(const SOCKET sock, struct msghdr * msg, [[maybe_unused]] const int32_t flags) noexcept {
+	// Получаем расширенный вызов приёма сообщения
+	LPFN_WSARECVMSG receive = ::__awh_wsa_recvmsg__(sock);
+	// Если вызов взять не удалось либо описание не передано
+	if((receive == nullptr) || (msg == nullptr))
+		// Выводим признак отказа приёма
+		return -1;
+	// Набор буферов приёма в строе MS Windows
+	std::vector <WSABUF> buffers(msg->msg_iovlen);
+	// Переносим набор буферов приёма
+	for(size_t i = 0; i < msg->msg_iovlen; i++){
+		// Устанавливаем начало буфера приёма
+		buffers[i].buf = reinterpret_cast <CHAR *> (msg->msg_iov[i].iov_base);
+		// Устанавливаем размер буфера приёма
+		buffers[i].len = static_cast <ULONG> (msg->msg_iov[i].iov_len);
+	}
+	// Описание принимаемого сообщения в строе MS Windows
+	WSAMSG message{};
+	// Устанавливаем адрес собеседника
+	message.name = reinterpret_cast <LPSOCKADDR> (msg->msg_name);
+	// Устанавливаем размер адреса собеседника
+	message.namelen = static_cast <INT> (msg->msg_namelen);
+	// Устанавливаем набор буферов приёма
+	message.lpBuffers = buffers.data();
+	// Устанавливаем число буферов приёма
+	message.dwBufferCount = static_cast <ULONG> (buffers.size());
+	// Устанавливаем начало буфера служебных метаданных
+	message.Control.buf = reinterpret_cast <CHAR *> (msg->msg_control);
+	// Устанавливаем размер буфера служебных метаданных
+	message.Control.len = static_cast <ULONG> (msg->msg_controllen);
+	// Число принятых октетов
+	DWORD received = 0;
+	// Если приём отказом завершился
+	if(receive(sock, &message, &received, nullptr, nullptr) != 0)
+		// Выводим признак отказа приёма
+		return -1;
+	// Запоминаем размер принятого адреса собеседника
+	msg->msg_namelen = static_cast <socklen_t> (message.namelen);
+	// Запоминаем размер принятых служебных метаданных
+	msg->msg_controllen = static_cast <size_t> (message.Control.len);
+	// Запоминаем признаки принятого сообщения
+	msg->msg_flags = static_cast <int32_t> (message.dwFlags);
+	// Выводим число принятых октетов
+	return static_cast <ssize_t> (received);
+}
+
+
+/**
+ * @brief Функция отдачи данных в сокет
+ *
+ * @details Вызов MS Windows принимает буфер отдачи указателем на знаковый октет, а
+ *          не безразличным указателем, как это заведено у POSIX. Посредник тем и
+ *          нужен: движки передают безразличный указатель, и приведение его на
+ *          каждом обращении развело бы код там, где довод общий
+ *
+ * @param sock  сокет, в который ведётся отдача
+ * @param buffer буфер отдаваемых данных
+ * @param size   размер отдаваемых данных
+ * @param flags  признаки отдачи
+ * @return       число отданных октетов, либо -1 при отказе
+ *
+ */
+static inline ssize_t send(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags) noexcept {
+	// Выводим итог отдачи данных в сокет
+	return static_cast <ssize_t> (::send(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags));
+}
+
+/**
+ * @brief Функция приёма данных из сокета
+ *
+ * @param sock   сокет, из которого ведётся приём
+ * @param buffer буфер принимаемых данных
+ * @param size   размер буфера принимаемых данных
+ * @param flags  признаки приёма
+ * @return       число принятых октетов, либо -1 при отказе
+ *
+ */
+static inline ssize_t recv(const SOCKET sock, void * buffer, const size_t size, const int32_t flags) noexcept {
+	// Выводим итог приёма данных из сокета
+	return static_cast <ssize_t> (::recv(sock, reinterpret_cast <char *> (buffer), static_cast <int32_t> (size), flags));
+}
+
+/**
+ * @brief Функция отдачи дейтаграммы по адресу
+ *
+ * @param sock   сокет, в который ведётся отдача
+ * @param buffer буфер отдаваемых данных
+ * @param size   размер отдаваемых данных
+ * @param flags  признаки отдачи
+ * @param addr   адрес получателя
+ * @param length размер адреса получателя
+ * @return       число отданных октетов, либо -1 при отказе
+ *
+ */
+static inline ssize_t sendto(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length) noexcept {
+	// Выводим итог отдачи дейтаграммы по адресу
+	return static_cast <ssize_t> (::sendto(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags, addr, static_cast <int32_t> (length)));
+}
+
+/**
+ * @brief Функция приёма дейтаграммы с адресом отправителя
+ *
+ * @param sock   сокет, из которого ведётся приём
+ * @param buffer буфер принимаемых данных
+ * @param size   размер буфера принимаемых данных
+ * @param flags  признаки приёма
+ * @param addr   адрес отправителя
+ * @param length размер адреса отправителя
+ * @return       число принятых октетов, либо -1 при отказе
+ *
+ */
+static inline ssize_t recvfrom(const SOCKET sock, void * buffer, const size_t size, const int32_t flags, struct sockaddr * addr, socklen_t * length) noexcept {
+	// Выводим итог приёма дейтаграммы с адресом отправителя
+	return static_cast <ssize_t> (::recvfrom(sock, reinterpret_cast <char *> (buffer), static_cast <int32_t> (size), flags, addr, reinterpret_cast <int32_t *> (length)));
+}
+
+/**
+ * @brief Функция приёма данных набором буферов
+ *
+ * @param sock  сокет либо дескриптор, из которого ведётся приём
+ * @param iov   набор буферов приёма
+ * @param count число буферов приёма
+ * @return      число принятых октетов, либо -1 при отказе
+ *
+ */
+static ssize_t readv(const SOCKET sock, const struct iovec * iov, const int32_t count) noexcept {
+	// Если набор буферов не передан
+	if((iov == nullptr) || (count <= 0))
+		// Выводим признак отказа приёма
+		return -1;
+	// Набор буферов приёма в строе MS Windows
+	std::vector <WSABUF> buffers(static_cast <size_t> (count));
+	// Переносим набор буферов приёма
+	for(int32_t i = 0; i < count; i++){
+		// Устанавливаем начало буфера приёма
+		buffers[i].buf = reinterpret_cast <CHAR *> (iov[i].iov_base);
+		// Устанавливаем размер буфера приёма
+		buffers[i].len = static_cast <ULONG> (iov[i].iov_len);
+	}
+	// Число принятых октетов
+	DWORD received = 0;
+	// Признаки приёма
+	DWORD flags = 0;
+	// Если приём отказом завершился
+	if(::WSARecv(sock, buffers.data(), static_cast <DWORD> (buffers.size()), &received, &flags, nullptr, nullptr) != 0)
+		// Выводим признак отказа приёма
+		return -1;
+	// Выводим число принятых октетов
+	return static_cast <ssize_t> (received);
+}
+
+/**
+ * @brief Функция отдачи данных набором буферов
+ *
+ * @param sock  сокет либо дескриптор, в который ведётся отдача
+ * @param iov   набор буферов отдачи
+ * @param count число буферов отдачи
+ * @return      число отданных октетов, либо -1 при отказе
+ *
+ */
+static ssize_t writev(const SOCKET sock, const struct iovec * iov, const int32_t count) noexcept {
+	// Если набор буферов не передан
+	if((iov == nullptr) || (count <= 0))
+		// Выводим признак отказа отдачи
+		return -1;
+	// Набор буферов отдачи в строе MS Windows
+	std::vector <WSABUF> buffers(static_cast <size_t> (count));
+	// Переносим набор буферов отдачи
+	for(int32_t i = 0; i < count; i++){
+		// Устанавливаем начало буфера отдачи
+		buffers[i].buf = reinterpret_cast <CHAR *> (iov[i].iov_base);
+		// Устанавливаем размер буфера отдачи
+		buffers[i].len = static_cast <ULONG> (iov[i].iov_len);
+	}
+	// Число отданных октетов
+	DWORD sent = 0;
+	// Если отдача отказом завершилась
+	if(::WSASend(sock, buffers.data(), static_cast <DWORD> (buffers.size()), &sent, 0, nullptr, nullptr) != 0)
+		// Выводим признак отказа отдачи
+		return -1;
+	// Выводим число отданных октетов
+	return static_cast <ssize_t> (sent);
+}
+
 
 /**
  * @brief Название бэкенда для записей в журнале
