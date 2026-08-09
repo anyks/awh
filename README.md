@@ -71,6 +71,18 @@ $ doas pkg_add git cmake gmake googletest
 > TcMalloc is not available on OpenBSD at all: GPerfTools calls `syscall(2)`, which OpenBSD
 > removed on purpose. The system allocator takes its place.
 
+### Linux
+
+```bash
+$ sudo dnf install git cmake gcc-c++ gtest-devel gmock-devel      # Fedora, RHEL
+$ sudo apt install git cmake g++ libgtest-dev libgmock-dev        # Debian, Ubuntu
+```
+
+> Here the system `make` already is GNU Make, so `gmake` is not needed.
+
+> The command above was verified on Fedora 42 aarch64; the Debian one lists the packages
+> that carry the same libraries and has not been run on a stand.
+
 ## To build and launch the project
 
 ### To clone the project

@@ -27345,14 +27345,14 @@ namespace io {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Создаём сокет подключения
-					awh_cast <::io::client_t *> (node)->transfer.fd = eth->socket.issue(node->state.family, node->state.type, node->state.protocol);
+					awh_cast <::io::client_t *> (node)->transfer.fd = eth->socket.issue(node->state.family, node->state.type, node->state.protocol, node->state.options);
 					// Возвращаем результат создания сокета
 					return (awh_cast <::io::client_t *> (node)->transfer.fd != net::invalid_socket_t);
 				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Создаём сокет подключения
-					awh_cast <::io::server_t *> (node)->fd = eth->socket.issue(node->state.family, node->state.type, node->state.protocol);
+					awh_cast <::io::server_t *> (node)->fd = eth->socket.issue(node->state.family, node->state.type, node->state.protocol, node->state.options);
 					// Возвращаем результат создания сокета
 					return (awh_cast <::io::server_t *> (node)->fd != net::invalid_socket_t);
 				}
@@ -36340,8 +36340,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							if(!::io::socket(client, &this->_eth, this->_log))
 								// Выводим результат
 								return result;
+							/**
+							 * Применяем к заведённому сокету накопленные настройки события
+							 *
+							 * @note Набор снимается с состояния ПЕРЕД применением намеренно: часть
+							 * опций применяется лишь тогда, когда их признак в состоянии ещё не
+							 * стоит (так устроена проверка `NO_IO_BLOCK`). Не сними мы его, вызов
+							 * счёл бы работу сделанной и до сокета не дошёл: сокет остался бы
+							 * блокирующим, а это не отказ проверки, а зависание на чтении
+							 */
+							const uint16_t options = client->state.options;
+							// Оставляем в состоянии лишь то, что ядро наложило при создании сокета
+							client->state.options = this->_eth.socket.inborn(options);
 							// Применяем к заведённому сокету накопленные настройки события
-							this->setOptions(id, client->state.options);
+							this->setOptions(id, options);
 						}
 						// Устанавливаем статус события в состояние инициализировано
 						client->state.status = event::status_t::INITIAL;
@@ -38101,8 +38113,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							if(!::io::socket(server, &this->_eth, this->_log))
 								// Выводим результат
 								return result;
+							/**
+							 * Применяем к заведённому сокету накопленные настройки события
+							 *
+							 * @note Набор снимается с состояния ПЕРЕД применением намеренно: часть
+							 * опций применяется лишь тогда, когда их признак в состоянии ещё не
+							 * стоит (так устроена проверка `NO_IO_BLOCK`). Не сними мы его, вызов
+							 * счёл бы работу сделанной и до сокета не дошёл: сокет остался бы
+							 * блокирующим, а это не отказ проверки, а зависание на чтении
+							 */
+							const uint16_t options = server->state.options;
+							// Оставляем в состоянии лишь то, что ядро наложило при создании сокета
+							server->state.options = this->_eth.socket.inborn(options);
 							// Применяем к заведённому сокету накопленные настройки события
-							this->setOptions(id, server->state.options);
+							this->setOptions(id, options);
 						}
 						// Устанавливаем статус события в состояние инициализировано
 						server->state.status = event::status_t::INITIAL;
@@ -53872,7 +53896,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 								// Если опция передана как IPV6_V6ONLY
 								if(event::options::IPV6_ONLY & options){
 									// Устанавливаем режим отображения IPv4 => IPv6
-									if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::IPV6_ONLY)))
+									if((isSetup = ((i->second->state.options & event::options::IPV6_ONLY) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::IPV6_ONLY))))
 										// Устанавливаем опцию события
 										i->second->state.options |= event::options::IPV6_ONLY;
 								// Если опция не передана как IPV6_V6ONLY, но установлена в состоянии узла
@@ -53898,7 +53922,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				// Если опция передана как NO_SIGILL
 				if(event::options::NO_SIGILL & options){
 					// Устанавливаем игнорирование сигнала SIGILL
-					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGILL)))
+					if((isSetup = ((i->second->state.options & event::options::NO_SIGILL) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGILL))))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::NO_SIGILL;
 				// Если опция не передана как NO_SIGILL, но установлена в состоянии узла
@@ -53923,7 +53947,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					// Если опция передана как NO_SIGPIPE
 					if(event::options::NO_SIGPIPE & options){
 						// Устанавливаем игнорирование сигнала SIGPIPE
-						if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGPIPE)))
+						if((isSetup = ((i->second->state.options & event::options::NO_SIGPIPE) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGPIPE))))
 							// Устанавливаем опцию события
 							i->second->state.options |= event::options::NO_SIGPIPE;
 					// Если опция не передана как NO_SIGPIPE, но установлена в состоянии узла
@@ -53948,7 +53972,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					// Если событие установлено как блокирующее
 					if(!(i->second->state.options & event::options::NO_IO_BLOCK) && !(i->second->state.options & event::options::SM_IO_BLOCK)){
 						// Устанавливаем неблокирующий режим ввода/вывода
-						if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
+						if((isSetup = ((i->second->state.options & event::options::NO_IO_BLOCK) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK)))){
 							// Если установлена опция SM_IO_BLOCK
 							if(event::options::SM_IO_BLOCK & options)
 								// Устанавливаем опцию события
@@ -54310,7 +54334,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						// Если опция передана как REUSE_ADDR
 						if(event::options::REUSE_ADDR & options){
 							// Устанавливаем режим повторного использования адреса
-							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_ADDR)))
+							if((isSetup = ((i->second->state.options & event::options::REUSE_ADDR) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_ADDR))))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::REUSE_ADDR;
 						// Если опция не передана как REUSE_ADDR, но установлена в состоянии узла
@@ -54332,7 +54356,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						// Если опция передана как REUSE_PORT
 						if(event::options::REUSE_PORT & options){
 							// Устанавливаем режим повторного использования порта
-							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_PORT)))
+							if((isSetup = ((i->second->state.options & event::options::REUSE_PORT) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_PORT))))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::REUSE_PORT;
 						// Если опция не передана как REUSE_PORT, но установлена в состоянии узла
@@ -54361,7 +54385,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						 */
 						if(event::options::HARD_CLOSE & options){
 							// Устанавливаем режим немедленного обрыва соединения
-							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HARD_CLOSE)))
+							if((isSetup = ((i->second->state.options & event::options::HARD_CLOSE) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HARD_CLOSE))))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::HARD_CLOSE;
 						// Если опция не передана как HARD_CLOSE, но установлена в состоянии узла
@@ -54385,7 +54409,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 							// Если опция передана как MULTICAST_LOOPBACK
 							if(event::options::MULTICAST_LOOPBACK & options){
 								// Устанавливаем режим обратной связи многоадресной передачи
-								if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::MULTICAST_LOOPBACK)))
+								if((isSetup = ((i->second->state.options & event::options::MULTICAST_LOOPBACK) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::MULTICAST_LOOPBACK))))
 									// Устанавливаем опцию события
 									i->second->state.options |= event::options::MULTICAST_LOOPBACK;
 							// Если опция не передана как MULTICAST_LOOPBACK, но установлена в состоянии узла
@@ -54454,7 +54478,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										// Если опция передана как HDRINCL
 										if(event::options::HDRINCL & options){
 											// Устанавливаем режим широковещательной передачи
-											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HDRINCL)))
+											if((isSetup = ((i->second->state.options & event::options::HDRINCL) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HDRINCL))))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::HDRINCL;
 										// Если опция не передана как HDRINCL, но установлена в состоянии узла
@@ -54491,7 +54515,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если опция передана как TCP_CORKING
 											if(event::options::TCP_CORKING & options){
 												// Активируем алгоритм TCP/CORK
-												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORKING)))
+												if((isSetup = ((i->second->state.options & event::options::TCP_CORKING) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORKING))))
 													// Устанавливаем опцию события
 													i->second->state.options |= event::options::TCP_CORKING;
 											// Если опция не передана как TCP_CORKING, но установлена в состоянии узла
@@ -54588,7 +54612,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									// Если опция передана как BROADCAST
 									if(event::options::BROADCAST & options){
 										// Устанавливаем режим широковещательной передачи
-										if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::BROADCAST)))
+										if((isSetup = ((i->second->state.options & event::options::BROADCAST) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::BROADCAST))))
 											// Устанавливаем опцию события
 											i->second->state.options |= event::options::BROADCAST;
 									// Если опция не передана как BROADCAST, но установлена в состоянии узла
@@ -54616,7 +54640,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									// Если опция передана как TCP_CORKING
 									if(event::options::TCP_CORKING & options){
 										// Активируем алгоритм TCP/CORK
-										if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORKING)))
+										if((isSetup = ((i->second->state.options & event::options::TCP_CORKING) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORKING))))
 											// Устанавливаем опцию события
 											i->second->state.options |= event::options::TCP_CORKING;
 									// Если опция не передана как TCP_CORKING, но установлена в состоянии узла
@@ -54673,7 +54697,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				// Если опция передана как CLOSE_ON_EXEC
 				if(event::options::CLOSE_ON_EXEC & options){
 					// Устанавливаем режим закрытия дескриптора при выполнении exec
-					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::CLOSE_ON_EXEC)))
+					if((isSetup = ((i->second->state.options & event::options::CLOSE_ON_EXEC) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::CLOSE_ON_EXEC))))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::CLOSE_ON_EXEC;
 				// Если опция не передана как CLOSE_ON_EXEC, но установлена в состоянии узла

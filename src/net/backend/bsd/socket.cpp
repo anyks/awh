@@ -3669,7 +3669,36 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
  * @return       созданный сокет
  *
  */
-awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
+awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, const uint16_t options) const noexcept {
+	/**
+	 * Признаки, которые ядро принимает прямо при создании сокета
+	 *
+	 * @details Взятые здесь опции не требуют затем отдельных обращений: без них
+	 * на каждый сокет уходило по два `fcntl` на неблокирующий режим и ещё по два
+	 * на закрытие при запуске стороннего образа - чтение флагов и запись обратно
+	 *
+	 * @note Не всякая система это умеет: где признаков нет, набор остаётся пустым,
+	 * и опции накладываются прежним путём
+	 */
+	int32_t mode = 0;
+	/**
+	 * Если система умеет заводить сокет сразу неблокирующим
+	 */
+	#if defined(SOCK_NONBLOCK)
+		// Если событие просит неблокирующего режима ввода/вывода
+		if((options & event::options::NO_IO_BLOCK) || (options & event::options::SM_IO_BLOCK))
+			// Добавляем признак неблокирующего режима
+			mode |= SOCK_NONBLOCK;
+	#endif
+	/**
+	 * Если система умеет заводить сокет сразу закрываемым при запуске образа
+	 */
+	#if defined(SOCK_CLOEXEC)
+		// Если событие просит закрытия сокета при запуске стороннего образа
+		if(options & event::options::CLOSE_ON_EXEC)
+			// Добавляем признак закрытия при запуске образа
+			mode |= SOCK_CLOEXEC;
+	#endif
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -3687,11 +3716,11 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 					// Если сокет принадлежит к типу STREAM
 					case static_cast <uint8_t> (event::type_t::STREAM):
 						// Печатаем дескриптор созданного сокета
-						return ::socket(AF_UNIX, SOCK_STREAM, 0);
+						return ::socket(AF_UNIX, SOCK_STREAM | mode, 0);
 					// Если сокет принадлежит к типу DATAGRAM
 					case static_cast <uint8_t> (event::type_t::DATAGRAM):
 						// Печатаем дескриптор созданного сокета
-						return ::socket(AF_UNIX, SOCK_DGRAM, 0);
+						return ::socket(AF_UNIX, SOCK_DGRAM | mode, 0);
 					// Если сокет принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						/**
@@ -3699,13 +3728,13 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 						 */
 						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 							// Печатаем дескриптор созданного сокета
-							return ::socket(AF_UNIX, SOCK_DGRAM, 0);
+							return ::socket(AF_UNIX, SOCK_DGRAM | mode, 0);
 						/**
 						 * Для операционной системы FreeBSD
 						 */
 						#elif __FreeBSD__
 							// Печатаем дескриптор созданного сокета
-							return ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
+							return ::socket(AF_UNIX, SOCK_SEQPACKET | mode, 0);
 						#endif
 					} break;
 					// Для неизвестного типа сокета
@@ -3759,27 +3788,27 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_RAW, 0);
+										return ::socket(AF_INET, SOCK_RAW | mode, 0);
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::RAW):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+										return ::socket(AF_INET, SOCK_RAW | mode, IPPROTO_RAW);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::TCP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+										return ::socket(AF_INET, SOCK_RAW | mode, IPPROTO_TCP);
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+										return ::socket(AF_INET, SOCK_RAW | mode, IPPROTO_UDP);
 									// Если протокол определён как IGMP
 									case static_cast <uint8_t> (event::protocol_t::IGMP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
+										return ::socket(AF_INET, SOCK_RAW | mode, IPPROTO_IGMP);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+										return ::socket(AF_INET, SOCK_RAW | mode, IPPROTO_ICMP);
 									// Если установлен другой протокол
 									default: ok = false;
 								}
@@ -3793,19 +3822,19 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_RAW, 0);
+										return ::socket(AF_INET6, SOCK_RAW | mode, 0);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::TCP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
+										return ::socket(AF_INET6, SOCK_RAW | mode, IPPROTO_TCP);
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+										return ::socket(AF_INET6, SOCK_RAW | mode, IPPROTO_UDP);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+										return ::socket(AF_INET6, SOCK_RAW | mode, IPPROTO_ICMPV6);
 									// Если установлен другой протокол
 									default: ok = false;
 								}
@@ -3851,15 +3880,15 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_STREAM, 0);
+										return ::socket(AF_INET, SOCK_STREAM | mode, 0);
 									// Если протокол определён как TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+										return ::socket(AF_INET, SOCK_STREAM | mode, IPPROTO_TCP);
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+										return ::socket(AF_INET, SOCK_STREAM | mode, IPPROTO_SCTP);
 									// Если установлен другой протокол
 									default: ok = false;
 								}
@@ -3873,15 +3902,15 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_STREAM, 0);
+										return ::socket(AF_INET6, SOCK_STREAM | mode, 0);
 									// Если протокол определён как TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+										return ::socket(AF_INET6, SOCK_STREAM | mode, IPPROTO_TCP);
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+										return ::socket(AF_INET6, SOCK_STREAM | mode, IPPROTO_SCTP);
 									// Если установлен другой протокол
 									default: ok = false;
 								}
@@ -3927,19 +3956,19 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_DGRAM, 0);
+										return ::socket(AF_INET, SOCK_DGRAM | mode, 0);
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+										return ::socket(AF_INET, SOCK_DGRAM | mode, IPPROTO_UDP);
 									// Если протокол определён как IGMP
 									case static_cast <uint8_t> (event::protocol_t::IGMP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
+										return ::socket(AF_INET, SOCK_DGRAM | mode, IPPROTO_IGMP);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+										return ::socket(AF_INET, SOCK_DGRAM | mode, IPPROTO_ICMP);
 									// Если установлен другой протокол
 									default: ok = false;
 								}
@@ -3953,15 +3982,15 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_DGRAM, 0);
+										return ::socket(AF_INET6, SOCK_DGRAM | mode, 0);
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+										return ::socket(AF_INET6, SOCK_DGRAM | mode, IPPROTO_UDP);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
+										return ::socket(AF_INET6, SOCK_DGRAM | mode, IPPROTO_ICMPV6);
 									// Если установлен другой протокол
 									default: ok = false;
 								}
@@ -4011,13 +4040,13 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 										 */
 										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 											// Печатаем дескриптор созданного сокета
-											return ::socket(AF_INET, SOCK_DGRAM, 0);
+											return ::socket(AF_INET, SOCK_DGRAM | mode, 0);
 										/**
 										 *Для операционной системы FreeBSD
 										 */
 										#elif __FreeBSD__
 											// Печатаем дескриптор созданного сокета
-											return ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
+											return ::socket(AF_INET, SOCK_SEQPACKET | mode, IPPROTO_SCTP);
 										#endif
 									} break;
 									// Если установлен другой протокол
@@ -4033,7 +4062,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP):
 										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
+										return ::socket(AF_INET6, SOCK_SEQPACKET | mode, IPPROTO_SCTP);
 									// Если установлен другой протокол
 									default: ok = false;
 								}
@@ -4143,6 +4172,43 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	// Возвращаем значение по умолчанию
 	return net::invalid_socket_t;
 }
+
+/**
+ * @brief Метод получения опций, принимаемых при создании сокета
+ *
+ * @param options набор опций события
+ * @return        подмножество опций, наложенных при создании сокета
+ *
+ */
+uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
+	// Результат работы функции
+	uint16_t result = event::options::NONE;
+	/**
+	 * Если система умеет заводить сокет сразу неблокирующим
+	 */
+	#if defined(SOCK_NONBLOCK)
+		// Если событие просит неблокирующего режима ввода/вывода
+		if(options & event::options::SM_IO_BLOCK)
+			// Отмечаем полублокирующий режим как наложенный
+			result |= event::options::SM_IO_BLOCK;
+		// Если событие просит неблокирующего режима ввода/вывода
+		else if(options & event::options::NO_IO_BLOCK)
+			// Отмечаем неблокирующий режим как наложенный
+			result |= event::options::NO_IO_BLOCK;
+	#endif
+	/**
+	 * Если система умеет заводить сокет сразу закрываемым при запуске образа
+	 */
+	#if defined(SOCK_CLOEXEC)
+		// Если событие просит закрытия сокета при запуске стороннего образа
+		if(options & event::options::CLOSE_ON_EXEC)
+			// Отмечаем закрытие при запуске образа как наложенное
+			result |= event::options::CLOSE_ON_EXEC;
+	#endif
+	// Выводим результат
+	return result;
+}
+
 /**
  * @brief Метод создания пары сокетов для межпроцессного взаимодействия (IPC)
  *

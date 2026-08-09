@@ -782,6 +782,10 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/codec/xml/reader.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/xml/document.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/xml/writer.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/ini/common.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/ini/encoding.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/ini/reader.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/ini/writer.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
@@ -5542,7 +5546,7 @@ if (CMAKE_BUILD_TESTS)
 
     # Если набор GTest не найден
     if (NOT GTest_FOUND AND NOT GTEST_FOUND)
-        message(FATAL_ERROR "GTest not found: unit tests were requested but cannot be built. Install it (pkgin install googletest, pkg install googletest, apt install libgtest-dev) or configure without CMAKE_BUILD_TESTS")
+        message(FATAL_ERROR "GTest not found: unit tests were requested but cannot be built. Install it (pkgin install googletest, pkg install googletest, apt install libgtest-dev libgmock-dev, dnf install gtest-devel gmock-devel) or configure without CMAKE_BUILD_TESTS")
     endif()
 
     # Сборка тестов

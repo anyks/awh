@@ -605,7 +605,9 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
  *       каком стоит порт завершения ввода-вывода
  *
  */
-awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
+awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, const uint16_t options) const noexcept {
+	// Опции при создании сокета эта система не принимает, они накладываются отдельно
+	(void) options;
 	// Семейство адресов сокета в понимании системы
 	int32_t domain = 0;
 	/**
@@ -680,6 +682,24 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	// Возвращаем заведённый сокет
 	return static_cast <net::socket_t> (result);
 }
+
+/**
+ * @brief Метод получения опций, принимаемых при создании сокета
+ *
+ * @note Эта система опций при создании сокета не принимает вовсе, оттого
+ * набор всегда пуст, и опции накладываются отдельными обращениями
+ *
+ * @param options набор опций события
+ * @return        подмножество опций, наложенных при создании сокета
+ *
+ */
+uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
+	// Опции при создании сокета эта система не принимает
+	(void) options;
+	// Выводим пустой набор опций
+	return event::options::NONE;
+}
+
 
 /**
  * @brief Метод заведения пары сокетов для обмена сообщениями между процессами

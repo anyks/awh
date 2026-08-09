@@ -71,6 +71,9 @@ if (${GTest_FOUND})
             xml/reader.cpp
             xml/document.cpp
             xml/writer.cpp
+            ini/encoding.cpp
+            ini/reader.cpp
+            ini/writer.cpp
         )
 
         # Библиотеки GTest для линковки
