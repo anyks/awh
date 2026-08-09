@@ -300,8 +300,16 @@
 	 * @note Порядок обязателен: заголовок настроек UDP объявляет поле типа struct
 	 *       ipovly, а сам этот тип описан в заголовке настроек IP. Подключённый в
 	 *       одиночку, заголовок UDP не собирается
+	 *
+	 * @note Заголовок `netinet/udp.h` здесь ОБЯЗАТЕЛЕН, хотя ни одного имени из
+	 *       него движок напрямую не употребляет: `udp_var.h` объявляет поле типа
+	 *       struct udphdr, а описан этот тип именно там. Проверено прогоном -
+	 *       без него NetBSD и OpenBSD отвечают «field has incomplete type», тогда
+	 *       как macOS и Linux собираются молча. Разбирая лишние заголовки, этот
+	 *       не удалять: судить по прямому употреблению имён здесь нельзя
 	 */
 	#include <netinet/ip_var.h>
+	#include <netinet/udp.h>
 	#include <netinet/udp_var.h>
 #endif
 
@@ -1129,7 +1137,7 @@ namespace io {
 		 address(event::address_t::NONE),
 		 protocol(event::protocol_t::NONE),
 		 delivery(event::delivery_mode_t::UNICAST) {}
-	} __attribute__((packed)) state_t;
+	} state_t;
 
 	/**
 	 * @brief Структура таймаута
@@ -1150,7 +1158,7 @@ namespace io {
 		 id(id), delay(0),
 		 usage(event::usage_t::DISPOSABLE),
 		 status(event::status_t::NONE) {}
-	} __attribute__((packed)) timeout_t;
+	} timeout_t;
 
 	/**
 	 * @brief Структура таймаутов
@@ -1418,6 +1426,34 @@ namespace io {
 	} peer_callbacks_t;
 
 	/**
+	 * @brief Структура отложенного вступления в группу рассылки
+	 *
+	 * @details Вступление привязывает дескриптор к порту группы, чего фиксация
+	 * настроек не делает, оттого звать его следует ДО неё. Но сокет заводится
+	 * самой фиксацией, и до неё вступать попросту не по чему: доводы копятся
+	 * здесь, а применяются сразу после того, как сокет заведён
+	 *
+	 * @note Порядок «привязка - вступление» соблюдает теперь движок, а не
+	 * вызывающая сторона: прежде его нарушение ничем не наказывалось и просто
+	 * тихо не срабатывало
+	 *
+	 */
+	typedef struct Deferred_Membership {
+		bool active;           // Признак отложенного вступления
+		uint16_t port;         // Порт группы рассылки
+		event::mode_t mode;    // Режим вступления или выхода
+		string group;          // Адрес группы рассылки
+		string source;         // Адрес сетевого интерфейса подписки
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Deferred_Membership() noexcept :
+		 active(false), port(0), mode(event::mode_t::DISABLED),
+		 group{""}, source{""} {}
+	} deferred_membership_t;
+
+	/**
 	 * @brief Структура узла события
 	 *
 	 */
@@ -1428,6 +1464,8 @@ namespace io {
 		event::id_t id;
 		// Счётчик ссылок на событие
 		atomic_uint16_t refs;
+		// Отложенное вступление в группу рассылки
+		deferred_membership_t membership;
 		/**
 		 * @brief Конструктор
 		 *
@@ -27058,6 +27096,33 @@ namespace io {
 	 * @return     результат создания сокета
 	 *
 	 */
+	/**
+	 * @brief Функция получения дескриптора сокета узла события
+	 *
+	 * @details Отвечает дескриптором для тех узлов, у которых сокет заводится
+	 * фиксацией настроек; для прочих отвечает недействительным значением
+	 *
+	 * @param node узел события
+	 * @return     дескриптор сокета узла события
+	 *
+	 */
+	static net::socket_t descriptor(const ::io::node_t * node) noexcept {
+		/**
+		 * Определяем чем является текущий узел
+		 */
+		switch(static_cast <uint8_t> (node->state.node)){
+			// Если узел является клиентом
+			case static_cast <uint8_t> (event::node_t::CLIENT):
+				// Выводим дескриптор сокета клиента
+				return awh_cast <const ::io::client_t *> (node)->transfer.fd;
+			// Если узел является сервером
+			case static_cast <uint8_t> (event::node_t::SERVER):
+				// Выводим дескриптор сокета сервера
+				return awh_cast <const ::io::server_t *> (node)->fd;
+		}
+		// Выводим недействительный дескриптор сокета
+		return net::invalid_socket_t;
+	}
 	static bool socket(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
@@ -27070,14 +27135,14 @@ namespace io {
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Создаём сокет подключения
-					awh_cast <::io::client_t *> (node)->transfer.fd = eth->socket.issue(node->state.family, node->state.type, node->state.protocol);
+					awh_cast <::io::client_t *> (node)->transfer.fd = eth->socket.issue(node->state.family, node->state.type, node->state.protocol, node->state.options);
 					// Возвращаем результат создания сокета
 					return (awh_cast <::io::client_t *> (node)->transfer.fd != net::invalid_socket_t);
 				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Создаём сокет подключения
-					awh_cast <::io::server_t *> (node)->fd = eth->socket.issue(node->state.family, node->state.type, node->state.protocol);
+					awh_cast <::io::server_t *> (node)->fd = eth->socket.issue(node->state.family, node->state.type, node->state.protocol, node->state.options);
 					// Возвращаем результат создания сокета
 					return (awh_cast <::io::server_t *> (node)->fd != net::invalid_socket_t);
 				}
@@ -36264,6 +36329,46 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						/**
+						 * Заводим сокет, если он ещё не заведён
+						 *
+						 * @details Заведение отложено до фиксации намеренно: к этому мигу набор
+						 * опций события известен целиком, и часть из них ядро принимает прямо
+						 * при создании сокета, не требуя отдельных обращений
+						 */
+						if(client->transfer.fd == net::invalid_socket_t){
+							// Если завести сокет не удалось, фиксировать больше нечего
+							if(!::io::socket(client, &this->_eth, this->_log))
+								// Выводим результат
+								return result;
+							/**
+							 * Применяем к заведённому сокету накопленные настройки события
+							 *
+							 * @note Набор снимается с состояния ПЕРЕД применением намеренно: часть
+							 * опций применяется лишь тогда, когда их признак в состоянии ещё не
+							 * стоит. Не сними мы его, вызов счёл бы работу сделанной и до сокета
+							 * не дошёл: сокет остался бы блокирующим, а это не отказ проверки,
+							 * а зависание на чтении
+							 */
+							const uint16_t options = client->state.options;
+							// Оставляем в состоянии лишь то, что ядро наложило при создании сокета
+							client->state.options = this->_eth.socket.inborn(options);
+							// Применяем остальные настройки обычным путём
+							this->setOptions(id, options);
+							/**
+							 * Если вступление в группу рассылки было отложено, исполняем его
+							 *
+							 * @note Порядок здесь обязателен: вступление привязывает дескриптор к
+							 * порту группы, и потому идёт сразу за заведением сокета, прежде всей
+							 * остальной работы по фиксации настроек
+							 */
+							if(client->membership.active){
+								// Снимаем признак отложенного вступления
+								client->membership.active = false;
+								// Выполняем отложенное вступление в группу рассылки
+								this->membership(id, client->membership.mode, client->membership.group, client->membership.source, client->membership.port);
+							}
+						}
 						// Устанавливаем статус события в состояние инициализировано
 						client->state.status = event::status_t::INITIAL;
 						// Если файловый дескриптор клиента существует
@@ -38068,6 +38173,46 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						/**
+						 * Заводим сокет, если он ещё не заведён
+						 *
+						 * @details Заведение отложено до фиксации намеренно: к этому мигу набор
+						 * опций события известен целиком, и часть из них ядро принимает прямо
+						 * при создании сокета, не требуя отдельных обращений
+						 */
+						if(server->fd == net::invalid_socket_t){
+							// Если завести сокет не удалось, фиксировать больше нечего
+							if(!::io::socket(server, &this->_eth, this->_log))
+								// Выводим результат
+								return result;
+							/**
+							 * Применяем к заведённому сокету накопленные настройки события
+							 *
+							 * @note Набор снимается с состояния ПЕРЕД применением намеренно: часть
+							 * опций применяется лишь тогда, когда их признак в состоянии ещё не
+							 * стоит. Не сними мы его, вызов счёл бы работу сделанной и до сокета
+							 * не дошёл: сокет остался бы блокирующим, а это не отказ проверки,
+							 * а зависание на чтении
+							 */
+							const uint16_t options = server->state.options;
+							// Оставляем в состоянии лишь то, что ядро наложило при создании сокета
+							server->state.options = this->_eth.socket.inborn(options);
+							// Применяем остальные настройки обычным путём
+							this->setOptions(id, options);
+							/**
+							 * Если вступление в группу рассылки было отложено, исполняем его
+							 *
+							 * @note Порядок здесь обязателен: вступление привязывает дескриптор к
+							 * порту группы, и потому идёт сразу за заведением сокета, прежде всей
+							 * остальной работы по фиксации настроек
+							 */
+							if(server->membership.active){
+								// Снимаем признак отложенного вступления
+								server->membership.active = false;
+								// Выполняем отложенное вступление в группу рассылки
+								this->membership(id, server->membership.mode, server->membership.group, server->membership.source, server->membership.port);
+							}
+						}
 						// Устанавливаем статус события в состояние инициализировано
 						server->state.status = event::status_t::INITIAL;
 						// Если файловый дескриптор сервера существует
@@ -51193,6 +51338,31 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
 				/**
+				 * Если сокет ещё не заведён, вступление откладывается до фиксации
+				 *
+				 * @details Вступление обязано идти ДО фиксации настроек - оно само
+				 * привязывает дескриптор к порту группы. Но сокет заводит именно
+				 * фиксация, оттого доводы копятся, а применяются сразу после того,
+				 * как сокет заведён: порядок «привязка - вступление» соблюдается,
+				 * и соблюдает его теперь движок, а не вызывающая сторона
+				 */
+				if((::io::descriptor(i->second.get()) == net::invalid_socket_t) &&
+				   ((i->second->state.node == event::node_t::CLIENT) ||
+				    (i->second->state.node == event::node_t::SERVER))){
+					// Запоминаем режим вступления в группу рассылки
+					i->second->membership.mode = mode;
+					// Запоминаем порт группы рассылки
+					i->second->membership.port = port;
+					// Запоминаем адрес группы рассылки
+					i->second->membership.group.assign(group.begin(), group.end());
+					// Запоминаем адрес сетевого интерфейса подписки
+					i->second->membership.source.assign(source.begin(), source.end());
+					// Отмечаем вступление как отложенное
+					i->second->membership.active = true;
+					// Выводим успешный результат
+					return true;
+				}
+				/**
 				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
@@ -53190,12 +53360,14 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (ret.first->second.get());
-								// Выполняем создание сокета
-								if(!::io::socket(client, &this->_eth, this->_log))
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Если сокет не создан
-								else {
+								/**
+								 * Сокет здесь НЕ заводится намеренно
+								 *
+								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
+								 * опций события известен целиком: часть из них ядро принимает прямо
+								 * при создании сокета, и отдельные обращения за ними становятся не нужны
+								 */
+								{
 									// Выполняем инициализацию объекта хоста клиента
 									client->target = make_unique <net::attr_uds_t> ();
 									// Устанавливаем тип пакета как файловая система
@@ -53274,12 +53446,14 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (ret.first->second.get());
-								// Выполняем создание сокета
-								if(!::io::socket(client, &this->_eth, this->_log))
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Если сокет не создан
-								else {
+								/**
+								 * Сокет здесь НЕ заводится намеренно
+								 *
+								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
+								 * опций события известен целиком: часть из них ядро принимает прямо
+								 * при создании сокета, и отдельные обращения за ними становятся не нужны
+								 */
+								{
 									// Выполняем инициализацию объекта хоста клиента
 									client->target = make_unique <net::attr_net_t> ();
 									// Выполняем инициализацию объекта IP-адреса клиента
@@ -53425,12 +53599,14 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект сервера
 								::io::server_t * server = awh_cast <::io::server_t *> (ret.first->second.get());
-								// Выполняем создание сокета
-								if(!::io::socket(server, &this->_eth, this->_log))
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Если сокет не создан
-								else {
+								/**
+								 * Сокет здесь НЕ заводится намеренно
+								 *
+								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
+								 * опций события известен целиком: часть из них ядро принимает прямо
+								 * при создании сокета, и отдельные обращения за ними становятся не нужны
+								 */
+								{
 									// Выполняем инициализацию объекта хоста сервера
 									server->host = make_unique <net::attr_uds_t> ();
 									// Устанавливаем тип пакета как файловая система
@@ -53503,12 +53679,14 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект сервера
 								::io::server_t * server = awh_cast <::io::server_t *> (ret.first->second.get());
-								// Выполняем создание сокета
-								if(!::io::socket(server, &this->_eth, this->_log))
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Если сокет не создан
-								else {
+								/**
+								 * Сокет здесь НЕ заводится намеренно
+								 *
+								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
+								 * опций события известен целиком: часть из них ядро принимает прямо
+								 * при создании сокета, и отдельные обращения за ними становятся не нужны
+								 */
+								{
 									// Выполняем инициализацию объекта хоста сервера
 									server->host = make_unique <net::attr_net_t> ();
 									/**
@@ -53911,6 +54089,22 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				// Для других типов узлов
 				default: return false;
 			}
+			/**
+			 * Если сокет ещё не заведён, опции только запоминаются
+			 *
+			 * @details Сокеты клиента и сервера заводятся при фиксации настроек
+			 * (`commit`), и до неё применять опции попросту не к чему. Фиксация
+			 * применит запомненное сама, причём часть опций - прямо при создании
+			 * сокета, без отдельных обращений к ядру
+			 */
+			if((fd == net::invalid_socket_t) &&
+			   ((i->second->state.node == event::node_t::CLIENT) ||
+			    (i->second->state.node == event::node_t::SERVER))){
+				// Запоминаем набор опций события до фиксации настроек
+				i->second->state.options = options;
+				// Выводим успешный результат
+				return true;
+			}
 			// Если файловый дескриптор события получен успешно
 			if((result = (fd != net::invalid_socket_t))){
 				// Флаг установки опции
@@ -53938,7 +54132,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 								// Если опция передана как IPV6_V6ONLY
 								if(event::options::IPV6_ONLY & options){
 									// Устанавливаем режим отображения IPv4 => IPv6
-									if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::IPV6_ONLY)))
+									if((isSetup = ((i->second->state.options & event::options::IPV6_ONLY) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::IPV6_ONLY))))
 										// Устанавливаем опцию события
 										i->second->state.options |= event::options::IPV6_ONLY;
 								// Если опция не передана как IPV6_V6ONLY, но установлена в состоянии узла
@@ -53964,7 +54158,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				// Если опция передана как NO_SIGILL
 				if(event::options::NO_SIGILL & options){
 					// Устанавливаем игнорирование сигнала SIGILL
-					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGILL)))
+					if((isSetup = ((i->second->state.options & event::options::NO_SIGILL) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGILL))))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::NO_SIGILL;
 				// Если опция не передана как NO_SIGILL, но установлена в состоянии узла
@@ -53989,7 +54183,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					// Если опция передана как NO_SIGPIPE
 					if(event::options::NO_SIGPIPE & options){
 						// Устанавливаем игнорирование сигнала SIGPIPE
-						if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGPIPE)))
+						if((isSetup = ((i->second->state.options & event::options::NO_SIGPIPE) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_SIGPIPE))))
 							// Устанавливаем опцию события
 							i->second->state.options |= event::options::NO_SIGPIPE;
 					// Если опция не передана как NO_SIGPIPE, но установлена в состоянии узла
@@ -54014,7 +54208,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 					// Если событие установлено как блокирующее
 					if(!(i->second->state.options & event::options::NO_IO_BLOCK) && !(i->second->state.options & event::options::SM_IO_BLOCK)){
 						// Устанавливаем неблокирующий режим ввода/вывода
-						if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))){
+						if((isSetup = ((i->second->state.options & event::options::NO_IO_BLOCK) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK)))){
 							// Если установлена опция SM_IO_BLOCK
 							if(event::options::SM_IO_BLOCK & options)
 								// Устанавливаем опцию события
@@ -54376,7 +54570,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						// Если опция передана как REUSE_ADDR
 						if(event::options::REUSE_ADDR & options){
 							// Устанавливаем режим повторного использования адреса
-							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_ADDR)))
+							if((isSetup = ((i->second->state.options & event::options::REUSE_ADDR) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_ADDR))))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::REUSE_ADDR;
 						// Если опция не передана как REUSE_ADDR, но установлена в состоянии узла
@@ -54398,7 +54592,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						// Если опция передана как REUSE_PORT
 						if(event::options::REUSE_PORT & options){
 							// Устанавливаем режим повторного использования порта
-							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_PORT)))
+							if((isSetup = ((i->second->state.options & event::options::REUSE_PORT) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::REUSE_PORT))))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::REUSE_PORT;
 						// Если опция не передана как REUSE_PORT, но установлена в состоянии узла
@@ -54427,7 +54621,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 						 */
 						if(event::options::HARD_CLOSE & options){
 							// Устанавливаем режим немедленного обрыва соединения
-							if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HARD_CLOSE)))
+							if((isSetup = ((i->second->state.options & event::options::HARD_CLOSE) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HARD_CLOSE))))
 								// Устанавливаем опцию события
 								i->second->state.options |= event::options::HARD_CLOSE;
 						// Если опция не передана как HARD_CLOSE, но установлена в состоянии узла
@@ -54451,7 +54645,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 							// Если опция передана как MULTICAST_LOOPBACK
 							if(event::options::MULTICAST_LOOPBACK & options){
 								// Устанавливаем режим обратной связи многоадресной передачи
-								if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::MULTICAST_LOOPBACK)))
+								if((isSetup = ((i->second->state.options & event::options::MULTICAST_LOOPBACK) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::MULTICAST_LOOPBACK))))
 									// Устанавливаем опцию события
 									i->second->state.options |= event::options::MULTICAST_LOOPBACK;
 							// Если опция не передана как MULTICAST_LOOPBACK, но установлена в состоянии узла
@@ -54520,7 +54714,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										// Если опция передана как HDRINCL
 										if(event::options::HDRINCL & options){
 											// Устанавливаем режим широковещательной передачи
-											if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HDRINCL)))
+											if((isSetup = ((i->second->state.options & event::options::HDRINCL) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::HDRINCL))))
 												// Устанавливаем опцию события
 												i->second->state.options |= event::options::HDRINCL;
 										// Если опция не передана как HDRINCL, но установлена в состоянии узла
@@ -54557,7 +54751,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если опция передана как TCP_CORKING
 											if(event::options::TCP_CORKING & options){
 												// Активируем алгоритм TCP/CORK
-												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORKING)))
+												if((isSetup = ((i->second->state.options & event::options::TCP_CORKING) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORKING))))
 													// Устанавливаем опцию события
 													i->second->state.options |= event::options::TCP_CORKING;
 											// Если опция не передана как TCP_CORKING, но установлена в состоянии узла
@@ -54661,7 +54855,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									// Если опция передана как BROADCAST
 									if(event::options::BROADCAST & options){
 										// Устанавливаем режим широковещательной передачи
-										if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::BROADCAST)))
+										if((isSetup = ((i->second->state.options & event::options::BROADCAST) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::BROADCAST))))
 											// Устанавливаем опцию события
 											i->second->state.options |= event::options::BROADCAST;
 									// Если опция не передана как BROADCAST, но установлена в состоянии узла
@@ -54697,7 +54891,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											// Если опция передана как TCP_CORKING
 											if(event::options::TCP_CORKING & options){
 												// Активируем алгоритм TCP/CORK
-												if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORKING)))
+												if((isSetup = ((i->second->state.options & event::options::TCP_CORKING) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::TCP_CORKING))))
 													// Устанавливаем опцию события
 													i->second->state.options |= event::options::TCP_CORKING;
 											// Если опция не передана как TCP_CORKING, но установлена в состоянии узла
@@ -54756,7 +54950,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				// Если опция передана как CLOSE_ON_EXEC
 				if(event::options::CLOSE_ON_EXEC & options){
 					// Устанавливаем режим закрытия дескриптора при выполнении exec
-					if((isSetup = this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::CLOSE_ON_EXEC)))
+					if((isSetup = ((i->second->state.options & event::options::CLOSE_ON_EXEC) || this->_eth.socket.switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::CLOSE_ON_EXEC))))
 						// Устанавливаем опцию события
 						i->second->state.options |= event::options::CLOSE_ON_EXEC;
 				// Если опция не передана как CLOSE_ON_EXEC, но установлена в состоянии узла

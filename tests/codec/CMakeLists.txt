@@ -74,6 +74,7 @@ if (${GTest_FOUND})
             ini/encoding.cpp
             ini/reader.cpp
             ini/writer.cpp
+            ini/document.cpp
         )
 
         # Библиотеки GTest для линковки

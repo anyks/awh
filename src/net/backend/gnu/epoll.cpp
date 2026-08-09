@@ -1381,6 +1381,34 @@ namespace io {
 	} peer_callbacks_t;
 
 	/**
+	 * @brief Структура отложенного вступления в группу рассылки
+	 *
+	 * @details Вступление привязывает дескриптор к порту группы, чего фиксация
+	 * настроек не делает, оттого звать его следует ДО неё. Но сокет заводится
+	 * самой фиксацией, и до неё вступать попросту не по чему: доводы копятся
+	 * здесь, а применяются сразу после того, как сокет заведён
+	 *
+	 * @note Порядок «привязка - вступление» соблюдает теперь движок, а не
+	 * вызывающая сторона: прежде его нарушение ничем не наказывалось и просто
+	 * тихо не срабатывало
+	 *
+	 */
+	typedef struct Deferred_Membership {
+		bool active;           // Признак отложенного вступления
+		uint16_t port;         // Порт группы рассылки
+		event::mode_t mode;    // Режим вступления или выхода
+		string group;          // Адрес группы рассылки
+		string source;         // Адрес сетевого интерфейса подписки
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Deferred_Membership() noexcept :
+		 active(false), port(0), mode(event::mode_t::DISABLED),
+		 group{""}, source{""} {}
+	} deferred_membership_t;
+
+	/**
 	 * @brief Структура узла события
 	 *
 	 */
@@ -1391,6 +1419,8 @@ namespace io {
 		event::id_t id;
 		// Счётчик ссылок на событие
 		atomic_uint16_t refs;
+		// Отложенное вступление в группу рассылки
+		deferred_membership_t membership;
 		/**
 		 * @brief Конструктор
 		 *
@@ -27333,6 +27363,33 @@ namespace io {
 	 * @return     результат создания сокета
 	 *
 	 */
+	/**
+	 * @brief Функция получения дескриптора сокета узла события
+	 *
+	 * @details Отвечает дескриптором для тех узлов, у которых сокет заводится
+	 * фиксацией настроек; для прочих отвечает недействительным значением
+	 *
+	 * @param node узел события
+	 * @return     дескриптор сокета узла события
+	 *
+	 */
+	static net::socket_t descriptor(const ::io::node_t * node) noexcept {
+		/**
+		 * Определяем чем является текущий узел
+		 */
+		switch(static_cast <uint8_t> (node->state.node)){
+			// Если узел является клиентом
+			case static_cast <uint8_t> (event::node_t::CLIENT):
+				// Выводим дескриптор сокета клиента
+				return awh_cast <const ::io::client_t *> (node)->transfer.fd;
+			// Если узел является сервером
+			case static_cast <uint8_t> (event::node_t::SERVER):
+				// Выводим дескриптор сокета сервера
+				return awh_cast <const ::io::server_t *> (node)->fd;
+		}
+		// Выводим недействительный дескриптор сокета
+		return net::invalid_socket_t;
+	}
 	static bool socket(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
@@ -36354,6 +36411,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							client->state.options = this->_eth.socket.inborn(options);
 							// Применяем к заведённому сокету накопленные настройки события
 							this->setOptions(id, options);
+							/**
+							 * Если вступление в группу рассылки было отложено, исполняем его
+							 *
+							 * @note Порядок здесь обязателен: вступление привязывает дескриптор к
+							 * порту группы, и потому идёт сразу за заведением сокета, прежде всей
+							 * остальной работы по фиксации настроек
+							 */
+							if(client->membership.active){
+								// Снимаем признак отложенного вступления
+								client->membership.active = false;
+								// Выполняем отложенное вступление в группу рассылки
+								this->membership(id, client->membership.mode, client->membership.group, client->membership.source, client->membership.port);
+							}
 						}
 						// Устанавливаем статус события в состояние инициализировано
 						client->state.status = event::status_t::INITIAL;
@@ -38127,6 +38197,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							server->state.options = this->_eth.socket.inborn(options);
 							// Применяем к заведённому сокету накопленные настройки события
 							this->setOptions(id, options);
+							/**
+							 * Если вступление в группу рассылки было отложено, исполняем его
+							 *
+							 * @note Порядок здесь обязателен: вступление привязывает дескриптор к
+							 * порту группы, и потому идёт сразу за заведением сокета, прежде всей
+							 * остальной работы по фиксации настроек
+							 */
+							if(server->membership.active){
+								// Снимаем признак отложенного вступления
+								server->membership.active = false;
+								// Выполняем отложенное вступление в группу рассылки
+								this->membership(id, server->membership.mode, server->membership.group, server->membership.source, server->membership.port);
+							}
 						}
 						// Устанавливаем статус события в состояние инициализировано
 						server->state.status = event::status_t::INITIAL;
@@ -51139,6 +51222,31 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
+				/**
+				 * Если сокет ещё не заведён, вступление откладывается до фиксации
+				 *
+				 * @details Вступление обязано идти ДО фиксации настроек - оно само
+				 * привязывает дескриптор к порту группы. Но сокет заводит именно
+				 * фиксация, оттого доводы копятся, а применяются сразу после того,
+				 * как сокет заведён: порядок «привязка - вступление» соблюдается,
+				 * и соблюдает его теперь движок, а не вызывающая сторона
+				 */
+				if((::io::descriptor(i->second.get()) == net::invalid_socket_t) &&
+				   ((i->second->state.node == event::node_t::CLIENT) ||
+				    (i->second->state.node == event::node_t::SERVER))){
+					// Запоминаем режим вступления в группу рассылки
+					i->second->membership.mode = mode;
+					// Запоминаем порт группы рассылки
+					i->second->membership.port = port;
+					// Запоминаем адрес группы рассылки
+					i->second->membership.group.assign(group.begin(), group.end());
+					// Запоминаем адрес сетевого интерфейса подписки
+					i->second->membership.source.assign(source.begin(), source.end());
+					// Отмечаем вступление как отложенное
+					i->second->membership.active = true;
+					// Выводим успешный результат
+					return true;
+				}
 				/**
 				 * Определяем чем является текущий узел
 				 */

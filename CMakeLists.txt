@@ -786,6 +786,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/codec/ini/encoding.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/ini/reader.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/ini/writer.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/ini/document.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
@@ -1150,6 +1151,15 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(CODEC_APP_XML_NUMERIC_NAME codec-xml-numeric)
     # Указываем что нужно собрать приложение работы с контейнером XML
     option(CMAKE_BUILD_CODEC_XML_APP_SAMPLE "Build XML codec app sample" ON)
+
+    # Устанавливаем имя приложения потокового чтения текста настроек
+    SET(CODEC_APP_INI_READER_NAME codec-ini-reader)
+    # Устанавливаем имя приложения работы с деревом настроек
+    SET(CODEC_APP_INI_DOCUMENT_NAME codec-ini-document)
+    # Устанавливаем имя приложения записи текста настроек
+    SET(CODEC_APP_INI_WRITER_NAME codec-ini-writer)
+    # Указываем что нужно собрать приложение работы с контейнером INI
+    option(CMAKE_BUILD_CODEC_INI_APP_SAMPLE "Build INI codec app sample" ON)
 
     # Устанавливаем имя приложения блочной компрессии данных
     SET(COMPRESSOR_APP_BLOCK_NAME compressor-block)
@@ -1797,6 +1807,22 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample XML Codec: No\n")
     endif (${CMAKE_BUILD_CODEC_XML_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с контейнером INI
+    if (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample INI Codec: Yes\n")
+        # Выполняем создание приложения потокового чтения текста настроек
+        add_sample(${CODEC_APP_INI_READER_NAME} sample/codec/ini-reader.cpp codec)
+        # Выполняем создание приложения работы с деревом настроек
+        add_sample(${CODEC_APP_INI_DOCUMENT_NAME} sample/codec/ini-document.cpp codec)
+        # Выполняем создание приложения записи текста настроек
+        add_sample(${CODEC_APP_INI_WRITER_NAME} sample/codec/ini-writer.cpp codec)
+    # Если не нужно собирать семплы для работы с контейнером INI
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample INI Codec: No\n")
+    endif (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -2737,6 +2763,31 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_XML_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером INI
+        if (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения текста настроек
+            target_link_libraries(
+                ${CODEC_APP_INI_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом настроек
+            target_link_libraries(
+                ${CODEC_APP_INI_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения записи текста настроек
+            target_link_libraries(
+                ${CODEC_APP_INI_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -3839,6 +3890,34 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_XML_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером INI
+        if (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения текста настроек
+            target_link_libraries(
+                ${CODEC_APP_INI_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом настроек
+            target_link_libraries(
+                ${CODEC_APP_INI_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения записи текста настроек
+            target_link_libraries(
+                ${CODEC_APP_INI_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
