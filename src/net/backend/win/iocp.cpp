@@ -90,7 +90,9 @@
  * Стандартные заголовочные файлы
  */
 #include <deque>
+#include <set>
 #include <vector>
+#include <unordered_map>
 #include <memory>
 #include <string>
 
@@ -457,6 +459,467 @@ namespace {
 
 
 	/**
+	 * @brief Идентификатор срока пользовательского таймера
+	 *
+	 * @details Идентификатор входит в ключ поиска вместе с идентификатором события,
+	 *          поэтому обязан не совпадать с идентификаторами внутренних сроков:
+	 *          чтение - 1, запись - 2, подключение - 3, переподключение - 4,
+	 *          ограничение полосы на чтение и запись - 5 и 6. У пользовательского
+	 *          таймера на событие приходится ровно один срок, оттого одного
+	 *          значения достаточно
+	 *
+	 * @note Раскладка эта взята у эталонных движков намеренно: сроки у них те же, и
+	 *       расхождение в номерах сбивало бы с толку при сличении
+	 *
+	 */
+	constexpr uint8_t __AWH_USER_TIMEOUT_ID__ = 7;
+
+	/**
+	 * @brief Срок события
+	 *
+	 * @note Уложен плотно по той же причине, что и состояние узла: сроков у
+	 *       нагруженного сервера столько же, сколько событий
+	 *
+	 */
+	struct Timeout {
+		uint8_t id;                       // Идентификатор срока
+		uint32_t seq;                     // Порядковый номер постановки срока
+		uint32_t delay;                   // Задержка срока в миллисекундах
+		awh::event::usage_t usage;        // Порядок использования срока
+		awh::event::status_t status;      // Состояние срока
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param id идентификатор срока
+		 *
+		 */
+		explicit Timeout(const uint8_t id) noexcept :
+		 id(id), seq(0), delay(0),
+		 usage(awh::event::usage_t::DISPOSABLE),
+		 status(awh::event::status_t::NONE) {}
+	} __attribute__((packed));
+
+	/**
+	 * @brief Узел пользовательского таймера
+	 *
+	 * @details Одноразовый таймер и повторяющийся отличаются одним лишь видом узла:
+	 *          срок у них общего устройства, и обслуживает их одна и та же структура
+	 *          сроков, что и внутренние сроки чтения, записи и подключения
+	 *
+	 */
+	struct Timer : public Node {
+		Timeout timeout;                  // Срок срабатывания таймера
+		Callbacks callbacks;              // Обратные вызовы узла
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Timer() noexcept : timeout(__AWH_USER_TIMEOUT_ID__) {}
+	};
+
+	/**
+	 * @brief Функция получения текущего мгновения по монотонным часам
+	 *
+	 * @details Часы эти не зависят ни от перевода системного времени, ни от смены
+	 *          часового пояса: срок, поставленный на две секунды вперёд, истечёт
+	 *          ровно через две секунды, что бы ни случилось с календарём машины
+	 *
+	 * @note Взяты именно GetTickCount64, а не QueryPerformanceCounter: сроки движка
+	 *       задаются миллисекундами, и точность выше миллисекунды здесь не нужна
+	 *       вовсе, а стоит она обращения к счётчику тактов процессора
+	 *
+	 * @return текущее мгновение в миллисекундах
+	 *
+	 */
+	uint64_t __awh_now__() noexcept {
+		// Выводим текущее мгновение по монотонным часам
+		return static_cast <uint64_t> (::GetTickCount64());
+	}
+
+	/**
+	 * @brief Структура сроков событий
+	 *
+	 * @details Своя структура сроков заведена намеренно: система здесь опрашивается
+	 *          одним лишь ближайшим сроком, а весь их учёт движок ведёт сам. Тем и
+	 *          снимается ограничение на число таймеров - их столько, сколько
+	 *          событий, а объектов ядра под них не заводится ни одного
+	 *
+	 * @note Порядок этот взят у эталонных движков: там на весь цикл событий
+	 *       приходится один таймер ядра, поставленный на ближайший срок
+	 *
+	 */
+	namespace deadline {
+		/**
+		 * @brief Ключ поиска срока
+		 *
+		 * @details Собран из идентификатора события и идентификатора срока: у одного
+		 *          события сроков несколько - чтения, записи, подключения, - и
+		 *          различать их обязано что-то помимо события
+		 *
+		 */
+		struct Key {
+			uint64_t packed;              // Упакованный ключ поиска
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param tid идентификатор срока
+			 * @param eid идентификатор события
+			 *
+			 */
+			Key(const uint8_t tid, const awh::event::id_t eid) noexcept :
+			 packed((static_cast <uint64_t> (eid) << 8) | tid) {}
+			/**
+			 * @brief Оператор сравнения ключей
+			 *
+			 * @param key ключ, с каким ведётся сравнение
+			 * @return    признак совпадения ключей
+			 *
+			 */
+			bool operator == (const Key & key) const noexcept {
+				// Выводим признак совпадения ключей
+				return (this->packed == key.packed);
+			}
+		};
+
+		/**
+		 * @brief Хэширование ключа поиска срока
+		 *
+		 */
+		struct Hash {
+			/**
+			 * @brief Оператор хэширования ключа
+			 *
+			 * @param key хэшируемый ключ
+			 * @return    хэш ключа
+			 *
+			 */
+			size_t operator () (const Key & key) const noexcept {
+				// Получаем упакованный ключ
+				uint64_t result = key.packed;
+				// Выполняем перемешивание старших разрядов с младшими
+				result ^= (result >> 33);
+				// Выполняем умножение на постоянную перемешивания
+				result *= 0xFF51AFD7ED558CCDULL;
+				// Выполняем повторное перемешивание разрядов
+				result ^= (result >> 33);
+				// Выполняем умножение на вторую постоянную перемешивания
+				result *= 0xC4CEB9FE1A85EC53ULL;
+				// Выполняем окончательное перемешивание разрядов
+				result ^= (result >> 33);
+				// Выводим хэш ключа
+				return static_cast <size_t> (result);
+			}
+		};
+
+		/**
+		 * @brief Запись о поставленном сроке
+		 *
+		 */
+		struct Record {
+			uint64_t deadline;            // Мгновение истечения срока
+			awh::event::id_t eid;         // Идентификатор события
+			uint32_t seq;                 // Порядковый номер постановки срока
+			uint8_t tid;                  // Идентификатор срока
+			/**
+			 * @brief Оператор сравнения записей
+			 *
+			 * @details Записи упорядочены по мгновению истечения, а при совпадении - по
+			 *          событию и сроку: два разных срока с одним мгновением обязаны
+			 *          различаться, иначе множество удержит лишь один из них
+			 *
+			 * @param record запись, с какой ведётся сравнение
+			 * @return       признак того, что запись истекает прежде переданной
+			 *
+			 */
+			bool operator < (const Record & record) const noexcept {
+				// Если мгновения истечения не совпадают - упорядочиваем по ним
+				if(this->deadline != record.deadline)
+					// Выводим признак более раннего истечения
+					return (this->deadline < record.deadline);
+				// Если события не совпадают - упорядочиваем по ним
+				if(this->eid != record.eid)
+					// Выводим признак меньшего идентификатора события
+					return (this->eid < record.eid);
+				// Упорядочиваем по идентификатору срока
+				return (this->tid < record.tid);
+			}
+		};
+
+		/**
+		 * Структура простая: упорядоченное множество с хэш-таблицей положений
+		 *
+		 * @details Скромна по памяти, но каждая постановка срока отводит по узлу в
+		 *          обеих. Умолчанием служит она - как и прочие умолчания движка,
+		 *          рассчитана на самую слабую машину и самый общий случай
+		 *
+		 */
+		// Упорядоченное множество поставленных сроков
+		std::set <Record> __awh_ordered__;
+		// Хэш-таблица положений сроков в упорядоченном множестве
+		std::unordered_map <Key, std::set <Record>::iterator, Hash> __awh_index__;
+		/**
+		 * Структура сложная: двоичная куча с отложенным удалением
+		 *
+		 * @details К отводу памяти не обращается вовсе: куча живёт в одном отрезке,
+		 *          который наращивается лишь до наибольшего числа сроков за всё время
+		 *          работы. Снятый срок из кучи не изымается - изъятие из середины
+		 *          стоило бы перестроения, - а помечается устаревшим порядковым
+		 *          номером и отбрасывается при извлечении
+		 *
+		 * @note Порядковый номер и есть то, чем снятие отличается от постановки:
+		 *       всякая постановка его наращивает, и запись с прежним номером
+		 *       становится недействительной сама собой
+		 *
+		 */
+		// Двоичная куча поставленных сроков
+		std::vector <Record> __awh_heap__;
+		// Число действительных сроков в куче
+		size_t __awh_alive__ = 0;
+
+		/**
+		 * @brief Функция подъёма записи по куче
+		 *
+		 * @param index положение поднимаемой записи
+		 *
+		 */
+		void __awh_sift_up__(size_t index) noexcept {
+			// Поднимаем запись, пока она истекает прежде своего родителя
+			while(index > 0){
+				// Получаем положение родителя записи
+				const size_t parent = ((index - 1) / 2);
+				// Если родитель истекает не позже - подъём окончен
+				if(!(__awh_heap__[index] < __awh_heap__[parent]))
+					// Выходим из цикла подъёма
+					break;
+				// Меняем запись с родителем местами
+				std::swap(__awh_heap__[index], __awh_heap__[parent]);
+				// Переходим к положению родителя
+				index = parent;
+			}
+		}
+
+		/**
+		 * @brief Функция опускания записи по куче
+		 *
+		 * @param index положение опускаемой записи
+		 *
+		 */
+		void __awh_sift_down__(size_t index) noexcept {
+			// Опускаем запись, пока у неё есть потомки
+			while(true){
+				// Получаем положение левого потомка
+				const size_t left = ((index * 2) + 1);
+				// Получаем положение правого потомка
+				const size_t right = (left + 1);
+				// Положение записи, истекающей раньше прочих
+				size_t least = index;
+				// Если левый потомок истекает раньше
+				if((left < __awh_heap__.size()) && (__awh_heap__[left] < __awh_heap__[least]))
+					// Запоминаем положение левого потомка
+					least = left;
+				// Если правый потомок истекает раньше
+				if((right < __awh_heap__.size()) && (__awh_heap__[right] < __awh_heap__[least]))
+					// Запоминаем положение правого потомка
+					least = right;
+				// Если запись истекает раньше обоих потомков - опускание окончено
+				if(least == index)
+					// Выходим из цикла опускания
+					break;
+				// Меняем запись с потомком местами
+				std::swap(__awh_heap__[index], __awh_heap__[least]);
+				// Переходим к положению потомка
+				index = least;
+			}
+		}
+
+		/**
+		 * @brief Функция постановки срока
+		 *
+		 * @param tm       срок, какой ставится
+		 * @param eid      идентификатор события
+		 * @param deadline мгновение истечения срока
+		 *
+		 */
+		void set(Timeout & tm, const awh::event::id_t eid, const uint64_t deadline) noexcept {
+			// Наращиваем порядковый номер постановки, обесценивая прежнюю запись
+			tm.seq++;
+			// Переводим срок в состояние ожидания срабатывания
+			tm.status = awh::event::status_t::PENDING;
+			// Составляем запись о поставленном сроке
+			const Record record = {deadline, eid, tm.seq, tm.id};
+			/**
+			 * Определяем вид структуры сроков
+			 */
+			switch(static_cast <uint8_t> (__awh_timer__)){
+				// Если структура сроков простая
+				case static_cast <uint8_t> (awh::event::timer_t::SIMPLE): {
+					// Составляем ключ поиска срока
+					const Key key(tm.id, eid);
+					// Выполняем поиск прежде поставленного срока
+					auto i = __awh_index__.find(key);
+					// Если срок уже был поставлен
+					if(i != __awh_index__.end()){
+						// Изымаем прежнюю запись из упорядоченного множества
+						__awh_ordered__.erase(i->second);
+						// Изымаем прежнее положение из хэш-таблицы
+						__awh_index__.erase(i);
+					}
+					// Заносим запись в упорядоченное множество и запоминаем её положение
+					__awh_index__.emplace(key, __awh_ordered__.insert(record).first);
+				} break;
+				// Если структура сроков сложная
+				case static_cast <uint8_t> (awh::event::timer_t::DIFFICULT): {
+					// Заносим запись в конец кучи
+					__awh_heap__.push_back(record);
+					// Поднимаем запись на своё место
+					__awh_sift_up__(__awh_heap__.size() - 1);
+					// Наращиваем счётчик действительных сроков
+					__awh_alive__++;
+				} break;
+			}
+		}
+
+		/**
+		 * @brief Функция снятия срока
+		 *
+		 * @param tm  снимаемый срок
+		 * @param eid идентификатор события
+		 *
+		 */
+		void cancel(Timeout & tm, const awh::event::id_t eid) noexcept {
+			// Если срок не поставлен - снимать нечего
+			if(tm.status != awh::event::status_t::PENDING)
+				// Выходим из функции
+				return;
+			// Снимаем срок с состояния ожидания срабатывания
+			tm.status = awh::event::status_t::NONE;
+			// Наращиваем порядковый номер, обесценивая поставленную запись
+			tm.seq++;
+			/**
+			 * Определяем вид структуры сроков
+			 */
+			switch(static_cast <uint8_t> (__awh_timer__)){
+				// Если структура сроков простая
+				case static_cast <uint8_t> (awh::event::timer_t::SIMPLE): {
+					// Выполняем поиск поставленного срока
+					auto i = __awh_index__.find(Key(tm.id, eid));
+					// Если срок найден
+					if(i != __awh_index__.end()){
+						// Изымаем запись из упорядоченного множества
+						__awh_ordered__.erase(i->second);
+						// Изымаем положение из хэш-таблицы
+						__awh_index__.erase(i);
+					}
+				} break;
+				/**
+				 * Если структура сроков сложная - запись остаётся в куче помеченной
+				 * устаревшей и отбрасывается при извлечении
+				 */
+				case static_cast <uint8_t> (awh::event::timer_t::DIFFICULT):
+					// Убавляем счётчик действительных сроков
+					__awh_alive__ -= (__awh_alive__ > 0 ? 1 : 0);
+				break;
+			}
+		}
+
+		/**
+		 * @brief Функция получения ближайшего мгновения истечения
+		 *
+		 * @return ближайшее мгновение истечения, либо предельное значение при
+		 *         отсутствии поставленных сроков
+		 *
+		 */
+		uint64_t nearest() noexcept {
+			/**
+			 * Определяем вид структуры сроков
+			 */
+			switch(static_cast <uint8_t> (__awh_timer__)){
+				// Если структура сроков простая
+				case static_cast <uint8_t> (awh::event::timer_t::SIMPLE):
+					// Выводим мгновение истечения первой записи множества
+					return (__awh_ordered__.empty() ? UINT64_MAX : __awh_ordered__.begin()->deadline);
+				// Если структура сроков сложная
+				case static_cast <uint8_t> (awh::event::timer_t::DIFFICULT):
+					// Выводим мгновение истечения вершины кучи
+					return (__awh_heap__.empty() ? UINT64_MAX : __awh_heap__.front().deadline);
+			}
+			// Выводим признак отсутствия поставленных сроков
+			return UINT64_MAX;
+		}
+
+		/**
+		 * @brief Функция извлечения истёкшего срока
+		 *
+		 * @details Извлекается ровно один срок за вызов: срабатывание вправе завести
+		 *          новые сроки и уничтожить событие, и держать в руках список
+		 *          извлечённого было бы небезопасно
+		 *
+		 * @param moment мгновение, по какому определяется истечение
+		 * @param record извлечённая запись
+		 * @return       признак того, что истёкший срок найден
+		 *
+		 */
+		bool expire(const uint64_t moment, Record & record) noexcept {
+			/**
+			 * Определяем вид структуры сроков
+			 */
+			switch(static_cast <uint8_t> (__awh_timer__)){
+				// Если структура сроков простая
+				case static_cast <uint8_t> (awh::event::timer_t::SIMPLE): {
+					// Если сроков не поставлено либо ближайший ещё не истёк
+					if(__awh_ordered__.empty() || (__awh_ordered__.begin()->deadline > moment))
+						// Выводим признак отсутствия истёкших сроков
+						return false;
+					// Запоминаем извлекаемую запись
+					record = (* __awh_ordered__.begin());
+					// Изымаем положение записи из хэш-таблицы
+					__awh_index__.erase(Key(record.tid, record.eid));
+					// Изымаем запись из упорядоченного множества
+					__awh_ordered__.erase(__awh_ordered__.begin());
+					// Выводим признак найденного истёкшего срока
+					return true;
+				}
+				// Если структура сроков сложная
+				case static_cast <uint8_t> (awh::event::timer_t::DIFFICULT): {
+					// Если куча пуста либо вершина её ещё не истекла
+					if(__awh_heap__.empty() || (__awh_heap__.front().deadline > moment))
+						// Выводим признак отсутствия истёкших сроков
+						return false;
+					// Запоминаем извлекаемую запись
+					record = __awh_heap__.front();
+					// Переносим последнюю запись кучи на её вершину
+					__awh_heap__.front() = __awh_heap__.back();
+					// Укорачиваем кучу на одну запись
+					__awh_heap__.pop_back();
+					// Опускаем вершину на своё место
+					if(!__awh_heap__.empty())
+						// Выполняем опускание вершины кучи
+						__awh_sift_down__(0);
+					// Выводим признак найденного истёкшего срока
+					return true;
+				}
+			}
+			// Выводим признак отсутствия истёкших сроков
+			return false;
+		}
+
+		/**
+		 * @brief Функция очистки всех поставленных сроков
+		 *
+		 */
+		void clear() noexcept {
+			// Очищаем упорядоченное множество сроков
+			__awh_ordered__.clear();
+			// Очищаем хэш-таблицу положений сроков
+			__awh_index__.clear();
+			// Очищаем кучу сроков
+			__awh_heap__.clear();
+			// Сбрасываем счётчик действительных сроков
+			__awh_alive__ = 0;
+		}
+	}
+
+	/**
 	 * @brief Функция приведения узла к узлу, ведущему обмен данными
 	 *
 	 * @details Приведение ведётся по виду узла, а не опросом сведений о типе:
@@ -573,6 +1036,12 @@ namespace {
 			case static_cast <uint8_t> (awh::event::node_t::NOTIFY):
 				// Выводим набор вызовов узла пробуждения
 				return &static_cast <Notify *> (item)->callbacks;
+			// Если узел является одноразовым таймером
+			case static_cast <uint8_t> (awh::event::node_t::TIMEOUT):
+			// Если узел является повторяющимся таймером
+			case static_cast <uint8_t> (awh::event::node_t::INTERVAL):
+				// Выводим набор вызовов таймера
+				return &static_cast <Timer *> (item)->callbacks;
 		}
 		// Выводим пустое значение
 		return nullptr;
@@ -652,6 +1121,42 @@ namespace {
 	}
 
 	/**
+	 * @brief Функция получения срока узла
+	 *
+	 * @details Срок этот есть у таймеров и у узлов обмена: у первых он определяет
+	 *          срабатывание, у вторых - предел ожидания чтения, записи либо
+	 *          подключения. Пустое значение означает, что виду узла срок этот не
+	 *          положен вовсе
+	 *
+	 * @param item   узел, у какого спрашивается срок
+	 * @param action действие, к какому срок относится
+	 * @return       срок узла, либо пустое значение
+	 *
+	 */
+	Timeout * __awh_timeout__(Node * item, const awh::event::action_t action) noexcept {
+		// Если узел не передан
+		if(item == nullptr)
+			// Выводим пустое значение
+			return nullptr;
+		/**
+		 * Определяем вид узла
+		 */
+		switch(static_cast <uint8_t> (item->state.node)){
+			// Если узел является одноразовым таймером
+			case static_cast <uint8_t> (awh::event::node_t::TIMEOUT):
+			// Если узел является повторяющимся таймером
+			case static_cast <uint8_t> (awh::event::node_t::INTERVAL):
+				/**
+				 * Таймеру положен один-единственный срок - его собственный, - и действия
+				 * чтения либо записи к нему не относятся вовсе
+				 */
+				return ((action == awh::event::action_t::NONE) ? &static_cast <Timer *> (item)->timeout : nullptr);
+		}
+		// Выводим пустое значение
+		return nullptr;
+	}
+
+	/**
 	 * @brief Функция получения конечной точки обмена узла
 	 *
 	 * @details Точка эта заводится по требованию: узлу, которому её не задавали,
@@ -697,6 +1202,118 @@ namespace {
 		}
 		// Выводим пустое значение
 		return nullptr;
+	}
+
+	/**
+	 * @brief Опережающее объявление функции поиска узла события
+	 *
+	 * @note Объявление это нужно разбору сроков: тот идёт прежде самой функции, а
+	 *       переставлять их местами нельзя - поиск опирается на список узлов, а
+	 *       разбор на закрытие узла
+	 *
+	 * @param id идентификатор события
+	 * @return   указатель на узел, либо пустое значение
+	 *
+	 */
+	Node * __awh_find__(const awh::event::id_t id) noexcept;
+
+	/**
+	 * @brief Опережающее объявление обёртки закрытия узла
+	 *
+	 * @note Объявление это нужно разбору сроков по той же причине, что и поиск
+	 *       узла: истёкший одноразовый таймер уничтожается на месте
+	 *
+	 * @param item закрываемый узел
+	 *
+	 */
+	void __awh_close__(Node * item) noexcept;
+
+	/**
+	 * @brief Функция разбора истёкших сроков событий
+	 *
+	 * @details Сроки разбираются по одному: срабатывание вправе завести новые сроки
+	 *          и уничтожить событие, и держать в руках список извлечённого было бы
+	 *          небезопасно. Извлечение же всякий раз отдаёт ближайший из оставшихся,
+	 *          и заведённое срабатыванием попадёт в разбор наравне с прочим
+	 *
+	 * @note Мгновение берётся однажды на весь разбор намеренно: иначе срок,
+	 *       поставленный срабатыванием на нулевую задержку, истекал бы тут же, и
+	 *       разбор не кончился бы никогда
+	 *
+	 */
+	void __awh_expire__() noexcept {
+		// Мгновение, по какому определяется истечение сроков
+		const uint64_t moment = __awh_now__();
+		// Извлечённая запись о сроке
+		deadline::Record record{};
+		// Разбираем истёкшие сроки по одному
+		while(deadline::expire(moment, record)){
+			// Выполняем поиск узла события
+			Node * item = __awh_find__(record.eid);
+			// Если узел уже уничтожен - срок его никого не касается
+			if(item == nullptr)
+				// Переходим к следующему сроку
+				continue;
+			/**
+			 * Определяем вид узла, чей срок истёк
+			 */
+			switch(static_cast <uint8_t> (item->state.node)){
+				// Если узел является одноразовым таймером
+				case static_cast <uint8_t> (awh::event::node_t::TIMEOUT):
+				// Если узел является повторяющимся таймером
+				case static_cast <uint8_t> (awh::event::node_t::INTERVAL): {
+					// Получаем узел таймера
+					Timer * timer = static_cast <Timer *> (item);
+					/**
+					 * Отбрасываем устаревшую запись
+					 *
+					 * @details Порядковый номер и есть то, чем снятие срока отличается от
+					 *          постановки: снятый срок остаётся в куче помеченным прежним
+					 *          номером, и отбрасывается он здесь. Запись же, чей срок
+					 *          сработать не должен, до вызова не доходит вовсе
+					 *
+					 */
+					if((record.seq != timer->timeout.seq) || (timer->timeout.status != awh::event::status_t::PENDING))
+						// Переходим к следующему сроку
+						continue;
+					// Снимаем срок с состояния ожидания срабатывания
+					timer->timeout.status = awh::event::status_t::NONE;
+					// Запоминаем обратный вызов на изменение состояния
+					const awh::engine::callback::status_t callback = timer->callbacks.status;
+					// Запоминаем признак повторяющегося таймера
+					const bool repeat = (timer->state.node == awh::event::node_t::INTERVAL);
+					// Запоминаем задержку таймера
+					const uint32_t delay = timer->timeout.delay;
+					// Если обратный вызов установлен
+					if(callback != nullptr)
+						// Извещаем о срабатывании таймера
+						callback(record.eid, awh::event::status_t::SUCCESS);
+					/**
+					 * Узел вправе уйти прямо из обратного вызова, оттого искать его
+					 * приходится наново, а прежний указатель к этому мгновению уже
+					 * может никуда не годиться
+					 */
+					Node * survivor = __awh_find__(record.eid);
+					// Если узел срабатывание не пережил
+					if(survivor == nullptr)
+						// Переходим к следующему сроку
+						continue;
+					// Получаем узел таймера наново
+					timer = static_cast <Timer *> (survivor);
+					// Если таймер повторяющийся и работы своей не окончил
+					if(repeat && (timer->state.status == awh::event::status_t::LAUNCHED))
+						// Ставим срок на следующий период
+						deadline::set(timer->timeout, record.eid, moment + delay);
+					// Если таймер одноразовый - уничтожаем узел его
+					else if(!repeat) {
+						// Выполняем закрытие всего, что числится за узлом
+						__awh_close__(survivor);
+						// Выполняем изъятие узла из списка заведённых
+						__awh_nodes__.erase(record.eid);
+					}
+				} break;
+			}
+		}
 	}
 
 	/**
@@ -1081,6 +1698,28 @@ namespace {
 	 *
 	 */
 	void __awh_close__(Node * item) noexcept {
+		// Если узел не передан
+		if(item == nullptr)
+			// Выходим из функции
+			return;
+		/**
+		 * Снимаем поставленные узлу сроки
+		 *
+		 * @note Снятие идёт прежде закрытия намеренно: срок, оставшийся в структуре
+		 *       после ухода узла, сработал бы по чужой памяти
+		 *
+		 */
+		switch(static_cast <uint8_t> (item->state.node)){
+			// Если узел является одноразовым таймером
+			case static_cast <uint8_t> (awh::event::node_t::TIMEOUT):
+			// Если узел является повторяющимся таймером
+			case static_cast <uint8_t> (awh::event::node_t::INTERVAL): {
+				// Получаем узел таймера
+				Timer * timer = static_cast <Timer *> (item);
+				// Снимаем срок срабатывания таймера
+				deadline::cancel(timer->timeout, timer->id);
+			} break;
+		}
 		// Приводим узел к ведущему обмен данными
 		Transfer * transfer = __awh_transfer__(item);
 		// Если узел обмена не ведёт
@@ -1223,6 +1862,20 @@ bool awh::engine::IO::commit([[maybe_unused]] const event::id_t id) noexcept {
 	if(item->state.status != event::status_t::NONE)
 		// Возвращаем отрицательный результат фиксации
 		return false;
+	/**
+	 * Таймеру заводить нечего: объекта ядра под него не создаётся вовсе
+	 *
+	 * @details Сроки движок держит своей структурой и опрашивает систему одним лишь
+	 *          ближайшим из них. Оттого таймеров может быть сколько угодно - ни
+	 *          дескриптора, ни объекта ядра ни один из них не занимает
+	 *
+	 */
+	if((item->state.node == event::node_t::TIMEOUT) || (item->state.node == event::node_t::INTERVAL)){
+		// Переводим узел в состояние настроенного
+		item->state.status = event::status_t::INITIAL;
+		// Возвращаем положительный результат фиксации
+		return true;
+	}
 	/**
 	 * Заводим сокет узлу, если за узлом стоит сокет
 	 *
@@ -2285,7 +2938,8 @@ awh::event::id_t awh::engine::IO::event([[maybe_unused]] const event::node_t nod
 	 *
 	 */
 	if((node != event::node_t::NOTIFY) && (node != event::node_t::IPC) &&
-	   (node != event::node_t::CLIENT) && (node != event::node_t::SERVER)){
+	   (node != event::node_t::CLIENT) && (node != event::node_t::SERVER) &&
+	   (node != event::node_t::TIMEOUT) && (node != event::node_t::INTERVAL)){
 		// Заносим в журнал предупреждение о неподдерживаемом виде узла
 		this->_log->print("%s: node type %u is not supported yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint16_t> (node));
 		// Возвращаем признак отсутствия заведённого узла
@@ -2321,6 +2975,13 @@ awh::event::id_t awh::engine::IO::event([[maybe_unused]] const event::node_t nod
 		case static_cast <uint8_t> (event::node_t::NOTIFY):
 			// Заводим узел пробуждения петли
 			item = std::make_unique <::Notify> ();
+		break;
+		// Если заводится узел одноразового таймера
+		case static_cast <uint8_t> (event::node_t::TIMEOUT):
+		// Если заводится узел повторяющегося таймера
+		case static_cast <uint8_t> (event::node_t::INTERVAL):
+			// Заводим узел таймера
+			item = std::make_unique <::Timer> ();
 		break;
 		// Если вид узла движку неизвестен
 		default:
@@ -2509,6 +3170,32 @@ bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
 		 *       и собеседник, пришедший в этот миг, ждал бы очереди ядра
 		 *
 		 */
+		/**
+		 * Узел таймера ставит свой срок
+		 *
+		 * @note Отсчёт ведётся от запуска, а не от установки задержки: задержку
+		 *       событию задают при настройке, а идти ей положено с пуска
+		 *
+		 */
+		if((item->state.node == event::node_t::TIMEOUT) || (item->state.node == event::node_t::INTERVAL)){
+			// Получаем узел таймера
+			::Timer * timer = static_cast <::Timer *> (item);
+			// Если задержка таймеру не задана - ставить нечего
+			if(timer->timeout.delay == 0){
+				// Заносим в журнал предупреждение об отсутствии задержки
+				this->_log->print("%s: timer %u has no delay set", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, id);
+				// Возвращаем отрицательный результат запуска
+				return false;
+			}
+			// Переводим узел в состояние выполнения
+			item->state.status = event::status_t::LAUNCHED;
+			// Ставим срок срабатывания таймера
+			::deadline::set(timer->timeout, id, ::__awh_now__() + timer->timeout.delay);
+			// Получаем функцию обратного вызова на изменение состояния
+			callback = ((callbacks != nullptr) ? callbacks->status : nullptr);
+			// Переходим к окончанию запуска узла
+			goto Launched;
+		}
 		if(item->state.node == event::node_t::SERVER){
 			// Переводим узел в состояние выполнения
 			item->state.status = event::status_t::LAUNCHED;
@@ -3435,11 +4122,18 @@ void awh::engine::IO::setUsageReadTimeout([[maybe_unused]] const event::id_t id,
  * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
-uint32_t awh::engine::IO::getTimeout([[maybe_unused]] const event::id_t id, [[maybe_unused]] const event::action_t action) const noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return uint32_t();
+uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t action) const noexcept {
+	// Получаем срок узла события
+	::Timeout * timeout = ::__awh_timeout__(::__awh_find__(id), action);
+	// Если срок узлу не положен - задержки у него нет
+	if(timeout == nullptr){
+		// Заносим в журнал предупреждение о неприменимости срока
+		this->_log->print("%s: timeout for action %u is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint16_t> (action), id);
+		// Возвращаем отсутствие задержки
+		return 0;
+	}
+	// Возвращаем задержку срока
+	return timeout->delay;
 }
 
 /**
@@ -3505,9 +4199,44 @@ uint32_t awh::engine::IO::getTimeout([[maybe_unused]] const event::id_t id, [[ma
  * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
-void awh::engine::IO::setTimeout([[maybe_unused]] const event::id_t id, [[maybe_unused]] const event::action_t action, [[maybe_unused]] const uint32_t timeout) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
+void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept {
+	// Выполняем поиск узла события
+	::Node * item = ::__awh_find__(id);
+	// Получаем срок узла события
+	::Timeout * deadline = ::__awh_timeout__(item, action);
+	// Если срок узлу не положен - устанавливать нечего
+	if(deadline == nullptr){
+		// Заносим в журнал предупреждение о неприменимости срока
+		this->_log->print("%s: timeout for action %u is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint16_t> (action), id);
+		// Выходим из метода
+		return;
+	}
+	// Устанавливаем задержку срока
+	deadline->delay = timeout;
+	/**
+	 * Устанавливаем порядок использования срока
+	 *
+	 * @details Одноразовый таймер срабатывает единожды и следом уничтожается,
+	 *          повторяющийся же перезаряжается на следующий период. Порядок этот
+	 *          определён видом узла, а не настройкой: разными видами они и заведены
+	 *
+	 */
+	deadline->usage = ((item->state.node == event::node_t::INTERVAL) ? event::usage_t::REUSABLE : event::usage_t::DISPOSABLE);
+	/**
+	 * Уже поставленный срок перезаряжается новой задержкой немедленно
+	 *
+	 * @note Порядок этот взят у эталонных движков: настройка, применённая на ходу,
+	 *       обязана вступать в силу сразу, а не с ближайшего срабатывания
+	 *
+	 */
+	if(deadline->status == event::status_t::PENDING){
+		// Снимаем прежде поставленный срок
+		::deadline::cancel(* deadline, id);
+		// Ставим срок наново, если задержка задана
+		if(deadline->delay > 0)
+			// Ставим срок на новую задержку
+			::deadline::set(* deadline, id, ::__awh_now__() + deadline->delay);
+	}
 }
 
 /**
@@ -3565,11 +4294,36 @@ void awh::engine::IO::setTimeout([[maybe_unused]] const event::id_t id, [[maybe_
  * @todo IOCP: тела у метода ещё нет — отвечает отказом
  *
  */
-bool awh::engine::IO::rearmTimeout([[maybe_unused]] const event::id_t id, [[maybe_unused]] const event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept {
-	// Заносим в журнал предупреждение об отсутствии реализации
-	this->_log->print("%s: method \"%s\" is not implemented yet", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, __FUNCTION__);
-	// Возвращаем пустой результат
-	return bool();
+bool awh::engine::IO::rearmTimeout(const event::id_t id, const event::action_t action, const uint32_t delay) noexcept {
+	// Получаем срок узла события
+	::Timeout * timeout = ::__awh_timeout__(::__awh_find__(id), action);
+	// Если срок узлу не положен - перезаряжать нечего
+	if(timeout == nullptr){
+		// Заносим в журнал предупреждение о неприменимости срока
+		this->_log->print("%s: timeout for action %u is not applicable to event %u", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <uint16_t> (action), id);
+		// Возвращаем отрицательный результат перезарядки
+		return false;
+	}
+	/**
+	 * Задержка берётся переданная, а при её отсутствии - прежняя
+	 *
+	 * @note Нулевая задержка означает продолжение с прежней, а не мгновенное
+	 *       срабатывание: так задан порядок у эталонных движков
+	 *
+	 */
+	const uint32_t period = ((delay > 0) ? delay : timeout->delay);
+	// Если задержки нет вовсе - ставить нечего
+	if(period == 0)
+		// Возвращаем отрицательный результат перезарядки
+		return false;
+	// Запоминаем задержку срока
+	timeout->delay = period;
+	// Снимаем прежде поставленный срок
+	::deadline::cancel(* timeout, id);
+	// Ставим срок наново
+	::deadline::set(* timeout, id, ::__awh_now__() + period);
+	// Возвращаем положительный результат перезарядки
+	return true;
 }
 
 /**
@@ -3838,6 +4592,8 @@ bool awh::engine::IO::reinitialize() noexcept {
 bool awh::engine::IO::deinitialize() noexcept {
 	// Выполняем уничтожение всех заведённых узлов событий
 	this->clear();
+	// Выполняем очистку всех поставленных сроков
+	::deadline::clear();
 	{
 		// Если движок был инициализирован
 		if(::__awh_initialized__)
@@ -4132,8 +4888,34 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 	static uint32_t idle = 0;
 	// Число снятых с порта завершений
 	ULONG removed = 0;
+	/**
+	 * Предел ожидания завершений подрезается ближайшим сроком
+	 *
+	 * @details Системе отдаётся один-единственный срок - ближайший из поставленных,
+	 *          - а весь их учёт движок ведёт сам. Тем и снимается ограничение на
+	 *          число таймеров: объектов ядра под них не заводится ни одного, и
+	 *          стоит их тысяча ровно столько же, сколько один
+	 *
+	 * @note Ждать дольше ближайшего срока нельзя вовсе: пробуждаться петле неоткуда
+	 *       - завершений на порту может не быть месяцами, - и срок бы попросту
+	 *       проспали
+	 *
+	 */
+	// Мгновение, по какому определяется истечение сроков
+	const uint64_t moment = ::__awh_now__();
+	// Ближайшее мгновение истечения поставленных сроков
+	const uint64_t nearest = ::deadline::nearest();
 	// Предел ожидания завершений в миллисекундах
-	const DWORD limit = (timeout < 0 ? INFINITE : static_cast <DWORD> (timeout));
+	DWORD limit = (timeout < 0 ? INFINITE : static_cast <DWORD> (timeout));
+	// Если сроки поставлены
+	if(nearest != UINT64_MAX){
+		// Определяем, сколько осталось до ближайшего срока
+		const uint64_t left = ((nearest > moment) ? (nearest - moment) : 0);
+		// Подрезаем предел ожидания ближайшим сроком
+		if((limit == INFINITE) || (static_cast <uint64_t> (limit) > left))
+			// Устанавливаем предел ожидания по ближайшему сроку
+			limit = static_cast <DWORD> (left);
+	}
 	// Если снять завершения с порта не удалось
 	if(!::GetQueuedCompletionStatusEx(port, entries.data(), static_cast <ULONG> (entries.size()), &removed, limit, FALSE)){
 		// Получаем причину отказа снятия
@@ -4145,9 +4927,12 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 		 *       вызывающий волен опрашивать движок вовсе без ожидания
 		 *
 		 */
-		if(code == WAIT_TIMEOUT)
+		if(code == WAIT_TIMEOUT){
+			// Разбираем истёкшие сроки событий
+			::__awh_expire__();
 			// Сообщаем, что обход петли выполнен
 			return true;
+		}
 		// Заносим в журнал предупреждение об отказе снятия завершений
 		this->_log->print("%s: completion port wait failed, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, code);
 		// Сообщаем об отказе опроса
@@ -4562,6 +5347,15 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			// Извещаем об уничтожении события
 			callback(id, event::status_t::DESTROYED);
 	}
+	/**
+	 * Разбираем истёкшие сроки событий
+	 *
+	 * @note Разбор идёт по завершении раздачи намеренно: обмен, состоявшийся этим
+	 *       же обходом, снимает поставленные ему сроки, и разбор прежде раздачи
+	 *       сработал бы по срокам, какие снять уже собрались
+	 *
+	 */
+	::__awh_expire__();
 	// Сообщаем, что обход петли выполнен
 	return true;
 }

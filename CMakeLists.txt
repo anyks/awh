@@ -5433,6 +5433,39 @@ if (CMAKE_BUILD_TESTS)
         endif()
     endif()
 
+    ##
+    # Каталог пакетов систем BSD добавляется к путям поиска
+    #
+    # Набор GTest ставится туда, куда его кладёт хранилище пакетов системы: у NetBSD и
+    # OpenBSD это /usr/pkg, у FreeBSD - /usr/local. Ни того, ни другого нет среди путей,
+    # где find_package() ищет по умолчанию, и поиск отвечал отказом
+    # "Could NOT find GTest (missing: GTEST_LIBRARY GTEST_INCLUDE_DIR GTEST_MAIN_LIBRARY)"
+    #
+    # Отказ этот сборку не прерывал: наборы просто не заводились, а сборка отвечала
+    # успехом - и молчание это выглядело как «наборы прошли», хотя их не было вовсе.
+    # Проверено опытом на стенде NetBSD 11.0 aarch64
+    ##
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+        # Добавляем каталог пакетов pkgsrc к путям поиска
+        list(APPEND CMAKE_PREFIX_PATH "/usr/pkg")
+    elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
+        # Добавляем каталог пакетов портов к путям поиска
+        list(APPEND CMAKE_PREFIX_PATH "/usr/local")
+    endif()
+
+    ##
+    # Отсутствие GTest объявляется отказом, а не пропускается молча
+    #
+    # Наборы просили собрать явно ключом CMAKE_BUILD_TESTS, и молчаливый их пропуск
+    # означал бы, что просьба обслужена, - тогда как ни одной проверки не собрано
+    ##
+    find_package(GTest)
+
+    # Если набор GTest не найден
+    if (NOT GTest_FOUND AND NOT GTEST_FOUND)
+        message(FATAL_ERROR "GTest not found: unit tests were requested but cannot be built. Install it (pkgin install googletest, pkg install googletest, apt install libgtest-dev) or configure without CMAKE_BUILD_TESTS")
+    endif()
+
     # Сборка тестов
     add_subdirectory(tests)
 

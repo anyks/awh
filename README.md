@@ -32,6 +32,45 @@
 - [BoringSSL](https://boringssl.googlesource.com/boringssl)
 - [GPerfTools](https://github.com/gperftools/gperftools)
 
+## Build tools
+
+The build needs CMake, Git, a C++20 compiler and **GNU Make** — the build scripts call
+`gmake` on the BSD systems, where the system `make` is a different program. Unit tests
+additionally need **GoogleTest**; without it CMake stops with an explicit error instead of
+silently producing no tests.
+
+### NetBSD
+
+```bash
+$ sudo pkgin install git cmake gmake googletest
+```
+
+> On NetBSD the packages live under `/usr/pkg`, which is not among the paths CMake searches
+> by default — the build adds it on its own, no configuration needed.
+
+> On aarch64 the vendored BoringSSL has no runtime CPU feature detection for NetBSD, so the
+> build turns it off (`OPENSSL_STATIC_ARMCAP`) and takes the features from the compiler
+> instead: NEON is always present on ARMv8, the crypto extensions follow `-march`.
+
+### FreeBSD
+
+```bash
+$ sudo pkg install git cmake gmake googletest
+```
+
+> On aarch64 the vendored GPerfTools cannot build its CPU profiler — its `getpc-inl.h` has
+> no entry for that pair of system and architecture. The build turns the profiler off and
+> keeps TcMalloc, which is what the library actually uses.
+
+### OpenBSD
+
+```bash
+$ doas pkg_add git cmake gmake googletest
+```
+
+> TcMalloc is not available on OpenBSD at all: GPerfTools calls `syscall(2)`, which OpenBSD
+> removed on purpose. The system allocator takes its place.
+
 ## To build and launch the project
 
 ### To clone the project
