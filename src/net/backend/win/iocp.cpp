@@ -90,13 +90,9 @@
  * Стандартные заголовочные файлы
  */
 #include <deque>
-#include <mutex>
-#include <thread>
 #include <vector>
 #include <memory>
-#include <atomic>
 #include <string>
-#include <condition_variable>
 
 /**
  * Подключаем единую точку подключения системных заголовков MS Windows
@@ -343,13 +339,11 @@ namespace {
 	struct Listener {
 		std::wstring name;                                   // Имя именованного канала
 		bool listener;                                       // Признак стороны, ожидающей подключения
-		std::thread reader;                                  // Поток чтения из канала
-		std::shared_ptr <std::atomic_bool> stopped;          // Признак завершения потока чтения
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Listener() noexcept : listener(false), stopped(std::make_shared <std::atomic_bool> (false)) {}
+		Listener() noexcept : listener(false) {}
 	};
 
 	/**
@@ -360,6 +354,7 @@ namespace {
 		HANDLE handle;                                       // Дескриптор именованного канала
 		awh::event::id_t peer;                               // Идентификатор узла-собеседника пары
 		std::unique_ptr <Listener> pipe;                     // Сторона канала, ожидающая подключения
+		std::vector <uint8_t> partial;                       // Собираемое сообщение, не уместившееся в буфер приёма
 		Peer_Callbacks callbacks;                            // Обратные вызовы узла
 		/**
 		 * @brief Конструктор
@@ -380,10 +375,6 @@ namespace {
 	std::unordered_map <awh::event::id_t, std::unique_ptr <Node>> __awh_nodes__;
 	// Счётчик выдачи идентификаторов событий (нулевой идентификатор означает отсутствие)
 	awh::event::id_t __awh_last_id__ = 0;
-	// Замок доступа к списку узлов
-	std::recursive_mutex __awh_mutex__;
-	// Замок ожидания петли событий
-	std::mutex __awh_wait_mutex__;
 	/**
 	 * @brief Порт завершения ввода-вывода, вокруг какого построен движок
 	 *
@@ -409,6 +400,16 @@ namespace {
 	 */
 	constexpr ULONG_PTR __AWH_KEY_WAKE__ = 0;
 	/**
+	 * @brief Итог завершения, означающий, что сообщение в буфер приёма не уместилось
+	 *
+	 * @note Значение объявлено здесь намеренно: заголовок ntstatus.h подключается
+	 *       вместе со всем набором итогов ядра и при подключённом windows.h выдаёт
+	 *       сотни предупреждений о повторном объявлении. Ради одного значения
+	 *       платить этим незачем
+	 *
+	 */
+	constexpr ULONG_PTR __AWH_STATUS_BUFFER_OVERFLOW__ = static_cast <ULONG_PTR> (0x80000005L);
+	/**
 	 * @brief Вид завершения, снятого с порта
 	 *
 	 */
@@ -418,7 +419,8 @@ namespace {
 		RECV    = 0x02, // Завершение приёма из сокета
 		SEND    = 0x03, // Завершение отправки в сокет
 		ACCEPT  = 0x04, // Завершение принятия входящей связи
-		CONNECT = 0x05  // Завершение установки исходящей связи
+		CONNECT = 0x05, // Завершение установки исходящей связи
+		LISTEN  = 0x06  // Завершение ожидания подключения встречной стороны канала
 	};
 	/**
 	 * @brief Описание начатого обмена, отдаваемое порту завершения
@@ -893,6 +895,115 @@ namespace {
 	}
 
 	/**
+	 * @brief Функция заведения приёма из именованного канала
+	 *
+	 * @details Приём этот наложенный, как и приём из сокета: он лишь заводится, а
+	 *          завершение его придёт портом. Тем канал и уравнивается с сокетом -
+	 *          ждать сообщения на своём потоке ему больше не нужно
+	 *
+	 * @note Описание обмена берётся прежнее, если оно передано: буфер его уже
+	 *       отведён и по размеру подходит
+	 *
+	 * @param item    узел канала, на котором заводится приём
+	 * @param context описание завершившегося приёма, отдаваемое под следующий
+	 * @return        признак успешного заведения приёма
+	 *
+	 */
+	bool __awh_recv_pipe__(Ipc * item, Overlapped * context = nullptr) noexcept {
+		// Если узел закрывается либо канала за ним нет
+		if((item == nullptr) || item->closing || (item->handle == INVALID_HANDLE_VALUE)){
+			// Если описание обмена передано на повторное заведение
+			if(context != nullptr)
+				// Выполняем освобождение описания обмена
+				delete context;
+			// Выводим признак неуспешного заведения
+			return false;
+		}
+		// Если описание обмена передано
+		if(context != nullptr){
+			// Очищаем описатель наложенного обмена
+			::memset(&context->overlapped, 0, sizeof(context->overlapped));
+			// Возвращаем описанию вид приёма: прийти оно могло и от ожидания подключения
+			context->operation = op_t::RECV;
+			// Возвращаем буферу приёма его полный размер
+			context->buffer.assign(AWH_EVENT_MAX_BUFFER_SIZE, 0);
+		// Если описание обмена не передано
+		} else {
+			// Заводим описание приёма
+			context = new Overlapped(op_t::RECV, item->id);
+			// Отводим место под принимаемые данные
+			context->buffer.assign(AWH_EVENT_MAX_BUFFER_SIZE, 0);
+		}
+		// Если завести приём не удалось
+		if(!::ReadFile(item->handle, context->buffer.data(), static_cast <DWORD> (context->buffer.size()), nullptr, &context->overlapped) && (::GetLastError() != ERROR_IO_PENDING)){
+			// Выполняем освобождение описания приёма
+			delete context;
+			// Выводим признак неуспешного заведения
+			return false;
+		}
+		// Отмечаем заведённый обмен незавершённым
+		item->pending++;
+		// Выводим признак успешного заведения
+		return true;
+	}
+
+	/**
+	 * @brief Функция заведения ожидания подключения встречной стороны канала
+	 *
+	 * @details Читать со стороны, к какой никто не подключён, нельзя: система
+	 *          отвечает отказом ERROR_PIPE_LISTENING. Оттого сторона ожидания
+	 *          прежде дожидается встречной, и лишь следом заводит приём
+	 *
+	 * @note Отказ ERROR_PIPE_CONNECTED означает, что встречная сторона подключилась
+	 *       прежде вызова, и отказом по существу не является: завершения от системы
+	 *       в этом случае не придёт вовсе, и оно отдаётся порту вручную - чтобы
+	 *       дальше путь был один для обоих исходов
+	 *
+	 * @param item узел канала, на котором заводится ожидание
+	 * @return     признак успешного заведения ожидания
+	 *
+	 */
+	bool __awh_listen_pipe__(Ipc * item) noexcept {
+		// Если узел закрывается либо канала за ним нет
+		if((item == nullptr) || item->closing || (item->handle == INVALID_HANDLE_VALUE))
+			// Выводим признак неуспешного заведения
+			return false;
+		// Заводим описание ожидания подключения
+		Overlapped * context = new Overlapped(op_t::LISTEN, item->id);
+		// Если завести ожидание подключения удалось сразу
+		if(::ConnectNamedPipe(item->handle, &context->overlapped)){
+			// Отмечаем заведённый обмен незавершённым
+			item->pending++;
+			// Выводим признак успешного заведения
+			return true;
+		}
+		/**
+		 * Определяем исход заведения ожидания подключения
+		 */
+		switch(::GetLastError()){
+			// Ожидание принято системой - завершение придёт портом
+			case ERROR_IO_PENDING:
+				// Отмечаем заведённый обмен незавершённым
+				item->pending++;
+			return true;
+			// Встречная сторона подключилась прежде вызова - отдаём завершение порту сами
+			case ERROR_PIPE_CONNECTED: {
+				// Если отдать завершение порту удалось
+				if((__awh_port__ != nullptr) && ::PostQueuedCompletionStatus(__awh_port__, 0, static_cast <ULONG_PTR> (item->id), &context->overlapped)){
+					// Отмечаем заведённый обмен незавершённым
+					item->pending++;
+					// Выводим признак успешного заведения
+					return true;
+				}
+			} break;
+		}
+		// Выполняем освобождение описания ожидания
+		delete context;
+		// Выводим признак неуспешного заведения
+		return false;
+	}
+
+	/**
 	 * @brief Функция заведения принятия входящей связи
 	 *
 	 * @details Сокет под принимаемую связь заводится **заранее**: система кладёт в
@@ -995,10 +1106,6 @@ namespace {
 		Ipc * ipc = __awh_ipc__(item);
 		// Если за узлом стоит именованный канал
 		if(ipc != nullptr){
-			// Если сторона канала, ожидающая подключения, заведена
-			if(ipc->pipe != nullptr)
-				// Просим поток чтения завершиться
-				ipc->pipe->stopped->store(true);
 			// Если дескриптор канала заведён
 			if(ipc->handle != INVALID_HANDLE_VALUE){
 				// Выполняем отмену всех начатых на канале обменов
@@ -1008,10 +1115,6 @@ namespace {
 				// Сбрасываем дескриптор канала
 				ipc->handle = INVALID_HANDLE_VALUE;
 			}
-			// Если поток чтения заведён
-			if((ipc->pipe != nullptr) && ipc->pipe->reader.joinable())
-				// Дожидаемся завершения потока чтения
-				ipc->pipe->reader.join();
 		}
 	}
 
@@ -1038,8 +1141,6 @@ namespace {
 	 *
 	 */
 	void __awh_wake__() noexcept {
-		// Выполняем блокировку замка ожидания
-		const std::lock_guard <std::mutex> lock(__awh_wait_mutex__);
 		// Если порт завершения заведён
 		if(__awh_port__ != nullptr)
 			// Отдаём порту завершение пробуждения без работы
@@ -1060,8 +1161,6 @@ namespace {
 	 *
 	 */
 	void __awh_post__(const awh::event::id_t id, const uint8_t * buffer, const size_t size) noexcept {
-		// Выполняем блокировку замка ожидания
-		const std::lock_guard <std::mutex> lock(__awh_wait_mutex__);
 		// Если порт завершения не заведён
 		if(__awh_port__ == nullptr)
 			// Выходим из функции
@@ -1076,169 +1175,6 @@ namespace {
 			delete context;
 	}
 
-	/**
-	 * @brief Функция запуска потока чтения из именованного канала
-	 *
-	 * @details Поток ведёт чтение вызовом ReadFile без наложения, оттого он и нужен:
-	 *          иначе ожидание сообщения остановило бы петлю событий. С приходом порта
-	 *          завершения ввода-вывода поток этот уходит - чтение станет наложенным, а
-	 *          готовность его будет снимать сама петля
-	 *
-	 * @note Канал открыт в строе сообщений, и одно чтение даёт ровно одно сообщение
-	 *       целиком. Отказ ERROR_MORE_DATA означает, что сообщение в буфер не влезло:
-	 *       буфер тогда наращивается, а остаток дочитывается следующим вызовом
-	 *
-	 * @warning Поток обращается к узлу лишь под замком и по идентификатору, а не по
-	 *          указателю: узел вправе исчезнуть между двумя чтениями
-	 *
-	 * @param id идентификатор события
-	 *
-	 */
-	void __awh_reader__(const awh::event::id_t id) noexcept {
-		// Дескриптор именованного канала, из которого ведётся чтение
-		HANDLE handle = INVALID_HANDLE_VALUE;
-		// Признак того, что узел держит сторону канала, ожидающую подключения
-		bool listener = false;
-		// Признак того, что потоку чтения следует завершиться
-		std::shared_ptr <std::atomic_bool> stopped;
-		{
-			// Выполняем блокировку замка доступа к списку узлов
-			const std::lock_guard <std::recursive_mutex> lock(__awh_mutex__);
-			// Выполняем поиск узла события
-			Node * item = __awh_find__(id);
-			// Приводим узел к узлу, за которым стоит сокет
-			::Socket * socket = ::__awh_socket__(item);
-			// Приводим узел к узлу обмена сообщениями между процессами
-			::Ipc * ipc = ::__awh_ipc__(item);
-			// Если узел не найден - читать неоткуда
-			if(item == nullptr)
-				// Завершаем работу потока чтения
-				return;
-			// Запоминаем дескриптор именованного канала
-			handle = ipc->handle;
-			// Запоминаем признак стороны, ожидающей подключения
-			// Если сторона канала не заведена - читать неоткуда
-			if((ipc == nullptr) || (ipc->pipe == nullptr))
-				// Завершаем работу потока чтения
-				return;
-			// Запоминаем признак стороны, ожидающей подключения
-			listener = ipc->pipe->listener;
-			// Запоминаем признак завершения потока чтения
-			stopped = ipc->pipe->stopped;
-		}
-		// Если дескриптор канала не получен либо признак завершения не заведён
-		if((handle == INVALID_HANDLE_VALUE) || !stopped)
-			// Завершаем работу потока чтения
-			return;
-		/**
-		 * Сторона ожидания дожидается подключения встречной
-		 *
-		 * @details Читать со стороны, к какой никто не подключён, нельзя: система
-		 *          отвечает отказом ERROR_PIPE_LISTENING. Отказ ERROR_PIPE_CONNECTED
-		 *          означает, что встречная сторона подключилась прежде вызова, и
-		 *          отказом по существу не является
-		 *
-		 */
-		if(listener){
-			// Событие завершения наложенного ожидания подключения
-			HANDLE signal = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
-			// Описание наложенной операции ожидания подключения
-			OVERLAPPED overlapped{};
-			// Привязываем событие завершения к наложенной операции
-			overlapped.hEvent = signal;
-			// Выполняем наложенное ожидание подключения встречной стороны
-			if(!::ConnectNamedPipe(handle, &overlapped)){
-				// Получаем код отказа ожидания подключения
-				const DWORD code = ::GetLastError();
-				/**
-				 * Определяем исход ожидания подключения
-				 */
-				switch(code){
-					// Ожидание принято системой - дожидаемся его завершения
-					case ERROR_IO_PENDING: {
-						// Количество переданных байт наложенной операции
-						DWORD transferred = 0;
-						// Дожидаемся завершения наложенного ожидания подключения
-						if(!::GetOverlappedResult(handle, &overlapped, &transferred, TRUE)){
-							// Закрываем событие завершения наложенной операции
-							::CloseHandle(signal);
-							// Завершаем работу потока чтения
-							return;
-						}
-					} break;
-					// Встречная сторона подключилась прежде вызова - отказом это не является
-					case ERROR_PIPE_CONNECTED: break;
-					// Всякий иной исход означает отказ
-					default: {
-						// Закрываем событие завершения наложенной операции
-						::CloseHandle(signal);
-						// Завершаем работу потока чтения
-						return;
-					}
-				}
-			}
-			// Закрываем событие завершения наложенной операции
-			::CloseHandle(signal);
-		}
-		// Событие завершения наложенных операций чтения
-		HANDLE signal = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
-		// Если событие завершения завести не удалось
-		if(signal == nullptr)
-			// Завершаем работу потока чтения
-			return;
-		// Буфер принимаемого сообщения
-		std::vector <uint8_t> buffer(4096, 0);
-		/**
-		 * Выполняем чтение до тех пор, пока канал не закроется либо не поступит
-		 * указание завершиться
-		 */
-		while(!stopped->load()){
-			// Количество принятых байт
-			DWORD received = 0;
-			// Описание наложенной операции чтения
-			OVERLAPPED overlapped{};
-			// Привязываем событие завершения к наложенной операции
-			overlapped.hEvent = signal;
-			// Сбрасываем событие завершения наложенной операции
-			::ResetEvent(signal);
-			// Выполняем наложенное чтение сообщения из именованного канала
-			BOOL result = ::ReadFile(handle, buffer.data(), static_cast <DWORD> (buffer.size()), &received, &overlapped);
-			// Если чтение принято системой к исполнению - дожидаемся его завершения
-			if(!result && (::GetLastError() == ERROR_IO_PENDING))
-				// Дожидаемся завершения наложенного чтения
-				result = ::GetOverlappedResult(handle, &overlapped, &received, TRUE);
-			// Если чтение отказом завершилось
-			if(!result){
-				// Получаем код отказа чтения
-				const DWORD code = ::GetLastError();
-				// Если сообщение в буфер не поместилось - наращиваем буфер и дочитываем
-				if(code == ERROR_MORE_DATA){
-					// Наращиваем буфер вдвое
-					buffer.resize(buffer.size() * 2, 0);
-					// Переходим к следующему чтению
-					continue;
-				}
-				// Завершаем работу потока чтения: канал закрыт другой стороной
-				break;
-			}
-			// Если сообщение принято
-			if(received > 0){
-				{
-					// Выполняем блокировку замка доступа к списку узлов
-					const std::lock_guard <std::recursive_mutex> lock(__awh_mutex__);
-					// Если узел исчез - завершаем работу потока чтения
-					if(__awh_find__(id) == nullptr)
-						// Завершаем работу потока чтения
-						break;
-				}
-				// Отдаём принятое сообщение порту завершения
-				__awh_post__(id, buffer.data(), static_cast <size_t> (received));
-			// Если сообщения не принято - лишь пробуждаем петлю событий
-			} else __awh_wake__();
-		}
-		// Закрываем событие завершения наложенных операций чтения
-		::CloseHandle(signal);
-	}
 };
 
 /**
@@ -1274,8 +1210,6 @@ namespace {
  *
  */
 bool awh::engine::IO::commit([[maybe_unused]] const event::id_t id) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Если узел не найден — фиксировать нечего
@@ -1424,8 +1358,6 @@ bool awh::engine::IO::setIface([[maybe_unused]] const event::id_t id, [[maybe_un
  *
  */
 uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Приводим узел к узлу, за которым стоит сокет
@@ -1463,8 +1395,6 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
  *
  */
 bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Получаем конечную точку обмена узла
@@ -1495,8 +1425,6 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
  *
  */
 uint16_t awh::engine::IO::getTargetPort(const event::id_t id) const noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Получаем конечную точку обмена узла
@@ -1517,8 +1445,6 @@ uint16_t awh::engine::IO::getTargetPort(const event::id_t id) const noexcept {
  *
  */
 bool awh::engine::IO::setTargetPort(const event::id_t id, const uint16_t port) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Получаем конечную точку обмена узла
@@ -1549,8 +1475,6 @@ bool awh::engine::IO::setTargetPort(const event::id_t id, const uint16_t port) n
  *
  */
 string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Приводим узел к узлу обмена сообщениями между процессами
@@ -1588,8 +1512,6 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
  *
  */
 bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Приводим узел к узлу обмена сообщениями между процессами
@@ -2110,8 +2032,6 @@ bool awh::engine::IO::destroy([[maybe_unused]] const event::id_t id) noexcept {
 	// Функция обратного вызова на изменение состояния
 	engine::callback::status_t callback = nullptr;
 	{
-		// Выполняем блокировку замка доступа к списку узлов
-		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 		// Выполняем поиск узла события
 		auto i = ::__awh_nodes__.find(id);
 		// Если узел не найден — уничтожать нечего
@@ -2173,8 +2093,6 @@ bool awh::engine::IO::destroy([[maybe_unused]] const event::id_t id) noexcept {
 std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	// Результат работы функции
 	std::array <awh::event::id_t, 2> result = {0, 0};
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Если движок не инициализирован — пару узлов завести нельзя
 	if(!::__awh_initialized__){
 		// Заносим в журнал предупреждение о неинициализированном движке
@@ -2339,8 +2257,6 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
  *
  */
 awh::event::id_t awh::engine::IO::event([[maybe_unused]] const event::node_t node, [[maybe_unused]] const event::family_t family, [[maybe_unused]] const event::type_t type, [[maybe_unused]] const event::protocol_t protocol) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Если движок не инициализирован — узел завести нельзя
 	if(!::__awh_initialized__){
 		// Заносим в журнал предупреждение о неинициализированном движке
@@ -2474,8 +2390,6 @@ bool awh::engine::IO::setSeek([[maybe_unused]] const event::id_t id, [[maybe_unu
  *
  */
 uint16_t awh::engine::IO::getOptions([[maybe_unused]] const event::id_t id) const noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Возвращаем опции события, либо признак отсутствия
@@ -2491,8 +2405,6 @@ uint16_t awh::engine::IO::getOptions([[maybe_unused]] const event::id_t id) cons
  *
  */
 bool awh::engine::IO::setOptions([[maybe_unused]] const event::id_t id, [[maybe_unused]] const uint16_t options) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Если узел не найден — устанавливать опции некому
@@ -2571,8 +2483,6 @@ bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
 	// Функция обратного вызова на изменение состояния
 	engine::callback::status_t callback = nullptr;
 	{
-		// Выполняем блокировку замка доступа к списку узлов
-		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 		// Выполняем поиск узла события
 		::Node * item = ::__awh_find__(id);
 		// Приводим узел к узлу обмена сообщениями между процессами
@@ -2618,9 +2528,9 @@ bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
 		// Получаем функцию обратного вызова на изменение состояния
 		callback = ((callbacks != nullptr) ? callbacks->status : nullptr);
 		/**
-		 * Запускаем поток чтения, если за узлом стоит настоящий именованный канал
+		 * Заводим обмен, если за узлом стоит настоящий именованный канал
 		 *
-		 * @note Поток заводится именно здесь, а не при заведении узла: до запуска
+		 * @note Заводится он именно здесь, а не при создании узла: до запуска
 		 *       события подписки на чтение ещё может не быть, и принятое сообщение
 		 *       ушло бы в никуда
 		 *
@@ -2639,10 +2549,29 @@ bool awh::engine::IO::launch([[maybe_unused]] const event::id_t id) noexcept {
 			// Если открыть свой конец канала не удалось
 			} else this->_log->print("%s: named pipe \"%ls\" could not be opened, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ipc->pipe->name.c_str(), ::GetLastError());
 		}
-		// Если за узлом стоит настоящий именованный канал, а поток чтения ещё не заведён
-		if((ipc != nullptr) && (ipc->pipe != nullptr) && (ipc->handle != INVALID_HANDLE_VALUE) && !ipc->pipe->reader.joinable())
-			// Запускаем поток чтения из именованного канала
-			ipc->pipe->reader = std::thread(&::__awh_reader__, id);
+		/**
+		 * Связываем канал с портом завершения и заводим на нём обмен
+		 *
+		 * @details Сторона, ожидающая подключения, прежде дожидается встречной:
+		 *          читать из канала, к какому никто не подключён, нельзя. Приём на
+		 *          ней заведётся сам, когда ожидание завершится. Сторона же
+		 *          подключающаяся заводит приём сразу - подключение её состоялось
+		 *          самим открытием канала
+		 *
+		 * @note Связь с портом ставится один раз на весь срок жизни канала: рвётся
+		 *       она лишь закрытием дескриптора
+		 *
+		 */
+		if((ipc != nullptr) && (ipc->handle != INVALID_HANDLE_VALUE) && (ipc->pending == 0)){
+			// Связываем канал с портом завершения
+			::CreateIoCompletionPort(ipc->handle, ::__awh_port__, static_cast <ULONG_PTR> (ipc->id), 0);
+			// Если узел держит сторону, ожидающую подключения
+			if((ipc->pipe != nullptr) && ipc->pipe->listener)
+				// Заводим ожидание подключения встречной стороны
+				::__awh_listen_pipe__(ipc);
+			// Если узел держит сторону подключающуюся - заводим приём сразу
+			else ::__awh_recv_pipe__(ipc);
+		}
 		// Метка окончания запуска узла
 		Launched:;
 	}
@@ -2731,8 +2660,6 @@ bool awh::engine::IO::disconnect([[maybe_unused]] const event::id_t id) noexcept
 bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 	// Результат выполнения подключения
 	bool result = false;
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	/**
 	 * Выполняем перебор всех переданных событий
 	 */
@@ -2911,8 +2838,6 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
  *
  */
 bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Приводим узел к узлу, за которым стоит сокет
@@ -3018,8 +2943,6 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 	// Функция обратного вызова на получение ошибок
 	engine::callback::error_t failure = nullptr;
 	{
-		// Выполняем блокировку замка доступа к списку узлов
-		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 		// Выполняем поиск узла события
 		::Node * item = ::__awh_find__(id);
 		// Приводим узел к узлу обмена сообщениями между процессами
@@ -3090,48 +3013,50 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		 * Отправляем сообщение в именованный канал, если тот за узлом стоит
 		 *
 		 * @details Путь этот и есть настоящий обмен между процессами: запись уходит в
-		 *          канал, а принимает её поток чтения встречной стороны - в своём
-		 *          процессе либо в чужом, безразлично. Строй сообщений сохраняет
-		 *          границы, оттого одна запись даёт ровно одно чтение
+		 *          канал, а принимает её встречная сторона - в своём процессе либо в
+		 *          чужом, безразлично. Строй сообщений сохраняет границы, оттого одна
+		 *          запись даёт ровно одно чтение
 		 *
 		 * @note Очередь узла-собеседника ниже остаётся для узла пробуждения и для пар,
 		 *       заведённых без канала: там обмен ведётся внутри одного процесса
 		 *
 		 */
 		if((item->state.node == event::node_t::IPC) && (ipc->handle != INVALID_HANDLE_VALUE)){
-			// Количество отправленных байт, снятое системой
-			DWORD sent = 0;
 			/**
-			 * Отправка ведётся наложенной
+			 * Отправка лишь заводится, а завершение её придёт портом
 			 *
-			 * @details Дескриптор канала открыт с FILE_FLAG_OVERLAPPED, и иначе быть не
-			 *          может: у дескриптора без наложения система выстраивает операции в
-			 *          очередь, и запись дожидалась бы ожидающего чтения, какое поток
-			 *          чтения держит всё время. Обнаружено опытом - обмен вставал намертво
+			 * @details Ждать здесь, пока запись уйдёт, нельзя вовсе: встречная сторона
+			 *          вправе читать не сейчас, а канал вправе оказаться полон - и
+			 *          ожидание остановило бы петлю событий целиком. Оттого буфер и
+			 *          копируется в описание обмена: память вызвавшего к возврату из
+			 *          метода своё уже отживёт, а системе она нужна до конца записи
 			 *
 			 */
-			// Событие завершения наложенной операции отправки
-			HANDLE signal = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
-			// Описание наложенной операции отправки
-			OVERLAPPED overlapped{};
-			// Привязываем событие завершения к наложенной операции
-			overlapped.hEvent = signal;
-			// Выполняем наложенную отправку сообщения в именованный канал
-			BOOL result = ::WriteFile(ipc->handle, buffer, static_cast <DWORD> (size), &sent, &overlapped);
-			// Если отправка принята системой к исполнению - дожидаемся её завершения
-			if(!result && (::GetLastError() == ERROR_IO_PENDING))
-				// Дожидаемся завершения наложенной отправки
-				result = ::GetOverlappedResult(ipc->handle, &overlapped, &sent, TRUE);
-			// Если отправка состоялась
-			if(result)
-				// Запоминаем количество отправленных байт
-				written = static_cast <size_t> (sent);
-			// Если отправка завершилась отказом - запоминаем его код
-			else code = ::GetLastError();
-			// Если событие завершения наложенной операции заведено
-			if(signal != nullptr)
-				// Закрываем событие завершения наложенной операции
-				::CloseHandle(signal);
+			// Заводим описание отправки
+			::Overlapped * context = new ::Overlapped(::op_t::SEND, ipc->id);
+			// Наполняем буфер отправки
+			context->buffer.assign(reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
+			// Если завести отправку не удалось
+			if(!::WriteFile(ipc->handle, context->buffer.data(), static_cast <DWORD> (context->buffer.size()), nullptr, &context->overlapped) && (::GetLastError() != ERROR_IO_PENDING)){
+				// Запоминаем код отказа отправки
+				code = ::GetLastError();
+				// Выполняем освобождение описания отправки
+				delete context;
+			// Если отправка заведена
+			} else {
+				// Отмечаем заведённый обмен незавершённым
+				ipc->pending++;
+				// Запоминаем количество принятых к отправке байт
+				written = size;
+				/**
+				 * Извещение об отправке отдаётся её завершением, а не отсюда
+				 *
+				 * @note Снятие вызова здесь намеренно: сообщить об отданных байтах
+				 *       прежде, чем они отданы, значило бы обмануть вызвавшего
+				 *
+				 */
+				callback = nullptr;
+			}
 		/**
 		 * Если настоящего канала за узлом нет - сообщение ложится в очередь собеседника
 		 */
@@ -3175,8 +3100,8 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		}
 	}
 	/**
-	 * Извещения отдаются уже без замка: обратный вызов вправе завести или
-	 * уничтожить событие, и удержание замка привело бы к его повторному захвату
+	 * Извещения отдаются после разбора: обратный вызов вправе завести или
+	 * уничтожить событие, и делать это посреди разбора нельзя
 	 */
 	// Если отправка завершилась отказом
 	if(code != 0){
@@ -3778,8 +3703,6 @@ bool awh::engine::IO::isAlive([[maybe_unused]] const event::id_t id) const noexc
  *
  */
 void awh::engine::IO::clear() noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	/**
 	 * Перебираем все заведённые узлы, извещая о их уничтожении
 	 */
@@ -3815,8 +3738,6 @@ bool awh::engine::IO::kick() noexcept {
  *
  */
 bool awh::engine::IO::initialize() noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Если движок уже инициализирован — повторная инициализация ничего не меняет
 	if(::__awh_initialized__)
 		// Сообщаем, что инициализация уже выполнена
@@ -3844,8 +3765,6 @@ bool awh::engine::IO::initialize() noexcept {
 		return false;
 	}
 	{
-		// Выполняем блокировку замка ожидания
-		const std::lock_guard <std::mutex> lock(::__awh_wait_mutex__);
 		/**
 		 * Заводим порт завершения ввода-вывода
 		 *
@@ -3886,16 +3805,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 	 * процессами, что облегчает чтение журналов
 	 */
 	{
-		// Выполняем блокировку замка доступа к списку узлов
-		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 		// Очищаем список заведённых узлов без извещения о состоянии
 		::__awh_nodes__.clear();
 		// Выставляем признак инициализации движка
 		::__awh_initialized__ = true;
 	}
 	{
-		// Выполняем блокировку замка ожидания
-		const std::lock_guard <std::mutex> lock(::__awh_wait_mutex__);
 		/**
 		 * Порт родителя дочернему процессу не принадлежит
 		 *
@@ -3924,8 +3839,6 @@ bool awh::engine::IO::deinitialize() noexcept {
 	// Выполняем уничтожение всех заведённых узлов событий
 	this->clear();
 	{
-		// Выполняем блокировку замка доступа к списку узлов
-		const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 		// Если движок был инициализирован
 		if(::__awh_initialized__)
 			/**
@@ -3943,8 +3856,6 @@ bool awh::engine::IO::deinitialize() noexcept {
 	// Пробуждаем петлю событий, чтобы та вышла из ожидания
 	::__awh_wake__();
 	{
-		// Выполняем блокировку замка ожидания
-		const std::lock_guard <std::mutex> lock(::__awh_wait_mutex__);
 		// Если порт завершения заведён
 		if(::__awh_port__ != nullptr){
 			// Выполняем закрытие порта завершения
@@ -3964,8 +3875,6 @@ bool awh::engine::IO::deinitialize() noexcept {
  *
  */
 bool awh::engine::IO::isInitialized() const noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Возвращаем признак инициализации движка
 	return ::__awh_initialized__;
 }
@@ -3977,8 +3886,6 @@ bool awh::engine::IO::isInitialized() const noexcept {
  *
  */
 size_t awh::engine::IO::eventsCount() const noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Возвращаем количество заведённых узлов событий
 	return ::__awh_nodes__.size();
 }
@@ -4071,8 +3978,6 @@ size_t awh::engine::IO::available([[maybe_unused]] const event::id_t id) const n
  *
  */
 awh::event::type_t awh::engine::IO::type([[maybe_unused]] const event::id_t id) const noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Возвращаем тип сокета, либо признак отсутствия
@@ -4087,8 +3992,6 @@ awh::event::type_t awh::engine::IO::type([[maybe_unused]] const event::id_t id) 
  *
  */
 awh::event::node_t awh::engine::IO::node([[maybe_unused]] const event::id_t id) const noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Возвращаем вид узла, либо признак отсутствия
@@ -4103,8 +4006,6 @@ awh::event::node_t awh::engine::IO::node([[maybe_unused]] const event::id_t id) 
  *
  */
 awh::event::family_t awh::engine::IO::family([[maybe_unused]] const event::id_t id) const noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Возвращаем семейство событий, либо признак отсутствия
@@ -4119,8 +4020,6 @@ awh::event::family_t awh::engine::IO::family([[maybe_unused]] const event::id_t 
  *
  */
 awh::event::status_t awh::engine::IO::status([[maybe_unused]] const event::id_t id) const noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Возвращаем состояние узла, либо признак отсутствия
@@ -4135,8 +4034,6 @@ awh::event::status_t awh::engine::IO::status([[maybe_unused]] const event::id_t 
  *
  */
 awh::event::protocol_t awh::engine::IO::protocol([[maybe_unused]] const event::id_t id) const noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Возвращаем протокол передачи данных, либо признак отсутствия
@@ -4202,8 +4099,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 	// Описатель порта завершения, с какого снимаются завершения
 	HANDLE port = nullptr;
 	{
-		// Выполняем блокировку замка ожидания
-		const std::lock_guard <std::mutex> lock(::__awh_wait_mutex__);
 		// Запоминаем описатель порта завершения
 		port = ::__awh_port__;
 	}
@@ -4313,14 +4208,55 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 */
 			case static_cast <uint8_t> (::op_t::RECV): {
 				// Число принятых байт
-				const size_t received = static_cast <size_t> (entries[i].dwNumberOfBytesTransferred);
+				size_t received = static_cast <size_t> (entries[i].dwNumberOfBytesTransferred);
+				/**
+				 * Собираем сообщение, не уместившееся в буфер приёма
+				 *
+				 * @details Канал открыт в строе сообщений, и одно чтение даёт ровно одно
+				 *          сообщение целиком. Не уместившееся в буфер система отдаёт
+				 *          завершением с итогом переполнения буфера: принятая часть в
+				 *          буфере есть, а остаток ждёт следующего чтения. Части эти и
+				 *          складываются у узла, чтобы вызвавшему досталось сообщение
+				 *          целым, а не разрезанным по размеру буфера
+				 *
+				 * @note Путь этот проходят одни лишь каналы: у сокета границ сообщений
+				 *       нет вовсе, и отдавать принятое по частям там - обычный порядок
+				 *
+				 */
+				{
+					// Приводим узел к узлу обмена сообщениями между процессами
+					::Ipc * ipc = ::__awh_ipc__(::__awh_find__(context->id));
+					// Если завершение принесено каналом
+					if(ipc != nullptr){
+						// Если сообщение в буфер приёма не уместилось
+						if(entries[i].Internal == ::__AWH_STATUS_BUFFER_OVERFLOW__){
+							// Отмечаем завершившийся обмен
+							ipc->pending--;
+							// Откладываем принятую часть сообщения до прихода остатка
+							ipc->partial.insert(ipc->partial.end(), context->buffer.begin(), context->buffer.begin() + received);
+							// Заводим следующий приём, отдавая ему то же описание обмена
+							::__awh_recv_pipe__(ipc, context);
+							// Переходим к следующему завершению
+							continue;
+						}
+						// Если начало сообщения уже отложено
+						if(!ipc->partial.empty() && (received > 0)){
+							// Дополняем отложенное принятым остатком
+							ipc->partial.insert(ipc->partial.end(), context->buffer.begin(), context->buffer.begin() + received);
+							// Переносим собранное сообщение в буфер обмена
+							context->buffer.swap(ipc->partial);
+							// Запоминаем размер собранного сообщения
+							received = context->buffer.size();
+							// Очищаем отложенное
+							ipc->partial.clear();
+						}
+					}
+				}
 				// Функция обратного вызова на чтение данных
 				engine::callback::read_t callback = nullptr;
 				// Признак того, что узел ещё жив
 				bool alive = false;
 				{
-					// Выполняем блокировку замка доступа к списку узлов
-					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск узла события
 					::Node * item = ::__awh_find__(context->id);
 					// Приводим узел к узлу, за которым стоит сокет
@@ -4360,9 +4296,9 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				 *
 				 * @details Ни переноса, ни копирования здесь нет: буфер этот система
 				 *          наполнила сама, и вызывающему отдаётся он же. Раздача
-				 *          ведётся уже без замка - обратный вызов вправе завести или
-				 *          уничтожить событие, и удержание замка привело бы к его
-				 *          повторному захвату
+				 *          ведётся после снятия завершения с порта - обратный вызов
+				 *          вправе завести или уничтожить событие, и делать это посреди
+				 *          разбора завершения нельзя
 				 *
 				 * @warning Буфер живёт лишь до возврата из обратного вызова: следом
 				 *          он уходит под очередной приём. Кому принятое нужно
@@ -4373,12 +4309,12 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					// Передаём принятые данные
 					callback(context->id, context->buffer.data(), received);
 				{
-					// Выполняем блокировку замка доступа к списку узлов
-					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск узла события
-					::Socket * item = ::__awh_socket__(::__awh_find__(context->id));
+					::Node * item = ::__awh_find__(context->id);
+					// Приводим узел к узлу обмена сообщениями между процессами
+					::Ipc * ipc = ::__awh_ipc__(item);
 					// Заводим следующий приём, отдавая ему то же описание обмена
-					if(!::__awh_recv__(item, context))
+					if(!((ipc != nullptr) ? ::__awh_recv_pipe__(ipc, context) : ::__awh_recv__(::__awh_socket__(item), context)))
 						// Если завести приём не удалось - описание уже освобождено
 						context = nullptr;
 				}
@@ -4392,8 +4328,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				// Функция обратного вызова на запись данных
 				engine::callback::write_t callback = nullptr;
 				{
-					// Выполняем блокировку замка доступа к списку узлов
-					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск узла события
 					::Transfer * item = ::__awh_transfer__(::__awh_find__(context->id));
 					// Если узел найден
@@ -4417,6 +4351,32 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					callback(context->id, static_cast <size_t> (entries[i].dwNumberOfBytesTransferred));
 			} break;
 			/**
+			 * Если завершилось ожидание подключения встречной стороны канала
+			 *
+			 * @note Приём заводится тем же описанием обмена: буфер под него уже
+			 *       отведён, а вид описания меняется при заведении
+			 *
+			 */
+			case static_cast <uint8_t> (::op_t::LISTEN): {
+				// Приводим узел к узлу обмена сообщениями между процессами
+				::Ipc * ipc = ::__awh_ipc__(::__awh_find__(context->id));
+				// Если узел канала найден
+				if(ipc != nullptr){
+					// Отмечаем завершившийся обмен
+					ipc->pending--;
+					// Заводим приём из подключившегося канала
+					if(::__awh_recv_pipe__(ipc, context))
+						// Описание обмена ушло под приём и освобождению здесь не подлежит
+						context = nullptr;
+				}
+				// Если описание обмена никому не досталось
+				if(context != nullptr)
+					// Выполняем освобождение описания ожидания
+					delete context;
+				// Переходим к следующему завершению
+				continue;
+			} break;
+			/**
 			 * Если завершилась установка исходящей связи
 			 *
 			 * @note Установленной связи система не сообщает сокету сама: сокет о
@@ -4430,8 +4390,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				// Функция обратного вызова на установку связи
 				engine::callback::connect_t callback = nullptr;
 				{
-					// Выполняем блокировку замка доступа к списку узлов
-					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск узла события
 					::Transfer * item = ::__awh_transfer__(::__awh_find__(context->id));
 					// Если узел найден
@@ -4469,8 +4427,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				// Функция обратного вызова на принятие входящей связи
 				engine::callback::accept_t callback = nullptr;
 				{
-					// Выполняем блокировку замка доступа к списку узлов
-					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск узла события
 					::Transfer * item = ::__awh_transfer__(::__awh_find__(context->id));
 					// Если узел найден
@@ -4524,8 +4480,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					callback(context->id, accepted);
 				// Если узел принятой связи заведён
 				if(accepted > 0){
-					// Выполняем блокировку замка доступа к списку узлов
-					const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 					// Выполняем поиск заведённого узла
 					::Socket * peer = ::__awh_socket__(::__awh_find__(accepted));
 					// Если узел найден
@@ -4547,16 +4501,15 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 	/**
 	 * Раздаём принятые сообщения
 	 *
-	 * @note Раздача ведётся уже без замка: обратный вызов вправе завести или
-	 *       уничтожить событие, и удержание замка привело бы к его повторному захвату
+	 * @note Раздача ведётся после разбора всего снятого с порта: обратный вызов
+	 *       вправе завести или уничтожить событие, и делать это посреди разбора
+	 *       нельзя
 	 *
 	 */
 	for(auto & message : messages){
 		// Функция обратного вызова на чтение сообщений
 		engine::callback::read_t callback = nullptr;
 		{
-			// Выполняем блокировку замка доступа к списку узлов
-			const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 			// Выполняем поиск узла события
 			::Transfer * item = ::__awh_transfer__(::__awh_find__(message.first));
 			// Если узел найден и запущен
@@ -4587,8 +4540,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 		// Функция обратного вызова на изменение состояния
 		engine::callback::status_t callback = nullptr;
 		{
-			// Выполняем блокировку замка доступа к списку узлов
-			const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 			// Выполняем поиск узла события
 			::Node * item = ::__awh_find__(id);
 			// Если узел уже уничтожен
@@ -4663,8 +4614,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::read_t cb) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Получаем обратный вызов приёма данных
@@ -4705,8 +4654,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::write_t cb) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Получаем обратный вызов отдачи данных
@@ -4805,8 +4752,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::error_t cb) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Получаем общие обратные вызовы узла
@@ -4911,8 +4856,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::status_t cb) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Получаем общие обратные вызовы узла
@@ -4955,8 +4898,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Если узел не найден
@@ -5046,8 +4987,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Если узел не найден
@@ -5167,8 +5106,6 @@ void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]]
  *
  */
 void awh::engine::IO::on([[maybe_unused]] const event::id_t id, [[maybe_unused]] engine::callback::available_t cb) noexcept {
-	// Выполняем блокировку замка доступа к списку узлов
-	const std::lock_guard <std::recursive_mutex> lock(::__awh_mutex__);
 	// Выполняем поиск узла события
 	::Node * item = ::__awh_find__(id);
 	// Если узел не найден — подключать обратную связь некому

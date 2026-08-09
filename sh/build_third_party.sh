@@ -57,19 +57,49 @@ else
 	exit 1
 fi
 
+##
+# Тип архитектуры берётся у uname, а не у sysctl и не у arch
+#
+# Утилиты arch у систем BSD нет вовсе: на NetBSD вызов отвечал "command not found",
+# тип выходил пустым, и следовавшая за ним сверка ломалась с "unary operator expected".
+# Утилита sysctl лежит в /sbin, которого нет в PATH неинтерактивного сеанса ssh у
+# NetBSD, - по имени она тоже не находится. Утилита uname лежит в /usr/bin у всех
+# перечисленных систем и доступна всегда
+#
+# Спрашивается именно процессор (-p), а не машина (-m): NetBSD называет машину evbarm,
+# а процессор aarch64, и по машине разрядность там не опознать. Часть систем отвечает
+# на -p словом unknown - тогда берётся -m
+##
 # Тип архитектуры
-ARCHITECTURE=""
-# Получаем тип архитектуры
-if [ $OS = "FreeBSD" ]; then # FreeBSD
-	ARCHITECTURE=$(sysctl -a | egrep -i 'hw.machine|hw.model|hw.ncpu' | grep hw.machine: | awk '{print $2}')
-else # Linux
-	ARCHITECTURE=$(arch)
-fi
+ARCHITECTURE=$(uname -p 2>/dev/null)
+
+# Если процессор не назван, спрашиваем машину
+case "$ARCHITECTURE" in
+	''|unknown|*[!A-Za-z0-9_-]*)
+		ARCHITECTURE=$(uname -m 2>/dev/null)
+	;;
+esac
 
 # Выполняем корректировку типа процессора
-if [ $ARCHITECTURE = "arm64" ] || [ $ARCHITECTURE = "aarch64" ]; then
-	ARCHITECTURE="arm"
-fi
+case "$ARCHITECTURE" in
+	arm|arm64|aarch64|evbarm)
+		ARCHITECTURE="arm"
+	;;
+esac
+
+##
+# Число ядер сверяется прежде употребления
+#
+# Пустое или нечисловое значение оборачивается ключом -j без числа, а он у GNU make
+# снимает предел одновременности вовсе - сборка душит машину и теряет компиляторы,
+# убитые ядром. Отступление к одному заданию медленнее, но доводит работу до конца
+##
+case "$numproc" in
+	''|*[!0-9]*)
+		echo "Number of CPU cores could not be determined: falling back to a single job"
+		numproc=1
+	;;
+esac
 
 # Устанавливаем флаги глобального использования
 # export CPPFLAGS=""
@@ -125,8 +155,20 @@ elif [ $OS = "Windows" ] || [ $OS = "Linux" ] || [ $OS = "SunOS" ]; then
 	numproc=$(nproc)
 # Если сборка производится в операционной системе FreeBSD, NetBSD или OpenBSD
 elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
-	# Устанавливаем количество ядер системы
-	numproc=$(sysctl -n hw.ncpu)
+	##
+	# Утилита опроса системы зовётся по полному пути, а не по имени
+	#
+	# Лежит она в /sbin, а каталога этого нет в PATH неинтерактивного сеанса ssh у
+	# NetBSD: там PATH складывается из /usr/bin, /bin, /usr/pkg/bin и /usr/local/bin.
+	# Вызов по имени отвечал "command not found", число ядер выходило пустым, и
+	# сборщик получал ключ -j без числа - а это у GNU make не одно задание, а без
+	# предела вовсе. Заданий плодилось сколько влезет, и ядро убивало компиляторы:
+	# "fatal error: Killed signal terminated program cc1plus". Проверено опытом на
+	# стенде NetBSD 11.0 aarch64
+	#
+	# Имя оставлено первым доводом на случай, если утилита лежит в другом месте
+	##
+	numproc=$(sysctl -n hw.ncpu 2>/dev/null || /sbin/sysctl -n hw.ncpu 2>/dev/null)
 # Если операционная система не определена
 else
 	echo "Operating system not defined"

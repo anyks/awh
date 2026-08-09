@@ -247,11 +247,39 @@ if [ -n "$1" ]; then
 					EXTRA_LIBS="-lsocket -lnsl"
 				fi
 
+				# Дополнительные признаки сборки
+				EXTRA_FLAGS=""
+
+				##
+				# Опознание возможностей процессора на ходу у NetBSD с ARM отсутствует
+				#
+				# BoringSSL опознаёт их своим файлом на каждую пару «система и
+				# архитектура»: для aarch64 у неё есть Apple, Fuchsia, Linux, OpenBSD,
+				# Windows и FreeBSD, а NetBSD нет вовсе. Опознаватель
+				# OPENSSL_cpuid_setup() при этом объявлен и вызывается, но не собирается
+				# ни из одного файла, и компоновка отвечает отказом
+				# "undefined reference to bssl::OPENSSL_cpuid_setup()"
+				#
+				# Признак OPENSSL_STATIC_ARMCAP предусмотрен самой BoringSSL ровно для
+				# таких систем: опознание на ходу выключается, а возможности берутся у
+				# компилятора - из макросов __ARM_NEON, __ARM_FEATURE_AES и им подобных.
+				# Набор NEON у ARMv8 обязателен и остаётся всегда, а расширения
+				# шифрования включаются в той мере, в какой их объявляет компилятор
+				#
+				# Проверено опытом на стенде NetBSD 11.0 aarch64
+				##
+				if [ $OS = "NetBSD" ] && [ "$ARCHITECTURE" = "arm" ]; then
+					# Выключаем опознание возможностей процессора на ходу
+					EXTRA_FLAGS="-DOPENSSL_STATIC_ARMCAP"
+				fi
+
 				# Выполняем конфигурацию проекта
 				cmake \
 				 -DCMAKE_BUILD_TYPE=Release \
 				 -DBUILD_SHARED_LIBS=OFF \
 				 -DBUILD_TESTING=OFF \
+				 -DCMAKE_C_FLAGS="$EXTRA_FLAGS" \
+				 -DCMAKE_CXX_FLAGS="$EXTRA_FLAGS" \
 				 -DCMAKE_EXE_LINKER_FLAGS="$EXTRA_LIBS" \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 				 .. || exit 1
