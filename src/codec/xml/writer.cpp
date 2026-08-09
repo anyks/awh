@@ -377,7 +377,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 		/**
 		 * Выполняем перебор действующих связываний от ближайшего узла к корню
 		 */
-		for(size_t i = this->_scopes.size(); i > 0; i--){
+		for(size_t i = this->_bindings; i > 0; i--){
 			/**
 			 * Если обнаружено объявление пространства имён по умолчанию
 			 */
@@ -398,10 +398,16 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 						return false;
 					// Выполняем добавление отмены объявления по умолчанию
 					this->_text.append(" xmlns=\"\"");
-					// Собираемое связывание префикса
-					scope_t scope;
-					// Выполняем добавление связывания к действующим
-					this->_scopes.push_back(scope);
+					// Выполняем отведение места под связывание
+					if(this->_bindings >= this->_scopes.size())
+						// Выполняем добавление места под новое связывание
+						this->_scopes.emplace_back();
+					// Получаем связывание, отведённое под объявление
+					scope_t & scope = this->_scopes[this->_bindings++];
+					// Выполняем очистку назначенного прежде префикса
+					scope.prefix.clear();
+					// Выполняем очистку обозначения связанного пространства имён
+					scope.uri.clear();
 					// Выполняем подсчёт связываний, объявленных узлом
 					this->_opened[this->_depth - 1].bindings++;
 				}
@@ -415,7 +421,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 	/**
 	 * Выполняем перебор действующих связываний от ближайшего узла к корню
 	 */
-	for(size_t i = this->_scopes.size(); i > 0; i--){
+	for(size_t i = this->_bindings; i > 0; i--){
 		// Получаем очередное связывание префикса
 		const scope_t & scope = this->_scopes[i - 1];
 		/**
@@ -439,7 +445,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 			 * @note Тот же префикс мог быть перевязан на иное пространство имён вложенным
 			 *       узлом: выдать его здесь означало бы записать имя в чужом пространстве
 			 */
-			for(size_t j = this->_scopes.size(); j > i; j--){
+			for(size_t j = this->_bindings; j > i; j--){
 				/**
 				 * Если префикс перевязан более близким объявлением
 				 */
@@ -495,7 +501,9 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 		/**
 		 * Выполняем перебор всех действующих связываний
 		 */
-		for(const scope_t & scope : this->_scopes){
+		for(size_t i = 0; i < this->_bindings; i++){
+			// Получаем очередное действующее связывание
+			const scope_t & scope = this->_scopes[i];
 			/**
 			 * Если назначаемый префикс уже занят
 			 */
@@ -529,14 +537,16 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 		return false;
 	// Выполняем добавление конца объявления пространства имён
 	this->_text.push_back('"');
-	// Собираемое связывание префикса
-	scope_t scope;
+	// Выполняем отведение места под связывание
+	if(this->_bindings >= this->_scopes.size())
+		// Выполняем добавление места под новое связывание
+		this->_scopes.emplace_back();
+	// Получаем связывание, отведённое под объявление
+	scope_t & scope = this->_scopes[this->_bindings++];
 	// Запоминаем назначенный префикс
 	scope.prefix.assign(result);
 	// Запоминаем обозначение связанного пространства имён
 	scope.uri.assign(uri);
-	// Выполняем добавление связывания к действующим
-	this->_scopes.push_back(::move(scope));
 	// Выполняем подсчёт связываний, объявленных узлом
 	this->_opened[this->_depth - 1].bindings++;
 	// Выводим положительный результат выполнения операции
@@ -755,7 +765,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 		/**
 		 * Выполняем перебор действующих связываний от ближайшего узла к корню
 		 */
-		for(size_t i = this->_scopes.size(); i > 0; i--){
+		for(size_t i = this->_bindings; i > 0; i--){
 			/**
 			 * Если префикс связывания совпадает с заданным
 			 *
@@ -849,7 +859,7 @@ bool awh::codec::xml::Writer::close() noexcept {
 	 */
 	for(uint32_t i = 0; i < opened.bindings; i++)
 		// Выполняем снятие очередного связывания
-		this->_scopes.pop_back();
+		this->_bindings--;
 	// Выполняем снятие закрываемого узла со стека
 	this->_depth--;
 	/**
@@ -1096,14 +1106,16 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 		return false;
 	// Выполняем добавление конца объявления пространства имён
 	this->_text.push_back('"');
-	// Собираемое связывание префикса
-	scope_t scope;
+	// Выполняем отведение места под связывание
+	if(this->_bindings >= this->_scopes.size())
+		// Выполняем добавление места под новое связывание
+		this->_scopes.emplace_back();
+	// Получаем связывание, отведённое под объявление
+	scope_t & scope = this->_scopes[this->_bindings++];
 	// Запоминаем префикс объявления
 	scope.prefix.assign(prefix);
 	// Запоминаем обозначение объявляемого пространства имён
 	scope.uri.assign(uri);
-	// Выполняем добавление связывания к действующим
-	this->_scopes.push_back(::move(scope));
 	// Выполняем подсчёт связываний, объявленных узлом
 	this->_opened[this->_depth - 1].bindings++;
 	// Выводим положительный результат выполнения операции
@@ -1524,7 +1536,7 @@ void awh::codec::xml::Writer::clear() noexcept {
 	 */
 	this->_depth = 0;
 	// Выполняем очистку действующих связываний префиксов
-	this->_scopes.clear();
+	this->_bindings = 0;
 	// Выполняем сброс счётчика назначенных префиксов
 	this->_counter = 0;
 }
@@ -1532,7 +1544,7 @@ void awh::codec::xml::Writer::clear() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false), _depth(0), _counter(0) {}
+awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0) {}
 /**
  * @brief Конструктор
  *
@@ -1540,7 +1552,7 @@ awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false)
  *
  */
 awh::codec::xml::Writer::Writer(const settings_t & settings) noexcept :
- _settings(settings), _error(error_t::NONE), _root(false), _depth(0), _counter(0) {}
+ _settings(settings), _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0) {}
 /**
  * @brief Деструктор
  *
