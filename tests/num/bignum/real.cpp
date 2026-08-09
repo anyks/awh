@@ -664,6 +664,17 @@ TEST_F(BigNumFixture, RealModRangeBigNumTest){
 		// Создаём делитель в виде длинного числа
 		awh::real64_t number2 = second.at(i);
 
+		/**
+		 * Если платформа сбрасывает субнормальные значения, а в паре есть такое
+		 * значение, то сверять не с чем: «fmod» получит на входе ноль вместо
+		 * делителя и выведет ноль, тогда как real64_t считает точно
+		 */
+		if(flushesSubnormals() && (subnormalBits(first.at(i)) || subnormalBits(second.at(i)))){
+			// Сообщаем о пропуске пары, чтобы он не выглядел проверкой
+			GTEST_LOG_(INFO) << "skipped subnormal pair #" << i << ": platform flushes subnormals, fmod is unusable as reference";
+			// Переходим к следующей паре
+			continue;
+		}
 		// Проверяем побитовое совпадение остатка с аппаратным типом
 		ASSERT_TRUE(this->identical(number1 % number2, ::fmod(first.at(i), second.at(i))))
 			<< "value = " << first.at(i) << ", divisor = " << second.at(i);

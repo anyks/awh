@@ -1092,7 +1092,7 @@ namespace io {
 		 address(event::address_t::NONE),
 		 protocol(event::protocol_t::NONE),
 		 delivery(event::delivery_mode_t::UNICAST) {}
-	} __attribute__((packed)) state_t;
+	} state_t;
 
 	/**
 	 * @brief Структура таймаута
@@ -1113,7 +1113,7 @@ namespace io {
 		 id(id), delay(0),
 		 usage(event::usage_t::DISPOSABLE),
 		 status(event::status_t::NONE) {}
-	} __attribute__((packed)) timeout_t;
+	} timeout_t;
 
 	/**
 	 * @brief Структура таймаутов
@@ -36324,6 +36324,25 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						/**
+						 * Заводим сокет, если он ещё не заведён
+						 *
+						 * @details Заведение отложено до фиксации намеренно: к этому мигу набор
+						 * опций события известен целиком, и часть из них ядро принимает прямо
+						 * при создании сокета, не требуя отдельных обращений
+						 *
+						 * @note Накопленные настройки применяются тем же методом, что и обычно:
+						 * доводом идёт ровно то, что уже лежит в состоянии узла, оттого ветка
+						 * снятия опций недостижима и лишних обращений к ядру не возникает
+						 */
+						if(client->transfer.fd == net::invalid_socket_t){
+							// Если завести сокет не удалось, фиксировать больше нечего
+							if(!::io::socket(client, &this->_eth, this->_log))
+								// Выводим результат
+								return result;
+							// Применяем к заведённому сокету накопленные настройки события
+							this->setOptions(id, client->state.options);
+						}
 						// Устанавливаем статус события в состояние инициализировано
 						client->state.status = event::status_t::INITIAL;
 						// Если файловый дескриптор клиента существует
@@ -38066,6 +38085,25 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						/**
+						 * Заводим сокет, если он ещё не заведён
+						 *
+						 * @details Заведение отложено до фиксации намеренно: к этому мигу набор
+						 * опций события известен целиком, и часть из них ядро принимает прямо
+						 * при создании сокета, не требуя отдельных обращений
+						 *
+						 * @note Накопленные настройки применяются тем же методом, что и обычно:
+						 * доводом идёт ровно то, что уже лежит в состоянии узла, оттого ветка
+						 * снятия опций недостижима и лишних обращений к ядру не возникает
+						 */
+						if(server->fd == net::invalid_socket_t){
+							// Если завести сокет не удалось, фиксировать больше нечего
+							if(!::io::socket(server, &this->_eth, this->_log))
+								// Выводим результат
+								return result;
+							// Применяем к заведённому сокету накопленные настройки события
+							this->setOptions(id, server->state.options);
+						}
 						// Устанавливаем статус события в состояние инициализировано
 						server->state.status = event::status_t::INITIAL;
 						// Если файловый дескриптор сервера существует
@@ -53059,12 +53097,14 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (ret.first->second.get());
-								// Выполняем создание сокета
-								if(!::io::socket(client, &this->_eth, this->_log))
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Если сокет не создан
-								else {
+								/**
+								 * Сокет здесь НЕ заводится намеренно
+								 *
+								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
+								 * опций события известен целиком: часть из них ядро принимает прямо
+								 * при создании, и отдельные обращения за ними становятся не нужны
+								 */
+								{
 									// Выполняем инициализацию объекта хоста клиента
 									client->target = make_unique <net::attr_uds_t> ();
 									// Устанавливаем тип пакета как файловая система
@@ -53143,12 +53183,14 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект клиента
 								::io::client_t * client = awh_cast <::io::client_t *> (ret.first->second.get());
-								// Выполняем создание сокета
-								if(!::io::socket(client, &this->_eth, this->_log))
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Если сокет не создан
-								else {
+								/**
+								 * Сокет здесь НЕ заводится намеренно
+								 *
+								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
+								 * опций события известен целиком: часть из них ядро принимает прямо
+								 * при создании, и отдельные обращения за ними становятся не нужны
+								 */
+								{
 									// Выполняем инициализацию объекта хоста клиента
 									client->target = make_unique <net::attr_net_t> ();
 									// Выполняем инициализацию объекта IP-адреса клиента
@@ -53294,12 +53336,14 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект сервера
 								::io::server_t * server = awh_cast <::io::server_t *> (ret.first->second.get());
-								// Выполняем создание сокета
-								if(!::io::socket(server, &this->_eth, this->_log))
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Если сокет не создан
-								else {
+								/**
+								 * Сокет здесь НЕ заводится намеренно
+								 *
+								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
+								 * опций события известен целиком: часть из них ядро принимает прямо
+								 * при создании, и отдельные обращения за ними становятся не нужны
+								 */
+								{
 									// Выполняем инициализацию объекта хоста сервера
 									server->host = make_unique <net::attr_uds_t> ();
 									// Устанавливаем тип пакета как файловая система
@@ -53372,12 +53416,14 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								ret.first->second->state.protocol = protocol;
 								// Получаем объект сервера
 								::io::server_t * server = awh_cast <::io::server_t *> (ret.first->second.get());
-								// Выполняем создание сокета
-								if(!::io::socket(server, &this->_eth, this->_log))
-									// Удаляем созданное событие
-									::__awh_nodes__.erase(ret.first);
-								// Если сокет не создан
-								else {
+								/**
+								 * Сокет здесь НЕ заводится намеренно
+								 *
+								 * @details Он создаётся при фиксации настроек (`commit`), когда набор
+								 * опций события известен целиком: часть из них ядро принимает прямо
+								 * при создании, и отдельные обращения за ними становятся не нужны
+								 */
+								{
 									// Выполняем инициализацию объекта хоста сервера
 									server->host = make_unique <net::attr_net_t> ();
 									/**
@@ -53779,6 +53825,25 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 				break;
 				// Для других типов узлов
 				default: return false;
+			}
+			/**
+			 * Если сокет ещё не заведён, опции только запоминаются
+			 *
+			 * @details Сокеты клиента и сервера заводятся при фиксации настроек
+			 * (`commit`), и до неё применять опции попросту не к чему. Фиксация
+			 * применит запомненное сама, причём часть опций - прямо при создании
+			 * сокета, без отдельных обращений к ядру
+			 *
+			 * @note Прочих узлов это не касается: у них дескриптор либо есть, либо
+			 * не предполагается вовсе, и прежний отказ для них остаётся в силе
+			 */
+			if((fd == net::invalid_socket_t) &&
+			   ((i->second->state.node == event::node_t::CLIENT) ||
+			    (i->second->state.node == event::node_t::SERVER))){
+				// Запоминаем набор опций события до фиксации настроек
+				i->second->state.options = options;
+				// Выводим успешный результат
+				return true;
 			}
 			// Если файловый дескриптор события получен успешно
 			if((result = (fd != net::invalid_socket_t))){

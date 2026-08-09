@@ -1068,6 +1068,15 @@ if (${CMAKE_BUILD_SAMPLES})
     option(CMAKE_BUILD_DATE_SYS_APP_SAMPLE "Build Date app sample" ON)
 
     # Устанавливаем имя приложения работы с бинарным контейнером
+    # Устанавливаем имя приложения работы с регулярными выражениями
+    SET(EXPRESSION_APP_REGEX_NAME regex-expression)
+    # Устанавливаем имя приложения разбора текста по шаблонам Grok
+    SET(GROK_APP_REGEX_NAME regex-grok)
+    # Указываем что нужно собрать приложение работы с регулярными выражениями
+    option(CMAKE_BUILD_EXPRESSION_REGEX_APP_SAMPLE "Build regular expression app sample" ON)
+    # Указываем что нужно собрать приложение разбора текста по шаблонам Grok
+    option(CMAKE_BUILD_GROK_REGEX_APP_SAMPLE "Build Grok app sample" ON)
+
     SET(BINBOX_APP_CONTAINER_NAME container-binbox)
     # Указываем что нужно собрать приложение работы с бинарным контейнером
     option(CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE "Build BinBox app sample" ON)
@@ -1604,6 +1613,30 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample DATE: No\n")
     endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с регулярными выражениями
+    if (${CMAKE_BUILD_EXPRESSION_REGEX_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Regular expression: Yes\n")
+        # Выполняем создание приложения работы с регулярными выражениями
+        add_sample(${EXPRESSION_APP_REGEX_NAME} sample/regex/expression.cpp regex)
+    # Если не нужно собирать семплы для работы с регулярными выражениями
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Regular expression: No\n")
+    endif (${CMAKE_BUILD_EXPRESSION_REGEX_APP_SAMPLE})
+
+    # Если нужно собрать семплы разбора текста по шаблонам Grok
+    if (${CMAKE_BUILD_GROK_REGEX_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Grok: Yes\n")
+        # Выполняем создание приложения разбора текста по шаблонам Grok
+        add_sample(${GROK_APP_REGEX_NAME} sample/regex/grok.cpp regex)
+    # Если не нужно собирать семплы разбора текста по шаблонам Grok
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Grok: No\n")
+    endif (${CMAKE_BUILD_GROK_REGEX_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с бинарным контейнером
     if (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
@@ -2504,6 +2537,28 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с регулярными выражениями
+        if (${CMAKE_BUILD_EXPRESSION_REGEX_APP_SAMPLE})
+            # Выполняем сборку приложения работы с регулярными выражениями
+            target_link_libraries(
+                ${EXPRESSION_APP_REGEX_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_EXPRESSION_REGEX_APP_SAMPLE})
+
+        # Если нужно собрать семплы разбора текста по шаблонам Grok
+        if (${CMAKE_BUILD_GROK_REGEX_APP_SAMPLE})
+            # Выполняем сборку приложения разбора текста по шаблонам Grok
+            target_link_libraries(
+                ${GROK_APP_REGEX_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_GROK_REGEX_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с бинарным контейнером
         if (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
@@ -3564,6 +3619,30 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с регулярными выражениями
+        if (${CMAKE_BUILD_EXPRESSION_REGEX_APP_SAMPLE})
+            # Выполняем сборку приложения работы с регулярными выражениями
+            target_link_libraries(
+                ${EXPRESSION_APP_REGEX_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_EXPRESSION_REGEX_APP_SAMPLE})
+
+        # Если нужно собрать семплы разбора текста по шаблонам Grok
+        if (${CMAKE_BUILD_GROK_REGEX_APP_SAMPLE})
+            # Выполняем сборку приложения разбора текста по шаблонам Grok
+            target_link_libraries(
+                ${GROK_APP_REGEX_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_GROK_REGEX_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с бинарным контейнером
         if (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})

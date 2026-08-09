@@ -97,7 +97,18 @@ void LexicalFixture::expectDoubleMatchesStrtod(const char * text) noexcept {
 		// Проверяем, что фактическое значение также является NaN
 		ASSERT_TRUE(std::isnan(actual)) << "nan mismatch: " << text;
 	// Иначе проверяем, что биты фактического и ожидаемого значения совпадают
-	else ASSERT_TRUE(sameBits(actual, expected)) << "value mismatch: " << text << " got=" << actual << " expected=" << expected;
+	else {
+		/**
+		 * Если платформа сбрасывает субнормальные значения, а разбор вывел именно
+		 * такое значение, то расхождение внесено эталоном: он обнулил результат,
+		 * тогда как lexical_t считает целочисленно и режимом сопроцессора не задет
+		 */
+		if(flushesSubnormals() && subnormalBits(actual) && (expected == 0))
+			// Объявляем случай непроверяемым на этой платформе
+			GTEST_SKIP() << "subnormal flushed by platform, libc is unusable as reference: " << text;
+		// Проверяем, что биты фактического и ожидаемого значения совпадают
+		ASSERT_TRUE(sameBits(actual, expected)) << "value mismatch: " << text << " got=" << actual << " expected=" << expected;
+	}
 }
 /**
  * @brief Разбирает float через lexical_t и сверяет со strtof
@@ -125,5 +136,16 @@ void LexicalFixture::expectFloatMatchesStrtof(const char * text) noexcept {
 		// Проверяем, что фактическое значение также является NaN
 		ASSERT_TRUE(std::isnan(actual)) << "nan mismatch: " << text;
 	// Иначе проверяем, что биты фактического и ожидаемого значения совпадают
-	else ASSERT_TRUE(sameBits(actual, expected)) << "value mismatch: " << text << " got=" << actual << " expected=" << expected;
+	else {
+		/**
+		 * Если платформа сбрасывает субнормальные значения, а разбор вывел именно
+		 * такое значение, то расхождение внесено эталоном: он обнулил результат,
+		 * тогда как lexical_t считает целочисленно и режимом сопроцессора не задет
+		 */
+		if(flushesSubnormals() && subnormalBits(actual) && (expected == 0))
+			// Объявляем случай непроверяемым на этой платформе
+			GTEST_SKIP() << "subnormal flushed by platform, libc is unusable as reference: " << text;
+		// Проверяем, что биты фактического и ожидаемого значения совпадают
+		ASSERT_TRUE(sameBits(actual, expected)) << "value mismatch: " << text << " got=" << actual << " expected=" << expected;
+	}
 }

@@ -2670,10 +2670,24 @@ template <typename T>
  *
  */
 T awh::Framework::timestamp(const chrono_t type) const noexcept {
+	/**
+	 * Если штамп времени требуется извлечь дробным числом
+	 * @note Извлечение выполняется целым числом с последующим приведением, так как
+	 *       разбор по размеру буфера ниже писан для целых видов и записал бы в
+	 *       дробное двоичное представление целого, а не само число
+	 */
+	if constexpr(is_floating_point_v <T>) {
+		// Буфер для извлечения штампа времени целым числом
+		uint64_t stamp = 0;
+		// Выполняем извлечение штампа времени целым числом
+		this->timestamp(&stamp, sizeof(stamp), type, false);
+		// Выводим штамп времени, приведённый к дробному виду
+		return static_cast <T> (stamp);
+	}
 	// Переменная результата
 	T result;
 	// Если данные являются основными
-	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+	if(is_integral <T>::value || is_array <T>::value){
 		// Буфер результата по умолчанию
 		uint8_t buffer[sizeof(T)];
 		// Заполняем нулями буфер данных

@@ -22,6 +22,11 @@
 #include "fmk.hpp"
 
 /**
+ * Стандартные модули
+ */
+#include <cmath>
+
+/**
  * @brief Структура параметров тестирования метода поиска в отображении
  *
  */
@@ -350,6 +355,36 @@ TEST_P(FmkTimestampParameterizedFixture, FmkTimestampTest){
 	ASSERT_TRUE(this->_fmk->timestamp <float> (this->_parameter.stamp) > .0f);
 	ASSERT_TRUE(this->_fmk->timestamp <double> (this->_parameter.stamp) > .0);
 	ASSERT_FALSE(this->_fmk->timestamp <std::string> (this->_parameter.stamp).empty());
+}
+
+/**
+ * @brief Метод тестирования согласия дробной временной метки с целочисленной
+ *
+ * @details Дробные виды обязаны выводить то же число, что и «uint64_t», а не его
+ *          двоичное представление. Проверка «> 0» этого не ловит: перетолкование
+ *          битов целого счётчика даёт положительное значение почти всегда, и
+ *          отказ проявляется лишь там, где мусор попадает в область субнормальных
+ *          значений, а платформа их сбрасывает.
+ *
+ * @note Сличение ведётся с допуском по доле: между вызовами проходит время, а у
+ *       «float» на крупных единицах теряются младшие разряды мантиссы
+ *
+ */
+TEST_P(FmkTimestampParameterizedFixture, FmkTimestampRealMatchesIntegerTest){
+	// Получаем временную метку целым числом, принимаемым за образец
+	const uint64_t expected = this->_fmk->timestamp <uint64_t> (this->_parameter.stamp);
+	// Проверяем, что образец получен
+	ASSERT_GT(expected, static_cast <uint64_t> (0));
+	// Получаем ту же временную метку дробными видами
+	const float first = this->_fmk->timestamp <float> (this->_parameter.stamp);
+	const double second = this->_fmk->timestamp <double> (this->_parameter.stamp);
+	// Выполняем расчёт расхождения по доле для каждого из дробных видов
+	const double difference1 = (::fabs(static_cast <double> (first) - static_cast <double> (expected)) / static_cast <double> (expected));
+	const double difference2 = (::fabs(second - static_cast <double> (expected)) / static_cast <double> (expected));
+	// Проверяем, что «float» вывел ту же временную метку в пределах точности мантиссы
+	ASSERT_LT(difference1, 1e-6) << "float=" << first << " expected=" << expected;
+	// Проверяем, что «double» вывел ту же временную метку
+	ASSERT_LT(difference2, 1e-9) << "double=" << second << " expected=" << expected;
 }
 
 /**

@@ -5176,6 +5176,21 @@ namespace inflight {
 	 *
 	 */
 	typedef struct Slot {
+		/**
+		 * Описатель наложенного обмена
+		 *
+		 * @details Стоит первым полем намеренно: система отдаёт завершением указатель
+		 *          именно на него, и обратный путь к записи учёта опирается на
+		 *          известное смещение поля внутри записи
+		 *
+		 * @warning Ядро пишет в описатель итог обмена **после** возврата из
+		 *          обращения, оттого запись обязана стоять на месте всё время, пока
+		 *          операция не завершилась. Отсюда и страничное устройство таблицы:
+		 *          обычный отрезок при росте переезжает, и ядро дописывало бы итог
+		 *          по освобождённой памяти
+		 *
+		 */
+		OVERLAPPED overlapped;
 		// Разновидность поданной операции
 		kind_t kind;
 		// Признак того, что запись занята
@@ -5198,17 +5213,29 @@ namespace inflight {
 		struct msghdr message;
 		// Вектор буферов сообщения
 		struct iovec vector;
-		// Срок ожидания, читается ядром после возврата из обращения
-		struct __kernel_timespec deadline;
+		// Срок ожидания в миллисекундах
+		uint64_t deadline;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Slot() noexcept :
-		 kind(kind_t::NONE), busy(false), multishot(false), cancelled(false),
+		 overlapped{}, kind(kind_t::NONE), busy(false), multishot(false), cancelled(false),
 		 generation(0), sock(net::invalid_socket_t), udata(nullptr),
-		 addr{}, length(sizeof(struct sockaddr_storage)), message{}, vector{}, deadline{} {}
+		 addr{}, length(sizeof(struct sockaddr_storage)), message{}, vector{}, deadline(0) {
+			// Зануляем описатель наложенного обмена
+			::memset(&this->overlapped, 0, sizeof(this->overlapped));
+		}
 	} slot_t;
+
+	/**
+	 * @brief Число записей учёта на одной странице таблицы
+	 *
+	 * @note Значение задано степенью двойки: номер страницы и смещение внутри неё
+	 *       берутся сдвигом и наложением маски, а не делением
+	 *
+	 */
+	static constexpr uint32_t PAGE = 0x100;
 
 	/**
 	 * @brief Таблица записей учёта поданных операций
@@ -5217,8 +5244,21 @@ namespace inflight {
 	 *          освободившаяся ячейка встаёт в очередь свободных. Ужимать её нельзя -
 	 *          на ячейку способно прийти завершение операции, отменённой давно
 	 *
+	 * @details Разложена страницами намеренно, а не одним отрезком, как это заведено
+	 *          у io_uring. Разница в устройстве ядра: io_uring пишет итог обмена в
+	 *          кольцо завершений, и таблица его вольна переезжать при росте. IOCP же
+	 *          пишет итог **в саму запись** - в её описатель наложенного обмена, - и
+	 *          переезд таблицы оставил бы ядро дописывающим по освобождённой памяти.
+	 *          Страница, однажды заведённая, с места не двигается
+	 *
 	 */
-	static vector <slot_t> slots;
+	static vector <unique_ptr <slot_t []>> slots;
+
+	/**
+	 * @brief Число заведённых записей учёта
+	 *
+	 */
+	static uint32_t count = 0;
 
 	/**
 	 * @brief Очередь свободных ячеек учёта
@@ -5231,6 +5271,22 @@ namespace inflight {
 	 *
 	 */
 	static constexpr uint64_t INVALID = static_cast <uint64_t> (-1);
+
+	/**
+	 * @brief Функция получения записи учёта по её номеру
+	 *
+	 * @param index номер ячейки учёта
+	 * @return      запись учёта, либо пустое значение при выходе за пределы таблицы
+	 *
+	 */
+	static inline slot_t * at(const uint32_t index) noexcept {
+		// Если номер ячейки за пределами заведённых
+		if(index >= ::inflight::count)
+			// Выводим отсутствие записи учёта
+			return nullptr;
+		// Выводим запись учёта со своей страницы
+		return &::inflight::slots[index / ::inflight::PAGE][index % ::inflight::PAGE];
+	}
 
 	/**
 	 * @brief Функция сборки метки завершения из номера ячейки и её поколения
@@ -5259,12 +5315,12 @@ namespace inflight {
 	static slot_t * get(const uint64_t token) noexcept {
 		// Получаем номер ячейки учёта
 		const uint32_t index = static_cast <uint32_t> (token & 0xFFFFFFFF);
+		// Получаем запись учёта со своей страницы
+		slot_t * result = ::inflight::at(index);
 		// Если номер ячейки за пределами таблицы
-		if(index >= ::inflight::slots.size())
+		if(result == nullptr)
 			// Выводим отсутствие записи учёта
 			return nullptr;
-		// Получаем запись учёта
-		slot_t * result = &::inflight::slots.at(index);
 		/**
 		 * Если запись свободна либо поколение разошлось - завершение принадлежит
 		 * операции, чья ячейка уже переиспользована. Отдавать такую запись нельзя
@@ -5274,6 +5330,29 @@ namespace inflight {
 			return nullptr;
 		// Выводим запись учёта
 		return result;
+	}
+	/**
+	 * @brief Функция получения записи учёта по описателю наложенного обмена
+	 *
+	 * @details Система отдаёт завершением указатель на описатель наложенного обмена, а
+	 *          не метку операции: обратный путь к записи учёта идёт вычитанием
+	 *          известного смещения поля внутри записи
+	 *
+	 * @note Метка завершения при этом всё равно сверяется: описатель принадлежит
+	 *       записи, а вот поколение её вправе успеть смениться, если операцию
+	 *       отменили, а завершение пришло следом
+	 *
+	 * @param overlapped описатель наложенного обмена, отданный системой
+	 * @return           запись учёта, либо пустое значение
+	 *
+	 */
+	static slot_t * from(OVERLAPPED * overlapped) noexcept {
+		// Если описатель не передан
+		if(overlapped == nullptr)
+			// Выводим отсутствие записи учёта
+			return nullptr;
+		// Выводим запись учёта, какой описатель принадлежит
+		return reinterpret_cast <slot_t *> (reinterpret_cast <uint8_t *> (overlapped) - offsetof(slot_t, overlapped));
 	}
 	/**
 	 * @brief Функция занятия записи учёта под новую операцию
@@ -5296,12 +5375,18 @@ namespace inflight {
 		// Если свободных ячеек учёта нет
 		} else {
 			// Получаем номер новой ячейки учёта
-			index = static_cast <uint32_t> (::inflight::slots.size());
-			// Заводим новую ячейку учёта
-			::inflight::slots.emplace_back();
+			index = ::inflight::count;
+			// Если начатая страница исчерпана - заводим следующую
+			if((index % ::inflight::PAGE) == 0)
+				// Заводим страницу записей учёта
+				::inflight::slots.emplace_back(new slot_t [::inflight::PAGE]);
+			// Отмечаем заведённую запись учёта
+			::inflight::count++;
 		}
 		// Получаем запись учёта
-		slot_t & slot = ::inflight::slots.at(index);
+		slot_t & slot = (* ::inflight::at(index));
+		// Зануляем описатель наложенного обмена, оставленный прежним владельцем
+		::memset(&slot.overlapped, 0, sizeof(slot.overlapped));
 		// Увеличиваем поколение записи
 		slot.generation++;
 		// Отмечаем запись как занятую
@@ -5356,12 +5441,14 @@ namespace inflight {
 	static void release(const uint64_t token) noexcept {
 		// Получаем номер ячейки учёта
 		const uint32_t index = static_cast <uint32_t> (token & 0xFFFFFFFF);
+		// Получаем запись учёта со своей страницы
+		slot_t * record = ::inflight::at(index);
 		// Если номер ячейки за пределами таблицы
-		if(index >= ::inflight::slots.size())
+		if(record == nullptr)
 			// Выходим из функции
 			return;
 		// Получаем запись учёта
-		slot_t & slot = ::inflight::slots.at(index);
+		slot_t & slot = (* record);
 		// Если запись уже свободна либо поколение разошлось
 		if(!slot.busy || (slot.generation != static_cast <uint32_t> (token >> 32)))
 			// Выходим из функции
@@ -5384,6 +5471,8 @@ namespace inflight {
 	static void clear() noexcept {
 		// Выполняем очистку таблицы записей учёта
 		::inflight::slots.clear();
+		// Сбрасываем число заведённых записей учёта
+		::inflight::count = 0;
 		// Выполняем очистку очереди свободных ячеек
 		::inflight::released.clear();
 	}
