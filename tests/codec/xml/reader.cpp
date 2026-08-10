@@ -557,6 +557,16 @@ TEST(CodecXmlReader, Malformed) {
 		 */
 		{"<!DOCTYPE a [<!ENTITY e \"<b/>\"><!ATTLIST a x CDATA \"&e;\">]><a x=\"ok\"/>", xml::error_t::INVALID_REFERENCE},
 		{"<!DOCTYPE a [<!ENTITY e \"<b/>\"><!ATTLIST a x CDATA \"&e;\">]><a/>", xml::error_t::INVALID_REFERENCE},
+		/**
+		 * Разметка, принесённая цепочкой ссылок
+		 *
+		 * @note Порядок объявлений значения не имеет: сущность вправе ссылаться на
+		 *       объявленную ниже, и признак разметки переносится по цепочке до
+		 *       неподвижности
+		 */
+		{"<!DOCTYPE a [<!ENTITY inner \"<b/>\"><!ENTITY outer \"&inner;\"><!ATTLIST a x CDATA \"&outer;\">]><a x=\"ok\"/>", xml::error_t::INVALID_REFERENCE},
+		{"<!DOCTYPE a [<!ENTITY outer \"&inner;\"><!ENTITY inner \"<b/>\"><!ATTLIST a x CDATA \"&outer;\">]><a x=\"ok\"/>", xml::error_t::INVALID_REFERENCE},
+		{"<!DOCTYPE a [<!ENTITY inner \"<b/>\"><!ENTITY outer \"&inner;\"><!ATTLIST a x CDATA \"&outer;\">]><a/>", xml::error_t::INVALID_REFERENCE},
 		{"<a>&#X41;</a>",                                        xml::error_t::INVALID_CHAR_REFERENCE},
 		{"<a><!-- п ---></a>",                                   xml::error_t::INVALID_COMMENT},
 		/**

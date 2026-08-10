@@ -6479,6 +6479,131 @@ TEST_F(IoFixture, IoFsFollowTest){
 }
 
 /**
+ * @brief Тест проверки чтения файла по пути, записанному кириллицей
+ *
+ * @details Проверка заведена по дефекту, найденному под MS Windows: узкие обращения
+ *          системы принимают путь не в UTF-8, а в кодовой странице системы, и путь
+ *          с кириллицей уводил движок к файлу с искажённым именем. Отказа при этом
+ *          не было вовсе - обращение отвечало годным дескриптором, - оттого дефект
+ *          и жил незамеченным.
+ *
+ * @note Проверка нужна на всех системах, а не под одной MS Windows: у прочих узкие
+ *       обращения принимают UTF-8 как есть, и закрепляется здесь именно одинаковое
+ *       поведение движков по кириллическим путям.
+ *
+ * @note Файл заводится не средствами движка, а обычной записью, и содержимое его
+ *       кириллическое тоже: проверяется и путь, и то, что данные доходят целиком,
+ *       а не обрезаются переводом записи
+ *
+ */
+TEST_F(IoFixture, IoFsCyrillicPathTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Флаг превышения времени ожидания
+	bool expired = false;
+	// Прочитанное содержимое файла
+	std::string readed = "";
+	// Путь к отслеживаемому файлу с кириллическим названием
+	const std::string filename = "./проверка кириллицы.txt";
+	// Содержимое отслеживаемого файла
+	const std::string content = "Проверка чтения кириллицы";
+	/**
+	 * @brief Функция дописывания данных в отслеживаемый файл
+	 *
+	 * @return результат записи данных
+	 *
+	 */
+	auto store = [&filename, &content]() noexcept -> bool {
+		// Выполняем открытие файла на дозапись
+		FILE * file = ::fopen(filename.c_str(), "ab");
+		// Если файл открыть не удалось
+		if(file == nullptr)
+			// Выводим отрицательный результат
+			return false;
+		// Выполняем запись данных в файл
+		const size_t size = ::fwrite(content.data(), sizeof(char), content.size(), file);
+		// Выполняем закрытие файла
+		::fclose(file);
+		// Выводим результат записи
+		return (size == content.size());
+	};
+	// Удаляем файл, оставшийся от предыдущего запуска
+	::remove(filename.c_str());
+	{
+		// Выполняем заведение отслеживаемого файла пустым
+		FILE * file = ::fopen(filename.c_str(), "wb");
+		// Файл обязан завестись
+		ASSERT_TRUE(file != nullptr);
+		// Выполняем закрытие файла
+		::fclose(file);
+	}
+	// Добавляем новое событие отслеживания файла
+	const awh::event::id_t fid = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
+	// Добавляем событие ограничения времени работы проверки
+	const awh::event::id_t guard = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Добавляем событие записи данных в файл
+	const awh::event::id_t starter = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем идентификаторы созданных событий
+	ASSERT_GT(fid, 0u);
+	ASSERT_GT(guard, 0u);
+	ASSERT_GT(starter, 0u);
+	// Устанавливаем задержку записи данных в файл
+	this->_io->setTimeout(starter, awh::event::action_t::NONE, 300);
+	// Устанавливаем предельное время работы проверки
+	this->_io->setTimeout(guard, awh::event::action_t::NONE, 15000);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем путь к отслеживаемому файлу
+	ASSERT_TRUE(this->_io->setAddress(fid, awh::event::address_t::FS, filename));
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(fid));
+	ASSERT_TRUE(this->_io->commit(guard));
+	ASSERT_TRUE(this->_io->commit(starter));
+	// Устанавливаем режим слежения за файлом
+	ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::AUTO_FOLLOW));
+	// Устанавливаем функцию обратного вызова на превышение времени ожидания
+	this->_io->on(guard, [&stop, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS){
+			// Запоминаем превышение времени ожидания
+			expired = true;
+			// Останавливаем проверку
+			stop = true;
+		}
+	});
+	// Устанавливаем функцию обратного вызова на запись данных в файл
+	this->_io->on(starter, [&store]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло, записываем данные в файл
+		if(status == awh::event::status_t::SUCCESS)
+			// Выполняем запись данных в файл
+			store();
+	});
+	// Устанавливаем функцию обратного вызова на чтение из события
+	this->_io->on(fid, [&stop, &readed]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		// Дополняем прочитанное очередной порцией данных
+		readed.append(reinterpret_cast <const char *> (data), size);
+		// Останавливаем проверку
+		stop = true;
+	});
+	// Выполняем запуск событий
+	ASSERT_TRUE(this->_io->launch(fid));
+	ASSERT_TRUE(this->_io->launch(guard));
+	ASSERT_TRUE(this->_io->launch(starter));
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Удаляем отслеживаемый файл
+	::remove(filename.c_str());
+	// Проверяем что проверка завершилась не по превышению времени ожидания
+	ASSERT_FALSE(expired);
+	// Проверяем что содержимое файла прочитано целиком и без искажений
+	ASSERT_EQ(readed, content);
+}
+
+/**
  * @brief Тест проверки работы пользовательских событий
  *
  */

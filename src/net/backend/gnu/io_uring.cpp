@@ -7729,8 +7729,39 @@ namespace kernel {
 			(node->state.protocol != event::protocol_t::SCTP) && !::splicing::eligible(node, &joined)
 		);
 		const bool fetching = (suitable && ::pool::create(log));
-		// Выполняем подачу приёма либо ожидания готовности
-		state.token = (fetching ? ::post::fetch(state.sock, &state) : ::post::poll(state.sock, events, false, &state));
+		/**
+		 * Годность подписки для приёма подключений через кольцо
+		 *
+		 * @details Слушающему узлу ожидание готовности не нужно вовсе: вместо него
+		 *          подаётся сам приём, и подключение приходит завершением уже
+		 *          принятым. Обращение `accept` на каждое подключение пропадает,
+		 *          а подача приёма уходит в ядро тем же обращением, что и прочие
+		 *          записи оборота
+		 *
+		 * @note Приём подаётся ОДНОКРАТНЫМ намеренно, хотя ядро умеет и многократный.
+		 *       Многократный адреса удалённой стороны НЕ отдаёт (писать его в одну
+		 *       память при нескольких подключениях сразу ядро не берётся), и адрес
+		 *       пришлось бы добывать `getpeername` - обращением на каждое подключение,
+		 *       ровно тем, которое приёмом через кольцо и убирается. Многократность
+		 *       выгодна лишь там, где адрес не нужен: у UNIX-доменных сокетов он
+		 *       берётся из пути самого сервера. Работа отдельная, здесь не делается
+		 *
+		 * @note Условие `backlog.max > 0` означает состоявшийся `listen`: до него
+		 *       ядро приём отвергает. Величина эта задаётся только прослушиванием
+		 *
+		 * @note Протокол SCTP исключён: у сокетов с сохранением границ подключение
+		 *       добывается `sctp_recvmsg` с последующим `sctp_peeloff`, а не `accept`
+		 */
+		const bool accepting = (
+			(node != nullptr) && (node->state.node == event::node_t::SERVER) &&
+			(node->state.type == event::type_t::STREAM) && (node->state.protocol != event::protocol_t::SCTP) &&
+			(reinterpret_cast <::io::server_t *> (node)->backlog.max > 0) &&
+			(reinterpret_cast <::io::server_t *> (node)->actions & ::action::ACCEPT) &&
+			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN))
+		);
+		// Выполняем подачу приёма подключения, родного приёма данных либо ожидания готовности
+		state.token = (accepting ? ::post::accept(state.sock, false, &state) :
+		 (fetching ? ::post::fetch(state.sock, &state) : ::post::poll(state.sock, events, false, &state)));
 		// Отмечаем заведение родного приёма по дескриптору
 		::pool::arm(state.sock, (fetching && (state.token != ::inflight::INVALID)));
 		// Если подать ожидание готовности не удалось
@@ -9680,7 +9711,7 @@ namespace io {
 	 * @return результат выполнения обработки
 	 *
 	 */
-	static bool accept(::io::server_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *) noexcept;
+	static bool accept(::io::server_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *, const net::socket_t = net::invalid_socket_t) noexcept;
 	/**
 	 * @brief Прототип функции обработки события записи
 	 *
@@ -33482,7 +33513,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool accept(::io::server_t * server, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool accept(::io::server_t * server, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log, const net::socket_t ready) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -33493,8 +33524,14 @@ namespace io {
 				::local::guard_t guard(server);
 				// Если количество текущих подключений уже максимальное
 				if(server->backlog.count == server->backlog.max){
-					// Принимаем подключение и сразу закрываем его
-					const net::socket_t sock = ::accept(server->fd, nullptr, nullptr);
+					/**
+					 * Принимаем подключение и сразу закрываем его
+					 *
+					 * @note Приём через кольцо подключение уже принял: закрывать надлежит
+					 *       его, а не звать `accept` заново - иначе принятое ядром
+					 *       подключение осталось бы висеть, а закрыли бы следующее
+					 */
+					const net::socket_t sock = ((ready != net::invalid_socket_t) ? ready : ::accept(server->fd, nullptr, nullptr));
 					// Если сокет создан успешно
 					if(sock != net::invalid_socket_t)
 						// Закрываем сокет подключения
@@ -33561,7 +33598,7 @@ namespace io {
 							// Если протокол интернета установлен как TCP
 							case static_cast <uint8_t> (event::protocol_t::TCP):
 								// Определяем разрешено ли подключение к прокси серверу
-								sock = ::accept(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.client), &server->endpoint.size);
+								sock = ((ready != net::invalid_socket_t) ? ready : ::accept(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.client), &server->endpoint.size));
 							break;
 							// Если протокол интернета установлен как SCTP
 							case static_cast <uint8_t> (event::protocol_t::SCTP): {
@@ -33572,7 +33609,7 @@ namespace io {
 									// Если событие принадлежит к типу STREAM
 									case static_cast <uint8_t> (event::type_t::STREAM):
 										// Определяем разрешено ли подключение к прокси серверу
-										sock = ::accept(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.client), &server->endpoint.size);
+										sock = ((ready != net::invalid_socket_t) ? ready : ::accept(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.client), &server->endpoint.size));
 									break;
 									// Если событие принадлежит к типу SEQPACKET
 									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
@@ -72164,6 +72201,23 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					const ::inflight::kind_t kind = slot->kind;
 					// Запоминаем дескриптор, к которому операция относилась
 					const net::socket_t sockOf = slot->sock;
+					/**
+					 * Запоминаем адрес удалённой стороны принятого подключения
+					 *
+					 * @note Снимается он ДО освобождения записи учёта: ядро заполнило
+					 *       адрес в самой записи, а освобождённая запись вправе тут же
+					 *       уйти под другую операцию
+					 */
+					struct sockaddr_storage acceptedAddr{};
+					// Длина адреса удалённой стороны принятого подключения
+					socklen_t acceptedLength = 0;
+					// Если завершение принадлежит приёму подключения
+					if(kind == ::inflight::kind_t::ACCEPT){
+						// Запоминаем длину адреса удалённой стороны
+						acceptedLength = slot->length;
+						// Запоминаем адрес удалённой стороны
+						::memcpy(&acceptedAddr, &slot->addr, sizeof(acceptedAddr));
+					}
 					// Если завершений по операции больше не будет
 					if(!more)
 						// Освобождаем запись учёта операции
@@ -72197,6 +72251,20 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						continue;
 					}
 					/**
+					 * Если завершение принадлежит чтению файла
+					 *
+					 * @note Разбирается отдельно и до общей развилки: у сетевых операций
+					 *       владельцем идёт запись учёта подписок, а у чтения файла - сам
+					 *       узел. Пустить его общим путём значило бы истолковать узел
+					 *       записью учёта
+					 */
+					if(kind == ::inflight::kind_t::FILE){
+						// Выполняем разбор прочитанного из файла
+						::io::complete(reinterpret_cast <::io::file_t *> (owner), completion.res, this, this->_log);
+						// Переходим к завершению следующему
+						continue;
+					}
+					/**
 					 * Если завершение принадлежит ожиданию готовности приёмника объединения
 					 *
 					 * @note Взводится оно тогда, когда выдача остатка приёмнику не удалась
@@ -72204,22 +72272,67 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       из источника и лежат в канале, оттого бросить их нельзя -
 					 *       выдача повторяется здесь
 					 */
-					/**
-				 * Если завершение принадлежит чтению файла
-				 *
-				 * @note Разбирается отдельно и до общей развилки: у сетевых операций
-				 * владельцем идёт запись реестра подписок, а у чтения файла - сам
-				 * узел. Пустить его общим путём значило бы истолковать узел записью
-				 */
-				if(kind == ::inflight::kind_t::FILE){
-					// Выполняем разбор прочитанного из файла
-					::io::complete(reinterpret_cast <::io::file_t *> (owner), completion.res, this, this->_log);
-					// Переходим к завершению следующему
-					continue;
-				}
-				if(kind == ::inflight::kind_t::SPLICE_WAIT){
+					if(kind == ::inflight::kind_t::SPLICE_WAIT){
 						// Выполняем повторную выдачу остатка приёмнику
 						::splicing::resume(reinterpret_cast <::io::node_t *> (owner));
+						// Переходим к завершению следующему
+						continue;
+					}
+					/**
+					 * Если завершение принадлежит приёму подключения через кольцо
+					 *
+					 * @details Подключение ядро приняло само, и дескриптор его пришёл числовым
+					 *          исходом завершения. Общий путь готовности такому завершению не
+					 *          годится: событие там означает «сокет готов», а здесь подключение
+					 *          уже принято
+					 *
+					 * @note Приём подан однократным, оттого ядром он снят и подаётся заново -
+					 *       тем же порядком, что и сработавшее ожидание: отметкой расхождения
+					 *       учёта, а не прямой подачей
+					 */
+					if(kind == ::inflight::kind_t::ACCEPT){
+						// Получаем запись учёта подписки, которой приём принадлежал
+						::kernel::registry_t * state = reinterpret_cast <::kernel::registry_t *> (owner);
+						// Если запись учёта подписки получена
+						if(state != nullptr){
+							// Забываем метку завершения снятого приёма
+							state->token = ::inflight::INVALID;
+							// Отмечаем подписку снятой
+							state->registered = false;
+							// Снимаем набор признаков, поданный ядру последним
+							state->applied = 0;
+							// Если включённые подписки на дескрипторе остались и учёт согласия не ждёт
+							if((state->enabled != 0) && !state->pending){
+								// Отмечаем учёт разошедшимся с ядром
+								state->pending = true;
+								// Ставим дескриптор в очередь согласования: приём подадут заново
+								::kernel::pending.push_back(state->sock);
+							}
+							// Если подключение принято успешно
+							if(completion.res >= 0){
+								// Получаем узел сервера, которому приём принадлежал
+								::io::server_t * server = reinterpret_cast <::io::server_t *> (state->udata);
+								// Если узел сервера получен
+								if(server != nullptr){
+									/**
+									 * Переносим адрес удалённой стороны в узел сервера
+									 *
+									 * @note Путь принятия подключения читает адрес именно оттуда:
+									 *       при обычном приёме его заполняет `accept`, а здесь -
+									 *       ядро в записи учёта операции
+									 */
+									::memcpy(&server->endpoint.client, &acceptedAddr, sizeof(acceptedAddr));
+									// Устанавливаем длину адреса удалённой стороны
+									server->endpoint.size = acceptedLength;
+									// Выполняем принятие подключения, уже принятого ядром
+									::io::accept(server, &this->_eth, &this->_addr, this->_fmk, this->_log, static_cast <net::socket_t> (completion.res));
+								// Если узел сервера получить не удалось, закрываем принятое подключение
+								} else ::kernel::close(static_cast <net::socket_t> (completion.res));
+							}
+						// Если запись учёта подписки получить не удалось, а подключение принято
+						} else if(completion.res >= 0)
+							// Закрываем принятое подключение: отдать его некому
+							::kernel::close(static_cast <net::socket_t> (completion.res));
 						// Переходим к завершению следующему
 						continue;
 					}
