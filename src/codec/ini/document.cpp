@@ -1670,6 +1670,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
 	result.comments = this->_settings.reader.comments;
 	// Устанавливаем запись управляющих последовательностей в значении
 	result.escapes = this->_settings.reader.escapes;
+	// Устанавливаем склеивание строк, продолженных обратной косой чертой, читающим
+	result.continuations = this->_settings.reader.continuations;
 	// Устанавливаем запись многострочного значения продолжением отступом
 	result.indents = this->_settings.reader.indents;
 	// Устанавливаем наибольшую допустимую длину имени раздела или свойства

@@ -107,6 +107,30 @@ namespace {
 	/**
 	 * @brief Метод проверки знака на нужду в записи управляющей последовательностью
 	 *
+	 * @brief Метод проверки записи на склейку со следующей строкой при чтении
+	 *
+	 * @details Читающий склеивает строки по нечётному числу обратных косых черт в
+	 * конце строки: чётное их число читается управляющими последовательностями
+	 * самой черты и строку не продолжает
+	 *
+	 * @param text проверяемая запись
+	 * @return     результат проверки записи
+	 *
+	 */
+	static bool continued(const string_view text) noexcept {
+		// Количество обратных косых черт в конце записи
+		size_t count = 0;
+		/**
+		 * Выполняем подсчёт обратных косых черт в конце записи
+		 */
+		while((count < text.length()) && (text[text.length() - count - 1] == '\\'))
+			// Выполняем увеличение количества обратных косых черт
+			count++;
+		// Выводим результат проверки записи на нечётность числа черт
+		return ((count % 2) == 1);
+	}
+
+	/**
 	 * @param letter проверяемый знак значения
 	 * @return       результат проверки
 	 *
@@ -192,7 +216,7 @@ namespace {
 awh::codec::ini::Writer::Settings::Settings() noexcept :
  marker(';'), separator('='), delimiter('.'), quoting(quoting_t::AUTO),
  subsections(subsection_t::NONE), newline(newline_t::LF), inlineComments(false), comments(marker_t::BOTH),
- spaces(true), escapes(false), indent(false), indents(false), separated(true), maxName(MAX_NAME) {}
+ spaces(true), escapes(false), continuations(false), indent(false), indents(false), separated(true), maxName(MAX_NAME) {}
 /**
  * @brief Метод получения настроек наречия MS Windows
  *
@@ -257,6 +281,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::systemd() n
 	result.escapes = true;
 	// Устанавливаем запрет записи пробелов вокруг разделителя
 	result.spaces = false;
+	// Устанавливаем склеивание строк, продолженных обратной косой чертой, читающим
+	result.continuations = true;
 	// Выводим собранные настройки записи
 	return result;
 }
@@ -281,6 +307,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::git() noexc
 	result.escapes = true;
 	// Устанавливаем запись отступа перед свойствами раздела
 	result.indent = true;
+	// Устанавливаем склеивание строк, продолженных обратной косой чертой, читающим
+	result.continuations = true;
 	// Выводим собранные настройки записи
 	return result;
 }
@@ -318,6 +346,18 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	 *       прочитанным: отвергнуть её лучше, чем молча потерять
 	 */
 	if(ascii::isSpace(name.front()) || ascii::isSpace(name.back())){
+		// Запоминаем код ошибки записи
+		this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Если имя оканчивается обратной косой чертой, склеивающей строки при чтении
+	 *
+	 * @note Имена управляющими последовательностями не записываются, и оградить
+	 *       такую черту нечем: читающий слил бы имя со следующей строкой
+	 */
+	if(this->_settings.continuations && ::continued(name)){
 		// Запоминаем код ошибки записи
 		this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
 		// Выводим отрицательный результат выполнения операции
@@ -437,6 +477,19 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 	 * Если значение ограждения кавычками требует, но настройками оно запрещено
 	 */
 	if(needed && !quoted && !this->_settings.escapes){
+		// Запоминаем код ошибки записи
+		this->_error = error_t::INVALID_CHARACTER;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Если значение оканчивается обратной косой чертой, склеивающей строки при чтении
+	 *
+	 * @note При записи управляющих последовательностей черта эта удваивается и строку
+	 *       не продолжает, а без них оградить её нечем - даже кавычками: строки
+	 *       склеиваются прежде, чем читающий доберётся до кавычек
+	 */
+	if(this->_settings.continuations && !this->_settings.escapes && ::continued(value)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_CHARACTER;
 		// Выводим отрицательный результат выполнения операции
