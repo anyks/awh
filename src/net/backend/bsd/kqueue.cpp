@@ -3758,7 +3758,7 @@ namespace local {
 					// Выполняем изменение параметров события
 					if(!(result = (::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), &::local::result[0], ::local::result.size(), nullptr) != net::invalid_socket_t))){
 						// Записываем ошибку в лог
-						log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
+						log->debug("%s: submit failed: %s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ::strerror(errno));
 						// Очищаем список изменений
 						::local::change.clear();
 						// Очищаем список результатов активации
@@ -4336,64 +4336,6 @@ namespace local {
 	 */
 	Watchdog::Watchdog(const int64_t volume) noexcept :
 	 _count(0), _volume((volume > 0) ? volume : -1), _deadline(0) {}
-};
-
-/**
- * @brief Инкапсулируем статические функции в пространство имён Ethernet
- *
- */
-namespace eth {
-	/**
-	 * @brief Генерация случайного порта в диапазоне 49152-65535
-	 *
-	 * @return случайный порт
-	 *
-	 */
-	static uint16_t port() noexcept {
-		/**
-		 * Инициализация генератора случайных чисел
-		 */
-		::srandom(::time(nullptr) ^ ::getpid());
-		/**
-		 * Возвращаем случайный порт из диапазона 49152-65535
-		 */
-		return (49152 + (::random() % (65535 - 49152 + 1)));
-	}
-	/**
-	 * @brief Функция вычисления контрольной суммы
-	 *
-	 * @param data   указатель на данные
-	 * @param length длина данных
-	 * @return       вычисленная контрольная сумма
-	 *
-	 */
-	static uint16_t checksum(const void * data, size_t length) noexcept {
-		// Получаем нужного вида буфер входящих данных
-		const uint16_t * buffer = reinterpret_cast <const uint16_t *> (data);
-		// Инициализируем сумму
-		uint32_t sum = 0;
-		/**
-		 * Пока есть данные для обработки
-		 */
-		while(length > 1){
-			// Добавляем к сумме очередные два байта данных
-			sum += (* buffer++);
-			// Уменьшаем длину данных на два байта
-			length -= 2;
-		}
-		// Если остался один байт данных
-		if(length == 1)
-			// Добавляем к сумме последний байт данных
-			sum += (* reinterpret_cast <const uint8_t *> (buffer));
-		/**
-		 * Складываем старшие 16 бит суммы с младшими 16 битами суммы
-		 */
-		while(sum >> 16)
-			// Складываем старшие 16 бит суммы с младшими 16 битами суммы
-			sum = ((sum & 0xFFFF) + (sum >> 16));
-		// Возвращаем инвертированную сумму
-		return static_cast <uint16_t> (~sum);
-	}
 };
 
 /**
@@ -5568,6 +5510,21 @@ namespace timer {
 	 *          нагруженного сервера предназначена сложная структура
 	 */
 	namespace simple {
+		/**
+		 * @brief НАМЕРЕННОЕ РЕШЕНИЕ: семейства перегрузок `set` и `cancel` полны от 1 до 6 записей
+		 *
+		 * @details Заведены они ЗАДЕЛОМ - под расширение возможностей движка, чтобы
+		 *          узлу с любым числом сроков уже было чем взвестись и чем сняться.
+		 *          Оттого часть арностей не зовётся ниоткуда, и это НЕ мёртвый код:
+		 *          `set` зовётся на 1 и 2 записи, `cancel` - на 1, 2, 3, 4 и 6.
+		 *
+		 * @note Разбору на неиспользуемое НЕ вырезать: выемка неиспользуемых арностей
+		 *       оставит в семействе дыру (у `cancel` - ровно на пяти записях, при
+		 *       используемых четырёх и шести), а дыра эта хуже лишнего кода -
+		 *       следующий, кому понадобится недостающая арность, наткнётся на отказ
+		 *       сборки и допишет её обратно
+		 *
+		 */
 		// ─────────────────────────────────────────────────────────────
 		// Структуры данных
 		// ─────────────────────────────────────────────────────────────
@@ -6908,6 +6865,21 @@ namespace timer {
 	 *          держит нагрузку без ухудшения
 	 */
 	namespace difficult {
+		/**
+		 * @brief НАМЕРЕННОЕ РЕШЕНИЕ: семейства перегрузок `set` и `cancel` полны от 1 до 6 записей
+		 *
+		 * @details Заведены они ЗАДЕЛОМ - под расширение возможностей движка, чтобы
+		 *          узлу с любым числом сроков уже было чем взвестись и чем сняться.
+		 *          Оттого часть арностей не зовётся ниоткуда, и это НЕ мёртвый код:
+		 *          `set` зовётся на 1 и 2 записи, `cancel` - на 1, 2, 3, 4 и 6.
+		 *
+		 * @note Разбору на неиспользуемое НЕ вырезать: выемка неиспользуемых арностей
+		 *       оставит в семействе дыру (у `cancel` - ровно на пяти записях, при
+		 *       используемых четырёх и шести), а дыра эта хуже лишнего кода -
+		 *       следующий, кому понадобится недостающая арность, наткнётся на отказ
+		 *       сборки и допишет её обратно
+		 *
+		 */
 		// ─────────────────────────────────────────────────────────────
 		// Структуры данных
 		// ─────────────────────────────────────────────────────────────
@@ -66486,13 +66458,13 @@ bool awh::engine::IO::initialize() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+				this->_log->debug("%s: cannot create poll queue: %s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				this->_log->print("%s: cannot create poll queue: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			#endif
 			// Выходим из приложения
 			::_exit(EXIT_FAILURE);
@@ -66586,13 +66558,13 @@ bool awh::engine::IO::reinitialize() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+				this->_log->debug("%s: cannot create poll queue: %s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				this->_log->print("%s: cannot create poll queue: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			#endif
 			// Выходим из приложения
 			::_exit(EXIT_FAILURE);

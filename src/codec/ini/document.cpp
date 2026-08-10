@@ -110,6 +110,30 @@ string awh::codec::ini::Document::fold(const string_view name, const bool sectio
 	return result;
 }
 /**
+ * @brief Метод получения вида последней записи, идущей в выдачу
+ *
+ * @details Записи, снятые пометкой удаления, при записи текста пропускаются, и
+ * последней видимой является ближайшая к концу запись, пометки не несущая
+ *
+ * @return вид последней записи, идущей в выдачу
+ *
+ */
+awh::codec::ini::kind_t awh::codec::ini::Document::kind() const noexcept {
+	/**
+	 * Выполняем перебор записей разобранного текста с конца
+	 */
+	for(size_t i = this->_records.size(); i > 0; i--){
+		/**
+		 * Если очередная запись пометки удаления не несёт
+		 */
+		if(this->_records.at(i - 1).kind != kind_t::NONE)
+			// Выводим вид последней записи, идущей в выдачу
+			return this->_records.at(i - 1).kind;
+	}
+	// Выводим вид отсутствующей записи
+	return kind_t::NONE;
+}
+/**
  * @brief Метод проверки имени раздела или свойства
  *
  * @param name    проверяемое имя раздела или свойства
@@ -632,6 +656,12 @@ bool awh::codec::ini::Document::resolve() noexcept {
 	for(auto & item : resolved)
 		// Выполняем перенос разрешённого значения в хранилище знаков
 		this->_records.at(item.first).value = this->add(item.second);
+		/**
+		 * Если хранилище знаков предел разрядности отрезка превысило
+		 */
+		if(this->_error == error_t::OVERFLOW_LIMIT)
+			// Выводим отрицательный результат выполнения операции
+			return false;
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -761,6 +791,12 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 				record.key = this->add(reader.key());
 				// Запоминаем место значения свойства в хранилище знаков
 				record.value = this->add(reader.text());
+				/**
+				 * Если хранилище знаков предел разрядности отрезка превысило
+				 */
+				if(this->_error == error_t::OVERFLOW_LIMIT)
+					// Выводим отрицательный результат выполнения операции
+					return false;
 				// Запоминаем место значения свойства до подстановки обращений
 				record.raw = record.value;
 				// Запоминаем признак заключения значения в кавычки
@@ -782,6 +818,12 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 				 *       свойством не является и значения не несёт
 				 */
 				record.value = this->add(reader.text());
+				/**
+				 * Если хранилище знаков предел разрядности отрезка превысило
+				 */
+				if(this->_error == error_t::OVERFLOW_LIMIT)
+					// Выводим отрицательный результат выполнения операции
+					return false;
 				// Запоминаем знак, которым примечание начато
 				record.marker = reader.comment().marker;
 				// Запоминаем расположение примечания в тексте настроек
@@ -1168,6 +1210,12 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
 	record.name = this->add(section);
 	// Запоминаем место имени подраздела в хранилище знаков
 	record.subsection = this->add(subsection);
+	/**
+	 * Если хранилище знаков предел разрядности отрезка превысило
+	 */
+	if(this->_error == error_t::OVERFLOW_LIMIT)
+		// Выводим отрицательный результат выполнения операции
+		return false;
 	// Запоминаем признак объявления раздела в тексте настроек
 	record.declared = true;
 	// Запоминаем порядковый номер объявляемого раздела
@@ -1186,7 +1234,7 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
 	 * @note Пустая строка перед объявлением раздела ставится ради читаемости:
 	 *       разделы, слипшиеся друг с другом, человек читает с трудом
 	 */
-	if(!this->_records.empty() && (this->_records.back().kind != kind_t::BLANK)){
+	if(!this->_records.empty() && (this->kind() != kind_t::BLANK)){
 		// Собираемая запись пустой строки
 		record_t blank;
 		// Запоминаем вид собираемой записи
@@ -1290,6 +1338,12 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 		// Запоминаем место нового значения свойства в хранилище знаков
 		this->_records.at(target).value = this->add(value);
 		/**
+		 * Если хранилище знаков предел разрядности отрезка превысило
+		 */
+		if(this->_error == error_t::OVERFLOW_LIMIT)
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		/**
 		 * Запоминаем место нового значения свойства до подстановки обращений
 		 *
 		 * @note Установленное значение подстановке не подвергается: разрешать его
@@ -1344,6 +1398,12 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 	record.key = this->add(key);
 	// Запоминаем место значения свойства в хранилище знаков
 	record.value = this->add(value);
+	/**
+	 * Если хранилище знаков предел разрядности отрезка превысило
+	 */
+	if(this->_error == error_t::OVERFLOW_LIMIT)
+		// Выводим отрицательный результат выполнения операции
+		return false;
 	// Запоминаем место значения свойства до подстановки обращений
 	record.raw = record.value;
 	/**
@@ -1610,6 +1670,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
 	result.comments = this->_settings.reader.comments;
 	// Устанавливаем запись управляющих последовательностей в значении
 	result.escapes = this->_settings.reader.escapes;
+	// Устанавливаем запись многострочного значения продолжением отступом
+	result.indents = this->_settings.reader.indents;
 	// Устанавливаем наибольшую допустимую длину имени раздела или свойства
 	result.maxName = this->_settings.reader.maxName;
 	/**
@@ -1687,8 +1749,30 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 				if(this->_records.at(i).valueless)
 					// Выполняем запись свойства без разделителя и значения
 					result = writer.property(this->get(this->_records.at(i).key));
-				// Выполняем запись свойства со значением
-				else result = writer.property(this->get(this->_records.at(i).key), this->get(this->_records.at(i).raw), this->_records.at(i).append);
+				else {
+					/**
+					 * Если значение было заключено в кавычки, а запись ставит их по надобности
+					 *
+					 * @note Кавычки берутся из исходного текста наравне со знаком примечания:
+					 *       человек, писавший файл руками, поставил их сам, и снимать их при
+					 *       перезаписи значило бы править то, о чём не просили
+					 */
+					if(this->_records.at(i).quoted && (writer.settings().quoting == quoting_t::AUTO)){
+						// Получаем настройки записи текста настроек
+						writer_t::settings_t current = writer.settings();
+						// Устанавливаем ограждение значения кавычками
+						current.quoting = quoting_t::ALWAYS;
+						// Выполняем установку настроек записи текста настроек
+						writer.settings(current);
+						// Выполняем запись свойства со значением
+						result = writer.property(this->get(this->_records.at(i).key), this->get(this->_records.at(i).raw), this->_records.at(i).append);
+						// Возвращаем ограждение значения кавычками по надобности
+						current.quoting = quoting_t::AUTO;
+						// Выполняем установку настроек записи текста настроек
+						writer.settings(current);
+					// Выполняем запись свойства со значением
+					} else result = writer.property(this->get(this->_records.at(i).key), this->get(this->_records.at(i).raw), this->_records.at(i).append);
+				}
 			} break;
 			// Если записью является примечание
 			case static_cast <uint8_t> (kind_t::COMMENT): {

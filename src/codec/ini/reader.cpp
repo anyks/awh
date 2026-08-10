@@ -1342,11 +1342,20 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 		if(this->_settings.inlineComments && commented(value[i], this->_settings.comments) &&
 		   ((i == 0) || ascii::isSpace(value[i - 1]))){
 			/**
+			 * Получаем положение конца примечания в значении свойства
+			 *
+			 * @note Примечание это кончается вместе со своей физической строкой:
+			 *       значение, собранное из строк продолжения, несёт их знаки конца, и
+			 *       примечание, идущее до конца собранного значения, поглотило бы
+			 *       строки продолжения, стоящие за ним
+			 */
+			const size_t stop = value.find('\n', i);
+			/**
 			 * Если выдача примечаний настройками разрешена
 			 */
 			if(this->_settings.emitComments){
 				// Запоминаем содержимое удержанного примечания
-				this->_content.assign(::trim(value.substr(i + 1)));
+				this->_content.assign(::trim((stop == string_view::npos) ? value.substr(i + 1) : value.substr(i + 1, (stop - i - 1))));
 				// Запоминаем знак, которым примечание начато
 				this->_tail.marker = value[i];
 				// Запоминаем расположение удержанного примечания
@@ -1360,8 +1369,32 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 				// Запоминаем признак того, что примечание ждёт своей выдачи
 				this->_pending = true;
 			}
-			// Выполняем прекращение разбора значения свойства
-			break;
+			/**
+			 * Если примечание доходит до конца значения свойства
+			 */
+			if(stop == string_view::npos)
+				// Выполняем прекращение разбора значения свойства
+				break;
+			/**
+			 * Если перед примечанием осталась пробельная обвязка
+			 *
+			 * @note Пробел, отделяющий примечание от значения, значению не принадлежит:
+			 *       снимается он вместе с примечанием, как и в конце всего значения
+			 */
+			if(this->_settings.trim && (keep < this->_value.length()))
+				// Выполняем отбрасывание пробельной обвязки перед примечанием
+				this->_value.resize(keep);
+			/**
+			 * Выполняем добавление знака конца строки к значению свойства
+			 *
+			 * @note Строки продолжения разделены знаком конца строки, и снятие
+			 *       примечания его не отменяет: значение остаётся многострочным
+			 */
+			this->_value.push_back('\n');
+			// Выполняем переход к знаку за концом примечания
+			i = stop;
+			// Выполняем переход к следующему знаку значения
+			continue;
 		}
 		// Выполняем добавление очередного знака к значению свойства
 		this->_value.push_back(value[i]);
@@ -1565,6 +1598,18 @@ const awh::codec::ini::Reader::settings_t & awh::codec::ini::Reader::settings() 
  *
  */
 void awh::codec::ini::Reader::settings(const settings_t & settings) noexcept {
+	/**
+	 * Если разбор текста настроек уже начат
+	 *
+	 * @note Смена настроек посреди текста применилась бы к остатку его, но не к уже
+	 *       разобранному началу, и один файл читался бы двумя наречиями сразу.
+	 *       Кодировку приведение к тому же не сменит - она определена по метке
+	 *       порядка байтов, - и настройки разошлись бы с делом. Смена поэтому не
+	 *       исполняется вовсе: чтобы задать иные настройки, чтение сбрасывают
+	 */
+	if(this->_final || (this->_base > 0) || !this->_buffer.empty())
+		// Выходим из метода, оставив настройки прежними
+		return;
 	// Запоминаем настройки разбора текста настроек
 	this->_settings = settings;
 	// Выполняем установку кодировки исходного текста
@@ -1587,6 +1632,8 @@ void awh::codec::ini::Reader::reset() noexcept {
 	this->_event = event_t::NONE;
 	// Выполняем сброс кода ошибки разбора
 	this->_error = error_t::NONE;
+	// Выполняем сброс отложенного кода ошибки приведения исходного текста
+	this->_decoding = error_t::NONE;
 	// Выполняем сброс положения обнаруженной ошибки
 	this->_errorLocation = location_t();
 	// Выполняем сброс положения текущего события
@@ -1614,6 +1661,8 @@ void awh::codec::ini::Reader::reset() noexcept {
 	// Выполняем очистку хранилища имени свойства
 	// Выполняем очистку хранилища значения свойства
 	this->_value.clear();
+	// Выполняем сброс значения свойства текущего события
+	this->_view = string_view();
 	// Выполняем очистку хранилища содержимого примечания
 	this->_content.clear();
 	// Выполняем очистку собранной логической строки
@@ -1665,11 +1714,22 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 	/**
 	 * Если приведение куска исходного текста выполнить не удалось
 	 */
-	if(!this->_decoder.convert(buffer, size, end, this->_buffer))
-		// Выводим сообщение об ошибке разбора
-		return this->fail(this->_decoder.error(), this->_offset, this->_line, 1);
+	if(!this->_decoder.convert(buffer, size, end, this->_buffer)){
+		/**
+		 * Запоминаем код ошибки приведения для отложенной выдачи
+		 *
+		 * @note Приведение переносит в хранилище всё, что успело разобрать, и лишь
+		 *       затем отвечает отказом. Отказать сразу значило бы отбросить уже
+		 *       приведённое начало текста, и разбор одного и того же текста целиком
+		 *       и кусками расходился бы: кусками события начала текста выдаются,
+		 *       а целиком - нет. Оттого отказ откладывается до исчерпания
+		 *       приведённого начала, и место его указывает на испорченный знак
+		 */
+		this->_decoding = this->_decoder.error();
+		// Запоминаем признак получения последнего куска исходного текста
+		this->_final = true;
 	// Запоминаем признак получения последнего куска исходного текста
-	this->_final = end;
+	} else this->_final = end;
 	/**
 	 * Если разбор дошёл до конца текста
 	 */
@@ -1770,6 +1830,16 @@ bool awh::codec::ini::Reader::next() noexcept {
 			 * Если исходный текст поступил целиком
 			 */
 			if(this->_final){
+				/**
+				 * Если приведение исходного текста ответило отказом
+				 *
+				 * @note Отказ приведения выдаётся здесь, а не в месте своего появления:
+				 *       приведённое начало текста разбирается прежде, чем разбор
+				 *       прекращается, - иначе события начала текста пропадали бы
+				 */
+				if(this->_decoding != error_t::NONE)
+					// Выводим сообщение об ошибке приведения исходного текста
+					return this->fail(this->_decoding, this->_offset, this->_line, 1);
 				// Запоминаем состояние чтения текста настроек
 				this->_state = state_t::FINISHED;
 				// Запоминаем вид текущего события разбора
@@ -2052,7 +2122,7 @@ awh::codec::ini::encoding_t awh::codec::ini::Reader::encoding() const noexcept {
  */
 awh::codec::ini::Reader::Reader() noexcept :
  _final(false), _sectioned(false), _state(state_t::HUNGRY), _event(event_t::NONE),
- _error(error_t::NONE), _offset(0), _start(0), _base(0), _line(1), _pending(false) {}
+ _error(error_t::NONE), _decoding(error_t::NONE), _offset(0), _start(0), _base(0), _line(1), _pending(false) {}
 /**
  * @brief Конструктор
  *
@@ -2061,7 +2131,7 @@ awh::codec::ini::Reader::Reader() noexcept :
  */
 awh::codec::ini::Reader::Reader(const settings_t & settings) noexcept :
  _final(false), _sectioned(false), _state(state_t::HUNGRY), _event(event_t::NONE),
- _error(error_t::NONE), _offset(0), _start(0), _base(0), _line(1), _pending(false), _settings(settings) {
+ _error(error_t::NONE), _decoding(error_t::NONE), _offset(0), _start(0), _base(0), _line(1), _pending(false), _settings(settings) {
 	// Выполняем установку кодировки исходного текста
 	this->_decoder.encoding(this->_settings.encoding);
 }

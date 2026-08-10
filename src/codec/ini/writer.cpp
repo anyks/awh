@@ -21,6 +21,7 @@
  * Стандартные заголовочные файлы
  */
 #include <cstdio>
+#include <limits>
 #include <type_traits>
 
 /**
@@ -191,7 +192,7 @@ namespace {
 awh::codec::ini::Writer::Settings::Settings() noexcept :
  marker(';'), separator('='), delimiter('.'), quoting(quoting_t::AUTO),
  subsections(subsection_t::NONE), newline(newline_t::LF), inlineComments(false), comments(marker_t::BOTH),
- spaces(true), escapes(false), indent(false), separated(true), maxName(MAX_NAME) {}
+ spaces(true), escapes(false), indent(false), indents(false), separated(true), maxName(MAX_NAME) {}
 /**
  * @brief Метод получения настроек наречия MS Windows
  *
@@ -228,6 +229,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::windows() n
 awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::python() noexcept {
 	// Собираемые настройки записи текста настроек
 	Settings result;
+	// Устанавливаем запись многострочного значения продолжением отступом
+	result.indents = true;
 	// Устанавливаем знак начала примечания
 	result.marker = '#';
 	// Устанавливаем знак разделителя имени и значения
@@ -412,7 +415,7 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 				 *       записать нечем: ограждение кавычками его не спасает, поскольку
 				 *       строка на нём обрывается, и разбор прочитал бы значение иначе
 				 */
-				if((value[i] == '\n') || (value[i] == '\r')){
+				if(((value[i] == '\n') && !this->_settings.indents) || (value[i] == '\r')){
 					// Запоминаем код ошибки записи
 					this->_error = error_t::INVALID_CHARACTER;
 					// Выводим отрицательный результат выполнения операции
@@ -468,6 +471,17 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 			}
 			// Выполняем запись знака управляющей последовательностью
 			::escaped(value[i], this->_text);
+			// Выполняем переход к следующему знаку значения
+			continue;
+		}
+		/**
+		 * Если знаком является знак конца строки при записи продолжением отступом
+		 */
+		if((value[i] == '\n') && !this->_settings.escapes && this->_settings.indents){
+			// Выполняем запись знака конца строки
+			this->newline();
+			// Выполняем запись отступа, которым продолжение задаётся
+			this->_text.push_back('\t');
 			// Выполняем переход к следующему знаку значения
 			continue;
 		}
@@ -873,6 +887,24 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	/**
+	 * Выполняем перебор знаков содержимого примечания
+	 */
+	for(size_t i = 0; i < text.length(); i++){
+		/**
+		 * Если знаком содержимого является знак конца строки
+		 *
+		 * @note Примечание это дописывается к готовой строке, и знак конца строки в
+		 *       нём разорвал бы её надвое: остаток ушёл бы отдельной строкой, которую
+		 *       читающий примечанием уже не сочтёт
+		 */
+		if((text[i] == '\n') || (text[i] == '\r')){
+			// Запоминаем код ошибки записи
+			this->_error = error_t::INVALID_CHARACTER;
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		}
+	}
 	// Получаем последовательность знаков конца строки
 	const string_view newline = awh::codec::ini::newline(this->_settings.newline);
 	/**
@@ -1022,15 +1054,35 @@ bool awh::codec::ini::Writer::number(const string_view key, const T value) noexc
 	/**
 	 * Если записывается число с плавающей точкой
 	 */
-	else if constexpr(is_floating_point <T>::value)
+	else if constexpr(is_floating_point <T>::value){
 		/**
-		 * Выполняем запись числа с плавающей точкой
+		 * Выполняем подбор кратчайшей записи числа с плавающей точкой
 		 *
-		 * @note Точность записи взята наибольшей из тех, что переживают обратный
-		 *       разбор без потери разрядов: запись покороче теряла бы младшие
-		 *       разряды при первом же обороте «запись - чтение»
+		 * @note Точность наращивается от единицы до наибольшей, какую тип несёт, и
+		 *       берётся первая запись, читающаяся обратно тем же числом. Запись
+		 *       наибольшей точностью оборот переживает, но выдаёт «0.1» как
+		 *       «0.10000000000000001» - в файле настроек, писанном для человека,
+		 *       такое чтению не подлежит
 		 */
-		length = ::snprintf(buffer, sizeof(buffer), "%.17g", static_cast <double> (value));
+		for(int32_t digits = 1; digits <= static_cast <int32_t> (numeric_limits <T>::max_digits10); digits++){
+			// Выполняем запись числа с плавающей точкой очередной точностью
+			length = ::snprintf(buffer, sizeof(buffer), "%.*g", digits, static_cast <double> (value));
+			/**
+			 * Если запись числового значения выполнить не удалось
+			 */
+			if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer)))
+				// Выполняем прекращение подбора точности записи
+				break;
+			// Прочитанное обратно значение записанного числа
+			T back = 0;
+			/**
+			 * Если запись читается обратно тем же самым числом
+			 */
+			if(numeric(string_view(buffer, static_cast <size_t> (length)), back) && (back == value))
+				// Выполняем прекращение подбора точности записи
+				break;
+		}
+	}
 	/**
 	 * Если записывается целое число без знака
 	 */

@@ -784,7 +784,6 @@ static int32_t __awh_open__(const char * path, const int32_t flags, [[maybe_unus
 		(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr,
 		creation, FILE_ATTRIBUTE_NORMAL, nullptr
 	);
-	::fprintf(stderr, "ЩУП open: path=%s flags=0x%x creation=%lu access=0x%lx\n", path, (unsigned) flags, (unsigned long) creation, (unsigned long) access);
 	// Если завести описатель файла не удалось
 	if(handle == INVALID_HANDLE_VALUE){
 		// Устанавливаем признак отсутствия записи

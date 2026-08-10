@@ -682,6 +682,33 @@ TEST(CodecIniReader, SectionClosing) {
 		ASSERT_TRUE(received);
 	}
 }
+/**
+ * @brief Проверка отклонения смены настроек посреди разбора
+ *
+ * @note Смена посреди текста применилась бы к остатку, но не к разобранному
+ *       началу, и один файл читался бы двумя наречиями сразу
+ *
+ */
+TEST(CodecIniReader, SettingsLocked) {
+	// Объект потокового чтения текста настроек
+	ini::reader_t reader;
+	// Выполняем передачу первого куска исходного текста
+	ASSERT_TRUE(reader.feed("[a]\nk = v\n", 9, false));
+	// Собираемые настройки разбора текста настроек
+	ini::reader_t::settings_t settings;
+	// Устанавливаем разбор управляющих последовательностей в значении
+	settings.escapes = true;
+	// Выполняем установку настроек разбора
+	reader.settings(settings);
+	// Выполняем проверку того, что настройки остались прежними
+	ASSERT_FALSE(reader.settings().escapes);
+	// Выполняем сброс состояния чтения
+	reader.reset();
+	// Выполняем установку настроек разбора
+	reader.settings(settings);
+	// Выполняем проверку принятия настроек после сброса
+	ASSERT_TRUE(reader.settings().escapes);
+}
 TEST(CodecIniReader, Reset) {
 	// Объект потокового чтения текста настроек
 	ini::reader_t reader(ini::reader_t::settings_t::strict());

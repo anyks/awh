@@ -7371,7 +7371,6 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	// Обе записи обязаны завестись
 	ASSERT_EQ(fs.type(filename), awh::fs_t::type_t::FILE);
 	ASSERT_EQ(fs.type(before), awh::fs_t::type_t::FILE);
-	::printf("ЩУП размер до запуска: %zu\n", (size_t) fs.size(filename));
 	// Добавляем новое событие отслеживания файла
 	const awh::event::id_t fid = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
 	// Добавляем событие ограничения времени работы проверки
@@ -7416,14 +7415,28 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 			// Выполняем перенос посторонней записи по соседству с наблюдаемым файлом
 			::rename(before.c_str(), after.c_str());
 	});
-	// Устанавливаем функцию обратного вызова на правку наблюдаемого файла
-	this->_io->on(writer, [&fs, &filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+	/**
+	 * Устанавливаем функцию обратного вызова на правку наблюдаемого файла
+	 *
+	 * @warning Правка ведётся обращениями языка, а НЕ объектом работы с файловой
+	 *          системой. Под MS Windows тот открывает файл дозволением одного лишь
+	 *          чтения (`FILE_SHARE_READ`), и пока движок держит наблюдаемый файл
+	 *          открытым на запись, дозаписать в него он не может вовсе - обращение
+	 *          отвечает отказом, а отказ этот никуда не выдаётся. Проверка от этого
+	 *          падала бы, показывая на движок, тогда как движок исправен
+	 */
+	this->_io->on(writer, [&filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если время ожидания истекло
 		if(status == awh::event::status_t::SUCCESS){
-			// Выполняем правку наблюдаемого файла
-			::printf("ЩУП размер до правки: %zu тип=%d\n", (size_t) fs.size(filename), (int) fs.type(filename));
-			fs.append(filename, "CCC");
-			::printf("ЩУП размер после правки: %zu\n", (size_t) fs.size(filename));
+			// Выполняем открытие наблюдаемого файла на дозапись
+			FILE * file = ::fopen(filename.c_str(), "ab");
+			// Если наблюдаемый файл открыт
+			if(file != nullptr){
+				// Выполняем правку наблюдаемого файла
+				::fwrite("CCC", 1, 3, file);
+				// Выполняем закрытие наблюдаемого файла
+				::fclose(file);
+			}
 		}
 	});
 	// Устанавливаем функцию обратного вызова на изменение наблюдаемого файла

@@ -312,7 +312,7 @@ TEST(CodecIniEncoding, Windows1252) {
 	// Выполняем проверку разбора названия кодировки ISO-8859-1
 	ASSERT_EQ(ini::encoding("ISO-8859-1"), ini::encoding_t::LATIN1);
 	// Выполняем проверку названия кодировки
-	ASSERT_EQ(ini::name(ini::encoding_t::CP1252), "WINDOWS-1252");
+	ASSERT_EQ(string(ini::name(ini::encoding_t::CP1252)), "WINDOWS-1252");
 	// Собираемые настройки разбора текста настроек
 	ini::reader_t::settings_t settings;
 	// Устанавливаем кодировку исходного текста
