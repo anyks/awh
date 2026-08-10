@@ -308,10 +308,11 @@ namespace awh {
 					 *
 					 * @param name    проверяемое имя раздела или свойства
 					 * @param section признак проверки имени раздела
+					 * @param primary признак проверки имени самого раздела, а не подраздела
 					 * @return        результат выполнения операции
 					 *
 					 */
-					bool acceptable(const string_view name, const bool section) noexcept;
+					bool acceptable(const string_view name, const bool section, const bool primary = true) noexcept;
 					/**
 					 * @brief Метод сборки ключа указателя разделов
 					 *
@@ -610,7 +611,30 @@ namespace awh {
 					 * @return         собранный текст настроек
 					 *
 					 */
-					string text(const writer_t::settings_t & settings = writer_t::settings_t()) const noexcept;
+					string text(const writer_t::settings_t & settings) const noexcept;
+					/**
+					 * @brief Метод записи дерева обратно в текст настроек
+					 *
+					 * @details Настройки записи выводятся из настроек разбора: наречие, каким
+					 * текст прочитан, тем же и записывается. Задать иное наречие можно,
+					 * передав настройки записи явно
+					 *
+					 * @return собранный текст настроек
+					 *
+					 */
+					string text() const noexcept;
+					/**
+					 * @brief Метод получения настроек записи, отвечающих настройкам разбора
+					 *
+					 * @details Выводит наречие записи из наречия разбора: построение имени
+					 * подраздела, знак-разделитель, знак примечания, признание примечания в
+					 * конце строки и запись управляющих последовательностей. Прочитанное
+					 * этими настройками записывается так, что читается обратно без потерь
+					 *
+					 * @return настройки записи текста настроек
+					 *
+					 */
+					writer_t::settings_t writing() const noexcept;
 				public:
 					/**
 					 * @brief Конструктор

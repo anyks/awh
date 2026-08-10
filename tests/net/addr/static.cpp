@@ -2781,16 +2781,37 @@ TEST_F(NetFixture, NetImposeSplitsIPv6ByPrefixTest){
 TEST_F(NetFixture, NetZoneSurvivesConversionTest){
 	/**
 	 * Устройство петли берётся оттого, что есть на любой машине, где идёт проверка.
-	 * Название его, однако, разнится: под MS Windows это строка вида `{GUID}`, и
-	 * проверять там нечего - зону записывают самим номером
+	 * Название его, однако, разнится: у BSD и macOS это `lo0`, у Linux `lo`, а под
+	 * MS Windows строка вида `{GUID}` - там проверять нечего, зону записывают самим
+	 * номером
+	 *
+	 * @note Название подбирается ОПЫТОМ, а не задаётся одно на все системы. Прежде
+	 *       здесь стояло `lo0`, и на всякой машине Linux проверка МОЛЧА пропускалась
+	 *       с самого своего написания: устройства с таким названием там нет вовсе
 	 */
-	if(::if_nametoindex("lo0") == 0) GTEST_SKIP() << "устройства петли под названием lo0 в системе нет";
+	const char * loopback = nullptr;
+	/**
+	 * Проходим по известным названиям устройства петли
+	 */
+	for(const char * name : {"lo0", "lo"}){
+		// Если устройство с таким названием в системе есть
+		if(::if_nametoindex(name) != 0){
+			// Запоминаем название устройства петли
+			loopback = name;
+			// Прекращаем подбор
+			break;
+		}
+	}
+	// Если устройства петли в системе не нашлось
+	if(loopback == nullptr) GTEST_SKIP() << "устройства петли в системе нет";
 	// Получаем номер устройства петли
-	const uint32_t index = ::if_nametoindex("lo0");
+	const uint32_t index = ::if_nametoindex(loopback);
+	// Собираем запись адреса связи с зоной устройства петли
+	const std::string address = std::string("FF02::C%") + loopback;
 	// Разбор обязан принять запись адреса с зоной
-	ASSERT_TRUE(this->_addr->parse("FF02::C%lo0"));
+	ASSERT_TRUE(this->_addr->parse(address));
 	// Зона обязана сохраниться в самом объекте записи
-	ASSERT_EQ("lo0", this->_addr->zone());
+	ASSERT_EQ(loopback, this->_addr->zone());
 	// Собираем структуру адреса из разобранной записи
 	std::unique_ptr <awh::net::addr_t> value = this->_addr->source(awh::net_addr_t::endian_t::LITTLE);
 	ASSERT_NE(nullptr, value);
@@ -2800,9 +2821,9 @@ TEST_F(NetFixture, NetZoneSurvivesConversionTest){
 	awh::net_addr_t back(this->_fmk.get(), this->_log.get());
 	back.source(value.get(), awh::net_addr_t::endian_t::LITTLE);
 	// Зона обязана вернуться названием устройства
-	ASSERT_EQ("lo0", back.zone());
+	ASSERT_EQ(loopback, back.zone());
 	// Запись адреса обязана выйти полной, вместе с зоной
-	ASSERT_EQ("FF02::C%lo0", back.print());
+	ASSERT_EQ(address, back.print());
 	/**
 	 * Адресу без зоны она не нужна, и поле обязано остаться нулевым: иначе к записи
 	 * дописывалась бы зона, которой у неё нет

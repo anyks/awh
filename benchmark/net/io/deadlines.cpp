@@ -457,6 +457,8 @@ namespace {
 		// Устанавливаем измеренное значение
 		result.value = perSecond(output);
 		// Устанавливаем сведения о прогоне
+		// Убеждаемся, что сценарий выполнил хоть одну операцию
+		validate(result, output);
 		result.details = details(output);
 		// Выводим результат измерения
 		return result;

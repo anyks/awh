@@ -505,7 +505,7 @@ std::string awh::benchmark::syscall::summary(const size_t operations) noexcept {
  *
  */
 awh::benchmark::Result::Result() noexcept :
- skipped(false), value(0.0), reason{""}, details{""} {}
+ skipped(false), invalid(false), value(0.0), reason{""}, details{""} {}
 
 /**
  * @brief Конструктор
@@ -686,9 +686,15 @@ int32_t main(int32_t argc, char ** argv){
 		executed++;
 		/**
 		 * Определяем соответствие измеренного значения порогу
+		 *
+		 * @note Недействительное измерение порогу не подлежит вовсе и послаблением
+		 *       не покрывается: послабление снимает требование УЛОЖИТЬСЯ в порог, а
+		 *       здесь сценарий не выполнил ни одной операции, и укладываться нечему.
+		 *       Показатель вида "на одну операцию" выдал бы при этом ноль и улёгся
+		 *       бы в границу MAXIMUM сам собой - молчащий движок отчитался бы зелёным
 		 */
-		const bool passed = (relaxed || ((scenario.bound == awh::benchmark::bound_t::MINIMUM) ?
-		 (result.value >= scenario.threshold) : (result.value <= scenario.threshold)));
+		const bool passed = (!result.invalid && (relaxed || ((scenario.bound == awh::benchmark::bound_t::MINIMUM) ?
+		 (result.value >= scenario.threshold) : (result.value <= scenario.threshold))));
 		// Если измеренное значение не уложилось в порог
 		if(!passed)
 			// Считаем сценарий, не уложившийся в порог
@@ -699,6 +705,10 @@ int32_t main(int32_t argc, char ** argv){
 			scenario.name.c_str(), result.value, scenario.threshold,
 			(passed ? "OK  " : "ХУЖЕ"), scenario.units.c_str()
 		);
+		// Если измерение оказалось недействительным, сообщаем чем именно
+		if(result.invalid && !result.reason.empty())
+			// Выводим причину недействительности измерения
+			::printf("%34s%s\n", "", result.reason.c_str());
 		/**
 		 * Если измерение повторялось, выводим границы разброса
 		 *

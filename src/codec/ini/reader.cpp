@@ -222,7 +222,7 @@ namespace {
 	 * @return       признак успешного разбора
 	 *
 	 */
-	static bool unescape(const string_view text, const size_t offset, size_t & length, string & result) noexcept {
+	static bool unescape(const string_view text, const size_t offset, size_t & length, string & result, bool & hexed) noexcept {
 		/**
 		 * Если за обратной косой чертой знака не осталось
 		 */
@@ -352,6 +352,17 @@ namespace {
 				 *       systemd применяет её для записи отдельных байтов значения
 				 */
 				if(text[offset + 1] == 'x'){
+					/**
+					 * Если записанный байт за пределы набора US-ASCII выходит
+					 *
+					 * @note Такие байты значащи лишь вместе: знак вне набора US-ASCII
+					 *       записывается в кодировке UTF-8 несколькими байтами, и каждый
+					 *       из них задаётся своей последовательностью. Собранное значение
+					 *       поэтому проверяется на правильность целиком, а не побайтно
+					 */
+					if(code >= 0x80)
+						// Запоминаем признак записи байта вне набора US-ASCII
+						hexed = true;
 					// Выполняем добавление байта к значению свойства
 					result.push_back(static_cast <char> (code));
 					// Выводим признак успешного разбора
@@ -1184,6 +1195,8 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 	}
 	// Признак нахождения разбора внутри кавычек
 	bool quoted = false;
+	// Признак записи байта вне набора US-ASCII шестнадцатеричной последовательностью
+	bool hexed = false;
 	// Знак кавычки, которой значение открыто
 	char quote = 0;
 	/**
@@ -1219,7 +1232,7 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 				/**
 				 * Если разбор управляющей последовательности выполнить не удалось
 				 */
-				if(!::unescape(value, i, length, this->_value))
+				if(!::unescape(value, i, length, this->_value, hexed))
 					// Выводим сообщение об ошибке разбора
 					return this->fail(error_t::INVALID_ESCAPE, offset + i, this->_line, this->column(this->_start, offset + i));
 				// Выполняем переход к знаку за управляющей последовательностью
@@ -1265,7 +1278,7 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 			/**
 			 * Если разбор управляющей последовательности выполнить не удалось
 			 */
-			if(!::unescape(value, i, length, this->_value))
+			if(!::unescape(value, i, length, this->_value, hexed))
 				// Выводим сообщение об ошибке разбора
 				return this->fail(error_t::INVALID_ESCAPE, offset + i, this->_line, this->column(this->_start, offset + i));
 			// Выполняем переход к знаку за управляющей последовательностью
@@ -1327,6 +1340,35 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 	if(this->_settings.trim && (keep < this->_value.length()))
 		// Выполняем отбрасывание пробельной обвязки в конце значения
 		this->_value.resize(keep);
+	/**
+	 * Если значение собрано с байтами вне набора US-ASCII
+	 *
+	 * @note Проверка эта нужна лишь такому значению: разбор ведёт весь текст в
+	 *       кодировке UTF-8, а запись отдельными байтами способна собрать
+	 *       последовательность, этой кодировке не отвечающую, - записать такое
+	 *       значение обратно было бы нечем
+	 */
+	if(hexed){
+		// Положение проверяемого знака собранного значения
+		size_t position = 0;
+		/**
+		 * Выполняем перебор знаков собранного значения
+		 */
+		while(position < this->_value.length()){
+			// Длина прочитанной последовательности знака
+			size_t length = 0;
+			// Выполняем чтение кодового значения очередного знака
+			const uint32_t code = decode(this->_value.data() + position, (this->_value.length() - position), length);
+			/**
+			 * Если последовательность знака построена ошибочно
+			 */
+			if((code == INVALID_CODEPOINT) || (length == 0))
+				// Выводим сообщение об ошибке разбора
+				return this->fail(error_t::INVALID_ENCODING, offset, this->_line, this->column(this->_start, offset));
+			// Выполняем переход к следующему знаку собранного значения
+			position += length;
+		}
+	}
 	// Запоминаем значение свойства указателем в его хранилище
 	this->_view = this->_value;
 	// Выводим результат выполнения операции
@@ -1625,6 +1667,16 @@ bool awh::codec::ini::Reader::next() noexcept {
 	if(this->_pending){
 		// Снимаем признак удержанного примечания
 		this->_pending = false;
+		/**
+		 * Выполняем сброс свойства предыдущего события
+		 *
+		 * @note Примечание конца строки выдаётся событием вслед за свойством, к строке
+		 *       которого приписано, и поля свойства к этому событию не относятся:
+		 *       договор велит держать их пустыми у всякого события, кроме свойства
+		 */
+		this->_property = property_t();
+		// Выполняем сброс значения свойства текущего события
+		this->_view = string_view();
 		// Запоминаем содержимое примечания текущего события
 		this->_comment.text = this->_content;
 		// Запоминаем знак, которым примечание начато

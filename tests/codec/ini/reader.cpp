@@ -579,6 +579,45 @@ TEST(CodecIniReader, EmptySubsection) {
 		ASSERT_TRUE(received);
 	}
 }
+/**
+ * @brief Проверка сброса свойства при выдаче примечания конца строки
+ *
+ * @note Договор велит держать поля свойства пустыми у всякого события, кроме
+ *       события свойства
+ *
+ */
+TEST(CodecIniReader, CommentProperty) {
+	// Собираемые настройки разбора текста настроек
+	ini::reader_t::settings_t settings;
+	// Устанавливаем признание примечания в конце строки свойства
+	settings.inlineComments = true;
+	// Объект потокового чтения текста настроек
+	ini::reader_t reader(settings);
+	// Выполняем передачу текста настроек
+	ASSERT_TRUE(reader.feed(string("[a]\nk = v ; хвост\n")));
+	// Признак получения примечания конца строки
+	bool received = false;
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
+	while(reader.next()){
+		/**
+		 * Если получено примечание
+		 */
+		if(reader.event() == ini::event_t::COMMENT){
+			// Запоминаем признак получения примечания
+			received = true;
+			// Выполняем проверку содержимого примечания
+			ASSERT_EQ(reader.comment().text, "хвост");
+			// Выполняем проверку пустоты имени свойства
+			ASSERT_TRUE(reader.key().empty());
+			// Выполняем проверку пустоты значения свойства
+			ASSERT_TRUE(reader.property().value.empty());
+		}
+	}
+	// Выполняем проверку получения примечания конца строки
+	ASSERT_TRUE(received);
+}
 TEST(CodecIniReader, Reset) {
 	// Объект потокового чтения текста настроек
 	ini::reader_t reader(ini::reader_t::settings_t::strict());

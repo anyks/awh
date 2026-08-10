@@ -6387,11 +6387,20 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 		"DELETE|FILE|a.txt",
 		"CHANGE|FILE|b.txt",
 		"DELETE|FILE|b.txt",
-		"DELETE|DIR|sub"
+		"DELETE|DIR|sub",
+		/**
+		 * Ссылка ожидается ИМЕННО ссылкой, а не тем, на что она указывает
+		 *
+		 * @note Указывает она на несуществующее, и это намеренно: снятие статистики
+		 *       с переходом по ссылке на битой ссылке отказывает целиком, и запись
+		 *       не попадала в состав каталога вовсе - ни под каким видом узла
+		 */
+		"CHANGE|LINK|c.lnk"
 	};
 	// Удаляем остатки от предыдущего запуска
 	::unlink((dirname + "/a.txt").c_str());
 	::unlink((dirname + "/b.txt").c_str());
+	::unlink((dirname + "/c.lnk").c_str());
 	::rmdir((dirname + "/sub").c_str());
 	::rmdir(dirname.c_str());
 	// Заводим отслеживаемый каталог
@@ -6467,6 +6476,16 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 					// Выполняем удаление подкаталога
 					::rmdir((dirname + "/sub").c_str());
 				break;
+				/**
+				 * Заводим ссылку на несуществующее
+				 *
+				 * @note Цель у ссылки отсутствует намеренно: движок обязан отдать
+				 *       САМУ запись видом узла LINK, а не то, на что она указывает
+				 */
+				case 6:
+					// Выполняем создание символической ссылки
+					::symlink("nowhere.txt", (dirname + "/c.lnk").c_str());
+				break;
 			}
 		}
 	});
@@ -6495,6 +6514,8 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 			case static_cast <uint8_t> (awh::event::vnode_t::FILE): kind = "FILE"; break;
 			// Если запись каталога является каталогом
 			case static_cast <uint8_t> (awh::event::vnode_t::DIR): kind = "DIR"; break;
+			// Если запись каталога является символической ссылкой
+			case static_cast <uint8_t> (awh::event::vnode_t::LINK): kind = "LINK"; break;
 			// Прочие виды проверку не занимают
 			default: return;
 		}
@@ -6542,6 +6563,7 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 	// Удаляем остатки отслеживаемого каталога
 	::unlink((dirname + "/a.txt").c_str());
 	::unlink((dirname + "/b.txt").c_str());
+	::unlink((dirname + "/c.lnk").c_str());
 	::rmdir((dirname + "/sub").c_str());
 	::rmdir(dirname.c_str());
 	// Собираем описание всех полученных событий для разбора отказа
@@ -7296,6 +7318,166 @@ TEST_F(IoFixture, IoFsWatchStatesTest){
 	ASSERT_TRUE(dirChanged);
 	// Проверяем что замечено удаление наблюдаемого файла
 	ASSERT_TRUE(fileDeleted);
+}
+
+/**
+ * @brief Тест устойчивости наблюдения за файлом к переносу ЧУЖОЙ записи рядом
+ *
+ * @details Проверка закрепляет то, что перенос постороннего файла в том же каталоге
+ *          наблюдения за нашим файлом НЕ обрывает: после чужого переноса правка
+ *          наблюдаемого файла обязана дойти до приложения по-прежнему
+ *
+ * @note Заведена по следу дефекта, найденного в движках Linux: там перенос записи
+ *       ВНУТРИ отслеживаемого каталога складывался с признаком переноса самого
+ *       наблюдаемого узла, а разбор понимает такой признак как «узел уехал» и
+ *       УНИЧТОЖАЕТ событие. Всякий перенос файла по соседству обрывал наблюдение
+ *       целиком, и дальше не приходило уже ничего.
+ *
+ *       Развилка эта есть у каждого движка, и всякий добирается до неё своим путём:
+ *       `inotify` разделяет перенос записи и перенос узла разными признаками,
+ *       `ReadDirectoryChangesW` шлёт извещения обо всём содержимом каталога и
+ *       различие держится на отсеве по имени, kqueue же о чужих записях не сообщает
+ *       вовсе. Оттого проверка общая для всех систем
+ *
+ */
+TEST_F(IoFixture, IoFsForeignRenameTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Флаг превышения времени ожидания
+	bool expired = false;
+	// Признак замеченной правки наблюдаемого файла
+	bool changed = false;
+	// Признак уничтожения наблюдения за файлом
+	bool dropped = false;
+	// Объект работы с файловой системой
+	awh::fs_t fs(this->_fmk.get(), this->_log.get());
+	// Путь к наблюдаемому файлу
+	const std::string filename = "./foreign_watched.txt";
+	// Путь к посторонней записи до переноса
+	const std::string before = "./foreign_before.txt";
+	// Путь к посторонней записи после переноса
+	const std::string after = "./foreign_after.txt";
+	// Удаляем остатки от предыдущего запуска
+	for(const auto & path : {filename, before, after}){
+		// Если запись файловой системы уцелела от предыдущего запуска
+		if(fs.type(path) != awh::fs_t::type_t::NONE)
+			// Выполняем удаление записи файловой системы
+			fs.unlink(path);
+	}
+	// Заводим наблюдаемый файл
+	fs.write(filename, "AAA");
+	// Заводим постороннюю запись, подлежащую переносу
+	fs.write(before, "BBB");
+	// Обе записи обязаны завестись
+	ASSERT_EQ(fs.type(filename), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(fs.type(before), awh::fs_t::type_t::FILE);
+	// Добавляем новое событие отслеживания файла
+	const awh::event::id_t fid = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
+	// Добавляем событие ограничения времени работы проверки
+	const awh::event::id_t guard = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Добавляем событие переноса посторонней записи
+	const awh::event::id_t mover = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Добавляем событие правки наблюдаемого файла
+	const awh::event::id_t writer = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем идентификаторы созданных событий
+	ASSERT_GT(fid, 0u);
+	ASSERT_GT(guard, 0u);
+	ASSERT_GT(mover, 0u);
+	ASSERT_GT(writer, 0u);
+	/**
+	 * Устанавливаем сроки внесения изменений
+	 *
+	 * @note Перенос и правка разнесены по времени намеренно: правка обязана прийти
+	 *       ПОСЛЕ чужого переноса, иначе проверка сойдётся и при оборванном наблюдении
+	 */
+	this->_io->setTimeout(mover, awh::event::action_t::NONE, 300);
+	this->_io->setTimeout(writer, awh::event::action_t::NONE, 900);
+	// Устанавливаем предельное время работы проверки
+	this->_io->setTimeout(guard, awh::event::action_t::NONE, 15000);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем путь к наблюдаемому файлу
+	ASSERT_TRUE(this->_io->setAddress(fid, awh::event::address_t::FS, filename));
+	// Устанавливаем функцию обратного вызова на превышение времени ожидания
+	this->_io->on(guard, [&stop, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS){
+			// Запоминаем превышение времени ожидания
+			expired = true;
+			// Останавливаем проверку
+			stop = true;
+		}
+	});
+	// Устанавливаем функцию обратного вызова на перенос посторонней записи
+	this->_io->on(mover, [&before, &after]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS)
+			// Выполняем перенос посторонней записи по соседству с наблюдаемым файлом
+			::rename(before.c_str(), after.c_str());
+	});
+	// Устанавливаем функцию обратного вызова на правку наблюдаемого файла
+	this->_io->on(writer, [&fs, &filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS)
+			// Выполняем правку наблюдаемого файла
+			fs.append(filename, "CCC");
+	});
+	// Устанавливаем функцию обратного вызова на изменение наблюдаемого файла
+	this->_io->on(fid, [&changed, &dropped, &stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const awh::event::vnode_t vnode, [[maybe_unused]] const std::string & path) noexcept -> void {
+		/**
+		 * Определяем произошедшее действие
+		 */
+		switch(static_cast <uint8_t> (action)){
+			// Если наблюдаемый файл изменён
+			case static_cast <uint8_t> (awh::event::action_t::CHANGE): {
+				// Запоминаем правку наблюдаемого файла
+				changed = true;
+				// Останавливаем проверку
+				stop = true;
+			} break;
+			/**
+			 * Если наблюдение за файлом оборвано
+			 *
+			 * @note Ровно это и означал бы дефект: чужой перенос принят за судьбу самого
+			 *       наблюдаемого узла, и событие уничтожено
+			 */
+			case static_cast <uint8_t> (awh::event::action_t::DELETE): {
+				// Запоминаем уничтожение наблюдения за файлом
+				dropped = true;
+				// Останавливаем проверку
+				stop = true;
+			} break;
+		}
+	});
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(fid));
+	ASSERT_TRUE(this->_io->commit(guard));
+	ASSERT_TRUE(this->_io->commit(mover));
+	ASSERT_TRUE(this->_io->commit(writer));
+	// Выполняем запуск событий
+	ASSERT_TRUE(this->_io->launch(fid));
+	ASSERT_TRUE(this->_io->launch(guard));
+	ASSERT_TRUE(this->_io->launch(mover));
+	ASSERT_TRUE(this->_io->launch(writer));
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Удаляем остатки проверки
+	for(const auto & path : {filename, before, after}){
+		// Если запись файловой системы уцелела
+		if(fs.type(path) != awh::fs_t::type_t::NONE)
+			// Выполняем удаление записи файловой системы
+			fs.unlink(path);
+	}
+	// Проверяем что чужой перенос наблюдения не оборвал
+	ASSERT_FALSE(dropped);
+	// Проверяем что проверка завершилась не по превышению времени ожидания
+	ASSERT_FALSE(expired);
+	// Проверяем что правка наблюдаемого файла замечена уже после чужого переноса
+	ASSERT_TRUE(changed);
 }
 
 /**
@@ -17474,8 +17656,18 @@ static std::string deafAddress() noexcept {
 	static uint32_t count = 0;
 	// Получаем номер текущего процесса
 	const uint32_t pid = static_cast <uint32_t> (::getpid());
-	// Складываем адрес канального блока из номера процесса и счётчика обращений
-	return std::string("169.254.") + std::to_string(((pid >> 8) & 0xFF) | 0x01) + "." + std::to_string(((pid + (++count)) & 0xFF) | 0x01);
+	/**
+	 * Складываем адрес канального блока из номера процесса и счётчика обращений
+	 *
+	 * @note Счётчик берётся с шагом ДВА, и это не прихоть. Довесок `| 0x01` (он
+	 *       уводит адрес от нулевого узла) склеивает соседние значения счётчика:
+	 *       чётное X даёт X+1, и следующее за ним нечётное X+1 даёт то же самое.
+	 *       С шагом в единицу две проверки из трёх получали ОДИН И ТОТ ЖЕ адрес при
+	 *       любом номере процесса, первая оставляла в ядре неудачную запись соседа,
+	 *       а вторая получала немедленный отказ и МОЛЧА пропускалась. Шаг в два
+	 *       сохраняет чётность, и склейки не происходит
+	 */
+	return std::string("169.254.") + std::to_string(((pid >> 8) & 0xFF) | 0x01) + "." + std::to_string(((pid + ((++count) * 2)) & 0xFF) | 0x01);
 }
 
 /**

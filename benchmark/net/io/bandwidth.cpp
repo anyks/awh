@@ -548,6 +548,8 @@ namespace {
 		// Устанавливаем измеренное значение
 		result.value = ::attained(outcome);
 		// Устанавливаем сведения о прогоне
+		// Убеждаемся, что сценарий выполнил хоть одну операцию
+		validate(result, outcome);
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -566,6 +568,8 @@ namespace {
 		// Устанавливаем измеренное значение
 		result.value = ::attained(outcome);
 		// Устанавливаем сведения о прогоне
+		// Убеждаемся, что сценарий выполнил хоть одну операцию
+		validate(result, outcome);
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -584,6 +588,8 @@ namespace {
 		// Устанавливаем измеренное значение
 		result.value = ::attained(outcome);
 		// Устанавливаем сведения о прогоне
+		// Убеждаемся, что сценарий выполнил хоть одну операцию
+		validate(result, outcome);
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -602,6 +608,8 @@ namespace {
 		// Устанавливаем измеренное значение
 		result.value = ::attained(outcome);
 		// Устанавливаем сведения о прогоне
+		// Убеждаемся, что сценарий выполнил хоть одну операцию
+		validate(result, outcome);
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -620,6 +628,8 @@ namespace {
 		// Устанавливаем измеренное значение
 		result.value = megabytes(outcome);
 		// Устанавливаем сведения о прогоне
+		// Убеждаемся, что сценарий выполнил хоть одну операцию
+		validate(result, outcome);
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;

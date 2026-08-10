@@ -63,10 +63,11 @@ namespace {
 	 * @param value          проверяемое значение свойства
 	 * @param comments       знаки, которые читающий признаёт началом примечания
 	 * @param inlineComments признак признания примечания в конце строки читающим
+	 * @param stripped       признак снятия кавычек читающим
 	 * @return               результат проверки
 	 *
 	 */
-	static bool quotable(const string_view value, const marker_t comments, const bool inlineComments) noexcept {
+	static bool quotable(const string_view value, const marker_t comments, const bool inlineComments, const bool stripped) noexcept {
 		/**
 		 * Если значение пусто
 		 *
@@ -89,7 +90,13 @@ namespace {
 			/**
 			 * Если знаком является кавычка либо знак начала примечания
 			 */
-			if((value[i] == '"') || (inlineComments && commented(value[i], comments)))
+			/**
+			 * Если знаком является кавычка, снимаемая читающим, либо знак примечания
+			 *
+			 * @note Кавычка требует ограждения лишь там, где читающий её снимает: наречию,
+			 *       считающему кавычки частью значения, она обыкновенный знак
+			 */
+			if((stripped && (value[i] == '"')) || (inlineComments && commented(value[i], comments)))
 				// Выводим положительный результат проверки значения
 				return true;
 		}
@@ -184,7 +191,7 @@ namespace {
 awh::codec::ini::Writer::Settings::Settings() noexcept :
  marker(';'), separator('='), delimiter('.'), quoting(quoting_t::AUTO),
  subsections(subsection_t::NONE), newline(newline_t::LF), inlineComments(false), comments(marker_t::BOTH),
- spaces(true), escapes(false), indent(false), separated(true) {}
+ spaces(true), escapes(false), indent(false), separated(true), maxName(MAX_NAME) {}
 /**
  * @brief Метод получения настроек наречия MS Windows
  *
@@ -293,6 +300,15 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 		return false;
 	}
 	/**
+	 * Если длина имени предел настроек превышает
+	 */
+	if(name.length() > this->_settings.maxName){
+		// Запоминаем код ошибки записи
+		this->_error = error_t::NAME_TOO_LONG;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
 	 * Если имя раздела или свойства несёт пробельную обвязку
 	 *
 	 * @note Обвязка эта при чтении отбрасывается, и записанное имя разошлось бы с
@@ -308,14 +324,33 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	 * Выполняем перебор всех знаков имени
 	 */
 	for(size_t i = 0; i < name.length(); i++){
-		// Получаем признак недопустимости очередного знака имени
-		bool invalid = ((name[i] == '\n') || (name[i] == '\r') || (name[i] == this->_settings.marker));
+		/**
+		 * Получаем признак недопустимости очередного знака имени
+		 *
+		 * @note Знак примечания недопустим лишь первым знаком имени свойства: там он
+		 *       обращает всю строку в примечание. Внутри имени, равно как и в имени
+		 *       раздела, он значащим не является - имя раздела стоит в квадратных
+		 *       скобках, а имя свойства читается до разделителя
+		 */
+		bool invalid = ((name[i] == '\n') || (name[i] == '\r') ||
+		                (!section && (i == 0) && commented(name[i], this->_settings.comments)));
 		/**
 		 * Если проверяется имя раздела
 		 */
-		if(section)
+		if(section){
 			// Дополняем признак недопустимости знаками квадратных скобок и кавычки
 			invalid = (invalid || (name[i] == '[') || (name[i] == ']') || (name[i] == '"'));
+			/**
+			 * Если подраздел отделяется знаком-разделителем
+			 *
+			 * @note Знак этот в имени раздела недопустим: читающий режет имя по первому
+			 *       его появлению, и запись «[a.b]» с именем раздела «a.b» прочиталась
+			 *       бы разделом «a» с подразделом «b»
+			 */
+			if(this->_settings.subsections == subsection_t::DELIMITED)
+				// Дополняем признак недопустимости знаком-разделителем имени подраздела
+				invalid = (invalid || (name[i] == this->_settings.delimiter));
+		}
 		/**
 		 * Если проверяется имя свойства
 		 */
@@ -342,7 +377,7 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
  */
 bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 	// Получаем признак нужды в ограждении значения кавычками
-	const bool needed = ::quotable(value, this->_settings.comments, this->_settings.inlineComments);
+	const bool needed = ::quotable(value, this->_settings.comments, this->_settings.inlineComments, (this->_settings.quoting != quoting_t::NEVER));
 	// Получаем признак ограждения значения кавычками
 	const bool quoted = ((this->_settings.quoting == quoting_t::ALWAYS) || ((this->_settings.quoting == quoting_t::AUTO) && needed));
 	/**
@@ -507,6 +542,15 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 		return false;
 	}
 	/**
+	 * Запоминаем длину собранного текста до начала записи объявления
+	 *
+	 * @note Проверка имени подраздела ведётся по ходу записи, и отказ её оставлял бы
+	 *       в собранном тексте начатое объявление: буфер при отказе откатывается к
+	 *       тому, чем был до вызова. Пустая строка, отделяющая раздел от предыдущего,
+	 *       откатывается вместе с ним - объявления, которое она отделяет, не вышло
+	 */
+	const size_t position = this->_text.length();
+	/**
 	 * Если пустая строка перед объявлением раздела настройками задана
 	 */
 	if(this->_settings.separated && this->_sectioned)
@@ -536,6 +580,8 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 					if((subsection[i] == ']') || (subsection[i] == '\n') || (subsection[i] == '\r')){
 						// Запоминаем код ошибки записи
 						this->_error = error_t::INVALID_SUBSECTION;
+						// Выполняем откат собранного текста к состоянию до вызова
+						this->_text.resize(position);
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -561,6 +607,8 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 					if((subsection[i] == '\n') || (subsection[i] == '\r')){
 						// Запоминаем код ошибки записи
 						this->_error = error_t::INVALID_SUBSECTION;
+						// Выполняем откат собранного текста к состоянию до вызова
+						this->_text.resize(position);
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -626,6 +674,8 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 	if(!this->verify(key, false))
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Запоминаем длину собранного текста до начала записи свойства
+	const size_t position = this->_text.length();
 	/**
 	 * Если запись отступа перед свойствами раздела настройками задана
 	 */
@@ -653,9 +703,12 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 	/**
 	 * Если запись значения свойства выполнить не удалось
 	 */
-	if(!this->escape(value))
+	if(!this->escape(value)){
+		// Выполняем откат собранного текста к состоянию до вызова
+		this->_text.resize(position);
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	}
 	// Выполняем запись знака конца строки
 	this->newline();
 	// Выводим положительный результат выполнения операции
@@ -674,6 +727,8 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 	if(!this->verify(key, false))
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Запоминаем длину собранного текста до начала записи свойства
+	const size_t position = this->_text.length();
 	/**
 	 * Если запись отступа перед свойствами раздела настройками задана
 	 */
@@ -699,9 +754,12 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 	/**
 	 * Если запись значения свойства выполнить не удалось
 	 */
-	if(!this->escape(value))
+	if(!this->escape(value)){
+		// Выполняем откат собранного текста к состоянию до вызова
+		this->_text.resize(position);
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	}
 	// Выполняем запись знака конца строки
 	this->newline();
 	// Выводим положительный результат выполнения операции

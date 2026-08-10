@@ -439,6 +439,8 @@ namespace {
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
 		// Устанавливаем сведения о прогоне
+		// Убеждаемся, что сценарий выполнил хоть одну операцию
+		validate(result, outcome);
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -457,6 +459,8 @@ namespace {
 		// Устанавливаем измеренное значение
 		result.value = perOperation(outcome);
 		// Устанавливаем сведения о прогоне
+		// Убеждаемся, что сценарий выполнил хоть одну операцию
+		validate(result, outcome);
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -484,6 +488,8 @@ namespace {
 		// Устанавливаем измеренное значение
 		result.value = perSyscall(outcome);
 		// Устанавливаем сведения о прогоне
+		// Убеждаемся, что сценарий выполнил хоть одну операцию
+		validate(result, outcome);
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;

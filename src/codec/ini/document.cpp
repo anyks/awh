@@ -101,10 +101,11 @@ string awh::codec::ini::Document::fold(const string_view name, const bool sectio
  *
  * @param name    проверяемое имя раздела или свойства
  * @param section признак проверки имени раздела
+ * @param primary признак проверки имени самого раздела, а не подраздела
  * @return        результат выполнения операции
  *
  */
-bool awh::codec::ini::Document::acceptable(const string_view name, const bool section) noexcept {
+bool awh::codec::ini::Document::acceptable(const string_view name, const bool section, const bool primary) noexcept {
 	/**
 	 * Если имя раздела или свойства пусто
 	 */
@@ -139,14 +140,31 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 	 * Выполняем перебор всех знаков имени
 	 */
 	for(size_t i = 0; i < name.length(); i++){
-		// Получаем признак недопустимости очередного знака имени
-		bool invalid = ((name[i] == '\n') || (name[i] == '\r') || (name[i] == '[') || (name[i] == ']'));
+		/**
+		 * Получаем признак недопустимости очередного знака имени
+		 *
+		 * @note Знак примечания недопустим лишь первым знаком имени свойства: там он
+		 *       обращает всю строку в примечание. Внутри имени он значащим не является
+		 *       и запрету не подлежит - иначе прочитанное имя правкой не принималось бы
+		 */
+		bool invalid = ((name[i] == '\n') || (name[i] == '\r') || (name[i] == '[') || (name[i] == ']') ||
+		                (!section && (i == 0) && commented(name[i], this->_settings.reader.comments)));
 		/**
 		 * Если проверяется имя раздела
 		 */
-		if(section)
+		if(section){
 			// Дополняем признак недопустимости знаком кавычки
 			invalid = (invalid || (name[i] == '"'));
+			/**
+			 * Если проверяется имя самого раздела, а подраздел отделяется разделителем
+			 *
+			 * @note Имени подраздела знак этот не заказан: читающий режет имя раздела по
+			 *       первому его появлению, и всё, что за ним, именем подраздела и служит
+			 */
+			if(primary && (this->_settings.reader.subsections == subsection_t::DELIMITED))
+				// Дополняем признак недопустимости знаком-разделителем имени подраздела
+				invalid = (invalid || (name[i] == this->_settings.reader.delimiter));
+		}
 		/**
 		 * Если проверяется имя свойства
 		 */
@@ -1029,17 +1047,41 @@ vector <string_view> awh::codec::ini::Document::values(const string_view key, co
  */
 bool awh::codec::ini::Document::create(const string_view section, const string_view subsection) noexcept {
 	/**
+	 * Выполняем сброс кода ошибки последней операции
+	 *
+	 * @note Код держится от последней операции, а не от последней неудачной: иначе
+	 *       отказ, случившийся когда-то прежде, приписывался бы удачной правке
+	 */
+	this->_error = error_t::NONE;
+	/**
 	 * Если имя объявляемого раздела недопустимо
 	 */
 	if(!this->acceptable(section, true))
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	/**
-	 * Если имя подраздела задано и оно недопустимо
+	 * Если имя подраздела задано
 	 */
-	if(!subsection.empty() && !this->acceptable(subsection, true))
-		// Выводим отрицательный результат выполнения операции
-		return false;
+	if(!subsection.empty()){
+		/**
+		 * Если построение имени подраздела настройками не задано
+		 *
+		 * @note Записать такой подраздел нечем: наречие, подразделов не признающее,
+		 *       имени для него не имеет, и запись собранного дерева отказала бы
+		 */
+		if(this->_settings.reader.subsections == subsection_t::NONE){
+			// Запоминаем код ошибки правки
+			this->_error = error_t::INVALID_SUBSECTION;
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		}
+		/**
+		 * Если имя подраздела недопустимо
+		 */
+		if(!this->acceptable(subsection, true, false))
+			// Выводим отрицательный результат выполнения операции
+			return false;
+	}
 	// Порядковый номер найденного раздела
 	uint32_t index = 0;
 	/**
@@ -1119,6 +1161,13 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
  *
  */
 bool awh::codec::ini::Document::set(const string_view key, const string_view value, const string_view section, const string_view subsection) noexcept {
+	/**
+	 * Выполняем сброс кода ошибки последней операции
+	 *
+	 * @note Код держится от последней операции, а не от последней неудачной: иначе
+	 *       отказ, случившийся когда-то прежде, приписывался бы удачной правке
+	 */
+	this->_error = error_t::NONE;
 	/**
 	 * Если имя устанавливаемого свойства недопустимо
 	 */
@@ -1265,6 +1314,13 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
  *
  */
 bool awh::codec::ini::Document::erase(const string_view key, const string_view section, const string_view subsection) noexcept {
+	/**
+	 * Выполняем сброс кода ошибки последней операции
+	 *
+	 * @note Код держится от последней операции, а не от последней неудачной: иначе
+	 *       отказ, случившийся когда-то прежде, приписывался бы удачной правке
+	 */
+	this->_error = error_t::NONE;
 	// Порядковый номер найденного раздела
 	uint32_t index = 0;
 	/**
@@ -1339,6 +1395,13 @@ bool awh::codec::ini::Document::erase(const string_view key, const string_view s
  *
  */
 bool awh::codec::ini::Document::remove(const string_view section, const string_view subsection) noexcept {
+	/**
+	 * Выполняем сброс кода ошибки последней операции
+	 *
+	 * @note Код держится от последней операции, а не от последней неудачной: иначе
+	 *       отказ, случившийся когда-то прежде, приписывался бы удачной правке
+	 */
+	this->_error = error_t::NONE;
 	/**
 	 * Если имя удаляемого раздела пусто
 	 */
@@ -1452,7 +1515,67 @@ void awh::codec::ini::Document::clear() noexcept {
  * @return         собранный текст настроек
  *
  */
+/**
+ * @brief Метод получения настроек записи, отвечающих настройкам разбора
+ *
+ * @return настройки записи текста настроек
+ *
+ */
+awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noexcept {
+	// Собираемые настройки записи текста настроек
+	writer_t::settings_t result;
+	// Устанавливаем построение имени подраздела
+	result.subsections = this->_settings.reader.subsections;
+	// Устанавливаем знак, отделяющий имя подраздела при построении разделителем
+	result.delimiter = this->_settings.reader.delimiter;
+	// Устанавливаем признание примечания в конце строки читающим
+	result.inlineComments = this->_settings.reader.inlineComments;
+	// Устанавливаем знаки, признаваемые читающим началом примечания
+	result.comments = this->_settings.reader.comments;
+	// Устанавливаем запись управляющих последовательностей в значении
+	result.escapes = this->_settings.reader.escapes;
+	// Устанавливаем наибольшую допустимую длину имени раздела или свойства
+	result.maxName = this->_settings.reader.maxName;
+	/**
+	 * Если знак решётки читающим признаётся, а точка с запятой нет
+	 *
+	 * @note Знак примечания берётся тот, который читающий признаёт: примечание,
+	 *       записанное чужим знаком, досталось бы ему частью значения
+	 */
+	if(this->_settings.reader.comments == marker_t::HASH)
+		// Устанавливаем знак начала примечания
+		result.marker = '#';
+	/**
+	 * Если разделителем имени и значения читающим признаётся лишь двоеточие
+	 */
+	if(this->_settings.reader.separators == separator_t::COLON)
+		// Устанавливаем знак, разделяющий имя свойства и его значение
+		result.separator = ':';
+	/**
+	 * Устанавливаем обращение с ограждением значения кавычками
+	 *
+	 * @note Ограждение назначается лишь тогда, когда читающий кавычки снимает.
+	 *       Наречию, считающему кавычки частью значения, ограждение противопоказано
+	 *       вдвойне: записанные кавычки достались бы ему данными, а значение, уже
+	 *       несущее кавычку, записать без управляющих последовательностей нечем
+	 */
+	result.quoting = ((this->_settings.reader.quotes == quote_t::STRIP) ? quoting_t::AUTO : quoting_t::NEVER);
+	// Выводим собранные настройки записи
+	return result;
+}
+/**
+ * @brief Метод записи дерева обратно в текст настроек
+ *
+ * @return собранный текст настроек
+ *
+ */
+string awh::codec::ini::Document::text() const noexcept {
+	// Выполняем запись дерева настройками, отвечающими настройкам разбора
+	return this->text(this->writing());
+}
 string awh::codec::ini::Document::text(const writer_t::settings_t & settings) const noexcept {
+	// Выполняем сброс кода ошибки последней операции
+	this->_error = error_t::NONE;
 	// Получаем настройки записи текста настроек
 	writer_t::settings_t options = settings;
 	/**

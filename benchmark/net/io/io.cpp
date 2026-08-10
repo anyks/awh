@@ -104,6 +104,22 @@ double awh::benchmark::io::perSecond(const outcome_t & output) noexcept {
 	return (static_cast <double> (output.operations) / output.seconds);
 }
 /**
+ * @brief Функция проверки того, что сценарий выполнил хоть одну операцию
+ *
+ * @param result результат измерения, в который вносится признак
+ * @param output итоги прогона сценария
+ *
+ */
+void awh::benchmark::io::validate(awh::benchmark::result_t & result, const outcome_t & output) noexcept {
+	// Если сценарий не выполнил ни одной операции
+	if(output.operations == 0){
+		// Отмечаем измерение как недействительное
+		result.invalid = true;
+		// Устанавливаем причину недействительности измерения
+		result.reason = "сценарий не выполнил ни одной операции - показателю не по чему считаться";
+	}
+}
+/**
  * @brief Функция извлечения пропускной способности в мебибайтах в секунду
  *
  * @param output итоги прогона сценария
