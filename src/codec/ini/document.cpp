@@ -185,6 +185,10 @@ void awh::codec::ini::Document::reindex() noexcept {
 	this->_index.clear();
 	// Выполняем очистку указателя свойств
 	this->_properties.clear();
+	// Выполняем очистку порядка первых объявлений свойств
+	this->_order.clear();
+	// Выполняем выделение памяти под порядок объявлений всех разделов
+	this->_order.resize(this->_sections.size());
 	/**
 	 * Выполняем перебор всех разделов разобранного текста
 	 */
@@ -208,8 +212,20 @@ void awh::codec::ini::Document::reindex() noexcept {
 		if(this->_records.at(i).kind != kind_t::PROPERTY)
 			// Выполняем переход к следующей записи
 			continue;
+		// Получаем перечень объявлений свойства в указателе свойств
+		vector <uint32_t> & records = this->_properties[this->label(this->_records.at(i).section, this->get(this->_records.at(i).key))];
+		/**
+		 * Если свойство объявляется в разделе впервые
+		 *
+		 * @note Порядок первых объявлений собирается здесь же, попутно: обход
+		 *       записей ради него отдельным проходом ничего бы не дал, а признак
+		 *       первого объявления виден по пустоте перечня
+		 */
+		if(records.empty() && (this->_records.at(i).section < this->_order.size()))
+			// Выполняем добавление записи к порядку первых объявлений раздела
+			this->_order.at(this->_records.at(i).section).push_back(static_cast <uint32_t> (i));
 		// Выполняем добавление свойства к указателю свойств
-		this->_properties[this->label(this->_records.at(i).section, this->get(this->_records.at(i).key))].push_back(static_cast <uint32_t> (i));
+		records.push_back(static_cast <uint32_t> (i));
 	}
 }
 /**
@@ -740,48 +756,30 @@ vector <string_view> awh::codec::ini::Document::keys(const string_view section, 
 	if(!this->search(section, subsection, index))
 		// Выводим собранный перечень имён свойств
 		return result;
-	// Перечень уже выданных имён свойств раздела
-	vector <string> issued;
 	/**
-	 * Выполняем перебор всех записей разобранного текста
+	 * Если порядок первых объявлений раздела не собран
 	 */
-	for(size_t i = 0; i < this->_records.size(); i++){
+	if(index >= this->_order.size())
+		// Выводим собранный перечень имён свойств
+		return result;
+	// Выполняем выделение памяти под собираемый перечень имён
+	result.reserve(this->_order.at(index).size());
+	/**
+	 * Выполняем перебор первых объявлений свойств раздела
+	 *
+	 * @note Перечень собран указателями при перестроении и повторов не несёт:
+	 *       свойство, объявленное несколько раз, лежит в нём однажды и в том
+	 *       месте, где объявлено впервые
+	 */
+	for(const uint32_t item : this->_order.at(index)){
 		/**
-		 * Если запись свойством искомого раздела не является
+		 * Если запись свойства удалена
 		 */
-		if((this->_records.at(i).kind != kind_t::PROPERTY) || (this->_records.at(i).section != index))
-			// Выполняем переход к следующей записи
+		if(this->_records.at(item).kind != kind_t::PROPERTY)
+			// Выполняем переход к следующему объявлению
 			continue;
-		// Получаем имя очередного свойства раздела
-		const string_view key = this->get(this->_records.at(i).key);
-		// Получаем имя свойства, приведённое к виду для сличения
-		const string folded = this->fold(key);
-		// Признак того, что имя свойства уже выдано
-		bool found = false;
-		/**
-		 * Выполняем перебор всех выданных имён свойств
-		 */
-		for(auto & item : issued){
-			/**
-			 * Если имя свойства уже выдано
-			 */
-			if(item.compare(folded) == 0){
-				// Запоминаем признак того, что имя свойства выдано
-				found = true;
-				// Выполняем прекращение перебора выданных имён
-				break;
-			}
-		}
-		/**
-		 * Если имя свойства уже выдано
-		 */
-		if(found)
-			// Выполняем переход к следующей записи
-			continue;
-		// Выполняем добавление имени к перечню выданных имён
-		issued.push_back(folded);
-		// Выполняем добавление имени к собираемому перечню
-		result.push_back(key);
+		// Выполняем добавление имени свойства к собираемому перечню
+		result.push_back(this->get(this->_records.at(item).key));
 	}
 	// Выводим собранный перечень имён свойств раздела
 	return result;
@@ -1213,6 +1211,8 @@ void awh::codec::ini::Document::clear() noexcept {
 	this->_index.clear();
 	// Выполняем очистку указателя свойств
 	this->_properties.clear();
+	// Выполняем очистку порядка первых объявлений свойств
+	this->_order.clear();
 }
 /**
  * @brief Метод записи дерева обратно в текст настроек

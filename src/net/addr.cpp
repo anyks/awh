@@ -4721,7 +4721,7 @@ bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
  * @return      сформированная строка IP-адреса
  *
  */
-string awh::Network_Address::print(const format_size_t size, const format_flag_t flag, const char delim) const noexcept {
+string awh::Network_Address::print(const format_size_t size, const format_flag_t flag, const int32_t delim) const noexcept {
 	// Переменная результата
 	string result = "";
 	// Выполняем запись IP-адреса в результат
@@ -4746,7 +4746,7 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
  * @param delim  разделитель формата формирования IP-адреса
  *
  */
-void awh::Network_Address::print(string & result, const format_size_t size, const format_flag_t flag, const char delim) const noexcept {
+void awh::Network_Address::print(string & result, const format_size_t size, const format_flag_t flag, const int32_t delim) const noexcept {
 	/**
 	 * Запоминаем позицию, с которой начинается дописываемая запись адреса: накопитель
 	 * приходит снаружи и своё содержимое в нём уже может быть, а вся работа ниже
@@ -4758,8 +4758,21 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 	 * его на месте нельзя - довод объявлен постоянным, и снятие постоянства с него
 	 * правкой было бы обращением с постоянным предметом как с изменяемым
 	 */
+	/**
+	 * Разделитель держится знаковым числом, а не символом, намеренно
+	 *
+	 * @details Признаком «разделитель не задан» служит -1, а нулём обозначают
+	 * запись вовсе без разделителя, оттого ноль под признак не годится. Но
+	 * знаковость `char` стандартом не определена: на ARM64 под Linux он
+	 * беззнаковый, -1 обращается в 255, и сверка с -1 не срабатывает НИКОГДА.
+	 * Разделителем тогда остаётся байт 0xFF - адрес выходит видом
+	 * «192<FF>168<FF>5<FF>134» и отвергается разбором
+	 *
+	 * @note Проверено опытом на стенде: пересборка одного лишь этого модуля с
+	 * `-fsigned-char` оживляла разбор. Лечить признаком нужно тип, а не сборку
+	 */
 	// Разделитель частей записи адреса
-	char separator = delim;
+	int32_t separator = delim;
 	/**
 	 * Место под запись отводится с запасом в один байт: печать записывает вслед за
 	 * записью завершающий ноль, а отводилось прежде ровно под символы. Ноль этот

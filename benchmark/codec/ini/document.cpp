@@ -92,6 +92,23 @@ namespace {
 	 */
 	static constexpr double WRITE_BACK_THRESHOLD = 24.0;
 	/**
+	 * @brief Порог пропускной способности обхода дерева со множеством разделов
+	 *
+	 * @details Сценарий этот стережёт выдачу перечня имён свойств: перечень собран
+	 *          указателями при перестроении, и обход раздела стоит числа его
+	 *          свойств. Перебор же всех записей дерева ради каждого раздела
+	 *          обращает обход в квадратичный - на сотне тысяч разделов это
+	 *          полтораста раз медленнее, и порог такую подмену отличает
+	 *
+	 * @note Дефект этот был не выдуман, а пойман: стенд сравнения
+	 *       `tools/benchmark/ini` показал 0.25 МБ/с там, где ныне 39. В настоящем
+	 *       же сценарии дерево собирается однажды, и квадратичный обход давал бы
+	 *       около одного мегабайта в секунду против нынешних полутораста - порог
+	 *       отличает одно от другого с восьмикратным запасом
+	 *
+	 */
+	static constexpr double WALK_SECTIONS_THRESHOLD = 8.0;
+	/**
 	 * @brief Порог количества обращений к значениям в секунду
 	 *
 	 * @details Поиск значения ведётся раскладкой по свёртке имени раздела и имени
@@ -242,6 +259,50 @@ namespace {
 		return result;
 	}
 	/**
+	 * @brief Функция прогона сценария обхода дерева со множеством разделов
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t walkSections() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Разбираемый текст настроек
+		const string & text = sections();
+		// Собираемое дерево настроек
+		awh::codec::ini::document_t document;
+		/**
+		 * Если разбор текста настроек выполнить не удалось
+		 */
+		if(!document.parse(text))
+			// Выводим нулевой результат измерения
+			return result;
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(text.size(), FOCUSED_ROUNDS, [&document]() noexcept {
+			// Накопитель длин прочитанных значений
+			uint64_t result = 0;
+			/**
+			 * Выполняем перебор всех объявленных разделов
+			 */
+			for(const awh::codec::ini::name_t & section : document.sections()){
+				/**
+				 * Выполняем перебор всех имён свойств раздела
+				 */
+				for(const string_view & key : document.keys(section.section, section.subsection))
+					// Выполняем накопление длины значения очередного свойства
+					result += document.get(key, section.section, section.subsection).size();
+			}
+			// Выводим накопитель длин прочитанных значений
+			return result;
+		});
+		// Устанавливаем измеренное значение
+		result.value = perSecond(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
 	 * @brief Функция прогона сценария поиска значений по имени
 	 *
 	 * @return результат измерения
@@ -307,6 +368,13 @@ namespace {
 	static const bool WRITE_BACK_REGISTERED = awh::benchmark::add(
 		"codec/ini: обратная запись дерева", "МБ/с", WRITE_BACK_THRESHOLD,
 		awh::benchmark::bound_t::MINIMUM, writeBack
+	);
+	/**
+	 * Выполняем регистрацию сценария обхода дерева со множеством разделов
+	 */
+	static const bool WALK_REGISTERED = awh::benchmark::add(
+		"codec/ini: обход дерева со множеством разделов", "МБ/с", WALK_SECTIONS_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, walkSections
 	);
 	/**
 	 * Выполняем регистрацию сценария поиска значений по имени

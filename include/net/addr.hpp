@@ -1173,7 +1173,7 @@ namespace awh {
 			 * @return      сформированная строка IP-адреса
 			 *
 			 */
-			string print(const format_size_t size = format_size_t::NONE, const format_flag_t flag = format_flag_t::NONE, const char delim = -1) const noexcept;
+			string print(const format_size_t size = format_size_t::NONE, const format_flag_t flag = format_flag_t::NONE, const int32_t delim = -1) const noexcept;
 			/**
 			 * @brief Метод записи IP-адреса в накопитель в виде строки
 			 *
@@ -1191,7 +1191,7 @@ namespace awh {
 			 * @param delim  разделитель для формата вывода IP-адреса
 			 *
 			 */
-			void print(string & result, const format_size_t size = format_size_t::NONE, const format_flag_t flag = format_flag_t::NONE, const char delim = -1) const noexcept;
+			void print(string & result, const format_size_t size = format_size_t::NONE, const format_flag_t flag = format_flag_t::NONE, const int32_t delim = -1) const noexcept;
 		public:
 			/**
 			 * @brief Оператор вывода IP-адреса в качестве строки
