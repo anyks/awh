@@ -547,9 +547,9 @@ namespace {
 		const outcome_t & outcome = ::egress();
 		// Устанавливаем измеренное значение
 		result.value = ::attained(outcome);
-		// Устанавливаем сведения о прогоне
 		// Убеждаемся, что сценарий выполнил хоть одну операцию
 		validate(result, outcome);
+		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -567,9 +567,9 @@ namespace {
 		const outcome_t & outcome = ::egress();
 		// Устанавливаем измеренное значение
 		result.value = ::attained(outcome);
-		// Устанавливаем сведения о прогоне
 		// Убеждаемся, что сценарий выполнил хоть одну операцию
 		validate(result, outcome);
+		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -587,9 +587,9 @@ namespace {
 		const outcome_t & outcome = ::ingress();
 		// Устанавливаем измеренное значение
 		result.value = ::attained(outcome);
-		// Устанавливаем сведения о прогоне
 		// Убеждаемся, что сценарий выполнил хоть одну операцию
 		validate(result, outcome);
+		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -607,9 +607,9 @@ namespace {
 		const outcome_t & outcome = ::ingress();
 		// Устанавливаем измеренное значение
 		result.value = ::attained(outcome);
-		// Устанавливаем сведения о прогоне
 		// Убеждаемся, что сценарий выполнил хоть одну операцию
 		validate(result, outcome);
+		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -627,9 +627,9 @@ namespace {
 		const outcome_t & outcome = ::measured();
 		// Устанавливаем измеренное значение
 		result.value = megabytes(outcome);
-		// Устанавливаем сведения о прогоне
 		// Убеждаемся, что сценарий выполнил хоть одну операцию
 		validate(result, outcome);
+		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;

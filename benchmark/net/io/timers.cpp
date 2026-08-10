@@ -207,9 +207,9 @@ namespace {
 		const outcome_t & outcome = ::measured();
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
-		// Устанавливаем сведения о прогоне
 		// Убеждаемся, что сценарий выполнил хоть одну операцию
 		validate(result, outcome);
+		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -232,9 +232,9 @@ namespace {
 		const outcome_t outcome = ::schedule(awh::event::timer_t::DIFFICULT);
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
-		// Устанавливаем сведения о прогоне
 		// Убеждаемся, что сценарий выполнил хоть одну операцию
 		validate(result, outcome);
+		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -252,9 +252,9 @@ namespace {
 		const outcome_t & outcome = ::measured();
 		// Устанавливаем измеренное значение
 		result.value = perOperation(outcome);
-		// Устанавливаем сведения о прогоне
 		// Убеждаемся, что сценарий выполнил хоть одну операцию
 		validate(result, outcome);
+		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -292,9 +292,9 @@ namespace {
 		const outcome_t & outcome = ::measured();
 		// Устанавливаем измеренное значение
 		result.value = perChange(outcome);
-		// Устанавливаем сведения о прогоне
 		// Убеждаемся, что сценарий выполнил хоть одну операцию
 		validate(result, outcome);
+		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;
@@ -328,9 +328,9 @@ namespace {
 		// Устанавливаем измеренное значение
 		result.value = ((outcome.operations > 0)
 		 ? (static_cast <double> (outcome.batch) / static_cast <double> (outcome.operations)) : 0.0);
-		// Устанавливаем сведения о прогоне
 		// Убеждаемся, что сценарий выполнил хоть одну операцию
 		validate(result, outcome);
+		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
 		// Выводим результат измерения
 		return result;

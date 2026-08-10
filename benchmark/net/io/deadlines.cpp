@@ -456,9 +456,9 @@ namespace {
 		awh::benchmark::result_t result;
 		// Устанавливаем измеренное значение
 		result.value = perSecond(output);
-		// Устанавливаем сведения о прогоне
 		// Убеждаемся, что сценарий выполнил хоть одну операцию
 		validate(result, output);
+		// Устанавливаем сведения о прогоне
 		result.details = details(output);
 		// Выводим результат измерения
 		return result;

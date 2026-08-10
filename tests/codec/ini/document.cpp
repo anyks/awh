@@ -995,6 +995,130 @@ TEST(CodecIniDocument, MarkersByDialect) {
 	ASSERT_EQ(document.text(), "[a]\n#path = d:\\bin\n");
 }
 /**
+ * @brief Проверка правки подразделов, заключаемых в кавычки
+ *
+ * @note Внутри кавычек значащи лишь знаки конца строки: правка обязана принимать
+ *       всякое имя, которое разбор читает, а запись ограждает
+ *
+ */
+TEST(CodecIniDocument, QuotedSubsectionNames) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем настройки разбора по образцу Git
+	settings.reader = ini::reader_t::settings_t::git();
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек с квадратной скобкой в имени подраздела
+	ASSERT_TRUE(document.parse("[remote \"a]b\"]\n\turl = x\n", settings));
+	// Выполняем проверку значения свойства подраздела
+	ASSERT_EQ(document.get("url", "remote", "a]b"), "x");
+	// Выполняем удаление раздела с подразделом
+	ASSERT_TRUE(document.remove("remote", "a]b"));
+	// Выполняем проверку принятия того же имени правкой
+	ASSERT_TRUE(document.create("remote", "a]b"));
+	// Выполняем проверку принятия имени подраздела с кавычкой
+	ASSERT_TRUE(document.create("remote", "a\"b"));
+	// Получаем записанный текст настроек
+	const string text = document.text();
+	// Дерево настроек обратного чтения
+	ini::document_t again;
+	// Выполняем проверку прохождения обратного чтения
+	ASSERT_TRUE(again.parse(text, settings));
+	// Выполняем проверку сохранности имени подраздела с кавычкой
+	ASSERT_TRUE(again.section("remote", "a\"b"));
+}
+/**
+ * @brief Проверка снятия признака добавления к перечню при установке значения
+ *
+ */
+TEST(CodecIniDocument, SetDropsAppend) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем признание записи добавления к перечню значений
+	settings.reader.arrays = true;
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\nk[] = 1\n", settings));
+	// Выполняем установку значения объявленного свойства
+	ASSERT_TRUE(document.set("k", "2", "a"));
+	/**
+	 * Выполняем проверку записи свойства обычной записью
+	 *
+	 * @note Установка значения заменяет прежнее, а не добавляет к перечню
+	 */
+	ASSERT_EQ(document.text(), "[a]\nk = 2\n");
+}
+/**
+ * @brief Проверка предела глубины подразделов при объявлении раздела
+ *
+ * @note Дерево, которое запись соберёт, а повторный разбор отвергнет, собирать
+ *       нельзя: отказ обязан приходить в месте правки
+ *
+ */
+TEST(CodecIniDocument, DepthOnCreate) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем построение имени подраздела разделителем
+	settings.reader.subsections = ini::subsection_t::DELIMITED;
+	// Устанавливаем наибольшую допустимую глубину вложенности подразделов
+	settings.reader.maxDepth = 1;
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\n", settings));
+	// Выполняем проверку отклонения подраздела предельной глубины
+	ASSERT_FALSE(document.create("a", "b.c"));
+	// Выполняем проверку кода ошибки правки
+	ASSERT_EQ(document.error(), ini::error_t::DEPTH_EXCEEDED);
+	// Получаем записанный текст настроек
+	const string text = document.text();
+	// Дерево настроек обратного чтения
+	ini::document_t again;
+	// Выполняем проверку прохождения обратного чтения
+	ASSERT_TRUE(again.parse(text, settings));
+}
+/**
+ * @brief Проверка обращения к разделу, чьё имя несёт знак-разделитель
+ *
+ */
+TEST(CodecIniDocument, ReferenceDelimited) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем построение обращения к значению другого свойства
+	settings.references = ini::reference_t::SHELL;
+	// Устанавливаем построение имени подраздела разделителем
+	settings.reader.subsections = ini::subsection_t::DELIMITED;
+	// Дерево настроек
+	ini::document_t document;
+	/**
+	 * Выполняем разбор текста настроек
+	 *
+	 * @note Разбор режет имя по первому разделителю: раздел «a», подраздел «b.c»
+	 */
+	ASSERT_TRUE(document.parse("[a.b.c]\nk = v\n[z]\nr = ${a.b.c:k}\n", settings));
+	// Выполняем проверку подстановки значения раздела с подразделом
+	ASSERT_EQ(document.get("r", "z"), "v");
+}
+/**
+ * @brief Проверка отсутствия сдвоенной пустой строки при объявлении раздела
+ *
+ */
+TEST(CodecIniDocument, CreateSpacing) {
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек, оканчивающегося пустой строкой
+	ASSERT_TRUE(document.parse("[a]\nk = v\n\n"));
+	// Выполняем объявление раздела
+	ASSERT_TRUE(document.create("b"));
+	/**
+	 * Выполняем проверку записи объявленного раздела
+	 *
+	 * @note Пустая строка перед объявлением ставится лишь тогда, когда её ещё нет
+	 */
+	ASSERT_EQ(document.text(), "[a]\nk = v\n\n[b]\n");
+}
+/**
  * @brief Проверка отклонения неправильного построения текста настроек
  *
  */

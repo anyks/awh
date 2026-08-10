@@ -120,6 +120,69 @@ void awh::benchmark::io::validate(awh::benchmark::result_t & result, const outco
 	}
 }
 /**
+ * @brief Функция обеспечения запаса описателей файлов под прогон
+ *
+ * @param required потребное количество описателей
+ * @param reason   причина невозможности прогона (заполняется при отказе)
+ * @return         признак достаточности предела описателей
+ *
+ */
+bool awh::benchmark::io::descriptors(const size_t required, std::string & reason) noexcept {
+	/**
+	 * Если сборка производится под операционную систему MS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Предела описателей вида POSIX система не ведёт, прогон не ограничен
+		(void) required;
+		(void) reason;
+		// Выводим признак достаточности предела описателей
+		return true;
+	/**
+	 * Если сборка производится под все остальные операционные системы
+	 */
+	#else
+		// Действующий предел описателей файлов
+		struct rlimit limit {};
+		/**
+		 * Если предел описателей файлов извлечь не удалось, прогону не мешаем
+		 *
+		 * @note Молчаливый пропуск здесь был бы хуже отказа: предел неизвестен, а
+		 *       значит неизвестно и то, что прогон невозможен
+		 */
+		if(::getrlimit(RLIMIT_NOFILE, &limit) != 0)
+			// Выводим признак достаточности предела описателей
+			return true;
+		// Если мягкого предела не хватает, а жёсткий выше него
+		if((static_cast <size_t> (limit.rlim_cur) < required) && (limit.rlim_cur < limit.rlim_max)){
+			// Поднимаемый предел описателей файлов
+			struct rlimit raised = limit;
+			// Поднимаем мягкий предел до потребного, но не выше жёсткого
+			raised.rlim_cur = ((limit.rlim_max == RLIM_INFINITY) ? static_cast <rlim_t> (required) :
+			 ((static_cast <size_t> (limit.rlim_max) < required) ? limit.rlim_max : static_cast <rlim_t> (required)));
+			// Если поднять предел описателей файлов удалось
+			if(::setrlimit(RLIMIT_NOFILE, &raised) == 0)
+				// Запоминаем поднятый предел описателей файлов
+				limit = raised;
+		}
+		// Если предела описателей файлов достаточно
+		if(static_cast <size_t> (limit.rlim_cur) >= required)
+			// Выводим признак достаточности предела описателей
+			return true;
+		// Место под собираемую причину невозможности прогона
+		char buffer[192] = {0};
+		// Собираем причину невозможности прогона
+		::snprintf(
+			buffer, sizeof(buffer),
+			"предел описателей файлов %zu при потребных %zu (жёсткий предел %zu) - прогон невозможен по окружению",
+			static_cast <size_t> (limit.rlim_cur), required, static_cast <size_t> (limit.rlim_max)
+		);
+		// Устанавливаем причину невозможности прогона
+		reason.assign(buffer);
+		// Выводим признак недостаточности предела описателей
+		return false;
+	#endif
+}
+/**
  * @brief Функция извлечения пропускной способности в мебибайтах в секунду
  *
  * @param output итоги прогона сценария

@@ -618,6 +618,70 @@ TEST(CodecIniReader, CommentProperty) {
 	// Выполняем проверку получения примечания конца строки
 	ASSERT_TRUE(received);
 }
+/**
+ * @brief Проверка поиска закрывающей скобки объявления раздела
+ *
+ * @note Скобка ищется разбором, а не поиском с конца: с конца она находилась бы в
+ *       примечании за объявлением и молча портила имя раздела
+ *
+ */
+TEST(CodecIniReader, SectionClosing) {
+	{
+		// Объект потокового чтения текста настроек
+		ini::reader_t reader;
+		// Выполняем передачу текста настроек с квадратной скобкой в примечании
+		ASSERT_TRUE(reader.feed(string("[a] ; см. раздел [docs]\nk = v\n")));
+		// Признак получения объявления раздела
+		bool received = false;
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next()){
+			/**
+			 * Если получено объявление раздела
+			 */
+			if(reader.event() == ini::event_t::SECTION){
+				// Запоминаем признак получения объявления раздела
+				received = true;
+				// Выполняем проверку имени раздела
+				ASSERT_EQ(reader.section().section, "a");
+			}
+		}
+		// Выполняем проверку получения объявления раздела
+		ASSERT_TRUE(received);
+		// Выполняем проверку отсутствия ошибок разбора
+		ASSERT_EQ(reader.error(), ini::error_t::NONE);
+	}{
+		// Объект потокового чтения текста настроек
+		ini::reader_t reader(ini::reader_t::settings_t::git());
+		// Выполняем передачу текста настроек со скобкой внутри имени подраздела
+		ASSERT_TRUE(reader.feed(string("[remote \"a]b\"]\n\turl = x\n")));
+		// Признак получения объявления раздела
+		bool received = false;
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next()){
+			/**
+			 * Если получено объявление раздела
+			 */
+			if(reader.event() == ini::event_t::SECTION){
+				// Запоминаем признак получения объявления раздела
+				received = true;
+				// Выполняем проверку имени раздела
+				ASSERT_EQ(reader.section().section, "remote");
+				/**
+				 * Выполняем проверку имени подраздела
+				 *
+				 * @note Скобка внутри кавычек закрывающей не считается
+				 */
+				ASSERT_EQ(reader.section().subsection, "a]b");
+			}
+		}
+		// Выполняем проверку получения объявления раздела
+		ASSERT_TRUE(received);
+	}
+}
 TEST(CodecIniReader, Reset) {
 	// Объект потокового чтения текста настроек
 	ini::reader_t reader(ini::reader_t::settings_t::strict());

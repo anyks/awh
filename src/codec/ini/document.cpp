@@ -65,6 +65,19 @@ string_view awh::codec::ini::Document::get(const span_t & span) const noexcept {
  *
  */
 awh::codec::ini::span_t awh::codec::ini::Document::add(const string_view text) noexcept {
+	/**
+	 * Если хранилище знаков предел разрядности отрезка превышает
+	 *
+	 * @note Отрезок хранит место указателями в четыре октета, и текст свыше четырёх
+	 *       гигабайт обрезал бы их молча: лучше отдать пустой отрезок и отказ, чем
+	 *       выдавать после этого чужое содержимое
+	 */
+	if((this->_store.length() + text.length()) > static_cast <size_t> (NO_RECORD)){
+		// Запоминаем код ошибки правки
+		this->_error = error_t::OVERFLOW_LIMIT;
+		// Выводим пустой отрезок хранилища знаков
+		return span_t();
+	}
 	// Собираемый отрезок хранилища знаков
 	span_t result(static_cast <uint32_t> (this->_store.length()), static_cast <uint32_t> (text.length()));
 	// Выполняем добавление содержимого к хранилищу знаков
@@ -150,9 +163,19 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 		bool invalid = ((name[i] == '\n') || (name[i] == '\r') || (name[i] == '[') || (name[i] == ']') ||
 		                (!section && (i == 0) && commented(name[i], this->_settings.reader.comments)));
 		/**
+		 * Если проверяется имя подраздела, заключаемого в кавычки
+		 *
+		 * @note Внутри кавычек значащи лишь знаки конца строки: кавычку и обратную
+		 *       косую черту запись ограждает, а квадратная скобка там знак
+		 *       обыкновенный. Запрет их отвергал бы правкой то, что читается
+		 */
+		if(section && !primary && (this->_settings.reader.subsections == subsection_t::QUOTED))
+			// Получаем признак недопустимости очередного знака имени подраздела
+			invalid = ((name[i] == '\n') || (name[i] == '\r'));
+		/**
 		 * Если проверяется имя раздела
 		 */
-		if(section){
+		else if(section){
 			// Дополняем признак недопустимости знаком кавычки
 			invalid = (invalid || (name[i] == '"'));
 			/**
@@ -459,20 +482,31 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 			 * Если раздел с таким именем не обнаружен
 			 */
 			if(!this->search(label, "", target)){
+				// Признак обнаружения раздела разбором имени на раздел с подразделом
+				bool found = false;
 				/**
-				 * Получаем положение знака, отделяющего имя подраздела
+				 * Выполняем перебор знаков имени раздела, к значению которого обращено
 				 *
 				 * @note Обращение к значению чужого подраздела записывается тем же
 				 *       знаком-разделителем, каким подраздел отделяется в объявлении
-				 *       раздела: «${remote.origin:url}». Разделитель ищется с конца -
-				 *       знак этот вправе стоять и в имени самого раздела
+				 *       раздела: «${remote.origin:url}». Места разреза перебираются слева
+				 *       направо: знак этот вправе стоять и в имени раздела, и в имени
+				 *       подраздела, а какое из них где кончается, знает лишь указатель
 				 */
-				const size_t divider = label.rfind(this->_settings.reader.delimiter);
+				for(size_t i = 1; ((i + 1) < label.length()) && !found; i++){
+					/**
+					 * Если очередной знак знаком-разделителем не является
+					 */
+					if(label[i] != this->_settings.reader.delimiter)
+						// Выполняем переход к следующему знаку имени раздела
+						continue;
+					// Выполняем поиск раздела с подразделом по очередному разрезу имени
+					found = this->search(label.substr(0, i), label.substr(i + 1), target);
+				}
 				/**
 				 * Если раздел не обнаружен и с разбором имени на раздел с подразделом
 				 */
-				if((divider == string_view::npos) || (divider == 0) || ((divider + 1) >= label.length()) ||
-				   !this->search(label.substr(0, divider), label.substr(divider + 1), target)){
+				if(!found){
 					// Запоминаем код ошибки разбора
 					this->_error = error_t::UNKNOWN_REFERENCE;
 					// Выводим отрицательный результат выполнения операции
@@ -1081,6 +1115,38 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
 		if(!this->acceptable(subsection, true, false))
 			// Выводим отрицательный результат выполнения операции
 			return false;
+		/**
+		 * Если подраздел отделяется знаком-разделителем
+		 */
+		if(this->_settings.reader.subsections == subsection_t::DELIMITED){
+			/**
+			 * Глубина вложенности объявляемого подраздела
+			 *
+			 * @note Один разделитель отделяет подраздел от раздела, прочие стоят внутри
+			 *       его имени: разбор считает их все и потому обязан насчитать столько же
+			 */
+			uint32_t depth = 1;
+			/**
+			 * Выполняем перебор знаков имени подраздела
+			 */
+			for(size_t i = 0; i < subsection.length(); i++){
+				/**
+				 * Если очередным знаком является знак-разделитель
+				 */
+				if(subsection[i] == this->_settings.reader.delimiter)
+					// Выполняем увеличение глубины вложенности подраздела
+					depth++;
+			}
+			/**
+			 * Если глубина вложенности подразделов предел настроек превышает
+			 */
+			if(depth >= this->_settings.reader.maxDepth){
+				// Запоминаем код ошибки правки
+				this->_error = error_t::DEPTH_EXCEEDED;
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			}
+		}
 	}
 	// Порядковый номер найденного раздела
 	uint32_t index = 0;
@@ -1120,7 +1186,7 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
 	 * @note Пустая строка перед объявлением раздела ставится ради читаемости:
 	 *       разделы, слипшиеся друг с другом, человек читает с трудом
 	 */
-	if(!this->_records.empty()){
+	if(!this->_records.empty() && (this->_records.back().kind != kind_t::BLANK)){
 		// Собираемая запись пустой строки
 		record_t blank;
 		// Запоминаем вид собираемой записи
@@ -1238,6 +1304,16 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 		 *       значение при обратной записи было бы потеряно
 		 */
 		this->_records.at(target).valueless = false;
+		/**
+		 * Снимаем признак свойства, записанного добавлением к перечню значений
+		 *
+		 * @note Установка значения заменяет прежнее, а не добавляет к перечню:
+		 *       записать его добавлением значило бы при обратном чтении получить
+		 *       перечень там, где его не задавали
+		 */
+		this->_records.at(target).append = false;
+		// Снимаем признак значения, заключённого в кавычки
+		this->_records.at(target).quoted = false;
 		// Выводим положительный результат выполнения операции
 		return true;
 	}

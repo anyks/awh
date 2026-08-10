@@ -7371,6 +7371,7 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	// Обе записи обязаны завестись
 	ASSERT_EQ(fs.type(filename), awh::fs_t::type_t::FILE);
 	ASSERT_EQ(fs.type(before), awh::fs_t::type_t::FILE);
+	::printf("ЩУП размер до запуска: %zu\n", (size_t) fs.size(filename));
 	// Добавляем новое событие отслеживания файла
 	const awh::event::id_t fid = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
 	// Добавляем событие ограничения времени работы проверки
@@ -7418,9 +7419,12 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	// Устанавливаем функцию обратного вызова на правку наблюдаемого файла
 	this->_io->on(writer, [&fs, &filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если время ожидания истекло
-		if(status == awh::event::status_t::SUCCESS)
+		if(status == awh::event::status_t::SUCCESS){
 			// Выполняем правку наблюдаемого файла
+			::printf("ЩУП размер до правки: %zu тип=%d\n", (size_t) fs.size(filename), (int) fs.type(filename));
 			fs.append(filename, "CCC");
+			::printf("ЩУП размер после правки: %zu\n", (size_t) fs.size(filename));
+		}
 	});
 	// Устанавливаем функцию обратного вызова на изменение наблюдаемого файла
 	this->_io->on(fid, [&changed, &dropped, &stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const awh::event::vnode_t vnode, [[maybe_unused]] const std::string & path) noexcept -> void {
