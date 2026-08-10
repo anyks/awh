@@ -70,3 +70,15 @@
 [submodule "submodules/tinyxml2"]
 	path = submodules/tinyxml2
 	url = https://github.com/leethomason/tinyxml2.git
+[submodule "submodules/inih"]
+	path = submodules/inih
+	url = https://github.com/benhoyt/inih.git
+[submodule "submodules/iniparser"]
+	path = submodules/iniparser
+	url = https://github.com/ndevilla/iniparser.git
+[submodule "submodules/simpleini"]
+	path = submodules/simpleini
+	url = https://github.com/brofield/simpleini.git
+[submodule "submodules/mINI"]
+	path = submodules/mINI
+	url = https://github.com/metayeti/mINI.git

@@ -71,5 +71,21 @@ $ROOT/submodule.sh add libxml2 https://gitlab.gnome.org/GNOME/libxml2.git
 $ROOT/submodule.sh remove tinyxml2
 $ROOT/submodule.sh add tinyxml2 https://github.com/leethomason/tinyxml2.git
 
+# Выполняем пересборку сабмодуля inih
+$ROOT/submodule.sh remove inih
+$ROOT/submodule.sh add inih https://github.com/benhoyt/inih.git
+
+# Выполняем пересборку сабмодуля iniparser
+$ROOT/submodule.sh remove iniparser
+$ROOT/submodule.sh add iniparser https://github.com/ndevilla/iniparser.git
+
+# Выполняем пересборку сабмодуля simpleini
+$ROOT/submodule.sh remove simpleini
+$ROOT/submodule.sh add simpleini https://github.com/brofield/simpleini.git
+
+# Выполняем пересборку сабмодуля mINI
+$ROOT/submodule.sh remove mINI
+$ROOT/submodule.sh add mINI https://github.com/metayeti/mINI.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules
