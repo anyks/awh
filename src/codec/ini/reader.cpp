@@ -380,7 +380,7 @@ awh::codec::ini::Reader::Settings::Settings() noexcept :
  comments(marker_t::BOTH), separators(separator_t::EQUALS), duplicates(duplicate_t::LAST),
  quotes(quote_t::STRIP), subsections(subsection_t::NONE), delimiter('.'), inlineComments(false),
  escapes(false), continuations(false), indents(false), valueless(false), arrays(false),
- sensitive(false), trim(true), global(true), emitComments(true), emitBlanks(false),
+ sensitive(false), sensitiveSections(false), trim(true), global(true), emitComments(true), emitBlanks(false),
  maxLine(MAX_LINE), maxName(MAX_NAME), maxDepth(MAX_DEPTH), maxContinuation(MAX_CONTINUATION),
  encoding(encoding_t::NONE) {}
 /**
@@ -437,6 +437,13 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::python() no
 	result.quotes = quote_t::KEEP;
 	// Устанавливаем склеивание строк, продолженных отступом
 	result.indents = true;
+	/**
+	 * Устанавливаем учёт регистра имён разделов при сличении
+	 *
+	 * @note Наречие это имена свойств приводит к нижнему регистру, а имена разделов
+	 *       сличает как записаны: разделы «[Server]» и «[server]» для него разные
+	 */
+	result.sensitiveSections = true;
 	// Устанавливаем запрет свойств, объявленных до первого раздела
 	result.global = false;
 	// Выводим собранные настройки разбора
@@ -546,13 +553,13 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::strict() no
  * @return     имя, приведённое к виду для сличения
  *
  */
-string awh::codec::ini::Reader::fold(const string_view name) const noexcept {
+string awh::codec::ini::Reader::fold(const string_view name, const bool section) const noexcept {
 	// Приводимое имя раздела или свойства
 	string result(name);
 	/**
-	 * Если регистр имён при сличении не учитывается
+	 * Если регистр имени при сличении не учитывается
 	 */
-	if(!this->_settings.sensitive){
+	if(!this->_settings.sensitive && !(section && this->_settings.sensitiveSections)){
 		/**
 		 * Выполняем перебор всех знаков имени
 		 */
@@ -955,6 +962,16 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 				if(depth >= this->_settings.maxDepth)
 					// Выводим сообщение об ошибке разбора
 					return this->fail(error_t::DEPTH_EXCEEDED, offset, this->_line, 1);
+				/**
+				 * Если имя подраздела за знаком-разделителем пусто
+				 *
+				 * @note Запись «[a.]» от записи «[a]» отличается лишь знаком-разделителем,
+				 *       а разбирается в тот же раздел с пустым подразделом: принять её
+				 *       значило бы потерять этот знак при обратной записи
+				 */
+				if((position + 1) >= content.length())
+					// Выводим сообщение об ошибке разбора
+					return this->fail(error_t::INVALID_SUBSECTION, offset, this->_line, 1);
 				// Запоминаем имя текущего подраздела
 				this->_subsection.assign(content.substr(position + 1));
 				// Получаем имя раздела без имени подраздела
@@ -1043,7 +1060,7 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 		 *       именах не встречается, и раздел «a» с подразделом «b» не сольётся с
 		 *       разделом «a.b», объявленным иначе
 		 */
-		string name = this->fold(this->_section);
+		string name = this->fold(this->_section, true);
 		// Выполняем добавление разделителя имён к собираемому имени
 		name.push_back('\0');
 		/**

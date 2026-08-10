@@ -23,6 +23,7 @@
 #include <cinttypes>
 #include <atomic>
 #include <set>
+#include <algorithm>
 #include <thread>
 
 /**
@@ -6336,6 +6337,473 @@ TEST_F(IoFixture, IoFsTest){
 }
 
 /**
+ * Проверка событий записей каталога для UNIX-подобных операционных систем
+ *
+ * @details Пути, разделители и обращения к файловой системе здесь взяты в виде
+ *          POSIX: заведение каталога о двух доводах, разделитель прямой косой
+ *          чертой, удаление открытого файла дозволено. У MS Windows иначе всё
+ *          перечисленное, и общим кодом эта проверка не пишется - оттого ей
+ *          заведён отдельный близнец `IoFsDirEntriesWindowsTest` ниже
+ *
+ */
+#if !(_WIN32 || _WIN64)
+/**
+ * @brief Тест событий записей отслеживаемого каталога
+ *
+ * @note Проверка закрепляет ДОГОВОР события каталога: появление записи отдаётся
+ *       действием CHANGE с видом узла и полным путём, исчезновение - действием
+ *       DELETE с тем же видом и путём, а перенос внутри каталога - парой из
+ *       исчезновения прежнего имени и появления нового.
+ *
+ *       Заведена оттого, что прежняя проверка каталога (`IoFsTest`) события лишь
+ *       ПЕЧАТАЛА и не утверждала ничего: она проходила бы и при движке, молчащем
+ *       вовсе. Договор этот один на все движки, а добывается он по-разному -
+ *       kqueue сообщает лишь «каталог изменился», и состав приходится перечитывать,
+ *       а inotify называет запись поимённо
+ *
+ */
+TEST_F(IoFixture, IoFsDirEntriesTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Флаг превышения времени ожидания
+	bool expired = false;
+	// Номер выполняемого шага проверки
+	uint16_t step = 0;
+	// Путь к отслеживаемому каталогу
+	const std::string dirname = "./dirwatch";
+	// Собранные события записей каталога
+	std::set <std::string> collected;
+	/**
+	 * Ожидаемые события записей каталога
+	 *
+	 * @note Запись сличается по НАЗВАНИЮ, а не по полному пути: движок приводит путь
+	 *       к полному виду, и вид этот зависит от рабочего каталога прогона. Сам
+	 *       путь проверяется отдельно - тем, что он оканчивается ожидаемым названием
+	 *       внутри отслеживаемого каталога
+	 */
+	const std::set <std::string> expected = {
+		"CHANGE|FILE|a.txt",
+		"CHANGE|DIR|sub",
+		"DELETE|FILE|a.txt",
+		"CHANGE|FILE|b.txt",
+		"DELETE|FILE|b.txt",
+		"DELETE|DIR|sub"
+	};
+	// Удаляем остатки от предыдущего запуска
+	::unlink((dirname + "/a.txt").c_str());
+	::unlink((dirname + "/b.txt").c_str());
+	::rmdir((dirname + "/sub").c_str());
+	::rmdir(dirname.c_str());
+	// Заводим отслеживаемый каталог
+	ASSERT_EQ(::mkdir(dirname.c_str(), 0755), 0);
+	// Добавляем событие отслеживания каталога
+	const awh::event::id_t did = this->_io->event(awh::event::node_t::DIR, awh::event::family_t::FSYS);
+	// Добавляем событие ограничения времени работы проверки
+	const awh::event::id_t guard = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Добавляем событие пошагового изменения каталога
+	const awh::event::id_t ticker = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем идентификаторы созданных событий
+	ASSERT_GT(did, 0u);
+	ASSERT_GT(guard, 0u);
+	ASSERT_GT(ticker, 0u);
+	// Устанавливаем задержку между шагами проверки
+	this->_io->setTimeout(ticker, awh::event::action_t::NONE, 300);
+	// Устанавливаем предельное время работы проверки
+	this->_io->setTimeout(guard, awh::event::action_t::NONE, 15000);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем путь к отслеживаемому каталогу
+	ASSERT_TRUE(this->_io->setAddress(did, awh::event::address_t::FS, dirname));
+	// Устанавливаем функцию обратного вызова на превышение времени ожидания
+	this->_io->on(guard, [&stop, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS){
+			// Запоминаем превышение времени ожидания
+			expired = true;
+			// Останавливаем проверку
+			stop = true;
+		}
+	});
+	/**
+	 * Устанавливаем функцию обратного вызова на пошаговое изменение каталога
+	 *
+	 * @note Шаги разнесены по времени намеренно: тогда всякое изменение приходит
+	 *       движку отдельным оповещением, и проверка сличает не только состав
+	 *       событий, но и то, что ни одно из них не потеряно по дороге
+	 */
+	this->_io->on(ticker, [&step, &dirname]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если сработал очередной шаг проверки
+		if(status == awh::event::status_t::SUCCESS){
+			/**
+			 * Определяем номер выполняемого шага проверки
+			 */
+			switch(++step){
+				// Заводим файл в отслеживаемом каталоге
+				case 1: {
+					// Выполняем создание файла
+					FILE * file = ::fopen((dirname + "/a.txt").c_str(), "wb");
+					// Если файл заведён, закрываем его
+					if(file != nullptr)
+						// Выполняем закрытие файла
+						::fclose(file);
+				} break;
+				// Заводим подкаталог в отслеживаемом каталоге
+				case 2:
+					// Выполняем создание подкаталога
+					::mkdir((dirname + "/sub").c_str(), 0755);
+				break;
+				// Переносим файл под другим именем
+				case 3:
+					// Выполняем перенос файла
+					::rename((dirname + "/a.txt").c_str(), (dirname + "/b.txt").c_str());
+				break;
+				// Удаляем файл
+				case 4:
+					// Выполняем удаление файла
+					::unlink((dirname + "/b.txt").c_str());
+				break;
+				// Удаляем подкаталог
+				case 5:
+					// Выполняем удаление подкаталога
+					::rmdir((dirname + "/sub").c_str());
+				break;
+			}
+		}
+	});
+	// Устанавливаем функцию обратного вызова на изменение записей каталога
+	this->_io->on(did, [&collected, &expected, &stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, const awh::event::vnode_t vnode, const std::string & path) noexcept -> void {
+		// Название произошедшего действия
+		const char * name = nullptr;
+		/**
+		 * Определяем произошедшее действие
+		 */
+		switch(static_cast <uint8_t> (action)){
+			// Если запись каталога появилась
+			case static_cast <uint8_t> (awh::event::action_t::CHANGE): name = "CHANGE"; break;
+			// Если запись каталога исчезла
+			case static_cast <uint8_t> (awh::event::action_t::DELETE): name = "DELETE"; break;
+			// Прочие действия проверку не занимают
+			default: return;
+		}
+		// Вид записи каталога
+		const char * kind = nullptr;
+		/**
+		 * Определяем вид записи каталога
+		 */
+		switch(static_cast <uint8_t> (vnode)){
+			// Если запись каталога является файлом
+			case static_cast <uint8_t> (awh::event::vnode_t::FILE): kind = "FILE"; break;
+			// Если запись каталога является каталогом
+			case static_cast <uint8_t> (awh::event::vnode_t::DIR): kind = "DIR"; break;
+			// Прочие виды проверку не занимают
+			default: return;
+		}
+		// Выполняем поиск последнего разделителя в пути записи
+		const size_t pos = path.rfind('/');
+		// Если разделитель в пути не найден, событие проверку не занимает
+		if(pos == std::string::npos)
+			// Выходим из функции обратного вызова
+			return;
+		// Собираем описание произошедшего события по названию записи
+		const std::string signature = std::string(name) + "|" + kind + "|" + path.substr(pos + 1);
+		/**
+		 * Событие самого отслеживаемого каталога проверку не занимает: сличаются
+		 * события его ЗАПИСЕЙ, а о себе каталог сообщает тем же обратным вызовом
+		 */
+		if(path.find("dirwatch/") == std::string::npos)
+			// Выходим из функции обратного вызова
+			return;
+		/**
+		 * Запоминаем ВСЯКОЕ произошедшее событие, а не только ожидаемое
+		 *
+		 * @note Отбор по ожидаемым скрыл бы от разбора отказа то, что движок отдал
+		 *       на самом деле, - а именно это и нужно знать, когда событие не сошлось
+		 */
+		collected.emplace(signature);
+		// Если все ожидаемые события собраны, останавливаем проверку
+		if(std::includes(collected.begin(), collected.end(), expected.begin(), expected.end()))
+			// Останавливаем проверку
+			stop = true;
+	});
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(did));
+	ASSERT_TRUE(this->_io->commit(guard));
+	ASSERT_TRUE(this->_io->commit(ticker));
+	// Выполняем запуск событий
+	ASSERT_TRUE(this->_io->launch(did));
+	ASSERT_TRUE(this->_io->launch(guard));
+	ASSERT_TRUE(this->_io->launch(ticker));
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Удаляем остатки отслеживаемого каталога
+	::unlink((dirname + "/a.txt").c_str());
+	::unlink((dirname + "/b.txt").c_str());
+	::rmdir((dirname + "/sub").c_str());
+	::rmdir(dirname.c_str());
+	// Собираем описание всех полученных событий для разбора отказа
+	std::string received = "";
+	/**
+	 * Проходим по всем полученным событиям
+	 */
+	for(const auto & signature : collected)
+		// Добавляем полученное событие в описание
+		received.append("\n  ").append(signature);
+	// Если событий не получено вовсе, так и сообщаем
+	if(collected.empty())
+		// Устанавливаем описание отсутствия событий
+		received = " (ни одного)";
+	/**
+	 * Сличаем собранные события с ожидаемыми поимённо
+	 */
+	for(const auto & signature : expected)
+		// Ожидаемое событие обязано быть собранным
+		ASSERT_TRUE(collected.count(signature) > 0) << "Событие не получено: " << signature << "\nПолучены были:" << received;
+	// Проверяем что проверка завершилась не по превышению времени ожидания
+	ASSERT_FALSE(expired);
+}
+#endif // !(_WIN32 || _WIN64)
+
+/**
+ * Проверка событий записей каталога для MS Windows
+ */
+#if _WIN32 || _WIN64
+/**
+ * @brief Тест событий записей отслеживаемого каталога под MS Windows
+ *
+ * @note Проверка закрепляет тот же ДОГОВОР события каталога, что и близнец её для
+ *       UNIX-подобных систем (`IoFsDirEntriesTest` выше): появление записи
+ *       отдаётся действием CHANGE с видом узла и полным путём, исчезновение -
+ *       действием DELETE с тем же видом и путём, а перенос внутри каталога - парой
+ *       из исчезновения прежнего имени и появления нового
+ *
+ * @details Отдельной проверка эта заведена оттого, что общим кодом обе системы не
+ *          покрываются. Расходятся три вещи, и всякая из них ломает проверку молча:
+ *
+ *          1. Заведение каталога у MS Windows об ОДНОМ доводе: прав доступа вида
+ *             POSIX система не ведёт вовсе, и второй довод её обращение отвергает
+ *             ещё сборкой
+ *
+ *          2. Разделителем пути движок под MS Windows ставит ОБРАТНУЮ косую черту -
+ *             ту, которую собирает система. Поиск же одной лишь прямой отбрасывал бы
+ *             всякое событие, и проверка падала бы, не получив ни одного, - при
+ *             исправно работающем движке
+ *
+ *          3. Добывается событие иначе: `ReadDirectoryChangesW` называет запись
+ *             поимённо и ведёт наблюдение за каждым каталогом своей операцией, тогда
+ *             как kqueue сообщает лишь «каталог изменился» и состав приходится
+ *             перечитывать обходом
+ *
+ */
+TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Флаг превышения времени ожидания
+	bool expired = false;
+	// Номер выполняемого шага проверки
+	uint16_t step = 0;
+	// Путь к отслеживаемому каталогу
+	const std::string dirname = ".\\dirwatch";
+	// Собранные события записей каталога
+	std::set <std::string> collected;
+	/**
+	 * Ожидаемые события записей каталога
+	 *
+	 * @note Запись сличается по НАЗВАНИЮ, а не по полному пути: движок приводит путь
+	 *       к полному виду, и вид этот зависит от рабочего каталога прогона. Сам
+	 *       путь проверяется отдельно - тем, что он оканчивается ожидаемым названием
+	 *       внутри отслеживаемого каталога
+	 */
+	const std::set <std::string> expected = {
+		"CHANGE|FILE|a.txt",
+		"CHANGE|DIR|sub",
+		"DELETE|FILE|a.txt",
+		"CHANGE|FILE|b.txt",
+		"DELETE|FILE|b.txt",
+		"DELETE|DIR|sub"
+	};
+	// Удаляем остатки от предыдущего запуска
+	::unlink((dirname + "\\a.txt").c_str());
+	::unlink((dirname + "\\b.txt").c_str());
+	::rmdir((dirname + "\\sub").c_str());
+	::rmdir(dirname.c_str());
+	// Заводим отслеживаемый каталог
+	ASSERT_EQ(::mkdir(dirname.c_str()), 0);
+	// Добавляем событие отслеживания каталога
+	const awh::event::id_t did = this->_io->event(awh::event::node_t::DIR, awh::event::family_t::FSYS);
+	// Добавляем событие ограничения времени работы проверки
+	const awh::event::id_t guard = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Добавляем событие пошагового изменения каталога
+	const awh::event::id_t ticker = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем идентификаторы созданных событий
+	ASSERT_GT(did, 0u);
+	ASSERT_GT(guard, 0u);
+	ASSERT_GT(ticker, 0u);
+	// Устанавливаем задержку между шагами проверки
+	this->_io->setTimeout(ticker, awh::event::action_t::NONE, 300);
+	// Устанавливаем предельное время работы проверки
+	this->_io->setTimeout(guard, awh::event::action_t::NONE, 15000);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем путь к отслеживаемому каталогу
+	ASSERT_TRUE(this->_io->setAddress(did, awh::event::address_t::FS, dirname));
+	// Устанавливаем функцию обратного вызова на превышение времени ожидания
+	this->_io->on(guard, [&stop, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS){
+			// Запоминаем превышение времени ожидания
+			expired = true;
+			// Останавливаем проверку
+			stop = true;
+		}
+	});
+	/**
+	 * Устанавливаем функцию обратного вызова на пошаговое изменение каталога
+	 *
+	 * @note Шаги разнесены по времени намеренно: тогда всякое изменение приходит
+	 *       движку отдельным оповещением, и проверка сличает не только состав
+	 *       событий, но и то, что ни одно из них не потеряно по дороге
+	 */
+	this->_io->on(ticker, [&step, &dirname]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если сработал очередной шаг проверки
+		if(status == awh::event::status_t::SUCCESS){
+			/**
+			 * Определяем номер выполняемого шага проверки
+			 */
+			switch(++step){
+				// Заводим файл в отслеживаемом каталоге
+				case 1: {
+					// Выполняем создание файла
+					FILE * file = ::fopen((dirname + "\\a.txt").c_str(), "wb");
+					// Если файл заведён, закрываем его
+					if(file != nullptr)
+						// Выполняем закрытие файла
+						::fclose(file);
+				} break;
+				// Заводим подкаталог в отслеживаемом каталоге
+				case 2:
+					// Выполняем создание подкаталога
+					::mkdir((dirname + "\\sub").c_str());
+				break;
+				// Переносим файл под другим именем
+				case 3:
+					// Выполняем перенос файла
+					::rename((dirname + "\\a.txt").c_str(), (dirname + "\\b.txt").c_str());
+				break;
+				// Удаляем файл
+				case 4:
+					// Выполняем удаление файла
+					::unlink((dirname + "\\b.txt").c_str());
+				break;
+				// Удаляем подкаталог
+				case 5:
+					// Выполняем удаление подкаталога
+					::rmdir((dirname + "\\sub").c_str());
+				break;
+			}
+		}
+	});
+	// Устанавливаем функцию обратного вызова на изменение записей каталога
+	this->_io->on(did, [&collected, &expected, &stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, const awh::event::vnode_t vnode, const std::string & path) noexcept -> void {
+		// Название произошедшего действия
+		const char * name = nullptr;
+		/**
+		 * Определяем произошедшее действие
+		 */
+		switch(static_cast <uint8_t> (action)){
+			// Если запись каталога появилась
+			case static_cast <uint8_t> (awh::event::action_t::CHANGE): name = "CHANGE"; break;
+			// Если запись каталога исчезла
+			case static_cast <uint8_t> (awh::event::action_t::DELETE): name = "DELETE"; break;
+			// Прочие действия проверку не занимают
+			default: return;
+		}
+		// Вид записи каталога
+		const char * kind = nullptr;
+		/**
+		 * Определяем вид записи каталога
+		 */
+		switch(static_cast <uint8_t> (vnode)){
+			// Если запись каталога является файлом
+			case static_cast <uint8_t> (awh::event::vnode_t::FILE): kind = "FILE"; break;
+			// Если запись каталога является каталогом
+			case static_cast <uint8_t> (awh::event::vnode_t::DIR): kind = "DIR"; break;
+			// Прочие виды проверку не занимают
+			default: return;
+		}
+		// Выполняем поиск последнего разделителя в пути записи
+		const size_t pos = path.rfind('\\');
+		// Если разделитель в пути не найден, событие проверку не занимает
+		if(pos == std::string::npos)
+			// Выходим из функции обратного вызова
+			return;
+		// Собираем описание произошедшего события по названию записи
+		const std::string signature = std::string(name) + "|" + kind + "|" + path.substr(pos + 1);
+		/**
+		 * Событие самого отслеживаемого каталога проверку не занимает: сличаются
+		 * события его ЗАПИСЕЙ, а о себе каталог сообщает тем же обратным вызовом
+		 */
+		if(path.find("dirwatch\\") == std::string::npos)
+			// Выходим из функции обратного вызова
+			return;
+		/**
+		 * Запоминаем ВСЯКОЕ произошедшее событие, а не только ожидаемое
+		 *
+		 * @note Отбор по ожидаемым скрыл бы от разбора отказа то, что движок отдал
+		 *       на самом деле, - а именно это и нужно знать, когда событие не сошлось
+		 */
+		collected.emplace(signature);
+		// Если все ожидаемые события собраны, останавливаем проверку
+		if(std::includes(collected.begin(), collected.end(), expected.begin(), expected.end()))
+			// Останавливаем проверку
+			stop = true;
+	});
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(did));
+	ASSERT_TRUE(this->_io->commit(guard));
+	ASSERT_TRUE(this->_io->commit(ticker));
+	// Выполняем запуск событий
+	ASSERT_TRUE(this->_io->launch(did));
+	ASSERT_TRUE(this->_io->launch(guard));
+	ASSERT_TRUE(this->_io->launch(ticker));
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Удаляем остатки отслеживаемого каталога
+	::unlink((dirname + "\\a.txt").c_str());
+	::unlink((dirname + "\\b.txt").c_str());
+	::rmdir((dirname + "\\sub").c_str());
+	::rmdir(dirname.c_str());
+	// Собираем описание всех полученных событий для разбора отказа
+	std::string received = "";
+	/**
+	 * Проходим по всем полученным событиям
+	 */
+	for(const auto & signature : collected)
+		// Добавляем полученное событие в описание
+		received.append("\n  ").append(signature);
+	// Если событий не получено вовсе, так и сообщаем
+	if(collected.empty())
+		// Устанавливаем описание отсутствия событий
+		received = " (ни одного)";
+	/**
+	 * Сличаем собранные события с ожидаемыми поимённо
+	 */
+	for(const auto & signature : expected)
+		// Ожидаемое событие обязано быть собранным
+		ASSERT_TRUE(collected.count(signature) > 0) << "Событие не получено: " << signature << "\nПолучены были:" << received;
+	// Проверяем что проверка завершилась не по превышению времени ожидания
+	ASSERT_FALSE(expired);
+}
+#endif // _WIN32 || _WIN64
+
+/**
  * @brief Тест приёма нескольких подключений одним UNIX-доменным сервером
  *
  * @note Проверка закрепляет переиспользование приёма подключений. У движка io_uring
@@ -6694,6 +7162,140 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 	ASSERT_FALSE(expired);
 	// Проверяем что содержимое файла прочитано целиком и без искажений
 	ASSERT_EQ(readed, content);
+}
+
+/**
+ * @brief Тест проверки состояний наблюдаемого каталога и файла
+ *
+ * @details Проверяются три случая, ради которых наблюдение и заводится: появление
+ *          записи в наблюдаемом каталоге, её исчезновение оттуда и удаление самого
+ *          наблюдаемого файла
+ *
+ * @note Каталог и файл описываются РАЗНЫМИ признаками, и различие это существенно.
+ *       Для наблюдающего за каталогом появление и исчезновение записей - это правка
+ *       каталога (CHANGE), а что именно изменилось, выясняется обходом содержимого.
+ *       Для наблюдающего же за файлом его исчезновение - это удаление (DELETE), а не
+ *       правка: сообщи движок о правке, он пошёл бы читать файл, которого уже нет
+ *
+ */
+TEST_F(IoFixture, IoFsWatchStatesTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Флаг превышения времени ожидания
+	bool expired = false;
+	// Признак замеченной правки содержимого каталога
+	bool dirChanged = false;
+	// Признак замеченного удаления наблюдаемого файла
+	bool fileDeleted = false;
+	// Объект работы с файловой системой
+	awh::fs_t fs(this->_fmk.get(), this->_log.get());
+	// Путь к наблюдаемому каталогу
+	const std::string dirname = "./watch_states_dir";
+	// Путь к наблюдаемому файлу
+	const std::string filename = "./watch_states.txt";
+	// Путь к записи, заводимой в наблюдаемом каталоге
+	const std::string child = (dirname + "/child.txt");
+	// Удаляем каталог, оставшийся от предыдущего запуска
+	if(fs.type(dirname) != awh::fs_t::type_t::NONE)
+		// Выполняем удаление наблюдаемого каталога
+		fs.unlink(dirname);
+	// Заводим наблюдаемый каталог
+	ASSERT_TRUE(fs.mkdir(dirname));
+	// Заводим наблюдаемый файл
+	fs.write(filename, "AAA");
+	// Файл обязан завестись
+	ASSERT_EQ(fs.type(filename), awh::fs_t::type_t::FILE);
+	// Добавляем новое событие отслеживания каталога
+	const awh::event::id_t did = this->_io->event(awh::event::node_t::DIR, awh::event::family_t::FSYS);
+	// Добавляем новое событие отслеживания файла
+	const awh::event::id_t fid = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
+	// Добавляем событие ограничения времени работы проверки
+	const awh::event::id_t guard = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Добавляем событие внесения изменений в наблюдаемое
+	const awh::event::id_t starter = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем идентификаторы созданных событий
+	ASSERT_GT(did, 0u);
+	ASSERT_GT(fid, 0u);
+	ASSERT_GT(guard, 0u);
+	ASSERT_GT(starter, 0u);
+	// Устанавливаем задержку внесения изменений
+	this->_io->setTimeout(starter, awh::event::action_t::NONE, 300);
+	// Устанавливаем предельное время работы проверки
+	this->_io->setTimeout(guard, awh::event::action_t::NONE, 15000);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем путь к наблюдаемому каталогу
+	ASSERT_TRUE(this->_io->setAddress(did, awh::event::address_t::FS, dirname));
+	// Устанавливаем путь к наблюдаемому файлу
+	ASSERT_TRUE(this->_io->setAddress(fid, awh::event::address_t::FS, filename));
+	// Устанавливаем функцию обратного вызова на превышение времени ожидания
+	this->_io->on(guard, [&stop, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS){
+			// Запоминаем превышение времени ожидания
+			expired = true;
+			// Останавливаем проверку
+			stop = true;
+		}
+	});
+	// Устанавливаем функцию обратного вызова на внесение изменений в наблюдаемое
+	this->_io->on(starter, [&fs, &child, &filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS){
+			// Заводим запись в наблюдаемом каталоге
+			fs.write(child, "BBB");
+			// Удаляем наблюдаемый файл
+			fs.unlink(filename);
+		}
+	});
+	// Устанавливаем функцию обратного вызова на изменение наблюдаемого каталога
+	this->_io->on(did, [&dirChanged, &fileDeleted, &stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const awh::event::vnode_t vnode, [[maybe_unused]] const std::string & path) noexcept -> void {
+		// Если каталог изменился
+		if(action == awh::event::action_t::CHANGE){
+			// Запоминаем правку содержимого каталога
+			dirChanged = true;
+			// Останавливаем проверку, если замечено и удаление файла
+			stop = (dirChanged && fileDeleted);
+		}
+	});
+	// Устанавливаем функцию обратного вызова на изменение наблюдаемого файла
+	this->_io->on(fid, [&dirChanged, &fileDeleted, &stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const awh::event::vnode_t vnode, [[maybe_unused]] const std::string & path) noexcept -> void {
+		// Если наблюдаемый файл удалён
+		if(action == awh::event::action_t::DELETE){
+			// Запоминаем удаление наблюдаемого файла
+			fileDeleted = true;
+			// Останавливаем проверку, если замечена и правка каталога
+			stop = (dirChanged && fileDeleted);
+		}
+	});
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(did));
+	ASSERT_TRUE(this->_io->commit(fid));
+	ASSERT_TRUE(this->_io->commit(guard));
+	ASSERT_TRUE(this->_io->commit(starter));
+	// Выполняем запуск событий
+	ASSERT_TRUE(this->_io->launch(did));
+	ASSERT_TRUE(this->_io->launch(fid));
+	ASSERT_TRUE(this->_io->launch(guard));
+	ASSERT_TRUE(this->_io->launch(starter));
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Удаляем наблюдаемый каталог
+	fs.unlink(dirname);
+	// Удаляем наблюдаемый файл, если он уцелел
+	if(fs.type(filename) != awh::fs_t::type_t::NONE)
+		// Выполняем удаление наблюдаемого файла
+		fs.unlink(filename);
+	// Проверяем что проверка завершилась не по превышению времени ожидания
+	ASSERT_FALSE(expired);
+	// Проверяем что замечено появление записи в наблюдаемом каталоге
+	ASSERT_TRUE(dirChanged);
+	// Проверяем что замечено удаление наблюдаемого файла
+	ASSERT_TRUE(fileDeleted);
 }
 
 /**

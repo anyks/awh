@@ -299,3 +299,68 @@ TEST(CodecIniEncoding, Reset) {
 	// Выполняем проверку отклонения смены кодировки
 	ASSERT_FALSE(decoder.encoding(ini::encoding_t::UTF8));
 }
+/**
+ * @brief Проверка кодировки Windows-1252
+ *
+ * @note Кодировка эта с ISO-8859-1 не совпадает: там, где у той управляющие знаки
+ *       области C1, у неё знаки печатные
+ *
+ */
+TEST(CodecIniEncoding, Windows1252) {
+	// Выполняем проверку разбора названия кодировки
+	ASSERT_EQ(ini::encoding("CP1252"), ini::encoding_t::CP1252);
+	// Выполняем проверку разбора названия кодировки ISO-8859-1
+	ASSERT_EQ(ini::encoding("ISO-8859-1"), ini::encoding_t::LATIN1);
+	// Выполняем проверку названия кодировки
+	ASSERT_EQ(ini::name(ini::encoding_t::CP1252), "WINDOWS-1252");
+	// Собираемые настройки разбора текста настроек
+	ini::reader_t::settings_t settings;
+	// Устанавливаем кодировку исходного текста
+	settings.encoding = ini::encoding_t::CP1252;
+	// Объект потокового чтения текста настроек
+	ini::reader_t reader(settings);
+	// Собираемый текст настроек
+	string text = "[a]\nk = ";
+	// Выполняем добавление денежного знака евро
+	text.push_back(static_cast <char> (0x80));
+	// Выполняем добавление знака конца строки
+	text.append(1, '\n');
+	// Выполняем передачу текста настроек
+	ASSERT_TRUE(reader.feed(text));
+	// Признак получения свойства со значением
+	bool received = false;
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
+	while(reader.next()){
+		/**
+		 * Если получено свойство со значением
+		 */
+		if(reader.event() == ini::event_t::PROPERTY){
+			// Запоминаем признак получения свойства со значением
+			received = true;
+			// Выполняем проверку приведения знака к кодировке UTF-8
+			ASSERT_EQ(reader.text(), "\u20ac");
+		}
+	}
+	// Выполняем проверку получения свойства со значением
+	ASSERT_TRUE(received);
+	{
+		// Объект потокового чтения текста настроек
+		ini::reader_t reader(settings);
+		// Собираемый текст настроек
+		string text = "[a]\nk = ";
+		// Выполняем добавление неопределённого в кодировке значения
+		text.push_back(static_cast <char> (0x81));
+		// Выполняем добавление знака конца строки
+		text.append(1, '\n');
+		// Выполняем передачу текста настроек
+		reader.feed(text);
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next());
+		// Выполняем проверку отклонения неопределённого значения
+		ASSERT_EQ(reader.error(), ini::error_t::INVALID_CHARACTER);
+	}
+}

@@ -305,6 +305,10 @@ const char * awh::codec::ini::name(const encoding_t encoding) noexcept {
 		case static_cast <uint8_t> (encoding_t::ASCII):
 			// Выводим название кодировки
 			return "US-ASCII";
+		// Если кодировкой является Windows-1252
+		case static_cast <uint8_t> (encoding_t::CP1252):
+			// Выводим название кодировки
+			return "WINDOWS-1252";
 	}
 	// Выводим название неопределённой кодировки
 	return "";
@@ -354,13 +358,22 @@ awh::codec::ini::encoding_t awh::codec::ini::encoding(const string_view text) no
 	/**
 	 * Если кодировкой является ISO-8859-1
 	 *
-	 * @note Название «Windows-1252» разбирается сюда же намеренно: тексты настроек
-	 *       MS Windows объявляют её на месте ISO-8859-1 через раз, а расходятся эти
-	 *       кодировки лишь в области управляющих знаков, в настройках не встречающейся
 	 */
-	if(::compare(text, "ISO-8859-1") || ::compare(text, "ISO8859-1") || ::compare(text, "LATIN1") || ::compare(text, "L1") || ::compare(text, "WINDOWS-1252") || ::compare(text, "CP1252"))
+	if(::compare(text, "ISO-8859-1") || ::compare(text, "ISO8859-1") || ::compare(text, "LATIN1") || ::compare(text, "L1"))
 		// Выводим определённую кодировку
 		return encoding_t::LATIN1;
+	/**
+	 * Если кодировкой является Windows-1252
+	 *
+	 * @note Кодировка эта с ISO-8859-1 не совпадает и отдельной ветвью разбирается
+	 *       намеренно: там, где у ISO-8859-1 управляющие знаки области C1, у неё
+	 *       знаки печатные - денежный знак евро, кавычки-лапки, тире. Разбирать её
+	 *       как ISO-8859-1 значило бы отвечать отказом на всякий текст настроек
+	 *       MS Windows, где эти знаки есть
+	 */
+	if(::compare(text, "WINDOWS-1252") || ::compare(text, "CP1252") || ::compare(text, "WINDOWS1252"))
+		// Выводим определённую кодировку
+		return encoding_t::CP1252;
 	/**
 	 * Если кодировкой является US-ASCII
 	 */

@@ -574,6 +574,190 @@ TEST(CodecIniDocument, RoundtripArrays) {
 	ASSERT_EQ(document.text(), "[a]\nk[] = one\nk[] = two\n");
 }
 /**
+ * @brief Проверка соблюдения предела подстановки удвоенным знаком обращения
+ *
+ * @note Знак, мимо предела проходящий, обращал бы предел в необязательный: набрать
+ *       им можно было бы сколько угодно
+ *
+ */
+TEST(CodecIniDocument, ExpansionBudget) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем построение обращения к значению другого свойства
+	settings.references = ini::reference_t::SHELL;
+	// Устанавливаем наибольший допустимый объём подстановки
+	settings.maxExpansion = 128;
+	// Собираемый текст настроек
+	string text = "[a]\nk = ";
+	// Выполняем сборку значения из удвоенных знаков обращения
+	text.append(512, '$');
+	// Выполняем добавление знака конца строки
+	text.append(1, '\n');
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем проверку отклонения разбора по превышению предела
+	ASSERT_FALSE(document.parse(text, settings));
+	// Выполняем проверку кода ошибки разбора
+	ASSERT_EQ(document.error(), ini::error_t::EXPANSION_EXCEEDED);
+}
+/**
+ * @brief Проверка сборки дерева с нуля в разделе без имени
+ *
+ */
+TEST(CodecIniDocument, GlobalAssembly) {
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем установку значения свойства в раздел без имени
+	ASSERT_TRUE(document.set("name", "значение"));
+	// Выполняем проверку установленного значения свойства
+	ASSERT_EQ(document.get("name"), "значение");
+	// Выполняем проверку записи собранного дерева
+	ASSERT_EQ(document.text(), "name = значение\n");
+	/**
+	 * Выполняем проверку того, что раздел без имени объявленным не считается
+	 */
+	ASSERT_EQ(document.size(), 0u);
+}
+/**
+ * @brief Проверка учёта регистра имён разделов наречием configparser
+ *
+ */
+TEST(CodecIniDocument, SensitiveSections) {
+	{
+		// Собираемые настройки дерева настроек
+		ini::document_t::settings_t settings;
+		// Устанавливаем настройки разбора по образцу configparser
+		settings.reader = ini::reader_t::settings_t::python();
+		// Дерево настроек
+		ini::document_t document;
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[Server]\nHost = a\n[server]\nHost = b\n", settings));
+		/**
+		 * Выполняем проверку раздельного учёта разделов
+		 *
+		 * @note Имена разделов это наречие сличает как записаны, а имена свойств
+		 *       приводит к нижнему регистру
+		 */
+		ASSERT_EQ(document.size(), 2u);
+		// Выполняем проверку значения свойства первого раздела
+		ASSERT_EQ(document.get("host", "Server"), "a");
+		// Выполняем проверку значения свойства второго раздела
+		ASSERT_EQ(document.get("HOST", "server"), "b");
+	}{
+		// Дерево настроек
+		ini::document_t document;
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("[Server]\nHost = a\n[server]\nHost = b\n"));
+		/**
+		 * Выполняем проверку слияния разделов при умолчании
+		 */
+		ASSERT_EQ(document.size(), 1u);
+	}
+}
+/**
+ * @brief Проверка оборота незримых знаков «запись - чтение»
+ *
+ */
+TEST(CodecIniDocument, RoundtripControls) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем разбор управляющих последовательностей в значении
+	settings.reader.escapes = true;
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек с незримыми знаками
+	ASSERT_TRUE(document.parse("[a]\nk = one\\btwo\\fthree\n", settings));
+	// Собираемые настройки записи текста настроек
+	ini::writer_t::settings_t writing;
+	// Устанавливаем запись управляющих последовательностей в значении
+	writing.escapes = true;
+	// Получаем записанный текст настроек
+	const string text = document.text(writing);
+	// Выполняем проверку прохождения записи
+	ASSERT_FALSE(text.empty());
+	// Дерево настроек обратного чтения
+	ini::document_t again;
+	// Выполняем проверку прохождения обратного чтения
+	ASSERT_TRUE(again.parse(text, settings));
+	// Выполняем проверку сохранности значения при обороте
+	ASSERT_EQ(again.get("k", "a"), document.get("k", "a"));
+}
+/**
+ * @brief Проверка перестроения указателей при смене настроек
+ *
+ * @note Указатели собраны по свёртке имён, а свёртка зависит от учёта регистра:
+ *       смена настроек без перестроения обращала бы поиск в неверный
+ *
+ */
+TEST(CodecIniDocument, SettingsReindex) {
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[Server]\nHost = a\n"));
+	// Выполняем проверку поиска без учёта регистра
+	ASSERT_TRUE(document.has("host", "server"));
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем учёт регистра имён при сличении
+	settings.reader.sensitive = true;
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
+	// Выполняем проверку поиска с учётом регистра
+	ASSERT_TRUE(document.has("Host", "Server"));
+	// Выполняем проверку отсутствия имени в ином регистре
+	ASSERT_FALSE(document.has("host", "server"));
+}
+/**
+ * @brief Проверка отклонения недопустимых имён при правке дерева
+ *
+ * @note Имя проверяется в месте правки, а не при записи собранного дерева: иначе
+ *       правка проходила бы, а записать её было бы нельзя
+ *
+ */
+TEST(CodecIniDocument, InvalidNames) {
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\n"));
+	// Выполняем проверку отклонения имени свойства с квадратной скобкой
+	ASSERT_FALSE(document.set("k[x", "v", "a"));
+	// Выполняем проверку кода ошибки правки
+	ASSERT_EQ(document.error(), ini::error_t::INVALID_KEY);
+	// Выполняем проверку отклонения имени свойства с разделителем
+	ASSERT_FALSE(document.set("k=x", "v", "a"));
+	// Выполняем проверку отклонения имени свойства с пробельной обвязкой
+	ASSERT_FALSE(document.set(" k", "v", "a"));
+	// Выполняем проверку отклонения имени раздела со знаком конца строки
+	ASSERT_FALSE(document.create("a\nb"));
+	// Выполняем проверку кода ошибки правки
+	ASSERT_EQ(document.error(), ini::error_t::INVALID_SECTION);
+	// Выполняем проверку прохождения записи собранного дерева
+	ASSERT_EQ(document.text(), "[a]\n");
+}
+/**
+ * @brief Проверка обращения к значению чужого подраздела
+ *
+ */
+TEST(CodecIniDocument, ReferenceSubsection) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем построение обращения к значению другого свойства
+	settings.references = ini::reference_t::SHELL;
+	// Устанавливаем настройки разбора по образцу Git
+	settings.reader = ini::reader_t::settings_t::git();
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[remote \"origin\"]\n\turl = https://host/repo\n[core]\n\tmirror = ${remote.origin:url}\n", settings));
+	/**
+	 * Выполняем проверку подстановки значения чужого подраздела
+	 *
+	 * @note Имя подраздела отделяется тем же знаком, каким оно отделяется в
+	 *       объявлении раздела при построении разделителем
+	 */
+	ASSERT_EQ(document.get("mirror", "core"), "https://host/repo");
+}
+/**
  * @brief Проверка отклонения неправильного построения текста настроек
  *
  */

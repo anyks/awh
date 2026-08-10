@@ -532,6 +532,53 @@ TEST(CodecIniReader, ErrorColumn) {
 	 */
 	ASSERT_EQ(reader.errorLocation().column, 8u);
 }
+/**
+ * @brief Проверка отклонения пустого имени подраздела за знаком-разделителем
+ *
+ */
+TEST(CodecIniReader, EmptySubsection) {
+	// Собираемые настройки разбора текста настроек
+	ini::reader_t::settings_t settings;
+	// Устанавливаем построение имени подраздела разделителем
+	settings.subsections = ini::subsection_t::DELIMITED;
+	{
+		// Объект потокового чтения текста настроек
+		ini::reader_t reader(settings);
+		// Выполняем передачу текста настроек
+		ASSERT_TRUE(reader.feed(string("[a.]\nk = v\n")));
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next());
+		// Выполняем проверку отклонения пустого имени подраздела
+		ASSERT_EQ(reader.error(), ini::error_t::INVALID_SUBSECTION);
+	}{
+		// Объект потокового чтения текста настроек
+		ini::reader_t reader(settings);
+		// Выполняем передачу текста настроек
+		ASSERT_TRUE(reader.feed(string("[a.b]\nk = v\n")));
+		// Признак получения объявления раздела
+		bool received = false;
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next()){
+			/**
+			 * Если получено объявление раздела
+			 */
+			if(reader.event() == ini::event_t::SECTION){
+				// Запоминаем признак получения объявления раздела
+				received = true;
+				// Выполняем проверку имени раздела
+				ASSERT_EQ(reader.section().section, "a");
+				// Выполняем проверку имени подраздела
+				ASSERT_EQ(reader.section().subsection, "b");
+			}
+		}
+		// Выполняем проверку получения объявления раздела
+		ASSERT_TRUE(received);
+	}
+}
 TEST(CodecIniReader, Reset) {
 	// Объект потокового чтения текста настроек
 	ini::reader_t reader(ini::reader_t::settings_t::strict());

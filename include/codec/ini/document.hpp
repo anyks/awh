@@ -298,7 +298,20 @@ namespace awh {
 					 * @return     имя, приведённое к виду для сличения
 					 *
 					 */
-					string fold(const string_view name) const noexcept;
+					string fold(const string_view name, const bool section = false) const noexcept;
+					/**
+					 * @brief Метод проверки имени раздела или свойства
+					 *
+					 * @details Имя проверяется теми же правилами, какими его проверяет
+					 * разбор: имя, записать которое обратно нельзя, отвергается в месте
+					 * правки, а не при записи собранного дерева
+					 *
+					 * @param name    проверяемое имя раздела или свойства
+					 * @param section признак проверки имени раздела
+					 * @return        результат выполнения операции
+					 *
+					 */
+					bool acceptable(const string_view name, const bool section) noexcept;
 					/**
 					 * @brief Метод сборки ключа указателя разделов
 					 *

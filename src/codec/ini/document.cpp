@@ -79,13 +79,13 @@ awh::codec::ini::span_t awh::codec::ini::Document::add(const string_view text) n
  * @return     имя, приведённое к виду для сличения
  *
  */
-string awh::codec::ini::Document::fold(const string_view name) const noexcept {
+string awh::codec::ini::Document::fold(const string_view name, const bool section) const noexcept {
 	// Приводимое имя раздела или свойства
 	string result(name);
 	/**
 	 * Если регистр имён при сличении не учитывается
 	 */
-	if(!this->_settings.reader.sensitive){
+	if(!this->_settings.reader.sensitive && !(section && this->_settings.reader.sensitiveSections)){
 		/**
 		 * Выполняем перебор всех знаков имени
 		 */
@@ -97,6 +97,74 @@ string awh::codec::ini::Document::fold(const string_view name) const noexcept {
 	return result;
 }
 /**
+ * @brief Метод проверки имени раздела или свойства
+ *
+ * @param name    проверяемое имя раздела или свойства
+ * @param section признак проверки имени раздела
+ * @return        результат выполнения операции
+ *
+ */
+bool awh::codec::ini::Document::acceptable(const string_view name, const bool section) noexcept {
+	/**
+	 * Если имя раздела или свойства пусто
+	 */
+	if(name.empty()){
+		// Запоминаем код ошибки правки
+		this->_error = (section ? error_t::EMPTY_SECTION : error_t::EMPTY_KEY);
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Если длина имени предел настроек превышает
+	 */
+	if(name.length() > this->_settings.reader.maxName){
+		// Запоминаем код ошибки правки
+		this->_error = error_t::NAME_TOO_LONG;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Если имя раздела или свойства несёт пробельную обвязку
+	 *
+	 * @note Обвязка эта при чтении отбрасывается, и записанное имя разошлось бы с
+	 *       прочитанным: отвергнуть её лучше, чем молча потерять
+	 */
+	if(ascii::isSpace(name.front()) || ascii::isSpace(name.back())){
+		// Запоминаем код ошибки правки
+		this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Выполняем перебор всех знаков имени
+	 */
+	for(size_t i = 0; i < name.length(); i++){
+		// Получаем признак недопустимости очередного знака имени
+		bool invalid = ((name[i] == '\n') || (name[i] == '\r') || (name[i] == '[') || (name[i] == ']'));
+		/**
+		 * Если проверяется имя раздела
+		 */
+		if(section)
+			// Дополняем признак недопустимости знаком кавычки
+			invalid = (invalid || (name[i] == '"'));
+		/**
+		 * Если проверяется имя свойства
+		 */
+		else invalid = (invalid || separated(name[i], this->_settings.reader.separators));
+		/**
+		 * Если очередной знак имени недопустим
+		 */
+		if(invalid){
+			// Запоминаем код ошибки правки
+			this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		}
+	}
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
  * @brief Метод сборки ключа указателя разделов
  *
  * @param section    имя раздела
@@ -106,7 +174,7 @@ string awh::codec::ini::Document::fold(const string_view name) const noexcept {
  */
 string awh::codec::ini::Document::label(const string_view section, const string_view subsection) const noexcept {
 	// Собираемый ключ указателя разделов
-	string result = this->fold(section);
+	string result = this->fold(section, true);
 	/**
 	 * Выполняем добавление разделителя имён к собираемому ключу
 	 *
@@ -292,6 +360,15 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		 *       знаком либо с долей в сотых записать было бы нечем
 		 */
 		if(((i + 1) < value.length()) && (value[i + 1] == letter)){
+			/**
+			 * Если остаток допустимого объёма подстановки исчерпан
+			 */
+			if((budget--) == 0){
+				// Запоминаем код ошибки разбора
+				this->_error = error_t::EXPANSION_EXCEEDED;
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			}
 			// Выполняем добавление знака к разрешённому значению
 			result.push_back(value[i]);
 			// Выполняем переход к знаку за удвоенным
@@ -303,6 +380,19 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		 * Если за знаком обращения имя не открывается
 		 */
 		if(((i + 1) >= value.length()) || (value[i + 1] != opening)){
+			/**
+			 * Если остаток допустимого объёма подстановки исчерпан
+			 *
+			 * @note Остаток убывает на всяком знаке разрешённого значения, а не только
+			 *       на подставленном: предел задан объёму подстановки целиком, и знак,
+			 *       мимо него проходящий, обращал бы предел в необязательный
+			 */
+			if((budget--) == 0){
+				// Запоминаем код ошибки разбора
+				this->_error = error_t::EXPANSION_EXCEEDED;
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			}
 			// Выполняем добавление знака к разрешённому значению
 			result.push_back(value[i]);
 			// Выполняем переход к следующему знаку значения
@@ -345,14 +435,31 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		 * Если разделитель имени раздела и имени свойства обнаружен
 		 */
 		if(separator != string_view::npos){
+			// Получаем имя раздела, к значению которого обращено
+			const string_view label = name.substr(0, separator);
 			/**
-			 * Если раздел, к которому обращено значение, не обнаружен
+			 * Если раздел с таким именем не обнаружен
 			 */
-			if(!this->search(name.substr(0, separator), "", target)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::UNKNOWN_REFERENCE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+			if(!this->search(label, "", target)){
+				/**
+				 * Получаем положение знака, отделяющего имя подраздела
+				 *
+				 * @note Обращение к значению чужого подраздела записывается тем же
+				 *       знаком-разделителем, каким подраздел отделяется в объявлении
+				 *       раздела: «${remote.origin:url}». Разделитель ищется с конца -
+				 *       знак этот вправе стоять и в имени самого раздела
+				 */
+				const size_t divider = label.rfind(this->_settings.reader.delimiter);
+				/**
+				 * Если раздел не обнаружен и с разбором имени на раздел с подразделом
+				 */
+				if((divider == string_view::npos) || (divider == 0) || ((divider + 1) >= label.length()) ||
+				   !this->search(label.substr(0, divider), label.substr(divider + 1), target)){
+					// Запоминаем код ошибки разбора
+					this->_error = error_t::UNKNOWN_REFERENCE;
+					// Выводим отрицательный результат выполнения операции
+					return false;
+				}
 			}
 			// Получаем имя свойства без имени раздела
 			name = name.substr(separator + 1);
@@ -495,6 +602,17 @@ const awh::codec::ini::Document::settings_t & awh::codec::ini::Document::setting
 void awh::codec::ini::Document::settings(const settings_t & settings) noexcept {
 	// Запоминаем настройки дерева настроек
 	this->_settings = settings;
+	/**
+	 * Выполняем перестроение указателей поиска
+	 *
+	 * @note Указатели собраны по свёртке имён, а свёртка зависит от учёта регистра:
+	 *       смена настроек без перестроения обращала бы поиск в неверный - имена в
+	 *       указателе свёрнуты по-старому, а искомое сворачивается по-новому
+	 *
+	 * @warning Подстановка обращений заново не выполняется: разрешены они однажды,
+	 *          при разборе, и смена настроек значений уже не меняет
+	 */
+	this->reindex();
 }
 /**
  * @brief Метод разбора текста настроек
@@ -911,9 +1029,15 @@ vector <string_view> awh::codec::ini::Document::values(const string_view key, co
  */
 bool awh::codec::ini::Document::create(const string_view section, const string_view subsection) noexcept {
 	/**
-	 * Если имя объявляемого раздела пусто
+	 * Если имя объявляемого раздела недопустимо
 	 */
-	if(section.empty())
+	if(!this->acceptable(section, true))
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	/**
+	 * Если имя подраздела задано и оно недопустимо
+	 */
+	if(!subsection.empty() && !this->acceptable(subsection, true))
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Порядковый номер найденного раздела
@@ -996,13 +1120,28 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
  */
 bool awh::codec::ini::Document::set(const string_view key, const string_view value, const string_view section, const string_view subsection) noexcept {
 	/**
-	 * Если имя устанавливаемого свойства пусто
+	 * Если имя устанавливаемого свойства недопустимо
 	 */
-	if(key.empty())
+	if(!this->acceptable(key, false))
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Порядковый номер найденного раздела
 	uint32_t index = 0;
+	/**
+	 * Если значение устанавливается разделу без имени, а дерево пусто
+	 *
+	 * @note Раздел без имени объявления не требует и потому через объявление
+	 *       заведён быть не может: сборка дерева с нуля вызовами установки значения
+	 *       без этого была бы невозможна там, где имя раздела не задано
+	 */
+	if(section.empty() && subsection.empty() && this->_sections.empty()){
+		// Выполняем заведение раздела без имени
+		this->_sections.emplace_back();
+		// Выполняем выделение памяти под порядок объявлений раздела без имени
+		this->_order.resize(this->_sections.size());
+		// Выполняем выделение памяти под последнюю запись раздела без имени
+		this->_last.resize(this->_sections.size(), NO_RECORD);
+	}
 	/**
 	 * Если раздел с таким именем не обнаружен
 	 */
