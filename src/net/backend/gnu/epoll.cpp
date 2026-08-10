@@ -40510,16 +40510,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									{
 										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
 										if(client->transfer.fd != net::invalid_socket_t)
-											{
-												// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-												if(client->transfer.fd != net::invalid_socket_t)
-													result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
-												// Запоминаем устройство групповой рассылки до фиксации настроек
-												else {
-													client->iface.assign(src.iface.begin(), src.iface.end());
-													result = true;
-												}
-											}
+											result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
 										// Запоминаем устройство групповой рассылки до фиксации настроек
 										else {
 											client->iface.assign(src.iface.begin(), src.iface.end());
@@ -40598,16 +40589,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									{
 										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
 										if(client->transfer.fd != net::invalid_socket_t)
-											{
-												// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-												if(client->transfer.fd != net::invalid_socket_t)
-													result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
-												// Запоминаем устройство групповой рассылки до фиксации настроек
-												else {
-													client->iface.assign(src.iface.begin(), src.iface.end());
-													result = true;
-												}
-											}
+											result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
 										// Запоминаем устройство групповой рассылки до фиксации настроек
 										else {
 											client->iface.assign(src.iface.begin(), src.iface.end());
@@ -40685,19 +40667,10 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									{
 										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
 										if(server->fd != net::invalid_socket_t)
-											{
-												// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-												if(server->fd != net::invalid_socket_t)
-													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
-												// Запоминаем устройство групповой рассылки до фиксации настроек
-												else {
-													server->iface.assign(name.begin(), name.end());
-													result = true;
-												}
-											}
+											result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
 										// Запоминаем устройство групповой рассылки до фиксации настроек
 										else {
-											server->iface.assign(src.iface.begin(), src.iface.end());
+											server->iface.assign(name.begin(), name.end());
 											result = true;
 										}
 									}
@@ -40762,19 +40735,10 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									{
 										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
 										if(server->fd != net::invalid_socket_t)
-											{
-												// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-												if(server->fd != net::invalid_socket_t)
-													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
-												// Запоминаем устройство групповой рассылки до фиксации настроек
-												else {
-													server->iface.assign(name.begin(), name.end());
-													result = true;
-												}
-											}
+											result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
 										// Запоминаем устройство групповой рассылки до фиксации настроек
 										else {
-											server->iface.assign(src.iface.begin(), src.iface.end());
+											server->iface.assign(name.begin(), name.end());
 											result = true;
 										}
 									}
