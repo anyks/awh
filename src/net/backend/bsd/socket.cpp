@@ -3669,6 +3669,23 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
  * @return       созданный сокет
  *
  */
+/**
+ * @brief Метод проверки готовности средств сокетов системы
+ *
+ * @note Подъёма средств сокетов на процесс эта система не требует вовсе: они
+ *       принадлежат ядру и годны всегда. Обращение это заведено ради одной лишь
+ *       MS Windows, где подъём нужен и вправе не удаться, - а договор у слоя один
+ *       на все системы, и разводить его условной сборкой у вызывающей стороны
+ *       значило бы вынести своенравность одной системы в общий вид
+ *
+ * @return результат проверки готовности средств сокетов системы
+ *
+ */
+bool awh::eth::Socket::ready() const noexcept {
+	// Сообщаем, что средства сокетов системы годны
+	return true;
+}
+
 awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, const uint16_t options) const noexcept {
 	/**
 	 * Признаки, которые ядро принимает прямо при создании сокета

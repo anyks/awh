@@ -647,6 +647,9 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     SET(SOURCE_FILES
         "${SOURCE_FILES}"
         "${CMAKE_SOURCE_DIR}/src/net/backend/sun/eth.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/sun/socket.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/sun/addr.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/sun/iface.cpp"
     )
 # Если сборка производится под операционную систему Linux
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
