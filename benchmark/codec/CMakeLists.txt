@@ -42,6 +42,26 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks XML submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_XML_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для контейнера INI
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_INI_BENCHMARK "Build INI benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для контейнера INI
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_INI_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для контейнера INI
+        message(STATUS "Build benchmarks INI submodule: Yes\n")
+        # Дополняем список источников бенчмарками для контейнера INI
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            ini/ini.cpp
+            ini/reader.cpp
+            ini/writer.cpp
+            ini/document.cpp
+        )
+    # Если не нужно собрать бенчмарки для контейнера INI
+    else()
+        # Выводим сообщение о сборке бенчмарков для контейнера INI
+        message(STATUS "Build benchmarks INI submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_INI_BENCHMARK})
+
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 

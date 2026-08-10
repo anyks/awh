@@ -1421,6 +1421,8 @@ namespace io {
 		atomic_uint16_t refs;
 		// Отложенное вступление в группу рассылки
 		deferred_membership_t membership;
+		// Отложенное устройство групповой рассылки
+		string iface;
 		/**
 		 * @brief Конструктор
 		 *
@@ -36424,6 +36426,37 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Выполняем отложенное вступление в группу рассылки
 								this->membership(id, client->membership.mode, client->membership.group, client->membership.source, client->membership.port);
 							}
+							/**
+							 * Применяем настройки, отложенные до заведения сокета
+							 *
+							 * @details Устройство групповой рассылки и сроки ожидания задаются до
+							 * фиксации, когда сокета ещё нет. Прежде они уходили ядру на дескриптор
+							 * -1 и терялись молча: отказ виден лишь строкой в журнале
+							 *
+							 * @note Сроки ожидания нужны только сокету с блокировкой - неблокирующий
+							 * ведёт их своими таймерами, а у свежего сокета срок и так пуст
+							 */
+							if(!client->iface.empty()){
+								// Устанавливаем отложенное устройство групповой рассылки
+								this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, client->iface);
+								// Освобождаем запомненное устройство групповой рассылки
+								client->iface.clear();
+							}
+							// Если событие работает с блокировкой ввода/вывода
+							if(!((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))){
+								// Если задан срок ожидания чтения
+								if(client->timeouts.read.delay > 0)
+									// Устанавливаем срок ожидания чтения
+									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
+								// Если задан срок ожидания записи
+								if(client->timeouts.write.delay > 0)
+									// Устанавливаем срок ожидания записи
+									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
+							}
+							// Если число хопов задано до фиксации, доводим его до сокета
+							if(client->state.hops != event::hops_t::WORLD)
+								// Устанавливаем отложенное число хопов
+								this->_eth.socket.setHops(client->transfer.fd, client->state.family, client->state.delivery, static_cast <uint8_t> (client->state.hops));
 						}
 						// Устанавливаем статус события в состояние инициализировано
 						client->state.status = event::status_t::INITIAL;
@@ -38209,6 +38242,33 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								server->membership.active = false;
 								// Выполняем отложенное вступление в группу рассылки
 								this->membership(id, server->membership.mode, server->membership.group, server->membership.source, server->membership.port);
+							}
+							/**
+							 * Применяем настройки, отложенные до заведения сокета
+							 *
+							 * @details Устройство групповой рассылки и сроки ожидания задаются до
+							 * фиксации, когда сокета ещё нет. Прежде они уходили ядру на дескриптор
+							 * -1 и терялись молча: отказ виден лишь строкой в журнале
+							 *
+							 * @note Сроки ожидания нужны только сокету с блокировкой - неблокирующий
+							 * ведёт их своими таймерами, а у свежего сокета срок и так пуст
+							 */
+							if(!server->iface.empty()){
+								// Устанавливаем отложенное устройство групповой рассылки
+								this->_eth.socket.setMulticastIface(server->fd, server->state.family, server->iface);
+								// Освобождаем запомненное устройство групповой рассылки
+								server->iface.clear();
+							}
+							// Если событие работает с блокировкой ввода/вывода
+							if(!((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))){
+								// Если задан срок ожидания чтения
+								if(server->timeouts.read.delay > 0)
+									// Устанавливаем срок ожидания чтения
+									this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, server->timeouts.read.delay);
+								// Если задан срок ожидания записи
+								if(server->timeouts.write.delay > 0)
+									// Устанавливаем срок ожидания записи
+									this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
 							}
 						}
 						// Устанавливаем статус события в состояние инициализировано
@@ -40447,7 +40507,25 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								 */
 								if(client->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем устройство выхода групповой рассылки
-									result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
+									{
+										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+										if(client->transfer.fd != net::invalid_socket_t)
+											{
+												// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+												if(client->transfer.fd != net::invalid_socket_t)
+													result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
+												// Запоминаем устройство групповой рассылки до фиксации настроек
+												else {
+													client->iface.assign(src.iface.begin(), src.iface.end());
+													result = true;
+												}
+											}
+										// Запоминаем устройство групповой рассылки до фиксации настроек
+										else {
+											client->iface.assign(src.iface.begin(), src.iface.end());
+											result = true;
+										}
+									}
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -40517,7 +40595,25 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								 */
 								if(client->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем устройство выхода групповой рассылки
-									result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
+									{
+										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+										if(client->transfer.fd != net::invalid_socket_t)
+											{
+												// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+												if(client->transfer.fd != net::invalid_socket_t)
+													result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
+												// Запоминаем устройство групповой рассылки до фиксации настроек
+												else {
+													client->iface.assign(src.iface.begin(), src.iface.end());
+													result = true;
+												}
+											}
+										// Запоминаем устройство групповой рассылки до фиксации настроек
+										else {
+											client->iface.assign(src.iface.begin(), src.iface.end());
+											result = true;
+										}
+									}
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -40586,7 +40682,25 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								// Если событие является мультикастовым
 								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем интерфейс для мультикастовой передачи
-									result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
+									{
+										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+										if(server->fd != net::invalid_socket_t)
+											{
+												// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+												if(server->fd != net::invalid_socket_t)
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
+												// Запоминаем устройство групповой рассылки до фиксации настроек
+												else {
+													server->iface.assign(name.begin(), name.end());
+													result = true;
+												}
+											}
+										// Запоминаем устройство групповой рассылки до фиксации настроек
+										else {
+											server->iface.assign(src.iface.begin(), src.iface.end());
+											result = true;
+										}
+									}
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -40645,7 +40759,25 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								// Если событие является мультикастовым
 								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем интерфейс для мультикастовой передачи
-									result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
+									{
+										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+										if(server->fd != net::invalid_socket_t)
+											{
+												// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+												if(server->fd != net::invalid_socket_t)
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, name);
+												// Запоминаем устройство групповой рассылки до фиксации настроек
+												else {
+													server->iface.assign(name.begin(), name.end());
+													result = true;
+												}
+											}
+										// Запоминаем устройство групповой рассылки до фиксации настроек
+										else {
+											server->iface.assign(src.iface.begin(), src.iface.end());
+											result = true;
+										}
+									}
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -45578,7 +45710,16 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Если событие является мультикастовым
 														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 															// Устанавливаем интерфейс для мультикастовой передачи
-															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+															{
+																// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+																if(server->fd != net::invalid_socket_t)
+																	result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+																// Запоминаем устройство групповой рассылки до фиксации настроек
+																else {
+																	server->iface.assign(src.iface.begin(), src.iface.end());
+																	result = true;
+																}
+															}
 													// Если IP-адрес не получен
 													} else {
 														// Если установлена функция обратного вызова
@@ -45633,7 +45774,16 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Если событие является мультикастовым
 														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 															// Устанавливаем интерфейс для мультикастовой передачи
-															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+															{
+																// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+																if(server->fd != net::invalid_socket_t)
+																	result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+																// Запоминаем устройство групповой рассылки до фиксации настроек
+																else {
+																	server->iface.assign(src.iface.begin(), src.iface.end());
+																	result = true;
+																}
+															}
 													// Если IP-адрес не получен
 													} else {
 														// Если установлена функция обратного вызова
@@ -46221,7 +46371,16 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Если событие является мультикастовым
 												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+													{
+														// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+														if(server->fd != net::invalid_socket_t)
+															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+														// Запоминаем устройство групповой рассылки до фиксации настроек
+														else {
+															server->iface.assign(src.iface.begin(), src.iface.end());
+															result = true;
+														}
+													}
 											// Если MAC-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -46689,7 +46848,16 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Если событие является мультикастовым
 												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+													{
+														// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+														if(server->fd != net::invalid_socket_t)
+															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+														// Запоминаем устройство групповой рассылки до фиксации настроек
+														else {
+															server->iface.assign(src.iface.begin(), src.iface.end());
+															result = true;
+														}
+													}
 											// Если MAC-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -47148,7 +47316,16 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Если событие является мультикастовым
 												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+													{
+														// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+														if(server->fd != net::invalid_socket_t)
+															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+														// Запоминаем устройство групповой рассылки до фиксации настроек
+														else {
+															server->iface.assign(src.iface.begin(), src.iface.end());
+															result = true;
+														}
+													}
 											// Если IP-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -47250,7 +47427,16 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Если событие является мультикастовым
 												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+													{
+														// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+														if(server->fd != net::invalid_socket_t)
+															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+														// Запоминаем устройство групповой рассылки до фиксации настроек
+														else {
+															server->iface.assign(src.iface.begin(), src.iface.end());
+															result = true;
+														}
+													}
 											// Если IP-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -49147,7 +49333,16 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Если событие является мультикастовым
 													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 														// Устанавливаем интерфейс для мультикастовой передачи
-														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+														{
+															// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+															if(server->fd != net::invalid_socket_t)
+																result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+															// Запоминаем устройство групповой рассылки до фиксации настроек
+															else {
+																server->iface.assign(src.iface.begin(), src.iface.end());
+																result = true;
+															}
+														}
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -49202,7 +49397,16 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Если событие является мультикастовым
 													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 														// Устанавливаем интерфейс для мультикастовой передачи
-														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+														{
+															// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+															if(server->fd != net::invalid_socket_t)
+																result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+															// Запоминаем устройство групповой рассылки до фиксации настроек
+															else {
+																server->iface.assign(src.iface.begin(), src.iface.end());
+																result = true;
+															}
+														}
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -49616,7 +49820,16 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Если событие является мультикастовым
 											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
-												result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+												{
+													// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+													if(server->fd != net::invalid_socket_t)
+														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+													// Запоминаем устройство групповой рассылки до фиксации настроек
+													else {
+														server->iface.assign(src.iface.begin(), src.iface.end());
+														result = true;
+													}
+												}
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -49964,7 +50177,16 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Если событие является мультикастовым
 											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
-												result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+												{
+													// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+													if(server->fd != net::invalid_socket_t)
+														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
+													// Запоминаем устройство групповой рассылки до фиксации настроек
+													else {
+														server->iface.assign(src.iface.begin(), src.iface.end());
+														result = true;
+													}
+												}
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -51886,6 +52108,37 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
 				// Создаём охранника узла события
 				::local::guard_t guard(i->second.get());
+				/**
+				 * Если сокет ещё не заведён, вступление откладывается до фиксации
+				 *
+				 * @details Разбор здесь тот же, что и у перегрузки со строками:
+				 * адреса приводятся к тексту и копятся, а исполняется вступление
+				 * фиксацией, сразу после того, как сокет заведён
+				 *
+				 * @note Обе перегрузки самостоятельны - одна другую не зовёт, - оттого
+				 * отложить вступление нужно в КАЖДОЙ. Сделать это лишь в одной значит
+				 * оставить вторую дверь, за которой подписка теряется молча
+				 */
+				if((::io::descriptor(i->second.get()) == net::invalid_socket_t) &&
+				   ((i->second->state.node == event::node_t::CLIENT) ||
+				    (i->second->state.node == event::node_t::SERVER))){
+					// Устанавливаем адрес группы рассылки
+					this->_addr.source(group);
+					// Запоминаем адрес группы рассылки
+					i->second->membership.group = static_cast <string> (this->_addr);
+					// Устанавливаем адрес сетевого интерфейса подписки
+					this->_addr.source(source);
+					// Запоминаем адрес сетевого интерфейса подписки
+					i->second->membership.source = static_cast <string> (this->_addr);
+					// Запоминаем режим вступления в группу рассылки
+					i->second->membership.mode = mode;
+					// Запоминаем порт группы рассылки
+					i->second->membership.port = port;
+					// Отмечаем вступление как отложенное
+					i->second->membership.active = true;
+					// Выводим успешный результат
+					return true;
+				}
 				/**
 				 * Определяем чем является текущий узел
 				 */
@@ -60999,7 +61252,16 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 						// Если устройство событию задано
 						if(!iface.empty())
 							// Устанавливаем устройство выхода групповой рассылки
-							return this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, iface);
+							{
+								// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+								if(client->transfer.fd != net::invalid_socket_t)
+									return this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, iface);
+								// Запоминаем устройство групповой рассылки до фиксации настроек
+								else {
+									client->iface.assign(iface.begin(), iface.end());
+									return true;
+								}
+							}
 					}
 					// Выводим результат
 					return true;
@@ -61270,7 +61532,9 @@ bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noe
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.setHops(client->transfer.fd, client->state.family, client->state.delivery, hops))){
+					// Сокет заводится фиксацией настроек: пока его нет, число хопов лишь запомнено
+					if((result = ((client->transfer.fd == net::invalid_socket_t) ||
+					   this->_eth.socket.setHops(client->transfer.fd, client->state.family, client->state.delivery, hops)))){
 						// Если количество хопов равно нулю
 						if(hops == 0)
 							// Устанавливаем максимальное количество хопов для события (в рамках петлевого интерфейса)
@@ -61300,7 +61564,9 @@ bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noe
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.setHops(server->fd, server->state.family, server->state.delivery, hops))){
+					// Сокет заводится фиксацией настроек: пока его нет, число хопов лишь запомнено
+					if((result = ((server->fd == net::invalid_socket_t) ||
+					   this->_eth.socket.setHops(server->fd, server->state.family, server->state.delivery, hops)))){
 						// Если количество хопов равно нулю
 						if(hops == 0)
 							// Устанавливаем максимальное количество хопов для события (в рамках петлевого интерфейса)
@@ -61462,7 +61728,9 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) no
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.setHops(client->transfer.fd, client->state.family, client->state.delivery, static_cast <uint8_t> (hops))))
+					// Сокет заводится фиксацией настроек: пока его нет, число хопов лишь запомнено
+					if((result = ((client->transfer.fd == net::invalid_socket_t) ||
+					   this->_eth.socket.setHops(client->transfer.fd, client->state.family, client->state.delivery, static_cast <uint8_t> (hops)))))
 						// Устанавливаем максимальное количество хопов для события
 						client->state.hops = hops;
 				} break;
@@ -61471,7 +61739,9 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) no
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.setHops(server->fd, server->state.family, server->state.delivery, static_cast <uint8_t> (hops))))
+					// Сокет заводится фиксацией настроек: пока его нет, число хопов лишь запомнено
+					if((result = ((server->fd == net::invalid_socket_t) ||
+					   this->_eth.socket.setHops(server->fd, server->state.family, server->state.delivery, static_cast <uint8_t> (hops)))))
 						// Устанавливаем максимальное количество хопов для события
 						server->state.hops = hops;
 				} break;
@@ -62110,9 +62380,17 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 									}
 								}
 								// Обнуляем таймаут для действия чтения, так как неблокирующие сокеты не используют таймауты
-								this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, 0);
+								{
+									// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
+									if(client->transfer.fd != net::invalid_socket_t)
+										this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, 0);
+								}
 							// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-							} else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, timeout);
+							} else {
+								// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
+								if(client->transfer.fd != net::invalid_socket_t)
+									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, timeout);
+							}
 						} break;
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE): {
@@ -62156,9 +62434,17 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 									}
 								}
 								// Обнуляем таймаут для действия записи, так как неблокирующие сокеты не используют таймауты
-								this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
+								{
+									// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
+									if(client->transfer.fd != net::invalid_socket_t)
+										this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
+								}
 							// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-							} else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, timeout);
+							} else {
+								// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
+								if(client->transfer.fd != net::invalid_socket_t)
+									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, timeout);
+							}
 						} break;
 						// Если действие является подключением
 						case static_cast <uint8_t> (event::action_t::CONNECT):
@@ -62220,7 +62506,11 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								// Если событие является блокирующим
 								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-									this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, timeout);
+									{
+										// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
+										if(server->fd != net::invalid_socket_t)
+											this->_eth.socket.setTimeout(server->fd, net::socket_event_t::READ, timeout);
+									}
 							}
 						} break;
 						// Если действие является записью
@@ -62232,7 +62522,11 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								// Если событие является блокирующим
 								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK))
 									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-									this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, timeout);
+									{
+										// Сокет заводится фиксацией настроек: пока его нет, срок ожидания лишь запомнен
+										if(server->fd != net::invalid_socket_t)
+											this->_eth.socket.setTimeout(server->fd, net::socket_event_t::WRITE, timeout);
+									}
 							}
 						} break;
 						// Для остальных типов действий
