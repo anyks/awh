@@ -380,6 +380,51 @@ TEST(CodecXmlEncoding, Sequences) {
 	ASSERT_EQ(result, "<a>Москва日本</a>");
 }
 /**
+ * @brief Проверка распознавания поля кодировки среди похожих подстрок
+ *
+ * @details Слово «encoding» встречается и внутри значений соседних полей объявления
+ *          разметки. Опознание его подстрокой уводило бы выбор кодировки на знаки,
+ *          полем кодировки не являющиеся, - поле опознаётся по окружению: пробельный
+ *          знак слева и знак равенства справа
+ *
+ */
+TEST(CodecXmlEncoding, DeclarationFieldIsNotSubstring) {
+	// Приведённый к кодировке UTF-8 текст
+	string result;
+	// Код ошибки приведения
+	xml::error_t error = xml::error_t::NONE;
+	// Определённая кодировка исходного текста
+	xml::encoding_t enc = xml::encoding_t::NONE;
+	// Выполняем приведение текста, где слово поля стоит и внутри значения соседнего поля
+	ASSERT_TRUE(convert(string("<?xml version=\"1.0encoding\" encoding=\"iso-8859-1\"?><a>\xE9</a>"), 4096, result, error, enc));
+	// Выполняем проверку кода ошибки приведения
+	ASSERT_EQ(error, xml::error_t::NONE);
+	// Выполняем проверку того, что кодировка взята из поля, а не из значения соседнего поля
+	ASSERT_EQ(enc, xml::encoding_t::LATIN1);
+	// Выполняем проверку приведённого текста
+	ASSERT_EQ(result, "<?xml version=\"1.0encoding\" encoding=\"iso-8859-1\"?><a>\xC3\xA9</a>");
+}
+/**
+ * @brief Проверка распознавания поля кодировки с пробелами вокруг знака равенства
+ *
+ */
+TEST(CodecXmlEncoding, DeclarationFieldSpacedEquals) {
+	// Приведённый к кодировке UTF-8 текст
+	string result;
+	// Код ошибки приведения
+	xml::error_t error = xml::error_t::NONE;
+	// Определённая кодировка исходного текста
+	xml::encoding_t enc = xml::encoding_t::NONE;
+	// Выполняем приведение текста, где знак равенства отделён от названия поля пробелами
+	ASSERT_TRUE(convert(string("<?xml version=\"1.0\" encoding = \"iso-8859-1\"?><a>\xE9</a>"), 4096, result, error, enc));
+	// Выполняем проверку кода ошибки приведения
+	ASSERT_EQ(error, xml::error_t::NONE);
+	// Выполняем проверку определённой кодировки
+	ASSERT_EQ(enc, xml::encoding_t::LATIN1);
+	// Выполняем проверку приведённого текста
+	ASSERT_EQ(result, "<?xml version=\"1.0\" encoding = \"iso-8859-1\"?><a>\xC3\xA9</a>");
+}
+/**
  * @brief Проверка навязывания кодировки извне
  *
  */

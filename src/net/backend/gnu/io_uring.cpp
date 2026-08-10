@@ -3633,6 +3633,7 @@ namespace ring {
 	 */
 	enum class op_t : uint8_t {
 		NOP             = 0,  /**< Пустая операция, служит проверке колец */
+		READ            = 22, /**< Чтение по смещению */
 		READV           = 1,  /**< Чтение вектором */
 		WRITEV          = 2,  /**< Запись вектором */
 		POLL_ADD        = 6,  /**< Ожидание готовности дескриптора */
@@ -4950,7 +4951,8 @@ namespace inflight {
 		SPLICE   = 0x0B, /**< Объединение дескрипторов средствами ядра */
 		CANCEL   = 0x0C, /**< Отмена поданной операции */
 		WAKEUP   = 0x0D, /**< Пробуждение цикла событий */
-		SPLICE_WAIT = 0x0E /**< Ожидание готовности приёмника ядерного объединения */
+		SPLICE_WAIT = 0x0E, /**< Ожидание готовности приёмника ядерного объединения */
+		FILE        = 0x0F  /**< Чтение файла по смещению */
 	};
 
 	/**
@@ -5452,6 +5454,20 @@ namespace post {
 	 *          подавать её заново на каждое подключение не приходится. Это и есть
 	 *          главная выгода io_uring на приёме
 	 *
+	 * @note ЗАГОТОВКА: ниоткуда пока НЕ ЗОВЁТСЯ. Приём идёт прежним путём - через
+	 *       готовность слушающего дескриптора и обычный `accept`. Оставлена
+	 *       намеренно, замысел живой, но замер против спешки: у сценария `accept`
+	 *       расход лежит в настройке принятого сокета (`setsockopt`), а не в самом
+	 *       приёме, и после переноса заведения сокета в фиксацию обращений там
+	 *       стало 12 против 16. Выгода ожидается малой - браться, лишь когда
+	 *       весомее будет нечего
+	 *
+	 * @note Прочие заготовки подачи (`connect`, `recv`, `timeout`, `close`) убраны
+	 *       10.08.2026 как тупиковые: срок ожидания передаётся ядру доводом
+	 *       `EXT_ARG` (отдельная операция хуже), закрытие движок ведёт сам до
+	 *       отмены, приём пошёл через кольцо буферов, а подключение исходом не
+	 *       понадобилось. Мёртвый код в образце дорог вдвойне: по нему равняются
+	 *
 	 * @param sock      слушающий дескриптор
 	 * @param multishot признак многократного приёма
 	 * @param udata     узел, которому операция принадлежит
@@ -5503,92 +5519,6 @@ namespace post {
 			// Устанавливаем длину адреса удалённой стороны
 			entry->addr2 = reinterpret_cast <uint64_t> (&slot->length);
 		}
-		// Устанавливаем метку завершения
-		entry->user_data = result;
-		// Откладываем запись, если она заполнялась не потоком цикла
-		::post::publish(entry);
-		// Выводим метку завершения
-		return result;
-	}
-	/**
-	 * @brief Функция подачи подключения к удалённой стороне
-	 *
-	 * @details Исход подключения приходит завершением, а не готовностью к записи с
-	 *          последующим опросом ошибки сокета, как было у epoll: там на одно
-	 *          подключение уходили подписка, оповещение и `getsockopt`
-	 *
-	 * @note Адрес удалённой стороны копируется в запись учёта намеренно: ядро
-	 *       читает его после возврата из обращения, и адрес вызывающего к тому
-	 *       времени вправе не существовать
-	 *
-	 * @param sock   дескриптор, которым выполняется подключение
-	 * @param addr   адрес удалённой стороны
-	 * @param length длина адреса удалённой стороны
-	 * @param udata  узел, которому операция принадлежит
-	 * @return       метка завершения
-	 *
-	 */
-	static uint64_t connect(const net::socket_t sock, const struct sockaddr * addr, const socklen_t length, void * udata) noexcept {
-		// Если адрес удалённой стороны не передан либо длина его недопустима
-		if((addr == nullptr) || (length == 0) || (static_cast <size_t> (length) > sizeof(struct sockaddr_storage)))
-			// Выводим отсутствие метки завершения
-			return ::inflight::INVALID;
-		// Выполняем добычу записи подачи
-		struct io_uring_sqe * entry = ::post::sqe();
-		// Если запись подачи добыть не удалось
-		if(entry == nullptr)
-			// Выводим отсутствие метки завершения
-			return ::inflight::INVALID;
-		// Занимаем запись учёта под операцию
-		const uint64_t result = ::inflight::acquire(::inflight::kind_t::CONNECT, sock, udata);
-		// Получаем запись учёта
-		::inflight::slot_t * slot = ::inflight::get(result);
-		// Выполняем копирование адреса удалённой стороны во владение учёта
-		::memcpy(&slot->addr, addr, static_cast <size_t> (length));
-		// Запоминаем длину адреса удалённой стороны
-		slot->length = length;
-		// Устанавливаем код операции
-		entry->opcode = static_cast <uint8_t> (::ring::op_t::CONNECT);
-		// Устанавливаем дескриптор, которым выполняется подключение
-		entry->fd = static_cast <int32_t> (sock);
-		// Устанавливаем адрес удалённой стороны
-		entry->addr = reinterpret_cast <uint64_t> (&slot->addr);
-		// Устанавливаем длину адреса удалённой стороны
-		entry->off = static_cast <uint64_t> (length);
-		// Устанавливаем метку завершения
-		entry->user_data = result;
-		// Откладываем запись, если она заполнялась не потоком цикла
-		::post::publish(entry);
-		// Выводим метку завершения
-		return result;
-	}
-	/**
-	 * @brief Функция подачи приёма данных
-	 *
-	 * @param sock   дескриптор, с которого читаются данные
-	 * @param buffer буфер приёма данных
-	 * @param size   размер буфера приёма данных
-	 * @param udata  узел, которому операция принадлежит
-	 * @return       метка завершения
-	 *
-	 */
-	static uint64_t recv(const net::socket_t sock, void * buffer, const size_t size, void * udata) noexcept {
-		// Выполняем добычу записи подачи
-		struct io_uring_sqe * entry = ::post::sqe();
-		// Если запись подачи добыть не удалось
-		if(entry == nullptr)
-			// Выводим отсутствие метки завершения
-			return ::inflight::INVALID;
-		// Занимаем запись учёта под операцию
-		const uint64_t result = ::inflight::acquire(::inflight::kind_t::RECV, sock, udata);
-		// Устанавливаем код операции
-		entry->opcode = static_cast <uint8_t> (::ring::op_t::RECV);
-		// Устанавливаем дескриптор, с которого читаются данные
-		entry->fd = static_cast <int32_t> (sock);
-		// Устанавливаем буфер приёма данных
-		entry->addr = reinterpret_cast <uint64_t> (buffer);
-		// Устанавливаем размер буфера приёма данных
-		entry->len = static_cast <uint32_t> (size);
 		// Устанавливаем метку завершения
 		entry->user_data = result;
 		// Откладываем запись, если она заполнялась не потоком цикла
@@ -5675,6 +5605,49 @@ namespace post {
 		return result;
 	}
 	/**
+	 * @brief Функция подачи чтения файла по смещению
+	 *
+	 * @details Отличается от приёма из сокета доводом смещения: файл читается с
+	 *          заданного места, а не с текущего положения дескриптора. Ядро пишет
+	 *          в буфер ПОСЛЕ возврата из обращения, оттого буфером обязана владеть
+	 *          сторона, живущая до прихода завершения
+	 *
+	 * @param fd     дескриптор файла
+	 * @param buffer буфер, в который ядро пишет прочитанное
+	 * @param size   размер буфера
+	 * @param offset смещение в файле, с которого читать
+	 * @param udata  узел, которому операция принадлежит
+	 * @return       метка завершения
+	 *
+	 */
+	static uint64_t file(const net::socket_t fd, void * buffer, const size_t size, const int64_t offset, void * udata) noexcept {
+		// Выполняем добычу записи подачи
+		struct io_uring_sqe * entry = ::post::sqe();
+		// Если запись подачи добыть не удалось
+		if(entry == nullptr)
+			// Выводим отсутствие метки завершения
+			return ::inflight::INVALID;
+		// Занимаем запись учёта под операцию
+		const uint64_t result = ::inflight::acquire(::inflight::kind_t::FILE, fd, udata);
+		// Устанавливаем код операции
+		entry->opcode = static_cast <uint8_t> (::ring::op_t::READ);
+		// Устанавливаем дескриптор, из которого читаются данные
+		entry->fd = static_cast <int32_t> (fd);
+		// Устанавливаем буфер, в который ядро пишет прочитанное
+		entry->addr = reinterpret_cast <uint64_t> (buffer);
+		// Устанавливаем размер буфера
+		entry->len = static_cast <uint32_t> (size);
+		// Устанавливаем смещение в файле, с которого читать
+		entry->off = static_cast <uint64_t> (offset);
+		// Устанавливаем метку завершения
+		entry->user_data = result;
+		// Откладываем запись, если она заполнялась не потоком цикла
+		::post::publish(entry);
+		// Выводим метку завершения
+		return result;
+	}
+
+	/**
 	 * @brief Функция подачи отправки данных
 	 *
 	 * @note Буфер отправки принадлежит вызывающему и обязан существовать до прихода
@@ -5713,83 +5686,6 @@ namespace post {
 		 * передаётся самой операцией и обращения не стоит
 		 */
 		entry->msg_flags = MSG_NOSIGNAL;
-		// Устанавливаем метку завершения
-		entry->user_data = result;
-		// Откладываем запись, если она заполнялась не потоком цикла
-		::post::publish(entry);
-		// Выводим метку завершения
-		return result;
-	}
-	/**
-	 * @brief Функция подачи срока ожидания
-	 *
-	 * @details Срок ведёт ядро, а не движок. У epoll ближайший срок вычислялся из
-	 *          кучи дедлайнов и передавался доводом ожидания, отчего всякое взведение
-	 *          таймера из чужого потока требовало пинка цикла
-	 *
-	 * @param timeout срок ожидания в миллисекундах
-	 * @param udata   узел, которому операция принадлежит
-	 * @return        метка завершения
-	 *
-	 */
-	static uint64_t timeout(const int64_t timeout, void * udata) noexcept {
-		// Выполняем добычу записи подачи
-		struct io_uring_sqe * entry = ::post::sqe();
-		// Если запись подачи добыть не удалось
-		if(entry == nullptr)
-			// Выводим отсутствие метки завершения
-			return ::inflight::INVALID;
-		// Занимаем запись учёта под операцию
-		const uint64_t result = ::inflight::acquire(::inflight::kind_t::TIMEOUT, net::invalid_socket_t, udata);
-		// Получаем запись учёта
-		::inflight::slot_t * slot = ::inflight::get(result);
-		// Устанавливаем секунды срока ожидания
-		slot->deadline.tv_sec = static_cast <int64_t> (timeout / 1000);
-		// Устанавливаем наносекунды срока ожидания
-		slot->deadline.tv_nsec = static_cast <int64_t> ((timeout % 1000) * 1000000);
-		// Устанавливаем код операции
-		entry->opcode = static_cast <uint8_t> (::ring::op_t::TIMEOUT);
-		// Указываем отсутствие дескриптора у операции
-		entry->fd = -1;
-		// Устанавливаем срок ожидания
-		entry->addr = reinterpret_cast <uint64_t> (&slot->deadline);
-		// Устанавливаем количество ожидаемых завершений
-		entry->off = 0;
-		// Устанавливаем количество записей срока
-		entry->len = 1;
-		// Устанавливаем метку завершения
-		entry->user_data = result;
-		// Откладываем запись, если она заполнялась не потоком цикла
-		::post::publish(entry);
-		// Выводим метку завершения
-		return result;
-	}
-	/**
-	 * @brief Функция подачи закрытия дескриптора
-	 *
-	 * @note Закрытие отложено: дескриптор освободится тогда, когда ядро дойдёт до
-	 *       операции. До этого номер занят, а после вправе быть выдан заново,
-	 *       поэтому соответствие «номер дескриптора - узел» после подачи закрытия
-	 *       достоверным не считается
-	 *
-	 * @param sock  закрываемый дескриптор
-	 * @param udata узел, которому операция принадлежит
-	 * @return      метка завершения
-	 *
-	 */
-	static uint64_t close(const net::socket_t sock, void * udata) noexcept {
-		// Выполняем добычу записи подачи
-		struct io_uring_sqe * entry = ::post::sqe();
-		// Если запись подачи добыть не удалось
-		if(entry == nullptr)
-			// Выводим отсутствие метки завершения
-			return ::inflight::INVALID;
-		// Занимаем запись учёта под операцию
-		const uint64_t result = ::inflight::acquire(::inflight::kind_t::CLOSE, sock, udata);
-		// Устанавливаем код операции
-		entry->opcode = static_cast <uint8_t> (::ring::op_t::CLOSE);
-		// Устанавливаем закрываемый дескриптор
-		entry->fd = static_cast <int32_t> (sock);
 		// Устанавливаем метку завершения
 		entry->user_data = result;
 		// Откладываем запись, если она заполнялась не потоком цикла
@@ -6834,6 +6730,136 @@ namespace drain {
 		return -1;
 	}
 };
+
+/**
+ * @brief Пространство имён асинхронного чтения файлов
+ *
+ * @details Ради этого движок и заводился. У epoll и kqueue выбора не было: файл
+ *          читался отображением в память (`mmap`), а страничные отказы синхронны -
+ *          поток цикла вставал на дисковом чтении целиком, и один медленный файл
+ *          задерживал все соединения разом. Кольцо позволяет подать чтение и
+ *          вернуться в цикл: исход придёт завершением
+ *
+ * @note Буфер держится в записи, а не на стеке: ядро пишет в него ПОСЛЕ возврата
+ *       из обращения, и памятью обязана владеть сторона, живущая до завершения
+ *
+ * @note Потоковый режим выходит сам собой: следующая порция подаётся по приходу
+ *       предыдущей, смещение ведётся в узле. Сторожевой таймер, которым обложено
+ *       отображение в память, здесь не нужен - цикл не удерживается вовсе
+ *
+ */
+namespace fileio {
+	/**
+	 * Подключаем пространство имён фреймворка
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Запись чтения файла
+	 *
+	 */
+	struct reading_t {
+		bool armed;           /**< Признак поданного в кольцо чтения */
+		int64_t offset;       /**< Смещение, с которого подано чтение */
+		uint64_t token;       /**< Метка завершения поданного чтения */
+		void * owner;         /**< Узел, которому чтение принадлежит */
+		vector <char> buffer; /**< Буфер, в который пишет ядро */
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		reading_t() noexcept :
+		 armed(false), offset(0), token(::inflight::INVALID), owner(nullptr) {}
+	};
+
+	/**
+	 * Записи чтения файлов по дескрипторам
+	 */
+	static vector <reading_t> records;
+
+	/**
+	 * @brief Функция освобождения записей чтения файлов
+	 *
+	 */
+	static void clear() noexcept {
+		// Освобождаем записи чтения файлов
+		::fileio::records.clear();
+	}
+
+	/**
+	 * @brief Функция получения записи чтения файла
+	 *
+	 * @param fd дескриптор файла
+	 * @return   запись чтения файла либо пустое значение
+	 *
+	 */
+	static reading_t * get(const net::socket_t fd) noexcept {
+		// Если дескриптор файла недействителен
+		if(fd < 0)
+			// Выводим пустое значение
+			return nullptr;
+		// Если записей под дескриптор ещё не отведено
+		if(static_cast <size_t> (fd) >= ::fileio::records.size())
+			// Отводим записи с запасом под дескриптор
+			::fileio::records.resize(static_cast <size_t> (fd) + 1);
+		// Выводим запись чтения файла
+		return &::fileio::records[static_cast <size_t> (fd)];
+	}
+
+	/**
+	 * @brief Функция проверки заведённого чтения файла
+	 *
+	 * @param fd дескриптор файла
+	 * @return   признак заведённого чтения
+	 *
+	 */
+	static bool armed(const net::socket_t fd) noexcept {
+		// Если дескриптор файла недействителен
+		if((fd < 0) || (static_cast <size_t> (fd) >= ::fileio::records.size()))
+			// Выводим признак отсутствия чтения
+			return false;
+		// Выводим признак заведённого чтения
+		return ::fileio::records[static_cast <size_t> (fd)].armed;
+	}
+
+	/**
+	 * @brief Функция снятия записи чтения файла
+	 *
+	 * @param fd дескриптор файла
+	 *
+	 */
+	static void reset(const net::socket_t fd) noexcept {
+		// Если дескриптор файла недействителен
+		if((fd < 0) || (static_cast <size_t> (fd) >= ::fileio::records.size()))
+			// Выходим из функции
+			return;
+		// Получаем запись чтения файла
+		reading_t & record = ::fileio::records[static_cast <size_t> (fd)];
+		// Если чтение было подано в кольцо
+		if(record.armed && (record.token != ::inflight::INVALID))
+			// Отменяем поданное чтение
+			::post::cancel(record.token);
+		// Снимаем признак поданного чтения
+		record.armed = false;
+		// Снимаем метку завершения
+		record.token = ::inflight::INVALID;
+		// Снимаем принадлежность записи
+		record.owner = nullptr;
+	}
+
+	/**
+	 * @brief Функция годности асинхронного чтения файла
+	 *
+	 * @param fd дескриптор файла
+	 * @return   признак годности асинхронного чтения
+	 *
+	 */
+	static bool usable(const net::socket_t fd) noexcept {
+		// Выводим признак годности асинхронного чтения файла
+		return ((::ring::fd >= 0) && (fd >= 0) && ::post::owned());
+	}
+}
+
 
 /**
  * @brief Инкапсулируем доставку записей списка изменений в ядро
@@ -9672,6 +9698,16 @@ namespace io {
 	 *
 	 */
 	static bool read(::io::node_t *, const int64_t, const engine::io_t *, const eth_t *, const net_addr_t *, const fmk_t *, const log_t *) noexcept;
+	/**
+	 * @brief Функция разбора прочитанного из файла
+	 *
+	 * @param fs  узел файла, которому чтение принадлежит
+	 * @param res исход чтения: октеты при удаче, отрицательный код при отказе
+	 * @param io  объект сетевого движка
+	 * @param log объект работы с логами
+	 *
+	 */
+	static void complete(::io::file_t *, const int32_t, const engine::io_t *, const log_t *) noexcept;
 	/**
 	 * @brief Прототип функции обработки события принятия подключения от однорангового узла-источника
 	 *
@@ -12984,6 +13020,125 @@ namespace io {
 	using namespace awh;
 
 	/**
+	 * @brief Функция разбора прочитанного из файла
+	 *
+	 * @details Зовётся приходом завершения поданного чтения. Отдаёт порцию
+	 *          потребителю и подаёт следующую - в этом и состоит потоковый режим:
+	 *          цикл между порциями не удерживается
+	 *
+	 * @param fs  узел файла, которому чтение принадлежит
+	 * @param res исход чтения: октеты при удаче, отрицательный код при отказе
+	 * @param io  объект сетевого движка
+	 * @param log объект работы с логами
+	 *
+	 */
+	static void complete(::io::file_t * fs, const int32_t res, const engine::io_t * io, const log_t * log) noexcept {
+		// Если узел файла не передан
+		if(fs == nullptr)
+			// Выходим из функции
+			return;
+		// Получаем запись чтения файла
+		::fileio::reading_t * record = ::fileio::get(fs->fd);
+		// Если запись чтения файла добыть не удалось
+		if(record == nullptr)
+			// Выходим из функции
+			return;
+		// Снимаем признак поданного чтения
+		record->armed = false;
+		// Снимаем метку завершения
+		record->token = ::inflight::INVALID;
+		// Создаём охранника узла события
+		::local::guard_t guard(fs);
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если чтение завершилось отказом
+			if(res < 0){
+				// Если установлена функция обратного вызова
+				if(fs->callbacks.error != nullptr)
+					// Вызываем функцию обратного вызова ошибки события
+					fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::strerror(-res));
+				// Если функция обратного вызова вывода ошибки не установлена
+				else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs->id, fs->fd), log_t::flag_t::WARNING, ::strerror(-res));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log->print("%s", log_t::flag_t::WARNING, ::strerror(-res));
+					#endif
+				}
+				// Выходим из функции
+				return;
+			}
+			// Если файл прочитан до конца, продолжать нечего
+			if(res == 0)
+				// Выходим из функции
+				return;
+			// Если установлена функция обратного вызова
+			if(fs->callbacks.event != nullptr)
+				// Вызываем функцию обратного вызова с установленным флагом события
+				fs->callbacks.event(fs->id, event::action_t::READ);
+			// Если узел помечен мусорным, продолжать нечего
+			if(guard.garbage())
+				// Выходим из функции
+				return;
+			// Сдвигаем смещение в файле на размер прочитанного
+			fs->offset = (record->offset + static_cast <int64_t> (res));
+			// Если данные передаются связанному событию
+			if(fs->dest > 0)
+				// Выполняем передачу данных связанному событию
+				const_cast <engine::io_t *> (io)->relay(fs->dest, record->buffer.data(), static_cast <size_t> (res));
+			// Если установлена функция обратного вызова
+			else if(fs->callbacks.read != nullptr)
+				// Выводим полученные данные
+				fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (record->buffer.data()), static_cast <size_t> (res));
+			// Если узел помечен мусорным, следующую порцию не подаём
+			if(guard.garbage())
+				// Выходим из функции
+				return;
+			// Если прочитано меньше запрошенного, файл исчерпан
+			if(static_cast <size_t> (res) < fs->size)
+				// Выходим из функции
+				return;
+			// Если кольцо больше не годно, продолжать нечем
+			if(!::fileio::usable(fs->fd))
+				// Выходим из функции
+				return;
+			// Запоминаем смещение, с которого подаётся чтение
+			record->offset = fs->offset;
+			// Подаём следующую порцию чтения файла
+			record->token = ::post::file(fs->fd, record->buffer.data(), fs->size, fs->offset, fs);
+			// Отмечаем чтение как поданное
+			record->armed = (record->token != ::inflight::INVALID);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs->id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+
+	/**
 	 * @brief Функция обработки события чтения для узла файловой системы
 	 *
 	 * @param fs     узел в котором произошло событие
@@ -13009,6 +13164,74 @@ namespace io {
 					fs->mtime = 0;
 					// Сбрасываем смещение в файле
 					fs->offset = 0;
+				}
+				/**
+				 * Если кольцо годно, читаем файл асинхронно
+				 *
+				 * @details Отображение в память ниже удерживает поток цикла на
+				 * страничных отказах: они синхронны, и один медленный файл
+				 * задерживает все соединения разом. Кольцо позволяет подать чтение
+				 * и вернуться в цикл - исход придёт завершением, а следующая порция
+				 * подастся по его приходу, чем и выходит потоковый режим
+				 *
+				 * @note Отображение в память оставлено отходом: оно нужно, когда
+				 * кольцо не заведено либо чтение ведёт не поток цикла
+				 */
+				if(::fileio::usable(fs->fd)){
+					// Если чтение по файлу уже подано, ждём его исхода
+					if(::fileio::armed(fs->fd))
+						// Выводим успешный результат
+						return true;
+					// Если сведения о файле добыть не удалось
+					if(::fstat(fs->fd, &fs->info) != 0)
+						// Выводим неудачный результат
+						return false;
+					/**
+					 * Различаем дописывание от перезаписи по времени изменения
+					 *
+					 * @details Тот же порядок, что и у отображения в память: файл,
+					 * выросший в размере, дочитывается с сохранённого места, а файл
+					 * переписанный либо усечённый читается заново. Не различай мы
+					 * этих случаев, слежение за усечённым файлом замерло бы: чтение
+					 * с прежнего смещения давало бы ноль октетов бесконечно
+					 */
+					if(fs->info.st_size > fs->offset)
+						// Запоминаем время последнего изменения файла
+						fs->mtime = fs->info.st_mtime;
+					// Если файл переписан либо усечён
+					else if(fs->info.st_mtime != fs->mtime){
+						// Сбрасываем смещение в файле
+						fs->offset = 0;
+						// Запоминаем время последнего изменения файла
+						fs->mtime = fs->info.st_mtime;
+					// Если новых данных в файле нет, читать нечего
+					} else return true;
+					// Получаем запись чтения файла
+					::fileio::reading_t * record = ::fileio::get(fs->fd);
+					// Если запись чтения файла добыта
+					if(record != nullptr){
+						// Если размер буфера чтения не задан
+						if(fs->size == 0)
+							// Устанавливаем размер буфера чтения страницей памяти
+							fs->size = static_cast <size_t> (::getpagesize());
+						// Если буфер чтения отведён не под тот размер
+						if(record->buffer.size() != fs->size)
+							// Отводим буфер чтения под нужный размер
+							record->buffer.resize(fs->size);
+						// Запоминаем смещение, с которого подано чтение
+						record->offset = fs->offset;
+						// Запоминаем узел, которому чтение принадлежит
+						record->owner = fs;
+						// Подаём чтение файла в кольцо
+						record->token = ::post::file(fs->fd, record->buffer.data(), fs->size, fs->offset, fs);
+						// Если чтение подано успешно
+						if((result = (record->token != ::inflight::INVALID))){
+							// Отмечаем чтение как поданное
+							record->armed = true;
+							// Выводим успешный результат
+							return result;
+						}
+					}
 				}
 				// Размер полученных данных
 				size_t size = 0;
@@ -40380,10 +40603,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * @note Порядок здесь обязателен: вступление привязывает дескриптор к
 							 * порту группы, и потому идёт сразу за заведением сокета, прежде всей
 							 * остальной работы по фиксации настроек
+							 *
+							 * @note Запись НЕ гасится намеренно: она держит не «отложенное действие»,
+							 * а желаемое состояние узла. Пересоздание сокета (`rebuild`) заводит его
+							 * заново и зовёт фиксацию повторно - и членство восстанавливается само.
+							 * Гасили бы - узел молча выпадал бы из рассылки после пересоздания
 							 */
 							if(client->membership.active){
-								// Снимаем признак отложенного вступления
-								client->membership.active = false;
 								// Выполняем отложенное вступление в группу рассылки
 								this->membership(id, client->membership.mode, client->membership.group, client->membership.source, client->membership.port);
 							}
@@ -40400,8 +40626,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							if(!client->iface.empty()){
 								// Устанавливаем отложенное устройство групповой рассылки
 								this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, client->iface);
-								// Освобождаем запомненное устройство групповой рассылки
-								client->iface.clear();
 							}
 							// Если событие работает с блокировкой ввода/вывода
 							if(!((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))){
@@ -42195,8 +42419,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * остальной работы по фиксации настроек
 							 */
 							if(server->membership.active){
-								// Снимаем признак отложенного вступления
-								server->membership.active = false;
 								// Выполняем отложенное вступление в группу рассылки
 								this->membership(id, server->membership.mode, server->membership.group, server->membership.source, server->membership.port);
 							}
@@ -42213,8 +42435,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							if(!server->iface.empty()){
 								// Устанавливаем отложенное устройство групповой рассылки
 								this->_eth.socket.setMulticastIface(server->fd, server->state.family, server->iface);
-								// Освобождаем запомненное устройство групповой рассылки
-								server->iface.clear();
 							}
 							// Если событие работает с блокировкой ввода/вывода
 							if(!((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))){
@@ -71954,7 +72174,20 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       из источника и лежат в канале, оттого бросить их нельзя -
 					 *       выдача повторяется здесь
 					 */
-					if(kind == ::inflight::kind_t::SPLICE_WAIT){
+					/**
+				 * Если завершение принадлежит чтению файла
+				 *
+				 * @note Разбирается отдельно и до общей развилки: у сетевых операций
+				 * владельцем идёт запись реестра подписок, а у чтения файла - сам
+				 * узел. Пустить его общим путём значило бы истолковать узел записью
+				 */
+				if(kind == ::inflight::kind_t::FILE){
+					// Выполняем разбор прочитанного из файла
+					::io::complete(reinterpret_cast <::io::file_t *> (owner), completion.res, this, this->_log);
+					// Переходим к завершению следующему
+					continue;
+				}
+				if(kind == ::inflight::kind_t::SPLICE_WAIT){
 						// Выполняем повторную выдачу остатка приёмнику
 						::splicing::resume(reinterpret_cast <::io::node_t *> (owner));
 						// Переходим к завершению следующему

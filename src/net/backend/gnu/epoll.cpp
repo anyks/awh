@@ -36419,10 +36419,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * @note Порядок здесь обязателен: вступление привязывает дескриптор к
 							 * порту группы, и потому идёт сразу за заведением сокета, прежде всей
 							 * остальной работы по фиксации настроек
+							 *
+							 * @note Запись НЕ гасится намеренно: она держит не «отложенное действие»,
+							 * а желаемое состояние узла. Пересоздание сокета (`rebuild`) заводит его
+							 * заново и зовёт фиксацию повторно - и членство восстанавливается само.
+							 * Гасили бы - узел молча выпадал бы из рассылки после пересоздания
 							 */
 							if(client->membership.active){
-								// Снимаем признак отложенного вступления
-								client->membership.active = false;
 								// Выполняем отложенное вступление в группу рассылки
 								this->membership(id, client->membership.mode, client->membership.group, client->membership.source, client->membership.port);
 							}
@@ -36439,8 +36442,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							if(!client->iface.empty()){
 								// Устанавливаем отложенное устройство групповой рассылки
 								this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, client->iface);
-								// Освобождаем запомненное устройство групповой рассылки
-								client->iface.clear();
 							}
 							// Если событие работает с блокировкой ввода/вывода
 							if(!((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))){
@@ -38238,8 +38239,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * остальной работы по фиксации настроек
 							 */
 							if(server->membership.active){
-								// Снимаем признак отложенного вступления
-								server->membership.active = false;
 								// Выполняем отложенное вступление в группу рассылки
 								this->membership(id, server->membership.mode, server->membership.group, server->membership.source, server->membership.port);
 							}
@@ -38256,8 +38255,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							if(!server->iface.empty()){
 								// Устанавливаем отложенное устройство групповой рассылки
 								this->_eth.socket.setMulticastIface(server->fd, server->state.family, server->iface);
-								// Освобождаем запомненное устройство групповой рассылки
-								server->iface.clear();
 							}
 							// Если событие работает с блокировкой ввода/вывода
 							if(!((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))){

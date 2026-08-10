@@ -1517,6 +1517,16 @@ const string & awh::codec::xml::Writer::text() const noexcept {
 	return this->_text;
 }
 /**
+ * @brief Метод отведения места под собираемый текст разметки
+ *
+ * @param size ожидаемый размер собираемого текста разметки в байтах
+ *
+ */
+void awh::codec::xml::Writer::reserve(const size_t size) noexcept {
+	// Выполняем отведение места под собираемый текст разметки
+	this->_text.reserve(size);
+}
+/**
  * @brief Метод очистки собранного текста разметки
  *
  */

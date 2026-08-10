@@ -746,8 +746,27 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 	if(static_cast <uint64_t> (length) > static_cast <uint64_t> (this->_settings.maxLine))
 		// Выводим сообщение об ошибке разбора
 		return this->fail(error_t::LINE_TOO_LONG, begin, this->_line, 1);
+	// Длина первой физической строки без знака её конца
+	size_t size = 0;
+	// Положение начала следующей физической строки
+	size_t after = 0;
+	/**
+	 * Если логическая строка продолжений не имеет
+	 *
+	 * @note Строка такая лежит в приведённом тексте непрерывным отрезком, и
+	 *       выдаётся на неё ссылка: копирование её в отдельное хранилище
+	 *       обходилось в проход по всему тексту сверх самого разбора
+	 */
+	if(!::split(this->_buffer, begin, size, after) || (after >= (begin + length))){
+		// Запоминаем ссылку на логическую строку в приведённом тексте
+		this->_current = string_view(this->_buffer.data() + begin, ((size > 0) ? size : length));
+		// Выводим результат выполнения операции
+		return true;
+	}
 	// Количество склеенных строк продолжения
 	uint32_t count = 0;
+	// Выполняем упреждающее выделение памяти под собираемую логическую строку
+	this->_logical.reserve(length);
 	/**
 	 * Признак того, что предыдущая строка продолжена отступом
 	 *
@@ -832,6 +851,8 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 		// Выполняем переход к следующей физической строке
 		offset = after;
 	}
+	// Запоминаем ссылку на собранную логическую строку
+	this->_current = this->_logical;
 	// Выводим результат выполнения операции
 	return true;
 }
@@ -1417,6 +1438,8 @@ void awh::codec::ini::Reader::reset() noexcept {
 	this->_content.clear();
 	// Выполняем очистку собранной логической строки
 	this->_logical.clear();
+	// Выполняем сброс ссылки на логическую строку
+	this->_current = string_view();
 	// Выполняем сброс признака удержанного примечания
 	this->_pending = false;
 	// Выполняем сброс удержанного примечания конца строки
@@ -1614,7 +1637,7 @@ bool awh::codec::ini::Reader::next() noexcept {
 		 */
 		this->_offset = next;
 		// Получаем содержимое логической строки без пробельной обвязки
-		const string_view content = ::trim(this->_logical);
+		const string_view content = ::trim(this->_current);
 		/**
 		 * Если логическая строка пуста
 		 */

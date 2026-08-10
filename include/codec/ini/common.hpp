@@ -165,6 +165,12 @@ namespace awh {
 			constexpr uint64_t NO_OFFSET = static_cast <uint64_t> (~0ull);
 
 			/**
+			 * @brief Обозначение отсутствующей записи разобранного текста
+			 *
+			 */
+			constexpr uint32_t NO_RECORD = static_cast <uint32_t> (~0u);
+
+			/**
 			 * @brief Коды ошибок разбора текста настроек
 			 *
 			 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки

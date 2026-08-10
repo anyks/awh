@@ -187,8 +187,12 @@ void awh::codec::ini::Document::reindex() noexcept {
 	this->_properties.clear();
 	// Выполняем очистку порядка первых объявлений свойств
 	this->_order.clear();
+	// Выполняем очистку последних записей разделов
+	this->_last.clear();
 	// Выполняем выделение памяти под порядок объявлений всех разделов
 	this->_order.resize(this->_sections.size());
+	// Выполняем выделение памяти под последние записи всех разделов
+	this->_last.resize(this->_sections.size(), NO_RECORD);
 	/**
 	 * Выполняем перебор всех разделов разобранного текста
 	 */
@@ -206,6 +210,12 @@ void awh::codec::ini::Document::reindex() noexcept {
 	 * Выполняем перебор всех записей разобранного текста
 	 */
 	for(size_t i = 0; i < this->_records.size(); i++){
+		/**
+		 * Если раздел, которому запись принадлежит, в перечне разделов существует
+		 */
+		if(this->_records.at(i).section < this->_last.size())
+			// Запоминаем запись последней записью своего раздела
+			this->_last.at(this->_records.at(i).section) = static_cast <uint32_t> (i);
 		/**
 		 * Если запись свойством не является
 		 */
@@ -947,8 +957,21 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
 	}
 	// Выполняем добавление записи к перечню записей
 	this->_records.push_back(line);
-	// Выполняем перестроение указателей поиска
-	this->reindex();
+	/**
+	 * Выполняем приращение указателей поиска
+	 *
+	 * @note Записи раздела встают в конец перечня, и порядковые номера собранных
+	 *       ранее записей от того не сдвигаются: перестраивать указатели, на них
+	 *       ссылающиеся, незачем
+	 */
+	// Выполняем выделение памяти под порядок объявлений заведённых разделов
+	this->_order.resize(this->_sections.size());
+	// Выполняем выделение памяти под последние записи заведённых разделов
+	this->_last.resize(this->_sections.size(), NO_RECORD);
+	// Запоминаем последнюю запись объявленного раздела
+	this->_last.at(index) = static_cast <uint32_t> (this->_records.size() - 1);
+	// Выполняем добавление раздела к указателю разделов
+	this->_index.emplace(this->label(section, subsection), index);
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -1021,19 +1044,23 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 		// Выводим положительный результат выполнения операции
 		return true;
 	}
-	// Положение вставки записи в перечень записей
-	size_t position = this->_records.size();
 	/**
-	 * Выполняем перебор всех записей разобранного текста
+	 * Положение вставки записи в перечень записей
+	 *
+	 * @note Место вставки берётся из указателя последних записей: перебор всех
+	 *       записей ради него обращал бы сборку дерева вызовами этого метода в
+	 *       квадратичную
 	 */
-	for(size_t j = 0; j < this->_records.size(); j++){
-		/**
-		 * Если запись искомому разделу принадлежит
-		 */
-		if((this->_records.at(j).kind != kind_t::NONE) && (this->_records.at(j).section == index))
-			// Запоминаем положение вставки записи за найденной
-			position = (j + 1);
-	}
+	size_t position = ((index < this->_last.size()) && (this->_last.at(index) != NO_RECORD) ? static_cast <size_t> (this->_last.at(index) + 1) : this->_records.size());
+	/**
+	 * Выполняем отступление от пустых строк в конце раздела
+	 *
+	 * @note Пустая строка в конце раздела отделяет его от следующего, и запись
+	 *       свойства за ней оторвала бы свойство от своего раздела
+	 */
+	while((position > 0) && (this->_records.at(position - 1).kind == kind_t::BLANK) && (this->_records.at(position - 1).section == index))
+		// Выполняем перенос места вставки перед пустой строкой
+		position--;
 	// Собираемая запись свойства со значением
 	record_t record;
 	// Запоминаем вид собираемой записи
@@ -1046,6 +1073,33 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 	record.value = this->add(value);
 	// Запоминаем место значения свойства до подстановки обращений
 	record.raw = record.value;
+	/**
+	 * Если запись встаёт в конец перечня записей
+	 *
+	 * @note Порядковые номера собранных ранее записей при этом не сдвигаются, и
+	 *       указатели поиска достаточно нарастить. Ради этого случая всё и
+	 *       затевалось: сборка дерева вызовами этого метода идёт именно так
+	 */
+	if((position == this->_records.size()) && (index < this->_last.size()) && (index < this->_order.size())){
+		// Выполняем добавление записи к перечню записей
+		this->_records.push_back(record);
+		// Запоминаем порядковый номер добавленной записи
+		const uint32_t target = static_cast <uint32_t> (this->_records.size() - 1);
+		// Запоминаем запись последней записью своего раздела
+		this->_last.at(index) = target;
+		// Получаем перечень объявлений свойства в указателе свойств
+		vector <uint32_t> & records = this->_properties[this->label(index, key)];
+		/**
+		 * Если свойство объявляется в разделе впервые
+		 */
+		if(records.empty() && (index < this->_order.size()))
+			// Выполняем добавление записи к порядку первых объявлений раздела
+			this->_order.at(index).push_back(target);
+		// Выполняем добавление свойства к указателю свойств
+		records.push_back(target);
+		// Выводим положительный результат выполнения операции
+		return true;
+	}
 	// Выполняем вставку записи в перечень записей
 	this->_records.insert(this->_records.begin() + static_cast <ptrdiff_t> (position), record);
 	// Выполняем перестроение указателей поиска
@@ -1096,8 +1150,35 @@ bool awh::codec::ini::Document::erase(const string_view key, const string_view s
 			// Выполняем удаление записи примечания
 			this->_records.at(item + 1).kind = kind_t::NONE;
 	}
-	// Выполняем перестроение указателей поиска
-	this->reindex();
+	/**
+	 * Выполняем изъятие свойства из указателей поиска
+	 *
+	 * @note Удалённые записи из перечня не изымаются, а лишь помечаются, и
+	 *       порядковые номера прочих записей от того не сдвигаются: перестраивать
+	 *       указатели целиком незачем
+	 */
+	if(index < this->_order.size()){
+		// Получаем перечень первых объявлений свойств раздела
+		vector <uint32_t> & order = this->_order.at(index);
+		// Получаем порядковый номер записи первого объявления свойства
+		const uint32_t target = i->second.front();
+		/**
+		 * Выполняем перебор всех первых объявлений свойств раздела
+		 */
+		for(auto j = order.begin(); j != order.end(); ++j){
+			/**
+			 * Если объявление удаляемому свойству принадлежит
+			 */
+			if((* j) == target){
+				// Выполняем изъятие объявления из порядка объявлений раздела
+				order.erase(j);
+				// Выходим из перебора объявлений свойств раздела
+				break;
+			}
+		}
+	}
+	// Выполняем изъятие свойства из указателя свойств
+	this->_properties.erase(i);
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -1213,6 +1294,8 @@ void awh::codec::ini::Document::clear() noexcept {
 	this->_properties.clear();
 	// Выполняем очистку порядка первых объявлений свойств
 	this->_order.clear();
+	// Выполняем очистку последних записей разделов
+	this->_last.clear();
 }
 /**
  * @brief Метод записи дерева обратно в текст настроек
