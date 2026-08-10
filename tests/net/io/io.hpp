@@ -25,6 +25,7 @@
 #include "../../main.hpp"
 #include "../../../include/net/io.hpp"
 #include "../../../include/net/addr.hpp"
+#include "../../../include/sys/fs.hpp"
 #include "../../../include/cryptography/tls/coder.hpp"
 
 /**

@@ -6336,6 +6336,121 @@ TEST_F(IoFixture, IoFsTest){
 }
 
 /**
+ * @brief Тест приёма нескольких подключений одним UNIX-доменным сервером
+ *
+ * @note Проверка закрепляет переиспользование приёма подключений. У движка io_uring
+ *       приём UNIX-доменного сервера подаётся ядру МНОГОКРАТНЫМ: одна поданная
+ *       операция отдаёт подключения по мере их появления, и подавать её заново на
+ *       каждое подключение не приходится. Ошибка в учёте многократности - лишняя
+ *       подача либо, наоборот, неподанный заново приём - проверкой об ОДНОМ
+ *       подключении не ловится вовсе: там приём срабатывает единожды.
+ *
+ *       Прочие движки принимают подключения прежним путём, и проверка для них
+ *       остаётся обыкновенной проверкой сервера на несколько подключений
+ *
+ */
+TEST_F(IoFixture, IoUDSMultiAcceptTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Флаг превышения времени ожидания
+	bool expired = false;
+	// Количество принятых сервером подключений
+	uint16_t accepted = 0;
+	// Количество ожидаемых подключений
+	const uint16_t expected = 5;
+	// Путь к файлу UNIX-доменного сокета
+	const std::string socketPath = "/tmp/awh-multi-accept.sock";
+	// Удаляем файл сокета, оставшийся от предыдущего запуска
+	::unlink(socketPath.c_str());
+	// Добавляем событие сервера
+	const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::STREAM);
+	// Добавляем событие ограничения времени работы проверки
+	const awh::event::id_t guard = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем идентификаторы созданных событий
+	ASSERT_GT(sid, 0u);
+	ASSERT_GT(guard, 0u);
+	// Устанавливаем предельное время работы проверки
+	this->_io->setTimeout(guard, awh::event::action_t::NONE, 15000);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем функцию обратного вызова на превышение времени ожидания
+	this->_io->on(guard, [&stop, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS){
+			// Запоминаем превышение времени ожидания
+			expired = true;
+			// Останавливаем проверку
+			stop = true;
+		}
+	});
+	// Выполняем фиксацию настроек ограничителя времени
+	ASSERT_TRUE(this->_io->commit(guard));
+	// Запускаем ограничитель времени
+	ASSERT_TRUE(this->_io->launch(guard));
+	// Список событий подключившихся клиентов
+	std::vector <awh::event::id_t> clients;
+	/**
+	 * Событие сервера
+	 */
+	{
+		// Устанавливаем настройки события сервера
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адрес UNIX-доменного сокета сервера
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, socketPath));
+		// Устанавливаем функцию обратного вызова на принятие подключения
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([&accepted, &stop, &expected]([[maybe_unused]] const awh::event::id_t sid, [[maybe_unused]] const awh::event::id_t cid) noexcept -> void {
+			// Учитываем принятое подключение
+			if((++accepted) >= expected)
+				// Останавливаем проверку: все подключения приняты
+				stop = true;
+		}));
+		// Выполняем фиксацию настроек события сервера
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Выполняем прослушивание UNIX-доменного сокета
+		ASSERT_TRUE(this->_io->listen(sid, 100));
+		// Запускаем событие сервера
+		ASSERT_TRUE(this->_io->launch(sid));
+	}
+	/**
+	 * События клиентов
+	 *
+	 * @note Подключения заводятся все разом, до первого оборота цикла: тогда они
+	 *       приходят серверу подряд, а не по одному за оборот, - именно тот случай,
+	 *       ради которого приём и подаётся многократным
+	 */
+	for(uint16_t i = 0; i < expected; i++){
+		// Добавляем событие клиента
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::STREAM);
+		// Проверяем идентификатор созданного события
+		ASSERT_GT(cid, 0u);
+		// Запоминаем событие клиента
+		clients.push_back(cid);
+		// Устанавливаем настройки события клиента
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адрес UNIX-доменного сокета сервера
+		ASSERT_TRUE(this->_io->setTarget(cid, socketPath));
+		// Выполняем фиксацию настроек события клиента
+		ASSERT_TRUE(this->_io->commit(cid));
+		// Выполняем подключение к серверу
+		ASSERT_TRUE(this->_io->connect(cid));
+		// Запускаем событие клиента
+		ASSERT_TRUE(this->_io->launch(cid));
+	}
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Удаляем файл сокета
+	::unlink(socketPath.c_str());
+	// Проверяем что проверка завершилась не по превышению времени ожидания
+	ASSERT_FALSE(expired);
+	// Проверяем что сервер принял все подключения
+	ASSERT_EQ(accepted, expected);
+}
+
+/**
  * @brief Тест режима слежения за файлом (аналог tail) и перечитывания усечённого файла
  *
  * @note Проверка закрепляет два намеренных решения работы с файлами:
@@ -6513,30 +6628,29 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 	 * @return результат записи данных
 	 *
 	 */
-	auto store = [&filename, &content]() noexcept -> bool {
-		// Выполняем открытие файла на дозапись
-		FILE * file = ::fopen(filename.c_str(), "ab");
-		// Если файл открыть не удалось
-		if(file == nullptr)
-			// Выводим отрицательный результат
-			return false;
-		// Выполняем запись данных в файл
-		const size_t size = ::fwrite(content.data(), sizeof(char), content.size(), file);
-		// Выполняем закрытие файла
-		::fclose(file);
-		// Выводим результат записи
-		return (size == content.size());
+	/**
+	 * Работа с файлом ведётся объектом файловой системы проекта, а не обычными
+	 * обращениями
+	 *
+	 * @note Под MS Windows узкие обращения принимают путь не в UTF-8, а в кодовой
+	 *       странице системы, и `fopen` завёл бы файл с искажённым названием -
+	 *       иной, нежели откроет движок. Проверка тогда падала бы не по дефекту
+	 *       движка, а по дефекту самой проверки
+	 */
+	awh::fs_t fs(this->_fmk.get(), this->_log.get());
+	// Функция дозаписи данных в отслеживаемый файл
+	auto store = [&fs, &filename, &content]() noexcept -> void {
+		// Выполняем дозапись данных в файл
+		fs.append(filename, content.c_str());
 	};
 	// Удаляем файл, оставшийся от предыдущего запуска
-	::remove(filename.c_str());
-	{
-		// Выполняем заведение отслеживаемого файла пустым
-		FILE * file = ::fopen(filename.c_str(), "wb");
-		// Файл обязан завестись
-		ASSERT_TRUE(file != nullptr);
-		// Выполняем закрытие файла
-		::fclose(file);
-	}
+	if(fs.type(filename) != awh::fs_t::type_t::NONE)
+		// Выполняем удаление отслеживаемого файла
+		fs.unlink(filename);
+	/**
+	 * Заводить файл заранее не приходится: узел события открывает его с признаком
+	 * создания, и путь при этом проходит ровно тот разбор, какой проверяется
+	 */
 	// Добавляем новое событие отслеживания файла
 	const awh::event::id_t fid = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
 	// Добавляем событие ограничения времени работы проверки
@@ -6596,7 +6710,7 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(this->_io->deinitialize());
 	// Удаляем отслеживаемый файл
-	::remove(filename.c_str());
+	fs.unlink(filename);
 	// Проверяем что проверка завершилась не по превышению времени ожидания
 	ASSERT_FALSE(expired);
 	// Проверяем что содержимое файла прочитано целиком и без искажений

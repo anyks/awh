@@ -540,6 +540,10 @@ TEST_F(FSFixture, CyrillicPathTest){
 	ASSERT_EQ(this->_fs->size(file), content.size());
 	// Прочитанное обязано совпасть с записанным
 	ASSERT_EQ(this->_fs->read <std::string> (file), content);
+	// Выполняем дозапись данных в файл
+	this->_fs->append(file, content.c_str());
+	// Размер файла обязан удвоиться после дозаписи
+	ASSERT_EQ(this->_fs->size(file), (content.size() * 2));
 	/**
 	 * Название файла обязано вернуться обходом каталога тем же, каким его задавали
 	 *
