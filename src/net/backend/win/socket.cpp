@@ -34,6 +34,7 @@
 #include <vector>
 #include <cstring>
 #include <atomic>
+#include <mutex>
 #include <string>
 #include <shared_mutex>
 
@@ -79,6 +80,74 @@ namespace {
 	awh::event::mode_t __awh_socket_thread_safety__ = awh::event::mode_t::DISABLED;
 	// Замок согласования доступа к настройкам сокетов
 	std::shared_mutex __awh_socket_mutex__;
+
+	/**
+	 * @brief Признак того, что средства сокетов системой уже подняты
+	 *
+	 */
+	std::once_flag __awh_winsock_once__;
+
+	/**
+	 * @brief Функция подъёма средств сокетов системы
+	 *
+	 * @details Средства сокетов у MS Windows требуют подъёма на процесс: до вызова
+	 *          `WSAStartup` всякое обращение к ним отвечает отказом 10093
+	 *          (`WSANOTINITIALISED`). У систем POSIX подъёма этого нет вовсе, оттого
+	 *          и вся забота о нём здесь - в слое одной лишь MS Windows
+	 *
+	 * @details Поднимает средства сама библиотека, а не тот, кто ею пользуется.
+	 *          Требовать подъёма от вызывающей стороны значило бы вынести
+	 *          своенравность одной системы в общий договор: код, работающий на прочих
+	 *          системах, под MS Windows отказывал бы - и отказывал бы не в месте
+	 *          ошибки, а на первом же сокете. Установлено прогоном: без подъёма
+	 *          проверки сокетов отказывают все до единой
+	 *
+	 * @note Повторный подъём системой считается, а не отвергается, и снимается тем же
+	 *       числом обращений `WSACleanup`. Оттого поднять средства библиотеке
+	 *       безопасно и тогда, когда вызывающая сторона подняла их сама: счёт лишь
+	 *       вырастет на единицу, а снимет её выход из процесса
+	 *
+	 */
+	void __awh_winsock__() noexcept {
+		// Выполняем подъём средств сокетов системы единожды на процесс
+		std::call_once(::__awh_winsock_once__, []() noexcept -> void {
+			// Сведения о поднятых средствах сокетов
+			WSADATA data{};
+			// Если средства сокетов подняты успешно
+			if(::WSAStartup(MAKEWORD(2, 2), &data) == 0)
+				/**
+				 * Отдаём средства сокетов системе на выходе из процесса
+				 *
+				 * @note Снятие вешается на выход, а не на разрушение объекта: сокеты
+				 *       заводятся и закрываются много раз за жизнь процесса, и объекта,
+				 *       который жил бы ровно столько же, у слоя этого нет вовсе
+				 */
+				::atexit([]() noexcept -> void {
+					// Выполняем снятие средств сокетов системы
+					::WSACleanup();
+				});
+		});
+	}
+
+	/**
+	 * @brief Подъём средств сокетов системы на загрузке слоя
+	 *
+	 * @note Заведён отдельным объектом, а не одними лишь обращениями из методов:
+	 *       обращения покрывают заведение сокета, но не покрывают обращений к
+	 *       средствам системы в обход слоя - разбор имён, сведения об устройствах,
+	 *       - а те требуют поднятых средств ровно так же
+	 *
+	 */
+	const struct Winsock {
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Winsock() noexcept {
+			// Выполняем подъём средств сокетов системы
+			::__awh_winsock__();
+		}
+	} __awh_winsock_starter__;
 
 	/**
 	 * @brief Функция получения описания последней ошибки сокета
@@ -606,6 +675,8 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
  *
  */
 awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, const uint16_t options) const noexcept {
+	// Выполняем подъём средств сокетов системы
+	::__awh_winsock__();
 	// Опции при создании сокета эта система не принимает, они накладываются отдельно
 	(void) options;
 	// Семейство адресов сокета в понимании системы
@@ -747,6 +818,8 @@ uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
  *
  */
 array <awh::net::socket_t, 2> awh::eth::Socket::ipc([[maybe_unused]] const event::family_t family, const event::type_t type, [[maybe_unused]] const event::protocol_t proto) const noexcept {
+	// Выполняем подъём средств сокетов системы
+	::__awh_winsock__();
 	// Переменная результата
 	array <net::socket_t, 2> result = {
 		net::invalid_socket_t,

@@ -71,6 +71,7 @@ if (${GTest_FOUND})
             xml/reader.cpp
             xml/document.cpp
             xml/writer.cpp
+            ini/common.cpp
             ini/encoding.cpp
             ini/reader.cpp
             ini/writer.cpp

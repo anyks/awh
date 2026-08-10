@@ -1165,7 +1165,14 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 				 */
 				#else
 					// Создаём объект работы с файлом
-					HANDLE file = ::CreateFileW(address.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+					/**
+					 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
+					 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
+					 *       держит его именно так, - и обращение с одним лишь дозволением чтения
+					 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
+					 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
+					 */
+					HANDLE file = ::CreateFileW(address.c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 					// Если открыть файл открыт нормально
 					if(file != INVALID_HANDLE_VALUE){
 						// Если файл является сокетом
@@ -2105,7 +2112,14 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 						 */
 						#if _WIN32 || _WIN64
 							// Создаём объект работы с файлом
-							HANDLE file = ::CreateFileW(this->_fmk->convert(path.data()).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+							/**
+							 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
+							 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
+							 *       держит его именно так, - и обращение с одним лишь дозволением чтения
+							 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
+							 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
+							 */
+							HANDLE file = ::CreateFileW(this->_fmk->convert(path.data()).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 							// Если открыть файл открыт нормально
 							if(file != INVALID_HANDLE_VALUE){
 								// Объект для хранения размера файла
@@ -2598,11 +2612,44 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 				 */
 				#if _WIN32 || _WIN64
 					// Выполняем открытие файла на добавление
-					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+					/**
+					 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
+					 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
+					 *       держит его именно так, - и обращение с одним лишь дозволением чтения
+					 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
+					 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
+					 */
+					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если открыть файл открыт нормально
 					if(file.valid())
 						// Выполняем добавление данных в файл
 						::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
+					/**
+					 * Если открыть файл не удалось
+					 *
+					 * @note Отказ этот обязан быть слышен: дозапись, ушедшая мимо файла,
+					 *       ничем себя иначе не выдаёт - вызывающий об отказе не узнаёт
+					 *       вовсе, а файл остаётся прежним
+					 */
+					else {
+						// Создаём буфер сообщения ошибки
+						wchar_t message[0xFF] = {0};
+						// Выполняем формирование текста ошибки
+						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, message);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+						#endif
+					}
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
@@ -2728,7 +2775,14 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 				 */
 				#if _WIN32 || _WIN64
 					// Создаём объект работы с файлом
-					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+					/**
+					 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
+					 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
+					 *       держит его именно так, - и обращение с одним лишь дозволением чтения
+					 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
+					 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
+					 */
+					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если открыть файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -2968,7 +3022,14 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 				 */
 				#if _WIN32 || _WIN64
 					// Создаём объект работы с файлом
-					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+					/**
+					 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
+					 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
+					 *       держит его именно так, - и обращение с одним лишь дозволением чтения
+					 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
+					 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
+					 */
+					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если открыть файл открыт нормально
 					if(file.valid()){
 						// Объект для хранения полного размера файла
@@ -3306,7 +3367,14 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 				 */
 				#if _WIN32 || _WIN64
 					// Выполняем открытие файла на запись
-					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+					/**
+					 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
+					 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
+					 *       держит его именно так, - и обращение с одним лишь дозволением чтения
+					 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
+					 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
+					 */
+					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если открыть файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -3343,6 +3411,31 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						if(li.QuadPart > -1)
 							// Выполняем запись данных в файл
 							::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
+					/**
+					 * Если открыть файл не удалось
+					 *
+					 * @note Отказ этот обязан быть слышен: запись, ушедшая мимо файла,
+					 *       ничем себя иначе не выдаёт - вызывающий об отказе не узнаёт
+					 *       вовсе, а файл остаётся прежним
+					 */
+					} else {
+						// Создаём буфер сообщения ошибки
+						wchar_t message[0xFF] = {0};
+						// Выполняем формирование текста ошибки
+						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+						#endif
 					}
 				/**
 				 * Для операционной системы не являющейся MS Windows
@@ -3484,7 +3577,14 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 				 */
 				#if _WIN32 || _WIN64
 					// Создаём объект работы с файлом
-					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+					/**
+					 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
+					 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
+					 *       держит его именно так, - и обращение с одним лишь дозволением чтения
+					 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
+					 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
+					 */
+					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 					// Если открыть файл открыт нормально
 					if(file != INVALID_HANDLE_VALUE){
 						// Создаём объект большого числа
@@ -3768,7 +3868,14 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 				 */
 				#if _WIN32 || _WIN64
 					// Создаём объект работы с файлом
-					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+					/**
+					 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
+					 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
+					 *       держит его именно так, - и обращение с одним лишь дозволением чтения
+					 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
+					 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
+					 */
+					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 					// Если открыть файл открыт нормально
 					if(file != INVALID_HANDLE_VALUE){
 						// Создаём объект большого числа

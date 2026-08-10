@@ -21,6 +21,7 @@
  * Стандартные заголовочные файлы
  */
 #include <string>
+#include <clocale>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -401,4 +402,169 @@ TEST(CodecIniWriter, IndentedValue) {
 		 */
 		ASSERT_FALSE(writer.property("k", "one\ntwo"));
 	}
+}
+
+/**
+ * @brief Проверка отказа записи имени и значения, склеивающих строки при чтении
+ *
+ */
+TEST(CodecIniWriter, TrailingBackslash) {
+	// Объект записи текста настроек наречия Git
+	ini::writer_t writer(ini::writer_t::settings_t::git());
+	// Выполняем проверку отказа записи имени раздела с обратной косой чертой в конце
+	ASSERT_FALSE(writer.section("a\\"));
+	// Выполняем проверку кода ошибки записи имени раздела
+	ASSERT_EQ(writer.error(), ini::error_t::INVALID_SECTION);
+	// Выполняем сброс собранного текста настроек
+	writer.clear();
+	// Выполняем запись объявления раздела
+	ASSERT_TRUE(writer.section("a"));
+	// Выполняем проверку отказа записи имени свойства с обратной косой чертой в конце
+	ASSERT_FALSE(writer.property("k\\", "v"));
+	// Выполняем проверку кода ошибки записи имени свойства
+	ASSERT_EQ(writer.error(), ini::error_t::INVALID_KEY);
+	// Выполняем сброс собранного текста настроек
+	writer.clear();
+	// Выполняем запись объявления раздела
+	ASSERT_TRUE(writer.section("a"));
+	// Выполняем проверку записи имени с удвоенной обратной косой чертой в конце
+	ASSERT_TRUE(writer.property("k\\\\", "v"));
+	// Собираемые настройки записи текста настроек без управляющих последовательностей
+	ini::writer_t::settings_t settings;
+	// Устанавливаем склеивание строк, продолженных обратной косой чертой, читающим
+	settings.continuations = true;
+	// Объект записи текста настроек без управляющих последовательностей
+	ini::writer_t plain(settings);
+	// Выполняем запись объявления раздела
+	ASSERT_TRUE(plain.section("a"));
+	// Выполняем проверку отказа записи значения с обратной косой чертой в конце
+	ASSERT_FALSE(plain.property("k", "v\\"));
+	// Выполняем проверку кода ошибки записи значения свойства
+	ASSERT_EQ(plain.error(), ini::error_t::INVALID_CHARACTER);
+}
+
+/**
+ * @brief Проверка записи числа с плавающей точкой под чужой локалью
+ *
+ */
+TEST(CodecIniWriter, LocaleNumbers) {
+	// Запоминаем действующую локаль записи чисел
+	const string current(::setlocale(LC_NUMERIC, nullptr));
+	// Если установить локаль с иным знаком десятичной точки не удалось
+	if(::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr)
+		// Выполняем пропуск проверки
+		GTEST_SKIP() << "locale de_DE.UTF-8 is not available";
+	// Объект записи текста настроек
+	ini::writer_t writer;
+	// Выполняем запись объявления раздела
+	ASSERT_TRUE(writer.section("s"));
+	// Выполняем запись числа с плавающей точкой
+	ASSERT_TRUE(writer.number <double> ("k", 0.1));
+	// Выполняем проверку записи числа с точкой в качестве десятичного знака
+	ASSERT_EQ(writer.text(), "[s]\nk = 0.1\n");
+	// Выполняем возврат действующей локали записи чисел
+	::setlocale(LC_NUMERIC, current.c_str());
+}
+
+/**
+ * @brief Проверка записи чисел всех поддерживаемых видов
+ *
+ */
+TEST(CodecIniWriter, Numbers) {
+	// Объект записи текста настроек
+	ini::writer_t writer;
+	// Выполняем запись объявления раздела
+	ASSERT_TRUE(writer.section("s"));
+	// Выполняем запись логического значения
+	ASSERT_TRUE(writer.number <bool> ("a", true));
+	// Выполняем запись знакового однобайтового целого
+	ASSERT_TRUE(writer.number <int8_t> ("b", -128));
+	// Выполняем запись беззнакового однобайтового целого
+	ASSERT_TRUE(writer.number <uint8_t> ("c", 255));
+	// Выполняем запись знакового двухбайтового целого
+	ASSERT_TRUE(writer.number <int16_t> ("d", -32768));
+	// Выполняем запись беззнакового двухбайтового целого
+	ASSERT_TRUE(writer.number <uint16_t> ("e", 65535));
+	// Выполняем запись знакового четырёхбайтового целого
+	ASSERT_TRUE(writer.number <int32_t> ("f", -2147483647 - 1));
+	// Выполняем запись беззнакового четырёхбайтового целого
+	ASSERT_TRUE(writer.number <uint32_t> ("g", 4294967295U));
+	// Выполняем запись знакового восьмибайтового целого
+	ASSERT_TRUE(writer.number <int64_t> ("h", -9007199254740993LL));
+	// Выполняем запись беззнакового восьмибайтового целого
+	ASSERT_TRUE(writer.number <uint64_t> ("i", 18446744073709551615ULL));
+	// Выполняем запись числа с плавающей точкой одинарной точности
+	ASSERT_TRUE(writer.number <float> ("j", 0.5f));
+	// Выполняем запись числа с плавающей точкой двойной точности
+	ASSERT_TRUE(writer.number <double> ("k", -1250.));
+	// Выполняем проверку записанного текста настроек
+	ASSERT_EQ(writer.text(),
+		"[s]\na = true\nb = -128\nc = 255\nd = -32768\ne = 65535\n"
+		"f = -2147483648\ng = 4294967295\nh = -9007199254740993\n"
+		"i = 18446744073709551615\nj = 0.5\nk = -1250\n"
+	);
+}
+
+/**
+ * @brief Проверка наречий записи языка Python и системы инициализации systemd
+ *
+ */
+TEST(CodecIniWriter, Presets) {
+	// Объект записи текста настроек наречия языка Python
+	ini::writer_t python(ini::writer_t::settings_t::python());
+	// Выполняем запись объявления раздела
+	ASSERT_TRUE(python.section("s"));
+	// Выполняем запись многострочного значения продолжением отступом
+	ASSERT_TRUE(python.property("k", "one\ntwo"));
+	// Объект чтения текста настроек наречия языка Python
+	ini::reader_t reader(ini::reader_t::settings_t::python());
+	// Выполняем передачу записанного текста настроек
+	ASSERT_TRUE(reader.feed(python.text()));
+	// Выполняем переход к объявлению раздела
+	ASSERT_TRUE(reader.next());
+	// Выполняем переход к свойству раздела
+	ASSERT_TRUE(reader.next());
+	// Выполняем проверку прочитанного многострочного значения
+	ASSERT_EQ(reader.property().value, "one\ntwo");
+	// Объект записи текста настроек наречия системы инициализации systemd
+	ini::writer_t systemd(ini::writer_t::settings_t::systemd());
+	// Выполняем запись объявления раздела
+	ASSERT_TRUE(systemd.section("Unit"));
+	// Выполняем запись свойства раздела
+	ASSERT_TRUE(systemd.property("Description", "value"));
+	// Выполняем проверку отказа записи имени, склеивающего строки при чтении
+	ASSERT_FALSE(systemd.property("Exec\\", "value"));
+	// Выполняем проверку записанного текста настроек
+	ASSERT_EQ(systemd.text(), "[Unit]\nDescription=value\n");
+}
+
+/**
+ * @brief Проверка выбора между обычным и показательным видом записи числа
+ *
+ */
+TEST(CodecIniWriter, PlainNumbers) {
+	// Объект записи текста настроек
+	ini::writer_t writer;
+	// Выполняем запись объявления раздела
+	ASSERT_TRUE(writer.section("s"));
+	// Выполняем запись числа, у которого обычный вид короче показательного
+	ASSERT_TRUE(writer.number <double> ("a", 1250.));
+	// Выполняем запись числа, у которого показательный вид короче обычного
+	ASSERT_TRUE(writer.number <double> ("b", 1e20));
+	// Выполняем запись числа, обычный вид которого невозможен
+	ASSERT_TRUE(writer.number <double> ("c", 1e300));
+	// Выполняем запись малого числа с показательным видом записи
+	ASSERT_TRUE(writer.number <double> ("d", 1e-7));
+	// Выполняем проверку записанного текста настроек
+	ASSERT_EQ(writer.text(), "[s]\na = 1250\nb = 1e+20\nc = 1e+300\nd = 1e-07\n");
+	// Объект дерева настроек для проверки обратного чтения
+	ini::document_t document;
+	// Выполняем разбор записанного текста настроек
+	ASSERT_TRUE(document.parse(writer.text()));
+	// Прочитанное обратно значение числа
+	double value = 0.;
+	// Выполняем чтение записанного показательным видом числа
+	ASSERT_TRUE(document.value(value, "b", "s"));
+	// Выполняем проверку прочитанного обратно значения
+	ASSERT_DOUBLE_EQ(value, 1e20);
 }

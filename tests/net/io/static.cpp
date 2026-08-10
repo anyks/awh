@@ -7418,26 +7418,17 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	/**
 	 * Устанавливаем функцию обратного вызова на правку наблюдаемого файла
 	 *
-	 * @warning Правка ведётся обращениями языка, а НЕ объектом работы с файловой
-	 *          системой. Под MS Windows тот открывает файл дозволением одного лишь
-	 *          чтения (`FILE_SHARE_READ`), и пока движок держит наблюдаемый файл
-	 *          открытым на запись, дозаписать в него он не может вовсе - обращение
-	 *          отвечает отказом, а отказ этот никуда не выдаётся. Проверка от этого
-	 *          падала бы, показывая на движок, тогда как движок исправен
+	 * @note Правка ведётся объектом работы с файловой системой намеренно: наблюдаемый
+	 *       файл держит открытым движок, и дозапись в него проверяет заодно, что
+	 *       чужой описатель объекту этому не помеха. Под MS Windows было именно так -
+	 *       дозапись уходила мимо файла молча, - и закреплено это отдельной проверкой
+	 *       `SharedOpenFileTest` в наборе `sys`
 	 */
-	this->_io->on(writer, [&filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+	this->_io->on(writer, [&fs, &filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если время ожидания истекло
-		if(status == awh::event::status_t::SUCCESS){
-			// Выполняем открытие наблюдаемого файла на дозапись
-			FILE * file = ::fopen(filename.c_str(), "ab");
-			// Если наблюдаемый файл открыт
-			if(file != nullptr){
-				// Выполняем правку наблюдаемого файла
-				::fwrite("CCC", 1, 3, file);
-				// Выполняем закрытие наблюдаемого файла
-				::fclose(file);
-			}
-		}
+		if(status == awh::event::status_t::SUCCESS)
+			// Выполняем правку наблюдаемого файла
+			fs.append(filename, "CCC");
 	});
 	// Устанавливаем функцию обратного вызова на изменение наблюдаемого файла
 	this->_io->on(fid, [&changed, &dropped, &stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const awh::event::vnode_t vnode, [[maybe_unused]] const std::string & path) noexcept -> void {

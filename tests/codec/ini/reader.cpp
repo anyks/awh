@@ -735,6 +735,60 @@ TEST(CodecIniReader, Reset) {
 }
 
 /**
+ * @brief Проверка выдачи событий, разобранных до отказа приведения кодировки
+ *
+ */
+TEST(CodecIniReader, DecodingPrefix) {
+	// Разбираемый текст настроек с испорченной последовательностью UTF-8
+	const string text = string("[a]\nk=1\nm=bad\xC3\x28 tail\n");
+	/**
+	 * Выполняем перебор размеров куска подачи текста настроек
+	 */
+	for(size_t chunk : {static_cast <size_t> (0), static_cast <size_t> (1), static_cast <size_t> (7)}){
+		// Объект потокового чтения текста настроек
+		ini::reader_t reader(ini::reader_t::settings_t::strict());
+		// Размер подаваемого куска текста настроек
+		const size_t size = (chunk > 0 ? chunk : text.length());
+		// Смещение начала очередного куска подачи
+		size_t offset = 0;
+		// Количество выданных разбором событий
+		uint32_t count = 0;
+		/**
+		 * Выполняем подачу текста настроек кусками
+		 */
+		do {
+			// Размер подаваемого куска текста настроек
+			const size_t length = ((text.length() - offset) < size ? (text.length() - offset) : size);
+			// Выполняем подачу очередного куска текста настроек
+			if(!reader.feed(text.data() + offset, length, ((offset + length) >= text.length())))
+				// Выходим из цикла подачи текста настроек
+				break;
+			// Выполняем смещение начала очередного куска подачи
+			offset += length;
+			/**
+			 * Выполняем перебор всех выданных разбором событий
+			 */
+			while(reader.next())
+				// Выполняем учёт выданного разбором события
+				count++;
+			// Если разбор прекращён ошибкой
+			if(reader.state() == ini::state_t::FAILED)
+				// Выходим из цикла подачи текста настроек
+				break;
+		// Выполняем подачу до исчерпания текста настроек
+		} while(offset < text.length());
+		// Выполняем проверку выдачи событий, разобранных до отказа приведения
+		ASSERT_EQ(count, 2u);
+		// Выполняем проверку прекращения разбора ошибкой
+		ASSERT_EQ(reader.state(), ini::state_t::FAILED);
+		// Выполняем проверку кода ошибки приведения кодировки
+		ASSERT_EQ(reader.error(), ini::error_t::INVALID_ENCODING);
+		// Выполняем проверку указания места отказа на испорченную строку
+		ASSERT_EQ(reader.errorLocation().line, 3u);
+	}
+}
+
+/**
  * Возвращаем макросы, снятые в начале файла
  */
 #include <sys/macro_pop.hpp>
