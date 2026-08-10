@@ -61,12 +61,12 @@ namespace {
 	 * иначе: несущее пробельную обвязку, знак примечания либо кавычку
 	 *
 	 * @param value          проверяемое значение свойства
-	 * @param marker         знак, которым начинается примечание
+	 * @param comments       знаки, которые читающий признаёт началом примечания
 	 * @param inlineComments признак признания примечания в конце строки читающим
 	 * @return               результат проверки
 	 *
 	 */
-	static bool quotable(const string_view value, const char marker, const bool inlineComments) noexcept {
+	static bool quotable(const string_view value, const marker_t comments, const bool inlineComments) noexcept {
 		/**
 		 * Если значение пусто
 		 *
@@ -89,7 +89,7 @@ namespace {
 			/**
 			 * Если знаком является кавычка либо знак начала примечания
 			 */
-			if((value[i] == '"') || (inlineComments && (value[i] == marker)))
+			if((value[i] == '"') || (inlineComments && commented(value[i], comments)))
 				// Выводим положительный результат проверки значения
 				return true;
 		}
@@ -150,7 +150,7 @@ namespace {
  */
 awh::codec::ini::Writer::Settings::Settings() noexcept :
  marker(';'), separator('='), delimiter('.'), quoting(quoting_t::AUTO),
- subsections(subsection_t::NONE), newline(newline_t::LF), inlineComments(false),
+ subsections(subsection_t::NONE), newline(newline_t::LF), inlineComments(false), comments(marker_t::BOTH),
  spaces(true), escapes(false), indent(false), separated(true) {}
 /**
  * @brief Метод получения настроек наречия MS Windows
@@ -163,6 +163,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::windows() n
 	Settings result;
 	// Устанавливаем знак начала примечания
 	result.marker = ';';
+	// Устанавливаем знаки, признаваемые читающим началом примечания
+	result.comments = marker_t::SEMICOLON;
 	/**
 	 * Устанавливаем обращение с ограждением значения кавычками
 	 *
@@ -307,7 +309,7 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
  */
 bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 	// Получаем признак нужды в ограждении значения кавычками
-	const bool needed = ::quotable(value, this->_settings.marker, this->_settings.inlineComments);
+	const bool needed = ::quotable(value, this->_settings.comments, this->_settings.inlineComments);
 	// Получаем признак ограждения значения кавычками
 	const bool quoted = ((this->_settings.quoting == quoting_t::ALWAYS) || ((this->_settings.quoting == quoting_t::AUTO) && needed));
 	/**
@@ -547,6 +549,72 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
  * @return      результат выполнения операции
  *
  */
+/**
+ * @brief Метод записи свойства добавлением к перечню значений
+ *
+ * @param key    имя записываемого свойства
+ * @param value  записываемое значение свойства
+ * @param append признак добавления значения к перечню
+ * @return       результат выполнения операции
+ *
+ */
+bool awh::codec::ini::Writer::property(const string_view key, const string_view value, const bool append) noexcept {
+	/**
+	 * Если добавление значения к перечню не запрошено
+	 */
+	if(!append)
+		// Выполняем запись свойства со значением обычной записью
+		return this->property(key, value);
+	/**
+	 * Если предыдущая операция записи завершилась ошибкой
+	 */
+	if(this->_error != error_t::NONE)
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	/**
+	 * Если проверку имени свойства выполнить не удалось
+	 *
+	 * @note Проверяется имя без скобок: сами скобки в имени недопустимы, и запись
+	 *       их к имени добавляет уже этот метод
+	 */
+	if(!this->verify(key, false))
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	/**
+	 * Если запись отступа перед свойствами раздела настройками задана
+	 */
+	if(this->_settings.indent && this->_sectioned)
+		// Выполняем запись отступа перед именем свойства
+		this->_text.push_back('\t');
+	// Выполняем запись имени свойства
+	this->_text.append(key);
+	// Выполняем запись скобок добавления к перечню значений
+	this->_text.append("[]");
+	/**
+	 * Если запись пробелов вокруг разделителя настройками задана
+	 */
+	if(this->_settings.spaces)
+		// Выполняем запись пробела перед разделителем
+		this->_text.push_back(' ');
+	// Выполняем запись разделителя имени свойства и его значения
+	this->_text.push_back(this->_settings.separator);
+	/**
+	 * Если запись пробелов вокруг разделителя настройками задана
+	 */
+	if(this->_settings.spaces)
+		// Выполняем запись пробела за разделителем
+		this->_text.push_back(' ');
+	/**
+	 * Если запись значения свойства выполнить не удалось
+	 */
+	if(!this->escape(value))
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	// Выполняем запись знака конца строки
+	this->newline();
+	// Выводим положительный результат выполнения операции
+	return true;
+}
 bool awh::codec::ini::Writer::property(const string_view key, const string_view value) noexcept {
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой

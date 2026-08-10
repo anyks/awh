@@ -5171,7 +5171,6 @@ namespace post {
 	 *
 	 */
 	static const log_t * log = nullptr;
-	static uint32_t __awh_diag_turn__ = 0;
 
 	/**
 	 * @brief Функция переноса отложенных записей подачи
@@ -6518,7 +6517,6 @@ namespace kernel {
 		watch_t * target_watch = watch.get();
 		// Запоминаем узел наблюдения по дескриптору
 		::kernel::watches.emplace(rec.ident, ::move(watch));
-		log->print("ДИАГ vnode: заведено наблюдение, файл=%s", log_t::flag_t::WARNING, ::__awh_narrow__(target_watch->name.c_str()).c_str());
 		// Если подать чтение изменений каталога не удалось
 		if(!::kernel::watching(target_watch)){
 			// Записываем ошибку в лог
@@ -6552,7 +6550,6 @@ namespace kernel {
 	 *
 	 */
 	static void notified(watch_t * watch, const int32_t res) noexcept {
-		::post::log->print("ДИАГ notified: octets=%d", log_t::flag_t::WARNING, res);
 		// Забываем метку завершившейся операции
 		watch->token = ::inflight::INVALID;
 		/**
@@ -66511,9 +66508,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 *       к этому мигу готово, и требовать большего значило бы держать опрос
 			 *       спящим при готовых событиях
 			 */
-			if(::post::__awh_diag_turn__++ < 40) this->_log->print("ДИАГ цикл: оборот, ожидание=%lld", log_t::flag_t::WARNING, static_cast <long long> (wait));
 			const int32_t submitted = ::port::submit(((wait == 0) ? 0 : 1), wait, this->_log);
-			if(::post::__awh_diag_turn__ < 40) this->_log->print("ДИАГ цикл: ожидание вернуло %d", log_t::flag_t::WARNING, submitted);
 			// Снимаем отметку срока: опрос больше не спит и в пробуждении не нуждается
 			::kernel::sleeping.store(0, memory_order_release);
 			/**

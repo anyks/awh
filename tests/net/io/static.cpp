@@ -6623,58 +6623,42 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 	// Содержимое отслеживаемого файла
 	const std::string content = "Проверка чтения кириллицы";
 	/**
-	 * @brief Функция дописывания данных в отслеживаемый файл
-	 *
-	 * @return результат записи данных
-	 *
-	 */
-	/**
-	 * Работа с файлом ведётся объектом файловой системы проекта, а не обычными
-	 * обращениями
+	 * Файл заводится объектом файловой системы проекта, а не обычным обращением
 	 *
 	 * @note Под MS Windows узкие обращения принимают путь не в UTF-8, а в кодовой
-	 *       странице системы, и `fopen` завёл бы файл с искажённым названием -
-	 *       иной, нежели откроет движок. Проверка тогда падала бы не по дефекту
-	 *       движка, а по дефекту самой проверки
+	 *       странице системы, и `fopen` завёл бы файл с искажённым названием - иной,
+	 *       нежели откроет движок. Проверка тогда падала бы не по дефекту движка, а
+	 *       по дефекту самой проверки
 	 */
 	awh::fs_t fs(this->_fmk.get(), this->_log.get());
-	// Функция дозаписи данных в отслеживаемый файл
-	auto store = [&fs, &filename, &content]() noexcept -> void {
-		// Выполняем дозапись данных в файл
-		fs.append(filename, content.c_str());
-	};
 	// Удаляем файл, оставшийся от предыдущего запуска
 	if(fs.type(filename) != awh::fs_t::type_t::NONE)
 		// Выполняем удаление отслеживаемого файла
 		fs.unlink(filename);
-	/**
-	 * Заводить файл заранее не приходится: узел события открывает его с признаком
-	 * создания, и путь при этом проходит ровно тот разбор, какой проверяется
-	 */
+	// Выполняем заведение отслеживаемого файла с содержимым
+	fs.write(filename, content.c_str());
+	// Файл обязан завестись
+	ASSERT_EQ(fs.type(filename), awh::fs_t::type_t::FILE);
 	// Добавляем новое событие отслеживания файла
 	const awh::event::id_t fid = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
 	// Добавляем событие ограничения времени работы проверки
 	const awh::event::id_t guard = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
-	// Добавляем событие записи данных в файл
-	const awh::event::id_t starter = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
 	// Проверяем идентификаторы созданных событий
 	ASSERT_GT(fid, 0u);
 	ASSERT_GT(guard, 0u);
-	ASSERT_GT(starter, 0u);
-	// Устанавливаем задержку записи данных в файл
-	this->_io->setTimeout(starter, awh::event::action_t::NONE, 300);
 	// Устанавливаем предельное время работы проверки
 	this->_io->setTimeout(guard, awh::event::action_t::NONE, 15000);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	// Устанавливаем путь к отслеживаемому файлу
 	ASSERT_TRUE(this->_io->setAddress(fid, awh::event::address_t::FS, filename));
-	// Выполняем фиксацию настроек событий
-	ASSERT_TRUE(this->_io->commit(fid));
-	ASSERT_TRUE(this->_io->commit(guard));
-	ASSERT_TRUE(this->_io->commit(starter));
-	// Устанавливаем режим слежения за файлом
-	ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::AUTO_FOLLOW));
+	/**
+	 * Функции обратного вызова ставятся ДО фиксации настроек
+	 *
+	 * @note Файл заведён с содержимым, и чтение его выполняется уже фиксацией:
+	 *       поставь мы функцию обратного вызова после неё - прочитанное было бы
+	 *       некому отдать
+	 */
 	// Устанавливаем функцию обратного вызова на превышение времени ожидания
 	this->_io->on(guard, [&stop, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если время ожидания истекло
@@ -6685,13 +6669,6 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 			stop = true;
 		}
 	});
-	// Устанавливаем функцию обратного вызова на запись данных в файл
-	this->_io->on(starter, [&store]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
-		// Если время ожидания истекло, записываем данные в файл
-		if(status == awh::event::status_t::SUCCESS)
-			// Выполняем запись данных в файл
-			store();
-	});
 	// Устанавливаем функцию обратного вызова на чтение из события
 	this->_io->on(fid, [&stop, &readed]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Дополняем прочитанное очередной порцией данных
@@ -6699,10 +6676,12 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 		// Останавливаем проверку
 		stop = true;
 	});
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(fid));
+	ASSERT_TRUE(this->_io->commit(guard));
 	// Выполняем запуск событий
 	ASSERT_TRUE(this->_io->launch(fid));
 	ASSERT_TRUE(this->_io->launch(guard));
-	ASSERT_TRUE(this->_io->launch(starter));
 	/**
 	 * Запускаем опрос событий
 	 */

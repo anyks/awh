@@ -90,8 +90,14 @@ TEST(CodecIniWriter, Git) {
 	ASSERT_TRUE(writer.section("core"));
 	// Выполняем запись свойства со знаком примечания внутри значения
 	ASSERT_TRUE(writer.property("path", "a;b"));
-	// Выполняем проверку собранного текста настроек
-	ASSERT_EQ(writer.text(), "[remote \"origin\"]\n\turl = git@host:repo.git\n\n[core]\n\tpath = a;b\n");
+	/**
+	 * Выполняем проверку собранного текста настроек
+	 *
+	 * @note Точка с запятой в значении ограждается кавычками, хотя примечания это
+	 *       наречие пишет решёткой: читает оно оба знака, и неограждённое значение
+	 *       при обратном чтении обрезалось бы
+	 */
+	ASSERT_EQ(writer.text(), "[remote \"origin\"]\n\turl = git@host:repo.git\n\n[core]\n\tpath = \"a;b\"\n");
 }
 /**
  * @brief Проверка ограждения значения кавычками

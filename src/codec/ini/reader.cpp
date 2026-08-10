@@ -1349,6 +1349,13 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 	// Получаем имя свойства без пробельной обвязки
 	string_view key = ::trim((position == string_view::npos) ? line : line.substr(0, position));
 	/**
+	 * Получаем положение имени свойства в разбираемой строке
+	 *
+	 * @note Держится ради указания места ошибки: имя разбирается без обвязки, а
+	 *       столбец следует считать от начала строки, как она в файле записана
+	 */
+	const size_t placement = static_cast <size_t> (key.data() - line.data());
+	/**
 	 * Если разделитель имени свойства и его значения не обнаружен
 	 */
 	if(position == string_view::npos){
@@ -1403,7 +1410,7 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 		 */
 		if((key[i] == '[') || (key[i] == ']') || (key[i] == '\n') || (key[i] == '\r'))
 			// Выводим сообщение об ошибке разбора
-			return this->fail(error_t::INVALID_KEY, offset, this->_line, this->column(this->_start, offset + i));
+			return this->fail(error_t::INVALID_KEY, (offset + placement + i), this->_line, this->column(this->_start, offset + placement + i));
 	}
 	/**
 	 * Если повторное объявление свойства признано ошибкой
@@ -1775,19 +1782,31 @@ bool awh::codec::ini::Reader::next() noexcept {
 			continue;
 		}
 		/**
+		 * Получаем длину пробельного отступа логической строки
+		 *
+		 * @note Отступ учитывается в положении ошибки: разбор идёт по строке без
+		 *       обвязки, а указывать место человеку следует в строке, как она в
+		 *       файле записана
+		 */
+		const size_t indent = static_cast <size_t> (content.data() - this->_current.data());
+		/**
 		 * Если логической строкой является объявление раздела
 		 */
 		if(content.front() == '['){
 			/**
 			 * Если разбор объявления раздела выполнить не удалось
 			 */
-			if(!this->header(content, offset))
+			if(!this->header(content, offset + indent))
 				// Выводим признак отсутствия события разбора
 				return false;
 		/**
 		 * Если разбор свойства со значением выполнить не удалось
+		 *
+		 * @note Свойству отдаётся строка без обрезки: хвостовая обвязка значения -
+		 *       это хвост всей строки, и снятие её здесь отняло бы у настройки
+		 *       обрезки всякий смысл. Имя свойства обрезает сам разбор свойства
 		 */
-		} else if(!this->assign(content, offset))
+		} else if(!this->assign(this->_current, offset))
 			// Выводим признак отсутствия события разбора
 			return false;
 		// Выполняем наращивание номера разбираемой строки

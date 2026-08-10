@@ -387,9 +387,18 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		// Выполняем добавление свойства к перечню разрешаемых
 		stack.push_back(std::move(label));
 		/**
+		 * Получаем порядковый номер записи, к значению которой обращено
+		 *
+		 * @note Объявление выбирается по тому же правилу, что и выдача значения:
+		 *       иначе обращение к свойству давало бы не то значение, какое выдаёт
+		 *       поиск по его имени, - при обращении с повторами по последнему
+		 *       объявлению «${x}» разрешалось бы первым, а «get(x)» отдавал последнее
+		 */
+		const uint32_t source = ((this->_settings.reader.duplicates == duplicate_t::LAST) ? j->second.back() : j->second.front());
+		/**
 		 * Если разрешение значения, к которому обращено, выполнить не удалось
 		 */
-		if(!this->expand(this->get(this->_records.at(j->second.front()).value), target, stack, budget, result))
+		if(!this->expand(this->get(this->_records.at(source).value), target, stack, budget, result))
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		// Выполняем изъятие свойства из перечня разрешаемых
@@ -1317,6 +1326,8 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 	options.separated = false;
 	// Объект записи текста настроек
 	writer_t writer(options);
+	// Признак успешной записи очередной записи дерева
+	bool result = true;
 	/**
 	 * Выполняем перебор всех записей разобранного текста
 	 */
@@ -1328,7 +1339,7 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 			// Если записью является объявление раздела
 			case static_cast <uint8_t> (kind_t::SECTION):
 				// Выполняем запись объявления раздела
-				writer.section(this->get(this->_sections.at(this->_records.at(i).section).name), this->get(this->_sections.at(this->_records.at(i).section).subsection));
+				result = writer.section(this->get(this->_sections.at(this->_records.at(i).section).name), this->get(this->_sections.at(this->_records.at(i).section).subsection));
 			break;
 			// Если записью является свойство со значением
 			case static_cast <uint8_t> (kind_t::PROPERTY): {
@@ -1337,9 +1348,9 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 				 */
 				if(this->_records.at(i).valueless)
 					// Выполняем запись свойства без разделителя и значения
-					writer.property(this->get(this->_records.at(i).key));
+					result = writer.property(this->get(this->_records.at(i).key));
 				// Выполняем запись свойства со значением
-				else writer.property(this->get(this->_records.at(i).key), this->get(this->_records.at(i).raw));
+				else result = writer.property(this->get(this->_records.at(i).key), this->get(this->_records.at(i).raw), this->_records.at(i).append);
 			} break;
 			// Если записью является примечание
 			case static_cast <uint8_t> (kind_t::COMMENT): {
@@ -1363,15 +1374,29 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 				 */
 				if(this->_records.at(i).placement == placement_t::OWN)
 					// Выполняем запись примечания отдельной строкой
-					writer.comment(this->get(this->_records.at(i).value));
+					result = writer.comment(this->get(this->_records.at(i).value));
 				// Выполняем дописывание примечания к последней записанной строке
-				else writer.trailing(this->get(this->_records.at(i).value));
+				else result = writer.trailing(this->get(this->_records.at(i).value));
 			} break;
 			// Если записью является пустая строка
 			case static_cast <uint8_t> (kind_t::BLANK):
 				// Выполняем запись пустой строки
-				writer.blank();
+				result = writer.blank();
 			break;
+		}
+		/**
+		 * Если запись очередной записи дерева выполнить не удалось
+		 *
+		 * @note Отказ писателя означает, что записать дерево без потерь нельзя:
+		 *       значение несёт знак, огородить который настройки записи не
+		 *       позволяют. Выдавать при этом обрубок текста опаснее, чем не выдать
+		 *       ничего, - обрубок прочитается без нареканий и молча подменит данные
+		 */
+		if(!result){
+			// Запоминаем код ошибки записи текста настроек
+			this->_error = writer.error();
+			// Выводим пустой текст настроек
+			return string();
 		}
 	}
 	// Выводим собранный текст настроек

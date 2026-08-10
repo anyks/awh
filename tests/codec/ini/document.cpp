@@ -476,6 +476,104 @@ TEST(CodecIniDocument, Assembly) {
 	ASSERT_EQ(document.size(), 3u);
 }
 /**
+ * @brief Проверка подстановки обращения при обращении с повторами по последнему
+ *
+ * @note Обращение к значению обязано разрешаться тем же объявлением, какое
+ *       выдаёт поиск по имени: иначе «${x}» и «get(x)» давали бы разное
+ *
+ */
+TEST(CodecIniDocument, ReferenceDuplicates) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем построение обращения к значению другого свойства
+	settings.references = ini::reference_t::SHELL;
+	// Устанавливаем обращение с повторным объявлением свойства
+	settings.reader.duplicates = ini::duplicate_t::LAST;
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\nref = ${x}\nx = первое\nx = последнее\n", settings));
+	// Выполняем проверку выдачи последнего объявления свойства
+	ASSERT_EQ(document.get("x", "a"), "последнее");
+	// Выполняем проверку разрешения обращения тем же объявлением
+	ASSERT_EQ(document.get("ref", "a"), "последнее");
+}
+/**
+ * @brief Проверка отказа обратной записи при неограждаемом значении
+ *
+ * @note Обрубок текста опаснее отказа: он прочитается без нареканий и молча
+ *       подменит данные
+ *
+ */
+TEST(CodecIniDocument, WriteFailure) {
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\n"));
+	// Выполняем установку значения со знаком конца строки
+	ASSERT_TRUE(document.set("k", "первая\nвторая", "a"));
+	/**
+	 * Выполняем проверку отказа обратной записи дерева
+	 *
+	 * @note Запись управляющих последовательностей по умолчанию снята, и знак
+	 *       конца строки внутри значения записать нечем
+	 */
+	ASSERT_TRUE(document.text().empty());
+	// Выполняем проверку кода ошибки записи
+	ASSERT_NE(document.error(), ini::error_t::NONE);
+	// Собираемые настройки записи текста настроек
+	ini::writer_t::settings_t settings;
+	// Устанавливаем запись управляющих последовательностей в значении
+	settings.escapes = true;
+	// Выполняем проверку прохождения записи с управляющими последовательностями
+	ASSERT_FALSE(document.text(settings).empty());
+}
+/**
+ * @brief Проверка сохранности точки с запятой в значении наречия Git
+ *
+ * @note Наречие это пишет примечания решёткой, а читает и точку с запятой:
+ *       значение с нею обязано быть ограждено, иначе обратное чтение его обрежет
+ *
+ */
+TEST(CodecIniDocument, RoundtripGitMarkers) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем настройки разбора по образцу Git
+	settings.reader = ini::reader_t::settings_t::git();
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\n", settings));
+	// Выполняем установку значения со знаком примечания внутри
+	ASSERT_TRUE(document.set("k", "one ; two", "a"));
+	// Получаем записанный текст настроек
+	const string text = document.text(ini::writer_t::settings_t::git());
+	// Дерево настроек обратного чтения
+	ini::document_t again;
+	// Выполняем разбор записанного текста настроек
+	ASSERT_TRUE(again.parse(text, settings));
+	// Выполняем проверку сохранности значения при обороте «запись - чтение»
+	ASSERT_EQ(again.get("k", "a"), "one ; two");
+}
+/**
+ * @brief Проверка сохранности записи добавления к перечню значений
+ *
+ */
+TEST(CodecIniDocument, RoundtripArrays) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем признание записи добавления к перечню значений
+	settings.reader.arrays = true;
+	// Дерево настроек
+	ini::document_t document;
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\nk[] = one\nk[] = two\n", settings));
+	// Выполняем проверку количества значений свойства
+	ASSERT_EQ(document.values("k", "a").size(), 2u);
+	// Выполняем проверку сохранности записи добавления к перечню
+	ASSERT_EQ(document.text(), "[a]\nk[] = one\nk[] = two\n");
+}
+/**
  * @brief Проверка отклонения неправильного построения текста настроек
  *
  */
