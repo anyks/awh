@@ -502,3 +502,88 @@ TEST_F(FSFixture, TypeDetectLinksOverloadTest){
 	// Удаляем каталог рекурсивно
 	ASSERT_TRUE(this->_fs->unlink(dir));
 }
+
+/**
+ * @brief Проверка работы с путями, записанными кириллицей
+ *
+ * @details Проверка заведена по дефекту, найденному под MS Windows: узкие обращения
+ *          системы принимают путь не в UTF-8, а в кодовой странице системы (CP1251
+ *          на русской машине), и путь `кириллица.txt` создавал файл с именем
+ *          `?????????.txt`. Отказа при этом не было вовсе - обращение отвечало
+ *          годным дескриптором, - оттого дефект и жил незамеченным
+ *
+ * @note Проверка нужна на всех системах, а не под одной MS Windows: у прочих узкие
+ *       обращения принимают UTF-8 как есть, и одинаковое поведение движков по
+ *       кириллическим путям - как раз то, что закрепляется
+ *
+ */
+TEST_F(FSFixture, CyrillicPathTest){
+	// Путь к каталогу с кириллическим названием
+	const std::string dir = "тестовый каталог";
+	// Путь к файлу с кириллическим названием
+	const std::string file = (dir + "/мой файл.txt");
+	// Содержимое проверяемого файла
+	const std::string content = "Проверка кириллицы";
+	// Удаляем каталог, если он остался от прошлого прогона
+	if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(dir));
+	// Создаём каталог с кириллическим названием
+	ASSERT_TRUE(this->_fs->mkdir(dir));
+	// Каталог обязан опознаваться каталогом
+	ASSERT_EQ(this->_fs->type(dir), awh::fs_t::type_t::DIR);
+	// Записываем файл с кириллическим названием
+	this->_fs->write(file, content.c_str());
+	// Файл обязан опознаваться файлом
+	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::FILE);
+	// Размер файла обязан совпасть с размером записанного
+	ASSERT_EQ(this->_fs->size(file), content.size());
+	// Прочитанное обязано совпасть с записанным
+	ASSERT_EQ(this->_fs->read <std::string> (file), content);
+	/**
+	 * Название файла обязано вернуться обходом каталога тем же, каким его задавали
+	 *
+	 * @note Именно здесь и всплывала подмена кодовой страницы: файл создавался, но
+	 *       обход каталога отдавал иное название, и найти созданное было нельзя
+	 */
+	bool found = false;
+	// Выполняем обход каталога
+	this->_fs->readdir(dir, "", false, [&found](const awh::fs_t::type_t type, std::string_view name) noexcept -> void {
+		// Если найдено название заданного файла
+		if((type == awh::fs_t::type_t::FILE) && (name.find("мой файл.txt") != std::string_view::npos))
+			// Отмечаем название найденным
+			found = true;
+	});
+	// Название файла обязано найтись обходом каталога
+	ASSERT_TRUE(found);
+	// Полный путь обязан оканчиваться заданным названием
+	ASSERT_NE(this->_fs->fullpath(file).find("мой файл.txt"), std::string::npos);
+	// Удаляем каталог рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(dir));
+}
+
+/**
+ * @brief Проверка раскрытия переменных окружения в пути
+ *
+ * @details Под MS Windows путь вправе нести в себе переменные окружения
+ *          (`%TEMP%\text.txt`), и раскрывать их обязан разбор пути. Прочие системы
+ *          такой записи не знают, оттого проверка ограничена MS Windows
+ *
+ */
+TEST_F(FSFixture, EnvironmentPathTest){
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Собираем путь с переменной окружения
+		const std::string path = "%TEMP%\\awh_env_probe.txt";
+		// Получаем полный путь
+		const std::string result = this->_fs->fullpath(path);
+		// Переменная окружения обязана быть раскрыта
+		ASSERT_EQ(result.find('%'), std::string::npos);
+		// Раскрытый путь обязан оканчиваться заданным названием
+		ASSERT_NE(result.find("awh_env_probe.txt"), std::string::npos);
+		// Раскрытый путь обязан отличаться от заданного
+		ASSERT_NE(result, path);
+	#endif
+}

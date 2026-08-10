@@ -64,6 +64,12 @@ echo "Build \"awh-tree\""
 # Выполняем сборку стенда дерева настроек контейнера AWH
 c++ $FLAGS -I"$ROOT/include" "$STANDS/awh-tree.cpp" "$RELEASE/libawh.a" -o "$OUTPUT/awh-tree" || exit 1
 
+# Выводим сообщение о сборке стенда поэлементного снятия возможностей
+echo "Build \"ablation\""
+
+# Выполняем сборку стенда поэлементного снятия возможностей чтения
+c++ $FLAGS -I"$ROOT/include" "$STANDS/ablation.cpp" "$RELEASE/libawh.a" -o "$OUTPUT/ablation" || exit 1
+
 # Если исходные тексты реализации inih получены
 if [ -f "$VENDOR/inih/ini.c" ]; then
 	# Выводим сообщение о сборке стенда реализации inih

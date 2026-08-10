@@ -589,3 +589,54 @@ TEST(CodecXmlWriter, Reserve) {
 	// Выполняем проверку того, что занижение на итог не повлияло
 	ASSERT_EQ(narrow.text(), "<root>Москва</root>");
 }
+
+/**
+ * @brief Проверка запрета отведённых договором пространств имён при записи
+ *
+ * @details Правила записи повторяют правила разбора: запись, их не соблюдающая,
+ *          собрала бы текст, который собственное чтение отвергает, - и обнаружилось
+ *          бы это уже у принимающей стороны
+ *
+ */
+TEST(CodecXmlWriter, ReservedNamespaces) {
+	/**
+	 * @brief Объявления пространств имён, записи не подлежащие
+	 *
+	 */
+	const struct {
+		// Префикс объявляемого пространства имён
+		const char * prefix;
+		// Обозначение объявляемого пространства имён
+		string uri;
+	} items[] = {
+		{"foo",   string(xml::XML_NAMESPACE)},
+		{"foo",   string(xml::XMLNS_NAMESPACE)},
+		{"",      string(xml::XML_NAMESPACE)},
+		{"",      string(xml::XMLNS_NAMESPACE)},
+		{"xmlns", string("urn:x")},
+		{"foo",   string()}
+	};
+	/**
+	 * Выполняем перебор всех объявлений пространств имён
+	 */
+	for(const auto & item : items){
+		// Объект записи текста разметки
+		xml::writer_t writer;
+		// Выполняем открытие корневого узла разметки
+		ASSERT_TRUE(writer.open("root"));
+		// Выполняем проверку отказа записи объявления пространства имён
+		ASSERT_FALSE(writer.binding(item.prefix, item.uri)) << item.prefix << " -> " << item.uri;
+	}
+	// Объект записи текста разметки
+	xml::writer_t writer;
+	// Выполняем открытие корневого узла разметки
+	ASSERT_TRUE(writer.open("root"));
+	// Выполняем проверку того, что обычное объявление записи подлежит
+	ASSERT_TRUE(writer.binding("ok", "urn:x"));
+	// Выполняем закрытие корневого узла разметки
+	ASSERT_TRUE(writer.close());
+	// Объект дерева разметки
+	xml::document_t document;
+	// Выполняем проверку того, что записанное собственное чтение принимает
+	ASSERT_TRUE(document.parse(writer.text())) << writer.text();
+}

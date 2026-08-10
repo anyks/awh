@@ -535,8 +535,28 @@ TEST(CodecXmlReader, Malformed) {
 		{"<?xml version='1.0.1'?><a/>",                          xml::error_t::UNSUPPORTED_VERSION},
 		{"<a xmlns:xml='urn:x'/>",                               xml::error_t::RESERVED_PREFIX},
 		{"<a>]]></a>",                                           xml::error_t::INVALID_CHARACTER},
+		/**
+		 * Последовательность конца дословного раздела в значении сущности
+		 *
+		 * @note Запрет отнесён договором к содержимому узла, а не к глубине вложения
+		 *       ссылок: ссылка-посредник, значение которой запрета не нарушает, от
+		 *       проверки не избавляет - проверяется всякая сущность, чьё значение
+		 *       подставляется в содержимое
+		 */
+		{"<!DOCTYPE a [<!ENTITY e \"]]>\">]><a>&e;</a>",          xml::error_t::INVALID_CHARACTER},
+		{"<!DOCTYPE a [<!ENTITY e \"]]>\"><!ENTITY f \"&e;\">]><a>&f;</a>", xml::error_t::INVALID_CHARACTER},
 		{"<!DOCTYPE a [<!ENTITY e \"<b>\">]><a>&e;</b></a>",     xml::error_t::ENTITY_BOUNDARY},
 		{"<!DOCTYPE a [<!ENTITY e \"<b/>\">]><a x='&e;'/>",      xml::error_t::INVALID_ATTRIBUTE},
+		/**
+		 * Значение по умолчанию, ссылающееся на сущность с разметкой
+		 *
+		 * @note Запрет отнесён к самому объявлению, а не к его применению: негодным
+		 *       объявление остаётся и тогда, когда атрибут задан явно и значение по
+		 *       умолчанию не применяется ни разу. Внешняя сущность рядом проверялась
+		 *       на объявлении и прежде
+		 */
+		{"<!DOCTYPE a [<!ENTITY e \"<b/>\"><!ATTLIST a x CDATA \"&e;\">]><a x=\"ok\"/>", xml::error_t::INVALID_REFERENCE},
+		{"<!DOCTYPE a [<!ENTITY e \"<b/>\"><!ATTLIST a x CDATA \"&e;\">]><a/>", xml::error_t::INVALID_REFERENCE},
 		{"<a>&#X41;</a>",                                        xml::error_t::INVALID_CHAR_REFERENCE},
 		{"<a><!-- п ---></a>",                                   xml::error_t::INVALID_COMMENT},
 		/**

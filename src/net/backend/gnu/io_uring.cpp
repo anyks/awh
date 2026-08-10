@@ -3177,6 +3177,24 @@ namespace kernel {
 	static void * subscription(const net::socket_t sock) noexcept;
 };
 
+/**
+ * @brief Слой потокового чтения файлов
+ *
+ * @details Объявление вынесено вперёд оттого, что снятие записи чтения нужно уже
+ *          охраннику узла: узел файла может быть уничтожен, пока поданное в кольца
+ *          чтение ещё не завершилось, и запись обязана уйти вместе с дескриптором
+ *
+ */
+namespace fileio {
+	/**
+	 * @brief Функция снятия записи чтения файла
+	 *
+	 * @param fd дескриптор файла
+	 *
+	 */
+	static void reset(const net::socket_t fd) noexcept;
+};
+
 namespace {
 	/**
 	 * Используем пространство имён AWH
@@ -3332,6 +3350,8 @@ namespace {
 					::io::file_t * fs = awh_cast <::io::file_t *> (this->_node);
 					// Если дескриптор сокета инициализирован
 					if(fs->fd != net::invalid_socket_t){
+						// Снимаем запись потокового чтения файла до закрытия дескриптора
+						::fileio::reset(fs->fd);
 						// Закрываем дескриптор сокета
 						::kernel::close(fs->fd);
 						// Сбрасываем значение дескриптора сокета
@@ -8290,6 +8310,8 @@ namespace kernel {
 		::__awh_ep__ = net::invalid_socket_t;
 		// Выполняем очистку учёта поданных операций
 		::inflight::clear();
+		// Выполняем очистку записей потокового чтения файлов
+		::fileio::clear();
 		// Выполняем очистку состояний ядерного объединения
 		::splicing::clear();
 		// Забываем метку завершения поданного ожидания пробуждения
@@ -43926,6 +43948,8 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				const bool committed = ((status != event::status_t::NONE) && (status != event::status_t::DESTROYED) && (status != event::status_t::GARBAGE));
 				// Если действующий дескриптор присутствует
 				if(fs->fd != net::invalid_socket_t){
+					// Снимаем запись потокового чтения файла до закрытия дескриптора
+					::fileio::reset(fs->fd);
 					// Закрываем прежний дескриптор
 					::kernel::close(fs->fd);
 					// Сбрасываем значение дескриптора
@@ -69910,6 +69934,8 @@ void awh::engine::IO::clear() noexcept {
 							event = ::change::make(fs->fd, ::change::filter_t::VNODE, ::change::DELETE, 0, 0, nullptr);
 							// Выполняем удаление события из списка ожидания
 							::kernel::apply(event, this->_log);
+							// Снимаем запись потокового чтения файла до закрытия дескриптора
+							::fileio::reset(fs->fd);
 							// Закрываем дескриптор сокета
 							::kernel::close(fs->fd);
 							// Сбрасываем значение дескриптора сокета
@@ -70598,6 +70624,8 @@ bool awh::engine::IO::reinitialize() noexcept {
 					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(fs->fd != net::invalid_socket_t){
+						// Снимаем запись потокового чтения файла до закрытия дескриптора
+						::fileio::reset(fs->fd);
 						// Закрываем дескриптор сокета
 						::kernel::close(fs->fd);
 						// Сбрасываем значение дескриптора сокета
@@ -71130,6 +71158,8 @@ bool awh::engine::IO::deinitialize() noexcept {
 					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(fs->fd != net::invalid_socket_t){
+						// Снимаем запись потокового чтения файла до закрытия дескриптора
+						::fileio::reset(fs->fd);
 						// Закрываем дескриптор сокета
 						::kernel::close(fs->fd);
 						// Сбрасываем значение дескриптора сокета
@@ -74061,6 +74091,8 @@ awh::engine::IO::~IO() noexcept {
 					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					// Если дескриптор сокета инициализирован
 					if(fs->fd != net::invalid_socket_t){
+						// Снимаем запись потокового чтения файла до закрытия дескриптора
+						::fileio::reset(fs->fd);
 						// Закрываем дескриптор сокета
 						::kernel::close(fs->fd);
 						// Сбрасываем значение дескриптора сокета

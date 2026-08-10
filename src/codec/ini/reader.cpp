@@ -55,6 +55,13 @@ namespace {
 	 * по накоплении: перемещение остатка при каждой строке обошлось бы дороже самого
 	 * разбора
 	 *
+	 * @note Накопления одного мало: при подаче текста целиком остаток хранилища велик, и
+	 * уплотнение через каждые шестьдесят четыре килобайта перемещало бы его снова и снова -
+	 * на файле в шестнадцать мегабайт это два гигабайта перемещений и треть всего времени
+	 * чтения. Уплотнение поэтому требует ещё и того, чтобы освобождаемое начало было не
+	 * меньше остатка: перемещение тогда обходится дешевле того, что оно освобождает, и
+	 * общий их объём остаётся соразмерным длине текста
+	 *
 	 */
 	constexpr size_t COMPACT_THRESHOLD = 0x10000;
 
@@ -1075,6 +1082,42 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
  * @return         результат выполнения операции
  *
  */
+bool awh::codec::ini::Reader::plain(const string_view value) const noexcept {
+	/**
+	 * Выполняем перебор знаков значения свойства
+	 */
+	for(size_t i = 0; i < value.length(); i++){
+		/**
+		 * Если очередным знаком является кавычка, подлежащая снятию
+		 */
+		if((this->_settings.quotes == quote_t::STRIP) && (value[i] == '"'))
+			// Выводим признак того, что значение приведения требует
+			return false;
+		/**
+		 * Если очередным знаком начинается управляющая последовательность
+		 */
+		if(this->_settings.escapes && (value[i] == '\\'))
+			// Выводим признак того, что значение приведения требует
+			return false;
+		/**
+		 * Если очередным знаком начинается примечание в конце строки
+		 */
+		if(this->_settings.inlineComments && commented(value[i], this->_settings.comments) &&
+		   ((i == 0) || ascii::isSpace(value[i - 1])))
+			// Выводим признак того, что значение приведения требует
+			return false;
+	}
+	// Выводим признак того, что значение приведения не требует
+	return true;
+}
+/**
+ * @brief Метод приведения значения свойства к окончательному виду
+ *
+ * @param text     разбираемое значение свойства
+ * @param position положение начала значения в приведённом тексте
+ * @return         результат выполнения операции
+ *
+ */
 bool awh::codec::ini::Reader::extract(const string_view text, const size_t position) noexcept {
 	// Выполняем очистку хранилища значения свойства
 	this->_value.clear();
@@ -1094,6 +1137,34 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 	const string_view value = text.substr(indent);
 	// Получаем положение начала значения в приведённом тексте
 	const size_t offset = (position + indent);
+	/**
+	 * Если значение свойства записано в тексте так, как выдаётся
+	 *
+	 * @note Путь этот заведён ради обычного случая: у подавляющего большинства
+	 *       значений ни кавычек, ни управляющих последовательностей, ни примечания
+	 *       в конце строки нет, и такое значение лежит в приведённом тексте
+	 *       непрерывным отрезком. Выдать его указателем на этот отрезок дешевле,
+	 *       чем переписывать знак за знаком в отдельное хранилище
+	 */
+	if(this->plain(value)){
+		// Длина значения без пробельной обвязки в конце
+		size_t length = value.length();
+		/**
+		 * Если отбрасывание пробельной обвязки значения настройками разрешено
+		 */
+		if(this->_settings.trim){
+			/**
+			 * Выполняем отбрасывание пробельной обвязки в конце значения
+			 */
+			while((length > 0) && ascii::isSpace(value[length - 1]))
+				// Выполняем переход к предыдущему знаку значения
+				length--;
+		}
+		// Запоминаем значение свойства указателем в приведённый текст
+		this->_view = value.substr(0, length);
+		// Выводим положительный результат выполнения операции
+		return true;
+	}
 	// Признак нахождения разбора внутри кавычек
 	bool quoted = false;
 	// Знак кавычки, которой значение открыто
@@ -1239,6 +1310,8 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 	if(this->_settings.trim && (keep < this->_value.length()))
 		// Выполняем отбрасывание пробельной обвязки в конце значения
 		this->_value.resize(keep);
+	// Запоминаем значение свойства указателем в его хранилище
+	this->_view = this->_value;
 	// Выводим результат выполнения операции
 	return true;
 }
@@ -1287,8 +1360,8 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 			return this->fail(error_t::MISSING_SEPARATOR, offset, this->_line, 1);
 		// Запоминаем признак свойства, записанного без разделителя и значения
 		this->_property.valueless = true;
-		// Выполняем очистку хранилища значения свойства
-		this->_value.clear();
+		// Выполняем сброс значения свойства текущего события
+		this->_view = string_view();
 	}
 	/**
 	 * Если имя свойства пусто
@@ -1332,8 +1405,6 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 			// Выводим сообщение об ошибке разбора
 			return this->fail(error_t::INVALID_KEY, offset, this->_line, this->column(this->_start, offset + i));
 	}
-	// Запоминаем имя свойства текущего события
-	this->_key.assign(key);
 	/**
 	 * Если повторное объявление свойства признано ошибкой
 	 */
@@ -1341,7 +1412,7 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 		/**
 		 * Если свойство с таким именем в разделе уже объявлено
 		 */
-		if(!this->_keys.emplace(this->fold(this->_key)).second)
+		if(!this->_keys.emplace(this->fold(key)).second)
 			// Выводим сообщение об ошибке разбора
 			return this->fail(error_t::DUPLICATE_KEY, offset, this->_line, 1);
 	}
@@ -1357,9 +1428,9 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 			return false;
 	}
 	// Запоминаем имя свойства текущего события
-	this->_property.key = this->_key;
+	this->_property.key = key;
 	// Запоминаем значение свойства текущего события
-	this->_property.value = this->_value;
+	this->_property.value = this->_view;
 	// Запоминаем положение свойства в исходном тексте
 	this->_property.location = this->_location;
 	// Запоминаем вид текущего события разбора
@@ -1431,7 +1502,6 @@ void awh::codec::ini::Reader::reset() noexcept {
 	// Выполняем сброс примечания текущего события
 	this->_comment = comment_t();
 	// Выполняем очистку хранилища имени свойства
-	this->_key.clear();
 	// Выполняем очистку хранилища значения свойства
 	this->_value.clear();
 	// Выполняем очистку хранилища содержимого примечания
@@ -1471,6 +1541,17 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 	if(this->_final)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	/**
+	 * Если приведённому куску в хранилище места недостаёт
+	 *
+	 * @note Место выделяется наперёд по длине куска: приведение добавляет знаки к
+	 *       хранилищу, и рост его по мере надобности переносил бы уже приведённый
+	 *       текст всякий раз заново - на файле в шестнадцать мегабайт это несколько
+	 *       переносов всего текста
+	 */
+	if((this->_buffer.size() + size) > this->_buffer.capacity())
+		// Выполняем выделение памяти под приведённый кусок исходного текста
+		this->_buffer.reserve(this->_buffer.size() + size);
 	/**
 	 * Если приведение куска исходного текста выполнить не удалось
 	 */
@@ -1544,9 +1625,10 @@ bool awh::codec::ini::Reader::next() noexcept {
 	// Выполняем сброс примечания текущего события
 	this->_comment = comment_t();
 	/**
-	 * Если разобранного начала хранилища накопилось достаточно для уплотнения
+	 * Если разобранного начала хранилища накопилось достаточно для уплотнения и
+	 * освобождается его не меньше, чем придётся переместить
 	 */
-	if(this->_offset >= COMPACT_THRESHOLD){
+	if((this->_offset >= COMPACT_THRESHOLD) && (this->_offset >= (this->_buffer.length() - this->_offset))){
 		// Выполняем освобождение разобранного начала хранилища
 		this->_buffer.erase(0, this->_offset);
 		// Выполняем сброс положения начала разбираемой логической строки

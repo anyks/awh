@@ -6336,6 +6336,149 @@ TEST_F(IoFixture, IoFsTest){
 }
 
 /**
+ * @brief Тест режима слежения за файлом (аналог tail) и перечитывания усечённого файла
+ *
+ * @note Проверка закрепляет два намеренных решения работы с файлами:
+ *       1. С опцией AUTO_FOLLOW отдаются ТОЛЬКО дописанные данные, а не файл целиком:
+ *          смещение чтения сохраняется между срабатываниями.
+ *       2. Если файл перезаписан или усечён (размер меньше сохранённого смещения,
+ *          а время изменения другое), чтение начинается СНАЧАЛА. Без этой развилки
+ *          слежение за усечённым файлом замирает навсегда: чтение с прежнего смещения
+ *          возвращает ноль октетов, и узел молча перестаёт отдавать данные.
+ *
+ *       Время изменения файла хранится с точностью до секунды, поэтому перед усечением
+ *       выдерживается пауза - иначе перезапись неотличима от отсутствия изменений.
+ *
+ */
+TEST_F(IoFixture, IoFsFollowTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Флаг превышения времени ожидания
+	bool expired = false;
+	// Список прочитанных порций данных
+	std::vector <std::string> chunks;
+	// Путь к отслеживаемому файлу
+	const std::string filename = "./follow.txt";
+	/**
+	 * @brief Функция записи данных в отслеживаемый файл
+	 *
+	 * @param data данные для записи в файл
+	 * @param mode режим открытия файла
+	 *
+	 */
+	auto store = [&filename](const std::string & data, const char * mode) noexcept -> bool {
+		// Выполняем открытие файла на запись
+		FILE * file = ::fopen(filename.c_str(), mode);
+		// Если файл открыть не удалось
+		if(file == nullptr)
+			// Выводим отрицательный результат
+			return false;
+		// Выполняем запись данных в файл
+		const size_t size = ::fwrite(data.data(), sizeof(char), data.size(), file);
+		// Выполняем закрытие файла
+		::fclose(file);
+		// Выводим результат записи
+		return (size == data.size());
+	};
+	// Удаляем файл, оставшийся от предыдущего запуска
+	::remove(filename.c_str());
+	// Создаём файл заранее: узел события должен получить существующий файл
+	ASSERT_TRUE(store("", "wb"));
+	// Добавляем новое событие отслеживания файла
+	const awh::event::id_t fid = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
+	// Добавляем событие ограничения времени работы проверки
+	const awh::event::id_t guard = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Добавляем событие первичной записи данных в файл
+	const awh::event::id_t starter = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем идентификаторы созданных событий
+	ASSERT_GT(fid, 0u);
+	ASSERT_GT(guard, 0u);
+	ASSERT_GT(starter, 0u);
+	// Устанавливаем задержку первичной записи данных в файл
+	this->_io->setTimeout(starter, awh::event::action_t::NONE, 300);
+	// Устанавливаем предельное время работы проверки
+	this->_io->setTimeout(guard, awh::event::action_t::NONE, 15000);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем путь к отслеживаемому файлу
+	ASSERT_TRUE(this->_io->setAddress(fid, awh::event::address_t::FS, filename));
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(fid));
+	ASSERT_TRUE(this->_io->commit(guard));
+	ASSERT_TRUE(this->_io->commit(starter));
+	// Устанавливаем режим слежения за файлом
+	ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::AUTO_FOLLOW));
+	// Устанавливаем функцию обратного вызова на превышение времени ожидания
+	this->_io->on(guard, [&stop, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS){
+			// Запоминаем превышение времени ожидания
+			expired = true;
+			// Останавливаем проверку
+			stop = true;
+		}
+	});
+	// Устанавливаем функцию обратного вызова на первичную запись данных в файл
+	this->_io->on(starter, [&store]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло, записываем в файл первую порцию данных
+		if(status == awh::event::status_t::SUCCESS)
+			// Выполняем запись первой порции данных в файл
+			store("AAA", "ab");
+	});
+	// Устанавливаем функцию обратного вызова на чтение из события
+	this->_io->on(fid, [&stop, &chunks, &store]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		// Добавляем прочитанную порцию данных в список
+		chunks.push_back(std::string(reinterpret_cast <const char *> (data), size));
+		/**
+		 * Определяем какая порция данных прочитана
+		 */
+		switch(chunks.size()){
+			// Если прочитана первая порция данных, дописываем вторую
+			case 1:
+				// Выполняем дописывание второй порции данных в файл
+				store("BBBB", "ab");
+			break;
+			// Если прочитана вторая порция данных, перезаписываем файл заново
+			case 2: {
+				/**
+				 * Время изменения файла хранится с точностью до секунды: без паузы
+				 * перезапись неотличима от отсутствия изменений и чтение не начнётся
+				 */
+				std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+				// Выполняем перезапись файла более короткими данными
+				store("CC", "wb");
+			} break;
+			// Если прочитана третья порция данных, останавливаем проверку
+			default:
+				// Останавливаем проверку
+				stop = true;
+		}
+	});
+	// Выполняем запуск событий
+	ASSERT_TRUE(this->_io->launch(fid));
+	ASSERT_TRUE(this->_io->launch(guard));
+	ASSERT_TRUE(this->_io->launch(starter));
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Удаляем отслеживаемый файл
+	::remove(filename.c_str());
+	// Проверяем что проверка завершилась не по превышению времени ожидания
+	ASSERT_FALSE(expired);
+	// Проверяем что прочитаны все три порции данных
+	ASSERT_EQ(chunks.size(), 3u);
+	// Проверяем что первая порция данных прочитана целиком
+	ASSERT_EQ(chunks[0], "AAA");
+	// Проверяем что отдана ТОЛЬКО дописанная часть, а не файл целиком
+	ASSERT_EQ(chunks[1], "BBBB");
+	// Проверяем что усечённый файл прочитан сначала
+	ASSERT_EQ(chunks[2], "CC");
+}
+
+/**
  * @brief Тест проверки работы пользовательских событий
  *
  */
