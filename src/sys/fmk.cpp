@@ -37,6 +37,7 @@
 #include <cmath>
 #include <locale>
 #include <atomic>
+#include <clocale>
 #include <bitset>
 #include <chrono>
 #include <memory>
@@ -581,14 +582,33 @@ namespace {
 			result.assign(scratch.get(), static_cast <size_t> (length));
 		}
 		/**
-		 * Разделителем дробной части в локалях многих стран служит запятая, а запись
+		 * Разделителем дробной части во многих местностях служит не точка, а запись
 		 * числа обязана оставаться одинаковой в любой из них
+		 *
+		 * @warning Знак этот однобайтовым быть не обязан: местности «fa_IR», «ar_SA» и
+		 *          «ps_AF» несут разделителем «٫» (U+066B), занимающий в UTF-8 два
+		 *          байта. Замена одного лишь первого байта оставляла бы от него
+		 *          обрубок, и запись переставала быть правильной последовательностью
+		 *
+		 * @note Обращение к localeconv стоит от четырёх до шестнадцати наносекунд -
+		 *       порядка сотой доли той самой snprintf, вслед за которой оно и стоит.
+		 *       Строить std::locale тут нельзя ни в коем случае: постройка её обходится
+		 *       в семнадцать микросекунд у libc++ и в шестьдесят девять у FreeBSD
 		 */
-		const size_t point = result.find(',');
-		// Если разделителем дробной части оказалась запятая
-		if(point != string::npos)
-			// Заменяем её точкой
-			result[point] = '.';
+		const char * separator = ::localeconv()->decimal_point;
+		/**
+		 * Если разделителем дробной части местности точка не является
+		 */
+		if((separator != nullptr) && (separator[0] != '\0') && (::strcmp(separator, ".") != 0)){
+			// Выполняем поиск разделителя дробной части местности в записи числа
+			const size_t point = result.find(separator);
+			/**
+			 * Если разделитель дробной части местности в записи числа найден
+			 */
+			if(point != string::npos)
+				// Заменяем разделитель дробной части местности точкой
+				result.replace(point, ::strlen(separator), 1, '.');
+		}
 		/**
 		 * Если количество знаков после запятой подбиралось, лишние разряды записи
 		 * оказались нулевыми и никакого смысла не несут
@@ -5144,6 +5164,133 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 	return result;
 }
 /**
+ * @brief Метод расстановки разделителей разрядов в записи целой части
+ *
+ * @param text      запись числа, куда расставляются разделители
+ * @param separator знак-разделитель разрядов
+ * @param size      количество разрядов в одной группе
+ * @return          запись числа с разделёнными разрядами
+ *
+ */
+static string separated(const string & text, const char separator, const uint8_t size) noexcept {
+	// Если разделять нечем либо не на что, запись остаётся прежней
+	if((size == 0) || (separator == '\0'))
+		// Выводим запись числа без изменений
+		return text;
+	/**
+	 * Положение начала целой части записи
+	 *
+	 * @note Знак минуса в разделение не входит: разряды считаются от самого числа
+	 */
+	const size_t begin = ((!text.empty() && ((text.front() == '-') || (text.front() == '+'))) ? 1 : 0);
+	// Выполняем поиск разделителя дробной части записи
+	const size_t point = text.find('.', begin);
+	// Получаем длину целой части записи
+	const size_t length = ((point != string::npos ? point : text.length()) - begin);
+	// Если разрядов в целой части меньше, чем помещается в одну группу
+	if(length <= static_cast <size_t> (size))
+		// Выводим запись числа без изменений
+		return text;
+	// Собираемая запись числа с разделёнными разрядами
+	string result;
+	// Выполняем выделение памяти под собираемую запись числа
+	result.reserve(text.length() + ((length - 1) / static_cast <size_t> (size)));
+	// Выполняем перенос знака числа в собираемую запись
+	result.assign(text, 0, begin);
+	/**
+	 * Количество разрядов в первой группе
+	 *
+	 * @note Группы считаются справа налево, оттого первая из них бывает неполной
+	 */
+	const size_t first = (((length % static_cast <size_t> (size)) == 0) ? static_cast <size_t> (size) : (length % static_cast <size_t> (size)));
+	// Выполняем перенос первой группы разрядов в собираемую запись
+	result.append(text, begin, first);
+	/**
+	 * Выполняем перебор оставшихся групп разрядов целой части
+	 */
+	for(size_t i = (begin + first); i < (begin + length); i += static_cast <size_t> (size)){
+		// Выполняем дозапись знака-разделителя разрядов
+		result.push_back(separator);
+		// Выполняем перенос очередной группы разрядов в собираемую запись
+		result.append(text, i, static_cast <size_t> (size));
+	}
+	/**
+	 * Если запись несёт дробную часть
+	 */
+	if(point != string::npos)
+		// Выполняем перенос дробной части в собираемую запись
+		result.append(text, point, string::npos);
+	// Выводим собранную запись числа
+	return result;
+}
+/**
+ * @brief Метод записи числа с разделением разрядов
+ *
+ * @param number    записываемое число
+ * @param precision количество знаков после запятой, отрицательное для подбора
+ * @param separator знак-разделитель разрядов целой части
+ * @param size      количество разрядов в одной группе
+ * @return          запись числа с разделёнными разрядами
+ *
+ */
+string awh::Framework::grouped(const double number, const int32_t precision, const char separator, const uint8_t size) const noexcept {
+	/**
+	 * Выполняем запись числа безэкспоненциальной формой
+	 *
+	 * @note Форма эта от местности не зависит и разделителей разрядов не содержит:
+	 *       расставить их поверх неё дешевле и надёжнее, чем добывать их у местности
+	 *
+	 * @note Запись выполняется общей подпрограммой, а не перегрузкой noexp с размером
+	 *       шага: та нулевой размер понимает как отсутствие значащих разрядов и
+	 *       отвечает записью «0», тогда как нулевая точность здесь означает запись
+	 *       без дробной части - «123,456,789», а не «0»
+	 */
+	const string text = ::noexpFixed(number, precision);
+	// Выводим запись числа с разделёнными разрядами
+	return ::separated(text, separator, size);
+}
+/**
+ * @brief Метод записи целого числа с разделением разрядов
+ *
+ * @tparam T тип записываемого целого числа
+ *
+ * @param number    записываемое число
+ * @param separator знак-разделитель разрядов
+ * @param size      количество разрядов в одной группе
+ * @return          запись числа с разделёнными разрядами
+ *
+ */
+template <typename T>
+string awh::Framework::grouped(const T number, const char separator, const uint8_t size) const noexcept {
+	/**
+	 * Если тип записываемого числа целым не является
+	 */
+	static_assert(is_integral <T>::value, "The grouped method for integers accepts integers only");
+	/**
+	 * Запись целого числа выполняется своим видом, а не приведением к числу с
+	 * плавающей точкой: приведение теряло бы точность за пределами мантиссы
+	 */
+	return ::separated(std::to_string(number), separator, size);
+}
+/**
+ * Объявляем прототипы записи целых чисел с разделением разрядов
+ */
+template string awh::Framework::grouped <int8_t> (const int8_t, const char, const uint8_t) const noexcept;
+template string awh::Framework::grouped <uint8_t> (const uint8_t, const char, const uint8_t) const noexcept;
+template string awh::Framework::grouped <int16_t> (const int16_t, const char, const uint8_t) const noexcept;
+template string awh::Framework::grouped <uint16_t> (const uint16_t, const char, const uint8_t) const noexcept;
+template string awh::Framework::grouped <int32_t> (const int32_t, const char, const uint8_t) const noexcept;
+template string awh::Framework::grouped <uint32_t> (const uint32_t, const char, const uint8_t) const noexcept;
+template string awh::Framework::grouped <int64_t> (const int64_t, const char, const uint8_t) const noexcept;
+template string awh::Framework::grouped <uint64_t> (const uint64_t, const char, const uint8_t) const noexcept;
+/**
+ * Если size_t и ssize_t являются самостоятельными типами
+ */
+#if __AWH_DISTINCT_SIZE_TYPES__
+	template string awh::Framework::grouped <size_t> (const size_t, const char, const uint8_t) const noexcept;
+	template string awh::Framework::grouped <ssize_t> (const ssize_t, const char, const uint8_t) const noexcept;
+#endif
+/**
  * @brief Метод порверки на сколько процентов (A > B) или (A < B)
  *
  * @param a первое число
@@ -7629,81 +7776,102 @@ const unordered_set <string> & awh::Framework::domainZones() const noexcept {
  *
  */
 void awh::Framework::setLocale(const string & locale) noexcept {
-	// Устанавливаем локаль
+	/**
+	 * Если локализация приложения передана
+	 */
 	if(!locale.empty()){
 		/**
-		 * Выполняем отлов ошибок
+		 * Выполняем установку локализации приложения
+		 *
+		 * @note Разряд LC_ALL включает в себя и LC_CTYPE, и LC_COLLATE: отдельные их
+		 *       установки той же строкой ничего не меняли бы
 		 */
-		try {
-			// Устанавливапм локализацию приложения
-			::setlocale(LC_ALL, locale.c_str());
-			::setlocale(LC_CTYPE, locale.c_str());
-			::setlocale(LC_COLLATE, locale.c_str());
-			/**
-			 * Для операционной системы MS Windows
-			 */
-			#if _WIN32 || _WIN64
-				// Параметры устанавливаемого шрифта
-				CONSOLE_FONT_INFOEX fontInfo = {0};
-				// Устанавливаем размер буфера шрифта
-				fontInfo.cbSize = sizeof(CONSOLE_FONT_INFOEX);
-				// Формируем параметры шрифта
-				fontInfo.nFont = 1;
-				fontInfo.dwFontSize.X = 7;
-				fontInfo.dwFontSize.Y = 12;
-				fontInfo.FontWeight = 500;
-				fontInfo.FontFamily = FF_DONTCARE;
-				// Выполняем установку шрифта Lucida Console
-				::lstrcpyW(fontInfo.FaceName, L"Lucida Console");
-				// Применяем шрифт
-				::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &fontInfo);
-				// Устанавливаем кодировку ввода текстовых данных в консоле 65001
-				::SetConsoleCP(CP_UTF8);
-				// Устанавливаем кодировку вывода текстовых данных из консоли
-				::SetConsoleOutputCP(CP_UTF8);
-			#endif
+		const bool established = (::setlocale(LC_ALL, locale.c_str()) != nullptr);
 		/**
-		 * Если возникает ошибка
+		 * Если локализацию приложения установить не удалось
+		 *
+		 * @details Отказ приходит возвращённым нулевым указателем, а не исключением:
+		 *          setlocale - функция языка C, и бросать ей нечего. Прежде отказ
+		 *          ловился здесь перехватом исключения, потому что локализация
+		 *          строилась объектом std::locale; объекта того не стало, а перехват
+		 *          остался и с тех пор не срабатывал ни разу
+		 *
+		 * @warning Отказ ловится не всюду: библиотека UCRT у MS Windows принимает любое
+		 *          название, включая заведомо вздорное, и отвечает успехом. Там
+		 *          неверная локализация останется незамеченной, и поделать с этим
+		 *          нечего - сообщить об отказе системе нечем
 		 */
-		} catch(const exception & error) {
-			// Если локаль не дефолтная
+		if(!established){
+			/**
+			 * Если запрошенная локализация общепринятой не является
+			 */
 			if(locale.compare("C") != 0)
-				// Устанавливаем локаль повторно
-				this->setLocale("C");
-			// Если объект логирования установлен
+				// Выполняем установку общепринятой локализации приложения
+				::setlocale(LC_ALL, "C");
+			// Собираемое сообщение об ошибке установки локализации
+			const string message = ("Locale \"" + locale + "\" is not supported by the system, the \"C\" locale is set instead");
+			/**
+			 * Если объект логирования установлен
+			 */
 			if(this->_log != nullptr){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(locale), log_t::flag_t::WARNING, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(locale), log_t::flag_t::WARNING, message.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+					this->_log->print("%s", log_t::flag_t::WARNING, message.c_str());
 				#endif
-			// Если объект логирования не установлен
+			/**
+			 * Если объект логирования не установлен
+			 */
 			} else {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					::fprintf(stderr, "WARNING! Called function:\n%s\n\nMessage:\n%s (%s)\n\n", __PRETTY_FUNCTION__, error.what(), locale.data());
+					::fprintf(stderr, "WARNING! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					::fprintf(stderr, "WARNING! %s (%s)\n\n", error.what(), locale.data());
+					::fprintf(stderr, "WARNING! %s\n\n", message.c_str());
 				#endif
 			}
 		}
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if _WIN32 || _WIN64
+			// Параметры устанавливаемого шрифта
+			CONSOLE_FONT_INFOEX fontInfo = {0};
+			// Устанавливаем размер буфера шрифта
+			fontInfo.cbSize = sizeof(CONSOLE_FONT_INFOEX);
+			// Формируем параметры шрифта
+			fontInfo.nFont = 1;
+			fontInfo.dwFontSize.X = 7;
+			fontInfo.dwFontSize.Y = 12;
+			fontInfo.FontWeight = 500;
+			fontInfo.FontFamily = FF_DONTCARE;
+			// Выполняем установку шрифта Lucida Console
+			::lstrcpyW(fontInfo.FaceName, L"Lucida Console");
+			// Применяем шрифт
+			::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &fontInfo);
+			// Устанавливаем кодировку ввода текстовых данных в консоле 65001
+			::SetConsoleCP(CP_UTF8);
+			// Устанавливаем кодировку вывода текстовых данных из консоли
+			::SetConsoleOutputCP(CP_UTF8);
+		#endif
 	}
 }
+
 /**
  * @brief Метод извлечения координат url адресов в строке
  *

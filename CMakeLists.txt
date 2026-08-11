@@ -431,7 +431,9 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 # Устанавливаем параметры игнорирования ошибок для Solaris
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
-    SET(AWH_PARAMS "-lsocket -lnsl -lc -Wno-cpp -Wno-deprecated")
+    # Библиотека libdladm нужна модулю сетевых интерфейсов: приёмов заведения и
+    # сноса устройств передачи данных, какие есть у BSD, эти системы не имеют
+    SET(AWH_PARAMS "-lsocket -lnsl -ldladm -lc -Wno-cpp -Wno-deprecated")
 # Устанавливаем параметры игнорирования ошибок для Windows и Linux
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
@@ -650,6 +652,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
         "${CMAKE_SOURCE_DIR}/src/net/backend/sun/socket.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/sun/addr.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/sun/iface.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/sun/gateway.cpp"
     )
 # Если сборка производится под операционную систему Linux
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")

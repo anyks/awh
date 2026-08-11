@@ -72,7 +72,13 @@ namespace {
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0),
 		 events(0), trees(0), rewrites(0) {}
-	} stat;
+	/**
+	 * Учёт проделанной работы
+	 *
+	 * @note Имя «stat» тут не годится: у MinGW заголовки объявляют «struct stat»
+	 *       в области видимости, и обращение к учёту становится двусмысленным
+	 */
+	} totals;
 
 	/**
 	 * @brief Событие разбора, запомненное для сличения
@@ -408,7 +414,7 @@ namespace {
 				// Выполняем сохранение события в перечне
 				events.push_back(::move(event));
 				// Выполняем учёт выданного разбором события
-				stat.events++;
+				totals.events++;
 			}
 			// Если разбор прекращён ошибкой
 			if(reader.state() == ini::state_t::FAILED)
@@ -495,7 +501,7 @@ namespace {
 		// Создаём дерево настроек
 		ini::document_t document(settings);
 		// Выполняем учёт собранного дерева настроек
-		stat.trees++;
+		totals.trees++;
 		// Если разбор текста настроек не удался, то проверку прекращаем
 		if(!document.parse(text))
 			// Выводим результат проверки дерева настроек
@@ -521,7 +527,7 @@ namespace {
 		// Выполняем перезапись дерева настроек
 		const string first = document.text();
 		// Выполняем учёт перезаписи дерева настроек
-		stat.rewrites++;
+		totals.rewrites++;
 		// Если перезапись дерева настроек не удалась, то проверку прекращаем
 		if(first.empty())
 			// Выводим результат проверки дерева настроек
@@ -579,7 +585,7 @@ namespace {
 		// Выполняем перезапись правленого дерева настроек
 		const string edited = document.text();
 		// Выполняем учёт перезаписи дерева настроек
-		stat.rewrites++;
+		totals.rewrites++;
 		// Если перезапись правленого дерева настроек не удалась, то проверку прекращаем
 		if(edited.empty())
 			// Выводим результат проверки дерева настроек
@@ -635,13 +641,13 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		// Выполняем построение текста настроек
 		string text = generate(engine);
 		// Выполняем учёт построенного текста настроек
-		stat.texts++;
+		totals.texts++;
 		// Если требуется испортить построенный текст настроек
 		if((engine() % 3) == 0){
 			// Выполняем порчу построенного текста настроек
 			corrupt(text, engine);
 			// Выполняем учёт испорченного текста настроек
-			stat.corrupted++;
+			totals.corrupted++;
 		}
 		// Перечень событий подачи текста настроек целиком
 		vector <Event> whole;
@@ -650,7 +656,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		// Если текст настроек разобран до конца
 		if(state == ini::state_t::FINISHED)
 			// Выполняем учёт разобранного до конца текста настроек
-			stat.survived++;
+			totals.survived++;
 		// Размер куска подачи текста настроек
 		const size_t chunk = (1 + (engine() % 16));
 		// Перечень событий подачи текста настроек кусками
@@ -670,12 +676,12 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	::fprintf(
 		stdout,
 		"ini fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites\n",
-		static_cast <unsigned long long> (stat.texts),
-		static_cast <unsigned long long> (stat.corrupted),
-		static_cast <unsigned long long> (stat.events),
-		static_cast <unsigned long long> (stat.survived),
-		static_cast <unsigned long long> (stat.trees),
-		static_cast <unsigned long long> (stat.rewrites)
+		static_cast <unsigned long long> (totals.texts),
+		static_cast <unsigned long long> (totals.corrupted),
+		static_cast <unsigned long long> (totals.events),
+		static_cast <unsigned long long> (totals.survived),
+		static_cast <unsigned long long> (totals.trees),
+		static_cast <unsigned long long> (totals.rewrites)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;

@@ -131,6 +131,26 @@ $ sudo modprobe sctp
 $ sudo sysctl -w net.sctp.auth_enable=1
 ```
 
+### Prepare a tunnel device (Sun Solaris / illumos)
+
+These systems have no `/dev/tun` or `/dev/tap` device: a tunnel is an ordinary
+data link, and creating one is an administrative step performed once, outside the
+application. Prepare the device beforehand and pass its name to the interface.
+
+```bash
+$ sudo dladm create-etherstub awhstub0
+$ sudo dladm create-vnic -l awhstub0 awhtun0
+```
+
+The framework then opens the prepared device by name and exchanges frames over a
+plain descriptor. Removing the device is administrative as well, because the system
+ships no declarations for it.
+
+```bash
+$ sudo dladm delete-vnic awhtun0
+$ sudo dladm delete-etherstub awhstub0
+```
+
 ```bash
 $ cd ./sh/certificates
 $ ./generate.sh example.com

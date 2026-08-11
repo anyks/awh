@@ -35,6 +35,8 @@
 /**
  * Подключаем заголовочный файлы проекта
  */
+#include <locale>
+
 #include "headers.hpp"
 
 /**
@@ -1290,6 +1292,51 @@ TEST_F(HeadersFixture, DateFormatTest){
 	ASSERT_EQ(this->_headers->date(1387368000ull), "Wed, 18 Dec 2013 12:00:00 GMT");
 	// Формируем дату из миллисекунд - значение должно быть нормализовано до секунд
 	ASSERT_EQ(this->_headers->date(1609459200000ull), "Fri, 01 Jan 2021 00:00:00 GMT");
+}
+
+/**
+ * @brief Метод проверки независимости HTTP-даты от местности приложения
+ *
+ */
+TEST_F(HeadersFixture, DateLocaleIndependenceTest){
+	// Запоминаем действующую общую местность приложения
+	const std::locale current = std::locale();
+	// Количество проверенных местностей с иными названиями дня и месяца
+	uint32_t checked = 0;
+	/**
+	 * Выполняем перебор названий местности с иными названиями дня и месяца
+	 *
+	 * @note Местность приложение задаёт вызовом std::locale::global, и поток берёт её
+	 *       именно оттуда: под «de_DE» вывод put_time становится немецким - «Do., 06
+	 *       Aug. 2026», - тогда как RFC 9110 §5.6.7 требует английских сокращений
+	 */
+	for(const char * name : {"de_DE.UTF-8", "de_DE.utf8", "ru_RU.UTF-8", "German_Germany"}){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем установку общей местности приложения
+			std::locale::global(std::locale(name));
+		/**
+		 * Если местности в системе нет
+		 */
+		} catch(const std::exception &) {
+			// Выполняем переход к следующей местности
+			continue;
+		}
+		// Выполняем проверку записи даты английскими сокращениями
+		ASSERT_EQ(this->_headers->date(1609459200ull), "Fri, 01 Jan 2021 00:00:00 GMT") << name;
+		// Выполняем проверку записи даты иной отметки времени
+		ASSERT_EQ(this->_headers->date(1387368000ull), "Wed, 18 Dec 2013 12:00:00 GMT") << name;
+		// Выполняем учёт проверенной местности
+		checked++;
+	}
+	// Выполняем возврат действующей общей местности приложения
+	std::locale::global(current);
+	// Если ни одной местности с иными названиями дня и месяца в системе не нашлось
+	if(checked == 0)
+		// Выполняем пропуск проверки
+		GTEST_SKIP() << "no locale with foreign day and month names is available";
 }
 
 /**

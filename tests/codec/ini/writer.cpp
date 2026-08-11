@@ -450,20 +450,45 @@ TEST(CodecIniWriter, TrailingBackslash) {
 TEST(CodecIniWriter, LocaleNumbers) {
 	// Запоминаем действующую локаль записи чисел
 	const string current(::setlocale(LC_NUMERIC, nullptr));
-	// Если установить локаль с иным знаком десятичной точки не удалось
-	if(::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr)
-		// Выполняем пропуск проверки
-		GTEST_SKIP() << "locale de_DE.UTF-8 is not available";
-	// Объект записи текста настроек
-	ini::writer_t writer;
-	// Выполняем запись объявления раздела
-	ASSERT_TRUE(writer.section("s"));
-	// Выполняем запись числа с плавающей точкой
-	ASSERT_TRUE(writer.number <double> ("k", 0.1));
-	// Выполняем проверку записи числа с точкой в качестве десятичного знака
-	ASSERT_EQ(writer.text(), "[s]\nk = 0.1\n");
+	// Количество проверенных локалей с иным десятичным знаком
+	uint32_t checked = 0;
+	/**
+	 * Выполняем перебор названий локали с иным знаком десятичной точки
+	 *
+	 * @note Названия эти у разных систем свои: у POSIX - «de_DE.UTF-8», у MS Windows
+	 *       - «German_Germany», и ни одно из них не признаётся всюду. Локали
+	 *       «fa_IR» и «ar_SA» взяты особо: десятичным знаком там служит «٫»
+	 *       (U+066B), занимающий в UTF-8 два байта, - замена одного лишь первого
+	 *       байта оставляла бы от него обрубок
+	 */
+	for(const char * name : {"de_DE.UTF-8", "de_DE.utf8", "German_Germany.1252", "German_Germany", "fa_IR.UTF-8", "ar_SA.UTF-8"}){
+		// Если установить очередную локаль не удалось
+		if(::setlocale(LC_NUMERIC, name) == nullptr)
+			// Выполняем переход к следующей локали
+			continue;
+		// Если знаком десятичной точки установленной локали точка всё же осталась
+		if(::localeconv()->decimal_point[0] == '.')
+			// Выполняем переход к следующей локали
+			continue;
+		// Объект записи текста настроек
+		ini::writer_t writer;
+		// Выполняем запись объявления раздела
+		ASSERT_TRUE(writer.section("s")) << name;
+		// Выполняем запись числа с плавающей точкой
+		ASSERT_TRUE(writer.number <double> ("k", 0.1)) << name;
+		// Выполняем запись числа с большим количеством значащих разрядов
+		ASSERT_TRUE(writer.number <double> ("m", 2986.808299)) << name;
+		// Выполняем проверку записи чисел с точкой в качестве десятичного знака
+		ASSERT_EQ(writer.text(), "[s]\nk = 0.1\nm = 2986.808299\n") << name;
+		// Выполняем учёт проверенной локали
+		checked++;
+	}
 	// Выполняем возврат действующей локали записи чисел
 	::setlocale(LC_NUMERIC, current.c_str());
+	// Если ни одной локали с иным десятичным знаком в системе не нашлось
+	if(checked == 0)
+		// Выполняем пропуск проверки
+		GTEST_SKIP() << "no locale with a foreign decimal point is available";
 }
 
 /**

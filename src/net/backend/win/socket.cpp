@@ -945,7 +945,7 @@ uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
  *          намертво
  *
  */
-array <awh::net::socket_t, 2> awh::eth::Socket::ipc([[maybe_unused]] const event::family_t family, const event::type_t type, [[maybe_unused]] const event::protocol_t proto) const noexcept {
+array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
 	// Переменная результата
 	array <net::socket_t, 2> result = {
 		net::invalid_socket_t,
@@ -956,6 +956,33 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc([[maybe_unused]] const event
 		// Заносим отказ подъёма средств сокетов в журнал
 		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
 		// Возвращаем пару незаведённых сокетов
+		return result;
+	}
+	/**
+	 * Если пара запрошена для семейств IP - выдаём два НЕСВЯЗАННЫХ сокета
+	 *
+	 * @details Связанной пары семейства эти не просят вовсе, и строить её здесь нельзя.
+	 *          Обращение это зовут заведением пары событий «клиент и сервер», и всякий
+	 *          из них дальше распоряжается своим сокетом сам: сервер привязывает его к
+	 *          своему адресу и слушает, клиент подключается к цели. Отдай мы им пару
+	 *          связанную - сокеты пришли бы уже привязанными и подключёнными, и
+	 *          привязка сервера отвергалась бы системой
+	 *
+	 * @note Установлено прогоном: сокет приходил привязанным к порту, выбранному
+	 *       построением пары, и `bind` отвечал отказом 10022 (`WSAEINVAL`). Отказ этот
+	 *       валил ВСЕ проверки сокетов разом - и потоковые, и дейтаграммные
+	 *
+	 * @note Так же поступают и эталонные слои: у них семейства IP выдают два сокета
+	 *       обычным заведением, а связанную пару строят одни лишь PIPE и UDS
+	 */
+	if((family == event::family_t::IPV4) || (family == event::family_t::IPV6)){
+		/**
+		 * Заводим нужное количество сокетов
+		 */
+		for(net::socket_t & sock : result)
+			// Выполняем заведение сокета по заданным доводам
+			sock = this->issue(family, type, proto);
+		// Возвращаем заведённые сокеты
 		return result;
 	}
 	// Тип сокетов пары в понимании системы

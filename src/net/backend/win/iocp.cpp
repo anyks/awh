@@ -262,6 +262,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <unordered_map>
+#include <unordered_set>
 
 /**
  * Подключаем единую точку подключения системных заголовков MS Windows
@@ -646,6 +647,276 @@ static ssize_t recvmsg(const SOCKET sock, struct msghdr * msg, [[maybe_unused]] 
  *
  */
 #define S_ISLNK(mode) (((void) (mode)), false)
+
+/**
+ * @brief Посредники обращений к сокетам, выставляющие errno
+ *
+ * @details Обращения к сокетам у MS Windows кода отказа в `errno` НЕ кладут: код свой
+ *          они держат отдельно, и добывается он обращением `WSAGetLastError`. Движок
+ *          же перенесён с систем POSIX и повсюду читает `errno` - и читает не только
+ *          ради сообщения в журнал, но и ради РАЗБОРА: по `EWOULDBLOCK` он ждёт
+ *          готовности, по `EINPROGRESS` - завершения подключения, по `EINTR` - повторяет
+ *          обращение
+ *
+ * @details Оттого без перевода ломается не вывод, а само поведение. Установлено
+ *          прогоном: неблокирующее подключение отвечало отказом, движок читал `errno`
+ *          нулевым, принимал отказ за окончательный и обрывал узел - тогда как система
+ *          лишь сообщала, что подключение начато и продолжится
+ *
+ * @note Обращения подменяются посредниками поимённо, а не общей заменой определением:
+ *       имена эти движок носит и у СВОИХ функций (`::io::send`, `::io::connect`), и
+ *       общая замена переписала бы заодно и их
+ *
+ * @note Перевод ставит `errno` лишь при отказе: успешное обращение его не трогает - тем
+ *       же порядком, каким его не трогают обращения POSIX
+ *
+ */
+static int32_t __awh_socket_errno__(const int32_t code) noexcept {
+	/**
+	 * Определяем код отказа обращения к сокету
+	 */
+	switch(code){
+		// Если обращение отвергнуто из-за незавершённости
+		case WSAEWOULDBLOCK: return EWOULDBLOCK;
+		// Если обращение начато и продолжится
+		case WSAEINPROGRESS: return EINPROGRESS;
+		// Если обращение уже ведётся
+		case WSAEALREADY: return EALREADY;
+		// Если обращение прервано
+		case WSAEINTR: return EINTR;
+		// Если довод обращения недопустим
+		case WSAEINVAL: return EINVAL;
+		// Если дескриптор недопустим
+		case WSAENOTSOCK:
+		case WSAEBADF: return EBADF;
+		// Если доступ запрещён
+		case WSAEACCES: return EACCES;
+		// Если адрес уже занят
+		case WSAEADDRINUSE: return EADDRINUSE;
+		// Если адрес недоступен
+		case WSAEADDRNOTAVAIL: return EADDRNOTAVAIL;
+		// Если сеть недоступна
+		case WSAENETUNREACH: return ENETUNREACH;
+		// Если узел недоступен
+		case WSAEHOSTUNREACH: return EHOSTUNREACH;
+		// Если подключение отвергнуто
+		case WSAECONNREFUSED: return ECONNREFUSED;
+		// Если подключение сброшено собеседником
+		case WSAECONNRESET: return ECONNRESET;
+		// Если подключение оборвано
+		case WSAECONNABORTED: return ECONNABORTED;
+		// Если подключение уже установлено
+		case WSAEISCONN: return EISCONN;
+		// Если подключение не установлено
+		case WSAENOTCONN: return ENOTCONN;
+		// Если передача после закрытия направления
+		case WSAESHUTDOWN: return EPIPE;
+		// Если срок ожидания истёк
+		case WSAETIMEDOUT: return ETIMEDOUT;
+		// Если буферов системы не осталось
+		case WSAENOBUFS: return ENOBUFS;
+		// Если сообщение не помещается
+		case WSAEMSGSIZE: return EMSGSIZE;
+		// Если дескрипторов не осталось
+		case WSAEMFILE: return EMFILE;
+		// Если семейство адресов не поддерживается
+		case WSAEAFNOSUPPORT: return EAFNOSUPPORT;
+		// Если действие не поддерживается
+		case WSAEOPNOTSUPP: return EOPNOTSUPP;
+		// Если протокол не поддерживается
+		case WSAEPROTONOSUPPORT: return EPROTONOSUPPORT;
+		// Если средства сокетов не подняты
+		case WSANOTINITIALISED: return ENXIO;
+		// Если отказа не было вовсе
+		case 0: return 0;
+	}
+	// Выводим отказ, вида которому у POSIX нет
+	return EIO;
+}
+/**
+ * @brief Функция переноса кода отказа обращения к сокету в errno
+ *
+ * @param result результат обращения к сокету
+ * @return       результат обращения к сокету
+ *
+ */
+template <typename T>
+static T __awh_socket_result__(const T result) noexcept {
+	// Если обращение завершилось отказом
+	if(result < 0)
+		// Переносим код отказа обращения в errno
+		errno = ::__awh_socket_errno__(::WSAGetLastError());
+	// Выводим результат обращения к сокету
+	return result;
+}
+/**
+ * @brief Функция привязки сокета к адресу
+ *
+ * @param sock дескриптор сокета
+ * @param addr адрес привязки
+ * @param size размер адреса привязки
+ * @return     результат привязки сокета
+ *
+ */
+static int32_t __awh_bind__(const SOCKET sock, const struct sockaddr * addr, const int32_t size) noexcept {
+	// Выводим результат привязки сокета
+	return ::__awh_socket_result__(::bind(sock, addr, size));
+}
+/**
+ * @brief Функция перевода сокета в ожидание подключений
+ *
+ * @param sock    дескриптор сокета
+ * @param backlog глубина очереди ожидающих подключений
+ * @return        результат перевода сокета в ожидание подключений
+ *
+ */
+static int32_t __awh_listen__(const SOCKET sock, const int32_t backlog) noexcept {
+	// Выводим результат перевода сокета в ожидание подключений
+	return ::__awh_socket_result__(::listen(sock, backlog));
+}
+/**
+ * @brief Функция приёма ожидающего подключения
+ *
+ * @param sock дескриптор сокета
+ * @param addr адрес принятого подключения
+ * @param size размер адреса принятого подключения
+ * @return     дескриптор принятого подключения
+ *
+ */
+static SOCKET __awh_accept__(const SOCKET sock, struct sockaddr * addr, int32_t * size) noexcept {
+	// Выполняем приём ожидающего подключения
+	const SOCKET result = ::accept(sock, addr, size);
+	/**
+	 * Если принять подключение не удалось
+	 *
+	 * @note Признак негодного дескриптора пишется приведением, а не именем
+	 *       `INVALID_SOCKET`: имя это движок снимает парой macro_push.hpp и
+	 *       macro_pop.hpp - оно сталкивается с именем члена перечисления AWH
+	 */
+	if(result == static_cast <SOCKET> (~static_cast <SOCKET> (0)))
+		// Переносим код отказа обращения в errno
+		errno = ::__awh_socket_errno__(::WSAGetLastError());
+	// Выводим дескриптор принятого подключения
+	return result;
+}
+/**
+ * @brief Функция подключения сокета к адресу
+ *
+ * @param sock дескриптор сокета
+ * @param addr адрес подключения
+ * @param size размер адреса подключения
+ * @return     результат подключения сокета
+ *
+ */
+static int32_t __awh_connect__(const SOCKET sock, const struct sockaddr * addr, const int32_t size) noexcept {
+	// Выполняем подключение сокета к адресу
+	const int32_t result = ::connect(sock, addr, size);
+	// Если подключение сокета не удалось
+	if(result < 0){
+		// Получаем код отказа подключения сокета
+		const int32_t code = ::WSAGetLastError();
+		/**
+		 * Переносим код отказа подключения в errno
+		 *
+		 * @note Неблокирующее подключение эта система начатым НЕ называет: взамен
+		 *       `EINPROGRESS`, каким отвечают системы POSIX, она отвечает отказом
+		 *       `WSAEWOULDBLOCK`. Разбор же движка ждёт именно начатости, оттого
+		 *       отказ этот здесь и переводится в неё - иначе движок обрывал бы узел,
+		 *       которому оставалось лишь дождаться готовности к записи
+		 */
+		errno = ((code == WSAEWOULDBLOCK) ? EINPROGRESS : ::__awh_socket_errno__(code));
+	}
+	// Выводим результат подключения сокета
+	return result;
+}
+/**
+ * @brief Функция приёма данных из сокета
+ *
+ * @param sock   дескриптор сокета
+ * @param buffer буфер принимаемых данных
+ * @param size   размер буфера принимаемых данных
+ * @param flags  признаки приёма данных
+ * @return       размер принятых данных
+ *
+ */
+static int32_t __awh_recv__(const SOCKET sock, void * buffer, const size_t size, const int32_t flags) noexcept {
+	// Выводим размер принятых данных
+	return ::__awh_socket_result__(::recv(sock, reinterpret_cast <char *> (buffer), static_cast <int32_t> (size), flags));
+}
+/**
+ * @brief Функция передачи данных в сокет
+ *
+ * @param sock   дескриптор сокета
+ * @param buffer буфер передаваемых данных
+ * @param size   размер буфера передаваемых данных
+ * @param flags  признаки передачи данных
+ * @return       размер переданных данных
+ *
+ */
+static int32_t __awh_send__(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags) noexcept {
+	// Выводим размер переданных данных
+	return ::__awh_socket_result__(::send(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags));
+}
+/**
+ * @brief Функция приёма дейтаграммы из сокета
+ *
+ * @param sock   дескриптор сокета
+ * @param buffer буфер принимаемых данных
+ * @param size   размер буфера принимаемых данных
+ * @param flags  признаки приёма данных
+ * @param addr   адрес отправителя дейтаграммы
+ * @param length размер адреса отправителя дейтаграммы
+ * @return       размер принятых данных
+ *
+ */
+static int32_t __awh_recvfrom__(const SOCKET sock, void * buffer, const size_t size, const int32_t flags, struct sockaddr * addr, int32_t * length) noexcept {
+	// Выводим размер принятых данных
+	return ::__awh_socket_result__(::recvfrom(sock, reinterpret_cast <char *> (buffer), static_cast <int32_t> (size), flags, addr, length));
+}
+/**
+ * @brief Функция передачи дейтаграммы в сокет
+ *
+ * @param sock   дескриптор сокета
+ * @param buffer буфер передаваемых данных
+ * @param size   размер буфера передаваемых данных
+ * @param flags  признаки передачи данных
+ * @param addr   адрес получателя дейтаграммы
+ * @param length размер адреса получателя дейтаграммы
+ * @return       размер переданных данных
+ *
+ */
+static int32_t __awh_sendto__(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const int32_t length) noexcept {
+	// Выводим размер переданных данных
+	return ::__awh_socket_result__(::sendto(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags, addr, length));
+}
+/**
+ * @brief Функция получения адреса, к которому привязан сокет
+ *
+ * @param sock дескриптор сокета
+ * @param addr адрес, к которому привязан сокет
+ * @param size размер адреса, к которому привязан сокет
+ * @return     результат получения адреса
+ *
+ */
+static int32_t __awh_getsockname__(const SOCKET sock, struct sockaddr * addr, int32_t * size) noexcept {
+	// Выводим результат получения адреса
+	return ::__awh_socket_result__(::getsockname(sock, addr, size));
+}
+/**
+ * @brief Функция получения значения опции сокета
+ *
+ * @param sock   дескриптор сокета
+ * @param level  уровень опции сокета
+ * @param option номер опции сокета
+ * @param value  значение опции сокета
+ * @param size   размер значения опции сокета
+ * @return       результат получения значения опции
+ *
+ */
+static int32_t __awh_getsockopt__(const SOCKET sock, const int32_t level, const int32_t option, void * value, int32_t * size) noexcept {
+	// Выводим результат получения значения опции
+	return ::__awh_socket_result__(::__awh_getsockopt__(sock, level, option, reinterpret_cast <char *> (value), size));
+}
 
 /**
  * @brief Посредники работы с путями файловой системы
@@ -1250,7 +1521,7 @@ static int32_t msync(void * address, [[maybe_unused]] const size_t length, [[may
  */
 static inline ssize_t send(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags) noexcept {
 	// Выводим итог отдачи данных в сокет
-	return static_cast <ssize_t> (::send(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags));
+	return static_cast <ssize_t> (::__awh_send__(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags));
 }
 
 /**
@@ -1265,7 +1536,7 @@ static inline ssize_t send(const SOCKET sock, const void * buffer, const size_t 
  */
 static inline ssize_t recv(const SOCKET sock, void * buffer, const size_t size, const int32_t flags) noexcept {
 	// Выводим итог приёма данных из сокета
-	return static_cast <ssize_t> (::recv(sock, reinterpret_cast <char *> (buffer), static_cast <int32_t> (size), flags));
+	return static_cast <ssize_t> (::__awh_recv__(sock, reinterpret_cast <char *> (buffer), static_cast <int32_t> (size), flags));
 }
 
 /**
@@ -1282,7 +1553,7 @@ static inline ssize_t recv(const SOCKET sock, void * buffer, const size_t size, 
  */
 static inline ssize_t sendto(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length) noexcept {
 	// Выводим итог отдачи дейтаграммы по адресу
-	return static_cast <ssize_t> (::sendto(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags, addr, static_cast <int32_t> (length)));
+	return static_cast <ssize_t> (::__awh_sendto__(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags, addr, static_cast <int32_t> (length)));
 }
 
 /**
@@ -1299,7 +1570,7 @@ static inline ssize_t sendto(const SOCKET sock, const void * buffer, const size_
  */
 static inline ssize_t recvfrom(const SOCKET sock, void * buffer, const size_t size, const int32_t flags, struct sockaddr * addr, socklen_t * length) noexcept {
 	// Выводим итог приёма дейтаграммы с адресом отправителя
-	return static_cast <ssize_t> (::recvfrom(sock, reinterpret_cast <char *> (buffer), static_cast <int32_t> (size), flags, addr, reinterpret_cast <int32_t *> (length)));
+	return static_cast <ssize_t> (::__awh_recvfrom__(sock, reinterpret_cast <char *> (buffer), static_cast <int32_t> (size), flags, addr, reinterpret_cast <int32_t *> (length)));
 }
 
 /**
@@ -5339,12 +5610,22 @@ namespace post {
 		if(accepted || (error == ERROR_IO_PENDING))
 			// Выводим метку завершения
 			return token;
+		/**
+		 * Запоминаем дескриптор отвергнутой операции
+		 *
+		 * @note Дескриптор называется в сообщении намеренно: отказ подачи разбирается
+		 *       по тому, ЧЕМУ операция подавалась, - слушающему сокету, подключающемуся
+		 *       либо подключённому, - и без дескриптора сообщение об этом умалчивает
+		 */
+		::inflight::slot_t * slot = ::inflight::get(token);
+		// Получаем дескриптор, которому операция подавалась
+		const net::socket_t sock = ((slot != nullptr) ? slot->sock : net::invalid_socket_t);
 		// Освобождаем запись учёта: завершения по операции не будет
 		::inflight::release(token);
 		// Если объект для работы с логами задан
 		if(::post::log != nullptr)
 			// Записываем ошибку в лог
-			::post::log->print("%s: cannot submit %s: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, name, ::kernel::message(error).c_str());
+			::post::log->print("%s: cannot submit %s on descriptor %llu: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, name, static_cast <uint64_t> (sock), ::kernel::message(error).c_str());
 		// Выводим отсутствие метки завершения
 		return ::inflight::INVALID;
 	}
@@ -5802,13 +6083,13 @@ namespace drain {
 		 */
 		if((::port::handle == nullptr) || !::post::owned())
 			// Выполняем отправку данных обычным обращением
-			return ::send(sock, buffer, size, MSG_NOSIGNAL);
+			return ::__awh_send__(sock, buffer, size, MSG_NOSIGNAL);
 		// Получаем запись исхода отправки
 		sent_t * record = ::drain::get(sock);
 		// Если запись исхода отправки добыть не удалось
 		if(record == nullptr)
 			// Выполняем отправку данных обычным обращением
-			return ::send(sock, buffer, size, MSG_NOSIGNAL);
+			return ::__awh_send__(sock, buffer, size, MSG_NOSIGNAL);
 		// Если исход прежней отправки уже пришёл
 		if(record->ready){
 			// Забираем исход отправки
@@ -5856,13 +6137,13 @@ namespace drain {
 		// Если подписки по дескриптору нет вовсе
 		if(state == nullptr)
 			// Выполняем отправку данных обычным обращением
-			return ::send(sock, buffer, size, MSG_NOSIGNAL);
+			return ::__awh_send__(sock, buffer, size, MSG_NOSIGNAL);
 		// Выполняем подачу отправки в кольцо
 		const uint64_t token = ::post::send(sock, buffer, size, state);
 		// Если подача отправки не удалась
 		if(token == ::inflight::INVALID)
 			// Выполняем отправку данных обычным обращением
-			return ::send(sock, buffer, size, MSG_NOSIGNAL);
+			return ::__awh_send__(sock, buffer, size, MSG_NOSIGNAL);
 		// Запоминаем метку завершения поданной отправки
 		record->token = token;
 		// Отмечаем отправку заведённой
@@ -5966,6 +6247,20 @@ namespace kernel {
 		// Признак того, что подписка заведена в очереди опроса
 		bool registered;
 		/**
+		 * @brief Признак того, что дескриптор привязан к порту завершений
+		 *
+		 * @details Привязка эта - своенравность порта завершений, какой нет ни у одного
+		 *          из эталонных движков: у epoll и kqueue дескриптор называется самой
+		 *          подпиской, у io_uring - подаваемой операцией. Здесь же завершения по
+		 *          дескриптору не приходят ВОВСЕ, пока он не привязан, и молчание это
+		 *          ничем себя не выдаёт: подача принимается, а завершения нет
+		 *
+		 * @note Держится признаком, а не повторной привязкой на всякую подачу: привязка
+		 *       - обращение к ядру, а подача идёт на всяком обороте цикла
+		 *
+		 */
+		bool attached;
+		/**
 		 * @brief Признак расхождения учёта с очередью опроса
 		 *
 		 * @details Правки подписок ложатся сперва в учёт, а к ядру уходят одним
@@ -6005,7 +6300,7 @@ namespace kernel {
 		 */
 		Registry() noexcept :
 		 sock(net::invalid_socket_t), declared(0), enabled(0), edge(false), oneshot(0),
-		 registered(false), pending(false), applied(0),
+		 registered(false), attached(false), pending(false), applied(0),
 		 token(::inflight::INVALID), udata(nullptr) {}
 	} registry_t;
 
@@ -6073,6 +6368,82 @@ namespace kernel {
 	 *
 	 */
 	static vector <net::socket_t> pending;
+
+	/**
+	 * @brief Дескрипторы, подключение которых ведётся наложенной операцией
+	 *
+	 * @details Готовность у порта завершений изображается обменом нулевой длины, а
+	 *          обмен этот требует сокета УЖЕ подключённого: на подключающемся он
+	 *          отвечает отказом 10057 (`WSAENOTCONN`). Оттого подключение здесь ведётся
+	 *          не обращением `connect` с последующим ожиданием готовности к записи, как
+	 *          у систем POSIX, а наложенным обращением `ConnectEx`, о завершении
+	 *          которого сообщает само завершение операции
+	 *
+	 * @note Пока подключение ведётся, ожидание готовности по дескриптору НЕ подаётся:
+	 *       подать его нечем. Согласование учёта такие дескрипторы пропускает, оставляя
+	 *       их расходящимися, а завершение подключения возвращает их в согласование -
+	 *       уже подключёнными
+	 *
+	 */
+	static unordered_set <net::socket_t> connections;
+
+	/**
+	 * @brief Дескрипторы, переведённые в ожидание подключений
+	 *
+	 * @details Готовность слушающего сокета к приёму подключений обменом нулевой длины
+	 *          не изображается: сокет этот не подключён, и обмен отвечает на нём
+	 *          отказом 10057 (`WSAENOTCONN`) - тем же самым, каким отвечает на
+	 *          подключающемся. Приём потому и ведётся наложенным обращением `AcceptEx`,
+	 *          а слушающие дескрипторы держатся здесь: подача ожидания обязана знать,
+	 *          с чем имеет дело
+	 *
+	 */
+	static unordered_set <net::socket_t> listeners;
+
+	/**
+	 * @brief Сведения о поданном наложенном приёме подключения
+	 *
+	 * @details Обращение `AcceptEx` требует сокета, заведённого ЗАРАНЕЕ: система не
+	 *          заводит его сама, как то делает `accept`, а наполняет уже готовый.
+	 *          Держится он здесь вместе с буфером адресов - до прихода завершения
+	 *
+	 * @warning Буфер адресов система заполняет ПОСЛЕ возврата из обращения, оттого
+	 *          принадлежать он обязан записи, переживающей операцию, а не месту вызова
+	 *
+	 */
+	typedef struct Acception {
+		// Дескриптор, заведённый под принимаемое подключение
+		net::socket_t sock;
+		/**
+		 * Буфер адресов, заполняемый системой
+		 *
+		 * @note Размер его задан обращением: под всякий из двух адресов отводится на
+		 *       16 октетов больше самого адреса. Требование это обращения, а не
+		 *       устройства адресов, и меньший буфер оно отвергает
+		 */
+		alignas(8) uint8_t buffer[2 * (sizeof(struct sockaddr_storage) + 16)];
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Acception() noexcept : sock(net::invalid_socket_t), buffer{} {}
+	} acception_t;
+
+	/**
+	 * @brief Поданные наложенные приёмы подключений по меткам завершения
+	 *
+	 */
+	static unordered_map <uint64_t, unique_ptr <acception_t>> acceptions;
+
+	/**
+	 * @brief Принятые подключения, ожидающие выдачи движку, по слушающим дескрипторам
+	 *
+	 * @details Наложенный приём подключение уже ПРИНЯЛ, и обращению `accept` принимать
+	 *          после него нечего. Оттого принятое складывается сюда, а посредник приёма
+	 *          выдаёт его отсюда - тем же видом, каким выдало бы обращение системы
+	 *
+	 */
+	static unordered_map <net::socket_t, vector <pair <net::socket_t, struct sockaddr_storage>>> accepted;
 
 	/**
 	 * @brief Функция добычи записи учёта подписки по дескриптору
@@ -7091,9 +7462,318 @@ namespace kernel {
 	 * @return      результат согласования
 	 *
 	 */
+	/**
+	 * @brief Функция подачи наложенного подключения к удалённой стороне
+	 *
+	 * @details Обращение `connect` для порта завершений не годится: сообщить о
+	 *          завершении подключения ему нечем. Готовность к записи, которой
+	 *          пользуются системы POSIX, изображается здесь обменом нулевой длины, а
+	 *          тот на подключающемся сокете отвечает отказом 10057 (`WSAENOTCONN`) -
+	 *          установлено прогоном
+	 *
+	 * @details Взамен подаётся `ConnectEx` - наложенное подключение, о завершении
+	 *          которого сообщает завершение операции. Наружу оно выдаётся той же
+	 *          готовностью к записи, какую движок ждёт от систем POSIX: разбор
+	 *          подключения от этого не меняется ни строкой
+	 *
+	 * @warning Обращение это требует сокета, УЖЕ привязанного к адресу, тогда как
+	 *          `connect` привязывает его сам. Привязка потому и делается здесь - к
+	 *          несобственному адресу и нулевому порту, если вызывающая сторона своей
+	 *          привязки не задала
+	 *
+	 * @note Указатель на обращение добывается у поставщика услуг сокетов, а не берётся
+	 *       у библиотеки: экспортом оно не отдаётся вовсе - тем же порядком, каким
+	 *       добывается `WSARecvMsg` в слое сокетов
+	 *
+	 * @param sock  дескриптор подключаемого сокета
+	 * @param addr  адрес удалённой стороны
+	 * @param size  размер адреса удалённой стороны
+	 * @param udata узел, которому подключение принадлежит
+	 * @param log   объект работы с логами
+	 * @return      метка завершения поданного подключения
+	 *
+	 */
+	static uint64_t connecting(const net::socket_t sock, const struct sockaddr * addr, const int32_t size, void * udata, const log_t * log) noexcept {
+		// Указатель на обращение наложенного подключения
+		static LPFN_CONNECTEX connectex = nullptr;
+		// Если указатель на обращение наложенного подключения ещё не добыт
+		if(connectex == nullptr){
+			// Опознаватель обращения наложенного подключения
+			GUID guid = WSAID_CONNECTEX;
+			// Размер полученного указателя, обращению обязательный
+			DWORD bytes = 0;
+			// Выполняем добычу указателя на обращение наложенного подключения
+			if(::WSAIoctl(
+				static_cast <SOCKET> (sock), SIO_GET_EXTENSION_FUNCTION_POINTER,
+				&guid, sizeof(guid), &connectex, sizeof(connectex), &bytes, nullptr, nullptr
+			) != 0){
+				// Забываем недобытый указатель
+				connectex = nullptr;
+				// Записываем ошибку в лог
+				log->print("%s: cannot obtain ConnectEx entry point: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+				// Выводим отсутствие метки завершения
+				return ::inflight::INVALID;
+			}
+		}
+		// Адрес, к которому привязан подключаемый сокет
+		struct sockaddr_storage bound{};
+		// Размер адреса, к которому привязан подключаемый сокет
+		int32_t length = static_cast <int32_t> (sizeof(bound));
+		/**
+		 * Если сокет к адресу не привязан - привязываем его сами
+		 *
+		 * @note Привязка идёт к тому же семейству адресов, к какому принадлежит адрес
+		 *       удалённой стороны: привязка чужого семейства отвергается системой
+		 */
+		if(::__awh_getsockname__(static_cast <SOCKET> (sock), reinterpret_cast <struct sockaddr *> (&bound), &length) != 0){
+			// Собственный адрес привязки
+			struct sockaddr_storage source{};
+			// Устанавливаем семейство собственного адреса привязки
+			source.ss_family = addr->sa_family;
+			// Размер собственного адреса привязки
+			const int32_t bytes = static_cast <int32_t> ((addr->sa_family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
+			// Если привязать сокет к собственному адресу не удалось
+			if(::__awh_bind__(static_cast <SOCKET> (sock), reinterpret_cast <struct sockaddr *> (&source), bytes) != 0){
+				// Записываем ошибку в лог
+				log->print("%s: cannot bind descriptor %llu before overlapped connect: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (sock), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+				// Выводим отсутствие метки завершения
+				return ::inflight::INVALID;
+			}
+		}
+		// Занимаем запись учёта под операцию
+		const uint64_t result = ::inflight::acquire(::inflight::kind_t::CONNECT, sock, udata);
+		// Получаем запись учёта
+		::inflight::slot_t * slot = ::inflight::get(result);
+		// Если запись учёта занять не удалось
+		if(slot == nullptr)
+			// Выводим отсутствие метки завершения
+			return ::inflight::INVALID;
+		// Запоминаем набор ожидаемых событий готовности
+		slot->mask = static_cast <uint32_t> (EPOLLOUT);
+		// Количество переданных байт, обращению обязательное
+		DWORD bytes = 0;
+		// Выполняем подачу наложенного подключения
+		const bool accepted = static_cast <bool> (connectex(static_cast <SOCKET> (sock), addr, size, nullptr, 0, &bytes, &slot->overlapped));
+		// Выводим результат подачи наложенного подключения
+		return ::post::submitted(accepted, static_cast <DWORD> (::WSAGetLastError()), result, "connect");
+	}
+	/**
+	 * @brief Функция подачи наложенного приёма подключения
+	 *
+	 * @details Обращение `accept` для порта завершений не годится тем же, чем не годится
+	 *          `connect`: сообщить о появлении подключения ему нечем, а готовность
+	 *          слушающего сокета обменом нулевой длины не изображается - тот отвечает на
+	 *          нём отказом `WSAENOTCONN`
+	 *
+	 * @details Взамен подаётся `AcceptEx`. Отличается он от обращения системы двумя
+	 *          вещами: сокет под принимаемое подключение заводится ЗАРАНЕЕ, а адреса
+	 *          сторон складываются в буфер вызывающего, откуда добываются отдельным
+	 *          обращением `GetAcceptExSockaddrs`
+	 *
+	 * @note Наружу завершение выдаётся готовностью к чтению - той самой, по которой
+	 *       движок зовёт приём подключения. Сам приём к этому мигу уже состоялся, и
+	 *       посредник приёма лишь выдаёт принятое из очереди
+	 *
+	 * @param sock  слушающий дескриптор
+	 * @param udata узел, которому приём принадлежит
+	 * @param log   объект работы с логами
+	 * @return      метка завершения поданного приёма
+	 *
+	 */
+	static uint64_t accepting(const net::socket_t sock, void * udata, const log_t * log) noexcept {
+		// Указатель на обращение наложенного приёма подключения
+		static LPFN_ACCEPTEX acceptex = nullptr;
+		// Если указатель на обращение наложенного приёма ещё не добыт
+		if(acceptex == nullptr){
+			// Опознаватель обращения наложенного приёма подключения
+			GUID guid = WSAID_ACCEPTEX;
+			// Размер полученного указателя, обращению обязательный
+			DWORD bytes = 0;
+			// Выполняем добычу указателя на обращение наложенного приёма
+			if(::WSAIoctl(
+				static_cast <SOCKET> (sock), SIO_GET_EXTENSION_FUNCTION_POINTER,
+				&guid, sizeof(guid), &acceptex, sizeof(acceptex), &bytes, nullptr, nullptr
+			) != 0){
+				// Забываем недобытый указатель
+				acceptex = nullptr;
+				// Записываем ошибку в лог
+				log->print("%s: cannot obtain AcceptEx entry point: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+				// Выводим отсутствие метки завершения
+				return ::inflight::INVALID;
+			}
+		}
+		// Адрес, к которому привязан слушающий сокет
+		struct sockaddr_storage bound{};
+		// Размер адреса, к которому привязан слушающий сокет
+		int32_t length = static_cast <int32_t> (sizeof(bound));
+		// Если добыть адрес слушающего сокета не удалось
+		if(::__awh_getsockname__(static_cast <SOCKET> (sock), reinterpret_cast <struct sockaddr *> (&bound), &length) != 0){
+			// Записываем ошибку в лог
+			log->print("%s: cannot obtain family of listening descriptor %llu: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (sock), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+			// Выводим отсутствие метки завершения
+			return ::inflight::INVALID;
+		}
+		/**
+		 * Заводим сокет под принимаемое подключение
+		 *
+		 * @note Заводится он наложенным: принятое подключение обслуживает тот же порт
+		 *       завершений, а сокет без наложения к нему не привязывается вовсе
+		 */
+		const SOCKET peer = ::WSASocketW(static_cast <int32_t> (bound.ss_family), SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
+		// Если сокет под принимаемое подключение завести не удалось
+		if(peer == static_cast <SOCKET> (~static_cast <SOCKET> (0))){
+			// Записываем ошибку в лог
+			log->print("%s: cannot create socket for incoming connection: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+			// Выводим отсутствие метки завершения
+			return ::inflight::INVALID;
+		}
+		// Занимаем запись учёта под операцию
+		const uint64_t result = ::inflight::acquire(::inflight::kind_t::ACCEPT, sock, udata);
+		// Получаем запись учёта
+		::inflight::slot_t * slot = ::inflight::get(result);
+		// Если запись учёта занять не удалось
+		if(slot == nullptr){
+			// Выполняем закрытие заведённого сокета
+			::closesocket(peer);
+			// Выводим отсутствие метки завершения
+			return ::inflight::INVALID;
+		}
+		// Запоминаем набор ожидаемых событий готовности
+		slot->mask = static_cast <uint32_t> (EPOLLIN);
+		// Заводим сведения о поданном наложенном приёме
+		unique_ptr <acception_t> acception(new acception_t);
+		// Запоминаем дескриптор, заведённый под принимаемое подключение
+		acception->sock = static_cast <net::socket_t> (peer);
+		// Получаем сведения о поданном наложенном приёме
+		acception_t * source = acception.get();
+		// Запоминаем сведения о поданном наложенном приёме
+		::kernel::acceptions.emplace(result, ::move(acception));
+		// Количество принятых октетов, обращению обязательное
+		DWORD bytes = 0;
+		/**
+		 * Выполняем подачу наложенного приёма подключения
+		 *
+		 * @note Данных вместе с подключением не принимается: длина приёмной части
+		 *       буфера нулевая. Приём данных приёмом подключения задерживал бы
+		 *       извещение о нём до прихода первого октета, а движок ждёт извещения о
+		 *       самом подключении
+		 */
+		const bool accepted = static_cast <bool> (acceptex(
+			static_cast <SOCKET> (sock), peer, source->buffer, 0,
+			static_cast <DWORD> (sizeof(struct sockaddr_storage) + 16),
+			static_cast <DWORD> (sizeof(struct sockaddr_storage) + 16),
+			&bytes, &slot->overlapped
+		));
+		// Получаем код отказа подачи наложенного приёма
+		const DWORD error = static_cast <DWORD> (::WSAGetLastError());
+		// Если подачу наложенного приёма система не приняла
+		if(!accepted && (error != ERROR_IO_PENDING)){
+			// Выполняем закрытие заведённого сокета
+			::closesocket(peer);
+			// Забываем сведения о поданном наложенном приёме
+			::kernel::acceptions.erase(result);
+		}
+		// Выводим результат подачи наложенного приёма подключения
+		return ::post::submitted(accepted, error, result, "accept");
+	}
+	/**
+	 * @brief Функция добычи адресов сторон принятого подключения
+	 *
+	 * @details Обращение это библиотекой не отдаётся вовсе - только поставщиком услуг
+	 *          сокетов, тем же порядком, каким отдаются `AcceptEx` и `ConnectEx`.
+	 *          Связывать движок с библиотекой mswsock ради одного обращения незачем:
+	 *          добыча указателя обходится тем же, а зависимости не прибавляет
+	 *
+	 * @param buffer буфер адресов, заполненный наложенным приёмом
+	 * @param local  адрес принимающей стороны
+	 * @param first  размер адреса принимающей стороны
+	 * @param remote адрес удалённой стороны
+	 * @param second размер адреса удалённой стороны
+	 * @param sock   слушающий дескриптор, у которого добывается указатель
+	 * @return       результат добычи адресов сторон
+	 *
+	 */
+	static bool sockaddrs(void * buffer, const DWORD, const DWORD, const DWORD, struct sockaddr ** local, int32_t * first, struct sockaddr ** remote, int32_t * second, const net::socket_t sock = net::invalid_socket_t) noexcept {
+		// Указатель на обращение добычи адресов сторон принятого подключения
+		static LPFN_GETACCEPTEXSOCKADDRS sockaddrs = nullptr;
+		// Если указатель на обращение добычи адресов ещё не добыт
+		if(sockaddrs == nullptr){
+			// Опознаватель обращения добычи адресов сторон принятого подключения
+			GUID guid = WSAID_GETACCEPTEXSOCKADDRS;
+			// Размер полученного указателя, обращению обязательный
+			DWORD bytes = 0;
+			// Выполняем добычу указателя на обращение добычи адресов сторон
+			if(::WSAIoctl(
+				static_cast <SOCKET> (sock), SIO_GET_EXTENSION_FUNCTION_POINTER,
+				&guid, sizeof(guid), &sockaddrs, sizeof(sockaddrs), &bytes, nullptr, nullptr
+			) != 0){
+				// Забываем недобытый указатель
+				sockaddrs = nullptr;
+				// Выводим результат с ошибкой
+				return false;
+			}
+		}
+		// Выполняем добычу адресов сторон принятого подключения
+		sockaddrs(buffer, 0, static_cast <DWORD> (sizeof(struct sockaddr_storage) + 16), static_cast <DWORD> (sizeof(struct sockaddr_storage) + 16), local, first, remote, second);
+		// Выводим успешный результат
+		return true;
+	}
+	/**
+	 * @brief Функция выдачи принятого подключения движку
+	 *
+	 * @details Наложенный приём подключение уже принял, и обращению системы принимать
+	 *          после него нечего. Здесь принятое лишь выдаётся из очереди - тем же
+	 *          видом, каким выдало бы обращение `accept`, включая отказ `EWOULDBLOCK`
+	 *          при опустевшей очереди
+	 *
+	 * @param sock слушающий дескриптор
+	 * @param addr адрес принятого подключения
+	 * @param size размер адреса принятого подключения
+	 * @return     дескриптор принятого подключения
+	 *
+	 */
+	static net::socket_t acception(const net::socket_t sock, struct sockaddr * addr, socklen_t * size) noexcept {
+		// Выполняем поиск принятых подключений по слушающему дескриптору
+		auto i = ::kernel::accepted.find(sock);
+		// Если принятых подключений по дескриптору нет
+		if((i == ::kernel::accepted.end()) || i->second.empty()){
+			// Отмечаем отсутствие ожидающих подключений
+			errno = EWOULDBLOCK;
+			// Выводим отсутствие принятого подключения
+			return net::invalid_socket_t;
+		}
+		// Получаем первое принятое подключение
+		const auto signal = i->second.front();
+		// Убираем выдаваемое подключение из очереди
+		i->second.erase(i->second.begin());
+		// Если адрес принятого подключения запрошен
+		if((addr != nullptr) && (size != nullptr)){
+			// Получаем размер адреса принятого подключения
+			const size_t length = ((signal.second.ss_family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
+			// Переносим адрес принятого подключения вызывающему
+			::memcpy(addr, &signal.second, ((static_cast <size_t> (* size) < length) ? static_cast <size_t> (* size) : length));
+			// Устанавливаем размер адреса принятого подключения
+			(* size) = static_cast <socklen_t> (length);
+		}
+		// Выводим дескриптор принятого подключения
+		return signal.first;
+	}
 	static bool reconcile(registry_t & state, const log_t * log) noexcept {
 		// Снимаем отметку расхождения: согласование выполняется прямо сейчас
 		state.pending = false;
+		/**
+		 * Если по дескриптору ведётся наложенное подключение - согласование откладывается
+		 *
+		 * @note Ожидание готовности на подключающемся сокете подать нечем: обмен нулевой
+		 *       длины отвечает на нём отказом. Учёт остаётся расходящимся, и вернёт его в
+		 *       согласование завершение подключения - уже по подключённому сокету
+		 */
+		if(::kernel::connections.count(state.sock) > 0){
+			// Отмечаем учёт разошедшимся с ядром
+			state.pending = true;
+			// Выводим успешный результат: согласовывать пока нечего
+			return true;
+		}
 		// Если включённых подписок не осталось вовсе
 		if(state.enabled == 0){
 			// Если ожидание готовности ядру подано было
@@ -7284,8 +7964,34 @@ namespace kernel {
 		 * @note Дескриптор приёмника объединения оставлен: он нужен перекладыванию
 		 *       через буфер, а оно от вида приёма не зависит
 		 */
-		// Выполняем подачу ожидания готовности
-		state.token = ::post::poll(state.sock, events, false, &state);
+		/**
+		 * Выполняем подачу ожидания готовности
+		 *
+		 * @note Слушающему дескриптору взамен подаётся наложенный приём подключения:
+		 *       готовность его обменом нулевой длины не изображается вовсе. Наружу
+		 *       приём выдаётся той же готовностью к чтению, и учёт подписок о разнице
+		 *       не знает
+		 */
+		/**
+		 * Если дескриптор к порту завершений ещё не привязан - привязываем его
+		 *
+		 * @note Без привязки завершения по дескриптору не приходят вовсе, а подача
+		 *       при этом принимается как ни в чём не бывало. Установлено прогоном:
+		 *       подключение проходило, приём подключения подавался, и цикл событий
+		 *       ждал завершения, которого не могло быть
+		 */
+		if(!state.attached){
+			// Если привязать дескриптор к порту завершений не удалось
+			if(!::port::attach(state.sock, log))
+				// Выводим результат с ошибкой
+				return false;
+			// Отмечаем дескриптор привязанным к порту завершений
+			state.attached = true;
+		}
+		state.token = ((::kernel::listeners.count(state.sock) > 0) ?
+			::kernel::accepting(state.sock, &state, log) :
+			::post::poll(state.sock, events, false, &state)
+		);
 		// Если подать ожидание готовности не удалось
 		if(state.token == ::inflight::INVALID){
 			// Записываем ошибку в лог
@@ -12571,7 +13277,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем чтение данных из IPC-сокета
-							bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							bytes = ::__awh_recv__(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 							// Учитываем полученное в объявленном ядром объёме
 							watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Если мы получили ошибку
@@ -12640,7 +13346,7 @@ namespace io {
 					// Если событие является блокирующим
 					} else {
 						// Выполняем чтение данных из IPC-сокета
-						const ssize_t bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						const ssize_t bytes = ::__awh_recv__(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -12707,7 +13413,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем чтение данных из IPC-сокета
-							bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							bytes = ::__awh_recv__(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 							// Учитываем полученное в объявленном ядром объёме
 							watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Если мы получили ошибку
@@ -12776,7 +13482,7 @@ namespace io {
 					// Если событие является блокирующим
 					} else {
 						// Выполняем чтение данных из IPC-сокета
-						const ssize_t bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						const ssize_t bytes = ::__awh_recv__(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -12934,7 +13640,7 @@ namespace io {
 								// Обнуляем смещение
 								offset = 0;
 								// Выполняем чтение данных из TCP/IP сокета
-								bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
+								bytes = ::__awh_recv__(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, ((peer->state.protocol == event::protocol_t::SCTP) ? 0 : size));
 								// Если мы получили ошибку
@@ -13103,7 +13809,7 @@ namespace io {
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						// Выполняем чтение данных из TCP/IP сокета
-						bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						bytes = ::__awh_recv__(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -13194,7 +13900,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем чтение данных из TCP/IP сокета
-							bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							bytes = ::__awh_recv__(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 							// Учитываем полученное в объявленном ядром объёме
 							watchdog.consume(bytes, ((peer->state.protocol == event::protocol_t::SCTP) ? 0 : AWH_EVENT_MAX_BUFFER_SIZE));
 							// Если мы получили ошибку
@@ -13312,7 +14018,7 @@ namespace io {
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						// Выполняем чтение данных из TCP/IP сокета
-						bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						bytes = ::__awh_recv__(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -14699,7 +15405,7 @@ namespace io {
 								// Обнуляем смещение
 								offset = 0;
 								// Выполняем чтение данных из TCP/IP сокета
-								bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
+								bytes = ::__awh_recv__(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, ((client->state.protocol == event::protocol_t::SCTP) ? 0 : size));
 								// Если мы получили ошибку
@@ -14868,7 +15574,7 @@ namespace io {
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						// Выполняем чтение данных из TCP/IP сокета
-						bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						bytes = ::__awh_recv__(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -15102,7 +15808,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
 										client->callbacks.traffic(client->id, client->raw.info);
 								// Выполняем чтение данных из сокета в обычном режиме, если не активирован режим получения информационных метаданных для дейтаграммных пакетов
-								} else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+								} else bytes = ::__awh_recv__(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 								// Если мы получили ошибку
@@ -15365,7 +16071,7 @@ namespace io {
 									// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
 									client->callbacks.traffic(client->id, client->raw.info);
 							// Выполняем чтение данных из сокета в обычном режиме, если не активирован режим получения информационных метаданных для дейтаграммных пакетов
-							} else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							} else bytes = ::__awh_recv__(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -15598,7 +16304,7 @@ namespace io {
 								// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 								} else {
 									// Выполняем чтение данных из сокета в обычном режиме
-									bytes = ::recvfrom(
+									bytes = ::__awh_recvfrom__(
 										client->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
@@ -15874,7 +16580,7 @@ namespace io {
 							// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 							} else {
 								// Выполняем чтение данных из сокета в обычном режиме
-								bytes = ::recvfrom(
+								bytes = ::__awh_recvfrom__(
 									client->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
@@ -15973,7 +16679,7 @@ namespace io {
 								 */
 								errno = 0;
 								// Выполняем чтение данных из TCP/IP сокета
-								bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+								bytes = ::__awh_recv__(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, ((client->state.protocol == event::protocol_t::SCTP) ? 0 : AWH_EVENT_MAX_BUFFER_SIZE));
 								// Если мы получили ошибку
@@ -16091,7 +16797,7 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Выполняем чтение данных из TCP/IP сокета
-							bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							bytes = ::__awh_recv__(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -16179,7 +16885,7 @@ namespace io {
 								 */
 								errno = 0;
 								// Выполняем чтение данных из UDP-сокета
-								bytes = ::recvfrom(
+								bytes = ::__awh_recvfrom__(
 									client->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
@@ -16303,7 +17009,7 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Выполняем чтение данных из UDP-сокета
-							bytes = ::recvfrom(
+							bytes = ::__awh_recvfrom__(
 								client->transfer.fd,
 								::__awh_buffer__,
 								AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
@@ -16675,7 +17381,7 @@ namespace io {
 								// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 								} else {
 									// Выполняем чтение данных из UDP-сокета или RAW-сокета
-									bytes = ::recvfrom(
+									bytes = ::__awh_recvfrom__(
 										server->fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
@@ -16982,7 +17688,7 @@ namespace io {
 							// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 							} else {
 								// Выполняем чтение данных из UDP-сокета или RAW-сокета
-								bytes = ::recvfrom(
+								bytes = ::__awh_recvfrom__(
 									server->fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
@@ -17348,7 +18054,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем отправку данных в TCP/IP сокет
-							const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+							const ssize_t bytes = ::__awh_send__(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 							// Если данные отправлены успешно
 							if((result = (bytes > 0))){
 								// Удаляем данные из очереди
@@ -17472,7 +18178,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем отправку данных в UDP-сокет
-							const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+							const ssize_t bytes = ::__awh_send__(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 							// Если данные отправлены успешно
 							if((result = (bytes > 0))){
 								// Удаляем запись из очереди
@@ -17685,7 +18391,7 @@ namespace io {
 									ssize_t bytes = 0;
 									if((::bandwidth::write > 0) || peer->hasBandwidth())
 										// Выполняем отправку данных в TCP/IP сокет
-										bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+										bytes = ::__awh_send__(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 									// Выполняем отправку данных в TCP/IP сокет силами ядра
 									else bytes = ::drain::transmit(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Если данные отправлены успешно
@@ -18041,7 +18747,7 @@ namespace io {
 									 */
 									errno = 0;
 									// Выполняем отправку данных в UDP-сокет
-									bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+									bytes = ::__awh_send__(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -18438,7 +19144,7 @@ namespace io {
 									 */
 									errno = 0;
 									// Выполняем отправку данных в UDP-сокет
-									bytes = ::sendto(
+									bytes = ::__awh_sendto__(
 										origin->transfer.fd,
 										reinterpret_cast <const uint8_t *> (buffer),
 										size, MSG_NOSIGNAL,
@@ -19015,7 +19721,7 @@ namespace io {
 									ssize_t bytes = 0;
 									if((::bandwidth::write > 0) || client->hasBandwidth())
 										// Выполняем отправку данных в TCP/IP сокет
-										bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+										bytes = ::__awh_send__(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 									// Выполняем отправку данных в TCP/IP сокет силами ядра
 									else bytes = ::drain::transmit(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
 									// Если данные отправлены успешно
@@ -19375,11 +20081,11 @@ namespace io {
 									// Если клиент находится в состоянии подключено
 									if(client->state.status == event::status_t::CONNECTED)
 										// Выполняем отправку данных в TCP/IP сокет
-										bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+										bytes = ::__awh_send__(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 									// Если клиент находится в запущенном состоянии
 									else if(client->state.status == event::status_t::LAUNCHED)
 										// Выполняем отправку данных в UDP-сокет
-										bytes = ::sendto(
+										bytes = ::__awh_sendto__(
 											client->transfer.fd,
 											reinterpret_cast <const uint8_t *> (buffer),
 											size, MSG_NOSIGNAL,
@@ -19714,7 +20420,7 @@ namespace io {
 									// Если клиент находится в состоянии подключено
 									if(client->state.status == event::status_t::CONNECTED){
 										// Выполняем отправку данных в TCP/IP сокет
-										bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+										bytes = ::__awh_send__(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 									// Если клиент находится в запущенном состоянии
 									} else if(client->state.status == event::status_t::LAUNCHED) {
 										/**
@@ -19722,7 +20428,7 @@ namespace io {
 										 */
 										errno = 0;
 										// Выполняем отправку данных в UDP-сокет
-										bytes = ::sendto(
+										bytes = ::__awh_sendto__(
 											client->transfer.fd,
 											reinterpret_cast <const uint8_t *> (buffer),
 											size, MSG_NOSIGNAL,
@@ -20123,7 +20829,7 @@ namespace io {
 									// Если событие принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 										// Выполняем отправку данных в UDP-сокет
-										bytes = ::sendto(
+										bytes = ::__awh_sendto__(
 											origin->transfer.fd,
 											reinterpret_cast <const uint8_t *> (buffer),
 											size, MSG_NOSIGNAL,
@@ -20559,7 +21265,7 @@ namespace io {
 								// Выполняем отправку данных в PIPE-сокет
 								bytes = ::write(ipc->transfer.fd, buffer, size);
 							// Выполняем отправку данных в TCP/IP сокет
-							else bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+							else bytes = ::__awh_send__(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных и добавленных в очередь, так-как в будущем они будут отправлены
@@ -20714,7 +21420,7 @@ namespace io {
 									// Выполняем отправку данных в PIPE-сокет
 									bytes = ::write(ipc->transfer.fd, buffer, size);
 								// Выполняем отправку данных в TCP/IP сокет
-								else bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+								else bytes = ::__awh_send__(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 								// Если данные отправлены успешно
 								if(bytes > 0){
 									// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -20821,7 +21527,7 @@ namespace io {
 							// Выполняем отправку данных в PIPE-сокет
 							bytes = ::write(ipc->transfer.fd, buffer, size);
 						// Выполняем отправку данных в TCP/IP сокет
-						else bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						else bytes = ::__awh_send__(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -20882,7 +21588,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем отправку данных в UDP-сокет
-							const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+							const ssize_t bytes = ::__awh_send__(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -21000,7 +21706,7 @@ namespace io {
 							// Переводим сокет в блокирующий режим
 							if(eth->socket.switchOption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 								// Выполняем отправку данных в UDP-сокет
-								const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+								const ssize_t bytes = ::__awh_send__(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 								// Если данные отправлены успешно
 								if(bytes > 0){
 									// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -21119,7 +21825,7 @@ namespace io {
 					// Если событие является блокирующим
 					} else {
 						// Выполняем отправку данных в UDP-сокет
-						const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						const ssize_t bytes = ::__awh_send__(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -21291,7 +21997,7 @@ namespace io {
 									// Количество прочитанных байт
 									ssize_t bytes = 0;
 									// Выполняем отправку данных в TCP/IP сокет
-									bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									bytes = ::__awh_send__(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -21724,7 +22430,7 @@ namespace io {
 									// Количество прочитанных байт
 									ssize_t bytes = 0;
 									// Выполняем отправку данных в сокет
-									bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									bytes = ::__awh_send__(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -22067,7 +22773,7 @@ namespace io {
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						// Выполняем отправку данных в TCP/IP сокет
-						bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						bytes = ::__awh_send__(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -22150,7 +22856,7 @@ namespace io {
 									// Количество прочитанных байт
 									ssize_t bytes = 0;
 									// Выполняем отправку данных в TCP/IP сокет
-									bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									bytes = ::__awh_send__(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -22480,7 +23186,7 @@ namespace io {
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Выполняем отправку данных в TCP/IP сокет
-										bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+										bytes = ::__awh_send__(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -22797,7 +23503,7 @@ namespace io {
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						// Выполняем отправку данных в TCP/IP сокет
-						bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						bytes = ::__awh_send__(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -22950,7 +23656,7 @@ namespace io {
 									 */
 									errno = 0;
 									// Выполняем отправку данных в UDP-сокет
-									const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+									const ssize_t bytes = ::__awh_sendto__(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -23249,7 +23955,7 @@ namespace io {
 										 */
 										errno = 0;
 										// Выполняем отправку данных в UDP-сокет
-										const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+										const ssize_t bytes = ::__awh_sendto__(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -23532,7 +24238,7 @@ namespace io {
 						 */
 						errno = 0;
 						// Выполняем отправку данных в UDP-сокет
-						const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+						const ssize_t bytes = ::__awh_sendto__(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -24829,7 +25535,7 @@ namespace io {
 									// Количество прочитанных байт
 									ssize_t bytes = 0;
 									// Выполняем отправку данных в TCP/IP сокет
-									bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									bytes = ::__awh_send__(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -25262,7 +25968,7 @@ namespace io {
 									// Количество прочитанных байт
 									ssize_t bytes = 0;
 									// Выполняем отправку данных в сокет
-									bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									bytes = ::__awh_send__(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -25605,7 +26311,7 @@ namespace io {
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						// Выполняем отправку данных в TCP/IP сокет
-						bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						bytes = ::__awh_send__(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -25690,7 +26396,7 @@ namespace io {
 										 */
 										errno = 0;
 										// Отправляем данные в UDP сокет
-										const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+										const ssize_t bytes = ::__awh_send__(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -26018,7 +26724,7 @@ namespace io {
 											 */
 											errno = 0;
 											// Отправляем данные в UDP сокет
-											const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+											const ssize_t bytes = ::__awh_send__(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -26333,7 +27039,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Отправляем данные в UDP сокет
-							const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+							const ssize_t bytes = ::__awh_send__(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -26439,7 +27145,7 @@ namespace io {
 										 */
 										errno = 0;
 										// Выполняем отправку данных в UDP-сокет
-										const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+										const ssize_t bytes = ::__awh_sendto__(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -26767,7 +27473,7 @@ namespace io {
 											 */
 											errno = 0;
 											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+											const ssize_t bytes = ::__awh_sendto__(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -27082,7 +27788,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем отправку данных в UDP-сокет
-							const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+							const ssize_t bytes = ::__awh_sendto__(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -27222,7 +27928,7 @@ namespace io {
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Выполняем отправку данных в сокет
-										bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+										bytes = ::__awh_send__(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -27552,7 +28258,7 @@ namespace io {
 											// Количество прочитанных байт
 											ssize_t bytes = 0;
 											// Выполняем отправку данных в сокет
-											bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+											bytes = ::__awh_send__(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -27869,7 +28575,7 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Выполняем отправку данных в сокет
-							bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+							bytes = ::__awh_send__(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -27977,7 +28683,7 @@ namespace io {
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Выполняем отправку данных в UDP-сокет
-										bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+										bytes = ::__awh_sendto__(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -28307,7 +29013,7 @@ namespace io {
 											// Количество прочитанных байт
 											ssize_t bytes = 0;
 											// Выполняем отправку данных в UDP-сокет
-											bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+											bytes = ::__awh_sendto__(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -28624,7 +29330,7 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Выполняем отправку данных в UDP-сокет
-							bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+							bytes = ::__awh_sendto__(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -28789,7 +29495,7 @@ namespace io {
 						 */
 						errno = 0;
 						// Выполняем отправку данных в UDP-сокет
-						const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+						const ssize_t bytes = ::__awh_sendto__(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -28885,7 +29591,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем отправку данных в UDP-сокет
-							const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+							const ssize_t bytes = ::__awh_sendto__(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -28980,7 +29686,7 @@ namespace io {
 						 */
 						errno = 0;
 						// Выполняем отправку данных в UDP-сокет
-						const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+						const ssize_t bytes = ::__awh_sendto__(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -29830,7 +30536,7 @@ namespace io {
 		// Длина адреса, к которому дескриптор привязан
 		socklen_t size = sizeof(endpoint);
 		// Если адрес привязки дескриптора получить не удалось
-		if(::getsockname(sock, &::trust_cast <struct sockaddr> (endpoint), &size) != 0)
+		if(::__awh_getsockname__(sock, &::trust_cast <struct sockaddr> (endpoint), &size) != 0)
 			// Выводим отсутствие привязки дескриптора
 			return false;
 		/**
@@ -31991,7 +32697,7 @@ namespace io {
 				// Если количество текущих подключений уже максимальное
 				if(server->backlog.count == server->backlog.max){
 					// Принимаем подключение и сразу закрываем его
-					const net::socket_t sock = ::accept(server->fd, nullptr, nullptr);
+					const net::socket_t sock = ::kernel::acception(server->fd, nullptr, nullptr);
 					// Если сокет создан успешно
 					if(sock != net::invalid_socket_t)
 						// Закрываем сокет подключения
@@ -32058,7 +32764,7 @@ namespace io {
 							// Если протокол интернета установлен как TCP
 							case static_cast <uint8_t> (event::protocol_t::TCP):
 								// Определяем разрешено ли подключение к прокси серверу
-								sock = ::accept(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.client), &server->endpoint.size);
+								sock = ::kernel::acception(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.client), &server->endpoint.size);
 							break;
 						}
 						// Если сокет не создан тогда выходим
@@ -36076,7 +36782,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Получаем размер объекта сокета
 																	const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path));
 																	// Выполняем бинд сокета клиента на адрес unix-сокета
-																	if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), size) < 0){
+																	if(::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), size) < 0){
 																		// Если установлена функция обратного вызова
 																		if(client->callbacks.status != nullptr)
 																			// Вызываем функцию обратного вызова об ошибке отказа
@@ -36287,7 +36993,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 */
 														const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
 														// Выполняем бинд сокета клиента на адрес целевой машины
-														if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+														if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -36509,7 +37215,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
 																		const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
 																		// Выполняем бинд сокета клиента на адрес целевой машины
-																		if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+																		if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																			// Если установлена функция обратного вызова
 																			if(client->callbacks.status != nullptr)
 																				// Вызываем функцию обратного вызова об ошибке отказа
@@ -36628,7 +37334,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
 																const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
 																// Выполняем бинд сокета клиента на адрес целевой машины
-																if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+																if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -36840,7 +37546,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Определяем, является ли адрес клиента адресом обратной петли (::1)
 														const bool isLoopback = (((source == nullptr) || (source->port == 0)) && IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
 														// Выполняем бинд сокета клиента на адрес целевой машины
-														if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+														if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -37084,7 +37790,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Определяем, является ли адрес клиента адресом обратной петли (::1)
 																		const bool isLoopback = (((source == nullptr) || (source->port == 0)) && IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
 																		// Выполняем бинд сокета клиента на адрес целевой машины
-																		if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+																		if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																			// Если установлена функция обратного вызова
 																			if(client->callbacks.status != nullptr)
 																				// Вызываем функцию обратного вызова об ошибке отказа
@@ -37212,7 +37918,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Определяем, является ли адрес клиента адресом обратной петли (::1)
 																const bool isLoopback = IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr);
 																// Выполняем бинд сокета клиента на адрес целевой машины
-																if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+																if(!isLoopback && !(result = (::io::coherent(client, &this->_eth, this->_log) && (::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -37719,7 +38425,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Получаем размер объекта сокета
 																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Выполняем бинд сокета сервера на адрес целевой машины
-																if(!(result = (::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) == 0))){
+																if(!(result = (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) == 0))){
 																	// Если установлена функция обратного вызова
 																	if(server->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -37772,7 +38478,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Получаем размер объекта сокета
 																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Выполняем бинд сокета сервера на адрес целевой машины
-																if(!(result = (::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) == 0))){
+																if(!(result = (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) == 0))){
 																	// Если установлена функция обратного вызова
 																	if(server->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -37945,7 +38651,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Обнуляем серверную структуру
 														::memset(&(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_zero), 0, sizeof(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_zero));
 														// Выполняем бинд сокета сервера на адрес целевой машины
-														if(!(result = (::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
+														if(!(result = (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
 															// Если установлена функция обратного вызова
 															if(server->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -38093,7 +38799,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 */
 														::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->zone;
 														// Выполняем бинд события
-														if(!(result = (::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
+														if(!(result = (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
 															// Если установлена функция обратного вызова
 															if(server->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -40094,7 +40800,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									// Получаем размер структуры адреса IPv4
 									socklen_t length = sizeof(addr);
 									// Извлекаем внутренний порт из сокета клиента
-									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+									if((client->transfer.fd != net::invalid_socket_t) && (::__awh_getsockname__(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
 										// Если внутренний порт предположительно подготовлен
 										if(addr.sin_port > 0)
 											// Выводим результат
@@ -40108,7 +40814,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									// Получаем размер структуры адреса IPv6
 									socklen_t length = sizeof(addr);
 									// Извлекаем внутренний порт из сокета клиента
-									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+									if((client->transfer.fd != net::invalid_socket_t) && (::__awh_getsockname__(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
 										// Если внутренний порт предположительно подготовлен
 										if(addr.sin6_port > 0)
 											// Выводим результат
@@ -40144,7 +40850,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 											// Получаем размер структуры адреса IPv4
 											socklen_t length = sizeof(addr);
 											// Извлекаем внутренний порт из сокета клиента
-											if((server->fd != net::invalid_socket_t) && (::getsockname(server->fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+											if((server->fd != net::invalid_socket_t) && (::__awh_getsockname__(server->fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
 												// Если внутренний порт предположительно подготовлен
 												if(addr.sin_port > 0)
 													// Выводим результат
@@ -40168,7 +40874,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 											// Получаем размер структуры адреса IPv6
 											socklen_t length = sizeof(addr);
 											// Извлекаем внутренний порт из сокета клиента
-											if((server->fd != net::invalid_socket_t) && (::getsockname(server->fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+											if((server->fd != net::invalid_socket_t) && (::__awh_getsockname__(server->fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
 												// Если внутренний порт предположительно подготовлен
 												if(addr.sin6_port > 0)
 													// Выводим результат
@@ -50672,7 +51378,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Обнуляем серверную структуру
 										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
 										// Выполняем бинд события, если дескриптор ещё не привязан
-										if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+										if(!::io::bound(client->transfer.fd) && (::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -50799,7 +51505,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 */
 										endpoint.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source.get())->zone;
 										// Выполняем бинд события, если дескриптор ещё не привязан
-										if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+										if(!::io::bound(client->transfer.fd) && (::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -50938,7 +51644,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Обнуляем серверную структуру
 										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
 										// Выполняем бинд события, если дескриптор ещё не привязан
-										if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+										if(!::io::bound(server->fd) && (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -51071,7 +51777,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 */
 										endpoint.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source.get())->zone;
 										// Выполняем бинд события, если дескриптор ещё не привязан
-										if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+										if(!::io::bound(server->fd) && (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -51334,7 +52040,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								// Обнуляем серверную структуру
 								::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
 								// Выполняем бинд события, если дескриптор ещё не привязан
-								if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+								if(!::io::bound(client->transfer.fd) && (::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -51395,7 +52101,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								 */
 								endpoint.sin6_scope_id = awh_cast <const net::addr_net_ipv6_t *> (source)->zone;
 								// Выполняем бинд события, если дескриптор ещё не привязан
-								if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+								if(!::io::bound(client->transfer.fd) && (::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -51468,7 +52174,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								// Обнуляем серверную структуру
 								::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
 								// Выполняем бинд события, если дескриптор ещё не привязан
-								if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+								if(!::io::bound(server->fd) && (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -51535,7 +52241,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								 */
 								endpoint.sin6_scope_id = awh_cast <const net::addr_net_ipv6_t *> (source)->zone;
 								// Выполняем бинд события, если дескриптор ещё не привязан
-								if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+								if(!::io::bound(server->fd) && (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -56874,8 +57580,29 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 															::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
 														);
 													}
-													// Если подключение к удаленному серверу не выполнено
-													if(!(result = (::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) == 0))){
+														/**
+														 * Выполняем подачу наложенного подключения к удалённому серверу
+														 *
+														 * @note Обращения `connect` здесь нет намеренно: порту завершений сообщить
+														 *       о завершении подключения им нечем, а ожидание готовности к записи
+														 *       на подключающемся сокете подать не выходит вовсе. Подача отвечает
+														 *       тем же, чем отвечало бы неблокирующее подключение у систем POSIX, -
+														 *       начатостью, - и разбор ниже остаётся прежним
+														 */
+														// Выполняем привязку дескриптора к порту завершений
+														::port::attach(client->transfer.fd, this->_log);
+														// Выполняем подачу наложенного подключения к удалённому серверу
+														const uint64_t token = ::kernel::connecting(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), static_cast <int32_t> (client->endpoint.size), nullptr, this->_log);
+														// Если подача наложенного подключения принята системой
+														if(token != ::inflight::INVALID){
+															// Отмечаем дескриптор подключающимся
+															::kernel::connections.emplace(client->transfer.fd);
+															// Отмечаем подключение начатым
+															errno = EINPROGRESS;
+														// Если подачу наложенного подключения система не приняла
+														} else errno = ECONNREFUSED;
+														// Если подключение к удаленному серверу не выполнено
+														if(!(result = false)){
 														// Если ошибка не является ошибкой в процессе подключения
 														if(!(result = (errno == EINPROGRESS))){
 															// Если установлена функция обратного вызова
@@ -57658,7 +58385,11 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 								// Если событие принадлежит к типу STREAM
 								case static_cast <uint8_t> (event::type_t::STREAM): {
 									// Выполняем слушать порт сервера
-									if(!(result = (::listen(server->fd, server->backlog.depth) == 0))){
+									if((result = (::__awh_listen__(server->fd, server->backlog.depth) == 0)))
+										// Отмечаем дескриптор переведённым в ожидание подключений
+										::kernel::listeners.emplace(server->fd);
+									// Если перевести дескриптор в ожидание подключений не удалось
+									else {
 										// Если установлена функция обратного вызова
 										if(server->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
@@ -67102,7 +67833,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						}
 					}
 					// Получаем узел, которому завершение принадлежит
-					void * const signalData = owner;
+					void * signalData = owner;
 					/**
 					 * Ожидание сработало и завершилось - подаём его заново
 					 *
@@ -67167,8 +67898,124 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					if(static_cast <size_t> (events) >= (::__awh_events_size__ * 2))
 						// Прекращаем перевод, остаток заберёт следующий оборот
 						break;
+						/**
+						 * Если завершение принадлежит наложенному приёму подключения
+						 *
+						 * @details Подключение к этому мигу уже принято, и обращению системы принимать
+						 *          после него нечего. Принятое складывается в очередь по слушающему
+						 *          дескриптору, а наружу выдаётся готовность к чтению - та самая, по
+						 *          которой движок зовёт приём. Разбор приёма от этого не меняется
+						 *
+						 * @note Следующий приём подаётся не здесь, а согласованием учёта: подписка
+						 *       отмечается расходящейся, и подача идёт общим порядком - тем же, каким
+						 *       подаются заново все однократные ожидания
+						 */
+						if(kind == ::inflight::kind_t::ACCEPT){
+							// Выполняем поиск сведений о поданном наложенном приёме
+							auto i = ::kernel::acceptions.find(completion.token);
+							// Если сведения о поданном наложенном приёме найдены
+							if(i != ::kernel::acceptions.end()){
+								// Получаем дескриптор принятого подключения
+								const net::socket_t peer = i->second->sock;
+								// Если приём подключения завершился успешно и операция не отменена
+								if((completion.res >= 0) && !cancelled){
+									/**
+									 * Переносим сведения о приёме в принятый сокет
+									 *
+									 * @note Обращение это обязательно: до него принятый сокет о своём
+									 *       подключении не знает, и опции слушающего сокета на него не
+									 *       наследуются вовсе
+									 */
+									::setsockopt(static_cast <SOCKET> (peer), SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast <const char *> (&sockOf), static_cast <int32_t> (sizeof(sockOf)));
+									// Адрес принятого подключения
+									struct sockaddr_storage source{};
+									// Адреса сторон принятого подключения, добываемые из буфера
+									struct sockaddr * local = nullptr, * remote = nullptr;
+									// Размеры адресов сторон принятого подключения
+									int32_t first = 0, second = 0;
+									// Выполняем добычу адресов сторон принятого подключения
+									::kernel::sockaddrs(
+										i->second->buffer, 0,
+										static_cast <DWORD> (sizeof(struct sockaddr_storage) + 16),
+										static_cast <DWORD> (sizeof(struct sockaddr_storage) + 16),
+										&local, &first, &remote, &second, sockOf
+									);
+									// Если адрес удалённой стороны добыт
+									if((remote != nullptr) && (second > 0))
+										// Запоминаем адрес удалённой стороны
+										::memcpy(&source, remote, ((static_cast <size_t> (second) < sizeof(source)) ? static_cast <size_t> (second) : sizeof(source)));
+									// Складываем принятое подключение до выдачи движку
+									::kernel::accepted[sockOf].emplace_back(peer, source);
+								// Если приём подключения не удался, заведённый под него сокет закрывается
+								} else ::closesocket(static_cast <SOCKET> (peer));
+								// Забываем сведения о поданном наложенном приёме
+								::kernel::acceptions.erase(i);
+							}
+							// Получаем запись учёта подписки по слушающему дескриптору
+							signalData = ::kernel::subscription(sockOf);
+							// Если подписка по слушающему дескриптору заведена
+							if(signalData != nullptr){
+								// Получаем запись учёта подписки
+								::kernel::registry_t * state = reinterpret_cast <::kernel::registry_t *> (signalData);
+								// Забываем метку завершившегося приёма
+								state->token = ::inflight::INVALID;
+								// Отмечаем подписку снятой: приём подаётся заново согласованием
+								state->registered = false;
+								// Снимаем набор признаков, поданный ядру последним
+								state->applied = 0;
+								// Если включённые подписки остались и учёт согласия не ждёт
+								if((state->enabled != 0) && !state->pending){
+									// Отмечаем учёт разошедшимся с ядром
+									state->pending = true;
+									// Ставим дескриптор в очередь согласования
+									::kernel::pending.push_back(sockOf);
+								}
+							}
+							// Выдаём наружу готовность к чтению либо признак ошибки дескриптора
+							signalEvents = ((completion.res >= 0) ? static_cast <uint32_t> (EPOLLIN) : static_cast <uint32_t> (EPOLLERR));
+						}
+						/**
+						 * Если завершение принадлежит наложенному подключению
+						 *
+						 * @details Наружу оно выдаётся готовностью к записи - той самой, какой
+						 *          сообщают о завершении подключения системы POSIX. Разбор
+						 *          подключения от этого не меняется ни строкой: он по-прежнему
+						 *          видит готовность к записи и по-прежнему выясняет исход
+						 *          подключения опросом ошибки сокета
+						 *
+						 * @note Отказ подключения выдаётся признаком ошибки дескриптора:
+						 *       готовность к записи по неподключённому сокету увела бы разбор к
+						 *       отправке в никуда
+						 */
+						if(kind == ::inflight::kind_t::CONNECT){
+							// Снимаем отметку подключения с дескриптора
+							::kernel::connections.erase(sockOf);
+							/**
+							 * Переносим сведения о подключении в сам сокет
+							 *
+							 * @note Обращение это обязательно: до него сокет, подключённый наложенно,
+							 *       о своём подключении не знает - ни адреса собеседника, ни
+							 *       состояния у него не спросить
+							 */
+							if(completion.res >= 0)
+								// Выполняем перенос сведений о подключении в сокет
+								::setsockopt(static_cast <SOCKET> (sockOf), SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, nullptr, 0);
+							// Получаем запись учёта подписки по дескриптору
+							signalData = ::kernel::subscription(sockOf);
+							// Если подписка по дескриптору заведена
+							if(signalData != nullptr){
+								// Получаем запись учёта подписки
+								::kernel::registry_t * state = reinterpret_cast <::kernel::registry_t *> (signalData);
+								// Отмечаем учёт разошедшимся с ядром: ожидание готовности подадут заново
+								state->pending = true;
+								// Ставим дескриптор в очередь согласования
+								::kernel::pending.push_back(sockOf);
+							}
+							// Выдаём наружу готовность к записи либо признак ошибки дескриптора
+							signalEvents = ((completion.res >= 0) ? static_cast <uint32_t> (EPOLLOUT) : static_cast <uint32_t> (EPOLLERR));
+						}
 					// Если завершение принадлежит не ожиданию готовности
-					if((kind != ::inflight::kind_t::POLL) && (kind != ::inflight::kind_t::RECV) && (kind != ::inflight::kind_t::SEND))
+					if((kind != ::inflight::kind_t::POLL) && (kind != ::inflight::kind_t::RECV) && (kind != ::inflight::kind_t::SEND) && (kind != ::inflight::kind_t::CONNECT) && (kind != ::inflight::kind_t::ACCEPT))
 						// Переходим к завершению следующему
 						continue;
 					/**
@@ -67256,7 +68103,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						// Размер кода ошибки дескриптора
 						socklen_t length = sizeof(code);
 						// Запрашиваем у ядра код ошибки дескриптора
-						if(::getsockopt(static_cast <SOCKET> (entry->sock), SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&code), &length) == 0)
+						if(::__awh_getsockopt__(static_cast <SOCKET> (entry->sock), SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&code), &length) == 0)
 							// Запоминаем код ошибки дескриптора
 							volume = static_cast <int64_t> (code);
 					}

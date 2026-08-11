@@ -117,25 +117,50 @@ namespace {
 	 * @param length длина записи числа
 	 *
 	 */
-	static void pointed(char * buffer, const int32_t length) noexcept {
+	static void pointed(char * buffer, int32_t & length) noexcept {
 		// Получаем знак десятичной точки, принятый текущей локалью
 		const char * point = ::localeconv()->decimal_point;
 		/**
 		 * Если знаком десятичной точки локали является точка
 		 */
-		if((point == nullptr) || (point[0] == '\0') || (point[0] == '.'))
+		if((point == nullptr) || (point[0] == '\0') || (::strcmp(point, ".") == 0))
+			// Выходим из функции
+			return;
+		/**
+		 * Длина знака десятичной точки локали
+		 *
+		 * @warning Знак этот однобайтовым быть не обязан: локаль пушту «ps_AF» несёт
+		 *          десятичным знаком «٫» (U+066B), занимающий в UTF-8 два байта.
+		 *          Замена одного лишь первого байта оставляла бы от него обрубок,
+		 *          и запись числа переставала быть правильной последовательностью
+		 */
+		const size_t size = ::strlen(point);
+		// Если знак десятичной точки локали длиннее самой записи числа
+		if((size == 0) || (static_cast <int32_t> (size) > length))
 			// Выходим из функции
 			return;
 		/**
 		 * Выполняем перебор всех знаков записи числа
+		 *
+		 * @note Десятичный знак в записи числа встречается не более одного раза,
+		 *       и поиск прекращается на первом же его появлении
 		 */
-		for(int32_t i = 0; i < length; i++){
+		for(int32_t i = 0; i <= (length - static_cast <int32_t> (size)); i++){
 			/**
-			 * Если очередным знаком является десятичная точка локали
+			 * Если с этого места стоит знак десятичной точки локали
 			 */
-			if(buffer[i] == point[0])
+			if(::memcmp(buffer + i, point, size) == 0){
 				// Выполняем замену знака десятичной точки локали точкой
 				buffer[i] = '.';
+				// Выполняем сдвиг остатка записи на место снятых байтов
+				::memmove((buffer + i + 1), (buffer + i + size), static_cast <size_t> (length) - (static_cast <size_t> (i) + size));
+				// Уменьшаем длину записи на количество снятых байтов
+				length -= static_cast <int32_t> (size - 1);
+				// Выполняем завершение записи числа нулевым байтом
+				buffer[length] = '\0';
+				// Выходим из цикла перебора знаков записи числа
+				break;
+			}
 		}
 	}
 	/**
@@ -1187,7 +1212,7 @@ bool awh::codec::ini::Writer::number(const string_view key, const T value) noexc
 			 */
 			for(int32_t decimals = 0; decimals <= static_cast <int32_t> (numeric_limits <T>::max_digits10); decimals++){
 				// Выполняем запись числа обычным видом очередной точностью
-				const int32_t size = ::snprintf(plain, sizeof(plain), "%.*f", decimals, static_cast <double> (value));
+				int32_t size = ::snprintf(plain, sizeof(plain), "%.*f", decimals, static_cast <double> (value));
 				/**
 				 * Если запись числа обычным видом выполнить не удалось либо она непомерно длинна
 				 *
