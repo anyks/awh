@@ -453,8 +453,13 @@ namespace dns {
 	/**
 	 * @brief Бинарный буфер запроса DNS
 	 *
+	 * @note Выравнивание задано явно: заголовок запроса накладывается на начало буфера
+	 *       приведением указателя, а у набора байтов выравнивание единичное - поля
+	 *       заголовка ложились бы на нечётные адреса. Целевые машины невыровненное
+	 *       чтение прощают, но языком оно не отведено: построитель вправе располагать
+	 *       обратным, и на высоких уровнях оптимизации уже располагает
 	 */
-	thread_local uint8_t buffer[0x1000];
+	alignas(uint64_t) thread_local uint8_t buffer[0x1000];
 
 	/**
 	 * @brief Структура A-записи DNS
@@ -1298,12 +1303,22 @@ namespace dns {
 				::memcpy(&::dns::buffer[result], &fqdn[0], fqdn.size());
 				// Увеличиваем размер запроса
 				result += (fqdn.size() + 1);
-				// Создаём части флагов вопроса пакета запроса
-				::dns::q_flags_t * qflags = reinterpret_cast <::dns::q_flags_t *> (&::dns::buffer[result]);
-				// Устанавливаем класс флага запроса
-				qflags->cls = htons(0x0001);
+				/**
+				 * Собираемые флаги вопроса пакета запроса
+				 *
+				 * @note Флаги собираются отдельной записью и переносятся в пакет байтами:
+				 *       стоят они за доменным именем произвольной длины, и место их в
+				 *       пакете выравниванию не подчиняется вовсе. Наложение записи
+				 *       приведением указателя давало бы обращение по невыровненному
+				 *       адресу - поведение, языком не отведённое
+				 */
+				::dns::q_flags_t qflags;
 				// Устанавливаем тип запроса в флагах вопроса
-				qflags->type = htons(static_cast <uint16_t> (record));
+				qflags.type = htons(static_cast <uint16_t> (record));
+				// Устанавливаем класс флага запроса
+				qflags.cls = htons(0x0001);
+				// Выполняем перенос флагов вопроса в пакет запроса
+				::memcpy(&::dns::buffer[result], &qflags, sizeof(qflags));
 				// Увеличиваем размер запроса
 				result += sizeof(::dns::q_flags_t);
 			}
@@ -3128,10 +3143,18 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 						size_t offset = sizeof(::dns::head_t);
 						// Выполняем декодирование доменного имени из бинарных данных запроса
 						domain = ::move(::dns::decodeDomainName(j->second.payload.buffer.get(), j->second.payload.size, offset));
-						// Создаём части флагов вопроса пакета запроса
-						::dns::q_flags_t * qflags = reinterpret_cast <::dns::q_flags_t *> (&j->second.payload.buffer.get()[offset]);
+						// Читаемые флаги вопроса пакета запроса
+						::dns::q_flags_t qflags;
+						/**
+						 * Выполняем чтение флагов вопроса переносом байтов
+						 *
+						 * @note Флаги стоят за доменным именем произвольной длины, и место
+						 *       их в пакете выравниванию не подчиняется: читать их
+						 *       наложением записи нельзя
+						 */
+						::memcpy(&qflags, &j->second.payload.buffer.get()[offset], sizeof(qflags));
 						// Извлекаем тип запроса из флагов запроса
-						record = static_cast <record_t> (ntohs(qflags->type));
+						record = static_cast <record_t> (ntohs(qflags.type));
 						// Удаляем пакет из контейнера активных пакетов
 						this->_transfer.waiting.erase(j);
 						// Если в очереди на отправку есть пакеты

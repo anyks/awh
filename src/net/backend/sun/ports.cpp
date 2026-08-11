@@ -2769,6 +2769,105 @@ namespace {
 		}
 
 		/**
+		 * @brief Функция чтения сообщения из сокета SCTP
+		 *
+		 * @details Повторяет договор sctp_recvmsg, но обходится без него
+		 *
+		 * @warning Приём sctp_recvmsg из libsctp на сокете упорядоченных сообщений
+		 *          отвечает отказом «Operation not supported on transport endpoint» -
+		 *          проверено пробой на обеих системах 12.08.2026. Обычный же recvmsg
+		 *          на том же сокете читает и данные, и оповещения, потому чтение и
+		 *          идёт им, а сведения о сообщении разбираются из служебных сообщений
+		 *
+		 * @note Сведения приходят служебным сообщением SCTP_SNDRCV, а признак того,
+		 *       что прочитано оповещение, а не данные - разрядом MSG_NOTIFICATION в
+		 *       признаках сообщения. Оба выдаются наружу ровно так же, как их выдавал
+		 *       бы sctp_recvmsg
+		 *
+		 * @param sock    дескриптор сокета чтения
+		 * @param buffer  буфер для принимаемых данных
+		 * @param size    размер буфера для принимаемых данных
+		 * @param address адрес отправителя, может быть пустым
+		 * @param length  размер адреса отправителя, может быть пустым
+		 * @param info    сведения о принятом сообщении
+		 * @param flags   признаки принятого сообщения
+		 * @return        количество принятых октетов
+		 *
+		 */
+		static ssize_t recv(const awh::net::socket_t sock, void * buffer, const size_t size, struct sockaddr * address, socklen_t * length, struct sctp_sndrcvinfo * info, int32_t * flags) noexcept {
+			// Описание принимаемого сообщения
+			struct msghdr message;
+			// Описание блока принимаемых данных
+			struct iovec iov;
+			// Буфер служебных сообщений приёма
+			uint8_t control[512];
+			/**
+			 * Собственный буфер адреса отправителя на случай, если его не спросили
+			 *
+			 * @warning Буфер адреса здесь ОБЯЗАТЕЛЕН, даже когда сам адрес вызывающему
+			 *          не нужен. Чтение с пустым msg_name на сокете упорядоченных
+			 *          сообщений отвергается отказом «Operation not supported on
+			 *          transport endpoint» - проверено пробой на обеих системах
+			 *          12.08.2026, причём проверено дважды: с буфером то же самое
+			 *          чтение проходит. В руководстве sctp(4P) это следует из того, что
+			 *          связи такого сокета опознаются именно адресом
+			 */
+			struct sockaddr_storage storage;
+			// Зануляем описание принимаемого сообщения
+			::memset(&message, 0, sizeof(message));
+			// Зануляем собственный буфер адреса отправителя
+			::memset(&storage, 0, sizeof(storage));
+			// Устанавливаем буфер принимаемых данных
+			iov.iov_base = buffer;
+			// Устанавливаем размер буфера принимаемых данных
+			iov.iov_len = size;
+			// Устанавливаем блок принимаемых данных
+			message.msg_iov = &iov;
+			// Устанавливаем количество блоков принимаемых данных
+			message.msg_iovlen = 1;
+			// Устанавливаем буфер адреса отправителя, а не спрошенный - собственный
+			message.msg_name = ((address != nullptr) ? reinterpret_cast <void *> (address) : reinterpret_cast <void *> (&storage));
+			// Устанавливаем размер буфера адреса отправителя
+			message.msg_namelen = (((address != nullptr) && (length != nullptr)) ? (* length) : sizeof(storage));
+			// Устанавливаем буфер служебных сообщений
+			message.msg_control = control;
+			// Устанавливаем размер буфера служебных сообщений
+			message.msg_controllen = sizeof(control);
+			// Выполняем чтение сообщения из сокета
+			const ssize_t bytes = ::recvmsg(sock, &message, 0);
+			// Если чтение не удалось, разбирать нечего
+			if(bytes < 0)
+				// Выводим результат чтения
+				return bytes;
+			// Если размер адреса отправителя запрошен, выдаём его
+			if((address != nullptr) && (length != nullptr))
+				// Выдаём размер адреса отправителя
+				(* length) = message.msg_namelen;
+			// Если признаки сообщения запрошены, выдаём их
+			if(flags != nullptr)
+				// Выдаём признаки принятого сообщения
+				(* flags) = message.msg_flags;
+			// Если сведения о сообщении не запрошены, разбирать служебные сообщения незачем
+			if(info == nullptr)
+				// Выводим результат чтения
+				return bytes;
+			/**
+			 * Перебираем все служебные сообщения принятого сообщения
+			 */
+			for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message); cmsg != nullptr; cmsg = CMSG_NXTHDR(&message, cmsg)){
+				// Если служебное сообщение несёт сведения о сообщении SCTP
+				if((cmsg->cmsg_level == IPPROTO_SCTP) && (cmsg->cmsg_type == SCTP_SNDRCV)){
+					// Переносим сведения о принятом сообщении
+					::memcpy(info, CMSG_DATA(cmsg), sizeof(struct sctp_sndrcvinfo));
+					// Выходим из цикла
+					break;
+				}
+			}
+			// Выводим результат чтения
+			return bytes;
+		}
+
+		/**
 		 * @brief Функция снятия таймера дедлайнов
 		 *
 		 * @warning Зовётся ОБЯЗАТЕЛЬНО при всяком закрытии очереди оповещений. Очередь
@@ -9967,7 +10066,7 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::sctp_recvmsg(
+										bytes = ::ports::recv(
 											peer->transfer.fd,
 											::__awh_buffer__, size,
 											nullptr, nullptr,
@@ -10183,7 +10282,7 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(peer->state.protocol == event::protocol_t::SCTP)
 								// Выполняем чтение данных из SCTP-сокета
-								bytes = ::sctp_recvmsg(
+								bytes = ::ports::recv(
 									peer->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
@@ -10322,7 +10421,7 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(peer->state.protocol == event::protocol_t::SCTP)
 									// Выполняем чтение данных из SCTP-сокета
-									bytes = ::sctp_recvmsg(
+									bytes = ::ports::recv(
 										peer->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
@@ -10470,7 +10569,7 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(peer->state.protocol == event::protocol_t::SCTP)
 								// Выполняем чтение данных из SCTP-сокета
-								bytes = ::sctp_recvmsg(
+								bytes = ::ports::recv(
 									peer->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
@@ -11892,7 +11991,7 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::sctp_recvmsg(
+										bytes = ::ports::recv(
 											client->transfer.fd,
 											::__awh_buffer__, size,
 											nullptr, nullptr,
@@ -12108,7 +12207,7 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(client->state.protocol == event::protocol_t::SCTP)
 								// Выполняем чтение данных из SCTP-сокета
-								bytes = ::sctp_recvmsg(
+								bytes = ::ports::recv(
 									client->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
@@ -13261,7 +13360,7 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::sctp_recvmsg(
+										bytes = ::ports::recv(
 											client->transfer.fd,
 											::__awh_buffer__,
 											AWH_EVENT_MAX_BUFFER_SIZE,
@@ -13427,7 +13526,7 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP)
 									// Выполняем чтение данных из SCTP-сокета
-									bytes = ::sctp_recvmsg(
+									bytes = ::ports::recv(
 										client->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
@@ -13563,7 +13662,7 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::sctp_recvmsg(
+										bytes = ::ports::recv(
 											client->transfer.fd,
 											::__awh_buffer__,
 											AWH_EVENT_MAX_BUFFER_SIZE,
@@ -13742,7 +13841,7 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP)
 									// Выполняем чтение данных из SCTP-сокета
-									bytes = ::sctp_recvmsg(
+									bytes = ::ports::recv(
 										client->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
@@ -29853,7 +29952,7 @@ namespace io {
 										// Если событие принадлежит к типу SEQPACKET
 										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 											// Выполняем чтение данных из SCTP-сокета
-											bytes = ::sctp_recvmsg(
+											bytes = ::ports::recv(
 												server->fd,
 												::__awh_buffer__,
 												AWH_EVENT_MAX_BUFFER_SIZE,

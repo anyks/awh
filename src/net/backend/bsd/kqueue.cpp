@@ -788,9 +788,19 @@ namespace std {
 					} break;
 					// Если адрес установлен как IPv6
 					case static_cast <uint8_t> (event::family_t::IPV6): {
-						// Безопасное чтение 128-битного адреса как двух uint64_t
-						const uint64_t hi = (* reinterpret_cast <const uint64_t *> (&id.ip6.address[0]));
-						const uint64_t lo = (* reinterpret_cast <const uint64_t *> (&id.ip6.address[0] + 8));
+						// Половины 128-битного адреса, читаемые для получения хеш-кода
+						uint64_t hi = 0, lo = 0;
+						/**
+						 * Выполняем чтение старшей половины адреса переносом байтов
+						 *
+						 * @note Перенос выполняется байтами намеренно: набор байтов адреса
+						 *       выровнен по единице, и чтение его приведением указателя
+						 *       ложится на невыровненный адрес - поведение, языком не
+						 *       отведённое, чего построителю довольно для любых допущений
+						 */
+						::memcpy(&hi, &id.ip6.address[0], sizeof(hi));
+						// Выполняем чтение младшей половины адреса переносом байтов
+						::memcpy(&lo, &id.ip6.address[0] + sizeof(hi), sizeof(lo));
 						// Комбинируем хеш-коды IPv6 адреса
 						this->combine(result, hash <uint64_t> {}(hi));
 						this->combine(result, hash <uint64_t> {}(lo));

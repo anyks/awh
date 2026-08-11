@@ -881,7 +881,7 @@ static int32_t __awh_connect__(const SOCKET sock, const struct sockaddr * addr, 
  * @return       признак того, что приём обслужен родным путём
  *
  */
-static bool __awh_pool_receive__(const SOCKET sock, void * buffer, const size_t size, ssize_t & result) noexcept;
+static bool __awh_pool_receive__(const SOCKET sock, void * buffer, const size_t size, ssize_t & result, struct sockaddr * addr = nullptr, int32_t * length = nullptr) noexcept;
 /**
  * @brief Функция приёма данных из сокета
  *
@@ -944,6 +944,17 @@ static int32_t __awh_send__(const SOCKET sock, const void * buffer, const size_t
  *
  */
 static int32_t __awh_recvfrom__(const SOCKET sock, void * buffer, const size_t size, const int32_t flags, struct sockaddr * addr, int32_t * length) noexcept {
+	// Размер принятых данных, добытый родным приёмом
+	ssize_t fetched = 0;
+	/**
+	 * Если приём обслужен родным путём - к системе не обращаемся вовсе
+	 *
+	 * @note Адрес отправителя приходит оттуда же, из записи принятого: система
+	 *       выяснила его при приёме и отдала завершением
+	 */
+	if(((flags & MSG_PEEK) == 0) && ::__awh_pool_receive__(sock, buffer, size, fetched, addr, length))
+		// Выводим размер принятых данных
+		return static_cast <int32_t> (fetched);
 	// Выводим размер принятых данных
 	return ::__awh_socket_result__(::recvfrom(sock, reinterpret_cast <char *> (buffer), static_cast <int32_t> (size), flags, addr, length));
 }
@@ -5727,17 +5738,31 @@ namespace pool {
 		 *
 		 */
 		void * owner;
+		// Адрес отправителя, система пишет его при приёме дейтаграммы
+		struct sockaddr_storage addr;
+		// Длина адреса отправителя
+		socklen_t length;
+		// Признак выясненного адреса отправителя
+		bool addressed;
+		/**
+		 * @brief Признак принятого с сохранением границ сообщения
+		 *
+		 * @details Отличает дейтаграмму от потока при выдаче принятого. Остаток
+		 *          дейтаграммы, не влезший в буфер потребителя, обязан отбрасываться:
+		 *          выдай мы его заходом следующим - потребитель принял бы хвост
+		 *          дейтаграммы за дейтаграмму новую. Ровно так же поступает и ядро,
+		 *          отсекая лишнее по размеру буфера
+		 *
+		 */
+		bool bounded;
 		/**
 		 * @brief Конструктор
-		 *
-		 * @note Адреса отправителя здесь нет: родной приём заведён пока лишь
-		 *       потоковым дескрипторам, а им он не нужен. Вернётся он вместе с
-		 *       `WSARecvFrom` - довод приведён у подачи родного приёма
 		 *
 		 */
 		fetched_t() noexcept :
 		 armed(false), ready(false), bid(::pool::INVALID), res(0), offset(0),
-		 token(::inflight::INVALID), owner(nullptr) {}
+		 token(::inflight::INVALID), owner(nullptr), addr{},
+		 length(sizeof(struct sockaddr_storage)), addressed(false), bounded(false) {}
 	};
 
 	/**
@@ -5879,9 +5904,16 @@ namespace pool {
 	 * @param bid   номер буфера, в который данные приняты
 	 * @param res   исход приёма: октеты при удаче, отрицательный код при отказе
 	 * @param owner узел, которому приём принадлежал
+	 * @param slot  запись учёта поданного приёма, откуда берётся адрес отправителя
+	 *
+	 * @warning Запись учёта передаётся уже освобождённой, и читать из неё дозволено
+	 *          лишь здесь же, не откладывая: страницы таблицы учёта с места не
+	 *          двигаются и не освобождаются, но саму ячейку вправе занять операция
+	 *          следующая - а занимается она подачей, до которой разбор завершения
+	 *          ещё не дошёл
 	 *
 	 */
-	static void keep(const net::socket_t sock, const uint16_t bid, const int32_t res, void * owner) noexcept {
+	static void keep(const net::socket_t sock, const uint16_t bid, const int32_t res, void * owner, const ::inflight::slot_t * slot) noexcept {
 		// Получаем запись принятого по дескриптору
 		fetched_t * record = ::pool::get(sock);
 		// Если записи принятого по дескриптору нет вовсе
@@ -5916,6 +5948,28 @@ namespace pool {
 		record->owner = owner;
 		// Отмечаем принятое пришедшим
 		record->ready = true;
+		/**
+		 * Если адрес отправителя системой выяснен - запоминаем его
+		 *
+		 * @note Длина нулевая означает приём потоковый: подача выставляет её лишь
+		 *       дейтаграммному дескриптору, а занятие записи учёта её обнуляет
+		 */
+		if((slot != nullptr) && (slot->length > 0)){
+			// Запоминаем адрес отправителя
+			::memcpy(&record->addr, &slot->addr, sizeof(struct sockaddr_storage));
+			// Запоминаем длину адреса отправителя
+			record->length = slot->length;
+			// Отмечаем адрес отправителя выясненным
+			record->addressed = true;
+			// Отмечаем принятое сохраняющим границы сообщения
+			record->bounded = true;
+		// Если приём потоковый
+		} else {
+			// Отмечаем отсутствие адреса отправителя
+			record->addressed = false;
+			// Отмечаем принятое границ сообщения не сохраняющим
+			record->bounded = false;
+		}
 	}
 	/**
 	 * @brief Функция приёма данных из отложенного по дескриптору
@@ -5929,10 +5983,12 @@ namespace pool {
 	 * @param buffer буфер для приёма данных
 	 * @param size   размер буфера для приёма данных
 	 * @param result количество принятых октетов либо признак ошибки
+	 * @param addr   адрес отправителя, `nullptr` - адрес не запрашивается
+	 * @param length длина адреса отправителя
 	 * @return       признак того, что приём обслужен отложенным
 	 *
 	 */
-	static bool receive(const net::socket_t sock, void * buffer, const size_t size, ssize_t & result) noexcept {
+	static bool receive(const net::socket_t sock, void * buffer, const size_t size, ssize_t & result, struct sockaddr * addr = nullptr, int32_t * length = nullptr) noexcept {
 		// Получаем запись принятого по дескриптору
 		fetched_t * record = ((sock >= 0) && (static_cast <size_t> (sock) < ::pool::fetched.size()) ?
 		 &::pool::fetched.at(static_cast <size_t> (sock)) : nullptr);
@@ -5989,6 +6045,26 @@ namespace pool {
 			::memcpy(buffer, (source + record->offset), portion);
 		// Увеличиваем количество забранного потребителем
 		record->offset += static_cast <uint32_t> (portion);
+		// Если адрес отправителя запрошен и системой выяснен
+		if((addr != nullptr) && record->addressed){
+			// Выполняем перенос адреса отправителя
+			::memcpy(addr, &record->addr, static_cast <size_t> (record->length));
+			// Если длину адреса отправителя запросили
+			if(length != nullptr)
+				// Устанавливаем длину адреса отправителя
+				(* length) = static_cast <int32_t> (record->length);
+		}
+		/**
+		 * Если принятое сохраняет границы сообщения - остаток отбрасываем
+		 *
+		 * @note Дейтаграмма выдаётся потребителю за один заход, а не по частям:
+		 *       выдай мы остаток заходом следующим - он принял бы хвост за
+		 *       дейтаграмму новую. Ровно так же поступает и ядро, отсекая лишнее по
+		 *       размеру буфера
+		 */
+		if(record->bounded)
+			// Отмечаем принятое забранным целиком
+			record->offset = static_cast <uint32_t> (record->res);
 		/**
 		 * Если принятое забрано целиком - освобождаем буфер приёма
 		 *
@@ -6069,9 +6145,9 @@ namespace pool {
  * @return       признак того, что приём обслужен родным путём
  *
  */
-static bool __awh_pool_receive__(const SOCKET sock, void * buffer, const size_t size, ssize_t & result) noexcept {
+static bool __awh_pool_receive__(const SOCKET sock, void * buffer, const size_t size, ssize_t & result, struct sockaddr * addr, int32_t * length) noexcept {
 	// Выводим признак обслуженности приёма родным путём
-	return ::pool::receive(static_cast <awh::net::socket_t> (sock), buffer, size, result);
+	return ::pool::receive(static_cast <awh::net::socket_t> (sock), buffer, size, result, addr, length);
 }
 
 /**
@@ -6317,21 +6393,23 @@ namespace post {
 	 *       подачей и держится до прихода данных, отчего число одновременных
 	 *       приёмов и ограничено пределом пула
 	 *
-	 * @note ДЕЙТАГРАММЫ ждут шага следующего, и не по немощи порта завершений, а
-	 *       напротив: `WSARecvFrom` отдаёт адрес отправителя тем же завершением, и
-	 *       родной приём им доступен - в отличие от io_uring, где `IORING_OP_RECV`
-	 *       адреса не отдаёт вовсе и дейтаграммам родного приёма не досталось.
-	 *       Мешает же им устройство слоя выше: часть дейтаграммных путей приёма
-	 *       идёт через `recvmsg`, а посредник его о пуле не знает - принятое легло
-	 *       бы в пул, а потребитель спрашивал бы у опустевшего сокета и ждал вечно.
-	 *       Обучать надо посредника, и это работа отдельная
+	 * @note Дейтаграммам родной приём доступен наравне с потоковыми, и здесь порт
+	 *       завершений сильнее кольца io_uring: `IORING_OP_RECV` адреса отправителя
+	 *       не отдаёт вовсе, оттого у io_uring дейтаграммы обслуживаются ожиданием
+	 *       готовности. `WSARecvFrom` же отдаёт адрес тем же завершением
 	 *
-	 * @param sock  дескриптор, с которого читаются данные
-	 * @param udata запись подписки, которой операция принадлежит
-	 * @return      метка завершения
+	 * @note Сырые сокеты исключены отбором годности: приём им обязан отдавать
+	 *       служебные метаданные (`TTL`, `HopLimit`) из управляющего сообщения, а
+	 *       `WSARecvFrom` их не отдаёт - нужен `WSARecvMsg`, добываемый через
+	 *       `WSAIoctl` порядком `ConnectEx`. Работа отдельная
+	 *
+	 * @param sock     дескриптор, с которого читаются данные
+	 * @param udata    запись подписки, которой операция принадлежит
+	 * @param datagram признак дейтаграммного дескриптора
+	 * @return         метка завершения
 	 *
 	 */
-	static uint64_t fetch(const net::socket_t sock, void * udata) noexcept {
+	static uint64_t fetch(const net::socket_t sock, void * udata, const bool datagram) noexcept {
 		// Выполняем занятие буфера приёма
 		const uint16_t bid = ::pool::take();
 		// Если свободных буферов приёма не осталось
@@ -6363,8 +6441,22 @@ namespace post {
 		DWORD bytes = 0;
 		// Признаки приёма данных, обращению обязательные
 		DWORD flags = 0;
+		// Признак того, что обращение выполнено успешно
+		bool accepted = false;
+		// Если дескриптор дейтаграммный - принимаем вместе с адресом отправителя
+		if(datagram){
+			// Устанавливаем длину адреса отправителя
+			slot->length = sizeof(struct sockaddr_storage);
+			// Выполняем зануление адреса отправителя
+			::memset(&slot->addr, 0, sizeof(slot->addr));
+			// Выполняем подачу приёма дейтаграммы
+			accepted = (::WSARecvFrom(
+				static_cast <SOCKET> (sock), &chunk, 1, &bytes, &flags,
+				reinterpret_cast <struct sockaddr *> (&slot->addr),
+				reinterpret_cast <LPINT> (&slot->length), &slot->overlapped, nullptr
+			) == 0);
 		// Выполняем подачу приёма данных
-		const bool accepted = (::WSARecv(static_cast <SOCKET> (sock), &chunk, 1, &bytes, &flags, &slot->overlapped, nullptr) == 0);
+		} else accepted = (::WSARecv(static_cast <SOCKET> (sock), &chunk, 1, &bytes, &flags, &slot->overlapped, nullptr) == 0);
 		// Получаем результат подачи родного приёма
 		const uint64_t token = ::post::submitted(accepted, static_cast <DWORD> (::WSAGetLastError()), result, "receive");
 		// Если подать родной приём не удалось - освобождаем занятый буфер
@@ -8635,16 +8727,21 @@ namespace kernel {
 		 *          получаем данные завершением - ровно как io_uring, только буфер
 		 *          наш, а не ядра
 		 *
-		 * @note Сокеты с сохранением границ исключены условием потокового типа: им
-		 *       приём обязан отдавать адрес отправителя, а `WSARecv` его не отдаёт -
-		 *       нужен `WSARecvFrom`, и это работа отдельная, описанная у подачи
+		 * @note Сырые сокеты исключены, и это единственный вид, которому родного
+		 *       приёма не досталось: приём им обязан отдавать служебные метаданные
+		 *       (`TTL`, `HopLimit`) из управляющего сообщения, а этого не делает ни
+		 *       `WSARecv`, ни `WSARecvFrom` - нужен `WSARecvMsg`, и это работа
+		 *       отдельная. Сокеты с последовательными пакетами исключены заодно: у
+		 *       Windows их нет вовсе
 		 *
 		 * @note Дескриптор приёмника объединения оставлен: он нужен перекладыванию
 		 *       через буфер, а оно от вида приёма не зависит
 		 */
+		// Признак дейтаграммного дескриптора
+		const bool datagram = (exchanging && (node->state.type == event::type_t::DATAGRAM));
 		const bool suitable = (
 			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
-			exchanging && !limited && (node->state.type == event::type_t::STREAM) &&
+			exchanging && !limited && ((node->state.type == event::type_t::STREAM) || datagram) &&
 			(::kernel::listeners.count(state.sock) == 0) && !::pool::pending(state.sock)
 		);
 		/**
@@ -8689,7 +8786,7 @@ namespace kernel {
 		// Если дескриптор не слушающий
 		else {
 			// Выполняем подачу родного приёма, если подписка ему годна
-			state.token = (suitable ? ::post::fetch(state.sock, &state) : ::inflight::INVALID);
+			state.token = (suitable ? ::post::fetch(state.sock, &state, datagram) : ::inflight::INVALID);
 			// Запоминаем поданность родного приёма
 			fetching = (state.token != ::inflight::INVALID);
 			// Если родной приём не подавался либо подать его не удалось
@@ -68561,7 +68658,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						 *       тому же доводу, что и у отправки: путь закрытия узел из
 						 *       записи забывает
 						 */
-						::pool::keep(state->sock, bidOf, completion.res, state->udata);
+						::pool::keep(state->sock, bidOf, completion.res, state->udata, slot);
 						// Выдаём наружу готовность к чтению
 						signalEvents = EPOLLIN;
 					}

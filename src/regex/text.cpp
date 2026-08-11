@@ -505,7 +505,7 @@ bool awh::regex::belongs(const classview_t & value, const uint32_t code, const u
 			/**
 			 * Если обладание символом свойством соответствует знаку свойства
 			 */
-			if(unicode::holds(code, property.id) != property.negative) {
+			if(unicode::holds(code, property.id) != (property.negative != 0)) {
 				// Выполняем установку флага принадлежности символа
 				result = true;
 				// Выходим из цикла проверки свойств Юникода

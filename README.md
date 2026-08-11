@@ -219,6 +219,31 @@ $ cmake \
 $ make
 ```
 
+### Build unit tests with sanitizers
+
+```bash
+$ mkdir ./build-sanitize
+$ cd ./build-sanitize
+
+$ cmake \
+ -DCMAKE_BUILD_TESTS=YES \
+ -DCMAKE_BUILD_SANITIZE=YES \
+ -DCMAKE_BUILD_COVERAGE=NO \
+ -DCMAKE_BUILD_NET_TESTS=NO \
+ -DCMAKE_BUILD_TYPE=Debug \
+ ..
+
+$ make
+```
+
+Sanitizers are enabled for the test library and every unit test binary at once.
+Use a separate build directory: object files built with and without sanitizers
+are not interchangeable. The TcMalloc allocator is switched off automatically —
+AddressSanitizer replaces the allocator itself, and a second replacement makes it
+blind. The set of sanitizers is chosen by `CMAKE_BUILD_SANITIZE_LIST`
+(`address,undefined` by default; `thread` is incompatible with `address` and is
+enabled separately).
+
 ### Unit tests can be disabled in groups
 
 ```bash

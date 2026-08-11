@@ -20,6 +20,17 @@ endif (NOT CMAKE_BUILD_TYPE)
 # Выводим сообщение о типе сборки
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}\n")
 
+##
+ # Указываем что проверки нужно собрать под санитайзерами
+ #
+ # @note Ключ объявляется здесь, а не рядом с проверками: от него зависит выбор
+ #       распределителя памяти, а тот назначается прежде
+ ##
+option(CMAKE_BUILD_SANITIZE "Build unit tests with sanitizers" OFF)
+
+# Набор включаемых санитайзеров
+SET(CMAKE_BUILD_SANITIZE_LIST "address,undefined" CACHE STRING "Sanitizers enabled for unit tests")
+
 # Если сборка производится под платформы Apple
 if (APPLE)
     ##
@@ -515,8 +526,13 @@ else()
     SET(CMAKE_C_FLAGS_DISTRIBUTION "-O3")
     SET(CMAKE_CXX_FLAGS_DISTRIBUTION "-O3")
 
-    # Если распределитель памяти TcMalloc системой поддерживается
-    if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+    ##
+     # Если распределитель памяти TcMalloc системой поддерживается и санитайзеры не включены
+     #
+     # @note Санитайзер обращений к памяти подменяет распределитель собою, и второй
+     #       такой же подменщик отнимает у него всякую видимость
+     ##
+    if ((NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD") AND (NOT CMAKE_BUILD_SANITIZE))
         # Активируем использование TcMalloc
         add_compile_definitions(__AWH_USE_TCMALLOC__)
     endif()
@@ -802,6 +818,8 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/codec/ini/reader.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/ini/writer.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/ini/document.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/toml/common.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/toml/encoding.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
@@ -891,6 +909,47 @@ if (CMAKE_BUILD_TESTS)
         # Обнуляем зависимости линковки рантайма сбора статистики покрытия
         SET(GCC_COVERAGE_LIBS "")
     endif()
+
+    ##
+     # Сборка проверок под санитайзерами.
+     #
+     # Санитайзеры включаются одним ключом на весь набор проверок: библиотека проверок
+     # собирается из тех же исходников, что и рабочая, и флаги её сборки идут в каждую
+     # цель проверок через те же переменные, что и сбор статистики покрытия. Отдельного
+     # дерева сборки для этого не нужно, но каталог сборки следует брать свой: объектные
+     # файлы с санитайзерами и без несовместимы.
+     #
+     #   cmake -DCMAKE_BUILD_SANITIZE=YES -DCMAKE_BUILD_COVERAGE=NO ..
+     #
+     # Набор санитайзеров задаётся ключом CMAKE_BUILD_SANITIZE_LIST: умолчанием берутся
+     # проверки обращения к памяти и неопределённого поведения, а проверку состязаний
+     # (thread) включают отдельно - с адресной она несовместима.
+     ##
+    # Если сборка проверок под санитайзерами активирована
+    if (CMAKE_BUILD_SANITIZE)
+        ##
+         # Дополняем флаги компиляции проверок флагами санитайзеров
+         #
+         # @note Кадровый указатель сохраняется намеренно: без него отчёт санитайзера
+         #       остаётся без внятного следа вызовов, и место дефекта приходится искать
+         #       заново
+         ##
+        SET(GCC_COVERAGE_COMPILE_FLAGS ${GCC_COVERAGE_COMPILE_FLAGS} -fsanitize=${CMAKE_BUILD_SANITIZE_LIST} -fno-omit-frame-pointer -g)
+        # Дополняем зависимости линковки проверок рантаймом санитайзеров
+        SET(GCC_COVERAGE_LIBS ${GCC_COVERAGE_LIBS} -fsanitize=${CMAKE_BUILD_SANITIZE_LIST})
+
+        ##
+         # Отключаем распределитель памяти TcMalloc
+         #
+         # @note Санитайзер обращений к памяти подменяет распределитель собою, и второй
+         #       такой же подменщик отнимает у него всякую видимость: отчёты о дефектах
+         #       перестают появляться вовсе
+         ##
+        SET(TCMALLOC_LIBRARIES "")
+
+        # Выводим сообщение о сборке проверок под санитайзерами
+        message(STATUS "Build unit tests with sanitizers: ${CMAKE_BUILD_SANITIZE_LIST}\n")
+    endif (CMAKE_BUILD_SANITIZE)
 endif (CMAKE_BUILD_TESTS)
 
 # Если нужно собрать и динамическую библиотеку
