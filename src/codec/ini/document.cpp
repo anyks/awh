@@ -278,6 +278,174 @@ string awh::codec::ini::Document::label(const uint32_t section, const string_vie
 	return result;
 }
 /**
+ * @brief Метод дозаписи имени к ключу с приведением регистра
+ *
+ * @param buffer буфер, куда дозаписывается имя
+ * @param name   дозаписываемое имя
+ * @param lower  признак приведения имени к нижнему регистру
+ *
+ */
+static void appended(string & buffer, const string_view name, const bool lower) noexcept {
+	/**
+	 * Если приведение имени к нижнему регистру не требуется
+	 */
+	if(!lower){
+		// Выполняем дозапись имени к ключу как есть
+		buffer.append(name);
+		// Выходим из функции
+		return;
+	}
+	// Запоминаем длину ключа до дозаписи имени
+	const size_t offset = buffer.length();
+	// Выполняем дозапись имени к ключу
+	buffer.append(name);
+	/**
+	 * Выполняем перебор дозаписанных знаков имени
+	 *
+	 * @note Приведение выполняется поверх дозаписанного, а не отдельной строкой:
+	 *       дозапись переносит имя блоком, что заметно дешевле переноса знака за
+	 *       знаком, а приведение проходит по нему уже на месте
+	 */
+	for(size_t i = offset; i < buffer.length(); i++)
+		// Выполняем приведение очередного знака имени к нижнему регистру
+		buffer[i] = awh::ascii::toLower(buffer[i]);
+}
+/**
+ * @brief Метод сборки ключа указателя разделов в переданный буфер
+ *
+ * @param buffer     буфер, куда собирается ключ
+ * @param section    имя раздела
+ * @param subsection имя подраздела
+ *
+ */
+void awh::codec::ini::Document::labelled(string & buffer, const string_view section, const string_view subsection) const noexcept {
+	// Выполняем очистку переданного буфера
+	buffer.clear();
+	// Выполняем дозапись имени раздела с приведением регистра
+	::appended(buffer, section, (!this->_settings.reader.sensitive && !this->_settings.reader.sensitiveSections));
+	/**
+	 * Выполняем добавление разделителя имён к собираемому ключу
+	 *
+	 * @note Имена соединяются через нулевой байт намеренно: разделитель этот в
+	 *       именах не встречается, и раздел «a» с подразделом «b» не сольётся с
+	 *       разделом «a.b», объявленным иначе
+	 */
+	buffer.push_back('\0');
+	/**
+	 * Выполняем добавление имени подраздела к собираемому ключу
+	 *
+	 * @note Имя подраздела в сличении регистр учитывает всегда: таково обращение
+	 *       настроек Git, где подраздел несёт то имя ветви, то обозначение
+	 *       источника, а в них регистр значащ
+	 */
+	buffer.append(subsection);
+}
+/**
+ * @brief Метод сборки ключа указателя свойств в переданный буфер
+ *
+ * @param buffer  буфер, куда собирается ключ
+ * @param section порядковый номер раздела
+ * @param key     имя свойства
+ *
+ */
+void awh::codec::ini::Document::labelled(string & buffer, const uint32_t section, const string_view key) const noexcept {
+	// Выполняем очистку переданного буфера
+	buffer.clear();
+	// Запись порядкового номера раздела десятичными разрядами
+	char digits[16];
+	// Положение начала записи порядкового номера раздела
+	size_t position = sizeof(digits);
+	// Записываемый порядковый номер раздела
+	uint32_t number = section;
+	/**
+	 * Выполняем запись порядкового номера раздела с младшего разряда
+	 *
+	 * @note Запись выполняется своими средствами, а не std::to_string: та строит
+	 *       строку, которую пришлось бы переносить в буфер ещё раз
+	 */
+	do {
+		// Записываем очередной разряд порядкового номера раздела
+		digits[--position] = static_cast <char> ('0' + (number % 10));
+		// Выполняем переход к следующему разряду порядкового номера раздела
+		number /= 10;
+	// Выполняем запись до исчерпания разрядов порядкового номера раздела
+	} while(number > 0);
+	// Выполняем дозапись порядкового номера раздела к собираемому ключу
+	buffer.append(digits + position, sizeof(digits) - position);
+	// Выполняем добавление разделителя к собираемому ключу
+	buffer.push_back('\0');
+	// Выполняем дозапись имени свойства с приведением регистра
+	::appended(buffer, key, !this->_settings.reader.sensitive);
+}
+/**
+ * @brief Метод поиска раздела по имени с переиспользуемым буфером
+ *
+ * @param buffer     буфер сборки ключа указателя разделов
+ * @param section    имя искомого раздела
+ * @param subsection имя искомого подраздела
+ * @param result     порядковый номер найденного раздела
+ * @return           признак того, что раздел найден
+ *
+ */
+bool awh::codec::ini::Document::search(string & buffer, const string_view section, const string_view subsection, uint32_t & result) const noexcept {
+	/**
+	 * Если искомым является раздел без имени
+	 */
+	if(section.empty() && subsection.empty()){
+		// Запоминаем порядковый номер раздела без имени
+		result = 0;
+		// Выводим признак того, что раздел найден
+		return !this->_sections.empty();
+	}
+	// Выполняем сборку ключа указателя разделов
+	this->labelled(buffer, section, subsection);
+	// Выполняем поиск раздела в указателе разделов
+	const auto i = this->_index.find(buffer);
+	/**
+	 * Если раздел в указателе не обнаружен
+	 */
+	if(i == this->_index.end())
+		// Выводим признак того, что раздел не найден
+		return false;
+	// Запоминаем порядковый номер найденного раздела
+	result = i->second;
+	// Выводим признак того, что раздел найден
+	return true;
+}
+/**
+ * @brief Метод поиска объявлений свойства по имени
+ *
+ * @param key        имя искомого свойства
+ * @param section    имя раздела
+ * @param subsection имя подраздела
+ * @return           перечень объявлений свойства либо пустой указатель
+ *
+ */
+const vector <uint32_t> * awh::codec::ini::Document::locate(const string_view key, const string_view section, const string_view subsection) const noexcept {
+	// Буфер сборки ключей указателей
+	string buffer;
+	// Порядковый номер найденного раздела
+	uint32_t index = 0;
+	/**
+	 * Если раздел с таким именем не обнаружен
+	 */
+	if(!this->search(buffer, section, subsection, index))
+		// Выводим пустой указатель
+		return nullptr;
+	// Выполняем сборку ключа указателя свойств
+	this->labelled(buffer, index, key);
+	// Выполняем поиск свойства в указателе свойств
+	const auto i = this->_properties.find(buffer);
+	/**
+	 * Если свойство с таким именем не обнаружено либо объявлений у него не осталось
+	 */
+	if((i == this->_properties.end()) || i->second.empty())
+		// Выводим пустой указатель
+		return nullptr;
+	// Выводим перечень объявлений найденного свойства
+	return &i->second;
+}
+/**
  * @brief Метод поиска раздела по имени
  *
  * @param section    имя искомого раздела
@@ -1025,18 +1193,8 @@ vector <string_view> awh::codec::ini::Document::keys(const string_view section, 
  *
  */
 bool awh::codec::ini::Document::has(const string_view key, const string_view section, const string_view subsection) const noexcept {
-	// Порядковый номер найденного раздела
-	uint32_t index = 0;
-	/**
-	 * Если раздел с таким именем не обнаружен
-	 */
-	if(!this->search(section, subsection, index))
-		// Выводим отрицательный результат проверки наличия свойства
-		return false;
-	// Выполняем поиск свойства в указателе свойств
-	const auto i = this->_properties.find(this->label(index, key));
 	// Выводим результат проверки наличия свойства
-	return ((i != this->_properties.end()) && !i->second.empty());
+	return (this->locate(key, section, subsection) != nullptr);
 }
 /**
  * @brief Метод получения значения свойства
@@ -1048,20 +1206,12 @@ bool awh::codec::ini::Document::has(const string_view key, const string_view sec
  *
  */
 string_view awh::codec::ini::Document::get(const string_view key, const string_view section, const string_view subsection) const noexcept {
-	// Порядковый номер найденного раздела
-	uint32_t index = 0;
-	/**
-	 * Если раздел с таким именем не обнаружен
-	 */
-	if(!this->search(section, subsection, index))
-		// Выводим пустую последовательность знаков
-		return string_view();
-	// Выполняем поиск свойства в указателе свойств
-	const auto i = this->_properties.find(this->label(index, key));
+	// Выполняем поиск объявлений свойства
+	const vector <uint32_t> * records = this->locate(key, section, subsection);
 	/**
 	 * Если свойство с таким именем не обнаружено
 	 */
-	if((i == this->_properties.end()) || i->second.empty())
+	if(records == nullptr)
 		// Выводим пустую последовательность знаков
 		return string_view();
 	/**
@@ -1072,9 +1222,9 @@ string_view awh::codec::ini::Document::get(const string_view key, const string_v
 	 */
 	if(this->_settings.reader.duplicates == duplicate_t::LAST)
 		// Выводим значение последнего объявления свойства
-		return this->get(this->_records.at(i->second.back()).value);
+		return this->get(this->_records.at(records->back()).value);
 	// Выводим значение первого объявления свойства
-	return this->get(this->_records.at(i->second.front()).value);
+	return this->get(this->_records.at(records->front()).value);
 }
 /**
  * @brief Метод получения перечня значений свойства
@@ -1864,14 +2014,26 @@ template <typename T>
  *
  */
 bool awh::codec::ini::Document::value(T & result, const string_view key, const string_view section, const string_view subsection) const noexcept {
+	// Выполняем поиск объявлений свойства
+	const vector <uint32_t> * records = this->locate(key, section, subsection);
 	/**
 	 * Если свойство с таким именем не обнаружено
+	 *
+	 * @note Поиск выполняется однажды: прежде проверка наличия и получение значения
+	 *       повторяли одну и ту же работу дважды, а стоила она половину обращения
 	 */
-	if(!this->has(key, section, subsection))
+	if(records == nullptr)
 		// Выводим признак неудачного разбора
 		return false;
+	/**
+	 * Получаем значение свойства по настройке обращения с повторами
+	 */
+	const string_view value = ((this->_settings.reader.duplicates == duplicate_t::LAST) ?
+		this->get(this->_records.at(records->back()).value) :
+		this->get(this->_records.at(records->front()).value)
+	);
 	// Выполняем разбор значения свойства числом
-	return numeric(this->get(key, section, subsection), result);
+	return numeric(value, result);
 }
 
 /**

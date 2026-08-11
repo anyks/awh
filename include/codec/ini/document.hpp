@@ -345,6 +345,55 @@ namespace awh {
 					 */
 					string label(const uint32_t section, const string_view key) const noexcept;
 					/**
+					 * @brief Метод сборки ключа указателя разделов в переданный буфер
+					 *
+					 * @details Ключ собирается в переданный буфер, а не выдаётся новой
+					 * строкой: буфер вызывающий заводит однажды и переиспользует, отчего
+					 * на обращение к дереву не приходится ни одного построения строки.
+					 * Приведение имени к нижнему регистру выполняется по ходу дозаписи, а
+					 * не отдельным проходом
+					 *
+					 * @param buffer     буфер, куда собирается ключ
+					 * @param section    имя раздела
+					 * @param subsection имя подраздела
+					 *
+					 */
+					void labelled(string & buffer, const string_view section, const string_view subsection) const noexcept;
+					/**
+					 * @brief Метод сборки ключа указателя свойств в переданный буфер
+					 *
+					 * @param buffer  буфер, куда собирается ключ
+					 * @param section порядковый номер раздела
+					 * @param key     имя свойства
+					 *
+					 */
+					void labelled(string & buffer, const uint32_t section, const string_view key) const noexcept;
+					/**
+					 * @brief Метод поиска раздела по имени с переиспользуемым буфером
+					 *
+					 * @param buffer     буфер сборки ключа указателя разделов
+					 * @param section    имя искомого раздела
+					 * @param subsection имя искомого подраздела
+					 * @param result     порядковый номер найденного раздела
+					 * @return           признак того, что раздел найден
+					 *
+					 */
+					bool search(string & buffer, const string_view section, const string_view subsection, uint32_t & result) const noexcept;
+					/**
+					 * @brief Метод поиска объявлений свойства по имени
+					 *
+					 * @details Поиск выполняется однажды на все обращения к значению
+					 * свойства: получение значения, проверка наличия и разбор числом
+					 * прежде повторяли одну и ту же работу дважды
+					 *
+					 * @param key        имя искомого свойства
+					 * @param section    имя раздела
+					 * @param subsection имя подраздела
+					 * @return           перечень объявлений свойства либо пустой указатель
+					 *
+					 */
+					const vector <uint32_t> * locate(const string_view key, const string_view section, const string_view subsection) const noexcept;
+					/**
 					 * @brief Метод поиска раздела по имени
 					 *
 					 * @param section    имя искомого раздела

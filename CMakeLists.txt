@@ -653,6 +653,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
         "${CMAKE_SOURCE_DIR}/src/net/backend/sun/addr.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/sun/iface.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/sun/gateway.cpp"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/sun/sctp.cpp"
     )
 # Если сборка производится под операционную систему Linux
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")

@@ -30,6 +30,15 @@
 #include <netinet/sctp.h>
 
 /**
+ * @brief Опознаватель модуля протокола передачи с управлением потоком
+ *
+ * @note Заведён по образцу прочих модулей: сообщения о самом модуле метятся им,
+ *       и по журналу видно, какая система отказала
+ *
+ */
+static constexpr const char * __AWH_SCTP_BACKEND__ = "Sun Solaris SCTP backend";
+
+/**
  * Подключаем заголовочный файл проекта
  */
 #include <net/eth/sctp.hpp>
@@ -224,36 +233,36 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 	 */
 	for(auto & event : events){
 		/**
-		 * Современные события (RFC 6525) подписываются через отдельный API SCTP_EVENT,
-		 * так как они отсутствуют в устаревшей структуре sctp_event_subscribe
+		 * Событий, каких эти системы не знают, молча не пропускаем
+		 *
+		 * @note Сброс ассоциации и смена набора потоков (RFC 6525) подписываются у BSD
+		 *       отдельным приёмом SCTP_EVENT. У Sun Solaris приём этот есть, а обозначений
+		 *       самих событий НЕТ; у illumos нет и приёма. То же с событиями «отправитель
+		 *       сух», сброса потока и проверки подлинности: полей под них нет в структуре
+		 *       подписки ни у одной из систем - замерено на обеих
+		 *
+		 * @warning Молчаливый пропуск отчитался бы УСПЕХОМ о подписке, которой не случилось,
+		 *          и потребитель ждал бы событий, каких никогда не придёт. Оттого подписка
+		 *          отвечает отказом с названием непокрытого события
 		 */
-		if((event == net::sctp::event_type_t::ASSOC_RESET_EVENT) || (event == net::sctp::event_type_t::STREAM_CHANGE_EVENT)){
-			// Создаём объект подписки на событие (современный API SCTP_EVENT)
-			struct sctp_event item{0};
-			// Активируем получение события
-			item.se_on = 1;
-			// Применяем подписку ко всем будущим ассоциациям
-			item.se_assoc_id = SCTP_FUTURE_ASSOC;
-			// Устанавливаем тип события SCTP
-			item.se_type = ((event == net::sctp::event_type_t::ASSOC_RESET_EVENT) ? SCTP_ASSOC_RESET_EVENT : SCTP_STREAM_CHANGE_EVENT);
-			// Выполняем подписку на событие SCTP
-			if(static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &item, sizeof(item)))){
-				// Запоминаем ошибку подписки через современный API
-				resultModern = false;
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, events.size()), log_t::flag_t::CRITICAL, ::strerror(errno));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-				#endif
-			}
+		if((event == net::sctp::event_type_t::ASSOC_RESET_EVENT) || (event == net::sctp::event_type_t::STREAM_CHANGE_EVENT) ||
+		   (event == net::sctp::event_type_t::SENDER_DRY_EVENT) || (event == net::sctp::event_type_t::STREAM_RESET_EVENT) ||
+		   (event == net::sctp::event_type_t::AUTHENTICATION_EVENT)){
+			// Запоминаем отказ в подписке на событие
+			resultModern = false;
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s: SCTP event of type %u is not supported by this system", __PRETTY_FUNCTION__, make_tuple(sock, events.size()), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__, static_cast <uint32_t> (event));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s: SCTP event of type %u is not supported by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__, static_cast <uint32_t> (event));
+			#endif
 			// Переходим к следующему событию
 			continue;
 		}
@@ -281,11 +290,6 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 				// Устанавливаем события SCTP_SHUTDOWN_EVENT
 				subscribe.sctp_shutdown_event = 1;
 			break;
-			// Если событие "отправитель сухой"
-			case static_cast <uint8_t> (net::sctp::event_type_t::SENDER_DRY_EVENT):
-				// Устанавливаем события SCTP_SENDER_DRY_EVENT
-				subscribe.sctp_sender_dry_event = 1;
-			break;
 			// Если изменение адреса однорангового узла
 			case static_cast <uint8_t> (net::sctp::event_type_t::PEER_ADDR_CHANGE):
 				// Устанавливаем события SCTP_ADDR_CHANGE
@@ -297,16 +301,6 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 			case static_cast <uint8_t> (net::sctp::event_type_t::SEND_FAILED_EVENT):
 				// Устанавливаем события SCTP_SEND_FAILED_EVENT
 				subscribe.sctp_send_failure_event = 1;
-			break;
-			// Если событие сброса потока
-			case static_cast <uint8_t> (net::sctp::event_type_t::STREAM_RESET_EVENT):
-				// Устанавливаем события сброса потока SCTP_STREAM_RESET_EVENT
-				subscribe.sctp_stream_reset_event = 1;
-			break;
-			// Если событие аутентификации
-			case static_cast <uint8_t> (net::sctp::event_type_t::AUTHENTICATION_EVENT):
-				// Устанавливаем события SCTP_AUTHENTICATION_INDICATION
-				subscribe.sctp_authentication_event = 1;
 			break;
 			// Если событие адаптационное указание
 			case static_cast <uint8_t> (net::sctp::event_type_t::ADAPTATION_INDICATION):
@@ -350,65 +344,35 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
  *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorithms(const net::socket_t sock, const vector <net::sctp::auth_type_t> & types) const noexcept {
-	// Переменная результата
-	bool result = false;
-	// Если количество поддерживаемых алгоритмов аутентификации передано
-	if(!types.empty()){
-		// Объект поддерживаемых алгоритмов аутентификации SCTP сокета
-		struct sctp_hmacalgo * hmac = nullptr;
-		// Вычисляем длину структуры поддерживаемых алгоритмов аутентификации SCTP сокета
-		const size_t length = (offsetof(struct sctp_hmacalgo, shmac_idents) + types.size() * sizeof(uint16_t));
-		// Выделяем память под объект поддерживаемых алгоритмов аутентификации SCTP сокета
-		hmac = reinterpret_cast <struct sctp_hmacalgo *> (::calloc(1, length));
-		// Если память под объект не выделена
-		if(hmac == nullptr)
-			// Выходим из функции
-			return result;
-		// Устанавливаем количество поддерживаемых алгоритмов аутентификации SCTP сокета
-		hmac->shmac_number_of_idents = static_cast <uint32_t> (types.size());
-		// Индекс для записи поддерживаемых алгоритмов аутентификации SCTP сокета
-		uint32_t index = 0;
-		/**
-		 * Выполняем перебор всех переданных типов алгоритмов аутентификации
-		 */
-		for(auto & type : types){
-			/**
-			 * Определяем тип аутентификации
-			 */
-			switch(static_cast <uint8_t> (type)){
-				// Если тип аутентификации - HMAC-SHA1
-				case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA1):
-					// Устанавливаем номер ключа аутентификации для HMAC-SHA1
-					hmac->shmac_idents[index++] = SCTP_AUTH_HMAC_ID_SHA1; // = 1
-				break;
-				// Если тип аутентификации - HMAC-SHA256
-				case static_cast <uint8_t> (net::sctp::auth_type_t::HMAC_SHA256):
-					// Устанавливаем номер ключа аутентификации для HMAC-SHA256
-					hmac->shmac_idents[index++] = SCTP_AUTH_HMAC_ID_SHA256; // = 3
-				break;
-			}
-		}
-		// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP сокета
-		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_HMAC_IDENT, hmac, length)))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, types.size()), log_t::flag_t::WARNING, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
-		}
-		// Очищаем память под объект поддерживаемых алгоритмов аутентификации SCTP сокета
-		::free(hmac);
-	}
-	// Возвращаем результат
-	return result;
+	/**
+	 * Проверка подлинности у этих систем отсутствует целиком
+	 *
+	 * @note Замерено на обеих: нет ни обозначений SCTP_AUTH_KEY, SCTP_AUTH_CHUNK,
+	 *       SCTP_AUTH_ACTIVE_KEY, SCTP_AUTH_DELETE_KEY, SCTP_HMAC_IDENT,
+	 *       SCTP_LOCAL_AUTH_CHUNKS и SCTP_PEER_AUTH_CHUNKS, ни структур
+	 *       sctp_authkey, sctp_authkeyid, sctp_authchunk, sctp_authchunks и
+	 *       sctp_hmacalgo. Возместить это в своём коде нельзя: проверка
+	 *       подлинности (RFC 4895) делается ядром при сборке пакета
+	 *
+	 * @warning Отказ здесь ОСОЗНАННЫЙ. Успех без действия означал бы, что
+	 *          потребитель считает обмен подтверждённым, тогда как подтверждения
+	 *          нет вовсе - это хуже отказа
+	 */
+	/**
+	 * Если включён режим отладки
+	 */
+	#if DEBUG_MODE
+		// Записываем ошибку в лог
+		this->_log->debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		this->_log->print("%s: SCTP authentication is not implemented by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+	#endif
+	// Выводим результат
+	return false;
 }
 /**
  * @brief Метод установки ключа аутентификации SCTP сокета
@@ -420,47 +384,26 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorith
  *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::socket_t sock, const uint16_t num, string_view key) const noexcept {
-	// Переменная результата
-	bool result = false;
-	// Если ключ аутентификации передан
-	if(!key.empty()){
-		// Получаем размер ключа аутентификации
-		const socklen_t size = static_cast <socklen_t> (offsetof(sctp_authkey, sca_key) + key.size());
-		// Выделяем память под ключ аутентификации
-		struct sctp_authkey * authkey = reinterpret_cast <sctp_authkey *> (::calloc(1, size));
-		// Если память под ключ не выделена
-		if(authkey == nullptr)
-			// Выходим из функции
-			return result;
-		// Устанавливаем идентификатор ассоциации
-		authkey->sca_assoc_id = 0;
-		// Устанавливаем номер ключа аутентификации
-		authkey->sca_keynumber = num;
-		// Устанавливаем размер ключа аутентификации
-		authkey->sca_keylength = static_cast <uint16_t> (key.size());
-		// Копируем ключ аутентификации в структуру
-		::memcpy(authkey->sca_key, key.data(), key.size());
-		// Устанавливаем ключ аутентификации SCTP сокета
-		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_KEY, authkey, size)))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, num, key), log_t::flag_t::WARNING, ::strerror(errno));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
-		}
-		// Очищаем память под ключ аутентификации
-		::free(authkey);
-	}
-	// Возвращаем результат
-	return result;
+	/**
+	 * Проверка подлинности у этих систем отсутствует целиком
+	 *
+	 * @note Довод и перечень недостающего - у метода authenticateSupportAlgorithms
+	 */
+	/**
+	 * Если включён режим отладки
+	 */
+	#if DEBUG_MODE
+		// Записываем ошибку в лог
+		this->_log->debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		this->_log->print("%s: SCTP authentication is not implemented by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+	#endif
+	// Выводим результат
+	return false;
 }
 /**
  * @brief Метод активации/деактивации ключа аутентификации SCTP сокета
@@ -473,59 +416,26 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
  *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::socket_t sock, const net::socket_mode_t mode, const uint32_t id, const uint16_t num) const noexcept {
-	// Переменная результата
-	bool result = false;
-	// Создаём объект идентификатора ключа аутентификации
-	struct sctp_authkeyid authkeyid{0};
-	// Устанавливаем идентификатор ассоциации
-	authkeyid.scact_assoc_id = id;
-	// Устанавливаем номер ключа аутентификации
-	authkeyid.scact_keynumber = num;
 	/**
-	 * Определяем режим активации/деактивации ключа аутентификации SCTP сокета
+	 * Проверка подлинности у этих систем отсутствует целиком
+	 *
+	 * @note Довод и перечень недостающего - у метода authenticateSupportAlgorithms
 	 */
-	switch(static_cast <uint8_t> (mode)){
-		// Если необходимо активировать ключ аутентификации SCTP сокета
-		case static_cast <uint8_t> (net::socket_mode_t::ENABLED): {
-			// Активируем ключ аутентификации SCTP сокета
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_ACTIVE_KEY, &authkeyid, sizeof(authkeyid))))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, static_cast <uint16_t> (mode), id, num), log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
-			}
-		} break;
-		// Если необходимо деактивировать ключ аутентификации SCTP сокета
-		case static_cast <uint8_t> (net::socket_mode_t::DISABLED): {
-			// Деактивируем ключ аутентификации SCTP сокета
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_DELETE_KEY, &authkeyid, sizeof(authkeyid))))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, static_cast <uint16_t> (mode), id, num), log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
-			}
-		} break;
-	}
-	// Возвращаем результат
-	return result;
+	/**
+	 * Если включён режим отладки
+	 */
+	#if DEBUG_MODE
+		// Записываем ошибку в лог
+		this->_log->debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		this->_log->print("%s: SCTP authentication is not implemented by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+	#endif
+	// Выводим результат
+	return false;
 }
 /**
  * @brief Метод установки чанков аутентификации SCTP сокета
@@ -536,123 +446,26 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
  *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const net::socket_t sock, const vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
-	// Переменная результата
-	bool result = false;
-	// Если количество чанков аутентификации передано
-	if(!chunks.empty()){
-		// Создаём объект чанка аутентификации SCTP сокета
-		struct sctp_authchunk authchunk{0};
-		/**
-		 * Выполняем перебор всех переданных чанков аутентификации
-		 */
-		for(auto & chunk : chunks){
-			/**
-			 * Определяем тип чанка аутентификации
-			 */
-			switch(static_cast <uint8_t> (chunk)){
-				// Если чанк аутентификации - DATA
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::DATA):
-					// Устанавливаем чанк аутентификации DATA
-					authchunk.sauth_chunk = 0x00;
-				break;
-				// Если чанк аутентификации - INIT
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::INIT):
-					// Устанавливаем чанк аутентификации INIT
-					authchunk.sauth_chunk = 0x01;
-				break;
-				// Если чанк аутентификации - INIT_ACK
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::INIT_ACK):
-					// Устанавливаем чанк аутентификации INIT_ACK
-					authchunk.sauth_chunk = 0x02;
-				break;
-				// Если чанк аутентификации - SACK
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::SACK):
-					// Устанавливаем чанк аутентификации SACK
-					authchunk.sauth_chunk = 0x03;
-				break;
-				// Если чанк аутентификации - HEARTBEAT
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::HEARTBEAT):
-					// Устанавливаем чанк аутентификации HEARTBEAT
-					authchunk.sauth_chunk = 0x04;
-				break;
-				// Если чанк аутентификации - HEARTBEAT_ACK
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::HEARTBEAT_ACK):
-					// Устанавливаем чанк аутентификации HEARTBEAT_ACK
-					authchunk.sauth_chunk = 0x05;
-				break;
-				// Если чанк аутентификации - ABORT
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::ABORT):
-					// Устанавливаем чанк аутентификации ABORT
-					authchunk.sauth_chunk = 0x06;
-				break;
-				// Если чанк аутентификации - SHUTDOWN
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::SHUTDOWN):
-					// Устанавливаем чанк аутентификации SHUTDOWN
-					authchunk.sauth_chunk = 0x07;
-				break;
-				// Если чанк аутентификации - SHUTDOWN_ACK
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::SHUTDOWN_ACK):
-					// Устанавливаем чанк аутентификации SHUTDOWN_ACK
-					authchunk.sauth_chunk = 0x08;
-				break;
-				// Если чанк аутентификации - ERROR
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::ERROR):
-					// Устанавливаем чанк аутентификации ERROR
-					authchunk.sauth_chunk = 0x09;
-				break;
-				// Если чанк аутентификации - COOKIE_ECHO
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::COOKIE_ECHO):
-					// Устанавливаем чанк аутентификации COOKIE_ECHO
-					authchunk.sauth_chunk = 0x0A;
-				break;
-				// Если чанк аутентификации - COOKIE_ACK
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::COOKIE_ACK):
-					// Устанавливаем чанк аутентификации COOKIE_ACK
-					authchunk.sauth_chunk = 0x0B;
-				break;
-				// Если чанк аутентификации - ECNE
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::ECNE):
-					// Устанавливаем чанк аутентификации ECNE
-					authchunk.sauth_chunk = 0x0C;
-				break;
-				// Если чанк аутентификации - CWR
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::CWR):
-					// Устанавливаем чанк аутентификации CWR
-					authchunk.sauth_chunk = 0x0D;
-				break;
-				// Если чанк аутентификации - SHUTDOWN_COMPLETE
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::SHUTDOWN_COMPLETE):
-					// Устанавливаем чанк аутентификации SHUTDOWN_COMPLETE
-					authchunk.sauth_chunk = 0x0E;
-				break;
-				// Если чанк аутентификации - AUTH
-				case static_cast <uint8_t> (net::sctp::auth_chunk_t::AUTH):
-					// Устанавливаем чанк аутентификации AUTH
-					authchunk.sauth_chunk = 0x0F;
-				break;
-			}
-			// Активируем чанк аутентификации SCTP сокета
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_AUTH_CHUNK, &authchunk, sizeof(authchunk))))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, chunks.size()), log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-				#endif
-				// Прекращаем дальнейшую обработку чанков аутентификации
-				break;
-			}
-		}
-	}
-	// Возвращаем результат
-	return result;
+	/**
+	 * Проверка подлинности у этих систем отсутствует целиком
+	 *
+	 * @note Довод и перечень недостающего - у метода authenticateSupportAlgorithms
+	 */
+	/**
+	 * Если включён режим отладки
+	 */
+	#if DEBUG_MODE
+		// Записываем ошибку в лог
+		this->_log->debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		this->_log->print("%s: SCTP authentication is not implemented by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+	#endif
+	// Выводим результат
+	return false;
 }
 /**
  * @brief Метод извлечения чанков аутентификации SCTP сокета
@@ -665,161 +478,26 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
  *
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
-	// Переменная результата
-	bool result = false;
-	// Максимум 256 типов чанков — более чем достаточно
-	const socklen_t capacity = static_cast <socklen_t> (sizeof(struct sctp_authchunks) + 256);
-	// Выделяем память под объект чанков аутентификации SCTP сокета (с запасом под гибкий массив gauth_chunks)
-	struct sctp_authchunks * authchunks = reinterpret_cast <struct sctp_authchunks *> (::calloc(1, capacity));
-	// Если память под объект не выделена
-	if(authchunks == nullptr)
-		// Выходим из функции
-		return result;
-	// Устанавливаем идентификатор ассоциации
-	authchunks->gauth_assoc_id = id;
-	// Размер выделенного буфера под чанки аутентификации
-	socklen_t length = capacity;
-	// Переменная для хранения типа опции
-	int32_t optname = 0;
 	/**
-	 * Определяем источник события
+	 * Проверка подлинности у этих систем отсутствует целиком
+	 *
+	 * @note Довод и перечень недостающего - у метода authenticateSupportAlgorithms
 	 */
-	switch(static_cast <uint8_t> (origin)){
-		// Если источник события - локальный
-		case static_cast <uint8_t> (event::origin_t::LOCAL):
-			// Устанавливаем тип опции - локальные чанки аутентификации
-			optname = SCTP_LOCAL_AUTH_CHUNKS;
-		break;
-		// Если источник события - удалённый
-		case static_cast <uint8_t> (event::origin_t::REMOTE):
-			// Устанавливаем тип опции - удалённые чанки аутентификации
-			optname = SCTP_PEER_AUTH_CHUNKS;
-		break;
-	}
-	// Получаем чанки аутентификации SCTP сокета
-	if((result = (::getsockopt(sock, IPPROTO_SCTP, optname, authchunks, &length) == 0))){
-		// Вычисляем количество полученных чанков из фактически возвращённой длины буфера
-		const uint32_t count = (length > offsetof(struct sctp_authchunks, gauth_chunks)) ? static_cast <uint32_t> (length - offsetof(struct sctp_authchunks, gauth_chunks)) : 0;
-		/**
-		 * Перебираем все полученные чанки аутентификации
-		 */
-		for(uint32_t i = 0; i < count; i++){
-			/**
-			 * Определяем тип чанка аутентификации
-			 */
-			switch(authchunks->gauth_chunks[i]){
-				// Если чанк аутентификации - DATA
-				case 0x00:
-					// Добавляем чанк аутентификации DATA
-					chunks.push_back(net::sctp::auth_chunk_t::DATA);
-				break;
-				// Если чанк аутентификации - INIT
-				case 0x01:
-					// Добавляем чанк аутентификации INIT
-					chunks.push_back(net::sctp::auth_chunk_t::INIT);
-				break;
-				// Если чанк аутентификации - INIT_ACK
-				case 0x02:
-					// Добавляем чанк аутентификации INIT_ACK
-					chunks.push_back(net::sctp::auth_chunk_t::INIT_ACK);
-				break;
-				// Если чанк аутентификации - SACK
-				case 0x03:
-					// Добавляем чанк аутентификации SACK
-					chunks.push_back(net::sctp::auth_chunk_t::SACK);
-				break;
-				// Если чанк аутентификации - HEARTBEAT
-				case 0x04:
-					// Добавляем чанк аутентификации HEARTBEAT
-					chunks.push_back(net::sctp::auth_chunk_t::HEARTBEAT);
-				break;
-				// Если чанк аутентификации - HEARTBEAT_ACK
-				case 0x05:
-					// Добавляем чанк аутентификации HEARTBEAT_ACK
-					chunks.push_back(net::sctp::auth_chunk_t::HEARTBEAT_ACK);
-				break;
-				// Если чанк аутентификации - ABORT
-				case 0x06:
-					// Добавляем чанк аутентификации ABORT
-					chunks.push_back(net::sctp::auth_chunk_t::ABORT);
-				break;
-				// Если чанк аутентификации - SHUTDOWN
-				case 0x07:
-					// Добавляем чанк аутентификации SHUTDOWN
-					chunks.push_back(net::sctp::auth_chunk_t::SHUTDOWN);
-				break;
-				// Если чанк аутентификации - SHUTDOWN_ACK
-				case 0x08:
-					// Добавляем чанк аутентификации SHUTDOWN_ACK
-					chunks.push_back(net::sctp::auth_chunk_t::SHUTDOWN_ACK);
-				break;
-				// Если чанк аутентификации - ERROR
-				case 0x09:
-					// Добавляем чанк аутентификации ERROR
-					chunks.push_back(net::sctp::auth_chunk_t::ERROR);
-				break;
-				// Если чанк аутентификации - COOKIE_ECHO
-				case 0x0A:
-					// Добавляем чанк аутентификации COOKIE_ECHO
-					chunks.push_back(net::sctp::auth_chunk_t::COOKIE_ECHO);
-				break;
-				// Если чанк аутентификации - COOKIE_ACK
-				case 0x0B:
-					// Добавляем чанк аутентификации COOKIE_ACK
-					chunks.push_back(net::sctp::auth_chunk_t::COOKIE_ACK);
-				break;
-				// Если чанк аутентификации - ECNE
-				case 0x0C:
-					// Добавляем чанк аутентификации ECNE
-					chunks.push_back(net::sctp::auth_chunk_t::ECNE);
-				break;
-				// Если чанк аутентификации - CWR
-				case 0x0D:
-					// Добавляем чанк аутентификации CWR
-					chunks.push_back(net::sctp::auth_chunk_t::CWR);
-				break;
-				// Если чанк аутентификации - SHUTDOWN_COMPLETE
-				case 0x0E:
-					// Добавляем чанк аутентификации SHUTDOWN_COMPLETE
-					chunks.push_back(net::sctp::auth_chunk_t::SHUTDOWN_COMPLETE);
-				break;
-				// Если чанк аутентификации - AUTH
-				case 0x0F:
-					// Добавляем чанк аутентификации AUTH
-					chunks.push_back(net::sctp::auth_chunk_t::AUTH);
-				break;
-				// Если чанк аутентификации - FORWARD_TSN
-				case 0x80:
-					// Добавляем чанк аутентификации FORWARD_TSN
-					chunks.push_back(net::sctp::auth_chunk_t::FORWARD_TSN);
-				break;
-				// Если чанк аутентификации - RE_CONFIG
-				case 0xC1:
-					// Добавляем чанк аутентификации RE_CONFIG
-					chunks.push_back(net::sctp::auth_chunk_t::RE_CONFIG);
-				break;
-			}
-		}
-	// Если возникает ошибка получения протокола сокета
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id), log_t::flag_t::WARNING, ::strerror(errno));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-		#endif
-	}
-	// Очищаем память под объект чанков аутентификации SCTP сокета
-	::free(authchunks);
-	// Возвращаем результат
-	return result;
+	/**
+	 * Если включён режим отладки
+	 */
+	#if DEBUG_MODE
+		// Записываем ошибку в лог
+		this->_log->debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		this->_log->print("%s: SCTP authentication is not implemented by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+	#endif
+	// Выводим результат
+	return false;
 }
 /**
  * @brief Метод получения таймаута SCTP сокета
@@ -1070,8 +748,18 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 			if(ctx != nullptr)
 				// Устанавливаем адрес удалённой стороны из контекста
 				::memcpy(&params.spp_address, ctx, sizeof(struct sockaddr_storage));
-			// Устанавливаем флаг принудительного включения HB с новым интервалом
-			params.spp_flags = SPP_HB_ENABLE;
+			/**
+			 * Устанавливаем флаг принудительного включения HB с новым интервалом
+			 *
+			 * @note У illumos структура настроек удалённой стороны СТАРОГО образца,
+			 *       без поля признаков: поддержание связи там включается самим
+			 *       ненулевым значением промежутка, как это было до RFC 6458.
+			 *       Замерено сборкой на обеих системах - у Solaris поле есть
+			 */
+			#if !defined(__illumos__)
+				// Устанавливаем флаг принудительного включения HB с новым интервалом
+				params.spp_flags = SPP_HB_ENABLE;
+			#endif
 			// Активируем новые таймауты SCTP сокета
 			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &params, sizeof(params))))){
 				/**
